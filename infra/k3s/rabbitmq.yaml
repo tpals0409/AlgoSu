@@ -27,6 +27,8 @@ spec:
           ports:
             - containerPort: 5672
               name: amqp
+            - containerPort: 15692
+              name: prometheus
           env:
             - name: RABBITMQ_DEFAULT_USER
               valueFrom:
@@ -43,6 +45,9 @@ spec:
           volumeMounts:
             - name: rabbitmq-storage
               mountPath: /var/lib/rabbitmq
+            - name: rabbitmq-plugins
+              mountPath: /etc/rabbitmq/enabled_plugins
+              subPath: enabled_plugins
           resources:
             requests:
               memory: "128Mi"
@@ -67,6 +72,18 @@ spec:
         - name: rabbitmq-storage
           persistentVolumeClaim:
             claimName: rabbitmq-pvc
+        - name: rabbitmq-plugins
+          configMap:
+            name: rabbitmq-plugins
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rabbitmq-plugins
+  namespace: algosu
+data:
+  enabled_plugins: |
+    [rabbitmq_prometheus].
 ---
 apiVersion: v1
 kind: Service
@@ -80,6 +97,9 @@ spec:
     - port: 5672
       targetPort: 5672
       name: amqp
+    - port: 15692
+      targetPort: 15692
+      name: prometheus
   type: ClusterIP
 ---
 apiVersion: v1

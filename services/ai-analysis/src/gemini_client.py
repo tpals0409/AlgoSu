@@ -1,16 +1,9 @@
 import logging
 import google.generativeai as genai
 from .config import settings
-from .circuit_breaker import CircuitBreaker
+from .circuit_breaker import circuit_breaker
 
 logger = logging.getLogger(__name__)
-
-# Circuit Breaker 인스턴스 (모듈 레벨 싱글톤)
-circuit_breaker = CircuitBreaker(
-    failure_threshold=settings.cb_failure_threshold,
-    recovery_timeout=settings.cb_recovery_timeout,
-    half_open_requests=settings.cb_half_open_requests,
-)
 
 
 class GeminiClient:

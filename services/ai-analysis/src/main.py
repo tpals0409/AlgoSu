@@ -34,7 +34,8 @@ async def startup_event():
     """서비스 시작 시 RabbitMQ Worker를 백그라운드 스레드로 실행"""
     global worker_instance, worker_thread
 
-    # Circuit Breaker 초기 상태를 Gauge에 반영
+    # Circuit Breaker 상태 → Prometheus gauge 자동 동기화
+    circuit_breaker.set_state_change_callback(update_circuit_breaker_gauge)
     update_circuit_breaker_gauge(circuit_breaker.state.value)
 
     worker_instance = AIAnalysisWorker()
