@@ -780,32 +780,42 @@ jobs:
       contents: read
     steps:
       - name: Discord notification
-        if: (needs.deploy.result == 'success' && secrets.DISCORD_WEBHOOK_DEPLOY != '') || (needs.deploy.result == 'failure' && secrets.DISCORD_WEBHOOK_EMERGENCY != '')
+        env:
+          DEPLOY_RESULT: ${{ needs.deploy.result }}
+          WEBHOOK_DEPLOY: ${{ secrets.DISCORD_WEBHOOK_DEPLOY }}
+          WEBHOOK_EMERGENCY: ${{ secrets.DISCORD_WEBHOOK_EMERGENCY }}
+          SHA: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
         run: |
-          if [ "${{ needs.deploy.result }}" = "success" ]; then
+          if [ "$DEPLOY_RESULT" = "success" ]; then
             COLOR=3066993
             STATUS="배포 성공"
-            WEBHOOK="${{ secrets.DISCORD_WEBHOOK_DEPLOY }}"
+            WEBHOOK="$WEBHOOK_DEPLOY"
           else
             COLOR=15158332
             STATUS="배포 실패"
-            WEBHOOK="${{ secrets.DISCORD_WEBHOOK_EMERGENCY }}"
+            WEBHOOK="$WEBHOOK_EMERGENCY"
+          fi
+
+          if [ -z "$WEBHOOK" ]; then
+            echo "Discord webhook not configured, skipping"
+            exit 0
           fi
 
           curl -sf -X POST "$WEBHOOK" \
             -H "Content-Type: application/json" \
-            -d '{
-              "embeds": [{
-                "title": "['"$STATUS"'] AlgoSu GitOps",
-                "color": '"$COLOR"',
-                "fields": [
-                  {"name": "커밋", "value": "'"${GITHUB_SHA:0:8}"'", "inline": true},
-                  {"name": "실행자", "value": "'"$GITHUB_ACTOR"'", "inline": true},
-                  {"name": "방식", "value": "aether-gitops → ArgoCD", "inline": true}
+            -d "{
+              \"embeds\": [{
+                \"title\": \"[${STATUS}] AlgoSu GitOps\",
+                \"color\": ${COLOR},
+                \"fields\": [
+                  {\"name\": \"커밋\", \"value\": \"${SHA:0:8}\", \"inline\": true},
+                  {\"name\": \"실행자\", \"value\": \"${ACTOR}\", \"inline\": true},
+                  {\"name\": \"방식\", \"value\": \"aether-gitops → ArgoCD\", \"inline\": true}
                 ],
-                "footer": {"text": "AlgoSu CI/CD"}
+                \"footer\": {\"text\": \"AlgoSu CI/CD\"}
               }]
-            }' || echo "Discord webhook not configured, skipping"
+            }" || echo "Discord notification failed, continuing"
 
       - name: Grafana deployment annotation
         if: needs.deploy.result == 'success'
