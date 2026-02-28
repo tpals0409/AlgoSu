@@ -6,6 +6,7 @@ class Settings(BaseSettings):
 
     보안: API 키는 환경변수에서만 주입, 로그 노출 금지
     """
+
     rabbitmq_url: str = "amqp://algosu:change_me@localhost:5672"
     redis_url: str = "redis://localhost:6379"
     gemini_api_key: str = ""

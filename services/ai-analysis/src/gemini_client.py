@@ -59,7 +59,9 @@ class GeminiClient:
 
             # 코드 로그: 최대 50자만 기록
             code_preview = code[:50] + "..." if len(code) > 50 else code
-            logger.info(f"Gemini 분석 완료: language={language}, code_preview={code_preview}")
+            logger.info(
+                f"Gemini 분석 완료: language={language}, code_preview={code_preview}"
+            )
 
             return {
                 "feedback": feedback_text,

@@ -7,6 +7,7 @@ AlgoSu AI Analysis Service — Prometheus Metrics
 라벨 정책: method, path(정규화), status_code — userId/traceId 금지
 보안: /metrics 인증 없이 접근 가능 (클러스터 내부 전용)
 """
+
 from __future__ import annotations
 
 import re
@@ -89,11 +90,14 @@ def update_circuit_breaker_gauge(state_value: str) -> None:
 # FastAPI 미들웨어
 # ---------------------------------------------------------------------------
 
+
 class PrometheusMiddleware(BaseHTTPMiddleware):
     """HTTP 요청 메트릭 수집. /health, /metrics는 제외."""
 
     async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint,
+        self,
+        request: Request,
+        call_next: RequestResponseEndpoint,
     ) -> StarletteResponse:
         path = request.url.path
 
@@ -117,16 +121,21 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
             duration = time.perf_counter() - start_time
             http_active_requests.dec()
             http_request_duration.labels(
-                method=method, path=normalized_path, status_code=status_code,
+                method=method,
+                path=normalized_path,
+                status_code=status_code,
             ).observe(duration)
             http_requests_total.labels(
-                method=method, path=normalized_path, status_code=status_code,
+                method=method,
+                path=normalized_path,
+                status_code=status_code,
             ).inc()
 
 
 # ---------------------------------------------------------------------------
 # /metrics 엔드포인트
 # ---------------------------------------------------------------------------
+
 
 async def metrics_endpoint() -> StarletteResponse:
     """Prometheus scraper용 /metrics. 인증 없음."""

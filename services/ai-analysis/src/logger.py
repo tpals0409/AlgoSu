@@ -9,6 +9,7 @@ AlgoSu AI Analysis Service — Structured Logger
 - 사용자 이메일 원문 금지, path/userAgent 제어문자 제거 + truncate
 - Log Injection 방지: 반드시 JSON 구조화 출력 (문자열 concat 금지)
 """
+
 from __future__ import annotations
 
 import json
@@ -40,6 +41,7 @@ _REDACTED_HEADERS: frozenset[str] = frozenset(
 # ---------------------------------------------------------------------------
 # 보안 유틸리티
 # ---------------------------------------------------------------------------
+
 
 def sanitize_str(value: str, max_len: int = 500) -> str:
     """제어문자 제거 + 길이 truncate (Log Injection 방지)."""
@@ -77,6 +79,7 @@ def sanitize_headers(headers: dict[str, str]) -> dict[str, str]:
 # JSON Formatter
 # ---------------------------------------------------------------------------
 
+
 class JsonFormatter(logging.Formatter):
     """
     Python logging.Formatter 서브클래스.
@@ -110,13 +113,38 @@ class JsonFormatter(logging.Formatter):
 
         # 선택적 확장 필드 (LogRecord extra 에서 복사)
         _EXTRA_KEYS = {
-            "tag", "method", "path", "statusCode", "latencyMs",
-            "userId", "ip", "queue", "deliveryTag", "retryCount",
-            "exchange", "routingKey", "sagaStep", "from", "to",
-            "studyId", "durationMs", "step", "compensationType",
-            "reason", "errorCode", "action", "db", "elapsedMs",
-            "queryNormalized", "paramCount", "operation", "table",
-            "messageSize", "redelivered", "messageAgeMs", "result",
+            "tag",
+            "method",
+            "path",
+            "statusCode",
+            "latencyMs",
+            "userId",
+            "ip",
+            "queue",
+            "deliveryTag",
+            "retryCount",
+            "exchange",
+            "routingKey",
+            "sagaStep",
+            "from",
+            "to",
+            "studyId",
+            "durationMs",
+            "step",
+            "compensationType",
+            "reason",
+            "errorCode",
+            "action",
+            "db",
+            "elapsedMs",
+            "queryNormalized",
+            "paramCount",
+            "operation",
+            "table",
+            "messageSize",
+            "redelivered",
+            "messageAgeMs",
+            "result",
         }
         for key in _EXTRA_KEYS:
             val = getattr(record, key, None)
@@ -146,6 +174,7 @@ class JsonFormatter(logging.Formatter):
         t = time.time()
         ms = int((t % 1) * 1000)
         import datetime
+
         dt = datetime.datetime.utcfromtimestamp(t)
         return dt.strftime(f"%Y-%m-%dT%H:%M:%S.{ms:03d}Z")
 
@@ -153,6 +182,7 @@ class JsonFormatter(logging.Formatter):
 # ---------------------------------------------------------------------------
 # 전역 로깅 초기화
 # ---------------------------------------------------------------------------
+
 
 def setup_logging() -> None:
     """
@@ -191,6 +221,7 @@ def setup_logging() -> None:
 # ---------------------------------------------------------------------------
 # FastAPI HTTP 미들웨어용 헬퍼
 # ---------------------------------------------------------------------------
+
 
 def log_http(
     *,

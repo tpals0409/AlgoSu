@@ -62,6 +62,7 @@ class AIAnalysisWorker:
 
             # Gemini 분석 (동기 래퍼)
             import asyncio
+
             result = asyncio.run(
                 self.gemini.analyze_code(
                     code=submission["code"],
@@ -76,7 +77,9 @@ class AIAnalysisWorker:
             self._publish_status(submission_id, result["status"])
 
             ch.basic_ack(delivery_tag=method.delivery_tag)
-            logger.info(f"AI 분석 완료: submissionId={submission_id}, status={result['status']}")
+            logger.info(
+                f"AI 분석 완료: submissionId={submission_id}, status={result['status']}"
+            )
 
         except Exception as e:
             logger.error(f"AI 분석 처리 실패: {str(e)[:200]}")
@@ -107,11 +110,13 @@ class AIAnalysisWorker:
     def _publish_status(self, submission_id: str, status: str):
         """Redis Pub/Sub 상태 브로드캐스트"""
         channel = f"submission:status:{submission_id}"
-        payload = json.dumps({
-            "submissionId": submission_id,
-            "status": f"ai_{status}",
-            "timestamp": __import__("datetime").datetime.utcnow().isoformat(),
-        })
+        payload = json.dumps(
+            {
+                "submissionId": submission_id,
+                "status": f"ai_{status}",
+                "timestamp": __import__("datetime").datetime.utcnow().isoformat(),
+            }
+        )
         self.redis_client.publish(channel, payload)
 
     def stop(self):
