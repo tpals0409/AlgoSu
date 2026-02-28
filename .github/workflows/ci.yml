@@ -18,16 +18,73 @@ on:
     branches:
       - main
 
+# 최소 권한 원칙: 기본 제로, 각 job에서 필요 권한만 명시
+permissions: {}
+
 env:
   REGISTRY: ghcr.io
   IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/algosu
   NODE_VERSION: '20'
-  PYTHON_VERSION: '3.11'
+  PYTHON_VERSION: '3.12'
 
 jobs:
+  # ============================================================
+  # Security Scan — 시크릿 유출 + .env 커밋 방지 (모든 push/PR에 실행)
+  # ============================================================
+
+  secret-scan:
+    name: Secret & Env Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install gitleaks
+        run: |
+          GITLEAKS_VERSION="8.21.2"
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar xz -C /usr/local/bin gitleaks
+          gitleaks version
+
+      - name: Run gitleaks secret scan
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            gitleaks detect --source . --config .gitleaks.toml \
+              --log-opts "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}" \
+              --verbose
+          else
+            gitleaks detect --source . --config .gitleaks.toml --verbose
+          fi
+
+      - name: Reject committed .env files
+        run: |
+          # Git 인덱스 내 .env 파일 탐지 (.env.example 제외)
+          VIOLATIONS=$(git ls-files | grep -E '(^|/)\.env($|\..*)' | grep -v '\.env\.example' || true)
+
+          # PR인 경우: 변경 파일 중 .env 추가 탐지
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            PR_ENV=$(git diff --name-only "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}" \
+              | grep -E '(^|/)\.env($|\..*)' | grep -v '\.env\.example' || true)
+            [ -n "$PR_ENV" ] && VIOLATIONS="$VIOLATIONS $PR_ENV"
+          fi
+
+          if [ -n "$(echo "$VIOLATIONS" | tr -d ' ')" ]; then
+            echo "::error::SECURITY VIOLATION: .env files detected in Git"
+            echo "위반 파일: $VIOLATIONS"
+            echo "조치: git rm --cached <파일명> 후 .gitignore 확인"
+            exit 1
+          fi
+
+          echo "env-check: PASS"
+
   detect-changes:
     name: Detect Changed Services
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       gateway:       ${{ steps.filter.outputs.gateway }}
       identity:      ${{ steps.filter.outputs.identity }}
@@ -67,6 +124,8 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.gateway == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -93,6 +152,8 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.identity == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -119,6 +180,8 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.submission == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -145,6 +208,8 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.problem == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -171,6 +236,8 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.github-worker == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -197,6 +264,8 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.ai-analysis == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -427,6 +496,7 @@ jobs:
   deploy:
     name: Deploy to k3s
     needs:
+      - secret-scan
       - detect-changes
       - build-gateway
       - build-identity
@@ -438,6 +508,7 @@ jobs:
     # main 브랜치 + 하나 이상의 서비스 변경 시에만 배포
     if: |
       github.ref == 'refs/heads/main' && !cancelled() &&
+      needs.secret-scan.result == 'success' &&
       (needs.build-gateway.result == 'success' ||
        needs.build-identity.result == 'success' ||
        needs.build-submission.result == 'success' ||
@@ -446,6 +517,8 @@ jobs:
        needs.build-ai-analysis.result == 'success' ||
        needs.build-frontend.result == 'success')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     environment: production
     steps:
       - uses: actions/checkout@v4

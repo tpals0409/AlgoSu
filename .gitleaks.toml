@@ -1,0 +1,48 @@
+# ============================================================
+# AlgoSu — Gitleaks Configuration
+# Oracle 보안 지시: 시크릿 유출 차단
+# ============================================================
+
+title = "AlgoSu Gitleaks Config"
+
+[extend]
+useDefault = true
+
+# AlgoSu 프로젝트 커스텀 규칙
+[[rules]]
+id = "algosu-jwt-secret"
+description = "JWT Secret in environment variable"
+regex = '''(?i)(JWT_SECRET|JWT_ACCESS_SECRET|JWT_REFRESH_SECRET)\s*=\s*['"]?([A-Za-z0-9+/=_\-]{20,})['"]?'''
+tags = ["algosu", "jwt"]
+
+[[rules]]
+id = "algosu-internal-key"
+description = "AlgoSu Internal API Key"
+regex = '''(?i)INTERNAL_KEY\s*=\s*['"]?([A-Za-z0-9+/=_\-]{10,})['"]?'''
+tags = ["algosu", "api-key"]
+
+[[rules]]
+id = "algosu-db-connection"
+description = "Database connection string with credentials"
+regex = '''(?i)postgres(ql)?://[^:]+:[^@]+@[^/]+/\w+'''
+tags = ["algosu", "database"]
+
+[[rules]]
+id = "algosu-amqp-connection"
+description = "RabbitMQ connection string with credentials"
+regex = '''amqps?://[^:]+:[^@]+@[^/]+'''
+tags = ["algosu", "rabbitmq"]
+
+# False positive 허용 목록
+[allowlist]
+description = "AlgoSu 허용 패턴"
+paths = [
+  '''\.env\.example$''',
+  '''docs/.*\.md$''',
+  '''plan/.*\.md$''',
+]
+regexes = [
+  '''change_me_''',
+  '''your_.*_here''',
+  '''PLACEHOLDER''',
+]
