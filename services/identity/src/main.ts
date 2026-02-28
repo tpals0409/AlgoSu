@@ -15,6 +15,8 @@ async function bootstrap(): Promise<void> {
     }),
   );
 
+  app.enableShutdownHooks();
+
   const port = process.env['PORT'] ?? 3004;
   await app.listen(port);
   logger.log(`Identity Service running on port ${port}`);

@@ -153,8 +153,8 @@ jobs:
             lint_glob: '{src,test}/**/*.ts'
           - service: identity
             changed: ${{ needs.detect-changes.outputs.identity }}
-            has_eslint: 'false'
-            lint_glob: ''
+            has_eslint: 'true'
+            lint_glob: '{src,test}/**/*.ts'
           - service: submission
             changed: ${{ needs.detect-changes.outputs.submission }}
             has_eslint: 'true'

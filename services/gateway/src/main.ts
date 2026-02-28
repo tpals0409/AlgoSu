@@ -25,6 +25,8 @@ async function bootstrap(): Promise<void> {
     }),
   );
 
+  app.enableShutdownHooks();
+
   const port = process.env['PORT'] ?? 3000;
   await app.listen(port);
   structuredLogger.log(`Gateway is running on port ${port}`);

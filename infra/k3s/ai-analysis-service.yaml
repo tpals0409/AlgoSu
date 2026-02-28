@@ -9,6 +9,11 @@ metadata:
     app: ai-analysis-service
 spec:
   replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: ai-analysis-service

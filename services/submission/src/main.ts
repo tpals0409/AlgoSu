@@ -15,6 +15,8 @@ async function bootstrap(): Promise<void> {
     }),
   );
 
+  app.enableShutdownHooks();
+
   const port = process.env['PORT'] ?? 3003;
   await app.listen(port);
   logger.log(`Submission Service is running on port ${port}`);
