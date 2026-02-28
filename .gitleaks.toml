@@ -40,9 +40,17 @@ paths = [
   '''\.env\.example$''',
   '''docs/.*\.md$''',
   '''plan/.*\.md$''',
+  '''\.spec\.ts$''',
+  '''\.test\.ts$''',
+  '''tests/test_.*\.py$''',
+  '''tests/conftest\.py$''',
 ]
 regexes = [
   '''change_me_''',
   '''your_.*_here''',
   '''PLACEHOLDER''',
+  '''test-internal-api-key''',
+  '''test-jwt-secret''',
+  '''localhost''',
+  '''127\.0\.0\.1''',
 ]
