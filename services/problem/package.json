@@ -29,13 +29,6 @@
     "rxjs": "^7.8.1",
     "typeorm": "^0.3.17"
   },
-  "overrides": {
-    "typeorm": {
-      "glob": "^10.5.0",
-      "minimatch": "^9.0.7",
-      "cross-spawn": "^7.0.5"
-    }
-  },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
     "@nestjs/testing": "^10.0.0",

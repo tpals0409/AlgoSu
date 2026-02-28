@@ -17,7 +17,8 @@ RUN npm run build
 FROM node:20-alpine AS production
 
 # 보안: non-root 사용자 생성
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup && \
+    rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 WORKDIR /app
 

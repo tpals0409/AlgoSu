@@ -10,7 +10,8 @@ COPY . .
 RUN npm run build
 
 FROM node:20-alpine AS runner
-RUN addgroup -g 1001 -S nodejs && adduser -S nestjs -u 1001
+RUN addgroup -g 1001 -S nodejs && adduser -S nestjs -u 1001 && \
+    rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 WORKDIR /app
 COPY --from=builder /app/prod_node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
