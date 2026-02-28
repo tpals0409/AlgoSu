@@ -4,11 +4,12 @@ import type { ReactNode } from 'react';
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Bell, Sun, Moon, ChevronDown } from 'lucide-react';
+import { Sun, Moon, ChevronDown } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudy } from '@/contexts/StudyContext';
+import { NotificationBell } from '@/components/layout/NotificationBell';
 
 /**
  * TopNav — AlgoSu UI Design System
@@ -219,28 +220,13 @@ export function TopNav(): ReactNode {
 
           {isAuthenticated ? (
             <>
-              {/* 벨 아이콘 */}
-              <button
-                type="button"
-                aria-label="알림"
-                className={cn(
-                  'relative flex items-center justify-center bg-bg2',
-                  'text-muted-foreground transition-colors',
-                  'hover:text-foreground',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                )}
-                style={{
-                  width: '28px',
-                  height: '28px',
-                  borderRadius: '6px',
-                }}
-              >
-                <Bell className="h-3.5 w-3.5" aria-hidden />
-              </button>
+              {/* 알림 벨 */}
+              <NotificationBell />
 
-              {/* 아바타 */}
-              <div
-                className="flex shrink-0 items-center justify-center rounded-full text-white"
+              {/* 아바타 (프로필 링크) */}
+              <Link
+                href="/profile"
+                className="flex shrink-0 items-center justify-center rounded-full text-white transition-opacity hover:opacity-80"
                 style={{
                   width: '28px',
                   height: '28px',
@@ -251,7 +237,7 @@ export function TopNav(): ReactNode {
                 aria-label={`${user?.email ?? ''} 프로필`}
               >
                 {getInitials(user?.email)}
-              </div>
+              </Link>
             </>
           ) : (
             <Link

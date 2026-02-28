@@ -59,6 +59,18 @@ export class Submission {
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'idempotency_key' })
   idempotencyKey!: string | null;
 
+  @Column({ type: 'text', nullable: true, name: 'ai_feedback' })
+  aiFeedback!: string | null;
+
+  @Column({ type: 'int', nullable: true, name: 'ai_score' })
+  aiScore!: number | null;
+
+  @Column({ type: 'text', nullable: true, name: 'ai_optimized_code' })
+  aiOptimizedCode!: string | null;
+
+  @Column({ type: 'varchar', length: 20, default: 'pending', name: 'ai_analysis_status' })
+  aiAnalysisStatus!: string;
+
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt!: Date;
 

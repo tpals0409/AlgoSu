@@ -16,6 +16,8 @@ import { StructuredLoggerService } from './common/logger/structured-logger.servi
 import { MetricsModule } from './common/metrics/metrics.module';
 import { User } from './auth/oauth/user.entity';
 import { Study, StudyMember, StudyInvite } from './study/study.entity';
+import { NotificationModule } from './notification/notification.module';
+import { Notification } from './notification/notification.entity';
 
 @Module({
   imports: [
@@ -33,7 +35,7 @@ import { Study, StudyMember, StudyInvite } from './study/study.entity';
         username: configService.get<string>('IDENTITY_DB_USER', 'algosu'),
         password: configService.get<string>('IDENTITY_DB_PASSWORD', ''),
         database: configService.get<string>('IDENTITY_DB_NAME', 'identity_db'),
-        entities: [User, Study, StudyMember, StudyInvite],
+        entities: [User, Study, StudyMember, StudyInvite, Notification],
         synchronize: false, // 마이그레이션으로 관리
         maxQueryExecutionTime: 1000, // 1초 초과 쿼리 경고 로그 (monitoring-log-rules.md §8)
       }),
@@ -53,6 +55,7 @@ import { Study, StudyMember, StudyInvite } from './study/study.entity';
     OAuthModule,
     InternalModule,
     StudyModule,
+    NotificationModule,
     SseModule,
     MetricsModule,
     ProxyModule,

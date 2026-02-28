@@ -26,18 +26,68 @@ export interface Problem {
   id: string;
   title: string;
   difficulty: 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND';
-  status: 'ACTIVE' | 'CLOSED';
+  status: 'ACTIVE' | 'CLOSED' | 'DRAFT';
   deadline: string; // ISO 날짜
   description: string;
+  weekNumber: number;
+  sourceUrl?: string;
+  sourcePlatform?: string;
   allowedLanguages: string[];
+}
+
+export interface CreateProblemData {
+  title: string;
+  description?: string;
+  weekNumber: number;
+  difficulty?: Problem['difficulty'];
+  sourceUrl?: string;
+  sourcePlatform?: string;
+  deadline?: string;
+  allowedLanguages?: string[];
+}
+
+export interface UpdateProblemData {
+  title?: string;
+  description?: string;
+  weekNumber?: number;
+  difficulty?: Problem['difficulty'];
+  sourceUrl?: string;
+  sourcePlatform?: string;
+  deadline?: string;
+  allowedLanguages?: string[];
+  status?: Problem['status'];
 }
 
 export interface Submission {
   id: string;
   problemId: string;
+  problemTitle?: string;
   language: string;
   sagaStep: 'DB_SAVED' | 'GITHUB_QUEUED' | 'AI_QUEUED' | 'DONE' | 'FAILED';
   createdAt: string;
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface SubmissionListParams {
+  page?: number;
+  limit?: number;
+  language?: string;
+  sagaStep?: string;
+  weekNumber?: number;
+}
+
+export interface AnalysisResult {
+  feedback: string | null;
+  score: number | null;
+  optimizedCode: string | null;
+  analysisStatus: 'pending' | 'completed' | 'delayed' | 'failed';
 }
 
 export interface Draft {
@@ -60,6 +110,16 @@ export interface Study {
   githubRepo?: string;
   role: 'OWNER' | 'MEMBER';
   memberCount?: number;
+}
+
+export interface StudyMember {
+  id: string;
+  study_id: string;
+  user_id: string;
+  role: 'ADMIN' | 'MEMBER';
+  joined_at: string;
+  username?: string;
+  email?: string;
 }
 
 export interface OAuthUrlResponse {
@@ -138,12 +198,27 @@ export const authApi = {
   linkGitHub: (): Promise<OAuthUrlResponse> =>
     fetchApi('/auth/github/link', { method: 'POST' }),
 
+  /** GitHub 연동 해제 */
+  unlinkGitHub: (): Promise<{ message: string }> =>
+    fetchApi('/auth/github/link', { method: 'DELETE' }),
+
+  /** GitHub 재연동 URL 조회 */
+  relinkGitHub: (): Promise<OAuthUrlResponse> =>
+    fetchApi('/auth/github/relink', { method: 'POST' }),
+
   /** 액세스 토큰 갱신 */
   refresh: (): Promise<AuthResponse> =>
     fetchApi('/auth/refresh', { method: 'POST' }),
 };
 
 // ── Study API ──
+
+export interface StudyStats {
+  totalSubmissions: number;
+  byWeek: { week: number; count: number }[];
+  byMember: { userId: string; isMember: boolean; count: number; doneCount: number }[];
+  recentSubmissions: Submission[];
+}
 
 export const studyApi = {
   list: (): Promise<Study[]> =>
@@ -154,6 +229,30 @@ export const studyApi = {
 
   join: (code: string): Promise<Study> =>
     fetchApi('/api/studies/join', { method: 'POST', body: JSON.stringify({ code }) }),
+
+  getStats: (studyId: string): Promise<StudyStats> =>
+    fetchApi(`/api/studies/${studyId}/stats`),
+
+  getById: (studyId: string): Promise<Study> =>
+    fetchApi(`/api/studies/${studyId}`),
+
+  update: (studyId: string, data: { name?: string; description?: string }): Promise<Study> =>
+    fetchApi(`/api/studies/${studyId}`, { method: 'PUT', body: JSON.stringify(data) }),
+
+  getMembers: (studyId: string): Promise<StudyMember[]> =>
+    fetchApi(`/api/studies/${studyId}/members`),
+
+  invite: (studyId: string): Promise<{ code: string; expires_at: string }> =>
+    fetchApi(`/api/studies/${studyId}/invite`, { method: 'POST' }),
+
+  changeRole: (studyId: string, userId: string, role: 'ADMIN' | 'MEMBER'): Promise<{ message: string }> =>
+    fetchApi(`/api/studies/${studyId}/members/${userId}/role`, {
+      method: 'PATCH',
+      body: JSON.stringify({ role }),
+    }),
+
+  removeMember: (studyId: string, userId: string): Promise<{ message: string }> =>
+    fetchApi(`/api/studies/${studyId}/members/${userId}`, { method: 'DELETE' }),
 };
 
 // ── Problem API ──
@@ -164,6 +263,12 @@ export const problemApi = {
 
   findById: (id: string): Promise<Problem> =>
     fetchApi(`/api/problems/${id}`),
+
+  create: (data: CreateProblemData): Promise<Problem> =>
+    fetchApi('/api/problems', { method: 'POST', body: JSON.stringify(data) }),
+
+  update: (id: string, data: UpdateProblemData): Promise<Problem> =>
+    fetchApi(`/api/problems/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
 };
 
 // ── Submission API ──
@@ -174,6 +279,20 @@ export const submissionApi = {
 
   findById: (id: string): Promise<Submission> =>
     fetchApi(`/api/submissions/${id}`),
+
+  list: (params?: SubmissionListParams): Promise<PaginatedResponse<Submission>> => {
+    const query = new URLSearchParams();
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.limit) query.set('limit', String(params.limit));
+    if (params?.language) query.set('language', params.language);
+    if (params?.sagaStep) query.set('sagaStep', params.sagaStep);
+    if (params?.weekNumber) query.set('weekNumber', String(params.weekNumber));
+    const qs = query.toString();
+    return fetchApi(`/api/submissions${qs ? `?${qs}` : ''}`);
+  },
+
+  getAnalysis: (submissionId: string): Promise<AnalysisResult> =>
+    fetchApi(`/api/submissions/${submissionId}/analysis`),
 };
 
 // ── Draft API ──
@@ -193,4 +312,27 @@ export const draftApi = {
 
   remove: (problemId: string): Promise<void> =>
     fetchApi(`/api/submissions/drafts/${problemId}`, { method: 'DELETE' }),
+};
+
+// ── Notification API ──
+
+export interface Notification {
+  id: string;
+  userId: string;
+  type: 'SUBMISSION_STATUS' | 'GITHUB_FAILED' | 'AI_COMPLETED' | 'ROLE_CHANGED';
+  title: string;
+  message: string;
+  read: boolean;
+  createdAt: string;
+}
+
+export const notificationApi = {
+  list: (): Promise<Notification[]> =>
+    fetchApi('/api/notifications'),
+
+  unreadCount: (): Promise<{ count: number }> =>
+    fetchApi('/api/notifications/unread-count'),
+
+  markRead: (id: string): Promise<{ message: string }> =>
+    fetchApi(`/api/notifications/${id}/read`, { method: 'PATCH' }),
 };

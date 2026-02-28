@@ -14,7 +14,7 @@ import { CodeEditor } from '@/components/submission/CodeEditor';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { problemApi, submissionApi, draftApi, type Problem } from '@/lib/api';
 import { useStudy } from '@/contexts/StudyContext';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Pencil } from 'lucide-react';
 
 interface PageProps {
   readonly params: Promise<{ id: string }>;
@@ -25,7 +25,8 @@ type AutoSaveStatus = 'idle' | 'saving' | 'saved';
 export default function ProblemDetailPage({ params }: PageProps): ReactNode {
   const { id: problemId } = use(params);
   const router = useRouter();
-  const { currentStudyId } = useStudy();
+  const { currentStudyId, currentStudyRole } = useStudy();
+  const isAdmin = currentStudyRole === 'OWNER';
 
   const [problem, setProblem] = useState<Problem | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -176,16 +177,28 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
   return (
     <AppLayout>
       <div className="space-y-6">
-        {/* 뒤로가기 */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push('/problems')}
-          className="-ml-1"
-        >
-          <ChevronLeft />
-          문제 목록
-        </Button>
+        {/* 뒤로가기 + 수정 */}
+        <div className="flex items-center justify-between">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push('/problems')}
+            className="-ml-1"
+          >
+            <ChevronLeft />
+            문제 목록
+          </Button>
+          {isAdmin && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push(`/problems/${problemId}/edit`)}
+            >
+              <Pencil />
+              수정
+            </Button>
+          )}
+        </div>
 
         {/* 문제 정보 */}
         <Card>

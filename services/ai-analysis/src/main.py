@@ -1,8 +1,11 @@
 import logging
 import threading
+import httpx
 from fastapi import FastAPI, HTTPException, Header
+from pydantic import BaseModel
 from .config import settings
 from .worker import AIAnalysisWorker
+from .gemini_client import GeminiClient
 from .circuit_breaker import circuit_breaker
 from .logger import setup_logging
 from .metrics import (
@@ -76,4 +79,87 @@ async def cb_status(x_internal_key: str = Header(alias="X-Internal-Key", default
         "failure_count": circuit_breaker.failure_count,
         "last_failure_time": circuit_breaker.last_failure_time,
         "half_open_successes": circuit_breaker.half_open_successes,
+    }
+
+
+class GroupAnalysisRequest(BaseModel):
+    problem_id: str
+    study_id: str
+
+
+@app.post("/group-analysis")
+async def group_analysis(
+    req: GroupAnalysisRequest,
+    x_internal_key: str = Header(alias="X-Internal-Key", default=""),
+):
+    """그룹 최적화 코드 합성 — 스터디 전체 제출을 종합 분석"""
+    if x_internal_key != settings.internal_api_key:
+        raise HTTPException(status_code=401, detail="Invalid Internal Key")
+
+    # 1. Submission Service에서 해당 문제의 전체 제출 조회
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.get(
+                f"{settings.submission_service_url}/internal/by-problem/{req.problem_id}",
+                params={"studyId": req.study_id},
+                headers={"X-Internal-Key": settings.submission_service_key},
+            )
+            resp.raise_for_status()
+            submissions = resp.json()["data"]
+    except Exception as e:
+        logger.error(f"그룹 분석 제출 조회 실패: {str(e)[:200]}")
+        raise HTTPException(status_code=502, detail="제출 데이터 조회 실패")
+
+    if not submissions:
+        raise HTTPException(status_code=404, detail="해당 문제에 대한 제출이 없습니다.")
+
+    # 2. Gemini API로 종합 분석
+    gemini = GeminiClient()
+    code_snippets = []
+    for sub in submissions:
+        code_preview = sub["code"][:500] if len(sub["code"]) > 500 else sub["code"]
+        code_snippets.append(
+            f"[{sub['language']}] (userId: {sub['userId'][:8]}...)\n```{sub['language']}\n{code_preview}\n```"
+        )
+
+    combined_code = "\n\n---\n\n".join(code_snippets)
+    prompt = f"""당신은 알고리즘 코드 리뷰 전문가입니다.
+
+다음은 같은 문제에 대한 여러 사용자의 제출 코드입니다:
+
+{combined_code}
+
+다음을 수행해주세요:
+1. **각 풀이 비교 분석**: 시간/공간 복잡도, 접근 방식 비교
+2. **최적 풀이 선정**: 가장 효율적인 접근법과 그 이유
+3. **종합 최적화 코드**: 모든 풀이의 장점을 결합한 최적화 코드 작성
+4. **학습 포인트**: 팀원들이 배울 수 있는 핵심 포인트
+
+한국어로 답변해주세요."""
+
+    try:
+        result = await gemini.analyze_code(
+            code=combined_code,
+            language="mixed",
+            problem_context="그룹 종합 분석",
+        )
+    except Exception as e:
+        logger.error(f"그룹 분석 Gemini 호출 실패: {str(e)[:200]}")
+        raise HTTPException(status_code=502, detail="AI 분석 실패")
+
+    # 3. 결과 반환
+    logger.info(
+        f"그룹 분석 완료: problemId={req.problem_id}, studyId={req.study_id}, submissions={len(submissions)}"
+    )
+
+    return {
+        "data": {
+            "problemId": req.problem_id,
+            "studyId": req.study_id,
+            "submissionCount": len(submissions),
+            "feedback": result.get("feedback", ""),
+            "optimizedCode": result.get("optimized_code"),
+            "score": result.get("score", 0),
+            "status": result.get("status", "failed"),
+        }
     }

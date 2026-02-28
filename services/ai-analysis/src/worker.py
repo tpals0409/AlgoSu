@@ -97,15 +97,22 @@ class AIAnalysisWorker:
         return resp.json()["data"]
 
     def _report_result(self, submission_id: str, result: dict):
-        """분석 결과를 Submission Service에 보고"""
-        self.http_client.post(
+        """분석 결과를 Submission Service에 보고 (PATCH)"""
+        payload = {
+            "feedback": result.get("feedback", ""),
+            "score": result.get("score", 0),
+            "optimizedCode": result.get("optimized_code"),
+            "analysisStatus": result.get("status", "failed"),
+        }
+        resp = self.http_client.patch(
             f"{settings.submission_service_url}/internal/{submission_id}/ai-result",
             headers={
                 "X-Internal-Key": settings.submission_service_key,
                 "Content-Type": "application/json",
             },
-            json=result,
+            json=payload,
         )
+        resp.raise_for_status()
 
     def _publish_status(self, submission_id: str, status: str):
         """Redis Pub/Sub 상태 브로드캐스트"""

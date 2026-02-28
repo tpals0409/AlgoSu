@@ -5,6 +5,7 @@ import {
   Delete,
   Param,
   Body,
+  Query,
   Headers,
   UseGuards,
   ParseUUIDPipe,
@@ -15,6 +16,7 @@ import {
 import { SubmissionService } from './submission.service';
 import { DraftService } from '../draft/draft.service';
 import { CreateSubmissionDto, UpsertDraftDto } from './dto/create-submission.dto';
+import { PaginationQueryDto } from './dto/pagination-query.dto';
 import { InternalKeyGuard } from '../common/guards/internal-key.guard';
 import { StudyMemberGuard } from '../common/guards/study-member.guard';
 
@@ -52,15 +54,15 @@ export class SubmissionController {
   }
 
   /**
-   * GET / — 스터디+사용자 본인 제출 목록
+   * GET / — 스터디+사용자 본인 제출 목록 (페이지네이션)
    */
   @Get()
   async findByStudyAndUser(
+    @Query() query: PaginationQueryDto,
     @Headers('x-user-id') userId: string,
     @Headers('x-study-id') studyId: string,
   ) {
-    const submissions = await this.submissionService.findByStudyAndUser(studyId, userId);
-    return { data: submissions };
+    return this.submissionService.findByStudyAndUserPaginated(studyId, userId, query);
   }
 
   /**
@@ -80,6 +82,32 @@ export class SubmissionController {
     }
 
     return { data: submission };
+  }
+
+  /**
+   * GET /:id/analysis — AI 분석 결과 조회
+   * IDOR 방지: userId + studyId 검증
+   */
+  @Get(':id/analysis')
+  async getAnalysis(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Headers('x-user-id') userId: string,
+    @Headers('x-study-id') studyId: string,
+  ) {
+    const submission = await this.submissionService.findById(id);
+
+    if (submission.userId !== userId || submission.studyId !== studyId) {
+      return { statusCode: 403, message: '다른 사용자의 분석 결과에 접근할 수 없습니다.' };
+    }
+
+    return {
+      data: {
+        feedback: submission.aiFeedback,
+        score: submission.aiScore,
+        optimizedCode: submission.aiOptimizedCode,
+        analysisStatus: submission.aiAnalysisStatus,
+      },
+    };
   }
 
   /**

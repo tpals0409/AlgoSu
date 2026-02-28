@@ -165,11 +165,107 @@ export class StudyService {
     return savedMember;
   }
 
+  // --- 통계 ---
+
+  async getStudyStats(studyId: string, userId: string) {
+    await this.verifyMembership(studyId, userId);
+
+    const submissionServiceUrl = this.configService.getOrThrow<string>('SUBMISSION_SERVICE_URL');
+    const internalKey = this.configService.getOrThrow<string>('INTERNAL_KEY_SUBMISSION');
+
+    const response = await fetch(
+      `${submissionServiceUrl}/internal/stats/${studyId}`,
+      {
+        method: 'GET',
+        headers: {
+          'x-internal-key': internalKey,
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+
+    if (!response.ok) {
+      this.logger.error(`통계 조회 실패: studyId=${studyId}, status=${response.status}`);
+      throw new NotFoundException('통계 데이터를 조회할 수 없습니다.');
+    }
+
+    const result = (await response.json()) as { data: unknown };
+
+    // 멤버 이름 매핑: byMember의 userId를 멤버 목록과 매칭
+    const members = await this.memberRepository.find({
+      where: { study_id: studyId },
+    });
+    const memberMap = new Map(members.map((m) => [m.user_id, m]));
+
+    const data = result.data as {
+      totalSubmissions: number;
+      byWeek: { week: number; count: number }[];
+      byMember: { userId: string; count: number; doneCount: number }[];
+      recentSubmissions: unknown[];
+    };
+
+    const byMemberWithInfo = data.byMember.map((m) => ({
+      userId: m.userId,
+      isMember: memberMap.has(m.userId),
+      count: m.count,
+      doneCount: m.doneCount,
+    }));
+
+    return {
+      totalSubmissions: data.totalSubmissions,
+      byWeek: data.byWeek,
+      byMember: byMemberWithInfo,
+      recentSubmissions: data.recentSubmissions,
+    };
+  }
+
   // --- 멤버 관리 ---
 
   async getMembers(studyId: string, userId: string): Promise<StudyMember[]> {
     await this.verifyMembership(studyId, userId);
     return this.memberRepository.find({ where: { study_id: studyId } });
+  }
+
+  async changeMemberRole(
+    studyId: string,
+    targetUserId: string,
+    adminUserId: string,
+    newRole: StudyMemberRole,
+  ): Promise<void> {
+    await this.verifyAdmin(studyId, adminUserId);
+
+    // 자기 자신 변경 불가
+    if (targetUserId === adminUserId) {
+      throw new BadRequestException('자기 자신의 역할을 변경할 수 없습니다.');
+    }
+
+    // 대상 멤버 조회
+    const targetMember = await this.memberRepository.findOne({
+      where: { study_id: studyId, user_id: targetUserId },
+    });
+    if (!targetMember) {
+      throw new NotFoundException('해당 멤버를 찾을 수 없습니다.');
+    }
+
+    // ADMIN → MEMBER 강등 시 최소 1 ADMIN 보장
+    if (targetMember.role === StudyMemberRole.ADMIN && newRole === StudyMemberRole.MEMBER) {
+      const adminCount = await this.memberRepository.count({
+        where: { study_id: studyId, role: StudyMemberRole.ADMIN },
+      });
+      if (adminCount <= 1) {
+        throw new BadRequestException('최소 1명의 ADMIN이 필요합니다.');
+      }
+    }
+
+    targetMember.role = newRole;
+    await this.memberRepository.save(targetMember);
+
+    // Redis 캐시 즉시 무효화
+    await this.invalidateMembershipCache(studyId, targetUserId);
+
+    this.logger.log(
+      `역할 변경: studyId=${studyId}, target=${targetUserId}, newRole=${newRole}, by=${adminUserId}`,
+    );
   }
 
   async removeMember(studyId: string, targetUserId: string, adminUserId: string): Promise<void> {

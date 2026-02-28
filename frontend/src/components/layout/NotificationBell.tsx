@@ -1,0 +1,258 @@
+'use client';
+
+import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
+import {
+  Bell,
+  FileText,
+  Brain,
+  AlertTriangle,
+  Users,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { notificationApi, type Notification } from '@/lib/api';
+
+const TYPE_ICON: Record<string, typeof Bell> = {
+  SUBMISSION_STATUS: FileText,
+  AI_COMPLETED: Brain,
+  GITHUB_FAILED: AlertTriangle,
+  ROLE_CHANGED: Users,
+};
+
+function formatRelativeTime(dateStr: string): string {
+  const now = Date.now();
+  const diff = now - new Date(dateStr).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return '방금 전';
+  if (minutes < 60) return `${minutes}분 전`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}시간 전`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}일 전`;
+  return new Date(dateStr).toLocaleDateString('ko-KR');
+}
+
+export function NotificationBell(): ReactNode {
+  const [open, setOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // 미읽음 수 폴링 (30초마다)
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const { count } = await notificationApi.unreadCount();
+      setUnreadCount(count);
+    } catch {
+      // 조용히 실패
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchUnreadCount();
+    const interval = setInterval(() => void fetchUnreadCount(), 30000);
+    return () => clearInterval(interval);
+  }, [fetchUnreadCount]);
+
+  // 드롭다운 열 때 알림 목록 로드
+  const loadNotifications = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const data = await notificationApi.list();
+      setNotifications(data);
+    } catch {
+      // 조용히 실패
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const handleToggle = useCallback(() => {
+    setOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        void loadNotifications();
+      }
+      return next;
+    });
+  }, [loadNotifications]);
+
+  // 읽음 처리
+  const handleMarkRead = useCallback(
+    async (notificationId: string) => {
+      try {
+        await notificationApi.markRead(notificationId);
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n)),
+        );
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      } catch {
+        // 조용히 실패
+      }
+    },
+    [],
+  );
+
+  // 외부 클릭 닫기
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative" ref={ref}>
+      {/* 벨 버튼 */}
+      <button
+        type="button"
+        aria-label={`알림 ${unreadCount > 0 ? `(${unreadCount}개 미읽음)` : ''}`}
+        aria-haspopup="true"
+        aria-expanded={open}
+        onClick={handleToggle}
+        className={cn(
+          'relative flex items-center justify-center bg-bg2',
+          'text-muted-foreground transition-colors',
+          'hover:text-foreground',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        )}
+        style={{
+          width: '28px',
+          height: '28px',
+          borderRadius: '6px',
+        }}
+      >
+        <Bell className="h-3.5 w-3.5" aria-hidden />
+        {/* 미읽음 배지 */}
+        {unreadCount > 0 && (
+          <span
+            className="absolute -right-1 -top-1 flex items-center justify-center rounded-full bg-error text-white"
+            style={{
+              minWidth: '16px',
+              height: '16px',
+              fontSize: '9px',
+              fontWeight: 700,
+              padding: '0 4px',
+            }}
+          >
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
+        )}
+      </button>
+
+      {/* 드롭다운 */}
+      {open && (
+        <div
+          className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-card border border-border bg-surface shadow-modal"
+          role="menu"
+          aria-label="알림 목록"
+        >
+          {/* 헤더 */}
+          <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+            <span className="text-[12px] font-semibold text-foreground">알림</span>
+            {unreadCount > 0 && (
+              <span className="font-mono text-[10px] text-muted-foreground">
+                {unreadCount}개 미읽음
+              </span>
+            )}
+          </div>
+
+          {/* 알림 목록 */}
+          <div className="max-h-80 overflow-y-auto">
+            {isLoading && (
+              <div className="space-y-2 p-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="animate-pulse h-14 bg-muted rounded" />
+                ))}
+              </div>
+            )}
+
+            {!isLoading && notifications.length === 0 && (
+              <div className="py-10 text-center">
+                <Bell className="mx-auto h-6 w-6 text-muted-foreground" aria-hidden />
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  새로운 알림이 없습니다
+                </p>
+              </div>
+            )}
+
+            {!isLoading &&
+              notifications.map((notification) => {
+                const Icon = TYPE_ICON[notification.type] ?? Bell;
+
+                return (
+                  <button
+                    key={notification.id}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      if (!notification.read) {
+                        void handleMarkRead(notification.id);
+                      }
+                    }}
+                    className={cn(
+                      'flex w-full items-start gap-3 px-4 py-3 text-left transition-colors',
+                      'border-b border-border last:border-b-0',
+                      notification.read
+                        ? 'bg-transparent'
+                        : 'bg-primary-50 dark:bg-primary-900/30',
+                      'hover:bg-muted/40',
+                    )}
+                  >
+                    {/* 타입 아이콘 */}
+                    <div
+                      className={cn(
+                        'mt-0.5 flex shrink-0 items-center justify-center rounded-md',
+                        notification.read ? 'bg-bg2' : 'bg-primary-100 dark:bg-primary-800',
+                      )}
+                      style={{ width: '28px', height: '28px' }}
+                    >
+                      <Icon
+                        className={cn(
+                          'h-3.5 w-3.5',
+                          notification.read ? 'text-muted-foreground' : 'text-primary',
+                        )}
+                        aria-hidden
+                      />
+                    </div>
+
+                    {/* 내용 */}
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className={cn(
+                          'text-[12px] truncate',
+                          notification.read
+                            ? 'font-normal text-foreground'
+                            : 'font-medium text-foreground',
+                        )}
+                      >
+                        {notification.title}
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground line-clamp-2">
+                        {notification.message}
+                      </p>
+                      <p className="mt-1 font-mono text-[9px] text-text3">
+                        {formatRelativeTime(notification.createdAt)}
+                      </p>
+                    </div>
+
+                    {/* 미읽음 도트 */}
+                    {!notification.read && (
+                      <span
+                        className="mt-1.5 shrink-0 rounded-full bg-primary"
+                        style={{ width: '6px', height: '6px' }}
+                        aria-label="미읽음"
+                      />
+                    )}
+                  </button>
+                );
+              })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

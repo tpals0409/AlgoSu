@@ -107,26 +107,32 @@ export default function StudiesPage(): ReactNode {
         ) : (
           <div className="space-y-3">
             {studies.map((study) => (
-              <button
-                key={study.id}
-                type="button"
-                className="w-full text-left"
-                onClick={() => handleSelectStudy(study)}
-              >
-                <Card className="cursor-pointer transition-colors hover:border-primary-500/50">
-                  <CardContent className="flex items-center justify-between py-4">
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-foreground">{study.name}</p>
-                      {study.description && (
-                        <p className="mt-0.5 truncate text-sm text-text2">{study.description}</p>
-                      )}
-                    </div>
-                    <Badge variant={study.role === 'OWNER' ? 'info' : 'default'} className="ml-3 shrink-0">
+              <Card key={study.id} className="cursor-pointer transition-colors hover:border-primary-500/50">
+                <CardContent className="flex items-center justify-between py-4">
+                  <button
+                    type="button"
+                    className="min-w-0 flex-1 text-left"
+                    onClick={() => router.push(`/studies/${study.id}`)}
+                  >
+                    <p className="truncate font-medium text-foreground">{study.name}</p>
+                    {study.description && (
+                      <p className="mt-0.5 truncate text-sm text-text2">{study.description}</p>
+                    )}
+                  </button>
+                  <div className="flex items-center gap-2 ml-3 shrink-0">
+                    <Badge variant={study.role === 'OWNER' ? 'info' : 'default'}>
                       {study.role === 'OWNER' ? '방장' : '멤버'}
                     </Badge>
-                  </CardContent>
-                </Card>
-              </button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleSelectStudy(study)}
+                    >
+                      선택
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         )}

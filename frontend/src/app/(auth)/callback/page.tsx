@@ -37,6 +37,11 @@ function CallbackContent(): ReactNode {
     // 토큰 저장 (보안 로그 방지: 토큰 값 로깅 금지)
     setToken(token);
 
+    // GitHub 연동 상태 저장
+    if (githubConnected !== null) {
+      localStorage.setItem('algosu:github-connected', githubConnected);
+    }
+
     if (githubConnected === 'false' || githubConnected === null) {
       router.replace('/github-link');
     } else {

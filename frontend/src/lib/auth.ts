@@ -76,3 +76,55 @@ export function getCurrentUserEmail(): string | null {
   if (!payload) return null;
   return typeof payload['email'] === 'string' ? payload['email'] : null;
 }
+
+/**
+ * GitHub 연동 상태 (localStorage 캐시)
+ */
+const GITHUB_CONNECTED_KEY = 'algosu:github-connected' as const;
+const GITHUB_USERNAME_KEY = 'algosu:github-username' as const;
+
+export function getGitHubConnected(): boolean {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem(GITHUB_CONNECTED_KEY) === 'true';
+}
+
+export function setGitHubConnected(connected: boolean): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(GITHUB_CONNECTED_KEY, String(connected));
+}
+
+export function getGitHubUsername(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(GITHUB_USERNAME_KEY);
+}
+
+export function setGitHubUsername(username: string | null): void {
+  if (typeof window === 'undefined') return;
+  if (username) {
+    localStorage.setItem(GITHUB_USERNAME_KEY, username);
+  } else {
+    localStorage.removeItem(GITHUB_USERNAME_KEY);
+  }
+}
+
+/**
+ * 현재 사용자 이름 추출 (name 클레임)
+ */
+export function getCurrentUserName(): string | null {
+  const token = getToken();
+  if (!token) return null;
+  const payload = decodeTokenPayload(token);
+  if (!payload) return null;
+  return typeof payload['name'] === 'string' ? payload['name'] : null;
+}
+
+/**
+ * 현재 사용자 OAuth 제공자 추출
+ */
+export function getCurrentOAuthProvider(): string | null {
+  const token = getToken();
+  if (!token) return null;
+  const payload = decodeTokenPayload(token);
+  if (!payload) return null;
+  return typeof payload['oauth_provider'] === 'string' ? payload['oauth_provider'] : null;
+}
