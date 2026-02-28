@@ -12,6 +12,7 @@ resources:
 
   # 인프라 (DB, 캐시, 메시지 큐)
   - postgres.yaml
+  - postgres-problem.yaml
   - redis.yaml
   - rabbitmq.yaml
 

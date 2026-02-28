@@ -1,17 +1,15 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { Problem, ProblemStatus } from './problem.entity';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
 import { DeadlineCacheService } from '../cache/deadline-cache.service';
+import { DualWriteService } from '../database/dual-write.service';
 
 @Injectable()
 export class ProblemService {
   private readonly logger = new Logger(ProblemService.name);
 
   constructor(
-    @InjectRepository(Problem)
-    private readonly problemRepo: Repository<Problem>,
+    private readonly dualWrite: DualWriteService,
     private readonly deadlineCache: DeadlineCacheService,
   ) {}
 
@@ -20,7 +18,7 @@ export class ProblemService {
    * studyId는 헤더에서 받아 컨트롤러가 전달
    */
   async create(dto: CreateProblemDto, studyId: string, createdBy: string): Promise<Problem> {
-    const problem = this.problemRepo.create({
+    const saved = await this.dualWrite.save({
       title: dto.title,
       description: dto.description ?? null,
       weekNumber: dto.weekNumber,
@@ -32,8 +30,6 @@ export class ProblemService {
       studyId,
       createdBy,
     });
-
-    const saved = await this.problemRepo.save(problem);
     this.logger.log(`문제 생성: id=${saved.id}, studyId=${studyId}, week=${saved.weekNumber}`);
 
     // 캐시 설정
@@ -47,7 +43,7 @@ export class ProblemService {
    * 문제 단건 조회 — studyId 스코핑으로 cross-study 접근 차단
    */
   async findById(studyId: string, id: string): Promise<Problem> {
-    const problem = await this.problemRepo.findOne({ where: { id, studyId } });
+    const problem = await this.dualWrite.findOne({ where: { id, studyId } });
     if (!problem) {
       throw new NotFoundException(`문제를 찾을 수 없습니다: id=${id}`);
     }
@@ -64,7 +60,7 @@ export class ProblemService {
       return JSON.parse(cached) as Problem[];
     }
 
-    const problems = await this.problemRepo.find({
+    const problems = await this.dualWrite.find({
       where: { weekNumber, studyId },
       order: { createdAt: 'ASC' },
     });
@@ -119,7 +115,7 @@ export class ProblemService {
     }
     if (dto.status !== undefined) problem.status = dto.status as ProblemStatus;
 
-    const saved = await this.problemRepo.save(problem);
+    const saved = await this.dualWrite.saveExisting(problem);
 
     // 캐시 무효화
     await this.deadlineCache.invalidateDeadline(studyId, saved.id);
@@ -133,7 +129,7 @@ export class ProblemService {
    * 활성 문제 목록 — studyId 스코핑
    */
   async findActiveByStudy(studyId: string): Promise<Problem[]> {
-    const problems = await this.problemRepo.find({
+    const problems = await this.dualWrite.find({
       where: { status: ProblemStatus.ACTIVE, studyId },
       order: { weekNumber: 'DESC', createdAt: 'ASC' },
     });
