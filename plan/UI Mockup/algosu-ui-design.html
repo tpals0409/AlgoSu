@@ -1,0 +1,1857 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AlgoSu — UI Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=DM+Mono:wght@300;400;500&family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ════════════════════════════
+     DESIGN TOKENS
+  ════════════════════════════ */
+  :root {
+    --main:        #947EB0;
+    --main-light:  #B9A9D0;
+    --main-dark:   #6D5A8A;
+    --sub:         #A3A5C3;
+    --sub-light:   #C5C7DC;
+    --accent:      #D4BBFF;
+
+    /* Light Mode */
+    --bg-l:        #F7F6FA;
+    --bg2-l:       #EFECF5;
+    --bg3-l:       #E4E0EF;
+    --surface-l:   #FFFFFF;
+    --border-l:    #DDD9EC;
+    --text-l:      #1A1625;
+    --text2-l:     #5A5470;
+    --text3-l:     #8E8AA8;
+
+    /* Dark Mode */
+    --bg-d:        #12101A;
+    --bg2-d:       #1A1725;
+    --bg3-d:       #221F30;
+    --surface-d:   #1E1B2C;
+    --border-d:    #2E2A40;
+    --text-d:      #F0EDF8;
+    --text2-d:     #A8A3C0;
+    --text3-d:     #5A5575;
+
+    --radius-s: 6px;
+    --radius-m: 12px;
+    --radius-l: 18px;
+    --shadow-l: 0 2px 16px rgba(148,126,176,0.10);
+    --shadow-m: 0 4px 32px rgba(148,126,176,0.16);
+  }
+
+  /* ════════════════════════════
+     RESET & BASE
+  ════════════════════════════ */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Sora', 'Noto Sans KR', sans-serif;
+    background: #0D0B14;
+    color: #F0EDF8;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  code, .mono { font-family: 'DM Mono', monospace; }
+
+  /* ════════════════════════════
+     LAYOUT WRAPPER
+  ════════════════════════════ */
+  .design-doc {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 60px 40px 120px;
+  }
+
+  /* ════════════════════════════
+     PAGE HEADER
+  ════════════════════════════ */
+  .doc-header {
+    text-align: center;
+    margin-bottom: 80px;
+    position: relative;
+  }
+  .doc-header::before {
+    content: '';
+    position: absolute;
+    top: -40px; left: 50%; transform: translateX(-50%);
+    width: 1px; height: 40px;
+    background: linear-gradient(to bottom, transparent, var(--main));
+  }
+  .doc-badge {
+    display: inline-block;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--sub);
+    border: 1px solid #2E2A40;
+    border-radius: 20px;
+    padding: 4px 14px;
+    margin-bottom: 20px;
+  }
+  .doc-title {
+    font-size: clamp(40px, 6vw, 72px);
+    font-weight: 700;
+    letter-spacing: -2px;
+    background: linear-gradient(135deg, #F0EDF8 0%, var(--main-light) 50%, var(--sub) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.1;
+    margin-bottom: 16px;
+  }
+  .doc-sub {
+    color: var(--text2-d);
+    font-size: 15px;
+    font-weight: 300;
+  }
+
+  /* ════════════════════════════
+     SECTION
+  ════════════════════════════ */
+  .section {
+    margin-bottom: 80px;
+  }
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--main);
+    margin-bottom: 8px;
+  }
+  .section-title {
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    color: #F0EDF8;
+    margin-bottom: 4px;
+  }
+  .section-desc {
+    font-size: 13px;
+    color: #5A5575;
+    margin-bottom: 32px;
+    font-weight: 300;
+  }
+  .divider {
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(to right, transparent, #2E2A40, transparent);
+    margin: 60px 0;
+  }
+
+  /* ════════════════════════════
+     COLOR PALETTE
+  ════════════════════════════ */
+  .palette-grid {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .swatch {
+    flex: 1;
+    min-width: 120px;
+    border-radius: var(--radius-m);
+    overflow: hidden;
+    border: 1px solid #2E2A40;
+  }
+  .swatch-color {
+    height: 72px;
+  }
+  .swatch-info {
+    background: #1A1725;
+    padding: 10px 14px;
+  }
+  .swatch-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: #F0EDF8;
+  }
+  .swatch-hex {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: #5A5575;
+  }
+
+  /* ════════════════════════════
+     TYPOGRAPHY SPECIMENS
+  ════════════════════════════ */
+  .type-row {
+    padding: 20px 0;
+    border-bottom: 1px solid #1E1B2C;
+  }
+  .type-row:last-child { border-bottom: none; }
+  .type-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: #5A5575;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  /* ════════════════════════════
+     DUAL MODE CONTAINER
+  ════════════════════════════ */
+  .dual-mode {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  .mode-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #5A5575;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .mode-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+  }
+  .dot-light { background: #F7F6FA; border: 1px solid #2E2A40; }
+  .dot-dark  { background: #12101A; border: 1px solid #5A5575; }
+
+  /* ════════════════════════════
+     SCREEN FRAMES
+  ════════════════════════════ */
+  .screen {
+    border-radius: var(--radius-l);
+    overflow: hidden;
+    border: 1px solid;
+    box-shadow: var(--shadow-m);
+    font-size: 13px;
+  }
+  .screen.light {
+    background: var(--bg-l);
+    border-color: var(--border-l);
+    color: var(--text-l);
+  }
+  .screen.dark {
+    background: var(--bg-d);
+    border-color: var(--border-d);
+    color: var(--text-d);
+  }
+
+  /* ════════════════════════════
+     NAV BAR
+  ════════════════════════════ */
+  .navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    border-bottom: 1px solid;
+    font-size: 13px;
+  }
+  .screen.light .navbar { border-color: var(--border-l); background: rgba(255,255,255,0.8); backdrop-filter: blur(8px); }
+  .screen.dark  .navbar { border-color: var(--border-d); background: rgba(18,16,26,0.85); backdrop-filter: blur(8px); }
+
+  .nav-logo {
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .logo-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--main);
+  }
+  .nav-items {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .nav-item {
+    padding: 5px 12px;
+    border-radius: var(--radius-s);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .screen.light .nav-item         { color: var(--text2-l); }
+  .screen.light .nav-item.active  { background: #EDE8F5; color: var(--main-dark); }
+  .screen.dark  .nav-item         { color: var(--text2-d); }
+  .screen.dark  .nav-item.active  { background: #251F35; color: var(--main-light); }
+
+  .nav-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--main), var(--sub));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; color: white;
+  }
+  .nav-bell {
+    width: 28px; height: 28px;
+    border-radius: var(--radius-s);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    cursor: pointer;
+    position: relative;
+  }
+  .screen.light .nav-bell { background: var(--bg2-l); }
+  .screen.dark  .nav-bell { background: var(--bg2-d); }
+  .bell-dot {
+    position: absolute;
+    top: 4px; right: 4px;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--main);
+    border: 1.5px solid;
+  }
+  .screen.light .bell-dot { border-color: var(--bg2-l); }
+  .screen.dark  .bell-dot { border-color: var(--bg2-d); }
+
+  /* ════════════════════════════
+     SCREEN BODY
+  ════════════════════════════ */
+  .screen-body {
+    padding: 20px;
+  }
+
+  /* ════════════════════════════
+     CARDS
+  ════════════════════════════ */
+  .card {
+    border-radius: var(--radius-m);
+    padding: 16px;
+    border: 1px solid;
+  }
+  .screen.light .card { background: var(--surface-l); border-color: var(--border-l); box-shadow: var(--shadow-l); }
+  .screen.dark  .card { background: var(--surface-d); border-color: var(--border-d); }
+
+  .card-grid {
+    display: grid;
+    gap: 12px;
+  }
+  .card-grid-2 { grid-template-columns: 1fr 1fr; }
+  .card-grid-3 { grid-template-columns: repeat(3, 1fr); }
+
+  .stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    color: var(--main);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stat-label {
+    font-size: 11px;
+    font-weight: 400;
+  }
+  .screen.light .stat-label { color: var(--text3-l); }
+  .screen.dark  .stat-label { color: var(--text3-d); }
+
+  /* ════════════════════════════
+     PROGRESS BAR
+  ════════════════════════════ */
+  .progress-track {
+    height: 4px;
+    border-radius: 2px;
+    margin-top: 10px;
+    overflow: hidden;
+  }
+  .screen.light .progress-track { background: var(--bg3-l); }
+  .screen.dark  .progress-track { background: var(--bg3-d); }
+  .progress-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(to right, var(--main), var(--sub));
+  }
+
+  /* ════════════════════════════
+     TABLE / LIST
+  ════════════════════════════ */
+  .list-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: var(--radius-s);
+    margin-bottom: 4px;
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .screen.light .list-item:hover { background: var(--bg2-l); }
+  .screen.dark  .list-item:hover { background: var(--bg3-d); }
+  .screen.light .list-item.active { background: #EDE8F5; }
+  .screen.dark  .list-item.active { background: #251F35; }
+
+  .item-rank {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    width: 20px;
+    text-align: center;
+  }
+  .screen.light .item-rank { color: var(--text3-l); }
+  .screen.dark  .item-rank { color: var(--text3-d); }
+
+  .item-avatar {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--main-dark), var(--sub));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 600; color: white;
+    flex-shrink: 0;
+  }
+  .item-name {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .item-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+  }
+  .screen.light .item-meta { color: var(--text3-l); }
+  .screen.dark  .item-meta { color: var(--text3-d); }
+
+  /* ════════════════════════════
+     BADGES / STATUS
+  ════════════════════════════ */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 20px;
+    line-height: 1;
+  }
+  .badge-main    { background: rgba(148,126,176,0.15); color: var(--main); }
+  .badge-green   { background: rgba(80,200,120,0.12);  color: #50C878; }
+  .badge-yellow  { background: rgba(255,200,60,0.12);  color: #FFC83C; }
+  .badge-red     { background: rgba(255,90,80,0.12);   color: #FF5A50; }
+  .badge-sub     { background: rgba(163,165,195,0.12); color: var(--sub); }
+  .badge-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  /* ════════════════════════════
+     BUTTONS
+  ════════════════════════════ */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: var(--radius-s);
+    font-size: 12px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.2px;
+  }
+  .btn-primary {
+    background: var(--main);
+    color: white;
+  }
+  .btn-primary:hover { background: var(--main-dark); }
+  .btn-ghost-l {
+    background: transparent;
+    color: var(--text2-l);
+    border: 1px solid var(--border-l);
+  }
+  .btn-ghost-d {
+    background: transparent;
+    color: var(--text2-d);
+    border: 1px solid var(--border-d);
+  }
+  .btn-ghost-l:hover { background: var(--bg2-l); }
+  .btn-ghost-d:hover { background: var(--bg3-d); }
+  .btn-sm { padding: 5px 10px; font-size: 11px; }
+
+  /* ════════════════════════════
+     SECTION HEADER IN SCREEN
+  ════════════════════════════ */
+  .screen-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .screen-section-title {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+  }
+
+  /* ════════════════════════════
+     CODE EDITOR
+  ════════════════════════════ */
+  .code-editor {
+    border-radius: var(--radius-m);
+    overflow: hidden;
+    border: 1px solid;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+  }
+  .screen.light .code-editor { border-color: var(--border-l); background: #F2F0F8; }
+  .screen.dark  .code-editor { border-color: var(--border-d); background: #0F0D18; }
+
+  .editor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    border-bottom: 1px solid;
+    font-size: 11px;
+  }
+  .screen.light .editor-header { border-color: var(--border-l); background: #E8E5F0; }
+  .screen.dark  .editor-header { border-color: var(--border-d); background: #1A1628; }
+
+  .editor-tabs {
+    display: flex;
+    gap: 4px;
+  }
+  .editor-tab {
+    padding: 3px 10px;
+    border-radius: var(--radius-s);
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .screen.light .editor-tab { color: var(--text3-l); }
+  .screen.dark  .editor-tab { color: var(--text3-d); }
+  .screen.light .editor-tab.active { background: var(--surface-l); color: var(--text-l); }
+  .screen.dark  .editor-tab.active { background: var(--surface-d); color: var(--text-d); }
+
+  .editor-body {
+    padding: 16px;
+    line-height: 1.8;
+    min-height: 140px;
+  }
+  .code-line { display: flex; gap: 20px; }
+  .code-ln {
+    user-select: none;
+    width: 20px;
+    text-align: right;
+    font-size: 11px;
+  }
+  .screen.light .code-ln { color: #B8B4CC; }
+  .screen.dark  .code-ln { color: #3A3555; }
+  .c-keyword  { color: var(--main-light); }
+  .c-fn       { color: #7EC8E3; }
+  .c-string   { color: #C3E88D; }
+  .c-comment  { color: #4A4760; }
+  .c-number   { color: #F78C6C; }
+  .c-type     { color: var(--accent); }
+
+  /* ════════════════════════════
+     SSE STATUS BAR
+  ════════════════════════════ */
+  .sse-bar {
+    border-radius: var(--radius-m);
+    padding: 12px 16px;
+    border: 1px solid;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .screen.light .sse-bar { background: #F2F0F9; border-color: #DDD9EC; }
+  .screen.dark  .sse-bar { background: #1A1728; border-color: #2A2440; }
+
+  .sse-step {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+  }
+  .sse-icon { font-size: 13px; }
+  .sse-arrow {
+    font-size: 10px;
+  }
+  .screen.light .sse-arrow { color: var(--text3-l); }
+  .screen.dark  .sse-arrow { color: var(--text3-d); }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  .spinner {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    border: 2px solid rgba(148,126,176,0.2);
+    border-top-color: var(--main);
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+
+  /* ════════════════════════════
+     PROBLEM LIST
+  ════════════════════════════ */
+  .problem-row {
+    display: grid;
+    grid-template-columns: 28px 1fr auto auto auto;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid;
+    font-size: 12px;
+  }
+  .screen.light .problem-row { border-color: var(--border-l); }
+  .screen.dark  .problem-row { border-color: var(--border-d); }
+
+  /* ════════════════════════════
+     DIFF / AI REVIEW
+  ════════════════════════════ */
+  .review-box {
+    border-radius: var(--radius-m);
+    border: 1px solid;
+    overflow: hidden;
+  }
+  .screen.light .review-box { border-color: var(--border-l); }
+  .screen.dark  .review-box { border-color: var(--border-d); }
+
+  .review-header {
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    border-bottom: 1px solid;
+  }
+  .screen.light .review-header { background: rgba(148,126,176,0.07); border-color: var(--border-l); }
+  .screen.dark  .review-header { background: rgba(148,126,176,0.10); border-color: var(--border-d); }
+
+  .review-icon {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--main), var(--sub));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+  }
+  .review-body {
+    padding: 12px 14px;
+    font-size: 12px;
+    line-height: 1.7;
+  }
+  .screen.light .review-body { color: var(--text2-l); }
+  .screen.dark  .review-body { color: var(--text2-d); }
+
+  .diff-line {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    margin: 2px 0;
+    line-height: 1.8;
+  }
+  .diff-add { background: rgba(80,200,120,0.12); color: #50C878; }
+  .diff-rm  { background: rgba(255,90,80,0.10);  color: #FF5A50; }
+
+  /* ════════════════════════════
+     TOAST / NOTIFICATION
+  ════════════════════════════ */
+  .toast {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: var(--radius-m);
+    border: 1px solid;
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+  .screen.light .toast { background: var(--surface-l); border-color: var(--border-l); box-shadow: var(--shadow-l); }
+  .screen.dark  .toast { background: var(--surface-d); border-color: var(--border-d); }
+  .toast-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+  .toast-title { font-weight: 600; font-size: 12px; margin-bottom: 2px; }
+  .toast-body  { font-size: 11px; }
+  .screen.light .toast-body { color: var(--text2-l); }
+  .screen.dark  .toast-body { color: var(--text2-d); }
+
+  /* ════════════════════════════
+     FORM ELEMENTS
+  ════════════════════════════ */
+  .form-label {
+    font-size: 11px;
+    font-weight: 500;
+    margin-bottom: 5px;
+    display: block;
+  }
+  .screen.light .form-label { color: var(--text2-l); }
+  .screen.dark  .form-label { color: var(--text2-d); }
+
+  .form-input {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: var(--radius-s);
+    border: 1px solid;
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.15s;
+    font-family: inherit;
+  }
+  .screen.light .form-input { background: var(--bg2-l); border-color: var(--border-l); color: var(--text-l); }
+  .screen.dark  .form-input { background: var(--bg3-d); border-color: var(--border-d); color: var(--text-d); }
+  .form-select {
+    appearance: none;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23947EB0' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px;
+  }
+  .form-row { margin-bottom: 12px; }
+
+  /* ════════════════════════════
+     MODAL
+  ════════════════════════════ */
+  .modal-overlay {
+    border-radius: var(--radius-l);
+    overflow: hidden;
+    position: relative;
+  }
+  .screen.light .modal-overlay { background: rgba(247,246,250,0.85); }
+  .screen.dark  .modal-overlay { background: rgba(18,16,26,0.85); }
+  .modal-box {
+    border-radius: var(--radius-l);
+    border: 1px solid;
+    overflow: hidden;
+    margin: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  }
+  .screen.light .modal-box { background: var(--surface-l); border-color: var(--border-l); }
+  .screen.dark  .modal-box { background: var(--surface-d); border-color: var(--border-d); }
+  .modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .screen.light .modal-header { border-color: var(--border-l); }
+  .screen.dark  .modal-header { border-color: var(--border-d); }
+  .modal-title { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; }
+  .modal-body { padding: 20px; }
+  .modal-footer {
+    padding: 14px 20px;
+    border-top: 1px solid;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .screen.light .modal-footer { border-color: var(--border-l); }
+  .screen.dark  .modal-footer { border-color: var(--border-d); }
+
+  /* ════════════════════════════
+     CLOSE BUTTON
+  ════════════════════════════ */
+  .close-btn {
+    width: 24px; height: 24px;
+    border-radius: var(--radius-s);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+  }
+  .screen.light .close-btn { color: var(--text3-l); }
+  .screen.dark  .close-btn { color: var(--text3-d); }
+
+  /* ════════════════════════════
+     ACTIVITY CALENDAR
+  ════════════════════════════ */
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(20, 12px);
+    gap: 3px;
+  }
+  .cal-cell {
+    width: 12px; height: 12px;
+    border-radius: 2px;
+  }
+  .screen.light .cal-cell { background: var(--bg3-l); }
+  .screen.dark  .cal-cell { background: var(--bg3-d); }
+  .cal-cell.l1 { background: rgba(148,126,176,0.25); }
+  .cal-cell.l2 { background: rgba(148,126,176,0.5); }
+  .cal-cell.l3 { background: rgba(148,126,176,0.75); }
+  .cal-cell.l4 { background: var(--main); }
+
+  /* ════════════════════════════
+     CHART PLACEHOLDER
+  ════════════════════════════ */
+  .chart-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    height: 50px;
+  }
+  .bar {
+    flex: 1;
+    border-radius: 3px 3px 0 0;
+    background: linear-gradient(to top, var(--main), rgba(163,165,195,0.6));
+    opacity: 0.8;
+  }
+
+  /* ════════════════════════════
+     TOKEN STATUS
+  ════════════════════════════ */
+  .github-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: var(--radius-s);
+    border: 1px solid;
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+  .screen.light .github-status { background: var(--bg2-l); border-color: var(--border-l); }
+  .screen.dark  .github-status { background: var(--bg3-d); border-color: var(--border-d); }
+
+  /* ════════════════════════════
+     RESPONSIVE NOTE
+  ════════════════════════════ */
+  @media (max-width: 900px) {
+    .dual-mode { grid-template-columns: 1fr; }
+    .design-doc { padding: 40px 20px 80px; }
+  }
+  @media (max-width: 600px) {
+    .card-grid-2, .card-grid-3 { grid-template-columns: 1fr; }
+    .cal-grid { grid-template-columns: repeat(12, 12px); }
+  }
+
+  /* ════════════════════════════
+     SCROLLBAR
+  ════════════════════════════ */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #12101A; }
+  ::-webkit-scrollbar-thumb { background: #2E2A40; border-radius: 3px; }
+
+  /* ════════════════════════════
+     LEGEND / ANNOTATION
+  ════════════════════════════ */
+  .annotation {
+    display: flex;
+    gap: 16px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .annot-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    color: #5A5575;
+  }
+  .annot-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+
+  /* ════════════════════════════
+     COMPONENT SHOWCASE
+  ════════════════════════════ */
+  .component-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  .component-item {
+    background: #1A1725;
+    border: 1px solid #2E2A40;
+    border-radius: var(--radius-m);
+    padding: 20px;
+  }
+  .component-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--main);
+    margin-bottom: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="design-doc">
+
+  <!-- ══════════════════ HEADER ══════════════════ -->
+  <div class="doc-header">
+    <div class="doc-badge">UI Design System · v1.0</div>
+    <h1 class="doc-title">AlgoSu</h1>
+    <p class="doc-sub">Algorithm Study Platform — UI Diagrams &amp; Component Library</p>
+  </div>
+
+  <!-- ══════════════════ 1. COLOR ══════════════════ -->
+  <div class="section">
+    <div class="section-label">01</div>
+    <div class="section-title">Color Palette</div>
+    <div class="section-desc">라이트/다크 모드 공통 토큰 + 모드별 서피스 컬러</div>
+    <div class="palette-grid">
+      <div class="swatch">
+        <div class="swatch-color" style="background:#947EB0;"></div>
+        <div class="swatch-info"><div class="swatch-name">Main</div><div class="swatch-hex">#947EB0</div></div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background:#6D5A8A;"></div>
+        <div class="swatch-info"><div class="swatch-name">Main Dark</div><div class="swatch-hex">#6D5A8A</div></div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background:#B9A9D0;"></div>
+        <div class="swatch-info"><div class="swatch-name">Main Light</div><div class="swatch-hex">#B9A9D0</div></div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background:#A3A5C3;"></div>
+        <div class="swatch-info"><div class="swatch-name">Sub</div><div class="swatch-hex">#A3A5C3</div></div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background:#D4BBFF;"></div>
+        <div class="swatch-info"><div class="swatch-name">Accent</div><div class="swatch-hex">#D4BBFF</div></div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background:#F7F6FA;"></div>
+        <div class="swatch-info"><div class="swatch-name">BG Light</div><div class="swatch-hex">#F7F6FA</div></div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background:#12101A; border-top:1px solid #2E2A40;"></div>
+        <div class="swatch-info"><div class="swatch-name">BG Dark</div><div class="swatch-hex">#12101A</div></div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background:#50C878;"></div>
+        <div class="swatch-info"><div class="swatch-name">Success</div><div class="swatch-hex">#50C878</div></div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background:#FF5A50;"></div>
+        <div class="swatch-info"><div class="swatch-name">Error</div><div class="swatch-hex">#FF5A50</div></div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background:#FFC83C;"></div>
+        <div class="swatch-info"><div class="swatch-name">Warning</div><div class="swatch-hex">#FFC83C</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ══════════════════ 2. COMPONENTS ══════════════════ -->
+  <div class="section">
+    <div class="section-label">02</div>
+    <div class="section-title">Component Library</div>
+    <div class="section-desc">버튼 · 배지 · 입력 · 상태 표시 컴포넌트</div>
+    <div class="component-grid">
+
+      <!-- Buttons -->
+      <div class="component-item">
+        <div class="component-name">Buttons</div>
+        <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-start;">
+          <button class="btn btn-primary">제출하기</button>
+          <button class="btn btn-primary btn-sm">코드 제출</button>
+          <button class="btn btn-ghost-d">초안 저장</button>
+          <button class="btn btn-ghost-d btn-sm">취소</button>
+          <button class="btn btn-primary" style="background:var(--sub);">GitHub 연동</button>
+        </div>
+      </div>
+
+      <!-- Badges -->
+      <div class="component-item">
+        <div class="component-name">Status Badges</div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+          <span class="badge badge-green"><span class="badge-dot"></span>SYNCED</span>
+          <span class="badge badge-yellow"><span class="badge-dot"></span>PENDING</span>
+          <span class="badge badge-red"><span class="badge-dot"></span>FAILED</span>
+          <span class="badge badge-sub"><span class="badge-dot"></span>TOKEN_INVALID</span>
+          <span class="badge badge-main">AI 분석 중</span>
+          <span class="badge badge-main" style="background:rgba(212,187,255,0.12); color:var(--accent);">DONE</span>
+        </div>
+      </div>
+
+      <!-- Saga Steps -->
+      <div class="component-item">
+        <div class="component-name">Saga Step Indicator</div>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="display:flex; align-items:center; gap:8px; font-size:12px;">
+            <div style="width:20px;height:20px;border-radius:50%;background:rgba(80,200,120,0.2);display:flex;align-items:center;justify-content:center;font-size:11px;color:#50C878;">✓</div>
+            <span style="color:#A8A3C0;">DB 저장 완료</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; font-size:12px;">
+            <div style="width:20px;height:20px;border-radius:50%;background:rgba(148,126,176,0.15);display:flex;align-items:center;justify-content:center;"><div class="spinner" style="width:10px;height:10px;border-width:1.5px;"></div></div>
+            <span style="color:#F0EDF8;">GitHub Push 중...</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; font-size:12px;">
+            <div style="width:20px;height:20px;border-radius:50%;background:#2E2A40;display:flex;align-items:center;justify-content:center;font-size:11px;color:#3A3555;">○</div>
+            <span style="color:#3A3555;">AI 분석 대기</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Language Select -->
+      <div class="component-item">
+        <div class="component-name">Form Controls</div>
+        <div class="form-row">
+          <label class="form-label" style="color:#A8A3C0;">언어 선택</label>
+          <select class="form-input form-select" style="background:#221F30;border-color:#2E2A40;color:#F0EDF8;font-size:12px;">
+            <option>Python</option>
+            <option>JavaScript</option>
+            <option>Java</option>
+            <option>C++</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label class="form-label" style="color:#A8A3C0;">문제 검색</label>
+          <input class="form-input" style="background:#221F30;border-color:#2E2A40;color:#F0EDF8;" placeholder="문제 번호 또는 제목..." />
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ══════════════════ 3. DASHBOARD ══════════════════ -->
+  <div class="section">
+    <div class="section-label">03</div>
+    <div class="section-title">Dashboard Screen</div>
+    <div class="section-desc">스터디 현황 · 활동 통계 · 주차별 진행률</div>
+    <div class="dual-mode">
+
+      <!-- DARK -->
+      <div>
+        <div class="mode-label"><span class="mode-dot dot-dark"></span>Dark Mode</div>
+        <div class="screen dark">
+          <!-- Navbar -->
+          <div class="navbar">
+            <div class="nav-logo" style="color:#F0EDF8;"><span class="logo-dot"></span>AlgoSu</div>
+            <div class="nav-items">
+              <span class="nav-item active">대시보드</span>
+              <span class="nav-item">문제</span>
+              <span class="nav-item">제출</span>
+              <span class="nav-item">멤버</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div class="nav-bell">🔔<div class="bell-dot"></div></div>
+              <div class="nav-avatar">JS</div>
+            </div>
+          </div>
+          <div class="screen-body">
+            <!-- Week info -->
+            <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px;">
+              <div>
+                <div style="font-size:18px;font-weight:700;letter-spacing:-0.5px;color:#F0EDF8;">8주차 <span style="font-size:13px;font-weight:400;color:#5A5575;">· 그래프 탐색</span></div>
+                <div style="font-size:11px;color:#5A5575;margin-top:2px;font-family:'DM Mono',monospace;">마감 D-2 · 2025.01.24 23:59</div>
+              </div>
+              <span class="badge badge-yellow" style="font-size:11px;"><span class="badge-dot"></span>진행 중</span>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="card-grid card-grid-3" style="margin-bottom:14px;">
+              <div class="card">
+                <div class="stat-value">7</div>
+                <div class="stat-label">제출 완료 멤버</div>
+                <div class="progress-track"><div class="progress-fill" style="width:70%"></div></div>
+              </div>
+              <div class="card">
+                <div class="stat-value">12</div>
+                <div class="stat-label">이번 주 제출 수</div>
+                <div class="progress-track"><div class="progress-fill" style="width:48%"></div></div>
+              </div>
+              <div class="card">
+                <div class="stat-value">94<span style="font-size:14px;color:#5A5575;">%</span></div>
+                <div class="stat-label">AI 분석 완료율</div>
+                <div class="progress-track"><div class="progress-fill" style="width:94%"></div></div>
+              </div>
+            </div>
+
+            <!-- Activity & Members -->
+            <div class="card-grid card-grid-2">
+              <div class="card">
+                <div class="screen-section-header">
+                  <div class="screen-section-title" style="color:#F0EDF8;">활동 현황</div>
+                  <span style="font-family:'DM Mono',monospace;font-size:10px;color:#5A5575;">최근 4주</span>
+                </div>
+                <div class="chart-bars">
+                  <div class="bar" style="height:35%"></div>
+                  <div class="bar" style="height:60%"></div>
+                  <div class="bar" style="height:45%"></div>
+                  <div class="bar" style="height:80%"></div>
+                  <div class="bar" style="height:55%"></div>
+                  <div class="bar" style="height:90%"></div>
+                  <div class="bar" style="height:70%"></div>
+                  <div class="bar" style="height:100%;opacity:1;"></div>
+                </div>
+              </div>
+              <div class="card">
+                <div class="screen-section-header">
+                  <div class="screen-section-title" style="color:#F0EDF8;">멤버 현황</div>
+                </div>
+                <div class="list-item dark active" style="border-radius:var(--radius-s);padding:7px 10px;">
+                  <div class="item-avatar">JS</div>
+                  <div class="item-name" style="color:#F0EDF8;font-size:12px;">김지수</div>
+                  <span class="badge badge-green" style="font-size:10px;">제출 완료</span>
+                </div>
+                <div class="list-item" style="padding:7px 10px;">
+                  <div class="item-avatar" style="background:linear-gradient(135deg,#A3A5C3,#7EC8E3);">PK</div>
+                  <div class="item-name" style="color:#F0EDF8;font-size:12px;">박건</div>
+                  <span class="badge badge-yellow" style="font-size:10px;">작성 중</span>
+                </div>
+                <div class="list-item" style="padding:7px 10px;">
+                  <div class="item-avatar" style="background:linear-gradient(135deg,#6D5A8A,#A3A5C3);">LH</div>
+                  <div class="item-name" style="color:#F0EDF8;font-size:12px;">이하은</div>
+                  <span class="badge badge-sub" style="font-size:10px;">미제출</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LIGHT -->
+      <div>
+        <div class="mode-label"><span class="mode-dot dot-light"></span>Light Mode</div>
+        <div class="screen light">
+          <!-- Navbar -->
+          <div class="navbar">
+            <div class="nav-logo" style="color:var(--text-l);"><span class="logo-dot"></span>AlgoSu</div>
+            <div class="nav-items">
+              <span class="nav-item active">대시보드</span>
+              <span class="nav-item">문제</span>
+              <span class="nav-item">제출</span>
+              <span class="nav-item">멤버</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div class="nav-bell" style="background:var(--bg2-l);">🔔<div class="bell-dot"></div></div>
+              <div class="nav-avatar">JS</div>
+            </div>
+          </div>
+          <div class="screen-body">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px;">
+              <div>
+                <div style="font-size:18px;font-weight:700;letter-spacing:-0.5px;color:var(--text-l);">8주차 <span style="font-size:13px;font-weight:400;color:var(--text3-l);">· 그래프 탐색</span></div>
+                <div style="font-size:11px;color:var(--text3-l);margin-top:2px;font-family:'DM Mono',monospace;">마감 D-2 · 2025.01.24 23:59</div>
+              </div>
+              <span class="badge badge-yellow" style="font-size:11px;"><span class="badge-dot"></span>진행 중</span>
+            </div>
+            <div class="card-grid card-grid-3" style="margin-bottom:14px;">
+              <div class="card"><div class="stat-value">7</div><div class="stat-label">제출 완료 멤버</div><div class="progress-track"><div class="progress-fill" style="width:70%"></div></div></div>
+              <div class="card"><div class="stat-value">12</div><div class="stat-label">이번 주 제출 수</div><div class="progress-track"><div class="progress-fill" style="width:48%"></div></div></div>
+              <div class="card"><div class="stat-value">94<span style="font-size:14px;color:var(--text3-l);">%</span></div><div class="stat-label">AI 분석 완료율</div><div class="progress-track"><div class="progress-fill" style="width:94%"></div></div></div>
+            </div>
+            <div class="card-grid card-grid-2">
+              <div class="card">
+                <div class="screen-section-header">
+                  <div class="screen-section-title" style="color:var(--text-l);">활동 현황</div>
+                  <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3-l);">최근 4주</span>
+                </div>
+                <div class="chart-bars">
+                  <div class="bar" style="height:35%;background:linear-gradient(to top,var(--main),rgba(163,165,195,0.4))"></div>
+                  <div class="bar" style="height:60%;background:linear-gradient(to top,var(--main),rgba(163,165,195,0.4))"></div>
+                  <div class="bar" style="height:45%;background:linear-gradient(to top,var(--main),rgba(163,165,195,0.4))"></div>
+                  <div class="bar" style="height:80%;background:linear-gradient(to top,var(--main),rgba(163,165,195,0.4))"></div>
+                  <div class="bar" style="height:55%;background:linear-gradient(to top,var(--main),rgba(163,165,195,0.4))"></div>
+                  <div class="bar" style="height:90%;background:linear-gradient(to top,var(--main),rgba(163,165,195,0.4))"></div>
+                  <div class="bar" style="height:70%;background:linear-gradient(to top,var(--main),rgba(163,165,195,0.4))"></div>
+                  <div class="bar" style="height:100%;background:var(--main);opacity:1;"></div>
+                </div>
+              </div>
+              <div class="card">
+                <div class="screen-section-header">
+                  <div class="screen-section-title" style="color:var(--text-l);">멤버 현황</div>
+                </div>
+                <div class="list-item" style="padding:7px 10px;background:#EDE8F5;border-radius:var(--radius-s);">
+                  <div class="item-avatar">JS</div>
+                  <div class="item-name" style="color:var(--text-l);font-size:12px;">김지수</div>
+                  <span class="badge badge-green" style="font-size:10px;">제출 완료</span>
+                </div>
+                <div class="list-item" style="padding:7px 10px;">
+                  <div class="item-avatar" style="background:linear-gradient(135deg,#A3A5C3,#7EC8E3);">PK</div>
+                  <div class="item-name" style="color:var(--text-l);font-size:12px;">박건</div>
+                  <span class="badge badge-yellow" style="font-size:10px;">작성 중</span>
+                </div>
+                <div class="list-item" style="padding:7px 10px;">
+                  <div class="item-avatar" style="background:linear-gradient(135deg,#6D5A8A,#A3A5C3);">LH</div>
+                  <div class="item-name" style="color:var(--text-l);font-size:12px;">이하은</div>
+                  <span class="badge badge-sub" style="font-size:10px;">미제출</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ══════════════════ 4. CODE SUBMISSION ══════════════════ -->
+  <div class="section">
+    <div class="section-label">04</div>
+    <div class="section-title">Code Submission Screen</div>
+    <div class="section-desc">코드 에디터 · Auto-save 표시 · 제출 후 SSE 상태 바</div>
+    <div class="dual-mode">
+
+      <!-- DARK -->
+      <div>
+        <div class="mode-label"><span class="mode-dot dot-dark"></span>Dark Mode — 제출 후 SSE 진행 중</div>
+        <div class="screen dark">
+          <div class="navbar">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <button class="btn btn-ghost-d btn-sm">← 목록</button>
+              <div style="font-size:13px;font-weight:600;color:#F0EDF8;">BFS 최단 경로 <span style="color:#5A5575;font-weight:400;">#1260</span></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-family:'DM Mono',monospace;font-size:10px;color:#50C878;">● 자동 저장됨</span>
+              <div class="nav-bell">🔔<div class="bell-dot"></div></div>
+            </div>
+          </div>
+          <div class="screen-body">
+
+            <!-- SSE STATUS BAR -->
+            <div class="sse-bar" style="margin-bottom:14px;">
+              <div class="sse-step">
+                <span class="sse-icon">✅</span>
+                <span style="font-size:12px;color:#F0EDF8;">제출 완료</span>
+              </div>
+              <span class="sse-arrow">→</span>
+              <div class="sse-step">
+                <div class="spinner"></div>
+                <span style="font-size:12px;color:#F0EDF8;">GitHub 동기화 중…</span>
+              </div>
+              <span class="sse-arrow">→</span>
+              <div class="sse-step">
+                <span class="sse-icon" style="opacity:0.3;">⏳</span>
+                <span style="font-size:12px;color:#5A5575;">AI 분석 대기</span>
+              </div>
+            </div>
+
+            <!-- Language & Problem -->
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+              <div style="display:flex;gap:6px;align-items:center;">
+                <span class="badge badge-main">Python</span>
+                <span style="font-family:'DM Mono',monospace;font-size:10px;color:#5A5575;">8주차</span>
+              </div>
+              <span style="font-family:'DM Mono',monospace;font-size:10px;color:#FFC83C;">마감 D-2</span>
+            </div>
+
+            <!-- Code Editor -->
+            <div class="code-editor">
+              <div class="editor-header">
+                <div class="editor-tabs">
+                  <div class="editor-tab active">solution.py</div>
+                  <div class="editor-tab">test.py</div>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <span style="font-size:10px;color:#5A5575;">초안 · 서버 저장 3초 전</span>
+                </div>
+              </div>
+              <div class="editor-body" style="color:#F0EDF8;">
+                <div class="code-line"><span class="code-ln">1</span><span><span class="c-keyword">from</span> <span class="c-type">collections</span> <span class="c-keyword">import</span> deque</span></div>
+                <div class="code-line"><span class="code-ln">2</span><span></span></div>
+                <div class="code-line"><span class="code-ln">3</span><span><span class="c-keyword">def</span> <span class="c-fn">bfs</span>(graph, start, end):</span></div>
+                <div class="code-line"><span class="code-ln">4</span><span>&nbsp;&nbsp;&nbsp;&nbsp;queue = deque([(<span class="c-number">start</span>, [start])])</span></div>
+                <div class="code-line"><span class="code-ln">5</span><span>&nbsp;&nbsp;&nbsp;&nbsp;visited = <span class="c-fn">set</span>([start])</span></div>
+                <div class="code-line"><span class="code-ln">6</span><span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="c-keyword">while</span> queue:</span></div>
+                <div class="code-line"><span class="code-ln">7</span><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;node, path = queue.<span class="c-fn">popleft</span>()</span></div>
+                <div class="code-line"><span class="code-ln">8</span><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="c-keyword">if</span> node == end: <span class="c-keyword">return</span> path</span></div>
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;">
+              <button class="btn btn-ghost-d">초안 저장</button>
+              <button class="btn btn-primary">제출하기 →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LIGHT -->
+      <div>
+        <div class="mode-label"><span class="mode-dot dot-light"></span>Light Mode — 전체 완료</div>
+        <div class="screen light">
+          <div class="navbar" style="background:rgba(255,255,255,0.85);">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <button class="btn btn-ghost-l btn-sm">← 목록</button>
+              <div style="font-size:13px;font-weight:600;color:var(--text-l);">BFS 최단 경로 <span style="color:var(--text3-l);font-weight:400;">#1260</span></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-family:'DM Mono',monospace;font-size:10px;color:#50C878;">● 자동 저장됨</span>
+              <div class="nav-bell" style="background:var(--bg2-l);">🔔</div>
+            </div>
+          </div>
+          <div class="screen-body">
+
+            <!-- SSE DONE -->
+            <div class="sse-bar" style="margin-bottom:14px;background:#EBF8EF;border-color:#B8E8C8;">
+              <div class="sse-step"><span class="sse-icon">✅</span><span style="font-size:12px;color:var(--text-l);">제출 완료</span></div>
+              <span class="sse-arrow" style="color:var(--text3-l);">→</span>
+              <div class="sse-step"><span class="sse-icon">✅</span><span style="font-size:12px;color:var(--text-l);">GitHub 동기화 완료</span></div>
+              <span class="sse-arrow" style="color:var(--text3-l);">→</span>
+              <div class="sse-step"><span class="sse-icon">✅</span><span style="font-size:12px;color:var(--text-l);">AI 분석 완료</span></div>
+              <button class="btn btn-primary btn-sm" style="margin-left:auto;">피드백 보기 →</button>
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+              <div style="display:flex;gap:6px;align-items:center;">
+                <span class="badge badge-main">Python</span>
+                <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3-l);">8주차</span>
+              </div>
+              <span class="badge badge-green">제출 완료</span>
+            </div>
+
+            <div class="code-editor">
+              <div class="editor-header" style="background:#E8E5F0;">
+                <div class="editor-tabs">
+                  <div class="editor-tab active" style="background:#F2F0F8;color:var(--text-l);">solution.py</div>
+                  <div class="editor-tab" style="color:var(--text3-l);">test.py</div>
+                </div>
+                <span class="badge badge-green" style="font-size:10px;">제출됨</span>
+              </div>
+              <div class="editor-body" style="color:var(--text-l);">
+                <div class="code-line"><span class="code-ln">1</span><span><span style="color:var(--main-dark);">from</span> <span style="color:#5A5A8A;">collections</span> <span style="color:var(--main-dark);">import</span> deque</span></div>
+                <div class="code-line"><span class="code-ln">2</span><span></span></div>
+                <div class="code-line"><span class="code-ln">3</span><span><span style="color:var(--main-dark);">def</span> <span style="color:#5A7EC8;">bfs</span>(graph, start, end):</span></div>
+                <div class="code-line"><span class="code-ln">4</span><span>&nbsp;&nbsp;&nbsp;&nbsp;queue = deque([(start, [start])])</span></div>
+                <div class="code-line"><span class="code-ln">5</span><span>&nbsp;&nbsp;&nbsp;&nbsp;visited = <span style="color:#5A7EC8;">set</span>([start])</span></div>
+                <div class="code-line"><span class="code-ln">6</span><span>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--main-dark);">while</span> queue:</span></div>
+                <div class="code-line"><span class="code-ln">7</span><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;node, path = queue.<span style="color:#5A7EC8;">popleft</span>()</span></div>
+                <div class="code-line"><span class="code-ln">8</span><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--main-dark);">if</span> node == end: <span style="color:var(--main-dark);">return</span> path</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ══════════════════ 5. AI FEEDBACK ══════════════════ -->
+  <div class="section">
+    <div class="section-label">05</div>
+    <div class="section-title">AI Analysis &amp; Feedback</div>
+    <div class="section-desc">Gemini 기반 개인 피드백 · 최적화 코드 제안</div>
+    <div class="dual-mode">
+
+      <!-- DARK -->
+      <div>
+        <div class="mode-label"><span class="mode-dot dot-dark"></span>Dark Mode</div>
+        <div class="screen dark">
+          <div class="navbar">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <button class="btn btn-ghost-d btn-sm">← 제출 보기</button>
+              <div style="font-size:13px;font-weight:600;color:#F0EDF8;">AI 분석 결과</div>
+            </div>
+            <span class="badge badge-green" style="font-size:11px;"><span class="badge-dot"></span>분석 완료</span>
+          </div>
+          <div class="screen-body">
+
+            <!-- Score -->
+            <div class="card" style="margin-bottom:12px;display:flex;align-items:center;gap:16px;">
+              <div style="width:52px;height:52px;border-radius:50%;background:conic-gradient(var(--main) 0% 78%, #2E2A40 78% 100%);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <div style="width:40px;height:40px;border-radius:50%;background:var(--surface-d);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#F0EDF8;">78</div>
+              </div>
+              <div>
+                <div style="font-size:13px;font-weight:600;color:#F0EDF8;">코드 품질 점수</div>
+                <div style="font-size:11px;color:#5A5575;">시간복잡도 · 가독성 · 엣지케이스 종합</div>
+              </div>
+              <div style="margin-left:auto;display:flex;gap:6px;">
+                <span class="badge badge-yellow">O(V+E)</span>
+                <span class="badge badge-sub">BFS</span>
+              </div>
+            </div>
+
+            <!-- Feedback -->
+            <div class="review-box" style="margin-bottom:12px;">
+              <div class="review-header" style="color:#F0EDF8;">
+                <div class="review-icon">✦</div>
+                AI 개인 피드백
+              </div>
+              <div class="review-body">
+                방문 노드를 <code class="mono" style="background:#2E2A40;padding:1px 5px;border-radius:3px;">set</code>으로 관리하는 방식은 좋습니다. 다만 visited 초기화 시 start를 미리 추가했는데, 이 경우 다중 시작점 처리에서 의도치 않은 skip이 발생할 수 있습니다.
+              </div>
+            </div>
+
+            <!-- Diff / Optimized -->
+            <div class="review-box">
+              <div class="review-header" style="color:#F0EDF8;">
+                <div class="review-icon">⟳</div>
+                최적화 제안 코드
+              </div>
+              <div class="review-body">
+                <div class="diff-line diff-rm">- visited = set([start])</div>
+                <div class="diff-line diff-add">+ visited = set()</div>
+                <div class="diff-line diff-rm">- queue = deque([(start, [start])])</div>
+                <div class="diff-line diff-add">+ queue = deque([(start, [start])]); visited.add(start)</div>
+                <div style="margin-top:8px;font-size:11px;color:#5A5575;">→ BFS 진입 전 명시적 마킹으로 의도 명확화</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- LIGHT -->
+      <div>
+        <div class="mode-label"><span class="mode-dot dot-light"></span>Light Mode</div>
+        <div class="screen light">
+          <div class="navbar" style="background:rgba(255,255,255,0.85);">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <button class="btn btn-ghost-l btn-sm">← 제출 보기</button>
+              <div style="font-size:13px;font-weight:600;color:var(--text-l);">AI 분석 결과</div>
+            </div>
+            <span class="badge badge-green" style="font-size:11px;"><span class="badge-dot"></span>분석 완료</span>
+          </div>
+          <div class="screen-body">
+
+            <div class="card" style="margin-bottom:12px;display:flex;align-items:center;gap:16px;">
+              <div style="width:52px;height:52px;border-radius:50%;background:conic-gradient(var(--main) 0% 78%, var(--bg3-l) 78% 100%);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <div style="width:40px;height:40px;border-radius:50%;background:var(--surface-l);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--text-l);">78</div>
+              </div>
+              <div>
+                <div style="font-size:13px;font-weight:600;color:var(--text-l);">코드 품질 점수</div>
+                <div style="font-size:11px;color:var(--text3-l);">시간복잡도 · 가독성 · 엣지케이스 종합</div>
+              </div>
+              <div style="margin-left:auto;display:flex;gap:6px;">
+                <span class="badge badge-yellow">O(V+E)</span>
+                <span class="badge badge-sub">BFS</span>
+              </div>
+            </div>
+
+            <div class="review-box" style="margin-bottom:12px;">
+              <div class="review-header" style="color:var(--text-l);">
+                <div class="review-icon">✦</div>
+                AI 개인 피드백
+              </div>
+              <div class="review-body" style="color:var(--text2-l);">
+                방문 노드를 <code class="mono" style="background:var(--bg2-l);padding:1px 5px;border-radius:3px;">set</code>으로 관리하는 방식은 좋습니다. 다만 visited 초기화 시 start를 미리 추가했는데, 이 경우 다중 시작점 처리에서 의도치 않은 skip이 발생할 수 있습니다.
+              </div>
+            </div>
+
+            <div class="review-box">
+              <div class="review-header" style="color:var(--text-l);">
+                <div class="review-icon">⟳</div>
+                최적화 제안 코드
+              </div>
+              <div class="review-body">
+                <div class="diff-line diff-rm">- visited = set([start])</div>
+                <div class="diff-line diff-add">+ visited = set()</div>
+                <div class="diff-line diff-rm">- queue = deque([(start, [start])])</div>
+                <div class="diff-line diff-add">+ queue = deque([(start, [start])]); visited.add(start)</div>
+                <div style="margin-top:8px;font-size:11px;color:var(--text3-l);">→ BFS 진입 전 명시적 마킹으로 의도 명확화</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ══════════════════ 6. PROBLEM LIST ══════════════════ -->
+  <div class="section">
+    <div class="section-label">06</div>
+    <div class="section-title">Problem List Screen</div>
+    <div class="section-desc">주차별 문제 목록 · 마감 상태 · 제출 현황</div>
+    <div class="dual-mode">
+
+      <!-- DARK -->
+      <div>
+        <div class="mode-label"><span class="mode-dot dot-dark"></span>Dark Mode</div>
+        <div class="screen dark">
+          <div class="navbar">
+            <div class="nav-logo" style="color:#F0EDF8;"><span class="logo-dot"></span>AlgoSu</div>
+            <div class="nav-items">
+              <span class="nav-item">대시보드</span>
+              <span class="nav-item active">문제</span>
+              <span class="nav-item">제출</span>
+            </div>
+            <div class="nav-bell">🔔</div>
+          </div>
+          <div class="screen-body">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+              <div>
+                <div style="font-size:16px;font-weight:600;color:#F0EDF8;">문제 목록</div>
+                <div style="font-family:'DM Mono',monospace;font-size:10px;color:#5A5575;margin-top:2px;">8주차 · 3개 문제</div>
+              </div>
+              <div style="display:flex;gap:6px;">
+                <select class="form-input form-select" style="width:auto;padding:6px 28px 6px 10px;background:#221F30;border-color:#2E2A40;color:#F0EDF8;font-size:11px;border-radius:var(--radius-s);">
+                  <option>8주차</option>
+                  <option>7주차</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="card">
+              <!-- Header -->
+              <div style="display:grid;grid-template-columns:28px 1fr auto auto auto;gap:10px;padding:0 0 8px;border-bottom:1px solid #2E2A40;font-family:'DM Mono',monospace;font-size:10px;color:#5A5575;text-transform:uppercase;letter-spacing:1px;">
+                <div>#</div><div>문제</div><div>난이도</div><div>제출</div><div>상태</div>
+              </div>
+              <!-- Row 1 -->
+              <div class="problem-row" style="border-color:#2E2A40;">
+                <div style="font-family:'DM Mono',monospace;font-size:11px;color:#5A5575;">01</div>
+                <div>
+                  <div style="font-size:12px;font-weight:500;color:#F0EDF8;">BFS 최단 경로</div>
+                  <div style="font-family:'DM Mono',monospace;font-size:10px;color:#5A5575;">#1260</div>
+                </div>
+                <span class="badge badge-yellow" style="font-size:10px;">Medium</span>
+                <span style="font-family:'DM Mono',monospace;font-size:11px;color:#A8A3C0;">8/10</span>
+                <span class="badge badge-green" style="font-size:10px;">제출 완료</span>
+              </div>
+              <!-- Row 2 -->
+              <div class="problem-row" style="border-color:#2E2A40;">
+                <div style="font-family:'DM Mono',monospace;font-size:11px;color:#5A5575;">02</div>
+                <div>
+                  <div style="font-size:12px;font-weight:500;color:#F0EDF8;">다익스트라 알고리즘</div>
+                  <div style="font-family:'DM Mono',monospace;font-size:10px;color:#5A5575;">#1753</div>
+                </div>
+                <span class="badge badge-red" style="font-size:10px;">Hard</span>
+                <span style="font-family:'DM Mono',monospace;font-size:11px;color:#A8A3C0;">5/10</span>
+                <span class="badge badge-sub" style="font-size:10px;">미제출</span>
+              </div>
+              <!-- Row 3 -->
+              <div class="problem-row" style="border-color:transparent;">
+                <div style="font-family:'DM Mono',monospace;font-size:11px;color:#5A5575;">03</div>
+                <div>
+                  <div style="font-size:12px;font-weight:500;color:#F0EDF8;">플로이드 워셜</div>
+                  <div style="font-family:'DM Mono',monospace;font-size:10px;color:#5A5575;">#11404</div>
+                </div>
+                <span class="badge badge-yellow" style="font-size:10px;">Medium</span>
+                <span style="font-family:'DM Mono',monospace;font-size:11px;color:#A8A3C0;">9/10</span>
+                <span class="badge badge-green" style="font-size:10px;">제출 완료</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LIGHT -->
+      <div>
+        <div class="mode-label"><span class="mode-dot dot-light"></span>Light Mode</div>
+        <div class="screen light">
+          <div class="navbar" style="background:rgba(255,255,255,0.85);">
+            <div class="nav-logo" style="color:var(--text-l);"><span class="logo-dot"></span>AlgoSu</div>
+            <div class="nav-items">
+              <span class="nav-item">대시보드</span>
+              <span class="nav-item active">문제</span>
+              <span class="nav-item">제출</span>
+            </div>
+            <div class="nav-bell" style="background:var(--bg2-l);">🔔</div>
+          </div>
+          <div class="screen-body">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+              <div>
+                <div style="font-size:16px;font-weight:600;color:var(--text-l);">문제 목록</div>
+                <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3-l);margin-top:2px;">8주차 · 3개 문제</div>
+              </div>
+              <select class="form-input form-select" style="width:auto;padding:6px 28px 6px 10px;font-size:11px;border-radius:var(--radius-s);">
+                <option>8주차</option><option>7주차</option>
+              </select>
+            </div>
+            <div class="card">
+              <div style="display:grid;grid-template-columns:28px 1fr auto auto auto;gap:10px;padding:0 0 8px;border-bottom:1px solid var(--border-l);font-family:'DM Mono',monospace;font-size:10px;color:var(--text3-l);text-transform:uppercase;letter-spacing:1px;">
+                <div>#</div><div>문제</div><div>난이도</div><div>제출</div><div>상태</div>
+              </div>
+              <div class="problem-row">
+                <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3-l);">01</div>
+                <div><div style="font-size:12px;font-weight:500;color:var(--text-l);">BFS 최단 경로</div><div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3-l);">#1260</div></div>
+                <span class="badge badge-yellow" style="font-size:10px;">Medium</span>
+                <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text2-l);">8/10</span>
+                <span class="badge badge-green" style="font-size:10px;">제출 완료</span>
+              </div>
+              <div class="problem-row">
+                <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3-l);">02</div>
+                <div><div style="font-size:12px;font-weight:500;color:var(--text-l);">다익스트라 알고리즘</div><div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3-l);">#1753</div></div>
+                <span class="badge badge-red" style="font-size:10px;">Hard</span>
+                <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text2-l);">5/10</span>
+                <span class="badge badge-sub" style="font-size:10px;">미제출</span>
+              </div>
+              <div class="problem-row" style="border-color:transparent;">
+                <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3-l);">03</div>
+                <div><div style="font-size:12px;font-weight:500;color:var(--text-l);">플로이드 워셜</div><div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3-l);">#11404</div></div>
+                <span class="badge badge-yellow" style="font-size:10px;">Medium</span>
+                <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text2-l);">9/10</span>
+                <span class="badge badge-green" style="font-size:10px;">제출 완료</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ══════════════════ 7. NOTIFICATIONS & MODALS ══════════════════ -->
+  <div class="section">
+    <div class="section-label">07</div>
+    <div class="section-title">Notifications &amp; Modals</div>
+    <div class="section-desc">알림 토스트 · 에러 상태 · GitHub 재연동 모달</div>
+    <div class="dual-mode">
+
+      <!-- DARK -->
+      <div>
+        <div class="mode-label"><span class="mode-dot dot-dark"></span>Toasts — Dark</div>
+        <div style="display:flex;flex-direction:column;gap:0;background:#1A1725;border-radius:var(--radius-l);padding:16px;border:1px solid #2E2A40;">
+          <!-- Success -->
+          <div class="toast" style="background:#1E1B2C;border-color:#2E2A40;">
+            <div class="toast-icon">✅</div>
+            <div>
+              <div class="toast-title" style="color:#F0EDF8;">제출 완료</div>
+              <div class="toast-body">코드가 저장되었습니다. GitHub Push 중…</div>
+            </div>
+            <div style="margin-left:auto;font-size:11px;color:#5A5575;flex-shrink:0;">방금</div>
+          </div>
+          <!-- GitHub Error -->
+          <div class="toast" style="background:#1E1B2C;border-color:#2E2A40;border-left:3px solid #FF5A50;">
+            <div class="toast-icon">❌</div>
+            <div>
+              <div class="toast-title" style="color:#F0EDF8;">GitHub 동기화 실패</div>
+              <div class="toast-body">토큰이 만료되었습니다. <span style="color:var(--main);text-decoration:underline;cursor:pointer;">재연동 →</span></div>
+            </div>
+            <div style="margin-left:auto;font-size:11px;color:#5A5575;flex-shrink:0;">2분 전</div>
+          </div>
+          <!-- AI Analysis -->
+          <div class="toast" style="background:#1E1B2C;border-color:#2E2A40;border-left:3px solid var(--main);">
+            <div class="toast-icon">✦</div>
+            <div>
+              <div class="toast-title" style="color:#F0EDF8;">AI 분석 완료</div>
+              <div class="toast-body">BFS 최단 경로 분석이 완료되었습니다.</div>
+            </div>
+            <div style="margin-left:auto;font-size:11px;color:#5A5575;flex-shrink:0;">5분 전</div>
+          </div>
+          <!-- Draft saved -->
+          <div class="toast" style="background:#1E1B2C;border-color:#2E2A40;">
+            <div class="toast-icon">💾</div>
+            <div>
+              <div class="toast-title" style="color:#F0EDF8;">초안 저장됨</div>
+              <div class="toast-body">30초 간격 자동 저장 · 서버에 안전하게 백업</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DARK MODAL -->
+      <div>
+        <div class="mode-label"><span class="mode-dot dot-dark"></span>GitHub 재연동 Modal — Dark</div>
+        <div class="screen dark" style="max-height:none;">
+          <div class="modal-overlay">
+            <!-- Dimmed background hint -->
+            <div style="padding:16px;opacity:0.3;filter:blur(1px);pointer-events:none;font-size:12px;color:#F0EDF8;">배경 콘텐츠…</div>
+            <div class="modal-box">
+              <div class="modal-header">
+                <div class="modal-title" style="color:#F0EDF8;">GitHub 재연동 필요</div>
+                <button class="close-btn">✕</button>
+              </div>
+              <div class="modal-body">
+                <div style="display:flex;align-items:center;gap:10px;padding:12px;border-radius:var(--radius-s);background:#2A1F2A;border:1px solid #FF5A5030;margin-bottom:14px;">
+                  <span style="font-size:16px;">⚠️</span>
+                  <div style="font-size:12px;color:#A8A3C0;">GitHub 토큰이 만료되어 동기화가 중단되었습니다. OAuth 재인증이 필요합니다.</div>
+                </div>
+                <div class="github-status">
+                  <span style="font-size:14px;">🔗</span>
+                  <div>
+                    <div style="font-size:12px;font-weight:500;color:#F0EDF8;">개인 레포 연동</div>
+                    <div style="font-family:'DM Mono',monospace;font-size:10px;color:#5A5575;">github.com/username/algostudy</div>
+                  </div>
+                  <span class="badge badge-red" style="margin-left:auto;font-size:10px;">TOKEN_INVALID</span>
+                </div>
+              </div>
+              <div class="modal-footer" style="background:#1A1725;">
+                <button class="btn btn-ghost-d btn-sm">나중에</button>
+                <button class="btn btn-primary btn-sm">GitHub으로 재인증 →</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ══════════════════ 8. PROFILE / ACTIVITY ══════════════════ -->
+  <div class="section">
+    <div class="section-label">08</div>
+    <div class="section-title">Member Profile &amp; Activity</div>
+    <div class="section-desc">개인 프로필 · 활동 캘린더 · 제출 이력</div>
+    <div class="dual-mode">
+      <!-- DARK -->
+      <div>
+        <div class="mode-label"><span class="mode-dot dot-dark"></span>Dark Mode</div>
+        <div class="screen dark">
+          <div class="navbar">
+            <div class="nav-logo" style="color:#F0EDF8;"><span class="logo-dot"></span>AlgoSu</div>
+            <div class="nav-avatar">JS</div>
+          </div>
+          <div class="screen-body">
+            <!-- Profile Header -->
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #2E2A40;">
+              <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--main),var(--sub));display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:white;flex-shrink:0;">JS</div>
+              <div style="flex:1;">
+                <div style="font-size:15px;font-weight:700;color:#F0EDF8;letter-spacing:-0.3px;">김지수</div>
+                <div style="font-size:11px;color:#5A5575;font-family:'DM Mono',monospace;">@jisoo · Member</div>
+              </div>
+              <div style="display:flex;gap:6px;">
+                <span class="badge badge-main">연속 5주</span>
+                <span class="badge badge-green">전체 1위</span>
+              </div>
+            </div>
+            <!-- Stats -->
+            <div class="card-grid card-grid-3" style="margin-bottom:14px;">
+              <div class="card" style="text-align:center;">
+                <div class="stat-value" style="font-size:22px;">42</div>
+                <div class="stat-label">총 제출</div>
+              </div>
+              <div class="card" style="text-align:center;">
+                <div class="stat-value" style="font-size:22px;">38</div>
+                <div class="stat-label">GitHub 동기화</div>
+              </div>
+              <div class="card" style="text-align:center;">
+                <div class="stat-value" style="font-size:22px;">40</div>
+                <div class="stat-label">AI 분석</div>
+              </div>
+            </div>
+            <!-- Activity Calendar -->
+            <div class="card" style="margin-bottom:12px;">
+              <div class="screen-section-header">
+                <div class="screen-section-title" style="color:#F0EDF8;">활동 캘린더</div>
+                <span style="font-family:'DM Mono',monospace;font-size:10px;color:#5A5575;">최근 20주</span>
+              </div>
+              <div class="cal-grid">
+                <!-- row of cells with varying intensities -->
+                <div class="cal-cell"></div><div class="cal-cell l1"></div><div class="cal-cell l2"></div><div class="cal-cell l1"></div><div class="cal-cell"></div>
+                <div class="cal-cell l3"></div><div class="cal-cell l4"></div><div class="cal-cell l2"></div><div class="cal-cell l1"></div><div class="cal-cell l3"></div>
+                <div class="cal-cell l1"></div><div class="cal-cell"></div><div class="cal-cell l4"></div><div class="cal-cell l3"></div><div class="cal-cell l2"></div>
+                <div class="cal-cell l4"></div><div class="cal-cell l3"></div><div class="cal-cell l1"></div><div class="cal-cell l2"></div><div class="cal-cell l4"></div>
+              </div>
+              <div class="annotation" style="margin-top:8px;">
+                <div class="annot-item"><div class="annot-dot" style="background:#2E2A40;"></div>없음</div>
+                <div class="annot-item"><div class="annot-dot" style="background:rgba(148,126,176,0.25);"></div>1</div>
+                <div class="annot-item"><div class="annot-dot" style="background:rgba(148,126,176,0.5);"></div>2</div>
+                <div class="annot-item"><div class="annot-dot" style="background:rgba(148,126,176,0.75);"></div>3</div>
+                <div class="annot-item"><div class="annot-dot" style="background:var(--main);"></div>4+</div>
+              </div>
+            </div>
+            <!-- Recent Submissions -->
+            <div class="card">
+              <div class="screen-section-header">
+                <div class="screen-section-title" style="color:#F0EDF8;">최근 제출</div>
+              </div>
+              <div class="list-item" style="padding:8px 0;">
+                <div style="width:6px;height:6px;border-radius:50%;background:#50C878;flex-shrink:0;"></div>
+                <div style="flex:1;"><div style="font-size:12px;font-weight:500;color:#F0EDF8;">BFS 최단 경로</div><div style="font-family:'DM Mono',monospace;font-size:10px;color:#5A5575;">Python · 8주차</div></div>
+                <span class="badge badge-green" style="font-size:10px;">SYNCED</span>
+              </div>
+              <div class="list-item" style="padding:8px 0;">
+                <div style="width:6px;height:6px;border-radius:50%;background:var(--main);flex-shrink:0;"></div>
+                <div style="flex:1;"><div style="font-size:12px;font-weight:500;color:#F0EDF8;">플로이드 워셜</div><div style="font-family:'DM Mono',monospace;font-size:10px;color:#5A5575;">Python · 8주차</div></div>
+                <span class="badge badge-main" style="font-size:10px;">AI 완료</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LIGHT -->
+      <div>
+        <div class="mode-label"><span class="mode-dot dot-light"></span>Light Mode</div>
+        <div class="screen light">
+          <div class="navbar" style="background:rgba(255,255,255,0.85);">
+            <div class="nav-logo" style="color:var(--text-l);"><span class="logo-dot"></span>AlgoSu</div>
+            <div class="nav-avatar">JS</div>
+          </div>
+          <div class="screen-body">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border-l);">
+              <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--main),var(--sub));display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:white;flex-shrink:0;">JS</div>
+              <div style="flex:1;">
+                <div style="font-size:15px;font-weight:700;color:var(--text-l);letter-spacing:-0.3px;">김지수</div>
+                <div style="font-size:11px;color:var(--text3-l);font-family:'DM Mono',monospace;">@jisoo · Member</div>
+              </div>
+              <div style="display:flex;gap:6px;">
+                <span class="badge badge-main">연속 5주</span>
+                <span class="badge badge-green">전체 1위</span>
+              </div>
+            </div>
+            <div class="card-grid card-grid-3" style="margin-bottom:14px;">
+              <div class="card" style="text-align:center;"><div class="stat-value" style="font-size:22px;">42</div><div class="stat-label">총 제출</div></div>
+              <div class="card" style="text-align:center;"><div class="stat-value" style="font-size:22px;">38</div><div class="stat-label">GitHub 동기화</div></div>
+              <div class="card" style="text-align:center;"><div class="stat-value" style="font-size:22px;">40</div><div class="stat-label">AI 분석</div></div>
+            </div>
+            <div class="card" style="margin-bottom:12px;">
+              <div class="screen-section-header">
+                <div class="screen-section-title" style="color:var(--text-l);">활동 캘린더</div>
+                <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3-l);">최근 20주</span>
+              </div>
+              <div class="cal-grid">
+                <div class="cal-cell" style="background:var(--bg3-l);"></div>
+                <div class="cal-cell" style="background:rgba(148,126,176,0.20);"></div>
+                <div class="cal-cell" style="background:rgba(148,126,176,0.40);"></div>
+                <div class="cal-cell" style="background:rgba(148,126,176,0.20);"></div>
+                <div class="cal-cell" style="background:var(--bg3-l);"></div>
+                <div class="cal-cell" style="background:rgba(148,126,176,0.60);"></div>
+                <div class="cal-cell" style="background:var(--main);opacity:0.85;"></div>
+                <div class="cal-cell" style="background:rgba(148,126,176,0.40);"></div>
+                <div class="cal-cell" style="background:rgba(148,126,176,0.20);"></div>
+                <div class="cal-cell" style="background:rgba(148,126,176,0.60);"></div>
+                <div class="cal-cell" style="background:rgba(148,126,176,0.20);"></div>
+                <div class="cal-cell" style="background:var(--bg3-l);"></div>
+                <div class="cal-cell" style="background:var(--main);opacity:0.85;"></div>
+                <div class="cal-cell" style="background:rgba(148,126,176,0.60);"></div>
+                <div class="cal-cell" style="background:rgba(148,126,176,0.40);"></div>
+                <div class="cal-cell" style="background:var(--main);"></div>
+                <div class="cal-cell" style="background:rgba(148,126,176,0.60);"></div>
+                <div class="cal-cell" style="background:rgba(148,126,176,0.20);"></div>
+                <div class="cal-cell" style="background:rgba(148,126,176,0.40);"></div>
+                <div class="cal-cell" style="background:var(--main);"></div>
+              </div>
+              <div class="annotation" style="margin-top:8px;">
+                <div class="annot-item"><div class="annot-dot" style="background:var(--bg3-l);border:1px solid var(--border-l);"></div>없음</div>
+                <div class="annot-item"><div class="annot-dot" style="background:rgba(148,126,176,0.25);"></div>1</div>
+                <div class="annot-item"><div class="annot-dot" style="background:rgba(148,126,176,0.5);"></div>2–3</div>
+                <div class="annot-item"><div class="annot-dot" style="background:var(--main);"></div>4+</div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="screen-section-header">
+                <div class="screen-section-title" style="color:var(--text-l);">최근 제출</div>
+              </div>
+              <div class="list-item" style="padding:8px 0;">
+                <div style="width:6px;height:6px;border-radius:50%;background:#50C878;flex-shrink:0;"></div>
+                <div style="flex:1;"><div style="font-size:12px;font-weight:500;color:var(--text-l);">BFS 최단 경로</div><div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3-l);">Python · 8주차</div></div>
+                <span class="badge badge-green" style="font-size:10px;">SYNCED</span>
+              </div>
+              <div class="list-item" style="padding:8px 0;">
+                <div style="width:6px;height:6px;border-radius:50%;background:var(--main);flex-shrink:0;"></div>
+                <div style="flex:1;"><div style="font-size:12px;font-weight:500;color:var(--text-l);">플로이드 워셜</div><div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3-l);">Python · 8주차</div></div>
+                <span class="badge badge-main" style="font-size:10px;">AI 완료</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ══════════════════ FOOTER ══════════════════ -->
+  <div style="text-align:center;padding-top:20px;">
+    <div style="font-family:'DM Mono',monospace;font-size:11px;color:#3A3555;letter-spacing:2px;">ALGOSU UI DESIGN SYSTEM · v1.0 · 2025</div>
+    <div style="font-size:11px;color:#2E2A40;margin-top:6px;">mainColor: #947EB0 · subColor: #A3A5C3 · Minimal · Light/Dark</div>
+  </div>
+
+</div>
+</body>
+</html>

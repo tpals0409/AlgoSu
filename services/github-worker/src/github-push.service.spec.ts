@@ -1,0 +1,126 @@
+import { GitHubPushService } from './github-push.service';
+import { TokenManager } from './token-manager';
+
+// Octokit 모킹
+const mockGetContent = jest.fn();
+const mockCreateOrUpdateFileContents = jest.fn();
+
+jest.mock('@octokit/rest', () => ({
+  Octokit: jest.fn().mockImplementation(() => ({
+    repos: {
+      getContent: mockGetContent,
+      createOrUpdateFileContents: mockCreateOrUpdateFileContents,
+    },
+  })),
+}));
+
+describe('GitHubPushService', () => {
+  let service: GitHubPushService;
+  let mockTokenManager: jest.Mocked<Pick<TokenManager, 'getTokenForRepo'>>;
+
+  const basePushInput = {
+    submissionId: 'sub-001',
+    userId: 'user-42',
+    problemId: 'prob-7',
+    language: 'python',
+    code: 'print("hello world")',
+    repoOwner: 'test-owner',
+    repoName: 'test-repo',
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    mockTokenManager = {
+      getTokenForRepo: jest.fn().mockResolvedValue('ghs_mock_token'),
+    };
+
+    service = new GitHubPushService(mockTokenManager as unknown as TokenManager);
+
+    // 기본: 파일 없음 (404)
+    mockGetContent.mockRejectedValue(new Error('Not Found'));
+    mockCreateOrUpdateFileContents.mockResolvedValue({
+      data: { content: { sha: 'abc123sha' } },
+    });
+  });
+
+  // 1. 새 파일 생성
+  it('push() -- 새 파일 생성: createOrUpdateFileContents 호출, base64 인코딩', async () => {
+    const result = await service.push(basePushInput);
+
+    // Octokit 생성 시 토큰 전달 확인
+    const { Octokit } = require('@octokit/rest');
+    expect(Octokit).toHaveBeenCalledWith({ auth: 'ghs_mock_token' });
+
+    // createOrUpdateFileContents 호출 확인
+    expect(mockCreateOrUpdateFileContents).toHaveBeenCalledWith(
+      expect.objectContaining({
+        owner: 'test-owner',
+        repo: 'test-repo',
+        content: Buffer.from('print("hello world")').toString('base64'),
+        sha: undefined,
+      }),
+    );
+
+    expect(result.sha).toBe('abc123sha');
+  });
+
+  // 2. 기존 파일 업데이트
+  it('push() -- 기존 파일 업데이트: sha 전달', async () => {
+    // getContent가 기존 파일을 반환
+    mockGetContent.mockResolvedValue({
+      data: { type: 'file', sha: 'existing-sha-456' },
+    });
+
+    await service.push(basePushInput);
+
+    expect(mockCreateOrUpdateFileContents).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sha: 'existing-sha-456',
+      }),
+    );
+  });
+
+  // 3. 파일 경로 규칙
+  it('push() -- 파일 경로: submissions/{userId}/{problemId}/{submissionId}.{ext}', async () => {
+    const result = await service.push(basePushInput);
+
+    const expectedPath = 'submissions/user-42/prob-7/sub-001.py';
+    expect(result.filePath).toBe(expectedPath);
+
+    expect(mockCreateOrUpdateFileContents).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: expectedPath,
+      }),
+    );
+  });
+
+  // 4. 언어 -> 확장자 매핑
+  it('push() -- 언어 확장자 매핑: python->py, java->java', async () => {
+    // python -> py
+    const pyResult = await service.push({ ...basePushInput, language: 'python' });
+    expect(pyResult.filePath).toMatch(/\.py$/);
+
+    jest.clearAllMocks();
+    mockGetContent.mockRejectedValue(new Error('Not Found'));
+    mockCreateOrUpdateFileContents.mockResolvedValue({
+      data: { content: { sha: 'sha-java' } },
+    });
+    mockTokenManager.getTokenForRepo.mockResolvedValue('ghs_mock_token');
+
+    // java -> java
+    const javaResult = await service.push({ ...basePushInput, language: 'java' });
+    expect(javaResult.filePath).toMatch(/\.java$/);
+  });
+
+  // 5. 미지원 언어 -> txt 기본값
+  it('push() -- 미지원 언어: 확장자 txt 기본값', async () => {
+    const result = await service.push({
+      ...basePushInput,
+      language: 'brainfuck',
+    });
+
+    expect(result.filePath).toMatch(/\.txt$/);
+    expect(result.filePath).toBe('submissions/user-42/prob-7/sub-001.txt');
+  });
+});

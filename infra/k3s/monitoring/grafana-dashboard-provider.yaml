@@ -1,0 +1,21 @@
+# AlgoSu — Grafana Dashboard Provisioning Provider
+# 대시보드 자동 로드 설정 (ConfigMap → /var/lib/grafana/dashboards)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-provider
+  namespace: algosu
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: 'AlgoSu'
+        orgId: 1
+        folder: 'AlgoSu'
+        type: file
+        disableDeletion: false
+        editable: true
+        updateIntervalSeconds: 30
+        options:
+          path: /var/lib/grafana/dashboards
+          foldersFromFilesStructure: false

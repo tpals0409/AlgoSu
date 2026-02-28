@@ -1,0 +1,67 @@
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+
+export enum SagaStep {
+  DB_SAVED = 'DB_SAVED',
+  GITHUB_QUEUED = 'GITHUB_QUEUED',
+  AI_QUEUED = 'AI_QUEUED',
+  DONE = 'DONE',
+  FAILED = 'FAILED',
+}
+
+export enum GitHubSyncStatus {
+  PENDING = 'PENDING',
+  SYNCED = 'SYNCED',
+  FAILED = 'FAILED',
+  TOKEN_INVALID = 'TOKEN_INVALID',
+  SKIPPED = 'SKIPPED',
+}
+
+@Entity('submissions')
+export class Submission {
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
+
+  @Column({ type: 'uuid', name: 'study_id' })
+  studyId!: string;
+
+  @Column({ type: 'varchar', length: 255, name: 'user_id' })
+  userId!: string;
+
+  @Column({ type: 'uuid', name: 'problem_id' })
+  problemId!: string;
+
+  @Column({ type: 'varchar', length: 50 })
+  language!: string;
+
+  @Column({ type: 'text' })
+  code!: string;
+
+  @Column({ type: 'enum', enum: SagaStep, default: SagaStep.DB_SAVED, name: 'saga_step' })
+  sagaStep!: SagaStep;
+
+  @Column({
+    type: 'enum',
+    enum: GitHubSyncStatus,
+    default: GitHubSyncStatus.PENDING,
+    name: 'github_sync_status',
+  })
+  githubSyncStatus!: GitHubSyncStatus;
+
+  @Column({ type: 'varchar', length: 500, nullable: true, name: 'github_file_path' })
+  githubFilePath!: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'idempotency_key' })
+  idempotencyKey!: string | null;
+
+  @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
+  createdAt!: Date;
+
+  @UpdateDateColumn({ type: 'timestamptz', name: 'updated_at' })
+  updatedAt!: Date;
+}

@@ -1,0 +1,43 @@
+# AlgoSu — Kustomize Base
+# 전체 k3s 매니페스트를 단일 base로 구성
+# 사용법: kubectl apply -k infra/overlays/dev/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: algosu
+
+resources:
+  # 네임스페이스
+  - namespace.yaml
+
+  # 인프라 (DB, 캐시, 메시지 큐)
+  - postgres.yaml
+  - redis.yaml
+  - rabbitmq.yaml
+
+  # 애플리케이션 서비스
+  - gateway.yaml
+  - identity-service.yaml
+  - submission-service.yaml
+  - problem-service.yaml
+  - ai-analysis-service.yaml
+  - github-worker.yaml
+  - frontend.yaml
+
+  # 라우팅
+  - ingress.yaml
+
+  # 모니터링
+  - monitoring/prometheus-config.yaml
+  - monitoring/prometheus-rules.yaml
+  - monitoring/grafana.yaml
+  - monitoring/grafana-datasources.yaml
+  - monitoring/grafana-dashboard-provider.yaml
+  - monitoring/grafana-slo-dashboard.yaml
+  - monitoring/loki-config.yaml
+  - monitoring/promtail.yaml
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: algosu
+      app.kubernetes.io/managed-by: kustomize

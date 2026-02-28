@@ -1,0 +1,43 @@
+# AlgoSu — Staging Overlay
+# Dev와 동일 리소스, 모니터링 강화
+# Sealed Secrets: kubeseal 후 별도 적용 (kubectl apply -f sealed-secret.yaml)
+# 사용법: kubectl apply -k infra/overlays/staging/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../k3s
+
+labels:
+  - pairs:
+      environment: staging
+
+patches:
+  # Staging: 1 replica 유지 (비용 절감)
+  - target:
+      kind: Deployment
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 1
+
+  # Staging: Gateway 리소스 약간 상향
+  - target:
+      kind: Deployment
+      name: gateway
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "256Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "512Mi"
+
+  # Staging: Prometheus 보존 기간 14일
+  - target:
+      kind: Deployment
+      name: prometheus
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/args/3
+        value: "--storage.tsdb.retention.time=14d"

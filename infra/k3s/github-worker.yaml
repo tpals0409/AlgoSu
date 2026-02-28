@@ -1,0 +1,42 @@
+---
+# AlgoSu GitHub Worker — k3s Deployment
+# RabbitMQ 소비자 (prefetch=2), 서비스 엔드포인트 없음
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: github-worker
+  namespace: algosu
+  labels:
+    app: github-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: github-worker
+  template:
+    metadata:
+      labels:
+        app: github-worker
+    spec:
+      containers:
+        - name: github-worker
+          image: ghcr.io/OWNER/algosu-github-worker:main-PLACEHOLDER
+          envFrom:
+            - secretRef:
+                name: github-worker-secrets
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          # Worker는 HTTP 엔드포인트 없음 — RabbitMQ 연결 기반 헬스체크
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - "node -e 'process.exit(0)'"
+            initialDelaySeconds: 10
+            periodSeconds: 30

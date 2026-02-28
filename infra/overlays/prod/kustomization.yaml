@@ -1,0 +1,121 @@
+# AlgoSu — Production Overlay
+# 고가용성, 강화된 리소스, 보안 강화
+# Sealed Secrets: kubeseal 후 별도 적용 (kubectl apply -f sealed-secret.yaml)
+# 사용법: kubectl apply -k infra/overlays/prod/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../k3s
+
+labels:
+  - pairs:
+      environment: prod
+
+patches:
+  # Prod: 핵심 서비스 2 replicas
+  - target:
+      kind: Deployment
+      name: gateway
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 2
+
+  - target:
+      kind: Deployment
+      name: identity
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 2
+
+  - target:
+      kind: Deployment
+      name: submission
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 2
+
+  # Prod: Gateway 리소스 강화
+  - target:
+      kind: Deployment
+      name: gateway
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "512Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: "200m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "1Gi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "1000m"
+
+  # Prod: Submission 리소스 강화
+  - target:
+      kind: Deployment
+      name: submission
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "512Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "1Gi"
+
+  # Prod: AI Analysis 리소스 강화
+  - target:
+      kind: Deployment
+      name: ai-analysis
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "1Gi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "4Gi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "2000m"
+
+  # Prod: PostgreSQL PVC 확장
+  - target:
+      kind: PersistentVolumeClaim
+      name: postgres-pvc
+    patch: |
+      - op: replace
+        path: /spec/resources/requests/storage
+        value: "20Gi"
+
+  # Prod: Prometheus 보존 30일 + PVC 확장
+  - target:
+      kind: Deployment
+      name: prometheus
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/args/3
+        value: "--storage.tsdb.retention.time=30d"
+
+  - target:
+      kind: PersistentVolumeClaim
+      name: prometheus-pvc
+    patch: |
+      - op: replace
+        path: /spec/resources/requests/storage
+        value: "20Gi"
+
+  # Prod: Grafana 익명 접근 비활성화 (보안)
+  - target:
+      kind: Deployment
+      name: grafana
+    patch: |
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: GF_AUTH_ANONYMOUS_ENABLED
+          value: "false"

@@ -1,0 +1,188 @@
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, Not, In, MoreThan } from 'typeorm';
+import { Submission, SagaStep, GitHubSyncStatus } from '../submission/submission.entity';
+import { MqPublisherService } from './mq-publisher.service';
+
+/**
+ * Saga Orchestrator — 제출 플로우 상태 관리
+ *
+ * 플로우: DB_SAVED → GITHUB_QUEUED → AI_QUEUED → DONE
+ *
+ * 멱등성 보장 순서 (필수):
+ * 1. DB 업데이트 (saga_step 갱신) — 먼저
+ * 2. RabbitMQ 발행 — 나중
+ * → 역순 시 서비스 재시작 후 중복 발행 위험
+ *
+ * 보안: SQL 파라미터 바인딩 (TypeORM), Log Injection 방지
+ */
+@Injectable()
+export class SagaOrchestratorService implements OnModuleInit {
+  private readonly logger = new Logger(SagaOrchestratorService.name);
+
+  constructor(
+    @InjectRepository(Submission)
+    private readonly submissionRepo: Repository<Submission>,
+    private readonly mqPublisher: MqPublisherService,
+  ) {}
+
+  /**
+   * Startup Hook — 미완료 Saga 자동 재개
+   * 서비스 재시작 시 1시간 이내 미완료 Saga를 감지하여 재개
+   */
+  async onModuleInit(): Promise<void> {
+    this.logger.log('Saga Orchestrator 초기화 — 미완료 Saga 검색 중...');
+
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const incompleteSubmissions = await this.submissionRepo.find({
+      where: {
+        sagaStep: Not(In([SagaStep.DONE, SagaStep.FAILED])),
+        createdAt: MoreThan(oneHourAgo),
+      },
+      order: { createdAt: 'ASC' },
+    });
+
+    if (incompleteSubmissions.length === 0) {
+      this.logger.log('미완료 Saga 없음 — 정상 시작');
+      return;
+    }
+
+    this.logger.warn(`미완료 Saga ${incompleteSubmissions.length}건 발견 — 재개 시작`);
+
+    for (const submission of incompleteSubmissions) {
+      try {
+        await this.resumeSaga(submission);
+      } catch (error: unknown) {
+        this.logger.error(
+          `Saga 재개 실패: submissionId=${submission.id}, step=${submission.sagaStep}, error=${(error as Error).message}`,
+        );
+      }
+    }
+
+    this.logger.log('미완료 Saga 재개 완료');
+  }
+
+  /**
+   * Step 1: DB 저장 완료 → GitHub Push 큐 발행
+   * MQ 메시지에 studyId 포함 — Worker가 studies.github_repo 조회하여 SKIPPED 판단
+   */
+  async advanceToGitHubQueued(submissionId: string, studyId?: string): Promise<void> {
+    // studyId 미전달 시 (Saga 재개 경로) DB에서 조회
+    let resolvedStudyId = studyId;
+    if (!resolvedStudyId) {
+      const submission = await this.submissionRepo.findOne({ where: { id: submissionId } });
+      resolvedStudyId = submission?.studyId;
+    }
+
+    // 멱등성 순서: DB 먼저 → MQ 나중
+    await this.submissionRepo.update(submissionId, {
+      sagaStep: SagaStep.GITHUB_QUEUED,
+    });
+
+    await this.mqPublisher.publishGitHubPush({
+      submissionId,
+      studyId: resolvedStudyId!,
+      timestamp: new Date().toISOString(),
+    });
+
+    this.logger.log(`Saga Step 2 진입: submissionId=${submissionId}, studyId=${resolvedStudyId}, step=GITHUB_QUEUED`);
+  }
+
+  /**
+   * Step 2 완료: GitHub Push 성공 → AI 분석 큐 발행
+   */
+  async advanceToAiQueued(submissionId: string): Promise<void> {
+    const submission = await this.submissionRepo.findOne({ where: { id: submissionId } });
+
+    await this.submissionRepo.update(submissionId, {
+      sagaStep: SagaStep.AI_QUEUED,
+      githubSyncStatus: GitHubSyncStatus.SYNCED,
+    });
+
+    await this.mqPublisher.publishAiAnalysis({
+      submissionId,
+      studyId: submission!.studyId,
+      timestamp: new Date().toISOString(),
+    });
+
+    this.logger.log(`Saga Step 3 진입: submissionId=${submissionId}, step=AI_QUEUED`);
+  }
+
+  /**
+   * Step 3 완료: AI 분석 성공 → DONE
+   */
+  async advanceToDone(submissionId: string): Promise<void> {
+    await this.submissionRepo.update(submissionId, {
+      sagaStep: SagaStep.DONE,
+    });
+
+    this.logger.log(`Saga 완료: submissionId=${submissionId}, step=DONE`);
+  }
+
+  /**
+   * 보상 트랜잭션: GitHub Push 실패
+   */
+  async compensateGitHubFailed(
+    submissionId: string,
+    syncStatus: GitHubSyncStatus,
+  ): Promise<void> {
+    await this.submissionRepo.update(submissionId, {
+      githubSyncStatus: syncStatus,
+    });
+
+    // GitHub 실패해도 AI 분석은 진행 (GitHub 동기화와 독립)
+    // TOKEN_INVALID인 경우만 AI 분석도 스킵
+    if (syncStatus !== GitHubSyncStatus.TOKEN_INVALID) {
+      await this.advanceToAiQueued(submissionId);
+    } else {
+      this.logger.warn(
+        `GitHub TOKEN_INVALID — AI 분석 스킵: submissionId=${submissionId}`,
+      );
+    }
+  }
+
+  /**
+   * 보상 트랜잭션: AI 분석 실패
+   */
+  async compensateAiFailed(submissionId: string): Promise<void> {
+    // AI 실패해도 제출 자체는 DONE 처리 (분석만 DELAYED)
+    await this.submissionRepo.update(submissionId, {
+      sagaStep: SagaStep.DONE,
+    });
+
+    this.logger.warn(`AI 분석 실패 — 제출은 DONE 처리: submissionId=${submissionId}`);
+  }
+
+  /**
+   * 미완료 Saga 재개 — 현재 step에 따라 다음 단계 실행
+   */
+  private async resumeSaga(submission: Submission): Promise<void> {
+    this.logger.log(
+      `Saga 재개: submissionId=${submission.id}, currentStep=${submission.sagaStep}`,
+    );
+
+    switch (submission.sagaStep) {
+      case SagaStep.DB_SAVED:
+        await this.advanceToGitHubQueued(submission.id, submission.studyId);
+        break;
+      case SagaStep.GITHUB_QUEUED:
+        // GitHub Push 재시도는 Worker가 처리 — 여기서는 재발행만
+        await this.mqPublisher.publishGitHubPush({
+          submissionId: submission.id,
+          studyId: submission.studyId,
+          timestamp: new Date().toISOString(),
+        });
+        break;
+      case SagaStep.AI_QUEUED:
+        // AI 분석 재시도
+        await this.mqPublisher.publishAiAnalysis({
+          submissionId: submission.id,
+          studyId: submission.studyId,
+          timestamp: new Date().toISOString(),
+        });
+        break;
+      default:
+        break;
+    }
+  }
+}

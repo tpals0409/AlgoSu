@@ -1,0 +1,87 @@
+# ============================================================
+# AlgoSu — .gitignore
+# Oracle 보안 지시: .env 파일 및 시크릿 커밋 절대 금지
+# ============================================================
+
+# ── 환경변수 / 시크릿 (절대 커밋 금지) ──────────────────────
+.env
+.env.*
+!.env.example
+*.secret
+secrets/
+sealed-secret-values/
+
+# ── Node.js ──────────────────────────────────────────────────
+node_modules/
+dist/
+build/
+.npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# ── TypeScript ───────────────────────────────────────────────
+*.tsbuildinfo
+*.js.map
+
+# ── Python ───────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+.venv/
+venv/
+env/
+.Python
+*.egg-info/
+*.egg
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# ── Docker ───────────────────────────────────────────────────
+.dockerignore
+
+# ── IDE / 에디터 ─────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ── 로그 ─────────────────────────────────────────────────────
+logs/
+*.log
+
+# ── 테스트 커버리지 ──────────────────────────────────────────
+coverage/
+.nyc_output/
+
+# ── Next.js ──────────────────────────────────────────────────
+.next/
+out/
+.vercel
+
+# ── k3s / 쿠버네티스 ─────────────────────────────────────────
+kubeconfig
+*.kubeconfig
+*-kubeconfig.yaml
+
+# ── Sealed Secrets (복호화된 원본 절대 커밋 금지) ────────────
+# 암호화된 SealedSecret manifest(.yaml)는 커밋 허용
+# 복호화된 원본 Secret manifest는 금지
+*-plain.yaml
+*-decrypted.yaml
+
+# ── 임시 파일 ────────────────────────────────────────────────
+tmp/
+temp/
+*.tmp
+*.bak

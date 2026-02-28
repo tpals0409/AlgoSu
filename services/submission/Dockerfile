@@ -1,0 +1,20 @@
+# AlgoSu Submission Service — 멀티스테이지 빌드 (ARM aarch64 호환)
+# 이미지 태그: main-{git-sha} (latest 사용 금지)
+
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production && cp -R node_modules prod_node_modules
+RUN npm ci
+COPY . .
+RUN npm run build
+
+FROM node:20-alpine AS runner
+RUN addgroup -g 1001 -S nodejs && adduser -S nestjs -u 1001
+WORKDIR /app
+COPY --from=builder /app/prod_node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package.json ./package.json
+USER nestjs
+EXPOSE 3003
+CMD ["node", "dist/src/main.js"]

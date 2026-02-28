@@ -1,0 +1,76 @@
+---
+# AlgoSu Problem Service — k3s Deployment
+# Init Container: DB Migration 먼저 실행 → 앱 시작
+# 이미지 태그: main-{git-sha} (latest 사용 금지)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: problem-service
+  namespace: algosu
+  labels:
+    app: problem-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: problem-service
+  template:
+    metadata:
+      labels:
+        app: problem-service
+    spec:
+      initContainers:
+        - name: db-migrate
+          image: ghcr.io/OWNER/algosu-problem:main-PLACEHOLDER
+          command: ["npm", "run", "migration:run"]
+          envFrom:
+            - secretRef:
+                name: problem-service-secrets
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+      containers:
+        - name: problem-service
+          image: ghcr.io/OWNER/algosu-problem:main-PLACEHOLDER
+          ports:
+            - containerPort: 3002
+          envFrom:
+            - secretRef:
+                name: problem-service-secrets
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "400Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3002
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3002
+            initialDelaySeconds: 5
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: problem-service
+  namespace: algosu
+spec:
+  selector:
+    app: problem-service
+  ports:
+    - port: 3002
+      targetPort: 3002
+  type: ClusterIP

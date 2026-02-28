@@ -1,0 +1,60 @@
+# AlgoSu — Dev Overlay (k3s 단일 노드)
+# Base와 동일 (최소 리소스, 1 replica)
+# 사용법: kubectl apply -k infra/overlays/dev/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../k3s
+
+labels:
+  - pairs:
+      environment: dev
+
+images:
+  - name: ghcr.io/OWNER/algosu-gateway
+    newName: algosu-gateway
+    newTag: dev
+  - name: ghcr.io/OWNER/algosu-identity
+    newName: algosu-identity
+    newTag: dev
+  - name: ghcr.io/OWNER/algosu-submission
+    newName: algosu-submission
+    newTag: dev
+  - name: ghcr.io/OWNER/algosu-problem
+    newName: algosu-problem
+    newTag: dev
+  - name: ghcr.io/OWNER/algosu-ai-analysis
+    newName: algosu-ai-analysis
+    newTag: dev
+  - name: ghcr.io/OWNER/algosu-github-worker
+    newName: algosu-github-worker
+    newTag: dev
+  - name: ghcr.io/OWNER/algosu-frontend
+    newName: algosu-frontend
+    newTag: dev
+
+patches:
+  # Dev: 모든 Deployment를 1 replica로 고정
+  - target:
+      kind: Deployment
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 1
+
+  # Dev: Grafana 익명 접근 허용 (로컬 개발 편의)
+  - target:
+      kind: Deployment
+      name: grafana
+    patch: |
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: GF_AUTH_ANONYMOUS_ENABLED
+          value: "true"
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: GF_AUTH_ANONYMOUS_ORG_ROLE
+          value: "Viewer"

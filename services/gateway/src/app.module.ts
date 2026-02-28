@@ -1,0 +1,94 @@
+import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuthModule } from './auth/auth.module';
+import { OAuthModule } from './auth/oauth/oauth.module';
+import { InternalModule } from './internal/internal.module';
+import { StudyModule } from './study/study.module';
+import { ProxyModule } from './proxy/proxy.module';
+import { SseModule } from './sse/sse.module';
+import { JwtMiddleware } from './auth/jwt.middleware';
+import { RedisThrottlerStorage } from './rate-limit/redis-throttler.storage';
+import { RateLimitMiddleware } from './rate-limit/rate-limit.middleware';
+import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
+import { StructuredLoggerService } from './common/logger/structured-logger.service';
+import { MetricsModule } from './common/metrics/metrics.module';
+import { User } from './auth/oauth/user.entity';
+import { Study, StudyMember, StudyInvite } from './study/study.entity';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        type: 'postgres' as const,
+        host: configService.get<string>('IDENTITY_DB_HOST', 'localhost'),
+        port: configService.get<number>('IDENTITY_DB_PORT', 5432),
+        username: configService.get<string>('IDENTITY_DB_USER', 'algosu'),
+        password: configService.get<string>('IDENTITY_DB_PASSWORD', ''),
+        database: configService.get<string>('IDENTITY_DB_NAME', 'identity_db'),
+        entities: [User, Study, StudyMember, StudyInvite],
+        synchronize: false, // 마이그레이션으로 관리
+        maxQueryExecutionTime: 1000, // 1초 초과 쿼리 경고 로그 (monitoring-log-rules.md §8)
+      }),
+    }),
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        throttlers: [
+          { name: 'default', ttl: 60_000, limit: 60 },
+          { name: 'submission', ttl: 60_000, limit: 10 },
+        ],
+        storage: new RedisThrottlerStorage(configService),
+      }),
+    }),
+    AuthModule,
+    OAuthModule,
+    InternalModule,
+    StudyModule,
+    SseModule,
+    MetricsModule,
+    ProxyModule,
+  ],
+  providers: [
+    RedisThrottlerStorage,
+    RateLimitMiddleware,
+    StructuredLoggerService,
+  ],
+  exports: [StructuredLoggerService],
+})
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    // Request ID — 모든 요청에 X-Request-Id, X-Trace-Id 부여 (가장 먼저 실행)
+    consumer
+      .apply(RequestIdMiddleware)
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
+
+    // Rate Limit — JWT 검증 전 실행 (인증 불필요)
+    consumer
+      .apply(RateLimitMiddleware)
+      .exclude({ path: 'health', method: RequestMethod.GET })
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
+
+    // JWT 검증
+    // OAuth 콜백, 로그인 시작, JWT 갱신, Internal API, SSE는 제외
+    consumer
+      .apply(JwtMiddleware)
+      .exclude(
+        { path: 'health', method: RequestMethod.GET },
+        { path: 'metrics', method: RequestMethod.GET },
+        { path: 'auth/oauth/(.*)', method: RequestMethod.GET },
+        { path: 'auth/refresh', method: RequestMethod.POST },
+        { path: 'internal/(.*)', method: RequestMethod.ALL },
+        { path: 'sse/submissions/:id', method: RequestMethod.GET },
+      )
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
+  }
+}

@@ -1,0 +1,58 @@
+# AlgoSu — k3s Ingress (Traefik 기본 컨트롤러)
+# Gateway API + Frontend 외부 노출
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: algosu-ingress
+  namespace: algosu
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure,web
+spec:
+  rules:
+    - http:
+        paths:
+          # API 요청 → Gateway
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway
+                port:
+                  number: 3000
+          - path: /auth
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway
+                port:
+                  number: 3000
+          - path: /sse
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway
+                port:
+                  number: 3000
+          - path: /health
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway
+                port:
+                  number: 3000
+          # 모니터링 → Grafana (포트 3000, sub-path /grafana)
+          - path: /grafana
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 3000
+          # 나머지 → Frontend
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 3001

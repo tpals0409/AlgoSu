@@ -1,0 +1,467 @@
+# ============================================================
+# AlgoSu — GitHub Actions CI 파이프라인
+#
+# 규칙:
+#   - path filter로 변경된 서비스만 테스트+빌드 (비용 절감)
+#   - 테스트 통과 후에만 Docker 빌드 진행
+#   - ARM aarch64 이미지 빌드 (OCI Free Tier: VM.Standard.A1.Flex)
+#   - GHCR 푸시 태그: main-{git-sha} (latest 태그 절대 금지)
+# ============================================================
+
+name: CI — Test, Build & Push
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/algosu
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  detect-changes:
+    name: Detect Changed Services
+    runs-on: ubuntu-latest
+    outputs:
+      gateway:       ${{ steps.filter.outputs.gateway }}
+      identity:      ${{ steps.filter.outputs.identity }}
+      submission:    ${{ steps.filter.outputs.submission }}
+      problem:       ${{ steps.filter.outputs.problem }}
+      github-worker: ${{ steps.filter.outputs.github-worker }}
+      ai-analysis:   ${{ steps.filter.outputs.ai-analysis }}
+      frontend:      ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Detect path changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            gateway:
+              - 'services/gateway/**'
+            identity:
+              - 'services/identity/**'
+            submission:
+              - 'services/submission/**'
+            problem:
+              - 'services/problem/**'
+            github-worker:
+              - 'services/github-worker/**'
+            ai-analysis:
+              - 'services/ai-analysis/**'
+            frontend:
+              - 'frontend/**'
+
+  # ============================================================
+  # Test Jobs — 테스트 통과 후에만 빌드 진행
+  # ============================================================
+
+  test-gateway:
+    name: Test Gateway
+    needs: detect-changes
+    if: needs.detect-changes.outputs.gateway == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: services/gateway/package-lock.json
+      - name: Install dependencies
+        working-directory: services/gateway
+        run: npm ci
+      - name: Run unit tests
+        working-directory: services/gateway
+        run: npm test -- --coverage --ci
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-gateway
+          path: services/gateway/coverage/
+          retention-days: 7
+
+  test-identity:
+    name: Test Identity
+    needs: detect-changes
+    if: needs.detect-changes.outputs.identity == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: services/identity/package-lock.json
+      - name: Install dependencies
+        working-directory: services/identity
+        run: npm ci
+      - name: Run unit tests
+        working-directory: services/identity
+        run: npm test -- --coverage --ci
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-identity
+          path: services/identity/coverage/
+          retention-days: 7
+
+  test-submission:
+    name: Test Submission
+    needs: detect-changes
+    if: needs.detect-changes.outputs.submission == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: services/submission/package-lock.json
+      - name: Install dependencies
+        working-directory: services/submission
+        run: npm ci
+      - name: Run unit tests
+        working-directory: services/submission
+        run: npm test -- --coverage --ci
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-submission
+          path: services/submission/coverage/
+          retention-days: 7
+
+  test-problem:
+    name: Test Problem
+    needs: detect-changes
+    if: needs.detect-changes.outputs.problem == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: services/problem/package-lock.json
+      - name: Install dependencies
+        working-directory: services/problem
+        run: npm ci
+      - name: Run unit tests
+        working-directory: services/problem
+        run: npm test -- --coverage --ci
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-problem
+          path: services/problem/coverage/
+          retention-days: 7
+
+  test-github-worker:
+    name: Test GitHub Worker
+    needs: detect-changes
+    if: needs.detect-changes.outputs.github-worker == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: services/github-worker/package-lock.json
+      - name: Install dependencies
+        working-directory: services/github-worker
+        run: npm ci
+      - name: Run unit tests
+        working-directory: services/github-worker
+        run: npm test -- --coverage --ci
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-github-worker
+          path: services/github-worker/coverage/
+          retention-days: 7
+
+  test-ai-analysis:
+    name: Test AI Analysis
+    needs: detect-changes
+    if: needs.detect-changes.outputs.ai-analysis == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: services/ai-analysis/requirements*.txt
+      - name: Install dependencies
+        working-directory: services/ai-analysis
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+      - name: Run unit tests
+        working-directory: services/ai-analysis
+        run: python -m pytest tests/ -v --cov=src --cov-report=xml
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-ai-analysis
+          path: services/ai-analysis/coverage.xml
+          retention-days: 7
+
+  # ============================================================
+  # Build Jobs — 테스트 통과 후 Docker 빌드 + GHCR 푸시
+  # ============================================================
+
+  build-gateway:
+    name: Build Gateway (NestJS)
+    needs: [detect-changes, test-gateway]
+    if: needs.detect-changes.outputs.gateway == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/arm64
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./services/gateway
+          platforms: linux/arm64
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: ${{ env.IMAGE_PREFIX }}-gateway:main-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-identity:
+    name: Build Identity Service (NestJS)
+    needs: [detect-changes, test-identity]
+    if: needs.detect-changes.outputs.identity == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/arm64
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./services/identity
+          platforms: linux/arm64
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: ${{ env.IMAGE_PREFIX }}-identity:main-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-submission:
+    name: Build Submission Service (NestJS)
+    needs: [detect-changes, test-submission]
+    if: needs.detect-changes.outputs.submission == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/arm64
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./services/submission
+          platforms: linux/arm64
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: ${{ env.IMAGE_PREFIX }}-submission:main-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-problem:
+    name: Build Problem Service (NestJS)
+    needs: [detect-changes, test-problem]
+    if: needs.detect-changes.outputs.problem == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/arm64
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./services/problem
+          platforms: linux/arm64
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: ${{ env.IMAGE_PREFIX }}-problem:main-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-github-worker:
+    name: Build GitHub Worker (Node.js)
+    needs: [detect-changes, test-github-worker]
+    if: needs.detect-changes.outputs.github-worker == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/arm64
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./services/github-worker
+          platforms: linux/arm64
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: ${{ env.IMAGE_PREFIX }}-github-worker:main-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-ai-analysis:
+    name: Build AI Analysis Service (FastAPI)
+    needs: [detect-changes, test-ai-analysis]
+    if: needs.detect-changes.outputs.ai-analysis == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/arm64
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./services/ai-analysis
+          platforms: linux/arm64
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: ${{ env.IMAGE_PREFIX }}-ai-analysis:main-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-frontend:
+    name: Build Frontend (Next.js)
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/arm64
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          platforms: linux/arm64
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: ${{ env.IMAGE_PREFIX }}-frontend:main-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ============================================================
+  # Deploy Job — main 브랜치 빌드 완료 후 k3s 매니페스트 이미지 태그 업데이트
+  # ============================================================
+
+  deploy:
+    name: Deploy to k3s
+    needs:
+      - build-gateway
+      - build-identity
+      - build-submission
+      - build-problem
+      - build-github-worker
+      - build-ai-analysis
+      - build-frontend
+    if: github.ref == 'refs/heads/main' && always() && !cancelled()
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set image tags in manifests
+        run: |
+          OWNER="${{ github.repository_owner }}"
+          SHA="${{ github.sha }}"
+
+          # OWNER 플레이스홀더 치환
+          sed -i "s|ghcr.io/OWNER/|ghcr.io/${OWNER}/|g" infra/k3s/*.yaml
+
+          # PLACEHOLDER → 실제 SHA 치환
+          sed -i "s|main-PLACEHOLDER|main-${SHA}|g" infra/k3s/*.yaml
+
+          echo "=== 치환 결과 확인 ==="
+          grep -r "image: ghcr" infra/k3s/ || true
+
+      - name: Deploy to k3s via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.K3S_HOST }}
+          username: ${{ secrets.K3S_USER }}
+          key: ${{ secrets.K3S_SSH_KEY }}
+          script: |
+            cd /tmp/algosu-deploy
+            kubectl apply -f infra/k3s/namespace.yaml
+            kubectl apply -f infra/k3s/
+            kubectl -n algosu rollout status deployment --timeout=120s

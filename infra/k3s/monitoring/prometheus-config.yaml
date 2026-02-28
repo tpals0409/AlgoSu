@@ -1,0 +1,128 @@
+# ============================================================
+# AlgoSu — Prometheus 설정
+# 스크랩 주기: 30s (Free Tier 리소스 절감)
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: algosu
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 30s
+      evaluation_interval: 30s
+
+    rule_files:
+      - /etc/prometheus/rules/*.yml
+
+    scrape_configs:
+      - job_name: 'gateway'
+        static_configs:
+          - targets: ['gateway:3000']
+        metrics_path: /metrics
+
+      - job_name: 'identity-service'
+        static_configs:
+          - targets: ['identity-service:3004']
+        metrics_path: /metrics
+
+      - job_name: 'submission-service'
+        static_configs:
+          - targets: ['submission-service:3003']
+        metrics_path: /metrics
+
+      - job_name: 'problem-service'
+        static_configs:
+          - targets: ['problem-service:3002']
+        metrics_path: /metrics
+
+      - job_name: 'ai-analysis'
+        static_configs:
+          - targets: ['ai-analysis-service:8000']
+        metrics_path: /metrics
+
+      # github-worker: HTTP 서버 없음 (MQ 소비자) — Prometheus 직접 스크랩 불가
+      # 메트릭은 JSON 구조화 로그 → Loki → Grafana 패널로 수집
+
+      # rabbitmq: prometheus_rabbitmq_exporter 미설치, 관리 포트 미노출
+      # 향후 RabbitMQ management plugin + exporter 활성화 시 추가
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: algosu
+  labels:
+    app: prometheus
+    component: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+        component: monitoring
+    spec:
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.52.0
+          ports:
+            - containerPort: 9090
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+            - --storage.tsdb.retention.time=7d
+            - --web.enable-lifecycle
+          volumeMounts:
+            - name: prometheus-config
+              mountPath: /etc/prometheus
+            - name: prometheus-rules
+              mountPath: /etc/prometheus/rules
+            - name: prometheus-storage
+              mountPath: /prometheus
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+      volumes:
+        - name: prometheus-config
+          configMap:
+            name: prometheus-config
+        - name: prometheus-rules
+          configMap:
+            name: prometheus-rules
+        - name: prometheus-storage
+          persistentVolumeClaim:
+            claimName: prometheus-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: algosu
+spec:
+  selector:
+    app: prometheus
+  ports:
+    - port: 9090
+      targetPort: 9090
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-pvc
+  namespace: algosu
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi

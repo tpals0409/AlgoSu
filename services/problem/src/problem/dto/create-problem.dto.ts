@@ -1,0 +1,96 @@
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsInt,
+  IsUrl,
+  IsDateString,
+  IsArray,
+  Min,
+  MaxLength,
+} from 'class-validator';
+import { Difficulty } from '../problem.entity';
+
+/**
+ * 문제 생성 DTO
+ * 화이트리스트 검증: 등록되지 않은 필드 자동 제거
+ */
+export class CreateProblemDto {
+  @IsString()
+  @MaxLength(255)
+  title!: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsInt()
+  @Min(1)
+  weekNumber!: number;
+
+  @IsOptional()
+  @IsEnum(Difficulty)
+  difficulty?: Difficulty;
+
+  @IsOptional()
+  @IsUrl()
+  @MaxLength(500)
+  sourceUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  sourcePlatform?: string;
+
+  @IsOptional()
+  @IsDateString()
+  deadline?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  allowedLanguages?: string[];
+}
+
+export class UpdateProblemDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  weekNumber?: number;
+
+  @IsOptional()
+  @IsEnum(Difficulty)
+  difficulty?: Difficulty;
+
+  @IsOptional()
+  @IsUrl()
+  @MaxLength(500)
+  sourceUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  sourcePlatform?: string;
+
+  @IsOptional()
+  @IsDateString()
+  deadline?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  allowedLanguages?: string[];
+
+  @IsOptional()
+  @IsString()
+  status?: 'ACTIVE' | 'CLOSED' | 'DRAFT';
+}

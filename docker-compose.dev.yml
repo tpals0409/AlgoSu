@@ -1,0 +1,90 @@
+# ============================================================
+# AlgoSu — 로컬 개발용 docker-compose
+# 포함: PostgreSQL + Redis + RabbitMQ
+# 주의: 프로덕션 배포 금지. 로컬 개발 전용.
+# PgBouncer: 로컬에서는 PostgreSQL 직접 연결 (5432)
+# ============================================================
+
+services:
+  # ── PostgreSQL (단일 프로세스, 논리 DB 4개) ──────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: algosu-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: algosu_root
+      POSTGRES_PASSWORD: ${POSTGRES_ROOT_PASSWORD}
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/k3s/postgres-init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U algosu_root"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis (캐시 / Pub-Sub / Rate Limit) ─────────────────
+  redis:
+    image: redis:7.2-alpine
+    container_name: algosu-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --requirepass ${REDIS_PASSWORD}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+          cpus: "0.5"
+        reservations:
+          memory: 64m
+
+  # ── RabbitMQ (메시지 큐, prefetch=2 설정은 소비자 측) ────
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: algosu-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_DEFAULT_VHOST: algosu
+    ports:
+      - "5672:5672"
+      - "15672:15672"  # Management UI (개발용)
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "0.5"
+        reservations:
+          memory: 128m
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+
+networks:
+  default:
+    name: algosu-dev
