@@ -1,22 +1,17 @@
 from __future__ import annotations
 
 import logging
-import signal
-import sys
-import threading
-from typing import Optional
+import threading  # noqa: F401 — runtime usage: threading.Thread() in startup_event
 from fastapi import FastAPI, HTTPException, Header
 from .config import settings
 from .worker import AIAnalysisWorker
-from .circuit_breaker import circuit_breaker, CircuitState
+from .circuit_breaker import circuit_breaker
+from .logger import setup_logging
+from .metrics import PrometheusMiddleware, metrics_endpoint, update_circuit_breaker_gauge
 
 # 구조화 JSON 로깅 초기화 (monitoring-log-rules.md §1)
-from .logger import setup_logging
 setup_logging()
 logger = logging.getLogger("ai-analysis")
-
-# Prometheus 메트릭 (monitoring-log-rules.md §9)
-from .metrics import PrometheusMiddleware, metrics_endpoint, update_circuit_breaker_gauge
 
 app = FastAPI(
     title="AlgoSu AI Analysis Service",
