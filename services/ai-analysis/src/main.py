@@ -1,7 +1,5 @@
-from __future__ import annotations
-
 import logging
-import threading  # noqa: F401
+import threading
 from fastapi import FastAPI, HTTPException, Header
 from .config import settings
 from .worker import AIAnalysisWorker
