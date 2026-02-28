@@ -427,6 +427,7 @@ jobs:
   deploy:
     name: Deploy to k3s
     needs:
+      - detect-changes
       - build-gateway
       - build-identity
       - build-submission
@@ -434,7 +435,16 @@ jobs:
       - build-github-worker
       - build-ai-analysis
       - build-frontend
-    if: github.ref == 'refs/heads/main' && always() && !cancelled()
+    # main 브랜치 + 하나 이상의 서비스 변경 시에만 배포
+    if: |
+      github.ref == 'refs/heads/main' && !cancelled() &&
+      (needs.build-gateway.result == 'success' ||
+       needs.build-identity.result == 'success' ||
+       needs.build-submission.result == 'success' ||
+       needs.build-problem.result == 'success' ||
+       needs.build-github-worker.result == 'success' ||
+       needs.build-ai-analysis.result == 'success' ||
+       needs.build-frontend.result == 'success')
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -454,6 +464,16 @@ jobs:
           echo "=== 치환 결과 확인 ==="
           grep -r "image: ghcr" infra/k3s/ || true
 
+      - name: Sync manifests to k3s server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.K3S_HOST }}
+          username: ${{ secrets.K3S_USER }}
+          key: ${{ secrets.K3S_SSH_KEY }}
+          source: "infra/"
+          target: /tmp/algosu-deploy
+          overwrite: true
+
       - name: Deploy to k3s via SSH
         uses: appleboy/ssh-action@v1
         with:
@@ -462,6 +482,5 @@ jobs:
           key: ${{ secrets.K3S_SSH_KEY }}
           script: |
             cd /tmp/algosu-deploy
-            kubectl apply -f infra/k3s/namespace.yaml
-            kubectl apply -f infra/k3s/
+            kubectl apply -k infra/overlays/prod/
             kubectl -n algosu rollout status deployment --timeout=120s
