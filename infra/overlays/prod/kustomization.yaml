@@ -24,7 +24,7 @@ patches:
 
   - target:
       kind: Deployment
-      name: identity
+      name: identity-service
     patch: |
       - op: replace
         path: /spec/replicas
@@ -32,7 +32,7 @@ patches:
 
   - target:
       kind: Deployment
-      name: submission
+      name: submission-service
     patch: |
       - op: replace
         path: /spec/replicas
@@ -59,7 +59,7 @@ patches:
   # Prod: Submission 리소스 강화
   - target:
       kind: Deployment
-      name: submission
+      name: submission-service
     patch: |
       - op: replace
         path: /spec/template/spec/containers/0/resources/requests/memory
@@ -71,7 +71,7 @@ patches:
   # Prod: AI Analysis 리소스 강화
   - target:
       kind: Deployment
-      name: ai-analysis
+      name: ai-analysis-service
     patch: |
       - op: replace
         path: /spec/template/spec/containers/0/resources/requests/memory
