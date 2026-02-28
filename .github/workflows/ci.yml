@@ -683,11 +683,11 @@ jobs:
           TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
   # ============================================================
-  # Deploy Job — Trivy 통과 후 k3s 순차 배포
+  # Deploy — aether-gitops 이미지 태그 업데이트 (ArgoCD 자동 sync)
   # ============================================================
 
   deploy:
-    name: Deploy to k3s
+    name: Update GitOps manifests
     needs:
       - secret-scan
       - detect-changes
@@ -699,7 +699,7 @@ jobs:
       - build-github-worker
       - build-ai-analysis
       - build-frontend
-    # main 브랜치 + 하나 이상의 서비스 변경 시에만 배포
+    # main 브랜치 + 하나 이상의 서비스 빌드 성공 시에만 실행
     if: |
       github.ref == 'refs/heads/main' && !cancelled() &&
       needs.secret-scan.result == 'success' &&
@@ -716,38 +716,53 @@ jobs:
       contents: read
     environment: production
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set image tags in manifests
+      - name: Clone aether-gitops
         run: |
-          OWNER="${{ github.repository_owner }}"
+          git clone https://x-access-token:${{ secrets.GITOPS_TOKEN }}@github.com/tpals0409/aether-gitops.git
+          cd aether-gitops
+          git config user.name "algosu-ci"
+          git config user.email "ci@algosu.dev"
+
+      - name: Update image tags for changed services
+        run: |
+          cd aether-gitops/algoso/overlays/prod
           SHA="${{ github.sha }}"
+          UPDATED=""
 
-          # OWNER 플레이스홀더 치환
-          sed -i "s|ghcr.io/OWNER/|ghcr.io/${OWNER}/|g" infra/k3s/*.yaml
+          # 빌드 성공한 서비스만 목록에 추가
+          [ "${{ needs.build-gateway.result }}" = "success" ] && UPDATED="${UPDATED} gateway"
+          [ "${{ needs.build-identity.result }}" = "success" ] && UPDATED="${UPDATED} identity"
+          [ "${{ needs.build-submission.result }}" = "success" ] && UPDATED="${UPDATED} submission"
+          [ "${{ needs.build-problem.result }}" = "success" ] && UPDATED="${UPDATED} problem"
+          [ "${{ needs.build-github-worker.result }}" = "success" ] && UPDATED="${UPDATED} github-worker"
+          [ "${{ needs.build-ai-analysis.result }}" = "success" ] && UPDATED="${UPDATED} ai-analysis"
+          [ "${{ needs.build-frontend.result }}" = "success" ] && UPDATED="${UPDATED} frontend"
 
-          # PLACEHOLDER → 실제 SHA 치환
-          sed -i "s|main-PLACEHOLDER|main-${SHA}|g" infra/k3s/*.yaml
+          # 변경된 서비스만 이미지 태그 업데이트 (python3 + PyYAML)
+          for SVC in $UPDATED; do
+            python3 -c "
+          import yaml
+          with open('kustomization.yaml', 'r') as f:
+              data = yaml.safe_load(f)
+          for img in data.get('images', []):
+              if 'algosu-${SVC}' in img.get('name', ''):
+                  img['newTag'] = 'main-${SHA}'
+          with open('kustomization.yaml', 'w') as f:
+              yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+          "
+            echo "  ✓ algosu-${SVC} → main-${SHA}"
+          done
 
-          echo "=== 치환 결과 확인 ==="
-          grep -r "image: ghcr" infra/k3s/ || true
+          echo "Updated services:${UPDATED}"
+          cat kustomization.yaml
 
-      - name: Sync manifests and scripts to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.K3S_HOST }}
-          username: ${{ secrets.K3S_USER }}
-          key: ${{ secrets.K3S_SSH_KEY }}
-          source: "infra/,scripts/"
-          target: /tmp/algosu-deploy
-          overwrite: true
-
-      - name: Execute sequential deploy (Layer 0-5)
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.K3S_HOST }}
-          username: ${{ secrets.K3S_USER }}
-          key: ${{ secrets.K3S_SSH_KEY }}
-          script: |
-            chmod +x /tmp/algosu-deploy/scripts/deploy.sh
-            DEPLOY_SHA="${{ github.sha }}" /tmp/algosu-deploy/scripts/deploy.sh
+      - name: Commit and push to aether-gitops
+        run: |
+          cd aether-gitops
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git add -A
+          git commit -m "deploy(algoso): update image tags → main-${{ github.sha }}"
+          git push

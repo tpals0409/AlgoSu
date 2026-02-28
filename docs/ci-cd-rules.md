@@ -1,8 +1,10 @@
 # AlgoSu CI/CD 규칙
 
-> Oracle 종합 문서 | 2026-02-28
+> Oracle 종합 문서 | 2026-02-28 (v1.1: ArgoCD GitOps 전환 반영)
 > 참여 Agent: Architect, Gatekeeper, Conductor, Librarian
 > 현행 CI: `.github/workflows/ci.yml`
+> CD: ArgoCD (aether-gitops 레포 감시 → 자동 배포)
+> GitOps 레포: `tpals0409/aether-gitops` (AlgoSu 매니페스트: `algoso/`)
 > 관련 문서: `docs/monitoring-log-rules.md`, `docs/migration-rules.md`
 
 ---
@@ -117,10 +119,10 @@ commit-lint:
 
 ## 4. 파이프라인 구조
 
-### 5단계 파이프라인
+### 파이프라인 (CI: GitHub Actions + CD: ArgoCD GitOps)
 
 ```
-detect-changes → lint/quality → test → build+push → deploy
+detect-changes → lint/quality → test → build+push → aether-gitops 태그 업데이트 → ArgoCD 자동 sync
 ```
 
 ### Quality Gate job (신규 추가)
@@ -238,11 +240,14 @@ secret-scan:
 
 ```
 Environment: production
-  - K3S_HOST, K3S_USER, K3S_SSH_KEY
+  - GITOPS_TOKEN (aether-gitops 레포 push용 GitHub PAT, scope: repo)
   - DISCORD_WEBHOOK_DEPLOY, DISCORD_WEBHOOK_EMERGENCY
 
 Environment: dev
   - (동일 키, dev 서버 값)
+
+[삭제됨 — SSH 직접 배포 폐지]
+  - K3S_HOST, K3S_USER, K3S_SSH_KEY → ArgoCD GitOps 전환으로 불필요
 ```
 
 ### 5-6. GHCR 접근 제어
@@ -286,7 +291,19 @@ env:
 
 ## 7. 배포 전략
 
-### 7-1. 배포 순서 (서비스 의존성 기반)
+### 7-1. 배포 방식 (ArgoCD GitOps)
+
+```
+배포는 ArgoCD가 자동으로 수행한다.
+CI의 마지막 단계에서 aether-gitops 레포의 이미지 태그를 업데이트하면,
+ArgoCD가 변경을 감지(polling 3분)하여 k3s 클러스터에 자동 sync한다.
+
+  AlgoSu CI ──(git push)──► aether-gitops/algoso/ ──(ArgoCD 감시)──► k3s 클러스터
+
+SSH 직접 배포, SCP 전송, deploy.sh 수동 실행은 폐지되었다.
+```
+
+### 7-2. 배포 순서 (서비스 의존성 기반, ArgoCD Sync Wave)
 
 ```
 Layer 0: PostgreSQL → Redis → RabbitMQ     (인프라)
@@ -295,47 +312,6 @@ Layer 2: Problem + Submission               (비즈니스)
 Layer 3: GitHub Worker + AI Analysis        (비동기)
 Layer 4: Gateway                            (라우팅)
 Layer 5: Frontend + Ingress                 (프론트)
-```
-
-### 7-2. 순차 배포 스크립트
-
-```bash
-#!/bin/bash
-# scripts/deploy.sh — k3s 서버에서 실행
-set -euo pipefail
-NS="algosu"
-
-echo "[Layer 0] 인프라"
-kubectl apply -f infra/k3s/namespace.yaml
-kubectl apply -f infra/k3s/postgres.yaml -f infra/k3s/redis.yaml -f infra/k3s/rabbitmq.yaml
-kubectl -n $NS rollout status deployment/postgres --timeout=120s
-kubectl -n $NS rollout status deployment/redis --timeout=60s
-kubectl -n $NS rollout status deployment/rabbitmq --timeout=120s
-
-echo "[Layer 1] Identity"
-kubectl apply -f infra/k3s/identity-service.yaml
-kubectl -n $NS rollout status deployment/identity-service --timeout=90s
-
-echo "[Layer 2] Problem + Submission"
-kubectl apply -f infra/k3s/problem-service.yaml -f infra/k3s/submission-service.yaml
-kubectl -n $NS rollout status deployment/problem-service --timeout=90s
-kubectl -n $NS rollout status deployment/submission-service --timeout=90s
-
-echo "[Layer 3] GitHub Worker + AI Analysis"
-kubectl apply -f infra/k3s/github-worker.yaml -f infra/k3s/ai-analysis-service.yaml
-kubectl -n $NS rollout status deployment/github-worker --timeout=60s
-kubectl -n $NS rollout status deployment/ai-analysis-service --timeout=60s
-
-echo "[Layer 4] Gateway"
-kubectl apply -f infra/k3s/gateway.yaml
-kubectl -n $NS rollout status deployment/gateway --timeout=60s
-
-echo "[Layer 5] Frontend"
-kubectl apply -f infra/k3s/frontend.yaml -f infra/k3s/ingress.yaml
-kubectl -n $NS rollout status deployment/frontend --timeout=60s
-
-echo "[완료] 모니터링"
-kubectl apply -f infra/k3s/monitoring/
 ```
 
 ### 7-3. Rolling Update 전략 (OCI 단일 노드)
@@ -354,44 +330,43 @@ kubectl apply -f infra/k3s/monitoring/
 
 | 환경 | 승인 | 설정 |
 |------|------|------|
-| dev | 자동 | GitHub Environment 보호 규칙 없음 |
-| prod | 수동 1명 | GitHub Environment Protection Rules |
+| dev | 자동 | ArgoCD 자동 sync |
+| prod | 자동 (CI 통과 후) | CI 7단계 완료 → aether-gitops push → ArgoCD 자동 sync |
+
+### 7-5. 실서버 배포 체크리스트
+
+- [ ] aether-gitops 레포 접근 권한 확인 (GITOPS_TOKEN 설정)
+- [ ] ArgoCD Application 등록 확인 (배포 서버 측 작업)
+- [ ] aether-gitops/algoso/base/ 매니페스트 최신 상태 확인
+- [ ] Sealed Secrets가 aether-gitops 레포에 등록되어 있는지 확인
+- [ ] CI 파이프라인 전체 녹색 확인 (Quality → Test → Build → Trivy)
 
 ---
 
 ## 8. 롤백 전략
 
-### 3계층 롤백
+### 3계층 롤백 (ArgoCD 기반)
 
-**계층 1 — 자동 롤백 (배포 실패 시)**
+**계층 1 — ArgoCD 자동 롤백**
 
-```bash
-# deploy.sh 내부
-if ! kubectl -n $NS rollout status deployment/$SVC --timeout=90s; then
-  echo "ROLLBACK: $SVC"
-  kubectl -n $NS rollout undo deployment/$SVC
-  exit 1
-fi
+```
+ArgoCD Health Check 실패 시 → 이전 Sync 리비전으로 자동 복구
+Liveness/Readiness Probe 실패 → 자동 롤백 트리거
 ```
 
-**계층 2 — 수동 롤백 (workflow_dispatch)**
+**계층 2 — Git Revert 롤백**
 
-```yaml
-# .github/workflows/rollback.yml
-on:
-  workflow_dispatch:
-    inputs:
-      service:
-        description: '롤백 대상 (all/gateway/identity/...)'
-        required: true
-        default: 'all'
+```
+aether-gitops에서 이전 커밋으로 git revert
+→ ArgoCD가 감지 → 이전 이미지 태그로 자동 재배포
 ```
 
-**계층 3 — 이미지 태그 기반 재배포**
+**계층 3 — 수동 이미지 지정**
 
-```bash
-kubectl -n algosu set image deployment/gateway \
-  gateway=ghcr.io/<owner>/algosu-gateway:prod-<previous-sha>
+```
+aether-gitops/algoso/overlays/prod/kustomization.yaml에서
+특정 서비스의 newTag를 이전 SHA로 수동 변경
+→ 커밋/푸시 → ArgoCD 자동 sync
 ```
 
 ### DB 마이그레이션 롤백 원칙
@@ -538,6 +513,7 @@ notify:
 | 0002 | `main-{sha}` 이미지 태그 | latest 재현 불가, 롤백 명확성 |
 | 0003 | path filter 선택적 빌드 | 모노레포 비용 절감 |
 | 0004 | GHA cache 전략 | Docker 빌드 시간 단축 |
+| 0005 | ArgoCD GitOps CD 전환 | SSH 직접 배포 폐지, 앱/매니페스트 분리, 자동 롤백 |
 
 ### ADR 필요 기준
 
@@ -563,8 +539,8 @@ notify:
 | 5 | Quality Gate job 추가 (lint/typecheck) | Librarian | 낮음 |
 | 6 | commitlint job 추가 | Librarian | 낮음 |
 | 7 | PR 템플릿 추가 | Librarian | 낮음 |
-| 8 | deploy → 순차 배포 스크립트 전환 | Conductor | 중간 |
-| 9 | 자동 롤백 메커니즘 추가 | Conductor | 중간 |
+| 8 | ~~deploy → 순차 배포 스크립트 전환~~ (ArgoCD 전환으로 대체) | Conductor | ~~중간~~ |
+| 9 | ~~자동 롤백 메커니즘 추가~~ (ArgoCD 자동 롤백으로 대체) | Conductor | ~~중간~~ |
 | 10 | Trivy 이미지 스캔 추가 | Gatekeeper | 낮음 |
 
 ### P2 — 다음 스프린트
@@ -575,7 +551,7 @@ notify:
 | 12 | Grafana Annotation 연동 | Conductor | 낮음 |
 | 13 | Dependabot 설정 | Librarian | 낮음 |
 | 14 | CODEOWNERS 파일 | Librarian | 낮음 |
-| 15 | rollback.yml workflow_dispatch | Architect | 낮음 |
+| 15 | ~~rollback.yml workflow_dispatch~~ (ArgoCD + git revert 롤백으로 대체) | Architect | ~~낮음~~ |
 | 16 | dev 브랜치 트리거 + 환경별 배포 | Architect | 중간 |
 
 ### P3 — 향후
