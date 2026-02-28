@@ -1,10 +1,10 @@
 # AlgoSu AI Analysis Service — FastAPI (Oracle ARM Free Tier / aarch64)
-FROM python:3.12-slim AS builder
+FROM python:3.14-slim AS builder
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir --target=/app/deps -r requirements.txt
 
-FROM python:3.12-slim AS runner
+FROM python:3.14-slim AS runner
 RUN addgroup --gid 1001 appgroup && adduser --uid 1001 --gid 1001 --disabled-password appuser
 WORKDIR /app
 COPY --from=builder /app/deps /usr/local/lib/python3.12/site-packages/
