@@ -37,6 +37,14 @@ resources:
   - monitoring/loki-config.yaml
   - monitoring/promtail.yaml
 
+configMapGenerator:
+  - name: postgres-init-scripts
+    files:
+      - postgres-init/01-create-databases.sql
+      - postgres-init/02-grant-permissions.sql
+    options:
+      disableNameSuffixHash: true
+
 labels:
   - pairs:
       app.kubernetes.io/part-of: algosu

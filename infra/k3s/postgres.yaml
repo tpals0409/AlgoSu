@@ -1,5 +1,5 @@
 # ============================================================
-# AlgoSu — PostgreSQL + PgBouncer k3s 매니페스트
+# AlgoSu — PostgreSQL k3s 매니페스트
 # 모든 Pod에 Resource Limit 필수 (Oracle 보안 지시)
 # ============================================================
 apiVersion: apps/v1
@@ -95,71 +95,3 @@ spec:
   resources:
     requests:
       storage: 10Gi
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: pgbouncer
-  namespace: algosu
-  labels:
-    app: pgbouncer
-    component: database
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: pgbouncer
-  template:
-    metadata:
-      labels:
-        app: pgbouncer
-        component: database
-    spec:
-      containers:
-        - name: pgbouncer
-          image: bitnami/pgbouncer:1.22.1
-          ports:
-            - containerPort: 6432
-          env:
-            - name: POSTGRESQL_HOST
-              value: postgres
-            - name: POSTGRESQL_PORT
-              value: "5432"
-            - name: PGBOUNCER_DATABASE
-              value: "*"
-            - name: POSTGRESQL_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: root-user
-            - name: POSTGRESQL_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: root-password
-            - name: PGBOUNCER_POOL_MODE
-              value: transaction
-            - name: PGBOUNCER_MAX_CLIENT_CONN
-              value: "100"
-            - name: PGBOUNCER_DEFAULT_POOL_SIZE
-              value: "20"
-          resources:
-            requests:
-              memory: "64Mi"
-              cpu: "50m"
-            limits:
-              memory: "128Mi"
-              cpu: "250m"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: pgbouncer
-  namespace: algosu
-spec:
-  selector:
-    app: pgbouncer
-  ports:
-    - port: 6432
-      targetPort: 6432
-  type: ClusterIP
