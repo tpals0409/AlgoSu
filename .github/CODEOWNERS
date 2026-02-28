@@ -1,0 +1,26 @@
+# AlgoSu CODEOWNERS
+# PR 시 자동 리뷰어 지정
+
+# 전체 기본
+* @tpals0409
+
+# 인프라 / CI
+.github/ @tpals0409
+infra/ @tpals0409
+
+# 서비스별
+services/gateway/ @tpals0409
+services/identity/ @tpals0409
+services/submission/ @tpals0409
+services/problem/ @tpals0409
+services/github-worker/ @tpals0409
+services/ai-analysis/ @tpals0409
+frontend/ @tpals0409
+
+# 보안 관련 (JWT, 인증, Secret)
+**/auth/** @tpals0409
+**/guard/** @tpals0409
+**/sealed-secrets/** @tpals0409
+
+# DB 스키마 변경
+**/migration*/** @tpals0409
