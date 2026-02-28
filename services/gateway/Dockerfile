@@ -1,7 +1,7 @@
 # ──────────────────────────────────────────────
 # Stage 1: Builder
 # ──────────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:25-alpine AS builder
 
 WORKDIR /app
 
@@ -14,7 +14,7 @@ RUN npm run build
 # ──────────────────────────────────────────────
 # Stage 2: Production
 # ──────────────────────────────────────────────
-FROM node:20-alpine AS production
+FROM node:25-alpine AS production
 
 # 보안: non-root 사용자 생성
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
