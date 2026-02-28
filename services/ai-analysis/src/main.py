@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-import threading  # noqa: F401 — runtime usage: threading.Thread() in startup_event
+import threading  # noqa: F401
 from fastapi import FastAPI, HTTPException, Header
 from .config import settings
 from .worker import AIAnalysisWorker
