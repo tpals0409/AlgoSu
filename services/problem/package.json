@@ -30,10 +30,11 @@
     "typeorm": "^0.3.17"
   },
   "overrides": {
-    "cross-spawn": "^7.0.5",
-    "glob": "^10.5.0",
-    "minimatch": "^9.0.7",
-    "serialize-javascript": "^7.0.3"
+    "typeorm": {
+      "glob": "^10.5.0",
+      "minimatch": "^9.0.7",
+      "cross-spawn": "^7.0.5"
+    }
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
