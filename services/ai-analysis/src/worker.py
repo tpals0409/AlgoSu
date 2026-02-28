@@ -1,6 +1,5 @@
 import json
 import logging
-import threading
 import pika
 import redis
 import httpx
