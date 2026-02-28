@@ -1,4 +1,4 @@
-# AlgoSu AI Analysis Service — FastAPI (ARM aarch64 호환)
+# AlgoSu AI Analysis Service — FastAPI (Oracle ARM Free Tier / aarch64)
 FROM python:3.12-slim AS builder
 WORKDIR /app
 COPY requirements.txt .
