@@ -116,12 +116,139 @@ jobs:
               - 'frontend/**'
 
   # ============================================================
-  # Test Jobs — 테스트 통과 후에만 빌드 진행
+  # Commit Lint — PR 시 Conventional Commits 강제
+  # ============================================================
+
+  commit-lint:
+    name: Lint Commit Messages
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: wagoid/commitlint-github-action@v6
+        with:
+          configFile: commitlint.config.js
+
+  # ============================================================
+  # Quality Gate — lint + typecheck (변경된 서비스만)
+  # ============================================================
+
+  quality-nestjs:
+    name: Quality — ${{ matrix.service }}
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: gateway
+            changed: ${{ needs.detect-changes.outputs.gateway }}
+            has_eslint: 'true'
+            lint_glob: '{src,test}/**/*.ts'
+          - service: identity
+            changed: ${{ needs.detect-changes.outputs.identity }}
+            has_eslint: 'false'
+            lint_glob: ''
+          - service: submission
+            changed: ${{ needs.detect-changes.outputs.submission }}
+            has_eslint: 'true'
+            lint_glob: '{src,test}/**/*.ts'
+          - service: problem
+            changed: ${{ needs.detect-changes.outputs.problem }}
+            has_eslint: 'true'
+            lint_glob: '{src,test}/**/*.ts'
+          - service: github-worker
+            changed: ${{ needs.detect-changes.outputs.github-worker }}
+            has_eslint: 'true'
+            lint_glob: 'src/**/*.ts'
+    steps:
+      - name: Skip if not changed
+        id: check
+        run: |
+          if [ "${{ matrix.changed }}" != "true" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+      - uses: actions/checkout@v4
+        if: steps.check.outputs.skip == 'false'
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.skip == 'false'
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: services/${{ matrix.service }}/package-lock.json
+      - name: Install dependencies
+        if: steps.check.outputs.skip == 'false'
+        working-directory: services/${{ matrix.service }}
+        run: npm ci
+      - name: ESLint
+        if: steps.check.outputs.skip == 'false' && matrix.has_eslint == 'true'
+        working-directory: services/${{ matrix.service }}
+        run: npx eslint "${{ matrix.lint_glob }}"
+      - name: TypeScript typecheck
+        if: steps.check.outputs.skip == 'false'
+        working-directory: services/${{ matrix.service }}
+        run: npx tsc --noEmit
+
+  quality-python:
+    name: Quality — ai-analysis
+    needs: detect-changes
+    if: needs.detect-changes.outputs.ai-analysis == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install ruff
+        run: pip install ruff
+      - name: ruff lint
+        working-directory: services/ai-analysis
+        run: ruff check src/
+      - name: ruff format check
+        working-directory: services/ai-analysis
+        run: ruff format --check src/
+
+  quality-frontend:
+    name: Quality — frontend
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: next lint
+        working-directory: frontend
+        run: npx next lint
+      - name: TypeScript typecheck
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+  # ============================================================
+  # Test Jobs — Quality Gate 통과 후에만 테스트 진행
   # ============================================================
 
   test-gateway:
     name: Test Gateway
-    needs: detect-changes
+    needs: [detect-changes, quality-nestjs]
     if: needs.detect-changes.outputs.gateway == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -149,7 +276,7 @@ jobs:
 
   test-identity:
     name: Test Identity
-    needs: detect-changes
+    needs: [detect-changes, quality-nestjs]
     if: needs.detect-changes.outputs.identity == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -177,7 +304,7 @@ jobs:
 
   test-submission:
     name: Test Submission
-    needs: detect-changes
+    needs: [detect-changes, quality-nestjs]
     if: needs.detect-changes.outputs.submission == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -205,7 +332,7 @@ jobs:
 
   test-problem:
     name: Test Problem
-    needs: detect-changes
+    needs: [detect-changes, quality-nestjs]
     if: needs.detect-changes.outputs.problem == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -233,7 +360,7 @@ jobs:
 
   test-github-worker:
     name: Test GitHub Worker
-    needs: detect-changes
+    needs: [detect-changes, quality-nestjs]
     if: needs.detect-changes.outputs.github-worker == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -261,7 +388,7 @@ jobs:
 
   test-ai-analysis:
     name: Test AI Analysis
-    needs: detect-changes
+    needs: [detect-changes, quality-python]
     if: needs.detect-changes.outputs.ai-analysis == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -490,7 +617,72 @@ jobs:
           cache-to: type=gha,mode=max
 
   # ============================================================
-  # Deploy Job — main 브랜치 빌드 완료 후 k3s 매니페스트 이미지 태그 업데이트
+  # Trivy — 이미지 취약점 스캔 (main push 후, deploy 전)
+  # ============================================================
+
+  trivy-scan:
+    name: Trivy Scan — ${{ matrix.service }}
+    needs:
+      - detect-changes
+      - build-gateway
+      - build-identity
+      - build-submission
+      - build-problem
+      - build-github-worker
+      - build-ai-analysis
+      - build-frontend
+    if: github.ref == 'refs/heads/main' && !cancelled()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: gateway
+            built: ${{ needs.build-gateway.result }}
+          - service: identity
+            built: ${{ needs.build-identity.result }}
+          - service: submission
+            built: ${{ needs.build-submission.result }}
+          - service: problem
+            built: ${{ needs.build-problem.result }}
+          - service: github-worker
+            built: ${{ needs.build-github-worker.result }}
+          - service: ai-analysis
+            built: ${{ needs.build-ai-analysis.result }}
+          - service: frontend
+            built: ${{ needs.build-frontend.result }}
+    steps:
+      - name: Skip if not built
+        id: check
+        run: |
+          if [ "${{ matrix.built }}" != "success" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Install Trivy
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+            | sh -s -- -b /usr/local/bin v0.59.1
+      - name: Trivy scan
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          trivy image \
+            --severity CRITICAL,HIGH \
+            --exit-code 1 \
+            --ignore-unfixed \
+            --format table \
+            "${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:main-${{ github.sha }}"
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
+  # ============================================================
+  # Deploy Job — Trivy 통과 후 k3s 순차 배포
   # ============================================================
 
   deploy:
@@ -498,6 +690,7 @@ jobs:
     needs:
       - secret-scan
       - detect-changes
+      - trivy-scan
       - build-gateway
       - build-identity
       - build-submission
@@ -509,6 +702,7 @@ jobs:
     if: |
       github.ref == 'refs/heads/main' && !cancelled() &&
       needs.secret-scan.result == 'success' &&
+      needs.trivy-scan.result != 'failure' &&
       (needs.build-gateway.result == 'success' ||
        needs.build-identity.result == 'success' ||
        needs.build-submission.result == 'success' ||
@@ -537,23 +731,22 @@ jobs:
           echo "=== 치환 결과 확인 ==="
           grep -r "image: ghcr" infra/k3s/ || true
 
-      - name: Sync manifests to k3s server
+      - name: Sync manifests and scripts to server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.K3S_HOST }}
           username: ${{ secrets.K3S_USER }}
           key: ${{ secrets.K3S_SSH_KEY }}
-          source: "infra/"
+          source: "infra/,scripts/"
           target: /tmp/algosu-deploy
           overwrite: true
 
-      - name: Deploy to k3s via SSH
+      - name: Execute sequential deploy (Layer 0-5)
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.K3S_HOST }}
           username: ${{ secrets.K3S_USER }}
           key: ${{ secrets.K3S_SSH_KEY }}
           script: |
-            cd /tmp/algosu-deploy
-            kubectl apply -k infra/overlays/prod/
-            kubectl -n algosu rollout status deployment --timeout=120s
+            chmod +x /tmp/algosu-deploy/scripts/deploy.sh
+            DEPLOY_SHA="${{ github.sha }}" /tmp/algosu-deploy/scripts/deploy.sh
