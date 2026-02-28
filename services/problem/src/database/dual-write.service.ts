@@ -54,7 +54,7 @@ export class DualWriteService implements OnModuleInit {
     const saved = await this.oldRepo.save(created);
 
     if (this.isActive) {
-      await this.writeToNewDb('save', saved);
+      this.writeToNewDb('save', saved);
     }
 
     return saved;
@@ -70,20 +70,21 @@ export class DualWriteService implements OnModuleInit {
     const saved = await this.oldRepo.save(entity);
 
     if (this.isActive) {
-      await this.writeToNewDb('update', saved);
+      this.writeToNewDb('update', saved);
     }
 
     return saved;
   }
 
-  /** 신 DB에 비동기 쓰기 (실패해도 구 DB 영향 없음) */
-  private async writeToNewDb(operation: string, entity: Problem): Promise<void> {
-    try {
-      await this.newRepo.save(entity);
-      this.logger.debug(`Dual Write ${operation} 성공: id=${entity.id}`);
-    } catch (error) {
-      const safeError = error instanceof Error ? error.message.slice(0, 100) : 'unknown';
-      this.logger.error(`Dual Write ${operation} 실패: id=${entity.id}, error=${safeError}`);
-    }
+  /** 신 DB에 fire-and-forget 쓰기 (실패해도 구 DB 영향 없음) */
+  private writeToNewDb(operation: string, entity: Problem): void {
+    this.newRepo.save(entity).then(
+      () => this.logger.debug(`Dual Write ${operation} 성공: id=${entity.id}`),
+      (error) => {
+        const rawMsg = error instanceof Error ? error.message : 'unknown';
+        const safeError = rawMsg.replace(/(host|password|port|user)=\S+/gi, '$1=***').slice(0, 100);
+        this.logger.error(`Dual Write ${operation} 실패: id=${entity.id}, error=${safeError}`);
+      },
+    );
   }
 }

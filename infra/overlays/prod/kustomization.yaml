@@ -92,6 +92,33 @@ patches:
         path: /spec/resources/requests/storage
         value: "20Gi"
 
+  # Prod: postgres-problem PVC 확장
+  - target:
+      kind: PersistentVolumeClaim
+      name: postgres-problem-pvc
+    patch: |
+      - op: replace
+        path: /spec/resources/requests/storage
+        value: "10Gi"
+
+  # Prod: postgres-problem 리소스 강화
+  - target:
+      kind: Deployment
+      name: postgres-problem
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "256Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: "100m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "1Gi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "500m"
+
   # Prod: Prometheus 보존 30일 + PVC 확장
   - target:
       kind: Deployment

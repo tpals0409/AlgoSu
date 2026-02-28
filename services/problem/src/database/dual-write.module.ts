@@ -10,8 +10,8 @@ import { getDualWriteMode, DualWriteMode, NEW_DB_CONNECTION } from './dual-write
 /**
  * Dual Write Module — Phase 3 DB 물리 분리
  *
- * DUAL_WRITE_MODE=off 일 때도 신 DB 연결을 등록하되,
- * 실제 dual write 로직은 DualWriteService에서 모드 체크 후 실행.
+ * DUAL_WRITE_MODE=off: 구 DB fallback 연결 (실제 쓰기 안 함)
+ * DUAL_WRITE_MODE=expand/switch-read: 신 DB 연결 + 양쪽 쓰기
  */
 @Module({
   imports: [
@@ -25,23 +25,28 @@ import { getDualWriteMode, DualWriteMode, NEW_DB_CONNECTION } from './dual-write
         const mode = getDualWriteMode();
         const isActive = mode !== DualWriteMode.OFF;
 
+        if (!isActive) {
+          // OFF 모드: 구 DB와 동일 연결로 fallback (불필요한 신 DB 연결 방지)
+          return {
+            type: 'postgres' as const,
+            host: configService.getOrThrow<string>('DATABASE_HOST'),
+            port: configService.get<number>('DATABASE_PORT', 5432),
+            database: configService.getOrThrow<string>('DATABASE_NAME'),
+            username: configService.getOrThrow<string>('DATABASE_USER'),
+            password: configService.getOrThrow<string>('DATABASE_PASSWORD'),
+            entities: [Problem],
+            synchronize: false,
+            logging: false,
+          };
+        }
+
         return {
           type: 'postgres' as const,
-          host: isActive
-            ? configService.getOrThrow<string>('NEW_DATABASE_HOST')
-            : configService.get<string>('DATABASE_HOST', 'localhost'),
-          port: isActive
-            ? configService.get<number>('NEW_DATABASE_PORT', 5432)
-            : configService.get<number>('DATABASE_PORT', 5432),
-          database: isActive
-            ? configService.get<string>('NEW_DATABASE_NAME', 'problem_db')
-            : configService.get<string>('DATABASE_NAME', 'problem_db'),
-          username: isActive
-            ? configService.get<string>('NEW_DATABASE_USER', 'problem_user')
-            : configService.get<string>('DATABASE_USER', 'problem_user'),
-          password: isActive
-            ? configService.getOrThrow<string>('NEW_DATABASE_PASSWORD')
-            : configService.get<string>('DATABASE_PASSWORD', ''),
+          host: configService.getOrThrow<string>('NEW_DATABASE_HOST'),
+          port: configService.get<number>('NEW_DATABASE_PORT', 5432),
+          database: configService.get<string>('NEW_DATABASE_NAME', 'problem_db'),
+          username: configService.get<string>('NEW_DATABASE_USER', 'problem_user'),
+          password: configService.getOrThrow<string>('NEW_DATABASE_PASSWORD'),
           entities: [Problem],
           synchronize: false,
           logging: ['error', 'warn'],
