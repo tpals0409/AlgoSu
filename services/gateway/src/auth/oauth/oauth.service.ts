@@ -46,6 +46,10 @@ export class OAuthService {
   ) {
     const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
     this.redis = new Redis(redisUrl);
+    this.redis.on('error', (err: Error) => {
+      // M11: Redis 연결 에러 핸들링 — 프로세스 크래시 방지, fail-closed 보장
+      console.error(`[OAuthService] Redis 연결 오류: ${err.message}`);
+    });
     this.jwtSecret = this.configService.getOrThrow<string>('JWT_SECRET');
     this.jwtExpiresIn = this.configService.get<string>('JWT_EXPIRES_IN', '1h');
     this.callbackBaseUrl = this.configService.getOrThrow<string>('OAUTH_CALLBACK_URL');
@@ -150,7 +154,7 @@ export class OAuthService {
     }
 
     const user = await this.upsertUser(profile, oauthProvider);
-    const accessToken = this.issueJwt(user.id);
+    const accessToken = this.issueJwt(user);
     const refreshToken = this.issueRefreshToken(user.id);
 
     await this.storeRefreshToken(user.id, refreshToken);
@@ -264,14 +268,22 @@ export class OAuthService {
 
   // --- GitHub 연동 ---
 
-  getGitHubAuthUrl(userId: string): { url: string } {
+  async getGitHubAuthUrl(userId: string): Promise<{ url: string }> {
     const clientId = this.configService.getOrThrow<string>('GITHUB_CLIENT_ID');
     const redirectUri = `${this.callbackBaseUrl}/auth/oauth/github/callback`;
+    // H5: random state를 Redis에 저장 + userId 매핑 (CSRF 방지)
+    const state = crypto.randomUUID();
+    await this.redis.set(
+      `oauth:github:link:${state}`,
+      userId,
+      'EX',
+      OAuthService.STATE_TTL_SECONDS,
+    );
     const params = new URLSearchParams({
       client_id: clientId,
       redirect_uri: redirectUri,
       scope: 'read:user',
-      state: userId, // GitHub 연동은 인증된 사용자의 userId를 state로 사용
+      state,
     });
     return { url: `https://github.com/login/oauth/authorize?${params.toString()}` };
   }
@@ -365,11 +377,20 @@ export class OAuthService {
 
   // --- JWT 발급 ---
 
-  private issueJwt(userId: string): string {
-    return jwt.sign({ sub: userId }, this.jwtSecret, {
-      algorithm: 'HS256',
-      expiresIn: this.jwtExpiresIn as jwt.SignOptions['expiresIn'],
-    });
+  private issueJwt(user: User): string {
+    return jwt.sign(
+      {
+        sub: user.id,
+        email: user.email,
+        name: user.name ?? undefined,
+        oauth_provider: user.oauth_provider,
+      },
+      this.jwtSecret,
+      {
+        algorithm: 'HS256',
+        expiresIn: this.jwtExpiresIn as jwt.SignOptions['expiresIn'],
+      },
+    );
   }
 
   private issueRefreshToken(userId: string): string {
@@ -411,7 +432,12 @@ export class OAuthService {
       throw new UnauthorizedException('Refresh Token이 만료되었거나 무효화되었습니다.');
     }
 
-    const accessToken = this.issueJwt(userId);
+    const user = await this.findUserById(userId);
+    if (!user) {
+      throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
+    }
+
+    const accessToken = this.issueJwt(user);
     return { accessToken };
   }
 
