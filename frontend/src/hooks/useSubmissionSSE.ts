@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { getToken } from '@/lib/auth';
 
 /**
  * Submission SSE Hook — EventSource API
@@ -39,7 +40,7 @@ interface SSEEvent {
   timestamp: string;
 }
 
-const API_BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
+const API_BASE = process.env['NEXT_PUBLIC_API_BASE_URL'] ?? 'http://localhost:3000';
 
 export function useSubmissionSSE(submissionId: string | null) {
   const [status, setStatus] = useState<SSEStatus>('connecting');
@@ -56,7 +57,9 @@ export function useSubmissionSSE(submissionId: string | null) {
   useEffect(() => {
     if (!submissionId) return;
 
-    const url = `${API_BASE}/sse/submissions/${submissionId}`;
+    // H1: JWT 토큰을 query param으로 전달 (SSE 인증)
+    const token = getToken();
+    const url = `${API_BASE}/sse/submissions/${submissionId}${token ? `?token=${encodeURIComponent(token)}` : ''}`;
     const es = new EventSource(url);
     eventSourceRef.current = es;
 

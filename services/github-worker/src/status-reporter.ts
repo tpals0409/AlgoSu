@@ -1,4 +1,6 @@
 import Redis from 'ioredis';
+import { logger } from './logger';
+import { config } from './config';
 
 /**
  * 상태 리포터 — Submission Service 콜백 + Redis Pub/Sub
@@ -26,10 +28,9 @@ export class StatusReporter {
   private readonly submissionKey: string;
 
   constructor() {
-    const redisUrl = process.env['REDIS_URL'] ?? 'redis://localhost:6379';
-    this.redis = new Redis(redisUrl);
-    this.submissionUrl = process.env['SUBMISSION_SERVICE_URL'] ?? 'http://submission-service:3003';
-    this.submissionKey = process.env['SUBMISSION_SERVICE_KEY'] ?? '';
+    this.redis = new Redis(config.redisUrl);
+    this.submissionUrl = config.submissionServiceUrl;
+    this.submissionKey = config.submissionServiceKey;
   }
 
   /**
@@ -113,7 +114,7 @@ export class StatusReporter {
       }),
     );
 
-    console.log(`[StatusReporter] SKIPPED 보고 완료: submissionId=${submissionId}`);
+    logger.info('SKIPPED 보고 완료', { action: 'REPORT_SKIPPED' });
   }
 
   /**
@@ -132,7 +133,7 @@ export class StatusReporter {
     });
 
     await this.redis.publish(channel, payload);
-    console.log(`[StatusReporter] Pub/Sub 발행: ${channel} → ${status}`);
+    logger.info('Pub/Sub 발행 완료', { action: 'PUBSUB_PUBLISH' });
   }
 
   async close(): Promise<void> {

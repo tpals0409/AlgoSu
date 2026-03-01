@@ -27,7 +27,7 @@ import { HealthController } from './health.controller';
         migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
         synchronize: false,
         logging: ['error', 'warn'],
-        maxQueryExecutionTime: 1000,
+        maxQueryExecutionTime: 200,
       }),
     }),
     DualWriteModule,

@@ -1,11 +1,16 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
-
-const logger = new Logger('Bootstrap');
+import { StructuredLoggerService } from './common/logger/structured-logger.service';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  // H10: 구조화 JSON 로거 적용
+  const structuredLogger = new StructuredLoggerService();
+  structuredLogger.setContext('Bootstrap');
+
+  const app = await NestFactory.create(AppModule, {
+    logger: structuredLogger,
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -19,7 +24,7 @@ async function bootstrap(): Promise<void> {
 
   const port = process.env['PORT'] ?? 3004;
   await app.listen(port);
-  logger.log(`Identity Service running on port ${port}`);
+  structuredLogger.log(`Identity Service running on port ${port}`);
 }
 
 void bootstrap();

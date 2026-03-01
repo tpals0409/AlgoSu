@@ -7,13 +7,16 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
+import Redis from 'ioredis';
 
 /**
  * StudyMember Guard — 스터디 멤버십 사전 검증
  *
+ * M4: Redis 캐시 사용 (인메모리 Map 제거)
+ *
  * 검증 순서:
  * 1. X-User-ID + X-Study-ID 헤더 추출
- * 2. Redis 캐시 확인: study_member:{study_id}:{user_id} (TTL 10분)
+ * 2. Redis 캐시 확인: study:membership:{study_id}:{user_id} (TTL 10분)
  * 3. 캐시 miss → Gateway Internal API 호출
  * 4. 비멤버 → 403 Forbidden
  *
@@ -22,12 +25,16 @@ import { Request } from 'express';
 @Injectable()
 export class StudyMemberGuard implements CanActivate {
   private readonly logger = new Logger(StudyMemberGuard.name);
+  private readonly redis: Redis;
+  private static readonly CACHE_TTL_SECONDS = 600; // 10분
 
-  // 인메모리 캐시 (Redis 미연결 시 fallback)
-  private readonly cache = new Map<string, { role: string; expiresAt: number }>();
-  private static readonly CACHE_TTL_MS = 10 * 60 * 1000; // 10분
-
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly configService: ConfigService) {
+    const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
+    this.redis = new Redis(redisUrl);
+    this.redis.on('error', (err: Error) => {
+      this.logger.error(`Redis 연결 오류: ${err.message}`);
+    });
+  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
@@ -38,16 +45,22 @@ export class StudyMemberGuard implements CanActivate {
       throw new ForbiddenException('X-User-ID 및 X-Study-ID 헤더가 필요합니다.');
     }
 
-    // 캐시 확인
-    const cacheKey = `study_member:${studyId}:${userId}`;
-    const cached = this.cache.get(cacheKey);
-    if (cached && cached.expiresAt > Date.now()) {
-      // 캐시 히트 — role을 request에 저장
-      (request as any).studyMemberRole = cached.role;
+    const cacheKey = `study:membership:${studyId}:${userId}`;
+    let role: string | null = null;
+
+    // M4: Redis 캐시 확인
+    try {
+      role = await this.redis.get(cacheKey);
+    } catch (err: unknown) {
+      this.logger.warn(`Redis 조회 실패: ${(err as Error).message}`);
+    }
+
+    if (role) {
+      (request as any).studyMemberRole = role;
       return true;
     }
 
-    // 캐시 miss — Gateway Internal API 호출
+    // 캐시 miss → Gateway Internal API 호출
     const gatewayUrl = this.configService.getOrThrow<string>('GATEWAY_INTERNAL_URL');
     const internalKey = this.configService.getOrThrow<string>('INTERNAL_KEY_GATEWAY');
 
@@ -79,13 +92,11 @@ export class StudyMemberGuard implements CanActivate {
 
       const data = (await response.json()) as { role: string };
 
-      // 캐시 저장
-      this.cache.set(cacheKey, {
-        role: data.role,
-        expiresAt: Date.now() + StudyMemberGuard.CACHE_TTL_MS,
-      });
+      // Redis에 캐싱
+      try {
+        await this.redis.set(cacheKey, data.role, 'EX', StudyMemberGuard.CACHE_TTL_SECONDS);
+      } catch { /* 캐시 실패 무시 — fail-open */ }
 
-      // role을 request에 저장
       (request as any).studyMemberRole = data.role;
 
       return true;

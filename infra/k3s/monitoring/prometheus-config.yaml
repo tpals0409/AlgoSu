@@ -86,6 +86,19 @@ spec:
               mountPath: /etc/prometheus/rules
             - name: prometheus-storage
               mountPath: /prometheus
+          # M20: liveness/readiness probe 추가
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9090
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 9090
+            initialDelaySeconds: 5
+            periodSeconds: 10
           resources:
             requests:
               memory: "256Mi"

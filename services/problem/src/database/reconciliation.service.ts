@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Problem } from '../problem/problem.entity';
 import { DualWriteMode, getDualWriteMode, NEW_DB_CONNECTION } from './dual-write.config';
+import { reconciliationMismatches, reconciliationRunsTotal } from './dual-write.service';
 
 /**
  * Reconciliation Service — Phase 3 DB 분리
@@ -35,6 +36,10 @@ export class ReconciliationService implements OnModuleInit {
 
   get currentMismatchCount(): number {
     return this.mismatchCount;
+  }
+
+  get hasMismatch(): boolean {
+    return this.mismatchCount > 0;
   }
 
   /** 매시간 실행 — 최근 2시간 변경분 검증 */
@@ -73,17 +78,21 @@ export class ReconciliationService implements OnModuleInit {
       }
 
       this.mismatchCount = mismatches.length;
+      reconciliationMismatches.set(mismatches.length);
 
       if (mismatches.length > 0) {
+        reconciliationRunsTotal.inc({ result: 'success' });
         this.logger.error(
           `Reconciliation 불일치 발견: ${mismatches.length}건 — ${mismatches.slice(0, 5).join(', ')}`,
         );
       } else {
+        reconciliationRunsTotal.inc({ result: 'success' });
         this.logger.log(
           `Reconciliation 통과: old=${oldChecksums.length}, new=${newChecksums.length} 레코드 일치`,
         );
       }
     } catch (error) {
+      reconciliationRunsTotal.inc({ result: 'error' });
       const safeError = error instanceof Error ? error.message.slice(0, 100) : 'unknown';
       this.logger.error(`Reconciliation 오류: ${safeError}`);
     }

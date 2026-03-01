@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { StructuredLoggerService } from './common/logger/structured-logger.service';
 
@@ -11,7 +12,10 @@ async function bootstrap(): Promise<void> {
     logger: structuredLogger,
   });
 
-  const allowedOrigins = (process.env['ALLOWED_ORIGINS'] ?? 'http://localhost:3001').split(',');
+  // M9: ConfigService를 통한 환경변수 접근
+  const configService = app.get(ConfigService);
+
+  const allowedOrigins = configService.get<string>('ALLOWED_ORIGINS', 'http://localhost:3001').split(',');
   app.enableCors({
     origin: allowedOrigins,
     credentials: false,
@@ -27,7 +31,7 @@ async function bootstrap(): Promise<void> {
 
   app.enableShutdownHooks();
 
-  const port = process.env['PORT'] ?? 3000;
+  const port = configService.get<number>('PORT', 3000);
   await app.listen(port);
   structuredLogger.log(`Gateway is running on port ${port}`);
 }

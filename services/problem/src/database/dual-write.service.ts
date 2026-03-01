@@ -3,6 +3,37 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOneOptions, FindManyOptions, DeepPartial } from 'typeorm';
 import { Problem } from '../problem/problem.entity';
 import { DualWriteMode, getDualWriteMode, NEW_DB_CONNECTION } from './dual-write.config';
+import { ReconciliationService } from './reconciliation.service';
+import { Counter, Histogram, Gauge, register } from 'prom-client';
+
+// ---- Dual Write 메트릭 (H8) ----
+const dualWriteTotal = new Counter({
+  name: 'algosu_problem_dual_write_total',
+  help: 'Dual write 총 시도 횟수',
+  labelNames: ['operation', 'result'] as const,
+  registers: [register],
+});
+
+const dualWriteLatency = new Histogram({
+  name: 'algosu_problem_dual_write_latency_seconds',
+  help: 'Dual write 신 DB 쓰기 레이턴시 (초)',
+  labelNames: ['operation'] as const,
+  buckets: [0.01, 0.05, 0.1, 0.5, 1, 2, 5],
+  registers: [register],
+});
+
+export const reconciliationMismatches = new Gauge({
+  name: 'algosu_problem_reconciliation_mismatches',
+  help: '현재 Reconciliation 불일치 건수',
+  registers: [register],
+});
+
+export const reconciliationRunsTotal = new Counter({
+  name: 'algosu_problem_reconciliation_runs_total',
+  help: 'Reconciliation 실행 총 횟수',
+  labelNames: ['result'] as const,
+  registers: [register],
+});
 
 /**
  * Dual Write Service — Phase 3 DB 물리 분리
@@ -22,6 +53,7 @@ export class DualWriteService implements OnModuleInit {
     private readonly oldRepo: Repository<Problem>,
     @InjectRepository(Problem, NEW_DB_CONNECTION)
     private readonly newRepo: Repository<Problem>,
+    private readonly reconciliation: ReconciliationService,
   ) {}
 
   onModuleInit() {
@@ -33,9 +65,16 @@ export class DualWriteService implements OnModuleInit {
     return this.mode !== DualWriteMode.OFF;
   }
 
-  /** 읽기 대상 Repository */
+  /** 읽기 대상 Repository — H7: 불일치 시 구 DB fallback */
   private get readRepo(): Repository<Problem> {
-    return this.mode === DualWriteMode.SWITCH_READ ? this.newRepo : this.oldRepo;
+    if (this.mode === DualWriteMode.SWITCH_READ) {
+      if (this.reconciliation.hasMismatch) {
+        this.logger.warn('전환 차단: Reconciliation 불일치 감지 — 구 DB로 fallback');
+        return this.oldRepo;
+      }
+      return this.newRepo;
+    }
+    return this.oldRepo;
   }
 
   /** 조회 — 모드에 따라 소스 전환 */
@@ -76,11 +115,18 @@ export class DualWriteService implements OnModuleInit {
     return saved;
   }
 
-  /** 신 DB에 fire-and-forget 쓰기 (실패해도 구 DB 영향 없음) */
+  /** 신 DB에 fire-and-forget 쓰기 — H8: 메트릭 계측 */
   private writeToNewDb(operation: string, entity: Problem): void {
+    const end = dualWriteLatency.startTimer({ operation });
     this.newRepo.save(entity).then(
-      () => this.logger.debug(`Dual Write ${operation} 성공: id=${entity.id}`),
+      () => {
+        end();
+        dualWriteTotal.inc({ operation, result: 'success' });
+        this.logger.debug(`Dual Write ${operation} 성공: id=${entity.id}`);
+      },
       (error) => {
+        end();
+        dualWriteTotal.inc({ operation, result: 'failure' });
         const rawMsg = error instanceof Error ? error.message : 'unknown';
         const safeError = rawMsg.replace(/(host|password|port|user)=\S+/gi, '$1=***').slice(0, 100);
         this.logger.error(`Dual Write ${operation} 실패: id=${entity.id}, error=${safeError}`);

@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Post,
   Patch,
   Param,
   Body,
@@ -8,10 +9,15 @@ import {
   ParseUUIDPipe,
   UseGuards,
   Logger,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { SubmissionService } from './submission.service';
+import { SagaOrchestratorService } from '../saga/saga-orchestrator.service';
 import { InternalKeyGuard } from '../common/guards/internal-key.guard';
 import { UpdateAiResultDto } from './dto/update-ai-result.dto';
+import { GithubSuccessCallbackDto } from './dto/github-success-callback.dto';
+import { GitHubSyncStatus } from './submission.entity';
 
 /**
  * Internal Submission Controller
@@ -24,7 +30,10 @@ import { UpdateAiResultDto } from './dto/update-ai-result.dto';
 export class SubmissionInternalController {
   private readonly logger = new Logger(SubmissionInternalController.name);
 
-  constructor(private readonly submissionService: SubmissionService) {}
+  constructor(
+    private readonly submissionService: SubmissionService,
+    private readonly sagaOrchestrator: SagaOrchestratorService,
+  ) {}
 
   /**
    * GET /internal/:id — 내부 서비스용 제출 데이터 조회
@@ -76,5 +85,57 @@ export class SubmissionInternalController {
   async getStudyStats(@Param('studyId', ParseUUIDPipe) studyId: string) {
     const stats = await this.submissionService.getStudyStats(studyId);
     return { data: stats };
+  }
+
+  /**
+   * POST /internal/:id/github-success
+   * GitHub Push 성공 콜백 — Saga를 AI_QUEUED 단계로 진행
+   */
+  @Post(':id/github-success')
+  @HttpCode(HttpStatus.OK)
+  async githubSuccess(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: GithubSuccessCallbackDto,
+  ) {
+    await this.submissionService.updateGithubFilePath(id, dto.filePath);
+    await this.sagaOrchestrator.advanceToAiQueued(id);
+    this.logger.log(`GitHub 성공 콜백: submissionId=${id}, filePath=${dto.filePath}`);
+    return { success: true };
+  }
+
+  /**
+   * POST /internal/:id/github-failed
+   * GitHub Push 실패 콜백 — 보상 트랜잭션 (AI 분석은 계속 진행)
+   */
+  @Post(':id/github-failed')
+  @HttpCode(HttpStatus.OK)
+  async githubFailed(@Param('id', ParseUUIDPipe) id: string) {
+    await this.sagaOrchestrator.compensateGitHubFailed(id, GitHubSyncStatus.FAILED);
+    this.logger.warn(`GitHub 실패 콜백: submissionId=${id}`);
+    return { success: true };
+  }
+
+  /**
+   * POST /internal/:id/github-token-invalid
+   * GitHub Token 무효 콜백 — AI 분석도 스킵
+   */
+  @Post(':id/github-token-invalid')
+  @HttpCode(HttpStatus.OK)
+  async githubTokenInvalid(@Param('id', ParseUUIDPipe) id: string) {
+    await this.sagaOrchestrator.compensateGitHubFailed(id, GitHubSyncStatus.TOKEN_INVALID);
+    this.logger.warn(`GitHub TOKEN_INVALID 콜백: submissionId=${id}`);
+    return { success: true };
+  }
+
+  /**
+   * POST /internal/:id/github-skipped
+   * GitHub 레포 미연결 — SKIPPED 처리 후 AI 분석은 계속 진행
+   */
+  @Post(':id/github-skipped')
+  @HttpCode(HttpStatus.OK)
+  async githubSkipped(@Param('id', ParseUUIDPipe) id: string) {
+    await this.sagaOrchestrator.compensateGitHubFailed(id, GitHubSyncStatus.SKIPPED);
+    this.logger.log(`GitHub SKIPPED 콜백: submissionId=${id}`);
+    return { success: true };
   }
 }

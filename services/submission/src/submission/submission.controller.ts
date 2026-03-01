@@ -12,6 +12,7 @@ import {
   HttpCode,
   HttpStatus,
   Logger,
+  ForbiddenException,
 } from '@nestjs/common';
 import { SubmissionService } from './submission.service';
 import { DraftService } from '../draft/draft.service';
@@ -78,7 +79,7 @@ export class SubmissionController {
 
     // IDOR 방지: 본인 데이터 + 동일 스터디만 접근
     if (submission.userId !== userId || submission.studyId !== studyId) {
-      return { statusCode: 403, message: '다른 사용자의 제출에 접근할 수 없습니다.' };
+      throw new ForbiddenException('다른 사용자의 제출에 접근할 수 없습니다.');
     }
 
     return { data: submission };
@@ -97,7 +98,7 @@ export class SubmissionController {
     const submission = await this.submissionService.findById(id);
 
     if (submission.userId !== userId || submission.studyId !== studyId) {
-      return { statusCode: 403, message: '다른 사용자의 분석 결과에 접근할 수 없습니다.' };
+      throw new ForbiddenException('다른 사용자의 분석 결과에 접근할 수 없습니다.');
     }
 
     return {

@@ -29,6 +29,10 @@ export class StudyService {
   ) {
     const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
     this.redis = new Redis(redisUrl);
+    this.redis.on('error', (err: Error) => {
+      // M11: Redis 연결 에러 핸들링 — 프로세스 크래시 방지
+      this.logger.error(`Redis 연결 오류: ${err.message}`);
+    });
   }
 
   // --- 스터디 CRUD ---

@@ -2,6 +2,8 @@ import * as amqplib from 'amqplib';
 import { GitHubPushService } from './github-push.service';
 import { TokenManager } from './token-manager';
 import { StatusReporter } from './status-reporter';
+import { logger } from './logger';
+import { config } from './config';
 
 /**
  * GitHub Worker — RabbitMQ 소비자
@@ -25,8 +27,8 @@ interface StudyInfo {
 }
 
 const QUEUE = 'submission.github_push';
-const MAX_RETRIES = parseInt(process.env['MAX_RETRIES'] ?? '3', 10);
-const RETRY_DELAY_MS = parseInt(process.env['RETRY_DELAY_MS'] ?? '5000', 10);
+const MAX_RETRIES = config.maxRetries;
+const RETRY_DELAY_MS = config.retryDelayMs;
 
 export class GitHubWorker {
   private connection: amqplib.ChannelModel | null = null;
@@ -42,15 +44,12 @@ export class GitHubWorker {
     this.tokenManager = new TokenManager();
     this.pushService = new GitHubPushService(this.tokenManager);
     this.statusReporter = new StatusReporter();
-    this.gatewayInternalUrl = process.env['GATEWAY_INTERNAL_URL'] ?? 'http://gateway:3000';
-    this.internalKeyGateway = process.env['INTERNAL_KEY_GATEWAY'] ?? '';
+    this.gatewayInternalUrl = config.gatewayInternalUrl;
+    this.internalKeyGateway = config.internalKeyGateway;
   }
 
   async start(): Promise<void> {
-    const url = process.env['RABBITMQ_URL'];
-    if (!url) throw new Error('RABBITMQ_URL 환경변수가 설정되지 않았습니다.');
-
-    this.connection = await amqplib.connect(url);
+    this.connection = await amqplib.connect(config.rabbitmqUrl);
     const channel = await this.connection.createChannel();
     this.channel = channel;
 
@@ -65,22 +64,22 @@ export class GitHubWorker {
       },
     });
 
-    console.log(`[GitHub Worker] 큐 구독 시작: ${QUEUE} (prefetch=2)`);
+    logger.info('큐 구독 시작', { tag: 'MQ_CONSUME', queue: QUEUE });
 
     await channel.consume(QUEUE, async (msg) => {
       if (!msg) return;
 
       try {
         const event: GitHubPushEvent = JSON.parse(msg.content.toString());
-        console.log(`[GitHub Worker] 메시지 수신: submissionId=${event.submissionId}`);
+        logger.info('MQ 메시지 소비 시작', { tag: 'MQ_CONSUME', queue: QUEUE });
 
         await this.processWithRetry(event);
         channel.ack(msg);
 
-        console.log(`[GitHub Worker] 처리 완료: submissionId=${event.submissionId}`);
+        logger.info('MQ 메시지 소비 완료', { tag: 'MQ_CONSUME_DONE', result: 'ACK' });
       } catch (error: unknown) {
         const errMsg = (error as Error).message ?? 'Unknown error';
-        console.error(`[GitHub Worker] 처리 실패 — DLQ 전송: ${errMsg}`);
+        logger.error('처리 실패 — DLQ 전송', { tag: 'MQ_CONSUME_DONE', result: 'NACK_DLQ', err: error as Error });
 
         // DLQ로 전송 (nack + requeue=false)
         channel.nack(msg, false, false);
@@ -122,7 +121,7 @@ export class GitHubWorker {
 
     // github_repo 미연결 → SKIPPED 처리 후 ACK
     if (!githubRepo) {
-      console.log(`[GitHub Worker] SKIPPED (github_repo 없음): submissionId=${event.submissionId}`);
+      logger.info('SKIPPED: github_repo 없음', { tag: 'GITHUB_SKIP' });
       await this.statusReporter.reportSkipped(event.submissionId);
       return;
     }
@@ -169,9 +168,7 @@ export class GitHubWorker {
 
         if (isTokenInvalid) {
           // TOKEN_INVALID — 재시도 의미 없음
-          console.warn(
-            `[GitHub Worker] TOKEN_INVALID: submissionId=${event.submissionId}`,
-          );
+          logger.warn('TOKEN_INVALID', { code: 'GHW_BIZ_001' });
           await this.statusReporter.reportTokenInvalid(event.submissionId);
           await this.statusReporter.publishStatusChange(
             event.submissionId,
@@ -181,18 +178,14 @@ export class GitHubWorker {
         }
 
         if (attempt < MAX_RETRIES) {
-          console.warn(
-            `[GitHub Worker] 재시도 ${attempt}/${MAX_RETRIES}: ${lastError.message}`,
-          );
+          logger.warn('재시도', { retryCount: attempt, err: lastError });
           await this.delay(RETRY_DELAY_MS * attempt);
         }
       }
     }
 
     // 모든 재시도 실패
-    console.error(
-      `[GitHub Worker] 최종 실패: submissionId=${event.submissionId}`,
-    );
+    logger.error('최종 실패', { tag: 'MQ_CONSUME_DONE', result: 'NACK_DLQ', err: lastError });
     await this.statusReporter.reportFailed(event.submissionId);
     await this.statusReporter.publishStatusChange(event.submissionId, 'github_failed');
 
@@ -208,6 +201,6 @@ export class GitHubWorker {
     if (this.connection) await this.connection.close();
     await this.tokenManager.close();
     await this.statusReporter.close();
-    console.log('[GitHub Worker] 종료 완료');
+    logger.info('종료 완료');
   }
 }

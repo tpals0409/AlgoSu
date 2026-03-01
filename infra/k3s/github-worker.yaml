@@ -33,12 +33,13 @@ spec:
             limits:
               memory: "256Mi"
               cpu: "500m"
-          # Worker는 HTTP 엔드포인트 없음 — RabbitMQ 연결 기반 헬스체크
+          # H13: Worker 프로세스 + RabbitMQ 연결 상태 확인
           livenessProbe:
             exec:
               command:
                 - sh
                 - -c
-                - "node -e 'process.exit(0)'"
-            initialDelaySeconds: 10
+                - "node -e \"const net=require('net');const s=new net.Socket();s.setTimeout(2000);s.connect(5672,'rabbitmq',()=>{s.destroy();process.exit(0)});s.on('error',()=>process.exit(1));s.on('timeout',()=>process.exit(1))\""
+            initialDelaySeconds: 15
             periodSeconds: 30
+            timeoutSeconds: 5

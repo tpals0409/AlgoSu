@@ -50,7 +50,8 @@ export class StudyMember {
   @Column({ type: 'uuid' })
   user_id!: string;
 
-  @Column({ type: 'enum', enum: StudyMemberRole, default: StudyMemberRole.MEMBER })
+  // M2: DB는 VARCHAR(10) + CHECK 제약 (마이그레이션 기준), enum으로 매핑 (synchronize:false)
+  @Column({ type: 'varchar', length: 10, default: StudyMemberRole.MEMBER })
   role!: StudyMemberRole;
 
   @ManyToOne(() => Study, { onDelete: 'CASCADE' })

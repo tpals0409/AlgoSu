@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
+import { timingSafeEqual } from 'crypto';
 
 /**
  * X-Internal-Key 검증 가드
@@ -47,14 +48,12 @@ export class InternalKeyGuard implements CanActivate {
   }
 
   /**
-   * 타이밍 어택 방지: 고정 시간 문자열 비교
+   * M10: Node.js 내장 crypto.timingSafeEqual 사용
    */
   private timingSafeEqual(a: string, b: string): boolean {
-    let result = a.length === b.length ? 0 : 1;
-    const len = Math.max(a.length, b.length);
-    for (let i = 0; i < len; i++) {
-      result |= (a.charCodeAt(i) ?? 0) ^ (b.charCodeAt(i) ?? 0);
-    }
-    return result === 0;
+    const bufA = Buffer.from(a);
+    const bufB = Buffer.from(b);
+    if (bufA.length !== bufB.length) return false;
+    return timingSafeEqual(bufA, bufB);
   }
 }

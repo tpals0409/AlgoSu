@@ -184,11 +184,7 @@ async function fetchApi<T>(
 // ── Auth API ──
 
 export const authApi = {
-  register: (data: { email: string; password: string; username: string }): Promise<AuthResponse> =>
-    fetchApi('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
-
-  login: (data: { email: string; password: string }): Promise<AuthResponse> =>
-    fetchApi('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
+  // C1: email/password register/login 제거 (소셜로그인 전용 정책)
 
   /** OAuth 로그인 URL 조회 — provider: google | naver | kakao */
   getOAuthUrl: (provider: 'google' | 'naver' | 'kakao'): Promise<OAuthUrlResponse> =>

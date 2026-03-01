@@ -39,6 +39,38 @@ export function isAuthenticated(): boolean {
 }
 
 /**
+ * M17: JWT 토큰 만료 여부 확인
+ * exp 클레임이 현재 시간보다 과거이면 true
+ */
+export function isTokenExpired(token?: string | null): boolean {
+  const t = token ?? getToken();
+  if (!t) return true;
+  const payload = decodeTokenPayload(t);
+  if (!payload) return true;
+  const exp = payload['exp'];
+  if (typeof exp !== 'number') return true;
+  // 만료 10초 전부터 만료 처리 (네트워크 지연 대비)
+  return Date.now() >= (exp - 10) * 1000;
+}
+
+export const REFRESH_TOKEN_KEY = 'algosu:refresh_token' as const;
+
+export function setRefreshToken(token: string): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(REFRESH_TOKEN_KEY, token);
+}
+
+export function getRefreshToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
+export function removeRefreshToken(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+}
+
+/**
  * JWT payload 디코딩 (서명 검증 없음 — 서버 검증 별도 필수)
  */
 export function decodeTokenPayload(token: string): Record<string, unknown> | null {

@@ -4,28 +4,45 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
+
+export enum OAuthProvider {
+  GOOGLE = 'google',
+  NAVER = 'naver',
+  KAKAO = 'kakao',
+}
 
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ type: 'varchar', length: 320, unique: true })
+  @Column({ type: 'varchar', length: 255, unique: true })
   email!: string;
 
-  @Column({ type: 'varchar', length: 100, unique: true, name: 'username' })
-  username!: string;
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  name!: string | null;
 
-  @Column({ type: 'varchar', length: 255, name: 'password_hash' })
-  passwordHash!: string;
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  avatar_url!: string | null;
 
-  @Column({ type: 'varchar', length: 20, default: 'MEMBER' })
-  role!: string;
+  @Column({ type: 'enum', enum: OAuthProvider })
+  oauth_provider!: OAuthProvider;
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
+  @Column({ type: 'boolean', default: false })
+  github_connected!: boolean;
 
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt!: Date;
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  github_user_id!: string | null;
+
+  @Index('idx_users_github_username')
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  github_username!: string | null;
+
+  @CreateDateColumn()
+  created_at!: Date;
+
+  @UpdateDateColumn()
+  updated_at!: Date;
 }

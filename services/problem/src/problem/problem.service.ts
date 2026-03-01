@@ -103,6 +103,9 @@ export class ProblemService {
   async update(studyId: string, id: string, dto: UpdateProblemDto): Promise<Problem> {
     const problem = await this.findById(studyId, id);
 
+    // M7: weekNumber 변경 감지용 — 변경 전 값 보존
+    const oldWeekNumber = problem.weekNumber;
+
     if (dto.title !== undefined) problem.title = dto.title;
     if (dto.description !== undefined) problem.description = dto.description;
     if (dto.weekNumber !== undefined) problem.weekNumber = dto.weekNumber;
@@ -121,8 +124,28 @@ export class ProblemService {
     await this.deadlineCache.invalidateDeadline(studyId, saved.id);
     await this.deadlineCache.invalidateWeekProblems(studyId, saved.weekNumber);
 
+    // M7: weekNumber 변경 시 구 주차 캐시도 무효화
+    if (dto.weekNumber !== undefined && dto.weekNumber !== oldWeekNumber) {
+      await this.deadlineCache.invalidateWeekProblems(studyId, oldWeekNumber);
+    }
+
     this.logger.log(`문제 수정: id=${saved.id}, studyId=${studyId}`);
     return saved;
+  }
+
+  /**
+   * M6: 문제 삭제 (soft delete) — ADMIN 권한 필수
+   * status를 CLOSED로 변경. Submission 참조 무결성 유지.
+   */
+  async delete(studyId: string, id: string): Promise<void> {
+    const problem = await this.findById(studyId, id);
+    problem.status = ProblemStatus.CLOSED;
+    await this.dualWrite.saveExisting(problem);
+
+    await this.deadlineCache.invalidateDeadline(studyId, id);
+    await this.deadlineCache.invalidateWeekProblems(studyId, problem.weekNumber);
+
+    this.logger.log(`문제 soft delete: id=${id}, studyId=${studyId}`);
   }
 
   /**

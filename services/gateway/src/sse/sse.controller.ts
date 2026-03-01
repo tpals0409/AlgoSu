@@ -1,6 +1,17 @@
-import { Controller, Get, Param, Req, Res, Logger, ParseUUIDPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Query,
+  Req,
+  Res,
+  Logger,
+  ParseUUIDPipe,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
+import * as jwt from 'jsonwebtoken';
 import Redis from 'ioredis';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationType } from '../notification/notification.entity';
@@ -11,39 +22,73 @@ import { NotificationType } from '../notification/notification.entity';
  * 구독 채널: submission:status:{submissionId}
  * 메시지 포맷: { submissionId, status, userId?, timestamp }
  *
+ * 보안:
+ * - H1: JWT 쿼리 토큰 인증 필수 (?token=xxx)
+ * - H16: 최대 연결 시간 5분 (MAX_CONNECTION_MS)
+ * - M13: 공유 Redis subscriber 사용 (연결 풀 고갈 방지)
+ *
  * 최종 상태(ai_completed/ai_failed/github_token_invalid) 수신 시 연결 자동 종료 + 알림 생성
- * 보안: X-User-ID 기반 구독자 본인 확인 (TODO)
  */
 @Controller('sse')
 export class SseController {
   private readonly logger = new Logger(SseController.name);
+  private readonly jwtSecret: string;
 
+  // M13: 공유 Redis subscriber (연결마다 새 인스턴스 생성 방지)
+  private readonly subscriber: Redis;
+  private readonly listeners = new Map<string, Set<(message: string) => void>>();
+
+  // H16: 최대 SSE 연결 유지 시간 (5분)
+  private static readonly MAX_CONNECTION_MS = 5 * 60 * 1000;
+
+  // H15: ai_failed → AI_FAILED (AI_COMPLETED에서 분리)
   private readonly STATUS_NOTIFICATION_MAP: Record<string, { type: NotificationType; title: string }> = {
     ai_completed: { type: NotificationType.AI_COMPLETED, title: 'AI 분석 완료' },
-    ai_failed: { type: NotificationType.AI_COMPLETED, title: 'AI 분석 실패' },
+    ai_failed: { type: NotificationType.AI_FAILED, title: 'AI 분석 실패' },
     github_token_invalid: { type: NotificationType.GITHUB_FAILED, title: 'GitHub 토큰 오류' },
   };
 
   constructor(
     private readonly configService: ConfigService,
     private readonly notificationService: NotificationService,
-  ) {}
+  ) {
+    this.jwtSecret = this.configService.getOrThrow<string>('JWT_SECRET');
+
+    // M13: 단일 Redis subscriber 인스턴스
+    const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
+    this.subscriber = new Redis(redisUrl);
+
+    this.subscriber.on('error', (err: Error) => {
+      this.logger.error(`SSE 공유 Redis subscriber 오류: ${err.message}`);
+    });
+
+    this.subscriber.on('message', (channel: string, message: string) => {
+      const channelListeners = this.listeners.get(channel);
+      if (channelListeners) {
+        for (const listener of channelListeners) {
+          listener(message);
+        }
+      }
+    });
+  }
 
   @Get('submissions/:id')
   async streamStatus(
     @Param('id', ParseUUIDPipe) submissionId: string,
+    @Query('token') token: string | undefined,
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
+    // H1: JWT 쿼리 토큰 인증
+    const userId = this.verifyToken(token);
+
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no');
 
-    this.logger.log(`SSE 연결: submissionId=${submissionId}`);
+    this.logger.log(`SSE 연결: submissionId=${submissionId}, userId=${userId}`);
 
-    const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
-    const subscriber = new Redis(redisUrl);
     const channel = `submission:status:${submissionId}`;
 
     // 이중 cleanup 방지 플래그
@@ -53,23 +98,16 @@ export class SseController {
       if (cleaned) return;
       cleaned = true;
       clearInterval(heartbeat);
-      subscriber.unsubscribe(channel).catch(() => {});
-      subscriber.quit().catch(() => {});
+      clearTimeout(connectionTimeout);
+      this.removeChannelListener(channel, messageHandler);
       if (!res.writableEnded) res.end();
       this.logger.log(`SSE 연결 종료: submissionId=${submissionId}`);
     };
 
-    // Redis 에러 — 프로세스 크래시 방지
-    subscriber.on('error', (err: Error) => {
-      this.logger.error(`SSE Redis 오류: ${err.message}`);
-      cleanup();
-    });
-
-    await subscriber.subscribe(channel);
-
+    // M13: 공유 subscriber에 채널 리스너 등록
     const terminalStatuses = ['ai_completed', 'ai_failed', 'github_token_invalid'];
 
-    subscriber.on('message', (_ch: string, message: string) => {
+    const messageHandler = (message: string): void => {
       try {
         const event = JSON.parse(message) as {
           submissionId: string;
@@ -99,19 +137,87 @@ export class SseController {
 
           res.write(`event: done\n`);
           res.write(`data: ${JSON.stringify({ status: 'stream_end' })}\n\n`);
-          // 구독 즉시 해제 → 이후 메시지 수신 차단, 응답 종료는 500ms 후
-          subscriber.unsubscribe(channel).catch(() => {});
           setTimeout(cleanup, 500);
         }
       } catch (err) {
         this.logger.error(`SSE 메시지 파싱 오류: ${(err as Error).message}`);
       }
-    });
+    };
+
+    await this.addChannelListener(channel, messageHandler);
 
     const heartbeat = setInterval(() => {
       if (!res.writableEnded) res.write(': heartbeat\n\n');
     }, 30_000);
 
+    // H16: 최대 연결 시간 (5분) — 타임아웃 시 자동 종료
+    const connectionTimeout = setTimeout(() => {
+      if (!res.writableEnded) {
+        res.write(`event: timeout\n`);
+        res.write(`data: ${JSON.stringify({ status: 'connection_timeout', maxMs: SseController.MAX_CONNECTION_MS })}\n\n`);
+      }
+      cleanup();
+    }, SseController.MAX_CONNECTION_MS);
+
     req.on('close', cleanup);
+  }
+
+  // --- H1: JWT 토큰 검증 ---
+
+  private verifyToken(token: string | undefined): string {
+    if (!token) {
+      throw new UnauthorizedException('SSE 연결에 인증 토큰이 필요합니다 (?token=xxx).');
+    }
+
+    try {
+      const decoded = jwt.verify(token, this.jwtSecret, {
+        algorithms: ['HS256'],
+      });
+
+      if (typeof decoded === 'string' || !decoded) {
+        throw new UnauthorizedException('유효하지 않은 토큰입니다.');
+      }
+
+      const payload = decoded as jwt.JwtPayload;
+      const userId = payload['sub'];
+
+      if (!userId || typeof userId !== 'string') {
+        throw new UnauthorizedException('토큰에 사용자 ID가 없습니다.');
+      }
+
+      return userId;
+    } catch (error: unknown) {
+      if (error instanceof UnauthorizedException) throw error;
+      throw new UnauthorizedException('유효하지 않거나 만료된 토큰입니다.');
+    }
+  }
+
+  // --- M13: 공유 Redis subscriber 채널 관리 ---
+
+  private async addChannelListener(
+    channel: string,
+    handler: (message: string) => void,
+  ): Promise<void> {
+    let channelListeners = this.listeners.get(channel);
+    if (!channelListeners) {
+      channelListeners = new Set();
+      this.listeners.set(channel, channelListeners);
+      await this.subscriber.subscribe(channel);
+    }
+    channelListeners.add(handler);
+  }
+
+  private removeChannelListener(
+    channel: string,
+    handler: (message: string) => void,
+  ): void {
+    const channelListeners = this.listeners.get(channel);
+    if (!channelListeners) return;
+
+    channelListeners.delete(handler);
+    if (channelListeners.size === 0) {
+      this.listeners.delete(channel);
+      this.subscriber.unsubscribe(channel).catch(() => {});
+    }
   }
 }

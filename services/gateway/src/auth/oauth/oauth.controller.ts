@@ -27,10 +27,9 @@ export class OAuthController {
   @Get('oauth/:provider')
   async startOAuth(
     @Param('provider') provider: string,
-    @Res() res: Response,
-  ): Promise<void> {
+  ): Promise<{ url: string }> {
     const { url } = await this.oauthService.getAuthorizationUrl(provider);
-    res.redirect(url);
+    return { url };
   }
 
   /**
@@ -52,14 +51,14 @@ export class OAuthController {
 
     this.logger.log(`OAuth 로그인 성공: provider=${provider}, userId=${result.user.id}`);
 
-    // 프론트엔드로 토큰 전달 (fragment 방식)
+    // H4: 토큰을 fragment(#)로 전달 — URL 히스토리/서버 로그/Referrer 노출 방지
     const frontendUrl = process.env['FRONTEND_URL'] ?? 'http://localhost:3001';
     const params = new URLSearchParams({
       access_token: result.accessToken,
       refresh_token: result.refreshToken,
       github_connected: String(result.user.github_connected),
     });
-    res.redirect(`${frontendUrl}/auth/callback?${params.toString()}`);
+    res.redirect(`${frontendUrl}/callback#${params.toString()}`);
   }
 
   /**

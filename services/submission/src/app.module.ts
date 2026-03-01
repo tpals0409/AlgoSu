@@ -25,7 +25,7 @@ import { HealthController } from './health.controller';
         migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
         synchronize: false, // 프로덕션 절대 금지
         logging: ['error', 'warn'],
-        maxQueryExecutionTime: 1000, // 1초 초과 쿼리 경고 로그 (monitoring-log-rules.md §8)
+        maxQueryExecutionTime: 200, // 200ms 초과 쿼리 경고 로그 (monitoring-log-rules.md §8-1)
       }),
     }),
     MetricsModule,

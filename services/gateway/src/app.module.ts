@@ -37,7 +37,7 @@ import { Notification } from './notification/notification.entity';
         database: configService.get<string>('IDENTITY_DB_NAME', 'identity_db'),
         entities: [User, Study, StudyMember, StudyInvite, Notification],
         synchronize: false, // 마이그레이션으로 관리
-        maxQueryExecutionTime: 1000, // 1초 초과 쿼리 경고 로그 (monitoring-log-rules.md §8)
+        maxQueryExecutionTime: 200, // 200ms 초과 쿼리 경고 로그 (monitoring-log-rules.md §8-1)
       }),
     }),
     ThrottlerModule.forRootAsync({

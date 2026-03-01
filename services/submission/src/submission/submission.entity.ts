@@ -56,6 +56,9 @@ export class Submission {
   @Column({ type: 'varchar', length: 500, nullable: true, name: 'github_file_path' })
   githubFilePath!: string | null;
 
+  @Column({ type: 'int', nullable: true, name: 'week_number' })
+  weekNumber!: number | null;
+
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'idempotency_key' })
   idempotencyKey!: string | null;
 

@@ -8,7 +8,15 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
-import { getToken, setToken, removeToken, getCurrentUserEmail } from '@/lib/auth';
+import {
+  getToken,
+  setToken,
+  removeToken,
+  isTokenExpired,
+  getRefreshToken,
+  removeRefreshToken,
+  getCurrentUserEmail,
+} from '@/lib/auth';
 import { authApi } from '@/lib/api';
 
 // ── 타입 ──
@@ -21,8 +29,6 @@ interface AuthContextValue {
   user: AuthUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, username: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -40,38 +46,56 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // 초기 마운트 시 토큰에서 사용자 정보 복원
+  // M17: 초기 마운트 시 토큰 만료 확인 + 자동 refresh
   useEffect(() => {
-    const token = getToken();
-    if (token) {
+    const initAuth = async (): Promise<void> => {
+      const token = getToken();
+
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+
+      // 토큰 만료 확인
+      if (isTokenExpired(token)) {
+        const refreshToken = getRefreshToken();
+        if (refreshToken) {
+          try {
+            const { access_token } = await authApi.refresh();
+            setToken(access_token);
+            const email = getCurrentUserEmail();
+            if (email) {
+              setUser({ email });
+            }
+          } catch {
+            // Refresh 실패 → 로그아웃
+            removeToken();
+            removeRefreshToken();
+          }
+        } else {
+          // Refresh Token 없음 → 만료된 토큰 제거
+          removeToken();
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      // 토큰 유효 → 사용자 정보 복원
       const email = getCurrentUserEmail();
       if (email) {
         setUser({ email });
       } else {
-        // 유효하지 않은 토큰 제거
         removeToken();
       }
-    }
-    setIsLoading(false);
-  }, []);
+      setIsLoading(false);
+    };
 
-  const login = useCallback(async (email: string, password: string): Promise<void> => {
-    const { access_token } = await authApi.login({ email, password });
-    setToken(access_token);
-    setUser({ email });
+    void initAuth();
   }, []);
-
-  const register = useCallback(
-    async (email: string, password: string, username: string): Promise<void> => {
-      const { access_token } = await authApi.register({ email, password, username });
-      setToken(access_token);
-      setUser({ email });
-    },
-    [],
-  );
 
   const logout = useCallback((): void => {
     removeToken();
+    removeRefreshToken();
     setUser(null);
   }, []);
 
@@ -79,8 +103,6 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
     user,
     isLoading,
     isAuthenticated: user !== null,
-    login,
-    register,
     logout,
   };
 

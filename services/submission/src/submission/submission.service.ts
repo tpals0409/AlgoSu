@@ -74,6 +74,13 @@ export class SubmissionService {
   }
 
   /**
+   * GitHub 파일 경로 업데이트 — 콜백에서 호출
+   */
+  async updateGithubFilePath(id: string, filePath: string): Promise<void> {
+    await this.submissionRepo.update(id, { githubFilePath: filePath });
+  }
+
+  /**
    * 제출 조회 (단건)
    */
   async findById(id: string): Promise<Submission> {
@@ -109,6 +116,10 @@ export class SubmissionService {
     const limit = Math.min(query.limit ?? 20, 100);
     const [sortField, sortDirection] = (query.sort ?? 'createdAt_DESC').split('_');
 
+    // M15: SQL Injection 방지 — sortField 화이트리스트
+    const allowedSortFields = ['createdAt', 'language', 'sagaStep', 'weekNumber', 'updatedAt'];
+    const safeSortField = allowedSortFields.includes(sortField) ? sortField : 'createdAt';
+
     const qb = this.submissionRepo
       .createQueryBuilder('s')
       .where('s.studyId = :studyId', { studyId })
@@ -127,7 +138,7 @@ export class SubmissionService {
     }
 
     qb.orderBy(
-      `s.${sortField}`,
+      `s.${safeSortField}`,
       sortDirection === 'ASC' ? 'ASC' : 'DESC',
     );
 

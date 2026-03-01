@@ -20,12 +20,6 @@ import {
   setGitHubUsername,
 } from '@/lib/auth';
 
-const OAUTH_PROVIDER_LABELS: Record<string, { label: string; color: string }> = {
-  google: { label: 'Google', color: 'bg-[#4285F4]' },
-  naver: { label: 'Naver', color: 'bg-[#03C75A]' },
-  kakao: { label: 'Kakao', color: 'bg-[#FEE500]' },
-};
-
 function getInitials(email?: string | null): string {
   const src = email ?? '';
   return src.slice(0, 2).toUpperCase();

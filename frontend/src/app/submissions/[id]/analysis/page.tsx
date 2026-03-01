@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Brain, Code2, Trophy, AlertCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, Brain, Code2, Trophy, Loader2 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';

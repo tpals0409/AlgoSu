@@ -1,6 +1,6 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Not, In, MoreThan } from 'typeorm';
+import { Repository, Not, In, MoreThan, LessThan } from 'typeorm';
 import { Submission, SagaStep, GitHubSyncStatus } from '../submission/submission.entity';
 import { MqPublisherService } from './mq-publisher.service';
 
@@ -17,8 +17,19 @@ import { MqPublisherService } from './mq-publisher.service';
  * 보안: SQL 파라미터 바인딩 (TypeORM), Log Injection 방지
  */
 @Injectable()
-export class SagaOrchestratorService implements OnModuleInit {
+export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(SagaOrchestratorService.name);
+
+  // M3: 단계별 타임아웃 (설계서 기준)
+  private static readonly STEP_TIMEOUTS: Record<SagaStep, number> = {
+    [SagaStep.DB_SAVED]: 5 * 60 * 1000,       // 5분
+    [SagaStep.GITHUB_QUEUED]: 15 * 60 * 1000,  // 15분
+    [SagaStep.AI_QUEUED]: 30 * 60 * 1000,      // 30분
+    [SagaStep.DONE]: 0,
+    [SagaStep.FAILED]: 0,
+  };
+  private static readonly TIMEOUT_CHECK_INTERVAL = 2 * 60 * 1000; // 2분마다 체크
+  private timeoutTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     @InjectRepository(Submission)
@@ -60,6 +71,19 @@ export class SagaOrchestratorService implements OnModuleInit {
     }
 
     this.logger.log('미완료 Saga 재개 완료');
+
+    // M3: 주기적 타임아웃 체크 시작
+    this.timeoutTimer = setInterval(() => {
+      void this.checkSagaTimeouts();
+    }, SagaOrchestratorService.TIMEOUT_CHECK_INTERVAL);
+    this.logger.log('Saga 타임아웃 체크 시작 (2분 주기)');
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    if (this.timeoutTimer) {
+      clearInterval(this.timeoutTimer);
+      this.timeoutTimer = null;
+    }
   }
 
   /**
@@ -151,6 +175,41 @@ export class SagaOrchestratorService implements OnModuleInit {
     });
 
     this.logger.warn(`AI 분석 실패 — 제출은 DONE 처리: submissionId=${submissionId}`);
+  }
+
+  /**
+   * M3: 단계별 타임아웃 체크 Cron
+   * DB_SAVED 5분, GITHUB_QUEUED 15분, AI_QUEUED 30분 초과 시 재개 또는 FAILED 처리
+   */
+  private async checkSagaTimeouts(): Promise<void> {
+    const stepsToCheck = [SagaStep.DB_SAVED, SagaStep.GITHUB_QUEUED, SagaStep.AI_QUEUED];
+
+    for (const step of stepsToCheck) {
+      const timeoutMs = SagaOrchestratorService.STEP_TIMEOUTS[step];
+      const cutoff = new Date(Date.now() - timeoutMs);
+
+      const timedOut = await this.submissionRepo.find({
+        where: {
+          sagaStep: step,
+          updatedAt: LessThan(cutoff),
+        },
+        take: 50, // 배치 제한
+      });
+
+      for (const submission of timedOut) {
+        try {
+          this.logger.warn(
+            `Saga 타임아웃: submissionId=${submission.id}, step=${step}, updatedAt=${submission.updatedAt.toISOString()}`,
+          );
+          await this.resumeSaga(submission);
+        } catch (error: unknown) {
+          this.logger.error(
+            `타임아웃 재개 실패: submissionId=${submission.id}, error=${(error as Error).message}`,
+          );
+          // 재시도 3회 이상 실패 시 FAILED 처리 (updatedAt이 계속 갱신 안 되므로 다음 체크에서도 잡힘)
+        }
+      }
+    }
   }
 
   /**

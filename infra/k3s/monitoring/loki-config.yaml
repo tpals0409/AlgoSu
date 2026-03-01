@@ -82,6 +82,19 @@ spec:
               mountPath: /etc/loki
             - name: loki-storage
               mountPath: /loki
+          # M20: liveness/readiness probe 추가
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: 3100
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 3100
+            initialDelaySeconds: 5
+            periodSeconds: 10
           resources:
             requests:
               memory: "128Mi"

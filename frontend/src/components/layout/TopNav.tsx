@@ -167,34 +167,36 @@ export function TopNav(): ReactNode {
           AlgoSu
         </Link>
 
-        {/* 네비 항목 */}
-        <ul className="hidden items-center gap-1.5 sm:flex" role="list">
-          {NAV_LINKS.map(({ href, label }) => {
-            const isActive = pathname === href || pathname.startsWith(href + '/');
-            return (
-              <li key={href}>
-                <Link
-                  href={href}
-                  className={cn(
-                    'inline-block transition-colors duration-150',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                    isActive
-                      ? 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300'
-                      : 'text-text2 hover:bg-bg2 hover:text-foreground',
-                  )}
-                  style={{
-                    padding: '5px 12px',
-                    fontSize: '12px',
-                    fontWeight: 500,
-                    borderRadius: '6px',
-                  }}
-                >
-                  {label}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+        {/* 네비 항목 — 로그인 시에만 노출 */}
+        {isAuthenticated && (
+          <ul className="hidden items-center gap-1.5 sm:flex" role="list">
+            {NAV_LINKS.map(({ href, label }) => {
+              const isActive = pathname === href || pathname.startsWith(href + '/');
+              return (
+                <li key={href}>
+                  <Link
+                    href={href}
+                    className={cn(
+                      'inline-block transition-colors duration-150',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      isActive
+                        ? 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300'
+                        : 'text-text2 hover:bg-bg2 hover:text-foreground',
+                    )}
+                    style={{
+                      padding: '5px 12px',
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      borderRadius: '6px',
+                    }}
+                  >
+                    {label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
 
         {/* 우측 영역 */}
         <div className="flex items-center gap-2">

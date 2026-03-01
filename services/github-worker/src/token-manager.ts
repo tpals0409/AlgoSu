@@ -1,4 +1,6 @@
 import Redis from 'ioredis';
+import { logger } from './logger';
+import { config } from './config';
 
 /**
  * GitHub App Installation Token 관리 — 레포별 동적 발급
@@ -23,8 +25,7 @@ export class TokenManager {
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
-    const redisUrl = process.env['REDIS_URL'] ?? 'redis://localhost:6379';
-    this.redis = new Redis(redisUrl);
+    this.redis = new Redis(config.redisUrl);
 
     // 50분마다 캐시된 모든 토큰 갱신
     this.refreshTimer = setInterval(() => {
@@ -51,11 +52,11 @@ export class TokenManager {
    * GitHub App API로 레포의 Installation ID 동적 조회 후 토큰 발급
    */
   private async fetchAndCacheToken(owner: string, repo: string): Promise<string> {
-    const appId = process.env['GITHUB_APP_ID'];
-    const privateKeyBase64 = process.env['GITHUB_APP_PRIVATE_KEY_BASE64'];
+    const appId = config.githubAppId;
+    const privateKeyBase64 = config.githubAppPrivateKeyBase64;
 
     if (!appId || !privateKeyBase64) {
-      throw new Error('GitHub App 환경변수가 설정되지 않았습니다.');
+      throw new Error('GitHub App 환경변수가 설정되지 않았습니다 (GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY_BASE64).');
     }
 
     const privateKey = Buffer.from(privateKeyBase64, 'base64').toString('utf-8');
@@ -115,7 +116,7 @@ export class TokenManager {
     await this.redis.set(cacheKey, token, 'EX', TOKEN_TTL);
 
     // 보안: 토큰 원문 출력 금지, 레포 정보 출력 금지
-    console.log('[TokenManager] Installation Token 갱신 완료');
+    logger.info('Installation Token 갱신 완료', { action: 'TOKEN_REFRESH' });
 
     return token;
   }
