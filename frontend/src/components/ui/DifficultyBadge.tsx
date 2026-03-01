@@ -1,16 +1,7 @@
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
-
-export type Difficulty = 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND';
-
-const DIFFICULTY_LABELS: Record<Difficulty, string> = {
-  BRONZE:   '브론즈',
-  SILVER:   '실버',
-  GOLD:     '골드',
-  PLATINUM: '플래티넘',
-  DIAMOND:  '다이아',
-};
+import { type Difficulty, DIFFICULTY_LABELS } from '@/lib/constants';
 
 const difficultyBadgeVariants = cva(
   ['inline-flex items-center gap-1 rounded-sm px-2 py-0.5', 'text-xs font-semibold leading-none tracking-wide', 'border transition-colors duration-150'],

@@ -4,11 +4,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { Users } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useStudy, type Study } from '@/contexts/StudyContext';
@@ -34,7 +36,7 @@ export default function StudiesPage(): ReactNode {
       setLocalStudies(data);
       setStudies(data);
     } catch {
-      setError('스터디 목록을 불러오는데 실패했습니다.');
+      setError('스터디 목록을 불러오는 데 실패했습니다.');
     } finally {
       setIsLoading(false);
     }
@@ -98,12 +100,12 @@ export default function StudiesPage(): ReactNode {
             <LoadingSpinner />
           </div>
         ) : studies.length === 0 ? (
-          <Card>
-            <CardContent className="py-10 text-center">
-              <p className="text-sm text-text2">아직 참여 중인 스터디가 없습니다.</p>
-              <p className="mt-1 text-sm text-text3">새 스터디를 만들거나 초대 코드로 가입하세요.</p>
-            </CardContent>
-          </Card>
+          <EmptyState
+            icon={Users}
+            title="참여 중인 스터디가 없습니다"
+            description="새 스터디를 만들거나 초대 코드로 가입하세요."
+            action={{ label: '스터디 만들기', onClick: () => router.push('/studies/create') }}
+          />
         ) : (
           <div className="space-y-3">
             {studies.map((study) => (

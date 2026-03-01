@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, type ReactNode } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Brain, Code2, Trophy, Loader2 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -11,8 +11,8 @@ import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { useAuth } from '@/contexts/AuthContext';
 import { submissionApi, type AnalysisResult, type Submission } from '@/lib/api';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 
 function ScoreGauge({ score }: { readonly score: number }): ReactNode {
   let color = 'text-error';
@@ -24,8 +24,8 @@ function ScoreGauge({ score }: { readonly score: number }): ReactNode {
     color = 'text-[var(--color-warning)]';
     bgColor = 'bg-[rgba(255,200,60,0.22)]';
   } else if (score >= 40) {
-    color = 'text-[var(--color-main)]';
-    bgColor = 'bg-[rgba(148,126,176,0.22)]';
+    color = 'text-[var(--color-warning)]';
+    bgColor = 'bg-[rgba(255,180,60,0.22)]';
   }
 
   return (
@@ -48,8 +48,7 @@ function ScoreGauge({ score }: { readonly score: number }): ReactNode {
 
 export default function AnalysisPage(): ReactNode {
   const params = useParams();
-  const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isReady, isAuthenticated } = useRequireAuth();
 
   const submissionId = params.id as string;
 
@@ -57,12 +56,7 @@ export default function AnalysisPage(): ReactNode {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.replace('/login');
-    }
-  }, [authLoading, isAuthenticated, router]);
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -87,20 +81,38 @@ export default function AnalysisPage(): ReactNode {
     }
   }, [isAuthenticated, submissionId, loadData]);
 
+  // 수동 새로고침 — 즉시 로드 + 폴링 타이머 리셋
+  const handleManualRefresh = useCallback(() => {
+    if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+    void loadData();
+  }, [loadData]);
+
   // C5: pending/delayed 상태에서 10초 간격 자동 폴링
   useEffect(() => {
     if (!analysis) return;
     if (analysis.analysisStatus !== 'pending' && analysis.analysisStatus !== 'delayed') return;
 
-    const interval = setInterval(() => {
+    pollTimerRef.current = setInterval(() => {
       void loadData();
     }, 10_000);
 
-    return () => clearInterval(interval);
+    return () => {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+    };
   }, [analysis, loadData]);
 
-  if (authLoading) return null;
-  if (!isAuthenticated) return null;
+  // 탭 복귀 시 즉시 데이터 재로드
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && isAuthenticated && submissionId) {
+        void loadData();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [isAuthenticated, submissionId, loadData]);
+
+  if (!isReady) return null;
 
   return (
     <AppLayout>
@@ -147,8 +159,11 @@ export default function AnalysisPage(): ReactNode {
                 <p className="mt-1 text-[11px] text-muted-foreground">
                   분석이 완료되면 자동으로 결과가 표시됩니다.
                 </p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">
+                  평균 처리 시간: 2~5분
+                </p>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => void loadData()}>
+              <Button variant="ghost" size="sm" onClick={() => void handleManualRefresh()}>
                 새로고침
               </Button>
             </CardContent>
@@ -168,7 +183,7 @@ export default function AnalysisPage(): ReactNode {
                   AI 분석 서비스가 일시적으로 지연되고 있습니다. 잠시 후 다시 확인해주세요.
                 </p>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => void loadData()}>
+              <Button variant="ghost" size="sm" onClick={() => void handleManualRefresh()}>
                 새로고침
               </Button>
             </CardContent>

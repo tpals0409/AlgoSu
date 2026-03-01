@@ -28,7 +28,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
   const router = useRouter();
   const { githubConnected } = useAuth();
   const { currentStudyId, currentStudyRole } = useStudy();
-  const isAdmin = currentStudyRole === 'OWNER';
+  const isAdmin = currentStudyRole === 'ADMIN';
 
   const [problem, setProblem] = useState<Problem | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -90,6 +90,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
         try {
           await draftApi.upsert(problemId, { language: data.language, code: data.code });
           setAutoSaveStatus('saved');
+          setTimeout(() => setAutoSaveStatus('idle'), 2000);
         } catch {
           // 서버 저장 실패 — 무시 (localStorage에 이미 저장됨)
           setAutoSaveStatus('idle');
@@ -119,6 +120,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
 
   const handleLanguageChange = useCallback((lang: string): void => {
     setLanguage(lang);
+    setAutoSaveStatus('saving');
   }, []);
 
   const handleSubmit = useCallback(async (): Promise<void> => {
@@ -209,6 +211,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
         <Card>
           <CardHeader>
             <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="info">{problem.weekNumber}주차</Badge>
               <DifficultyBadge difficulty={problem.difficulty} />
               <Badge variant={problem.status === 'ACTIVE' ? 'success' : 'muted'}>
                 {problem.status === 'ACTIVE' ? '진행 중' : '종료'}
@@ -242,10 +245,10 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
             코드를 제출하려면 먼저 GitHub 계정을 연동해주세요.{' '}
             <button
               type="button"
-              onClick={() => router.push('/profile')}
+              onClick={() => router.push('/github-link')}
               className="underline font-medium"
             >
-              프로필에서 연동하기
+              GitHub 연동하기
             </button>
           </Alert>
         )}

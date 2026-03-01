@@ -110,7 +110,7 @@ export interface Study {
   name: string;
   description?: string;
   githubRepo?: string;
-  role: 'OWNER' | 'MEMBER';
+  role: 'ADMIN' | 'MEMBER';
   memberCount?: number;
 }
 
@@ -264,6 +264,9 @@ export const studyApi = {
 
   removeMember: (studyId: string, userId: string): Promise<{ message: string }> =>
     fetchApi(`/api/studies/${studyId}/members/${userId}`, { method: 'DELETE' }),
+
+  delete: (studyId: string): Promise<void> =>
+    fetchApi(`/api/studies/${studyId}`, { method: 'DELETE' }),
 };
 
 // ── Problem API ──
@@ -280,6 +283,9 @@ export const problemApi = {
 
   update: (id: string, data: UpdateProblemData): Promise<Problem> =>
     fetchApi(`/api/problems/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  delete: (id: string): Promise<void> =>
+    fetchApi(`/api/problems/${id}`, { method: 'DELETE' }),
 };
 
 // ── Submission API ──

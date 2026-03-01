@@ -17,6 +17,8 @@ import {
   removeRefreshToken,
   getCurrentUserEmail,
   getGitHubConnected,
+  setGitHubConnected as setGitHubConnectedStorage,
+  setGitHubUsername as setGitHubUsernameStorage,
   getTokenTtlMs,
 } from '@/lib/auth';
 import { authApi } from '@/lib/api';
@@ -35,6 +37,7 @@ interface AuthContextValue {
   sessionExpired: boolean;
   login: (token: string) => void;
   logout: () => void;
+  updateGitHubStatus: (connected: boolean, username?: string | null) => void;
 }
 
 // ── 컨텍스트 ──
@@ -52,6 +55,7 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [githubConnected, setGithubConnected] = useState<boolean>(false);
   const [sessionExpired, setSessionExpired] = useState<boolean>(false);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<number>(0);
 
   // M17: 초기 마운트 시 토큰 만료 확인 + 자동 refresh
   useEffect(() => {
@@ -73,6 +77,7 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
             const email = getCurrentUserEmail();
             if (email) {
               setUser({ email });
+              setGithubConnected(getGitHubConnected());
             }
           } catch {
             // Refresh 실패 → 로그아웃
@@ -114,10 +119,20 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
   const logout = useCallback((): void => {
     removeToken();
     removeRefreshToken();
+    setGitHubConnectedStorage(false);
+    setGitHubUsernameStorage(null);
     setUser(null);
+    setGithubConnected(false);
   }, []);
 
-  // M1-M2: 토큰 만료 5분 전 자동 갱신
+  // GitHub 연동 상태 업데이트 (단일 진실 원천)
+  const updateGitHubStatus = useCallback((connected: boolean, username?: string | null): void => {
+    setGitHubConnectedStorage(connected);
+    setGitHubUsernameStorage(username ?? null);
+    setGithubConnected(connected);
+  }, []);
+
+  // M1-M2: 토큰 만료 5분 전 자동 갱신 (lastRefreshedAt로 재스케줄링)
   useEffect(() => {
     if (!user) return;
     const ttl = getTokenTtlMs();
@@ -131,13 +146,14 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
         const { access_token } = await authApi.refresh();
         setToken(access_token);
         setSessionExpired(false);
+        setLastRefreshedAt(Date.now());
       } catch {
         setSessionExpired(true);
       }
     }, refreshIn);
 
     return () => clearTimeout(timer);
-  }, [user]);
+  }, [user, lastRefreshedAt]);
 
   const value: AuthContextValue = {
     user,
@@ -147,6 +163,7 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
     sessionExpired,
     login,
     logout,
+    updateGitHubStatus,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

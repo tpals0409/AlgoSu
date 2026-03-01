@@ -8,7 +8,8 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
-import { setCurrentStudyIdForApi } from '@/lib/api';
+import { setCurrentStudyIdForApi, studyApi } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 // ── 타입 ──
 
@@ -17,17 +18,18 @@ export interface Study {
   name: string;
   description?: string;
   githubRepo?: string;
-  role: 'OWNER' | 'MEMBER';
+  role: 'ADMIN' | 'MEMBER';
   memberCount?: number;
 }
 
 interface StudyContextValue {
   currentStudyId: string | null;
   currentStudyName: string | null;
-  currentStudyRole: 'OWNER' | 'MEMBER' | null;
+  currentStudyRole: 'ADMIN' | 'MEMBER' | null;
   studies: Study[];
   setCurrentStudy: (studyId: string) => void;
   setStudies: (studies: Study[]) => void;
+  removeStudy: (studyId: string) => void;
   clearCurrentStudy: () => void;
 }
 
@@ -46,6 +48,7 @@ interface StudyProviderProps {
 }
 
 export function StudyProvider({ children }: StudyProviderProps): ReactNode {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [studies, setStudiesState] = useState<Study[]>([]);
   const [currentStudyId, setCurrentStudyId] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
@@ -63,10 +66,26 @@ export function StudyProvider({ children }: StudyProviderProps): ReactNode {
     setCurrentStudyIdForApi(currentStudyId);
   }, [currentStudyId]);
 
+  // 인증 완료 시 스터디 목록 자동 로드
+  useEffect(() => {
+    if (authLoading || !isAuthenticated) return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const data = await studyApi.list();
+        if (!cancelled) setStudiesState(data);
+      } catch {
+        // 실패 시 무시 — 개별 페이지에서 재시도
+      }
+    };
+    void load();
+    return () => { cancelled = true; };
+  }, [authLoading, isAuthenticated]);
+
   const currentStudy = currentStudyId
     ? studies.find((s) => s.id === currentStudyId)
     : null;
-  const currentStudyRole: 'OWNER' | 'MEMBER' | null = currentStudy?.role ?? null;
+  const currentStudyRole: 'ADMIN' | 'MEMBER' | null = currentStudy?.role ?? null;
   const currentStudyName: string | null = currentStudy?.name ?? null;
 
   const setCurrentStudy = useCallback((studyId: string) => {
@@ -82,6 +101,11 @@ export function StudyProvider({ children }: StudyProviderProps): ReactNode {
     });
   }, []);
 
+  const removeStudy = useCallback((studyId: string) => {
+    setStudiesState((prev) => prev.filter((s) => s.id !== studyId));
+    setCurrentStudyId((prev) => (prev === studyId ? null : prev));
+  }, []);
+
   const clearCurrentStudy = useCallback(() => {
     setCurrentStudyId(null);
   }, []);
@@ -93,6 +117,7 @@ export function StudyProvider({ children }: StudyProviderProps): ReactNode {
     studies,
     setCurrentStudy,
     setStudies,
+    removeStudy,
     clearCurrentStudy,
   };
 

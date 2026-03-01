@@ -63,13 +63,16 @@ export class StudyService {
     return savedStudy;
   }
 
-  async getMyStudies(userId: string): Promise<Study[]> {
+  async getMyStudies(userId: string): Promise<(Study & { role: StudyMemberRole })[]> {
     const memberships = await this.memberRepository.find({
       where: { user_id: userId },
       relations: ['study'],
     });
 
-    return memberships.map((m) => m.study);
+    return memberships.map((m) => ({
+      ...m.study,
+      role: m.role,
+    }));
   }
 
   async getStudyById(studyId: string, userId: string): Promise<Study> {

@@ -12,13 +12,9 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { InlineSpinner } from '@/components/ui/LoadingSpinner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudy } from '@/contexts/StudyContext';
-import { authApi, studyApi, type Study } from '@/lib/api';
-import {
-  getGitHubConnected,
-  setGitHubConnected,
-  getGitHubUsername,
-  setGitHubUsername,
-} from '@/lib/auth';
+import { authApi } from '@/lib/api';
+import { getGitHubUsername } from '@/lib/auth';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 
 function getInitials(email?: string | null): string {
   const src = email ?? '';
@@ -27,45 +23,16 @@ function getInitials(email?: string | null): string {
 
 export default function ProfilePage(): ReactNode {
   const router = useRouter();
-  const { user, isAuthenticated, isLoading: authLoading, logout } = useAuth();
-  const { studies: contextStudies } = useStudy();
+  const { isReady } = useRequireAuth();
+  const { user, logout, githubConnected, updateGitHubStatus } = useAuth();
+  const { studies } = useStudy();
 
-  const [studies, setStudies] = useState<Study[]>(contextStudies);
-  const [studiesLoading, setStudiesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [githubConnected, setGithubConnectedState] = useState(false);
   const [githubUsername, setGithubUsernameState] = useState<string | null>(null);
   const [githubLoading, setGithubLoading] = useState(false);
 
-  // 인증 확인
+  // GitHub username 초기화 (표시용)
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.replace('/login');
-    }
-  }, [authLoading, isAuthenticated, router]);
-
-  // 스터디 목록 로드
-  const loadStudies = useCallback(async () => {
-    setStudiesLoading(true);
-    try {
-      const data = await studyApi.list();
-      setStudies(data);
-    } catch {
-      // 스터디 로드 실패는 무시 (컨텍스트 데이터 사용)
-    } finally {
-      setStudiesLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      void loadStudies();
-    }
-  }, [isAuthenticated, loadStudies]);
-
-  // GitHub 연동 상태 초기화 (localStorage 캐시)
-  useEffect(() => {
-    setGithubConnectedState(getGitHubConnected());
     setGithubUsernameState(getGitHubUsername());
   }, []);
 
@@ -88,16 +55,14 @@ export default function ProfilePage(): ReactNode {
     setGithubLoading(true);
     try {
       await authApi.unlinkGitHub();
-      setGithubConnectedState(false);
-      setGitHubConnected(false);
+      updateGitHubStatus(false);
       setGithubUsernameState(null);
-      setGitHubUsername(null);
     } catch {
       setError('GitHub 연동 해제에 실패했습니다.');
     } finally {
       setGithubLoading(false);
     }
-  }, []);
+  }, [updateGitHubStatus]);
 
   // GitHub 재연동
   const handleRelinkGitHub = useCallback(async () => {
@@ -117,7 +82,7 @@ export default function ProfilePage(): ReactNode {
     router.replace('/login');
   }, [logout, router]);
 
-  if (authLoading) {
+  if (!isReady) {
     return (
       <AppLayout>
         <div className="space-y-4">
@@ -127,10 +92,6 @@ export default function ProfilePage(): ReactNode {
         </div>
       </AppLayout>
     );
-  }
-
-  if (!isAuthenticated) {
-    return null;
   }
 
   return (
@@ -281,13 +242,7 @@ export default function ProfilePage(): ReactNode {
             <CardTitle>소속 스터디</CardTitle>
           </CardHeader>
           <CardContent>
-            {studiesLoading ? (
-              <div className="space-y-3">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} height={48} />
-                ))}
-              </div>
-            ) : studies.length === 0 ? (
+            {studies.length === 0 ? (
               <div className="py-8 text-center">
                 <p className="text-sm text-muted-foreground">
                   참여 중인 스터디가 없습니다.

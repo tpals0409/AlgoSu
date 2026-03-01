@@ -1,31 +1,10 @@
 'use client';
 
-import { useState, useCallback, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { InlineSpinner } from '@/components/ui/LoadingSpinner';
-
-/**
- * 코드 에디터 컴포넌트
- *
- * 기능:
- * - 언어 선택 (화이트리스트 기반)
- * - 코드 textarea (최소 10자 / 최대 100KB)
- * - Auto-save 상태 표시
- * - 제출 버튼 + 로딩 상태
- */
-
-const ALLOWED_LANGUAGES = [
-  { value: 'python', label: 'Python' },
-  { value: 'java', label: 'Java' },
-  { value: 'cpp', label: 'C++' },
-  { value: 'c', label: 'C' },
-  { value: 'javascript', label: 'JavaScript' },
-  { value: 'typescript', label: 'TypeScript' },
-  { value: 'go', label: 'Go' },
-  { value: 'rust', label: 'Rust' },
-  { value: 'kotlin', label: 'Kotlin' },
-] as const;
+import { LANGUAGES } from '@/lib/constants';
 
 interface CodeEditorProps {
   code: string;
@@ -49,6 +28,29 @@ export function CodeEditor({
   deadline,
 }: CodeEditorProps): ReactNode {
   const [error, setError] = useState<string | null>(null);
+  const [deadlineWarning, setDeadlineWarning] = useState<'imminent' | 'approaching' | null>(null);
+
+  // 마감 임박 경고 타이머
+  useEffect(() => {
+    if (!deadline) return;
+
+    const check = () => {
+      const remaining = new Date(deadline).getTime() - Date.now();
+      if (remaining <= 0) {
+        setDeadlineWarning(null);
+      } else if (remaining <= 60_000) {
+        setDeadlineWarning('imminent');
+      } else if (remaining <= 300_000) {
+        setDeadlineWarning('approaching');
+      } else {
+        setDeadlineWarning(null);
+      }
+    };
+
+    check();
+    const interval = setInterval(check, 10_000);
+    return () => clearInterval(interval);
+  }, [deadline]);
 
   const handleSubmit = useCallback(async (): Promise<void> => {
     setError(null);
@@ -93,7 +95,7 @@ export function CodeEditor({
           className="rounded-m border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-main disabled:cursor-not-allowed disabled:opacity-50"
           disabled={isSubmitting}
         >
-          {ALLOWED_LANGUAGES.map((lang) => (
+          {LANGUAGES.map((lang) => (
             <option key={lang.value} value={lang.value}>
               {lang.label}
             </option>
@@ -119,6 +121,18 @@ export function CodeEditor({
         </div>
       )}
 
+      {/* 마감 임박 경고 */}
+      {deadlineWarning === 'imminent' && (
+        <Alert variant="error">
+          마감까지 1분 미만 남았습니다. 지금 바로 제출하세요!
+        </Alert>
+      )}
+      {deadlineWarning === 'approaching' && (
+        <Alert variant="warning">
+          마감까지 5분 이내입니다. 제출을 서두르세요.
+        </Alert>
+      )}
+
       {/* 코드 에디터 */}
       <textarea
         value={code}
@@ -137,7 +151,12 @@ export function CodeEditor({
       )}
 
       {/* 제출 버튼 */}
-      <div className="flex justify-end">
+      <div className="flex items-center justify-end gap-3">
+        {!isSubmitting && code.length < 10 && code.length > 0 && (
+          <span className="text-[11px] text-muted-foreground">
+            {10 - code.length}자 더 입력해주세요
+          </span>
+        )}
         <Button
           variant="primary"
           size="md"

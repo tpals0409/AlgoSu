@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, CheckCircle2 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import {
   Card,
@@ -18,17 +18,7 @@ import { Alert } from '@/components/ui/Alert';
 import { InlineSpinner } from '@/components/ui/LoadingSpinner';
 import { useStudy } from '@/contexts/StudyContext';
 import { problemApi, type CreateProblemData } from '@/lib/api';
-
-const DIFFICULTIES = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND'] as const;
-const DIFFICULTY_LABELS: Record<string, string> = {
-  BRONZE: '브론즈',
-  SILVER: '실버',
-  GOLD: '골드',
-  PLATINUM: '플래티넘',
-  DIAMOND: '다이아',
-};
-
-const LANGUAGES = ['python', 'javascript', 'typescript', 'java', 'cpp', 'c', 'go', 'rust'] as const;
+import { DIFFICULTIES, DIFFICULTY_LABELS, LANGUAGES } from '@/lib/constants';
 
 interface FormState {
   title: string;
@@ -76,9 +66,10 @@ export default function ProblemCreatePage(): ReactNode {
   const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
   const [apiError, setApiError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [created, setCreated] = useState(false);
 
   // ADMIN 권한 체크
-  if (currentStudyRole !== 'OWNER') {
+  if (currentStudyRole !== 'ADMIN') {
     return (
       <AppLayout>
         <div className="space-y-4">
@@ -133,7 +124,7 @@ export default function ProblemCreatePage(): ReactNode {
       if (form.sourcePlatform.trim()) data.sourcePlatform = form.sourcePlatform.trim();
 
       await problemApi.create(data);
-      router.push('/problems');
+      setCreated(true);
     } catch {
       setApiError('문제 생성에 실패했습니다. 다시 시도해주세요.');
     } finally {
@@ -154,6 +145,51 @@ export default function ProblemCreatePage(): ReactNode {
           문제 목록
         </Button>
 
+        {created ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12 gap-4">
+              <div className="flex items-center justify-center rounded-full bg-[rgba(80,200,120,0.22)] p-4">
+                <CheckCircle2 className="h-8 w-8 text-success" aria-hidden />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium text-foreground">문제가 등록되었습니다!</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  추가로 문제를 등록하거나 목록으로 돌아갈 수 있습니다.
+                </p>
+              </div>
+              <div className="flex gap-3 mt-2">
+                <Button
+                  variant="ghost"
+                  size="md"
+                  onClick={() => router.push('/problems')}
+                >
+                  목록으로
+                </Button>
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={() => {
+                    setForm({
+                      title: '',
+                      description: '',
+                      difficulty: '',
+                      weekNumber: '',
+                      deadline: '',
+                      allowedLanguages: [],
+                      sourceUrl: '',
+                      sourcePlatform: '',
+                    });
+                    setFieldErrors({});
+                    setApiError(null);
+                    setCreated(false);
+                  }}
+                >
+                  다시 등록
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
         <Card>
           <CardHeader>
             <CardTitle>새 문제 등록</CardTitle>
@@ -222,16 +258,21 @@ export default function ProblemCreatePage(): ReactNode {
                 </select>
               </div>
 
-              <Input
-                label="주차"
-                type="number"
-                placeholder="예: 1"
-                min={1}
-                value={form.weekNumber}
-                onChange={handleChange('weekNumber')}
-                error={fieldErrors.weekNumber}
-                disabled={isLoading}
-              />
+              <div>
+                <Input
+                  label="주차"
+                  type="number"
+                  placeholder="예: 1"
+                  min={1}
+                  value={form.weekNumber}
+                  onChange={handleChange('weekNumber')}
+                  error={fieldErrors.weekNumber}
+                  disabled={isLoading}
+                />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  스터디 진도를 나타내는 번호입니다.
+                </p>
+              </div>
 
               <Input
                 label="마감일 (선택)"
@@ -246,20 +287,23 @@ export default function ProblemCreatePage(): ReactNode {
                 <span className="text-[11px] font-medium text-text2 mb-[5px]">
                   허용 언어 (선택)
                 </span>
+                <p className="text-[10px] text-muted-foreground mb-1.5">
+                  선택하지 않으면 모든 언어가 허용됩니다.
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {LANGUAGES.map((lang) => (
                     <label
-                      key={lang}
+                      key={lang.value}
                       className="inline-flex items-center gap-1.5 cursor-pointer"
                     >
                       <input
                         type="checkbox"
-                        checked={form.allowedLanguages.includes(lang)}
-                        onChange={() => handleLanguageToggle(lang)}
+                        checked={form.allowedLanguages.includes(lang.value)}
+                        onChange={() => handleLanguageToggle(lang.value)}
                         disabled={isLoading}
                         className="h-3.5 w-3.5 rounded border-border text-primary-500 focus:ring-ring"
                       />
-                      <span className="text-xs text-text1">{lang}</span>
+                      <span className="text-xs text-text1">{lang.label}</span>
                     </label>
                   ))}
                 </div>
@@ -312,6 +356,7 @@ export default function ProblemCreatePage(): ReactNode {
             </CardFooter>
           </form>
         </Card>
+        )}
       </div>
     </AppLayout>
   );

@@ -7,6 +7,7 @@ import type { ReactNode } from 'react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Alert } from '@/components/ui/Alert';
 import { useAuth } from '@/contexts/AuthContext';
+import { setRefreshToken, setGitHubConnected } from '@/lib/auth';
 
 /**
  * OAuth 콜백 페이지 — /callback
@@ -42,14 +43,14 @@ function CallbackContent(): ReactNode {
     // AuthContext를 통해 토큰 저장 + 상태 즉시 반영
     login(accessToken);
 
-    // refresh token 저장
+    // refresh token 저장 (lib/auth.ts의 함수 사용 — 키 일관성 보장)
     if (refreshToken) {
-      localStorage.setItem('algosu:refresh-token', refreshToken);
+      setRefreshToken(refreshToken);
     }
 
-    // GitHub 연동 상태 저장
+    // GitHub 연동 상태 저장 (lib/auth.ts 경유)
     if (githubConnected !== null) {
-      localStorage.setItem('algosu:github-connected', githubConnected);
+      setGitHubConnected(githubConnected === 'true');
     }
 
     if (githubConnected === 'false' || githubConnected === null) {

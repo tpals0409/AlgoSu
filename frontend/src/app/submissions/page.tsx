@@ -16,19 +16,11 @@ import {
   type PaginatedResponse,
   type SubmissionListParams,
 } from '@/lib/api';
-import { useAuth } from '@/contexts/AuthContext';
 import { useStudy } from '@/contexts/StudyContext';
+import { SAGA_STEP_CONFIG, LANGUAGE_VALUES, type SagaStep } from '@/lib/constants';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 
-const SAGA_STEP_CONFIG: Record<string, { label: string; variant: 'success' | 'warning' | 'error' | 'info' | 'muted' }> = {
-  DB_SAVED:       { label: '저장됨',     variant: 'muted' },
-  GITHUB_QUEUED:  { label: 'GitHub 대기', variant: 'info' },
-  AI_QUEUED:      { label: 'AI 분석 대기', variant: 'warning' },
-  DONE:           { label: '완료',       variant: 'success' },
-  FAILED:         { label: '실패',       variant: 'error' },
-};
-
-const LANGUAGE_OPTIONS = ['', 'python', 'javascript', 'typescript', 'java', 'cpp', 'c'] as const;
-const SAGA_STEP_OPTIONS = ['', 'DB_SAVED', 'GITHUB_QUEUED', 'AI_QUEUED', 'DONE', 'FAILED'] as const;
+const SAGA_STEP_KEYS = Object.keys(SAGA_STEP_CONFIG) as SagaStep[];
 
 const PAGE_SIZE = 10;
 
@@ -43,7 +35,7 @@ function formatDate(dateStr: string): string {
 
 export default function SubmissionsPage(): ReactNode {
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isReady, isAuthenticated } = useRequireAuth();
   const { currentStudyName } = useStudy();
 
   const [data, setData] = useState<PaginatedResponse<Submission> | null>(null);
@@ -56,13 +48,6 @@ export default function SubmissionsPage(): ReactNode {
   const [filterSagaStep, setFilterSagaStep] = useState('');
   const [filterWeek, setFilterWeek] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-
-  // 인증 확인
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.replace('/login');
-    }
-  }, [authLoading, isAuthenticated, router]);
 
   const loadSubmissions = useCallback(async () => {
     setIsLoading(true);
@@ -110,8 +95,7 @@ export default function SubmissionsPage(): ReactNode {
 
   const totalPages = data?.meta.totalPages ?? 1;
 
-  if (authLoading) return null;
-  if (!isAuthenticated) return null;
+  if (!isReady) return null;
 
   return (
     <AppLayout>
@@ -155,7 +139,7 @@ export default function SubmissionsPage(): ReactNode {
                   className="rounded-btn border border-border bg-surface px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value="">전체</option>
-                  {LANGUAGE_OPTIONS.filter(Boolean).map((lang) => (
+                  {LANGUAGE_VALUES.map((lang) => (
                     <option key={lang} value={lang}>{lang}</option>
                   ))}
                 </select>
@@ -176,9 +160,9 @@ export default function SubmissionsPage(): ReactNode {
                   className="rounded-btn border border-border bg-surface px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value="">전체</option>
-                  {SAGA_STEP_OPTIONS.filter(Boolean).map((step) => (
+                  {SAGA_STEP_KEYS.map((step) => (
                     <option key={step} value={step}>
-                      {SAGA_STEP_CONFIG[step]?.label ?? step}
+                      {SAGA_STEP_CONFIG[step].label}
                     </option>
                   ))}
                 </select>
@@ -319,7 +303,7 @@ export default function SubmissionsPage(): ReactNode {
                 <Button
                   variant="ghost"
                   size="sm"
-                  disabled={page <= 1}
+                  disabled={page <= 1 || isLoading}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                 >
                   <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
@@ -364,7 +348,7 @@ export default function SubmissionsPage(): ReactNode {
                 <Button
                   variant="ghost"
                   size="sm"
-                  disabled={page >= totalPages}
+                  disabled={page >= totalPages || isLoading}
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 >
                   다음

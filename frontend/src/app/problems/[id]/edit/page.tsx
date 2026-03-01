@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use, type FormEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Trash2 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import {
   Card,
@@ -18,24 +18,7 @@ import { Alert } from '@/components/ui/Alert';
 import { LoadingSpinner, InlineSpinner } from '@/components/ui/LoadingSpinner';
 import { useStudy } from '@/contexts/StudyContext';
 import { problemApi, type Problem, type UpdateProblemData } from '@/lib/api';
-
-const DIFFICULTIES = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND'] as const;
-const DIFFICULTY_LABELS: Record<string, string> = {
-  BRONZE: '브론즈',
-  SILVER: '실버',
-  GOLD: '골드',
-  PLATINUM: '플래티넘',
-  DIAMOND: '다이아',
-};
-
-const STATUSES = ['ACTIVE', 'CLOSED', 'DRAFT'] as const;
-const STATUS_LABELS: Record<string, string> = {
-  ACTIVE: '진행 중',
-  CLOSED: '종료',
-  DRAFT: '초안',
-};
-
-const LANGUAGES = ['python', 'javascript', 'typescript', 'java', 'cpp', 'c', 'go', 'rust'] as const;
+import { DIFFICULTIES, DIFFICULTY_LABELS, PROBLEM_STATUSES, PROBLEM_STATUS_LABELS, LANGUAGES } from '@/lib/constants';
 
 interface FormState {
   title: string;
@@ -101,6 +84,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
   const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
   const [apiError, setApiError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // 문제 데이터 로드
   useEffect(() => {
@@ -139,7 +123,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
   }, [problemId]);
 
   // ADMIN 권한 체크
-  if (currentStudyRole !== 'OWNER') {
+  if (currentStudyRole !== 'ADMIN') {
     return (
       <AppLayout>
         <div className="space-y-4">
@@ -206,6 +190,14 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
     if (problem.status === 'ACTIVE' && form.status === 'CLOSED') {
       const confirmed = window.confirm(
         '문제를 마감하면 더 이상 제출할 수 없습니다. 계속하시겠습니까?',
+      );
+      if (!confirmed) return;
+    }
+
+    // DRAFT → ACTIVE 변경 시 확인 다이얼로그
+    if (problem.status === 'DRAFT' && form.status === 'ACTIVE') {
+      const confirmed = window.confirm(
+        '문제를 활성화하면 멤버들이 이 문제를 보고 제출할 수 있습니다. 계속하시겠습니까?',
       );
       if (!confirmed) return;
     }
@@ -355,9 +347,9 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                   className="w-full px-3 py-2 rounded-btn border border-border bg-bg2 text-text1 text-xs outline-none transition-[border-color] duration-150 focus:border-primary-500 disabled:cursor-not-allowed disabled:opacity-50"
                   style={{ padding: '8px 12px', fontSize: '12px' }}
                 >
-                  {STATUSES.map((s) => (
+                  {PROBLEM_STATUSES.map((s) => (
                     <option key={s} value={s}>
-                      {STATUS_LABELS[s]}
+                      {PROBLEM_STATUS_LABELS[s]}
                     </option>
                   ))}
                 </select>
@@ -371,17 +363,17 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                 <div className="flex flex-wrap gap-2">
                   {LANGUAGES.map((lang) => (
                     <label
-                      key={lang}
+                      key={lang.value}
                       className="inline-flex items-center gap-1.5 cursor-pointer"
                     >
                       <input
                         type="checkbox"
-                        checked={form.allowedLanguages.includes(lang)}
-                        onChange={() => handleLanguageToggle(lang)}
+                        checked={form.allowedLanguages.includes(lang.value)}
+                        onChange={() => handleLanguageToggle(lang.value)}
                         disabled={isSubmitting}
                         className="h-3.5 w-3.5 rounded border-border text-primary-500 focus:ring-ring"
                       />
-                      <span className="text-xs text-text1">{lang}</span>
+                      <span className="text-xs text-text1">{lang.label}</span>
                     </label>
                   ))}
                 </div>
@@ -404,31 +396,64 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
               />
             </CardContent>
 
-            <CardFooter className="flex gap-3">
+            <CardFooter className="flex items-center justify-between">
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="md"
+                  disabled={isSubmitting || isDeleting}
+                  onClick={() => router.back()}
+                >
+                  취소
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="md"
+                  disabled={isSubmitting || isDeleting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <InlineSpinner />
+                      수정 중...
+                    </>
+                  ) : (
+                    '수정 완료'
+                  )}
+                </Button>
+              </div>
               <Button
                 type="button"
-                variant="ghost"
-                size="md"
-                className="flex-1"
-                disabled={isSubmitting}
-                onClick={() => router.back()}
+                variant="danger"
+                size="sm"
+                disabled={isSubmitting || isDeleting}
+                onClick={async () => {
+                  const confirmed = window.confirm(
+                    '정말 이 문제를 삭제하시겠습니까? 관련 제출 기록도 함께 삭제됩니다.',
+                  );
+                  if (!confirmed) return;
+
+                  setIsDeleting(true);
+                  try {
+                    await problemApi.delete(problemId);
+                    router.replace('/problems');
+                  } catch {
+                    setApiError('문제 삭제에 실패했습니다.');
+                    setIsDeleting(false);
+                  }
+                }}
               >
-                취소
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                size="md"
-                className="flex-1"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
+                {isDeleting ? (
                   <>
                     <InlineSpinner />
-                    수정 중...
+                    삭제 중...
                   </>
                 ) : (
-                  '수정 완료'
+                  <>
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                    삭제
+                  </>
                 )}
               </Button>
             </CardFooter>

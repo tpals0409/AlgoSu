@@ -144,6 +144,12 @@ export function TopNav(): ReactNode {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const hasStudy = isAuthenticated && currentStudyId !== null;
 
+  // 모바일 메뉴 오픈 시 배경 스크롤 방지
+  useEffect(() => {
+    document.body.style.overflow = mobileMenuOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileMenuOpen]);
+
   return (
     <header
       className={cn(

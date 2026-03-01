@@ -13,22 +13,7 @@ import { Alert } from '@/components/ui/Alert';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { problemApi, type Problem } from '@/lib/api';
 import { useStudy } from '@/contexts/StudyContext';
-
-const DIFFICULTIES = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND'] as const;
-const DIFFICULTY_LABELS: Record<string, string> = {
-  BRONZE: '브론즈',
-  SILVER: '실버',
-  GOLD: '골드',
-  PLATINUM: '플래티넘',
-  DIAMOND: '다이아',
-};
-
-const STATUS_OPTIONS = ['ACTIVE', 'CLOSED', 'DRAFT'] as const;
-const STATUS_LABELS: Record<string, string> = {
-  ACTIVE: '진행 중',
-  CLOSED: '종료',
-  DRAFT: '초안',
-};
+import { DIFFICULTIES, DIFFICULTY_LABELS, PROBLEM_STATUSES, PROBLEM_STATUS_LABELS } from '@/lib/constants';
 
 interface Filters {
   search: string;
@@ -229,9 +214,9 @@ export default function ProblemsPage(): ReactNode {
                   style={{ padding: '8px 12px', fontSize: '12px' }}
                 >
                   <option value="">전체</option>
-                  {STATUS_OPTIONS.map((s) => (
+                  {PROBLEM_STATUSES.map((s) => (
                     <option key={s} value={s}>
-                      {STATUS_LABELS[s]}
+                      {PROBLEM_STATUS_LABELS[s]}
                     </option>
                   ))}
                 </select>

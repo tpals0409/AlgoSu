@@ -16,8 +16,8 @@ import { Badge } from '@/components/ui/Badge';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { useAuth } from '@/contexts/AuthContext';
 import { useStudy } from '@/contexts/StudyContext';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 import {
   studyApi,
   submissionApi,
@@ -26,22 +26,7 @@ import {
   type Submission,
   type Problem,
 } from '@/lib/api';
-
-const SAGA_STEP_LABEL: Record<string, string> = {
-  DB_SAVED: '저장됨',
-  GITHUB_QUEUED: 'GitHub 대기',
-  AI_QUEUED: 'AI 분석 대기',
-  DONE: '완료',
-  FAILED: '실패',
-};
-
-const SAGA_STEP_VARIANT: Record<string, 'success' | 'warning' | 'error' | 'info' | 'muted'> = {
-  DB_SAVED: 'muted',
-  GITHUB_QUEUED: 'info',
-  AI_QUEUED: 'warning',
-  DONE: 'success',
-  FAILED: 'error',
-};
+import { SAGA_STEP_CONFIG, type SagaStep } from '@/lib/constants';
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -113,7 +98,7 @@ function WeeklyBar({
 
 export default function DashboardPage(): ReactNode {
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isReady, isAuthenticated } = useRequireAuth();
   const { currentStudyId, currentStudyName } = useStudy();
 
   const [stats, setStats] = useState<StudyStats | null>(null);
@@ -121,12 +106,6 @@ export default function DashboardPage(): ReactNode {
   const [activeProblems, setActiveProblems] = useState<Problem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.replace('/login');
-    }
-  }, [authLoading, isAuthenticated, router]);
 
   const loadDashboard = useCallback(async () => {
     setIsLoading(true);
@@ -190,8 +169,7 @@ export default function DashboardPage(): ReactNode {
     return Math.max(...stats.byWeek.map((w) => w.count));
   }, [stats]);
 
-  if (authLoading) return null;
-  if (!isAuthenticated) return null;
+  if (!isReady) return null;
 
   return (
     <AppLayout>
@@ -372,8 +350,8 @@ export default function DashboardPage(): ReactNode {
                       </div>
                       <div className="flex items-center gap-2 ml-2">
                         <Badge variant="info">{s.language}</Badge>
-                        <Badge variant={SAGA_STEP_VARIANT[s.sagaStep] ?? 'muted'} dot>
-                          {SAGA_STEP_LABEL[s.sagaStep] ?? s.sagaStep}
+                        <Badge variant={SAGA_STEP_CONFIG[s.sagaStep as SagaStep]?.variant ?? 'muted'} dot>
+                          {SAGA_STEP_CONFIG[s.sagaStep as SagaStep]?.label ?? s.sagaStep}
                         </Badge>
                       </div>
                     </div>

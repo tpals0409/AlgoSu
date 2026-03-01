@@ -218,13 +218,14 @@ export class SubmissionService {
       where: { studyId },
     });
 
-    // 주차별 통계 — createdAt 기반 ISO week 그룹핑
+    // 주차별 통계 — Problem weekNumber 기반 그룹핑
     const byWeekRaw = await this.submissionRepo
       .createQueryBuilder('s')
-      .select('EXTRACT(WEEK FROM s.created_at)::int', 'week')
+      .select('s.week_number', 'week')
       .addSelect('COUNT(*)::int', 'count')
       .where('s.study_id = :studyId', { studyId })
-      .groupBy('EXTRACT(WEEK FROM s.created_at)')
+      .andWhere('s.week_number IS NOT NULL')
+      .groupBy('s.week_number')
       .orderBy('week', 'ASC')
       .getRawMany<{ week: number; count: number }>();
 

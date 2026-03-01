@@ -125,13 +125,18 @@ export default function StudyCreatePage(): ReactNode {
                 disabled={isLoading}
               />
 
-              <Input
-                label="GitHub 레포지토리 (선택)"
-                placeholder="예: owner/repo-name"
-                value={form.githubRepo}
-                onChange={handleChange('githubRepo')}
-                disabled={isLoading}
-              />
+              <div>
+                <Input
+                  label="GitHub 레포지토리 (선택)"
+                  placeholder="예: owner/repo-name"
+                  value={form.githubRepo}
+                  onChange={handleChange('githubRepo')}
+                  disabled={isLoading}
+                />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  연결하면 멤버들의 제출 코드가 GitHub에 자동으로 Push됩니다.
+                </p>
+              </div>
             </CardContent>
 
             <CardFooter className="flex gap-3">

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, use, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Copy, Check, UserMinus, Settings } from 'lucide-react';
+import { ChevronLeft, Copy, Check, UserMinus, Settings, Trash2 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import {
   Card,
@@ -28,7 +28,7 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
   const { id: studyId } = use(params);
   const router = useRouter();
   const { currentStudyRole } = useStudy();
-  const isAdmin = currentStudyRole === 'OWNER';
+  const isAdmin = currentStudyRole === 'ADMIN';
 
   const [study, setStudy] = useState<Study | null>(null);
   const [members, setMembers] = useState<StudyMember[]>([]);
@@ -52,6 +52,9 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
 
   // 역할 변경
   const [roleChanging, setRoleChanging] = useState<string | null>(null);
+
+  // 스터디 삭제
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const loadStudyData = useCallback(async (): Promise<void> => {
     setIsLoading(true);
@@ -82,6 +85,10 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
     try {
       const result = await studyApi.invite(studyId);
       setInviteCode(result.code);
+      // 자동 클립보드 복사
+      await navigator.clipboard.writeText(result.code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     } catch {
       setError('초대 코드 생성에 실패했습니다.');
     } finally {
@@ -115,6 +122,12 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
   // 역할 변경
   const handleRoleChange = useCallback(
     async (member: StudyMember, newRole: 'ADMIN' | 'MEMBER'): Promise<void> => {
+      const roleLabel = newRole === 'ADMIN' ? '관리자' : '멤버';
+      const confirmed = window.confirm(
+        `${member.email ?? member.user_id}님의 역할을 "${roleLabel}"(으)로 변경하시겠습니까?`,
+      );
+      if (!confirmed) return;
+
       setRoleChanging(member.id);
       try {
         await studyApi.changeRole(studyId, member.user_id, newRole);
@@ -148,6 +161,25 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
       setIsSavingEdit(false);
     }
   }, [studyId, editName, editDescription]);
+
+  // 스터디 삭제
+  const { removeStudy } = useStudy();
+  const handleDeleteStudy = useCallback(async (): Promise<void> => {
+    const confirmed = window.confirm(
+      '정말 이 스터디를 삭제하시겠습니까? 모든 데이터가 영구 삭제되며 되돌릴 수 없습니다.',
+    );
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    try {
+      await studyApi.delete(studyId);
+      removeStudy(studyId);
+      router.replace('/studies');
+    } catch {
+      setError('스터디 삭제에 실패했습니다.');
+      setIsDeleting(false);
+    }
+  }, [studyId, removeStudy, router]);
 
   if (isLoading) {
     return (
@@ -211,7 +243,7 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
                     onClick={() => setIsEditing(!isEditing)}
                   >
                     <Settings />
-                    설정
+                    {isEditing ? '설정 닫기' : '스터디 설정'}
                   </Button>
                 )}
               </div>
@@ -262,32 +294,52 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
                 />
               </div>
             </CardContent>
-            <CardFooter className="flex gap-3">
+            <CardFooter className="flex items-center justify-between">
+              <div className="flex gap-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEditName(study?.name ?? '');
+                    setEditDescription(study?.description ?? '');
+                  }}
+                  disabled={isSavingEdit || isDeleting}
+                >
+                  취소
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => void handleSaveEdit()}
+                  disabled={isSavingEdit || isDeleting || !editName.trim()}
+                >
+                  {isSavingEdit ? (
+                    <>
+                      <InlineSpinner />
+                      저장 중...
+                    </>
+                  ) : (
+                    '저장'
+                  )}
+                </Button>
+              </div>
               <Button
-                variant="ghost"
+                variant="danger"
                 size="sm"
-                onClick={() => {
-                  setIsEditing(false);
-                  setEditName(study?.name ?? '');
-                  setEditDescription(study?.description ?? '');
-                }}
-                disabled={isSavingEdit}
+                onClick={() => void handleDeleteStudy()}
+                disabled={isSavingEdit || isDeleting}
               >
-                취소
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => void handleSaveEdit()}
-                disabled={isSavingEdit || !editName.trim()}
-              >
-                {isSavingEdit ? (
+                {isDeleting ? (
                   <>
                     <InlineSpinner />
-                    저장 중...
+                    삭제 중...
                   </>
                 ) : (
-                  '저장'
+                  <>
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                    스터디 삭제
+                  </>
                 )}
               </Button>
             </CardFooter>
