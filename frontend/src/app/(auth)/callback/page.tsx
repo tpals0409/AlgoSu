@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Alert } from '@/components/ui/Alert';
-import { setToken } from '@/lib/auth';
+import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * OAuth 콜백 페이지 — /callback
@@ -16,6 +16,7 @@ import { setToken } from '@/lib/auth';
  */
 function CallbackContent(): ReactNode {
   const router = useRouter();
+  const { login } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -38,8 +39,8 @@ function CallbackContent(): ReactNode {
       return;
     }
 
-    // 토큰 저장 (보안 로그 방지: 토큰 값 로깅 금지)
-    setToken(accessToken);
+    // AuthContext를 통해 토큰 저장 + 상태 즉시 반영
+    login(accessToken);
 
     // refresh token 저장
     if (refreshToken) {
@@ -56,7 +57,7 @@ function CallbackContent(): ReactNode {
     } else {
       router.replace('/studies');
     }
-  }, [router]);
+  }, [router, login]);
 
   if (error) {
     return (

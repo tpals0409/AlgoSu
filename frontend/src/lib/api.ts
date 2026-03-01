@@ -68,11 +68,13 @@ export interface Submission {
 }
 
 export interface PaginatedResponse<T> {
-  items: T[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
+  data: T[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
 export interface SubmissionListParams {
@@ -128,6 +130,18 @@ export interface OAuthUrlResponse {
 
 // ── API 에러 ──
 
+const HTTP_ERROR_MESSAGES: Record<number, string> = {
+  400: '잘못된 요청입니다.',
+  401: '로그인이 필요합니다.',
+  403: '접근 권한이 없습니다.',
+  404: '요청한 리소스를 찾을 수 없습니다.',
+  409: '이미 존재하는 데이터입니다.',
+  429: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.',
+  500: '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+  502: '서버에 연결할 수 없습니다.',
+  503: '서비스가 일시적으로 이용 불가합니다.',
+};
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -171,14 +185,15 @@ async function fetchApi<T>(
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({})) as { message?: string };
-    throw new ApiError(body.message ?? `API Error: ${res.status}`, res.status);
+    throw new ApiError(body.message ?? HTTP_ERROR_MESSAGES[res.status] ?? `서버 오류 (${res.status})`, res.status);
   }
 
   const json = await res.json();
-  // { data: ... } 래퍼 자동 언래핑
-  return (json !== null && typeof json === 'object' && 'data' in json
-    ? (json as { data: T }).data
-    : json) as T;
+  // { data: ... } 래퍼 자동 언래핑 — meta가 함께 있으면 페이지네이션 응답이므로 유지
+  if (json !== null && typeof json === 'object' && 'data' in json && !('meta' in json)) {
+    return (json as { data: T }).data;
+  }
+  return json as T;
 }
 
 // ── Auth API ──

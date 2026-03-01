@@ -202,6 +202,14 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
       return;
     }
 
+    // ACTIVE → CLOSED 변경 시 확인 다이얼로그
+    if (problem.status === 'ACTIVE' && form.status === 'CLOSED') {
+      const confirmed = window.confirm(
+        '문제를 마감하면 더 이상 제출할 수 없습니다. 계속하시겠습니까?',
+      );
+      if (!confirmed) return;
+    }
+
     setIsSubmitting(true);
     setApiError(null);
 

@@ -17,6 +17,7 @@ import {
   type SubmissionListParams,
 } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { useStudy } from '@/contexts/StudyContext';
 
 const SAGA_STEP_CONFIG: Record<string, { label: string; variant: 'success' | 'warning' | 'error' | 'info' | 'muted' }> = {
   DB_SAVED:       { label: '저장됨',     variant: 'muted' },
@@ -43,6 +44,7 @@ function formatDate(dateStr: string): string {
 export default function SubmissionsPage(): ReactNode {
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { currentStudyName } = useStudy();
 
   const [data, setData] = useState<PaginatedResponse<Submission> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -106,7 +108,7 @@ export default function SubmissionsPage(): ReactNode {
     setPage(1);
   }, []);
 
-  const totalPages = data?.totalPages ?? 1;
+  const totalPages = data?.meta.totalPages ?? 1;
 
   if (authLoading) return null;
   if (!isAuthenticated) return null;
@@ -117,9 +119,11 @@ export default function SubmissionsPage(): ReactNode {
         {/* 헤더 */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-base font-semibold text-foreground">제출 이력</h1>
+            <h1 className="text-base font-semibold text-foreground">
+              {currentStudyName ? `${currentStudyName} \u00B7 제출 이력` : '제출 이력'}
+            </h1>
             <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
-              {data ? `총 ${data.total}건` : '불러오는 중...'}
+              {data ? `총 ${data.meta.total}건` : '불러오는 중...'}
             </p>
           </div>
           <Button
@@ -227,7 +231,7 @@ export default function SubmissionsPage(): ReactNode {
         )}
 
         {/* 빈 상태 */}
-        {!isLoading && !error && data && data.items.length === 0 && (
+        {!isLoading && !error && data && data.data.length === 0 && (
           <EmptyState
             icon={FileText}
             title="제출 이력이 없습니다"
@@ -245,12 +249,12 @@ export default function SubmissionsPage(): ReactNode {
         )}
 
         {/* 제출 목록 테이블 */}
-        {!isLoading && data && data.items.length > 0 && (
+        {!isLoading && data && data.data.length > 0 && (
           <>
-            <Card className="p-0">
+            <Card className="p-0 overflow-x-auto">
               {/* 헤더 행 */}
               <div
-                className="grid items-center gap-x-2.5 px-4 py-2 border-b border-border font-mono text-[10px] uppercase tracking-wider text-muted-foreground"
+                className="grid items-center gap-x-2.5 px-4 py-2 border-b border-border font-mono text-[10px] uppercase tracking-wider text-muted-foreground min-w-[480px]"
                 style={{ gridTemplateColumns: '1fr auto auto auto auto' }}
               >
                 <span>문제</span>
@@ -261,7 +265,7 @@ export default function SubmissionsPage(): ReactNode {
               </div>
 
               {/* 데이터 행 */}
-              {data.items.map((submission) => {
+              {data.data.map((submission) => {
                 const sagaConfig = SAGA_STEP_CONFIG[submission.sagaStep] ?? {
                   label: submission.sagaStep,
                   variant: 'muted' as const,
@@ -270,7 +274,7 @@ export default function SubmissionsPage(): ReactNode {
                 return (
                   <div
                     key={submission.id}
-                    className="grid items-center gap-x-2.5 w-full px-4 py-2.5 border-b border-border last:border-b-0 hover:bg-muted/40 transition-colors"
+                    className="grid items-center gap-x-2.5 w-full px-4 py-2.5 border-b border-border last:border-b-0 hover:bg-muted/40 transition-colors min-w-[480px]"
                     style={{ gridTemplateColumns: '1fr auto auto auto auto' }}
                   >
                     {/* 문제명 */}

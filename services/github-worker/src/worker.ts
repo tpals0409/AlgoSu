@@ -50,6 +50,16 @@ export class GitHubWorker {
 
   async start(): Promise<void> {
     this.connection = await amqplib.connect(config.rabbitmqUrl);
+
+    // C5: MQ 연결 오류/종료 핸들러 — unhandledRejection 방지
+    this.connection.on('error', (err: Error) => {
+      logger.error('RabbitMQ 연결 오류', { tag: 'MQ_CONNECTION_ERROR', err });
+    });
+    this.connection.on('close', () => {
+      logger.warn('RabbitMQ 연결 종료 — 프로세스 종료 (k8s 재시작 의존)', { tag: 'MQ_CONNECTION_CLOSED' });
+      process.exit(1);
+    });
+
     const channel = await this.connection.createChannel();
     this.channel = channel;
 
@@ -69,17 +79,53 @@ export class GitHubWorker {
     await channel.consume(QUEUE, async (msg) => {
       if (!msg) return;
 
+      // C3: JSON 파싱을 비즈니스 로직과 분리
+      let event: GitHubPushEvent;
       try {
-        const event: GitHubPushEvent = JSON.parse(msg.content.toString());
-        logger.info('MQ 메시지 소비 시작', { tag: 'MQ_CONSUME', queue: QUEUE });
+        event = JSON.parse(msg.content.toString()) as GitHubPushEvent;
+      } catch (parseErr) {
+        logger.error('MQ 메시지 JSON 파싱 실패 — DLQ', {
+          tag: 'MQ_CONSUME_DONE',
+          traceId: 'UNKNOWN',
+          result: 'NACK_DLQ',
+          code: 'MQ_001',
+          err: parseErr as Error,
+          deliveryTag: msg.fields.deliveryTag,
+        });
+        channel.nack(msg, false, false);
+        return;
+      }
+
+      const startTime = Date.now();
+
+      try {
+        logger.info('MQ 메시지 소비 시작', {
+          tag: 'MQ_CONSUME',
+          queue: QUEUE,
+          traceId: event.submissionId,
+          deliveryTag: msg.fields.deliveryTag,
+          redelivered: msg.fields.redelivered,
+        });
 
         await this.processWithRetry(event);
         channel.ack(msg);
 
-        logger.info('MQ 메시지 소비 완료', { tag: 'MQ_CONSUME_DONE', result: 'ACK' });
+        logger.info('MQ 메시지 소비 완료', {
+          tag: 'MQ_CONSUME_DONE',
+          result: 'ACK',
+          traceId: event.submissionId,
+          deliveryTag: msg.fields.deliveryTag,
+          durationMs: Date.now() - startTime,
+        });
       } catch (error: unknown) {
-        const errMsg = (error as Error).message ?? 'Unknown error';
-        logger.error('처리 실패 — DLQ 전송', { tag: 'MQ_CONSUME_DONE', result: 'NACK_DLQ', err: error as Error });
+        logger.error('처리 실패 — DLQ 전송', {
+          tag: 'MQ_CONSUME_DONE',
+          result: 'NACK_DLQ',
+          traceId: event.submissionId,
+          deliveryTag: msg.fields.deliveryTag,
+          durationMs: Date.now() - startTime,
+          err: error as Error,
+        });
 
         // DLQ로 전송 (nack + requeue=false)
         channel.nack(msg, false, false);
@@ -113,6 +159,12 @@ export class GitHubWorker {
   private async processWithRetry(event: GitHubPushEvent): Promise<void> {
     // studyId 필수 검증
     if (!event.studyId) {
+      logger.error('studyId 누락 — DLQ', {
+        traceId: event.submissionId,
+        code: 'GHW_BIZ_003',
+        tag: 'MQ_CONSUME_DONE',
+        result: 'NACK_DLQ',
+      });
       throw new Error(`studyId 누락: submissionId=${event.submissionId}`);
     }
 
@@ -121,7 +173,7 @@ export class GitHubWorker {
 
     // github_repo 미연결 → SKIPPED 처리 후 ACK
     if (!githubRepo) {
-      logger.info('SKIPPED: github_repo 없음', { tag: 'GITHUB_SKIP' });
+      logger.info('SKIPPED: github_repo 없음', { tag: 'GITHUB_SKIP', traceId: event.submissionId });
       await this.statusReporter.reportSkipped(event.submissionId);
       return;
     }
@@ -129,7 +181,13 @@ export class GitHubWorker {
     // github_repo 파싱: "owner/repo" 형식
     const slashIdx = githubRepo.indexOf('/');
     if (slashIdx === -1) {
-      throw new Error(`github_repo 형식 오류 (owner/repo 필요): submissionId=${event.submissionId}`);
+      logger.error('github_repo 형식 오류 — DLQ', {
+        traceId: event.submissionId,
+        code: 'GHW_BIZ_004',
+        tag: 'MQ_CONSUME_DONE',
+        result: 'NACK_DLQ',
+      });
+      throw new Error(`github_repo 형식 오류: submissionId=${event.submissionId}`);
     }
     const repoOwner = githubRepo.slice(0, slashIdx);
     const repoName = githubRepo.slice(slashIdx + 1);

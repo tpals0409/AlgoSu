@@ -11,7 +11,7 @@ import { RedisThrottlerStorage } from './redis-throttler.storage';
 @Injectable()
 export class RateLimitMiddleware implements NestMiddleware {
   private readonly logger = new Logger(RateLimitMiddleware.name);
-  private static readonly DEFAULT_LIMIT = 60;
+  private static readonly DEFAULT_LIMIT = Number(process.env['RATE_LIMIT_DEFAULT']) || 60;
   private static readonly SUBMISSION_LIMIT = 10;
   private static readonly TTL_MS = 60_000;
 

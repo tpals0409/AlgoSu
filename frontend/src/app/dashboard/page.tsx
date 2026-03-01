@@ -14,7 +14,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Alert } from '@/components/ui/Alert';
-import { EmptyState } from '@/components/ui/EmptyState';
+import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudy } from '@/contexts/StudyContext';
@@ -114,7 +114,7 @@ function WeeklyBar({
 export default function DashboardPage(): ReactNode {
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const { currentStudyId } = useStudy();
+  const { currentStudyId, currentStudyName } = useStudy();
 
   const [stats, setStats] = useState<StudyStats | null>(null);
   const [recentSubmissions, setRecentSubmissions] = useState<Submission[]>([]);
@@ -145,8 +145,8 @@ export default function DashboardPage(): ReactNode {
 
       // 최근 제출
       if (results[1].status === 'fulfilled') {
-        const paginated = results[1].value as { items: Submission[] };
-        setRecentSubmissions(paginated.items ?? []);
+        const paginated = results[1].value as { data: Submission[]; meta: unknown };
+        setRecentSubmissions(paginated.data ?? []);
       }
 
       // 활성 문제
@@ -198,7 +198,9 @@ export default function DashboardPage(): ReactNode {
       <div className="space-y-6">
         {/* 헤더 */}
         <div>
-          <h1 className="text-base font-semibold text-foreground">대시보드</h1>
+          <h1 className="text-base font-semibold text-foreground">
+            {currentStudyName ? `${currentStudyName} \u00B7 대시보드` : '대시보드'}
+          </h1>
           <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
             {currentStudyId ? '스터디 현황 요약' : '스터디를 선택하면 통계를 볼 수 있습니다'}
           </p>
@@ -210,14 +212,40 @@ export default function DashboardPage(): ReactNode {
           </Alert>
         )}
 
-        {/* 스터디 미선택 시 안내 */}
+        {/* 스터디 미선택 시 온보딩 (C2) */}
         {!currentStudyId && !isLoading && (
-          <EmptyState
-            icon={BarChart3}
-            title="스터디를 선택해주세요"
-            description="상단 메뉴에서 스터디를 선택하면 대시보드를 확인할 수 있습니다."
-            action={{ label: '스터디 목록', onClick: () => router.push('/studies') }}
-          />
+          <Card className="p-8">
+            <div className="flex flex-col items-center text-center gap-4">
+              <div
+                className="flex items-center justify-center rounded-full bg-bg2"
+                style={{ width: '48px', height: '48px' }}
+              >
+                <Users className="h-5 w-5 text-primary" aria-hidden />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">스터디에 참여해보세요</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  스터디를 만들거나 초대 코드로 참여하면 대시보드를 확인할 수 있습니다.
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => router.push('/studies/create')}
+                >
+                  스터디 만들기
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => router.push('/studies')}
+                >
+                  스터디 둘러보기
+                </Button>
+              </div>
+            </div>
+          </Card>
         )}
 
         {/* 통계 카드들 */}

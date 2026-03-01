@@ -53,6 +53,20 @@ export function isTokenExpired(token?: string | null): boolean {
   return Date.now() >= (exp - 10) * 1000;
 }
 
+/**
+ * 토큰 만료까지 남은 시간(ms) 반환. 만료됨/파싱 불가 시 0.
+ */
+export function getTokenTtlMs(token?: string | null): number {
+  const t = token ?? getToken();
+  if (!t) return 0;
+  const payload = decodeTokenPayload(t);
+  if (!payload) return 0;
+  const exp = payload['exp'];
+  if (typeof exp !== 'number') return 0;
+  const remaining = exp * 1000 - Date.now();
+  return remaining > 0 ? remaining : 0;
+}
+
 export const REFRESH_TOKEN_KEY = 'algosu:refresh_token' as const;
 
 export function setRefreshToken(token: string): void {

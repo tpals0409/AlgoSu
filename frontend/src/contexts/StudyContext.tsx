@@ -23,6 +23,7 @@ export interface Study {
 
 interface StudyContextValue {
   currentStudyId: string | null;
+  currentStudyName: string | null;
   currentStudyRole: 'OWNER' | 'MEMBER' | null;
   studies: Study[];
   setCurrentStudy: (studyId: string) => void;
@@ -62,9 +63,11 @@ export function StudyProvider({ children }: StudyProviderProps): ReactNode {
     setCurrentStudyIdForApi(currentStudyId);
   }, [currentStudyId]);
 
-  const currentStudyRole: 'OWNER' | 'MEMBER' | null = currentStudyId
-    ? (studies.find((s) => s.id === currentStudyId)?.role ?? null)
+  const currentStudy = currentStudyId
+    ? studies.find((s) => s.id === currentStudyId)
     : null;
+  const currentStudyRole: 'OWNER' | 'MEMBER' | null = currentStudy?.role ?? null;
+  const currentStudyName: string | null = currentStudy?.name ?? null;
 
   const setCurrentStudy = useCallback((studyId: string) => {
     setCurrentStudyId(studyId);
@@ -85,6 +88,7 @@ export function StudyProvider({ children }: StudyProviderProps): ReactNode {
 
   const value: StudyContextValue = {
     currentStudyId,
+    currentStudyName,
     currentStudyRole,
     studies,
     setCurrentStudy,

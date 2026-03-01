@@ -70,6 +70,16 @@ export class OAuthService {
     }
   }
 
+  async validateAndConsumeGitHubLinkState(state: string): Promise<string> {
+    const key = `oauth:github:link:${state}`;
+    const userId = await this.redis.get(key);
+    if (!userId) {
+      throw new BadRequestException('유효하지 않거나 만료된 GitHub 연동 state입니다.');
+    }
+    await this.redis.del(key);
+    return userId;
+  }
+
   // --- Authorization URL 생성 ---
 
   async getAuthorizationUrl(provider: string): Promise<{ url: string }> {
@@ -270,8 +280,7 @@ export class OAuthService {
 
   async getGitHubAuthUrl(userId: string): Promise<{ url: string }> {
     const clientId = this.configService.getOrThrow<string>('GITHUB_CLIENT_ID');
-    const redirectUri = `${this.callbackBaseUrl}/auth/oauth/github/callback`;
-    // H5: random state를 Redis에 저장 + userId 매핑 (CSRF 방지)
+    const redirectUri = `${this.callbackBaseUrl}/auth/github/link/callback`;
     const state = crypto.randomUUID();
     await this.redis.set(
       `oauth:github:link:${state}`,
@@ -292,28 +301,41 @@ export class OAuthService {
     const clientId = this.configService.getOrThrow<string>('GITHUB_CLIENT_ID');
     const clientSecret = this.configService.getOrThrow<string>('GITHUB_CLIENT_SECRET');
 
-    const tokenRes = await axios.post<{ access_token: string }>(
-      'https://github.com/login/oauth/access_token',
-      {
-        client_id: clientId,
-        client_secret: clientSecret,
-        code,
-      },
-      {
-        headers: { Accept: 'application/json' },
-      },
-    );
+    let accessToken: string;
+    try {
+      const tokenRes = await axios.post<{ access_token: string }>(
+        'https://github.com/login/oauth/access_token',
+        {
+          client_id: clientId,
+          client_secret: clientSecret,
+          code,
+        },
+        {
+          headers: { Accept: 'application/json' },
+        },
+      );
 
-    if (!tokenRes.data.access_token) {
-      throw new BadRequestException('GitHub 토큰 교환에 실패했습니다.');
+      if (!tokenRes.data.access_token) {
+        throw new BadRequestException('GitHub 토큰 교환에 실패했습니다.');
+      }
+      accessToken = tokenRes.data.access_token;
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      throw new BadRequestException('GitHub 인증 처리 중 오류가 발생했습니다.');
     }
 
-    const githubUser = await axios.get<GitHubUserProfile>(
-      'https://api.github.com/user',
-      {
-        headers: { Authorization: `Bearer ${tokenRes.data.access_token}` },
-      },
-    );
+    let githubUser: GitHubUserProfile;
+    try {
+      const res = await axios.get<GitHubUserProfile>(
+        'https://api.github.com/user',
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      );
+      githubUser = res.data;
+    } catch {
+      throw new BadRequestException('GitHub 사용자 정보 조회에 실패했습니다.');
+    }
 
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
@@ -321,8 +343,8 @@ export class OAuthService {
     }
 
     user.github_connected = true;
-    user.github_user_id = String(githubUser.data.id);
-    user.github_username = githubUser.data.login;
+    user.github_user_id = String(githubUser.id);
+    user.github_username = githubUser.login;
 
     return this.userRepository.save(user);
   }
@@ -382,8 +404,6 @@ export class OAuthService {
       {
         sub: user.id,
         email: user.email,
-        name: user.name ?? undefined,
-        oauth_provider: user.oauth_provider,
       },
       this.jwtSecret,
       {

@@ -16,6 +16,8 @@ import {
   getRefreshToken,
   removeRefreshToken,
   getCurrentUserEmail,
+  getGitHubConnected,
+  getTokenTtlMs,
 } from '@/lib/auth';
 import { authApi } from '@/lib/api';
 
@@ -29,6 +31,9 @@ interface AuthContextValue {
   user: AuthUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  githubConnected: boolean;
+  sessionExpired: boolean;
+  login: (token: string) => void;
   logout: () => void;
 }
 
@@ -45,6 +50,8 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps): ReactNode {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [githubConnected, setGithubConnected] = useState<boolean>(false);
+  const [sessionExpired, setSessionExpired] = useState<boolean>(false);
 
   // M17: 초기 마운트 시 토큰 만료 확인 + 자동 refresh
   useEffect(() => {
@@ -84,6 +91,7 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
       const email = getCurrentUserEmail();
       if (email) {
         setUser({ email });
+        setGithubConnected(getGitHubConnected());
       } else {
         removeToken();
       }
@@ -93,16 +101,51 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
     void initAuth();
   }, []);
 
+  const login = useCallback((token: string): void => {
+    setToken(token);
+    const email = getCurrentUserEmail();
+    if (email) {
+      setUser({ email });
+      setGithubConnected(getGitHubConnected());
+      setSessionExpired(false);
+    }
+  }, []);
+
   const logout = useCallback((): void => {
     removeToken();
     removeRefreshToken();
     setUser(null);
   }, []);
 
+  // M1-M2: 토큰 만료 5분 전 자동 갱신
+  useEffect(() => {
+    if (!user) return;
+    const ttl = getTokenTtlMs();
+    if (ttl <= 0) return;
+
+    // 만료 5분 전에 갱신, 최소 10초 후
+    const refreshIn = Math.max(ttl - 5 * 60 * 1000, 10_000);
+
+    const timer = setTimeout(async () => {
+      try {
+        const { access_token } = await authApi.refresh();
+        setToken(access_token);
+        setSessionExpired(false);
+      } catch {
+        setSessionExpired(true);
+      }
+    }, refreshIn);
+
+    return () => clearTimeout(timer);
+  }, [user]);
+
   const value: AuthContextValue = {
     user,
     isLoading,
     isAuthenticated: user !== null,
+    githubConnected,
+    sessionExpired,
+    login,
     logout,
   };
 

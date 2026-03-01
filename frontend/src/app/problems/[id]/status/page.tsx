@@ -265,6 +265,15 @@ export default function SubmissionStatusPage({ params }: PageProps): ReactNode {
                 >
                   다시 제출
                 </Button>
+                {status === 'done' && submissionId && (
+                  <Button
+                    variant="outline"
+                    size="md"
+                    onClick={() => router.push(`/submissions/${submissionId}/analysis`)}
+                  >
+                    AI 분석 보기
+                  </Button>
+                )}
               </>
             )}
 

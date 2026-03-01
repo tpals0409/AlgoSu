@@ -46,7 +46,7 @@ const INITIAL_FILTERS: Filters = {
 
 export default function ProblemsPage(): ReactNode {
   const router = useRouter();
-  const { currentStudyRole } = useStudy();
+  const { currentStudyRole, currentStudyName } = useStudy();
   const isAdmin = currentStudyRole === 'OWNER';
   const [problems, setProblems] = useState<Problem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -118,7 +118,9 @@ export default function ProblemsPage(): ReactNode {
         {/* 헤더 */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-base font-semibold text-foreground">문제 목록</h1>
+            <h1 className="text-base font-semibold text-foreground">
+              {currentStudyName ? `${currentStudyName} \u00B7 문제 목록` : '문제 목록'}
+            </h1>
             <p className="font-mono text-[10px] text-muted-foreground mt-0.5">
               {problems.length > 0
                 ? `${Math.ceil(problems.length / 5)}주차 · ${problems.length}개 문제`
@@ -299,10 +301,10 @@ export default function ProblemsPage(): ReactNode {
 
         {/* 문제 목록 테이블 */}
         {!isLoading && filteredProblems.length > 0 && (
-          <Card className="p-0">
+          <Card className="p-0 overflow-x-auto">
             {/* 헤더 행 */}
             <div
-              className="grid items-center gap-x-2.5 px-4 py-2 border-b border-border font-mono text-[10px] uppercase tracking-wider text-muted-foreground"
+              className="grid items-center gap-x-2.5 px-4 py-2 border-b border-border font-mono text-[10px] uppercase tracking-wider text-muted-foreground min-w-[480px]"
               style={{ gridTemplateColumns: '28px 1fr auto auto auto' }}
             >
               <span>#</span>
@@ -324,7 +326,7 @@ export default function ProblemsPage(): ReactNode {
                   type="button"
                   onClick={() => handleProblemClick(problem.id)}
                   aria-label={`${problem.title} 문제 보기`}
-                  className="grid items-center gap-x-2.5 w-full px-4 py-2.5 text-left border-b border-border last:border-b-0 hover:bg-muted/40 transition-colors"
+                  className="grid items-center gap-x-2.5 w-full px-4 py-2.5 text-left border-b border-border last:border-b-0 hover:bg-muted/40 transition-colors min-w-[480px]"
                   style={{ gridTemplateColumns: '28px 1fr auto auto auto' }}
                 >
                   {/* # */}

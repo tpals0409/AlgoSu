@@ -3,12 +3,14 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
 import { HeroButtons } from '@/components/landing/HeroButtons';
 import { FeatureCards } from '@/components/landing/FeatureCards';
+import { HomeRedirect } from '@/components/landing/HomeRedirect';
 
 const DIFFICULTY_EXAMPLES = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND'] as const;
 
 export default function HomePage(): ReactNode {
   return (
     <AppLayout>
+      <HomeRedirect />
       {/* 히어로 섹션 */}
       <section className="py-16 text-center">
         <div className="mx-auto max-w-2xl space-y-6">

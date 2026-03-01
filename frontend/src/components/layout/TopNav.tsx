@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Sun, Moon, ChevronDown } from 'lucide-react';
+import { Sun, Moon, ChevronDown, Menu, X } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -139,7 +139,10 @@ function StudySelector(): ReactNode {
 export function TopNav(): ReactNode {
   const pathname = usePathname();
   const { user, isAuthenticated } = useAuth();
+  const { currentStudyId } = useStudy();
   const { theme, setTheme } = useTheme();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const hasStudy = isAuthenticated && currentStudyId !== null;
 
   return (
     <header
@@ -167,8 +170,8 @@ export function TopNav(): ReactNode {
           AlgoSu
         </Link>
 
-        {/* 네비 항목 — 로그인 시에만 노출 */}
-        {isAuthenticated && (
+        {/* 네비 항목 — 로그인 + 스터디 참여 시에만 노출 */}
+        {hasStudy && (
           <ul className="hidden items-center gap-1.5 sm:flex" role="list">
             {NAV_LINKS.map(({ href, label }) => {
               const isActive = pathname === href || pathname.startsWith(href + '/');
@@ -196,6 +199,23 @@ export function TopNav(): ReactNode {
               );
             })}
           </ul>
+        )}
+
+        {/* 모바일 햄버거 (M6) */}
+        {hasStudy && (
+          <button
+            type="button"
+            aria-label="메뉴 열기"
+            onClick={() => setMobileMenuOpen((v) => !v)}
+            className="flex items-center justify-center bg-bg2 text-muted-foreground hover:text-foreground sm:hidden"
+            style={{ width: '28px', height: '28px', borderRadius: '6px' }}
+          >
+            {mobileMenuOpen ? (
+              <X className="h-3.5 w-3.5" aria-hidden />
+            ) : (
+              <Menu className="h-3.5 w-3.5" aria-hidden />
+            )}
+          </button>
         )}
 
         {/* 우측 영역 */}
@@ -263,6 +283,39 @@ export function TopNav(): ReactNode {
           )}
         </div>
       </nav>
+
+      {/* 모바일 드롭다운 메뉴 (M6) */}
+      {hasStudy && mobileMenuOpen && (
+        <div className="border-t border-border px-4 py-2 sm:hidden">
+          <ul className="flex flex-col gap-1" role="list">
+            {NAV_LINKS.map(({ href, label }) => {
+              const isActive = pathname === href || pathname.startsWith(href + '/');
+              return (
+                <li key={href}>
+                  <Link
+                    href={href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={cn(
+                      'block transition-colors duration-150',
+                      isActive
+                        ? 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300'
+                        : 'text-text2 hover:bg-bg2 hover:text-foreground',
+                    )}
+                    style={{
+                      padding: '8px 12px',
+                      fontSize: '13px',
+                      fontWeight: 500,
+                      borderRadius: '6px',
+                    }}
+                  >
+                    {label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
     </header>
   );
 }

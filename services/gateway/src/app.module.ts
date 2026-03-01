@@ -88,6 +88,7 @@ export class AppModule implements NestModule {
         { path: 'health', method: RequestMethod.GET },
         { path: 'metrics', method: RequestMethod.GET },
         { path: 'auth/oauth/(.*)', method: RequestMethod.GET },
+        { path: 'auth/github/link/callback', method: RequestMethod.GET },
         { path: 'auth/refresh', method: RequestMethod.POST },
         { path: 'internal/(.*)', method: RequestMethod.ALL },
         { path: 'sse/submissions/:id', method: RequestMethod.GET },

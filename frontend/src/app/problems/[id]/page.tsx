@@ -13,6 +13,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { CodeEditor } from '@/components/submission/CodeEditor';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { problemApi, submissionApi, draftApi, type Problem } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { useStudy } from '@/contexts/StudyContext';
 import { ChevronLeft, Pencil } from 'lucide-react';
 
@@ -25,6 +26,7 @@ type AutoSaveStatus = 'idle' | 'saving' | 'saved';
 export default function ProblemDetailPage({ params }: PageProps): ReactNode {
   const { id: problemId } = use(params);
   const router = useRouter();
+  const { githubConnected } = useAuth();
   const { currentStudyId, currentStudyRole } = useStudy();
   const isAdmin = currentStudyRole === 'OWNER';
 
@@ -121,6 +123,10 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
 
   const handleSubmit = useCallback(async (): Promise<void> => {
     if (!problem) return;
+    if (!githubConnected) {
+      setSubmitError('GitHub 계정을 먼저 연동해주세요.');
+      return;
+    }
 
     setIsSubmitting(true);
     setSubmitError(null);
@@ -142,11 +148,10 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
       router.push(`/problems/${problemId}/status?submissionId=${submission.id}`);
     } catch (err: unknown) {
       setSubmitError((err as Error).message ?? '제출 중 오류가 발생했습니다.');
-      throw err; // CodeEditor에서 에러 처리
     } finally {
       setIsSubmitting(false);
     }
-  }, [problem, language, code, problemId, clearLocal, router]);
+  }, [problem, language, code, problemId, clearLocal, router, githubConnected]);
 
   if (isLoading) {
     return (
@@ -230,6 +235,20 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
             </div>
           </CardContent>
         </Card>
+
+        {/* GitHub 미연동 경고 (C1) */}
+        {!githubConnected && problem.status === 'ACTIVE' && (
+          <Alert variant="warning" title="GitHub 연동 필요">
+            코드를 제출하려면 먼저 GitHub 계정을 연동해주세요.{' '}
+            <button
+              type="button"
+              onClick={() => router.push('/profile')}
+              className="underline font-medium"
+            >
+              프로필에서 연동하기
+            </button>
+          </Alert>
+        )}
 
         {/* 제출 에러 */}
         {submitError && (

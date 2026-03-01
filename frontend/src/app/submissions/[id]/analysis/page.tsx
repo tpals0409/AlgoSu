@@ -87,6 +87,18 @@ export default function AnalysisPage(): ReactNode {
     }
   }, [isAuthenticated, submissionId, loadData]);
 
+  // C5: pending/delayed 상태에서 10초 간격 자동 폴링
+  useEffect(() => {
+    if (!analysis) return;
+    if (analysis.analysisStatus !== 'pending' && analysis.analysisStatus !== 'delayed') return;
+
+    const interval = setInterval(() => {
+      void loadData();
+    }, 10_000);
+
+    return () => clearInterval(interval);
+  }, [analysis, loadData]);
+
   if (authLoading) return null;
   if (!isAuthenticated) return null;
 
@@ -133,7 +145,7 @@ export default function AnalysisPage(): ReactNode {
               <div className="text-center">
                 <p className="text-sm font-medium text-foreground">AI 분석 중...</p>
                 <p className="mt-1 text-[11px] text-muted-foreground">
-                  분석이 완료되면 결과가 표시됩니다. 잠시만 기다려주세요.
+                  분석이 완료되면 자동으로 결과가 표시됩니다.
                 </p>
               </div>
               <Button variant="ghost" size="sm" onClick={() => void loadData()}>

@@ -146,7 +146,7 @@ export function NotificationBell(): ReactNode {
       {/* 드롭다운 */}
       {open && (
         <div
-          className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-card border border-border bg-surface shadow-modal"
+          className="absolute right-0 top-full z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-card border border-border bg-surface shadow-modal"
           role="menu"
           aria-label="알림 목록"
         >
