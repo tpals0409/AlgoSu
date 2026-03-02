@@ -15,6 +15,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
 import { TimerBadge } from '@/components/ui/TimerBadge';
+import { LangBadge } from '@/components/ui/LangBadge';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -204,7 +205,7 @@ export default function SubmitPage(): ReactNode {
           문제 상세
         </Button>
 
-        {/* 문제 정보 헤더 */}
+        {/* 문제 정보 */}
         <Card>
           <CardHeader>
             <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -216,6 +217,25 @@ export default function SubmitPage(): ReactNode {
             </div>
             <CardTitle>{problem.title}</CardTitle>
           </CardHeader>
+          <CardContent>
+            {/* 문제 설명 */}
+            {problem.description && (
+              <p className="text-[13px] leading-relaxed text-text-2 mb-4">
+                {problem.description}
+              </p>
+            )}
+            {/* 허용 언어 */}
+            {problem.allowedLanguages.length > 0 && (
+              <div>
+                <span className="text-[11px] font-medium text-text-3 mb-1.5 block">허용 언어</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {problem.allowedLanguages.map((lang) => (
+                    <LangBadge key={lang} language={lang} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
         </Card>
 
         {/* GitHub 미연동 경고 */}
@@ -241,23 +261,16 @@ export default function SubmitPage(): ReactNode {
 
         {/* 코드 에디터 */}
         {problem.status === 'ACTIVE' ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>코드 제출</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CodeEditor
-                code={code}
-                language={language}
-                onCodeChange={handleCodeChange}
-                onLanguageChange={handleLanguageChange}
-                onSubmit={handleSubmit}
-                isSubmitting={isSubmitting}
-                autoSaveStatus={autoSaveStatus}
-                deadline={problem.deadline}
-              />
-            </CardContent>
-          </Card>
+          <CodeEditor
+            code={code}
+            language={language}
+            onCodeChange={handleCodeChange}
+            onLanguageChange={handleLanguageChange}
+            onSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
+            autoSaveStatus={autoSaveStatus}
+            deadline={problem.deadline}
+          />
         ) : (
           <Alert variant="warning" title="제출 마감">
             이 문제는 마감되었습니다. 더 이상 제출할 수 없습니다.
