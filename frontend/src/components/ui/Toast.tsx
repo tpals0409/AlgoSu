@@ -61,6 +61,8 @@ export function Toast({ toast, onDismiss }: ToastProps): ReactElement {
 
   return (
     <div
+      role="alert"
+      aria-live="polite"
       className={cn(
         'relative flex w-full max-w-[380px] items-start gap-2.5 overflow-hidden rounded-lg border border-border bg-bg-card p-3.5 shadow-toast transition-all duration-300 ease-bounce',
         'border-l-[3px]',
@@ -90,6 +92,7 @@ export function Toast({ toast, onDismiss }: ToastProps): ReactElement {
       </div>
       <button
         onClick={handleDismiss}
+        aria-label="닫기"
         className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm border-none bg-transparent text-text-3 transition-colors hover:text-text"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
