@@ -14,6 +14,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { problemApi, type Problem } from '@/lib/api';
 import { useStudy } from '@/contexts/StudyContext';
 import { DIFFICULTIES, DIFFICULTY_LABELS, PROBLEM_STATUSES, PROBLEM_STATUS_LABELS } from '@/lib/constants';
+import type { Difficulty } from '@/lib/constants';
 
 interface Filters {
   search: string;
@@ -32,7 +33,7 @@ const INITIAL_FILTERS: Filters = {
 export default function ProblemsPage(): ReactNode {
   const router = useRouter();
   const { currentStudyRole, currentStudyName } = useStudy();
-  const isAdmin = currentStudyRole === 'OWNER';
+  const isAdmin = currentStudyRole === 'ADMIN';
   const [problems, setProblems] = useState<Problem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +72,7 @@ export default function ProblemsPage(): ReactNode {
       if (filters.difficulty && p.difficulty !== filters.difficulty) {
         return false;
       }
-      if (filters.weekNumber && p.weekNumber !== Number(filters.weekNumber)) {
+      if (filters.weekNumber && p.weekNumber !== filters.weekNumber) {
         return false;
       }
       if (filters.status && p.status !== filters.status) {
@@ -84,7 +85,7 @@ export default function ProblemsPage(): ReactNode {
   // 주차 목록 (데이터에서 추출)
   const weekNumbers = useMemo(() => {
     const weeks = [...new Set(problems.map((p) => p.weekNumber).filter(Boolean))];
-    return weeks.sort((a, b) => a - b);
+    return weeks.sort();
   }, [problems]);
 
   const hasActiveFilters = filters.search || filters.difficulty || filters.weekNumber || filters.status;
@@ -106,11 +107,11 @@ export default function ProblemsPage(): ReactNode {
             <h1 className="text-base font-semibold text-foreground">
               {currentStudyName ? `${currentStudyName} \u00B7 문제 목록` : '문제 목록'}
             </h1>
-            <p className="font-mono text-[10px] text-muted-foreground mt-0.5">
-              {problems.length > 0
-                ? `${Math.ceil(problems.length / 5)}주차 · ${problems.length}개 문제`
-                : '문제를 불러오는 중...'}
-            </p>
+            {!isLoading && problems.length > 0 && (
+              <p className="font-mono text-[10px] text-muted-foreground mt-0.5">
+                {`${Math.ceil(problems.length / 5)}주차 · ${problems.length}개 문제`}
+              </p>
+            )}
           </div>
           {isAdmin && (
             <Button
@@ -192,7 +193,7 @@ export default function ProblemsPage(): ReactNode {
                   <option value="">전체</option>
                   {weekNumbers.map((w) => (
                     <option key={w} value={w}>
-                      {w}주차
+                      {w}
                     </option>
                   ))}
                 </select>
@@ -269,7 +270,6 @@ export default function ProblemsPage(): ReactNode {
             icon={BookOpen}
             title="등록된 문제가 없습니다"
             description="곧 새로운 문제가 추가될 예정입니다."
-            action={{ label: '새로고침', onClick: loadProblems }}
           />
         )}
 
@@ -290,9 +290,9 @@ export default function ProblemsPage(): ReactNode {
             {/* 헤더 행 */}
             <div
               className="grid items-center gap-x-2.5 px-4 py-2 border-b border-border font-mono text-[10px] uppercase tracking-wider text-muted-foreground min-w-[480px]"
-              style={{ gridTemplateColumns: '28px 1fr auto auto auto' }}
+              style={{ gridTemplateColumns: '64px 1fr auto auto auto' }}
             >
-              <span>#</span>
+              <span>주차</span>
               <span>문제</span>
               <span>난이도</span>
               <span>마감</span>
@@ -312,25 +312,26 @@ export default function ProblemsPage(): ReactNode {
                   onClick={() => handleProblemClick(problem.id)}
                   aria-label={`${problem.title} 문제 보기`}
                   className="grid items-center gap-x-2.5 w-full px-4 py-2.5 text-left border-b border-border last:border-b-0 hover:bg-muted/40 transition-colors min-w-[480px]"
-                  style={{ gridTemplateColumns: '28px 1fr auto auto auto' }}
+                  style={{ gridTemplateColumns: '64px 1fr auto auto auto' }}
                 >
-                  {/* # */}
-                  <span className="font-mono text-[11px] text-muted-foreground">
-                    {String(weekNumber).padStart(2, '0')}
+                  {/* 주차 */}
+                  <span className="font-mono text-[10px] text-muted-foreground truncate">
+                    {weekNumber}
                   </span>
 
-                  {/* 문제 제목 + 주차 */}
+                  {/* 문제 제목 */}
                   <div className="min-w-0">
                     <p className="text-[12px] font-medium text-foreground truncate">
                       {problem.title}
                     </p>
-                    <p className="font-mono text-[10px] text-muted-foreground">
-                      {weekNumber}주차
-                    </p>
                   </div>
 
                   {/* 난이도 */}
-                  <DifficultyBadge difficulty={problem.difficulty} />
+                  {problem.difficulty ? (
+                    <DifficultyBadge difficulty={problem.difficulty as Difficulty} level={problem.level} />
+                  ) : (
+                    <span className="font-mono text-[10px] text-muted-foreground">--</span>
+                  )}
 
                   {/* 마감 */}
                   <div>

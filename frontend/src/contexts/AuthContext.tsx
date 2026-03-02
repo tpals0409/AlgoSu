@@ -155,6 +155,58 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
     return () => clearTimeout(timer);
   }, [user, lastRefreshedAt]);
 
+  // 활동 기반 세션 갱신: 사용자 활동 시 TTL이 절반 이하면 즉시 갱신
+  useEffect(() => {
+    if (!user) return;
+    let refreshing = false;
+
+    const handleActivity = async () => {
+      if (refreshing || sessionExpired) return;
+      const ttl = getTokenTtlMs();
+      const token = getToken();
+      if (!token || ttl <= 0) return;
+
+      // JWT 전체 유효시간 계산 (exp - iat)
+      const payload = JSON.parse(atob(token.split('.')[1])) as { exp?: number; iat?: number };
+      const totalTtl = ((payload.exp ?? 0) - (payload.iat ?? 0)) * 1000;
+      if (totalTtl <= 0) return;
+
+      // 남은 시간이 전체의 절반 이하일 때만 갱신
+      if (ttl > totalTtl / 2) return;
+
+      refreshing = true;
+      try {
+        const { access_token } = await authApi.refresh();
+        setToken(access_token);
+        setSessionExpired(false);
+        setLastRefreshedAt(Date.now());
+      } catch {
+        setSessionExpired(true);
+      } finally {
+        refreshing = false;
+      }
+    };
+
+    // 쓰로틀: 이벤트가 많아도 60초에 1번만 체크
+    let lastCheck = 0;
+    const throttledActivity = () => {
+      const now = Date.now();
+      if (now - lastCheck < 60_000) return;
+      lastCheck = now;
+      void handleActivity();
+    };
+
+    window.addEventListener('click', throttledActivity);
+    window.addEventListener('keydown', throttledActivity);
+    window.addEventListener('scroll', throttledActivity);
+
+    return () => {
+      window.removeEventListener('click', throttledActivity);
+      window.removeEventListener('keydown', throttledActivity);
+      window.removeEventListener('scroll', throttledActivity);
+    };
+  }, [user, sessionExpired]);
+
   const value: AuthContextValue = {
     user,
     isLoading,

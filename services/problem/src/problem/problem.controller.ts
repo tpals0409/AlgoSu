@@ -9,7 +9,6 @@ import {
   Headers,
   UseGuards,
   ParseUUIDPipe,
-  ParseIntPipe,
   Logger,
   ForbiddenException,
   HttpCode,
@@ -62,7 +61,7 @@ export class ProblemController {
    */
   @Get('week/:weekNumber')
   async findByWeek(
-    @Param('weekNumber', ParseIntPipe) weekNumber: number,
+    @Param('weekNumber') weekNumber: string,
     @Headers('x-study-id') studyId: string,
   ) {
     const problems = await this.problemService.findByWeekAndStudy(studyId, weekNumber);

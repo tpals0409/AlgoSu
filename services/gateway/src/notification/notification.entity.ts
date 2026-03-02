@@ -12,6 +12,7 @@ export enum NotificationType {
   AI_COMPLETED = 'AI_COMPLETED',
   AI_FAILED = 'AI_FAILED',
   ROLE_CHANGED = 'ROLE_CHANGED',
+  PROBLEM_CREATED = 'PROBLEM_CREATED',
 }
 
 @Entity('notifications')
@@ -31,6 +32,9 @@ export class Notification {
 
   @Column({ type: 'text' })
   message!: string;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  link!: string | null;
 
   @Column({ type: 'boolean', default: false })
   read!: boolean;

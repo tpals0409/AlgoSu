@@ -78,7 +78,9 @@ export default function StudyCreatePage(): ReactNode {
           githubRepo: form.githubRepo.trim() || undefined,
         });
 
-        const updated = [...studies, created];
+        // 생성자는 자동 ADMIN — API 응답에 role이 없으므로 명시 주입
+        const withRole = { ...created, role: 'ADMIN' as const };
+        const updated = [...studies, withRole];
         setStudies(updated);
         setCurrentStudy(created.id);
         router.push('/problems');

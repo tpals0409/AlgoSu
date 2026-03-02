@@ -18,6 +18,14 @@ export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
   DIAMOND: '다이아',
 };
 
+export const DIFFICULTY_COLORS: Record<Difficulty, string> = {
+  BRONZE: '#ad5600',
+  SILVER: '#435f7a',
+  GOLD: '#ec9a00',
+  PLATINUM: '#27e2a4',
+  DIAMOND: '#00b4fc',
+};
+
 // ── Language ──
 
 export interface LanguageOption {

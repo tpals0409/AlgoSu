@@ -59,7 +59,7 @@ export default function SubmissionsPage(): ReactNode {
       };
       if (filterLanguage) params.language = filterLanguage;
       if (filterSagaStep) params.sagaStep = filterSagaStep;
-      if (filterWeek) params.weekNumber = Number(filterWeek);
+      if (filterWeek) params.weekNumber = filterWeek;
 
       const result = await submissionApi.list(params);
       setData(result);
@@ -79,7 +79,7 @@ export default function SubmissionsPage(): ReactNode {
   // 필터 변경 시 페이지 초기화
   const handleFilterChange = useCallback(
     (setter: (v: string) => void) =>
-      (e: React.ChangeEvent<HTMLSelectElement>) => {
+      (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
         setter(e.target.value);
         setPage(1);
       },
@@ -176,17 +176,14 @@ export default function SubmissionsPage(): ReactNode {
                 >
                   주차
                 </label>
-                <select
+                <input
                   id="filter-week"
+                  type="text"
+                  placeholder="예: 3월1주차"
                   value={filterWeek}
                   onChange={handleFilterChange(setFilterWeek)}
-                  className="rounded-btn border border-border bg-surface px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="">전체</option>
-                  {Array.from({ length: 20 }, (_, i) => i + 1).map((w) => (
-                    <option key={w} value={w}>{w}주차</option>
-                  ))}
-                </select>
+                  className="rounded-btn border border-border bg-surface px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring w-24"
+                />
               </div>
 
               <Button variant="ghost" size="sm" onClick={handleResetFilters}>

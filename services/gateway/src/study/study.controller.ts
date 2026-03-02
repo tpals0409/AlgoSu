@@ -83,7 +83,7 @@ export class StudyController {
   async joinStudy(
     @Req() req: Request,
     @Body() body: { code: string },
-  ): Promise<StudyMember> {
+  ): Promise<Study & { role: string }> {
     const userId = req.headers['x-user-id'] as string;
     return this.studyService.joinByInviteCode(userId, body.code);
   }
@@ -119,6 +119,24 @@ export class StudyController {
     const userId = req.headers['x-user-id'] as string;
     await this.studyService.changeMemberRole(studyId, targetUserId, userId, dto.role);
     return { message: '역할이 변경되었습니다.' };
+  }
+
+  /** POST /api/studies/:id/notify-problem — 문제 생성 알림 (ADMIN만) */
+  @Post(':id/notify-problem')
+  async notifyProblemCreated(
+    @Param('id', ParseUUIDPipe) studyId: string,
+    @Req() req: Request,
+    @Body() body: { problemId: string; problemTitle: string; weekNumber: string },
+  ): Promise<{ message: string }> {
+    const userId = req.headers['x-user-id'] as string;
+    await this.studyService.notifyProblemCreated(
+      studyId,
+      userId,
+      body.problemTitle,
+      body.weekNumber,
+      body.problemId,
+    );
+    return { message: '알림이 전송되었습니다.' };
   }
 
   /** DELETE /api/studies/:id/members/:user_id — 멤버 추방 (ADMIN만) */

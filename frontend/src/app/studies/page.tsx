@@ -15,6 +15,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useStudy, type Study } from '@/contexts/StudyContext';
 import { studyApi, ApiError } from '@/lib/api';
+import { cn } from '@/lib/utils';
 
 export default function StudiesPage(): ReactNode {
   const router = useRouter();
@@ -66,8 +67,8 @@ export default function StudiesPage(): ReactNode {
       setCurrentStudy(joined.id);
       router.push('/problems');
     } catch (err: unknown) {
-      if (err instanceof ApiError && err.status === 404) {
-        setJoinError('유효하지 않은 초대 코드입니다.');
+      if (err instanceof ApiError) {
+        setJoinError(err.message);
       } else {
         setJoinError('스터디 가입에 실패했습니다. 다시 시도해주세요.');
       }
@@ -122,8 +123,8 @@ export default function StudiesPage(): ReactNode {
                     )}
                   </button>
                   <div className="flex items-center gap-2 ml-3 shrink-0">
-                    <Badge variant={study.role === 'OWNER' ? 'info' : 'default'}>
-                      {study.role === 'OWNER' ? '방장' : '멤버'}
+                    <Badge variant={study.role === 'ADMIN' ? 'info' : 'default'}>
+                      {study.role === 'ADMIN' ? '관리자' : '멤버'}
                     </Badge>
                     <Button
                       variant="primary"
@@ -140,22 +141,25 @@ export default function StudiesPage(): ReactNode {
         )}
 
         {/* 초대 코드로 가입 */}
-        <div className="rounded-card border border-border bg-bg2 p-4">
+        <div className="rounded-card border border-border bg-bg2 p-4 pb-2">
           <p className="mb-3 text-sm font-medium text-foreground">초대 코드로 가입</p>
-          <div className="flex gap-2">
-            <Input
-              placeholder="초대 코드 입력"
-              value={joinCode}
-              onChange={(e) => {
-                setJoinCode(e.target.value);
-                setJoinError(null);
-              }}
-              error={joinError ?? undefined}
-              disabled={isJoining}
-              className="flex-1"
-            />
+          <div className="flex gap-2 items-start">
+            <div className="flex-1">
+              <Input
+                placeholder="초대 코드 입력"
+                value={joinCode}
+                onChange={(e) => {
+                  setJoinCode(e.target.value);
+                  setJoinError(null);
+                }}
+                disabled={isJoining}
+              />
+              <p className={cn('mt-1 text-[11px] min-h-[18px]', joinError ? 'text-[var(--color-error)]' : 'text-transparent')}>
+                {joinError ?? '\u00A0'}
+              </p>
+            </div>
             <Button
-              variant="secondary"
+              variant="primary"
               size="md"
               disabled={isJoining || !joinCode.trim()}
               onClick={() => void handleJoin()}

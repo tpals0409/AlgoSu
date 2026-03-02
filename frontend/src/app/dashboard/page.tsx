@@ -74,14 +74,14 @@ function WeeklyBar({
   data,
   maxCount,
 }: {
-  readonly data: { week: number; count: number };
+  readonly data: { week: string; count: number };
   readonly maxCount: number;
 }): ReactNode {
   const pct = maxCount > 0 ? Math.round((data.count / maxCount) * 100) : 0;
   return (
     <div className="flex items-center gap-2">
-      <span className="w-12 text-right font-mono text-[10px] text-muted-foreground">
-        {data.week}주차
+      <span className="w-16 text-right font-mono text-[10px] text-muted-foreground truncate">
+        {data.week}
       </span>
       <div className="flex-1 h-5 bg-bg2 rounded-sm overflow-hidden">
         <div
@@ -102,6 +102,7 @@ export default function DashboardPage(): ReactNode {
   const { currentStudyId, currentStudyName } = useStudy();
 
   const [stats, setStats] = useState<StudyStats | null>(null);
+  const [memberCount, setMemberCount] = useState(0);
   const [recentSubmissions, setRecentSubmissions] = useState<Submission[]>([]);
   const [activeProblems, setActiveProblems] = useState<Problem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -115,6 +116,7 @@ export default function DashboardPage(): ReactNode {
         currentStudyId ? studyApi.getStats(currentStudyId) : Promise.resolve(null),
         submissionApi.list({ page: 1, limit: 5 }),
         problemApi.findAll(),
+        currentStudyId ? studyApi.getMembers(currentStudyId) : Promise.resolve([]),
       ]);
 
       // 스터디 통계
@@ -131,6 +133,11 @@ export default function DashboardPage(): ReactNode {
       // 활성 문제
       if (results[2].status === 'fulfilled') {
         setActiveProblems((results[2].value as Problem[]) ?? []);
+      }
+
+      // 멤버 수
+      if (results[3].status === 'fulfilled') {
+        setMemberCount((results[3].value as unknown[]).length);
       }
 
       // 전부 실패한 경우에만 에러 표시
@@ -238,7 +245,7 @@ export default function DashboardPage(): ReactNode {
             <StatCard
               icon={Users}
               label="참여 멤버"
-              value={stats?.byMember.length ?? 0}
+              value={memberCount}
               loading={isLoading}
             />
             <StatCard
@@ -405,7 +412,7 @@ export default function DashboardPage(): ReactNode {
                             {p.title}
                           </p>
                           <p className="font-mono text-[10px] text-muted-foreground">
-                            {p.weekNumber}주차
+                            {p.weekNumber}
                           </p>
                         </div>
                         <div className="flex items-center gap-2 ml-2">

@@ -12,6 +12,8 @@ import Redis from 'ioredis';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
 import { Study, StudyMember, StudyMemberRole, StudyInvite } from './study.entity';
+import { NotificationService } from '../notification/notification.service';
+import { NotificationType } from '../notification/notification.entity';
 
 @Injectable()
 export class StudyService {
@@ -26,6 +28,7 @@ export class StudyService {
     private readonly memberRepository: Repository<StudyMember>,
     @InjectRepository(StudyInvite)
     private readonly inviteRepository: Repository<StudyInvite>,
+    private readonly notificationService: NotificationService,
   ) {
     const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
     this.redis = new Redis(redisUrl);
@@ -125,9 +128,10 @@ export class StudyService {
   async createInvite(studyId: string, userId: string): Promise<{ code: string; expires_at: Date }> {
     await this.verifyAdmin(studyId, userId);
 
-    const code = uuidv4();
+    // varchar(20) 제약 → 8자리 영숫자 코드 (UUID 대신)
+    const code = uuidv4().replace(/-/g, '').slice(0, 8).toUpperCase();
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7일 유효
+    expiresAt.setMinutes(expiresAt.getMinutes() + 5); // 5분 유효
 
     const invite = this.inviteRepository.create({
       study_id: studyId,
@@ -142,8 +146,8 @@ export class StudyService {
     return { code, expires_at: expiresAt };
   }
 
-  async joinByInviteCode(userId: string, code: string): Promise<StudyMember> {
-    const invite = await this.inviteRepository.findOne({ where: { code } });
+  async joinByInviteCode(userId: string, code: string): Promise<Study & { role: StudyMemberRole }> {
+    const invite = await this.inviteRepository.findOne({ where: { code }, relations: ['study'] });
     if (!invite) {
       throw new NotFoundException('유효하지 않은 초대 코드입니다.');
     }
@@ -156,7 +160,7 @@ export class StudyService {
       where: { study_id: invite.study_id, user_id: userId },
     });
     if (existing) {
-      throw new ConflictException('이미 해당 스터디의 멤버입니다.');
+      throw new ConflictException('이미 가입된 스터디입니다.');
     }
 
     const member = this.memberRepository.create({
@@ -165,11 +169,11 @@ export class StudyService {
       role: StudyMemberRole.MEMBER,
     });
 
-    const savedMember = await this.memberRepository.save(member);
+    await this.memberRepository.save(member);
     await this.invalidateMembershipCache(invite.study_id, userId);
 
     this.logger.log(`스터디 가입: studyId=${invite.study_id}, userId=${userId}`);
-    return savedMember;
+    return { ...invite.study, role: StudyMemberRole.MEMBER };
   }
 
   // --- 통계 ---
@@ -270,6 +274,17 @@ export class StudyService {
     // Redis 캐시 즉시 무효화
     await this.invalidateMembershipCache(studyId, targetUserId);
 
+    // 대상 멤버에게 역할 변경 알림
+    const study = await this.studyRepository.findOne({ where: { id: studyId } });
+    const roleLabel = newRole === StudyMemberRole.ADMIN ? '관리자' : '멤버';
+    await this.notificationService.createNotification(
+      targetUserId,
+      NotificationType.ROLE_CHANGED,
+      '역할 변경',
+      `"${study?.name ?? '스터디'}"에서 역할이 ${roleLabel}(으)로 변경되었습니다.`,
+      `/studies/${studyId}`,
+    );
+
     this.logger.log(
       `역할 변경: studyId=${studyId}, target=${targetUserId}, newRole=${newRole}, by=${adminUserId}`,
     );
@@ -295,6 +310,42 @@ export class StudyService {
     await this.invalidateMembershipCache(studyId, targetUserId);
 
     this.logger.log(`멤버 추방: studyId=${studyId}, target=${targetUserId}, by=${adminUserId}`);
+  }
+
+  // --- 문제 생성 알림 ---
+
+  async notifyProblemCreated(
+    studyId: string,
+    userId: string,
+    problemTitle: string,
+    weekNumber: string,
+    problemId: string,
+  ): Promise<void> {
+    await this.verifyAdmin(studyId, userId);
+
+    const [members, study] = await Promise.all([
+      this.memberRepository.find({ where: { study_id: studyId } }),
+      this.studyRepository.findOne({ where: { id: studyId } }),
+    ]);
+
+    const studyName = study?.name ?? '스터디';
+    const targets = members.filter((m) => m.user_id !== userId);
+
+    await Promise.all(
+      targets.map((m) =>
+        this.notificationService.createNotification(
+          m.user_id,
+          NotificationType.PROBLEM_CREATED,
+          '새 문제 등록',
+          `"${studyName}"에 새 문제 "${problemTitle}" (${weekNumber})이 추가되었습니다.`,
+          `/problems/${problemId}`,
+        ),
+      ),
+    );
+
+    this.logger.log(
+      `문제 생성 알림: studyId=${studyId}, problemId=${problemId}, 대상=${targets.length}명`,
+    );
   }
 
   // --- 권한 검증 헬퍼 ---

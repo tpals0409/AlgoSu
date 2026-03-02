@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, use, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useRef, use, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Copy, Check, UserMinus, Settings, Trash2 } from 'lucide-react';
+import { ChevronLeft, Copy, Check, UserMinus, Settings, Trash2, ClipboardCheck } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import {
   Card,
@@ -19,6 +20,7 @@ import { Alert } from '@/components/ui/Alert';
 import { LoadingSpinner, InlineSpinner } from '@/components/ui/LoadingSpinner';
 import { useStudy } from '@/contexts/StudyContext';
 import { studyApi, type Study, type StudyMember } from '@/lib/api';
+import { getCurrentUserId } from '@/lib/auth';
 
 interface PageProps {
   readonly params: Promise<{ id: string }>;
@@ -27,8 +29,7 @@ interface PageProps {
 export default function StudyDetailPage({ params }: PageProps): ReactNode {
   const { id: studyId } = use(params);
   const router = useRouter();
-  const { currentStudyRole } = useStudy();
-  const isAdmin = currentStudyRole === 'ADMIN';
+  const myUserId = getCurrentUserId();
 
   const [study, setStudy] = useState<Study | null>(null);
   const [members, setMembers] = useState<StudyMember[]>([]);
@@ -37,8 +38,11 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
 
   // 초대 코드
   const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [inviteRemaining, setInviteRemaining] = useState<string | null>(null);
   const [isInviting, setIsInviting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showCopyToast, setShowCopyToast] = useState(false);
+  const inviteTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // 확인 모달 (추방)
   const [kickTarget, setKickTarget] = useState<StudyMember | null>(null);
@@ -55,6 +59,18 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
 
   // 스터디 삭제
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // 멤버 데이터 기반 ADMIN 판단 (context 의존 X → API 로드 후 정확한 role)
+  const isAdmin = members.some(
+    (m) => m.user_id === myUserId && m.role === 'ADMIN',
+  );
+
+  // 초대 타이머 정리
+  useEffect(() => {
+    return () => {
+      if (inviteTimerRef.current) clearInterval(inviteTimerRef.current);
+    };
+  }, []);
 
   const loadStudyData = useCallback(async (): Promise<void> => {
     setIsLoading(true);
@@ -85,10 +101,31 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
     try {
       const result = await studyApi.invite(studyId);
       setInviteCode(result.code);
+
+      // 카운트다운 시작
+      const expiresAt = new Date(result.expires_at).getTime();
+      if (inviteTimerRef.current) clearInterval(inviteTimerRef.current);
+      const tick = () => {
+        const diff = expiresAt - Date.now();
+        if (diff <= 0) {
+          setInviteCode(null);
+          setInviteRemaining(null);
+          if (inviteTimerRef.current) clearInterval(inviteTimerRef.current);
+          return;
+        }
+        const m = Math.floor(diff / 60000);
+        const s = Math.floor((diff % 60000) / 1000);
+        setInviteRemaining(`${m}:${String(s).padStart(2, '0')}`);
+      };
+      tick();
+      inviteTimerRef.current = setInterval(tick, 1000);
+
       // 자동 클립보드 복사
       await navigator.clipboard.writeText(result.code);
       setCopied(true);
+      setShowCopyToast(true);
       setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setShowCopyToast(false), 2000);
     } catch {
       setError('초대 코드 생성에 실패했습니다.');
     } finally {
@@ -101,7 +138,9 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
     if (!inviteCode) return;
     await navigator.clipboard.writeText(inviteCode);
     setCopied(true);
+    setShowCopyToast(true);
     setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setShowCopyToast(false), 2000);
   }, [inviteCode]);
 
   // 멤버 추방
@@ -356,10 +395,18 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
             <CardContent>
               {inviteCode ? (
                 <div className="flex items-center gap-3">
-                  <code className="flex-1 rounded-btn border border-border bg-bg2 px-3 py-2 font-mono text-sm text-foreground">
-                    {inviteCode}
+                  <code className="flex-1 flex items-center justify-between rounded-btn border border-border bg-bg2 px-3 py-2 font-mono text-sm text-foreground">
+                    <span>{inviteCode}</span>
+                    {inviteRemaining && (
+                      <span className="text-[11px] text-muted-foreground">{inviteRemaining}</span>
+                    )}
                   </code>
-                  <Button variant="ghost" size="sm" onClick={() => void handleCopy()}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void handleCopy()}
+                    className={copied ? 'text-green-600 dark:text-green-400' : ''}
+                  >
                     {copied ? <Check /> : <Copy />}
                     {copied ? '복사됨' : '복사'}
                   </Button>
@@ -427,8 +474,8 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
-                {/* 역할 Badge / 드롭다운 */}
-                {isAdmin ? (
+                {/* 역할 Badge / 드롭다운 (본인 제외) */}
+                {isAdmin && member.user_id !== myUserId ? (
                   <select
                     value={member.role}
                     onChange={(e) =>
@@ -437,8 +484,8 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
                     disabled={roleChanging === member.id}
                     className="px-2 py-1 rounded-btn border border-border bg-bg2 text-text1 text-[11px] outline-none focus:border-primary-500 disabled:opacity-50"
                   >
-                    <option value="ADMIN">ADMIN</option>
-                    <option value="MEMBER">MEMBER</option>
+                    <option value="ADMIN">관리자</option>
+                    <option value="MEMBER">멤버</option>
                   </select>
                 ) : (
                   <Badge variant={member.role === 'ADMIN' ? 'info' : 'muted'}>
@@ -447,7 +494,7 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
                 )}
 
                 {/* 추방 버튼 (ADMIN만, 자기 자신 제외) */}
-                {isAdmin && (
+                {isAdmin && member.user_id !== myUserId && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -504,6 +551,20 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
           </div>
         )}
       </div>
+
+      {/* 복사 토스트 */}
+      {showCopyToast &&
+        createPortal(
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] animate-in fade-in slide-in-from-bottom-4 duration-200">
+            <div className="flex items-center gap-2 rounded-card border border-border bg-surface px-4 py-2.5 shadow-modal">
+              <ClipboardCheck className="h-4 w-4 text-green-500" />
+              <span className="text-[12px] font-medium text-foreground">
+                초대 코드가 복사되었습니다
+              </span>
+            </div>
+          </div>,
+          document.body,
+        )}
     </AppLayout>
   );
 }

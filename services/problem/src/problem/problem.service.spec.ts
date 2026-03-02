@@ -20,8 +20,9 @@ describe('ProblemService', () => {
     id: PROBLEM_ID,
     title: '두 수의 합',
     description: '배열에서 두 수의 합이 target이 되는 인덱스를 구하세요.',
-    weekNumber: 1,
+    weekNumber: '3월1주차',
     difficulty: Difficulty.SILVER,
+    level: 8,
     sourceUrl: 'https://leetcode.com/problems/two-sum',
     sourcePlatform: 'LeetCode',
     status: ProblemStatus.ACTIVE,
@@ -80,7 +81,7 @@ describe('ProblemService', () => {
       const dto: CreateProblemDto = {
         title: '두 수의 합',
         description: '배열에서 두 수의 합이 target이 되는 인덱스를 구하세요.',
-        weekNumber: 1,
+        weekNumber: '3월1주차',
         difficulty: Difficulty.SILVER,
         sourceUrl: 'https://leetcode.com/problems/two-sum',
         sourcePlatform: 'LeetCode',
@@ -175,9 +176,9 @@ describe('ProblemService', () => {
       const cachedProblems = [mockProblem];
       deadlineCache.getWeekProblems.mockResolvedValue(JSON.stringify(cachedProblems));
 
-      const result = await service.findByWeekAndStudy(STUDY_ID, 1);
+      const result = await service.findByWeekAndStudy(STUDY_ID, '3월1주차');
 
-      expect(deadlineCache.getWeekProblems).toHaveBeenCalledWith(STUDY_ID, 1);
+      expect(deadlineCache.getWeekProblems).toHaveBeenCalledWith(STUDY_ID, '3월1주차');
       // JSON.parse 결과이므로 Date는 문자열로 변환됨
       expect(result).toEqual(JSON.parse(JSON.stringify(cachedProblems)));
 
@@ -193,21 +194,21 @@ describe('ProblemService', () => {
       dualWrite.find.mockResolvedValue(dbProblems);
       deadlineCache.setWeekProblems.mockResolvedValue(undefined);
 
-      const result = await service.findByWeekAndStudy(STUDY_ID, 1);
+      const result = await service.findByWeekAndStudy(STUDY_ID, '3월1주차');
 
       // 캐시 미스 확인
-      expect(deadlineCache.getWeekProblems).toHaveBeenCalledWith(STUDY_ID, 1);
+      expect(deadlineCache.getWeekProblems).toHaveBeenCalledWith(STUDY_ID, '3월1주차');
 
       // DB 조회 — studyId 스코핑, createdAt ASC 정렬
       expect(dualWrite.find).toHaveBeenCalledWith({
-        where: { weekNumber: 1, studyId: STUDY_ID },
+        where: { weekNumber: '3월1주차', studyId: STUDY_ID },
         order: { createdAt: 'ASC' },
       });
 
       // 캐시 저장
       expect(deadlineCache.setWeekProblems).toHaveBeenCalledWith(
         STUDY_ID,
-        1,
+        '3월1주차',
         JSON.stringify(dbProblems),
       );
 

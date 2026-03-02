@@ -2,11 +2,12 @@ import {
   IsString,
   IsOptional,
   IsEnum,
-  IsInt,
   IsUrl,
   IsDateString,
   IsArray,
+  IsInt,
   Min,
+  Max,
   MaxLength,
 } from 'class-validator';
 import { Difficulty } from '../problem.entity';
@@ -24,13 +25,19 @@ export class CreateProblemDto {
   @IsString()
   description?: string;
 
-  @IsInt()
-  @Min(1)
-  weekNumber!: number;
+  @IsString()
+  @MaxLength(20)
+  weekNumber!: string;
 
   @IsOptional()
   @IsEnum(Difficulty)
   difficulty?: Difficulty;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(30)
+  level?: number;
 
   @IsOptional()
   @IsUrl()
@@ -63,9 +70,9 @@ export class UpdateProblemDto {
   description?: string;
 
   @IsOptional()
-  @IsInt()
-  @Min(1)
-  weekNumber?: number;
+  @IsString()
+  @MaxLength(20)
+  weekNumber?: string;
 
   @IsOptional()
   @IsEnum(Difficulty)

@@ -7,15 +7,28 @@ import {
   Brain,
   AlertTriangle,
   Users,
+  BookOpen,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { notificationApi, type Notification } from '@/lib/api';
+import { NotificationToast } from '@/components/ui/NotificationToast';
+
+/** 알림 타입별 클릭 시 이동할 경로 (link 없는 경우 fallback) */
+const TYPE_ROUTE: Record<string, string> = {
+  ROLE_CHANGED: '/studies',
+  SUBMISSION_STATUS: '/submissions',
+  AI_COMPLETED: '/submissions',
+  GITHUB_FAILED: '/submissions',
+  PROBLEM_CREATED: '/problems',
+};
 
 const TYPE_ICON: Record<string, typeof Bell> = {
   SUBMISSION_STATUS: FileText,
   AI_COMPLETED: Brain,
   GITHUB_FAILED: AlertTriangle,
   ROLE_CHANGED: Users,
+  PROBLEM_CREATED: BookOpen,
 };
 
 function formatRelativeTime(dateStr: string): string {
@@ -32,17 +45,31 @@ function formatRelativeTime(dateStr: string): string {
 }
 
 export function NotificationBell(): ReactNode {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [toastNotification, setToastNotification] = useState<Notification | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const prevUnreadRef = useRef<number>(0);
+  const initialLoadRef = useRef(true);
 
-  // 미읽음 수 폴링 (30초마다)
+  // 미읽음 수 폴링 (10초마다) + 증가 시 토스트 표시
   const fetchUnreadCount = useCallback(async () => {
     try {
       const { count } = await notificationApi.unreadCount();
       setUnreadCount(count);
+
+      // 초기 로드가 아니고 미읽음 수가 증가했을 때 → 최신 알림 fetch
+      if (!initialLoadRef.current && count > prevUnreadRef.current) {
+        const latest = await notificationApi.list();
+        const newest = latest.find((n) => !n.read);
+        if (newest) setToastNotification(newest);
+      }
+
+      initialLoadRef.current = false;
+      prevUnreadRef.current = count;
     } catch {
       // 조용히 실패
     }
@@ -50,7 +77,7 @@ export function NotificationBell(): ReactNode {
 
   useEffect(() => {
     void fetchUnreadCount();
-    const interval = setInterval(() => void fetchUnreadCount(), 30000);
+    const interval = setInterval(() => void fetchUnreadCount(), 10000);
     return () => clearInterval(interval);
   }, [fetchUnreadCount]);
 
@@ -105,6 +132,7 @@ export function NotificationBell(): ReactNode {
   }, []);
 
   return (
+    <>
     <div className="relative" ref={ref}>
       {/* 벨 버튼 */}
       <button
@@ -192,6 +220,11 @@ export function NotificationBell(): ReactNode {
                       if (!notification.read) {
                         void handleMarkRead(notification.id);
                       }
+                      const route = notification.link ?? TYPE_ROUTE[notification.type];
+                      if (route) {
+                        setOpen(false);
+                        router.push(route);
+                      }
                     }}
                     className={cn(
                       'flex w-full items-start gap-3 px-4 py-3 text-left transition-colors',
@@ -254,5 +287,13 @@ export function NotificationBell(): ReactNode {
         </div>
       )}
     </div>
+
+    {/* 하단 토스트 알림 */}
+    <NotificationToast
+      notification={toastNotification}
+      onDismiss={() => setToastNotification(null)}
+      onRead={(id) => void handleMarkRead(id)}
+    />
+    </>
   );
 }

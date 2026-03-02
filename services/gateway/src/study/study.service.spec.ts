@@ -96,11 +96,16 @@ describe('StudyService', () => {
       findOne: jest.fn(),
     };
 
+    const notificationService = {
+      createNotification: jest.fn().mockResolvedValue(undefined),
+    };
+
     service = new StudyService(
       configService as unknown as ConfigService,
       studyRepository as any,
       memberRepository as any,
       inviteRepository as any,
+      notificationService as any,
     );
   });
 
@@ -303,8 +308,7 @@ describe('StudyService', () => {
       const result = await service.joinByInviteCode('new-user-id', 'valid-code');
 
       expect(result.role).toBe(StudyMemberRole.MEMBER);
-      expect(result.study_id).toBe(STUDY_ID);
-      expect(result.user_id).toBe('new-user-id');
+      expect(result.id).toBe(STUDY_ID);
     });
 
     it('만료된 초대 코드 → BadRequestException', async () => {

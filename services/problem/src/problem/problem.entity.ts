@@ -31,11 +31,14 @@ export class Problem {
   @Column({ type: 'text', nullable: true })
   description!: string | null;
 
-  @Column({ type: 'integer', name: 'week_number' })
-  weekNumber!: number;
+  @Column({ type: 'varchar', length: 20, name: 'week_number' })
+  weekNumber!: string;
 
   @Column({ type: 'enum', enum: Difficulty, nullable: true })
   difficulty!: Difficulty | null;
+
+  @Column({ type: 'smallint', nullable: true, default: null })
+  level!: number | null;
 
   @Column({ type: 'varchar', length: 500, nullable: true, name: 'source_url' })
   sourceUrl!: string | null;

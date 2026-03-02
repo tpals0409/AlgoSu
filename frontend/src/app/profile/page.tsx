@@ -274,8 +274,8 @@ export default function ProfilePage(): ReactNode {
                       )}
                     </div>
                     <div className="flex items-center gap-2 ml-3">
-                      <Badge variant={study.role === 'OWNER' ? 'default' : 'muted'}>
-                        {study.role === 'OWNER' ? '방장' : '멤버'}
+                      <Badge variant={study.role === 'ADMIN' ? 'default' : 'muted'}>
+                        {study.role === 'ADMIN' ? '관리자' : '멤버'}
                       </Badge>
                       {study.memberCount !== undefined && (
                         <span className="font-mono text-[10px] text-muted-foreground">

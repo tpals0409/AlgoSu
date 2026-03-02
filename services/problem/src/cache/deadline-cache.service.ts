@@ -68,7 +68,7 @@ export class DeadlineCacheService {
    * 키: `problem:week:{studyId}:{weekNumber}`
    * TTL: 600초 (10분)
    */
-  async getWeekProblems(studyId: string, weekNumber: number): Promise<string | null> {
+  async getWeekProblems(studyId: string, weekNumber: string): Promise<string | null> {
     try {
       return await this.redis.get(`problem:week:${studyId}:${weekNumber}`);
     } catch {
@@ -76,7 +76,7 @@ export class DeadlineCacheService {
     }
   }
 
-  async setWeekProblems(studyId: string, weekNumber: number, data: string): Promise<void> {
+  async setWeekProblems(studyId: string, weekNumber: string, data: string): Promise<void> {
     try {
       await this.redis.set(`problem:week:${studyId}:${weekNumber}`, data, 'EX', 600);
     } catch (error: unknown) {
@@ -84,7 +84,7 @@ export class DeadlineCacheService {
     }
   }
 
-  async invalidateWeekProblems(studyId: string, weekNumber: number): Promise<void> {
+  async invalidateWeekProblems(studyId: string, weekNumber: string): Promise<void> {
     try {
       await this.redis.del(`problem:week:${studyId}:${weekNumber}`);
     } catch (error: unknown) {

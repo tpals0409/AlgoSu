@@ -31,16 +31,18 @@ export interface DifficultyBadgeProps
   extends Omit<React.HTMLAttributes<HTMLSpanElement>, 'children'>,
     VariantProps<typeof difficultyBadgeVariants> {
   readonly difficulty: Difficulty;
+  readonly level?: number | null;
   readonly showDot?: boolean;
   readonly showLabel?: boolean;
 }
 
-function DifficultyBadge({ className, difficulty, showDot = true, showLabel = true, ...props }: DifficultyBadgeProps): React.ReactElement {
+function DifficultyBadge({ className, difficulty, level, showDot = true, showLabel = true, ...props }: DifficultyBadgeProps): React.ReactElement {
   const label = DIFFICULTY_LABELS[difficulty];
+  const tier = level && level > 0 ? ` ${5 - (level - 1) % 5}` : '';
   return (
-    <span className={cn(difficultyBadgeVariants({ difficulty }), className)} aria-label={`난이도: ${label}`} {...props}>
+    <span className={cn(difficultyBadgeVariants({ difficulty }), className)} aria-label={`난이도: ${label}${tier}`} {...props}>
       {showDot && <span aria-hidden className={cn('inline-block h-1.5 w-1.5 rounded-full', DIFFICULTY_DOT_CLASSES[difficulty])} />}
-      {showLabel && <span>{label}</span>}
+      {showLabel && <span>{label}{tier}</span>}
     </span>
   );
 }

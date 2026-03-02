@@ -40,10 +40,8 @@ export class PaginationQueryDto {
   sagaStep?: string;
 
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  weekNumber?: number;
+  @IsString()
+  weekNumber?: string;
 }
 
 export interface PaginatedResult<T> {

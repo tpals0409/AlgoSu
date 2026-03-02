@@ -151,11 +151,17 @@ const config: Config = {
           from: { opacity: '0', transform: 'translateY(4px)' },
           to: { opacity: '1', transform: 'translateY(0)' },
         },
+        shake: {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '10%, 50%, 90%': { transform: 'translateX(-4px)' },
+          '30%, 70%': { transform: 'translateX(4px)' },
+        },
       },
       animation: {
         'skeleton-shimmer': 'skeleton-shimmer 1.6s linear infinite',
         'spin-slow': 'spin-slow 1.2s linear infinite',
         'fade-in': 'fade-in 0.2s ease-out',
+        shake: 'shake 0.5s ease-in-out',
       },
     },
   },

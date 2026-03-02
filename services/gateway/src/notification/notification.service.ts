@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, LessThan } from 'typeorm';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { Notification, NotificationType } from './notification.entity';
 
 @Injectable()
@@ -17,12 +18,14 @@ export class NotificationService {
     type: NotificationType,
     title: string,
     message: string,
+    link?: string,
   ): Promise<Notification> {
     const notification = this.notificationRepo.create({
       userId,
       type,
       title,
       message,
+      link: link ?? null,
     });
     const saved = await this.notificationRepo.save(notification);
     this.logger.log(`알림 생성: userId=${userId}, type=${type}`);
@@ -31,7 +34,7 @@ export class NotificationService {
 
   async getMyNotifications(userId: string): Promise<Notification[]> {
     return this.notificationRepo.find({
-      where: { userId },
+      where: { userId, read: false },
       order: { createdAt: 'DESC' },
       take: 50,
     });
@@ -59,5 +62,20 @@ export class NotificationService {
     return this.notificationRepo.count({
       where: { userId, read: false },
     });
+  }
+
+  /** 30일 경과 알림 자동 삭제 — 매일 새벽 3시 실행 */
+  @Cron(CronExpression.EVERY_DAY_AT_3AM)
+  async cleanupOldNotifications(): Promise<void> {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 30);
+
+    const { affected } = await this.notificationRepo.delete({
+      createdAt: LessThan(cutoff),
+    });
+
+    if (affected && affected > 0) {
+      this.logger.log(`오래된 알림 ${affected}건 삭제 (30일 경과)`);
+    }
   }
 }

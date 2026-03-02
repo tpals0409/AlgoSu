@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { Problem, ProblemStatus } from './problem.entity';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
 import { DeadlineCacheService } from '../cache/deadline-cache.service';
@@ -18,11 +18,22 @@ export class ProblemService {
    * studyId는 헤더에서 받아 컨트롤러가 전달
    */
   async create(dto: CreateProblemDto, studyId: string, createdBy: string): Promise<Problem> {
+    // 같은 스터디 + 같은 주차에서 sourceUrl 중복 체크
+    if (dto.sourceUrl) {
+      const existing = await this.dualWrite.findOne({
+        where: { studyId, weekNumber: dto.weekNumber, sourceUrl: dto.sourceUrl, status: ProblemStatus.ACTIVE },
+      });
+      if (existing) {
+        throw new ConflictException('같은 주차에 이미 등록된 문제입니다.');
+      }
+    }
+
     const saved = await this.dualWrite.save({
       title: dto.title,
       description: dto.description ?? null,
       weekNumber: dto.weekNumber,
       difficulty: dto.difficulty ?? null,
+      level: dto.level ?? null,
       sourceUrl: dto.sourceUrl ?? null,
       sourcePlatform: dto.sourcePlatform ?? null,
       deadline: dto.deadline ? new Date(dto.deadline) : null,
@@ -53,7 +64,7 @@ export class ProblemService {
   /**
    * 주차별 문제 목록 — studyId 스코핑
    */
-  async findByWeekAndStudy(studyId: string, weekNumber: number): Promise<Problem[]> {
+  async findByWeekAndStudy(studyId: string, weekNumber: string): Promise<Problem[]> {
     // 캐시 확인
     const cached = await this.deadlineCache.getWeekProblems(studyId, weekNumber);
     if (cached) {

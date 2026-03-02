@@ -1,11 +1,13 @@
 import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { OAuthModule } from './auth/oauth/oauth.module';
 import { InternalModule } from './internal/internal.module';
 import { StudyModule } from './study/study.module';
+import { ExternalModule } from './external/external.module';
 import { ProxyModule } from './proxy/proxy.module';
 import { SseModule } from './sse/sse.module';
 import { JwtMiddleware } from './auth/jwt.middleware';
@@ -51,6 +53,7 @@ import { Notification } from './notification/notification.entity';
         storage: new RedisThrottlerStorage(configService),
       }),
     }),
+    ScheduleModule.forRoot(),
     AuthModule,
     OAuthModule,
     InternalModule,
@@ -58,6 +61,7 @@ import { Notification } from './notification/notification.entity';
     NotificationModule,
     SseModule,
     MetricsModule,
+    ExternalModule,
     ProxyModule,
   ],
   providers: [

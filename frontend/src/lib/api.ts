@@ -26,10 +26,11 @@ export interface Problem {
   id: string;
   title: string;
   difficulty: 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND';
+  level?: number | null;
   status: 'ACTIVE' | 'CLOSED' | 'DRAFT';
   deadline: string; // ISO 날짜
   description: string;
-  weekNumber: number;
+  weekNumber: string;
   sourceUrl?: string;
   sourcePlatform?: string;
   allowedLanguages: string[];
@@ -38,8 +39,9 @@ export interface Problem {
 export interface CreateProblemData {
   title: string;
   description?: string;
-  weekNumber: number;
+  weekNumber: string;
   difficulty?: Problem['difficulty'];
+  level?: number;
   sourceUrl?: string;
   sourcePlatform?: string;
   deadline?: string;
@@ -49,7 +51,7 @@ export interface CreateProblemData {
 export interface UpdateProblemData {
   title?: string;
   description?: string;
-  weekNumber?: number;
+  weekNumber?: string;
   difficulty?: Problem['difficulty'];
   sourceUrl?: string;
   sourcePlatform?: string;
@@ -82,7 +84,7 @@ export interface SubmissionListParams {
   limit?: number;
   language?: string;
   sagaStep?: string;
-  weekNumber?: number;
+  weekNumber?: string;
 }
 
 export interface AnalysisResult {
@@ -226,7 +228,7 @@ export const authApi = {
 
 export interface StudyStats {
   totalSubmissions: number;
-  byWeek: { week: number; count: number }[];
+  byWeek: { week: string; count: number }[];
   byMember: { userId: string; isMember: boolean; count: number; doneCount: number }[];
   recentSubmissions: Submission[];
 }
@@ -267,6 +269,15 @@ export const studyApi = {
 
   delete: (studyId: string): Promise<void> =>
     fetchApi(`/api/studies/${studyId}`, { method: 'DELETE' }),
+
+  notifyProblemCreated: (
+    studyId: string,
+    data: { problemId: string; problemTitle: string; weekNumber: string },
+  ): Promise<{ message: string }> =>
+    fetchApi(`/api/studies/${studyId}/notify-problem`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };
 
 // ── Problem API ──
@@ -303,7 +314,7 @@ export const submissionApi = {
     if (params?.limit) query.set('limit', String(params.limit));
     if (params?.language) query.set('language', params.language);
     if (params?.sagaStep) query.set('sagaStep', params.sagaStep);
-    if (params?.weekNumber) query.set('weekNumber', String(params.weekNumber));
+    if (params?.weekNumber) query.set('weekNumber', params.weekNumber);
     const qs = query.toString();
     return fetchApi(`/api/submissions${qs ? `?${qs}` : ''}`);
   },
@@ -331,6 +342,22 @@ export const draftApi = {
     fetchApi(`/api/submissions/drafts/${problemId}`, { method: 'DELETE' }),
 };
 
+// ── Solved.ac API ──
+
+export interface SolvedacProblemInfo {
+  problemId: number;
+  title: string;
+  difficulty: 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND' | null;
+  level: number;
+  sourceUrl: string;
+  tags: string[];
+}
+
+export const solvedacApi = {
+  search: (problemId: number): Promise<SolvedacProblemInfo> =>
+    fetchApi(`/api/external/solvedac/problem/${problemId}`),
+};
+
 // ── Notification API ──
 
 export interface Notification {
@@ -339,6 +366,7 @@ export interface Notification {
   type: 'SUBMISSION_STATUS' | 'GITHUB_FAILED' | 'AI_COMPLETED' | 'ROLE_CHANGED';
   title: string;
   message: string;
+  link: string | null;
   read: boolean;
   createdAt: string;
 }

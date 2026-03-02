@@ -212,7 +212,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
           <CardHeader>
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="info">{problem.weekNumber}주차</Badge>
-              <DifficultyBadge difficulty={problem.difficulty} />
+              <DifficultyBadge difficulty={problem.difficulty} level={problem.level} />
               <Badge variant={problem.status === 'ACTIVE' ? 'success' : 'muted'}>
                 {problem.status === 'ACTIVE' ? '진행 중' : '종료'}
               </Badge>
