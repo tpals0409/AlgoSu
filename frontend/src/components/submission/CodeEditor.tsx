@@ -159,9 +159,118 @@ const MONACO_LANG_MAP: Record<string, string> = {
   kotlin: 'kotlin',
 };
 
+// ─── 언어별 자동완성 키워드 ────────────────
+
+type MonacoInstance = Parameters<BeforeMount>[0];
+
+const LANG_COMPLETIONS: Record<string, { keywords: string[]; builtins: string[]; snippets: { label: string; insert: string; doc: string }[] }> = {
+  python: {
+    keywords: ['def', 'class', 'if', 'elif', 'else', 'for', 'while', 'break', 'continue', 'return', 'import', 'from', 'as', 'try', 'except', 'finally', 'raise', 'with', 'yield', 'lambda', 'pass', 'global', 'nonlocal', 'assert', 'del', 'in', 'not', 'and', 'or', 'is', 'True', 'False', 'None'],
+    builtins: ['print', 'input', 'len', 'range', 'enumerate', 'zip', 'map', 'filter', 'sorted', 'reversed', 'list', 'dict', 'set', 'tuple', 'int', 'float', 'str', 'bool', 'abs', 'max', 'min', 'sum', 'any', 'all', 'isinstance', 'type', 'open', 'super', 'property', 'staticmethod', 'classmethod'],
+    snippets: [
+      { label: 'sys.stdin', insert: 'import sys\ninput = sys.stdin.readline', doc: 'Fast input (BOJ)' },
+      { label: 'defaultdict', insert: 'from collections import defaultdict', doc: 'Import defaultdict' },
+      { label: 'deque', insert: 'from collections import deque', doc: 'Import deque' },
+      { label: 'heapq', insert: 'import heapq', doc: 'Import heapq' },
+      { label: 'bisect', insert: 'import bisect', doc: 'Import bisect' },
+    ],
+  },
+  java: {
+    keywords: ['public', 'private', 'protected', 'static', 'final', 'abstract', 'class', 'interface', 'extends', 'implements', 'new', 'this', 'super', 'if', 'else', 'for', 'while', 'do', 'switch', 'case', 'break', 'continue', 'return', 'try', 'catch', 'finally', 'throw', 'throws', 'import', 'package', 'void', 'int', 'long', 'double', 'float', 'char', 'boolean', 'String', 'null', 'true', 'false'],
+    builtins: ['System.out.println', 'System.out.print', 'Integer.parseInt', 'Long.parseLong', 'Math.max', 'Math.min', 'Math.abs', 'Arrays.sort', 'Arrays.fill', 'Collections.sort', 'Collections.reverse', 'StringBuilder', 'BufferedReader', 'InputStreamReader', 'StringTokenizer', 'ArrayList', 'HashMap', 'HashSet', 'LinkedList', 'PriorityQueue', 'TreeMap', 'TreeSet', 'Stack', 'Queue'],
+    snippets: [
+      { label: 'BufferedReader', insert: 'BufferedReader br = new BufferedReader(new InputStreamReader(System.in));', doc: 'Fast input (BOJ)' },
+      { label: 'StringTokenizer', insert: 'StringTokenizer st = new StringTokenizer(br.readLine());', doc: 'Token parser' },
+    ],
+  },
+  cpp: {
+    keywords: ['int', 'long', 'double', 'float', 'char', 'bool', 'void', 'string', 'auto', 'const', 'static', 'struct', 'class', 'public', 'private', 'protected', 'virtual', 'override', 'template', 'typename', 'namespace', 'using', 'if', 'else', 'for', 'while', 'do', 'switch', 'case', 'break', 'continue', 'return', 'try', 'catch', 'throw', 'new', 'delete', 'nullptr', 'true', 'false', 'include', 'define', 'typedef', 'sizeof'],
+    builtins: ['cout', 'cin', 'endl', 'vector', 'map', 'unordered_map', 'set', 'unordered_set', 'queue', 'priority_queue', 'stack', 'deque', 'pair', 'tuple', 'sort', 'reverse', 'lower_bound', 'upper_bound', 'min', 'max', 'abs', 'swap', 'fill', 'accumulate', 'push_back', 'pop_back', 'emplace_back', 'begin', 'end', 'size', 'empty', 'front', 'back'],
+    snippets: [
+      { label: 'fast_io', insert: 'ios::sync_with_stdio(false);\ncin.tie(nullptr);', doc: 'Fast I/O (BOJ)' },
+      { label: '#include bits', insert: '#include <bits/stdc++.h>', doc: 'All-in-one header' },
+    ],
+  },
+  javascript: {
+    keywords: ['const', 'let', 'var', 'function', 'class', 'if', 'else', 'for', 'while', 'do', 'switch', 'case', 'break', 'continue', 'return', 'try', 'catch', 'finally', 'throw', 'new', 'this', 'typeof', 'instanceof', 'import', 'export', 'default', 'async', 'await', 'yield', 'of', 'in', 'true', 'false', 'null', 'undefined'],
+    builtins: ['console.log', 'parseInt', 'parseFloat', 'Math.max', 'Math.min', 'Math.abs', 'Math.floor', 'Math.ceil', 'Array.from', 'Array.isArray', 'Object.keys', 'Object.values', 'Object.entries', 'JSON.parse', 'JSON.stringify', 'Map', 'Set', 'Promise', 'setTimeout'],
+    snippets: [
+      { label: 'readline', insert: "const readline = require('readline');\nconst rl = readline.createInterface({ input: process.stdin, output: process.stdout });", doc: 'Node.js input (BOJ)' },
+    ],
+  },
+  go: {
+    keywords: ['package', 'import', 'func', 'var', 'const', 'type', 'struct', 'interface', 'map', 'chan', 'go', 'select', 'if', 'else', 'for', 'range', 'switch', 'case', 'default', 'break', 'continue', 'return', 'defer', 'fallthrough', 'nil', 'true', 'false', 'int', 'int64', 'float64', 'string', 'bool', 'byte', 'rune', 'error'],
+    builtins: ['fmt.Println', 'fmt.Printf', 'fmt.Scanf', 'fmt.Sprintf', 'len', 'cap', 'append', 'make', 'new', 'copy', 'delete', 'close', 'panic', 'recover', 'sort.Ints', 'sort.Strings', 'strconv.Atoi', 'strconv.Itoa', 'strings.Split', 'strings.Join', 'bufio.NewReader', 'bufio.NewScanner'],
+    snippets: [],
+  },
+  kotlin: {
+    keywords: ['fun', 'val', 'var', 'class', 'object', 'interface', 'if', 'else', 'when', 'for', 'while', 'do', 'break', 'continue', 'return', 'try', 'catch', 'finally', 'throw', 'import', 'package', 'is', 'as', 'in', 'null', 'true', 'false', 'this', 'super', 'data', 'sealed', 'companion', 'override', 'abstract', 'open', 'private', 'public', 'internal', 'protected', 'lateinit', 'lazy'],
+    builtins: ['println', 'readLine', 'readln', 'toInt', 'toLong', 'toDouble', 'split', 'map', 'filter', 'sorted', 'reversed', 'forEach', 'joinToString', 'maxOrNull', 'minOrNull', 'sumOf', 'groupBy', 'associate', 'arrayOf', 'listOf', 'mutableListOf', 'mapOf', 'mutableMapOf', 'setOf', 'mutableSetOf', 'BufferedReader', 'InputStreamReader', 'StringTokenizer'],
+    snippets: [],
+  },
+  rust: {
+    keywords: ['fn', 'let', 'mut', 'const', 'static', 'struct', 'enum', 'impl', 'trait', 'type', 'use', 'mod', 'pub', 'crate', 'self', 'super', 'if', 'else', 'for', 'while', 'loop', 'match', 'break', 'continue', 'return', 'as', 'in', 'ref', 'move', 'async', 'await', 'unsafe', 'where', 'true', 'false', 'i32', 'i64', 'u32', 'u64', 'usize', 'f64', 'String', 'Vec', 'Option', 'Result', 'Some', 'None', 'Ok', 'Err'],
+    builtins: ['println!', 'print!', 'format!', 'vec!', 'unwrap', 'expect', 'parse', 'push', 'pop', 'len', 'iter', 'map', 'filter', 'collect', 'sort', 'sort_by', 'reverse', 'contains', 'insert', 'remove', 'split_whitespace', 'trim', 'lines', 'read_line', 'stdin', 'HashMap', 'HashSet', 'BTreeMap', 'BTreeSet', 'VecDeque', 'BinaryHeap'],
+    snippets: [],
+  },
+  c: {
+    keywords: ['int', 'long', 'double', 'float', 'char', 'void', 'unsigned', 'signed', 'const', 'static', 'struct', 'union', 'enum', 'typedef', 'sizeof', 'if', 'else', 'for', 'while', 'do', 'switch', 'case', 'break', 'continue', 'return', 'NULL', 'include', 'define'],
+    builtins: ['printf', 'scanf', 'puts', 'gets', 'getchar', 'putchar', 'malloc', 'calloc', 'realloc', 'free', 'memset', 'memcpy', 'strlen', 'strcmp', 'strcpy', 'strcat', 'atoi', 'atol', 'strtol', 'qsort', 'bsearch', 'abs', 'EXIT_SUCCESS', 'EXIT_FAILURE'],
+    snippets: [],
+  },
+};
+
+function registerCompletionProviders(monaco: MonacoInstance): void {
+  const CompletionItemKind = monaco.languages.CompletionItemKind;
+  const CompletionItemInsertTextRule = monaco.languages.CompletionItemInsertTextRule;
+
+  for (const [langKey, data] of Object.entries(LANG_COMPLETIONS)) {
+    const monacoLang = MONACO_LANG_MAP[langKey];
+    if (!monacoLang) continue;
+
+    monaco.languages.registerCompletionItemProvider(monacoLang, {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      provideCompletionItems(model: any, position: any) {
+        const word = model.getWordUntilPosition(position);
+        const range = {
+          startLineNumber: position.lineNumber,
+          endLineNumber: position.lineNumber,
+          startColumn: word.startColumn,
+          endColumn: word.endColumn,
+        };
+
+        const suggestions = [
+          ...data.keywords.map((kw) => ({
+            label: kw,
+            kind: CompletionItemKind.Keyword,
+            insertText: kw,
+            range,
+          })),
+          ...data.builtins.map((fn) => ({
+            label: fn,
+            kind: CompletionItemKind.Function,
+            insertText: fn,
+            range,
+          })),
+          ...data.snippets.map((s) => ({
+            label: s.label,
+            kind: CompletionItemKind.Snippet,
+            insertText: s.insert,
+            insertTextRules: CompletionItemInsertTextRule.InsertAsSnippet,
+            documentation: s.doc,
+            range,
+          })),
+        ];
+
+        return { suggestions };
+      },
+    });
+  }
+}
+
 // ─── 커스텀 테마 (디자인 시스템 v2 연동) ──
 
-function defineThemes(monaco: Parameters<BeforeMount>[0]): void {
+function defineThemes(monaco: MonacoInstance): void {
   monaco.editor.defineTheme('algosu-light', {
     base: 'vs',
     inherit: true,
@@ -277,6 +386,7 @@ export function CodeEditor({
   // ─── Monaco 콜백 ─────────────────────
   const handleBeforeMount: BeforeMount = useCallback((monaco) => {
     defineThemes(monaco);
+    registerCompletionProviders(monaco);
   }, []);
 
   const handleMount: OnMount = useCallback((editor) => {
