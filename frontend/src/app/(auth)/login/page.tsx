@@ -11,6 +11,8 @@ import { useState, useCallback, useEffect, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Suspense } from 'react';
+import { useTheme } from 'next-themes';
+import { Sun, Moon } from 'lucide-react';
 import { Logo } from '@/components/ui/Logo';
 import { Alert } from '@/components/ui/Alert';
 import { InlineSpinner } from '@/components/ui/LoadingSpinner';
@@ -59,6 +61,7 @@ function LoginContent(): ReactNode {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [error, setError] = useState<string | null>(null);
   const [loadingProvider, setLoadingProvider] = useState<OAuthProvider | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -115,6 +118,14 @@ function LoginContent(): ReactNode {
             <Logo size={28} />
             AlgoSu
           </Link>
+          <button
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="flex items-center gap-1 rounded-btn px-2 py-1 text-[11px] text-text-3 hover:text-text hover:bg-bg-alt transition-colors"
+            aria-label="테마 전환"
+          >
+            {theme === 'dark' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+            {theme === 'dark' ? '다크' : '라이트'}
+          </button>
         </div>
       </nav>
 

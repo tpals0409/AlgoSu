@@ -9,6 +9,8 @@
 
 import type { ReactNode } from 'react';
 import Link from 'next/link';
+import { useTheme } from 'next-themes';
+import { Sun, Moon } from 'lucide-react';
 import { Logo } from '@/components/ui/Logo';
 import { DiffBadge } from '@/components/ui/DiffBadge';
 import { HomeRedirect } from '@/components/landing/HomeRedirect';
@@ -52,6 +54,7 @@ export default function LandingPage(): ReactNode {
   const [counterRef1, studyCount] = useAnimVal(150);
   const [counterRef2, solveCount] = useAnimVal(2400);
   const [counterRef3, satisfactionVal] = useAnimVal(98);
+  const { theme, setTheme } = useTheme();
 
   return (
     <div className="min-h-screen bg-bg text-text">
@@ -65,6 +68,14 @@ export default function LandingPage(): ReactNode {
             AlgoSu
           </Link>
           <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="flex items-center gap-1 rounded-btn px-2 py-1 text-[11px] text-text-3 hover:text-text hover:bg-bg-alt transition-colors"
+              aria-label="테마 전환"
+            >
+              {theme === 'dark' ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
+              {theme === 'dark' ? '다크' : '라이트'}
+            </button>
             <Link
               href="/login"
               className="inline-flex h-9 items-center rounded-btn bg-primary px-[18px] text-[13px] font-semibold text-white transition-all hover:brightness-110"
@@ -174,19 +185,49 @@ export default function LandingPage(): ReactNode {
             {/* 점수 미리보기 */}
             <div className="flex gap-5">
               {[
-                { score: 92, label: '우수', colorClass: 'text-success' },
-                { score: 65, label: '보통', colorClass: 'text-warning' },
-                { score: 30, label: '개선 필요', colorClass: 'text-error' },
-              ].map((g) => (
-                <div key={g.label} className="text-center">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-border bg-bg">
-                    <span className={`font-mono text-[15px] font-bold ${g.colorClass}`}>
-                      {g.score}
-                    </span>
+                { score: 92, label: '우수', color: 'var(--success)' },
+                { score: 65, label: '보통', color: 'var(--warning)' },
+                { score: 30, label: '개선 필요', color: 'var(--error)' },
+              ].map((g) => {
+                const size = 56;
+                const strokeWidth = 4;
+                const radius = (size - strokeWidth) / 2;
+                const circumference = 2 * Math.PI * radius;
+                const offset = circumference - (circumference * g.score) / 100;
+                return (
+                  <div key={g.label} className="text-center">
+                    <div className="relative" style={{ width: size, height: size }}>
+                      <svg width={size} height={size} className="-rotate-90">
+                        <circle
+                          cx={size / 2}
+                          cy={size / 2}
+                          r={radius}
+                          fill="none"
+                          stroke="var(--border)"
+                          strokeWidth={strokeWidth}
+                        />
+                        <circle
+                          cx={size / 2}
+                          cy={size / 2}
+                          r={radius}
+                          fill="none"
+                          stroke={g.color}
+                          strokeWidth={strokeWidth}
+                          strokeDasharray={circumference}
+                          strokeDashoffset={offset}
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="font-mono text-[14px] font-bold" style={{ color: g.color }}>
+                          {g.score}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-1.5 text-[10px] text-text-3">{g.label}</div>
                   </div>
-                  <div className="mt-1.5 text-[10px] text-text-3">{g.label}</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

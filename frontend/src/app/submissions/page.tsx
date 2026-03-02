@@ -10,7 +10,7 @@
 import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FileText, ChevronLeft, ChevronRight, Filter, X } from 'lucide-react';
+import { FileText, ChevronLeft, ChevronRight, Filter, X, Search } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LangBadge } from '@/components/ui/LangBadge';
+import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
 import { SkeletonTable } from '@/components/ui/Skeleton';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import {
@@ -28,7 +29,7 @@ import {
   type SubmissionListParams,
 } from '@/lib/api';
 import { useStudy } from '@/contexts/StudyContext';
-import { SAGA_STEP_CONFIG, LANGUAGE_VALUES, type SagaStep } from '@/lib/constants';
+import { SAGA_STEP_CONFIG, LANGUAGE_VALUES, type SagaStep, type Difficulty } from '@/lib/constants';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 
 // ─── CONSTANTS ────────────────────────────
@@ -65,7 +66,7 @@ export default function SubmissionsPage(): ReactNode {
   // ─── STATE ──────────────────────────────
 
   const [data, setData] = useState<PaginatedResponse<Submission> | null>(null);
-  const [problemMap, setProblemMap] = useState<Map<string, string>>(new Map());
+  const [problemDetailMap, setProblemDetailMap] = useState<Map<string, { title: string; difficulty?: string; weekNumber?: string }>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -73,6 +74,7 @@ export default function SubmissionsPage(): ReactNode {
   const [filterSagaStep, setFilterSagaStep] = useState('');
   const [filterWeek, setFilterWeek] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [filterSearch, setFilterSearch] = useState('');
 
   // ─── API ────────────────────────────────
 
@@ -102,7 +104,7 @@ export default function SubmissionsPage(): ReactNode {
   useEffect(() => {
     if (!isAuthenticated) return;
     void problemApi.findAllIncludingClosed().then((problems) => {
-      setProblemMap(new Map(problems.map((p) => [p.id, p.title])));
+      setProblemDetailMap(new Map(problems.map((p) => [p.id, { title: p.title, difficulty: p.difficulty, weekNumber: p.weekNumber }])));
     }).catch(() => {});
   }, [isAuthenticated]);
 
@@ -121,11 +123,19 @@ export default function SubmissionsPage(): ReactNode {
     setFilterLanguage('');
     setFilterSagaStep('');
     setFilterWeek('');
+    setFilterSearch('');
     setPage(1);
   }, []);
 
   const totalPages = data?.meta.totalPages ?? 1;
-  const hasFilters = filterLanguage || filterSagaStep || filterWeek;
+  const hasFilters = filterLanguage || filterSagaStep || filterWeek || filterSearch;
+
+  // 평균 AI 점수 계산 (aiScore가 있는 제출만)
+  const scoredSubmissions = data?.data.filter((s) => s.aiScore != null) ?? [];
+  const avgAiScore =
+    scoredSubmissions.length > 0
+      ? Math.round(scoredSubmissions.reduce((sum, s) => sum + (s.aiScore ?? 0), 0) / scoredSubmissions.length)
+      : null;
 
   if (!isReady) {
     return (
@@ -142,27 +152,58 @@ export default function SubmissionsPage(): ReactNode {
         {/* 헤더 */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold tracking-tight text-text">
+            <h1 className="text-[22px] font-bold tracking-tight text-text">
               {currentStudyName ? `${currentStudyName} · 제출 이력` : '제출 이력'}
             </h1>
             <p className="mt-0.5 font-mono text-[10px] text-text-3">
               {data ? `총 ${data.meta.total}건` : '불러오는 중...'}
             </p>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowFilters((v) => !v)}
-          >
-            <Filter className="h-3.5 w-3.5" aria-hidden />
-            필터
-          </Button>
+          <div className="flex items-center gap-3">
+            {/* Stat Cards */}
+            {data && (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 rounded-card border border-border bg-bg-card px-3.5 py-2 shadow">
+                  <FileText className="h-3.5 w-3.5 text-primary" aria-hidden />
+                  <span className="font-mono text-lg font-bold text-primary">{data.meta.total}</span>
+                  <span className="text-[11px] text-text-3">총 제출</span>
+                </div>
+                <div className="flex items-center gap-2 rounded-card border border-border bg-bg-card px-3.5 py-2 shadow">
+                  <svg className="h-3.5 w-3.5 text-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden>
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M12 1v4m0 14v4M4.22 4.22l2.83 2.83m9.9 9.9l2.83 2.83M1 12h4m14 0h4M4.22 19.78l2.83-2.83m9.9-9.9l2.83-2.83" />
+                  </svg>
+                  <span className="font-mono text-lg font-bold text-success">{avgAiScore ?? '\u2014'}</span>
+                  <span className="text-[11px] text-text-3">평균 점수</span>
+                </div>
+              </div>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowFilters((v) => !v)}
+            >
+              <Filter className="h-3.5 w-3.5" aria-hidden />
+              필터
+            </Button>
+          </div>
         </div>
 
         {/* 필터 패널 */}
         {showFilters && (
           <Card className="p-3">
             <div className="flex flex-wrap items-end gap-3">
+              <div className="relative flex-1 min-w-[160px]">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-3 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="문제 검색..."
+                  value={filterSearch}
+                  onChange={(e) => { setFilterSearch(e.target.value); setPage(1); }}
+                  className="w-full h-[34px] pl-8 pr-3 rounded-btn border border-border bg-input-bg text-text text-xs outline-none placeholder:text-text-3 focus:border-primary"
+                />
+              </div>
+
               <div className="space-y-1">
                 <label htmlFor="filter-language" className="block text-[10px] font-medium uppercase tracking-wider text-text-3">언어</label>
                 <select
@@ -254,17 +295,25 @@ export default function SubmissionsPage(): ReactNode {
               {/* 헤더 행 */}
               <div
                 className="grid items-center gap-x-2 px-4 py-2.5 border-b border-border font-mono text-[10px] uppercase tracking-wider text-text-3 min-w-[520px]"
-                style={{ gridTemplateColumns: '1fr 72px 80px 100px 72px' }}
+                style={{ gridTemplateColumns: '64px 1fr 80px 72px 100px 80px 72px' }}
               >
+                <span>주차</span>
                 <span>문제</span>
+                <span>난이도</span>
                 <span>언어</span>
+                <span>제출시간</span>
                 <span>상태</span>
-                <span>제출일</span>
                 <span>AI</span>
               </div>
 
               {/* 데이터 행 */}
-              {data.data.map((submission) => {
+              {data.data
+                .filter((submission) => {
+                  if (!filterSearch) return true;
+                  const title = submission.problemTitle ?? problemDetailMap.get(submission.problemId)?.title ?? '';
+                  return title.toLowerCase().includes(filterSearch.toLowerCase());
+                })
+                .map((submission) => {
                 const sagaConfig = SAGA_STEP_CONFIG[submission.sagaStep] ?? {
                   label: submission.sagaStep,
                   variant: 'muted' as const,
@@ -275,27 +324,42 @@ export default function SubmissionsPage(): ReactNode {
                   <div
                     key={submission.id}
                     className="grid items-center gap-x-2 w-full px-4 py-3 border-b border-border last:border-b-0 hover:bg-primary-soft transition-colors min-w-[520px]"
-                    style={{ gridTemplateColumns: '1fr 72px 80px 100px 72px' }}
+                    style={{ gridTemplateColumns: '64px 1fr 80px 72px 100px 80px 72px' }}
                   >
+                    {/* 주차 */}
+                    <span className="font-mono text-[11px] text-text-3 truncate">
+                      {problemDetailMap.get(submission.problemId)?.weekNumber ?? '-'}
+                    </span>
+
                     {/* 문제명 */}
                     <div className="min-w-0">
                       <p className="text-[13px] font-medium text-text truncate">
-                        {submission.problemTitle ?? problemMap.get(submission.problemId) ?? `문제 ${submission.problemId.slice(0, 8)}`}
+                        {submission.problemTitle ?? problemDetailMap.get(submission.problemId)?.title ?? `문제 ${submission.problemId.slice(0, 8)}`}
                       </p>
                     </div>
 
+                    {/* 난이도 */}
+                    {(() => {
+                      const diff = problemDetailMap.get(submission.problemId)?.difficulty;
+                      return diff ? (
+                        <DifficultyBadge difficulty={diff as Difficulty} />
+                      ) : (
+                        <span className="font-mono text-[10px] text-text-3">--</span>
+                      );
+                    })()}
+
                     {/* 언어 */}
                     <LangBadge language={submission.language} />
+
+                    {/* 제출시간 */}
+                    <span className="font-mono text-[10px] text-text-3 whitespace-nowrap">
+                      {formatDate(submission.createdAt)}
+                    </span>
 
                     {/* 상태 */}
                     <Badge variant={sagaConfig.variant} dot>
                       {sagaConfig.label}
                     </Badge>
-
-                    {/* 제출일 */}
-                    <span className="font-mono text-[10px] text-text-3 whitespace-nowrap">
-                      {formatDate(submission.createdAt)}
-                    </span>
 
                     {/* AI 분석 */}
                     {isDone ? (
