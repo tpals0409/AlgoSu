@@ -52,8 +52,15 @@ export default function StudiesPage(): ReactNode {
   const [error, setError] = useState<string | null>(null);
 
   const [joinCode, setJoinCode] = useState('');
-  const [isJoining, setIsJoining] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
+
+  // 닉네임 팝업
+  const [showNicknameModal, setShowNicknameModal] = useState(false);
+  const [verifiedStudyName, setVerifiedStudyName] = useState('');
+  const [joinNickname, setJoinNickname] = useState('');
+  const [isJoining, setIsJoining] = useState(false);
+  const [joinModalError, setJoinModalError] = useState<string | null>(null);
 
   // ─── API ───────────────────────────────
 
@@ -109,31 +116,59 @@ export default function StudiesPage(): ReactNode {
   );
 
   /**
-   * 초대코드로 스터디 가입
+   * 1단계: 초대코드 검증 → 유효하면 닉네임 팝업
    * @domain study
-   * @guard invite-code-lock
    */
-  const handleJoin = useCallback(async () => {
+  const handleVerify = useCallback(async () => {
     if (!joinCode.trim()) return;
     setJoinError(null);
-    setIsJoining(true);
+    setIsVerifying(true);
     try {
-      const joined = await studyApi.join(joinCode.trim());
-      const updated = [...studies, joined];
-      setLocalStudies(updated);
-      setStudies(updated);
-      setCurrentStudy(joined.id);
-      router.push(`/studies/${joined.id}`);
+      const result = await studyApi.verifyInvite(joinCode.trim());
+      setVerifiedStudyName(result.studyName);
+      setJoinNickname('');
+      setJoinModalError(null);
+      setShowNicknameModal(true);
     } catch (err: unknown) {
       if (err instanceof ApiError) {
         setJoinError(err.message);
       } else {
-        setJoinError('스터디 가입에 실패했습니다. 다시 시도해주세요.');
+        setJoinError('초대 코드 확인에 실패했습니다.');
+      }
+    } finally {
+      setIsVerifying(false);
+    }
+  }, [joinCode]);
+
+  /**
+   * 2단계: 닉네임 입력 후 실제 가입
+   * @domain study
+   */
+  const handleJoin = useCallback(async () => {
+    if (!joinNickname.trim()) {
+      setJoinModalError('닉네임을 입력해주세요.');
+      return;
+    }
+    setJoinModalError(null);
+    setIsJoining(true);
+    try {
+      const joined = await studyApi.join(joinCode.trim(), joinNickname.trim());
+      const updated = [...studies, joined];
+      setLocalStudies(updated);
+      setStudies(updated);
+      setCurrentStudy(joined.id);
+      setShowNicknameModal(false);
+      router.push(`/studies/${joined.id}`);
+    } catch (err: unknown) {
+      if (err instanceof ApiError) {
+        setJoinModalError(err.message);
+      } else {
+        setJoinModalError('스터디 가입에 실패했습니다.');
       }
     } finally {
       setIsJoining(false);
     }
-  }, [joinCode, studies, setStudies, setCurrentStudy, router]);
+  }, [joinCode, joinNickname, studies, setStudies, setCurrentStudy, router]);
 
   return (
     <AppLayout>
@@ -244,7 +279,10 @@ export default function StudiesPage(): ReactNode {
                     setJoinCode(e.target.value);
                     setJoinError(null);
                   }}
-                  disabled={isJoining}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void handleVerify();
+                  }}
+                  disabled={isVerifying}
                 />
                 <p
                   className={cn(
@@ -258,14 +296,66 @@ export default function StudiesPage(): ReactNode {
               <Button
                 variant="primary"
                 size="md"
-                disabled={isJoining || !joinCode.trim()}
-                onClick={() => void handleJoin()}
+                disabled={isVerifying || !joinCode.trim()}
+                onClick={() => void handleVerify()}
               >
-                {isJoining ? '가입 중...' : '가입'}
+                {isVerifying ? '확인 중...' : '가입'}
               </Button>
             </div>
           </CardContent>
         </Card>
+
+        {/* 닉네임 입력 팝업 */}
+        {showNicknameModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm">
+            <Card className="mx-4 w-full max-w-sm">
+              <CardContent className="space-y-4 py-5">
+                <div>
+                  <p className="text-sm font-semibold text-text">스터디 가입</p>
+                  <p className="mt-1 text-xs text-text-2">
+                    <span className="font-medium text-primary">{verifiedStudyName}</span>에서 사용할 닉네임을 입력해주세요.
+                  </p>
+                </div>
+                <Input
+                  placeholder="닉네임 입력"
+                  value={joinNickname}
+                  onChange={(e) => {
+                    setJoinNickname(e.target.value);
+                    setJoinModalError(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void handleJoin();
+                  }}
+                  disabled={isJoining}
+                  autoFocus
+                />
+                {joinModalError && (
+                  <p className="text-[11px] text-error">{joinModalError}</p>
+                )}
+                <div className="flex gap-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setShowNicknameModal(false)}
+                    disabled={isJoining}
+                  >
+                    취소
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="flex-1"
+                    disabled={isJoining || !joinNickname.trim()}
+                    onClick={() => void handleJoin()}
+                  >
+                    {isJoining ? '가입 중...' : '가입하기'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </AppLayout>
   );

@@ -1,3 +1,9 @@
+/**
+ * @file 난이도 뱃지 (색상 구분, solved.ac 티어 기반)
+ * @domain common
+ * @layer component
+ * @related Badge, DiffBadge, constants
+ */
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';

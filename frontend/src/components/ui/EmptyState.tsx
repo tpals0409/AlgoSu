@@ -1,3 +1,9 @@
+/**
+ * @file 빈 상태 안내 컴포넌트 (아이콘 + 메시지 + 액션)
+ * @domain common
+ * @layer component
+ * @related Button, Card
+ */
 import * as React from 'react';
 import { Inbox } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';

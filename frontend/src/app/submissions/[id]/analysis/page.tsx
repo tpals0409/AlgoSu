@@ -10,7 +10,7 @@
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Loader2, Copy, Check } from 'lucide-react';
+import { ArrowLeft, Loader2, Copy, Check, ExternalLink, Clock, Box, Code2, Sparkles } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -31,6 +31,9 @@ interface ParsedFeedback {
   summary: string;
   categories: FeedbackCategory[];
   optimizedCode: string | null;
+  timeComplexity: string | null;
+  spaceComplexity: string | null;
+  codeLines: number | null;
 }
 
 interface FeedbackCategory {
@@ -43,6 +46,39 @@ interface FeedbackCategory {
 // ─── HELPERS ──────────────────────────────
 
 /**
+ * 효율성 카테고리 코멘트에서 복잡도 추출
+ * @domain ai
+ */
+function extractComplexity(categories: FeedbackCategory[]): { time: string | null; space: string | null } {
+  const efficiency = categories.find((c) => c.name === 'efficiency');
+  if (!efficiency) return { time: null, space: null };
+
+  const comment = efficiency.comment;
+  // O(n), O(n log n), O(n^2), O(1), O(n*m) 등 패턴 매칭
+  const bigOPattern = /O\([^)]+\)/g;
+  const matches = comment.match(bigOPattern);
+
+  if (matches && matches.length >= 2) {
+    return { time: matches[0], space: matches[1] };
+  }
+  if (matches && matches.length === 1) {
+    // 시간 복잡도만 언급된 경우
+    return { time: matches[0], space: null };
+  }
+  return { time: null, space: null };
+}
+
+/**
+ * 코드 줄 수 계산
+ * @domain ai
+ */
+function countCodeLines(code: string | null): number | null {
+  if (!code) return null;
+  const lines = code.split('\n').filter((l) => l.trim().length > 0);
+  return lines.length;
+}
+
+/**
  * feedback JSON 파싱 (안전)
  * @domain ai
  */
@@ -51,16 +87,24 @@ function parseFeedback(feedback: string | null, score: number | null, optimizedC
 
   try {
     const parsed = JSON.parse(feedback);
+    const categories: FeedbackCategory[] = (parsed.categories ?? []).map((c: Record<string, unknown>) => ({
+      name: c.name as string ?? '',
+      score: c.score as number ?? 0,
+      comment: c.comment as string ?? '',
+      highlights: (c.highlights as { startLine: number; endLine: number }[]) ?? [],
+    }));
+
+    const complexity = extractComplexity(categories);
+    const resolvedOptimizedCode = parsed.optimizedCode ?? optimizedCode ?? null;
+
     return {
       totalScore: parsed.totalScore ?? score ?? 0,
       summary: parsed.summary ?? '',
-      categories: (parsed.categories ?? []).map((c: Record<string, unknown>) => ({
-        name: c.name as string ?? '',
-        score: c.score as number ?? 0,
-        comment: c.comment as string ?? '',
-        highlights: (c.highlights as { startLine: number; endLine: number }[]) ?? [],
-      })),
-      optimizedCode: parsed.optimizedCode ?? optimizedCode ?? null,
+      categories,
+      optimizedCode: resolvedOptimizedCode,
+      timeComplexity: parsed.timeComplexity ?? complexity.time,
+      spaceComplexity: parsed.spaceComplexity ?? complexity.space,
+      codeLines: parsed.codeLines ?? countCodeLines(resolvedOptimizedCode),
     };
   } catch {
     // JSON 파싱 실패 시 텍스트 피드백으로 폴백
@@ -69,6 +113,9 @@ function parseFeedback(feedback: string | null, score: number | null, optimizedC
       summary: feedback,
       categories: [],
       optimizedCode: optimizedCode ?? null,
+      timeComplexity: null,
+      spaceComplexity: null,
+      codeLines: null,
     };
   }
 }
@@ -207,13 +254,18 @@ export default function AnalysisPage(): ReactNode {
           >
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
           </Link>
-          <div>
+          <div className="flex-1 min-w-0">
             <h1 className="text-lg font-bold tracking-tight text-text">AI 코드 분석 결과</h1>
             <p className="mt-0.5 font-mono text-[10px] text-text-3">
               {submission?.problemTitle ?? `제출 ${submissionId.slice(0, 8)}`}
               {submission && ` · ${submission.language}`}
             </p>
           </div>
+          {/* AI 분석 일일 할당량 뱃지 */}
+          <Badge variant="muted" className="flex items-center gap-1.5 shrink-0">
+            <Sparkles className="h-3 w-3" aria-hidden />
+            오늘 0/5회
+          </Badge>
         </div>
 
         {/* 에러 */}
@@ -291,10 +343,47 @@ export default function AnalysisPage(): ReactNode {
                       <Badge variant="success" dot>분석 완료</Badge>
                     </div>
                     {submission && (
-                      <p className="font-mono text-[10px] text-text-3">
+                      <p className="font-mono text-[10px] text-text-3 mb-4">
                         제출일: {new Date(submission.createdAt).toLocaleString('ko-KR')}
                       </p>
                     )}
+
+                    {/* Quick Stats 그리드 */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="flex items-center gap-2.5 rounded-lg bg-bg-alt px-3 py-2.5">
+                        <div className="flex items-center justify-center w-7 h-7 rounded-md bg-primary-soft text-primary shrink-0">
+                          <Clock className="h-3.5 w-3.5" aria-hidden />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] text-text-3 leading-tight">시간 복잡도</p>
+                          <p className="text-xs font-semibold font-mono text-text leading-tight mt-0.5">
+                            {parsed.timeComplexity ?? '—'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2.5 rounded-lg bg-bg-alt px-3 py-2.5">
+                        <div className="flex items-center justify-center w-7 h-7 rounded-md bg-info-soft text-info shrink-0">
+                          <Box className="h-3.5 w-3.5" aria-hidden />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] text-text-3 leading-tight">공간 복잡도</p>
+                          <p className="text-xs font-semibold font-mono text-text leading-tight mt-0.5">
+                            {parsed.spaceComplexity ?? '—'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2.5 rounded-lg bg-bg-alt px-3 py-2.5">
+                        <div className="flex items-center justify-center w-7 h-7 rounded-md bg-success-soft text-success shrink-0">
+                          <Code2 className="h-3.5 w-3.5" aria-hidden />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] text-text-3 leading-tight">코드 라인</p>
+                          <p className="text-xs font-semibold font-mono text-text leading-tight mt-0.5">
+                            {parsed.codeLines !== null ? `${parsed.codeLines}줄` : '—'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -336,6 +425,15 @@ export default function AnalysisPage(): ReactNode {
                   <p className="text-xs leading-relaxed text-text-2 whitespace-pre-wrap">
                     {parsed.summary}
                   </p>
+                  {/* GitHub 커밋 링크 */}
+                  {submission?.sagaStep === 'DONE' && (
+                    <div className="flex items-center gap-2 mt-3">
+                      <ExternalLink className="h-3.5 w-3.5 text-text-3" />
+                      <span className="text-[11px] text-text-3">
+                        GitHub에 자동 커밋되었습니다
+                      </span>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}

@@ -1,3 +1,9 @@
+/**
+ * @file 로딩 스피너 컴포넌트 (sm/md/lg 사이즈)
+ * @domain common
+ * @layer component
+ * @related Skeleton
+ */
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';

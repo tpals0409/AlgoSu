@@ -19,6 +19,9 @@ import {
   Pencil,
   Check,
   X,
+  FileText,
+  CheckCircle2,
+  Trash2,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
@@ -30,7 +33,7 @@ import { InlineSpinner } from '@/components/ui/LoadingSpinner';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudy } from '@/contexts/StudyContext';
-import { authApi } from '@/lib/api';
+import { authApi, submissionApi } from '@/lib/api';
 import { getGitHubUsername } from '@/lib/auth';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { AVATAR_PRESETS, getAvatarSrc } from '@/lib/avatars';
@@ -70,9 +73,16 @@ export default function ProfilePage(): ReactNode {
 
   const [oauthProvider, setOauthProvider] = useState<string | null>(null);
 
+  // 개인 통계
+  const [totalSubmissions, setTotalSubmissions] = useState<number>(0);
+  const [statsLoading, setStatsLoading] = useState(true);
+
   // 아바타 선택
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
+
+  // 계정 삭제 확인
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // ─── EFFECTS ───────────────────────────
 
@@ -88,6 +98,17 @@ export default function ProfilePage(): ReactNode {
         // 프로필 로드 실패 시 무시
       });
   }, []);
+
+  useEffect(() => {
+    if (!isReady) return;
+    setStatsLoading(true);
+    submissionApi.list({ page: 1, limit: 1 })
+      .then((result) => {
+        setTotalSubmissions(result.meta.total);
+      })
+      .catch(() => {})
+      .finally(() => setStatsLoading(false));
+  }, [isReady]);
 
   // ─── HANDLERS ──────────────────────────
 
@@ -226,7 +247,7 @@ export default function ProfilePage(): ReactNode {
       <div className="mx-auto max-w-xl space-y-6">
         {/* 페이지 헤더 */}
         <div>
-          <h1 className="text-lg font-semibold text-text">프로필</h1>
+          <h1 className="text-[22px] font-bold tracking-tight text-text">프로필</h1>
           <p className="mt-0.5 text-xs text-text-3">
             계정 정보 및 연동 설정
           </p>
@@ -380,6 +401,49 @@ export default function ProfilePage(): ReactNode {
           </CardContent>
         </Card>
 
+        {/* 개인 통계 */}
+        <div className="grid grid-cols-3 gap-3">
+          <Card>
+            <CardContent className="flex items-center gap-3 py-4">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary-soft">
+                <FileText className="h-4 w-4 text-primary" aria-hidden />
+              </div>
+              <div>
+                {statsLoading ? (
+                  <Skeleton height={24} width={40} />
+                ) : (
+                  <p className="font-mono text-xl font-bold text-primary">{totalSubmissions}</p>
+                )}
+                <p className="text-[11px] text-text-3">총 제출</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="flex items-center gap-3 py-4">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-success-soft">
+                <CheckCircle2 className="h-4 w-4 text-success" aria-hidden />
+              </div>
+              <div>
+                <p className="font-mono text-xl font-bold text-success">{studies.length}</p>
+                <p className="text-[11px] text-text-3">참여 스터디</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="flex items-center gap-3 py-4">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-bg-alt">
+                <Github className="h-4 w-4 text-text" aria-hidden />
+              </div>
+              <div>
+                <p className="font-mono text-xl font-bold text-text">
+                  {githubConnected ? '연동' : '미연동'}
+                </p>
+                <p className="text-[11px] text-text-3">GitHub</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* GitHub 연동 */}
         <Card>
           <CardHeader>
@@ -527,6 +591,56 @@ export default function ProfilePage(): ReactNode {
             )}
           </CardContent>
         </Card>
+
+        {/* 법적 고지 */}
+        <Card>
+          <CardContent className="p-4 space-y-2">
+            <h3 className="text-[13px] font-medium text-text">법적 고지</h3>
+            <div className="flex flex-col gap-1">
+              <button className="text-left text-[12px] text-text-2 hover:text-primary transition-colors">
+                서비스 이용약관
+              </button>
+              <button className="text-left text-[12px] text-text-2 hover:text-primary transition-colors">
+                개인정보 처리방침
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 계정 삭제 */}
+        <Card className="border-error/20">
+          <CardContent className="p-4">
+            <h3 className="text-[13px] font-medium text-error mb-1">계정 삭제</h3>
+            <p className="text-[11px] text-text-3 mb-3">
+              계정을 삭제하면 모든 데이터가 영구적으로 삭제되며 복구할 수 없습니다.
+            </p>
+            <Button variant="danger" size="sm" onClick={() => setShowDeleteConfirm(true)}>
+              <Trash2 className="h-3 w-3" />
+              계정 삭제
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* 계정 삭제 확인 다이얼로그 */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="w-full max-w-sm rounded-card border border-border bg-bg-card p-6 shadow-lg">
+              <h3 className="text-[15px] font-bold text-error mb-2">정말 계정을 삭제하시겠습니까?</h3>
+              <p className="text-[12px] text-text-3 mb-5">
+                이 작업은 되돌릴 수 없습니다. 모든 데이터(제출, 스터디, 프로필)가 영구 삭제됩니다.
+              </p>
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setShowDeleteConfirm(false)}>
+                  취소
+                </Button>
+                <Button variant="danger" size="sm" disabled>
+                  <Trash2 className="h-3 w-3" />
+                  삭제 확인 (준비 중)
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AppLayout>
   );

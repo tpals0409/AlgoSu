@@ -1,3 +1,8 @@
+/**
+ * @file Tailwind CSS 클래스 병합 유틸리티
+ * @domain common
+ * @layer lib
+ */
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 

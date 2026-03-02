@@ -1,3 +1,9 @@
+/**
+ * @file 알림 토스트 포탈 (9종 알림 타입 + 자동 소멸)
+ * @domain notification
+ * @layer component
+ * @related NotificationBell, Toast, notificationApi
+ */
 'use client';
 
 import { useState, useEffect, useCallback, type ReactNode } from 'react';

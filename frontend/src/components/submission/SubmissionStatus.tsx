@@ -1,3 +1,9 @@
+/**
+ * @file 제출 상태 3단계 표시 컴포넌트
+ * @domain submission
+ * @layer component
+ * @related useSubmissionSSE, CodeEditor
+ */
 'use client';
 
 /**

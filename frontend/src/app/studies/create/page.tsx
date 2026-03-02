@@ -32,6 +32,7 @@ interface FormState {
   name: string;
   description: string;
   nickname: string;
+  githubRepo: string;
 }
 
 interface FormErrors {
@@ -73,6 +74,7 @@ export default function StudyCreatePage(): ReactNode {
     name: '',
     description: '',
     nickname: '',
+    githubRepo: '',
   });
   const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
   const [apiError, setApiError] = useState<string | null>(null);
@@ -115,6 +117,8 @@ export default function StudyCreatePage(): ReactNode {
         const created = await studyApi.create({
           name: form.name.trim(),
           description: form.description.trim() || undefined,
+          nickname: form.nickname.trim(),
+          githubRepo: form.githubRepo.trim() || undefined,
         });
 
         // 생성자는 자동 ADMIN
@@ -187,6 +191,17 @@ export default function StudyCreatePage(): ReactNode {
                 onChange={handleChange('description')}
                 disabled={isLoading}
               />
+
+              <Input
+                label="GitHub 레포 (선택)"
+                placeholder="예: username/repo-name"
+                value={form.githubRepo}
+                onChange={handleChange('githubRepo')}
+                disabled={isLoading}
+              />
+              <p className="text-[11px] text-text-3 -mt-2">
+                코드 제출 시 자동으로 GitHub에 Push됩니다. 나중에 설정할 수도 있습니다.
+              </p>
             </CardContent>
 
             <CardFooter className="flex gap-3">

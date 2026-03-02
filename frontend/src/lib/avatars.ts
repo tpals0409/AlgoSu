@@ -1,8 +1,8 @@
 /**
- * AlgoSu 프리셋 아바타 시스템
- *
- * DB avatar_url 형식: "preset:tree" | "preset:default" | null
- * SVG 에셋: /avatars/{key}.svg (정적 서빙)
+ * @file 프리셋 아바타 시스템 (키/라벨/URL 변환)
+ * @domain common
+ * @layer lib
+ * @related ProfilePage, TopNav
  */
 
 export interface AvatarPreset {

@@ -28,6 +28,7 @@ import {
   Plus,
   Shield,
   LogOut,
+  Pencil,
 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -46,13 +47,13 @@ import { Alert } from '@/components/ui/Alert';
 import { LoadingSpinner, InlineSpinner } from '@/components/ui/LoadingSpinner';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useStudy } from '@/contexts/StudyContext';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   studyApi,
   type Study,
   type StudyMember,
   type StudyStats,
 } from '@/lib/api';
-import { getCurrentUserId } from '@/lib/auth';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { getAvatarPresetKey, getAvatarSrc } from '@/lib/avatars';
 import { cn } from '@/lib/utils';
@@ -83,7 +84,7 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
   const { id: studyId } = use(params);
   const router = useRouter();
   const { isAuthenticated } = useRequireAuth();
-  const myUserId = getCurrentUserId();
+  const { user } = useAuth();
 
   // ─── STATE ─────────────────────────────
   const [tab, setTab] = useState<TabKey>('overview');
@@ -92,6 +93,9 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
   const [stats, setStats] = useState<StudyStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // email 매칭으로 현재 사용자 ID 도출 (httpOnly Cookie → localStorage 토큰 없음)
+  const myUserId = members.find((m) => m.email === user?.email)?.user_id ?? null;
 
   // 초대 코드
   const [inviteCode, setInviteCode] = useState<string | null>(null);
@@ -117,6 +121,9 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
 
   // 스터디 삭제
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Ground Rules
+  const [groundRules, setGroundRules] = useState('');
 
   // ─── HELPERS ───────────────────────────
 
@@ -275,7 +282,7 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
     ): Promise<void> => {
       const roleLabel = newRole === 'ADMIN' ? '관리자' : '멤버';
       const confirmed = window.confirm(
-        `${member.username ?? member.user_id.slice(0, 8)}님의 역할을 "${roleLabel}"(으)로 변경하시겠습니까?`,
+        `${member.nickname ?? member.username ?? member.user_id.slice(0, 8)}님의 역할을 "${roleLabel}"(으)로 변경하시겠습니까?`,
       );
       if (!confirmed) return;
 
@@ -297,6 +304,24 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
   );
 
   /**
+   * 본인 닉네임 변경
+   * @domain study
+   * @guard study-member
+   */
+  const handleNicknameUpdate = useCallback(async (nickname: string): Promise<void> => {
+    try {
+      await studyApi.updateNickname(studyId, nickname);
+      setMembers((prev) =>
+        prev.map((m) =>
+          m.user_id === myUserId ? { ...m, nickname } : m,
+        ),
+      );
+    } catch {
+      setError('닉네임 변경에 실패했습니다.');
+    }
+  }, [studyId, myUserId]);
+
+  /**
    * 스터디 설정 저장
    * @domain study
    * @guard study-admin
@@ -315,6 +340,17 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
       setIsSavingEdit(false);
     }
   }, [studyId, editName, editDescription]);
+
+  /**
+   * Ground Rules 저장
+   * @domain study
+   * @guard study-admin
+   * @note API 미구현 — 추후 studyApi.updateGroundRules 연동 시 교체
+   */
+  const handleSaveGroundRules = useCallback((): void => {
+    if (!groundRules.trim()) return;
+    alert('Ground Rules가 임시 저장되었습니다. (API 연동 후 서버에 저장됩니다)');
+  }, [groundRules]);
 
   /**
    * 스터디 삭제
@@ -385,7 +421,7 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
             <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
           </Button>
           <div>
-            <h1 className="text-lg font-semibold text-text">
+            <h1 className="text-[22px] font-bold tracking-tight text-text">
               {study?.name ?? ''}
             </h1>
             {study?.description && (
@@ -449,6 +485,7 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
             onRoleChange={handleRoleChange}
             onKick={setKickTarget}
             onLeave={() => setShowLeaveConfirm(true)}
+            onNicknameUpdate={handleNicknameUpdate}
           />
         )}
 
@@ -458,8 +495,11 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
             editDescription={editDescription}
             isSavingEdit={isSavingEdit}
             isDeleting={isDeleting}
+            groundRules={groundRules}
             onNameChange={setEditName}
             onDescriptionChange={setEditDescription}
+            onGroundRulesChange={setGroundRules}
+            onSaveGroundRules={handleSaveGroundRules}
             onSave={() => void handleSaveEdit()}
             onDelete={() => void handleDeleteStudy()}
           />
@@ -470,7 +510,7 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
       {kickTarget && (
         <ConfirmModal
           title="멤버 추방"
-          description={`정말 ${kickTarget.username ?? kickTarget.user_id.slice(0, 8)}님을 추방하시겠습니까? 이 작업은 되돌릴 수 없습니다.`}
+          description={`정말 ${kickTarget.nickname ?? kickTarget.username ?? kickTarget.user_id.slice(0, 8)}님을 추방하시겠습니까? 이 작업은 되돌릴 수 없습니다.`}
           confirmLabel="추방"
           isLoading={isKicking}
           onConfirm={() => void handleKick()}
@@ -649,6 +689,46 @@ function OverviewTab({ study, stats, members }: OverviewTabProps): ReactNode {
               </CardContent>
             </Card>
           )}
+
+          {/* 난이도 분포 */}
+          <Card>
+            <CardHeader className="px-4 py-3">
+              <CardTitle className="text-[13px]">난이도 분포</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              <div className="space-y-2">
+                {(['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND'] as const).map((tier) => (
+                  <div key={tier} className="flex items-center gap-2">
+                    <span className="w-16 text-[10px] font-mono text-text-3">{tier}</span>
+                    <div className="flex-1 h-2 rounded-full bg-border">
+                      <div
+                        className="h-2 rounded-full"
+                        style={{ width: '0%', backgroundColor: `var(--diff-${tier.toLowerCase()}-color)` }}
+                      />
+                    </div>
+                    <span className="w-6 text-[10px] font-mono text-text-3 text-right">0</span>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-3 text-center text-[11px] text-text-3">
+                문제 데이터 연동 후 표시됩니다.
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* 언어 분포 */}
+          <Card>
+            <CardHeader className="px-4 py-3">
+              <CardTitle className="text-[13px]">언어 분포</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              <div className="rounded-btn border border-border bg-bg-alt px-4 py-6 text-center">
+                <p className="text-[11px] text-text-3">
+                  제출 데이터 연동 후 언어별 분포가 표시됩니다.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </>
       ) : (
         <div className="space-y-3">
@@ -682,6 +762,7 @@ interface MembersTabProps {
   readonly onRoleChange: (member: StudyMember, role: 'ADMIN' | 'MEMBER') => Promise<void>;
   readonly onKick: (member: StudyMember) => void;
   readonly onLeave: () => void;
+  readonly onNicknameUpdate: (nickname: string) => Promise<void>;
 }
 
 /**
@@ -703,7 +784,29 @@ function MembersTab({
   onRoleChange,
   onKick,
   onLeave,
+  onNicknameUpdate,
 }: MembersTabProps): ReactNode {
+  const [editingNickname, setEditingNickname] = useState(false);
+  const [nicknameInput, setNicknameInput] = useState('');
+  const [isSavingNickname, setIsSavingNickname] = useState(false);
+
+  const startEditNickname = useCallback((currentNickname: string) => {
+    setNicknameInput(currentNickname);
+    setEditingNickname(true);
+  }, []);
+
+  const saveNickname = useCallback(async () => {
+    const trimmed = nicknameInput.trim();
+    if (!trimmed) return;
+    setIsSavingNickname(true);
+    try {
+      await onNicknameUpdate(trimmed);
+      setEditingNickname(false);
+    } finally {
+      setIsSavingNickname(false);
+    }
+  }, [nicknameInput, onNicknameUpdate]);
+
   return (
     <div className="space-y-4 animate-fade-in">
       {/* 초대 코드 (ADMIN) */}
@@ -790,25 +893,73 @@ function MembersTab({
                   src={getAvatarSrc(
                     getAvatarPresetKey(member.avatar_url),
                   )}
-                  alt={member.username ?? '멤버'}
+                  alt={member.nickname ?? member.username ?? '멤버'}
                   width={32}
                   height={32}
                   className="shrink-0 rounded-full"
                 />
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <p className="truncate text-xs font-medium text-text">
-                      {member.username ??
-                        member.email ??
-                        member.user_id.slice(0, 8)}
-                    </p>
+                    {isMe && editingNickname ? (
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          value={nicknameInput}
+                          onChange={(e) => setNicknameInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') void saveNickname();
+                            if (e.key === 'Escape') setEditingNickname(false);
+                          }}
+                          disabled={isSavingNickname}
+                          maxLength={50}
+                          className="w-28 rounded-btn border border-primary bg-bg-alt px-2 py-0.5 text-xs text-text outline-none"
+                          autoFocus
+                        />
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => void saveNickname()}
+                          disabled={isSavingNickname || !nicknameInput.trim()}
+                          className="h-6 px-2 text-[10px]"
+                        >
+                          {isSavingNickname ? <InlineSpinner /> : '저장'}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingNickname(false)}
+                          disabled={isSavingNickname}
+                          className="h-6 px-2 text-[10px]"
+                        >
+                          취소
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="truncate text-xs font-medium text-text">
+                          {member.nickname ??
+                            member.username ??
+                            member.email ??
+                            member.user_id.slice(0, 8)}
+                        </p>
+                        {isMe && (
+                          <button
+                            type="button"
+                            onClick={() => startEditNickname(member.nickname ?? '')}
+                            className="text-text-3 hover:text-primary transition-colors"
+                            title="닉네임 변경"
+                          >
+                            <Pencil className="h-3 w-3" aria-hidden />
+                          </button>
+                        )}
+                      </>
+                    )}
                     {member.role === 'ADMIN' && (
                       <Badge variant="info">
                         <Shield className="mr-0.5 h-2.5 w-2.5" aria-hidden />
                         관리자
                       </Badge>
                     )}
-                    {isMe && (
+                    {isMe && !editingNickname && (
                       <span className="text-[10px] text-text-3">(나)</span>
                     )}
                   </div>
@@ -891,8 +1042,11 @@ interface SettingsTabProps {
   readonly editDescription: string;
   readonly isSavingEdit: boolean;
   readonly isDeleting: boolean;
+  readonly groundRules: string;
   readonly onNameChange: (v: string) => void;
   readonly onDescriptionChange: (v: string) => void;
+  readonly onGroundRulesChange: (v: string) => void;
+  readonly onSaveGroundRules: () => void;
   readonly onSave: () => void;
   readonly onDelete: () => void;
 }
@@ -907,8 +1061,11 @@ function SettingsTab({
   editDescription,
   isSavingEdit,
   isDeleting,
+  groundRules,
   onNameChange,
   onDescriptionChange,
+  onGroundRulesChange,
+  onSaveGroundRules,
   onSave,
   onDelete,
 }: SettingsTabProps): ReactNode {
@@ -963,22 +1120,30 @@ function SettingsTab({
         </CardFooter>
       </Card>
 
-      {/* Ground Rules (B5) — API 미구현, placeholder */}
+      {/* Ground Rules (B5) — API 미구현, alert 대체 */}
       <Card>
         <CardHeader>
           <CardTitle>Ground Rules</CardTitle>
           <CardDescription>
-            스터디 운영 규칙을 설정합니다. (추후 지원 예정)
+            스터디 운영 규칙을 설정합니다.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="rounded-btn border border-border bg-bg-alt px-4 py-6 text-center">
-            <p className="text-sm text-text-3">
-              Ground Rules 기능은 준비 중입니다.
-            </p>
-            <p className="mt-1 text-xs text-text-3">
-              현재는 스터디 설명에 규칙을 포함해 주세요.
-            </p>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[13px] font-medium text-text">그라운드 룰</h3>
+              <span className="text-[10px] font-mono text-text-3">{groundRules.length}/500</span>
+            </div>
+            <textarea
+              value={groundRules}
+              onChange={(e) => onGroundRulesChange(e.target.value.slice(0, 500))}
+              placeholder="스터디 규칙을 작성하세요..."
+              rows={4}
+              className="w-full rounded-btn border border-border bg-input-bg px-3 py-2 text-xs text-text placeholder:text-text-3 focus:border-primary outline-none resize-none"
+            />
+            <Button variant="primary" size="sm" onClick={onSaveGroundRules}>
+              저장
+            </Button>
           </div>
         </CardContent>
       </Card>

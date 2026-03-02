@@ -62,11 +62,12 @@ export class StudyService {
    */
   async createStudy(
     userId: string,
-    data: { name: string; description?: string; nickname: string },
+    data: { name: string; description?: string; nickname: string; githubRepo?: string },
   ): Promise<Study> {
     const study = this.studyRepository.create({
       name: data.name,
       description: data.description ?? null,
+      github_repo: data.githubRepo ?? null,
       created_by: userId,
       status: StudyStatus.ACTIVE,
     });
@@ -237,7 +238,7 @@ export class StudyService {
   // ─── 초대 코드 ────────────────────────────────
 
   /**
-   * 초대 코드 발급 (ADMIN만, 24시간 유효)
+   * 초대 코드 발급 (ADMIN만, 5분 유효)
    * @domain study
    * @api POST /studies/:id/invite
    * @guard study-admin
@@ -248,7 +249,7 @@ export class StudyService {
     // varchar(20) 제약 -> 8자리 영숫자 코드
     const code = uuidv4().replace(/-/g, '').slice(0, 8).toUpperCase();
     const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24); // 24시간 유효
+    expiresAt.setMinutes(expiresAt.getMinutes() + 5); // 5분 유효
 
     const invite = this.inviteRepository.create({
       study_id: studyId,
@@ -261,6 +262,34 @@ export class StudyService {
 
     this.logger.log(`초대 코드 발급: studyId=${studyId}, by=${userId}`);
     return { code, expires_at: expiresAt };
+  }
+
+  /**
+   * 초대 코드 검증 (가입 전 유효성 확인)
+   * @domain study
+   * @api POST /studies/verify-invite
+   */
+  async verifyInviteCode(
+    code: string,
+    ip: string,
+  ): Promise<{ valid: boolean; studyName: string }> {
+    await this.inviteThrottle.checkLock(ip, code);
+
+    const invite = await this.inviteRepository.findOne({ where: { code }, relations: ['study'] });
+    if (!invite) {
+      await this.inviteThrottle.recordFailure(ip, code);
+      throw new NotFoundException('유효하지 않은 초대 코드입니다.');
+    }
+
+    if (invite.expires_at < new Date()) {
+      throw new BadRequestException('만료된 초대 코드입니다.');
+    }
+
+    if (invite.max_uses !== null && invite.used_count >= invite.max_uses) {
+      throw new BadRequestException('초대코드 사용 한도 초과');
+    }
+
+    return { valid: true, studyName: invite.study.name };
   }
 
   /**
@@ -462,11 +491,34 @@ export class StudyService {
       const u = userMap.get(m.user_id);
       return {
         ...m,
+        nickname: m.nickname,
         username: u?.name ?? undefined,
         email: u?.email ?? undefined,
         avatar_url: u?.avatar_url ?? null,
       };
     });
+  }
+
+  /**
+   * 닉네임 변경 (본인만)
+   * @domain study
+   * @api PATCH /studies/:id/nickname
+   * @guard study-member
+   */
+  async updateNickname(
+    studyId: string,
+    userId: string,
+    nickname: string,
+  ): Promise<{ nickname: string }> {
+    const member = await this.memberRepository.findOne({
+      where: { study_id: studyId, user_id: userId },
+    });
+    if (!member) {
+      throw new ForbiddenException('스터디 멤버가 아닙니다.');
+    }
+    member.nickname = nickname;
+    await this.memberRepository.save(member);
+    return { nickname: member.nickname };
   }
 
   /**

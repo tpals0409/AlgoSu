@@ -1,3 +1,9 @@
+/**
+ * @file 자동 저장 Hook (localStorage + Draft API)
+ * @domain submission
+ * @layer hook
+ * @related CodeEditor, api.ts
+ */
 'use client';
 
 import { useCallback, useEffect, useRef } from 'react';
@@ -25,6 +31,7 @@ interface UseAutoSaveOptions {
   code: string;
   language: string;
   onServerSave?: (data: AutoSaveData) => Promise<void>;
+  onLocalSaved?: () => void;
   enabled?: boolean;
 }
 
@@ -45,6 +52,7 @@ export function useAutoSave({
   code,
   language,
   onServerSave,
+  onLocalSaved,
   enabled = true,
 }: UseAutoSaveOptions) {
   const localDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -107,6 +115,7 @@ export function useAutoSave({
 
     localDebounceRef.current = setTimeout(() => {
       saveToLocal({ code, language });
+      onLocalSaved?.();
     }, LOCAL_DEBOUNCE);
 
     return () => {
@@ -114,7 +123,7 @@ export function useAutoSave({
         clearTimeout(localDebounceRef.current);
       }
     };
-  }, [code, language, enabled, saveToLocal]);
+  }, [code, language, enabled, saveToLocal, onLocalSaved]);
 
   // 30초 간격 → 서버 Draft API
   useEffect(() => {

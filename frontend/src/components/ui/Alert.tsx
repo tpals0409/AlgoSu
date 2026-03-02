@@ -1,3 +1,9 @@
+/**
+ * @file 알림 Alert 컴포넌트 (success/error/warning/info)
+ * @domain common
+ * @layer component
+ * @related Toast, NotificationToast
+ */
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { CheckCircle2, XCircle, AlertTriangle, Info, X } from 'lucide-react';

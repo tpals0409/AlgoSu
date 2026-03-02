@@ -1,3 +1,9 @@
+/**
+ * @file 상태 인디케이터 (도트 + 라벨, 5상태)
+ * @domain common
+ * @layer component
+ * @related StatusBadge, Badge
+ */
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';

@@ -16,7 +16,7 @@ import {
 import dynamic from 'next/dynamic';
 import { useTheme } from 'next-themes';
 import type { BeforeMount, OnMount } from '@monaco-editor/react';
-import { Check, Send } from 'lucide-react';
+import { Check, Send, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { InlineSpinner } from '@/components/ui/LoadingSpinner';
@@ -372,16 +372,27 @@ export function CodeEditor({
     });
   }, [autocomplete]);
 
-  // ─── 언어 변경 (빈 코드 → 템플릿 자동 삽입) ─
+  // ─── 언어 변경 (템플릿 코드면 자동 교체) ─
   const handleLanguageChange = useCallback(
     (newLang: string) => {
       onLanguageChange(newLang);
-      if (!code.trim() && BOJ_TEMPLATES[newLang]) {
+      const trimmed = code.trim();
+      const isTemplateCode =
+        !trimmed ||
+        Object.values(BOJ_TEMPLATES).some((t) => t.trim() === trimmed);
+      if (isTemplateCode && BOJ_TEMPLATES[newLang]) {
         onCodeChange(BOJ_TEMPLATES[newLang]);
       }
     },
     [code, onCodeChange, onLanguageChange],
   );
+
+  // ─── 초기화 (현재 언어 템플릿으로 되돌리기) ─
+  const handleReset = useCallback(() => {
+    const template = BOJ_TEMPLATES[language] ?? '';
+    onCodeChange(template);
+    editorRef.current?.focus();
+  }, [language, onCodeChange]);
 
   // ─── Monaco 콜백 ─────────────────────
   const handleBeforeMount: BeforeMount = useCallback((monaco) => {
@@ -481,6 +492,18 @@ export function CodeEditor({
               />
               자동완성
             </label>
+
+            {/* 초기화 */}
+            <button
+              type="button"
+              onClick={handleReset}
+              disabled={isSubmitting}
+              className="flex items-center gap-1 text-[11px] text-text-3 transition-colors hover:text-text disabled:opacity-40"
+              title="템플릿으로 초기화"
+            >
+              <RotateCcw className="h-3 w-3" aria-hidden />
+              초기화
+            </button>
           </div>
 
           {/* 마감 시간 (우측) */}

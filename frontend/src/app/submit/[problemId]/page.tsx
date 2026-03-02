@@ -97,15 +97,16 @@ export default function SubmitPage(): ReactNode {
     studyId: currentStudyId,
     code,
     language,
+    onLocalSaved: useCallback(() => {
+      setAutoSaveStatus('saved');
+      setTimeout(() => setAutoSaveStatus('idle'), 2000);
+    }, []),
     onServerSave: useCallback(
       async (data: { code: string; language: string }): Promise<void> => {
-        setAutoSaveStatus('saving');
         try {
           await draftApi.upsert(problemId, { language: data.language, code: data.code });
-          setAutoSaveStatus('saved');
-          setTimeout(() => setAutoSaveStatus('idle'), 2000);
         } catch {
-          setAutoSaveStatus('idle');
+          // 서버 저장 실패 — localStorage에 이미 저장됨
         }
       },
       [problemId],

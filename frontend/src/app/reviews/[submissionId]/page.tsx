@@ -16,6 +16,7 @@
 import { useState, useEffect, useCallback, type ReactElement } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
+  ChevronLeft,
   ChevronRight,
   Maximize2,
   Minimize2,
@@ -137,6 +138,7 @@ export default function CodeReviewPage(): ReactElement {
   const [selectedLine, setSelectedLine] = useState<number | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [focusMode, setFocusMode] = useState(false);
+  const [mobileTab, setMobileTab] = useState<'code' | 'review'>('code');
 
   const submissionId = params.submissionId;
   const currentUserId = user?.email ?? '';
@@ -300,30 +302,84 @@ export default function CodeReviewPage(): ReactElement {
         </header>
       )}
 
-      {/* Focus mode 해제 버튼 */}
+      {/* Focus mode 미니 헤더 */}
       {focusMode && (
+        <div className="fixed top-0 left-0 right-0 z-50 flex h-10 items-center justify-between border-b border-border bg-bg px-4">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => router.push('/dashboard')}
+              className="flex items-center gap-1 text-xs text-text-3 hover:text-text transition-colors"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              나가기
+            </button>
+            <span className="h-4 w-px bg-border" />
+            <span className="text-xs font-medium text-text truncate max-w-[200px]">
+              {submission?.problemTitle ?? '문제'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setFocusMode(false)}
+              className="flex items-center gap-1 rounded-btn px-2 py-1 text-[10px] font-mono text-text-3 hover:bg-bg-alt transition-colors"
+            >
+              <Minimize2 className="h-3 w-3" />
+              ESC
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 안내 배너 */}
+      {!focusMode && (
+        <div className="mx-auto max-w-screen-xl px-4 pt-3">
+          <div className="flex items-center gap-2 rounded-card border border-info/20 bg-info-soft px-4 py-2.5">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0 text-info" aria-hidden />
+            <p className="text-[12px] text-text-2">
+              마감 전 코드는 본인만 볼 수 있으며, 마감 후 스터디 멤버에게 공개됩니다.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* 모바일 탭 바 (lg 미만에서만 표시) */}
+      <div className="flex lg:hidden border-b border-border">
         <button
           type="button"
-          onClick={() => setFocusMode(false)}
-          className="fixed right-4 top-4 z-50 flex items-center gap-1 rounded-btn border border-border bg-bg-card px-3 py-1.5 text-xs text-text-2 shadow-card transition-colors hover:bg-bg-alt"
-          aria-label="Focus 모드 해제"
+          onClick={() => setMobileTab('code')}
+          className={cn(
+            'flex-1 py-2 text-xs font-medium text-center transition-colors',
+            mobileTab === 'code' ? 'text-primary border-b-2 border-primary' : 'text-text-3',
+          )}
         >
-          <Minimize2 className="h-3 w-3" />
-          ESC
+          <Code2 className="inline h-3.5 w-3.5 mr-1" />
+          코드
         </button>
-      )}
+        <button
+          type="button"
+          onClick={() => setMobileTab('review')}
+          className={cn(
+            'flex-1 py-2 text-xs font-medium text-center transition-colors',
+            mobileTab === 'review' ? 'text-primary border-b-2 border-primary' : 'text-text-3',
+          )}
+        >
+          리뷰
+        </button>
+      </div>
 
       {/* 메인: 2-패널 레이아웃 */}
       <div
         className={cn(
           'mx-auto grid w-full flex-1 gap-4 px-4 py-4',
           focusMode
-            ? 'max-w-none grid-cols-1 lg:grid-cols-[1fr_380px]'
+            ? 'max-w-none grid-cols-1 lg:grid-cols-[1fr_380px] pt-10'
             : 'max-w-screen-xl grid-cols-1 lg:grid-cols-[1fr_380px]',
         )}
       >
         {/* 좌측: 코드 패널 */}
-        <div className="min-w-0">
+        <div className={cn('min-w-0', mobileTab === 'code' ? 'block' : 'hidden lg:block')}>
           <CodePanel
             code={codeContent}
             language={submission.language}
@@ -335,7 +391,10 @@ export default function CodeReviewPage(): ReactElement {
         </div>
 
         {/* 우측: 리뷰 패널 */}
-        <div className="lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
+        <div className={cn(
+          'lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto',
+          mobileTab === 'review' ? 'block' : 'hidden lg:block',
+        )}>
           {/* AI 분석 요약 */}
           {analysis && analysis.analysisStatus === 'completed' && (
             <div className="mb-4 rounded-card border border-border bg-bg-card shadow-card">
