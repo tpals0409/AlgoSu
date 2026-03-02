@@ -1,7 +1,8 @@
 # AlgoSu 모니터링 로그 규칙
 
-> Oracle(심판관) 확정 문서 | 2026-02-28
+> Oracle(심판관) 확정 문서 | 2026-03-02 (v1.1: UI v2 전면 교체 반영)
 > Agent 상의 결과 종합: Architect, Gatekeeper, Conductor, Librarian
+> 참조: `docs/AlgoSu_UIv2_실행계획서.md`, `docs/ci-cd-rules.md`
 
 ---
 
@@ -69,6 +70,15 @@
 - **일반 HTTP**: Gateway에서 `X-Trace-Id` 헤더 생성, 하위 서비스로 전파
 - **MQ 전파**: Message Body의 `submissionId` + AMQP Header `x-trace-id` 이중 기록
 
+### 1-5. UUID publicId 전환 (Sprint UI-1)
+
+UI v2에서 모든 엔티티에 `publicId` (UUID v4) 컬럼이 추가된다.
+
+- **로그 내 ID 표기**: 외부 노출 ID는 `publicId`(UUID), 내부 처리 ID는 auto-increment PK
+- **로그 필드명 규칙**: `userId`(UUID), `studyId`(UUID) 등 외부 ID 기록. 내부 PK 기록 시 `_pk` 접미사 (`userId_pk: 42`)
+- **URL 경로 로그**: `/api/studies/{uuid}/problems/{uuid}` 형태로 기록
+- **전환 기간**: 양쪽 ID 병기 허용, 전환 완료 후 내부 PK 필드 제거
+
 ---
 
 ## 2. 로그 레벨 정책
@@ -96,7 +106,7 @@ development: DEBUG (전체)
 ### 3-1. 절대 로그 금지 목록
 
 ```
-JWT 원문 (Authorization 헤더 값)
+JWT 원문 (httpOnly Cookie 값 — Set-Cookie / Cookie 헤더)
 X-Internal-Key 헤더 값
 OAuth access_token / refresh_token / authorization_code
 OAuth state 값
@@ -105,6 +115,8 @@ REDIS_URL (비밀번호 포함)
 DB 연결 문자열 (비밀번호 포함)
 사용자 이메일 원문
 DB 쿼리 파라미터 원본값
+MinIO access_key / secret_key
+초대코드 원문 (invite code UUID)
 ```
 
 ### 3-2. 마스킹 처리
@@ -113,7 +125,9 @@ DB 쿼리 파라미터 원본값
 |------|------|------|
 | 이메일 | 앞 2자 + `**@domain` | `us**@example.com` |
 | IP | 마지막 옥텟 마스킹 | `192.168.1.**` |
-| 헤더 | `authorization`, `x-internal-key`, `cookie` → `[REDACTED]` | |
+| 헤더 | `authorization`, `x-internal-key`, `cookie`, `set-cookie` → `[REDACTED]` | |
+| 초대코드 | UUID 전체 마스킹 | `[INVITE_CODE]` |
+| MinIO URL | 서명된 URL의 쿼리 파라미터 마스킹 | `?X-Amz-Signature=***` |
 | 외부 API 응답 | response body 전체 `[RESPONSE_BODY_REDACTED]` | |
 
 ### 3-3. Log Injection 방지
@@ -140,22 +154,29 @@ DB 쿼리 파라미터 원본값
 | `SSE_IDOR_REPEATED` | 동일 IP, 타인 submissionId SSE 구독 3회+ |
 | `DLQ_RECEIVED` | Dead Letter Queue 메시지 발생 즉시 |
 | `CIRCUIT_BREAKER_OPEN` | ai-analysis Circuit Breaker OPEN 상태 |
+| `INVITE_CODE_BRUTE_FORCE` | 동일 IP, 15분 내 초대코드 실패 5회+ |
+| `OPEN_REDIRECT_ATTEMPT` | redirect 파라미터에 외부 URL/프로토콜 삽입 시도 |
 
 ### 4-2. WARNING (모니터링 대상)
 
 ```
 AUTH_FAILURE, RATE_LIMIT_EXCEEDED, INTERNAL_KEY_MISSING,
 INTERNAL_KEY_MISMATCH, INVALID_STUDY_ID, PROXY_ERROR,
-SSE_REDIS_ERROR, REFRESH_TOKEN_INVALID, SLOW_QUERY,
-POOL_CHECKOUT_TIMEOUT, SAGA_TIMEOUT
+SSE_REDIS_ERROR, SLOW_QUERY, POOL_CHECKOUT_TIMEOUT, SAGA_TIMEOUT,
+AI_QUOTA_EXCEEDED, REVIEW_ACCESS_BEFORE_DEADLINE,
+INVITE_CODE_EXPIRED, INVITE_CODE_INVALID,
+MINIO_UPLOAD_FAILED, COOKIE_PARSE_FAILED
 ```
 
 ### 4-3. INFO (정상 감사)
 
 ```
 AUTH_SUCCESS, OAUTH_CALLBACK, OAUTH_GITHUB_LINK,
-TOKEN_REFRESH, SSE_CONNECT, SSE_DISCONNECT,
-SAGA_TRANSITION, MQ_PUBLISH, MQ_CONSUME, MIGRATION_COMPLETE
+TOKEN_REFRESH, TOKEN_AUTO_RENEW, SSE_CONNECT, SSE_DISCONNECT,
+SAGA_TRANSITION, MQ_PUBLISH, MQ_CONSUME, MIGRATION_COMPLETE,
+REVIEW_CREATED, REVIEW_DELETED, AI_ANALYSIS_STARTED, AI_ANALYSIS_COMPLETED,
+NOTIFICATION_SENT, DEADLINE_REMINDER_SENT, STUDY_CLOSED,
+MINIO_UPLOAD_SUCCESS, INVITE_CODE_USED
 ```
 
 ---
@@ -263,6 +284,11 @@ AMQP 메시지 headers에 `x-trace-id`, `x-published-at` 포함.
 | `SUB_BIZ_003` | 스터디 멤버 아님 |
 | `SUB_BIZ_004` | 제출 없음 (404) |
 | `SUB_BIZ_005` | IDOR — 타인 제출 접근 |
+| `SUB_BIZ_006` | AI 일일 한도 초과 (5회/유저) |
+| `SUB_BIZ_007` | 마감 전 타인 코드 열람 시도 |
+| `REV_BIZ_001` | 리뷰 댓글 작성자 불일치 (수정/삭제 시) |
+| `REV_BIZ_002` | 마감 전 코드리뷰 접근 차단 |
+| `REV_BIZ_003` | 삭제된 댓글 수정 시도 |
 | `GHW_BIZ_001` | GitHub 토큰 만료/무효 |
 | `GHW_BIZ_002` | 레포 미존재 |
 | `GHW_BIZ_003` | MQ 메시지 studyId 누락 |
@@ -279,8 +305,25 @@ AMQP 메시지 headers에 `x-trace-id`, `x-published-at` 포함.
 | `GHW_INFRA_002` | GitHub API 타임아웃 |
 | `GHW_INFRA_003` | Submission 콜백 실패 |
 | `GHW_INFRA_004` | Redis Pub/Sub 발행 실패 |
+| `AI_INFRA_001` | Claude API 타임아웃 |
+| `AI_INFRA_002` | Claude API Rate Limit (429) |
+| `AI_INFRA_003` | AI 분석 재시도 실패 (3회 소진) |
+| `MINIO_INFRA_001` | MinIO 업로드 실패 |
+| `MINIO_INFRA_002` | MinIO 연결 타임아웃 |
 
-### 7-3. 공통 에러
+### 7-3. 알림/스터디 에러
+
+| 코드 | 설명 |
+|------|------|
+| `NTF_BIZ_001` | 알림 대상 유저 미존재 |
+| `NTF_INFRA_001` | 알림 DB 저장 실패 |
+| `STD_BIZ_001` | 스터디 멤버 50명 초과 |
+| `STD_BIZ_002` | 초대코드 만료 (24h) |
+| `STD_BIZ_003` | 초대코드 brute force 잠금 (5회/15분) |
+| `STD_BIZ_004` | ADMIN 위임 없이 탈퇴 시도 |
+| `STD_BIZ_005` | CLOSED 스터디 쓰기 시도 |
+
+### 7-4. 공통 에러
 
 | 코드 | 설명 |
 |------|------|
@@ -418,14 +461,32 @@ algosu_github_worker_github_api_duration_seconds Histogram {operation}
 **AI Analysis**:
 ```
 algosu_ai_analysis_circuit_breaker_state   Gauge      (0=closed, 1=open, 2=half-open)
-algosu_ai_analysis_gemini_api_calls_total  Counter    {status}
+algosu_ai_analysis_llm_api_calls_total     Counter    {status}
+algosu_ai_analysis_llm_duration_seconds    Histogram  {model}
+algosu_ai_analysis_quota_exceeded_total    Counter    {user_tier}
+```
+
+**Submission 추가 (Review)**:
+```
+algosu_submission_reviews_total            Counter    {action}   (created, updated, deleted)
+algosu_submission_review_replies_total     Counter    {action}
+```
+
+**Gateway 추가 (알림/인증)**:
+```
+algosu_gateway_notifications_sent_total    Counter    {type}     (9종 이벤트 타입)
+algosu_gateway_deadline_reminders_total    Counter
+algosu_gateway_cookie_auth_total           Counter    {outcome}  (success, expired, missing, invalid)
+algosu_gateway_token_auto_renew_total      Counter
+algosu_gateway_invite_code_attempts_total  Counter    {outcome}  (success, expired, invalid, locked)
 ```
 
 ### 9-4. `/metrics` 엔드포인트
 
 - 클러스터 내부 전용 (외부 접근 차단)
 - Gateway가 `/metrics` 를 프록시하지 않도록 라우팅 제외
-- github-worker: HTTP 서버가 없으므로 최소 HTTP 서버 추가하여 `/metrics` 노출
+- github-worker: HTTP 서버가 없으므로 최소 HTTP 서버 추가하여 `/metrics` 노출 (Sprint UI-6 H13)
+- MinIO: 내장 `/minio/v2/metrics/cluster` 엔드포인트 활용 (Prometheus 타겟 추가)
 
 ---
 
@@ -489,6 +550,9 @@ k3s 단일 노드 환경 현실 반영, 99.5% 설정.
 | `HighMemoryUsage` | 메모리 > 80% (5분) | warning |
 | `DeadlockDetected` | deadlock 증가 | critical |
 | `PgBouncerWaiting` | cl_waiting > 0 (5분) | warning |
+| `InviteCodeBruteForce` | 초대코드 실패 5회/15분 | critical |
+| `AIQuotaAbuseRate` | AI 한도 초과 비율 > 50% (1시간) | warning |
+| `MinIOUnhealthy` | MinIO health check 실패 30s | critical |
 
 ---
 
@@ -525,31 +589,42 @@ k3s 단일 노드 환경 현실 반영, 99.5% 설정.
 
 ---
 
-## 13. 구현 우선순위
+## 13. 구현 우선순위 (UI v2 Sprint 연계)
 
-### P0 — 즉시 (배포 전 필수)
+### Sprint UI-1: Backend Foundation
 
 1. `RequestIdMiddleware` 추가 (전 요청 추적 기반)
-2. JSON structured logger 구현 (NestJS/FastAPI/plain Node 각각)
-3. 민감 정보 마스킹 함수 (`sanitizeHeaders`, `sanitizePath`)
-4. `jwt.middleware.ts` 로그에 ip, path, reason 추가
+2. JSON structured logger 구현 (NestJS: Winston/Pino 통일, FastAPI: JSONFormatter, Node: Pino)
+3. 민감 정보 마스킹 함수 (`sanitizeHeaders`, `sanitizePath`, `sanitizeCookie`)
+4. httpOnly Cookie 파싱 미들웨어 로그 (COOKIE_PARSE_FAILED 이벤트)
 5. TypeORM `maxQueryExecutionTime: 200` 설정
+6. UUID publicId 로그 필드 규칙 적용 (Section 1-5)
 
-### P1 — 배포 직후
+### Sprint UI-2: Backend Features
 
-6. `prom-client` 설치 + `/metrics` 엔드포인트 (NestJS 4개)
-7. `prometheus-client` 설치 + FastAPI 미들웨어
-8. github-worker 최소 HTTP 서버 + `/metrics`
+7. `prom-client` 설치 + `/metrics` 엔드포인트 (NestJS 5개)
+8. `prometheus-client` 설치 + FastAPI 미들웨어
 9. Saga 로그 구조화 (`[SAGA_TRANSITION]` / `[SAGA_COMPENSATE]`)
 10. MQ 메시지에 `x-trace-id` 헤더 추가
+11. AI 분석 메트릭 (llm_api_calls, quota_exceeded)
+12. 알림 시스템 메트릭 (notifications_sent, deadline_reminders)
+13. 초대코드 보안 메트릭 (invite_code_attempts)
 
-### P2 — 운영 안정화
+### Sprint UI-5: Code Review
 
-11. Promtail DaemonSet 배포
-12. Prometheus Alert 규칙 적용
-13. Grafana SLO 대시보드 구성
-14. postgres_exporter + pgbouncer_exporter sidecar
-15. Init Container 마이그레이션 로그 래퍼
+14. Review 메트릭 (reviews_total, review_replies_total)
+15. 마감 전 열람 차단 보안 로그 (REVIEW_ACCESS_BEFORE_DEADLINE)
+
+### Sprint UI-6: Integration + Stabilization
+
+16. github-worker 최소 HTTP 서버 + `/metrics` (H13)
+17. console.log 전수 제거 → 구조화 로거 전환 (H3, H10)
+18. MinIO 메트릭 타겟 추가
+19. Promtail DaemonSet 배포
+20. Prometheus Alert 규칙 적용 (15개)
+21. Grafana SLO 대시보드 구성
+22. postgres_exporter + pgbouncer_exporter sidecar
+23. Init Container 마이그레이션 로그 래퍼
 
 ---
 
@@ -557,14 +632,19 @@ k3s 단일 노드 환경 현실 반영, 99.5% 설정.
 
 | 서비스 | 수정 대상 | 내용 |
 |--------|----------|------|
-| gateway | `src/auth/jwt.middleware.ts` | 보안 로그 구조화 |
+| gateway | `src/auth/cookie-auth.middleware.ts` | httpOnly Cookie 파싱 + 보안 로그 (UI-1 신규) |
+| gateway | `src/auth/token-auto-renew.interceptor.ts` | 토큰 자동 갱신 로그 (UI-2 신규) |
 | gateway | `src/rate-limit/rate-limit.middleware.ts` | Rate Limit 로그 + fail-open 감지 |
 | gateway | `src/sse/sse.controller.ts` | SSE 구독자 본인 확인 + IDOR 로그 |
 | gateway | `src/proxy/proxy.module.ts` | 프록시 로그 + traceId 전파 |
+| gateway | `src/notification/notification.service.ts` | 알림 발송 로그 9종 (UI-2 신규) |
+| gateway | `src/study/invite-code.service.ts` | 초대코드 검증 + brute force 로그 (UI-2 신규) |
 | submission | `src/saga/saga-orchestrator.service.ts` | Saga 전이/보상 구조화 로그 |
 | submission | `src/saga/mq-publisher.service.ts` | MQ 발행 로그 + AMQP 헤더 |
+| submission | `src/review/review.service.ts` | 코드리뷰 CRUD 로그 (UI-5 신규) |
 | github-worker | `src/worker.ts` | MQ 소비 로그 + 에러 분류 |
 | github-worker | `src/status-reporter.ts` | X-Trace-Id 헤더 전파 |
 | ai-analysis | `src/main.py` | JSON 로거 교체 + HTTP 미들웨어 |
+| ai-analysis | `src/analysis/quota.py` | AI 한도 메트릭 + 한도 초과 로그 (UI-2 신규) |
 | 전 서비스 | `src/common/logger/` | 구조화 로거 공통 모듈 (신규) |
 | 전 서비스 | `src/common/metrics/` | Prometheus 메트릭 모듈 (신규) |

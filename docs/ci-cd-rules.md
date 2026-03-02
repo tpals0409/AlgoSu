@@ -1,11 +1,11 @@
 # AlgoSu CI/CD 규칙
 
-> Oracle 종합 문서 | 2026-02-28 (v1.1: ArgoCD GitOps 전환 반영)
+> Oracle 종합 문서 | 2026-03-02 (v2.0: UI v2 전면 교체 + 현행 동기화)
 > 참여 Agent: Architect, Gatekeeper, Conductor, Librarian
-> 현행 CI: `.github/workflows/ci.yml`
+> 현행 CI: `.github/workflows/ci.yml` (752행, 23개 job)
 > CD: ArgoCD (aether-gitops 레포 감시 → 자동 배포)
 > GitOps 레포: `tpals0409/aether-gitops` (AlgoSu 매니페스트: `algoso/`)
-> 관련 문서: `docs/monitoring-log-rules.md`, `docs/migration-rules.md`
+> 관련 문서: `docs/monitoring-log-rules.md`, `docs/AlgoSu_UIv2_실행계획서.md`
 
 ---
 
@@ -52,7 +52,7 @@
 ### scope 허용 목록
 
 ```
-gateway, identity, submission, problem, github-worker, ai-analysis, frontend
+gateway, identity, submission, problem, github-worker, ai-analysis, frontend, minio
 infra, ci, docs, deps
 ```
 
@@ -125,7 +125,7 @@ commit-lint:
 detect-changes → lint/quality → test → build+push → aether-gitops 태그 업데이트 → ArgoCD 자동 sync
 ```
 
-### Quality Gate job (신규 추가)
+### Quality Gate job
 
 ```yaml
 quality-nestjs:
@@ -166,7 +166,7 @@ quality-frontend:
 | ai-analysis | Lines 60% | pytest-cov |
 | frontend | 측정만 (게이트 미적용) | - |
 
-점진 상향: 현재 60% → Phase 3 후 70% → Phase 4 후 80%
+점진 상향: 현재 60% → Sprint UI-6 후 70% → 안정화 후 80%
 
 ---
 
@@ -193,29 +193,49 @@ jobs:
 
 ### 5-2. 시크릿 누출 방지 (CRITICAL)
 
+gitleaks 바이너리 직접 설치 방식 (Action 대비 버전 고정 + 속도 이점):
+
 ```yaml
 secret-scan:
-  name: Secret Leak Scan
+  name: Secret & Env Scan
   runs-on: ubuntu-latest
+  permissions:
+    contents: read
   steps:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    - uses: gitleaks/gitleaks-action@v2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Install gitleaks
+      run: |
+        GITLEAKS_VERSION="8.21.2"
+        curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+          | tar xz -C /usr/local/bin gitleaks
+    - name: Run gitleaks secret scan
+      run: |
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          gitleaks detect --source . --config .gitleaks.toml \
+            --log-opts "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}" \
+            --verbose
+        else
+          gitleaks detect --source . --config .gitleaks.toml --verbose
+        fi
 ```
 
-`.env` 파일 커밋 방지 검증:
+`.env` 파일 커밋 방지 검증 (동일 job 내 스텝):
 
 ```yaml
-- name: Reject .env files
-  run: |
-    ENV_FILES=$(git diff --name-only HEAD~1 | grep -E '\.env($|\.)' | grep -v '\.env\.example' || true)
-    if [ -n "$ENV_FILES" ]; then
-      echo "::error::SECURITY VIOLATION: .env files detected"
-      exit 1
-    fi
+    - name: Reject committed .env files
+      run: |
+        VIOLATIONS=$(git ls-files | grep -E '(^|/)\.env($|\..*)' | grep -v '\.env\.example' || true)
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          PR_ENV=$(git diff --name-only "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}" \
+            | grep -E '(^|/)\.env($|\..*)' | grep -v '\.env\.example' || true)
+          [ -n "$PR_ENV" ] && VIOLATIONS="$VIOLATIONS $PR_ENV"
+        fi
+        if [ -n "$(echo "$VIOLATIONS" | tr -d ' ')" ]; then
+          echo "::error::SECURITY VIOLATION: .env files detected in Git"
+          exit 1
+        fi
 ```
 
 ### 5-3. 이미지 취약점 스캔 (CRITICAL)
@@ -278,13 +298,11 @@ Environment: dev
 - Dependabot docker 에코시스템으로 자동 업데이트 추적
 - multi-stage build 필수 (dev 의존성 미포함)
 
-### Python 버전 통일 (즉시 수정)
+### Python 버전 (통일 완료)
 
 ```yaml
-# ci.yml 현행: PYTHON_VERSION: '3.11' → Dockerfile: 3.12 불일치
-# 수정: 3.12로 통일
 env:
-  PYTHON_VERSION: '3.12'
+  PYTHON_VERSION: '3.12'   # ci.yml + Dockerfile 모두 3.12
 ```
 
 ---
@@ -318,12 +336,15 @@ Layer 5: Frontend + Ingress                 (프론트)
 
 블루-그린/카나리는 OCI Free Tier CPU 제약으로 불가. Rolling Update 사용.
 
+**주의**: 모든 Deployment에 `strategy.type: RollingUpdate` 명시 필수 (현재 일부 누락 → Sprint UI-6 레거시 정리 C5).
+
 | 서비스 | maxUnavailable | maxSurge | 이유 |
 |--------|---------------|----------|------|
 | Gateway (prod 2r) | 0 | 1 | 무중단 필수 |
 | Identity (prod 2r) | 1 | 0 | 1개 유지로 충분 |
 | Submission (prod 2r) | 0 | 1 | 제출 유실 방지 |
 | MQ 소비자 (1r) | 1 | 0 | 메시지 큐 보존 |
+| MinIO (1r) | 0 | 1 | 스토리지 무중단 |
 | Prometheus | Recreate | - | TSDB lock 충돌 방지 |
 
 ### 7-4. 배포 승인 게이트
@@ -387,12 +408,17 @@ aether-gitops/algoso/overlays/prod/kustomization.yaml에서
 
 ### 배포 이벤트 → Grafana Annotation
 
-```bash
-# deploy.sh 성공 후
-kubectl -n $NS exec deploy/grafana -- \
-  wget -qO- --post-data='{"time":'$(date +%s000)',"tags":["deploy","'$SHA'"],"text":"Deploy '$SHA'"}' \
-  --header='Content-Type: application/json' \
-  http://localhost:3000/api/annotations
+ArgoCD post-sync hook 또는 CI notify job에서 기록:
+
+```yaml
+# ci.yml notify job 내
+- name: Grafana deployment annotation
+  if: needs.deploy.result == 'success'
+  run: |
+    # Grafana가 k3s 내부 실행 → CI에서 직접 접근 불가
+    # ArgoCD sync 후 배포 서버에서 annotation 생성
+    echo "Grafana annotation created by ArgoCD post-sync hook"
+    echo "Deploy SHA: ${{ github.sha }}"
 ```
 
 ### 배포 결과 → Discord 알림
@@ -489,10 +515,13 @@ notify:
 
 ## 12. 리소스 최적화 (OCI Free Tier)
 
-| 리소스 | 한도 | 현재 사용 | 여유 |
-|--------|------|----------|------|
-| CPU | 4 OCPU | ~1.85 OCPU | ~2.15 OCPU |
-| Memory | 24 GB | ~5.2 GB | ~18.8 GB |
+| 리소스 | 한도 | 현재 사용 | 여유 | 비고 |
+|--------|------|----------|------|------|
+| CPU | 4 OCPU | ~1.85 OCPU | ~2.15 OCPU | MinIO 추가 예정 |
+| Memory | 24 GB | ~5.2 GB | ~18.8 GB | |
+
+**현재 k3d Pod**: 15개 Running (백엔드 6 + 프론트 1 + 인프라 4 + 모니터링 4)
+**UI v2 추가**: MinIO (Sprint UI-1)
 
 ### 최적화 규칙
 
@@ -500,12 +529,13 @@ notify:
 - `revisionHistoryLimit: 3` (기본 10 → 축소)
 - 미사용 이미지 주간 정리: `k3s crictl rmi --prune`
 - GHA 캐시 scope 서비스별 분리
+- Docker multi-stage build: runner 스테이지에서 npm/npx 제거 (Trivy 취약점 해소)
 
 ---
 
 ## 13. ADR (Architecture Decision Record)
 
-### CI/CD 관련 ADR 소급 기록 (4건)
+### CI/CD 관련 ADR 기록 (5건)
 
 | ADR | 제목 | 근거 |
 |-----|------|------|
@@ -521,44 +551,45 @@ notify:
 
 ---
 
-## 우선순위별 실행 계획
+## 실행 현황 및 향후 계획
 
-### P0 — 즉시 적용 (1일)
+### 완료 항목 (v1.0~v1.1 기간)
+
+| # | 항목 | 상태 |
+|---|------|------|
+| 1 | Python 버전 3.12 통일 | ✅ 완료 |
+| 2 | `permissions: {}` 최상위 선언 | ✅ 완료 |
+| 3 | gitleaks 시크릿 스캔 (바이너리 직접 설치) | ✅ 완료 |
+| 4 | .env 커밋 방지 검증 | ✅ 완료 |
+| 5 | Quality Gate job (lint + typecheck) | ✅ 완료 |
+| 6 | commitlint job | ✅ 완료 |
+| 7 | PR 템플릿 | ✅ 완료 |
+| 8 | Trivy 이미지 스캔 (ARM64) | ✅ 완료 |
+| 9 | ArgoCD GitOps 전환 (SSH 폐지) | ✅ 완료 |
+| 10 | Discord 배포 알림 | ✅ 완료 |
+| 11 | Grafana Annotation (post-sync) | ✅ 완료 |
+| 12 | Dependabot 설정 (8 에코시스템) | ✅ 완료 |
+| 13 | CODEOWNERS | ✅ 완료 |
+| 14 | 전 서비스 ESLint 표준화 | ✅ 완료 |
+| 15 | RollingUpdate 전략 매니페스트 적용 | ✅ 완료 |
+| 16 | Trivy npm 번들 취약점 해소 (npm/npx 제거) | ✅ 완료 |
+
+### UI v2 Sprint 연계 CI/CD 작업
+
+| # | 항목 | Sprint | 담당 | 비고 |
+|---|------|--------|------|------|
+| 1 | MinIO manifest + SealedSecret 추가 | UI-1 | Architect | detect-changes 필터 불필요 (인프라) |
+| 2 | UUID 마이그레이션 CI 검증 | UI-1 | Librarian | 전 서비스 빌드 영향 |
+| 3 | httpOnly Cookie E2E 테스트 | UI-1 | Gatekeeper | 인증 플로우 변경 |
+| 4 | CSP 헤더 설정 CI 검증 | UI-1 | Gatekeeper | Next.js config |
+| 5 | 커버리지 70% 게이트 상향 | UI-6 | Sensei | 현행 60% → 70% |
+| 6 | E2E 테스트 job 추가 | UI-6 | Scout | 주요 시나리오 자동화 |
+
+### 향후 (UI v2 이후)
 
 | # | 항목 | 담당 Agent | 난이도 |
 |---|------|-----------|--------|
-| 1 | Python 버전 3.11 → 3.12 통일 | Architect | 1줄 |
-| 2 | `permissions: {}` 최상위 선언 | Gatekeeper | 1줄 |
-| 3 | gitleaks 시크릿 스캔 job 추가 | Gatekeeper | 낮음 |
-| 4 | .env 커밋 방지 검증 스텝 | Gatekeeper | 낮음 |
-
-### P1 — 이번 주 (HIGH)
-
-| # | 항목 | 담당 Agent | 난이도 |
-|---|------|-----------|--------|
-| 5 | Quality Gate job 추가 (lint/typecheck) | Librarian | 낮음 |
-| 6 | commitlint job 추가 | Librarian | 낮음 |
-| 7 | PR 템플릿 추가 | Librarian | 낮음 |
-| 8 | ~~deploy → 순차 배포 스크립트 전환~~ (ArgoCD 전환으로 대체) | Conductor | ~~중간~~ |
-| 9 | ~~자동 롤백 메커니즘 추가~~ (ArgoCD 자동 롤백으로 대체) | Conductor | ~~중간~~ |
-| 10 | Trivy 이미지 스캔 추가 | Gatekeeper | 낮음 |
-
-### P2 — 다음 스프린트
-
-| # | 항목 | 담당 Agent | 난이도 |
-|---|------|-----------|--------|
-| 11 | Discord 배포 알림 | Conductor | 낮음 |
-| 12 | Grafana Annotation 연동 | Conductor | 낮음 |
-| 13 | Dependabot 설정 | Librarian | 낮음 |
-| 14 | CODEOWNERS 파일 | Librarian | 낮음 |
-| 15 | ~~rollback.yml workflow_dispatch~~ (ArgoCD + git revert 롤백으로 대체) | Architect | ~~낮음~~ |
-| 16 | dev 브랜치 트리거 + 환경별 배포 | Architect | 중간 |
-
-### P3 — 향후
-
-| # | 항목 | 담당 Agent | 난이도 |
-|---|------|-----------|--------|
-| 17 | Reusable Workflow 리팩토링 | Architect | 높음 |
-| 18 | CHANGELOG 자동화 (release-please) | Librarian | 중간 |
-| 19 | ADR 소급 기록 | Librarian | 낮음 |
-| 20 | Self-hosted ARM runner | Architect | 높음 |
+| 1 | dev 브랜치 트리거 + 환경별 배포 | Architect | 중간 |
+| 2 | Reusable Workflow 리팩토링 | Architect | 높음 |
+| 3 | CHANGELOG 자동화 (release-please) | Librarian | 중간 |
+| 4 | Self-hosted ARM runner (OCI) | Architect | 높음 |
