@@ -16,9 +16,11 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { useStudy, type Study } from '@/contexts/StudyContext';
 import { studyApi, ApiError } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 
 export default function StudiesPage(): ReactNode {
   const router = useRouter();
+  const { isAuthenticated } = useRequireAuth();
   const { setCurrentStudy, setStudies } = useStudy();
 
   const [studies, setLocalStudies] = useState<Study[]>([]);
@@ -44,8 +46,10 @@ export default function StudiesPage(): ReactNode {
   }, [setStudies]);
 
   useEffect(() => {
-    void loadStudies();
-  }, [loadStudies]);
+    if (isAuthenticated) {
+      void loadStudies();
+    }
+  }, [isAuthenticated, loadStudies]);
 
   const handleSelectStudy = useCallback(
     (study: Study) => {

@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useStudy } from '@/contexts/StudyContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import {
@@ -232,7 +233,14 @@ export default function DashboardPage(): ReactNode {
   // D-09: 통계 로딩 판단 (isLoading 또는 stats가 아직 null)
   const statsLoading = isLoading || (currentStudyId != null && stats === null && !error);
 
-  if (!isReady) return null;
+  if (!isReady) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-background">
+        <LoadingSpinner size="lg" color="primary" />
+        <p className="text-sm text-muted-foreground">로딩 중...</p>
+      </div>
+    )
+  }
 
   return (
     <AppLayout>

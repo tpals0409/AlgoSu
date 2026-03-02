@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { InlineSpinner } from '@/components/ui/LoadingSpinner';
 import { authApi } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 type OAuthProvider = 'google' | 'naver' | 'kakao';
 
@@ -23,8 +25,17 @@ const PROVIDERS: ProviderConfig[] = [
 ];
 
 export default function LoginPage(): ReactNode {
+  const router = useRouter();
+  const { isAuthenticated, isLoading } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [loadingProvider, setLoadingProvider] = useState<OAuthProvider | null>(null);
+
+  // 이미 로그인된 경우 스터디 페이지로 리디렉트
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      router.replace('/studies');
+    }
+  }, [isLoading, isAuthenticated, router]);
 
   const handleOAuth = useCallback(async (provider: OAuthProvider) => {
     setError(null);

@@ -19,6 +19,7 @@ import {
 import { useStudy } from '@/contexts/StudyContext';
 import { SAGA_STEP_CONFIG, LANGUAGE_VALUES, type SagaStep } from '@/lib/constants';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 const SAGA_STEP_KEYS = Object.keys(SAGA_STEP_CONFIG) as SagaStep[];
 
@@ -95,7 +96,14 @@ export default function SubmissionsPage(): ReactNode {
 
   const totalPages = data?.meta.totalPages ?? 1;
 
-  if (!isReady) return null;
+  if (!isReady) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-background">
+        <LoadingSpinner size="lg" color="primary" />
+        <p className="text-sm text-muted-foreground">로딩 중...</p>
+      </div>
+    )
+  }
 
   return (
     <AppLayout>

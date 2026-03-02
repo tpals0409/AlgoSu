@@ -21,6 +21,7 @@ import { LoadingSpinner, InlineSpinner } from '@/components/ui/LoadingSpinner';
 import { useStudy } from '@/contexts/StudyContext';
 import { studyApi, type Study, type StudyMember } from '@/lib/api';
 import { getCurrentUserId } from '@/lib/auth';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 
 interface PageProps {
   readonly params: Promise<{ id: string }>;
@@ -29,6 +30,7 @@ interface PageProps {
 export default function StudyDetailPage({ params }: PageProps): ReactNode {
   const { id: studyId } = use(params);
   const router = useRouter();
+  const { isAuthenticated } = useRequireAuth();
   const myUserId = getCurrentUserId();
 
   const [study, setStudy] = useState<Study | null>(null);
@@ -92,8 +94,10 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
   }, [studyId]);
 
   useEffect(() => {
-    void loadStudyData();
-  }, [loadStudyData]);
+    if (isAuthenticated) {
+      void loadStudyData();
+    }
+  }, [isAuthenticated, loadStudyData]);
 
   // 초대 코드 생성
   const handleInvite = useCallback(async (): Promise<void> => {

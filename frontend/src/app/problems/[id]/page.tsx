@@ -15,6 +15,7 @@ import { useAutoSave } from '@/hooks/useAutoSave';
 import { problemApi, submissionApi, draftApi, type Problem } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudy } from '@/contexts/StudyContext';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { ChevronLeft, Pencil } from 'lucide-react';
 
 interface PageProps {
@@ -26,6 +27,7 @@ type AutoSaveStatus = 'idle' | 'saving' | 'saved';
 export default function ProblemDetailPage({ params }: PageProps): ReactNode {
   const { id: problemId } = use(params);
   const router = useRouter();
+  const { isAuthenticated } = useRequireAuth();
   const { githubConnected } = useAuth();
   const { currentStudyId, currentStudyRole } = useStudy();
   const isAdmin = currentStudyRole === 'ADMIN';
@@ -40,8 +42,9 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [autoSaveStatus, setAutoSaveStatus] = useState<AutoSaveStatus>('idle');
 
-  // 문제 + Draft 로드
+  // 문제 + Draft 로드 (인증 완료 후에만 실행)
   useEffect(() => {
+    if (!isAuthenticated) return;
     let cancelled = false;
 
     const load = async (): Promise<void> => {
@@ -76,7 +79,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
     return () => {
       cancelled = true;
     };
-  }, [problemId]);
+  }, [isAuthenticated, problemId]);
 
   // localStorage Draft 복원 (서버 Draft가 없을 때)
   const { loadFromLocal, clearLocal } = useAutoSave({

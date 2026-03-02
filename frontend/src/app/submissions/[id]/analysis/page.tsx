@@ -112,7 +112,14 @@ export default function AnalysisPage(): ReactNode {
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, [isAuthenticated, submissionId, loadData]);
 
-  if (!isReady) return null;
+  if (!isReady) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-background">
+        <LoadingSpinner size="lg" color="primary" />
+        <p className="text-sm text-muted-foreground">로딩 중...</p>
+      </div>
+    )
+  }
 
   return (
     <AppLayout>

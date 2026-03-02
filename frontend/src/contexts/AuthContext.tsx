@@ -123,6 +123,8 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
     setGitHubUsernameStorage(null);
     setUser(null);
     setGithubConnected(false);
+    setSessionExpired(false);
+    window.location.href = '/login';
   }, []);
 
   // GitHub 연동 상태 업데이트 (단일 진실 원천)

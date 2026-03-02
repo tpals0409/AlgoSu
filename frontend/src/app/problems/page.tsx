@@ -15,6 +15,7 @@ import { problemApi, type Problem } from '@/lib/api';
 import { useStudy } from '@/contexts/StudyContext';
 import { DIFFICULTIES, DIFFICULTY_LABELS, PROBLEM_STATUSES, PROBLEM_STATUS_LABELS } from '@/lib/constants';
 import type { Difficulty } from '@/lib/constants';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 
 interface Filters {
   search: string;
@@ -32,6 +33,7 @@ const INITIAL_FILTERS: Filters = {
 
 export default function ProblemsPage(): ReactNode {
   const router = useRouter();
+  const { isAuthenticated } = useRequireAuth();
   const { currentStudyRole, currentStudyName } = useStudy();
   const isAdmin = currentStudyRole === 'ADMIN';
   const [problems, setProblems] = useState<Problem[]>([]);
@@ -53,8 +55,10 @@ export default function ProblemsPage(): ReactNode {
   }, []);
 
   useEffect(() => {
-    void loadProblems();
-  }, [loadProblems]);
+    if (isAuthenticated) {
+      void loadProblems();
+    }
+  }, [isAuthenticated, loadProblems]);
 
   const handleProblemClick = useCallback(
     (id: string): void => {
