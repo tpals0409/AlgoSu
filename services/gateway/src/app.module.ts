@@ -1,4 +1,11 @@
+/**
+ * @file Gateway 루트 모듈 — 미들웨어 체인 + 글로벌 인터셉터 설정
+ * @domain common
+ * @layer config
+ */
+
 import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -11,6 +18,7 @@ import { ExternalModule } from './external/external.module';
 import { ProxyModule } from './proxy/proxy.module';
 import { SseModule } from './sse/sse.module';
 import { JwtMiddleware } from './auth/jwt.middleware';
+import { TokenRefreshInterceptor } from './auth/token-refresh.interceptor';
 import { RedisThrottlerStorage } from './rate-limit/redis-throttler.storage';
 import { RateLimitMiddleware } from './rate-limit/rate-limit.middleware';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
@@ -20,6 +28,9 @@ import { User } from './auth/oauth/user.entity';
 import { Study, StudyMember, StudyInvite } from './study/study.entity';
 import { NotificationModule } from './notification/notification.module';
 import { Notification } from './notification/notification.entity';
+import { AvatarModule } from './avatar/avatar.module';
+import { ReviewProxyModule } from './review/review.module';
+import { StudyNoteProxyModule } from './study-note/study-note.module';
 
 @Module({
   imports: [
@@ -59,6 +70,9 @@ import { Notification } from './notification/notification.entity';
     InternalModule,
     StudyModule,
     NotificationModule,
+    AvatarModule,
+    ReviewProxyModule,
+    StudyNoteProxyModule,
     SseModule,
     MetricsModule,
     ExternalModule,
@@ -68,6 +82,11 @@ import { Notification } from './notification/notification.entity';
     RedisThrottlerStorage,
     RateLimitMiddleware,
     StructuredLoggerService,
+    // T1: 토큰 자동 갱신 인터셉터 — 만료 5분 이내 시 새 쿠키 발급
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TokenRefreshInterceptor,
+    },
   ],
   exports: [StructuredLoggerService],
 })
@@ -94,6 +113,7 @@ export class AppModule implements NestModule {
         { path: 'auth/oauth/(.*)', method: RequestMethod.GET },
         { path: 'auth/github/link/callback', method: RequestMethod.GET },
         { path: 'auth/refresh', method: RequestMethod.POST },
+        { path: 'auth/logout', method: RequestMethod.POST },
         { path: 'internal/(.*)', method: RequestMethod.ALL },
         { path: 'sse/submissions/:id', method: RequestMethod.GET },
       )

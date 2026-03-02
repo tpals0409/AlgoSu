@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SubmissionModule } from './submission/submission.module';
+import { ReviewModule } from './review/review.module';
+import { StudyNoteModule } from './study-note/study-note.module';
 import { MetricsModule } from './common/metrics/metrics.module';
 import { HealthController } from './health.controller';
 
@@ -30,6 +32,8 @@ import { HealthController } from './health.controller';
     }),
     MetricsModule,
     SubmissionModule,
+    ReviewModule,
+    StudyNoteModule,
   ],
   controllers: [HealthController],
 })

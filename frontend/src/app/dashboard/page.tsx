@@ -1,16 +1,22 @@
+/**
+ * @file Dashboard 페이지 (v2 전면 교체)
+ * @domain dashboard
+ * @layer page
+ * @related AppLayout, AuthContext, StudyContext, useRequireAuth, useAnimVal
+ */
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  BarChart3,
   FileText,
   Users,
-  Clock,
+  CheckCircle2,
   ArrowRight,
   RefreshCw,
-  CheckCircle2,
+  Clock,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
@@ -20,7 +26,9 @@ import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useStudy } from '@/contexts/StudyContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useAnimVal } from '@/hooks/useAnimVal';
 import {
   studyApi,
   submissionApi,
@@ -31,8 +39,12 @@ import {
   type Problem,
 } from '@/lib/api';
 import { SAGA_STEP_CONFIG, type SagaStep } from '@/lib/constants';
-import { cn } from '@/lib/utils';
+import { cn, getCurrentWeekLabel } from '@/lib/utils';
+import { getCurrentUserId } from '@/lib/auth';
 
+// ─── HELPERS ─────────────────────────────
+
+/** 날짜 포맷: MM.DD HH:MM */
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
   const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -42,139 +54,157 @@ function formatDate(dateStr: string): string {
   return `${month}.${day} ${hours}:${minutes}`;
 }
 
-/** D-01: 멤버 이름 표시 fallback 체인 */
-function getMemberDisplayName(
-  userId: string,
-  memberMap: Map<string, StudyMember>,
-): string {
-  const member = memberMap.get(userId);
-  if (member?.username) return member.username;
-  if (member?.email) return member.email.split('@')[0];
-  return userId.slice(0, 8);
-}
-
-/** D-01: 아바타 이니셜 */
-function getInitials(
-  userId: string,
-  memberMap: Map<string, StudyMember>,
-): string {
-  const member = memberMap.get(userId);
-  const name = member?.username ?? member?.email ?? userId;
-  // 한글이면 첫 1자, 영문이면 첫 2자
-  const firstChar = name.charAt(0);
-  if (/[\uAC00-\uD7A3]/.test(firstChar)) return firstChar;
-  return name.slice(0, 2).toUpperCase();
-}
+// ─── STAT CARD ───────────────────────────
 
 function StatCard({
   icon: Icon,
   label,
   value,
   loading,
+  href,
+  animRef,
 }: {
-  readonly icon: typeof BarChart3;
+  readonly icon: typeof FileText;
   readonly label: string;
   readonly value: string | number;
   readonly loading: boolean;
+  readonly href?: string;
+  readonly animRef?: React.RefObject<HTMLDivElement | null>;
 }): ReactNode {
-  return (
-    <Card className="p-3">
-      <div className="flex items-center gap-3">
-        <div
-          className="flex items-center justify-center rounded-md bg-bg2"
-          style={{ width: '36px', height: '36px' }}
-        >
-          <Icon className="h-4 w-4 text-primary" aria-hidden />
-        </div>
-        <div>
-          {loading ? (
-            <Skeleton height={20} width={60} />
-          ) : (
-            <p className="text-lg font-bold text-foreground">{value}</p>
-          )}
-          <p className="font-mono text-[10px] text-muted-foreground">{label}</p>
-        </div>
+  const content = (
+    <div className="flex items-center gap-3" ref={animRef}>
+      <div className="flex h-9 w-9 items-center justify-center rounded-md bg-bg-alt">
+        <Icon className="h-4 w-4 text-primary" aria-hidden />
       </div>
-    </Card>
+      <div>
+        {loading ? (
+          <Skeleton height={28} width={60} />
+        ) : (
+          <p className="font-mono text-[28px] font-bold leading-none tracking-tight text-text">
+            {value}
+          </p>
+        )}
+        <p className="mt-1 text-[11px] text-text-3">{label}</p>
+      </div>
+    </div>
   );
+
+  if (href) {
+    return (
+      <Link href={href}>
+        <Card className="cursor-pointer p-5 transition-colors hover:bg-bg-alt">
+          {content}
+        </Card>
+      </Link>
+    );
+  }
+
+  return <Card className="p-5">{content}</Card>;
 }
 
+// ─── WEEKLY BAR ──────────────────────────
+
 function WeeklyBar({
-  data,
-  maxCount,
+  label,
+  value,
+  max,
+  mounted,
+  delay,
 }: {
-  readonly data: { week: string; count: number };
-  readonly maxCount: number;
+  readonly label: string;
+  readonly value: number;
+  readonly max: number;
+  readonly mounted: boolean;
+  readonly delay: number;
 }): ReactNode {
-  const pct = maxCount > 0 ? Math.round((data.count / maxCount) * 100) : 0;
+  const pct = max > 0 ? Math.min(Math.round((value / max) * 100), 100) : 0;
+
   return (
-    <div className="flex items-center gap-2">
-      <span className="w-16 text-right font-mono text-[10px] text-muted-foreground truncate">
-        {data.week}
+    <div className="flex items-center gap-3">
+      <span className="min-w-[56px] text-right font-mono text-xs text-text-2">
+        {label}
       </span>
-      <div className="flex-1 h-5 bg-bg2 rounded-sm overflow-hidden">
-        {/* D-06: 툴팁으로 상세 표시 */}
+      <div
+        className="h-[22px] flex-1 overflow-hidden rounded-badge"
+        style={{ background: 'var(--bar-track)' }}
+      >
         <div
-          className="h-full rounded-sm gradient-brand transition-all duration-300"
-          style={{ width: `${pct}%` }}
-          title={`${data.week}: ${data.count}건 (${pct}%)`}
+          className="h-full rounded-badge transition-all duration-700 ease-bounce"
+          style={{
+            width: mounted ? `${pct}%` : '0%',
+            background: 'var(--bar-fill)',
+            transitionDelay: `${delay}s`,
+          }}
         />
       </div>
-      <span className="w-8 text-right font-mono text-[11px] text-foreground">
-        {data.count}
+      <span className="min-w-[28px] font-mono text-[13px] font-semibold">
+        {value}
       </span>
     </div>
   );
 }
 
+// ─── RENDER ──────────────────────────────
+
 export default function DashboardPage(): ReactNode {
   const router = useRouter();
-  const { isReady, isAuthenticated } = useRequireAuth();
-  const { currentStudyId, currentStudyName } = useStudy();
+  const { isReady } = useRequireAuth();
+  const { isAuthenticated } = useAuth();
+  const { user } = useAuth();
+  const { currentStudyId, currentStudyName, studies, studiesLoaded } = useStudy();
 
   const [stats, setStats] = useState<StudyStats | null>(null);
-  // D-01: memberCount → members 배열로 변경 (프론트 조인용)
   const [members, setMembers] = useState<StudyMember[]>([]);
   const [recentSubmissions, setRecentSubmissions] = useState<Submission[]>([]);
   const [activeProblems, setActiveProblems] = useState<Problem[]>([]);
+  const [allProblems, setAllProblems] = useState<Problem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const [weekViewUserId, setWeekViewUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setMounted(true), 50);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // ─── DATA FETCH ──────────────────────────
 
   const loadDashboard = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
       const results = await Promise.allSettled([
-        currentStudyId ? studyApi.getStats(currentStudyId) : Promise.resolve(null),
+        currentStudyId ? studyApi.getStats(currentStudyId, getCurrentWeekLabel()) : Promise.resolve(null),
         submissionApi.list({ page: 1, limit: 5 }),
         problemApi.findAll(),
         currentStudyId ? studyApi.getMembers(currentStudyId) : Promise.resolve([]),
+        problemApi.findAllIncludingClosed(),
       ]);
 
-      // 스터디 통계
       if (results[0].status === 'fulfilled' && results[0].value) {
         setStats(results[0].value as StudyStats);
       } else {
         setStats(null);
       }
 
-      // 최근 제출
       if (results[1].status === 'fulfilled') {
         const paginated = results[1].value as { data: Submission[]; meta: unknown };
         setRecentSubmissions(paginated.data ?? []);
       }
 
-      // 활성 문제
       if (results[2].status === 'fulfilled') {
         setActiveProblems((results[2].value as Problem[]) ?? []);
       }
 
-      // D-01: 멤버 배열 전체 저장
       if (results[3].status === 'fulfilled') {
         setMembers((results[3].value as StudyMember[]) ?? []);
       }
 
-      // 전부 실패한 경우에만 에러 표시
+      if (results[4].status === 'fulfilled') {
+        setAllProblems((results[4].value as Problem[]) ?? []);
+      }
+
       const allFailed = results.every((r) => r.status === 'rejected');
       if (allFailed) {
         setError('대시보드 데이터를 불러오는 데 실패했습니다.');
@@ -187,84 +217,156 @@ export default function DashboardPage(): ReactNode {
   }, [currentStudyId]);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && studiesLoaded) {
       void loadDashboard();
     }
-  }, [isAuthenticated, loadDashboard]);
+  }, [isAuthenticated, studiesLoaded, loadDashboard]);
 
-  // D-01: userId → StudyMember 매핑
-  const memberMap = useMemo(() => {
-    const map = new Map<string, StudyMember>();
-    for (const m of members) {
-      map.set(m.user_id, m);
-    }
-    return map;
-  }, [members]);
+  // ─── DERIVED STATE ────────────────────────
 
-  // D-04: 제출 완료된 문제 ID 집합
+  const problemTitleMap = useMemo(() => {
+    return new Map(allProblems.map((p) => [p.id, p.title]));
+  }, [allProblems]);
+
   const submittedProblemIds = useMemo(() => {
     return new Set(recentSubmissions.map((s) => s.problemId));
   }, [recentSubmissions]);
 
-  // 마감 임박 문제 (ACTIVE + 마감일 있는 것만, 마감일 순 정렬)
   const upcomingDeadlines = useMemo(() => {
     const now = new Date();
+    const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     return activeProblems
       .filter(
-        (p) => p.status === 'ACTIVE' && p.deadline && new Date(p.deadline) > now,
+        (p) =>
+          p.status === 'ACTIVE' &&
+          p.deadline &&
+          new Date(p.deadline) > now &&
+          new Date(p.deadline) <= sevenDaysLater,
       )
-      .sort(
-        (a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime(),
-      )
+      .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
       .slice(0, 5);
   }, [activeProblems]);
 
-  const maxWeekCount = useMemo(() => {
-    if (!stats?.byWeek.length) return 0;
-    return Math.max(...stats.byWeek.map((w) => w.count));
+  const myStats = useMemo(() => {
+    const userId = getCurrentUserId();
+    if (!stats?.byMember.length || !userId) return { count: 0, doneCount: 0 };
+    const me = stats.byMember.find((m) => m.userId === userId);
+    return me ? { count: me.count, doneCount: me.doneCount } : { count: 0, doneCount: 0 };
   }, [stats]);
 
-  // D-10: 멤버별 현황 정렬 (제출 수 내림차순)
-  const sortedMembers = useMemo(() => {
-    if (!stats?.byMember.length) return [];
-    return [...stats.byMember].sort((a, b) => b.count - a.count);
+  const myUniqueProblemCount = useMemo(() => {
+    const userId = getCurrentUserId();
+    if (!stats?.byWeekPerUser.length || !userId) return 0;
+    return stats.byWeekPerUser
+      .filter((r) => r.userId === userId)
+      .reduce((sum, r) => sum + r.count, 0);
   }, [stats]);
 
-  // D-09: 통계 로딩 판단 (isLoading 또는 stats가 아직 null)
+  const myCompletionPct = allProblems.length > 0
+    ? Math.round((myUniqueProblemCount / allProblems.length) * 100)
+    : 0;
+
+  const problemCountByWeek = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const p of allProblems) {
+      map.set(p.weekNumber, (map.get(p.weekNumber) ?? 0) + 1);
+    }
+    return map;
+  }, [allProblems]);
+
+  // 주차별 뷰 사이클
+  const weekViewCycle = useMemo(() => {
+    const myId = getCurrentUserId();
+    const otherIds = members.filter((m) => m.user_id !== myId).map((m) => m.user_id);
+    return [null, myId, ...otherIds] as (string | null)[];
+  }, [members]);
+
+  const cycleWeekView = useCallback(() => {
+    setWeekViewUserId((prev) => {
+      const idx = weekViewCycle.indexOf(prev);
+      return weekViewCycle[(idx + 1) % weekViewCycle.length];
+    });
+  }, [weekViewCycle]);
+
+  const parseWeekKey = useCallback((w: string) => {
+    const m = w.match(/^(\d+)월(\d+)주차$/);
+    return m ? Number(m[1]) * 100 + Number(m[2]) : 0;
+  }, []);
+
+  const filteredByWeek = useMemo(() => {
+    if (!stats) return [];
+    let result: { week: string; count: number }[];
+    if (weekViewUserId === null) {
+      const weekMap = new Map<string, number>();
+      for (const r of stats.byWeekPerUser) {
+        weekMap.set(r.week, (weekMap.get(r.week) ?? 0) + r.count);
+      }
+      result = Array.from(weekMap.entries()).map(([week, count]) => ({ week, count }));
+    } else {
+      result = stats.byWeekPerUser
+        .filter((r) => r.userId === weekViewUserId)
+        .map((r) => ({ week: r.week, count: r.count }));
+    }
+    return result.sort((a, b) => parseWeekKey(b.week) - parseWeekKey(a.week));
+  }, [stats, weekViewUserId, parseWeekKey]);
+
+  const getViewLabel = useCallback((userId: string | null) => {
+    if (userId === null) return '전체';
+    const myId = getCurrentUserId();
+    if (userId === myId) return '내 풀이';
+    const member = members.find((m) => m.user_id === userId);
+    return member?.username ?? member?.email?.split('@')[0] ?? userId.slice(0, 8);
+  }, [members]);
+
+  const weekViewLabel = useMemo(() => getViewLabel(weekViewUserId), [weekViewUserId, getViewLabel]);
+
   const statsLoading = isLoading || (currentStudyId != null && stats === null && !error);
+
+  // animated counters (ref만 StatCard에 전달)
+  const [submissionRef] = useAnimVal(myStats.count);
+  const [memberRef] = useAnimVal(members.length);
+  const [completionRef] = useAnimVal(myCompletionPct);
+
+  // ─── LOADING SCREEN ───────────────────────
 
   if (!isReady) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-background">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-bg">
         <LoadingSpinner size="lg" color="primary" />
-        <p className="text-sm text-muted-foreground">로딩 중...</p>
+        <p className="text-sm text-text-3">로딩 중...</p>
       </div>
-    )
+    );
   }
+
+  // ─── FADE HELPER ──────────────────────────
+
+  const fade = (delay = 0): React.CSSProperties => ({
+    opacity: mounted ? 1 : 0,
+    transform: mounted ? 'translateY(0)' : 'translateY(16px)',
+    transition: `opacity .5s cubic-bezier(.16,1,.3,1) ${delay}s, transform .5s cubic-bezier(.16,1,.3,1) ${delay}s`,
+  });
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        {/* D-08: 헤더 + 새로고침 버튼 */}
-        <div className="flex items-center justify-between">
+      <div className="space-y-5">
+        {/* ── HEADER ── */}
+        <div className="flex items-center justify-between" style={fade(0)}>
           <div>
-            <h1 className="text-base font-semibold text-foreground">
-              {currentStudyName ? `${currentStudyName} \u00B7 대시보드` : '대시보드'}
-            </h1>
-            <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
-              {currentStudyId ? '스터디 현황 요약' : '스터디를 선택하면 통계를 볼 수 있습니다'}
+            <h1 className="text-[22px] font-bold tracking-tight">대시보드</h1>
+            <p className="mt-0.5 text-xs text-text-3">
+              {user?.email ? `${user.email}님, 안녕하세요!` : '환영합니다'}
+              {currentStudyName ? ` — ${currentStudyName}` : ''}
             </p>
           </div>
           {currentStudyId && (
             <button
               type="button"
-              className="flex items-center justify-center rounded-btn bg-bg2 text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
-              style={{ width: '28px', height: '28px' }}
+              className="flex h-[34px] items-center gap-1.5 rounded-btn border border-border bg-transparent px-3.5 text-xs font-medium text-text-2 transition-colors hover:text-text disabled:opacity-50"
               onClick={() => void loadDashboard()}
               disabled={isLoading}
-              aria-label="대시보드 새로고침"
             >
               <RefreshCw className={cn('h-3.5 w-3.5', isLoading && 'animate-spin')} />
+              새로고침
             </button>
           )}
         </div>
@@ -275,20 +377,19 @@ export default function DashboardPage(): ReactNode {
           </Alert>
         )}
 
-        {/* 스터디 미선택 시 온보딩 (C2) */}
+        {/* ── EMPTY STATE (스터디 미선택) ── */}
         {!currentStudyId && !isLoading && (
           <Card className="p-8">
-            <div className="flex flex-col items-center text-center gap-4">
-              <div
-                className="flex items-center justify-center rounded-full bg-bg2"
-                style={{ width: '48px', height: '48px' }}
-              >
+            <div className="flex flex-col items-center gap-4 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-bg-alt">
                 <Users className="h-5 w-5 text-primary" aria-hidden />
               </div>
               <div>
-                <p className="text-sm font-medium text-foreground">스터디에 참여해보세요</p>
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  스터디를 만들거나 초대 코드로 참여하면 대시보드를 확인할 수 있습니다.
+                <p className="text-sm font-medium">
+                  아직 참여 중인 스터디가 없습니다
+                </p>
+                <p className="mt-1 text-[11px] text-text-3">
+                  스터디를 만들거나 초대코드로 참여해보세요.
                 </p>
               </div>
               <div className="flex gap-3">
@@ -297,137 +398,133 @@ export default function DashboardPage(): ReactNode {
                   size="sm"
                   onClick={() => router.push('/studies/create')}
                 >
-                  스터디 만들기
+                  스터디 생성
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => router.push('/studies')}
                 >
-                  스터디 둘러보기
+                  초대코드 입력
                 </Button>
               </div>
             </div>
           </Card>
         )}
 
-        {/* 통계 카드들 */}
+        {/* ── STUDY CARD GRID ── */}
+        {studies.length > 0 && !currentStudyId && (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" style={fade(0.08)}>
+            {studies.map((study) => (
+              <Card
+                key={study.id}
+                className="cursor-pointer p-5 transition-all hover:border-primary"
+                onClick={() => router.push(`/studies/${study.id}`)}
+              >
+                <h3 className="mb-1 text-sm font-semibold">{study.name}</h3>
+                <div className="flex items-center gap-2 text-[11px] text-text-3">
+                  <Badge variant={study.role === 'ADMIN' ? 'default' : 'muted'}>
+                    {study.role === 'ADMIN' ? '관리자' : '멤버'}
+                  </Badge>
+                  <span>{study.memberCount ?? 0}명</span>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* ── STAT CARDS ── */}
         {currentStudyId && (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-3 gap-3.5" style={fade(0.08)}>
             <StatCard
               icon={FileText}
-              label="총 제출"
-              value={stats?.totalSubmissions ?? 0}
+              label="내 제출 (이번 스터디 전체)"
+              value={statsLoading ? '' : myStats.count}
               loading={statsLoading}
+              href="/submissions"
+              animRef={submissionRef}
             />
             <StatCard
               icon={Users}
-              label="참여 멤버"
-              value={members.length}
+              label="활성 멤버"
+              value={statsLoading ? '' : members.length}
               loading={statsLoading}
+              href={currentStudyId ? `/studies/${currentStudyId}` : undefined}
+              animRef={memberRef}
             />
-            {/* D-10: "진행 주차" → "완료 주차" 명확화 */}
             <StatCard
-              icon={BarChart3}
-              label="완료 주차"
-              value={stats?.byWeek.length ?? 0}
+              icon={CheckCircle2}
+              label="전체 문제 기준"
+              value={statsLoading ? '' : `${myCompletionPct}%`}
               loading={statsLoading}
+              href="/analytics"
+              animRef={completionRef}
             />
           </div>
         )}
 
-        {/* D-07: 주차별 제출률 차트 (max-height + 스크롤) */}
+        {/* ── WEEKLY CHART ── */}
         {currentStudyId && stats && stats.byWeek.length > 0 && (
-          <Card>
-            <CardHeader>
+          <Card
+            className="group cursor-pointer"
+            onClick={cycleWeekView}
+            style={fade(0.16)}
+          >
+            <CardHeader className="flex flex-row items-center gap-2.5">
               <CardTitle>주차별 제출 현황</CardTitle>
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary-soft2 px-2.5 py-1 text-[11px] font-medium text-primary">
+                <span
+                  className="inline-block h-[5px] w-[5px] shrink-0 rounded-full gradient-brand"
+                  aria-hidden
+                />
+                {weekViewLabel}
+              </span>
+              <span className="text-[10px] text-text-3 opacity-0 transition-opacity group-hover:opacity-100">
+                클릭하여 전환
+              </span>
             </CardHeader>
             <CardContent>
-              <div className="max-h-[280px] overflow-y-auto space-y-2">
-                {stats.byWeek.map((w) => (
-                  <WeeklyBar key={w.week} data={w} maxCount={maxWeekCount} />
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* D-01 + D-11: 멤버별 현황 (이름 표시 + 완료율 바 + 정렬) */}
-        {currentStudyId && sortedMembers.length > 0 && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>멤버별 현황</CardTitle>
-              <Link
-                href={`/studies/${currentStudyId}`}
-                className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
-              >
-                상세 보기
-                <ArrowRight className="h-3 w-3" aria-hidden />
-              </Link>
-            </CardHeader>
-            <CardContent>
-              <div className="max-h-[320px] overflow-y-auto space-y-2">
-                {sortedMembers.map((m) => {
-                  const displayName = getMemberDisplayName(m.userId, memberMap);
-                  const initials = getInitials(m.userId, memberMap);
-                  const completionPct = m.count > 0
-                    ? Math.round((m.doneCount / m.count) * 100)
-                    : 0;
-
-                  return (
-                    <div
-                      key={m.userId}
-                      className="flex items-center justify-between py-1.5"
+              {filteredByWeek.length === 0 ? (
+                <p className="py-4 text-center text-sm text-text-3">
+                  제출 기록이 없습니다.
+                </p>
+              ) : (
+                <div key={weekViewLabel} className="space-y-2.5 animate-fade-in">
+                  {filteredByWeek.slice(0, 5).map((w, i) => {
+                    const pc = problemCountByWeek.get(w.week) ?? 0;
+                    const total = weekViewUserId === null ? pc * members.length : pc;
+                    return (
+                      <WeeklyBar
+                        key={w.week}
+                        label={w.week}
+                        value={w.count}
+                        max={total}
+                        mounted={mounted}
+                        delay={0.3 + i * 0.1}
+                      />
+                    );
+                  })}
+                  {filteredByWeek.length > 5 && (
+                    <Link
+                      href="/analytics"
+                      onClick={(e) => e.stopPropagation()}
+                      className="block pt-1 text-center text-[11px] font-medium text-primary hover:underline"
                     >
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <div
-                          className="flex shrink-0 items-center justify-center rounded-full text-white"
-                          style={{
-                            width: '24px',
-                            height: '24px',
-                            background: 'linear-gradient(135deg, var(--color-main), var(--color-sub))',
-                            fontSize: '9px',
-                            fontWeight: 600,
-                          }}
-                        >
-                          {initials}
-                        </div>
-                        <span className="font-mono text-[11px] text-foreground truncate">
-                          {displayName}
-                        </span>
-                        {/* D-11: 완료율 미니바 */}
-                        <div
-                          className="hidden sm:block bg-bg2 rounded-full overflow-hidden"
-                          style={{ width: '48px', height: '4px' }}
-                          title={`완료율 ${completionPct}%`}
-                        >
-                          <div
-                            className="h-full rounded-full gradient-brand"
-                            style={{ width: `${completionPct}%` }}
-                          />
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <span className="font-mono text-[11px] text-muted-foreground">
-                          {m.count}건 제출
-                        </span>
-                        <span className="font-mono text-[11px] text-success">
-                          {m.doneCount}건 완료
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                      전체 {filteredByWeek.length}주 보기 →
+                    </Link>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
 
-        <div className="grid gap-4 md:grid-cols-2">
-          {/* D-02: 최근 제출 (클릭 가능) */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>최근 제출</CardTitle>
+        {/* ── TWO COLUMN GRID ── */}
+        <div className="grid gap-3.5 md:grid-cols-2" style={fade(0.24)}>
+          {/* 최근 제출 5건 */}
+          <Card className="overflow-hidden p-0">
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+              <h2 className="text-sm font-semibold">최근 제출</h2>
               <Link
                 href="/submissions"
                 className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
@@ -435,55 +532,58 @@ export default function DashboardPage(): ReactNode {
                 전체 보기
                 <ArrowRight className="h-3 w-3" aria-hidden />
               </Link>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="space-y-3">
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <Skeleton key={i} height={36} />
-                  ))}
-                </div>
-              ) : recentSubmissions.length === 0 ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">
-                  아직 제출 기록이 없습니다.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {recentSubmissions.map((s) => (
-                    <Link
-                      key={s.id}
-                      href={
-                        s.sagaStep === 'DONE'
-                          ? `/submissions/${s.id}/analysis`
-                          : `/problems/${s.problemId}`
-                      }
-                      className="flex items-center justify-between rounded-sm px-2 py-1.5 hover:bg-muted/40 transition-colors"
+            </div>
+            {isLoading ? (
+              <div className="space-y-3 p-5">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} height={36} />
+                ))}
+              </div>
+            ) : recentSubmissions.length === 0 ? (
+              <p className="py-8 text-center text-sm text-text-3">
+                아직 제출 내역이 없습니다
+              </p>
+            ) : (
+              <div>
+                {recentSubmissions.map((s, i) => (
+                  <Link
+                    key={s.id}
+                    href={
+                      s.sagaStep === 'DONE'
+                        ? `/submissions/${s.id}/analysis`
+                        : `/problems/${s.problemId}`
+                    }
+                    className={cn(
+                      'group flex items-center justify-between px-5 py-3.5 transition-all hover:bg-primary-soft',
+                      i < recentSubmissions.length - 1 && 'border-b border-border',
+                    )}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] font-medium transition-colors group-hover:text-primary">
+                        {s.problemTitle ?? problemTitleMap.get(s.problemId) ?? `문제 ${s.problemId.slice(0, 8)}`}
+                      </p>
+                      <p className="mt-0.5 font-mono text-[11px] text-text-3">
+                        <span>{s.language}</span>
+                        <span className="mx-1.5 opacity-30">·</span>
+                        <span>{formatDate(s.createdAt)}</span>
+                      </p>
+                    </div>
+                    <Badge
+                      variant={SAGA_STEP_CONFIG[s.sagaStep as SagaStep]?.variant ?? 'muted'}
+                      dot
                     >
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[12px] font-medium text-foreground truncate">
-                          {s.problemTitle ?? `문제 ${s.problemId.slice(0, 8)}`}
-                        </p>
-                        <p className="font-mono text-[10px] text-muted-foreground">
-                          {formatDate(s.createdAt)}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 ml-2">
-                        <Badge variant="info">{s.language}</Badge>
-                        <Badge variant={SAGA_STEP_CONFIG[s.sagaStep as SagaStep]?.variant ?? 'muted'} dot>
-                          {SAGA_STEP_CONFIG[s.sagaStep as SagaStep]?.label ?? s.sagaStep}
-                        </Badge>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </CardContent>
+                      {SAGA_STEP_CONFIG[s.sagaStep as SagaStep]?.label ?? s.sagaStep}
+                    </Badge>
+                  </Link>
+                ))}
+              </div>
+            )}
           </Card>
 
-          {/* D-04 + D-05: 마감 임박 문제 (제출 완료 표시 + 주차 포맷) */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>마감 임박</CardTitle>
+          {/* 마감 임박 문제 */}
+          <Card className="overflow-hidden p-0">
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+              <h2 className="text-sm font-semibold">마감 임박 문제</h2>
               <Link
                 href="/problems"
                 className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
@@ -491,76 +591,74 @@ export default function DashboardPage(): ReactNode {
                 전체 보기
                 <ArrowRight className="h-3 w-3" aria-hidden />
               </Link>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="space-y-3">
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <Skeleton key={i} height={36} />
-                  ))}
-                </div>
-              ) : upcomingDeadlines.length === 0 ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">
-                  마감 예정인 문제가 없습니다.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {upcomingDeadlines.map((p) => {
-                    const deadlineDate = new Date(p.deadline);
-                    const now = new Date();
-                    const diffMs = deadlineDate.getTime() - now.getTime();
-                    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-                    const isUrgent = diffHours < 24;
-                    const isSubmitted = submittedProblemIds.has(p.id);
+            </div>
+            {isLoading ? (
+              <div className="space-y-3 p-5">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} height={36} />
+                ))}
+              </div>
+            ) : upcomingDeadlines.length === 0 ? (
+              <p className="py-8 text-center text-sm text-text-3">
+                마감 예정인 문제가 없습니다
+              </p>
+            ) : (
+              <div>
+                {upcomingDeadlines.map((p, i) => {
+                  const deadlineDate = new Date(p.deadline);
+                  const now = new Date();
+                  const diffMs = deadlineDate.getTime() - now.getTime();
+                  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                  const isUrgent = diffHours < 24;
+                  const isSubmitted = submittedProblemIds.has(p.id);
 
-                    return (
-                      <Link
-                        key={p.id}
-                        href={`/problems/${p.id}`}
-                        className="flex items-center justify-between rounded-sm px-2 py-1.5 hover:bg-muted/40 transition-colors"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5">
-                            {/* D-04: 제출 완료 표시 */}
-                            {isSubmitted && (
-                              <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden />
-                            )}
-                            <p className={cn(
-                              'text-[12px] font-medium truncate',
-                              isSubmitted ? 'text-muted-foreground' : 'text-foreground',
-                            )}>
-                              {p.title}
-                            </p>
-                          </div>
-                          {/* D-05: weekNumber → "N주차" 포맷 */}
-                          <p className="font-mono text-[10px] text-muted-foreground">
-                            {p.weekNumber}주차
+                  return (
+                    <Link
+                      key={p.id}
+                      href={`/problems/${p.id}`}
+                      className={cn(
+                        'group flex items-center justify-between px-5 py-3.5 transition-all hover:bg-primary-soft',
+                        i < upcomingDeadlines.length - 1 && 'border-b border-border',
+                      )}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          {isSubmitted && (
+                            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden />
+                          )}
+                          <p className={cn(
+                            'truncate text-[13px] font-medium transition-colors',
+                            isSubmitted ? 'text-text-3' : 'group-hover:text-primary',
+                          )}>
+                            {p.title}
                           </p>
                         </div>
-                        <div className="flex items-center gap-2 ml-2">
-                          <Clock
-                            className={`h-3 w-3 ${isUrgent ? 'text-error' : 'text-muted-foreground'}`}
-                            aria-hidden
-                          />
-                          <span
-                            className={`font-mono text-[11px] whitespace-nowrap ${
-                              isUrgent ? 'text-error font-medium' : 'text-muted-foreground'
-                            }`}
-                          >
-                            {diffDays > 0
-                              ? `${diffDays}일 남음`
-                              : diffHours > 0
-                                ? `${diffHours}시간 남음`
-                                : '곧 마감'}
-                          </span>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
+                        <p className="mt-0.5 font-mono text-[10px] text-text-3">
+                          {p.weekNumber}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {isSubmitted && (
+                          <Badge variant="success">제출 완료</Badge>
+                        )}
+                        <span className={cn(
+                          'flex items-center gap-1 font-mono text-[11px] whitespace-nowrap',
+                          isUrgent ? 'font-medium text-error animate-pulse-dot' : 'text-text-3',
+                        )}>
+                          <Clock className="h-3 w-3" aria-hidden />
+                          {diffDays > 0
+                            ? `${diffDays}일 남음`
+                            : diffHours > 0
+                              ? `${diffHours}시간 남음`
+                              : '곧 마감'}
+                        </span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
           </Card>
         </div>
       </div>

@@ -1,7 +1,14 @@
+/**
+ * @file Submission Service 부트스트랩
+ * @domain submission
+ * @layer config
+ */
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { StructuredLoggerService } from './common/logger/structured-logger.service';
+import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 
 async function bootstrap(): Promise<void> {
   // H10: 구조화 JSON 로거 적용
@@ -19,6 +26,8 @@ async function bootstrap(): Promise<void> {
       transform: true,
     }),
   );
+
+  app.useGlobalFilters(new GlobalExceptionFilter());
 
   app.enableShutdownHooks();
 

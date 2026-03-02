@@ -46,6 +46,9 @@ export class SubmissionService {
       }
     }
 
+    // A3: 지각 제출 체크 — 마감 시간 초과 시 isLate=true (제출은 허용)
+    const isLate = await this.checkLateSubmission(studyId, dto.problemId);
+
     // DB 저장 (Step 1)
     const submission = this.submissionRepo.create({
       studyId,
@@ -55,6 +58,7 @@ export class SubmissionService {
       code: dto.code,
       sagaStep: SagaStep.DB_SAVED,
       idempotencyKey: dto.idempotencyKey ?? null,
+      isLate,
     });
 
     const saved = await this.submissionRepo.save(submission);
@@ -208,17 +212,25 @@ export class SubmissionService {
    * 스터디 통계 조회 — 내부 API 전용
    * Gateway에서 GET /api/studies/:id/stats 호출 시 사용
    */
-  async getStudyStats(studyId: string): Promise<{
+  async getStudyStats(studyId: string, weekNumber?: string, userId?: string): Promise<{
     totalSubmissions: number;
-    byWeek: { week: number; count: number }[];
+    byWeek: { week: string; count: number }[];
+    byWeekPerUser: { userId: string; week: string; count: number }[];
     byMember: { userId: string; count: number; doneCount: number }[];
+    byMemberWeek: { userId: string; count: number }[] | null;
     recentSubmissions: { id: string; userId: string; problemId: string; language: string; sagaStep: string; createdAt: Date }[];
+    solvedProblemIds: string[] | null;
   }> {
     const totalSubmissions = await this.submissionRepo.count({
       where: { studyId },
     });
 
-    // 주차별 통계 — Problem weekNumber 기반 그룹핑
+    const parseWeekKey = (w: string) => {
+      const m = w.match(/^(\d+)월(\d+)주차$/);
+      return m ? Number(m[1]) * 100 + Number(m[2]) : 0;
+    };
+
+    // 주차별 통계 — 스터디 전체 총 제출 건수
     const byWeekRaw = await this.submissionRepo
       .createQueryBuilder('s')
       .select('s.week_number', 'week')
@@ -226,13 +238,27 @@ export class SubmissionService {
       .where('s.study_id = :studyId', { studyId })
       .andWhere('s.week_number IS NOT NULL')
       .groupBy('s.week_number')
-      .orderBy('week', 'ASC')
-      .getRawMany<{ week: number; count: number }>();
+      .getRawMany<{ week: string; count: number }>();
 
-    const byWeek = byWeekRaw.map((r) => ({
-      week: Number(r.week),
-      count: Number(r.count),
-    }));
+    const byWeek = byWeekRaw
+      .map((r) => ({ week: String(r.week), count: Number(r.count) }))
+      .sort((a, b) => parseWeekKey(a.week) - parseWeekKey(b.week));
+
+    // 유저별 주차 통계 — 개인별 고유 문제 수
+    const byWeekPerUserRaw = await this.submissionRepo
+      .createQueryBuilder('s')
+      .select('s.user_id', 'userId')
+      .addSelect('s.week_number', 'week')
+      .addSelect('COUNT(DISTINCT s.problem_id)::int', 'count')
+      .where('s.study_id = :studyId', { studyId })
+      .andWhere('s.week_number IS NOT NULL')
+      .groupBy('s.user_id')
+      .addGroupBy('s.week_number')
+      .getRawMany<{ userId: string; week: string; count: number }>();
+
+    const byWeekPerUser = byWeekPerUserRaw
+      .map((r) => ({ userId: r.userId, week: String(r.week), count: Number(r.count) }))
+      .sort((a, b) => parseWeekKey(a.week) - parseWeekKey(b.week));
 
     // 멤버별 통계
     const byMemberRaw = await this.submissionRepo
@@ -258,7 +284,80 @@ export class SubmissionService {
       select: ['id', 'userId', 'problemId', 'language', 'sagaStep', 'createdAt'],
     });
 
-    return { totalSubmissions, byWeek, byMember, recentSubmissions };
+    // 주차별 멤버 통계 — 고유 문제 수 (weekNumber 파라미터가 있을 때만)
+    let byMemberWeek: { userId: string; count: number }[] | null = null;
+    if (weekNumber) {
+      const byMemberWeekRaw = await this.submissionRepo
+        .createQueryBuilder('s')
+        .select('s.user_id', 'userId')
+        .addSelect('COUNT(DISTINCT s.problem_id)::int', 'count')
+        .where('s.study_id = :studyId', { studyId })
+        .andWhere('s.week_number = :weekNumber', { weekNumber })
+        .groupBy('s.user_id')
+        .getRawMany<{ userId: string; count: number }>();
+
+      byMemberWeek = byMemberWeekRaw.map((r) => ({
+        userId: r.userId,
+        count: Number(r.count),
+      }));
+    }
+
+    // 특정 유저의 풀이 문제 ID 목록 (analytics 태그 분포용)
+    let solvedProblemIds: string[] | null = null;
+    if (userId) {
+      const rows = await this.submissionRepo
+        .createQueryBuilder('s')
+        .select('DISTINCT s.problem_id', 'problemId')
+        .where('s.study_id = :studyId', { studyId })
+        .andWhere('s.user_id = :userId', { userId })
+        .getRawMany<{ problemId: string }>();
+      solvedProblemIds = rows.map((r) => r.problemId);
+    }
+
+    return { totalSubmissions, byWeek, byWeekPerUser, byMember, byMemberWeek, recentSubmissions, solvedProblemIds };
+  }
+
+  /**
+   * A3: 마감 시간 체크 — Problem Service 내부 API 호출
+   * deadline이 지났으면 true, 아직이면 false
+   * 조회 실패 시 안전하게 false 반환 (제출 차단하지 않음)
+   * @domain submission
+   * @guard problem-deadline
+   */
+  private async checkLateSubmission(studyId: string, problemId: string): Promise<boolean> {
+    try {
+      const problemServiceUrl = this.configService.getOrThrow<string>('PROBLEM_SERVICE_URL');
+      const internalKey = this.configService.getOrThrow<string>('INTERNAL_KEY_GATEWAY');
+
+      const response = await fetch(
+        `${problemServiceUrl}/deadline/${problemId}`,
+        {
+          method: 'GET',
+          headers: {
+            'x-internal-key': internalKey,
+            'x-study-id': studyId,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+      if (!response.ok) {
+        this.logger.warn(`마감 시간 조회 실패: problemId=${problemId}, status=${response.status}`);
+        return false;
+      }
+
+      const result = (await response.json()) as { data: { deadline: string | null; status: string } };
+      const deadline = result.data.deadline;
+
+      if (!deadline) {
+        return false; // 마감 시간 미설정 -> 지각 아님
+      }
+
+      return new Date(deadline) < new Date();
+    } catch (error: unknown) {
+      this.logger.warn(`마감 시간 조회 에러: problemId=${problemId}, ${(error as Error).message}`);
+      return false; // 조회 실패 시 안전하게 false
+    }
   }
 
   /**

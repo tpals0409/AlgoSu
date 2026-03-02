@@ -136,6 +136,33 @@ patches:
         path: /spec/resources/requests/storage
         value: "20Gi"
 
+  # Prod: MinIO PVC 확장
+  - target:
+      kind: PersistentVolumeClaim
+      name: minio-pvc
+    patch: |
+      - op: replace
+        path: /spec/resources/requests/storage
+        value: "5Gi"
+
+  # Prod: MinIO 리소스 강화
+  - target:
+      kind: Deployment
+      name: minio
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "256Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: "200m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "1Gi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "1000m"
+
   # Prod: Grafana 익명 접근 비활성화 (보안)
   - target:
       kind: Deployment

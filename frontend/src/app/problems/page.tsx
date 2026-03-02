@@ -1,8 +1,15 @@
+/**
+ * @file 문제 목록 페이지 (v2 전면 교체)
+ * @domain problem
+ * @layer page
+ * @related problemApi, studyApi, DifficultyBadge, TimerBadge, AppLayout
+ */
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { BookOpen, Plus, Search, X } from 'lucide-react';
+import { BookOpen, Plus, Search, Check } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -11,11 +18,14 @@ import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
 import { TimerBadge } from '@/components/ui/TimerBadge';
 import { Alert } from '@/components/ui/Alert';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { problemApi, type Problem } from '@/lib/api';
+import { SkeletonTable } from '@/components/ui/Skeleton';
+import { problemApi, studyApi, type Problem } from '@/lib/api';
 import { useStudy } from '@/contexts/StudyContext';
 import { DIFFICULTIES, DIFFICULTY_LABELS, PROBLEM_STATUSES, PROBLEM_STATUS_LABELS } from '@/lib/constants';
 import type { Difficulty } from '@/lib/constants';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+
+// ─── TYPES ────────────────────────────────
 
 interface Filters {
   search: string;
@@ -24,6 +34,8 @@ interface Filters {
   status: string;
 }
 
+// ─── CONSTANTS ────────────────────────────
+
 const INITIAL_FILTERS: Filters = {
   search: '',
   difficulty: '',
@@ -31,34 +43,54 @@ const INITIAL_FILTERS: Filters = {
   status: '',
 };
 
+// ─── RENDER ───────────────────────────────
+
+/**
+ * 문제 목록 페이지
+ * @domain problem
+ */
 export default function ProblemsPage(): ReactNode {
   const router = useRouter();
   const { isAuthenticated } = useRequireAuth();
-  const { currentStudyRole, currentStudyName } = useStudy();
+  const { currentStudyId, currentStudyRole, currentStudyName } = useStudy();
   const isAdmin = currentStudyRole === 'ADMIN';
+
+  // ─── STATE ──────────────────────────────
+
   const [problems, setProblems] = useState<Problem[]>([]);
+  const [solvedIds, setSolvedIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
+
+  // ─── API ────────────────────────────────
 
   const loadProblems = useCallback(async (): Promise<void> => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await problemApi.findAll();
+      const [data, stats] = await Promise.all([
+        problemApi.findAll(),
+        currentStudyId ? studyApi.getStats(currentStudyId) : null,
+      ]);
       setProblems(data);
+      if (stats?.solvedProblemIds) {
+        setSolvedIds(new Set(stats.solvedProblemIds));
+      }
     } catch (err: unknown) {
       setError((err as Error).message ?? '문제 목록을 불러오는 데 실패했습니다.');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [currentStudyId]);
 
   useEffect(() => {
     if (isAuthenticated) {
       void loadProblems();
     }
   }, [isAuthenticated, loadProblems]);
+
+  // ─── HANDLERS ─────────────────────────────
 
   const handleProblemClick = useCallback(
     (id: string): void => {
@@ -67,7 +99,16 @@ export default function ProblemsPage(): ReactNode {
     [router],
   );
 
-  // 클라이언트 사이드 필터링
+  const handleFilterChange = (key: keyof Filters, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleResetFilters = () => {
+    setFilters(INITIAL_FILTERS);
+  };
+
+  // ─── HELPERS ──────────────────────────────
+
   const filteredProblems = useMemo(() => {
     return problems.filter((p) => {
       if (filters.search && !p.title.toLowerCase().includes(filters.search.toLowerCase())) {
@@ -86,7 +127,6 @@ export default function ProblemsPage(): ReactNode {
     });
   }, [problems, filters]);
 
-  // 주차 목록 (데이터에서 추출)
   const weekNumbers = useMemo(() => {
     const weeks = [...new Set(problems.map((p) => p.weekNumber).filter(Boolean))];
     return weeks.sort();
@@ -94,26 +134,18 @@ export default function ProblemsPage(): ReactNode {
 
   const hasActiveFilters = filters.search || filters.difficulty || filters.weekNumber || filters.status;
 
-  const handleFilterChange = (key: keyof Filters, value: string) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const handleResetFilters = () => {
-    setFilters(INITIAL_FILTERS);
-  };
-
   return (
     <AppLayout>
       <div className="space-y-4">
         {/* 헤더 */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-base font-semibold text-foreground">
-              {currentStudyName ? `${currentStudyName} \u00B7 문제 목록` : '문제 목록'}
+            <h1 className="text-lg font-bold tracking-tight text-text">
+              {currentStudyName ? `${currentStudyName} · 문제 목록` : '문제 목록'}
             </h1>
             {!isLoading && problems.length > 0 && (
-              <p className="font-mono text-[10px] text-muted-foreground mt-0.5">
-                {`${Math.ceil(problems.length / 5)}주차 · ${problems.length}개 문제`}
+              <p className="font-mono text-[10px] text-text-3 mt-0.5">
+                {filteredProblems.length}개 문제
               </p>
             )}
           </div>
@@ -132,121 +164,62 @@ export default function ProblemsPage(): ReactNode {
         {/* 필터 바 */}
         {!isLoading && problems.length > 0 && (
           <Card className="p-3">
-            <div className="flex flex-wrap items-end gap-3">
-              {/* 검색어 */}
-              <div className="flex flex-col flex-1 min-w-[180px]">
-                <label
-                  htmlFor="filter-search"
-                  className="text-[11px] font-medium text-text2 mb-[5px]"
-                >
-                  검색
-                </label>
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text3" />
-                  <input
-                    id="filter-search"
-                    type="text"
-                    placeholder="문제 제목 검색..."
-                    value={filters.search}
-                    onChange={(e) => handleFilterChange('search', e.target.value)}
-                    className="w-full pl-8 pr-3 py-2 rounded-btn border border-border bg-bg2 text-text1 text-xs outline-none transition-[border-color] duration-150 placeholder:text-text3 focus:border-primary-500"
-                    style={{ padding: '8px 12px 8px 30px', fontSize: '12px' }}
-                  />
-                </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {/* 검색 */}
+              <div className="relative flex-1 min-w-[160px]">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-3 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="문제 검색..."
+                  value={filters.search}
+                  onChange={(e) => handleFilterChange('search', e.target.value)}
+                  className="w-full h-[34px] pl-8 pr-3 rounded-btn border border-border bg-input-bg text-text text-xs font-body outline-none transition-[border-color] duration-150 placeholder:text-text-3 focus:border-primary"
+                />
               </div>
 
               {/* 난이도 */}
-              <div className="flex flex-col">
-                <label
-                  htmlFor="filter-difficulty"
-                  className="text-[11px] font-medium text-text2 mb-[5px]"
-                >
-                  난이도
-                </label>
-                <select
-                  id="filter-difficulty"
-                  value={filters.difficulty}
-                  onChange={(e) => handleFilterChange('difficulty', e.target.value)}
-                  className="px-3 py-2 rounded-btn border border-border bg-bg2 text-text1 text-xs outline-none transition-[border-color] duration-150 focus:border-primary-500"
-                  style={{ padding: '8px 12px', fontSize: '12px' }}
-                >
-                  <option value="">전체</option>
-                  {DIFFICULTIES.map((d) => (
-                    <option key={d} value={d}>
-                      {DIFFICULTY_LABELS[d]}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <select
+                value={filters.difficulty}
+                onChange={(e) => handleFilterChange('difficulty', e.target.value)}
+                className="h-[34px] px-2.5 pr-7 rounded-btn border border-border bg-input-bg text-text text-xs font-body outline-none cursor-pointer focus:border-primary appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239C9A95%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_8px_center]"
+              >
+                <option value="">전체</option>
+                {DIFFICULTIES.map((d) => (
+                  <option key={d} value={d}>{DIFFICULTY_LABELS[d]}</option>
+                ))}
+              </select>
 
               {/* 주차 */}
-              <div className="flex flex-col">
-                <label
-                  htmlFor="filter-week"
-                  className="text-[11px] font-medium text-text2 mb-[5px]"
-                >
-                  주차
-                </label>
-                <select
-                  id="filter-week"
-                  value={filters.weekNumber}
-                  onChange={(e) => handleFilterChange('weekNumber', e.target.value)}
-                  className="px-3 py-2 rounded-btn border border-border bg-bg2 text-text1 text-xs outline-none transition-[border-color] duration-150 focus:border-primary-500"
-                  style={{ padding: '8px 12px', fontSize: '12px' }}
-                >
-                  <option value="">전체</option>
-                  {weekNumbers.map((w) => (
-                    <option key={w} value={w}>
-                      {w}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <select
+                value={filters.weekNumber}
+                onChange={(e) => handleFilterChange('weekNumber', e.target.value)}
+                className="h-[34px] px-2.5 pr-7 rounded-btn border border-border bg-input-bg text-text text-xs font-body outline-none cursor-pointer focus:border-primary appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239C9A95%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_8px_center]"
+              >
+                <option value="">전체</option>
+                {weekNumbers.map((w) => (
+                  <option key={w} value={w}>{w}</option>
+                ))}
+              </select>
 
               {/* 상태 */}
-              <div className="flex flex-col">
-                <label
-                  htmlFor="filter-status"
-                  className="text-[11px] font-medium text-text2 mb-[5px]"
-                >
-                  상태
-                </label>
-                <select
-                  id="filter-status"
-                  value={filters.status}
-                  onChange={(e) => handleFilterChange('status', e.target.value)}
-                  className="px-3 py-2 rounded-btn border border-border bg-bg2 text-text1 text-xs outline-none transition-[border-color] duration-150 focus:border-primary-500"
-                  style={{ padding: '8px 12px', fontSize: '12px' }}
-                >
-                  <option value="">전체</option>
-                  {PROBLEM_STATUSES.map((s) => (
-                    <option key={s} value={s}>
-                      {PROBLEM_STATUS_LABELS[s]}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <select
+                value={filters.status}
+                onChange={(e) => handleFilterChange('status', e.target.value)}
+                className="h-[34px] px-2.5 pr-7 rounded-btn border border-border bg-input-bg text-text text-xs font-body outline-none cursor-pointer focus:border-primary appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239C9A95%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_8px_center]"
+              >
+                <option value="">전체</option>
+                {PROBLEM_STATUSES.map((s) => (
+                  <option key={s} value={s}>{PROBLEM_STATUS_LABELS[s]}</option>
+                ))}
+              </select>
 
               {/* 초기화 */}
               {hasActiveFilters && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleResetFilters}
-                  className="mb-0.5"
-                >
-                  <X />
+                <Button variant="ghost" size="sm" onClick={handleResetFilters}>
                   초기화
                 </Button>
               )}
             </div>
-
-            {/* 필터 결과 요약 */}
-            {hasActiveFilters && (
-              <p className="mt-2 font-mono text-[10px] text-muted-foreground">
-                {filteredProblems.length}개 결과
-              </p>
-            )}
           </Card>
         )}
 
@@ -259,12 +232,8 @@ export default function ProblemsPage(): ReactNode {
 
         {/* 로딩 스켈레톤 */}
         {isLoading && (
-          <Card>
-            <div className="divide-y divide-border">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="animate-pulse h-12 bg-muted rounded mx-4 my-2" />
-              ))}
-            </div>
+          <Card className="p-4">
+            <SkeletonTable rows={5} />
           </Card>
         )}
 
@@ -290,11 +259,11 @@ export default function ProblemsPage(): ReactNode {
 
         {/* 문제 목록 테이블 */}
         {!isLoading && filteredProblems.length > 0 && (
-          <Card className="p-0 overflow-x-auto">
+          <Card className="p-0 overflow-hidden">
             {/* 헤더 행 */}
             <div
-              className="grid items-center gap-x-2.5 px-4 py-2 border-b border-border font-mono text-[10px] uppercase tracking-wider text-muted-foreground min-w-[480px]"
-              style={{ gridTemplateColumns: '64px 1fr auto auto auto' }}
+              className="grid items-center gap-x-2 px-4 py-2.5 border-b border-border font-mono text-[10px] uppercase tracking-wider text-text-3 min-w-[500px]"
+              style={{ gridTemplateColumns: '64px 1fr 80px 100px 72px' }}
             >
               <span>주차</span>
               <span>문제</span>
@@ -307,7 +276,7 @@ export default function ProblemsPage(): ReactNode {
             {filteredProblems.map((problem) => {
               const deadlineDate = problem.deadline ? new Date(problem.deadline) : null;
               const isExpired = deadlineDate ? deadlineDate < new Date() : true;
-              const weekNumber = problem.weekNumber;
+              const isSolved = solvedIds.has(problem.id);
 
               return (
                 <button
@@ -315,34 +284,41 @@ export default function ProblemsPage(): ReactNode {
                   type="button"
                   onClick={() => handleProblemClick(problem.id)}
                   aria-label={`${problem.title} 문제 보기`}
-                  className="grid items-center gap-x-2.5 w-full px-4 py-2.5 text-left border-b border-border last:border-b-0 hover:bg-muted/40 transition-colors min-w-[480px]"
-                  style={{ gridTemplateColumns: '64px 1fr auto auto auto' }}
+                  className="grid items-center gap-x-2 w-full px-4 py-3 text-left border-b border-border last:border-b-0 hover:bg-primary-soft transition-colors min-w-[500px]"
+                  style={{ gridTemplateColumns: '64px 1fr 80px 100px 72px' }}
                 >
                   {/* 주차 */}
-                  <span className="font-mono text-[10px] text-muted-foreground truncate">
-                    {weekNumber}
+                  <span className="font-mono text-[11px] text-text-3 truncate">
+                    {problem.weekNumber}
                   </span>
 
-                  {/* 문제 제목 */}
-                  <div className="min-w-0">
-                    <p className="text-[12px] font-medium text-foreground truncate">
+                  {/* 문제 제목 + 풀이 완료 체크 */}
+                  <div className="min-w-0 flex items-center gap-2">
+                    <p className="text-[13px] font-medium text-text truncate">
                       {problem.title}
                     </p>
+                    {isSolved && (
+                      <span className="flex items-center justify-center shrink-0 w-4 h-4 rounded-full bg-success-soft">
+                        <Check className="w-2.5 h-2.5 text-success" />
+                      </span>
+                    )}
                   </div>
 
                   {/* 난이도 */}
                   {problem.difficulty ? (
                     <DifficultyBadge difficulty={problem.difficulty as Difficulty} level={problem.level} />
                   ) : (
-                    <span className="font-mono text-[10px] text-muted-foreground">--</span>
+                    <span className="font-mono text-[10px] text-text-3">--</span>
                   )}
 
                   {/* 마감 */}
                   <div>
                     {deadlineDate && !isExpired && problem.status === 'ACTIVE' ? (
                       <TimerBadge deadline={deadlineDate} />
+                    ) : deadlineDate && isExpired ? (
+                      <TimerBadge deadline={deadlineDate} />
                     ) : (
-                      <span className="font-mono text-[10px] text-muted-foreground">--</span>
+                      <span className="font-mono text-[10px] text-text-3">--</span>
                     )}
                   </div>
 

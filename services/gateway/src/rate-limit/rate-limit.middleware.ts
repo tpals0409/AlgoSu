@@ -5,13 +5,13 @@ import { RedisThrottlerStorage } from './redis-throttler.storage';
 /**
  * Rate Limit 미들웨어 — 프록시 라우트에도 적용
  *
- * - default: 분당 60건 (모든 경로, IP 기반)
- * - submission: 분당 10건 (/api/submissions/* 전용)
+ * - default: 분당 600건 (인증 사용자: userId 기반, 비인증: IP 기반)
+ * - submission: 분당 10건 (/api/submissions POST 전용)
  */
 @Injectable()
 export class RateLimitMiddleware implements NestMiddleware {
   private readonly logger = new Logger(RateLimitMiddleware.name);
-  private static readonly DEFAULT_LIMIT = Number(process.env['RATE_LIMIT_DEFAULT']) || 60;
+  private static readonly DEFAULT_LIMIT = Number(process.env['RATE_LIMIT_DEFAULT']) || 600;
   private static readonly SUBMISSION_LIMIT = 10;
   private static readonly TTL_MS = 60_000;
 
@@ -23,25 +23,28 @@ export class RateLimitMiddleware implements NestMiddleware {
       return next();
     }
 
+    // 인증 사용자는 userId 기반, 비인증은 IP 기반
+    const userId = req.headers['x-user-id'] as string | undefined;
     const ip = req.ip ?? req.socket.remoteAddress ?? 'unknown';
+    const identity = userId ? `user:${userId}` : `ip:${ip}`;
 
     // default throttler
-    const defaultKey = `default:${ip}`;
+    const defaultKey = `rl:default:${identity}`;
     const defaultRecord = await this.storage.increment(defaultKey, RateLimitMiddleware.TTL_MS);
 
     if (defaultRecord.totalHits > RateLimitMiddleware.DEFAULT_LIMIT) {
-      this.logger.warn(`Rate limit 초과 (default): ip=${ip}`);
+      this.logger.warn(`Rate limit 초과 (default): ${identity}`);
       this.setHeaders(res, defaultRecord.totalHits, RateLimitMiddleware.DEFAULT_LIMIT, defaultRecord.timeToExpire);
       throw new HttpException('Too Many Requests', HttpStatus.TOO_MANY_REQUESTS);
     }
 
     // submission throttler — POST /api/submissions 전용 (제출 생성만 제한)
     if (req.method === 'POST' && req.path === '/api/submissions') {
-      const subKey = `submission:${ip}`;
+      const subKey = `rl:submission:${identity}`;
       const subRecord = await this.storage.increment(subKey, RateLimitMiddleware.TTL_MS);
 
       if (subRecord.totalHits > RateLimitMiddleware.SUBMISSION_LIMIT) {
-        this.logger.warn(`Rate limit 초과 (submission): ip=${ip}`);
+        this.logger.warn(`Rate limit 초과 (submission): ${identity}`);
         res.setHeader('X-RateLimit-Limit-submission', RateLimitMiddleware.SUBMISSION_LIMIT);
         res.setHeader('X-RateLimit-Remaining-submission', 0);
         res.setHeader('Retry-After', Math.ceil(subRecord.timeToExpire / 1000));

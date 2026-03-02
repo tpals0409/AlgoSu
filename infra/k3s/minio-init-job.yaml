@@ -1,0 +1,61 @@
+# ============================================================
+# AlgoSu — MinIO Init Job (버킷 자동 생성)
+# avatars: public read (프로필 이미지), uploads: private
+# ============================================================
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-init
+  namespace: algosu
+  labels:
+    app: minio-init
+    component: storage
+spec:
+  backoffLimit: 5
+  template:
+    metadata:
+      labels:
+        app: minio-init
+        component: storage
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mc
+          image: minio/mc:latest
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: minio-secret
+                  key: root-user
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: minio-secret
+                  key: root-password
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "Waiting for MinIO to be ready..."
+              until mc alias set algosu http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" 2>/dev/null; do
+                echo "MinIO not ready, retrying in 3s..."
+                sleep 3
+              done
+              echo "MinIO connected. Creating buckets..."
+
+              mc mb --ignore-existing algosu/avatars
+              mc mb --ignore-existing algosu/uploads
+
+              echo "Setting avatars bucket policy to public read (download)..."
+              mc anonymous set download algosu/avatars
+
+              echo "MinIO init completed successfully."
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"

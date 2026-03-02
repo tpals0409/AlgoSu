@@ -28,6 +28,6 @@ export class UpdateAiResultDto {
   optimizedCode?: string | null;
 
   @IsString()
-  @IsIn(['completed', 'delayed', 'failed'])
+  @IsIn(['completed', 'delayed', 'failed', 'skipped'])
   analysisStatus!: string;
 }

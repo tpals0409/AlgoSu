@@ -1,28 +1,52 @@
+/**
+ * @file 스터디 목록 페이지 (v2 디자인 시스템)
+ * @domain study
+ * @layer page
+ * @related StudyContext, studyApi, AppLayout
+ */
+
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import type { ReactNode } from 'react';
-import { Users } from 'lucide-react';
+import { Users, Plus, ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { SkeletonCard } from '@/components/ui/Skeleton';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useStudy, type Study } from '@/contexts/StudyContext';
 import { studyApi, ApiError } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 
+// ─── HELPERS ─────────────────────────────
+
+/**
+ * 스터디 카드 내 멤버 수 표시 텍스트
+ * @domain study
+ */
+function formatMemberCount(count?: number): string {
+  if (count === undefined) return '';
+  return `${count}명`;
+}
+
+// ─── RENDER ──────────────────────────────
+
+/**
+ * 스터디 목록 페이지 — 참여 중인 스터디 + 초대코드 가입
+ * @domain study
+ */
 export default function StudiesPage(): ReactNode {
   const router = useRouter();
   const { isAuthenticated } = useRequireAuth();
   const { setCurrentStudy, setStudies } = useStudy();
 
+  // ─── STATE ─────────────────────────────
   const [studies, setLocalStudies] = useState<Study[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,6 +55,12 @@ export default function StudiesPage(): ReactNode {
   const [isJoining, setIsJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
 
+  // ─── API ───────────────────────────────
+
+  /**
+   * 스터디 목록 로드
+   * @domain study
+   */
   const loadStudies = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -45,20 +75,44 @@ export default function StudiesPage(): ReactNode {
     }
   }, [setStudies]);
 
+  // ─── EFFECTS ───────────────────────────
+
   useEffect(() => {
     if (isAuthenticated) {
       void loadStudies();
     }
   }, [isAuthenticated, loadStudies]);
 
+  // ─── HANDLERS ──────────────────────────
+
+  /**
+   * 스터디 카드 클릭 → 스터디 상세 이동
+   * @domain study
+   */
+  const handleStudyClick = useCallback(
+    (study: Study) => {
+      router.push(`/studies/${study.id}`);
+    },
+    [router],
+  );
+
+  /**
+   * 스터디 선택 (대시보드 이동)
+   * @domain study
+   */
   const handleSelectStudy = useCallback(
     (study: Study) => {
       setCurrentStudy(study.id);
-      router.push('/problems');
+      router.push('/dashboard');
     },
     [setCurrentStudy, router],
   );
 
+  /**
+   * 초대코드로 스터디 가입
+   * @domain study
+   * @guard invite-code-lock
+   */
   const handleJoin = useCallback(async () => {
     if (!joinCode.trim()) return;
     setJoinError(null);
@@ -69,7 +123,7 @@ export default function StudiesPage(): ReactNode {
       setLocalStudies(updated);
       setStudies(updated);
       setCurrentStudy(joined.id);
-      router.push('/problems');
+      router.push(`/studies/${joined.id}`);
     } catch (err: unknown) {
       if (err instanceof ApiError) {
         setJoinError(err.message);
@@ -84,58 +138,91 @@ export default function StudiesPage(): ReactNode {
   return (
     <AppLayout>
       <div className="mx-auto max-w-2xl space-y-6">
+        {/* 페이지 헤더 */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-foreground">내 스터디</h1>
-            <p className="mt-0.5 text-sm text-text2">참여 중인 스터디를 선택하세요.</p>
+            <h1 className="text-xl font-semibold text-text">내 스터디</h1>
+            <p className="mt-0.5 text-sm text-text-2">
+              참여 중인 스터디를 선택하거나 새로 만드세요.
+            </p>
           </div>
           <Button variant="primary" size="sm" asChild>
-            <Link href="/studies/create">새 스터디 만들기</Link>
+            <Link href="/studies/create">
+              <Plus className="h-3.5 w-3.5" aria-hidden />
+              스터디 만들기
+            </Link>
           </Button>
         </div>
 
+        {/* 에러 */}
         {error && (
           <Alert variant="error" onClose={() => setError(null)}>
             {error}
           </Alert>
         )}
 
+        {/* 스터디 목록 */}
         {isLoading ? (
-          <div className="flex justify-center py-12">
-            <LoadingSpinner />
+          <div className="space-y-3">
+            <SkeletonCard />
+            <SkeletonCard />
           </div>
         ) : studies.length === 0 ? (
           <EmptyState
             icon={Users}
             title="참여 중인 스터디가 없습니다"
             description="새 스터디를 만들거나 초대 코드로 가입하세요."
-            action={{ label: '스터디 만들기', onClick: () => router.push('/studies/create') }}
+            action={{
+              label: '스터디 만들기',
+              onClick: () => router.push('/studies/create'),
+            }}
           />
         ) : (
           <div className="space-y-3">
             {studies.map((study) => (
-              <Card key={study.id} className="cursor-pointer transition-colors hover:border-primary-500/50">
+              <Card
+                key={study.id}
+                className="cursor-pointer transition-all hover:border-primary/50 hover:shadow-hover"
+              >
                 <CardContent className="flex items-center justify-between py-4">
                   <button
                     type="button"
                     className="min-w-0 flex-1 text-left"
-                    onClick={() => router.push(`/studies/${study.id}`)}
+                    onClick={() => handleStudyClick(study)}
                   >
-                    <p className="truncate font-medium text-foreground">{study.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="truncate font-medium text-text">
+                        {study.name}
+                      </p>
+                      <Badge
+                        variant={study.role === 'ADMIN' ? 'info' : 'default'}
+                      >
+                        {study.role === 'ADMIN' ? '관리자' : '멤버'}
+                      </Badge>
+                    </div>
                     {study.description && (
-                      <p className="mt-0.5 truncate text-sm text-text2">{study.description}</p>
+                      <p className="mt-1 truncate text-sm text-text-2">
+                        {study.description}
+                      </p>
+                    )}
+                    {study.memberCount !== undefined && (
+                      <p className="mt-1 text-xs text-text-3">
+                        <Users
+                          className="mr-1 inline-block h-3 w-3"
+                          aria-hidden
+                        />
+                        {formatMemberCount(study.memberCount)}
+                      </p>
                     )}
                   </button>
-                  <div className="flex items-center gap-2 ml-3 shrink-0">
-                    <Badge variant={study.role === 'ADMIN' ? 'info' : 'default'}>
-                      {study.role === 'ADMIN' ? '관리자' : '멤버'}
-                    </Badge>
+                  <div className="ml-3 flex shrink-0 items-center gap-2">
                     <Button
                       variant="primary"
                       size="sm"
                       onClick={() => handleSelectStudy(study)}
                     >
                       선택
+                      <ArrowRight className="h-3 w-3" aria-hidden />
                     </Button>
                   </div>
                 </CardContent>
@@ -145,33 +232,40 @@ export default function StudiesPage(): ReactNode {
         )}
 
         {/* 초대 코드로 가입 */}
-        <div className="rounded-card border border-border bg-bg2 p-4 pb-2">
-          <p className="mb-3 text-sm font-medium text-foreground">초대 코드로 가입</p>
-          <div className="flex gap-2 items-start">
-            <div className="flex-1">
-              <Input
-                placeholder="초대 코드 입력"
-                value={joinCode}
-                onChange={(e) => {
-                  setJoinCode(e.target.value);
-                  setJoinError(null);
-                }}
-                disabled={isJoining}
-              />
-              <p className={cn('mt-1 text-[11px] min-h-[18px]', joinError ? 'text-[var(--color-error)]' : 'text-transparent')}>
-                {joinError ?? '\u00A0'}
-              </p>
+        <Card>
+          <CardContent className="space-y-3 py-4">
+            <p className="text-sm font-medium text-text">초대 코드로 가입</p>
+            <div className="flex items-start gap-2">
+              <div className="flex-1">
+                <Input
+                  placeholder="초대 코드 입력"
+                  value={joinCode}
+                  onChange={(e) => {
+                    setJoinCode(e.target.value);
+                    setJoinError(null);
+                  }}
+                  disabled={isJoining}
+                />
+                <p
+                  className={cn(
+                    'mt-1 min-h-[18px] text-[11px]',
+                    joinError ? 'text-error' : 'text-transparent',
+                  )}
+                >
+                  {joinError ?? '\u00A0'}
+                </p>
+              </div>
+              <Button
+                variant="primary"
+                size="md"
+                disabled={isJoining || !joinCode.trim()}
+                onClick={() => void handleJoin()}
+              >
+                {isJoining ? '가입 중...' : '가입'}
+              </Button>
             </div>
-            <Button
-              variant="primary"
-              size="md"
-              disabled={isJoining || !joinCode.trim()}
-              onClick={() => void handleJoin()}
-            >
-              {isJoining ? '가입 중...' : '가입'}
-            </Button>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </AppLayout>
   );

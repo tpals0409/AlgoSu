@@ -1,25 +1,27 @@
+/**
+ * @file 문제 생성 페이지 (v2 전면 교체)
+ * @domain problem
+ * @layer page
+ * @related problemApi, solvedacApi, studyApi, DifficultyBadge, Input, AppLayout
+ */
+
 'use client';
 
-import { useState, useEffect, useCallback, type FormEvent, type ReactNode, type KeyboardEvent } from 'react';
+import { useState, useCallback, type FormEvent, type ReactNode, type KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, CheckCircle2, AlertCircle, Search, ExternalLink } from 'lucide-react';
+import { ChevronLeft, CheckCircle2, Search, ExternalLink, Plus, FileText, Clock } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from '@/components/ui/Card';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Alert } from '@/components/ui/Alert';
-import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
 import { InlineSpinner } from '@/components/ui/LoadingSpinner';
 import { useStudy } from '@/contexts/StudyContext';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { problemApi, solvedacApi, studyApi, type CreateProblemData, type SolvedacProblemInfo } from '@/lib/api';
 import { DIFFICULTIES, DIFFICULTY_LABELS, LANGUAGES, LANGUAGE_VALUES } from '@/lib/constants';
+
+// ─── TYPES ────────────────────────────────
 
 interface FormState {
   title: string;
@@ -36,17 +38,24 @@ interface FormErrors {
   title?: string;
   weekNumber?: string;
   deadline?: string;
-  allowedLanguages?: string;
 }
 
-/** 현재 날짜 기준 "X월Y주차" 문자열 생성 */
+// ─── HELPERS ──────────────────────────────
+
+/**
+ * 현재 날짜 기준 "X월Y주차" 문자열 생성
+ * @domain problem
+ */
 function getCurrentWeekLabel(date: Date = new Date()): string {
   const month = date.getMonth() + 1;
   const week = Math.ceil(date.getDate() / 7);
   return `${month}월${week}주차`;
 }
 
-/** 선택 가능한 주차 목록 생성 (이번 달 전체 + 다음 달 1주차) */
+/**
+ * 선택 가능한 주차 목록 생성
+ * @domain problem
+ */
 function getWeekOptions(): string[] {
   const now = new Date();
   const month = now.getMonth() + 1;
@@ -63,7 +72,10 @@ function getWeekOptions(): string[] {
 
 const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
 
-/** 주차 문자열("3월1주차")에서 해당 주의 월~일 날짜 목록 반환 */
+/**
+ * 주차 문자열에서 해당 주의 날짜 목록 반환
+ * @domain problem
+ */
 function getWeekDates(weekLabel: string): { label: string; value: string }[] {
   const match = weekLabel.match(/^(\d+)월(\d+)주차$/);
   if (!match) return [];
@@ -71,7 +83,6 @@ function getWeekDates(weekLabel: string): { label: string; value: string }[] {
   const week = Number(match[2]);
   const now = new Date();
   const year = now.getFullYear();
-  // 주차가 다음 달 1주차인 경우 연도 보정
   const adjustedYear = month < now.getMonth() + 1 && month === 1 ? year + 1 : year;
 
   const startDay = (week - 1) * 7 + 1;
@@ -92,21 +103,33 @@ function getWeekDates(weekLabel: string): { label: string; value: string }[] {
 
 function validateForm(form: FormState): FormErrors {
   const errors: FormErrors = {};
-  if (!form.title.trim()) {
-    errors.title = '문제 제목을 입력해주세요.';
-  }
-  if (!form.weekNumber.trim()) {
-    errors.weekNumber = '주차를 선택해주세요.';
-  }
-  if (!form.deadline) {
-    errors.deadline = '마감일을 선택해주세요.';
-  }
+  if (!form.title.trim()) errors.title = '문제 제목을 입력해주세요.';
+  if (!form.weekNumber.trim()) errors.weekNumber = '주차를 선택해주세요.';
+  if (!form.deadline) errors.deadline = '마감일을 선택해주세요.';
   return errors;
 }
 
+// ─── SELECT STYLE ─────────────────────────
+
+const selectClass =
+  'h-[40px] w-full px-3 pr-8 rounded-btn border border-border bg-input-bg text-text text-xs outline-none cursor-pointer transition-[border-color] duration-150 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50 appearance-none' +
+  " bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239C9A95%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_10px_center]";
+
+const labelClass = 'block text-[11px] font-medium text-text-2 mb-1.5';
+
+// ─── RENDER ───────────────────────────────
+
+/**
+ * 문제 생성 페이지
+ * @domain problem
+ * @guard ADMIN-only
+ */
 export default function ProblemCreatePage(): ReactNode {
   const router = useRouter();
+  useRequireAuth();
   const { currentStudyId, currentStudyRole } = useStudy();
+
+  // ─── STATE ──────────────────────────────
 
   const [form, setForm] = useState<FormState>(() => ({
     title: '',
@@ -121,36 +144,18 @@ export default function ProblemCreatePage(): ReactNode {
   const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const [created, setCreated] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // 백준 검색
+  // BOJ 검색
   const [bojQuery, setBojQuery] = useState('');
   const [bojSearching, setBojSearching] = useState(false);
   const [bojError, setBojError] = useState<string | null>(null);
   const [bojResult, setBojResult] = useState<SolvedacProblemInfo | null>(null);
   const [bojApplied, setBojApplied] = useState(false);
 
-  // 범용 토스트
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [toastFading, setToastFading] = useState(false);
-  const [cardShake, setCardShake] = useState(false);
+  // ─── HANDLERS ─────────────────────────────
 
-  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
-    setToast({ message, type });
-    setToastFading(false);
-    if (type === 'error') {
-      setCardShake(true);
-      setTimeout(() => setCardShake(false), 600);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!toast) return;
-    const fadeTimer = setTimeout(() => setToastFading(true), 3000);
-    const removeTimer = setTimeout(() => { setToast(null); setToastFading(false); }, 3300);
-    return () => { clearTimeout(fadeTimer); clearTimeout(removeTimer); };
-  }, [toast]);
-
-  const handleBojSearch = async (): Promise<void> => {
+  const handleBojSearch = useCallback(async (): Promise<void> => {
     const id = Number(bojQuery.trim());
     if (!Number.isInteger(id) || id < 1) {
       setBojError('유효한 문제 번호를 입력해주세요.');
@@ -163,7 +168,6 @@ export default function ProblemCreatePage(): ReactNode {
     try {
       const info = await solvedacApi.search(id);
       setBojResult(info);
-      // 검색 성공 시 즉시 폼 자동 채움
       setForm((prev) => ({
         ...prev,
         title: info.title,
@@ -173,13 +177,12 @@ export default function ProblemCreatePage(): ReactNode {
       }));
       setFieldErrors((prev) => ({ ...prev, title: undefined }));
       setBojApplied(true);
-      showToast('문제 정보가 적용되었습니다');
     } catch (err: unknown) {
       setBojError(err instanceof Error ? err.message : '검색에 실패했습니다.');
     } finally {
       setBojSearching(false);
     }
-  };
+  }, [bojQuery]);
 
   const handleBojKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => {
     if (e.key === 'Enter') {
@@ -188,41 +191,20 @@ export default function ProblemCreatePage(): ReactNode {
     }
   };
 
-  // ADMIN 권한 체크
-  if (currentStudyRole !== 'ADMIN') {
-    return (
-      <AppLayout>
-        <div className="space-y-4">
-          <Alert variant="error">문제 생성은 관리자만 가능합니다.</Alert>
-          <Button variant="ghost" size="sm" onClick={() => router.push('/problems')}>
-            <ChevronLeft />
-            문제 목록
-          </Button>
-        </div>
-      </AppLayout>
-    );
-  }
-
   const handleChange = (field: keyof FormState) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-      const value = e.target.value;
       setForm((prev) => ({
         ...prev,
-        [field]: value,
-        // 주차 변경 시 마감일 초기화
+        [field]: e.target.value,
         ...(field === 'weekNumber' ? { deadline: '' } : {}),
       }));
       setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
-
     };
 
   const handleLanguageToggle = (lang: string) => {
     setForm((prev) => {
       const isSelected = prev.allowedLanguages.includes(lang);
-      if (isSelected && prev.allowedLanguages.length <= 1) {
-        showToast('최소 1개 이상 선택해야 합니다.', 'error');
-        return prev;
-      }
+      if (isSelected && prev.allowedLanguages.length <= 1) return prev;
       return {
         ...prev,
         allowedLanguages: isSelected
@@ -234,12 +216,11 @@ export default function ProblemCreatePage(): ReactNode {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
+    setSubmitError(null);
 
     const errors = validateForm(form);
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
-      const firstError = Object.values(errors)[0];
-      if (firstError) showToast(firstError, 'error');
       return;
     }
 
@@ -255,60 +236,63 @@ export default function ProblemCreatePage(): ReactNode {
       if (bojResult?.level) data.level = bojResult.level;
       if (form.deadline) data.deadline = new Date(form.deadline).toISOString();
       if (form.allowedLanguages.length > 0) data.allowedLanguages = form.allowedLanguages;
+      if (bojResult?.tags?.length) data.tags = bojResult.tags;
       if (form.sourceUrl.trim()) data.sourceUrl = form.sourceUrl.trim();
       if (form.sourcePlatform.trim()) data.sourcePlatform = form.sourcePlatform.trim();
 
-      const created = await problemApi.create(data);
+      const createdProblem = await problemApi.create(data);
 
-      // 스터디 멤버에게 알림 전송 (실패해도 문제 생성은 완료)
       if (currentStudyId) {
         studyApi.notifyProblemCreated(currentStudyId, {
-          problemId: created.id,
-          problemTitle: created.title,
+          problemId: createdProblem.id,
+          problemTitle: createdProblem.title,
           weekNumber: data.weekNumber,
-        }).catch(() => { /* 알림 실패는 무시 */ });
+        }).catch(() => {});
       }
 
       setCreated(true);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '';
-      showToast(msg || '문제 생성에 실패했습니다. 다시 시도해주세요.', 'error');
+      setSubmitError(err instanceof Error ? err.message : '문제 생성에 실패했습니다.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  return (
-    <AppLayout>
-      <div className="mx-auto max-w-lg">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push('/problems')}
-          className="mb-4 -ml-1"
-        >
-          <ChevronLeft />
-          문제 목록
-        </Button>
+  // ─── GUARDS ─────────────────────────────
 
-        {created ? (
+  if (currentStudyRole !== 'ADMIN') {
+    return (
+      <AppLayout>
+        <div className="space-y-4">
+          <Alert variant="error">문제 생성은 관리자만 가능합니다.</Alert>
+          <Button variant="ghost" size="sm" onClick={() => router.push('/problems')}>
+            <ChevronLeft />
+            문제 목록
+          </Button>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  // ─── SUCCESS ────────────────────────────
+
+  if (created) {
+    return (
+      <AppLayout>
+        <div className="mx-auto max-w-[640px]">
           <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12 gap-4">
-              <div className="flex items-center justify-center rounded-full bg-[rgba(80,200,120,0.22)] p-4">
+            <CardContent className="flex flex-col items-center justify-center py-16 gap-4">
+              <div className="flex items-center justify-center rounded-full bg-success-soft p-4">
                 <CheckCircle2 className="h-8 w-8 text-success" aria-hidden />
               </div>
               <div className="text-center">
-                <p className="text-sm font-medium text-foreground">문제가 등록되었습니다!</p>
-                <p className="mt-1 text-[11px] text-muted-foreground">
+                <p className="text-sm font-medium text-text">문제가 등록되었습니다!</p>
+                <p className="mt-1 text-[11px] text-text-3">
                   추가로 문제를 등록하거나 목록으로 돌아갈 수 있습니다.
                 </p>
               </div>
               <div className="flex gap-3 mt-2">
-                <Button
-                  variant="ghost"
-                  size="md"
-                  onClick={() => router.push('/problems')}
-                >
+                <Button variant="ghost" size="md" onClick={() => router.push('/problems')}>
                   목록으로
                 </Button>
                 <Button
@@ -326,12 +310,12 @@ export default function ProblemCreatePage(): ReactNode {
                       sourcePlatform: 'BOJ',
                     });
                     setFieldErrors({});
-              
                     setCreated(false);
                     setBojQuery('');
                     setBojResult(null);
                     setBojError(null);
                     setBojApplied(false);
+                    setSubmitError(null);
                   }}
                 >
                   다시 등록
@@ -339,172 +323,206 @@ export default function ProblemCreatePage(): ReactNode {
               </div>
             </CardContent>
           </Card>
-        ) : (
-        <Card className={cardShake ? 'animate-shake' : ''} style={cardShake ? { boxShadow: '0 0 0 3px rgba(148, 126, 176, 0.4)' } : undefined}>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  // ─── FORM ───────────────────────────────
+
+  return (
+    <AppLayout>
+      <div className="mx-auto max-w-[640px] space-y-4">
+        {/* 뒤로가기 */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push('/problems')}
+          className="-ml-1"
+        >
+          <ChevronLeft />
+          문제 목록
+        </Button>
+
+        {/* 페이지 타이틀 */}
+        <div className="text-center">
+          <h1 className="text-xl font-bold tracking-tight text-text">문제 추가</h1>
+          <p className="mt-1 text-[13px] text-text-3">백준 문제를 검색하고 스터디에 추가하세요</p>
+        </div>
+
+        {/* 카드 1: 백준 검색 */}
+        <Card>
           <CardHeader>
-            <CardTitle>새 문제 등록</CardTitle>
-            <CardDescription>스터디에 새로운 알고리즘 문제를 추가합니다.</CardDescription>
-
-            {/* 백준 문제 검색 — 헤더 영역에 통합 */}
-            <div className="mt-3 space-y-2">
-              <div className="relative flex gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text3 pointer-events-none" />
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    placeholder="백준 문제번호로 검색"
-                    value={bojQuery}
-                    onChange={(e) => { setBojQuery(e.target.value); setBojError(null); }}
-                    onKeyDown={handleBojKeyDown}
-                    disabled={bojSearching}
-                    className="w-full rounded-btn border border-border bg-bg2 text-text1 text-xs outline-none transition-[border-color] duration-150 placeholder:text-text3 focus:border-primary-500 disabled:cursor-not-allowed disabled:opacity-50"
-                    style={{ padding: '8px 12px 8px 30px', fontSize: '12px' }}
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={bojSearching || !bojQuery.trim()}
-                  onClick={() => void handleBojSearch()}
-                  className="shrink-0"
-                >
-                  {bojSearching ? <InlineSpinner /> : '검색'}
-                </Button>
+            <CardTitle className="flex items-center gap-2">
+              <div className="flex items-center justify-center w-7 h-7 rounded-md bg-primary-soft text-primary">
+                <Search className="h-3.5 w-3.5" />
               </div>
-              {bojError && (
-                <p className="text-[11px] text-[var(--color-error)]">{bojError}</p>
-              )}
-              {bojResult && (
-                <div className="flex items-center gap-2.5 rounded-btn bg-bg2 px-3 py-2 animate-fade-in">
-                  <span className="text-xs font-mono text-text3">#{bojResult.problemId}</span>
-                  <span className="text-xs font-medium text-text1 truncate">{bojResult.title}</span>
-                  {bojResult.difficulty && (
-                    <DifficultyBadge difficulty={bojResult.difficulty} level={bojResult.level} showDot={false} />
-                  )}
-                  <a
-                    href={bojResult.sourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="ml-auto shrink-0 text-text3 hover:text-primary-500 transition-colors"
-                    aria-label="백준에서 보기"
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
-                </div>
-              )}
-              {bojResult && bojResult.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 -mt-0.5">
-                  {bojResult.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="text-[10px] px-1.5 py-0.5 rounded-sm bg-bg3 text-text2"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
+              백준 문제 검색
+            </CardTitle>
           </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-3 pointer-events-none" />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="문제 번호 (예: 1000)"
+                  value={bojQuery}
+                  onChange={(e) => { setBojQuery(e.target.value); setBojError(null); }}
+                  onKeyDown={handleBojKeyDown}
+                  disabled={bojSearching}
+                  className="w-full h-[40px] pl-8 pr-3 rounded-btn border border-border bg-input-bg text-text text-xs outline-none transition-[border-color] duration-150 placeholder:text-text-3 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="primary"
+                size="md"
+                disabled={bojSearching || !bojQuery.trim()}
+                onClick={() => void handleBojSearch()}
+                className="shrink-0"
+              >
+                {bojSearching ? <InlineSpinner /> : '검색'}
+              </Button>
+            </div>
 
+            {bojError && (
+              <p className="text-[11px] text-error">{bojError}</p>
+            )}
+
+            {bojResult && (
+              <div className="flex items-center gap-2.5 rounded-btn bg-primary-soft border border-border px-3 py-2.5">
+                <div className="flex items-center justify-center w-9 h-9 rounded-md bg-bg-card border border-border shrink-0">
+                  <CheckCircle2 className="h-4 w-4 text-success" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-text truncate">{bojResult.title}</p>
+                  <p className="text-[11px] text-text-3 mt-0.5">
+                    #{bojResult.problemId}
+                    {bojResult.difficulty && ` / ${bojResult.difficulty}`}
+                  </p>
+                </div>
+                <a
+                  href={bojResult.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 text-text-3 hover:text-primary transition-colors"
+                  aria-label="백준에서 보기"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              </div>
+            )}
+
+            {bojResult && bojResult.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {bojResult.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-full bg-bg-alt px-2 py-0.5 text-[10px] font-medium text-text-2"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* 카드 2: 기본 정보 */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <div className="flex items-center justify-center w-7 h-7 rounded-md bg-primary-soft text-primary">
+                <FileText className="h-3.5 w-3.5" />
+              </div>
+              기본 정보
+            </CardTitle>
+          </CardHeader>
           <form onSubmit={(e) => void handleSubmit(e)} noValidate>
             <CardContent className="space-y-4">
-
               <Input
-                label="문제 제목"
-                placeholder=""
+                label="제목"
+                placeholder="문제 제목"
                 value={form.title}
                 onChange={handleChange('title')}
                 error={fieldErrors.title}
                 disabled={isLoading || bojApplied}
               />
 
-              {/* 설명 textarea */}
               <div className="flex flex-col">
-                <label
-                  htmlFor="input-description"
-                  className="text-[11px] font-medium text-text2 mb-[5px]"
-                >
-                  설명 (선택)
-                </label>
+                <label htmlFor="create-description" className={labelClass}>설명 (선택)</label>
                 <textarea
-                  id="input-description"
+                  id="create-description"
                   placeholder="문제에 대한 설명을 입력하세요"
                   value={form.description}
                   onChange={handleChange('description')}
                   disabled={isLoading}
                   rows={4}
-                  className="w-full px-3 py-2 rounded-btn border border-border bg-bg2 text-text1 text-xs outline-none transition-[border-color] duration-150 placeholder:text-text3 focus:border-primary-500 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
-                  style={{ padding: '8px 12px', fontSize: '12px' }}
+                  className="w-full px-3 py-2 rounded-btn border border-border bg-input-bg text-text text-xs outline-none transition-[border-color] duration-150 placeholder:text-text-3 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50 resize-y leading-relaxed"
                 />
               </div>
 
-              {/* 난이도 드롭다운 */}
-              <div className="flex flex-col">
-                <label
-                  htmlFor="input-difficulty"
-                  className="text-[11px] font-medium text-text2 mb-[5px]"
-                >
-                  난이도
-                </label>
-                <select
-                  id="input-difficulty"
-                  value={form.difficulty}
-                  onChange={handleChange('difficulty')}
-                  disabled={isLoading || bojApplied}
-                  className="w-full px-3 py-2 rounded-btn border border-border bg-bg2 text-text1 text-xs outline-none transition-[border-color] duration-150 focus:border-primary-500 disabled:cursor-not-allowed disabled:opacity-50"
-                  style={{ padding: '8px 12px', fontSize: '12px' }}
-                >
-                  <option value="">선택 안 함</option>
-                  {DIFFICULTIES.map((d) => (
-                    <option key={d} value={d}>
-                      {DIFFICULTY_LABELS[d]}
-                    </option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col">
+                  <label htmlFor="create-difficulty" className={labelClass}>난이도</label>
+                  <select
+                    id="create-difficulty"
+                    value={form.difficulty}
+                    onChange={handleChange('difficulty')}
+                    disabled={isLoading || bojApplied}
+                    className={selectClass}
+                  >
+                    <option value="">선택 안 함</option>
+                    {DIFFICULTIES.map((d) => (
+                      <option key={d} value={d}>{DIFFICULTY_LABELS[d]}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col">
+                  <label htmlFor="create-weekNumber" className={labelClass}>
+                    주차 <span className="text-error text-[10px]">필수</span>
+                  </label>
+                  <select
+                    id="create-weekNumber"
+                    value={form.weekNumber}
+                    onChange={handleChange('weekNumber')}
+                    disabled={isLoading}
+                    className={`${selectClass} ${fieldErrors.weekNumber ? 'border-error' : ''}`}
+                  >
+                    {getWeekOptions().map((w) => (
+                      <option key={w} value={w}>{w}</option>
+                    ))}
+                  </select>
+                  {fieldErrors.weekNumber && (
+                    <p className="mt-1 text-[11px] text-error">{fieldErrors.weekNumber}</p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+
+            {/* 카드 3: 마감 & 설정 (같은 폼 내) */}
+            <div className="px-5 pb-5 space-y-4">
+              <div className="flex items-center gap-2 pt-2">
+                <div className="flex items-center justify-center w-7 h-7 rounded-md bg-primary-soft text-primary">
+                  <Clock className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-sm font-semibold text-text">마감 & 설정</span>
               </div>
 
               <div className="flex flex-col">
-                <label
-                  htmlFor="input-weekNumber"
-                  className="text-[11px] font-medium text-text2 mb-[5px]"
-                >
-                  주차
+                <label htmlFor="create-deadline" className={labelClass}>
+                  마감일 <span className="text-error text-[10px]">필수</span>
                 </label>
                 <select
-                  id="input-weekNumber"
-                  value={form.weekNumber}
-                  onChange={handleChange('weekNumber')}
-                  disabled={isLoading}
-                  className={`w-full px-3 py-2 rounded-btn border bg-bg2 text-text1 text-xs outline-none transition-[border-color] duration-150 focus:border-primary-500 disabled:cursor-not-allowed disabled:opacity-50 ${fieldErrors.weekNumber ? 'border-[var(--color-error)]' : 'border-border'}`}
-                  style={{ padding: '8px 12px', fontSize: '12px' }}
-                >
-                  {getWeekOptions().map((w) => (
-                    <option key={w} value={w}>{w}</option>
-                  ))}
-                </select>
-                {fieldErrors.weekNumber && (
-                  <p className="mt-1 text-[11px] text-[var(--color-error)]">{fieldErrors.weekNumber}</p>
-                )}
-              </div>
-
-              <div className="flex flex-col">
-                <label
-                  htmlFor="input-deadline"
-                  className="text-[11px] font-medium text-text2 mb-[5px]"
-                >
-                  마감일
-                </label>
-                <select
-                  id="input-deadline"
+                  id="create-deadline"
                   value={form.deadline}
                   onChange={handleChange('deadline')}
                   disabled={isLoading}
-                  className={`w-full px-3 py-2 rounded-btn border bg-bg2 text-text1 text-xs outline-none transition-[border-color] duration-150 focus:border-primary-500 disabled:cursor-not-allowed disabled:opacity-50 ${fieldErrors.deadline ? 'border-[var(--color-error)]' : 'border-border'}`}
-                  style={{ padding: '8px 12px', fontSize: '12px' }}
+                  className={`${selectClass} ${fieldErrors.deadline ? 'border-error' : ''}`}
                 >
                   <option value="" disabled>요일을 선택하세요</option>
                   {getWeekDates(form.weekNumber).map((d) => (
@@ -512,18 +530,12 @@ export default function ProblemCreatePage(): ReactNode {
                   ))}
                 </select>
                 {fieldErrors.deadline && (
-                  <p className="mt-1 text-[11px] text-[var(--color-error)]">{fieldErrors.deadline}</p>
+                  <p className="mt-1 text-[11px] text-error">{fieldErrors.deadline}</p>
                 )}
               </div>
 
-              {/* 허용 언어 */}
               <div className="flex flex-col">
-                <span className="text-[11px] font-medium text-text2 mb-[5px]">
-                  허용 언어
-                </span>
-                <p className="text-[10px] text-muted-foreground mb-1.5">
-                  탭하여 허용/해제할 수 있습니다.
-                </p>
+                <span className={labelClass}>허용 언어</span>
                 <div className="flex flex-wrap gap-1.5">
                   {LANGUAGES.map((lang) => {
                     const selected = form.allowedLanguages.includes(lang.value);
@@ -533,12 +545,15 @@ export default function ProblemCreatePage(): ReactNode {
                         type="button"
                         onClick={() => handleLanguageToggle(lang.value)}
                         disabled={isLoading}
-                        className={`inline-flex items-center gap-1 text-[11px] font-medium leading-none px-2 py-[3px] rounded-[20px] transition-colors duration-150 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${
+                        className={`inline-flex items-center gap-1 text-[11px] font-medium px-3 py-1.5 rounded-badge border transition-colors duration-150 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${
                           selected
-                            ? 'text-[var(--color-main)] bg-[rgba(148,126,176,0.22)]'
-                            : 'text-[var(--color-sub)] bg-[rgba(163,165,195,0.12)] line-through'
+                            ? 'bg-primary-soft text-primary border-primary/30'
+                            : 'bg-transparent text-text-3 border-border line-through'
                         }`}
                       >
+                        {selected && (
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        )}
                         {lang.label}
                       </button>
                     );
@@ -548,7 +563,6 @@ export default function ProblemCreatePage(): ReactNode {
 
               <Input
                 label="출처 URL"
-                placeholder=""
                 value={form.sourceUrl}
                 onChange={handleChange('sourceUrl')}
                 disabled={isLoading || bojApplied}
@@ -556,18 +570,26 @@ export default function ProblemCreatePage(): ReactNode {
 
               <Input
                 label="출처 플랫폼"
-                placeholder=""
                 value={form.sourcePlatform}
                 onChange={handleChange('sourcePlatform')}
                 disabled
               />
-            </CardContent>
+            </div>
+
+            {/* 에러 */}
+            {submitError && (
+              <div className="px-5 pb-3">
+                <Alert variant="error" onClose={() => setSubmitError(null)}>
+                  {submitError}
+                </Alert>
+              </div>
+            )}
 
             <CardFooter className="flex gap-3">
               <Button
                 type="button"
                 variant="ghost"
-                size="md"
+                size="lg"
                 className="flex-1"
                 disabled={isLoading}
                 onClick={() => router.back()}
@@ -577,7 +599,7 @@ export default function ProblemCreatePage(): ReactNode {
               <Button
                 type="submit"
                 variant="primary"
-                size="md"
+                size="lg"
                 className="flex-1"
                 disabled={isLoading}
               >
@@ -587,28 +609,16 @@ export default function ProblemCreatePage(): ReactNode {
                     생성 중...
                   </>
                 ) : (
-                  '문제 등록'
+                  <>
+                    <Plus className="h-4 w-4" />
+                    문제 생성
+                  </>
                 )}
               </Button>
             </CardFooter>
           </form>
         </Card>
-        )}
       </div>
-
-      {/* 토스트 */}
-      {toast && (
-        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] transition-opacity duration-300 ${toastFading ? 'opacity-0' : 'opacity-100 animate-fade-in'}`}>
-          <div className="flex items-center gap-2 rounded-card border border-border bg-surface px-4 py-2.5 shadow-modal">
-            {toast.type === 'error'
-              ? <AlertCircle className="h-3.5 w-3.5 text-[var(--color-error)] shrink-0" aria-hidden />
-              : <CheckCircle2 className="h-3.5 w-3.5 text-[var(--color-success)] shrink-0" aria-hidden />}
-            <span className="text-[12px] font-medium text-foreground">
-              {toast.message}
-            </span>
-          </div>
-        </div>
-      )}
     </AppLayout>
   );
 }

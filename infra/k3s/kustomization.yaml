@@ -10,11 +10,12 @@ resources:
   # 네임스페이스
   - namespace.yaml
 
-  # 인프라 (DB, 캐시, 메시지 큐)
+  # 인프라 (DB, 캐시, 메시지 큐, 오브젝트 스토리지)
   - postgres.yaml
   - postgres-problem.yaml
   - redis.yaml
   - rabbitmq.yaml
+  - minio.yaml
 
   # 애플리케이션 서비스
   - gateway.yaml

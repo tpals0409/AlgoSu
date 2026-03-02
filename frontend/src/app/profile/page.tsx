@@ -1,8 +1,25 @@
+/**
+ * @file 프로필 페이지 (v2 디자인 시스템)
+ * @domain identity
+ * @layer page
+ * @related AuthContext, authApi, AppLayout, avatars
+ */
+
 'use client';
 
 import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, Github, LogOut, RefreshCw, Link2, Unlink } from 'lucide-react';
+import {
+  User,
+  Github,
+  LogOut,
+  RefreshCw,
+  Link2,
+  Unlink,
+  Pencil,
+  Check,
+  X,
+} from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -10,33 +27,111 @@ import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { InlineSpinner } from '@/components/ui/LoadingSpinner';
+import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudy } from '@/contexts/StudyContext';
 import { authApi } from '@/lib/api';
 import { getGitHubUsername } from '@/lib/auth';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { AVATAR_PRESETS, getAvatarSrc } from '@/lib/avatars';
+import { cn } from '@/lib/utils';
 
-function getInitials(email?: string | null): string {
-  const src = email ?? '';
-  return src.slice(0, 2).toUpperCase();
-}
+// ─── CONSTANTS ───────────────────────────
 
+const OAUTH_PROVIDER_LABELS: Record<string, string> = {
+  GOOGLE: 'Google',
+  NAVER: 'Naver',
+  KAKAO: 'Kakao',
+};
+
+// ─── RENDER ──────────────────────────────
+
+/**
+ * 사용자 프로필 페이지 — 아바타, 계정 정보, GitHub 연동, 소속 스터디
+ * @domain identity
+ */
 export default function ProfilePage(): ReactNode {
   const router = useRouter();
   const { isReady } = useRequireAuth();
-  const { user, logout, githubConnected, updateGitHubStatus } = useAuth();
+  const { user, logout, githubConnected, updateGitHubStatus, updateAvatar } =
+    useAuth();
   const { studies } = useStudy();
 
+  // ─── STATE ─────────────────────────────
   const [error, setError] = useState<string | null>(null);
   const [githubUsername, setGithubUsernameState] = useState<string | null>(null);
   const [githubLoading, setGithubLoading] = useState(false);
 
-  // GitHub username 초기화 (표시용)
+  // 닉네임 인라인 편집
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [nameLoading, setNameLoading] = useState(false);
+  const [displayName, setDisplayName] = useState<string | null>(null);
+
+  const [oauthProvider, setOauthProvider] = useState<string | null>(null);
+
+  // 아바타 선택
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [avatarLoading, setAvatarLoading] = useState(false);
+
+  // ─── EFFECTS ───────────────────────────
+
   useEffect(() => {
     setGithubUsernameState(getGitHubUsername());
+    authApi
+      .getProfile()
+      .then((profile) => {
+        setDisplayName(profile.name);
+        setOauthProvider(profile.oauth_provider);
+      })
+      .catch(() => {
+        // 프로필 로드 실패 시 무시
+      });
   }, []);
 
-  // GitHub 연동 시작
+  // ─── HANDLERS ──────────────────────────
+
+  /**
+   * 닉네임 편집 시작
+   * @domain identity
+   */
+  const handleStartEditName = useCallback(() => {
+    setEditName(displayName ?? user?.email?.split('@')[0] ?? '');
+    setIsEditingName(true);
+  }, [displayName, user]);
+
+  /**
+   * 닉네임 저장
+   * @domain identity
+   */
+  const handleSaveName = useCallback(async () => {
+    const trimmed = editName.trim();
+    if (!trimmed) return;
+    setNameLoading(true);
+    setError(null);
+    try {
+      const { name } = await authApi.updateProfile({ name: trimmed });
+      setDisplayName(name);
+      setIsEditingName(false);
+    } catch {
+      setError('닉네임 변경에 실패했습니다.');
+    } finally {
+      setNameLoading(false);
+    }
+  }, [editName]);
+
+  /**
+   * 닉네임 편집 취소
+   * @domain identity
+   */
+  const handleCancelEditName = useCallback(() => {
+    setIsEditingName(false);
+  }, []);
+
+  /**
+   * GitHub 연동
+   * @domain github
+   */
   const handleLinkGitHub = useCallback(async () => {
     setError(null);
     setGithubLoading(true);
@@ -49,7 +144,10 @@ export default function ProfilePage(): ReactNode {
     }
   }, []);
 
-  // GitHub 연동 해제
+  /**
+   * GitHub 연동 해제
+   * @domain github
+   */
   const handleUnlinkGitHub = useCallback(async () => {
     setError(null);
     setGithubLoading(true);
@@ -64,7 +162,10 @@ export default function ProfilePage(): ReactNode {
     }
   }, [updateGitHubStatus]);
 
-  // GitHub 재연동
+  /**
+   * GitHub 재연동
+   * @domain github
+   */
   const handleRelinkGitHub = useCallback(async () => {
     setError(null);
     setGithubLoading(true);
@@ -77,15 +178,41 @@ export default function ProfilePage(): ReactNode {
     }
   }, []);
 
+  /**
+   * 아바타 선택
+   * @domain identity
+   */
+  const handleSelectAvatar = useCallback(
+    async (presetKey: string) => {
+      setAvatarLoading(true);
+      setError(null);
+      try {
+        await updateAvatar(presetKey);
+        setShowAvatarPicker(false);
+      } catch {
+        setError('아바타 변경에 실패했습니다.');
+      } finally {
+        setAvatarLoading(false);
+      }
+    },
+    [updateAvatar],
+  );
+
+  /**
+   * 로그아웃
+   * @domain identity
+   */
   const handleLogout = useCallback(() => {
     logout();
     router.replace('/login');
   }, [logout, router]);
 
+  // ─── LOADING ───────────────────────────
+
   if (!isReady) {
     return (
       <AppLayout>
-        <div className="space-y-4">
+        <div className="mx-auto max-w-xl space-y-4">
           <Skeleton height={32} width="30%" />
           <Skeleton height={200} />
           <Skeleton height={150} />
@@ -96,11 +223,11 @@ export default function ProfilePage(): ReactNode {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
+      <div className="mx-auto max-w-xl space-y-6">
         {/* 페이지 헤더 */}
         <div>
-          <h1 className="text-base font-semibold text-foreground">프로필</h1>
-          <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
+          <h1 className="text-lg font-semibold text-text">프로필</h1>
+          <p className="mt-0.5 text-xs text-text-3">
             계정 정보 및 연동 설정
           </p>
         </div>
@@ -111,85 +238,183 @@ export default function ProfilePage(): ReactNode {
           </Alert>
         )}
 
-        {/* 사용자 정보 카드 */}
+        {/* 프로필 카드 */}
         <Card>
-          <CardHeader>
-            <CardTitle>계정 정보</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="py-5">
             <div className="flex items-center gap-4">
               {/* 아바타 */}
-              <div
-                className="flex shrink-0 items-center justify-center rounded-full text-white"
-                style={{
-                  width: '56px',
-                  height: '56px',
-                  background: 'linear-gradient(135deg, var(--color-main), var(--color-sub))',
-                  fontSize: '18px',
-                  fontWeight: 600,
-                }}
+              <button
+                type="button"
+                className="shrink-0 overflow-hidden rounded-full ring-2 ring-transparent transition-all hover:ring-primary-light focus-visible:outline-none focus-visible:ring-primary"
+                style={{ width: '64px', height: '64px' }}
+                onClick={() => setShowAvatarPicker((v) => !v)}
+                aria-label="아바타 변경"
+                disabled={avatarLoading}
               >
-                {getInitials(user?.email)}
-              </div>
+                <img
+                  src={getAvatarSrc(user?.avatarPreset ?? 'default')}
+                  alt="프로필 아바타"
+                  width={64}
+                  height={64}
+                  className="h-full w-full"
+                />
+              </button>
 
               <div className="min-w-0 flex-1">
-                {/* 이메일 */}
-                <p className="text-sm font-medium text-foreground truncate">
-                  {user?.email ?? '-'}
-                </p>
+                {/* 닉네임 (인라인 편집) */}
+                {isEditingName ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') void handleSaveName();
+                        if (e.key === 'Escape') handleCancelEditName();
+                      }}
+                      maxLength={30}
+                      placeholder="닉네임 입력"
+                      className="h-7 text-sm"
+                      autoFocus
+                      disabled={nameLoading}
+                    />
+                    <button
+                      type="button"
+                      className="flex shrink-0 items-center justify-center rounded-md bg-primary text-white transition-opacity hover:opacity-80 disabled:opacity-50"
+                      style={{ width: '28px', height: '28px' }}
+                      onClick={() => void handleSaveName()}
+                      disabled={nameLoading || !editName.trim()}
+                      aria-label="저장"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      className="flex shrink-0 items-center justify-center rounded-md bg-bg-alt text-text-3 transition-colors hover:text-text"
+                      style={{ width: '28px', height: '28px' }}
+                      onClick={handleCancelEditName}
+                      disabled={nameLoading}
+                      aria-label="취소"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-medium text-text">
+                      {displayName ?? user?.email?.split('@')[0] ?? '-'}
+                    </p>
+                    <button
+                      type="button"
+                      className="flex shrink-0 items-center justify-center rounded-md text-text-3 transition-colors hover:bg-bg-alt hover:text-text"
+                      style={{ width: '24px', height: '24px' }}
+                      onClick={handleStartEditName}
+                      aria-label="닉네임 수정"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
+
+                {/* 이메일 + OAuth */}
                 <div className="mt-1 flex items-center gap-2">
-                  <User className="h-3 w-3 text-muted-foreground" aria-hidden />
-                  <span className="font-mono text-[11px] text-muted-foreground">
-                    OAuth 로그인
+                  <User className="h-3 w-3 text-text-3" aria-hidden />
+                  <span className="font-mono text-[11px] text-text-3">
+                    {user?.email ?? '-'}
                   </span>
+                  {oauthProvider && (
+                    <Badge variant="info">
+                      {OAUTH_PROVIDER_LABELS[oauthProvider] ?? oauthProvider}
+                    </Badge>
+                  )}
                 </div>
               </div>
 
-              {/* 로그아웃 버튼 */}
+              {/* 로그아웃 */}
               <Button variant="ghost" size="sm" onClick={handleLogout}>
                 <LogOut className="h-3.5 w-3.5" aria-hidden />
                 로그아웃
               </Button>
             </div>
+
+            {/* 아바타 선택 그리드 */}
+            {showAvatarPicker && (
+              <div className="mt-5 rounded-card border border-border bg-bg-alt p-4">
+                <p className="mb-3 text-[12px] font-medium text-text">
+                  아바타 선택
+                </p>
+                <div className="grid grid-cols-5 gap-3">
+                  {AVATAR_PRESETS.map((preset) => {
+                    const isSelected =
+                      (user?.avatarPreset ?? 'default') === preset.key;
+                    return (
+                      <button
+                        key={preset.key}
+                        type="button"
+                        className={cn(
+                          'flex flex-col items-center gap-1.5 rounded-lg p-2 transition-all',
+                          isSelected
+                            ? 'ring-2 ring-primary bg-primary-soft'
+                            : 'hover:bg-bg-card',
+                        )}
+                        onClick={() => void handleSelectAvatar(preset.key)}
+                        disabled={avatarLoading}
+                        aria-label={preset.label}
+                        aria-pressed={isSelected}
+                      >
+                        <img
+                          src={getAvatarSrc(preset.key)}
+                          alt={preset.label}
+                          width={40}
+                          height={40}
+                          className="rounded-full"
+                        />
+                        <span className="text-[10px] text-text-3">
+                          {preset.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* GitHub 연동 카드 */}
+        {/* GitHub 연동 */}
         <Card>
           <CardHeader>
             <CardTitle>GitHub 연동</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div
-                  className="flex items-center justify-center rounded-md bg-bg2"
-                  style={{ width: '40px', height: '40px' }}
-                >
-                  <Github className="h-5 w-5 text-foreground" aria-hidden />
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-bg-alt">
+                  <Github className="h-5 w-5 text-text" aria-hidden />
                 </div>
                 <div>
                   {githubConnected ? (
                     <>
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-foreground">
+                        <p className="text-sm font-medium text-text">
                           {githubUsername ?? 'GitHub 계정'}
                         </p>
-                        <Badge variant="success" dot>연동됨</Badge>
+                        <Badge variant="success" dot>
+                          연동됨
+                        </Badge>
                       </div>
-                      <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
+                      <p className="mt-0.5 text-[11px] text-text-3">
                         코드 제출 시 자동으로 Push됩니다
                       </p>
                     </>
                   ) : (
                     <>
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-foreground">
+                        <p className="text-sm font-medium text-text">
                           GitHub 미연동
                         </p>
                         <Badge variant="muted">미연동</Badge>
                       </div>
-                      <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
+                      <p className="mt-0.5 text-[11px] text-text-3">
                         코드 제출을 위해 GitHub 연동이 필요합니다
                       </p>
                     </>
@@ -197,7 +422,6 @@ export default function ProfilePage(): ReactNode {
                 </div>
               </div>
 
-              {/* 연동/해제/재연동 버튼 */}
               <div className="flex items-center gap-2">
                 {githubConnected ? (
                   <>
@@ -207,7 +431,11 @@ export default function ProfilePage(): ReactNode {
                       disabled={githubLoading}
                       onClick={() => void handleRelinkGitHub()}
                     >
-                      {githubLoading ? <InlineSpinner /> : <RefreshCw className="h-3.5 w-3.5" aria-hidden />}
+                      {githubLoading ? (
+                        <InlineSpinner />
+                      ) : (
+                        <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+                      )}
                       재연동
                     </Button>
                     <Button
@@ -216,7 +444,11 @@ export default function ProfilePage(): ReactNode {
                       disabled={githubLoading}
                       onClick={() => void handleUnlinkGitHub()}
                     >
-                      {githubLoading ? <InlineSpinner /> : <Unlink className="h-3.5 w-3.5" aria-hidden />}
+                      {githubLoading ? (
+                        <InlineSpinner />
+                      ) : (
+                        <Unlink className="h-3.5 w-3.5" aria-hidden />
+                      )}
                       해제
                     </Button>
                   </>
@@ -227,7 +459,11 @@ export default function ProfilePage(): ReactNode {
                     disabled={githubLoading}
                     onClick={() => void handleLinkGitHub()}
                   >
-                    {githubLoading ? <InlineSpinner /> : <Link2 className="h-3.5 w-3.5" aria-hidden />}
+                    {githubLoading ? (
+                      <InlineSpinner />
+                    ) : (
+                      <Link2 className="h-3.5 w-3.5" aria-hidden />
+                    )}
                     GitHub 연동
                   </Button>
                 )}
@@ -236,7 +472,7 @@ export default function ProfilePage(): ReactNode {
           </CardContent>
         </Card>
 
-        {/* 소속 스터디 카드 */}
+        {/* 소속 스터디 */}
         <Card>
           <CardHeader>
             <CardTitle>소속 스터디</CardTitle>
@@ -244,7 +480,7 @@ export default function ProfilePage(): ReactNode {
           <CardContent>
             {studies.length === 0 ? (
               <div className="py-8 text-center">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-text-3">
                   참여 중인 스터디가 없습니다.
                 </p>
                 <Button
@@ -264,21 +500,23 @@ export default function ProfilePage(): ReactNode {
                     className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-foreground truncate">
+                      <p className="truncate text-sm font-medium text-text">
                         {study.name}
                       </p>
                       {study.description && (
-                        <p className="mt-0.5 text-[11px] text-muted-foreground truncate">
+                        <p className="mt-0.5 truncate text-[11px] text-text-3">
                           {study.description}
                         </p>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 ml-3">
-                      <Badge variant={study.role === 'ADMIN' ? 'default' : 'muted'}>
+                    <div className="ml-3 flex items-center gap-2">
+                      <Badge
+                        variant={study.role === 'ADMIN' ? 'info' : 'muted'}
+                      >
                         {study.role === 'ADMIN' ? '관리자' : '멤버'}
                       </Badge>
                       {study.memberCount !== undefined && (
-                        <span className="font-mono text-[10px] text-muted-foreground">
+                        <span className="font-mono text-[10px] text-text-3">
                           {study.memberCount}명
                         </span>
                       )}

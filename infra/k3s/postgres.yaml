@@ -1,6 +1,7 @@
 # ============================================================
 # AlgoSu — PostgreSQL k3s 매니페스트
 # 모든 Pod에 Resource Limit 필수 (Oracle 보안 지시)
+# H11: statement_timeout 200ms (슬로우 쿼리 차단)
 # ============================================================
 apiVersion: apps/v1
 kind: Deployment
@@ -26,6 +27,11 @@ spec:
           image: postgres:16.3-alpine
           ports:
             - containerPort: 5432
+          args:
+            - -c
+            - statement_timeout=200
+            - -c
+            - log_min_duration_statement=200
           env:
             - name: POSTGRES_USER
               valueFrom:

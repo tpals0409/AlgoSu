@@ -1,3 +1,14 @@
+/**
+ * @file 인증 컨텍스트 — httpOnly Cookie 기반 JWT 인증
+ * @domain identity
+ * @layer context
+ * @related OAuthController, JwtMiddleware, api.ts
+ *
+ * JWT는 httpOnly Cookie에 저장되어 클라이언트에서 직접 접근 불가.
+ * 인증 상태는 서버 API(/auth/profile) 호출로 확인.
+ * 토큰 자동 갱신은 서버 TokenRefreshInterceptor가 처리.
+ */
+
 'use client';
 
 import {
@@ -9,24 +20,18 @@ import {
   type ReactNode,
 } from 'react';
 import {
-  getToken,
-  setToken,
-  removeToken,
-  isTokenExpired,
-  getRefreshToken,
-  removeRefreshToken,
-  getCurrentUserEmail,
   getGitHubConnected,
   setGitHubConnected as setGitHubConnectedStorage,
   setGitHubUsername as setGitHubUsernameStorage,
-  getTokenTtlMs,
 } from '@/lib/auth';
 import { authApi } from '@/lib/api';
+import { getAvatarPresetKey } from '@/lib/avatars';
 
-// ── 타입 ──
+// ── TYPES ────────────────────────────────
 
 interface AuthUser {
   email: string;
+  avatarPreset: string;
 }
 
 interface AuthContextValue {
@@ -35,16 +40,18 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   githubConnected: boolean;
   sessionExpired: boolean;
-  login: (token: string) => void;
+  /** OAuth 콜백 후 호출 — Cookie에 토큰이 이미 설정된 상태에서 프로필 로드 */
+  loginFromCookie: () => void;
   logout: () => void;
   updateGitHubStatus: (connected: boolean, username?: string | null) => void;
+  updateAvatar: (presetKey: string) => Promise<void>;
 }
 
-// ── 컨텍스트 ──
+// ── CONSTANTS ────────────────────────────
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-// ── Provider ──
+// ── PROVIDER ─────────────────────────────
 
 interface AuthProviderProps {
   readonly children: ReactNode;
@@ -55,70 +62,50 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [githubConnected, setGithubConnected] = useState<boolean>(false);
   const [sessionExpired, setSessionExpired] = useState<boolean>(false);
-  const [lastRefreshedAt, setLastRefreshedAt] = useState<number>(0);
 
-  // M17: 초기 마운트 시 토큰 만료 확인 + 자동 refresh
+  /**
+   * 초기 마운트 시 서버에 프로필 조회하여 인증 상태 확인.
+   * httpOnly Cookie가 있으면 서버가 자동 인증, 없으면 401.
+   */
   useEffect(() => {
     const initAuth = async (): Promise<void> => {
-      const token = getToken();
-
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
-
-      // 토큰 만료 확인
-      if (isTokenExpired(token)) {
-        const refreshToken = getRefreshToken();
-        if (refreshToken) {
-          try {
-            const { access_token } = await authApi.refresh();
-            setToken(access_token);
-            const email = getCurrentUserEmail();
-            if (email) {
-              setUser({ email });
-              setGithubConnected(getGitHubConnected());
-            }
-          } catch {
-            // Refresh 실패 → 로그아웃
-            removeToken();
-            removeRefreshToken();
-          }
-        } else {
-          // Refresh Token 없음 → 만료된 토큰 제거
-          removeToken();
-        }
-        setIsLoading(false);
-        return;
-      }
-
-      // 토큰 유효 → 사용자 정보 복원
-      const email = getCurrentUserEmail();
-      if (email) {
-        setUser({ email });
+      try {
+        const profile = await authApi.getProfile();
+        setUser({
+          email: profile.email,
+          avatarPreset: getAvatarPresetKey(profile.avatar_url),
+        });
         setGithubConnected(getGitHubConnected());
-      } else {
-        removeToken();
+      } catch {
+        // 401 또는 네트워크 에러 → 미인증 상태
+        setUser(null);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
     void initAuth();
   }, []);
 
-  const login = useCallback((token: string): void => {
-    setToken(token);
-    const email = getCurrentUserEmail();
-    if (email) {
-      setUser({ email });
+  /** OAuth 콜백 후 호출 — 쿠키에 토큰이 이미 있으므로 프로필만 로드 */
+  const loginFromCookie = useCallback((): void => {
+    setSessionExpired(false);
+    authApi.getProfile().then((profile) => {
+      setUser({
+        email: profile.email,
+        avatarPreset: getAvatarPresetKey(profile.avatar_url),
+      });
       setGithubConnected(getGitHubConnected());
-      setSessionExpired(false);
-    }
+    }).catch(() => {
+      // 프로필 로드 실패 — 일단 기본 상태로 진행 (쿠키가 있으니 페이지 이동 후 재시도)
+      setUser({ email: '', avatarPreset: 'default' });
+    });
   }, []);
 
+  /** 로그아웃 — 서버에 Cookie 삭제 요청 후 로컬 상태 초기화 */
   const logout = useCallback((): void => {
-    removeToken();
-    removeRefreshToken();
+    // 서버에 logout 요청 (쿠키 삭제)
+    fetch('/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
     setGitHubConnectedStorage(false);
     setGitHubUsernameStorage(null);
     setUser(null);
@@ -127,87 +114,19 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
     window.location.href = '/login';
   }, []);
 
-  // GitHub 연동 상태 업데이트 (단일 진실 원천)
+  /** GitHub 연동 상태 업데이트 (단일 진실 원천) */
   const updateGitHubStatus = useCallback((connected: boolean, username?: string | null): void => {
     setGitHubConnectedStorage(connected);
     setGitHubUsernameStorage(username ?? null);
     setGithubConnected(connected);
   }, []);
 
-  // M1-M2: 토큰 만료 5분 전 자동 갱신 (lastRefreshedAt로 재스케줄링)
-  useEffect(() => {
-    if (!user) return;
-    const ttl = getTokenTtlMs();
-    if (ttl <= 0) return;
-
-    // 만료 5분 전에 갱신, 최소 10초 후
-    const refreshIn = Math.max(ttl - 5 * 60 * 1000, 10_000);
-
-    const timer = setTimeout(async () => {
-      try {
-        const { access_token } = await authApi.refresh();
-        setToken(access_token);
-        setSessionExpired(false);
-        setLastRefreshedAt(Date.now());
-      } catch {
-        setSessionExpired(true);
-      }
-    }, refreshIn);
-
-    return () => clearTimeout(timer);
-  }, [user, lastRefreshedAt]);
-
-  // 활동 기반 세션 갱신: 사용자 활동 시 TTL이 절반 이하면 즉시 갱신
-  useEffect(() => {
-    if (!user) return;
-    let refreshing = false;
-
-    const handleActivity = async () => {
-      if (refreshing || sessionExpired) return;
-      const ttl = getTokenTtlMs();
-      const token = getToken();
-      if (!token || ttl <= 0) return;
-
-      // JWT 전체 유효시간 계산 (exp - iat)
-      const payload = JSON.parse(atob(token.split('.')[1])) as { exp?: number; iat?: number };
-      const totalTtl = ((payload.exp ?? 0) - (payload.iat ?? 0)) * 1000;
-      if (totalTtl <= 0) return;
-
-      // 남은 시간이 전체의 절반 이하일 때만 갱신
-      if (ttl > totalTtl / 2) return;
-
-      refreshing = true;
-      try {
-        const { access_token } = await authApi.refresh();
-        setToken(access_token);
-        setSessionExpired(false);
-        setLastRefreshedAt(Date.now());
-      } catch {
-        setSessionExpired(true);
-      } finally {
-        refreshing = false;
-      }
-    };
-
-    // 쓰로틀: 이벤트가 많아도 60초에 1번만 체크
-    let lastCheck = 0;
-    const throttledActivity = () => {
-      const now = Date.now();
-      if (now - lastCheck < 60_000) return;
-      lastCheck = now;
-      void handleActivity();
-    };
-
-    window.addEventListener('click', throttledActivity);
-    window.addEventListener('keydown', throttledActivity);
-    window.addEventListener('scroll', throttledActivity);
-
-    return () => {
-      window.removeEventListener('click', throttledActivity);
-      window.removeEventListener('keydown', throttledActivity);
-      window.removeEventListener('scroll', throttledActivity);
-    };
-  }, [user, sessionExpired]);
+  /** 프리셋 아바타 변경 */
+  const updateAvatar = useCallback(async (presetKey: string): Promise<void> => {
+    const avatarUrl = `preset:${presetKey}`;
+    await authApi.updateProfile({ avatar_url: avatarUrl });
+    setUser((prev) => prev ? { ...prev, avatarPreset: presetKey } : prev);
+  }, []);
 
   const value: AuthContextValue = {
     user,
@@ -215,15 +134,16 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
     isAuthenticated: user !== null,
     githubConnected,
     sessionExpired,
-    login,
+    loginFromCookie,
     logout,
     updateGitHubStatus,
+    updateAvatar,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-// ── Hook ──
+// ── HOOK ──────────────────────────────
 
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);

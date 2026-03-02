@@ -1,6 +1,7 @@
 # ============================================================
 # AlgoSu — Problem 전용 PostgreSQL (Phase 3 DB 분리)
 # 물리적으로 독립된 PostgreSQL 인스턴스
+# H11: statement_timeout 200ms (슬로우 쿼리 차단)
 # ============================================================
 apiVersion: apps/v1
 kind: Deployment
@@ -26,6 +27,11 @@ spec:
           image: postgres:16.3-alpine
           ports:
             - containerPort: 5432
+          args:
+            - -c
+            - statement_timeout=200
+            - -c
+            - log_min_duration_statement=200
           env:
             - name: POSTGRES_DB
               value: problem_db

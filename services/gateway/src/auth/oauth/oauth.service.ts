@@ -2,6 +2,7 @@ import {
   Injectable,
   BadRequestException,
   UnauthorizedException,
+  NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -378,14 +379,17 @@ export class OAuthService {
 
     if (user) {
       user.name = profile.name;
-      user.avatar_url = profile.avatar_url;
+      // 프리셋 아바타 사용 중이면 OAuth 사진으로 덮어쓰지 않음
+      if (!user.avatar_url || !user.avatar_url.startsWith('preset:')) {
+        user.avatar_url = profile.avatar_url;
+      }
       return this.userRepository.save(user);
     }
 
     user = this.userRepository.create({
       email: profile.email,
       name: profile.name,
-      avatar_url: profile.avatar_url,
+      avatar_url: 'preset:default',
       oauth_provider: provider,
       github_connected: false,
     });
@@ -397,13 +401,52 @@ export class OAuthService {
     return this.userRepository.findOne({ where: { id: userId } });
   }
 
+  async updateProfile(
+    userId: string,
+    name?: string,
+    avatarUrl?: string,
+  ): Promise<User> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new Error('사용자를 찾을 수 없습니다.');
+    }
+    if (name !== undefined) {
+      user.name = name;
+    }
+    if (avatarUrl !== undefined) {
+      user.avatar_url = avatarUrl;
+    }
+    return this.userRepository.save(user);
+  }
+
   // --- JWT 발급 ---
+
+  /**
+   * 공개 JWT 발급 메서드 — TokenRefreshInterceptor에서 사용
+   * @domain identity
+   */
+  issueAccessToken(user: User): string {
+    return this.issueJwt(user);
+  }
+
+  /**
+   * userId로 User 조회 — 없으면 NotFoundException
+   * @domain identity
+   */
+  async findUserByIdOrThrow(userId: string): Promise<User> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('사용자를 찾을 수 없습니다.');
+    }
+    return user;
+  }
 
   private issueJwt(user: User): string {
     return jwt.sign(
       {
         sub: user.id,
         email: user.email,
+        oauth_provider: user.oauth_provider,
       },
       this.jwtSecret,
       {

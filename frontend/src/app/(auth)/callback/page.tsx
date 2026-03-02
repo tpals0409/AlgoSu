@@ -7,26 +7,26 @@ import type { ReactNode } from 'react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Alert } from '@/components/ui/Alert';
 import { useAuth } from '@/contexts/AuthContext';
-import { setRefreshToken, setGitHubConnected } from '@/lib/auth';
+import { setGitHubConnected } from '@/lib/auth';
 
 /**
- * OAuth 콜백 페이지 — /callback
+ * @file OAuth 콜백 페이지 — /callback
+ * @domain identity
+ * @layer page
+ * @related OAuthController, AuthContext
  *
- * H4: 백엔드가 fragment(#)로 토큰 전달 — URL 히스토리/서버 로그 노출 방지
- *   /callback#access_token=<jwt>&refresh_token=<jwt>&github_connected=true|false
+ * 백엔드가 httpOnly Cookie로 JWT를 설정하고, github_connected만 fragment로 전달.
+ * /callback#github_connected=true|false
  */
 function CallbackContent(): ReactNode {
   const router = useRouter();
-  const { login } = useAuth();
+  const { loginFromCookie } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // H4: fragment에서 파라미터 파싱 (서버 로그에 토큰 노출 방지)
-    const hash = window.location.hash.slice(1); // # 제거
+    const hash = window.location.hash.slice(1);
     const params = new URLSearchParams(hash);
 
-    const accessToken = params.get('access_token');
-    const refreshToken = params.get('refresh_token');
     const githubConnected = params.get('github_connected');
     const errorParam = params.get('error');
 
@@ -35,20 +35,10 @@ function CallbackContent(): ReactNode {
       return;
     }
 
-    if (!accessToken) {
-      setError('인증 토큰을 받지 못했습니다. 다시 시도해주세요.');
-      return;
-    }
+    // httpOnly Cookie로 JWT가 이미 설정됨 — AuthContext에 알림
+    loginFromCookie();
 
-    // AuthContext를 통해 토큰 저장 + 상태 즉시 반영
-    login(accessToken);
-
-    // refresh token 저장 (lib/auth.ts의 함수 사용 — 키 일관성 보장)
-    if (refreshToken) {
-      setRefreshToken(refreshToken);
-    }
-
-    // GitHub 연동 상태 저장 (lib/auth.ts 경유)
+    // GitHub 연동 상태 저장
     if (githubConnected !== null) {
       setGitHubConnected(githubConnected === 'true');
     }
@@ -58,7 +48,7 @@ function CallbackContent(): ReactNode {
     } else {
       router.replace('/studies');
     }
-  }, [router, login]);
+  }, [router, loginFromCookie]);
 
   if (error) {
     return (

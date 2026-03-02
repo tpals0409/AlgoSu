@@ -28,10 +28,13 @@ describe('ProblemService', () => {
     status: ProblemStatus.ACTIVE,
     deadline: new Date('2026-03-07T23:59:59.000Z'),
     allowedLanguages: ['python', 'javascript'],
+    tags: null,
     studyId: STUDY_ID,
     createdBy: USER_ID,
+    publicId: 'pub-uuid-001',
     createdAt: new Date('2026-02-28T00:00:00.000Z'),
     updatedAt: new Date('2026-02-28T00:00:00.000Z'),
+    generatePublicId: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -286,12 +289,12 @@ describe('ProblemService', () => {
         status: 'CLOSED',
       };
 
-      const updatedProblem: Problem = {
+      const updatedProblem = {
         ...mockProblem,
         title: dto.title!,
         difficulty: Difficulty.GOLD,
         status: ProblemStatus.CLOSED,
-      };
+      } as Problem;
 
       // findById 내부 호출
       dualWrite.findOne.mockResolvedValue({ ...mockProblem });

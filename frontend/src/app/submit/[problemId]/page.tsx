@@ -1,23 +1,269 @@
+/**
+ * @file 코드 제출 페이지 (v2 전면 교체)
+ * @domain submission
+ * @layer page
+ * @related problemApi, submissionApi, draftApi, CodeEditor, useAutoSave
+ */
+
 'use client';
 
-import { useEffect } from 'react';
+import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { ChevronLeft } from 'lucide-react';
+import { AppLayout } from '@/components/layout/AppLayout';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
+import { TimerBadge } from '@/components/ui/TimerBadge';
+import { Alert } from '@/components/ui/Alert';
+import { Button } from '@/components/ui/Button';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { CodeEditor } from '@/components/submission/CodeEditor';
+import { useAutoSave } from '@/hooks/useAutoSave';
+import { problemApi, submissionApi, draftApi, type Problem } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { useStudy } from '@/contexts/StudyContext';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
+import type { Difficulty } from '@/lib/constants';
+
+// ─── TYPES ────────────────────────────────
+
+type AutoSaveStatus = 'idle' | 'saving' | 'saved';
+
+// ─── RENDER ───────────────────────────────
 
 /**
- * /submit/[problemId] → /problems/[problemId] 리다이렉트
- *
- * 코드 제출은 문제 상세 페이지에서 처리됩니다.
- * 이전 경로 호환을 위한 리다이렉트 래퍼입니다.
+ * 코드 제출 페이지
+ * @domain submission
+ * @guard C1-github-check
  */
-export default function SubmitRedirectPage(): ReactNode {
+export default function SubmitPage(): ReactNode {
   const params = useParams();
-  const router = useRouter();
   const problemId = params?.problemId as string;
+  const router = useRouter();
+  const { isAuthenticated } = useRequireAuth();
+  const { githubConnected } = useAuth();
+  const { currentStudyId } = useStudy();
+
+  // ─── STATE ──────────────────────────────
+
+  const [problem, setProblem] = useState<Problem | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [code, setCode] = useState<string>('');
+  const [language, setLanguage] = useState<string>('python');
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<AutoSaveStatus>('idle');
+
+  // ─── EFFECTS ────────────────────────────
 
   useEffect(() => {
-    router.replace(`/problems/${problemId}`);
-  }, [router, problemId]);
+    if (!isAuthenticated || !problemId) return;
+    let cancelled = false;
 
-  return null;
+    const load = async (): Promise<void> => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const [problemData, draftData] = await Promise.all([
+          problemApi.findById(problemId),
+          draftApi.find(problemId),
+        ]);
+        if (cancelled) return;
+        setProblem(problemData);
+        if (draftData) {
+          setCode(draftData.code);
+          setLanguage(draftData.language);
+        }
+      } catch (err: unknown) {
+        if (!cancelled) {
+          setError((err as Error).message ?? '문제를 불러오는 데 실패했습니다.');
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+
+    void load();
+    return () => { cancelled = true; };
+  }, [isAuthenticated, problemId]);
+
+  // ─── HOOKS ──────────────────────────────
+
+  const { loadFromLocal, clearLocal } = useAutoSave({
+    problemId,
+    studyId: currentStudyId,
+    code,
+    language,
+    onServerSave: useCallback(
+      async (data: { code: string; language: string }): Promise<void> => {
+        setAutoSaveStatus('saving');
+        try {
+          await draftApi.upsert(problemId, { language: data.language, code: data.code });
+          setAutoSaveStatus('saved');
+          setTimeout(() => setAutoSaveStatus('idle'), 2000);
+        } catch {
+          setAutoSaveStatus('idle');
+        }
+      },
+      [problemId],
+    ),
+    enabled: !isLoading && problem !== null,
+  });
+
+  useEffect(() => {
+    if (isLoading || code) return;
+    const local = loadFromLocal();
+    if (local) {
+      setCode(local.code);
+      setLanguage(local.language);
+    }
+  }, [isLoading, code, loadFromLocal]);
+
+  // ─── HANDLERS ─────────────────────────────
+
+  const handleCodeChange = useCallback((newCode: string): void => {
+    setCode(newCode);
+    setAutoSaveStatus('saving');
+  }, []);
+
+  const handleLanguageChange = useCallback((lang: string): void => {
+    setLanguage(lang);
+    setAutoSaveStatus('saving');
+  }, []);
+
+  const handleSubmit = useCallback(async (): Promise<void> => {
+    if (!problem) return;
+    if (!githubConnected) {
+      setSubmitError('GitHub 계정을 먼저 연동해주세요.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const submission = await submissionApi.create({
+        problemId: problem.id,
+        language,
+        code,
+      });
+
+      clearLocal();
+      void draftApi.remove(problemId).catch(() => {});
+
+      router.push(`/problems/${problemId}/status?submissionId=${submission.id}`);
+    } catch (err: unknown) {
+      setSubmitError((err as Error).message ?? '제출 중 오류가 발생했습니다.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [problem, language, code, problemId, clearLocal, router, githubConnected]);
+
+  // ─── LOADING ────────────────────────────
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="space-y-4">
+          <Skeleton height={60} />
+          <Skeleton height={300} />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (error || !problem) {
+    return (
+      <AppLayout>
+        <div className="space-y-4">
+          <Alert variant="error">{error ?? '문제를 찾을 수 없습니다.'}</Alert>
+          <Button variant="ghost" size="sm" onClick={() => router.back()}>
+            <ChevronLeft />
+            뒤로 가기
+          </Button>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  const deadlineDate = problem.deadline ? new Date(problem.deadline) : null;
+
+  return (
+    <AppLayout>
+      <div className="space-y-5">
+        {/* 뒤로가기 */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push(`/problems/${problemId}`)}
+          className="-ml-1"
+        >
+          <ChevronLeft />
+          문제 상세
+        </Button>
+
+        {/* 문제 정보 헤더 */}
+        <Card>
+          <CardHeader>
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              {problem.difficulty && (
+                <DifficultyBadge difficulty={problem.difficulty as Difficulty} level={problem.level} />
+              )}
+              <Badge variant="info">{problem.weekNumber}</Badge>
+              {deadlineDate && <TimerBadge deadline={deadlineDate} />}
+            </div>
+            <CardTitle>{problem.title}</CardTitle>
+          </CardHeader>
+        </Card>
+
+        {/* GitHub 미연동 경고 */}
+        {!githubConnected && (
+          <Alert variant="warning" title="GitHub 연동 필요">
+            코드를 제출하려면 먼저 GitHub 계정을 연동해주세요.{' '}
+            <button
+              type="button"
+              onClick={() => router.push('/github-link')}
+              className="underline font-medium"
+            >
+              GitHub 연동하기
+            </button>
+          </Alert>
+        )}
+
+        {/* 제출 에러 */}
+        {submitError && (
+          <Alert variant="error" onClose={() => setSubmitError(null)}>
+            {submitError}
+          </Alert>
+        )}
+
+        {/* 코드 에디터 */}
+        {problem.status === 'ACTIVE' ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>코드 제출</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CodeEditor
+                code={code}
+                language={language}
+                onCodeChange={handleCodeChange}
+                onLanguageChange={handleLanguageChange}
+                onSubmit={handleSubmit}
+                isSubmitting={isSubmitting}
+                autoSaveStatus={autoSaveStatus}
+                deadline={problem.deadline}
+              />
+            </CardContent>
+          </Card>
+        ) : (
+          <Alert variant="warning" title="제출 마감">
+            이 문제는 마감되었습니다. 더 이상 제출할 수 없습니다.
+          </Alert>
+        )}
+      </div>
+    </AppLayout>
+  );
 }

@@ -57,6 +57,11 @@ export class CreateProblemDto {
   @IsArray()
   @IsString({ each: true })
   allowedLanguages?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
 }
 
 export class UpdateProblemDto {
@@ -96,6 +101,11 @@ export class UpdateProblemDto {
   @IsArray()
   @IsString({ each: true })
   allowedLanguages?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
 
   @IsOptional()
   @IsString()

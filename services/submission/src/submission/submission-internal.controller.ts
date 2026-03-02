@@ -62,6 +62,16 @@ export class SubmissionInternalController {
   }
 
   /**
+   * GET /internal/submissions/:id/owner — 제출 소유자 조회 (SSE S6 소유권 검증)
+   * @guard submission-owner
+   */
+  @Get('submissions/:id/owner')
+  async getSubmissionOwner(@Param('id', ParseUUIDPipe) id: string) {
+    const submission = await this.submissionService.findById(id);
+    return { userId: submission.userId };
+  }
+
+  /**
    * GET /internal/by-problem/:problemId — 문제별 전체 제출 (스터디 스코핑)
    * 그룹 분석용: AI Analysis Service에서 호출
    */
@@ -82,8 +92,12 @@ export class SubmissionInternalController {
    * Gateway StudyService에서 호출
    */
   @Get('stats/:studyId')
-  async getStudyStats(@Param('studyId', ParseUUIDPipe) studyId: string) {
-    const stats = await this.submissionService.getStudyStats(studyId);
+  async getStudyStats(
+    @Param('studyId', ParseUUIDPipe) studyId: string,
+    @Query('weekNumber') weekNumber?: string,
+    @Query('userId') userId?: string,
+  ) {
+    const stats = await this.submissionService.getStudyStats(studyId, weekNumber, userId);
     return { data: stats };
   }
 

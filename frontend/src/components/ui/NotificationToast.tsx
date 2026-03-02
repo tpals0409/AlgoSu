@@ -105,7 +105,7 @@ export function NotificationToast({
         onKeyDown={(e) => { if (e.key === 'Enter') handleClick(); }}
         className={cn(
           'pointer-events-auto flex w-full max-w-sm items-start gap-3',
-          'rounded-card border border-border bg-surface px-4 py-3',
+          'rounded-card border border-border bg-bg-card px-4 py-3',
           'shadow-modal cursor-pointer',
           'transition-all duration-300 ease-out',
           toast.visible
@@ -114,17 +114,17 @@ export function NotificationToast({
         )}
       >
         <div
-          className="mt-0.5 flex shrink-0 items-center justify-center rounded-md bg-primary-100 dark:bg-primary-800"
+          className="mt-0.5 flex shrink-0 items-center justify-center rounded-md bg-primary-soft2"
           style={{ width: '28px', height: '28px' }}
         >
           <Icon className="h-3.5 w-3.5 text-primary" aria-hidden />
         </div>
 
         <div className="min-w-0 flex-1 text-left">
-          <p className="text-[12px] font-medium text-foreground">
+          <p className="text-[12px] font-medium text-text">
             {toast.notification.title}
           </p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground line-clamp-2">
+          <p className="mt-0.5 text-[11px] text-text-3 line-clamp-2">
             {toast.notification.message}
           </p>
         </div>
@@ -132,7 +132,7 @@ export function NotificationToast({
         <button
           type="button"
           onClick={handleClose}
-          className="mt-0.5 shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+          className="mt-0.5 shrink-0 text-text-3 hover:text-text transition-colors"
           aria-label="닫기"
         >
           <X className="h-3.5 w-3.5" />

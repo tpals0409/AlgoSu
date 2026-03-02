@@ -1,44 +1,39 @@
+/**
+ * @file 범용 상태 뱃지 컴포넌트
+ * @domain common
+ * @layer component
+ * @related DiffBadge, StatusBadge, ScoreBadge, LangBadge
+ */
+
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
-/**
- * Badge — AlgoSu UI Design System
- *
- * 목업 스펙:
- *  display: inline-flex; align-items: center; gap: 4px;
- *  font-size: 11px; font-weight: 500; padding: 3px 8px;
- *  border-radius: 20px; line-height: 1; border: none;
- *
- * variant 매핑:
- *   default/info  -> badge-main:   rgba(148,126,176,0.22) / --color-main
- *   success       -> badge-green:  rgba(80,200,120,0.22)  / --color-success
- *   warning       -> badge-yellow: rgba(255,200,60,0.22)  / --color-warning
- *   error         -> badge-red:    rgba(255,90,80,0.22)   / --color-error
- *   muted         -> badge-sub:    rgba(163,165,195,0.22) / --color-sub
- */
+// ─── VARIANTS ────────────────────────────────
 
 const badgeVariants = cva(
   [
     'inline-flex items-center gap-1',
     'text-[11px] font-medium leading-none',
-    'px-2 py-[3px] rounded-[20px]',
-    'transition-colors duration-150',
+    'px-[9px] py-1 rounded-badge',
+    'whitespace-nowrap transition-colors duration-150',
   ],
   {
     variants: {
       variant: {
-        default: 'text-[var(--color-main)] bg-[rgba(148,126,176,0.22)]',
-        info:    'text-[var(--color-main)] bg-[rgba(148,126,176,0.22)]',
-        success: 'text-[var(--color-success)] bg-[rgba(80,200,120,0.22)]',
-        warning: 'text-[var(--color-warning)] bg-[rgba(255,200,60,0.22)]',
-        error:   'text-[var(--color-error)] bg-[rgba(255,90,80,0.22)]',
-        muted:   'text-[var(--color-sub)] bg-[rgba(163,165,195,0.22)]',
+        default: 'bg-primary-soft text-primary',
+        info:    'bg-info-soft text-info',
+        success: 'bg-success-soft text-success',
+        warning: 'bg-warning-soft text-warning',
+        error:   'bg-error-soft text-error',
+        muted:   'bg-muted-soft text-muted',
       },
     },
     defaultVariants: { variant: 'default' },
   },
 );
+
+// ─── TYPES ───────────────────────────────────
 
 export interface BadgeProps
   extends React.HTMLAttributes<HTMLSpanElement>,
@@ -47,6 +42,12 @@ export interface BadgeProps
   readonly dot?: boolean;
 }
 
+// ─── RENDER ──────────────────────────────────
+
+/**
+ * 범용 뱃지 컴포넌트 (상태/정보 표시)
+ * @domain common
+ */
 function Badge({ className, variant, dot, children, ...props }: BadgeProps): React.ReactElement {
   return (
     <span className={cn(badgeVariants({ variant }), className)} {...props}>

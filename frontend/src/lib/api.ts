@@ -1,11 +1,13 @@
 /**
- * AlgoSu API 클라이언트
+ * @file AlgoSu API 클라이언트
+ * @domain common
+ * @layer api
+ * @related AuthContext, JwtMiddleware
  *
- * Gateway(localhost:3000)를 통한 모든 API 호출
- * Bearer JWT 자동 첨부, X-Study-ID 자동 첨부, 에러 처리 포함
+ * Gateway를 통한 모든 API 호출.
+ * httpOnly Cookie 인증: credentials: 'include' 필수.
+ * Authorization 헤더 수동 설정 불필요.
  */
-
-import { TOKEN_KEY } from '@/lib/auth';
 
 const API_BASE =
   typeof process !== 'undefined' && process.env['NEXT_PUBLIC_API_BASE_URL']
@@ -34,6 +36,7 @@ export interface Problem {
   sourceUrl?: string;
   sourcePlatform?: string;
   allowedLanguages: string[];
+  tags?: string[] | null;
 }
 
 export interface CreateProblemData {
@@ -46,6 +49,7 @@ export interface CreateProblemData {
   sourcePlatform?: string;
   deadline?: string;
   allowedLanguages?: string[];
+  tags?: string[];
 }
 
 export interface UpdateProblemData {
@@ -124,6 +128,7 @@ export interface StudyMember {
   joined_at: string;
   username?: string;
   email?: string;
+  avatar_url?: string | null;
 }
 
 export interface OAuthUrlResponse {
@@ -156,21 +161,17 @@ export class ApiError extends Error {
 
 // ── fetch 래퍼 ──
 
+/**
+ * API 요청 래퍼 — httpOnly Cookie 인증 (credentials: 'include')
+ */
 async function fetchApi<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const token =
-    typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null;
-
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
   };
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
 
   if (_currentStudyId) {
     headers['X-Study-ID'] = _currentStudyId;
@@ -179,6 +180,7 @@ async function fetchApi<T>(
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers,
+    credentials: 'include',
   });
 
   if (res.status === 204) {
@@ -222,15 +224,39 @@ export const authApi = {
   /** 액세스 토큰 갱신 */
   refresh: (): Promise<AuthResponse> =>
     fetchApi('/auth/refresh', { method: 'POST' }),
+
+  /** 프로필 조회 */
+  getProfile: (): Promise<{ email: string; name: string | null; avatar_url: string | null; oauth_provider: string | null }> =>
+    fetchApi('/auth/profile'),
+
+  /** 프로필 수정 (닉네임 / 아바타) */
+  updateProfile: (data: { name?: string; avatar_url?: string }): Promise<{ name: string; avatar_url: string | null }> =>
+    fetchApi('/auth/profile', { method: 'PATCH', body: JSON.stringify(data) }),
 };
 
 // ── Study API ──
 
+export interface MemberStat {
+  userId: string;
+  isMember: boolean;
+  count: number;
+  doneCount: number;
+}
+
+export interface MemberWeekStat {
+  userId: string;
+  isMember: boolean;
+  count: number;
+}
+
 export interface StudyStats {
   totalSubmissions: number;
   byWeek: { week: string; count: number }[];
-  byMember: { userId: string; isMember: boolean; count: number; doneCount: number }[];
+  byWeekPerUser: { userId: string; week: string; count: number }[];
+  byMember: MemberStat[];
+  byMemberWeek: MemberWeekStat[] | null;
   recentSubmissions: Submission[];
+  solvedProblemIds: string[];
 }
 
 export const studyApi = {
@@ -243,8 +269,10 @@ export const studyApi = {
   join: (code: string): Promise<Study> =>
     fetchApi('/api/studies/join', { method: 'POST', body: JSON.stringify({ code }) }),
 
-  getStats: (studyId: string): Promise<StudyStats> =>
-    fetchApi(`/api/studies/${studyId}/stats`),
+  getStats: (studyId: string, weekNumber?: string): Promise<StudyStats> => {
+    const qs = weekNumber ? `?weekNumber=${encodeURIComponent(weekNumber)}` : '';
+    return fetchApi(`/api/studies/${studyId}/stats${qs}`);
+  },
 
   getById: (studyId: string): Promise<Study> =>
     fetchApi(`/api/studies/${studyId}`),
@@ -285,6 +313,10 @@ export const studyApi = {
 export const problemApi = {
   findAll: (): Promise<Problem[]> =>
     fetchApi('/api/problems/active'),
+
+  /** 전체 문제 목록 (CLOSED 포함) — 대시보드 통계용 */
+  findAllIncludingClosed: (): Promise<Problem[]> =>
+    fetchApi('/api/problems/all'),
 
   findById: (id: string): Promise<Problem> =>
     fetchApi(`/api/problems/${id}`),
@@ -363,7 +395,16 @@ export const solvedacApi = {
 export interface Notification {
   id: string;
   userId: string;
-  type: 'SUBMISSION_STATUS' | 'GITHUB_FAILED' | 'AI_COMPLETED' | 'ROLE_CHANGED';
+  type:
+    | 'SUBMISSION_STATUS'
+    | 'AI_COMPLETED'
+    | 'GITHUB_FAILED'
+    | 'ROLE_CHANGED'
+    | 'PROBLEM_CREATED'
+    | 'DEADLINE_REMINDER'
+    | 'MEMBER_JOINED'
+    | 'MEMBER_LEFT'
+    | 'STUDY_CLOSED';
   title: string;
   message: string;
   link: string | null;
@@ -380,4 +421,84 @@ export const notificationApi = {
 
   markRead: (id: string): Promise<{ message: string }> =>
     fetchApi(`/api/notifications/${id}/read`, { method: 'PATCH' }),
+
+  markAllRead: (): Promise<{ message: string }> =>
+    fetchApi('/api/notifications/read-all', { method: 'PATCH' }),
+};
+
+// ── Review API ──
+
+export interface ReviewComment {
+  id: number;
+  publicId: string;
+  submissionId: string;
+  authorId: string;
+  studyId: string;
+  lineNumber: number | null;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  replies?: ReviewReply[];
+}
+
+export interface ReviewReply {
+  id: number;
+  publicId: string;
+  commentId: number;
+  authorId: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const reviewApi = {
+  createComment: (data: {
+    submissionId: string;
+    lineNumber?: number | null;
+    content: string;
+  }): Promise<ReviewComment> =>
+    fetchApi('/api/reviews/comments', { method: 'POST', body: JSON.stringify(data) }),
+
+  listComments: (submissionId: string): Promise<ReviewComment[]> =>
+    fetchApi(`/api/reviews/comments?submissionId=${encodeURIComponent(submissionId)}`),
+
+  updateComment: (id: string, content: string): Promise<ReviewComment> =>
+    fetchApi(`/api/reviews/comments/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ content }),
+    }),
+
+  deleteComment: (id: string): Promise<void> =>
+    fetchApi(`/api/reviews/comments/${id}`, { method: 'DELETE' }),
+
+  createReply: (data: { commentId: number; content: string }): Promise<ReviewReply> =>
+    fetchApi('/api/reviews/replies', { method: 'POST', body: JSON.stringify(data) }),
+
+  listReplies: (commentId: number): Promise<ReviewReply[]> =>
+    fetchApi(`/api/reviews/replies?commentId=${commentId}`),
+};
+
+// ── Study Notes API ──
+
+export interface StudyNote {
+  id: number;
+  publicId: string;
+  problemId: string;
+  studyId: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const studyNoteApi = {
+  upsert: (data: { problemId: string; content: string }): Promise<StudyNote> =>
+    fetchApi('/api/study-notes', { method: 'PUT', body: JSON.stringify(data) }),
+
+  get: (problemId: string): Promise<StudyNote | null> =>
+    fetchApi<StudyNote>(`/api/study-notes?problemId=${encodeURIComponent(problemId)}`).catch(
+      (err: unknown) => {
+        if (err instanceof ApiError && err.status === 404) return null;
+        throw err;
+      },
+    ),
 };

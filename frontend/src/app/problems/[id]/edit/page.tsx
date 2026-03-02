@@ -1,29 +1,57 @@
+/**
+ * @file 문제 수정 페이지 (v2 전면 교체)
+ * @domain problem
+ * @layer page
+ * @related problemApi, solvedacApi, DifficultyBadge, Input, AppLayout
+ */
+
 'use client';
 
 import { useState, useEffect, useCallback, use, type FormEvent, type ReactNode, type KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, CheckCircle2, AlertCircle, Search, ExternalLink, Trash2 } from 'lucide-react';
+import { ChevronLeft, Search, ExternalLink, Trash2, FileText, Settings } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from '@/components/ui/Card';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Alert } from '@/components/ui/Alert';
 import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
-import { LoadingSpinner, InlineSpinner } from '@/components/ui/LoadingSpinner';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { InlineSpinner } from '@/components/ui/LoadingSpinner';
 import { useStudy } from '@/contexts/StudyContext';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { problemApi, solvedacApi, type Problem, type UpdateProblemData, type SolvedacProblemInfo } from '@/lib/api';
 import { DIFFICULTIES, DIFFICULTY_LABELS, LANGUAGES, LANGUAGE_VALUES, PROBLEM_STATUSES, PROBLEM_STATUS_LABELS } from '@/lib/constants';
+import type { Difficulty } from '@/lib/constants';
+
+// ─── TYPES ────────────────────────────────
+
+interface PageProps {
+  readonly params: Promise<{ id: string }>;
+}
+
+interface FormState {
+  title: string;
+  description: string;
+  difficulty: string;
+  weekNumber: string;
+  deadline: string;
+  allowedLanguages: string[];
+  sourceUrl: string;
+  sourcePlatform: string;
+  status: string;
+}
+
+interface FormErrors {
+  title?: string;
+  weekNumber?: string;
+  deadline?: string;
+}
+
+// ─── HELPERS ──────────────────────────────
 
 const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
 
-/** 주차 문자열("3월1주차")에서 해당 주의 월~일 날짜 목록 반환 */
 function getWeekDates(weekLabel: string): { label: string; value: string }[] {
   const match = weekLabel.match(/^(\d+)월(\d+)주차$/);
   if (!match) return [];
@@ -49,7 +77,6 @@ function getWeekDates(weekLabel: string): { label: string; value: string }[] {
   return dates;
 }
 
-/** ISO 날짜를 주차의 날짜 ISO 값으로 매칭 */
 function matchDeadlineToWeekDate(deadline: string, weekLabel: string): string {
   const weekDates = getWeekDates(weekLabel);
   const deadlineDate = new Date(deadline);
@@ -58,33 +85,6 @@ function matchDeadlineToWeekDate(deadline: string, weekLabel: string): string {
   return match?.value ?? '';
 }
 
-interface FormState {
-  title: string;
-  description: string;
-  difficulty: string;
-  weekNumber: string;
-  deadline: string;
-  allowedLanguages: string[];
-  sourceUrl: string;
-  sourcePlatform: string;
-  status: string;
-}
-
-interface FormErrors {
-  title?: string;
-  weekNumber?: string;
-  deadline?: string;
-}
-
-function validateForm(form: FormState): FormErrors {
-  const errors: FormErrors = {};
-  if (!form.title.trim()) errors.title = '문제 제목을 입력해주세요.';
-  if (!form.weekNumber.trim()) errors.weekNumber = '주차를 선택해주세요.';
-  if (!form.deadline) errors.deadline = '마감일을 선택해주세요.';
-  return errors;
-}
-
-/** 현재 월 기준 주차 옵션 생성 */
 function getWeekOptions(): string[] {
   const now = new Date();
   const month = now.getMonth() + 1;
@@ -99,14 +99,36 @@ function getWeekOptions(): string[] {
   return options;
 }
 
-interface PageProps {
-  readonly params: Promise<{ id: string }>;
+function validateForm(form: FormState): FormErrors {
+  const errors: FormErrors = {};
+  if (!form.title.trim()) errors.title = '문제 제목을 입력해주세요.';
+  if (!form.weekNumber.trim()) errors.weekNumber = '주차를 선택해주세요.';
+  if (!form.deadline) errors.deadline = '마감일을 선택해주세요.';
+  return errors;
 }
 
+// ─── STYLE CONSTANTS ─────────────────────
+
+const selectClass =
+  'h-[40px] w-full px-3 pr-8 rounded-btn border border-border bg-input-bg text-text text-xs outline-none cursor-pointer transition-[border-color] duration-150 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50 appearance-none' +
+  " bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239C9A95%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_10px_center]";
+
+const labelClass = 'block text-[11px] font-medium text-text-2 mb-1.5';
+
+// ─── RENDER ───────────────────────────────
+
+/**
+ * 문제 수정 페이지
+ * @domain problem
+ * @guard ADMIN-only
+ */
 export default function ProblemEditPage({ params }: PageProps): ReactNode {
   const { id: problemId } = use(params);
   const router = useRouter();
+  const { isAuthenticated } = useRequireAuth();
   const { currentStudyRole } = useStudy();
+
+  // ─── STATE ──────────────────────────────
 
   const [problem, setProblem] = useState<Problem | null>(null);
   const [isPageLoading, setIsPageLoading] = useState(true);
@@ -126,43 +148,24 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
   const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // 백준 검색
+  // BOJ 검색
   const [bojQuery, setBojQuery] = useState('');
   const [bojSearching, setBojSearching] = useState(false);
   const [bojError, setBojError] = useState<string | null>(null);
   const [bojResult, setBojResult] = useState<SolvedacProblemInfo | null>(null);
   const [bojApplied, setBojApplied] = useState(false);
 
-  // 범용 토스트
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [toastFading, setToastFading] = useState(false);
-  const [cardShake, setCardShake] = useState(false);
-
-  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
-    setToast({ message, type });
-    setToastFading(false);
-    if (type === 'error') {
-      setCardShake(true);
-      setTimeout(() => setCardShake(false), 600);
-    }
-  }, []);
+  // ─── EFFECTS ────────────────────────────
 
   useEffect(() => {
-    if (!toast) return;
-    const fadeTimer = setTimeout(() => setToastFading(true), 3000);
-    const removeTimer = setTimeout(() => { setToast(null); setToastFading(false); }, 3300);
-    return () => { clearTimeout(fadeTimer); clearTimeout(removeTimer); };
-  }, [toast]);
-
-  // 문제 데이터 로드
-  useEffect(() => {
+    if (!isAuthenticated) return;
     let cancelled = false;
 
     const load = async (): Promise<void> => {
       setIsPageLoading(true);
       setLoadError(null);
-
       try {
         const data = await problemApi.findById(problemId);
         if (cancelled) return;
@@ -179,7 +182,6 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
           sourcePlatform: data.sourcePlatform || 'BOJ',
           status: data.status ?? 'ACTIVE',
         });
-        // 기존에 sourceUrl이 있으면 BOJ 적용 상태로 표시
         if (data.sourceUrl) setBojApplied(true);
       } catch (err: unknown) {
         if (!cancelled) {
@@ -192,48 +194,11 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
 
     void load();
     return () => { cancelled = true; };
-  }, [problemId]);
+  }, [isAuthenticated, problemId]);
 
-  // ADMIN 권한 체크
-  if (currentStudyRole !== 'ADMIN') {
-    return (
-      <AppLayout>
-        <div className="space-y-4">
-          <Alert variant="error">문제 수정은 관리자만 가능합니다.</Alert>
-          <Button variant="ghost" size="sm" onClick={() => router.push('/problems')}>
-            <ChevronLeft />
-            문제 목록
-          </Button>
-        </div>
-      </AppLayout>
-    );
-  }
+  // ─── HANDLERS ─────────────────────────────
 
-  if (isPageLoading) {
-    return (
-      <AppLayout>
-        <div className="flex min-h-[60vh] items-center justify-center">
-          <LoadingSpinner size="lg" label="문제를 불러오는 중..." />
-        </div>
-      </AppLayout>
-    );
-  }
-
-  if (loadError || !problem) {
-    return (
-      <AppLayout>
-        <div className="space-y-4">
-          <Alert variant="error">{loadError ?? '문제를 찾을 수 없습니다.'}</Alert>
-          <Button variant="ghost" size="sm" onClick={() => router.push('/problems')}>
-            <ChevronLeft />
-            문제 목록
-          </Button>
-        </div>
-      </AppLayout>
-    );
-  }
-
-  const handleBojSearch = async (): Promise<void> => {
+  const handleBojSearch = useCallback(async (): Promise<void> => {
     const id = Number(bojQuery.trim());
     if (!Number.isInteger(id) || id < 1) {
       setBojError('유효한 문제 번호를 입력해주세요.');
@@ -255,13 +220,12 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
       }));
       setFieldErrors((prev) => ({ ...prev, title: undefined }));
       setBojApplied(true);
-      showToast('문제 정보가 적용되었습니다');
     } catch (err: unknown) {
       setBojError(err instanceof Error ? err.message : '검색에 실패했습니다.');
     } finally {
       setBojSearching(false);
     }
-  };
+  }, [bojQuery]);
 
   const handleBojKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => {
     if (e.key === 'Enter') {
@@ -283,10 +247,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
   const handleLanguageToggle = (lang: string) => {
     setForm((prev) => {
       const isSelected = prev.allowedLanguages.includes(lang);
-      if (isSelected && prev.allowedLanguages.length <= 1) {
-        showToast('최소 1개 이상 선택해야 합니다.', 'error');
-        return prev;
-      }
+      if (isSelected && prev.allowedLanguages.length <= 1) return prev;
       return {
         ...prev,
         allowedLanguages: isSelected
@@ -298,22 +259,20 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
+    if (!problem) return;
+    setSubmitError(null);
 
     const errors = validateForm(form);
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
-      const firstError = Object.values(errors)[0];
-      if (firstError) showToast(firstError, 'error');
       return;
     }
 
-    // ACTIVE → CLOSED 변경 시 확인 다이얼로그
     if (problem.status === 'ACTIVE' && form.status === 'CLOSED') {
       const confirmed = window.confirm('문제를 마감하면 더 이상 제출할 수 없습니다. 계속하시겠습니까?');
       if (!confirmed) return;
     }
 
-    // DRAFT → ACTIVE 변경 시 확인 다이얼로그
     if (problem.status === 'DRAFT' && form.status === 'ACTIVE') {
       const confirmed = window.confirm('문제를 활성화하면 멤버들이 이 문제를 보고 제출할 수 있습니다. 계속하시겠습니까?');
       if (!confirmed) return;
@@ -339,94 +298,172 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
       if (form.status !== problem.status) data.status = form.status as UpdateProblemData['status'];
 
       await problemApi.update(problemId, data);
-      router.push('/problems');
+      router.push(`/problems/${problemId}`);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '';
-      showToast(msg || '문제 수정에 실패했습니다. 다시 시도해주세요.', 'error');
+      setSubmitError(err instanceof Error ? err.message : '문제 수정에 실패했습니다.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handleDelete = async (): Promise<void> => {
+    const confirmed = window.confirm('정말 이 문제를 삭제하시겠습니까? 관련 제출 기록도 함께 삭제됩니다.');
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    try {
+      await problemApi.delete(problemId);
+      router.replace('/problems');
+    } catch {
+      setSubmitError('문제 삭제에 실패했습니다.');
+      setIsDeleting(false);
+    }
+  };
+
+  // ─── GUARDS ─────────────────────────────
+
+  if (currentStudyRole !== 'ADMIN') {
+    return (
+      <AppLayout>
+        <div className="space-y-4">
+          <Alert variant="error">문제 수정은 관리자만 가능합니다.</Alert>
+          <Button variant="ghost" size="sm" onClick={() => router.push('/problems')}>
+            <ChevronLeft />
+            문제 목록
+          </Button>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  // ─── LOADING ────────────────────────────
+
+  if (isPageLoading) {
+    return (
+      <AppLayout>
+        <div className="mx-auto max-w-[640px] space-y-4">
+          <Skeleton height={20} width="30%" />
+          <Skeleton height={200} />
+          <Skeleton height={200} />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (loadError || !problem) {
+    return (
+      <AppLayout>
+        <div className="space-y-4">
+          <Alert variant="error">{loadError ?? '문제를 찾을 수 없습니다.'}</Alert>
+          <Button variant="ghost" size="sm" onClick={() => router.push('/problems')}>
+            <ChevronLeft />
+            문제 목록
+          </Button>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  // ─── FORM ───────────────────────────────
+
   return (
     <AppLayout>
-      <div className="mx-auto max-w-lg">
+      <div className="mx-auto max-w-[640px] space-y-4">
+        {/* 뒤로가기 */}
         <Button
           variant="ghost"
           size="sm"
           onClick={() => router.push(`/problems/${problemId}`)}
-          className="mb-4 -ml-1"
+          className="-ml-1"
         >
           <ChevronLeft />
           문제 상세
         </Button>
 
-        <Card className={cardShake ? 'animate-shake' : ''} style={cardShake ? { boxShadow: '0 0 0 3px rgba(148, 126, 176, 0.4)' } : undefined}>
+        {/* 카드 1: BOJ 검색 */}
+        <Card>
           <CardHeader>
-            <CardTitle>문제 수정</CardTitle>
-            <CardDescription>문제 정보를 수정합니다.</CardDescription>
-
-            {/* 백준 문제 검색 */}
-            <div className="mt-3 space-y-2">
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text3" aria-hidden />
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="백준 문제번호로 검색"
-                    value={bojQuery}
-                    onChange={(e) => setBojQuery(e.target.value)}
-                    onKeyDown={handleBojKeyDown}
-                    disabled={bojSearching || isSubmitting}
-                    className="w-full pl-8 pr-3 py-2 rounded-btn border border-border bg-bg2 text-text1 text-xs outline-none transition-[border-color] duration-150 placeholder:text-text3 focus:border-primary-500 disabled:cursor-not-allowed disabled:opacity-50"
-                    style={{ padding: '8px 12px 8px 30px', fontSize: '12px' }}
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={bojSearching || isSubmitting || !bojQuery.trim()}
-                  onClick={() => void handleBojSearch()}
-                >
-                  {bojSearching ? <InlineSpinner /> : '검색'}
-                </Button>
+            <CardTitle className="flex items-center gap-2">
+              <div className="flex items-center justify-center w-7 h-7 rounded-md bg-primary-soft text-primary">
+                <Search className="h-3.5 w-3.5" />
               </div>
-              {bojError && (
-                <p className="text-[11px] text-[var(--color-error)]">{bojError}</p>
-              )}
-              {bojResult && (
-                <div className="flex items-center gap-2.5 rounded-btn bg-bg2 px-3 py-2 animate-fade-in">
-                  <span className="text-xs font-mono text-text3">#{bojResult.problemId}</span>
-                  <span className="text-xs font-medium text-text1 truncate">{bojResult.title}</span>
-                  {bojResult.difficulty && (
-                    <DifficultyBadge difficulty={bojResult.difficulty} level={bojResult.level} showDot={false} />
-                  )}
-                  <a
-                    href={bojResult.sourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="ml-auto shrink-0 text-text3 hover:text-primary-500 transition-colors"
-                    aria-label="백준에서 보기"
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
-                </div>
-              )}
-              {bojResult && bojResult.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {bojResult.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="inline-block rounded-full bg-bg2 px-2 py-0.5 text-[10px] text-text3"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
+              백준 문제 검색
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-3 pointer-events-none" />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="백준 문제번호로 검색"
+                  value={bojQuery}
+                  onChange={(e) => { setBojQuery(e.target.value); setBojError(null); }}
+                  onKeyDown={handleBojKeyDown}
+                  disabled={bojSearching || isSubmitting}
+                  className="w-full h-[40px] pl-8 pr-3 rounded-btn border border-border bg-input-bg text-text text-xs outline-none transition-[border-color] duration-150 placeholder:text-text-3 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                disabled={bojSearching || isSubmitting || !bojQuery.trim()}
+                onClick={() => void handleBojSearch()}
+                className="shrink-0"
+              >
+                {bojSearching ? <InlineSpinner /> : '검색'}
+              </Button>
             </div>
+
+            {bojError && (
+              <p className="text-[11px] text-error">{bojError}</p>
+            )}
+
+            {bojResult && (
+              <div className="flex items-center gap-2.5 rounded-btn bg-primary-soft border border-border px-3 py-2.5">
+                <span className="text-xs font-mono text-text-3">#{bojResult.problemId}</span>
+                <span className="text-xs font-medium text-text truncate">{bojResult.title}</span>
+                {bojResult.difficulty && (
+                  <DifficultyBadge difficulty={bojResult.difficulty as Difficulty} level={bojResult.level} />
+                )}
+                <a
+                  href={bojResult.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-auto shrink-0 text-text-3 hover:text-primary transition-colors"
+                  aria-label="백준에서 보기"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              </div>
+            )}
+
+            {bojResult && bojResult.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {bojResult.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-full bg-bg-alt px-2 py-0.5 text-[10px] font-medium text-text-2"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* 카드 2: 기본 정보 + 설정 */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <div className="flex items-center justify-center w-7 h-7 rounded-md bg-primary-soft text-primary">
+                <FileText className="h-3.5 w-3.5" />
+              </div>
+              문제 수정
+            </CardTitle>
           </CardHeader>
 
           <form onSubmit={(e) => void handleSubmit(e)} noValidate>
@@ -439,41 +476,27 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                 disabled={isSubmitting || bojApplied}
               />
 
-              {/* 설명 */}
               <div className="flex flex-col">
-                <label
-                  htmlFor="input-description"
-                  className="text-[11px] font-medium text-text2 mb-[5px]"
-                >
-                  설명 (선택)
-                </label>
+                <label htmlFor="edit-description" className={labelClass}>설명 (선택)</label>
                 <textarea
-                  id="input-description"
+                  id="edit-description"
                   value={form.description}
                   onChange={handleChange('description')}
                   disabled={isSubmitting}
                   rows={4}
-                  className="w-full px-3 py-2 rounded-btn border border-border bg-bg2 text-text1 text-xs outline-none transition-[border-color] duration-150 placeholder:text-text3 focus:border-primary-500 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
-                  style={{ padding: '8px 12px', fontSize: '12px' }}
+                  className="w-full px-3 py-2 rounded-btn border border-border bg-input-bg text-text text-xs outline-none transition-[border-color] duration-150 placeholder:text-text-3 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50 resize-y leading-relaxed"
                 />
               </div>
 
-              {/* 난이도 + 주차 2열 */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col">
-                  <label
-                    htmlFor="input-difficulty"
-                    className="text-[11px] font-medium text-text2 mb-[5px]"
-                  >
-                    난이도
-                  </label>
+                  <label htmlFor="edit-difficulty" className={labelClass}>난이도</label>
                   <select
-                    id="input-difficulty"
+                    id="edit-difficulty"
                     value={form.difficulty}
                     onChange={handleChange('difficulty')}
                     disabled={isSubmitting || bojApplied}
-                    className="w-full px-3 py-2 rounded-btn border border-border bg-bg2 text-text1 text-xs outline-none transition-[border-color] duration-150 focus:border-primary-500 disabled:cursor-not-allowed disabled:opacity-50"
-                    style={{ padding: '8px 12px', fontSize: '12px' }}
+                    className={selectClass}
                   >
                     <option value="">선택 안 함</option>
                     {DIFFICULTIES.map((d) => (
@@ -483,45 +506,44 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                 </div>
 
                 <div className="flex flex-col">
-                  <label
-                    htmlFor="input-weekNumber"
-                    className="text-[11px] font-medium text-text2 mb-[5px]"
-                  >
-                    주차
+                  <label htmlFor="edit-weekNumber" className={labelClass}>
+                    주차 <span className="text-error text-[10px]">필수</span>
                   </label>
                   <select
-                    id="input-weekNumber"
+                    id="edit-weekNumber"
                     value={form.weekNumber}
                     onChange={handleChange('weekNumber')}
                     disabled={isSubmitting}
-                    className={`w-full px-3 py-2 rounded-btn border bg-bg2 text-text1 text-xs outline-none transition-[border-color] duration-150 focus:border-primary-500 disabled:cursor-not-allowed disabled:opacity-50 ${fieldErrors.weekNumber ? 'border-[var(--color-error)]' : 'border-border'}`}
-                    style={{ padding: '8px 12px', fontSize: '12px' }}
+                    className={`${selectClass} ${fieldErrors.weekNumber ? 'border-error' : ''}`}
                   >
                     {getWeekOptions().map((w) => (
                       <option key={w} value={w}>{w}</option>
                     ))}
                   </select>
                   {fieldErrors.weekNumber && (
-                    <p className="mt-1 text-[11px] text-[var(--color-error)]">{fieldErrors.weekNumber}</p>
+                    <p className="mt-1 text-[11px] text-error">{fieldErrors.weekNumber}</p>
                   )}
                 </div>
               </div>
 
-              {/* 마감일 */}
+              {/* 마감 & 상태 섹션 */}
+              <div className="flex items-center gap-2 pt-3 border-t border-border">
+                <div className="flex items-center justify-center w-7 h-7 rounded-md bg-primary-soft text-primary">
+                  <Settings className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-sm font-semibold text-text">마감 & 상태</span>
+              </div>
+
               <div className="flex flex-col">
-                <label
-                  htmlFor="input-deadline"
-                  className="text-[11px] font-medium text-text2 mb-[5px]"
-                >
-                  마감일
+                <label htmlFor="edit-deadline" className={labelClass}>
+                  마감일 <span className="text-error text-[10px]">필수</span>
                 </label>
                 <select
-                  id="input-deadline"
+                  id="edit-deadline"
                   value={form.deadline}
                   onChange={handleChange('deadline')}
                   disabled={isSubmitting}
-                  className={`w-full px-3 py-2 rounded-btn border bg-bg2 text-text1 text-xs outline-none transition-[border-color] duration-150 focus:border-primary-500 disabled:cursor-not-allowed disabled:opacity-50 ${fieldErrors.deadline ? 'border-[var(--color-error)]' : 'border-border'}`}
-                  style={{ padding: '8px 12px', fontSize: '12px' }}
+                  className={`${selectClass} ${fieldErrors.deadline ? 'border-error' : ''}`}
                 >
                   <option value="" disabled>요일을 선택하세요</option>
                   {getWeekDates(form.weekNumber).map((d) => (
@@ -529,25 +551,18 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                   ))}
                 </select>
                 {fieldErrors.deadline && (
-                  <p className="mt-1 text-[11px] text-[var(--color-error)]">{fieldErrors.deadline}</p>
+                  <p className="mt-1 text-[11px] text-error">{fieldErrors.deadline}</p>
                 )}
               </div>
 
-              {/* 상태 */}
               <div className="flex flex-col">
-                <label
-                  htmlFor="input-status"
-                  className="text-[11px] font-medium text-text2 mb-[5px]"
-                >
-                  상태
-                </label>
+                <label htmlFor="edit-status" className={labelClass}>상태</label>
                 <select
-                  id="input-status"
+                  id="edit-status"
                   value={form.status}
                   onChange={handleChange('status')}
                   disabled={isSubmitting}
-                  className="w-full px-3 py-2 rounded-btn border border-border bg-bg2 text-text1 text-xs outline-none transition-[border-color] duration-150 focus:border-primary-500 disabled:cursor-not-allowed disabled:opacity-50"
-                  style={{ padding: '8px 12px', fontSize: '12px' }}
+                  className={selectClass}
                 >
                   {PROBLEM_STATUSES.map((s) => (
                     <option key={s} value={s}>{PROBLEM_STATUS_LABELS[s]}</option>
@@ -555,11 +570,9 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                 </select>
               </div>
 
-              {/* 허용 언어 필 토글 */}
+              {/* 허용 언어 */}
               <div className="flex flex-col">
-                <span className="text-[11px] font-medium text-text2 mb-[5px]">
-                  허용 언어 (선택)
-                </span>
+                <span className={labelClass}>허용 언어</span>
                 <div className="flex flex-wrap gap-1.5">
                   {LANGUAGES.map((lang) => {
                     const selected = form.allowedLanguages.includes(lang.value);
@@ -569,12 +582,15 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                         type="button"
                         onClick={() => handleLanguageToggle(lang.value)}
                         disabled={isSubmitting}
-                        className={`rounded-full px-2.5 py-1 text-[11px] font-medium border transition-colors duration-150 ${
+                        className={`inline-flex items-center gap-1 text-[11px] font-medium px-3 py-1.5 rounded-badge border transition-colors duration-150 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${
                           selected
-                            ? 'bg-main/15 text-main border-main/30'
-                            : 'bg-bg2 text-text3 border-border line-through'
-                        } disabled:cursor-not-allowed disabled:opacity-50`}
+                            ? 'bg-primary-soft text-primary border-primary/30'
+                            : 'bg-transparent text-text-3 border-border line-through'
+                        }`}
                       >
+                        {selected && (
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        )}
                         {lang.label}
                       </button>
                     );
@@ -582,7 +598,6 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                 </div>
               </div>
 
-              {/* 출처 URL */}
               <Input
                 label="출처 URL"
                 value={form.sourceUrl}
@@ -590,7 +605,6 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                 disabled={isSubmitting || bojApplied}
               />
 
-              {/* 출처 플랫폼 */}
               <Input
                 label="출처 플랫폼"
                 value={form.sourcePlatform}
@@ -598,6 +612,15 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                 disabled
               />
             </CardContent>
+
+            {/* 에러 */}
+            {submitError && (
+              <div className="px-5 pb-3">
+                <Alert variant="error" onClose={() => setSubmitError(null)}>
+                  {submitError}
+                </Alert>
+              </div>
+            )}
 
             <CardFooter className="flex items-center justify-between">
               <div className="flex gap-3">
@@ -631,21 +654,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                 variant="danger"
                 size="sm"
                 disabled={isSubmitting || isDeleting}
-                onClick={async () => {
-                  const confirmed = window.confirm(
-                    '정말 이 문제를 삭제하시겠습니까? 관련 제출 기록도 함께 삭제됩니다.',
-                  );
-                  if (!confirmed) return;
-
-                  setIsDeleting(true);
-                  try {
-                    await problemApi.delete(problemId);
-                    router.replace('/problems');
-                  } catch {
-                    showToast('문제 삭제에 실패했습니다.', 'error');
-                    setIsDeleting(false);
-                  }
-                }}
+                onClick={() => void handleDelete()}
               >
                 {isDeleting ? (
                   <>
@@ -662,20 +671,6 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
             </CardFooter>
           </form>
         </Card>
-
-        {/* 토스트 */}
-        {toast && (
-          <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] transition-opacity duration-300 ${toastFading ? 'opacity-0' : 'opacity-100 animate-fade-in'}`}>
-            <div className="flex items-center gap-2 rounded-card border border-border bg-surface px-4 py-2.5 shadow-modal">
-              {toast.type === 'error'
-                ? <AlertCircle className="h-3.5 w-3.5 text-[var(--color-error)] shrink-0" aria-hidden />
-                : <CheckCircle2 className="h-3.5 w-3.5 text-[var(--color-success)] shrink-0" aria-hidden />}
-              <span className="text-[12px] font-medium text-foreground">
-                {toast.message}
-              </span>
-            </div>
-          </div>
-        )}
       </div>
     </AppLayout>
   );

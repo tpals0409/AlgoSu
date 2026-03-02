@@ -27,6 +27,7 @@ interface StudyContextValue {
   currentStudyName: string | null;
   currentStudyRole: 'ADMIN' | 'MEMBER' | null;
   studies: Study[];
+  studiesLoaded: boolean;
   setCurrentStudy: (studyId: string) => void;
   setStudies: (studies: Study[]) => void;
   removeStudy: (studyId: string) => void;
@@ -50,6 +51,7 @@ interface StudyProviderProps {
 export function StudyProvider({ children }: StudyProviderProps): ReactNode {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [studies, setStudiesState] = useState<Study[]>([]);
+  const [studiesLoaded, setStudiesLoaded] = useState(false);
   const [currentStudyId, setCurrentStudyId] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem(STUDY_STORAGE_KEY);
@@ -68,7 +70,10 @@ export function StudyProvider({ children }: StudyProviderProps): ReactNode {
 
   // 인증 완료 시 스터디 목록 자동 로드
   useEffect(() => {
-    if (authLoading || !isAuthenticated) return;
+    if (authLoading || !isAuthenticated) {
+      setStudiesLoaded(false);
+      return;
+    }
     let cancelled = false;
     const load = async () => {
       try {
@@ -76,6 +81,8 @@ export function StudyProvider({ children }: StudyProviderProps): ReactNode {
         if (!cancelled) setStudiesState(data);
       } catch {
         // 실패 시 무시 — 개별 페이지에서 재시도
+      } finally {
+        if (!cancelled) setStudiesLoaded(true);
       }
     };
     void load();
@@ -115,6 +122,7 @@ export function StudyProvider({ children }: StudyProviderProps): ReactNode {
     currentStudyName,
     currentStudyRole,
     studies,
+    studiesLoaded,
     setCurrentStudy,
     setStudies,
     removeStudy,

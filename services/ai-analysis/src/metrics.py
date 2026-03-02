@@ -68,10 +68,16 @@ circuit_breaker_state = Gauge(
     documentation="Circuit Breaker state (0=CLOSED, 0.5=HALF_OPEN, 1=OPEN)",
 )
 
-gemini_requests_total = Counter(
-    name="algosu_ai_analysis_gemini_requests_total",
-    documentation="Gemini API call total",
+claude_requests_total = Counter(
+    name="algosu_ai_analysis_claude_requests_total",
+    documentation="Claude API call total",
     labelnames=["status"],
+)
+
+ai_quota_checks_total = Counter(
+    name="algosu_ai_analysis_quota_checks_total",
+    documentation="AI quota check total",
+    labelnames=["result"],  # allowed, denied
 )
 
 CIRCUIT_STATE_VALUES: dict[str, float] = {

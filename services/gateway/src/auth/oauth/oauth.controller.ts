@@ -1,7 +1,15 @@
+/**
+ * @file OAuth 인증 컨트롤러 — 소셜로그인 + GitHub 연동 + 프로필 관리
+ * @domain identity
+ * @layer controller
+ * @related OAuthService, JwtMiddleware, TokenRefreshInterceptor
+ */
+
 import {
   Controller,
   Get,
   Post,
+  Patch,
   Delete,
   Param,
   Query,
@@ -9,20 +17,26 @@ import {
   Req,
   Res,
   BadRequestException,
+  NotFoundException,
   Logger,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import { OAuthService } from './oauth.service';
+import { setTokenCookie } from '../cookie.util';
 
 @Controller('auth')
 export class OAuthController {
   private readonly logger = new Logger(OAuthController.name);
 
-  constructor(private readonly oauthService: OAuthService) {}
+  constructor(
+    private readonly oauthService: OAuthService,
+    private readonly configService: ConfigService,
+  ) {}
 
   /**
-   * GET /auth/oauth/:provider — OAuth 인증 시작
-   * 클라이언트를 OAuth Provider 인증 페이지로 리다이렉트
+   * OAuth 인증 시작 — 프로바이더 인증 URL 반환
+   * @api GET /auth/oauth/:provider
    */
   @Get('oauth/:provider')
   async startOAuth(
@@ -33,8 +47,9 @@ export class OAuthController {
   }
 
   /**
-   * GET /auth/oauth/:provider/callback — OAuth 콜백 처리
-   * code → token 교환 → users 테이블 upsert → 자체 JWT 발급
+   * OAuth 콜백 처리 — JWT를 httpOnly Cookie로 발급 후 프론트엔드 리다이렉트
+   * @api GET /auth/oauth/:provider/callback
+   * @guard cookie-auth
    */
   @Get('oauth/:provider/callback')
   async handleOAuthCallback(
@@ -51,11 +66,13 @@ export class OAuthController {
 
     this.logger.log(`OAuth 로그인 성공: provider=${provider}, userId=${result.user.id}`);
 
-    // H4: 토큰을 fragment(#)로 전달 — URL 히스토리/서버 로그/Referrer 노출 방지
-    const frontendUrl = process.env['FRONTEND_URL'] ?? 'http://localhost:3001';
+    // httpOnly Cookie로 JWT 발급 (fragment 전달 제거)
+    const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
+    setTokenCookie(res, result.accessToken, nodeEnv);
+
+    // 프론트엔드 리다이렉트 — github_connected만 fragment로 전달 (민감 정보 아님)
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3001');
     const params = new URLSearchParams({
-      access_token: result.accessToken,
-      refresh_token: result.refreshToken,
       github_connected: String(result.user.github_connected),
     });
     res.redirect(`${frontendUrl}/callback#${params.toString()}`);
@@ -128,17 +145,111 @@ export class OAuthController {
   }
 
   /**
-   * POST /auth/refresh — JWT 갱신
+   * GET /auth/profile — 프로필 조회
+   */
+  @Get('profile')
+  async getProfile(
+    @Req() req: Request,
+  ): Promise<{ email: string; name: string | null; avatar_url: string | null; oauth_provider: string | null }> {
+    const userId = req.headers['x-user-id'] as string;
+    const user = await this.oauthService.findUserById(userId);
+    if (!user) {
+      throw new NotFoundException('사용자를 찾을 수 없습니다.');
+    }
+    return {
+      email: user.email,
+      name: user.name,
+      avatar_url: user.avatar_url,
+      oauth_provider: user.oauth_provider,
+    };
+  }
+
+  /**
+   * PATCH /auth/profile — 프로필 수정 (닉네임 / 아바타)
+   */
+  @Patch('profile')
+  async updateProfile(
+    @Req() req: Request,
+    @Body('name') name: string | undefined,
+    @Body('avatar_url') avatarUrl: string | undefined,
+  ): Promise<{ name: string; avatar_url: string | null }> {
+    const userId = req.headers['x-user-id'] as string;
+
+    // name 검증 (전달된 경우만)
+    if (name !== undefined) {
+      if (typeof name !== 'string' || name.trim().length === 0) {
+        throw new BadRequestException('닉네임을 입력해주세요.');
+      }
+      if (name.trim().length > 30) {
+        throw new BadRequestException('닉네임은 30자 이하로 입력해주세요.');
+      }
+    }
+
+    // avatar_url 검증 — preset: 형식만 허용
+    if (avatarUrl !== undefined) {
+      if (typeof avatarUrl !== 'string' || !avatarUrl.startsWith('preset:')) {
+        throw new BadRequestException('유효하지 않은 아바타 형식입니다.');
+      }
+      if (avatarUrl.length > 50) {
+        throw new BadRequestException('아바타 URL이 너무 깁니다.');
+      }
+    }
+
+    if (name === undefined && avatarUrl === undefined) {
+      throw new BadRequestException('변경할 항목이 없습니다.');
+    }
+
+    const user = await this.oauthService.updateProfile(
+      userId,
+      name?.trim(),
+      avatarUrl,
+    );
+    if (!user) {
+      throw new NotFoundException('사용자를 찾을 수 없습니다.');
+    }
+
+    this.logger.log(`프로필 수정: userId=${userId}`);
+    return { name: user.name ?? '', avatar_url: user.avatar_url };
+  }
+
+  /**
+   * JWT 갱신 — Cookie의 기존 토큰으로 새 토큰 발급 (httpOnly Cookie 정책)
+   * @api POST /auth/refresh
+   * @guard cookie-auth
    */
   @Post('refresh')
   async refreshToken(
-    @Body('refresh_token') refreshToken: string,
-  ): Promise<{ access_token: string }> {
-    if (!refreshToken) {
-      throw new BadRequestException('Refresh token이 필요합니다.');
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{ message: string }> {
+    const token = req.cookies?.['token'] as string | undefined;
+    if (!token) {
+      throw new BadRequestException('인증 쿠키가 없습니다.');
     }
 
-    const result = await this.oauthService.refreshAccessToken(refreshToken);
-    return { access_token: result.accessToken };
+    const userId = req.headers['x-user-id'] as string;
+    if (!userId) {
+      throw new BadRequestException('인증 정보가 없습니다.');
+    }
+
+    const user = await this.oauthService.findUserByIdOrThrow(userId);
+    const accessToken = this.oauthService.issueAccessToken(user);
+
+    const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
+    setTokenCookie(res, accessToken, nodeEnv);
+
+    return { message: 'Token refreshed' };
+  }
+
+  /**
+   * 로그아웃 — httpOnly Cookie 삭제
+   * @api POST /auth/logout
+   */
+  @Post('logout')
+  logout(
+    @Res({ passthrough: true }) res: Response,
+  ): { message: string } {
+    res.clearCookie('token', { path: '/' });
+    return { message: '로그아웃 되었습니다.' };
   }
 }

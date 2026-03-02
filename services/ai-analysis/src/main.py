@@ -1,11 +1,24 @@
+"""
+AlgoSu AI Analysis Service -- FastAPI 메인
+
+@file FastAPI 앱 + Worker 스레드 + Quota API + 그룹 분석
+@domain ai
+@layer controller
+@related ClaudeClient, AIAnalysisWorker, prompt
+"""
+
 import logging
 import threading
+from datetime import date
+
 import httpx
-from fastapi import FastAPI, HTTPException, Header
+import redis
+from fastapi import FastAPI, HTTPException, Header, Query
 from pydantic import BaseModel
+
 from .config import settings
 from .worker import AIAnalysisWorker
-from .gemini_client import GeminiClient
+from .claude_client import ClaudeClient
 from .circuit_breaker import circuit_breaker
 from .logger import setup_logging
 from .metrics import (
@@ -13,33 +26,41 @@ from .metrics import (
     metrics_endpoint,
     update_circuit_breaker_gauge,
 )
+from .prompt import GROUP_SYSTEM_PROMPT, build_group_user_prompt
 
-# 구조화 JSON 로깅 초기화 (monitoring-log-rules.md §1)
+# ─── LOGGING ──────────────────────────────────
+
 setup_logging()
 logger = logging.getLogger("ai-analysis")
 
+# ─── APP ──────────────────────────────────────
+
 app = FastAPI(
     title="AlgoSu AI Analysis Service",
-    description="Gemini 기반 코드 분석 + Circuit Breaker",
-    version="1.0.0",
+    description="Claude 기반 코드 분석 + Circuit Breaker + AI Quota",
+    version="2.0.0",
 )
 
-# Prometheus 미들웨어 + /metrics 엔드포인트
 app.add_middleware(PrometheusMiddleware)
 app.get("/metrics")(metrics_endpoint)
 
 worker_instance: AIAnalysisWorker | None = None
 worker_thread: threading.Thread | None = None
+redis_client: redis.Redis | None = None
+
+
+# ─── LIFECYCLE ────────────────────────────────
 
 
 @app.on_event("startup")
 async def startup_event():
     """서비스 시작 시 RabbitMQ Worker를 백그라운드 스레드로 실행"""
-    global worker_instance, worker_thread
+    global worker_instance, worker_thread, redis_client
 
-    # Circuit Breaker 상태 → Prometheus gauge 자동 동기화
     circuit_breaker.set_state_change_callback(update_circuit_breaker_gauge)
     update_circuit_breaker_gauge(circuit_breaker.state.value)
+
+    redis_client = redis.from_url(settings.redis_url)
 
     worker_instance = AIAnalysisWorker()
     worker_thread = threading.Thread(target=worker_instance.start, daemon=True)
@@ -50,15 +71,20 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Graceful Shutdown"""
-    global worker_instance
+    global worker_instance, redis_client
     if worker_instance:
         worker_instance.stop()
+    if redis_client:
+        redis_client.close()
     logger.info("AI Analysis Service 종료")
+
+
+# ─── HEALTH ───────────────────────────────────
 
 
 @app.get("/health")
 async def health():
-    """헬스체크 — Circuit Breaker 상태 포함"""
+    """헬스체크 -- Circuit Breaker 상태 포함"""
     return {
         "status": "ok",
         "circuit_breaker": {
@@ -68,9 +94,19 @@ async def health():
     }
 
 
+# ─── CIRCUIT BREAKER ─────────────────────────
+
+
 @app.get("/circuit-breaker/status")
-async def cb_status(x_internal_key: str = Header(alias="X-Internal-Key", default="")):
-    """Circuit Breaker 상태 조회 (내부 전용)"""
+async def cb_status(
+    x_internal_key: str = Header(alias="X-Internal-Key", default=""),
+):
+    """
+    Circuit Breaker 상태 조회 (내부 전용)
+
+    @api GET /circuit-breaker/status
+    @guard internal-key
+    """
     if x_internal_key != settings.internal_api_key:
         raise HTTPException(status_code=401, detail="Invalid Internal Key")
 
@@ -80,6 +116,107 @@ async def cb_status(x_internal_key: str = Header(alias="X-Internal-Key", default
         "last_failure_time": circuit_breaker.last_failure_time,
         "half_open_successes": circuit_breaker.half_open_successes,
     }
+
+
+# ─── AI QUOTA ─────────────────────────────────
+
+
+@app.get("/quota")
+async def get_quota(
+    user_id: str = Query(alias="userId"),
+    x_internal_key: str = Header(alias="X-Internal-Key", default=""),
+):
+    """
+    AI 일일 사용량 조회
+
+    @api GET /quota?userId=xxx
+    @guard internal-key
+    @guard ai-quota
+    """
+    if x_internal_key != settings.internal_api_key:
+        raise HTTPException(status_code=401, detail="Invalid Internal Key")
+
+    if not user_id:
+        raise HTTPException(status_code=400, detail="userId 필수")
+
+    today = date.today().isoformat()
+    key = f"ai_limit:{user_id}:{today}"
+
+    used = 0
+    if redis_client:
+        val = redis_client.get(key)
+        if val:
+            used = int(val)
+
+    limit = settings.ai_daily_limit
+    return {
+        "data": {
+            "used": used,
+            "limit": limit,
+            "remaining": max(0, limit - used),
+        }
+    }
+
+
+@app.post("/quota/check")
+async def check_and_increment_quota(
+    user_id: str = Query(alias="userId"),
+    x_internal_key: str = Header(alias="X-Internal-Key", default=""),
+):
+    """
+    AI 한도 체크 + INCR (Saga에서 AI 큐잉 전 호출)
+
+    @api POST /quota/check?userId=xxx
+    @guard internal-key
+    @guard ai-quota
+    @returns: { allowed: bool, used: N, limit: 5 }
+    """
+    if x_internal_key != settings.internal_api_key:
+        raise HTTPException(status_code=401, detail="Invalid Internal Key")
+
+    if not user_id:
+        raise HTTPException(status_code=400, detail="userId 필수")
+
+    today = date.today().isoformat()
+    key = f"ai_limit:{user_id}:{today}"
+    limit = settings.ai_daily_limit
+
+    if not redis_client:
+        raise HTTPException(status_code=503, detail="Redis 미연결")
+
+    # INCR + TTL 패턴 (원자적)
+    pipe = redis_client.pipeline()
+    pipe.incr(key)
+    pipe.ttl(key)
+    results = pipe.execute()
+    current = int(results[0])
+    ttl = int(results[1])
+
+    # 첫 사용 시 TTL 설정 (24시간)
+    if ttl == -1:
+        redis_client.expire(key, 86400)
+
+    if current > limit:
+        # 한도 초과 시 DECR로 원복
+        redis_client.decr(key)
+        return {
+            "data": {
+                "allowed": False,
+                "used": current - 1,
+                "limit": limit,
+            }
+        }
+
+    return {
+        "data": {
+            "allowed": True,
+            "used": current,
+            "limit": limit,
+        }
+    }
+
+
+# ─── GROUP ANALYSIS ──────────────────────────
 
 
 class GroupAnalysisRequest(BaseModel):
@@ -92,11 +229,17 @@ async def group_analysis(
     req: GroupAnalysisRequest,
     x_internal_key: str = Header(alias="X-Internal-Key", default=""),
 ):
-    """그룹 최적화 코드 합성 — 스터디 전체 제출을 종합 분석"""
+    """
+    그룹 최적화 코드 합성 -- 스터디 전체 제출을 종합 분석
+
+    @api POST /group-analysis
+    @guard internal-key
+    @domain ai
+    """
     if x_internal_key != settings.internal_api_key:
         raise HTTPException(status_code=401, detail="Invalid Internal Key")
 
-    # 1. Submission Service에서 해당 문제의 전체 제출 조회
+    # Submission Service에서 해당 문제의 전체 제출 조회
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.get(
@@ -111,45 +254,43 @@ async def group_analysis(
         raise HTTPException(status_code=502, detail="제출 데이터 조회 실패")
 
     if not submissions:
-        raise HTTPException(status_code=404, detail="해당 문제에 대한 제출이 없습니다.")
-
-    # 2. Gemini API로 종합 분석
-    gemini = GeminiClient()
-    code_snippets = []
-    for sub in submissions:
-        code_preview = sub["code"][:500] if len(sub["code"]) > 500 else sub["code"]
-        code_snippets.append(
-            f"[{sub['language']}] (userId: {sub['userId'][:8]}...)\n```{sub['language']}\n{code_preview}\n```"
+        raise HTTPException(
+            status_code=404, detail="해당 문제에 대한 제출이 없습니다."
         )
 
-    combined_code = "\n\n---\n\n".join(code_snippets)
-    prompt = f"""당신은 알고리즘 코드 리뷰 전문가입니다.
+    # Claude API로 그룹 분석
+    claude = ClaudeClient()
+    code_snippets = [
+        {
+            "language": sub["language"],
+            "userId": sub["userId"],
+            "code": sub["code"],
+        }
+        for sub in submissions
+    ]
 
-다음은 같은 문제에 대한 여러 사용자의 제출 코드입니다:
-
-{combined_code}
-
-다음을 수행해주세요:
-1. **각 풀이 비교 분석**: 시간/공간 복잡도, 접근 방식 비교
-2. **최적 풀이 선정**: 가장 효율적인 접근법과 그 이유
-3. **종합 최적화 코드**: 모든 풀이의 장점을 결합한 최적화 코드 작성
-4. **학습 포인트**: 팀원들이 배울 수 있는 핵심 포인트
-
-한국어로 답변해주세요."""
+    user_prompt = build_group_user_prompt(code_snippets)
 
     try:
-        result = await gemini.analyze_code(
-            code=combined_code,
-            language="mixed",
-            problem_context="그룹 종합 분석",
+        import anthropic
+
+        message = claude.client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=4096,
+            system=GROUP_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": user_prompt}],
         )
+
+        raw_text = message.content[0].text if message.content else ""
+        result = claude._parse_response(raw_text)
+
     except Exception as e:
-        logger.error(f"그룹 분석 Gemini 호출 실패: {str(e)[:200]}")
+        logger.error(f"그룹 분석 Claude 호출 실패: {str(e)[:200]}")
         raise HTTPException(status_code=502, detail="AI 분석 실패")
 
-    # 3. 결과 반환
     logger.info(
-        f"그룹 분석 완료: problemId={req.problem_id}, studyId={req.study_id}, submissions={len(submissions)}"
+        f"그룹 분석 완료: problemId={req.problem_id}, "
+        f"studyId={req.study_id}, submissions={len(submissions)}"
     )
 
     return {

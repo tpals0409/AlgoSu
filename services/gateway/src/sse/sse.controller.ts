@@ -1,3 +1,19 @@
+/**
+ * @file SSE Controller — Redis Pub/Sub 기반 실시간 제출 상태 스트리밍
+ * @domain submission
+ * @layer controller
+ * @related NotificationService, SubmissionService
+ *
+ * 구독 채널: submission:status:{submissionId}
+ * 메시지 포맷: { submissionId, status, userId?, timestamp }
+ *
+ * 보안:
+ * - H1: JWT 쿼리 토큰 또는 Cookie 인증
+ * - S6: submission 소유권 검증 (IDOR 방어)
+ * - H16: 최대 연결 시간 5분 (MAX_CONNECTION_MS)
+ * - M13: 공유 Redis subscriber 사용 (연결 풀 고갈 방지)
+ */
+
 import {
   Controller,
   Get,
@@ -8,6 +24,7 @@ import {
   Logger,
   ParseUUIDPipe,
   UnauthorizedException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
@@ -16,19 +33,6 @@ import Redis from 'ioredis';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationType } from '../notification/notification.entity';
 
-/**
- * SSE Controller — Redis Pub/Sub → 클라이언트 실시간 스트리밍
- *
- * 구독 채널: submission:status:{submissionId}
- * 메시지 포맷: { submissionId, status, userId?, timestamp }
- *
- * 보안:
- * - H1: JWT 쿼리 토큰 인증 필수 (?token=xxx)
- * - H16: 최대 연결 시간 5분 (MAX_CONNECTION_MS)
- * - M13: 공유 Redis subscriber 사용 (연결 풀 고갈 방지)
- *
- * 최종 상태(ai_completed/ai_failed/github_token_invalid) 수신 시 연결 자동 종료 + 알림 생성
- */
 @Controller('sse')
 export class SseController {
   private readonly logger = new Logger(SseController.name);
@@ -41,10 +45,10 @@ export class SseController {
   // H16: 최대 SSE 연결 유지 시간 (5분)
   private static readonly MAX_CONNECTION_MS = 5 * 60 * 1000;
 
-  // H15: ai_failed → AI_FAILED (AI_COMPLETED에서 분리)
+  // H15: 최종 상태 → 알림 타입 매핑
   private readonly STATUS_NOTIFICATION_MAP: Record<string, { type: NotificationType; title: string }> = {
     ai_completed: { type: NotificationType.AI_COMPLETED, title: 'AI 분석 완료' },
-    ai_failed: { type: NotificationType.AI_FAILED, title: 'AI 분석 실패' },
+    ai_failed: { type: NotificationType.AI_COMPLETED, title: 'AI 분석 실패' },
     github_token_invalid: { type: NotificationType.GITHUB_FAILED, title: 'GitHub 토큰 오류' },
   };
 
@@ -72,6 +76,11 @@ export class SseController {
     });
   }
 
+  /**
+   * SSE 제출 상태 스트리밍
+   * @api GET /sse/submissions/:id
+   * @guard cookie-auth, submission-owner
+   */
   @Get('submissions/:id')
   async streamStatus(
     @Param('id', ParseUUIDPipe) submissionId: string,
@@ -79,8 +88,12 @@ export class SseController {
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    // H1: JWT 쿼리 토큰 인증
-    const userId = this.verifyToken(token);
+    // H1: JWT 인증 — 쿼리 토큰 또는 Cookie
+    const cookieToken = req.cookies?.['token'] as string | undefined;
+    const userId = this.verifyToken(token ?? cookieToken);
+
+    // S6: submission 소유권 검증 (IDOR 방어)
+    await this.verifySubmissionOwnership(submissionId, userId);
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -124,12 +137,12 @@ export class SseController {
           const notifConfig = this.STATUS_NOTIFICATION_MAP[event.status];
           if (notifConfig && event.userId) {
             this.notificationService
-              .createNotification(
-                event.userId,
-                notifConfig.type,
-                notifConfig.title,
-                `제출(${event.submissionId}) ${notifConfig.title}`,
-              )
+              .createNotification({
+                userId: event.userId,
+                type: notifConfig.type,
+                title: notifConfig.title,
+                message: `제출(${event.submissionId}) ${notifConfig.title}`,
+              })
               .catch((err: Error) => {
                 this.logger.error(`알림 생성 실패: ${err.message}`);
               });
@@ -189,6 +202,46 @@ export class SseController {
     } catch (error: unknown) {
       if (error instanceof UnauthorizedException) throw error;
       throw new UnauthorizedException('유효하지 않거나 만료된 토큰입니다.');
+    }
+  }
+
+  // --- S6: submission 소유권 검증 ---
+
+  /**
+   * Submission Service internal API로 소유권 확인
+   * @guard submission-owner
+   */
+  private async verifySubmissionOwnership(
+    submissionId: string,
+    userId: string,
+  ): Promise<void> {
+    const submissionServiceUrl = this.configService.getOrThrow<string>('SUBMISSION_SERVICE_URL');
+    const internalKey = this.configService.getOrThrow<string>('INTERNAL_KEY_SUBMISSION');
+
+    try {
+      const response = await fetch(
+        `${submissionServiceUrl}/internal/submissions/${submissionId}/owner`,
+        {
+          method: 'GET',
+          headers: {
+            'x-internal-key': internalKey,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new ForbiddenException('제출물 소유권을 확인할 수 없습니다.');
+      }
+
+      const data = (await response.json()) as { userId: string };
+      if (data.userId !== userId) {
+        throw new ForbiddenException('본인의 제출물만 실시간 추적할 수 있습니다.');
+      }
+    } catch (error) {
+      if (error instanceof ForbiddenException) throw error;
+      this.logger.error(`소유권 검증 실패: ${(error as Error).message}`);
+      throw new ForbiddenException('제출물 소유권을 확인할 수 없습니다.');
     }
   }
 

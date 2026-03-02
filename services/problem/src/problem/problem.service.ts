@@ -38,6 +38,7 @@ export class ProblemService {
       sourcePlatform: dto.sourcePlatform ?? null,
       deadline: dto.deadline ? new Date(dto.deadline) : null,
       allowedLanguages: dto.allowedLanguages ?? null,
+      tags: dto.tags ?? null,
       studyId,
       createdBy,
     });
@@ -127,6 +128,9 @@ export class ProblemService {
     if (dto.allowedLanguages !== undefined) {
       problem.allowedLanguages = dto.allowedLanguages ?? null;
     }
+    if (dto.tags !== undefined) {
+      problem.tags = dto.tags ?? null;
+    }
     if (dto.status !== undefined) problem.status = dto.status as ProblemStatus;
 
     const saved = await this.dualWrite.saveExisting(problem);
@@ -166,6 +170,17 @@ export class ProblemService {
     const problems = await this.dualWrite.find({
       where: { status: ProblemStatus.ACTIVE, studyId },
       order: { weekNumber: 'DESC', createdAt: 'ASC' },
+    });
+    return problems;
+  }
+
+  /**
+   * 전체 문제 목록 (CLOSED 포함) — studyId 스코핑
+   */
+  async findAllByStudy(studyId: string): Promise<Problem[]> {
+    const problems = await this.dualWrite.find({
+      where: { studyId },
+      order: { weekNumber: 'ASC', createdAt: 'ASC' },
     });
     return problems;
   }

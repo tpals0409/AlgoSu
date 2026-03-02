@@ -69,6 +69,15 @@ export class ProblemController {
   }
 
   /**
+   * GET /all — 스터디별 전체 문제 목록 (CLOSED 포함)
+   */
+  @Get('all')
+  async findAll(@Headers('x-study-id') studyId: string) {
+    const problems = await this.problemService.findAllByStudy(studyId);
+    return { data: problems };
+  }
+
+  /**
    * GET /active — 스터디별 활성 문제 전체 목록
    */
   @Get('active')
