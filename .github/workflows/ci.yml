@@ -17,6 +17,12 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      rebuild_all:
+        description: 'Force rebuild all services'
+        required: false
+        default: 'false'
 
 # 최소 권한 원칙: 기본 제로, 각 job에서 필요 권한만 명시
 permissions: {}
@@ -87,13 +93,13 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      gateway:       ${{ steps.filter.outputs.gateway }}
-      identity:      ${{ steps.filter.outputs.identity }}
-      submission:    ${{ steps.filter.outputs.submission }}
-      problem:       ${{ steps.filter.outputs.problem }}
-      github-worker: ${{ steps.filter.outputs.github-worker }}
-      ai-analysis:   ${{ steps.filter.outputs.ai-analysis }}
-      frontend:      ${{ steps.filter.outputs.frontend }}
+      gateway:       ${{ steps.result.outputs.gateway }}
+      identity:      ${{ steps.result.outputs.identity }}
+      submission:    ${{ steps.result.outputs.submission }}
+      problem:       ${{ steps.result.outputs.problem }}
+      github-worker: ${{ steps.result.outputs.github-worker }}
+      ai-analysis:   ${{ steps.result.outputs.ai-analysis }}
+      frontend:      ${{ steps.result.outputs.frontend }}
     steps:
       - uses: actions/checkout@v4
       - name: Detect path changes
@@ -115,6 +121,26 @@ jobs:
               - 'services/ai-analysis/**'
             frontend:
               - 'frontend/**'
+      - name: Apply rebuild_all override
+        id: result
+        run: |
+          if [ "${{ github.event.inputs.rebuild_all }}" = "true" ]; then
+            echo "gateway=true" >> $GITHUB_OUTPUT
+            echo "identity=true" >> $GITHUB_OUTPUT
+            echo "submission=true" >> $GITHUB_OUTPUT
+            echo "problem=true" >> $GITHUB_OUTPUT
+            echo "github-worker=true" >> $GITHUB_OUTPUT
+            echo "ai-analysis=true" >> $GITHUB_OUTPUT
+            echo "frontend=true" >> $GITHUB_OUTPUT
+          else
+            echo "gateway=${{ steps.filter.outputs.gateway }}" >> $GITHUB_OUTPUT
+            echo "identity=${{ steps.filter.outputs.identity }}" >> $GITHUB_OUTPUT
+            echo "submission=${{ steps.filter.outputs.submission }}" >> $GITHUB_OUTPUT
+            echo "problem=${{ steps.filter.outputs.problem }}" >> $GITHUB_OUTPUT
+            echo "github-worker=${{ steps.filter.outputs.github-worker }}" >> $GITHUB_OUTPUT
+            echo "ai-analysis=${{ steps.filter.outputs.ai-analysis }}" >> $GITHUB_OUTPUT
+            echo "frontend=${{ steps.filter.outputs.frontend }}" >> $GITHUB_OUTPUT
+          fi
 
   # ============================================================
   # Commit Lint — PR 시 Conventional Commits 강제
@@ -613,6 +639,7 @@ jobs:
         with:
           context: ./frontend
           platforms: linux/arm64
+          network: host
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ env.IMAGE_PREFIX }}-frontend:main-${{ github.sha }}
           cache-from: type=gha
