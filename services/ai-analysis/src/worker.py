@@ -145,7 +145,7 @@ class AIAnalysisWorker:
             last_result = result
 
             if attempt < MAX_RETRIES:
-                wait_sec = BACKOFF_BASE ** attempt
+                wait_sec = BACKOFF_BASE**attempt
                 logger.warning(
                     f"AI 분석 재시도: attempt={attempt}/{MAX_RETRIES}, "
                     f"wait={wait_sec}s"
@@ -237,8 +237,7 @@ class AIAnalysisWorker:
             if current and int(current) > 0:
                 self.redis_client.decr(key)
                 logger.info(
-                    f"AI 한도 차감 (실패 보상): userId={user_id[:8]}***, "
-                    f"key={key}"
+                    f"AI 한도 차감 (실패 보상): userId={user_id[:8]}***, " f"key={key}"
                 )
         except Exception as e:
             logger.warning(f"AI 한도 차감 실패: {str(e)[:100]}")

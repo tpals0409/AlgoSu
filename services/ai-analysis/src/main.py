@@ -254,9 +254,7 @@ async def group_analysis(
         raise HTTPException(status_code=502, detail="제출 데이터 조회 실패")
 
     if not submissions:
-        raise HTTPException(
-            status_code=404, detail="해당 문제에 대한 제출이 없습니다."
-        )
+        raise HTTPException(status_code=404, detail="해당 문제에 대한 제출이 없습니다.")
 
     # Claude API로 그룹 분석
     claude = ClaudeClient()
