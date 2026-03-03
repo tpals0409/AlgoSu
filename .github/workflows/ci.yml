@@ -349,7 +349,7 @@ jobs:
         run: npm ci
       - name: Run unit tests
         working-directory: services/submission
-        run: npm test -- --coverage --ci
+        run: npm test -- --coverage --ci --forceExit
       - name: Upload coverage
         if: always()
         uses: actions/upload-artifact@v4
