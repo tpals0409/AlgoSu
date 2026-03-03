@@ -473,8 +473,8 @@ jobs:
           platforms: linux/arm64
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ env.IMAGE_PREFIX }}-gateway:main-${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=gateway
+          cache-to: type=gha,mode=max,scope=gateway
 
   build-identity:
     name: Build Identity Service (NestJS)
@@ -501,8 +501,8 @@ jobs:
           platforms: linux/arm64
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ env.IMAGE_PREFIX }}-identity:main-${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=identity
+          cache-to: type=gha,mode=max,scope=identity
 
   build-submission:
     name: Build Submission Service (NestJS)
@@ -529,8 +529,8 @@ jobs:
           platforms: linux/arm64
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ env.IMAGE_PREFIX }}-submission:main-${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=submission
+          cache-to: type=gha,mode=max,scope=submission
 
   build-problem:
     name: Build Problem Service (NestJS)
@@ -557,8 +557,8 @@ jobs:
           platforms: linux/arm64
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ env.IMAGE_PREFIX }}-problem:main-${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=problem
+          cache-to: type=gha,mode=max,scope=problem
 
   build-github-worker:
     name: Build GitHub Worker (Node.js)
@@ -585,8 +585,8 @@ jobs:
           platforms: linux/arm64
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ env.IMAGE_PREFIX }}-github-worker:main-${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=github-worker
+          cache-to: type=gha,mode=max,scope=github-worker
 
   build-ai-analysis:
     name: Build AI Analysis Service (FastAPI)
@@ -613,8 +613,8 @@ jobs:
           platforms: linux/arm64
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ env.IMAGE_PREFIX }}-ai-analysis:main-${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=ai-analysis
+          cache-to: type=gha,mode=max,scope=ai-analysis
 
   build-frontend:
     name: Build Frontend (Next.js)
@@ -642,8 +642,8 @@ jobs:
           network: host
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ env.IMAGE_PREFIX }}-frontend:main-${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
 
   # ============================================================
   # Trivy — 이미지 취약점 스캔 (main push 후, deploy 전)
@@ -696,7 +696,7 @@ jobs:
         if: steps.check.outputs.skip == 'false'
         run: |
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
-            | sh -s -- -b /usr/local/bin v0.59.1
+            | sh -s -- -b /usr/local/bin v0.69.2
       - name: Trivy scan
         if: steps.check.outputs.skip == 'false'
         run: |
