@@ -84,7 +84,7 @@ export function Toast({ toast, onDismiss }: ToastProps): ReactElement {
             className={cn('mt-2 flex items-center gap-1 border-none bg-transparent p-0 text-xs font-semibold', styles.badge.split(' ').pop())}
           >
             {toast.action}
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
               <polyline points="9 18 15 12 9 6" />
             </svg>
           </button>
@@ -95,7 +95,7 @@ export function Toast({ toast, onDismiss }: ToastProps): ReactElement {
         aria-label="닫기"
         className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm border-none bg-transparent text-text-3 transition-colors hover:text-text"
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
           <line x1="18" y1="6" x2="6" y2="18" />
           <line x1="6" y1="6" x2="18" y2="18" />
         </svg>
@@ -116,7 +116,7 @@ export function Toast({ toast, onDismiss }: ToastProps): ReactElement {
 }
 
 function ToastIcon({ type }: { type: ToastType }): ReactElement {
-  const props = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const };
+  const props = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, 'aria-hidden': true as const };
 
   switch (type) {
     case 'success':

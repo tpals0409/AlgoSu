@@ -140,7 +140,7 @@ export function NotificationToast({
           className="mt-0.5 shrink-0 text-text-3 hover:text-text transition-colors"
           aria-label="닫기"
         >
-          <X className="h-3.5 w-3.5" />
+          <X className="h-3.5 w-3.5" aria-hidden />
         </button>
       </div>
     </div>,

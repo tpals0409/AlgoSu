@@ -356,7 +356,7 @@ export default function LandingPage(): ReactNode {
           </p>
           <Link
             href="/login"
-            className="inline-flex h-[52px] items-center rounded-lg px-9 text-base font-semibold text-white shadow-[0_4px_24px_rgba(124,106,174,0.35)] gradient-brand transition-all hover:brightness-110"
+            className="inline-flex h-[52px] items-center rounded-lg px-9 text-base font-semibold text-white shadow-glow gradient-brand transition-all hover:brightness-110"
           >
             무료로 시작하기
           </Link>

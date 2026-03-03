@@ -416,7 +416,7 @@ export default function DashboardPage(): ReactNode {
           <Card className="border-warning/30 bg-warning-soft" style={fade(0.06)}>
             <div className="flex items-center justify-between px-4 py-3">
               <div className="flex items-center gap-3">
-                <Github className="h-5 w-5 text-warning" />
+                <Github className="h-5 w-5 text-warning" aria-hidden />
                 <div>
                   <p className="text-[13px] font-medium text-text">GitHub 연동이 필요합니다</p>
                   <p className="text-[11px] text-text-3">코드를 제출하려면 GitHub 계정을 먼저 연동해주세요.</p>
@@ -506,7 +506,7 @@ export default function DashboardPage(): ReactNode {
                     <Link
                       href="/analytics"
                       onClick={(e) => e.stopPropagation()}
-                      className="block pt-1 text-center text-[11px] font-medium text-primary hover:underline"
+                      className="block pt-1 text-center text-[11px] font-medium text-primary transition-colors hover:underline"
                     >
                       전체 {filteredByWeek.length}주 보기 →
                     </Link>
@@ -593,7 +593,7 @@ export default function DashboardPage(): ReactNode {
               <h2 className="text-sm font-semibold">최근 제출</h2>
               <Link
                 href="/submissions"
-                className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+                className="flex items-center gap-1 text-[11px] font-medium text-primary transition-colors hover:underline"
               >
                 전체 보기
                 <ArrowRight className="h-3 w-3" aria-hidden />
@@ -652,7 +652,7 @@ export default function DashboardPage(): ReactNode {
               <h2 className="text-sm font-semibold">마감 임박 문제</h2>
               <Link
                 href="/problems"
-                className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+                className="flex items-center gap-1 text-[11px] font-medium text-primary transition-colors hover:underline"
               >
                 전체 보기
                 <ArrowRight className="h-3 w-3" aria-hidden />

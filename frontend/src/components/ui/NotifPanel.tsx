@@ -158,7 +158,7 @@ export function NotifPanel({
           <button
             type="button"
             onClick={onMarkAllRead}
-            className="border-none bg-transparent text-xs font-medium text-primary hover:underline"
+            className="border-none bg-transparent text-xs font-medium text-primary transition-colors hover:underline"
           >
             모든 알림 읽음 처리
           </button>
@@ -183,6 +183,7 @@ function NotifIcon({ type }: { readonly type: NotifType }): ReactNode {
     stroke: 'currentColor',
     strokeWidth: 1.5,
     strokeLinecap: 'round' as const,
+    'aria-hidden': true as const,
   };
 
   switch (type) {

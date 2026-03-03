@@ -41,7 +41,7 @@ export function DiffBadge({ tier, level, className }: DiffBadgeProps): ReactElem
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-sm border px-2.5 py-0.5 text-[11px] font-semibold leading-none tracking-wide',
+        'inline-flex items-center rounded-badge border px-2.5 py-0.5 text-[11px] font-semibold leading-none tracking-wide',
         TIER_STYLES[tier],
         className,
       )}

@@ -57,7 +57,7 @@ function CallbackContent(): ReactNode {
           {error}
         </Alert>
         <div className="text-center">
-          <a href="/login" className="text-sm text-primary underline-offset-4 hover:text-primary-light hover:underline">
+          <a href="/login" className="text-sm text-primary underline-offset-4 transition-colors hover:text-primary-light hover:underline">
             로그인 페이지로 돌아가기
           </a>
         </div>

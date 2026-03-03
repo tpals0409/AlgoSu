@@ -243,7 +243,7 @@ export default function CodeReviewPage(): ReactElement {
         <NavPlaceholder />
         <div className="flex flex-1 items-center justify-center">
           <div className="text-center">
-            <AlertCircle className="mx-auto mb-3 h-8 w-8 text-error opacity-60" />
+            <AlertCircle className="mx-auto mb-3 h-8 w-8 text-error opacity-60" aria-hidden />
             <p className="text-sm text-text-2">{error ?? '제출물을 찾을 수 없습니다.'}</p>
             <Button
               variant="ghost"
@@ -276,12 +276,12 @@ export default function CodeReviewPage(): ReactElement {
                 className="flex items-center gap-1 text-xs text-text-3 transition-colors hover:text-text"
                 aria-label="뒤로가기"
               >
-                <ChevronRight className="h-3.5 w-3.5 rotate-180" />
+                <ChevronRight className="h-3.5 w-3.5 rotate-180" aria-hidden />
                 돌아가기
               </button>
               <span className="text-[10px] text-text-3 opacity-30">|</span>
               <div className="flex items-center gap-2">
-                <Code2 className="h-4 w-4 text-primary" />
+                <Code2 className="h-4 w-4 text-primary" aria-hidden />
                 <span className="text-sm font-semibold text-text">
                   {submission.problemTitle ?? '코드 리뷰'}
                 </span>
@@ -295,7 +295,7 @@ export default function CodeReviewPage(): ReactElement {
               onClick={() => setFocusMode(true)}
               aria-label="Focus 모드"
             >
-              <Maximize2 className="h-3.5 w-3.5" />
+              <Maximize2 className="h-3.5 w-3.5" aria-hidden />
               Focus
             </Button>
           </div>
@@ -311,7 +311,7 @@ export default function CodeReviewPage(): ReactElement {
               onClick={() => router.push('/dashboard')}
               className="flex items-center gap-1 text-xs text-text-3 hover:text-text transition-colors"
             >
-              <ChevronLeft className="h-3.5 w-3.5" />
+              <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
               나가기
             </button>
             <span className="h-4 w-px bg-border" />
@@ -325,7 +325,7 @@ export default function CodeReviewPage(): ReactElement {
               onClick={() => setFocusMode(false)}
               className="flex items-center gap-1 rounded-btn px-2 py-1 text-[10px] font-mono text-text-3 hover:bg-bg-alt transition-colors"
             >
-              <Minimize2 className="h-3 w-3" />
+              <Minimize2 className="h-3 w-3" aria-hidden />
               ESC
             </button>
           </div>
@@ -354,7 +354,7 @@ export default function CodeReviewPage(): ReactElement {
             mobileTab === 'code' ? 'text-primary border-b-2 border-primary' : 'text-text-3',
           )}
         >
-          <Code2 className="inline h-3.5 w-3.5 mr-1" />
+          <Code2 className="inline h-3.5 w-3.5 mr-1" aria-hidden />
           코드
         </button>
         <button

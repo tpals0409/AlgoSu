@@ -52,6 +52,7 @@ export function SubmissionStatus({ steps }: SubmissionStatusProps) {
                 <Icon
                   size={16}
                   className={step.status === 'in_progress' ? 'animate-spin' : ''}
+                  aria-hidden
                 />
                 <span className="text-sm">{step.label}</span>
               </div>

@@ -142,7 +142,7 @@ function CommentItem({
                 <button
                   type="button"
                   onClick={handleEdit}
-                  className="rounded-badge bg-primary px-2.5 py-1 text-[10px] font-semibold text-white"
+                  className="rounded-badge bg-primary px-2.5 py-1 text-[10px] font-semibold text-white transition-all hover:brightness-110"
                 >
                   저장
                 </button>
@@ -152,7 +152,7 @@ function CommentItem({
                     setEditing(false);
                     setEditContent(comment.content);
                   }}
-                  className="rounded-badge border border-border px-2.5 py-1 text-[10px] text-text-3"
+                  className="rounded-badge border border-border px-2.5 py-1 text-[10px] text-text-3 transition-colors hover:bg-bg-alt hover:text-text"
                 >
                   취소
                 </button>

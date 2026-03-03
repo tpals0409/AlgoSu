@@ -196,7 +196,7 @@ export default function SubmissionsPage(): ReactNode {
           <Card className="p-3">
             <div className="flex flex-wrap items-end gap-3">
               <div className="relative flex-1 min-w-[160px]">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-3 pointer-events-none" />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-3 pointer-events-none" aria-hidden />
                 <input
                   type="text"
                   placeholder="문제 검색..."
@@ -367,7 +367,7 @@ export default function SubmissionsPage(): ReactNode {
                     {isDone ? (
                       <Link
                         href={`/submissions/${submission.id}/analysis`}
-                        className="text-[11px] font-medium text-primary hover:underline whitespace-nowrap"
+                        className="text-[11px] font-medium text-primary transition-colors hover:underline whitespace-nowrap"
                       >
                         결과 보기
                       </Link>

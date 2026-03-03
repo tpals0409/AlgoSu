@@ -183,7 +183,7 @@ export default function ProblemsPage(): ReactNode {
             <div className="flex flex-wrap items-center gap-2">
               {/* 검색 */}
               <div className="relative flex-1 min-w-[160px]">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-3 pointer-events-none" />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-3 pointer-events-none" aria-hidden />
                 <input
                   type="text"
                   placeholder="문제명, BOJ 번호, 태그 검색..."

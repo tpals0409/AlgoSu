@@ -414,7 +414,7 @@ export default function AnalysisPage(): ReactNode {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <div className="flex items-center justify-center w-7 h-7 rounded-md bg-primary-soft text-primary">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden>
                         <circle cx="12" cy="12" r="3" />
                         <path d="M12 1v4m0 14v4M4.22 4.22l2.83 2.83m9.9 9.9l2.83 2.83M1 12h4m14 0h4M4.22 19.78l2.83-2.83m9.9-9.9l2.83-2.83" />
                       </svg>

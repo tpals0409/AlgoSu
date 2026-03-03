@@ -166,14 +166,13 @@ export function StudySidebar(): ReactNode {
                   href={linkHref}
                   title={collapsed ? label : undefined}
                   className={cn(
-                    'flex items-center gap-2.5 rounded-badge transition-colors duration-150',
+                    'flex items-center gap-2.5 rounded-badge text-xs transition-colors duration-150',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                     isActive
                       ? 'bg-primary-soft text-primary font-medium'
                       : 'text-text-2 hover:bg-bg-alt hover:text-text',
                     collapsed ? 'justify-center px-0 py-2' : 'px-3 py-2',
                   )}
-                  style={{ fontSize: '12px' }}
                 >
                   <Icon
                     className={cn(

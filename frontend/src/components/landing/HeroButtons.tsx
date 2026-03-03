@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/Button';
 export function HeroButtons(): ReactNode {
   return (
     <div className="flex justify-center gap-3">
-      <Button asChild size="lg" variant="primary" className="shadow-[0_4px_20px_rgba(124,106,174,0.35)]">
+      <Button asChild size="lg" variant="primary" className="shadow-glow">
         <Link href="/login">무료로 시작하기</Link>
       </Button>
       <Button asChild size="lg" variant="ghost">

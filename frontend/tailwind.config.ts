@@ -122,6 +122,7 @@ const config: Config = {
         hover:        'var(--shadow-hover)',
         modal:        'var(--shadow-hover)',
         toast:        'var(--shadow-toast)',
+        glow:         'var(--shadow-glow)',
       },
 
       keyframes: {

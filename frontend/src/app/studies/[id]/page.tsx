@@ -993,7 +993,7 @@ function MembersTab({
                       variant="ghost"
                       size="sm"
                       onClick={() => onKick(member)}
-                      className="text-error hover:text-error"
+                      className="text-error transition-colors hover:text-error"
                     >
                       <UserMinus className="h-3.5 w-3.5" aria-hidden />
                     </Button>
@@ -1012,7 +1012,7 @@ function MembersTab({
                         ? '마지막 관리자는 탈퇴할 수 없습니다. 다른 멤버에게 관리자를 위임하세요.'
                         : '스터디 탈퇴'
                     }
-                    className="text-text-3 hover:text-error"
+                    className="text-text-3 transition-colors hover:text-error"
                   >
                     <LogOut className="h-3.5 w-3.5" aria-hidden />
                   </Button>
@@ -1097,7 +1097,7 @@ function SettingsTab({
               onChange={(e) => onDescriptionChange(e.target.value)}
               disabled={isSavingEdit}
               rows={3}
-              className="w-full resize-y rounded-btn border border-border bg-bg-alt px-3 py-2 text-xs text-text outline-none transition-colors placeholder:text-text-3 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full resize-y rounded-badge border border-border bg-bg-alt px-3 py-2 text-xs text-text outline-none transition-colors placeholder:text-text-3 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
             />
           </div>
         </CardContent>
@@ -1139,7 +1139,7 @@ function SettingsTab({
               onChange={(e) => onGroundRulesChange(e.target.value.slice(0, 500))}
               placeholder="스터디 규칙을 작성하세요..."
               rows={4}
-              className="w-full rounded-btn border border-border bg-input-bg px-3 py-2 text-xs text-text placeholder:text-text-3 focus:border-primary outline-none resize-none"
+              className="w-full rounded-badge border border-border bg-input-bg px-3 py-2 text-xs text-text placeholder:text-text-3 focus:border-primary outline-none resize-none"
             />
             <Button variant="primary" size="sm" onClick={onSaveGroundRules}>
               저장

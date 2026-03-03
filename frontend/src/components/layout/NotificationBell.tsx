@@ -240,7 +240,7 @@ export function NotificationBell(): ReactNode {
                 <button
                   type="button"
                   onClick={() => void handleMarkAllRead()}
-                  className="text-[10px] font-medium text-primary hover:underline"
+                  className="text-[10px] font-medium text-primary transition-colors hover:underline"
                 >
                   모두 읽음
                 </button>

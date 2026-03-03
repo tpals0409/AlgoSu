@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { type Difficulty, DIFFICULTY_LABELS } from '@/lib/constants';
 
 const difficultyBadgeVariants = cva(
-  ['inline-flex items-center gap-1 rounded-sm px-2 py-0.5', 'text-xs font-semibold leading-none tracking-wide', 'border transition-colors duration-150'],
+  ['inline-flex items-center gap-1 rounded-badge px-2 py-0.5', 'text-xs font-semibold leading-none tracking-wide', 'border transition-colors duration-150'],
   {
     variants: {
       difficulty: {

@@ -304,7 +304,7 @@ export default function ProfilePage(): ReactNode {
                       disabled={nameLoading || !editName.trim()}
                       aria-label="저장"
                     >
-                      <Check className="h-3.5 w-3.5" />
+                      <Check className="h-3.5 w-3.5" aria-hidden />
                     </button>
                     <button
                       type="button"
@@ -313,7 +313,7 @@ export default function ProfilePage(): ReactNode {
                       disabled={nameLoading}
                       aria-label="취소"
                     >
-                      <X className="h-3.5 w-3.5" />
+                      <X className="h-3.5 w-3.5" aria-hidden />
                     </button>
                   </div>
                 ) : (
@@ -327,7 +327,7 @@ export default function ProfilePage(): ReactNode {
                       onClick={handleStartEditName}
                       aria-label="닉네임 수정"
                     >
-                      <Pencil className="h-3 w-3" />
+                      <Pencil className="h-3 w-3" aria-hidden />
                     </button>
                   </div>
                 )}

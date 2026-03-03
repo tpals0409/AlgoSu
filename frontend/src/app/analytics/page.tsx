@@ -280,7 +280,7 @@ export default function AnalyticsPage(): ReactNode {
               className="flex w-7 h-7 items-center justify-center rounded-btn bg-bg-alt text-text-3 hover:text-text transition-colors"
               aria-label="대시보드로 돌아가기"
             >
-              <ArrowLeft className="h-3.5 w-3.5" />
+              <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
             </Link>
             <div>
               <h1 className="text-[22px] font-bold tracking-tight text-text">
@@ -299,7 +299,7 @@ export default function AnalyticsPage(): ReactNode {
               disabled={isLoading}
               aria-label="새로고침"
             >
-              <RefreshCw className={cn('h-3.5 w-3.5', isLoading && 'animate-spin')} />
+              <RefreshCw className={cn('h-3.5 w-3.5', isLoading && 'animate-spin')} aria-hidden />
             </button>
           )}
         </div>

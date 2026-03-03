@@ -62,7 +62,7 @@ export function FeatureCards(): ReactNode {
         <span className="mb-4 inline-flex rounded-full bg-primary-soft px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary">
           핵심 기능
         </span>
-        <h2 className="text-[28px] font-bold tracking-tight">
+        <h2 className="text-[26px] font-bold tracking-tight">
           스터디에 필요한 모든 것
         </h2>
       </div>
@@ -73,7 +73,7 @@ export function FeatureCards(): ReactNode {
           return (
             <div
               key={f.title}
-              className="group rounded-lg border border-border bg-bg-card p-7 shadow transition-all duration-300 ease-bounce hover:-translate-y-1 hover:shadow-hover"
+              className="group rounded-card border border-border bg-bg-card p-7 shadow transition-all duration-300 ease-bounce hover:-translate-y-1 hover:shadow-hover"
               style={{
                 opacity: visible ? 1 : 0,
                 transform: visible ? 'translateY(0)' : 'translateY(28px)',

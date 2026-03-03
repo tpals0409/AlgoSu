@@ -62,7 +62,7 @@ function StudySelector(): ReactNode {
     return (
       <Link
         href="/studies"
-        className="inline-flex items-center gap-1 rounded-badge bg-bg-alt px-2.5 py-1 text-[11px] font-medium text-text-2 hover:text-text"
+        className="inline-flex items-center gap-1 rounded-badge bg-bg-alt px-2.5 py-1 text-[11px] font-medium text-text-2 transition-colors hover:text-text"
       >
         스터디 선택
       </Link>
@@ -77,7 +77,7 @@ function StudySelector(): ReactNode {
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((prev) => !prev)}
-        className="inline-flex items-center gap-1 rounded-badge bg-primary-soft px-2.5 py-1 text-[11px] font-medium text-text-2 border border-border hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="inline-flex items-center gap-1 rounded-badge bg-primary-soft px-2.5 py-1 text-[11px] font-medium text-text-2 border border-border transition-colors hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         <span className="max-w-[80px] truncate">
           {currentStudy?.name ?? '스터디 선택'}
@@ -114,7 +114,7 @@ function StudySelector(): ReactNode {
           <div className="border-t border-border">
             <button
               type="button"
-              className="flex w-full items-center px-3 py-2 text-left text-[12px] text-text-2 hover:bg-bg-alt"
+              className="flex w-full items-center px-3 py-2 text-left text-[12px] text-text-2 transition-colors hover:bg-bg-alt"
               onClick={() => {
                 setOpen(false);
                 router.push('/studies');
@@ -287,7 +287,7 @@ export function TopNav(): ReactNode {
             type="button"
             aria-label="메뉴 열기"
             onClick={() => setMobileMenuOpen((v) => !v)}
-            className="flex items-center justify-center bg-bg-alt text-text-3 hover:text-text sm:hidden w-7 h-7 rounded-sm"
+            className="flex items-center justify-center bg-bg-alt text-text-3 transition-colors hover:text-text sm:hidden w-7 h-7 rounded-sm"
           >
             {mobileMenuOpen ? (
               <X className="h-3.5 w-3.5" aria-hidden />
@@ -320,7 +320,7 @@ export function TopNav(): ReactNode {
           ) : (
             <Link
               href="/login"
-              className="inline-flex items-center justify-center bg-primary text-white transition-colors hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary px-[10px] py-[5px] text-[11px] font-semibold tracking-[0.2px] rounded-sm"
+              className="inline-flex items-center justify-center bg-primary text-white transition-colors hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary px-[10px] py-[5px] text-[11px] font-semibold tracking-[0.2px] rounded-btn"
             >
               로그인
             </Link>
