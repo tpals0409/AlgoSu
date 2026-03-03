@@ -21,6 +21,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { problemApi, type Problem } from '@/lib/api';
 import { useStudy } from '@/contexts/StudyContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useRequireStudy } from '@/hooks/useRequireStudy';
 import type { Difficulty } from '@/lib/constants';
 
 // ─── TYPES ────────────────────────────────
@@ -39,6 +40,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
   const { id: problemId } = use(params);
   const router = useRouter();
   const { isAuthenticated } = useRequireAuth();
+  useRequireStudy();
   const { currentStudyRole } = useStudy();
   const isAdmin = currentStudyRole === 'ADMIN';
 

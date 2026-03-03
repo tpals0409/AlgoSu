@@ -20,6 +20,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { InlineSpinner } from '@/components/ui/LoadingSpinner';
 import { useStudy } from '@/contexts/StudyContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useRequireStudy } from '@/hooks/useRequireStudy';
 import { problemApi, solvedacApi, type Problem, type UpdateProblemData, type SolvedacProblemInfo } from '@/lib/api';
 import { DIFFICULTIES, DIFFICULTY_LABELS, LANGUAGES, LANGUAGE_VALUES, PROBLEM_STATUSES, PROBLEM_STATUS_LABELS } from '@/lib/constants';
 import type { Difficulty } from '@/lib/constants';
@@ -126,6 +127,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
   const { id: problemId } = use(params);
   const router = useRouter();
   const { isAuthenticated } = useRequireAuth();
+  useRequireStudy();
   const { currentStudyRole } = useStudy();
 
   // ─── STATE ──────────────────────────────

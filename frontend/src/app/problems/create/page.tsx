@@ -18,6 +18,7 @@ import { Alert } from '@/components/ui/Alert';
 import { InlineSpinner } from '@/components/ui/LoadingSpinner';
 import { useStudy } from '@/contexts/StudyContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useRequireStudy } from '@/hooks/useRequireStudy';
 import { problemApi, solvedacApi, studyApi, type CreateProblemData, type SolvedacProblemInfo } from '@/lib/api';
 import { DIFFICULTIES, DIFFICULTY_LABELS, LANGUAGES, LANGUAGE_VALUES } from '@/lib/constants';
 
@@ -127,6 +128,7 @@ const labelClass = 'block text-[11px] font-medium text-text-2 mb-1.5';
 export default function ProblemCreatePage(): ReactNode {
   const router = useRouter();
   useRequireAuth();
+  useRequireStudy();
   const { currentStudyId, currentStudyRole } = useStudy();
 
   // ─── STATE ──────────────────────────────

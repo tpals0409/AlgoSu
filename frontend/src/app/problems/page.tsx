@@ -24,6 +24,7 @@ import { useStudy } from '@/contexts/StudyContext';
 import { DIFFICULTIES, DIFFICULTY_LABELS, PROBLEM_STATUSES, PROBLEM_STATUS_LABELS } from '@/lib/constants';
 import type { Difficulty } from '@/lib/constants';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useRequireStudy } from '@/hooks/useRequireStudy';
 
 // ─── TYPES ────────────────────────────────
 
@@ -52,6 +53,7 @@ const INITIAL_FILTERS: Filters = {
 export default function ProblemsPage(): ReactNode {
   const router = useRouter();
   const { isAuthenticated } = useRequireAuth();
+  useRequireStudy();
   const { currentStudyId, currentStudyRole, currentStudyName } = useStudy();
   const isAdmin = currentStudyRole === 'ADMIN';
 

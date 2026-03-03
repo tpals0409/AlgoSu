@@ -19,6 +19,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
 import { useStudy } from '@/contexts/StudyContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useRequireStudy } from '@/hooks/useRequireStudy';
 import {
   studyApi,
   problemApi,
@@ -125,6 +126,7 @@ function WeeklyBar({
 export default function AnalyticsPage(): ReactNode {
   const router = useRouter();
   const { isReady, isAuthenticated } = useRequireAuth();
+  useRequireStudy();
   const { currentStudyId, currentStudyName, studiesLoaded } = useStudy();
 
   const [stats, setStats] = useState<StudyStats | null>(null);

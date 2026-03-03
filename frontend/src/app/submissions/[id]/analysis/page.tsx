@@ -23,6 +23,7 @@ import { CategoryBar, type CategoryItem } from '@/components/ui/CategoryBar';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { submissionApi, type AnalysisResult, type Submission } from '@/lib/api';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useRequireStudy } from '@/hooks/useRequireStudy';
 
 // ─── TYPES ────────────────────────────────
 
@@ -140,6 +141,7 @@ export default function AnalysisPage(): ReactNode {
   const params = useParams();
   const router = useRouter();
   const { isReady, isAuthenticated } = useRequireAuth();
+  useRequireStudy();
   const submissionId = params.id as string;
   const codeRef = useRef<HTMLDivElement>(null);
 

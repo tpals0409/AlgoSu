@@ -31,6 +31,7 @@ import {
 import { useStudy } from '@/contexts/StudyContext';
 import { SAGA_STEP_CONFIG, LANGUAGE_VALUES, type SagaStep, type Difficulty } from '@/lib/constants';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useRequireStudy } from '@/hooks/useRequireStudy';
 
 // ─── CONSTANTS ────────────────────────────
 
@@ -61,6 +62,7 @@ function formatDate(dateStr: string): string {
 export default function SubmissionsPage(): ReactNode {
   const router = useRouter();
   const { isReady, isAuthenticated } = useRequireAuth();
+  useRequireStudy();
   const { currentStudyName } = useStudy();
 
   // ─── STATE ──────────────────────────────

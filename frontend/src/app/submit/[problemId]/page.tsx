@@ -25,6 +25,7 @@ import { problemApi, submissionApi, draftApi, type Problem } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudy } from '@/contexts/StudyContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useRequireStudy } from '@/hooks/useRequireStudy';
 import type { Difficulty } from '@/lib/constants';
 
 // ─── TYPES ────────────────────────────────
@@ -43,6 +44,7 @@ export default function SubmitPage(): ReactNode {
   const problemId = params?.problemId as string;
   const router = useRouter();
   const { isAuthenticated } = useRequireAuth();
+  useRequireStudy();
   const { githubConnected } = useAuth();
   const { currentStudyId } = useStudy();
 

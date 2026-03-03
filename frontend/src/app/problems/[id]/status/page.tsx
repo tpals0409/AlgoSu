@@ -19,6 +19,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useSubmissionSSE, mapSSEToSteps, type SSEStatus } from '@/hooks/useSubmissionSSE';
 import { submissionApi, type Submission } from '@/lib/api';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useRequireStudy } from '@/hooks/useRequireStudy';
 
 // ─── TYPES ────────────────────────────────
 
@@ -176,6 +177,7 @@ export default function SubmissionStatusPage({ params }: PageProps): ReactNode {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated } = useRequireAuth();
+  useRequireStudy();
   const submissionId = searchParams.get('submissionId');
 
   // ─── STATE ──────────────────────────────

@@ -31,6 +31,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useStudy } from '@/contexts/StudyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useRequireStudy } from '@/hooks/useRequireStudy';
 import { useAnimVal } from '@/hooks/useAnimVal';
 import {
   studyApi,
@@ -162,9 +163,10 @@ function WeeklyBar({
 export default function DashboardPage(): ReactNode {
   const router = useRouter();
   const { isReady } = useRequireAuth();
+  const { isStudyReady } = useRequireStudy();
   const { isAuthenticated, githubConnected } = useAuth();
   const { user } = useAuth();
-  const { currentStudyId, currentStudyName, studies, studiesLoaded } = useStudy();
+  const { currentStudyId, currentStudyName, studiesLoaded } = useStudy();
 
   const [stats, setStats] = useState<StudyStats | null>(null);
   const [members, setMembers] = useState<StudyMember[]>([]);
@@ -357,7 +359,7 @@ export default function DashboardPage(): ReactNode {
 
   // ─── LOADING SCREEN ───────────────────────
 
-  if (!isReady) {
+  if (!isReady || !isStudyReady) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-bg">
         <LoadingSpinner size="lg" color="primary" />
@@ -407,62 +409,6 @@ export default function DashboardPage(): ReactNode {
           <Alert variant="error" onClose={() => setError(null)}>
             {error}
           </Alert>
-        )}
-
-        {/* ── EMPTY STATE (스터디 미선택) ── */}
-        {!currentStudyId && !isLoading && (
-          <Card className="p-8">
-            <div className="flex flex-col items-center gap-4 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-bg-alt">
-                <Users className="h-5 w-5 text-primary" aria-hidden />
-              </div>
-              <div>
-                <p className="text-sm font-medium">
-                  아직 참여 중인 스터디가 없습니다
-                </p>
-                <p className="mt-1 text-[11px] text-text-3">
-                  스터디를 만들거나 초대코드로 참여해보세요.
-                </p>
-              </div>
-              <div className="flex gap-3">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => router.push('/studies/create')}
-                >
-                  스터디 생성
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => router.push('/studies')}
-                >
-                  초대코드 입력
-                </Button>
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {/* ── STUDY CARD GRID ── */}
-        {studies.length > 0 && !currentStudyId && (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" style={fade(0.08)}>
-            {studies.map((study) => (
-              <Card
-                key={study.id}
-                className="cursor-pointer p-5 transition-all hover:border-primary"
-                onClick={() => router.push(`/studies/${study.id}`)}
-              >
-                <h3 className="mb-1 text-sm font-semibold">{study.name}</h3>
-                <div className="flex items-center gap-2 text-[11px] text-text-3">
-                  <Badge variant={study.role === 'ADMIN' ? 'default' : 'muted'}>
-                    {study.role === 'ADMIN' ? '관리자' : '멤버'}
-                  </Badge>
-                  <span>{study.memberCount ?? 0}명</span>
-                </div>
-              </Card>
-            ))}
-          </div>
         )}
 
         {/* ── GITHUB ONBOARDING BANNER ── */}
