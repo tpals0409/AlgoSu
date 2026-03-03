@@ -1,28 +1,44 @@
 /**
- * @file 문제 수정 페이지 (v2 전면 교체)
+ * @file 문제 수정 페이지 (v2.1 UI 통일 리팩토링)
  * @domain problem
  * @layer page
- * @related problemApi, solvedacApi, DifficultyBadge, Input, AppLayout
+ * @related problemApi, solvedacApi, useBojSearch, useLanguageToggle
  */
 
 'use client';
 
-import { useState, useEffect, useCallback, use, type FormEvent, type ReactNode, type KeyboardEvent } from 'react';
+import { useState, useEffect, useCallback, use, type FormEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Search, ExternalLink, Trash2, FileText, Settings } from 'lucide-react';
+import { Search, ExternalLink, Trash2, FileText, Settings, X } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Alert } from '@/components/ui/Alert';
+import { Badge } from '@/components/ui/Badge';
+import { BackBtn } from '@/components/ui/BackBtn';
 import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { InlineSpinner } from '@/components/ui/LoadingSpinner';
 import { useStudy } from '@/contexts/StudyContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
-import { problemApi, solvedacApi, type Problem, type UpdateProblemData, type SolvedacProblemInfo } from '@/lib/api';
+import { useRequireStudy } from '@/hooks/useRequireStudy';
+import { useBojSearch } from '@/hooks/useBojSearch';
+import { useLanguageToggle } from '@/hooks/useLanguageToggle';
+import { problemApi, type Problem, type UpdateProblemData } from '@/lib/api';
 import { DIFFICULTIES, DIFFICULTY_LABELS, LANGUAGES, LANGUAGE_VALUES, PROBLEM_STATUSES, PROBLEM_STATUS_LABELS } from '@/lib/constants';
 import type { Difficulty } from '@/lib/constants';
+import {
+  type ProblemFormState,
+  type ProblemFormErrors,
+  labelClass,
+  selectClass,
+  textareaClass,
+  getWeekOptions,
+  getWeekDates,
+  matchDeadlineToWeekDate,
+  validateProblemForm,
+} from '@/lib/problem-form-utils';
 
 // ─── TYPES ────────────────────────────────
 
@@ -30,90 +46,9 @@ interface PageProps {
   readonly params: Promise<{ id: string }>;
 }
 
-interface FormState {
-  title: string;
-  description: string;
-  difficulty: string;
-  weekNumber: string;
-  deadline: string;
-  allowedLanguages: string[];
-  sourceUrl: string;
-  sourcePlatform: string;
+interface EditFormState extends ProblemFormState {
   status: string;
 }
-
-interface FormErrors {
-  title?: string;
-  weekNumber?: string;
-  deadline?: string;
-}
-
-// ─── HELPERS ──────────────────────────────
-
-const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
-
-function getWeekDates(weekLabel: string): { label: string; value: string }[] {
-  const match = weekLabel.match(/^(\d+)월(\d+)주차$/);
-  if (!match) return [];
-  const month = Number(match[1]);
-  const week = Number(match[2]);
-  const now = new Date();
-  const year = now.getFullYear();
-  const adjustedYear = month < now.getMonth() + 1 && month === 1 ? year + 1 : year;
-
-  const startDay = (week - 1) * 7 + 1;
-  const lastDay = new Date(adjustedYear, month, 0).getDate();
-  const endDay = Math.min(week * 7, lastDay);
-
-  const dates: { label: string; value: string }[] = [];
-  for (let d = startDay; d <= endDay; d++) {
-    const date = new Date(adjustedYear, month - 1, d, 23, 59, 59);
-    const dayName = DAY_NAMES[date.getDay()];
-    dates.push({
-      label: `${month}월 ${d}일 (${dayName})`,
-      value: date.toISOString(),
-    });
-  }
-  return dates;
-}
-
-function matchDeadlineToWeekDate(deadline: string, weekLabel: string): string {
-  const weekDates = getWeekDates(weekLabel);
-  const deadlineDate = new Date(deadline);
-  const deadlineDay = deadlineDate.getDate();
-  const match = weekDates.find((d) => new Date(d.value).getDate() === deadlineDay);
-  return match?.value ?? '';
-}
-
-function getWeekOptions(): string[] {
-  const now = new Date();
-  const month = now.getMonth() + 1;
-  const lastDay = new Date(now.getFullYear(), month, 0).getDate();
-  const totalWeeks = Math.ceil(lastDay / 7);
-  const options: string[] = [];
-  for (let w = 1; w <= totalWeeks; w++) {
-    options.push(`${month}월${w}주차`);
-  }
-  const nextMonth = month === 12 ? 1 : month + 1;
-  options.push(`${nextMonth}월1주차`);
-  return options;
-}
-
-function validateForm(form: FormState): FormErrors {
-  const errors: FormErrors = {};
-  if (!form.title.trim()) errors.title = '문제 제목을 입력해주세요.';
-  if (!form.weekNumber.trim()) errors.weekNumber = '주차를 선택해주세요.';
-  if (!form.deadline) errors.deadline = '마감일을 선택해주세요.';
-  return errors;
-}
-
-// ─── STYLE CONSTANTS ─────────────────────
-
-const selectClass =
-  'h-[40px] w-full px-3 pr-8 rounded-btn border border-border bg-input-bg text-text text-xs outline-none cursor-pointer transition-[border-color] duration-150 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50 appearance-none' +
-  " bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239C9A95%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_10px_center]";
-
-const labelClass = 'block text-[11px] font-medium text-text-2 mb-1.5';
 
 // ─── RENDER ───────────────────────────────
 
@@ -126,6 +61,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
   const { id: problemId } = use(params);
   const router = useRouter();
   const { isAuthenticated } = useRequireAuth();
+  useRequireStudy();
   const { currentStudyRole } = useStudy();
 
   // ─── STATE ──────────────────────────────
@@ -134,7 +70,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
   const [isPageLoading, setIsPageLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [form, setForm] = useState<FormState>({
+  const [form, setForm] = useState<EditFormState>({
     title: '',
     description: '',
     difficulty: '',
@@ -145,17 +81,29 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
     sourcePlatform: 'BOJ',
     status: '',
   });
-  const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
+  const [fieldErrors, setFieldErrors] = useState<ProblemFormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // BOJ 검색
-  const [bojQuery, setBojQuery] = useState('');
-  const [bojSearching, setBojSearching] = useState(false);
-  const [bojError, setBojError] = useState<string | null>(null);
-  const [bojResult, setBojResult] = useState<SolvedacProblemInfo | null>(null);
-  const [bojApplied, setBojApplied] = useState(false);
+  // ─── HOOKS ──────────────────────────────
+
+  const setFormBase = useCallback(
+    (updater: React.SetStateAction<ProblemFormState>) => {
+      setForm((prev) => {
+        const base = typeof updater === 'function' ? updater(prev) : updater;
+        return { ...prev, ...base };
+      });
+    },
+    [],
+  );
+
+  const {
+    bojQuery, setBojQuery, bojSearching, bojError, setBojError,
+    bojResult, bojApplied, handleBojSearch, handleBojKeyDown, handleBojReset,
+  } = useBojSearch(setFormBase, setFieldErrors);
+
+  const handleLanguageToggle = useLanguageToggle(setFormBase);
 
   // ─── EFFECTS ────────────────────────────
 
@@ -182,7 +130,6 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
           sourcePlatform: data.sourcePlatform || 'BOJ',
           status: data.status ?? 'ACTIVE',
         });
-        if (data.sourceUrl) setBojApplied(true);
       } catch (err: unknown) {
         if (!cancelled) {
           setLoadError((err as Error).message ?? '문제를 불러오는 데 실패했습니다.');
@@ -198,115 +145,82 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
 
   // ─── HANDLERS ─────────────────────────────
 
-  const handleBojSearch = useCallback(async (): Promise<void> => {
-    const id = Number(bojQuery.trim());
-    if (!Number.isInteger(id) || id < 1) {
-      setBojError('유효한 문제 번호를 입력해주세요.');
-      return;
-    }
-    setBojSearching(true);
-    setBojError(null);
-    setBojResult(null);
-    setBojApplied(false);
-    try {
-      const info = await solvedacApi.search(id);
-      setBojResult(info);
-      setForm((prev) => ({
-        ...prev,
-        title: info.title,
-        difficulty: info.difficulty ?? '',
-        sourceUrl: info.sourceUrl,
-        sourcePlatform: 'BOJ',
-      }));
-      setFieldErrors((prev) => ({ ...prev, title: undefined }));
-      setBojApplied(true);
-    } catch (err: unknown) {
-      setBojError(err instanceof Error ? err.message : '검색에 실패했습니다.');
-    } finally {
-      setBojSearching(false);
-    }
-  }, [bojQuery]);
+  const handleChange = useCallback(
+    (field: keyof EditFormState) =>
+      (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        setForm((prev) => ({
+          ...prev,
+          [field]: e.target.value,
+          ...(field === 'weekNumber' ? { deadline: '' } : {}),
+        }));
+        setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
+      },
+    [],
+  );
 
-  const handleBojKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => {
-    if (e.key === 'Enter') {
+  const handleBlur = useCallback(
+    (field: keyof ProblemFormErrors) => () => {
+      setFieldErrors((prev) => {
+        const errors = validateProblemForm(form);
+        return { ...prev, [field]: errors[field] };
+      });
+    },
+    [form],
+  );
+
+  const handleSubmit = useCallback(
+    async (e: FormEvent<HTMLFormElement>): Promise<void> => {
       e.preventDefault();
-      void handleBojSearch();
-    }
-  };
+      if (!problem) return;
+      setSubmitError(null);
 
-  const handleChange = (field: keyof FormState) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-      setForm((prev) => ({
-        ...prev,
-        [field]: e.target.value,
-        ...(field === 'weekNumber' ? { deadline: '' } : {}),
-      }));
-      setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
-    };
-
-  const handleLanguageToggle = (lang: string) => {
-    setForm((prev) => {
-      const isSelected = prev.allowedLanguages.includes(lang);
-      if (isSelected && prev.allowedLanguages.length <= 1) return prev;
-      return {
-        ...prev,
-        allowedLanguages: isSelected
-          ? prev.allowedLanguages.filter((l) => l !== lang)
-          : [...prev.allowedLanguages, lang],
-      };
-    });
-  };
-
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
-    e.preventDefault();
-    if (!problem) return;
-    setSubmitError(null);
-
-    const errors = validateForm(form);
-    if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors);
-      return;
-    }
-
-    if (problem.status === 'ACTIVE' && form.status === 'CLOSED') {
-      const confirmed = window.confirm('문제를 마감하면 더 이상 제출할 수 없습니다. 계속하시겠습니까?');
-      if (!confirmed) return;
-    }
-
-    if (problem.status === 'DRAFT' && form.status === 'ACTIVE') {
-      const confirmed = window.confirm('문제를 활성화하면 멤버들이 이 문제를 보고 제출할 수 있습니다. 계속하시겠습니까?');
-      if (!confirmed) return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const data: UpdateProblemData = {};
-      if (form.title.trim() !== problem.title) data.title = form.title.trim();
-      if (form.description.trim() !== (problem.description ?? '')) data.description = form.description.trim();
-      if (form.difficulty !== (problem.difficulty ?? '')) data.difficulty = (form.difficulty || undefined) as UpdateProblemData['difficulty'];
-      if (form.weekNumber.trim() !== (problem.weekNumber ?? '')) data.weekNumber = form.weekNumber.trim();
-      if (form.deadline) {
-        const newDeadline = new Date(form.deadline).toISOString();
-        if (newDeadline !== problem.deadline) data.deadline = newDeadline;
+      const errors = validateProblemForm(form);
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        return;
       }
-      if (JSON.stringify(form.allowedLanguages) !== JSON.stringify(problem.allowedLanguages ?? [])) {
-        data.allowedLanguages = form.allowedLanguages;
+
+      if (problem.status === 'ACTIVE' && form.status === 'CLOSED') {
+        const confirmed = window.confirm('문제를 마감하면 더 이상 제출할 수 없습니다. 계속하시겠습니까?');
+        if (!confirmed) return;
       }
-      if (form.sourceUrl.trim() !== (problem.sourceUrl ?? '')) data.sourceUrl = form.sourceUrl.trim();
-      if (form.sourcePlatform.trim() !== (problem.sourcePlatform ?? '')) data.sourcePlatform = form.sourcePlatform.trim();
-      if (form.status !== problem.status) data.status = form.status as UpdateProblemData['status'];
 
-      await problemApi.update(problemId, data);
-      router.push(`/problems/${problemId}`);
-    } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : '문제 수정에 실패했습니다.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+      if (problem.status === 'DRAFT' && form.status === 'ACTIVE') {
+        const confirmed = window.confirm('문제를 활성화하면 멤버들이 이 문제를 보고 제출할 수 있습니다. 계속하시겠습니까?');
+        if (!confirmed) return;
+      }
 
-  const handleDelete = async (): Promise<void> => {
+      setIsSubmitting(true);
+
+      try {
+        const data: UpdateProblemData = {};
+        if (form.title.trim() !== problem.title) data.title = form.title.trim();
+        if (form.description.trim() !== (problem.description ?? '')) data.description = form.description.trim();
+        if (form.difficulty !== (problem.difficulty ?? '')) data.difficulty = (form.difficulty || undefined) as UpdateProblemData['difficulty'];
+        if (form.weekNumber.trim() !== (problem.weekNumber ?? '')) data.weekNumber = form.weekNumber.trim();
+        if (form.deadline) {
+          const newDeadline = new Date(form.deadline).toISOString();
+          if (newDeadline !== problem.deadline) data.deadline = newDeadline;
+        }
+        if (JSON.stringify(form.allowedLanguages) !== JSON.stringify(problem.allowedLanguages ?? [])) {
+          data.allowedLanguages = form.allowedLanguages;
+        }
+        if (form.sourceUrl.trim() !== (problem.sourceUrl ?? '')) data.sourceUrl = form.sourceUrl.trim();
+        if (form.sourcePlatform.trim() !== (problem.sourcePlatform ?? '')) data.sourcePlatform = form.sourcePlatform.trim();
+        if (form.status !== problem.status) data.status = form.status as UpdateProblemData['status'];
+
+        await problemApi.update(problemId, data);
+        router.push(`/problems/${problemId}`);
+      } catch (err) {
+        setSubmitError(err instanceof Error ? err.message : '문제 수정에 실패했습니다.');
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [form, problem, problemId, router],
+  );
+
+  const handleDelete = useCallback(async (): Promise<void> => {
     const confirmed = window.confirm('정말 이 문제를 삭제하시겠습니까? 관련 제출 기록도 함께 삭제됩니다.');
     if (!confirmed) return;
 
@@ -318,7 +232,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
       setSubmitError('문제 삭제에 실패했습니다.');
       setIsDeleting(false);
     }
-  };
+  }, [problemId, router]);
 
   // ─── GUARDS ─────────────────────────────
 
@@ -327,10 +241,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
       <AppLayout>
         <div className="space-y-4">
           <Alert variant="error">문제 수정은 관리자만 가능합니다.</Alert>
-          <Button variant="ghost" size="sm" onClick={() => router.push('/problems')}>
-            <ChevronLeft />
-            문제 목록
-          </Button>
+          <BackBtn label="문제 목록" href="/problems" />
         </div>
       </AppLayout>
     );
@@ -355,10 +266,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
       <AppLayout>
         <div className="space-y-4">
           <Alert variant="error">{loadError ?? '문제를 찾을 수 없습니다.'}</Alert>
-          <Button variant="ghost" size="sm" onClick={() => router.push('/problems')}>
-            <ChevronLeft />
-            문제 목록
-          </Button>
+          <BackBtn label="문제 목록" href="/problems" />
         </div>
       </AppLayout>
     );
@@ -370,15 +278,13 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
     <AppLayout>
       <div className="mx-auto max-w-[640px] space-y-4">
         {/* 뒤로가기 */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push(`/problems/${problemId}`)}
-          className="-ml-1"
-        >
-          <ChevronLeft />
-          문제 상세
-        </Button>
+        <BackBtn label="문제 상세" href={`/problems/${problemId}`} className="-ml-1" />
+
+        {/* 페이지 타이틀 */}
+        <div>
+          <h1 className="text-[22px] font-bold tracking-tight text-text">문제 수정</h1>
+          <p className="mt-0.5 text-xs text-text-3">문제 정보를 수정하거나 삭제할 수 있습니다</p>
+        </div>
 
         {/* 카드 1: BOJ 검색 */}
         <Card>
@@ -391,9 +297,13 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            <p className="text-[11px] text-text-3">
+              문제 번호를 입력하면 제목, 난이도, 태그가 자동으로 입력됩니다.
+            </p>
+
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-3 pointer-events-none" />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-3 pointer-events-none" aria-hidden />
                 <input
                   type="text"
                   inputMode="numeric"
@@ -401,20 +311,34 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                   value={bojQuery}
                   onChange={(e) => { setBojQuery(e.target.value); setBojError(null); }}
                   onKeyDown={handleBojKeyDown}
-                  disabled={bojSearching || isSubmitting}
-                  className="w-full h-[40px] pl-8 pr-3 rounded-btn border border-border bg-input-bg text-text text-xs outline-none transition-[border-color] duration-150 placeholder:text-text-3 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={bojSearching || isSubmitting || bojApplied}
+                  className="w-full h-[40px] pl-8 pr-3 rounded-badge border border-border bg-input-bg text-text text-xs outline-none transition-[border-color] duration-150 placeholder:text-text-3 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
                 />
               </div>
-              <Button
-                type="button"
-                variant="secondary"
-                size="md"
-                disabled={bojSearching || isSubmitting || !bojQuery.trim()}
-                onClick={() => void handleBojSearch()}
-                className="shrink-0"
-              >
-                {bojSearching ? <InlineSpinner /> : '검색'}
-              </Button>
+              {bojApplied ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="md"
+                  onClick={handleBojReset}
+                  disabled={isSubmitting}
+                  className="shrink-0"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  연결 해제
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="md"
+                  disabled={bojSearching || isSubmitting || !bojQuery.trim()}
+                  onClick={() => void handleBojSearch()}
+                  className="shrink-0"
+                >
+                  {bojSearching ? <InlineSpinner /> : '검색'}
+                </Button>
+              )}
             </div>
 
             {bojError && (
@@ -422,7 +346,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
             )}
 
             {bojResult && (
-              <div className="flex items-center gap-2.5 rounded-btn bg-primary-soft border border-border px-3 py-2.5">
+              <div className="flex items-center gap-2.5 rounded-badge bg-primary-soft border border-border px-3 py-2.5">
                 <span className="text-xs font-mono text-text-3">#{bojResult.problemId}</span>
                 <span className="text-xs font-medium text-text truncate">{bojResult.title}</span>
                 {bojResult.difficulty && (
@@ -443,12 +367,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
             {bojResult && bojResult.tags.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {bojResult.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-full bg-bg-alt px-2 py-0.5 text-[10px] font-medium text-text-2"
-                  >
-                    {tag}
-                  </span>
+                  <Badge key={tag} variant="muted">{tag}</Badge>
                 ))}
               </div>
             )}
@@ -462,7 +381,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
               <div className="flex items-center justify-center w-7 h-7 rounded-md bg-primary-soft text-primary">
                 <FileText className="h-3.5 w-3.5" />
               </div>
-              문제 수정
+              기본 정보
             </CardTitle>
           </CardHeader>
 
@@ -484,11 +403,11 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                   onChange={handleChange('description')}
                   disabled={isSubmitting}
                   rows={4}
-                  className="w-full px-3 py-2 rounded-btn border border-border bg-input-bg text-text text-xs outline-none transition-[border-color] duration-150 placeholder:text-text-3 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50 resize-y leading-relaxed"
+                  className={textareaClass}
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col">
                   <label htmlFor="edit-difficulty" className={labelClass}>난이도</label>
                   <select
@@ -507,13 +426,15 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
 
                 <div className="flex flex-col">
                   <label htmlFor="edit-weekNumber" className={labelClass}>
-                    주차 <span className="text-error text-[10px]">필수</span>
+                    주차 <span className="text-error text-[11px]">필수</span>
                   </label>
                   <select
                     id="edit-weekNumber"
                     value={form.weekNumber}
                     onChange={handleChange('weekNumber')}
+                    onBlur={handleBlur('weekNumber')}
                     disabled={isSubmitting}
+                    aria-required
                     className={`${selectClass} ${fieldErrors.weekNumber ? 'border-error' : ''}`}
                   >
                     {getWeekOptions().map((w) => (
@@ -536,13 +457,15 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
 
               <div className="flex flex-col">
                 <label htmlFor="edit-deadline" className={labelClass}>
-                  마감일 <span className="text-error text-[10px]">필수</span>
+                  마감일 <span className="text-error text-[11px]">필수</span>
                 </label>
                 <select
                   id="edit-deadline"
                   value={form.deadline}
                   onChange={handleChange('deadline')}
+                  onBlur={handleBlur('deadline')}
                   disabled={isSubmitting}
+                  aria-required
                   className={`${selectClass} ${fieldErrors.deadline ? 'border-error' : ''}`}
                 >
                   <option value="" disabled>요일을 선택하세요</option>
@@ -582,14 +505,15 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                         type="button"
                         onClick={() => handleLanguageToggle(lang.value)}
                         disabled={isSubmitting}
-                        className={`inline-flex items-center gap-1 text-[11px] font-medium px-3 py-1.5 rounded-badge border transition-colors duration-150 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${
+                        aria-pressed={selected}
+                        className={`inline-flex items-center gap-1 text-[11px] font-medium px-3 py-1.5 rounded-badge border transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
                           selected
                             ? 'bg-primary-soft text-primary border-primary/30'
                             : 'bg-transparent text-text-3 border-border line-through'
                         }`}
                       >
                         {selected && (
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden><polyline points="20 6 9 17 4 12"/></svg>
                         )}
                         {lang.label}
                       </button>

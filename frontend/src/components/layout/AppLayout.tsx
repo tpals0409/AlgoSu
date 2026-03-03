@@ -12,13 +12,10 @@
 
 import type { ReactNode } from 'react';
 import { Clock } from 'lucide-react';
-import { usePathname } from 'next/navigation';
 import { TopNav } from '@/components/layout/TopNav';
-import { StudySidebar } from '@/components/layout/StudySidebar';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { useStudy } from '@/contexts/StudyContext';
 
 interface AppLayoutProps {
   readonly children: ReactNode;
@@ -26,15 +23,7 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
-  const pathname = usePathname();
-  const { sessionExpired, logout, isAuthenticated } = useAuth();
-  const { currentStudyId } = useStudy();
-
-  // /studies/:id 하위 경로에서만 사이드바 표시
-  const showSidebar =
-    isAuthenticated &&
-    currentStudyId !== null &&
-    pathname.startsWith('/studies/');
+  const { sessionExpired, logout } = useAuth();
 
   return (
     <div className="flex min-h-screen flex-col bg-bg">
@@ -68,19 +57,15 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
         </div>
       )}
 
-      {/* 컨텐츠 영역: 사이드바 + 메인 */}
-      <div className="flex flex-1">
-        {showSidebar && <StudySidebar />}
-
-        <main
-          className={cn(
-            'mx-auto w-full max-w-screen-xl flex-1 px-4 py-6 sm:px-6 lg:px-8',
-            className,
-          )}
-        >
-          {children}
-        </main>
-      </div>
+      {/* 컨텐츠 영역 */}
+      <main
+        className={cn(
+          'mx-auto w-full max-w-screen-xl flex-1 px-4 py-6 sm:px-6 lg:px-8',
+          className,
+        )}
+      >
+        {children}
+      </main>
 
       <footer className="border-t border-border py-4 text-center text-[12px] text-text-3">
         &copy; {new Date().getFullYear()} AlgoSu. All rights reserved.

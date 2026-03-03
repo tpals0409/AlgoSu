@@ -1,18 +1,24 @@
+/**
+ * @file 난이도 뱃지 (색상 구분, solved.ac 티어 기반)
+ * @domain common
+ * @layer component
+ * @related Badge, DiffBadge, constants
+ */
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 import { type Difficulty, DIFFICULTY_LABELS } from '@/lib/constants';
 
 const difficultyBadgeVariants = cva(
-  ['inline-flex items-center gap-1 rounded-sm px-2 py-0.5', 'text-xs font-semibold leading-none tracking-wide', 'border transition-colors duration-150'],
+  ['inline-flex items-center gap-1 rounded-badge px-2 py-0.5', 'text-xs font-semibold leading-none tracking-wide', 'border transition-colors duration-150'],
   {
     variants: {
       difficulty: {
-        BRONZE:   'bg-difficulty-bronze/10 text-difficulty-bronze border-difficulty-bronze/30',
-        SILVER:   'bg-difficulty-silver/10 text-difficulty-silver border-difficulty-silver/30',
-        GOLD:     'bg-difficulty-gold/10 text-difficulty-gold border-difficulty-gold/30',
-        PLATINUM: 'bg-difficulty-platinum/10 text-difficulty-platinum border-difficulty-platinum/30',
-        DIAMOND:  'bg-difficulty-diamond/10 text-difficulty-diamond border-difficulty-diamond/30',
+        BRONZE:   'bg-diff-bronze/10 text-diff-bronze border-diff-bronze/30',
+        SILVER:   'bg-diff-silver/10 text-diff-silver border-diff-silver/30',
+        GOLD:     'bg-diff-gold/10 text-diff-gold border-diff-gold/30',
+        PLATINUM: 'bg-diff-platinum/10 text-diff-platinum border-diff-platinum/30',
+        DIAMOND:  'bg-diff-diamond/10 text-diff-diamond border-diff-diamond/30',
       },
     },
     defaultVariants: { difficulty: 'BRONZE' },
@@ -20,11 +26,11 @@ const difficultyBadgeVariants = cva(
 );
 
 const DIFFICULTY_DOT_CLASSES: Record<Difficulty, string> = {
-  BRONZE:   'bg-difficulty-bronze',
-  SILVER:   'bg-difficulty-silver',
-  GOLD:     'bg-difficulty-gold',
-  PLATINUM: 'bg-difficulty-platinum',
-  DIAMOND:  'bg-difficulty-diamond',
+  BRONZE:   'bg-diff-bronze',
+  SILVER:   'bg-diff-silver',
+  GOLD:     'bg-diff-gold',
+  PLATINUM: 'bg-diff-platinum',
+  DIAMOND:  'bg-diff-diamond',
 };
 
 export interface DifficultyBadgeProps

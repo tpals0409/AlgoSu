@@ -19,6 +19,9 @@ import {
   Pencil,
   Check,
   X,
+  FileText,
+  CheckCircle2,
+  Trash2,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
@@ -30,7 +33,7 @@ import { InlineSpinner } from '@/components/ui/LoadingSpinner';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudy } from '@/contexts/StudyContext';
-import { authApi } from '@/lib/api';
+import { authApi, submissionApi } from '@/lib/api';
 import { getGitHubUsername } from '@/lib/auth';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { AVATAR_PRESETS, getAvatarSrc } from '@/lib/avatars';
@@ -70,9 +73,16 @@ export default function ProfilePage(): ReactNode {
 
   const [oauthProvider, setOauthProvider] = useState<string | null>(null);
 
+  // 개인 통계
+  const [totalSubmissions, setTotalSubmissions] = useState<number>(0);
+  const [statsLoading, setStatsLoading] = useState(true);
+
   // 아바타 선택
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
+
+  // 계정 삭제 확인
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // ─── EFFECTS ───────────────────────────
 
@@ -88,6 +98,17 @@ export default function ProfilePage(): ReactNode {
         // 프로필 로드 실패 시 무시
       });
   }, []);
+
+  useEffect(() => {
+    if (!isReady) return;
+    setStatsLoading(true);
+    submissionApi.list({ page: 1, limit: 1 })
+      .then((result) => {
+        setTotalSubmissions(result.meta.total);
+      })
+      .catch(() => {})
+      .finally(() => setStatsLoading(false));
+  }, [isReady]);
 
   // ─── HANDLERS ──────────────────────────
 
@@ -212,7 +233,7 @@ export default function ProfilePage(): ReactNode {
   if (!isReady) {
     return (
       <AppLayout>
-        <div className="mx-auto max-w-xl space-y-4">
+        <div className="mx-auto max-w-[640px] space-y-4">
           <Skeleton height={32} width="30%" />
           <Skeleton height={200} />
           <Skeleton height={150} />
@@ -223,10 +244,10 @@ export default function ProfilePage(): ReactNode {
 
   return (
     <AppLayout>
-      <div className="mx-auto max-w-xl space-y-6">
+      <div className="mx-auto max-w-[640px] space-y-6">
         {/* 페이지 헤더 */}
         <div>
-          <h1 className="text-lg font-semibold text-text">프로필</h1>
+          <h1 className="text-[22px] font-bold tracking-tight text-text">프로필</h1>
           <p className="mt-0.5 text-xs text-text-3">
             계정 정보 및 연동 설정
           </p>
@@ -245,8 +266,7 @@ export default function ProfilePage(): ReactNode {
               {/* 아바타 */}
               <button
                 type="button"
-                className="shrink-0 overflow-hidden rounded-full ring-2 ring-transparent transition-all hover:ring-primary-light focus-visible:outline-none focus-visible:ring-primary"
-                style={{ width: '64px', height: '64px' }}
+                className="w-16 h-16 shrink-0 overflow-hidden rounded-full ring-2 ring-transparent transition-all hover:ring-primary-light focus-visible:outline-none focus-visible:ring-primary"
                 onClick={() => setShowAvatarPicker((v) => !v)}
                 aria-label="아바타 변경"
                 disabled={avatarLoading}
@@ -279,23 +299,21 @@ export default function ProfilePage(): ReactNode {
                     />
                     <button
                       type="button"
-                      className="flex shrink-0 items-center justify-center rounded-md bg-primary text-white transition-opacity hover:opacity-80 disabled:opacity-50"
-                      style={{ width: '28px', height: '28px' }}
+                      className="flex w-7 h-7 shrink-0 items-center justify-center rounded-md bg-primary text-white transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50"
                       onClick={() => void handleSaveName()}
                       disabled={nameLoading || !editName.trim()}
                       aria-label="저장"
                     >
-                      <Check className="h-3.5 w-3.5" />
+                      <Check className="h-3.5 w-3.5" aria-hidden />
                     </button>
                     <button
                       type="button"
-                      className="flex shrink-0 items-center justify-center rounded-md bg-bg-alt text-text-3 transition-colors hover:text-text"
-                      style={{ width: '28px', height: '28px' }}
+                      className="flex w-7 h-7 shrink-0 items-center justify-center rounded-md bg-bg-alt text-text-3 transition-colors hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                       onClick={handleCancelEditName}
                       disabled={nameLoading}
                       aria-label="취소"
                     >
-                      <X className="h-3.5 w-3.5" />
+                      <X className="h-3.5 w-3.5" aria-hidden />
                     </button>
                   </div>
                 ) : (
@@ -305,12 +323,11 @@ export default function ProfilePage(): ReactNode {
                     </p>
                     <button
                       type="button"
-                      className="flex shrink-0 items-center justify-center rounded-md text-text-3 transition-colors hover:bg-bg-alt hover:text-text"
-                      style={{ width: '24px', height: '24px' }}
+                      className="flex w-6 h-6 shrink-0 items-center justify-center rounded-md text-text-3 transition-colors hover:bg-bg-alt hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                       onClick={handleStartEditName}
                       aria-label="닉네임 수정"
                     >
-                      <Pencil className="h-3 w-3" />
+                      <Pencil className="h-3 w-3" aria-hidden />
                     </button>
                   </div>
                 )}
@@ -351,7 +368,7 @@ export default function ProfilePage(): ReactNode {
                         key={preset.key}
                         type="button"
                         className={cn(
-                          'flex flex-col items-center gap-1.5 rounded-lg p-2 transition-all',
+                          'flex flex-col items-center gap-1.5 rounded-btn p-2 transition-all',
                           isSelected
                             ? 'ring-2 ring-primary bg-primary-soft'
                             : 'hover:bg-bg-card',
@@ -380,6 +397,49 @@ export default function ProfilePage(): ReactNode {
           </CardContent>
         </Card>
 
+        {/* 개인 통계 */}
+        <div className="grid grid-cols-3 gap-3">
+          <Card>
+            <CardContent className="flex items-center gap-3 py-4">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary-soft">
+                <FileText className="h-4 w-4 text-primary" aria-hidden />
+              </div>
+              <div>
+                {statsLoading ? (
+                  <Skeleton height={24} width={40} />
+                ) : (
+                  <p className="font-mono text-xl font-bold text-primary">{totalSubmissions}</p>
+                )}
+                <p className="text-[11px] text-text-3">총 제출</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="flex items-center gap-3 py-4">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-success-soft">
+                <CheckCircle2 className="h-4 w-4 text-success" aria-hidden />
+              </div>
+              <div>
+                <p className="font-mono text-xl font-bold text-success">{studies.length}</p>
+                <p className="text-[11px] text-text-3">참여 스터디</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="flex items-center gap-3 py-4">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-bg-alt">
+                <Github className="h-4 w-4 text-text" aria-hidden />
+              </div>
+              <div>
+                <p className="font-mono text-xl font-bold text-text">
+                  {githubConnected ? '연동' : '미연동'}
+                </p>
+                <p className="text-[11px] text-text-3">GitHub</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* GitHub 연동 */}
         <Card>
           <CardHeader>
@@ -388,7 +448,7 @@ export default function ProfilePage(): ReactNode {
           <CardContent>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-bg-alt">
+                <div className="flex h-10 w-10 items-center justify-center rounded-btn bg-bg-alt">
                   <Github className="h-5 w-5 text-text" aria-hidden />
                 </div>
                 <div>
@@ -527,6 +587,56 @@ export default function ProfilePage(): ReactNode {
             )}
           </CardContent>
         </Card>
+
+        {/* 법적 고지 */}
+        <Card>
+          <CardContent className="p-4 space-y-2">
+            <h3 className="text-[13px] font-medium text-text">법적 고지</h3>
+            <div className="flex flex-col gap-1">
+              <button type="button" className="text-left text-[12px] text-text-2 hover:text-primary transition-colors focus-visible:outline-none focus-visible:text-primary">
+                서비스 이용약관
+              </button>
+              <button type="button" className="text-left text-[12px] text-text-2 hover:text-primary transition-colors focus-visible:outline-none focus-visible:text-primary">
+                개인정보 처리방침
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 계정 삭제 */}
+        <Card className="border-error/20">
+          <CardContent className="p-4">
+            <h3 className="text-[13px] font-medium text-error mb-1">계정 삭제</h3>
+            <p className="text-[11px] text-text-3 mb-3">
+              계정을 삭제하면 모든 데이터가 영구적으로 삭제되며 복구할 수 없습니다.
+            </p>
+            <Button variant="danger" size="sm" onClick={() => setShowDeleteConfirm(true)}>
+              <Trash2 className="h-3 w-3" />
+              계정 삭제
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* 계정 삭제 확인 다이얼로그 */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm">
+            <div className="w-full max-w-sm rounded-card border border-border bg-bg-card p-6 shadow-modal">
+              <h3 className="text-[15px] font-bold text-error mb-2">정말 계정을 삭제하시겠습니까?</h3>
+              <p className="text-[12px] text-text-3 mb-5">
+                이 작업은 되돌릴 수 없습니다. 모든 데이터(제출, 스터디, 프로필)가 영구 삭제됩니다.
+              </p>
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setShowDeleteConfirm(false)}>
+                  취소
+                </Button>
+                <Button variant="danger" size="sm" disabled>
+                  <Trash2 className="h-3 w-3" />
+                  삭제 확인 (준비 중)
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AppLayout>
   );

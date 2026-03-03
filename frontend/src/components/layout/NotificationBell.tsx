@@ -210,28 +210,16 @@ export function NotificationBell(): ReactNode {
           aria-expanded={open}
           onClick={handleToggle}
           className={cn(
-            'relative flex items-center justify-center bg-bg-alt',
+            'relative flex items-center justify-center bg-bg-alt w-7 h-7 rounded-sm',
             'text-text-3 transition-colors',
             'hover:text-text',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
           )}
-          style={{
-            width: '28px',
-            height: '28px',
-            borderRadius: '6px',
-          }}
         >
           <Bell className="h-3.5 w-3.5" aria-hidden />
           {unreadCount > 0 && (
             <span
-              className="absolute -right-1 -top-1 flex items-center justify-center rounded-full bg-error text-white"
-              style={{
-                minWidth: '16px',
-                height: '16px',
-                fontSize: '9px',
-                fontWeight: 700,
-                padding: '0 4px',
-              }}
+              className="absolute -right-1 -top-1 flex items-center justify-center rounded-full bg-error text-white min-w-4 h-4 text-[9px] font-bold px-1"
             >
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
@@ -252,7 +240,7 @@ export function NotificationBell(): ReactNode {
                 <button
                   type="button"
                   onClick={() => void handleMarkAllRead()}
-                  className="text-[10px] font-medium text-primary hover:underline"
+                  className="text-[10px] font-medium text-primary transition-colors hover:underline"
                 >
                   모두 읽음
                 </button>
@@ -316,12 +304,11 @@ export function NotificationBell(): ReactNode {
                     >
                       <div
                         className={cn(
-                          'mt-0.5 flex shrink-0 items-center justify-center rounded-md',
+                          'mt-0.5 flex shrink-0 items-center justify-center rounded-md w-7 h-7',
                           notification.read
                             ? 'bg-bg-alt'
                             : 'bg-primary-soft2',
                         )}
-                        style={{ width: '28px', height: '28px' }}
                       >
                         <Icon
                           className={cn(
@@ -355,8 +342,7 @@ export function NotificationBell(): ReactNode {
 
                       {!notification.read && (
                         <span
-                          className="mt-1.5 shrink-0 rounded-full bg-primary"
-                          style={{ width: '6px', height: '6px' }}
+                          className="mt-1.5 shrink-0 rounded-full bg-primary w-1.5 h-1.5"
                           aria-label="미읽음"
                         />
                       )}

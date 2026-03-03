@@ -1,6 +1,9 @@
 // AlgoSu — Conventional Commits 강제 (ci-cd-rules.md §2)
-module.exports = {
+export default {
   extends: ['@commitlint/config-conventional'],
+  // 정책적 예외: Dependabot 커밋은 GitHub 봇이 생성하며
+  // subject-case("Bump" 대문자), body-max-line-length(URL) 제어 불가
+  ignores: [(commit) => commit.includes('Signed-off-by: dependabot[bot]')],
   rules: {
     'type-enum': [
       2,

@@ -12,7 +12,7 @@
 const API_BASE =
   typeof process !== 'undefined' && process.env['NEXT_PUBLIC_API_BASE_URL']
     ? process.env['NEXT_PUBLIC_API_BASE_URL']
-    : 'http://localhost:3000';
+    : '';
 
 // ── 모듈 레벨 현재 스터디 ID (StudyContext에서 설정) ──
 
@@ -70,6 +70,7 @@ export interface Submission {
   problemTitle?: string;
   language: string;
   sagaStep: 'DB_SAVED' | 'GITHUB_QUEUED' | 'AI_QUEUED' | 'DONE' | 'FAILED';
+  aiScore?: number | null;
   createdAt: string;
 }
 
@@ -126,6 +127,7 @@ export interface StudyMember {
   user_id: string;
   role: 'ADMIN' | 'MEMBER';
   joined_at: string;
+  nickname?: string;
   username?: string;
   email?: string;
   avatar_url?: string | null;
@@ -263,11 +265,14 @@ export const studyApi = {
   list: (): Promise<Study[]> =>
     fetchApi('/api/studies'),
 
-  create: (data: { name: string; description?: string; githubRepo?: string }): Promise<Study> =>
+  create: (data: { name: string; description?: string; githubRepo?: string; nickname?: string }): Promise<Study> =>
     fetchApi('/api/studies', { method: 'POST', body: JSON.stringify(data) }),
 
-  join: (code: string): Promise<Study> =>
-    fetchApi('/api/studies/join', { method: 'POST', body: JSON.stringify({ code }) }),
+  verifyInvite: (code: string): Promise<{ valid: boolean; studyName: string }> =>
+    fetchApi('/api/studies/verify-invite', { method: 'POST', body: JSON.stringify({ code }) }),
+
+  join: (code: string, nickname: string): Promise<Study> =>
+    fetchApi('/api/studies/join', { method: 'POST', body: JSON.stringify({ code, nickname }) }),
 
   getStats: (studyId: string, weekNumber?: string): Promise<StudyStats> => {
     const qs = weekNumber ? `?weekNumber=${encodeURIComponent(weekNumber)}` : '';
@@ -297,6 +302,12 @@ export const studyApi = {
 
   delete: (studyId: string): Promise<void> =>
     fetchApi(`/api/studies/${studyId}`, { method: 'DELETE' }),
+
+  updateNickname: (studyId: string, nickname: string): Promise<{ nickname: string }> =>
+    fetchApi(`/api/studies/${studyId}/nickname`, {
+      method: 'PATCH',
+      body: JSON.stringify({ nickname }),
+    }),
 
   notifyProblemCreated: (
     studyId: string,

@@ -44,7 +44,7 @@ export function ScoreGauge({
 
   return (
     <div ref={ref} className={cn('relative', className)} style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90">
+      <svg width={size} height={size} className="-rotate-90" aria-hidden>
         <circle
           cx={size / 2}
           cy={size / 2}

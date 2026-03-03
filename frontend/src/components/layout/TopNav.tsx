@@ -62,7 +62,7 @@ function StudySelector(): ReactNode {
     return (
       <Link
         href="/studies"
-        className="inline-flex items-center gap-1 rounded-badge bg-bg-alt px-2.5 py-1 text-[11px] font-medium text-text-2 hover:text-text"
+        className="inline-flex items-center gap-1 rounded-badge bg-bg-alt px-2.5 py-1 text-[11px] font-medium text-text-2 transition-colors hover:text-text"
       >
         스터디 선택
       </Link>
@@ -77,7 +77,7 @@ function StudySelector(): ReactNode {
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((prev) => !prev)}
-        className="inline-flex items-center gap-1 rounded-badge bg-primary-soft px-2.5 py-1 text-[11px] font-medium text-text-2 border border-border hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="inline-flex items-center gap-1 rounded-badge bg-primary-soft px-2.5 py-1 text-[11px] font-medium text-text-2 border border-border transition-colors hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         <span className="max-w-[80px] truncate">
           {currentStudy?.name ?? '스터디 선택'}
@@ -114,7 +114,7 @@ function StudySelector(): ReactNode {
           <div className="border-t border-border">
             <button
               type="button"
-              className="flex w-full items-center px-3 py-2 text-left text-[12px] text-text-2 hover:bg-bg-alt"
+              className="flex w-full items-center px-3 py-2 text-left text-[12px] text-text-2 transition-colors hover:bg-bg-alt"
               onClick={() => {
                 setOpen(false);
                 router.push('/studies');
@@ -159,8 +159,7 @@ function ProfileDropdown(): ReactNode {
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((prev) => !prev)}
-        className="shrink-0 overflow-hidden rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        style={{ width: '28px', height: '28px' }}
+        className="w-7 h-7 shrink-0 overflow-hidden rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         <img
           src={getAvatarSrc(user?.avatarPreset ?? 'default')}
@@ -196,7 +195,7 @@ function ProfileDropdown(): ReactNode {
               프로필
             </Link>
             <Link
-              href="/settings"
+              href="/profile"
               role="menuitem"
               onClick={() => setOpen(false)}
               className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-text-2 transition-colors hover:bg-bg-alt hover:text-text"
@@ -245,15 +244,13 @@ export function TopNav(): ReactNode {
   return (
     <header className="sticky top-0 z-50 border-b border-border glass-nav">
       <nav
-        className="mx-auto flex max-w-container-wide items-center justify-between"
-        style={{ padding: '12px 20px' }}
+        className="mx-auto flex max-w-container-wide items-center justify-between px-5 py-3"
         aria-label="주 내비게이션"
       >
         {/* 로고 */}
         <Link
           href="/"
-          className="flex items-center gap-2 text-text transition-opacity hover:opacity-80"
-          style={{ fontWeight: 700, fontSize: '16px', letterSpacing: '-0.5px' }}
+          className="flex items-center gap-2 text-text transition-opacity hover:opacity-80 font-bold text-base tracking-tight"
         >
           <Logo size={28} />
           AlgoSu
@@ -269,18 +266,12 @@ export function TopNav(): ReactNode {
                   <Link
                     href={href}
                     className={cn(
-                      'inline-block transition-colors duration-150',
+                      'inline-block transition-colors duration-150 px-3 py-[5px] text-xs font-medium rounded-sm',
                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                       isActive
                         ? 'bg-primary-soft text-primary'
                         : 'text-text-2 hover:bg-bg-alt hover:text-text',
                     )}
-                    style={{
-                      padding: '5px 12px',
-                      fontSize: '12px',
-                      fontWeight: 500,
-                      borderRadius: '6px',
-                    }}
                   >
                     {label}
                   </Link>
@@ -296,8 +287,7 @@ export function TopNav(): ReactNode {
             type="button"
             aria-label="메뉴 열기"
             onClick={() => setMobileMenuOpen((v) => !v)}
-            className="flex items-center justify-center bg-bg-alt text-text-3 hover:text-text sm:hidden"
-            style={{ width: '28px', height: '28px', borderRadius: '6px' }}
+            className="flex items-center justify-center bg-bg-alt text-text-3 transition-colors hover:text-text sm:hidden w-7 h-7 rounded-sm"
           >
             {mobileMenuOpen ? (
               <X className="h-3.5 w-3.5" aria-hidden />
@@ -316,8 +306,7 @@ export function TopNav(): ReactNode {
             type="button"
             aria-label="테마 전환"
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="relative flex items-center justify-center bg-transparent text-text-3 transition-colors hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            style={{ width: '28px', height: '28px', borderRadius: '6px' }}
+            className="relative flex items-center justify-center bg-transparent text-text-3 transition-colors hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary w-7 h-7 rounded-sm"
           >
             <Sun className="h-3.5 w-3.5 dark:hidden" aria-hidden />
             <Moon className="hidden h-3.5 w-3.5 dark:block" aria-hidden />
@@ -331,14 +320,7 @@ export function TopNav(): ReactNode {
           ) : (
             <Link
               href="/login"
-              className="inline-flex items-center justify-center bg-primary text-white transition-colors hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              style={{
-                padding: '5px 10px',
-                fontSize: '11px',
-                fontWeight: 600,
-                letterSpacing: '0.2px',
-                borderRadius: '6px',
-              }}
+              className="inline-flex items-center justify-center bg-primary text-white transition-colors hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary px-[10px] py-[5px] text-[11px] font-semibold tracking-[0.2px] rounded-btn"
             >
               로그인
             </Link>
@@ -358,17 +340,11 @@ export function TopNav(): ReactNode {
                     href={href}
                     onClick={() => setMobileMenuOpen(false)}
                     className={cn(
-                      'block transition-colors duration-150',
+                      'block transition-colors duration-150 px-3 py-2 text-[13px] font-medium rounded-sm',
                       isActive
                         ? 'bg-primary-soft text-primary'
                         : 'text-text-2 hover:bg-bg-alt hover:text-text',
                     )}
-                    style={{
-                      padding: '8px 12px',
-                      fontSize: '13px',
-                      fontWeight: 500,
-                      borderRadius: '6px',
-                    }}
                   >
                     {label}
                   </Link>

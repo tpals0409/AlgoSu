@@ -1,14 +1,16 @@
 /**
- * @file 뒤로가기 버튼
+ * @file 뒤로가기 버튼 (Button ghost 패턴 통일)
  * @domain common
  * @layer component
+ * @related Button
  */
 
 'use client';
 
 import type { ReactElement } from 'react';
 import { useRouter } from 'next/navigation';
-import { cn } from '@/lib/utils';
+import { ChevronLeft } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
 
 interface BackBtnProps {
   readonly label?: string;
@@ -32,17 +34,14 @@ export function BackBtn({
   };
 
   return (
-    <button
+    <Button
+      variant="ghost"
+      size="sm"
       onClick={handleClick}
-      className={cn(
-        'inline-flex items-center gap-1 border-none bg-transparent p-0 text-xs text-text-3 transition-colors hover:text-text',
-        className,
-      )}
+      className={className}
     >
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="15 18 9 12 15 6" />
-      </svg>
+      <ChevronLeft />
       {label}
-    </button>
+    </Button>
   );
 }

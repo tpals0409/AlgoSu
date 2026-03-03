@@ -1,3 +1,9 @@
+/**
+ * @file 제출 상태 3단계 표시 컴포넌트
+ * @domain submission
+ * @layer component
+ * @related useSubmissionSSE, CodeEditor
+ */
 'use client';
 
 /**
@@ -24,28 +30,29 @@ interface SubmissionStatusProps {
 }
 
 const statusConfig: Record<StepStatus, { icon: typeof Check; colorClass: string }> = {
-  pending: { icon: Clock, colorClass: 'text-[var(--text3)]' },
-  in_progress: { icon: Loader2, colorClass: 'text-[var(--color-info)]' },
-  done: { icon: Check, colorClass: 'text-[var(--color-success)]' },
-  failed: { icon: XCircle, colorClass: 'text-[var(--color-error)]' },
+  pending: { icon: Clock, colorClass: 'text-text-3' },
+  in_progress: { icon: Loader2, colorClass: 'text-info' },
+  done: { icon: Check, colorClass: 'text-success' },
+  failed: { icon: XCircle, colorClass: 'text-error' },
 };
 
 export function SubmissionStatus({ steps }: SubmissionStatusProps) {
   return (
-    <div className="rounded-[var(--radius-m)] border border-[var(--border-color)] bg-[var(--surface)] p-4 shadow-[var(--shadow-light)]">
-      <h3 className="mb-3 text-sm font-semibold text-[var(--text)]">제출 진행 상태</h3>
+    <div className="rounded-md border border-border bg-bg-card p-4 shadow">
+      <h3 className="mb-3 text-sm font-semibold text-text">제출 진행 상태</h3>
       <div className="flex items-center gap-2">
         {steps.map((step, idx) => {
           const { icon: Icon, colorClass } = statusConfig[step.status];
           return (
             <div key={step.label} className="flex items-center gap-2">
               {idx > 0 && (
-                <div className="h-px w-8 bg-[var(--border-color)]" />
+                <div className="h-px w-8 bg-border" />
               )}
               <div className={`flex items-center gap-1.5 ${colorClass}`}>
                 <Icon
                   size={16}
                   className={step.status === 'in_progress' ? 'animate-spin' : ''}
+                  aria-hidden
                 />
                 <span className="text-sm">{step.label}</span>
               </div>
@@ -54,7 +61,7 @@ export function SubmissionStatus({ steps }: SubmissionStatusProps) {
         })}
       </div>
       {steps.some((s) => s.status === 'failed') && (
-        <div className="mt-2 text-sm text-[var(--color-error)]">
+        <div className="mt-2 text-sm text-error">
           {steps
             .filter((s) => s.status === 'failed')
             .map((s) => s.detail ?? `${s.label} 실패`)

@@ -1,10 +1,10 @@
 # AlgoSu v1.1 + v1.2 적용 계획서
 
 ## 근거 문서
-- `/Users/leokim/Desktop/추가사항 문서/AlgoSu_Oracle_Decisions_Update_v1.1.md` — 다중 스터디 서비스화
-- `/Users/leokim/Desktop/추가사항 문서/AlgoSu_Oracle_Decisions_Update_v1.2.md` — OAuth 인증 도입
-- `/Users/leokim/Desktop/추가사항 문서/AlgoSu_TF_Kickoff_Plan_v2.1.md` — Palette 합류
-- `/Users/leokim/Desktop/추가사항 문서/AlgoSu_Code_Conventions_Update_v1.1.md` — 디자인 토큰 규칙
+- `AlgoSu_Oracle_Decisions_Update_v1.1.md` — 다중 스터디 서비스화 *(원본: Mac `/Users/leokim/Desktop/추가사항 문서/`)*
+- `AlgoSu_Oracle_Decisions_Update_v1.2.md` — OAuth 인증 도입
+- `AlgoSu_TF_Kickoff_Plan_v2.1.md` — Palette 합류
+- `AlgoSu_Code_Conventions_Update_v1.1.md` — 디자인 토큰 규칙
 
 ---
 

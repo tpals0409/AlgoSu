@@ -17,10 +17,13 @@ import {
   ArrowRight,
   RefreshCw,
   Clock,
+  BookOpen,
+  Github,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -28,6 +31,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useStudy } from '@/contexts/StudyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useRequireStudy } from '@/hooks/useRequireStudy';
 import { useAnimVal } from '@/hooks/useAnimVal';
 import {
   studyApi,
@@ -39,19 +43,27 @@ import {
   type Problem,
 } from '@/lib/api';
 import { SAGA_STEP_CONFIG, type SagaStep } from '@/lib/constants';
+import type { Difficulty } from '@/lib/constants';
 import { cn, getCurrentWeekLabel } from '@/lib/utils';
-import { getCurrentUserId } from '@/lib/auth';
 
 // ─── HELPERS ─────────────────────────────
 
-/** 날짜 포맷: MM.DD HH:MM */
-function formatDate(dateStr: string): string {
+/** 상대 시간 포맷: 방금 전, N분 전, N시간 전, N일 전 */
+function formatRelativeTime(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diffMs = now - then;
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffHour = Math.floor(diffMs / 3600000);
+  const diffDay = Math.floor(diffMs / 86400000);
+
+  if (diffMin < 1) return '방금 전';
+  if (diffMin < 60) return `${diffMin}분 전`;
+  if (diffHour < 24) return `${diffHour}시간 전`;
+  if (diffDay < 7) return `${diffDay}일 전`;
+
   const d = new Date(dateStr);
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  const hours = String(d.getHours()).padStart(2, '0');
-  const minutes = String(d.getMinutes()).padStart(2, '0');
-  return `${month}.${day} ${hours}:${minutes}`;
+  return `${d.getMonth() + 1}.${d.getDate()}`;
 }
 
 // ─── STAT CARD ───────────────────────────
@@ -63,6 +75,7 @@ function StatCard({
   loading,
   href,
   animRef,
+  valueColor,
 }: {
   readonly icon: typeof FileText;
   readonly label: string;
@@ -70,6 +83,7 @@ function StatCard({
   readonly loading: boolean;
   readonly href?: string;
   readonly animRef?: React.RefObject<HTMLDivElement | null>;
+  readonly valueColor?: string;
 }): ReactNode {
   const content = (
     <div className="flex items-center gap-3" ref={animRef}>
@@ -80,7 +94,7 @@ function StatCard({
         {loading ? (
           <Skeleton height={28} width={60} />
         ) : (
-          <p className="font-mono text-[28px] font-bold leading-none tracking-tight text-text">
+          <p className={cn('font-mono text-[28px] font-bold leading-none tracking-tight', valueColor ?? 'text-text')}>
             {value}
           </p>
         )}
@@ -149,9 +163,10 @@ function WeeklyBar({
 export default function DashboardPage(): ReactNode {
   const router = useRouter();
   const { isReady } = useRequireAuth();
-  const { isAuthenticated } = useAuth();
+  const { isStudyReady } = useRequireStudy();
+  const { isAuthenticated, githubConnected } = useAuth();
   const { user } = useAuth();
-  const { currentStudyId, currentStudyName, studies, studiesLoaded } = useStudy();
+  const { currentStudyId, currentStudyName, studiesLoaded } = useStudy();
 
   const [stats, setStats] = useState<StudyStats | null>(null);
   const [members, setMembers] = useState<StudyMember[]>([]);
@@ -224,6 +239,14 @@ export default function DashboardPage(): ReactNode {
 
   // ─── DERIVED STATE ────────────────────────
 
+  // httpOnly Cookie 인증에서는 localStorage 토큰이 없으므로
+  // members 목록에서 email 매칭으로 현재 사용자 ID를 도출
+  const myUserId = useMemo(() => {
+    if (!user?.email || members.length === 0) return null;
+    const me = members.find((m) => m.email === user.email);
+    return me?.user_id ?? null;
+  }, [user, members]);
+
   const problemTitleMap = useMemo(() => {
     return new Map(allProblems.map((p) => [p.id, p.title]));
   }, [allProblems]);
@@ -231,6 +254,17 @@ export default function DashboardPage(): ReactNode {
   const submittedProblemIds = useMemo(() => {
     return new Set(recentSubmissions.map((s) => s.problemId));
   }, [recentSubmissions]);
+
+  const currentWeekProblems = useMemo(() => {
+    const currentWeek = getCurrentWeekLabel();
+    const weekProblems = activeProblems.filter((p) => p.weekNumber === currentWeek);
+    // 미제출 문제를 상단에, 제출 완료 문제를 하단에
+    return weekProblems.sort((a, b) => {
+      const aSubmitted = submittedProblemIds.has(a.id) ? 1 : 0;
+      const bSubmitted = submittedProblemIds.has(b.id) ? 1 : 0;
+      return aSubmitted - bSubmitted;
+    });
+  }, [activeProblems, submittedProblemIds]);
 
   const upcomingDeadlines = useMemo(() => {
     const now = new Date();
@@ -248,19 +282,17 @@ export default function DashboardPage(): ReactNode {
   }, [activeProblems]);
 
   const myStats = useMemo(() => {
-    const userId = getCurrentUserId();
-    if (!stats?.byMember.length || !userId) return { count: 0, doneCount: 0 };
-    const me = stats.byMember.find((m) => m.userId === userId);
+    if (!stats?.byMember.length || !myUserId) return { count: 0, doneCount: 0 };
+    const me = stats.byMember.find((m) => m.userId === myUserId);
     return me ? { count: me.count, doneCount: me.doneCount } : { count: 0, doneCount: 0 };
-  }, [stats]);
+  }, [stats, myUserId]);
 
   const myUniqueProblemCount = useMemo(() => {
-    const userId = getCurrentUserId();
-    if (!stats?.byWeekPerUser.length || !userId) return 0;
+    if (!stats?.byWeekPerUser.length || !myUserId) return 0;
     return stats.byWeekPerUser
-      .filter((r) => r.userId === userId)
+      .filter((r) => r.userId === myUserId)
       .reduce((sum, r) => sum + r.count, 0);
-  }, [stats]);
+  }, [stats, myUserId]);
 
   const myCompletionPct = allProblems.length > 0
     ? Math.round((myUniqueProblemCount / allProblems.length) * 100)
@@ -276,10 +308,9 @@ export default function DashboardPage(): ReactNode {
 
   // 주차별 뷰 사이클
   const weekViewCycle = useMemo(() => {
-    const myId = getCurrentUserId();
-    const otherIds = members.filter((m) => m.user_id !== myId).map((m) => m.user_id);
-    return [null, myId, ...otherIds] as (string | null)[];
-  }, [members]);
+    const otherIds = members.filter((m) => m.user_id !== myUserId).map((m) => m.user_id);
+    return [null, myUserId, ...otherIds] as (string | null)[];
+  }, [members, myUserId]);
 
   const cycleWeekView = useCallback(() => {
     setWeekViewUserId((prev) => {
@@ -312,11 +343,10 @@ export default function DashboardPage(): ReactNode {
 
   const getViewLabel = useCallback((userId: string | null) => {
     if (userId === null) return '전체';
-    const myId = getCurrentUserId();
-    if (userId === myId) return '내 풀이';
+    if (userId === myUserId) return '내 풀이';
     const member = members.find((m) => m.user_id === userId);
-    return member?.username ?? member?.email?.split('@')[0] ?? userId.slice(0, 8);
-  }, [members]);
+    return member?.nickname ?? member?.username ?? member?.email?.split('@')[0] ?? userId.slice(0, 8);
+  }, [members, myUserId]);
 
   const weekViewLabel = useMemo(() => getViewLabel(weekViewUserId), [weekViewUserId, getViewLabel]);
 
@@ -329,7 +359,7 @@ export default function DashboardPage(): ReactNode {
 
   // ─── LOADING SCREEN ───────────────────────
 
-  if (!isReady) {
+  if (!isReady || !isStudyReady) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-bg">
         <LoadingSpinner size="lg" color="primary" />
@@ -352,9 +382,13 @@ export default function DashboardPage(): ReactNode {
         {/* ── HEADER ── */}
         <div className="flex items-center justify-between" style={fade(0)}>
           <div>
-            <h1 className="text-[22px] font-bold tracking-tight">대시보드</h1>
+            <h1 className="text-[22px] font-bold tracking-tight text-text">대시보드</h1>
             <p className="mt-0.5 text-xs text-text-3">
-              {user?.email ? `${user.email}님, 안녕하세요!` : '환영합니다'}
+              {(() => {
+                const me = myUserId ? members.find((m) => m.user_id === myUserId) : null;
+                const displayName = me?.nickname ?? user?.email;
+                return displayName ? `${displayName}님, 안녕하세요!` : '환영합니다';
+              })()}
               {currentStudyName ? ` — ${currentStudyName}` : ''}
             </p>
           </div>
@@ -377,60 +411,22 @@ export default function DashboardPage(): ReactNode {
           </Alert>
         )}
 
-        {/* ── EMPTY STATE (스터디 미선택) ── */}
-        {!currentStudyId && !isLoading && (
-          <Card className="p-8">
-            <div className="flex flex-col items-center gap-4 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-bg-alt">
-                <Users className="h-5 w-5 text-primary" aria-hidden />
+        {/* ── GITHUB ONBOARDING BANNER ── */}
+        {!githubConnected && !isLoading && (
+          <Card className="border-warning/30 bg-warning-soft" style={fade(0.06)}>
+            <div className="flex items-center justify-between px-4 py-3">
+              <div className="flex items-center gap-3">
+                <Github className="h-5 w-5 text-warning" aria-hidden />
+                <div>
+                  <p className="text-[13px] font-medium text-text">GitHub 연동이 필요합니다</p>
+                  <p className="text-[11px] text-text-3">코드를 제출하려면 GitHub 계정을 먼저 연동해주세요.</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-medium">
-                  아직 참여 중인 스터디가 없습니다
-                </p>
-                <p className="mt-1 text-[11px] text-text-3">
-                  스터디를 만들거나 초대코드로 참여해보세요.
-                </p>
-              </div>
-              <div className="flex gap-3">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => router.push('/studies/create')}
-                >
-                  스터디 생성
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => router.push('/studies')}
-                >
-                  초대코드 입력
-                </Button>
-              </div>
+              <Button variant="outline" size="sm" onClick={() => router.push('/github-link')}>
+                연동하기
+              </Button>
             </div>
           </Card>
-        )}
-
-        {/* ── STUDY CARD GRID ── */}
-        {studies.length > 0 && !currentStudyId && (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" style={fade(0.08)}>
-            {studies.map((study) => (
-              <Card
-                key={study.id}
-                className="cursor-pointer p-5 transition-all hover:border-primary"
-                onClick={() => router.push(`/studies/${study.id}`)}
-              >
-                <h3 className="mb-1 text-sm font-semibold">{study.name}</h3>
-                <div className="flex items-center gap-2 text-[11px] text-text-3">
-                  <Badge variant={study.role === 'ADMIN' ? 'default' : 'muted'}>
-                    {study.role === 'ADMIN' ? '관리자' : '멤버'}
-                  </Badge>
-                  <span>{study.memberCount ?? 0}명</span>
-                </div>
-              </Card>
-            ))}
-          </div>
         )}
 
         {/* ── STAT CARDS ── */}
@@ -443,6 +439,7 @@ export default function DashboardPage(): ReactNode {
               loading={statsLoading}
               href="/submissions"
               animRef={submissionRef}
+              valueColor="text-primary"
             />
             <StatCard
               icon={Users}
@@ -459,6 +456,7 @@ export default function DashboardPage(): ReactNode {
               loading={statsLoading}
               href="/analytics"
               animRef={completionRef}
+              valueColor="text-success"
             />
           </div>
         )}
@@ -508,7 +506,7 @@ export default function DashboardPage(): ReactNode {
                     <Link
                       href="/analytics"
                       onClick={(e) => e.stopPropagation()}
-                      className="block pt-1 text-center text-[11px] font-medium text-primary hover:underline"
+                      className="block pt-1 text-center text-[11px] font-medium text-primary transition-colors hover:underline"
                     >
                       전체 {filteredByWeek.length}주 보기 →
                     </Link>
@@ -519,22 +517,90 @@ export default function DashboardPage(): ReactNode {
           </Card>
         )}
 
+        {/* ── THIS WEEK PROBLEMS ── */}
+        {currentStudyId && (
+          <Card className="overflow-hidden p-0" style={fade(0.2)}>
+            <CardHeader className="flex flex-row items-center gap-2.5 border-b border-border">
+              <BookOpen className="h-4 w-4 text-primary" aria-hidden />
+              <CardTitle>이번주 문제</CardTitle>
+              <Badge variant="muted">{getCurrentWeekLabel()}</Badge>
+            </CardHeader>
+            {isLoading ? (
+              <div className="space-y-3 p-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} height={36} />
+                ))}
+              </div>
+            ) : currentWeekProblems.length === 0 ? (
+              <p className="py-8 text-center text-sm text-text-3">
+                이번주 등록된 문제가 없습니다
+              </p>
+            ) : (
+              <div>
+                {currentWeekProblems.map((p, i) => {
+                  const isSubmitted = submittedProblemIds.has(p.id);
+                  return (
+                    <Link
+                      key={p.id}
+                      href={`/problems/${p.id}`}
+                      className={cn(
+                        'group flex items-center justify-between px-4 py-3.5 transition-all hover:bg-primary-soft',
+                        i < currentWeekProblems.length - 1 && 'border-b border-border',
+                        isSubmitted && 'opacity-50',
+                      )}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          {isSubmitted && (
+                            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden />
+                          )}
+                          <p className={cn(
+                            'truncate text-[13px] font-medium transition-colors',
+                            isSubmitted ? 'text-text-3' : 'group-hover:text-primary',
+                          )}>
+                            {p.title}
+                          </p>
+                        </div>
+                        <div className="mt-0.5 flex items-center gap-1.5">
+                          {p.difficulty && (
+                            <DifficultyBadge difficulty={p.difficulty as Difficulty} level={p.level} />
+                          )}
+                          {p.deadline && (
+                            <span className="font-mono text-[10px] text-text-3">
+                              마감 {new Date(p.deadline).getMonth() + 1}.{new Date(p.deadline).getDate()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {isSubmitted ? (
+                        <Badge variant="success">제출 완료</Badge>
+                      ) : (
+                        <Badge variant="warning">미제출</Badge>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+        )}
+
         {/* ── TWO COLUMN GRID ── */}
         <div className="grid gap-3.5 md:grid-cols-2" style={fade(0.24)}>
           {/* 최근 제출 5건 */}
           <Card className="overflow-hidden p-0">
-            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <h2 className="text-sm font-semibold">최근 제출</h2>
               <Link
                 href="/submissions"
-                className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+                className="flex items-center gap-1 text-[11px] font-medium text-primary transition-colors hover:underline"
               >
                 전체 보기
                 <ArrowRight className="h-3 w-3" aria-hidden />
               </Link>
             </div>
             {isLoading ? (
-              <div className="space-y-3 p-5">
+              <div className="space-y-3 p-4">
                 {Array.from({ length: 3 }).map((_, i) => (
                   <Skeleton key={i} height={36} />
                 ))}
@@ -554,7 +620,7 @@ export default function DashboardPage(): ReactNode {
                         : `/problems/${s.problemId}`
                     }
                     className={cn(
-                      'group flex items-center justify-between px-5 py-3.5 transition-all hover:bg-primary-soft',
+                      'group flex items-center justify-between px-4 py-3.5 transition-all hover:bg-primary-soft',
                       i < recentSubmissions.length - 1 && 'border-b border-border',
                     )}
                   >
@@ -565,7 +631,7 @@ export default function DashboardPage(): ReactNode {
                       <p className="mt-0.5 font-mono text-[11px] text-text-3">
                         <span>{s.language}</span>
                         <span className="mx-1.5 opacity-30">·</span>
-                        <span>{formatDate(s.createdAt)}</span>
+                        <span>{formatRelativeTime(s.createdAt)}</span>
                       </p>
                     </div>
                     <Badge
@@ -582,18 +648,18 @@ export default function DashboardPage(): ReactNode {
 
           {/* 마감 임박 문제 */}
           <Card className="overflow-hidden p-0">
-            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <h2 className="text-sm font-semibold">마감 임박 문제</h2>
               <Link
                 href="/problems"
-                className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+                className="flex items-center gap-1 text-[11px] font-medium text-primary transition-colors hover:underline"
               >
                 전체 보기
                 <ArrowRight className="h-3 w-3" aria-hidden />
               </Link>
             </div>
             {isLoading ? (
-              <div className="space-y-3 p-5">
+              <div className="space-y-3 p-4">
                 {Array.from({ length: 3 }).map((_, i) => (
                   <Skeleton key={i} height={36} />
                 ))}
@@ -618,7 +684,7 @@ export default function DashboardPage(): ReactNode {
                       key={p.id}
                       href={`/problems/${p.id}`}
                       className={cn(
-                        'group flex items-center justify-between px-5 py-3.5 transition-all hover:bg-primary-soft',
+                        'group flex items-center justify-between px-4 py-3.5 transition-all hover:bg-primary-soft',
                         i < upcomingDeadlines.length - 1 && 'border-b border-border',
                       )}
                     >
@@ -634,9 +700,14 @@ export default function DashboardPage(): ReactNode {
                             {p.title}
                           </p>
                         </div>
-                        <p className="mt-0.5 font-mono text-[10px] text-text-3">
-                          {p.weekNumber}
-                        </p>
+                        <div className="mt-0.5 flex items-center gap-1.5">
+                          <span className="font-mono text-[10px] text-text-3">
+                            {p.weekNumber}
+                          </span>
+                          {p.difficulty && (
+                            <DifficultyBadge difficulty={p.difficulty as Difficulty} level={p.level} />
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         {isSubmitted && (

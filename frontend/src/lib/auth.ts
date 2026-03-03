@@ -1,8 +1,8 @@
 /**
- * AlgoSu 인증 유틸리티
- *
- * JWT 토큰 저장/조회/삭제
- * localStorage 기반, SSR 안전 처리 포함
+ * @file JWT 토큰 저장/조회/삭제 유틸리티
+ * @domain auth
+ * @layer lib
+ * @related AuthContext, api.ts
  */
 
 export const TOKEN_KEY = 'algosu:token' as const;

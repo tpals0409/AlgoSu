@@ -74,7 +74,7 @@ function TimerBadge({ deadline, className }: TimerBadgeProps): ReactElement {
       )}
       aria-label={state.variant === 'expired' ? '마감 종료' : `마감까지 ${state.label} 남음`}
     >
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden>
         <circle cx="12" cy="12" r="10" />
         <polyline points="12 6 12 12 16 14" />
       </svg>

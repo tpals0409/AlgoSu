@@ -1,3 +1,9 @@
+/**
+ * @file 제출 상태 SSE 스트림 Hook
+ * @domain submission
+ * @layer hook
+ * @related SubmissionStatus, api.ts, auth.ts
+ */
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';

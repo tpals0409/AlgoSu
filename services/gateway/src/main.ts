@@ -29,7 +29,7 @@ async function bootstrap(): Promise<void> {
   app.use(cookieParser());
 
   // T3: CORS 설정 — credentials: true 필수 (httpOnly Cookie 전송)
-  const corsOrigin = configService.get<string>('CORS_ORIGIN', 'http://localhost:3001');
+  const corsOrigin = configService.get<string>('ALLOWED_ORIGINS', 'http://localhost:3001');
   app.enableCors({
     origin: corsOrigin,
     credentials: true,

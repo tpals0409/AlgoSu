@@ -53,8 +53,7 @@ function Badge({ className, variant, dot, children, ...props }: BadgeProps): Rea
     <span className={cn(badgeVariants({ variant }), className)} {...props}>
       {dot && (
         <span
-          className="inline-block shrink-0 rounded-full bg-current"
-          style={{ width: '5px', height: '5px' }}
+          className="inline-block shrink-0 rounded-full bg-current w-[5px] h-[5px]"
           aria-hidden
         />
       )}

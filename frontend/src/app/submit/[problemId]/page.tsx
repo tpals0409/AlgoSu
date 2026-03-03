@@ -9,12 +9,13 @@
 
 import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ChevronLeft } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { BackBtn } from '@/components/ui/BackBtn';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
 import { TimerBadge } from '@/components/ui/TimerBadge';
+import { LangBadge } from '@/components/ui/LangBadge';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -24,6 +25,7 @@ import { problemApi, submissionApi, draftApi, type Problem } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudy } from '@/contexts/StudyContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useRequireStudy } from '@/hooks/useRequireStudy';
 import type { Difficulty } from '@/lib/constants';
 
 // ─── TYPES ────────────────────────────────
@@ -42,6 +44,7 @@ export default function SubmitPage(): ReactNode {
   const problemId = params?.problemId as string;
   const router = useRouter();
   const { isAuthenticated } = useRequireAuth();
+  useRequireStudy();
   const { githubConnected } = useAuth();
   const { currentStudyId } = useStudy();
 
@@ -96,15 +99,16 @@ export default function SubmitPage(): ReactNode {
     studyId: currentStudyId,
     code,
     language,
+    onLocalSaved: useCallback(() => {
+      setAutoSaveStatus('saved');
+      setTimeout(() => setAutoSaveStatus('idle'), 2000);
+    }, []),
     onServerSave: useCallback(
       async (data: { code: string; language: string }): Promise<void> => {
-        setAutoSaveStatus('saving');
         try {
           await draftApi.upsert(problemId, { language: data.language, code: data.code });
-          setAutoSaveStatus('saved');
-          setTimeout(() => setAutoSaveStatus('idle'), 2000);
         } catch {
-          setAutoSaveStatus('idle');
+          // 서버 저장 실패 — localStorage에 이미 저장됨
         }
       },
       [problemId],
@@ -179,10 +183,7 @@ export default function SubmitPage(): ReactNode {
       <AppLayout>
         <div className="space-y-4">
           <Alert variant="error">{error ?? '문제를 찾을 수 없습니다.'}</Alert>
-          <Button variant="ghost" size="sm" onClick={() => router.back()}>
-            <ChevronLeft />
-            뒤로 가기
-          </Button>
+          <BackBtn label="뒤로 가기" />
         </div>
       </AppLayout>
     );
@@ -194,17 +195,15 @@ export default function SubmitPage(): ReactNode {
     <AppLayout>
       <div className="space-y-5">
         {/* 뒤로가기 */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push(`/problems/${problemId}`)}
-          className="-ml-1"
-        >
-          <ChevronLeft />
-          문제 상세
-        </Button>
+        <BackBtn label="문제 상세" href={`/problems/${problemId}`} className="-ml-1" />
 
-        {/* 문제 정보 헤더 */}
+        {/* 페이지 타이틀 */}
+        <div>
+          <h1 className="text-[22px] font-bold tracking-tight text-text">코드 제출</h1>
+          <p className="mt-0.5 text-xs text-text-3">코드를 작성하고 제출하세요</p>
+        </div>
+
+        {/* 문제 정보 */}
         <Card>
           <CardHeader>
             <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -216,19 +215,39 @@ export default function SubmitPage(): ReactNode {
             </div>
             <CardTitle>{problem.title}</CardTitle>
           </CardHeader>
+          <CardContent>
+            {/* 문제 설명 */}
+            {problem.description && (
+              <p className="text-[13px] leading-relaxed text-text-2 mb-4">
+                {problem.description}
+              </p>
+            )}
+            {/* 허용 언어 */}
+            {problem.allowedLanguages.length > 0 && (
+              <div>
+                <span className="text-[11px] font-medium text-text-3 mb-1.5 block">허용 언어</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {problem.allowedLanguages.map((lang) => (
+                    <LangBadge key={lang} language={lang} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
         </Card>
 
         {/* GitHub 미연동 경고 */}
         {!githubConnected && (
           <Alert variant="warning" title="GitHub 연동 필요">
             코드를 제출하려면 먼저 GitHub 계정을 연동해주세요.{' '}
-            <button
-              type="button"
+            <Button
+              variant="link"
+              size="sm"
               onClick={() => router.push('/github-link')}
-              className="underline font-medium"
+              className="inline h-auto p-0 text-inherit underline font-medium"
             >
               GitHub 연동하기
-            </button>
+            </Button>
           </Alert>
         )}
 
@@ -241,23 +260,16 @@ export default function SubmitPage(): ReactNode {
 
         {/* 코드 에디터 */}
         {problem.status === 'ACTIVE' ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>코드 제출</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CodeEditor
-                code={code}
-                language={language}
-                onCodeChange={handleCodeChange}
-                onLanguageChange={handleLanguageChange}
-                onSubmit={handleSubmit}
-                isSubmitting={isSubmitting}
-                autoSaveStatus={autoSaveStatus}
-                deadline={problem.deadline}
-              />
-            </CardContent>
-          </Card>
+          <CodeEditor
+            code={code}
+            language={language}
+            onCodeChange={handleCodeChange}
+            onLanguageChange={handleLanguageChange}
+            onSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
+            autoSaveStatus={autoSaveStatus}
+            deadline={problem.deadline}
+          />
         ) : (
           <Alert variant="warning" title="제출 마감">
             이 문제는 마감되었습니다. 더 이상 제출할 수 없습니다.

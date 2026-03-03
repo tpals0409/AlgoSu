@@ -110,7 +110,7 @@ export class OAuthController {
 
     this.logger.log(`GitHub 연동 완료: userId=${userId}, github=${user.github_username}`);
 
-    const frontendUrl = process.env['FRONTEND_URL'] ?? 'http://localhost:3001';
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3001');
     const params = new URLSearchParams({
       github_connected: 'true',
       github_username: user.github_username ?? '',

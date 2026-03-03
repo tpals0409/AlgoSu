@@ -11,6 +11,8 @@ import { useState, useCallback, useEffect, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Suspense } from 'react';
+import { useTheme } from 'next-themes';
+import { Sun, Moon } from 'lucide-react';
 import { Logo } from '@/components/ui/Logo';
 import { Alert } from '@/components/ui/Alert';
 import { InlineSpinner } from '@/components/ui/LoadingSpinner';
@@ -59,6 +61,7 @@ function LoginContent(): ReactNode {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [error, setError] = useState<string | null>(null);
   const [loadingProvider, setLoadingProvider] = useState<OAuthProvider | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -115,6 +118,14 @@ function LoginContent(): ReactNode {
             <Logo size={28} />
             AlgoSu
           </Link>
+          <button
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="flex items-center gap-1 rounded-btn px-2 py-1 text-[11px] text-text-3 hover:text-text hover:bg-bg-alt transition-colors"
+            aria-label="테마 전환"
+          >
+            {theme === 'dark' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+            {theme === 'dark' ? '다크' : '라이트'}
+          </button>
         </div>
       </nav>
 
@@ -128,13 +139,13 @@ function LoginContent(): ReactNode {
 
         <div className="relative w-full max-w-[400px]" style={fade(0)}>
           {/* 로그인 카드 */}
-          <div className="rounded-[20px] border border-border bg-bg-card p-8 shadow">
+          <div className="rounded-card border border-border bg-bg-card pt-10 pb-8 px-8 shadow">
             {/* 로고 + 제목 */}
             <div className="mb-8 text-center" style={fade(0.1)}>
               <div className="mx-auto mb-4 flex justify-center">
                 <Logo size={48} />
               </div>
-              <h1 className="mb-1.5 text-[22px] font-bold tracking-tight">
+              <h1 className="mb-1.5 text-[22px] font-bold tracking-tight text-text">
                 AlgoSu에 로그인
               </h1>
               <p className="text-[13px] text-text-3">

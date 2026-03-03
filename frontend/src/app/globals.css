@@ -50,6 +50,7 @@
     --shadow:         0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04);
     --shadow-hover:   0 2px 8px rgba(0,0,0,0.06), 0 8px 32px rgba(0,0,0,0.06);
     --shadow-toast:   0 8px 32px rgba(0,0,0,0.12);
+    --shadow-glow:    0 4px 24px rgba(124,106,174,0.35);
 
     /* ── 난이도 (solved.ac) ── */
     --diff-bronze-bg:       rgba(173,86,0,0.12);
@@ -123,6 +124,7 @@
     --shadow:         0 1px 3px rgba(0,0,0,0.20), 0 4px 16px rgba(0,0,0,0.15);
     --shadow-hover:   0 2px 8px rgba(0,0,0,0.30), 0 8px 32px rgba(0,0,0,0.20);
     --shadow-toast:   0 8px 32px rgba(0,0,0,0.40);
+    --shadow-glow:    0 4px 24px rgba(160,140,214,0.40);
 
     /* ── 바 (차트) ── */
     --bar-fill:   linear-gradient(90deg, #A08CD6, #B9A6E8);

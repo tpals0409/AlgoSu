@@ -35,7 +35,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           <label
             htmlFor={inputId}
             className={cn(
-              'text-[11px] font-medium text-text2 mb-[5px]',
+              'text-[11px] font-medium text-text-2 mb-[5px]',
               disabled && 'opacity-50',
             )}
           >
@@ -52,13 +52,12 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             'w-full px-3 py-2 rounded-badge border border-border',
             'bg-input-bg text-text text-xs',
             'outline-none transition-[border-color] duration-150',
-            'placeholder:text-text3',
+            'placeholder:text-text-3',
             'focus:border-primary',
             'disabled:cursor-not-allowed disabled:opacity-50',
             error && 'border-error focus:border-error',
             className,
           )}
-          style={{ padding: '8px 12px', fontSize: '12px' }}
           {...props}
         />
         {error && (
@@ -67,7 +66,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           </p>
         )}
         {hint && !error && (
-          <p id={hintId} className="mt-1 text-[11px] text-text3">
+          <p id={hintId} className="mt-1 text-[11px] text-text-3">
             {hint}
           </p>
         )}

@@ -1,3 +1,9 @@
+/**
+ * @file 인증 필수 페이지 가드 Hook
+ * @domain auth
+ * @layer hook
+ * @related AuthContext, guards.ts
+ */
 'use client';
 
 import { useEffect } from 'react';

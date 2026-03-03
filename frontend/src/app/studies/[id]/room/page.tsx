@@ -206,7 +206,7 @@ export default function StudyRoomPage(): ReactElement {
 
             {/* 문제 헤더 */}
             <div className="mb-6 text-center">
-              <h1 className="text-xl font-bold tracking-tight text-text">
+              <h1 className="text-[22px] font-bold tracking-tight text-text">
                 {selectedProblem.title}
               </h1>
               <div className="mt-2 flex items-center justify-center gap-2">
@@ -298,7 +298,7 @@ export default function StudyRoomPage(): ReactElement {
           /* 문제 목록 */
           <div className="animate-fade-in">
             <div className="mb-6 text-center">
-              <h1 className="text-xl font-bold tracking-tight text-text">
+              <h1 className="text-[22px] font-bold tracking-tight text-text">
                 코드 리뷰
               </h1>
               <p className="mt-1 text-[13px] text-text-3">
@@ -307,7 +307,7 @@ export default function StudyRoomPage(): ReactElement {
             </div>
 
             {/* 안내 배너 */}
-            <div className="mb-4 flex items-center gap-2 rounded-card border border-info bg-info-soft px-4 py-2.5">
+            <div className="mb-4 flex items-center gap-2 rounded-card border border-info/30 bg-info-soft px-4 py-2.5">
               <AlertCircle className="h-3.5 w-3.5 text-info" />
               <span className="text-xs text-text-2">
                 마감 전 코드는 본인만 볼 수 있으며, 마감 후 전체 공개됩니다.

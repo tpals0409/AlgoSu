@@ -3,7 +3,7 @@
 ## 프로젝트 개요
 - **목표**: 모놀리식(Next.js + Supabase) → 5개 마이크로서비스 MSA 전환
 - **기간**: 1주일 핵심 구현 (Phase 1~2), 이후 스프린트 확장
-- **문서**: `/Users/leokim/Desktop/AlgoSu/plan/`
+- **문서**: `/root/AlgoSu/plan/`
 
 ---
 
@@ -355,10 +355,10 @@
 ## v1.1+v1.2 전면 적용 작전 (2026-02-28) ✅
 
 ### 근거 문서
-- `/Users/leokim/Desktop/추가사항 문서/AlgoSu_Oracle_Decisions_Update_v1.1.md` — 다중 스터디 서비스화
-- `/Users/leokim/Desktop/추가사항 문서/AlgoSu_Oracle_Decisions_Update_v1.2.md` — OAuth 인증 도입
-- `/Users/leokim/Desktop/추가사항 문서/AlgoSu_TF_Kickoff_Plan_v2.1.md` — Palette 합류
-- `/Users/leokim/Desktop/추가사항 문서/AlgoSu_Code_Conventions_Update_v1.1.md` — 디자인 토큰 규칙
+- `AlgoSu_Oracle_Decisions_Update_v1.1.md` — 다중 스터디 서비스화 *(원본: Mac `/Users/leokim/Desktop/추가사항 문서/`)*
+- `AlgoSu_Oracle_Decisions_Update_v1.2.md` — OAuth 인증 도입
+- `AlgoSu_TF_Kickoff_Plan_v2.1.md` — Palette 합류
+- `AlgoSu_Code_Conventions_Update_v1.1.md` — 디자인 토큰 규칙
 - 적용 계획서: `memory/algosu-v1.1-v1.2-plan.md`
 
 ### 핵심 변경 9개 결정

@@ -21,6 +21,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { problemApi, type Problem } from '@/lib/api';
 import { useStudy } from '@/contexts/StudyContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useRequireStudy } from '@/hooks/useRequireStudy';
 import type { Difficulty } from '@/lib/constants';
 
 // ─── TYPES ────────────────────────────────
@@ -39,6 +40,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
   const { id: problemId } = use(params);
   const router = useRouter();
   const { isAuthenticated } = useRequireAuth();
+  useRequireStudy();
   const { currentStudyRole } = useStudy();
   const isAdmin = currentStudyRole === 'ADMIN';
 
@@ -215,9 +217,9 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
                 href={problem.sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-primary transition-colors hover:underline"
               >
-                <ExternalLink className="h-3.5 w-3.5" />
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden />
                 {problem.sourcePlatform ?? '출처'} 에서 보기
               </a>
             )}

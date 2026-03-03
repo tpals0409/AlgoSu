@@ -104,10 +104,12 @@ describe('ProblemService', () => {
         description: dto.description,
         weekNumber: dto.weekNumber,
         difficulty: dto.difficulty,
+        level: null,
         sourceUrl: dto.sourceUrl,
         sourcePlatform: dto.sourcePlatform,
         deadline: new Date(dto.deadline!),
         allowedLanguages: dto.allowedLanguages,
+        tags: null,
         studyId: STUDY_ID,
         createdBy: USER_ID,
       });

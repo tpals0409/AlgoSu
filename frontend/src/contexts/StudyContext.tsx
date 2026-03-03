@@ -1,3 +1,9 @@
+/**
+ * @file 스터디 컨텍스트 (현재 스터디 선택/전환 관리)
+ * @domain study
+ * @layer context
+ * @related AuthContext, api.ts, StudySidebar
+ */
 'use client';
 
 import {

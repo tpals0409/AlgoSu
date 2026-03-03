@@ -1,3 +1,9 @@
+/**
+ * @file 상태 인디케이터 (도트 + 라벨, 5상태)
+ * @domain common
+ * @layer component
+ * @related StatusBadge, Badge
+ */
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
@@ -13,20 +19,20 @@ const STATUS_LABELS: Record<StatusType, string> = {
 };
 
 const STATUS_DOT_CLASSES: Record<StatusType, string> = {
-  pending: 'bg-muted-foreground',
+  pending: 'bg-muted',
   running: 'bg-info animate-pulse',
   success: 'bg-success',
-  failed:  'bg-destructive',
+  failed:  'bg-error',
   syncing: 'bg-warning animate-pulse',
 };
 
 const statusVariants = cva('inline-flex items-center gap-1.5 text-xs font-medium', {
   variants: {
     status: {
-      pending: 'text-muted-foreground',
+      pending: 'text-muted',
       running: 'text-info',
       success: 'text-success',
-      failed:  'text-destructive',
+      failed:  'text-error',
       syncing: 'text-warning',
     },
     size: {

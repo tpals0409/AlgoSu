@@ -1,5 +1,8 @@
 /**
- * 날짜 포맷 유틸리티 — 전체 서비스에서 일관된 형식 사용
+ * @file 날짜 포맷 유틸리티 (서비스 전체 일관 형식)
+ * @domain common
+ * @layer lib
+ * @related TimerBadge, NotifPanel
  */
 
 /** 날짜+시간: "2026.03.01 14:30" */

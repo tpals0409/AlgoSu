@@ -1,3 +1,9 @@
+/**
+ * @file 알림 토스트 포탈 (9종 알림 타입 + 자동 소멸)
+ * @domain notification
+ * @layer component
+ * @related NotificationBell, Toast, notificationApi
+ */
 'use client';
 
 import { useState, useEffect, useCallback, type ReactNode } from 'react';
@@ -114,8 +120,7 @@ export function NotificationToast({
         )}
       >
         <div
-          className="mt-0.5 flex shrink-0 items-center justify-center rounded-md bg-primary-soft2"
-          style={{ width: '28px', height: '28px' }}
+          className="mt-0.5 flex shrink-0 items-center justify-center rounded-md bg-primary-soft2 w-7 h-7"
         >
           <Icon className="h-3.5 w-3.5 text-primary" aria-hidden />
         </div>
@@ -135,7 +140,7 @@ export function NotificationToast({
           className="mt-0.5 shrink-0 text-text-3 hover:text-text transition-colors"
           aria-label="닫기"
         >
-          <X className="h-3.5 w-3.5" />
+          <X className="h-3.5 w-3.5" aria-hidden />
         </button>
       </div>
     </div>,

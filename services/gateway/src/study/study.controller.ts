@@ -25,6 +25,10 @@ import { ChangeRoleDto } from './dto/change-role.dto';
 import { CreateStudyDto } from './dto/create-study.dto';
 import { JoinStudyDto } from './dto/join-study.dto';
 import { UpdateGroundRulesDto } from './dto/update-ground-rules.dto';
+import { UpdateNicknameDto } from './dto/update-nickname.dto';
+import { UpdateStudyDto } from './dto/update-study.dto';
+import { VerifyInviteDto } from './dto/verify-invite.dto';
+import { NotifyProblemDto } from './dto/notify-problem.dto';
 import { StudyActiveGuard } from '../common/guards/study-active.guard';
 
 @Controller('api/studies')
@@ -80,7 +84,7 @@ export class StudyController {
   async update(
     @Param('id', ParseUUIDPipe) studyId: string,
     @Req() req: Request,
-    @Body() body: { name?: string; description?: string },
+    @Body() body: UpdateStudyDto,
   ): Promise<Study> {
     const userId = req.headers['x-user-id'] as string;
     return this.studyService.updateStudy(studyId, userId, body);
@@ -119,7 +123,7 @@ export class StudyController {
   }
 
   /**
-   * POST /api/studies/:id/invite — 초대 코드 발급 (ADMIN만, 24시간 유효)
+   * POST /api/studies/:id/invite — 초대 코드 발급 (ADMIN만, 5분 유효)
    * @api POST /studies/:id/invite
    * @guard jwt-auth, study-admin, closed-study
    */
@@ -131,6 +135,20 @@ export class StudyController {
   ): Promise<{ code: string; expires_at: Date }> {
     const userId = req.headers['x-user-id'] as string;
     return this.studyService.createInvite(studyId, userId);
+  }
+
+  /**
+   * POST /api/studies/verify-invite — 초대 코드 유효성 검증
+   * @api POST /studies/verify-invite
+   * @guard jwt-auth
+   */
+  @Post('verify-invite')
+  async verifyInvite(
+    @Req() req: Request,
+    @Body() body: VerifyInviteDto,
+  ): Promise<{ valid: boolean; studyName: string }> {
+    const ip = req.ip ?? req.socket.remoteAddress ?? 'unknown';
+    return this.studyService.verifyInviteCode(body.code, ip);
   }
 
   /**
@@ -210,6 +228,21 @@ export class StudyController {
   }
 
   /**
+   * PATCH /api/studies/:id/nickname — 본인 닉네임 변경
+   * @api PATCH /studies/:id/nickname
+   * @guard jwt-auth, study-member
+   */
+  @Patch(':id/nickname')
+  async updateNickname(
+    @Param('id', ParseUUIDPipe) studyId: string,
+    @Req() req: Request,
+    @Body() dto: UpdateNicknameDto,
+  ): Promise<{ nickname: string }> {
+    const userId = req.headers['x-user-id'] as string;
+    return this.studyService.updateNickname(studyId, userId, dto.nickname);
+  }
+
+  /**
    * PATCH /api/studies/:id/members/:userId/role — 역할 변경 (ADMIN만)
    * @api PATCH /studies/:id/members/:userId/role
    * @guard jwt-auth, study-admin, closed-study
@@ -237,7 +270,7 @@ export class StudyController {
   async notifyProblemCreated(
     @Param('id', ParseUUIDPipe) studyId: string,
     @Req() req: Request,
-    @Body() body: { problemId: string; problemTitle: string; weekNumber: string },
+    @Body() body: NotifyProblemDto,
   ): Promise<{ message: string }> {
     const userId = req.headers['x-user-id'] as string;
     await this.studyService.notifyProblemCreated(

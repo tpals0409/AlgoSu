@@ -30,7 +30,7 @@ const buttonVariants = cva(
           'active:scale-[0.98]',
         ],
         ghost: [
-          'bg-transparent border border-border text-text2',
+          'bg-transparent border border-border text-text-2',
           'hover:bg-bg-alt hover:text-text',
           'active:scale-[0.98]',
         ],

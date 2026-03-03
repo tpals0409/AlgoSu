@@ -19,6 +19,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
 import { useStudy } from '@/contexts/StudyContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useRequireStudy } from '@/hooks/useRequireStudy';
 import {
   studyApi,
   problemApi,
@@ -53,19 +54,16 @@ function StatCard({
   return (
     <Card className="p-3">
       <div className="flex items-center gap-3">
-        <div
-          className="flex items-center justify-center rounded-md bg-bg2"
-          style={{ width: '36px', height: '36px' }}
-        >
+        <div className="flex w-9 h-9 items-center justify-center rounded-md bg-bg-alt">
           <Icon className="h-4 w-4 text-primary" aria-hidden />
         </div>
         <div>
           {loading ? (
             <Skeleton height={20} width={60} />
           ) : (
-            <p className={cn('text-lg font-bold text-foreground', valueClassName)}>{value}</p>
+            <p className={cn('text-lg font-bold text-text', valueClassName)}>{value}</p>
           )}
-          <p className="font-mono text-[10px] text-muted-foreground">{label}</p>
+          <p className="font-mono text-[10px] text-text-3">{label}</p>
         </div>
       </div>
     </Card>
@@ -89,18 +87,18 @@ function WeeklyBar({
   return (
     <div className={cn(
       'flex items-center gap-2',
-      isCurrent && 'bg-primary-500/[0.05] rounded-sm px-1.5 py-0.5 -mx-1.5',
+      isCurrent && 'bg-primary/[0.05] rounded-sm px-1.5 py-0.5 -mx-1.5',
     )}>
       <span
         className={cn(
           'w-16 text-right font-mono text-[10px] truncate',
-          isCurrent ? 'text-primary font-medium' : 'text-muted-foreground',
+          isCurrent ? 'text-primary font-medium' : 'text-text-3',
         )}
         title={data.week}
       >
         {data.week}
       </span>
-      <div className="flex-1 h-5 bg-bg2 rounded-sm overflow-hidden">
+      <div className="flex-1 h-5 bg-bg-alt rounded-sm overflow-hidden">
         <div
           className="h-full rounded-sm gradient-brand transition-all duration-300"
           style={{ width: `${pct}%` }}
@@ -109,7 +107,7 @@ function WeeklyBar({
       </div>
       <span className={cn(
         'w-10 text-right font-mono text-[11px] shrink-0',
-        isComplete ? 'text-success font-medium' : isCurrent ? 'text-primary font-medium' : data.count === 0 ? 'text-muted-foreground' : 'text-foreground',
+        isComplete ? 'text-success font-medium' : isCurrent ? 'text-primary font-medium' : data.count === 0 ? 'text-text-3' : 'text-text',
       )}>
         {data.count}/{total}
       </span>
@@ -125,6 +123,7 @@ function WeeklyBar({
 export default function AnalyticsPage(): ReactNode {
   const router = useRouter();
   const { isReady, isAuthenticated } = useRequireAuth();
+  useRequireStudy();
   const { currentStudyId, currentStudyName, studiesLoaded } = useStudy();
 
   const [stats, setStats] = useState<StudyStats | null>(null);
@@ -263,9 +262,9 @@ export default function AnalyticsPage(): ReactNode {
 
   if (!isReady) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-background">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-bg">
         <LoadingSpinner size="lg" color="primary" />
-        <p className="text-sm text-muted-foreground">로딩 중...</p>
+        <p className="text-sm text-text-3">로딩 중...</p>
       </div>
     );
   }
@@ -278,17 +277,16 @@ export default function AnalyticsPage(): ReactNode {
           <div className="flex items-center gap-3">
             <Link
               href="/dashboard"
-              className="flex items-center justify-center rounded-btn bg-bg2 text-muted-foreground hover:text-foreground transition-colors"
-              style={{ width: '28px', height: '28px' }}
+              className="flex w-7 h-7 items-center justify-center rounded-btn bg-bg-alt text-text-3 hover:text-text transition-colors"
               aria-label="대시보드로 돌아가기"
             >
-              <ArrowLeft className="h-3.5 w-3.5" />
+              <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
             </Link>
             <div>
-              <h1 className="text-base font-semibold text-foreground">
+              <h1 className="text-[22px] font-bold tracking-tight text-text">
                 {currentStudyName ? `${currentStudyName} · 통계` : '통계'}
               </h1>
-              <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
+              <p className="mt-0.5 font-mono text-[10px] text-text-3">
                 나의 풀이 현황
               </p>
             </div>
@@ -296,13 +294,12 @@ export default function AnalyticsPage(): ReactNode {
           {currentStudyId && (
             <button
               type="button"
-              className="flex items-center justify-center rounded-btn bg-bg2 text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
-              style={{ width: '28px', height: '28px' }}
+              className="flex w-7 h-7 items-center justify-center rounded-btn bg-bg-alt text-text-3 hover:text-text disabled:opacity-50 transition-colors"
               onClick={() => void loadData()}
               disabled={isLoading}
               aria-label="새로고침"
             >
-              <RefreshCw className={cn('h-3.5 w-3.5', isLoading && 'animate-spin')} />
+              <RefreshCw className={cn('h-3.5 w-3.5', isLoading && 'animate-spin')} aria-hidden />
             </button>
           )}
         </div>
@@ -318,14 +315,13 @@ export default function AnalyticsPage(): ReactNode {
           <Card className="p-8">
             <div className="flex flex-col items-center text-center gap-4">
               <div
-                className="flex items-center justify-center rounded-full bg-bg2"
-                style={{ width: '48px', height: '48px' }}
+                className="flex w-12 h-12 items-center justify-center rounded-full bg-bg-alt"
               >
                 <BarChart3 className="h-5 w-5 text-primary" aria-hidden />
               </div>
               <div>
-                <p className="text-sm font-medium text-foreground">스터디를 선택해주세요</p>
-                <p className="mt-1 text-[11px] text-muted-foreground">
+                <p className="text-sm font-medium text-text">스터디를 선택해주세요</p>
+                <p className="mt-1 text-[11px] text-text-3">
                   통계를 보려면 먼저 스터디를 선택해야 합니다.
                 </p>
               </div>
@@ -353,14 +349,13 @@ export default function AnalyticsPage(): ReactNode {
           <Card className="p-8">
             <div className="flex flex-col items-center text-center gap-4">
               <div
-                className="flex items-center justify-center rounded-full bg-bg2"
-                style={{ width: '48px', height: '48px' }}
+                className="flex w-12 h-12 items-center justify-center rounded-full bg-bg-alt"
               >
                 <BarChart3 className="h-5 w-5 text-primary" aria-hidden />
               </div>
               <div>
-                <p className="text-sm font-medium text-foreground">아직 제출 데이터가 없습니다</p>
-                <p className="mt-1 text-[11px] text-muted-foreground">
+                <p className="text-sm font-medium text-text">아직 제출 데이터가 없습니다</p>
+                <p className="mt-1 text-[11px] text-text-3">
                   문제를 풀고 코드를 제출하면 통계를 확인할 수 있습니다.
                 </p>
               </div>
@@ -427,7 +422,7 @@ export default function AnalyticsPage(): ReactNode {
                     })}
                   </div>
                 ) : (
-                  <p className="py-8 text-center text-sm text-muted-foreground">
+                  <p className="py-8 text-center text-sm text-text-3">
                     아직 풀이 기록이 없습니다.
                   </p>
                 )}
@@ -456,23 +451,23 @@ export default function AnalyticsPage(): ReactNode {
                           className={cn(
                             'flex items-center gap-1.5 rounded-md border font-mono transition-colors cursor-default',
                             isTop
-                              ? 'gradient-brand border-primary/30 px-3.5 py-2 text-primary-foreground'
+                              ? 'gradient-brand border-primary/30 px-3.5 py-2 text-white'
                               : isMid
-                                ? 'bg-bg3 border-primary/15 px-3 py-1.5'
-                                : 'bg-bg2 border-border px-2.5 py-1.5',
-                            !isTop && 'hover:border-primary/30 hover:bg-bg3',
+                                ? 'bg-bg-alt border-primary/15 px-3 py-1.5'
+                                : 'bg-bg-alt border-border px-2.5 py-1.5',
+                            !isTop && 'hover:border-primary/30 hover:bg-bg-alt',
                           )}
                           title={`${row.tag}: ${row.count}문제`}
                         >
                           <span className={cn(
                             'text-[11px]',
-                            isTop ? 'text-primary-foreground font-medium' : 'text-foreground',
+                            isTop ? 'text-white font-medium' : 'text-text',
                           )}>
                             {row.tag}
                           </span>
                           <span className={cn(
                             'text-[11px] font-bold',
-                            isTop ? 'text-primary-foreground/80' : isMid ? 'text-primary' : 'text-muted-foreground',
+                            isTop ? 'text-white/80' : isMid ? 'text-primary' : 'text-text-3',
                           )}>
                             {row.count}
                           </span>
@@ -480,7 +475,7 @@ export default function AnalyticsPage(): ReactNode {
                       );
                     })}
                   </div>
-                  <p className="mt-3 font-mono text-[10px] text-muted-foreground">
+                  <p className="mt-3 font-mono text-[10px] text-text-3">
                     총 {tagDistribution.reduce((s, r) => s + r.count, 0)}문제
                   </p>
                 </CardContent>

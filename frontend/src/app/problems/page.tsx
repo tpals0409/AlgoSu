@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { BookOpen, Plus, Search, Check } from 'lucide-react';
+import { BookOpen, Plus, Search, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -24,6 +24,7 @@ import { useStudy } from '@/contexts/StudyContext';
 import { DIFFICULTIES, DIFFICULTY_LABELS, PROBLEM_STATUSES, PROBLEM_STATUS_LABELS } from '@/lib/constants';
 import type { Difficulty } from '@/lib/constants';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useRequireStudy } from '@/hooks/useRequireStudy';
 
 // ─── TYPES ────────────────────────────────
 
@@ -52,6 +53,7 @@ const INITIAL_FILTERS: Filters = {
 export default function ProblemsPage(): ReactNode {
   const router = useRouter();
   const { isAuthenticated } = useRequireAuth();
+  useRequireStudy();
   const { currentStudyId, currentStudyRole, currentStudyName } = useStudy();
   const isAdmin = currentStudyRole === 'ADMIN';
 
@@ -62,6 +64,8 @@ export default function ProblemsPage(): ReactNode {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   // ─── API ────────────────────────────────
 
@@ -101,18 +105,24 @@ export default function ProblemsPage(): ReactNode {
 
   const handleFilterChange = (key: keyof Filters, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
+    setPage(1);
   };
 
   const handleResetFilters = () => {
     setFilters(INITIAL_FILTERS);
+    setPage(1);
   };
 
   // ─── HELPERS ──────────────────────────────
 
   const filteredProblems = useMemo(() => {
     return problems.filter((p) => {
-      if (filters.search && !p.title.toLowerCase().includes(filters.search.toLowerCase())) {
-        return false;
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
+        const matchTitle = p.title.toLowerCase().includes(q);
+        const matchUrl = p.sourceUrl?.toLowerCase().includes(q) ?? false;
+        const matchTags = p.tags?.some(t => t.toLowerCase().includes(q)) ?? false;
+        if (!matchTitle && !matchUrl && !matchTags) return false;
       }
       if (filters.difficulty && p.difficulty !== filters.difficulty) {
         return false;
@@ -132,6 +142,12 @@ export default function ProblemsPage(): ReactNode {
     return weeks.sort();
   }, [problems]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredProblems.length / PAGE_SIZE));
+  const paginatedProblems = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredProblems.slice(start, start + PAGE_SIZE);
+  }, [filteredProblems, page]);
+
   const hasActiveFilters = filters.search || filters.difficulty || filters.weekNumber || filters.status;
 
   return (
@@ -140,7 +156,7 @@ export default function ProblemsPage(): ReactNode {
         {/* 헤더 */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold tracking-tight text-text">
+            <h1 className="text-[22px] font-bold tracking-tight text-text">
               {currentStudyName ? `${currentStudyName} · 문제 목록` : '문제 목록'}
             </h1>
             {!isLoading && problems.length > 0 && (
@@ -167,10 +183,10 @@ export default function ProblemsPage(): ReactNode {
             <div className="flex flex-wrap items-center gap-2">
               {/* 검색 */}
               <div className="relative flex-1 min-w-[160px]">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-3 pointer-events-none" />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-3 pointer-events-none" aria-hidden />
                 <input
                   type="text"
-                  placeholder="문제 검색..."
+                  placeholder="문제명, BOJ 번호, 태그 검색..."
                   value={filters.search}
                   onChange={(e) => handleFilterChange('search', e.target.value)}
                   className="w-full h-[34px] pl-8 pr-3 rounded-btn border border-border bg-input-bg text-text text-xs font-body outline-none transition-[border-color] duration-150 placeholder:text-text-3 focus:border-primary"
@@ -259,77 +275,130 @@ export default function ProblemsPage(): ReactNode {
 
         {/* 문제 목록 테이블 */}
         {!isLoading && filteredProblems.length > 0 && (
-          <Card className="p-0 overflow-hidden">
-            {/* 헤더 행 */}
-            <div
-              className="grid items-center gap-x-2 px-4 py-2.5 border-b border-border font-mono text-[10px] uppercase tracking-wider text-text-3 min-w-[500px]"
-              style={{ gridTemplateColumns: '64px 1fr 80px 100px 72px' }}
-            >
-              <span>주차</span>
-              <span>문제</span>
-              <span>난이도</span>
-              <span>마감</span>
-              <span>상태</span>
-            </div>
+          <>
+            <Card className="p-0 overflow-hidden">
+              {/* 헤더 행 */}
+              <div
+                className="grid items-center gap-x-2 px-4 py-2.5 border-b border-border font-mono text-[10px] uppercase tracking-wider text-text-3 min-w-[500px]"
+                style={{ gridTemplateColumns: '64px 1fr 80px 100px 72px' }}
+              >
+                <span>주차</span>
+                <span>문제</span>
+                <span>난이도</span>
+                <span>마감</span>
+                <span>상태</span>
+              </div>
 
-            {/* 데이터 행 */}
-            {filteredProblems.map((problem) => {
-              const deadlineDate = problem.deadline ? new Date(problem.deadline) : null;
-              const isExpired = deadlineDate ? deadlineDate < new Date() : true;
-              const isSolved = solvedIds.has(problem.id);
+              {/* 데이터 행 */}
+              {paginatedProblems.map((problem) => {
+                const deadlineDate = problem.deadline ? new Date(problem.deadline) : null;
+                const isExpired = deadlineDate ? deadlineDate < new Date() : true;
+                const isSolved = solvedIds.has(problem.id);
 
-              return (
-                <button
-                  key={problem.id}
-                  type="button"
-                  onClick={() => handleProblemClick(problem.id)}
-                  aria-label={`${problem.title} 문제 보기`}
-                  className="grid items-center gap-x-2 w-full px-4 py-3 text-left border-b border-border last:border-b-0 hover:bg-primary-soft transition-colors min-w-[500px]"
-                  style={{ gridTemplateColumns: '64px 1fr 80px 100px 72px' }}
-                >
-                  {/* 주차 */}
-                  <span className="font-mono text-[11px] text-text-3 truncate">
-                    {problem.weekNumber}
-                  </span>
+                return (
+                  <button
+                    key={problem.id}
+                    type="button"
+                    onClick={() => handleProblemClick(problem.id)}
+                    aria-label={`${problem.title} 문제 보기`}
+                    className="grid items-center gap-x-2 w-full px-4 py-3 text-left border-b border-border last:border-b-0 hover:bg-primary-soft transition-colors min-w-[500px]"
+                    style={{ gridTemplateColumns: '64px 1fr 80px 100px 72px' }}
+                  >
+                    {/* 주차 */}
+                    <span className="font-mono text-[11px] text-text-3 truncate">
+                      {problem.weekNumber}
+                    </span>
 
-                  {/* 문제 제목 + 풀이 완료 체크 */}
-                  <div className="min-w-0 flex items-center gap-2">
-                    <p className="text-[13px] font-medium text-text truncate">
-                      {problem.title}
-                    </p>
-                    {isSolved && (
-                      <span className="flex items-center justify-center shrink-0 w-4 h-4 rounded-full bg-success-soft">
-                        <Check className="w-2.5 h-2.5 text-success" />
-                      </span>
-                    )}
-                  </div>
+                    {/* 문제 제목 + 풀이 완료 체크 */}
+                    <div className="min-w-0 flex items-center gap-2">
+                      <p className="text-[13px] font-medium text-text truncate">
+                        {problem.title}
+                      </p>
+                      {isSolved && (
+                        <span className="flex items-center justify-center shrink-0 w-4 h-4 rounded-full bg-success-soft">
+                          <Check className="w-2.5 h-2.5 text-success" />
+                        </span>
+                      )}
+                    </div>
 
-                  {/* 난이도 */}
-                  {problem.difficulty ? (
-                    <DifficultyBadge difficulty={problem.difficulty as Difficulty} level={problem.level} />
-                  ) : (
-                    <span className="font-mono text-[10px] text-text-3">--</span>
-                  )}
-
-                  {/* 마감 */}
-                  <div>
-                    {deadlineDate && !isExpired && problem.status === 'ACTIVE' ? (
-                      <TimerBadge deadline={deadlineDate} />
-                    ) : deadlineDate && isExpired ? (
-                      <TimerBadge deadline={deadlineDate} />
+                    {/* 난이도 */}
+                    {problem.difficulty ? (
+                      <DifficultyBadge difficulty={problem.difficulty as Difficulty} level={problem.level} />
                     ) : (
                       <span className="font-mono text-[10px] text-text-3">--</span>
                     )}
-                  </div>
 
-                  {/* 상태 */}
-                  <Badge variant={problem.status === 'ACTIVE' ? 'success' : 'muted'}>
-                    {problem.status === 'ACTIVE' ? '진행 중' : problem.status === 'DRAFT' ? '초안' : '종료'}
-                  </Badge>
-                </button>
-              );
-            })}
-          </Card>
+                    {/* 마감 */}
+                    <div>
+                      {deadlineDate && !isExpired && problem.status === 'ACTIVE' ? (
+                        <TimerBadge deadline={deadlineDate} />
+                      ) : deadlineDate && isExpired ? (
+                        <TimerBadge deadline={deadlineDate} />
+                      ) : (
+                        <span className="font-mono text-[10px] text-text-3">--</span>
+                      )}
+                    </div>
+
+                    {/* 상태 */}
+                    <Badge variant={problem.status === 'ACTIVE' ? 'success' : 'muted'}>
+                      {problem.status === 'ACTIVE' ? '진행 중' : problem.status === 'DRAFT' ? '초안' : '종료'}
+                    </Badge>
+                  </button>
+                );
+              })}
+            </Card>
+
+            {/* 페이지네이션 */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-1.5">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </Button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
+                  .reduce<(number | 'ellipsis')[]>((acc, p, idx, arr) => {
+                    if (idx > 0 && p - (arr[idx - 1] as number) > 1) {
+                      acc.push('ellipsis');
+                    }
+                    acc.push(p);
+                    return acc;
+                  }, [])
+                  .map((item, i) =>
+                    item === 'ellipsis' ? (
+                      <span key={`e-${i}`} className="px-1 text-text-3 text-xs">...</span>
+                    ) : (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => setPage(item)}
+                        className={`flex h-8 w-8 items-center justify-center rounded-btn text-xs font-medium transition-colors ${
+                          item === page
+                            ? 'bg-primary text-white'
+                            : 'text-text-2 border border-border hover:bg-bg-alt'
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    ),
+                  )}
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </AppLayout>
