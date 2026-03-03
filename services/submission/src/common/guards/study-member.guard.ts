@@ -41,8 +41,14 @@ export class StudyMemberGuard implements CanActivate {
     const userId = request.headers['x-user-id'] as string | undefined;
     const studyId = request.headers['x-study-id'] as string | undefined;
 
-    if (!userId || !studyId) {
-      throw new ForbiddenException('X-User-ID 및 X-Study-ID 헤더가 필요합니다.');
+    if (!userId || typeof userId !== 'string') {
+      this.logger.warn(`X-User-ID 헤더 없음 — path: ${request.path}`);
+      throw new ForbiddenException('X-User-ID 헤더가 필요합니다.');
+    }
+
+    if (!studyId || typeof studyId !== 'string') {
+      this.logger.warn(`X-Study-ID 헤더 없음 — path: ${request.path}`);
+      throw new ForbiddenException('X-Study-ID 헤더가 필요합니다.');
     }
 
     const cacheKey = `study:membership:${studyId}:${userId}`;
@@ -80,14 +86,14 @@ export class StudyMemberGuard implements CanActivate {
         this.logger.warn(
           `스터디 멤버 아님: studyId=${studyId}, userId=${userId}`,
         );
-        throw new ForbiddenException('해당 스터디의 멤버가 아닙니다.');
+        throw new ForbiddenException('스터디 멤버가 아닙니다.');
       }
 
       if (!response.ok) {
         this.logger.error(
           `Gateway 멤버십 확인 실패: status=${response.status}`,
         );
-        throw new ForbiddenException('멤버십 확인에 실패했습니다.');
+        throw new ForbiddenException('스터디 멤버가 아닙니다.');
       }
 
       const data = (await response.json()) as { role: string };
@@ -106,7 +112,7 @@ export class StudyMemberGuard implements CanActivate {
       this.logger.error(
         `Gateway 멤버십 확인 실패: ${(error as Error).message}`,
       );
-      throw new ForbiddenException('멤버십 확인에 실패했습니다.');
+      throw new ForbiddenException('스터디 멤버가 아닙니다.');
     }
   }
 }

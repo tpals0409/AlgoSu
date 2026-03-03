@@ -373,7 +373,7 @@ export class StudyService {
             type: NotificationType.MEMBER_JOINED,
             title: '새 멤버 가입',
             message: `"${study.name}"에 새 멤버가 가입했습니다.`,
-            link: `/studies/${study.id}/members`,
+            link: `/studies/${study.id}`,
           }),
         ),
     );
@@ -622,7 +622,7 @@ export class StudyService {
           type: NotificationType.MEMBER_LEFT,
           title: '멤버 탈퇴',
           message: `"${study?.name ?? '스터디'}"에서 멤버가 탈퇴했습니다.`,
-          link: `/studies/${studyId}/members`,
+          link: `/studies/${studyId}`,
         }),
       ),
     );
