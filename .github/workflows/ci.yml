@@ -296,7 +296,7 @@ jobs:
         run: npm test -- --coverage --ci
       - name: Upload coverage
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-gateway
           path: services/gateway/coverage/
@@ -324,7 +324,7 @@ jobs:
         run: npm test -- --coverage --ci --passWithNoTests
       - name: Upload coverage
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-identity
           path: services/identity/coverage/
@@ -352,7 +352,7 @@ jobs:
         run: npm test -- --coverage --ci --forceExit
       - name: Upload coverage
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-submission
           path: services/submission/coverage/
@@ -380,7 +380,7 @@ jobs:
         run: npm test -- --coverage --ci
       - name: Upload coverage
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-problem
           path: services/problem/coverage/
@@ -408,7 +408,7 @@ jobs:
         run: npm test -- --coverage --ci
       - name: Upload coverage
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-github-worker
           path: services/github-worker/coverage/
@@ -438,7 +438,7 @@ jobs:
         run: python -m pytest tests/ -v --cov=src --cov-report=xml
       - name: Upload coverage
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-ai-analysis
           path: services/ai-analysis/coverage.xml
