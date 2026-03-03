@@ -1,3 +1,9 @@
+/**
+ * @file 로딩 스피너 컴포넌트 (sm/md/lg 사이즈)
+ * @domain common
+ * @layer component
+ * @related Skeleton
+ */
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
@@ -14,7 +20,7 @@ const spinnerVariants = cva(
       },
       color: {
         primary: 'text-primary',
-        muted:   'text-muted-foreground',
+        muted:   'text-text-3',
         white:   'text-white',
         current: 'text-current',
       },
@@ -43,10 +49,10 @@ function FullscreenSpinner({ label = '로딩 중...' }: { readonly label?: strin
     <div
       role="status"
       aria-label={label}
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-background/80 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-bg/80 backdrop-blur-sm"
     >
       <LoadingSpinner size="xl" label={label} />
-      <p className="text-sm font-medium text-muted-foreground">{label}</p>
+      <p className="text-sm font-medium text-text-3">{label}</p>
     </div>
   );
 }

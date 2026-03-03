@@ -3,14 +3,16 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   Body,
   Headers,
   UseGuards,
   ParseUUIDPipe,
-  ParseIntPipe,
   Logger,
   ForbiddenException,
+  HttpCode,
+  HttpStatus,
   Request,
 } from '@nestjs/common';
 import { ProblemService } from './problem.service';
@@ -59,10 +61,19 @@ export class ProblemController {
    */
   @Get('week/:weekNumber')
   async findByWeek(
-    @Param('weekNumber', ParseIntPipe) weekNumber: number,
+    @Param('weekNumber') weekNumber: string,
     @Headers('x-study-id') studyId: string,
   ) {
     const problems = await this.problemService.findByWeekAndStudy(studyId, weekNumber);
+    return { data: problems };
+  }
+
+  /**
+   * GET /all — 스터디별 전체 문제 목록 (CLOSED 포함)
+   */
+  @Get('all')
+  async findAll(@Headers('x-study-id') studyId: string) {
+    const problems = await this.problemService.findAllByStudy(studyId);
     return { data: problems };
   }
 
@@ -98,6 +109,25 @@ export class ProblemController {
   ) {
     const problem = await this.problemService.findById(studyId, id);
     return { data: problem };
+  }
+
+  /**
+   * DELETE /:id — 문제 삭제 soft delete (ADMIN 전용)
+   */
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async delete(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Headers('x-user-id') userId: string,
+    @Headers('x-study-id') studyId: string,
+    @Request() req: { studyRole?: string },
+  ) {
+    if (req.studyRole !== 'ADMIN') {
+      this.logger.warn(`권한 없는 문제 삭제 시도: userId=${userId}, studyId=${studyId}, role=${req.studyRole}`);
+      throw new ForbiddenException('문제 삭제는 ADMIN만 가능합니다.');
+    }
+
+    await this.problemService.delete(studyId, id);
   }
 
   /**

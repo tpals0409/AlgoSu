@@ -1,18 +1,14 @@
+/**
+ * @file 입력 필드 컴포넌트 (v2 디자인 시스템)
+ * @domain common
+ * @layer component
+ * @related Button, Card
+ */
+
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
-/**
- * Input — AlgoSu UI Design System
- *
- * 목업 form-input 스펙:
- *  padding: 8px 12px; border-radius: 6px; border: 1px solid border-color;
- *  font-size: 12px; font-family: inherit; outline: none;
- *  transition: border-color 0.15s;
- *  light: bg bg2; color text;
- *  dark:  bg bg2 (다크모드 bg2=#27233A, card=#231F34 → 명도 차 확보)
- *  focus: border-color main;
- *  label: font-size 11px; font-weight 500; color text2; margin-bottom 5px;
- */
+// ─── TYPES ───────────────────────────────────
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   readonly label?: string;
@@ -20,6 +16,12 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   readonly hint?: string;
 }
 
+// ─── RENDER ──────────────────────────────────
+
+/**
+ * 입력 필드 (v2 input-bg + focus primary)
+ * @domain common
+ */
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, label, error, hint, id, disabled, ...props }, ref) => {
     const inputId =
@@ -33,7 +35,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           <label
             htmlFor={inputId}
             className={cn(
-              'text-[11px] font-medium text-text2 mb-[5px]',
+              'text-[11px] font-medium text-text-2 mb-[5px]',
               disabled && 'opacity-50',
             )}
           >
@@ -47,25 +49,24 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           aria-invalid={error ? true : undefined}
           aria-describedby={errorId ?? hintId}
           className={cn(
-            'w-full px-3 py-2 rounded-btn border border-border',
-            'bg-bg2 text-text1 text-xs font-[inherit]',
+            'w-full px-3 py-2 rounded-badge border border-border',
+            'bg-input-bg text-text text-xs',
             'outline-none transition-[border-color] duration-150',
-            'placeholder:text-text3',
-            'focus:border-primary-500',
+            'placeholder:text-text-3',
+            'focus:border-primary',
             'disabled:cursor-not-allowed disabled:opacity-50',
-            error && 'border-destructive focus:border-destructive',
+            error && 'border-error focus:border-error',
             className,
           )}
-          style={{ padding: '8px 12px', fontSize: '12px' }}
           {...props}
         />
         {error && (
-          <p id={errorId} role="alert" className="mt-1 text-[11px] text-[var(--color-error)]">
+          <p id={errorId} role="alert" className="mt-1 text-[11px] text-error">
             {error}
           </p>
         )}
         {hint && !error && (
-          <p id={hintId} className="mt-1 text-[11px] text-text3">
+          <p id={hintId} className="mt-1 text-[11px] text-text-3">
             {hint}
           </p>
         )}

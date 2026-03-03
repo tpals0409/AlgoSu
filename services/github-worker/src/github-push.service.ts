@@ -1,5 +1,6 @@
 import { Octokit } from '@octokit/rest';
 import { TokenManager } from './token-manager';
+import { logger } from './logger';
 
 /**
  * GitHub Push 서비스
@@ -79,9 +80,7 @@ export class GitHubPushService {
       sha: existingSha,
     });
 
-    console.log(
-      `[GitHubPush] 완료: submissionId=${input.submissionId}, path=${filePath}`,
-    );
+    logger.info('GitHub Push 완료', { action: 'PUSH_DONE' });
 
     return {
       filePath,

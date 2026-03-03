@@ -116,7 +116,7 @@ describe('DeadlineCacheService', () => {
   // ──────────────────────────────────────────────
   describe('setWeekProblems()', () => {
     it('주차별 캐시 설정: TTL 600 확인', async () => {
-      const weekNumber = 1;
+      const weekNumber = '3월1주차';
       const data = JSON.stringify([{ id: PROBLEM_ID, title: '두 수의 합' }]);
       redis.set.mockResolvedValue('OK');
 
@@ -136,7 +136,7 @@ describe('DeadlineCacheService', () => {
   // ──────────────────────────────────────────────
   describe('invalidateWeekProblems()', () => {
     it('주차별 캐시 삭제: DEL 호출', async () => {
-      const weekNumber = 1;
+      const weekNumber = '3월1주차';
       redis.del.mockResolvedValue(1);
 
       await service.invalidateWeekProblems(STUDY_ID, weekNumber);

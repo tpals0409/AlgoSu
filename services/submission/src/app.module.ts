@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SubmissionModule } from './submission/submission.module';
+import { ReviewModule } from './review/review.module';
+import { StudyNoteModule } from './study-note/study-note.module';
 import { MetricsModule } from './common/metrics/metrics.module';
 import { HealthController } from './health.controller';
 
@@ -25,11 +27,13 @@ import { HealthController } from './health.controller';
         migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
         synchronize: false, // 프로덕션 절대 금지
         logging: ['error', 'warn'],
-        maxQueryExecutionTime: 1000, // 1초 초과 쿼리 경고 로그 (monitoring-log-rules.md §8)
+        maxQueryExecutionTime: 200, // 200ms 초과 쿼리 경고 로그 (monitoring-log-rules.md §8-1)
       }),
     }),
     MetricsModule,
     SubmissionModule,
+    ReviewModule,
+    StudyNoteModule,
   ],
   controllers: [HealthController],
 })

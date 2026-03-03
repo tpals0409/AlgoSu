@@ -9,6 +9,8 @@ import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Submission, SagaStep } from './submission.entity';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
+import { UpdateAiResultDto } from './dto/update-ai-result.dto';
+import { PaginationQueryDto, PaginatedResult } from './dto/pagination-query.dto';
 import { SagaOrchestratorService } from '../saga/saga-orchestrator.service';
 
 @Injectable()
@@ -44,6 +46,9 @@ export class SubmissionService {
       }
     }
 
+    // A3: 지각 제출 체크 — 마감 시간 초과 시 isLate=true (제출은 허용)
+    const isLate = await this.checkLateSubmission(studyId, dto.problemId);
+
     // DB 저장 (Step 1)
     const submission = this.submissionRepo.create({
       studyId,
@@ -53,6 +58,7 @@ export class SubmissionService {
       code: dto.code,
       sagaStep: SagaStep.DB_SAVED,
       idempotencyKey: dto.idempotencyKey ?? null,
+      isLate,
     });
 
     const saved = await this.submissionRepo.save(submission);
@@ -69,6 +75,13 @@ export class SubmissionService {
     }
 
     return saved;
+  }
+
+  /**
+   * GitHub 파일 경로 업데이트 — 콜백에서 호출
+   */
+  async updateGithubFilePath(id: string, filePath: string): Promise<void> {
+    await this.submissionRepo.update(id, { githubFilePath: filePath });
   }
 
   /**
@@ -94,6 +107,61 @@ export class SubmissionService {
   }
 
   /**
+   * 스터디+사용자별 제출 목록 (페이지네이션)
+   * IDOR 방지: studyId + userId 스코핑
+   * DoS 방지: limit max 100
+   */
+  async findByStudyAndUserPaginated(
+    studyId: string,
+    userId: string,
+    query: PaginationQueryDto,
+  ): Promise<PaginatedResult<Submission>> {
+    const page = query.page ?? 1;
+    const limit = Math.min(query.limit ?? 20, 100);
+    const [sortField, sortDirection] = (query.sort ?? 'createdAt_DESC').split('_');
+
+    // M15: SQL Injection 방지 — sortField 화이트리스트
+    const allowedSortFields = ['createdAt', 'language', 'sagaStep', 'weekNumber', 'updatedAt'];
+    const safeSortField = allowedSortFields.includes(sortField) ? sortField : 'createdAt';
+
+    const qb = this.submissionRepo
+      .createQueryBuilder('s')
+      .where('s.studyId = :studyId', { studyId })
+      .andWhere('s.userId = :userId', { userId });
+
+    if (query.language) {
+      qb.andWhere('s.language = :language', { language: query.language });
+    }
+
+    if (query.sagaStep) {
+      qb.andWhere('s.sagaStep = :sagaStep', { sagaStep: query.sagaStep });
+    }
+
+    if (query.weekNumber) {
+      qb.andWhere('s.weekNumber = :weekNumber', { weekNumber: query.weekNumber });
+    }
+
+    qb.orderBy(
+      `s.${safeSortField}`,
+      sortDirection === 'ASC' ? 'ASC' : 'DESC',
+    );
+
+    qb.skip((page - 1) * limit).take(limit);
+
+    const [data, total] = await qb.getManyAndCount();
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
    * 문제별 제출 목록 (스터디+사용자 본인만)
    */
   async findByProblem(studyId: string, userId: string, problemId: string): Promise<Submission[]> {
@@ -101,6 +169,195 @@ export class SubmissionService {
       where: { studyId, userId, problemId },
       order: { createdAt: 'DESC' },
     });
+  }
+
+  /**
+   * 문제별 전체 제출 조회 (스터디 단위) — 내부 API 전용
+   * 그룹 분석용: 해당 스터디의 해당 문제 모든 제출
+   */
+  async findByProblemForStudy(studyId: string, problemId: string): Promise<Submission[]> {
+    return this.submissionRepo.find({
+      where: { studyId, problemId },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  /**
+   * AI 분석 결과 저장 + Saga DONE 전환
+   * AI Analysis Service 콜백 — 내부 API 전용
+   */
+  async updateAiResult(id: string, dto: UpdateAiResultDto): Promise<Submission> {
+    const submission = await this.findById(id);
+
+    submission.aiFeedback = dto.feedback;
+    submission.aiScore = dto.score;
+    submission.aiOptimizedCode = dto.optimizedCode ?? null;
+    submission.aiAnalysisStatus = dto.analysisStatus;
+
+    const updated = await this.submissionRepo.save(submission);
+
+    // 분석 완료 시 Saga DONE 전환
+    if (dto.analysisStatus === 'completed' || dto.analysisStatus === 'failed') {
+      await this.sagaOrchestrator.advanceToDone(id);
+    }
+
+    this.logger.log(
+      `AI 결과 업데이트: submissionId=${id}, status=${dto.analysisStatus}, score=${dto.score}`,
+    );
+
+    return updated;
+  }
+
+  /**
+   * 스터디 통계 조회 — 내부 API 전용
+   * Gateway에서 GET /api/studies/:id/stats 호출 시 사용
+   */
+  async getStudyStats(studyId: string, weekNumber?: string, userId?: string): Promise<{
+    totalSubmissions: number;
+    byWeek: { week: string; count: number }[];
+    byWeekPerUser: { userId: string; week: string; count: number }[];
+    byMember: { userId: string; count: number; doneCount: number }[];
+    byMemberWeek: { userId: string; count: number }[] | null;
+    recentSubmissions: { id: string; userId: string; problemId: string; language: string; sagaStep: string; createdAt: Date }[];
+    solvedProblemIds: string[] | null;
+  }> {
+    const totalSubmissions = await this.submissionRepo.count({
+      where: { studyId },
+    });
+
+    const parseWeekKey = (w: string) => {
+      const m = w.match(/^(\d+)월(\d+)주차$/);
+      return m ? Number(m[1]) * 100 + Number(m[2]) : 0;
+    };
+
+    // 주차별 통계 — 스터디 전체 총 제출 건수
+    const byWeekRaw = await this.submissionRepo
+      .createQueryBuilder('s')
+      .select('s.week_number', 'week')
+      .addSelect('COUNT(*)::int', 'count')
+      .where('s.study_id = :studyId', { studyId })
+      .andWhere('s.week_number IS NOT NULL')
+      .groupBy('s.week_number')
+      .getRawMany<{ week: string; count: number }>();
+
+    const byWeek = byWeekRaw
+      .map((r) => ({ week: String(r.week), count: Number(r.count) }))
+      .sort((a, b) => parseWeekKey(a.week) - parseWeekKey(b.week));
+
+    // 유저별 주차 통계 — 개인별 고유 문제 수
+    const byWeekPerUserRaw = await this.submissionRepo
+      .createQueryBuilder('s')
+      .select('s.user_id', 'userId')
+      .addSelect('s.week_number', 'week')
+      .addSelect('COUNT(DISTINCT s.problem_id)::int', 'count')
+      .where('s.study_id = :studyId', { studyId })
+      .andWhere('s.week_number IS NOT NULL')
+      .groupBy('s.user_id')
+      .addGroupBy('s.week_number')
+      .getRawMany<{ userId: string; week: string; count: number }>();
+
+    const byWeekPerUser = byWeekPerUserRaw
+      .map((r) => ({ userId: r.userId, week: String(r.week), count: Number(r.count) }))
+      .sort((a, b) => parseWeekKey(a.week) - parseWeekKey(b.week));
+
+    // 멤버별 통계
+    const byMemberRaw = await this.submissionRepo
+      .createQueryBuilder('s')
+      .select('s.user_id', 'userId')
+      .addSelect('COUNT(*)::int', 'count')
+      .addSelect(`SUM(CASE WHEN s.saga_step = 'DONE' THEN 1 ELSE 0 END)::int`, 'doneCount')
+      .where('s.study_id = :studyId', { studyId })
+      .groupBy('s.user_id')
+      .getRawMany<{ userId: string; count: number; doneCount: number }>();
+
+    const byMember = byMemberRaw.map((r) => ({
+      userId: r.userId,
+      count: Number(r.count),
+      doneCount: Number(r.doneCount),
+    }));
+
+    // 최근 제출 10건
+    const recentSubmissions = await this.submissionRepo.find({
+      where: { studyId },
+      order: { createdAt: 'DESC' },
+      take: 10,
+      select: ['id', 'userId', 'problemId', 'language', 'sagaStep', 'createdAt'],
+    });
+
+    // 주차별 멤버 통계 — 고유 문제 수 (weekNumber 파라미터가 있을 때만)
+    let byMemberWeek: { userId: string; count: number }[] | null = null;
+    if (weekNumber) {
+      const byMemberWeekRaw = await this.submissionRepo
+        .createQueryBuilder('s')
+        .select('s.user_id', 'userId')
+        .addSelect('COUNT(DISTINCT s.problem_id)::int', 'count')
+        .where('s.study_id = :studyId', { studyId })
+        .andWhere('s.week_number = :weekNumber', { weekNumber })
+        .groupBy('s.user_id')
+        .getRawMany<{ userId: string; count: number }>();
+
+      byMemberWeek = byMemberWeekRaw.map((r) => ({
+        userId: r.userId,
+        count: Number(r.count),
+      }));
+    }
+
+    // 특정 유저의 풀이 문제 ID 목록 (analytics 태그 분포용)
+    let solvedProblemIds: string[] | null = null;
+    if (userId) {
+      const rows = await this.submissionRepo
+        .createQueryBuilder('s')
+        .select('DISTINCT s.problem_id', 'problemId')
+        .where('s.study_id = :studyId', { studyId })
+        .andWhere('s.user_id = :userId', { userId })
+        .getRawMany<{ problemId: string }>();
+      solvedProblemIds = rows.map((r) => r.problemId);
+    }
+
+    return { totalSubmissions, byWeek, byWeekPerUser, byMember, byMemberWeek, recentSubmissions, solvedProblemIds };
+  }
+
+  /**
+   * A3: 마감 시간 체크 — Problem Service 내부 API 호출
+   * deadline이 지났으면 true, 아직이면 false
+   * 조회 실패 시 안전하게 false 반환 (제출 차단하지 않음)
+   * @domain submission
+   * @guard problem-deadline
+   */
+  private async checkLateSubmission(studyId: string, problemId: string): Promise<boolean> {
+    try {
+      const problemServiceUrl = this.configService.getOrThrow<string>('PROBLEM_SERVICE_URL');
+      const internalKey = this.configService.getOrThrow<string>('INTERNAL_KEY_GATEWAY');
+
+      const response = await fetch(
+        `${problemServiceUrl}/deadline/${problemId}`,
+        {
+          method: 'GET',
+          headers: {
+            'x-internal-key': internalKey,
+            'x-study-id': studyId,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+      if (!response.ok) {
+        this.logger.warn(`마감 시간 조회 실패: problemId=${problemId}, status=${response.status}`);
+        return false;
+      }
+
+      const result = (await response.json()) as { data: { deadline: string | null; status: string } };
+      const deadline = result.data.deadline;
+
+      if (!deadline) {
+        return false; // 마감 시간 미설정 -> 지각 아님
+      }
+
+      return new Date(deadline) < new Date();
+    } catch (error: unknown) {
+      this.logger.warn(`마감 시간 조회 에러: problemId=${problemId}, ${(error as Error).message}`);
+      return false; // 조회 실패 시 안전하게 false
+    }
   }
 
   /**

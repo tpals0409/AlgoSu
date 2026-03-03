@@ -26,7 +26,7 @@ spec:
       initContainers:
         - name: db-migrate
           image: ghcr.io/OWNER/algosu-submission:main-PLACEHOLDER
-          command: ["npm", "run", "migration:run"]
+          command: ["node", "./node_modules/typeorm/cli.js", "migration:run", "-d", "dist/src/database/data-source.js"]
           envFrom:
             - secretRef:
                 name: submission-service-secrets

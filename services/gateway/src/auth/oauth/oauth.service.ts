@@ -2,6 +2,7 @@ import {
   Injectable,
   BadRequestException,
   UnauthorizedException,
+  NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -46,6 +47,10 @@ export class OAuthService {
   ) {
     const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
     this.redis = new Redis(redisUrl);
+    this.redis.on('error', (err: Error) => {
+      // M11: Redis 연결 에러 핸들링 — 프로세스 크래시 방지, fail-closed 보장
+      process.stdout.write(JSON.stringify({ level: 'error', context: 'OAuthService', message: `Redis 연결 오류: ${err.message}` }) + '\n');
+    });
     this.jwtSecret = this.configService.getOrThrow<string>('JWT_SECRET');
     this.jwtExpiresIn = this.configService.get<string>('JWT_EXPIRES_IN', '1h');
     this.callbackBaseUrl = this.configService.getOrThrow<string>('OAUTH_CALLBACK_URL');
@@ -64,6 +69,16 @@ export class OAuthService {
     if (exists === 0) {
       throw new BadRequestException('유효하지 않거나 만료된 OAuth state입니다.');
     }
+  }
+
+  async validateAndConsumeGitHubLinkState(state: string): Promise<string> {
+    const key = `oauth:github:link:${state}`;
+    const userId = await this.redis.get(key);
+    if (!userId) {
+      throw new BadRequestException('유효하지 않거나 만료된 GitHub 연동 state입니다.');
+    }
+    await this.redis.del(key);
+    return userId;
   }
 
   // --- Authorization URL 생성 ---
@@ -150,7 +165,7 @@ export class OAuthService {
     }
 
     const user = await this.upsertUser(profile, oauthProvider);
-    const accessToken = this.issueJwt(user.id);
+    const accessToken = this.issueJwt(user);
     const refreshToken = this.issueRefreshToken(user.id);
 
     await this.storeRefreshToken(user.id, refreshToken);
@@ -264,14 +279,21 @@ export class OAuthService {
 
   // --- GitHub 연동 ---
 
-  getGitHubAuthUrl(userId: string): { url: string } {
+  async getGitHubAuthUrl(userId: string): Promise<{ url: string }> {
     const clientId = this.configService.getOrThrow<string>('GITHUB_CLIENT_ID');
-    const redirectUri = `${this.callbackBaseUrl}/auth/oauth/github/callback`;
+    const redirectUri = `${this.callbackBaseUrl}/auth/github/link/callback`;
+    const state = crypto.randomUUID();
+    await this.redis.set(
+      `oauth:github:link:${state}`,
+      userId,
+      'EX',
+      OAuthService.STATE_TTL_SECONDS,
+    );
     const params = new URLSearchParams({
       client_id: clientId,
       redirect_uri: redirectUri,
       scope: 'read:user',
-      state: userId, // GitHub 연동은 인증된 사용자의 userId를 state로 사용
+      state,
     });
     return { url: `https://github.com/login/oauth/authorize?${params.toString()}` };
   }
@@ -280,28 +302,41 @@ export class OAuthService {
     const clientId = this.configService.getOrThrow<string>('GITHUB_CLIENT_ID');
     const clientSecret = this.configService.getOrThrow<string>('GITHUB_CLIENT_SECRET');
 
-    const tokenRes = await axios.post<{ access_token: string }>(
-      'https://github.com/login/oauth/access_token',
-      {
-        client_id: clientId,
-        client_secret: clientSecret,
-        code,
-      },
-      {
-        headers: { Accept: 'application/json' },
-      },
-    );
+    let accessToken: string;
+    try {
+      const tokenRes = await axios.post<{ access_token: string }>(
+        'https://github.com/login/oauth/access_token',
+        {
+          client_id: clientId,
+          client_secret: clientSecret,
+          code,
+        },
+        {
+          headers: { Accept: 'application/json' },
+        },
+      );
 
-    if (!tokenRes.data.access_token) {
-      throw new BadRequestException('GitHub 토큰 교환에 실패했습니다.');
+      if (!tokenRes.data.access_token) {
+        throw new BadRequestException('GitHub 토큰 교환에 실패했습니다.');
+      }
+      accessToken = tokenRes.data.access_token;
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      throw new BadRequestException('GitHub 인증 처리 중 오류가 발생했습니다.');
     }
 
-    const githubUser = await axios.get<GitHubUserProfile>(
-      'https://api.github.com/user',
-      {
-        headers: { Authorization: `Bearer ${tokenRes.data.access_token}` },
-      },
-    );
+    let githubUser: GitHubUserProfile;
+    try {
+      const res = await axios.get<GitHubUserProfile>(
+        'https://api.github.com/user',
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      );
+      githubUser = res.data;
+    } catch {
+      throw new BadRequestException('GitHub 사용자 정보 조회에 실패했습니다.');
+    }
 
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
@@ -309,8 +344,8 @@ export class OAuthService {
     }
 
     user.github_connected = true;
-    user.github_user_id = String(githubUser.data.id);
-    user.github_username = githubUser.data.login;
+    user.github_user_id = String(githubUser.id);
+    user.github_username = githubUser.login;
 
     return this.userRepository.save(user);
   }
@@ -344,14 +379,17 @@ export class OAuthService {
 
     if (user) {
       user.name = profile.name;
-      user.avatar_url = profile.avatar_url;
+      // 프리셋 아바타 사용 중이면 OAuth 사진으로 덮어쓰지 않음
+      if (!user.avatar_url || !user.avatar_url.startsWith('preset:')) {
+        user.avatar_url = profile.avatar_url;
+      }
       return this.userRepository.save(user);
     }
 
     user = this.userRepository.create({
       email: profile.email,
       name: profile.name,
-      avatar_url: profile.avatar_url,
+      avatar_url: 'preset:default',
       oauth_provider: provider,
       github_connected: false,
     });
@@ -363,13 +401,59 @@ export class OAuthService {
     return this.userRepository.findOne({ where: { id: userId } });
   }
 
+  async updateProfile(
+    userId: string,
+    name?: string,
+    avatarUrl?: string,
+  ): Promise<User> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new Error('사용자를 찾을 수 없습니다.');
+    }
+    if (name !== undefined) {
+      user.name = name;
+    }
+    if (avatarUrl !== undefined) {
+      user.avatar_url = avatarUrl;
+    }
+    return this.userRepository.save(user);
+  }
+
   // --- JWT 발급 ---
 
-  private issueJwt(userId: string): string {
-    return jwt.sign({ sub: userId }, this.jwtSecret, {
-      algorithm: 'HS256',
-      expiresIn: this.jwtExpiresIn as jwt.SignOptions['expiresIn'],
-    });
+  /**
+   * 공개 JWT 발급 메서드 — TokenRefreshInterceptor에서 사용
+   * @domain identity
+   */
+  issueAccessToken(user: User): string {
+    return this.issueJwt(user);
+  }
+
+  /**
+   * userId로 User 조회 — 없으면 NotFoundException
+   * @domain identity
+   */
+  async findUserByIdOrThrow(userId: string): Promise<User> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('사용자를 찾을 수 없습니다.');
+    }
+    return user;
+  }
+
+  private issueJwt(user: User): string {
+    return jwt.sign(
+      {
+        sub: user.id,
+        email: user.email,
+        oauth_provider: user.oauth_provider,
+      },
+      this.jwtSecret,
+      {
+        algorithm: 'HS256',
+        expiresIn: this.jwtExpiresIn as jwt.SignOptions['expiresIn'],
+      },
+    );
   }
 
   private issueRefreshToken(userId: string): string {
@@ -411,7 +495,12 @@ export class OAuthService {
       throw new UnauthorizedException('Refresh Token이 만료되었거나 무효화되었습니다.');
     }
 
-    const accessToken = this.issueJwt(userId);
+    const user = await this.findUserById(userId);
+    if (!user) {
+      throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
+    }
+
+    const accessToken = this.issueJwt(user);
     return { accessToken };
   }
 

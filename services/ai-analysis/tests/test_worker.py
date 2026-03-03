@@ -1,6 +1,6 @@
 """AIAnalysisWorker 단위 테스트 (4개)
 
-Mock: GeminiClient, redis, httpx, pika
+Mock: ClaudeClient, redis, httpx, pika
 """
 
 import json
@@ -13,7 +13,7 @@ import pytest
 def mock_dependencies():
     """Worker의 모든 외부 의존성 모킹"""
     with (
-        patch("src.worker.GeminiClient") as mock_gemini_cls,
+        patch("src.worker.ClaudeClient") as mock_gemini_cls,
         patch("src.worker.redis") as mock_redis_module,
         patch("src.worker.httpx") as mock_httpx_module,
         patch("src.worker.settings") as mock_settings,
@@ -86,8 +86,10 @@ class TestOnMessageSuccess:
         mock_submission_resp.raise_for_status = MagicMock()
         deps["http_client"].get.return_value = mock_submission_resp
 
-        # _report_result 응답 모킹
-        deps["http_client"].post.return_value = MagicMock()
+        # _report_result 응답 모킹 (PATCH method)
+        mock_patch_resp = MagicMock()
+        mock_patch_resp.raise_for_status = MagicMock()
+        deps["http_client"].patch.return_value = mock_patch_resp
 
         body = json.dumps({"submissionId": "sub-123"}).encode()
 
@@ -101,11 +103,11 @@ class TestOnMessageSuccess:
         # 2) gemini.analyze_code 호출 확인
         deps["gemini"].analyze_code.assert_called_once()
 
-        # 3) _report_result 호출 확인
-        deps["http_client"].post.assert_called_once()
-        post_url = deps["http_client"].post.call_args[0][0]
-        assert "sub-123" in post_url
-        assert "ai-result" in post_url
+        # 3) _report_result 호출 확인 (PATCH method)
+        deps["http_client"].patch.assert_called_once()
+        patch_url = deps["http_client"].patch.call_args[0][0]
+        assert "sub-123" in patch_url
+        assert "ai-result" in patch_url
 
         # 4) Redis publish 호출 확인
         deps["redis_client"].publish.assert_called_once()

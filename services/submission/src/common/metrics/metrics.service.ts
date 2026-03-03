@@ -40,7 +40,7 @@ export class MetricsService implements OnModuleInit {
 
   constructor() {
     this.registry = new Registry();
-    this.serviceName = process.env['SERVICE_NAME'] ?? 'gateway';
+    this.serviceName = process.env['SERVICE_NAME'] ?? 'submission';
 
     const prefix = `algosu_${this.serviceName}`;
 

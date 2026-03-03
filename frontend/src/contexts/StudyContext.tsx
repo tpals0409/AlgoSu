@@ -1,3 +1,9 @@
+/**
+ * @file 스터디 컨텍스트 (현재 스터디 선택/전환 관리)
+ * @domain study
+ * @layer context
+ * @related AuthContext, api.ts, StudySidebar
+ */
 'use client';
 
 import {
@@ -8,7 +14,8 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
-import { setCurrentStudyIdForApi } from '@/lib/api';
+import { setCurrentStudyIdForApi, studyApi } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 // ── 타입 ──
 
@@ -17,16 +24,19 @@ export interface Study {
   name: string;
   description?: string;
   githubRepo?: string;
-  role: 'OWNER' | 'MEMBER';
+  role: 'ADMIN' | 'MEMBER';
   memberCount?: number;
 }
 
 interface StudyContextValue {
   currentStudyId: string | null;
-  currentStudyRole: 'OWNER' | 'MEMBER' | null;
+  currentStudyName: string | null;
+  currentStudyRole: 'ADMIN' | 'MEMBER' | null;
   studies: Study[];
+  studiesLoaded: boolean;
   setCurrentStudy: (studyId: string) => void;
   setStudies: (studies: Study[]) => void;
+  removeStudy: (studyId: string) => void;
   clearCurrentStudy: () => void;
 }
 
@@ -45,7 +55,9 @@ interface StudyProviderProps {
 }
 
 export function StudyProvider({ children }: StudyProviderProps): ReactNode {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [studies, setStudiesState] = useState<Study[]>([]);
+  const [studiesLoaded, setStudiesLoaded] = useState(false);
   const [currentStudyId, setCurrentStudyId] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem(STUDY_STORAGE_KEY);
@@ -62,9 +74,32 @@ export function StudyProvider({ children }: StudyProviderProps): ReactNode {
     setCurrentStudyIdForApi(currentStudyId);
   }, [currentStudyId]);
 
-  const currentStudyRole: 'OWNER' | 'MEMBER' | null = currentStudyId
-    ? (studies.find((s) => s.id === currentStudyId)?.role ?? null)
+  // 인증 완료 시 스터디 목록 자동 로드
+  useEffect(() => {
+    if (authLoading || !isAuthenticated) {
+      setStudiesLoaded(false);
+      return;
+    }
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const data = await studyApi.list();
+        if (!cancelled) setStudiesState(data);
+      } catch {
+        // 실패 시 무시 — 개별 페이지에서 재시도
+      } finally {
+        if (!cancelled) setStudiesLoaded(true);
+      }
+    };
+    void load();
+    return () => { cancelled = true; };
+  }, [authLoading, isAuthenticated]);
+
+  const currentStudy = currentStudyId
+    ? studies.find((s) => s.id === currentStudyId)
     : null;
+  const currentStudyRole: 'ADMIN' | 'MEMBER' | null = currentStudy?.role ?? null;
+  const currentStudyName: string | null = currentStudy?.name ?? null;
 
   const setCurrentStudy = useCallback((studyId: string) => {
     setCurrentStudyId(studyId);
@@ -79,16 +114,24 @@ export function StudyProvider({ children }: StudyProviderProps): ReactNode {
     });
   }, []);
 
+  const removeStudy = useCallback((studyId: string) => {
+    setStudiesState((prev) => prev.filter((s) => s.id !== studyId));
+    setCurrentStudyId((prev) => (prev === studyId ? null : prev));
+  }, []);
+
   const clearCurrentStudy = useCallback(() => {
     setCurrentStudyId(null);
   }, []);
 
   const value: StudyContextValue = {
     currentStudyId,
+    currentStudyName,
     currentStudyRole,
     studies,
+    studiesLoaded,
     setCurrentStudy,
     setStudies,
+    removeStudy,
     clearCurrentStudy,
   };
 

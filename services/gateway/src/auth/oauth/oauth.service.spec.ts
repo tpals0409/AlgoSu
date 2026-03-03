@@ -9,6 +9,7 @@ const mockRedis = {
   set: jest.fn().mockResolvedValue('OK'),
   get: jest.fn().mockResolvedValue(null),
   del: jest.fn().mockResolvedValue(1),
+  on: jest.fn().mockReturnThis(),
 };
 
 jest.mock('ioredis', () => {
@@ -336,6 +337,12 @@ describe('OAuthService', () => {
       );
 
       mockRedis.get.mockResolvedValue(validRefresh);
+      userRepository.findOne.mockResolvedValue({
+        id: 'user-id-1',
+        publicId: 'pub-uuid-1',
+        email: 'test@test.com',
+        name: 'Test User',
+      } as User);
 
       const result = await service.refreshAccessToken(validRefresh);
 

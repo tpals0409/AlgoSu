@@ -10,6 +10,10 @@ updates:
     labels: ["dependencies", "ci"]
     commit-message:
       prefix: "ci(deps)"
+    ignore:
+      # 메이저 버전 업그레이드는 계획된 Sprint에서 수행
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # NestJS 서비스 (5개)
   - package-ecosystem: "npm"
@@ -22,6 +26,9 @@ updates:
     commit-message:
       prefix: "chore(deps)"
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "npm"
     directory: "/services/identity"
@@ -33,6 +40,9 @@ updates:
     commit-message:
       prefix: "chore(deps)"
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "npm"
     directory: "/services/submission"
@@ -44,6 +54,9 @@ updates:
     commit-message:
       prefix: "chore(deps)"
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "npm"
     directory: "/services/problem"
@@ -55,6 +68,9 @@ updates:
     commit-message:
       prefix: "chore(deps)"
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "npm"
     directory: "/services/github-worker"
@@ -66,6 +82,9 @@ updates:
     commit-message:
       prefix: "chore(deps)"
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # ai-analysis (Python)
   - package-ecosystem: "pip"
@@ -78,6 +97,9 @@ updates:
     commit-message:
       prefix: "chore(deps)"
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # Frontend (Next.js)
   - package-ecosystem: "npm"
@@ -90,6 +112,12 @@ updates:
     commit-message:
       prefix: "chore(deps)"
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      # eslint-config-next는 Next.js 메이저 버전과 일치해야 함
+      - dependency-name: "eslint-config-next"
+        update-types: ["version-update:semver-major"]
 
   # Docker
   - package-ecosystem: "docker"
@@ -101,6 +129,9 @@ updates:
     labels: ["dependencies", "docker"]
     commit-message:
       prefix: "chore(docker)"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "docker"
     directory: "/services/ai-analysis"
@@ -111,3 +142,6 @@ updates:
     labels: ["dependencies", "docker"]
     commit-message:
       prefix: "chore(docker)"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]

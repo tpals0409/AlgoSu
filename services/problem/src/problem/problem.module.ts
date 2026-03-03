@@ -1,13 +1,12 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { Problem } from './problem.entity';
 import { ProblemController } from './problem.controller';
 import { ProblemService } from './problem.service';
 import { DeadlineCacheService } from '../cache/deadline-cache.service';
 import { StudyMemberGuard } from '../common/guards/study-member.guard';
+import { DualWriteModule } from '../database/dual-write.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Problem])],
+  imports: [DualWriteModule],
   controllers: [ProblemController],
   providers: [ProblemService, DeadlineCacheService, StudyMemberGuard],
   exports: [ProblemService, DeadlineCacheService],

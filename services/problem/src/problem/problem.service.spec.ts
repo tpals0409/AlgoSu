@@ -1,14 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { ProblemService } from './problem.service';
 import { Problem, ProblemStatus, Difficulty } from './problem.entity';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
 import { DeadlineCacheService } from '../cache/deadline-cache.service';
+import { DualWriteService } from '../database/dual-write.service';
 
 describe('ProblemService', () => {
   let service: ProblemService;
-  let problemRepo: Record<string, jest.Mock>;
+  let dualWrite: Record<string, jest.Mock>;
   let deadlineCache: Record<string, jest.Mock>;
 
   const STUDY_ID = 'study-uuid-001';
@@ -20,25 +20,30 @@ describe('ProblemService', () => {
     id: PROBLEM_ID,
     title: '두 수의 합',
     description: '배열에서 두 수의 합이 target이 되는 인덱스를 구하세요.',
-    weekNumber: 1,
+    weekNumber: '3월1주차',
     difficulty: Difficulty.SILVER,
+    level: 8,
     sourceUrl: 'https://leetcode.com/problems/two-sum',
     sourcePlatform: 'LeetCode',
     status: ProblemStatus.ACTIVE,
     deadline: new Date('2026-03-07T23:59:59.000Z'),
     allowedLanguages: ['python', 'javascript'],
+    tags: null,
     studyId: STUDY_ID,
     createdBy: USER_ID,
+    publicId: 'pub-uuid-001',
     createdAt: new Date('2026-02-28T00:00:00.000Z'),
     updatedAt: new Date('2026-02-28T00:00:00.000Z'),
+    generatePublicId: jest.fn(),
   };
 
   beforeEach(async () => {
-    problemRepo = {
-      create: jest.fn(),
+    dualWrite = {
       save: jest.fn(),
+      saveExisting: jest.fn(),
       findOne: jest.fn(),
       find: jest.fn(),
+      create: jest.fn(),
     };
 
     deadlineCache = {
@@ -54,8 +59,8 @@ describe('ProblemService', () => {
       providers: [
         ProblemService,
         {
-          provide: getRepositoryToken(Problem),
-          useValue: problemRepo,
+          provide: DualWriteService,
+          useValue: dualWrite,
         },
         {
           provide: DeadlineCacheService,
@@ -79,7 +84,7 @@ describe('ProblemService', () => {
       const dto: CreateProblemDto = {
         title: '두 수의 합',
         description: '배열에서 두 수의 합이 target이 되는 인덱스를 구하세요.',
-        weekNumber: 1,
+        weekNumber: '3월1주차',
         difficulty: Difficulty.SILVER,
         sourceUrl: 'https://leetcode.com/problems/two-sum',
         sourcePlatform: 'LeetCode',
@@ -87,29 +92,27 @@ describe('ProblemService', () => {
         allowedLanguages: ['python', 'javascript'],
       };
 
-      problemRepo.create.mockReturnValue(mockProblem);
-      problemRepo.save.mockResolvedValue(mockProblem);
+      dualWrite.save.mockResolvedValue(mockProblem);
       deadlineCache.setDeadline.mockResolvedValue(undefined);
       deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
 
       const result = await service.create(dto, STUDY_ID, USER_ID);
 
-      // repo.create 호출 확인 — studyId, createdBy 포함
-      expect(problemRepo.create).toHaveBeenCalledWith({
+      // dualWrite.save 호출 확인 — studyId, createdBy 포함
+      expect(dualWrite.save).toHaveBeenCalledWith({
         title: dto.title,
         description: dto.description,
         weekNumber: dto.weekNumber,
         difficulty: dto.difficulty,
+        level: null,
         sourceUrl: dto.sourceUrl,
         sourcePlatform: dto.sourcePlatform,
         deadline: new Date(dto.deadline!),
         allowedLanguages: dto.allowedLanguages,
+        tags: null,
         studyId: STUDY_ID,
         createdBy: USER_ID,
       });
-
-      // repo.save 호출
-      expect(problemRepo.save).toHaveBeenCalledWith(mockProblem);
 
       // 캐시 설정: setDeadline(studyId, problemId, deadline)
       expect(deadlineCache.setDeadline).toHaveBeenCalledWith(
@@ -134,18 +137,18 @@ describe('ProblemService', () => {
   // ──────────────────────────────────────────────
   describe('findById()', () => {
     it('정상 조회: studyId 스코핑으로 문제 반환', async () => {
-      problemRepo.findOne.mockResolvedValue(mockProblem);
+      dualWrite.findOne.mockResolvedValue(mockProblem);
 
       const result = await service.findById(STUDY_ID, PROBLEM_ID);
 
-      expect(problemRepo.findOne).toHaveBeenCalledWith({
+      expect(dualWrite.findOne).toHaveBeenCalledWith({
         where: { id: PROBLEM_ID, studyId: STUDY_ID },
       });
       expect(result).toEqual(mockProblem);
     });
 
     it('미존재: NotFoundException 발생', async () => {
-      problemRepo.findOne.mockResolvedValue(null);
+      dualWrite.findOne.mockResolvedValue(null);
 
       await expect(service.findById(STUDY_ID, 'non-existent-id')).rejects.toThrow(
         NotFoundException,
@@ -157,14 +160,14 @@ describe('ProblemService', () => {
 
     it('다른 studyId: cross-study 접근 차단 (NotFoundException)', async () => {
       // 다른 studyId로 조회 시 findOne이 null 반환 → NotFoundException
-      problemRepo.findOne.mockResolvedValue(null);
+      dualWrite.findOne.mockResolvedValue(null);
 
       await expect(service.findById(OTHER_STUDY_ID, PROBLEM_ID)).rejects.toThrow(
         NotFoundException,
       );
 
       // studyId가 OTHER_STUDY_ID로 조회되었는지 확인
-      expect(problemRepo.findOne).toHaveBeenCalledWith({
+      expect(dualWrite.findOne).toHaveBeenCalledWith({
         where: { id: PROBLEM_ID, studyId: OTHER_STUDY_ID },
       });
     });
@@ -178,14 +181,14 @@ describe('ProblemService', () => {
       const cachedProblems = [mockProblem];
       deadlineCache.getWeekProblems.mockResolvedValue(JSON.stringify(cachedProblems));
 
-      const result = await service.findByWeekAndStudy(STUDY_ID, 1);
+      const result = await service.findByWeekAndStudy(STUDY_ID, '3월1주차');
 
-      expect(deadlineCache.getWeekProblems).toHaveBeenCalledWith(STUDY_ID, 1);
+      expect(deadlineCache.getWeekProblems).toHaveBeenCalledWith(STUDY_ID, '3월1주차');
       // JSON.parse 결과이므로 Date는 문자열로 변환됨
       expect(result).toEqual(JSON.parse(JSON.stringify(cachedProblems)));
 
       // DB 조회하지 않음
-      expect(problemRepo.find).not.toHaveBeenCalled();
+      expect(dualWrite.find).not.toHaveBeenCalled();
       // 캐시 재설정하지 않음
       expect(deadlineCache.setWeekProblems).not.toHaveBeenCalled();
     });
@@ -193,24 +196,24 @@ describe('ProblemService', () => {
     it('캐시 미스: DB 조회 후 캐시 저장', async () => {
       const dbProblems = [mockProblem];
       deadlineCache.getWeekProblems.mockResolvedValue(null);
-      problemRepo.find.mockResolvedValue(dbProblems);
+      dualWrite.find.mockResolvedValue(dbProblems);
       deadlineCache.setWeekProblems.mockResolvedValue(undefined);
 
-      const result = await service.findByWeekAndStudy(STUDY_ID, 1);
+      const result = await service.findByWeekAndStudy(STUDY_ID, '3월1주차');
 
       // 캐시 미스 확인
-      expect(deadlineCache.getWeekProblems).toHaveBeenCalledWith(STUDY_ID, 1);
+      expect(deadlineCache.getWeekProblems).toHaveBeenCalledWith(STUDY_ID, '3월1주차');
 
       // DB 조회 — studyId 스코핑, createdAt ASC 정렬
-      expect(problemRepo.find).toHaveBeenCalledWith({
-        where: { weekNumber: 1, studyId: STUDY_ID },
+      expect(dualWrite.find).toHaveBeenCalledWith({
+        where: { weekNumber: '3월1주차', studyId: STUDY_ID },
         order: { createdAt: 'ASC' },
       });
 
       // 캐시 저장
       expect(deadlineCache.setWeekProblems).toHaveBeenCalledWith(
         STUDY_ID,
-        1,
+        '3월1주차',
         JSON.stringify(dbProblems),
       );
 
@@ -235,19 +238,19 @@ describe('ProblemService', () => {
       });
 
       // DB 미조회
-      expect(problemRepo.findOne).not.toHaveBeenCalled();
+      expect(dualWrite.findOne).not.toHaveBeenCalled();
     });
 
     it('캐시 미스: DB fallback, db_hit 상태 반환', async () => {
       deadlineCache.getDeadline.mockResolvedValue(null);
-      problemRepo.findOne.mockResolvedValue(mockProblem);
+      dualWrite.findOne.mockResolvedValue(mockProblem);
       deadlineCache.setDeadline.mockResolvedValue(undefined);
 
       const result = await service.getDeadline(STUDY_ID, PROBLEM_ID);
 
       // 캐시 미스 → DB 조회
       expect(deadlineCache.getDeadline).toHaveBeenCalledWith(STUDY_ID, PROBLEM_ID);
-      expect(problemRepo.findOne).toHaveBeenCalledWith({
+      expect(dualWrite.findOne).toHaveBeenCalledWith({
         where: { id: PROBLEM_ID, studyId: STUDY_ID },
       });
 
@@ -288,29 +291,29 @@ describe('ProblemService', () => {
         status: 'CLOSED',
       };
 
-      const updatedProblem: Problem = {
+      const updatedProblem = {
         ...mockProblem,
         title: dto.title!,
         difficulty: Difficulty.GOLD,
         status: ProblemStatus.CLOSED,
-      };
+      } as Problem;
 
       // findById 내부 호출
-      problemRepo.findOne.mockResolvedValue({ ...mockProblem });
+      dualWrite.findOne.mockResolvedValue({ ...mockProblem });
       // save 호출
-      problemRepo.save.mockResolvedValue(updatedProblem);
+      dualWrite.saveExisting.mockResolvedValue(updatedProblem);
       deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
       deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
 
       const result = await service.update(STUDY_ID, PROBLEM_ID, dto);
 
       // findById 호출 (studyId 스코핑)
-      expect(problemRepo.findOne).toHaveBeenCalledWith({
+      expect(dualWrite.findOne).toHaveBeenCalledWith({
         where: { id: PROBLEM_ID, studyId: STUDY_ID },
       });
 
       // save 호출 — 변경된 필드 반영
-      expect(problemRepo.save).toHaveBeenCalledWith(
+      expect(dualWrite.saveExisting).toHaveBeenCalledWith(
         expect.objectContaining({
           title: '수정된 제목',
           difficulty: Difficulty.GOLD,
@@ -338,11 +341,11 @@ describe('ProblemService', () => {
   describe('findActiveByStudy()', () => {
     it('ACTIVE 상태 문제만 필터링하여 반환', async () => {
       const activeProblems = [mockProblem];
-      problemRepo.find.mockResolvedValue(activeProblems);
+      dualWrite.find.mockResolvedValue(activeProblems);
 
       const result = await service.findActiveByStudy(STUDY_ID);
 
-      expect(problemRepo.find).toHaveBeenCalledWith({
+      expect(dualWrite.find).toHaveBeenCalledWith({
         where: { status: ProblemStatus.ACTIVE, studyId: STUDY_ID },
         order: { weekNumber: 'DESC', createdAt: 'ASC' },
       });

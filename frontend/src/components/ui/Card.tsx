@@ -1,22 +1,27 @@
+/**
+ * @file 카드 컴포넌트 (v2 디자인 시스템)
+ * @domain common
+ * @layer component
+ * @related Badge, Button
+ */
+
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
-/**
- * Card — AlgoSu UI Design System
- *
- * 목업 스펙:
- *  border-radius: 12px; padding: 16px; border: 1px solid border-color;
- *  light: bg white; box-shadow 0 2px 16px rgba(148,126,176,0.10)
- *  dark:  bg --card(#231F34); 그림자 0 2px 16px rgba(0,0,0,0.35)
- *         --shadow-light이 모드별로 분기됨
- */
+// ─── CARD ────────────────────────────────────
 
+/**
+ * 카드 루트 컴포넌트 (v2 shadow + rounded-card + hover)
+ * @domain common
+ */
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
       className={cn(
-        'rounded-card border border-border bg-card text-card-foreground p-4 shadow-card',
+        'rounded-card border border-border bg-bg-card text-text p-4 shadow-card',
+        'transition-all duration-300',
+        'hover:shadow-card-hover',
         className,
       )}
       {...props}
@@ -25,6 +30,8 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
 );
 Card.displayName = 'Card';
 
+// ─── CARD HEADER ─────────────────────────────
+
 const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
     <div ref={ref} className={cn('flex flex-col gap-1.5 px-6 pt-6', className)} {...props} />
@@ -32,12 +39,14 @@ const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
 );
 CardHeader.displayName = 'CardHeader';
 
+// ─── CARD TITLE ──────────────────────────────
+
 const CardTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
     <h3
       ref={ref}
       className={cn(
-        'text-base font-semibold leading-tight tracking-tight text-foreground',
+        'text-base font-semibold leading-tight tracking-tight text-text',
         className,
       )}
       {...props}
@@ -46,13 +55,17 @@ const CardTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTML
 );
 CardTitle.displayName = 'CardTitle';
 
+// ─── CARD DESCRIPTION ────────────────────────
+
 const CardDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => (
-  <p ref={ref} className={cn('text-sm text-muted-foreground', className)} {...props} />
+  <p ref={ref} className={cn('text-sm text-text-2', className)} {...props} />
 ));
 CardDescription.displayName = 'CardDescription';
+
+// ─── CARD CONTENT ────────────────────────────
 
 const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
@@ -60,6 +73,8 @@ const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDi
   ),
 );
 CardContent.displayName = 'CardContent';
+
+// ─── CARD FOOTER ─────────────────────────────
 
 const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (

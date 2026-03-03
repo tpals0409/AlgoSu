@@ -7,11 +7,18 @@ import {
   ManyToOne,
   JoinColumn,
   Index,
+  BeforeInsert,
 } from 'typeorm';
+import { v4 as uuid } from 'uuid';
 
 export enum StudyMemberRole {
   ADMIN = 'ADMIN',
   MEMBER = 'MEMBER',
+}
+
+export enum StudyStatus {
+  ACTIVE = 'ACTIVE',
+  CLOSED = 'CLOSED',
 }
 
 @Entity('studies')
@@ -31,11 +38,25 @@ export class Study {
   @Column({ type: 'varchar', length: 255, nullable: true })
   github_repo!: string | null;
 
+  @Column({ type: 'varchar', length: 10, default: StudyStatus.ACTIVE })
+  status!: StudyStatus;
+
+  @Column({ type: 'text', nullable: true })
+  groundRules!: string | null;
+
+  @Column({ type: 'uuid', unique: true })
+  publicId!: string;
+
   @CreateDateColumn()
   created_at!: Date;
 
   @UpdateDateColumn()
   updated_at!: Date;
+
+  @BeforeInsert()
+  generatePublicId() {
+    this.publicId = this.publicId || uuid();
+  }
 }
 
 @Entity('study_members')
@@ -50,8 +71,12 @@ export class StudyMember {
   @Column({ type: 'uuid' })
   user_id!: string;
 
-  @Column({ type: 'enum', enum: StudyMemberRole, default: StudyMemberRole.MEMBER })
+  // M2: DB는 VARCHAR(10) + CHECK 제약 (마이그레이션 기준), enum으로 매핑 (synchronize:false)
+  @Column({ type: 'varchar', length: 10, default: StudyMemberRole.MEMBER })
   role!: StudyMemberRole;
+
+  @Column({ type: 'varchar', length: 50 })
+  nickname!: string;
 
   @ManyToOne(() => Study, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'study_id' })

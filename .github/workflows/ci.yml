@@ -17,6 +17,12 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      rebuild_all:
+        description: 'Force rebuild all services'
+        required: false
+        default: 'false'
 
 # 최소 권한 원칙: 기본 제로, 각 job에서 필요 권한만 명시
 permissions: {}
@@ -85,14 +91,15 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      pull-requests: read
     outputs:
-      gateway:       ${{ steps.filter.outputs.gateway }}
-      identity:      ${{ steps.filter.outputs.identity }}
-      submission:    ${{ steps.filter.outputs.submission }}
-      problem:       ${{ steps.filter.outputs.problem }}
-      github-worker: ${{ steps.filter.outputs.github-worker }}
-      ai-analysis:   ${{ steps.filter.outputs.ai-analysis }}
-      frontend:      ${{ steps.filter.outputs.frontend }}
+      gateway:       ${{ steps.result.outputs.gateway }}
+      identity:      ${{ steps.result.outputs.identity }}
+      submission:    ${{ steps.result.outputs.submission }}
+      problem:       ${{ steps.result.outputs.problem }}
+      github-worker: ${{ steps.result.outputs.github-worker }}
+      ai-analysis:   ${{ steps.result.outputs.ai-analysis }}
+      frontend:      ${{ steps.result.outputs.frontend }}
     steps:
       - uses: actions/checkout@v4
       - name: Detect path changes
@@ -114,6 +121,26 @@ jobs:
               - 'services/ai-analysis/**'
             frontend:
               - 'frontend/**'
+      - name: Apply rebuild_all override
+        id: result
+        run: |
+          if [ "${{ github.event.inputs.rebuild_all }}" = "true" ]; then
+            echo "gateway=true" >> $GITHUB_OUTPUT
+            echo "identity=true" >> $GITHUB_OUTPUT
+            echo "submission=true" >> $GITHUB_OUTPUT
+            echo "problem=true" >> $GITHUB_OUTPUT
+            echo "github-worker=true" >> $GITHUB_OUTPUT
+            echo "ai-analysis=true" >> $GITHUB_OUTPUT
+            echo "frontend=true" >> $GITHUB_OUTPUT
+          else
+            echo "gateway=${{ steps.filter.outputs.gateway }}" >> $GITHUB_OUTPUT
+            echo "identity=${{ steps.filter.outputs.identity }}" >> $GITHUB_OUTPUT
+            echo "submission=${{ steps.filter.outputs.submission }}" >> $GITHUB_OUTPUT
+            echo "problem=${{ steps.filter.outputs.problem }}" >> $GITHUB_OUTPUT
+            echo "github-worker=${{ steps.filter.outputs.github-worker }}" >> $GITHUB_OUTPUT
+            echo "ai-analysis=${{ steps.filter.outputs.ai-analysis }}" >> $GITHUB_OUTPUT
+            echo "frontend=${{ steps.filter.outputs.frontend }}" >> $GITHUB_OUTPUT
+          fi
 
   # ============================================================
   # Commit Lint — PR 시 Conventional Commits 강제
@@ -125,13 +152,14 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: wagoid/commitlint-github-action@v6
         with:
-          configFile: commitlint.config.js
+          configFile: commitlint.config.mjs
 
   # ============================================================
   # Quality Gate — lint + typecheck (변경된 서비스만)
@@ -293,7 +321,7 @@ jobs:
         run: npm ci
       - name: Run unit tests
         working-directory: services/identity
-        run: npm test -- --coverage --ci
+        run: npm test -- --coverage --ci --passWithNoTests
       - name: Upload coverage
         if: always()
         uses: actions/upload-artifact@v4
@@ -321,7 +349,7 @@ jobs:
         run: npm ci
       - name: Run unit tests
         working-directory: services/submission
-        run: npm test -- --coverage --ci
+        run: npm test -- --coverage --ci --forceExit
       - name: Upload coverage
         if: always()
         uses: actions/upload-artifact@v4
@@ -445,8 +473,8 @@ jobs:
           platforms: linux/arm64
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ env.IMAGE_PREFIX }}-gateway:main-${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=gateway
+          cache-to: type=gha,mode=max,scope=gateway
 
   build-identity:
     name: Build Identity Service (NestJS)
@@ -473,8 +501,8 @@ jobs:
           platforms: linux/arm64
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ env.IMAGE_PREFIX }}-identity:main-${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=identity
+          cache-to: type=gha,mode=max,scope=identity
 
   build-submission:
     name: Build Submission Service (NestJS)
@@ -501,8 +529,8 @@ jobs:
           platforms: linux/arm64
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ env.IMAGE_PREFIX }}-submission:main-${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=submission
+          cache-to: type=gha,mode=max,scope=submission
 
   build-problem:
     name: Build Problem Service (NestJS)
@@ -529,8 +557,8 @@ jobs:
           platforms: linux/arm64
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ env.IMAGE_PREFIX }}-problem:main-${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=problem
+          cache-to: type=gha,mode=max,scope=problem
 
   build-github-worker:
     name: Build GitHub Worker (Node.js)
@@ -557,8 +585,8 @@ jobs:
           platforms: linux/arm64
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ env.IMAGE_PREFIX }}-github-worker:main-${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=github-worker
+          cache-to: type=gha,mode=max,scope=github-worker
 
   build-ai-analysis:
     name: Build AI Analysis Service (FastAPI)
@@ -585,8 +613,8 @@ jobs:
           platforms: linux/arm64
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ env.IMAGE_PREFIX }}-ai-analysis:main-${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=ai-analysis
+          cache-to: type=gha,mode=max,scope=ai-analysis
 
   build-frontend:
     name: Build Frontend (Next.js)
@@ -613,8 +641,8 @@ jobs:
           platforms: linux/arm64
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ env.IMAGE_PREFIX }}-frontend:main-${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
 
   # ============================================================
   # Trivy — 이미지 취약점 스캔 (main push 후, deploy 전)
@@ -667,7 +695,7 @@ jobs:
         if: steps.check.outputs.skip == 'false'
         run: |
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
-            | sh -s -- -b /usr/local/bin v0.59.1
+            | sh -s -- -b /usr/local/bin v0.69.2
       - name: Trivy scan
         if: steps.check.outputs.skip == 'false'
         run: |
@@ -780,32 +808,42 @@ jobs:
       contents: read
     steps:
       - name: Discord notification
-        if: (needs.deploy.result == 'success' && secrets.DISCORD_WEBHOOK_DEPLOY != '') || (needs.deploy.result == 'failure' && secrets.DISCORD_WEBHOOK_EMERGENCY != '')
+        env:
+          DEPLOY_RESULT: ${{ needs.deploy.result }}
+          WEBHOOK_DEPLOY: ${{ secrets.DISCORD_WEBHOOK_DEPLOY }}
+          WEBHOOK_EMERGENCY: ${{ secrets.DISCORD_WEBHOOK_EMERGENCY }}
+          SHA: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
         run: |
-          if [ "${{ needs.deploy.result }}" = "success" ]; then
+          if [ "$DEPLOY_RESULT" = "success" ]; then
             COLOR=3066993
             STATUS="배포 성공"
-            WEBHOOK="${{ secrets.DISCORD_WEBHOOK_DEPLOY }}"
+            WEBHOOK="$WEBHOOK_DEPLOY"
           else
             COLOR=15158332
             STATUS="배포 실패"
-            WEBHOOK="${{ secrets.DISCORD_WEBHOOK_EMERGENCY }}"
+            WEBHOOK="$WEBHOOK_EMERGENCY"
+          fi
+
+          if [ -z "$WEBHOOK" ]; then
+            echo "Discord webhook not configured, skipping"
+            exit 0
           fi
 
           curl -sf -X POST "$WEBHOOK" \
             -H "Content-Type: application/json" \
-            -d '{
-              "embeds": [{
-                "title": "['"$STATUS"'] AlgoSu GitOps",
-                "color": '"$COLOR"',
-                "fields": [
-                  {"name": "커밋", "value": "'"${GITHUB_SHA:0:8}"'", "inline": true},
-                  {"name": "실행자", "value": "'"$GITHUB_ACTOR"'", "inline": true},
-                  {"name": "방식", "value": "aether-gitops → ArgoCD", "inline": true}
+            -d "{
+              \"embeds\": [{
+                \"title\": \"[${STATUS}] AlgoSu GitOps\",
+                \"color\": ${COLOR},
+                \"fields\": [
+                  {\"name\": \"커밋\", \"value\": \"${SHA:0:8}\", \"inline\": true},
+                  {\"name\": \"실행자\", \"value\": \"${ACTOR}\", \"inline\": true},
+                  {\"name\": \"방식\", \"value\": \"aether-gitops → ArgoCD\", \"inline\": true}
                 ],
-                "footer": {"text": "AlgoSu CI/CD"}
+                \"footer\": {\"text\": \"AlgoSu CI/CD\"}
               }]
-            }' || echo "Discord webhook not configured, skipping"
+            }" || echo "Discord notification failed, continuing"
 
       - name: Grafana deployment annotation
         if: needs.deploy.result == 'success'

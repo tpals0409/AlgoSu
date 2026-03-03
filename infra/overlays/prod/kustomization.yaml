@@ -24,7 +24,7 @@ patches:
 
   - target:
       kind: Deployment
-      name: identity
+      name: identity-service
     patch: |
       - op: replace
         path: /spec/replicas
@@ -32,7 +32,7 @@ patches:
 
   - target:
       kind: Deployment
-      name: submission
+      name: submission-service
     patch: |
       - op: replace
         path: /spec/replicas
@@ -59,7 +59,7 @@ patches:
   # Prod: Submission 리소스 강화
   - target:
       kind: Deployment
-      name: submission
+      name: submission-service
     patch: |
       - op: replace
         path: /spec/template/spec/containers/0/resources/requests/memory
@@ -71,7 +71,7 @@ patches:
   # Prod: AI Analysis 리소스 강화
   - target:
       kind: Deployment
-      name: ai-analysis
+      name: ai-analysis-service
     patch: |
       - op: replace
         path: /spec/template/spec/containers/0/resources/requests/memory
@@ -92,6 +92,33 @@ patches:
         path: /spec/resources/requests/storage
         value: "20Gi"
 
+  # Prod: postgres-problem PVC 확장
+  - target:
+      kind: PersistentVolumeClaim
+      name: postgres-problem-pvc
+    patch: |
+      - op: replace
+        path: /spec/resources/requests/storage
+        value: "10Gi"
+
+  # Prod: postgres-problem 리소스 강화
+  - target:
+      kind: Deployment
+      name: postgres-problem
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "256Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: "100m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "1Gi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "500m"
+
   # Prod: Prometheus 보존 30일 + PVC 확장
   - target:
       kind: Deployment
@@ -108,6 +135,33 @@ patches:
       - op: replace
         path: /spec/resources/requests/storage
         value: "20Gi"
+
+  # Prod: MinIO PVC 확장
+  - target:
+      kind: PersistentVolumeClaim
+      name: minio-pvc
+    patch: |
+      - op: replace
+        path: /spec/resources/requests/storage
+        value: "5Gi"
+
+  # Prod: MinIO 리소스 강화
+  - target:
+      kind: Deployment
+      name: minio
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "256Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: "200m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "1Gi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "1000m"
 
   # Prod: Grafana 익명 접근 비활성화 (보안)
   - target:

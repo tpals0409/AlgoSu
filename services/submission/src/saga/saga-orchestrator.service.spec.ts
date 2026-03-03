@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 import { SagaOrchestratorService } from './saga-orchestrator.service';
 import { Submission, SagaStep, GitHubSyncStatus } from '../submission/submission.entity';
@@ -28,9 +29,18 @@ const createMockSubmission = (overrides: Partial<Submission> = {}): Submission =
   sagaStep: SagaStep.DB_SAVED,
   githubSyncStatus: GitHubSyncStatus.PENDING,
   githubFilePath: null,
+  aiFeedback: null,
+  aiScore: null,
+  aiOptimizedCode: null,
+  aiAnalysisStatus: 'pending',
+  weekNumber: null,
   idempotencyKey: null,
+  aiSkipped: false,
+  isLate: false,
+  publicId: 'pub-uuid-1',
   createdAt: new Date('2026-02-28T00:00:00Z'),
   updatedAt: new Date('2026-02-28T00:00:00Z'),
+  generatePublicId: jest.fn(),
   ...overrides,
 });
 
@@ -45,6 +55,18 @@ describe('SagaOrchestratorService', () => {
         SagaOrchestratorService,
         { provide: getRepositoryToken(Submission), useFactory: mockSubmissionRepo },
         { provide: MqPublisherService, useFactory: mockMqPublisher },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn((key: string, defaultValue?: string) => {
+              const map: Record<string, string> = {
+                AI_ANALYSIS_SERVICE_URL: 'http://ai-analysis:8000',
+                INTERNAL_KEY_AI_ANALYSIS: 'test-ai-key',
+              };
+              return map[key] ?? defaultValue ?? '';
+            }),
+          },
+        },
       ],
     }).compile();
 

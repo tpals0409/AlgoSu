@@ -1,3 +1,12 @@
+/**
+ * @file Tailwind CSS v2 디자인 시스템 설정
+ * @domain common
+ * @layer config
+ *
+ * 47개 컬러 토큰을 CSS 변수로 매핑.
+ * 듀얼 테마(light/dark)는 globals.css :root/.dark에서 정의.
+ */
+
 import type { Config } from 'tailwindcss';
 import animatePlugin from 'tailwindcss-animate';
 
@@ -11,131 +20,109 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        /* ── 브랜드 ── */
-        main: {
-          DEFAULT: 'var(--color-main)',       // #947EB0
-          light: 'var(--color-main-light)',    // #B9A9D0
-          dark: 'var(--color-main-dark)',      // #6D5A8A
-        },
-        sub: {
-          DEFAULT: 'var(--color-sub)',         // #A3A5C3
-          light: 'var(--color-sub-light)',     // #C5C7DC
-        },
-        accent: 'var(--color-accent)',         // #D4BBFF
-
-        /* ── primary 스케일 (보라 계열) ── */
-        'primary-50':  '#F5F2FB',
-        'primary-100': '#EBE4F6',
-        'primary-200': '#D4BBFF',
-        'primary-300': '#B9A9D0',
-        'primary-400': '#A38CC0',
-        'primary-500': '#947EB0',
-        'primary-600': '#7D6A98',
-        'primary-700': '#6D5A8A',
-        'primary-800': '#4E4068',
-        'primary-900': '#302846',
-
-        /* ── error 스케일 ── */
-        'error-50':  '#FFF2F1',
-        'error-100': '#FFE0DE',
-        'error-200': '#FFBBB8',
-        'error-300': '#FF8F8A',
-        'error-400': '#FF6E68',
-        'error-500': '#FF5A50',
-        'error-600': '#E04540',
-        'error-700': '#C43530',
-        'error-800': '#8C2420',
-        'error-900': '#5C1512',
-
         /* ── 배경/서피스 ── */
-        bg2: 'var(--bg2)',
-        bg3: 'var(--bg3)',
-        surface: 'var(--surface)',
-
-        /* ── 텍스트 색상 ── */
-        text1: 'var(--text)',
-        text2: 'var(--text2)',
-        text3: 'var(--text3)',
-
-        /* ── shadcn 시멘틱 ── */
-        background: 'var(--background)',
-        foreground: 'var(--foreground)',
-        card: {
-          DEFAULT: 'var(--card)',
-          foreground: 'var(--card-foreground)',
+        bg: {
+          DEFAULT: 'var(--bg)',
+          alt: 'var(--bg-alt)',
+          card: 'var(--bg-card)',
         },
-        popover: {
-          DEFAULT: 'var(--popover)',
-          foreground: 'var(--popover-foreground)',
+        border: {
+          DEFAULT: 'var(--border)',
+          hover: 'var(--border-hover)',
         },
+
+        /* ── 텍스트 ── */
+        text: {
+          DEFAULT: 'var(--text)',
+          2: 'var(--text2)',
+          3: 'var(--text3)',
+        },
+
+        /* ── 브랜드 ── */
         primary: {
           DEFAULT: 'var(--primary)',
-          foreground: 'var(--primary-foreground)',
+          light: 'var(--primary-light)',
+          soft: 'var(--primary-soft)',
+          soft2: 'var(--primary-soft2)',
         },
-        secondary: {
-          DEFAULT: 'var(--secondary)',
-          foreground: 'var(--secondary-foreground)',
+        accent: 'var(--accent)',
+
+        /* ── 상태 ── */
+        success: {
+          DEFAULT: 'var(--success)',
+          soft: 'var(--success-soft)',
+        },
+        warning: {
+          DEFAULT: 'var(--warning)',
+          soft: 'var(--warning-soft)',
+        },
+        error: {
+          DEFAULT: 'var(--error)',
+          soft: 'var(--error-soft)',
+        },
+        info: {
+          DEFAULT: 'var(--info)',
+          soft: 'var(--info-soft)',
         },
         muted: {
           DEFAULT: 'var(--muted)',
-          foreground: 'var(--muted-foreground)',
-        },
-        destructive: {
-          DEFAULT: 'var(--destructive)',
-          foreground: 'var(--destructive-foreground)',
-        },
-        border: 'var(--border)',
-        input: 'var(--input)',
-        ring: 'var(--ring)',
-
-        /* ── 상태 색상 ── */
-        success: {
-          DEFAULT: 'var(--color-success)',
-          foreground: 'var(--color-success-foreground)',
-        },
-        warning: {
-          DEFAULT: 'var(--color-warning)',
-          foreground: 'var(--color-warning-foreground)',
-        },
-        error: {
-          DEFAULT: 'var(--color-error)',
-          foreground: 'var(--color-error-foreground)',
-        },
-        info: {
-          DEFAULT: 'var(--color-info)',
-          foreground: 'var(--color-info-foreground)',
+          soft: 'var(--muted-soft)',
         },
 
-        /* ── 난이도 (BOJ 스타일) ── */
-        difficulty: {
-          bronze:   'var(--color-difficulty-bronze)',
-          silver:   'var(--color-difficulty-silver)',
-          gold:     'var(--color-difficulty-gold)',
-          platinum: 'var(--color-difficulty-platinum)',
-          diamond:  'var(--color-difficulty-diamond)',
+        /* ── 특수 배경 ── */
+        'nav-bg': 'var(--nav-bg)',
+        'code-bg': 'var(--code-bg)',
+        'input-bg': 'var(--input-bg)',
+
+        /* ── 난이도 (solved.ac 6티어) ── */
+        diff: {
+          'bronze':          'var(--diff-bronze-color)',
+          'bronze-bg':       'var(--diff-bronze-bg)',
+          'bronze-border':   'var(--diff-bronze-border)',
+          'silver':          'var(--diff-silver-color)',
+          'silver-bg':       'var(--diff-silver-bg)',
+          'silver-border':   'var(--diff-silver-border)',
+          'gold':            'var(--diff-gold-color)',
+          'gold-bg':         'var(--diff-gold-bg)',
+          'gold-border':     'var(--diff-gold-border)',
+          'platinum':        'var(--diff-platinum-color)',
+          'platinum-bg':     'var(--diff-platinum-bg)',
+          'platinum-border': 'var(--diff-platinum-border)',
+          'diamond':         'var(--diff-diamond-color)',
+          'diamond-bg':      'var(--diff-diamond-bg)',
+          'diamond-border':  'var(--diff-diamond-border)',
+          'ruby':            'var(--diff-ruby-color)',
+          'ruby-bg':         'var(--diff-ruby-bg)',
+          'ruby-border':     'var(--diff-ruby-border)',
         },
       },
 
       fontFamily: {
-        sans: ['Sora', 'Noto Sans KR', 'sans-serif'],
-        mono: ['DM Mono', 'monospace'],
+        heading: ['var(--font-sora)', 'Sora', 'sans-serif'],
+        body:    ['var(--font-noto)', 'Noto Sans KR', 'sans-serif'],
+        sans:    ['var(--font-sora)', 'var(--font-noto)', 'sans-serif'],
+        mono:    ['var(--font-jetbrains)', 'JetBrains Mono', 'monospace'],
       },
 
       borderRadius: {
-        sm: '6px',
-        md: '12px',
-        lg: '18px',
-        full: '9999px',
-        DEFAULT: '12px',
-        card: '12px',
-        btn: '6px',
+        sm:      'var(--radius-s)',
+        md:      'var(--radius-m)',
+        lg:      'var(--radius-l)',
+        full:    '9999px',
+        DEFAULT: 'var(--radius-m)',
+        card:    '14px',
+        btn:     '10px',
+        badge:   '6px',
       },
 
       boxShadow: {
-        light: 'var(--shadow-light)',
-        medium: 'var(--shadow-medium)',
-        card: 'var(--shadow-light)',
-        modal: 'var(--shadow-medium)',
+        DEFAULT:      'var(--shadow)',
+        card:         'var(--shadow)',
+        'card-hover': 'var(--shadow-hover)',
+        hover:        'var(--shadow-hover)',
+        modal:        'var(--shadow-hover)',
+        toast:        'var(--shadow-toast)',
+        glow:         'var(--shadow-glow)',
       },
 
       keyframes: {
@@ -143,19 +130,54 @@ const config: Config = {
           '0%': { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' },
         },
+        'fade-in': {
+          from: { opacity: '0', transform: 'translateY(16px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
+        'fade-in-right': {
+          from: { opacity: '0', transform: 'translateX(24px)' },
+          to: { opacity: '1', transform: 'translateX(0)' },
+        },
+        'fade-out-right': {
+          from: { opacity: '1', transform: 'translateX(0)' },
+          to: { opacity: '0', transform: 'translateX(24px)' },
+        },
+        shrink: {
+          from: { width: '100%' },
+          to: { width: '0%' },
+        },
+        'pulse-dot': {
+          '0%, 100%': { opacity: '1' },
+          '50%':      { opacity: '0.4' },
+        },
+        shake: {
+          '0%, 100%':      { transform: 'translateX(0)' },
+          '10%, 50%, 90%': { transform: 'translateX(-4px)' },
+          '30%, 70%':      { transform: 'translateX(4px)' },
+        },
         'spin-slow': {
           from: { transform: 'rotate(0deg)' },
-          to: { transform: 'rotate(360deg)' },
-        },
-        'fade-in': {
-          from: { opacity: '0', transform: 'translateY(4px)' },
-          to: { opacity: '1', transform: 'translateY(0)' },
+          to:   { transform: 'rotate(360deg)' },
         },
       },
       animation: {
         'skeleton-shimmer': 'skeleton-shimmer 1.6s linear infinite',
-        'spin-slow': 'spin-slow 1.2s linear infinite',
-        'fade-in': 'fade-in 0.2s ease-out',
+        'fade-in':          'fade-in 0.5s cubic-bezier(0.16,1,0.3,1)',
+        'fade-in-right':    'fade-in-right 0.3s cubic-bezier(0.16,1,0.3,1)',
+        'fade-out-right':   'fade-out-right 0.3s cubic-bezier(0.16,1,0.3,1)',
+        shrink:             'shrink var(--toast-duration, 5000ms) linear forwards',
+        'pulse-dot':        'pulse-dot 1.5s infinite',
+        shake:              'shake 0.5s ease-in-out',
+        'spin-slow':        'spin-slow 1.2s linear infinite',
+      },
+
+      transitionTimingFunction: {
+        bounce: 'cubic-bezier(0.16,1,0.3,1)',
+      },
+
+      maxWidth: {
+        container: '1120px',
+        'container-wide': '1200px',
       },
     },
   },

@@ -2,141 +2,158 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap');
-
 /* ════════════════════════════════════════════
    DESIGN TOKENS — AlgoSu UI Design System v2
+   CSS 변수 기반 듀얼 테마 (Light / Dark)
    ════════════════════════════════════════════ */
 
 @layer base {
   :root {
-    /* ── 브랜드 팔레트 (모드 불변) ── */
-    --color-main:       #947EB0;
-    --color-main-light: #B9A9D0;
-    --color-main-dark:  #6D5A8A;
-    --color-sub:        #A3A5C3;
-    --color-sub-light:  #C5C7DC;
-    --color-accent:     #D4BBFF;
+    /* ── 배경/서피스 ── */
+    --bg:             #FAFAF8;
+    --bg-alt:         #F3F1EE;
+    --bg-card:        #FFFFFF;
+    --border:         #E8E5E0;
+    --border-hover:   #D0CCC5;
 
-    /* ── Light Mode 배경/서피스 ── */
-    /* 이전: #F7F6FA → 더 밝고 깨끗한 보라회색 */
-    --bg:           #FAFAFE;
-    --bg2:          #F1EFF9;
-    --bg3:          #E6E3F4;
-    --surface:      #FFFFFF;
-    --border-color: #E0DCF0;
+    /* ── 텍스트 ── */
+    --text:           #1A1917;
+    --text2:          #5C5A55;
+    --text3:          #9C9A95;
 
-    /* ── Light Mode 텍스트 ── */
-    --text:  #1A1625;
-    --text2: #5A5470;
-    --text3: #8E8AA8;
+    /* ── 브랜드 ── */
+    --primary:        #7C6AAE;
+    --primary-light:  #9B8BC8;
+    --primary-soft:   rgba(124,106,174,0.08);
+    --primary-soft2:  rgba(124,106,174,0.15);
+    --accent:         #C4A6FF;
+
+    /* ── 상태 ── */
+    --success:        #3DAA6D;
+    --success-soft:   rgba(61,170,109,0.10);
+    --warning:        #E8A830;
+    --warning-soft:   rgba(232,168,48,0.10);
+    --error:          #E05448;
+    --error-soft:     rgba(224,84,72,0.10);
+    --info:           #3B82CE;
+    --info-soft:      rgba(59,130,206,0.10);
+    --muted:          #9C9A95;
+    --muted-soft:     rgba(156,154,149,0.12);
+
+    /* ── 특수 배경 ── */
+    --nav-bg:         rgba(250,250,248,0.88);
+    --code-bg:        #F7F5F2;
+    --input-bg:       #F3F1EE;
+    --hero-glow:      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(124,106,174,0.12) 0%, transparent 70%);
+
+    /* ── 그림자 ── */
+    --shadow:         0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04);
+    --shadow-hover:   0 2px 8px rgba(0,0,0,0.06), 0 8px 32px rgba(0,0,0,0.06);
+    --shadow-toast:   0 8px 32px rgba(0,0,0,0.12);
+    --shadow-glow:    0 4px 24px rgba(124,106,174,0.35);
+
+    /* ── 난이도 (solved.ac) ── */
+    --diff-bronze-bg:       rgba(173,86,0,0.12);
+    --diff-bronze-color:    #C06800;
+    --diff-bronze-border:   rgba(173,86,0,0.25);
+    --diff-silver-bg:       rgba(67,95,122,0.12);
+    --diff-silver-color:    #5A7B99;
+    --diff-silver-border:   rgba(67,95,122,0.25);
+    --diff-gold-bg:         rgba(236,144,3,0.12);
+    --diff-gold-color:      #D48A00;
+    --diff-gold-border:     rgba(236,144,3,0.25);
+    --diff-platinum-bg:     rgba(39,226,164,0.12);
+    --diff-platinum-color:  #20C490;
+    --diff-platinum-border: rgba(39,226,164,0.25);
+    --diff-diamond-bg:      rgba(0,180,252,0.12);
+    --diff-diamond-color:   #00A8E8;
+    --diff-diamond-border:  rgba(0,180,252,0.25);
+    --diff-ruby-bg:         rgba(232,60,60,0.12);
+    --diff-ruby-color:      #E83C3C;
+    --diff-ruby-border:     rgba(232,60,60,0.25);
 
     /* ── 반경 ── */
     --radius-s: 6px;
     --radius-m: 12px;
-    --radius-l: 18px;
+    --radius-l: 16px;
 
-    /* ── 그림자 (라이트) ── */
-    --shadow-light:  0 2px 16px rgba(148, 126, 176, 0.10);
-    --shadow-medium: 0 4px 32px rgba(148, 126, 176, 0.16);
-
-    /* ── 상태 색상 ── */
-    --color-success:             #50C878;
-    --color-success-foreground:  #FFFFFF;
-    --color-warning:             #FFC83C;
-    --color-warning-foreground:  #1A1625;
-    --color-error:               #FF5A50;
-    --color-error-foreground:    #FFFFFF;
-    --color-info:                #947EB0;
-    --color-info-foreground:     #FFFFFF;
-
-    /* ── 난이도 (BOJ 스타일) ── */
-    --color-difficulty-bronze:   #AD5600;
-    --color-difficulty-silver:   #435F7A;
-    --color-difficulty-gold:     #EC9003;
-    --color-difficulty-platinum: #27E2A4;
-    --color-difficulty-diamond:  #00B4FC;
-
-    /* ── shadcn/ui 시멘틱 — Light ── */
-    --background:             #FAFAFE;
-    --foreground:             #1A1625;
-    --card:                   #FFFFFF;
-    --card-foreground:        #1A1625;
-    --popover:                #FFFFFF;
-    --popover-foreground:     #1A1625;
-    --primary:                #947EB0;
-    --primary-foreground:     #FFFFFF;
-    --secondary:              #F1EFF9;
-    --secondary-foreground:   #1A1625;
-    --muted:                  #E6E3F4;
-    --muted-foreground:       #8E8AA8;
-    --destructive:            #EF4444;
-    --destructive-foreground: #FFFFFF;
-    --border:                 #E0DCF0;
-    --input:                  #E0DCF0;
-    --ring:                   #947EB0;
+    /* ── 바 (차트) ── */
+    --bar-fill:   linear-gradient(90deg, #7C6AAE, #9B8BC8);
+    --bar-track:  #EDEBE6;
   }
 
   .dark {
-    /* ── Dark Mode 배경/서피스 ── */
-    /* 이전: #12101A(L≈7%) → #1C1927(L≈11%)으로 상향, 각 단계 10~12%p 명도 차 확보 */
-    --bg:           #1C1927;
-    --bg2:          #27233A;
-    --bg3:          #322D49;
-    --surface:      #231F34;
-    --border-color: #3D3858;
+    /* ── 배경/서피스 ── */
+    --bg:             #0F0F12;
+    --bg-alt:         #17171C;
+    --bg-card:        #1C1C22;
+    --border:         #2A2A32;
+    --border-hover:   #3A3A44;
 
-    /* ── Dark Mode 텍스트 ── */
-    --text:  #F0EDF8;
-    --text2: #B0ABCC;
-    /* 이전: #5A5575 → WCAG AA 충족 수준으로 상향 (#9A95B8, 대비 4.6:1 이상) */
-    --text3: #9A95B8;
+    /* ── 텍스트 ── */
+    --text:           #EDEDEB;
+    --text2:          #A5A5A0;
+    --text3:          #6C6C68;
 
-    /* ── 그림자 (다크 전용) ── */
-    --shadow-light:  0 2px 16px rgba(0, 0, 0, 0.35);
-    --shadow-medium: 0 4px 32px rgba(0, 0, 0, 0.50);
+    /* ── 브랜드 ── */
+    --primary:        #A08CD6;
+    --primary-light:  #B9A6E8;
+    --primary-soft:   rgba(160,140,214,0.10);
+    --primary-soft2:  rgba(160,140,214,0.18);
+    --accent:         #C4A6FF;
 
-    /* ── shadcn/ui 시멘틱 — Dark ── */
-    --background:             #1C1927;
-    --foreground:             #F0EDF8;
-    --card:                   #231F34;
-    --card-foreground:        #F0EDF8;
-    --popover:                #231F34;
-    --popover-foreground:     #F0EDF8;
-    --primary:                #B9A9D0;
-    --primary-foreground:     #1C1927;
-    --secondary:              #27233A;
-    --secondary-foreground:   #F0EDF8;
-    --muted:                  #322D49;
-    --muted-foreground:       #9A95B8;
-    --destructive:            #EF4444;
-    --destructive-foreground: #FFFFFF;
-    --border:                 #3D3858;
-    --input:                  #3D3858;
-    --ring:                   #B9A9D0;
+    /* ── 상태 ── */
+    --success:        #4EC87A;
+    --success-soft:   rgba(78,200,122,0.12);
+    --warning:        #F0B840;
+    --warning-soft:   rgba(240,184,64,0.12);
+    --error:          #F06458;
+    --error-soft:     rgba(240,100,88,0.12);
+    --info:           #5B9FE8;
+    --info-soft:      rgba(91,159,232,0.12);
+    --muted:          #6C6C68;
+    --muted-soft:     rgba(108,108,104,0.15);
+
+    /* ── 특수 배경 ── */
+    --nav-bg:         rgba(15,15,18,0.88);
+    --code-bg:        #14141A;
+    --input-bg:       #17171C;
+    --hero-glow:      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(160,140,214,0.15) 0%, transparent 70%);
+
+    /* ── 그림자 ── */
+    --shadow:         0 1px 3px rgba(0,0,0,0.20), 0 4px 16px rgba(0,0,0,0.15);
+    --shadow-hover:   0 2px 8px rgba(0,0,0,0.30), 0 8px 32px rgba(0,0,0,0.20);
+    --shadow-toast:   0 8px 32px rgba(0,0,0,0.40);
+    --shadow-glow:    0 4px 24px rgba(160,140,214,0.40);
+
+    /* ── 바 (차트) ── */
+    --bar-fill:   linear-gradient(90deg, #A08CD6, #B9A6E8);
+    --bar-track:  #222228;
   }
 
-  /* ── 글로벌 리셋 / 베이스 ── */
+  /* ── 글로벌 리셋 ── */
   * {
-    @apply border-border;
     box-sizing: border-box;
+    margin: 0;
+    padding: 0;
   }
 
   html {
-    font-family: 'Sora', 'Noto Sans KR', sans-serif;
+    scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   body {
-    background-color: var(--background);
-    color: var(--foreground);
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body), 'Noto Sans KR', sans-serif;
     line-height: 1.6;
     min-height: 100vh;
   }
 
-  code, pre, .font-mono {
-    font-family: 'DM Mono', monospace;
+  ::selection {
+    background: var(--primary-soft2);
   }
 
   /* ── 스크롤바 ── */
@@ -145,14 +162,14 @@
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: var(--bg2);
+    background: var(--bg-alt);
   }
   ::-webkit-scrollbar-thumb {
-    background: var(--color-main-light);
+    background: var(--primary-light);
     border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: var(--color-main);
+    background: var(--primary);
   }
 }
 
@@ -161,33 +178,40 @@
    ════════════════════════════════════════════ */
 
 @layer utilities {
-  .text-brand {
-    color: var(--color-main);
-  }
-
   .gradient-brand {
-    background: linear-gradient(135deg, var(--color-main) 0%, var(--color-main-light) 100%);
+    background: linear-gradient(135deg, var(--primary), var(--accent));
   }
 
   .gradient-brand-text {
-    background: linear-gradient(135deg, #F0EDF8 0%, var(--color-main-light) 50%, var(--color-sub) 100%);
+    background: linear-gradient(135deg, var(--primary), var(--accent));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
-  .focus-ring {
-    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  .glass-nav {
+    background: var(--nav-bg);
+    backdrop-filter: blur(20px) saturate(180%);
   }
 
-  .glass-light {
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(8px);
+  .glass {
+    backdrop-filter: blur(20px) saturate(180%);
   }
+}
 
-  /* 이전: rgba(18,16,26,0.85) → 명도 올려 배경과 분리감 확보 */
-  .glass-dark {
-    background: rgba(35, 31, 52, 0.88);
-    backdrop-filter: blur(8px);
-  }
+/* ── Keyframes ── */
+
+@keyframes shrink {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }

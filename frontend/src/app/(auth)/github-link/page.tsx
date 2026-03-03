@@ -47,17 +47,17 @@ export default function GitHubLinkPage(): ReactNode {
           </Alert>
         )}
 
-        <ul className="space-y-2 rounded-card bg-bg2 p-4 text-sm text-text2">
+        <ul className="space-y-2 rounded-card bg-bg-alt p-4 text-sm text-text-2">
           <li className="flex items-start gap-2">
-            <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary-500" aria-hidden />
+            <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden />
             코드 제출 시 GitHub 레포지토리에 자동으로 Push됩니다.
           </li>
           <li className="flex items-start gap-2">
-            <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary-500" aria-hidden />
+            <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden />
             스터디 팀원들과 코드를 공유하고 AI 분석 결과를 받을 수 있습니다.
           </li>
           <li className="flex items-start gap-2">
-            <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary-500" aria-hidden />
+            <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden />
             GitHub 연동 없이는 문제 조회만 가능합니다.
           </li>
         </ul>
@@ -66,7 +66,7 @@ export default function GitHubLinkPage(): ReactNode {
       <CardFooter className="flex-col gap-3">
         <Button
           variant="primary"
-          size="lg"
+          size="md"
           className="w-full"
           disabled={isLoading}
           onClick={() => void handleLinkGitHub()}
@@ -80,7 +80,7 @@ export default function GitHubLinkPage(): ReactNode {
             'GitHub 계정 연동하기'
           )}
         </Button>
-        <p className="text-center text-[11px] text-text3">
+        <p className="text-center text-[11px] text-text-3">
           연동은 언제든지 설정에서 해제할 수 있습니다.
         </p>
       </CardFooter>

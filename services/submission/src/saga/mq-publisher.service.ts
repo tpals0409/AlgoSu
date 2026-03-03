@@ -43,6 +43,16 @@ export class MqPublisherService implements OnModuleInit, OnModuleDestroy {
       const url = this.configService.getOrThrow<string>('RABBITMQ_URL');
       const conn = await amqplib.connect(url);
       this.connection = conn;
+      // M14: 연결 끊김 시 자동 재연결
+      conn.on('close', () => {
+        this.logger.warn('RabbitMQ 연결 끊김 — 재연결 시도');
+        this.connection = null;
+        this.channel = null;
+        this.scheduleReconnect();
+      });
+      conn.on('error', (err: Error) => {
+        this.logger.error(`RabbitMQ 연결 오류: ${err.message}`);
+      });
       this.channel = await conn.createChannel();
 
       // Exchange 및 Queue 선언
@@ -84,8 +94,34 @@ export class MqPublisherService implements OnModuleInit, OnModuleDestroy {
       this.logger.log('RabbitMQ 연결 및 Exchange/Queue 설정 완료');
     } catch (error: unknown) {
       this.logger.error(`RabbitMQ 연결 실패: ${(error as Error).message}`);
-      // 연결 실패 시 서비스는 기동하되, 메시지 발행 시 에러 throw
+      // M14: 지수 백오프 기반 자동 재연결
+      this.scheduleReconnect();
     }
+  }
+
+  // M14: 지수 백오프 재연결 (최대 30초)
+  private reconnectAttempt = 0;
+  private static readonly MAX_RECONNECT_DELAY_MS = 30_000;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+  private scheduleReconnect(): void {
+    if (this.reconnectTimer) return;
+    const delay = Math.min(
+      1000 * Math.pow(2, this.reconnectAttempt),
+      MqPublisherService.MAX_RECONNECT_DELAY_MS,
+    );
+    this.reconnectAttempt++;
+    this.logger.warn(`RabbitMQ 재연결 시도 예정: ${delay}ms 후 (attempt=${this.reconnectAttempt})`);
+    this.reconnectTimer = setTimeout(async () => {
+      this.reconnectTimer = null;
+      try {
+        await this.onModuleInit();
+        this.reconnectAttempt = 0;
+        this.logger.log('RabbitMQ 재연결 성공');
+      } catch {
+        this.scheduleReconnect();
+      }
+    }, delay);
   }
 
   async publishGitHubPush(event: SubmissionEvent): Promise<void> {
@@ -106,6 +142,7 @@ export class MqPublisherService implements OnModuleInit, OnModuleDestroy {
       persistent: true,
       contentType: 'application/json',
       timestamp: Date.now(),
+      headers: { 'x-trace-id': event.submissionId },
     });
 
     this.logger.log(`MQ 발행: routingKey=${routingKey}, submissionId=${event.submissionId}`);

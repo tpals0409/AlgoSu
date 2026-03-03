@@ -1,34 +1,47 @@
+/**
+ * @file 스터디 생성 페이지 (v2 디자인 시스템)
+ * @domain study
+ * @layer page
+ * @related StudyContext, studyApi, AppLayout
+ */
+
 'use client';
 
-import { useState, useCallback, type FormEvent } from 'react';
+import { useState, useCallback, type FormEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import type { ReactNode } from 'react';
 import {
   Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
   CardContent,
   CardFooter,
 } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Alert } from '@/components/ui/Alert';
+import { BackBtn } from '@/components/ui/BackBtn';
 import { InlineSpinner } from '@/components/ui/LoadingSpinner';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useStudy } from '@/contexts/StudyContext';
 import { studyApi } from '@/lib/api';
 
+// ─── TYPES ───────────────────────────────
+
 interface FormState {
   name: string;
   description: string;
-  githubRepo: string;
+  nickname: string;
 }
 
 interface FormErrors {
   name?: string;
+  nickname?: string;
 }
 
+// ─── HELPERS ─────────────────────────────
+
+/**
+ * 폼 검증 — 스터디명(필수, 2자 이상), 닉네임(필수)
+ * @domain study
+ */
 function validateForm(form: FormState): FormErrors {
   const errors: FormErrors = {};
   if (!form.name.trim()) {
@@ -36,18 +49,38 @@ function validateForm(form: FormState): FormErrors {
   } else if (form.name.trim().length < 2) {
     errors.name = '스터디 이름은 2자 이상이어야 합니다.';
   }
+  if (!form.nickname.trim()) {
+    errors.nickname = '닉네임을 입력해주세요.';
+  }
   return errors;
 }
 
+// ─── RENDER ──────────────────────────────
+
+/**
+ * 스터디 생성 폼 페이지
+ * @domain study
+ */
 export default function StudyCreatePage(): ReactNode {
   const router = useRouter();
   const { setCurrentStudy, studies, setStudies } = useStudy();
 
-  const [form, setForm] = useState<FormState>({ name: '', description: '', githubRepo: '' });
+  // ─── STATE ─────────────────────────────
+  const [form, setForm] = useState<FormState>({
+    name: '',
+    description: '',
+    nickname: '',
+  });
   const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
   const [apiError, setApiError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // ─── HANDLERS ──────────────────────────
+
+  /**
+   * 폼 필드 변경 핸들러
+   * @domain study
+   */
   const handleChange = useCallback(
     (field: keyof FormState) =>
       (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,6 +91,10 @@ export default function StudyCreatePage(): ReactNode {
     [],
   );
 
+  /**
+   * 스터디 생성 제출
+   * @domain study
+   */
   const handleSubmit = useCallback(
     async (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
@@ -75,13 +112,15 @@ export default function StudyCreatePage(): ReactNode {
         const created = await studyApi.create({
           name: form.name.trim(),
           description: form.description.trim() || undefined,
-          githubRepo: form.githubRepo.trim() || undefined,
+          nickname: form.nickname.trim(),
         });
 
-        const updated = [...studies, created];
+        // 생성자는 자동 ADMIN
+        const withRole = { ...created, role: 'ADMIN' as const };
+        const updated = [...studies, withRole];
         setStudies(updated);
         setCurrentStudy(created.id);
-        router.push('/problems');
+        router.push(`/studies/${created.id}`);
       } catch {
         setApiError('스터디 생성에 실패했습니다. 다시 시도해주세요.');
       } finally {
@@ -93,13 +132,17 @@ export default function StudyCreatePage(): ReactNode {
 
   return (
     <AppLayout>
-      <div className="mx-auto max-w-lg">
-        <Card>
-          <CardHeader>
-            <CardTitle>새 스터디 만들기</CardTitle>
-            <CardDescription>팀원들과 함께 알고리즘 문제를 풀어보세요.</CardDescription>
-          </CardHeader>
+      <div className="mx-auto max-w-[640px] space-y-4">
+        {/* 뒤로가기 */}
+        <BackBtn label="스터디 목록" href="/studies" className="-ml-1" />
 
+        {/* 페이지 타이틀 */}
+        <div>
+          <h1 className="text-[22px] font-bold tracking-tight text-text">새 스터디 만들기</h1>
+          <p className="mt-0.5 text-xs text-text-3">팀원들과 함께 알고리즘 문제를 풀어보세요</p>
+        </div>
+
+        <Card>
           <form onSubmit={(e) => void handleSubmit(e)} noValidate>
             <CardContent className="space-y-4">
               {apiError && (
@@ -118,6 +161,15 @@ export default function StudyCreatePage(): ReactNode {
               />
 
               <Input
+                label="닉네임"
+                placeholder="스터디 내에서 사용할 닉네임"
+                value={form.nickname}
+                onChange={handleChange('nickname')}
+                error={fieldErrors.nickname}
+                disabled={isLoading}
+              />
+
+              <Input
                 label="설명 (선택)"
                 placeholder="스터디에 대한 간단한 설명"
                 value={form.description}
@@ -125,13 +177,6 @@ export default function StudyCreatePage(): ReactNode {
                 disabled={isLoading}
               />
 
-              <Input
-                label="GitHub 레포지토리 (선택)"
-                placeholder="예: owner/repo-name"
-                value={form.githubRepo}
-                onChange={handleChange('githubRepo')}
-                disabled={isLoading}
-              />
             </CardContent>
 
             <CardFooter className="flex gap-3">

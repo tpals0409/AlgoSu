@@ -10,7 +10,7 @@ import { InternalKeyGuard } from '../common/guards/internal-key.guard';
 import { OAuthService } from '../auth/oauth/oauth.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { StudyMember } from '../study/study.entity';
+import { StudyMember, Study } from '../study/study.entity';
 
 @Controller('internal')
 @UseGuards(InternalKeyGuard)
@@ -19,6 +19,8 @@ export class InternalController {
     private readonly oauthService: OAuthService,
     @InjectRepository(StudyMember)
     private readonly memberRepository: Repository<StudyMember>,
+    @InjectRepository(Study)
+    private readonly studyRepository: Repository<Study>,
   ) {}
 
   /**
@@ -51,5 +53,25 @@ export class InternalController {
     }
 
     return { role: member.role };
+  }
+
+  /**
+   * GET /internal/studies/:studyId
+   * GitHub Worker가 스터디의 github_repo 조회 시 사용
+   */
+  @Get('studies/:studyId')
+  async getStudyGithubRepo(
+    @Param('studyId', ParseUUIDPipe) studyId: string,
+  ): Promise<{ data: { github_repo: string | null } }> {
+    const study = await this.studyRepository.findOne({
+      where: { id: studyId },
+      select: ['id', 'github_repo'],
+    });
+
+    if (!study) {
+      throw new NotFoundException('스터디를 찾을 수 없습니다.');
+    }
+
+    return { data: { github_repo: study.github_repo } };
   }
 }

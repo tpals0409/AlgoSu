@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { StudyService } from './study.service';
-import { Study, StudyMember, StudyMemberRole, StudyInvite } from './study.entity';
+import { Study, StudyMember, StudyMemberRole, StudyStatus, StudyInvite } from './study.entity';
 
 // --- ioredis 모듈 모킹 ---
 const mockRedis = {
@@ -14,6 +14,7 @@ const mockRedis = {
   get: jest.fn().mockResolvedValue(null),
   del: jest.fn().mockResolvedValue(1),
   keys: jest.fn().mockResolvedValue([]),
+  on: jest.fn().mockReturnThis(),
 };
 
 jest.mock('ioredis', () => {
@@ -42,8 +43,12 @@ describe('StudyService', () => {
     description: '알고리즘 스터디',
     created_by: USER_ID,
     github_repo: null,
+    status: StudyStatus.ACTIVE,
+    groundRules: null,
+    publicId: 'pub-study-uuid-1',
     created_at: new Date(),
     updated_at: new Date(),
+    generatePublicId: jest.fn(),
   };
 
   const mockAdminMember: StudyMember = {
@@ -51,6 +56,7 @@ describe('StudyService', () => {
     study_id: STUDY_ID,
     user_id: USER_ID,
     role: StudyMemberRole.ADMIN,
+    nickname: 'Admin',
     study: mockStudy,
     joined_at: new Date(),
   };
@@ -60,6 +66,7 @@ describe('StudyService', () => {
     study_id: STUDY_ID,
     user_id: OTHER_USER_ID,
     role: StudyMemberRole.MEMBER,
+    nickname: 'Member',
     study: mockStudy,
     joined_at: new Date(),
   };
@@ -86,6 +93,7 @@ describe('StudyService', () => {
       find: jest.fn(),
       findOne: jest.fn(),
       delete: jest.fn(),
+      count: jest.fn().mockResolvedValue(5),
     };
 
     inviteRepository = {
@@ -96,11 +104,32 @@ describe('StudyService', () => {
       findOne: jest.fn(),
     };
 
+    const notificationService = {
+      createNotification: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const userRepository = {
+      createQueryBuilder: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([]),
+      }),
+    };
+
+    const inviteThrottle = {
+      checkLock: jest.fn().mockResolvedValue(undefined),
+      recordFailure: jest.fn().mockResolvedValue(undefined),
+      clearFailures: jest.fn().mockResolvedValue(undefined),
+    };
+
     service = new StudyService(
       configService as unknown as ConfigService,
       studyRepository as any,
       memberRepository as any,
       inviteRepository as any,
+      userRepository as any,
+      notificationService as any,
+      inviteThrottle as any,
     );
   });
 
@@ -115,21 +144,25 @@ describe('StudyService', () => {
       const result = await service.createStudy(USER_ID, {
         name: 'AlgoSu 스터디',
         description: '알고리즘 스터디',
+        nickname: 'Admin',
       });
 
       expect(result.id).toBe(STUDY_ID);
       expect(studyRepository.create).toHaveBeenCalledWith({
         name: 'AlgoSu 스터디',
         description: '알고리즘 스터디',
+        github_repo: null,
         created_by: USER_ID,
+        status: StudyStatus.ACTIVE,
       });
       expect(studyRepository.save).toHaveBeenCalled();
 
-      // ADMIN 멤버 등록 확인
+      // ADMIN 멤버 등록 확인 (닉네임 포함)
       expect(memberRepository.create).toHaveBeenCalledWith({
         study_id: STUDY_ID,
         user_id: USER_ID,
         role: StudyMemberRole.ADMIN,
+        nickname: 'Admin',
       });
       expect(memberRepository.save).toHaveBeenCalled();
     });
@@ -141,7 +174,7 @@ describe('StudyService', () => {
       studyRepository.save.mockResolvedValue(mockStudy);
       memberRepository.save.mockResolvedValue(mockAdminMember);
 
-      await service.createStudy(USER_ID, { name: 'Test' });
+      await service.createStudy(USER_ID, { name: 'Test', nickname: 'Admin' });
 
       expect(mockRedis.del).toHaveBeenCalledWith(
         `study:membership:${STUDY_ID}:${USER_ID}`,
@@ -246,7 +279,7 @@ describe('StudyService', () => {
   // 8. createInvite
   // ============================
   describe('createInvite', () => {
-    it('ADMIN — 초대 코드 발급 (UUID + 7일 만료)', async () => {
+    it('ADMIN — 초대 코드 발급 (8자리 + 5분 만료)', async () => {
       memberRepository.findOne.mockResolvedValue(mockAdminMember);
       inviteRepository.save.mockImplementation((invite: StudyInvite) =>
         Promise.resolve(invite),
@@ -254,19 +287,19 @@ describe('StudyService', () => {
 
       const result = await service.createInvite(STUDY_ID, USER_ID);
 
-      expect(result.code).toBe('mock-invite-code-uuid');
+      expect(result.code).toBeDefined();
+      expect(result.code.length).toBe(8);
       expect(result.expires_at).toBeDefined();
 
-      // 7일 후 만료 확인 (오차 허용 1분)
+      // 5분 후 만료 확인 (오차 허용 1분)
       const expectedExpiry = new Date();
-      expectedExpiry.setDate(expectedExpiry.getDate() + 7);
+      expectedExpiry.setMinutes(expectedExpiry.getMinutes() + 5);
       const diffMs = Math.abs(result.expires_at.getTime() - expectedExpiry.getTime());
       expect(diffMs).toBeLessThan(60_000);
 
       expect(inviteRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
           study_id: STUDY_ID,
-          code: 'mock-invite-code-uuid',
           created_by: USER_ID,
         }),
       );
@@ -295,26 +328,28 @@ describe('StudyService', () => {
       created_at: new Date(),
     };
 
-    it('정상 가입 — MEMBER 역할로 등록', async () => {
+    it('정상 가입 — MEMBER 역할로 등록 (닉네임 + brute force 방어)', async () => {
       inviteRepository.findOne.mockResolvedValue(validInvite);
       memberRepository.findOne.mockResolvedValue(null); // 기존 멤버 아님
+      memberRepository.count.mockResolvedValue(5); // B1: 50명 미만
+      memberRepository.find.mockResolvedValue([]); // 알림 대상
       memberRepository.save.mockImplementation((m: StudyMember) => Promise.resolve(m));
+      inviteRepository.save.mockImplementation((i: StudyInvite) => Promise.resolve(i));
 
-      const result = await service.joinByInviteCode('new-user-id', 'valid-code');
+      const result = await service.joinByInviteCode('new-user-id', 'valid-code', 'NewMember', '127.0.0.1');
 
       expect(result.role).toBe(StudyMemberRole.MEMBER);
-      expect(result.study_id).toBe(STUDY_ID);
-      expect(result.user_id).toBe('new-user-id');
+      expect(result.id).toBe(STUDY_ID);
     });
 
     it('만료된 초대 코드 → BadRequestException', async () => {
       const expiredInvite = { ...validInvite, expires_at: pastDate };
       inviteRepository.findOne.mockResolvedValue(expiredInvite);
 
-      await expect(service.joinByInviteCode('new-user-id', 'expired-code')).rejects.toThrow(
+      await expect(service.joinByInviteCode('new-user-id', 'expired-code', 'Nick', '127.0.0.1')).rejects.toThrow(
         BadRequestException,
       );
-      await expect(service.joinByInviteCode('new-user-id', 'expired-code')).rejects.toThrow(
+      await expect(service.joinByInviteCode('new-user-id', 'expired-code', 'Nick', '127.0.0.1')).rejects.toThrow(
         '만료된 초대 코드입니다.',
       );
     });
@@ -324,21 +359,21 @@ describe('StudyService', () => {
       memberRepository.findOne.mockResolvedValue(mockRegularMember); // 이미 멤버
 
       await expect(
-        service.joinByInviteCode(OTHER_USER_ID, 'valid-code'),
+        service.joinByInviteCode(OTHER_USER_ID, 'valid-code', 'Nick', '127.0.0.1'),
       ).rejects.toThrow(ConflictException);
       await expect(
-        service.joinByInviteCode(OTHER_USER_ID, 'valid-code'),
-      ).rejects.toThrow('이미 해당 스터디의 멤버입니다.');
+        service.joinByInviteCode(OTHER_USER_ID, 'valid-code', 'Nick', '127.0.0.1'),
+      ).rejects.toThrow('이미 가입된 스터디입니다.');
     });
 
     it('무효한 초대 코드 → NotFoundException', async () => {
       inviteRepository.findOne.mockResolvedValue(null);
 
       await expect(
-        service.joinByInviteCode('new-user-id', 'nonexistent-code'),
+        service.joinByInviteCode('new-user-id', 'nonexistent-code', 'Nick', '127.0.0.1'),
       ).rejects.toThrow(NotFoundException);
       await expect(
-        service.joinByInviteCode('new-user-id', 'nonexistent-code'),
+        service.joinByInviteCode('new-user-id', 'nonexistent-code', 'Nick', '127.0.0.1'),
       ).rejects.toThrow('유효하지 않은 초대 코드입니다.');
     });
   });

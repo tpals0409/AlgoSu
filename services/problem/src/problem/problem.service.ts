@@ -1,17 +1,15 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { Problem, ProblemStatus } from './problem.entity';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
 import { DeadlineCacheService } from '../cache/deadline-cache.service';
+import { DualWriteService } from '../database/dual-write.service';
 
 @Injectable()
 export class ProblemService {
   private readonly logger = new Logger(ProblemService.name);
 
   constructor(
-    @InjectRepository(Problem)
-    private readonly problemRepo: Repository<Problem>,
+    private readonly dualWrite: DualWriteService,
     private readonly deadlineCache: DeadlineCacheService,
   ) {}
 
@@ -20,20 +18,30 @@ export class ProblemService {
    * studyId는 헤더에서 받아 컨트롤러가 전달
    */
   async create(dto: CreateProblemDto, studyId: string, createdBy: string): Promise<Problem> {
-    const problem = this.problemRepo.create({
+    // 같은 스터디 + 같은 주차에서 sourceUrl 중복 체크
+    if (dto.sourceUrl) {
+      const existing = await this.dualWrite.findOne({
+        where: { studyId, weekNumber: dto.weekNumber, sourceUrl: dto.sourceUrl, status: ProblemStatus.ACTIVE },
+      });
+      if (existing) {
+        throw new ConflictException('같은 주차에 이미 등록된 문제입니다.');
+      }
+    }
+
+    const saved = await this.dualWrite.save({
       title: dto.title,
       description: dto.description ?? null,
       weekNumber: dto.weekNumber,
       difficulty: dto.difficulty ?? null,
+      level: dto.level ?? null,
       sourceUrl: dto.sourceUrl ?? null,
       sourcePlatform: dto.sourcePlatform ?? null,
       deadline: dto.deadline ? new Date(dto.deadline) : null,
       allowedLanguages: dto.allowedLanguages ?? null,
+      tags: dto.tags ?? null,
       studyId,
       createdBy,
     });
-
-    const saved = await this.problemRepo.save(problem);
     this.logger.log(`문제 생성: id=${saved.id}, studyId=${studyId}, week=${saved.weekNumber}`);
 
     // 캐시 설정
@@ -47,7 +55,7 @@ export class ProblemService {
    * 문제 단건 조회 — studyId 스코핑으로 cross-study 접근 차단
    */
   async findById(studyId: string, id: string): Promise<Problem> {
-    const problem = await this.problemRepo.findOne({ where: { id, studyId } });
+    const problem = await this.dualWrite.findOne({ where: { id, studyId } });
     if (!problem) {
       throw new NotFoundException(`문제를 찾을 수 없습니다: id=${id}`);
     }
@@ -57,14 +65,14 @@ export class ProblemService {
   /**
    * 주차별 문제 목록 — studyId 스코핑
    */
-  async findByWeekAndStudy(studyId: string, weekNumber: number): Promise<Problem[]> {
+  async findByWeekAndStudy(studyId: string, weekNumber: string): Promise<Problem[]> {
     // 캐시 확인
     const cached = await this.deadlineCache.getWeekProblems(studyId, weekNumber);
     if (cached) {
       return JSON.parse(cached) as Problem[];
     }
 
-    const problems = await this.problemRepo.find({
+    const problems = await this.dualWrite.find({
       where: { weekNumber, studyId },
       order: { createdAt: 'ASC' },
     });
@@ -107,6 +115,9 @@ export class ProblemService {
   async update(studyId: string, id: string, dto: UpdateProblemDto): Promise<Problem> {
     const problem = await this.findById(studyId, id);
 
+    // M7: weekNumber 변경 감지용 — 변경 전 값 보존
+    const oldWeekNumber = problem.weekNumber;
+
     if (dto.title !== undefined) problem.title = dto.title;
     if (dto.description !== undefined) problem.description = dto.description;
     if (dto.weekNumber !== undefined) problem.weekNumber = dto.weekNumber;
@@ -117,25 +128,59 @@ export class ProblemService {
     if (dto.allowedLanguages !== undefined) {
       problem.allowedLanguages = dto.allowedLanguages ?? null;
     }
+    if (dto.tags !== undefined) {
+      problem.tags = dto.tags ?? null;
+    }
     if (dto.status !== undefined) problem.status = dto.status as ProblemStatus;
 
-    const saved = await this.problemRepo.save(problem);
+    const saved = await this.dualWrite.saveExisting(problem);
 
     // 캐시 무효화
     await this.deadlineCache.invalidateDeadline(studyId, saved.id);
     await this.deadlineCache.invalidateWeekProblems(studyId, saved.weekNumber);
+
+    // M7: weekNumber 변경 시 구 주차 캐시도 무효화
+    if (dto.weekNumber !== undefined && dto.weekNumber !== oldWeekNumber) {
+      await this.deadlineCache.invalidateWeekProblems(studyId, oldWeekNumber);
+    }
 
     this.logger.log(`문제 수정: id=${saved.id}, studyId=${studyId}`);
     return saved;
   }
 
   /**
+   * M6: 문제 삭제 (soft delete) — ADMIN 권한 필수
+   * status를 CLOSED로 변경. Submission 참조 무결성 유지.
+   */
+  async delete(studyId: string, id: string): Promise<void> {
+    const problem = await this.findById(studyId, id);
+    problem.status = ProblemStatus.CLOSED;
+    await this.dualWrite.saveExisting(problem);
+
+    await this.deadlineCache.invalidateDeadline(studyId, id);
+    await this.deadlineCache.invalidateWeekProblems(studyId, problem.weekNumber);
+
+    this.logger.log(`문제 soft delete: id=${id}, studyId=${studyId}`);
+  }
+
+  /**
    * 활성 문제 목록 — studyId 스코핑
    */
   async findActiveByStudy(studyId: string): Promise<Problem[]> {
-    const problems = await this.problemRepo.find({
+    const problems = await this.dualWrite.find({
       where: { status: ProblemStatus.ACTIVE, studyId },
       order: { weekNumber: 'DESC', createdAt: 'ASC' },
+    });
+    return problems;
+  }
+
+  /**
+   * 전체 문제 목록 (CLOSED 포함) — studyId 스코핑
+   */
+  async findAllByStudy(studyId: string): Promise<Problem[]> {
+    const problems = await this.dualWrite.find({
+      where: { studyId },
+      order: { weekNumber: 'ASC', createdAt: 'ASC' },
     });
     return problems;
   }

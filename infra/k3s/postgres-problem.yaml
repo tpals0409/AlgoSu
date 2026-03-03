@@ -1,0 +1,94 @@
+# ============================================================
+# AlgoSu — Problem 전용 PostgreSQL (Phase 3 DB 분리)
+# 물리적으로 독립된 PostgreSQL 인스턴스
+# H11: statement_timeout 200ms (슬로우 쿼리 차단)
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-problem
+  namespace: algosu
+  labels:
+    app: postgres-problem
+    component: database
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-problem
+  template:
+    metadata:
+      labels:
+        app: postgres-problem
+        component: database
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16.3-alpine
+          ports:
+            - containerPort: 5432
+          args:
+            - -c
+            - statement_timeout=200
+            - -c
+            - log_min_duration_statement=200
+          env:
+            - name: POSTGRES_DB
+              value: problem_db
+            - name: POSTGRES_USER
+              value: problem_user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-problem-secret
+                  key: password
+          volumeMounts:
+            - name: postgres-problem-storage
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "50m"
+            limits:
+              memory: "512Mi"
+              cpu: "250m"
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "problem_user", "-d", "problem_db"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "problem_user", "-d", "problem_db"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: postgres-problem-storage
+          persistentVolumeClaim:
+            claimName: postgres-problem-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-problem
+  namespace: algosu
+spec:
+  selector:
+    app: postgres-problem
+  ports:
+    - port: 5432
+      targetPort: 5432
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-problem-pvc
+  namespace: algosu
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi

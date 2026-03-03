@@ -1,3 +1,9 @@
+/**
+ * @file 스켈레톤 로딩 UI (B4 통일)
+ * @domain common
+ * @layer component
+ */
+
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
@@ -13,7 +19,7 @@ function SkeletonBlock({ className, style }: { className?: string; style?: React
     <div
       aria-hidden="true"
       className={cn(
-        'relative overflow-hidden rounded-md bg-muted',
+        'relative overflow-hidden rounded-md bg-bg-alt',
         'before:absolute before:inset-0',
         'before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent',
         'before:animate-skeleton-shimmer before:bg-[length:200%_100%]',
@@ -62,7 +68,7 @@ function Skeleton({ className, variant = 'rect', width, height, lines = 1, style
 
 function SkeletonCard(): React.ReactElement {
   return (
-    <div className="rounded-lg border border-border bg-card p-6 shadow-light">
+    <div className="rounded-card border border-border bg-bg-card p-6 shadow-card">
       <div className="mb-4 flex items-center gap-3">
         <Skeleton variant="circle" width={40} height={40} />
         <div className="flex-1 space-y-2">

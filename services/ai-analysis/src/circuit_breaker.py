@@ -41,6 +41,16 @@ class CircuitBreaker:
         self.success_count = 0
         self.last_failure_time: float = 0
         self.half_open_successes = 0
+        self._on_state_change = None
+
+    def set_state_change_callback(self, callback) -> None:
+        """상태 전이 시 호출될 콜백 등록 (Prometheus gauge 등)"""
+        self._on_state_change = callback
+
+    def _notify_state_change(self) -> None:
+        """상태 변경 시 콜백 호출"""
+        if self._on_state_change:
+            self._on_state_change(self.state.value)
 
     @property
     def is_open(self) -> bool:
@@ -50,6 +60,7 @@ class CircuitBreaker:
                 logger.info("Circuit Breaker: OPEN → HALF_OPEN (복구 시도)")
                 self.state = CircuitState.HALF_OPEN
                 self.half_open_successes = 0
+                self._notify_state_change()
                 return False
             return True
         return False
@@ -62,6 +73,7 @@ class CircuitBreaker:
                 self.state = CircuitState.CLOSED
                 self.failure_count = 0
                 self.half_open_successes = 0
+                self._notify_state_change()
         else:
             self.failure_count = 0
 
@@ -72,11 +84,13 @@ class CircuitBreaker:
         if self.state == CircuitState.HALF_OPEN:
             logger.warning("Circuit Breaker: HALF_OPEN → OPEN (복구 실패)")
             self.state = CircuitState.OPEN
+            self._notify_state_change()
         elif self.failure_count >= self.failure_threshold:
             logger.warning(
                 f"Circuit Breaker: CLOSED → OPEN (연속 {self.failure_count}회 실패)"
             )
             self.state = CircuitState.OPEN
+            self._notify_state_change()
 
     def can_execute(self) -> bool:
         """요청 실행 가능 여부"""

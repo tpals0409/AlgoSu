@@ -1,3 +1,9 @@
+/**
+ * @file next-themes ThemeProvider 래퍼
+ * @domain common
+ * @layer component
+ * @related AppLayout
+ */
 'use client';
 
 import * as React from 'react';

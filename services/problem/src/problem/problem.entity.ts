@@ -4,7 +4,9 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  BeforeInsert,
 } from 'typeorm';
+import { v4 as uuid } from 'uuid';
 
 export enum Difficulty {
   BRONZE = 'BRONZE',
@@ -31,11 +33,14 @@ export class Problem {
   @Column({ type: 'text', nullable: true })
   description!: string | null;
 
-  @Column({ type: 'integer', name: 'week_number' })
-  weekNumber!: number;
+  @Column({ type: 'varchar', length: 20, name: 'week_number' })
+  weekNumber!: string;
 
   @Column({ type: 'enum', enum: Difficulty, nullable: true })
   difficulty!: Difficulty | null;
+
+  @Column({ type: 'smallint', nullable: true, default: null })
+  level!: number | null;
 
   @Column({ type: 'varchar', length: 500, nullable: true, name: 'source_url' })
   sourceUrl!: string | null;
@@ -52,15 +57,26 @@ export class Problem {
   @Column({ type: 'simple-json', nullable: true, name: 'allowed_languages' })
   allowedLanguages!: string[] | null;
 
+  @Column({ type: 'simple-json', nullable: true })
+  tags!: string[] | null;
+
   @Column({ type: 'uuid', name: 'study_id' })
   studyId!: string;
 
   @Column({ type: 'varchar', length: 255, name: 'created_by' })
   createdBy!: string;
 
+  @Column({ type: 'uuid', unique: true })
+  publicId!: string;
+
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt!: Date;
 
   @UpdateDateColumn({ type: 'timestamptz', name: 'updated_at' })
   updatedAt!: Date;
+
+  @BeforeInsert()
+  generatePublicId() {
+    this.publicId = this.publicId || uuid();
+  }
 }

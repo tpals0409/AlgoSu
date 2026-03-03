@@ -1,3 +1,9 @@
+/**
+ * @file 빈 상태 안내 컴포넌트 (아이콘 + 메시지 + 액션)
+ * @domain common
+ * @layer component
+ * @related Button, Card
+ */
 import * as React from 'react';
 import { Inbox } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -26,13 +32,13 @@ function EmptyState({ className, icon: Icon = Inbox, title, description, action,
   const sizes = SIZE_CLASSES[size];
   return (
     <div className={cn('flex flex-col items-center justify-center text-center', sizes.wrapper, className)} {...props}>
-      <div className={cn('rounded-full bg-muted', sizes.iconWrapper)} aria-hidden>
-        <Icon className={cn(sizes.icon, 'text-muted-foreground')} strokeWidth={1.5} aria-hidden />
+      <div className={cn('rounded-full bg-muted-soft', sizes.iconWrapper)} aria-hidden>
+        <Icon className={cn(sizes.icon, 'text-text-3')} strokeWidth={1.5} aria-hidden />
       </div>
       <div className="space-y-1.5">
-        <p className={cn(sizes.title, 'text-foreground')}>{title}</p>
+        <p className={cn(sizes.title, 'text-text')}>{title}</p>
         {description && (
-          <p className={cn(sizes.description, 'max-w-sm text-muted-foreground')}>{description}</p>
+          <p className={cn(sizes.description, 'max-w-sm text-text-3')}>{description}</p>
         )}
       </div>
       {action && (

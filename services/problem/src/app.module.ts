@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ProblemModule } from './problem/problem.module';
 import { CacheModule } from './cache/cache.module';
 import { MetricsModule } from './common/metrics/metrics.module';
+import { DualWriteModule } from './database/dual-write.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -18,17 +19,18 @@ import { HealthController } from './health.controller';
       useFactory: (configService: ConfigService) => ({
         type: 'postgres' as const,
         host: configService.getOrThrow<string>('DATABASE_HOST'),
-        port: configService.get<number>('DATABASE_PORT', 6432),
+        port: configService.get<number>('DATABASE_PORT', 5432),
         database: configService.getOrThrow<string>('DATABASE_NAME'),
         username: configService.getOrThrow<string>('DATABASE_USER'),
         password: configService.getOrThrow<string>('DATABASE_PASSWORD'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
-        synchronize: false, // 프로덕션 절대 금지 — Librarian Migration Only
+        synchronize: false,
         logging: ['error', 'warn'],
-        maxQueryExecutionTime: 1000, // 1초 초과 쿼리 경고 로그 (monitoring-log-rules.md §8)
+        maxQueryExecutionTime: 200,
       }),
     }),
+    DualWriteModule,
     MetricsModule,
     ProblemModule,
     CacheModule,

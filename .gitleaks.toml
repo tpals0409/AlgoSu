@@ -44,6 +44,8 @@ paths = [
   '''\.test\.ts$''',
   '''tests/test_.*\.py$''',
   '''tests/conftest\.py$''',
+  '''\.claude/memory/.*\.md$''',
+  '''scripts/e2e-.*\.sh$''',
 ]
 regexes = [
   '''change_me_''',

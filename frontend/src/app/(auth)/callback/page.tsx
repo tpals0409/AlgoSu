@@ -2,47 +2,53 @@
 
 import { Suspense } from 'react';
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Alert } from '@/components/ui/Alert';
-import { setToken } from '@/lib/auth';
+import { useAuth } from '@/contexts/AuthContext';
+import { setGitHubConnected } from '@/lib/auth';
 
 /**
- * OAuth 콜백 페이지 — /callback
+ * @file OAuth 콜백 페이지 — /callback
+ * @domain identity
+ * @layer page
+ * @related OAuthController, AuthContext
  *
- * 백엔드가 리다이렉트할 때 URL 쿼리로 토큰을 전달:
- *   /callback?token=<jwt>&github_connected=true|false
+ * 백엔드가 httpOnly Cookie로 JWT를 설정하고, github_connected만 fragment로 전달.
+ * /callback#github_connected=true|false
  */
 function CallbackContent(): ReactNode {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const { loginFromCookie } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const token = searchParams.get('token');
-    const githubConnected = searchParams.get('github_connected');
-    const errorParam = searchParams.get('error');
+    const hash = window.location.hash.slice(1);
+    const params = new URLSearchParams(hash);
+
+    const githubConnected = params.get('github_connected');
+    const errorParam = params.get('error');
 
     if (errorParam) {
       setError('OAuth 인증에 실패했습니다. 다시 시도해주세요.');
       return;
     }
 
-    if (!token) {
-      setError('인증 토큰을 받지 못했습니다. 다시 시도해주세요.');
-      return;
-    }
+    // httpOnly Cookie로 JWT가 이미 설정됨 — AuthContext에 알림
+    loginFromCookie();
 
-    // 토큰 저장 (보안 로그 방지: 토큰 값 로깅 금지)
-    setToken(token);
+    // GitHub 연동 상태 저장
+    if (githubConnected !== null) {
+      setGitHubConnected(githubConnected === 'true');
+    }
 
     if (githubConnected === 'false' || githubConnected === null) {
       router.replace('/github-link');
     } else {
       router.replace('/studies');
     }
-  }, [searchParams, router]);
+  }, [router, loginFromCookie]);
 
   if (error) {
     return (
@@ -51,7 +57,7 @@ function CallbackContent(): ReactNode {
           {error}
         </Alert>
         <div className="text-center">
-          <a href="/login" className="text-sm text-primary-500 underline-offset-4 hover:text-primary-400 hover:underline">
+          <a href="/login" className="text-sm text-primary underline-offset-4 transition-colors hover:text-primary-light hover:underline">
             로그인 페이지로 돌아가기
           </a>
         </div>
@@ -62,7 +68,7 @@ function CallbackContent(): ReactNode {
   return (
     <div className="flex flex-col items-center gap-4">
       <LoadingSpinner />
-      <p className="text-sm text-text2">로그인 처리 중...</p>
+      <p className="text-sm text-text-2">로그인 처리 중...</p>
     </div>
   );
 }
@@ -73,7 +79,7 @@ export default function CallbackPage(): ReactNode {
       fallback={
         <div className="flex flex-col items-center gap-4">
           <LoadingSpinner />
-          <p className="text-sm text-text2">로그인 처리 중...</p>
+          <p className="text-sm text-text-2">로그인 처리 중...</p>
         </div>
       }
     >

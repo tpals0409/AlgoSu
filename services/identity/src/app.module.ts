@@ -1,8 +1,8 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AuthModule } from './auth/auth.module';
 import { MetricsModule } from './common/metrics/metrics.module';
+import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { HealthController } from './health.controller';
 import { User } from './user/user.entity';
 
@@ -22,12 +22,18 @@ import { User } from './user/user.entity';
         entities: [User],
         synchronize: false, // 마이그레이션으로 관리
         logging: ['error', 'warn'],
-        maxQueryExecutionTime: 1000, // 1초 초과 쿼리 경고 로그 (monitoring-log-rules.md §8)
+        maxQueryExecutionTime: 200, // 200ms 초과 쿼리 경고 로그 (monitoring-log-rules.md §8-1)
       }),
     }),
     MetricsModule,
-    AuthModule,
   ],
   controllers: [HealthController],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    // M16: 모든 요청에 X-Request-Id, X-Trace-Id 부여
+    consumer
+      .apply(RequestIdMiddleware)
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
+  }
+}
