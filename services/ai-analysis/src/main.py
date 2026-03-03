@@ -272,8 +272,6 @@ async def group_analysis(
     user_prompt = build_group_user_prompt(code_snippets)
 
     try:
-        import anthropic
-
         message = claude.client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=4096,
