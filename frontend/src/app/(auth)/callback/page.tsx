@@ -57,7 +57,7 @@ function CallbackContent(): ReactNode {
           {error}
         </Alert>
         <div className="text-center">
-          <a href="/login" className="text-sm text-primary-500 underline-offset-4 hover:text-primary-400 hover:underline">
+          <a href="/login" className="text-sm text-primary underline-offset-4 hover:text-primary-light hover:underline">
             로그인 페이지로 돌아가기
           </a>
         </div>
@@ -68,7 +68,7 @@ function CallbackContent(): ReactNode {
   return (
     <div className="flex flex-col items-center gap-4">
       <LoadingSpinner />
-      <p className="text-sm text-text2">로그인 처리 중...</p>
+      <p className="text-sm text-text-2">로그인 처리 중...</p>
     </div>
   );
 }
@@ -79,7 +79,7 @@ export default function CallbackPage(): ReactNode {
       fallback={
         <div className="flex flex-col items-center gap-4">
           <LoadingSpinner />
-          <p className="text-sm text-text2">로그인 처리 중...</p>
+          <p className="text-sm text-text-2">로그인 처리 중...</p>
         </div>
       }
     >

@@ -27,7 +27,7 @@ export default function GitHubLinkCompletePage(): ReactNode {
 
   return (
     <div className="flex items-center justify-center p-8">
-      <p className="text-text2">GitHub 연동 처리 중...</p>
+      <p className="text-text-2">GitHub 연동 처리 중...</p>
     </div>
   );
 }

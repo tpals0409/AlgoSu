@@ -233,7 +233,7 @@ export default function ProfilePage(): ReactNode {
   if (!isReady) {
     return (
       <AppLayout>
-        <div className="mx-auto max-w-xl space-y-4">
+        <div className="mx-auto max-w-[640px] space-y-4">
           <Skeleton height={32} width="30%" />
           <Skeleton height={200} />
           <Skeleton height={150} />
@@ -244,7 +244,7 @@ export default function ProfilePage(): ReactNode {
 
   return (
     <AppLayout>
-      <div className="mx-auto max-w-xl space-y-6">
+      <div className="mx-auto max-w-[640px] space-y-6">
         {/* 페이지 헤더 */}
         <div>
           <h1 className="text-[22px] font-bold tracking-tight text-text">프로필</h1>
@@ -266,8 +266,7 @@ export default function ProfilePage(): ReactNode {
               {/* 아바타 */}
               <button
                 type="button"
-                className="shrink-0 overflow-hidden rounded-full ring-2 ring-transparent transition-all hover:ring-primary-light focus-visible:outline-none focus-visible:ring-primary"
-                style={{ width: '64px', height: '64px' }}
+                className="w-16 h-16 shrink-0 overflow-hidden rounded-full ring-2 ring-transparent transition-all hover:ring-primary-light focus-visible:outline-none focus-visible:ring-primary"
                 onClick={() => setShowAvatarPicker((v) => !v)}
                 aria-label="아바타 변경"
                 disabled={avatarLoading}
@@ -300,8 +299,7 @@ export default function ProfilePage(): ReactNode {
                     />
                     <button
                       type="button"
-                      className="flex shrink-0 items-center justify-center rounded-md bg-primary text-white transition-opacity hover:opacity-80 disabled:opacity-50"
-                      style={{ width: '28px', height: '28px' }}
+                      className="flex w-7 h-7 shrink-0 items-center justify-center rounded-md bg-primary text-white transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50"
                       onClick={() => void handleSaveName()}
                       disabled={nameLoading || !editName.trim()}
                       aria-label="저장"
@@ -310,8 +308,7 @@ export default function ProfilePage(): ReactNode {
                     </button>
                     <button
                       type="button"
-                      className="flex shrink-0 items-center justify-center rounded-md bg-bg-alt text-text-3 transition-colors hover:text-text"
-                      style={{ width: '28px', height: '28px' }}
+                      className="flex w-7 h-7 shrink-0 items-center justify-center rounded-md bg-bg-alt text-text-3 transition-colors hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                       onClick={handleCancelEditName}
                       disabled={nameLoading}
                       aria-label="취소"
@@ -326,8 +323,7 @@ export default function ProfilePage(): ReactNode {
                     </p>
                     <button
                       type="button"
-                      className="flex shrink-0 items-center justify-center rounded-md text-text-3 transition-colors hover:bg-bg-alt hover:text-text"
-                      style={{ width: '24px', height: '24px' }}
+                      className="flex w-6 h-6 shrink-0 items-center justify-center rounded-md text-text-3 transition-colors hover:bg-bg-alt hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                       onClick={handleStartEditName}
                       aria-label="닉네임 수정"
                     >
@@ -372,7 +368,7 @@ export default function ProfilePage(): ReactNode {
                         key={preset.key}
                         type="button"
                         className={cn(
-                          'flex flex-col items-center gap-1.5 rounded-lg p-2 transition-all',
+                          'flex flex-col items-center gap-1.5 rounded-btn p-2 transition-all',
                           isSelected
                             ? 'ring-2 ring-primary bg-primary-soft'
                             : 'hover:bg-bg-card',
@@ -452,7 +448,7 @@ export default function ProfilePage(): ReactNode {
           <CardContent>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-bg-alt">
+                <div className="flex h-10 w-10 items-center justify-center rounded-btn bg-bg-alt">
                   <Github className="h-5 w-5 text-text" aria-hidden />
                 </div>
                 <div>
@@ -597,10 +593,10 @@ export default function ProfilePage(): ReactNode {
           <CardContent className="p-4 space-y-2">
             <h3 className="text-[13px] font-medium text-text">법적 고지</h3>
             <div className="flex flex-col gap-1">
-              <button className="text-left text-[12px] text-text-2 hover:text-primary transition-colors">
+              <button type="button" className="text-left text-[12px] text-text-2 hover:text-primary transition-colors focus-visible:outline-none focus-visible:text-primary">
                 서비스 이용약관
               </button>
-              <button className="text-left text-[12px] text-text-2 hover:text-primary transition-colors">
+              <button type="button" className="text-left text-[12px] text-text-2 hover:text-primary transition-colors focus-visible:outline-none focus-visible:text-primary">
                 개인정보 처리방침
               </button>
             </div>

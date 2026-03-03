@@ -19,20 +19,20 @@ const STATUS_LABELS: Record<StatusType, string> = {
 };
 
 const STATUS_DOT_CLASSES: Record<StatusType, string> = {
-  pending: 'bg-muted-foreground',
+  pending: 'bg-muted',
   running: 'bg-info animate-pulse',
   success: 'bg-success',
-  failed:  'bg-destructive',
+  failed:  'bg-error',
   syncing: 'bg-warning animate-pulse',
 };
 
 const statusVariants = cva('inline-flex items-center gap-1.5 text-xs font-medium', {
   variants: {
     status: {
-      pending: 'text-muted-foreground',
+      pending: 'text-muted',
       running: 'text-info',
       success: 'text-success',
-      failed:  'text-destructive',
+      failed:  'text-error',
       syncing: 'text-warning',
     },
     size: {

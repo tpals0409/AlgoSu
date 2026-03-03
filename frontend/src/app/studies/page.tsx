@@ -176,7 +176,7 @@ export default function StudiesPage(): ReactNode {
         {/* 페이지 헤더 */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-text">내 스터디</h1>
+            <h1 className="text-[22px] font-bold tracking-tight text-text">내 스터디</h1>
             <p className="mt-0.5 text-sm text-text-2">
               참여 중인 스터디를 선택하거나 새로 만드세요.
             </p>

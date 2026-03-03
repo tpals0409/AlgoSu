@@ -145,7 +145,7 @@ function LoginContent(): ReactNode {
               <div className="mx-auto mb-4 flex justify-center">
                 <Logo size={48} />
               </div>
-              <h1 className="mb-1.5 text-[22px] font-bold tracking-tight">
+              <h1 className="mb-1.5 text-[22px] font-bold tracking-tight text-text">
                 AlgoSu에 로그인
               </h1>
               <p className="text-[13px] text-text-3">

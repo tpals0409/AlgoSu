@@ -206,7 +206,7 @@ export default function StudyRoomPage(): ReactElement {
 
             {/* 문제 헤더 */}
             <div className="mb-6 text-center">
-              <h1 className="text-xl font-bold tracking-tight text-text">
+              <h1 className="text-[22px] font-bold tracking-tight text-text">
                 {selectedProblem.title}
               </h1>
               <div className="mt-2 flex items-center justify-center gap-2">
@@ -298,7 +298,7 @@ export default function StudyRoomPage(): ReactElement {
           /* 문제 목록 */
           <div className="animate-fade-in">
             <div className="mb-6 text-center">
-              <h1 className="text-xl font-bold tracking-tight text-text">
+              <h1 className="text-[22px] font-bold tracking-tight text-text">
                 코드 리뷰
               </h1>
               <p className="mt-1 text-[13px] text-text-3">

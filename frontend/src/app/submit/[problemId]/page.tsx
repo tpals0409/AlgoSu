@@ -9,8 +9,8 @@
 
 import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ChevronLeft } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { BackBtn } from '@/components/ui/BackBtn';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
@@ -183,10 +183,7 @@ export default function SubmitPage(): ReactNode {
       <AppLayout>
         <div className="space-y-4">
           <Alert variant="error">{error ?? '문제를 찾을 수 없습니다.'}</Alert>
-          <Button variant="ghost" size="sm" onClick={() => router.back()}>
-            <ChevronLeft />
-            뒤로 가기
-          </Button>
+          <BackBtn label="뒤로 가기" />
         </div>
       </AppLayout>
     );
@@ -198,15 +195,13 @@ export default function SubmitPage(): ReactNode {
     <AppLayout>
       <div className="space-y-5">
         {/* 뒤로가기 */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push(`/problems/${problemId}`)}
-          className="-ml-1"
-        >
-          <ChevronLeft />
-          문제 상세
-        </Button>
+        <BackBtn label="문제 상세" href={`/problems/${problemId}`} className="-ml-1" />
+
+        {/* 페이지 타이틀 */}
+        <div>
+          <h1 className="text-[22px] font-bold tracking-tight text-text">코드 제출</h1>
+          <p className="mt-0.5 text-xs text-text-3">코드를 작성하고 제출하세요</p>
+        </div>
 
         {/* 문제 정보 */}
         <Card>
@@ -245,13 +240,14 @@ export default function SubmitPage(): ReactNode {
         {!githubConnected && (
           <Alert variant="warning" title="GitHub 연동 필요">
             코드를 제출하려면 먼저 GitHub 계정을 연동해주세요.{' '}
-            <button
-              type="button"
+            <Button
+              variant="link"
+              size="sm"
               onClick={() => router.push('/github-link')}
-              className="underline font-medium"
+              className="inline h-auto p-0 text-inherit underline font-medium"
             >
               GitHub 연동하기
-            </button>
+            </Button>
           </Alert>
         )}
 

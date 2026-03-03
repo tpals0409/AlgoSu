@@ -382,7 +382,7 @@ export default function DashboardPage(): ReactNode {
         {/* ── HEADER ── */}
         <div className="flex items-center justify-between" style={fade(0)}>
           <div>
-            <h1 className="text-[22px] font-bold tracking-tight">대시보드</h1>
+            <h1 className="text-[22px] font-bold tracking-tight text-text">대시보드</h1>
             <p className="mt-0.5 text-xs text-text-3">
               {(() => {
                 const me = myUserId ? members.find((m) => m.user_id === myUserId) : null;

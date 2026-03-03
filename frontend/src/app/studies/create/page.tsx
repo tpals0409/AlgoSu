@@ -9,18 +9,15 @@
 
 import { useState, useCallback, type FormEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft } from 'lucide-react';
 import {
   Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
   CardContent,
   CardFooter,
 } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Alert } from '@/components/ui/Alert';
+import { BackBtn } from '@/components/ui/BackBtn';
 import { InlineSpinner } from '@/components/ui/LoadingSpinner';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useStudy } from '@/contexts/StudyContext';
@@ -135,26 +132,17 @@ export default function StudyCreatePage(): ReactNode {
 
   return (
     <AppLayout>
-      <div className="mx-auto max-w-lg">
+      <div className="mx-auto max-w-[640px] space-y-4">
         {/* 뒤로가기 */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push('/studies')}
-          className="-ml-1 mb-4"
-        >
-          <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
-          스터디 목록
-        </Button>
+        <BackBtn label="스터디 목록" href="/studies" className="-ml-1" />
+
+        {/* 페이지 타이틀 */}
+        <div>
+          <h1 className="text-[22px] font-bold tracking-tight text-text">새 스터디 만들기</h1>
+          <p className="mt-0.5 text-xs text-text-3">팀원들과 함께 알고리즘 문제를 풀어보세요</p>
+        </div>
 
         <Card>
-          <CardHeader>
-            <CardTitle>새 스터디 만들기</CardTitle>
-            <CardDescription>
-              팀원들과 함께 알고리즘 문제를 풀어보세요.
-            </CardDescription>
-          </CardHeader>
-
           <form onSubmit={(e) => void handleSubmit(e)} noValidate>
             <CardContent className="space-y-4">
               {apiError && (
