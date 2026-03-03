@@ -639,7 +639,6 @@ jobs:
         with:
           context: ./frontend
           platforms: linux/arm64
-          network: host
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ env.IMAGE_PREFIX }}-frontend:main-${{ github.sha }}
           cache-from: type=gha,scope=frontend
