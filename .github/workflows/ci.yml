@@ -85,6 +85,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      pull-requests: read
     outputs:
       gateway:       ${{ steps.filter.outputs.gateway }}
       identity:      ${{ steps.filter.outputs.identity }}
@@ -125,13 +126,14 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: wagoid/commitlint-github-action@v6
         with:
-          configFile: commitlint.config.js
+          configFile: commitlint.config.mjs
 
   # ============================================================
   # Quality Gate — lint + typecheck (변경된 서비스만)

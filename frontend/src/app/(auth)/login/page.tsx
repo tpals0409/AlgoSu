@@ -139,7 +139,7 @@ function LoginContent(): ReactNode {
 
         <div className="relative w-full max-w-[400px]" style={fade(0)}>
           {/* 로그인 카드 */}
-          <div className="rounded-[20px] border border-border bg-bg-card pt-10 pb-8 px-8 shadow">
+          <div className="rounded-lg border border-border bg-bg-card pt-10 pb-8 px-8 shadow">
             {/* 로고 + 제목 */}
             <div className="mb-8 text-center" style={fade(0.1)}>
               <div className="mx-auto mb-4 flex justify-center">

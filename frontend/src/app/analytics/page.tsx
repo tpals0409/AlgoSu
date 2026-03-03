@@ -283,7 +283,7 @@ export default function AnalyticsPage(): ReactNode {
               <ArrowLeft className="h-3.5 w-3.5" />
             </Link>
             <div>
-              <h1 className="text-base font-semibold text-text">
+              <h1 className="text-[22px] font-bold tracking-tight text-text">
                 {currentStudyName ? `${currentStudyName} · 통계` : '통계'}
               </h1>
               <p className="mt-0.5 font-mono text-[10px] text-text-3">

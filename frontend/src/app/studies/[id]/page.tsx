@@ -700,7 +700,7 @@ function OverviewTab({ study, stats, members }: OverviewTabProps): ReactNode {
                 {(['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND'] as const).map((tier) => (
                   <div key={tier} className="flex items-center gap-2">
                     <span className="w-16 text-[10px] font-mono text-text-3">{tier}</span>
-                    <div className="flex-1 h-2 rounded-full bg-border">
+                    <div className="flex-1 h-2 rounded-full bg-bg-alt">
                       <div
                         className="h-2 rounded-full"
                         style={{ width: '0%', backgroundColor: `var(--diff-${tier.toLowerCase()}-color)` }}

@@ -1,5 +1,5 @@
 // AlgoSu — Conventional Commits 강제 (ci-cd-rules.md §2)
-module.exports = {
+export default {
   extends: ['@commitlint/config-conventional'],
   rules: {
     'type-enum': [

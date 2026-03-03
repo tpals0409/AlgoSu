@@ -307,7 +307,7 @@ export default function StudyRoomPage(): ReactElement {
             </div>
 
             {/* 안내 배너 */}
-            <div className="mb-4 flex items-center gap-2 rounded-card border border-info bg-info-soft px-4 py-2.5">
+            <div className="mb-4 flex items-center gap-2 rounded-card border border-info/30 bg-info-soft px-4 py-2.5">
               <AlertCircle className="h-3.5 w-3.5 text-info" />
               <span className="text-xs text-text-2">
                 마감 전 코드는 본인만 볼 수 있으며, 마감 후 전체 공개됩니다.

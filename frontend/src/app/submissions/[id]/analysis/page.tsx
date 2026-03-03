@@ -251,13 +251,12 @@ export default function AnalysisPage(): ReactNode {
         <div className="flex items-center gap-3">
           <Link
             href="/submissions"
-            className="flex items-center justify-center rounded-btn bg-bg-alt text-text-3 transition-colors hover:text-text"
-            style={{ width: '28px', height: '28px' }}
+            className="flex items-center justify-center w-7 h-7 rounded-btn bg-bg-alt text-text-3 transition-colors hover:text-text"
           >
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
           </Link>
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-bold tracking-tight text-text">AI 코드 분석 결과</h1>
+            <h1 className="text-[22px] font-bold tracking-tight text-text">AI 코드 분석 결과</h1>
             <p className="mt-0.5 font-mono text-[10px] text-text-3">
               {submission?.problemTitle ?? `제출 ${submissionId.slice(0, 8)}`}
               {submission && ` · ${submission.language}`}
@@ -519,9 +518,9 @@ export default function AnalysisPage(): ReactNode {
                           >
                             <span
                               className={`w-10 min-w-[40px] text-right pr-3 text-xs font-mono leading-[22px] select-none ${
-                                isHL ? 'opacity-80 font-semibold' : 'opacity-40'
+                                isHL ? 'opacity-80 font-semibold text-text' : 'opacity-40 text-text-3'
                               }`}
-                              style={{ paddingTop: i === 0 ? '14px' : 0, paddingBottom: i === lines.length - 1 ? '14px' : 0, color: isHL ? 'var(--text)' : 'var(--text3)' }}
+                              style={{ paddingTop: i === 0 ? '14px' : 0, paddingBottom: i === lines.length - 1 ? '14px' : 0 }}
                             >
                               {i + 1}
                             </span>

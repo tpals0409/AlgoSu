@@ -27,7 +27,7 @@ import { LANGUAGES } from '@/lib/constants';
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
   loading: () => (
-    <div className="flex h-[480px] w-full items-center justify-center rounded-m border border-border bg-bg-card">
+    <div className="flex h-[480px] w-full items-center justify-center rounded-md border border-border bg-bg-card">
       <span className="text-sm text-text-2">에디터 로딩 중...</span>
     </div>
   ),

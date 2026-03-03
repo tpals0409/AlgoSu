@@ -619,8 +619,8 @@ export default function ProfilePage(): ReactNode {
 
         {/* 계정 삭제 확인 다이얼로그 */}
         {showDeleteConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="w-full max-w-sm rounded-card border border-border bg-bg-card p-6 shadow-lg">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm">
+            <div className="w-full max-w-sm rounded-card border border-border bg-bg-card p-6 shadow-modal">
               <h3 className="text-[15px] font-bold text-error mb-2">정말 계정을 삭제하시겠습니까?</h3>
               <p className="text-[12px] text-text-3 mb-5">
                 이 작업은 되돌릴 수 없습니다. 모든 데이터(제출, 스터디, 프로필)가 영구 삭제됩니다.
