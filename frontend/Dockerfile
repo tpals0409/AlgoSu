@@ -9,7 +9,9 @@ COPY . .
 RUN npm run build
 
 FROM node:20-alpine AS runner
-RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
+RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001 \
+    && npm uninstall -g npm \
+    && rm -rf /usr/local/lib/node_modules/npm /opt/yarn-* /usr/local/lib/node_modules/corepack
 WORKDIR /app
 
 # Next.js standalone 출력물 복사
