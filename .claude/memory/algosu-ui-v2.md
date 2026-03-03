@@ -1,7 +1,7 @@
 # AlgoSu UI ver2 — 전면 교체 디자인
 
 ## 원본 경로
-`/Users/leokim/Desktop/UI ver2/` (10개 JSX, 253KB)
+`/root/AlgoSu/plan/UI ver2/` (10개 JSX, 253KB) *(원본: Mac `/Users/leokim/Desktop/UI ver2/`)*
 
 ## 파일 목록 & 페이지 매핑
 
@@ -177,14 +177,14 @@
 ### 코드 규칙 (v2 추가, PM 확정)
 - **클린 코드 기반**: 의미 있는 네이밍, 함수 단일 책임, 작은 함수(20줄 이내), DRY, 에러 핸들링 분리, 일관된 추상화 수준
 - **SOLID 원칙 적용**: SRP, OCP, LSP, ISP, DIP
-- **Prometheus + Loki 통합 규칙**: `/Users/leokim/Desktop/추가사항 문서/prometheus-loki-unified-convention.md`
+- **Prometheus + Loki 통합 규칙**: `/root/AlgoSu/docs/monitoring-log-rules.md` *(원본: Mac 추가사항 문서)*
   - Prometheus: `snake_case`, 단위 접미사 필수(`_seconds`, `_bytes`, `_total`), 카디널리티 ≤100, Summary 금지→Histogram
   - Loki: JSON 구조화 로깅 필수, 데이터는 extra 필드 분리, 고유값 라벨 금지→본문 JSON
   - 공통: user_id/request_id 라벨 금지, 민감정보 마스킹, trace_id로 메트릭↔로그 연동
   - 메트릭 정의: 모듈 상단(전역), 비즈니스 메트릭은 서비스 레이어
   - 로그 레벨: DEBUG(개발만)/INFO(비즈니스)/WARN(잠재 문제)/ERROR(실패)/FATAL(서비스 불가)
 - **주석 필수** + 어노테이션 체계:
-  - **사전 문서**: `/Users/leokim/Desktop/AlgoSu/docs/annotation-dictionary.md` (상시 갱신)
+  - **사전 문서**: `/root/AlgoSu/docs/annotation-dictionary.md` (상시 갱신)
   - 파일 헤더 필수: `@file`, `@domain`, `@layer`, `@related`
   - 함수/컴포넌트 JSDoc 필수: `@domain`, `@param`, `@returns`
   - 태그 7종: `@domain`(도메인), `@layer`(계층), `@related`(연관 참조), `@event`(이벤트 핸들러), `@guard`(접근 제어), `@api`(엔드포인트), `@todo(Agent)`(미완료)
@@ -224,7 +224,7 @@
   - Agent 기록: 10KB 상한, 2 Sprint 이전 요약만
   - Skill: 폐기 지시 삭제 (주석처리 금지)
   - archive/: 3 Sprint 경과 시 삭제
-- **상세 문서**: `/Users/leokim/Desktop/AlgoSu/docs/work-progress-guide.md`
+- **상세 문서**: `/root/AlgoSu/docs/work-progress-guide.md`
 
 ### 시나리오 결정 사항 (PM 확정, 2026-03-02)
 

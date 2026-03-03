@@ -9,11 +9,10 @@
 - PM 허락 필요 항목: 아키텍처 v3 변경, Phase 순서/범위 변경, 기능 축소/제거, 예산 결정, 보안 사고, 4시간 이상 미해소 블로커
 
 ## 프로젝트 상태
-- 루트 경로: /Users/leokim/Desktop/AlgoSu/
-- 기획 문서: /Users/leokim/Desktop/AlgoSu/plan/
-- Day 1 완료 (2026-02-27): 인프라 기반 (k3s, Gateway, DB Migration 초기 구조)
-- Day 2 예정 (미착수): Librarian(problems/identity 테이블), Gatekeeper(Rate Limit/라우팅), Curator(Problem Service 초기화)
-- 상세 세션 기록: /Users/leokim/.claude/projects/-Users-leokim/memory/algoso-session.md
+- 루트 경로: /root/AlgoSu/
+- 기획 문서: /root/AlgoSu/plan/
+- 상태: UI v2 전면 교체 + k3d 배포 검증 완료 (2026-03-02, HEAD: 026b469)
+- 상세 세션 기록: /root/.claude/projects/-root/memory/algosu-session.md
 
 ## 자율 운영 시 행동 원칙
 
@@ -29,11 +28,11 @@
 - SQL 파라미터 바인딩, 화이트리스트 검증 준수
 
 ### 3. Discord 응답 방식
-- 도구: /Users/leokim/.claude/discord-send.sh
-  - oracle 채널: `/Users/leokim/.claude/discord-send.sh oracle "메시지"`
-  - 보고: `/Users/leokim/.claude/discord-send.sh report "메시지"`
-  - 승인 요청: `/Users/leokim/.claude/discord-send.sh approval "메시지"`
-  - 긴급: `/Users/leokim/.claude/discord-send.sh emergency "메시지"`
+- 도구: ~/.claude/discord-send.sh
+  - oracle 채널: `~/.claude/discord-send.sh oracle "메시지"`
+  - 보고: `~/.claude/discord-send.sh report "메시지"`
+  - 승인 요청: `~/.claude/discord-send.sh approval "메시지"`
+  - 긴급: `~/.claude/discord-send.sh emergency "메시지"`
 - 응답은 반드시 Discord로 전송 (출력만으로 끝내지 말 것)
 - 2000자 초과 시 분할 전송
 - 태그 규칙: [작업완료] [승인필요] [긴급] [답변] [현황]

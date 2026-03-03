@@ -1,35 +1,40 @@
-"""GeminiClient 단위 테스트 (5개)
+"""ClaudeClient 단위 테스트 (6개)
 
-Mock: google.generativeai, CircuitBreaker
-unittest.mock.patch로 genai 모킹.
+Mock: anthropic, CircuitBreaker
+unittest.mock.patch로 anthropic 모킹.
 """
 
+import json
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 
 
 @pytest.fixture
-def mock_genai():
-    """google.generativeai 모킹"""
-    with patch("src.gemini_client.genai") as mock:
-        mock_model = MagicMock()
-        mock.GenerativeModel.return_value = mock_model
-        yield mock, mock_model
+def mock_anthropic():
+    """anthropic.Anthropic 모킹"""
+    with patch("src.claude_client.anthropic") as mock:
+        mock_client = MagicMock()
+        mock.Anthropic.return_value = mock_client
+        # RateLimitError를 실제 Exception 서브클래스로 설정
+        mock.RateLimitError = type('RateLimitError', (Exception,), {})
+        yield mock, mock_client
 
 
 @pytest.fixture
 def mock_circuit_breaker():
     """모듈 레벨 circuit_breaker 모킹"""
-    with patch("src.gemini_client.circuit_breaker") as mock_cb:
+    with patch("src.claude_client.circuit_breaker") as mock_cb:
         mock_cb.can_execute.return_value = True
         yield mock_cb
 
 
 @pytest.fixture
-def client(mock_genai, mock_circuit_breaker):
-    """GeminiClient 인스턴스 (모든 의존성 모킹)"""
-    from src.gemini_client import GeminiClient
-    return GeminiClient()
+def client(mock_anthropic, mock_circuit_breaker):
+    """ClaudeClient 인스턴스 (모든 의존성 모킹)"""
+    with patch("src.claude_client.settings") as mock_settings:
+        mock_settings.anthropic_api_key = "test-api-key"
+        from src.claude_client import ClaudeClient
+        return ClaudeClient()
 
 
 class TestAnalyzeCodeSuccess:
@@ -37,23 +42,32 @@ class TestAnalyzeCodeSuccess:
 
     @pytest.mark.asyncio
     async def test_normal_analysis_returns_completed(
-        self, client, mock_genai, mock_circuit_breaker
+        self, client, mock_anthropic, mock_circuit_breaker
     ):
-        _, mock_model = mock_genai
+        _, mock_client = mock_anthropic
 
-        # generate_content 응답 모킹
-        mock_response = MagicMock()
-        mock_response.text = "좋은 코드입니다. 시간복잡도는 O(n)입니다."
-        mock_model.generate_content.return_value = mock_response
+        # messages.create 응답 모킹
+        mock_content = MagicMock()
+        mock_content.text = json.dumps({
+            "totalScore": 85,
+            "summary": "좋은 코드입니다. 시간복잡도는 O(n)입니다.",
+            "categories": [
+                {"name": "correctness", "score": 90, "comment": "정확함", "highlights": []},
+            ],
+            "optimizedCode": "def solution(n): return n * 2",
+        })
+        mock_message = MagicMock()
+        mock_message.content = [mock_content]
+        mock_client.messages.create.return_value = mock_message
 
         result = await client.analyze_code(
             code='def solution(n): return n * 2',
             language='python',
-            problem_context='두 배 반환',
+            problem_title='두 배 반환',
         )
 
         assert result["status"] == "completed"
-        assert result["feedback"] == "좋은 코드입니다. 시간복잡도는 O(n)입니다."
+        assert result["score"] == 85
         mock_circuit_breaker.record_success.assert_called_once()
 
 
@@ -62,7 +76,7 @@ class TestAnalyzeCodeCircuitBreakerOpen:
 
     @pytest.mark.asyncio
     async def test_circuit_breaker_open_returns_delayed(
-        self, client, mock_genai, mock_circuit_breaker
+        self, client, mock_anthropic, mock_circuit_breaker
     ):
         mock_circuit_breaker.can_execute.return_value = False
 
@@ -72,21 +86,21 @@ class TestAnalyzeCodeCircuitBreakerOpen:
         )
 
         assert result["status"] == "delayed"
-        assert "지연" in result["feedback"] or "일시적" in result["feedback"]
-        # Gemini API가 호출되지 않아야 함
-        _, mock_model = mock_genai
-        mock_model.generate_content.assert_not_called()
+        assert "일시적" in result["feedback"]
+        # Claude API가 호출되지 않아야 함
+        _, mock_client = mock_anthropic
+        mock_client.messages.create.assert_not_called()
 
 
 class TestAnalyzeCodeApiError:
-    """3. analyze_code() -- Gemini API 오류: status='failed', record_failure 호출"""
+    """3. analyze_code() -- Claude API 오류: status='failed', record_failure 호출"""
 
     @pytest.mark.asyncio
     async def test_api_error_returns_failed(
-        self, client, mock_genai, mock_circuit_breaker
+        self, client, mock_anthropic, mock_circuit_breaker
     ):
-        _, mock_model = mock_genai
-        mock_model.generate_content.side_effect = Exception("API rate limit exceeded")
+        _, mock_client = mock_anthropic
+        mock_client.messages.create.side_effect = Exception("API rate limit exceeded")
 
         result = await client.analyze_code(
             code='print("hello")',
@@ -99,30 +113,34 @@ class TestAnalyzeCodeApiError:
 
 
 class TestBuildPrompt:
-    """4. _build_prompt() -- 프롬프트 포맷: 언어, 코드, 컨텍스트 포함"""
+    """4. build_user_prompt() -- 프롬프트 포맷: 언어, 코드, 컨텍스트 포함"""
 
-    def test_prompt_contains_language_code_context(self, client):
+    def test_prompt_contains_language_code_context(self):
+        from src.prompt import build_user_prompt
+
         code = 'def two_sum(nums, target): pass'
         language = 'python'
-        context = 'Two Sum 문제'
 
-        prompt = client._build_prompt(code, language, context)
+        prompt = build_user_prompt(
+            code=code,
+            language=language,
+            problem_title='Two Sum 문제',
+            problem_description='두 수의 합',
+        )
 
         assert language in prompt
         assert code in prompt
-        assert context in prompt
-        # 프롬프트 구조 확인
-        assert "알고리즘" in prompt
-        assert "시간 복잡도" in prompt
-        assert "공간 복잡도" in prompt
+        assert 'Two Sum 문제' in prompt
 
-    def test_prompt_without_context(self, client):
-        prompt = client._build_prompt('x = 1', 'python', '')
+    def test_prompt_without_context(self):
+        from src.prompt import build_user_prompt
+
+        prompt = build_user_prompt(code='x = 1', language='python')
 
         assert 'x = 1' in prompt
         assert 'python' in prompt
-        # 빈 컨텍스트일 때 "문제 컨텍스트:" 가 포함되지 않아야 함
-        assert "문제 컨텍스트:" not in prompt
+        # 빈 컨텍스트일 때 "문제 정보:" 가 포함되지 않아야 함
+        assert "문제 정보:" not in prompt
 
 
 class TestSecurityCodeLogLimit:
@@ -130,17 +148,24 @@ class TestSecurityCodeLogLimit:
 
     @pytest.mark.asyncio
     async def test_long_code_logged_with_50_char_limit(
-        self, client, mock_genai, mock_circuit_breaker
+        self, client, mock_anthropic, mock_circuit_breaker
     ):
-        _, mock_model = mock_genai
+        _, mock_client = mock_anthropic
 
-        mock_response = MagicMock()
-        mock_response.text = "분석 결과"
-        mock_model.generate_content.return_value = mock_response
+        mock_content = MagicMock()
+        mock_content.text = json.dumps({
+            "totalScore": 70,
+            "summary": "분석 결과",
+            "categories": [],
+            "optimizedCode": None,
+        })
+        mock_message = MagicMock()
+        mock_message.content = [mock_content]
+        mock_client.messages.create.return_value = mock_message
 
         long_code = "x" * 100  # 100자 코드
 
-        with patch("src.gemini_client.logger") as mock_logger:
+        with patch("src.claude_client.logger") as mock_logger:
             result = await client.analyze_code(
                 code=long_code,
                 language='python',

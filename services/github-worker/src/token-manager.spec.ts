@@ -23,6 +23,22 @@ jest.mock('@octokit/auth-app', () => ({
 const mockFetch = jest.fn();
 global.fetch = mockFetch as unknown as typeof fetch;
 
+// config 모킹 — 모듈 로드 시 환경변수 체크 우회
+jest.mock('./config', () => ({
+  config: {
+    rabbitmqUrl: 'amqp://localhost',
+    redisUrl: 'redis://localhost:6379',
+    gatewayInternalUrl: 'http://gateway:3000',
+    internalKeyGateway: '',
+    submissionServiceUrl: 'http://submission-service:3003',
+    submissionServiceKey: '',
+    maxRetries: 3,
+    retryDelayMs: 5000,
+    githubAppId: '12345',
+    githubAppPrivateKeyBase64: Buffer.from('fake-private-key').toString('base64'),
+  },
+}));
+
 // setInterval/clearInterval 모킹
 jest.useFakeTimers();
 
@@ -123,14 +139,22 @@ describe('TokenManager', () => {
 
   // 4. 환경변수 미설정: Error throw
   it('fetchAndCacheToken() -- 환경변수 미설정: Error throw', async () => {
-    delete process.env['GITHUB_APP_ID'];
-    delete process.env['GITHUB_APP_PRIVATE_KEY_BASE64'];
+    // config mock의 값을 비워서 환경변수 미설정 상태 시뮬레이션
+    const { config: mockConfig } = require('./config');
+    const origAppId = mockConfig.githubAppId;
+    const origKey = mockConfig.githubAppPrivateKeyBase64;
+    mockConfig.githubAppId = '';
+    mockConfig.githubAppPrivateKeyBase64 = '';
 
     mockRedisGet.mockResolvedValue(null);
 
     await expect(tokenManager.getTokenForRepo('owner', 'repo')).rejects.toThrow(
-      'GitHub App 환경변수가 설정되지 않았습니다.',
+      'GitHub App 환경변수가 설정되지 않았습니다',
     );
+
+    // 복원
+    mockConfig.githubAppId = origAppId;
+    mockConfig.githubAppPrivateKeyBase64 = origKey;
   });
 
   // 5. App 미설치 404: TOKEN_INVALID

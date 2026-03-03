@@ -7,11 +7,11 @@
 ## 파일 경로
 | 파일 | 경로 |
 |---|---|
-| MSA 아키텍처 설계서 (v3) | `/Users/leokim/Desktop/AlgoSu/plan/Project Plan/AlgoSu_MSA_Architecture_v3.md` |
-| TF 킥오프 계획서 | `/Users/leokim/Desktop/AlgoSu/plan/Kick Off/AlgoSu_TF_Kickoff_Plan.md` |
-| Agent 페르소나 프롬프트 | `/Users/leokim/Desktop/AlgoSu/plan/Persona Prompt/AlgoSu_TF_Persona_Prompts.md` |
-| UI 디자인 시스템 | `/Users/leokim/Desktop/AlgoSu/plan/UI Mockup/algosu-ui-design.html` |
-| 코드 규칙 문서 | `/Users/leokim/Desktop/AlgoSu/plan/Code Rules/AlgoSu_Code_Conventions.md` |
+| MSA 아키텍처 설계서 (v3) | `/root/AlgoSu/plan/Project Plan/AlgoSu_MSA_Architecture_v3.md` |
+| TF 킥오프 계획서 | `/root/AlgoSu/plan/Kick Off/AlgoSu_TF_Kickoff_Plan.md` |
+| Agent 페르소나 프롬프트 | `/root/AlgoSu/plan/Persona Prompt/AlgoSu_TF_Persona_Prompts.md` |
+| UI 디자인 시스템 | `/root/AlgoSu/plan/UI Mockup/algosu-ui-design.html` |
+| 코드 규칙 문서 | `/root/AlgoSu/plan/Code Rules/AlgoSu_Code_Conventions.md` |
 
 ## 마이크로서비스 구성 (5개)
 | 서비스 | 역할 | 기술 |

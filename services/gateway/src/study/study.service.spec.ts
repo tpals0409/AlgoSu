@@ -14,6 +14,7 @@ const mockRedis = {
   get: jest.fn().mockResolvedValue(null),
   del: jest.fn().mockResolvedValue(1),
   keys: jest.fn().mockResolvedValue([]),
+  on: jest.fn().mockReturnThis(),
 };
 
 jest.mock('ioredis', () => {
@@ -92,6 +93,7 @@ describe('StudyService', () => {
       find: jest.fn(),
       findOne: jest.fn(),
       delete: jest.fn(),
+      count: jest.fn().mockResolvedValue(5),
     };
 
     inviteRepository = {
@@ -149,6 +151,7 @@ describe('StudyService', () => {
       expect(studyRepository.create).toHaveBeenCalledWith({
         name: 'AlgoSu 스터디',
         description: '알고리즘 스터디',
+        github_repo: null,
         created_by: USER_ID,
         status: StudyStatus.ACTIVE,
       });
@@ -276,7 +279,7 @@ describe('StudyService', () => {
   // 8. createInvite
   // ============================
   describe('createInvite', () => {
-    it('ADMIN — 초대 코드 발급 (8자리 + 24시간 만료)', async () => {
+    it('ADMIN — 초대 코드 발급 (8자리 + 5분 만료)', async () => {
       memberRepository.findOne.mockResolvedValue(mockAdminMember);
       inviteRepository.save.mockImplementation((invite: StudyInvite) =>
         Promise.resolve(invite),
@@ -288,9 +291,9 @@ describe('StudyService', () => {
       expect(result.code.length).toBe(8);
       expect(result.expires_at).toBeDefined();
 
-      // 24시간 후 만료 확인 (오차 허용 1분)
+      // 5분 후 만료 확인 (오차 허용 1분)
       const expectedExpiry = new Date();
-      expectedExpiry.setHours(expectedExpiry.getHours() + 24);
+      expectedExpiry.setMinutes(expectedExpiry.getMinutes() + 5);
       const diffMs = Math.abs(result.expires_at.getTime() - expectedExpiry.getTime());
       expect(diffMs).toBeLessThan(60_000);
 

@@ -1,8 +1,8 @@
 AlgoSu MSA 아키텍처 설계 문서를 읽고 관련 질문에 답하거나 작업을 수행합니다.
 
-기본 문서: /Users/leokim/Desktop/AlgoSu/plan/Project Plan/AlgoSu_MSA_Architecture_v3.md
-Oracle 결정 v1.1: /Users/leokim/Desktop/추가사항 문서/AlgoSu_Oracle_Decisions_Update_v1.1.md
-Oracle 결정 v1.2: /Users/leokim/Desktop/추가사항 문서/AlgoSu_Oracle_Decisions_Update_v1.2.md
+기본 문서: /root/AlgoSu/plan/Project Plan/AlgoSu_MSA_Architecture_v3.md
+Oracle 결정 v1.1: /root/AlgoSu/plan/추가사항 문서/AlgoSu_Oracle_Decisions_Update_v1.1.md
+Oracle 결정 v1.2: /root/AlgoSu/plan/추가사항 문서/AlgoSu_Oracle_Decisions_Update_v1.2.md
 
 이 문서들을 참조하여 다음 내용을 도와주세요:
 - 마이크로서비스 설계 및 구조
@@ -21,6 +21,6 @@ Oracle 결정 v1.2: /Users/leokim/Desktop/추가사항 문서/AlgoSu_Oracle_Deci
 - **GitHub 2단계 연동** (1차 소셜 로그인 → 2차 GitHub 필수)
 
 ### 모니터링 로그 규칙
-- 모니터링 로그 규칙: `/Users/leokim/Desktop/AlgoSu/docs/monitoring-log-rules.md`
+- 모니터링 로그 규칙: `/root/AlgoSu/docs/monitoring-log-rules.md`
 
 사용자의 요청: $ARGUMENTS
