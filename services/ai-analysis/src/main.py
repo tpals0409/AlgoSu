@@ -7,6 +7,7 @@ AlgoSu AI Analysis Service -- FastAPI 메인
 @related ClaudeClient, AIAnalysisWorker, prompt
 """
 
+import hmac
 import logging
 import threading
 from datetime import date
@@ -107,7 +108,7 @@ async def cb_status(
     @api GET /circuit-breaker/status
     @guard internal-key
     """
-    if x_internal_key != settings.internal_api_key:
+    if not hmac.compare_digest(x_internal_key or "", settings.internal_api_key):
         raise HTTPException(status_code=401, detail="Invalid Internal Key")
 
     return {
@@ -133,7 +134,7 @@ async def get_quota(
     @guard internal-key
     @guard ai-quota
     """
-    if x_internal_key != settings.internal_api_key:
+    if not hmac.compare_digest(x_internal_key or "", settings.internal_api_key):
         raise HTTPException(status_code=401, detail="Invalid Internal Key")
 
     if not user_id:
@@ -171,7 +172,7 @@ async def check_and_increment_quota(
     @guard ai-quota
     @returns: { allowed: bool, used: N, limit: 5 }
     """
-    if x_internal_key != settings.internal_api_key:
+    if not hmac.compare_digest(x_internal_key or "", settings.internal_api_key):
         raise HTTPException(status_code=401, detail="Invalid Internal Key")
 
     if not user_id:
@@ -236,7 +237,7 @@ async def group_analysis(
     @guard internal-key
     @domain ai
     """
-    if x_internal_key != settings.internal_api_key:
+    if not hmac.compare_digest(x_internal_key or "", settings.internal_api_key):
         raise HTTPException(status_code=401, detail="Invalid Internal Key")
 
     # Submission Service에서 해당 문제의 전체 제출 조회

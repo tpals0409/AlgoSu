@@ -49,7 +49,7 @@ export class OAuthService {
     this.redis = new Redis(redisUrl);
     this.redis.on('error', (err: Error) => {
       // M11: Redis 연결 에러 핸들링 — 프로세스 크래시 방지, fail-closed 보장
-      console.error(`[OAuthService] Redis 연결 오류: ${err.message}`);
+      process.stdout.write(JSON.stringify({ level: 'error', context: 'OAuthService', message: `Redis 연결 오류: ${err.message}` }) + '\n');
     });
     this.jwtSecret = this.configService.getOrThrow<string>('JWT_SECRET');
     this.jwtExpiresIn = this.configService.get<string>('JWT_EXPIRES_IN', '1h');

@@ -26,6 +26,9 @@ import { CreateStudyDto } from './dto/create-study.dto';
 import { JoinStudyDto } from './dto/join-study.dto';
 import { UpdateGroundRulesDto } from './dto/update-ground-rules.dto';
 import { UpdateNicknameDto } from './dto/update-nickname.dto';
+import { UpdateStudyDto } from './dto/update-study.dto';
+import { VerifyInviteDto } from './dto/verify-invite.dto';
+import { NotifyProblemDto } from './dto/notify-problem.dto';
 import { StudyActiveGuard } from '../common/guards/study-active.guard';
 
 @Controller('api/studies')
@@ -81,7 +84,7 @@ export class StudyController {
   async update(
     @Param('id', ParseUUIDPipe) studyId: string,
     @Req() req: Request,
-    @Body() body: { name?: string; description?: string },
+    @Body() body: UpdateStudyDto,
   ): Promise<Study> {
     const userId = req.headers['x-user-id'] as string;
     return this.studyService.updateStudy(studyId, userId, body);
@@ -142,7 +145,7 @@ export class StudyController {
   @Post('verify-invite')
   async verifyInvite(
     @Req() req: Request,
-    @Body() body: { code: string },
+    @Body() body: VerifyInviteDto,
   ): Promise<{ valid: boolean; studyName: string }> {
     const ip = req.ip ?? req.socket.remoteAddress ?? 'unknown';
     return this.studyService.verifyInviteCode(body.code, ip);
@@ -267,7 +270,7 @@ export class StudyController {
   async notifyProblemCreated(
     @Param('id', ParseUUIDPipe) studyId: string,
     @Req() req: Request,
-    @Body() body: { problemId: string; problemTitle: string; weekNumber: string },
+    @Body() body: NotifyProblemDto,
   ): Promise<{ message: string }> {
     const userId = req.headers['x-user-id'] as string;
     await this.studyService.notifyProblemCreated(
