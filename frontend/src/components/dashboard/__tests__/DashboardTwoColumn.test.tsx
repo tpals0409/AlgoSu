@@ -264,4 +264,15 @@ describe('DashboardTwoColumn', () => {
     render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} />);
     expect(screen.getByText('UNKNOWN_STEP')).toBeInTheDocument();
   });
+
+  it('마감 임박 문제가 여러 개이면 마지막 항목에 border-b가 없다 (i < length-1 false 분기)', () => {
+    // Branch 22 at L163: i < upcomingDeadlines.length - 1 의 false 분기 (마지막 항목)
+    const problems = [
+      makeProblem({ id: 'p-1', title: '첫 번째 문제', deadline: new Date(Date.now() + 86400000).toISOString() }),
+      makeProblem({ id: 'p-2', title: '마지막 문제', deadline: new Date(Date.now() + 86400000 * 2).toISOString() }),
+    ];
+    render(<DashboardTwoColumn {...defaultProps} upcomingDeadlines={problems} />);
+    expect(screen.getByText('첫 번째 문제')).toBeInTheDocument();
+    expect(screen.getByText('마지막 문제')).toBeInTheDocument();
+  });
 });

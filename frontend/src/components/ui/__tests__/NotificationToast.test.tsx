@@ -174,6 +174,24 @@ describe('NotificationToast', () => {
     expect(onRead).toHaveBeenCalledWith('n-1');
   });
 
+  it('Enter 외 키로는 토스트 클릭 동작이 실행되지 않는다', () => {
+    const onRead = jest.fn();
+    const notification = makeNotification();
+    render(
+      <NotificationToast notification={notification} onDismiss={jest.fn()} onRead={onRead} />,
+    );
+
+    act(() => { jest.advanceTimersByTime(100); });
+
+    const buttons = screen.getAllByRole('button');
+    const toastBody = buttons.find((el) => el.getAttribute('tabindex') === '0')!;
+    // Space 키는 handleClick을 호출하지 않아야 한다
+    fireEvent.keyDown(toastBody, { key: ' ' });
+    fireEvent.keyDown(toastBody, { key: 'Escape' });
+
+    expect(onRead).not.toHaveBeenCalled();
+  });
+
   it('showTimer 실행 시 toast가 null이면 null을 유지한다 (prev null 분기)', () => {
     // 알림을 표시 후 즉시 null로 변경하여 showTimer가 실행될 때 toast가 null인 상태 시뮬레이션
     const onDismiss = jest.fn();

@@ -124,4 +124,17 @@ describe('StudySidebar', () => {
     const { container } = render(<StudySidebar />);
     expect(container.innerHTML).toBe('');
   });
+
+  it('currentStudyName이 null이면 "스터디" 텍스트를 표시한다', () => {
+    mockUseStudy.mockReturnValue({
+      currentStudyId: 'study-1',
+      currentStudyName: null,
+      currentStudyRole: 'ADMIN',
+      studies: [{ id: 'study-1', name: 'Test Study' }],
+      setCurrentStudy: mockSetCurrentStudy,
+    });
+    render(<StudySidebar />);
+    // currentStudyName ?? '스터디' 분기: null일 때 '스터디' 표시
+    expect(screen.getByRole('button', { name: '스터디 전환' })).toHaveTextContent('스터디');
+  });
 });

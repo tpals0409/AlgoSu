@@ -49,12 +49,27 @@ jest.mock('@/hooks/useNotificationSSE', () => ({
   }),
 }));
 
+let capturedOnDismiss: (() => void) | null = null;
+let capturedOnRead: ((id: string) => void) | null = null;
+
 jest.mock('@/components/ui/NotificationToast', () => ({
-  NotificationToast: ({ notification }: { notification: Notification | null }) => (
-    <div data-testid="notification-toast">
-      {notification ? notification.title : ''}
-    </div>
-  ),
+  NotificationToast: ({
+    notification,
+    onDismiss,
+    onRead,
+  }: {
+    notification: Notification | null;
+    onDismiss: () => void;
+    onRead: (id: string) => void;
+  }) => {
+    capturedOnDismiss = onDismiss;
+    capturedOnRead = onRead;
+    return (
+      <div data-testid="notification-toast">
+        {notification ? notification.title : ''}
+      </div>
+    );
+  },
 }));
 
 // ─── 헬퍼: 다양한 시간의 알림 생성 ───────────────────────
@@ -94,6 +109,8 @@ describe('NotificationBell', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     capturedSSECallback = null;
+    capturedOnDismiss = null;
+    capturedOnRead = null;
     mockUnreadCount.mockResolvedValue({ count: 0 });
     mockList.mockResolvedValue([]);
     mockMarkRead.mockResolvedValue(undefined);
@@ -531,5 +548,80 @@ describe('NotificationBell', () => {
     await act(async () => {
       resolveList([]);
     });
+  });
+
+  // ─── NotificationToast onDismiss / onRead 콜백 (366-367) ─────────────────
+
+  it('handleMarkRead 시 ID가 일치하지 않는 알림은 그대로 유지된다 (n.id !== notificationId 분기)', async () => {
+    // Branch 5 at line 174: cond-expr 의 ELSE 분기 커버
+    const notif1 = makeNotification({ id: 'n-1', title: 'First', read: false });
+    const notif2 = makeNotification({ id: 'n-2', title: 'Second', read: false });
+    mockList.mockResolvedValue([notif1, notif2]);
+    await act(async () => {
+      render(<NotificationBell />);
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /알림/ }));
+    });
+    // n-1을 읽음 처리: n-2는 그대로 유지됨 (else 분기)
+    const menuItems = screen.getAllByRole('menuitem');
+    await act(async () => {
+      fireEvent.click(menuItems[0]);
+    });
+    expect(mockMarkRead).toHaveBeenCalledWith('n-1');
+  });
+
+  it('NotificationBell 내부 클릭 시 드롭다운이 유지된다 (ref.current.contains() = true 분기)', async () => {
+    // Branch 6 at line 200: if (ref.current && !ref.current.contains(e.target)) 의 false 분기
+    mockList.mockResolvedValue([]);
+    await act(async () => {
+      render(<NotificationBell />);
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /알림/ }));
+    });
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+    // 내부 요소에 mouseDown → contains()가 true → setOpen(false) 미호출
+    const menu = screen.getByRole('menu');
+    await act(async () => {
+      fireEvent.mouseDown(menu);
+    });
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+  });
+
+  it('NotificationToast의 onDismiss 콜백이 toastNotification을 null로 초기화한다', async () => {
+    mockUnreadCount.mockResolvedValue({ count: 0 });
+    await act(async () => {
+      render(<NotificationBell />);
+    });
+    // SSE로 알림 수신하여 toastNotification 설정
+    const sseNotif = makeNotification({ id: 'toast-1', title: '토스트 알림' });
+    await act(async () => {
+      capturedSSECallback?.(sseNotif);
+    });
+    // 토스트가 표시됨
+    expect(screen.getByTestId('notification-toast')).toHaveTextContent('토스트 알림');
+    // onDismiss 콜백 직접 호출 → toastNotification이 null이 됨
+    await act(async () => {
+      capturedOnDismiss?.();
+    });
+    expect(screen.getByTestId('notification-toast')).toHaveTextContent('');
+  });
+
+  it('NotificationToast의 onRead 콜백이 handleMarkRead를 호출한다', async () => {
+    mockUnreadCount.mockResolvedValue({ count: 0 });
+    await act(async () => {
+      render(<NotificationBell />);
+    });
+    // SSE로 알림 수신하여 toastNotification 설정
+    const sseNotif = makeNotification({ id: 'read-1', title: '읽음 알림' });
+    await act(async () => {
+      capturedSSECallback?.(sseNotif);
+    });
+    // onRead 콜백 직접 호출 → handleMarkRead('read-1') 호출
+    await act(async () => {
+      capturedOnRead?.('read-1');
+    });
+    expect(mockMarkRead).toHaveBeenCalledWith('read-1');
   });
 });

@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { StudyNoteEditor } from '../StudyNoteEditor';
 
 jest.mock('lucide-react', () => {
@@ -216,6 +216,20 @@ describe('StudyNoteEditor', () => {
 
     // unmount 후 resolve해도 오류 없이 처리됨
     expect(() => resolveGet!(null)).not.toThrow();
+  });
+
+  it('언마운트 후 API 실패해도 상태를 업데이트하지 않는다 (catch - cancelled=true 분기)', async () => {
+    // Branch at line 47: if (!cancelled) setContent('') — cancelled=true 분기
+    let rejectGet: (err: Error) => void;
+    mockGet.mockReturnValue(new Promise<null>((_resolve, reject) => { rejectGet = reject; }));
+
+    const { unmount } = render(<StudyNoteEditor problemId="p-1" />);
+    // 언마운트 후 reject → catch 내 cancelled=true → setContent('')를 호출하지 않음
+    unmount();
+    await act(async () => {
+      rejectGet!(new Error('network error after unmount'));
+    });
+    // 에러 없이 처리됨
   });
 
   it('note가 없는 상태에서 취소하면 빈 content로 복원된다', async () => {

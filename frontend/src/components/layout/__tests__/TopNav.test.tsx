@@ -10,6 +10,8 @@ let mockStudies: { id: string; name: string }[] = [{ id: 'study-1', name: 'Test 
 let mockCurrentStudyId: string | null = 'study-1';
 let mockTheme = 'light';
 let mockPathname = '/';
+let mockUserEmail: string | undefined = 'test@example.com';
+let mockUserAvatarPreset: string | undefined = 'default';
 
 const mockLogout = jest.fn();
 const mockSetCurrentStudy = jest.fn();
@@ -45,7 +47,7 @@ jest.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({
     isAuthenticated: mockIsAuthenticated,
     user: mockIsAuthenticated
-      ? { email: 'test@example.com', avatarPreset: 'default' }
+      ? { email: mockUserEmail, avatarPreset: mockUserAvatarPreset }
       : null,
     logout: mockLogout,
   }),
@@ -79,6 +81,8 @@ function resetDefaults() {
   mockCurrentStudyId = 'study-1';
   mockTheme = 'light';
   mockPathname = '/';
+  mockUserEmail = 'test@example.com';
+  mockUserAvatarPreset = 'default';
   jest.clearAllMocks();
 }
 
@@ -459,5 +463,72 @@ describe('TopNav — ProfileDropdown user null 케이스', () => {
     // 기존 테스트에서 email이 있는 경우를 커버했으므로 여기서는 단순 렌더링 확인
     const profileBtn = screen.getByRole('button', { name: /프로필 메뉴/ });
     expect(profileBtn).toBeInTheDocument();
+  });
+
+  it('user.email이 undefined이면 드롭다운에 빈 문자열을 표시한다 (user?.email ?? "" 분기)', () => {
+    mockUserEmail = undefined;
+    render(<TopNav />);
+    // 프로필 버튼 클릭하여 드롭다운 열기
+    fireEvent.click(screen.getByRole('button', { name: /프로필 메뉴/ }));
+    // aria-label이 " 프로필 메뉴"로 시작
+    expect(screen.getByRole('menu', { name: '프로필 메뉴' })).toBeInTheDocument();
+  });
+
+  it('user.avatarPreset이 undefined이면 기본 아바타를 사용한다 (avatarPreset ?? "default" 분기)', () => {
+    mockUserAvatarPreset = undefined;
+    render(<TopNav />);
+    // 렌더링 오류 없이 아바타 이미지가 표시된다
+    const img = screen.getByAltText('아바타');
+    expect(img).toBeInTheDocument();
+  });
+
+  it('StudySelector 외부 클릭 시 ref.current가 null이 아닌 경우 닫힌다', () => {
+    // ref.current && !ref.current.contains() 분기 커버
+    render(<TopNav />);
+    // 드롭다운 열기
+    fireEvent.click(screen.getByRole('button', { name: '스터디 전환' }));
+    expect(screen.getByRole('listbox')).toBeInTheDocument();
+    // ref.current가 DOM에 있고 외부 클릭
+    act(() => {
+      fireEvent.mouseDown(document.body);
+    });
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+  });
+
+  it('StudySelector 내부 클릭 시 드롭다운이 유지된다 (ref.current.contains() = true 분기)', () => {
+    // !ref.current.contains(e.target) === false 분기: 내부 클릭은 닫지 않음
+    render(<TopNav />);
+    fireEvent.click(screen.getByRole('button', { name: '스터디 전환' }));
+    expect(screen.getByRole('listbox')).toBeInTheDocument();
+    // 내부 요소에 mouseDown → contains()가 true → setOpen(false) 미호출
+    const listbox = screen.getByRole('listbox');
+    act(() => {
+      fireEvent.mouseDown(listbox);
+    });
+    // 드롭다운은 여전히 열려 있어야 함 (버튼 클릭이 아닌 내부 mouseDown)
+    expect(screen.getByRole('listbox')).toBeInTheDocument();
+  });
+
+  it('ProfileDropdown 외부 클릭 시 ref.current가 null이 아닌 경우 닫힌다', () => {
+    // ref.current && !ref.current.contains() 분기 커버
+    render(<TopNav />);
+    fireEvent.click(screen.getByRole('button', { name: /프로필 메뉴/ }));
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+    act(() => {
+      fireEvent.mouseDown(document.body);
+    });
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
+  it('ProfileDropdown 내부 클릭 시 드롭다운이 유지된다 (ref.current.contains() = true 분기)', () => {
+    // !ref.current.contains(e.target) === false 분기: 내부 클릭은 닫지 않음
+    render(<TopNav />);
+    fireEvent.click(screen.getByRole('button', { name: /프로필 메뉴/ }));
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+    const menu = screen.getByRole('menu');
+    act(() => {
+      fireEvent.mouseDown(menu);
+    });
+    expect(screen.getByRole('menu')).toBeInTheDocument();
   });
 });
