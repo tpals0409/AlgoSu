@@ -11,8 +11,6 @@
 - 구독 플랜: **Claude Max** (확인 완료)
 
 ## 프로젝트: AlgoSu
-- 루트 경로: `/root/AlgoSu/`
-- 기획 문서: `/root/AlgoSu/plan/`
 - GitHub: `tpals0409/AlgoSu` (private) — 구 모놀리식은 `tpals0409/AlgoSuProto` (public)
 - 상태: **UI v2 전면 교체 + k3d 배포 검증 완료** (2026-03-02, HEAD: 026b469)
 - 상세 내용: `algosu-session.md`, `algosu-deploy.md` 참조
@@ -95,7 +93,7 @@
 - **GitOps 레포**: `tpals0409/aether-gitops` (private)
 
 ## 모니터링 로그 규칙 (확정)
-- 규칙 문서: `/root/AlgoSu/docs/monitoring-log-rules.md`
+- 규칙 문서: `.claude/commands/algosu-monitor.md`
 - JSON structured logging 필수, Prometheus: `algosu_{service}_{metric}_{unit}`
 - SLO: 가용성 99.5%, 에러율 <5%, P95 <1s
 

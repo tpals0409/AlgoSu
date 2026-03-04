@@ -3,7 +3,7 @@
 ## 프로젝트 개요
 - **목표**: 모놀리식(Next.js + Supabase) → 5개 마이크로서비스 MSA 전환
 - **기간**: 1주일 핵심 구현 (Phase 1~2), 이후 스프린트 확장
-- **문서**: `/root/AlgoSu/plan/`
+- **문서**: `agents/`, `.claude/commands/`
 
 ---
 
@@ -62,7 +62,7 @@
 - `infra/k3s/postgres-init/01-create-databases.sql` — 4개 DB + 사용자 생성
 - `infra/k3s/postgres-init/02-grant-permissions.sql` — 권한 분리, 크로스 접근 차단
 - `services/submission/src/database/migrations/1700000000000-CreateSubmissionsAndDrafts.ts` — saga_step ENUM, drafts UNIQUE
-- `docs/migration-rules.md` — Expand-Contract 패턴 규칙
+- `.claude/commands/algosu-migrate.md` — Expand-Contract 패턴 규칙
 
 **API Gateway (Gatekeeper)**
 - `services/gateway/package.json`

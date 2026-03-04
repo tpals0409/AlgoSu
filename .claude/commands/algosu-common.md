@@ -13,18 +13,14 @@
 - **클린 코드**: 의미 있는 네이밍, 함수 단일 책임, 작은 함수(20줄 이내), DRY, 에러 핸들링 분리
 - **SOLID 원칙**: SRP, OCP, LSP, ISP, DIP
 - **주석 필수**: 파일 헤더(`@file`, `@domain`, `@layer`, `@related`) + 함수 JSDoc
-- **어노테이션 사전**: `/root/AlgoSu/docs/annotation-dictionary.md`
+- **어노테이션 사전**: `.claude/commands/algosu-annotate.md`
 - **인라인 하드코딩 금지**: `bg-[#...]` 사용 금지, Tailwind 토큰 클래스 사용
 
 ### 참조 문서 (작업 시 해당 문서 Read)
-- 어노테이션 사전: `docs/annotation-dictionary.md`
-- 작업 진행 가이드: `docs/work-progress-guide.md`
-- 모니터링 로그 규칙: `docs/monitoring-log-rules.md`
-- CI/CD 규칙: `docs/ci-cd-rules.md`
-- 마이그레이션 규칙: `docs/migration-rules.md`
-- UI v2 실행계획서: `docs/AlgoSu_UIv2_실행계획서.md`
-- 코드 규칙 v1.0: `/root/AlgoSu/plan/Code Rules/AlgoSu_Code_Conventions.md`
-- 코드 규칙 v1.1: `/root/AlgoSu/plan/Code Rules/AlgoSu_Code_Conventions_Update_v1.1.md` *(원본: Mac 추가사항 문서)*
+- 어노테이션 사전: `.claude/commands/algosu-annotate.md`
+- 모니터링 로그 규칙: `.claude/commands/algosu-monitor.md`
+- CI/CD 규칙: `.claude/commands/algosu-cicd.md`
+- 마이그레이션 규칙: `.claude/commands/algosu-migrate.md`
 
 ### 작업 흐름
 1. Oracle 작업 할당 수령

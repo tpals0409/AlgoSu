@@ -9,10 +9,9 @@
 - PM 허락 필요 항목: 아키텍처 v3 변경, Phase 순서/범위 변경, 기능 축소/제거, 예산 결정, 보안 사고, 4시간 이상 미해소 블로커
 
 ## 프로젝트 상태
-- 루트 경로: /root/AlgoSu/
-- 기획 문서: /root/AlgoSu/plan/
-- 상태: UI v2 전면 교체 + k3d 배포 검증 완료 (2026-03-02, HEAD: 026b469)
-- 상세 세션 기록: /root/.claude/projects/-root/memory/algosu-session.md
+- 에이전트 페르소나: `agents/` 디렉토리
+- 슬래시 커맨드: `.claude/commands/`
+- 상세 기록: `.claude/memory/`
 
 ## 자율 운영 시 행동 원칙
 

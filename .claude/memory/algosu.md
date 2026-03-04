@@ -4,14 +4,14 @@
 알고리즘 스터디 관리 + AI 코드 리뷰 서비스
 모놀리식(Next.js + Supabase) → MSA 전환 프로젝트
 
-## 파일 경로
-| 파일 | 경로 |
+## 주요 문서 참조
+| 문서 | 경로 |
 |---|---|
-| MSA 아키텍처 설계서 (v3) | `/root/AlgoSu/plan/Project Plan/AlgoSu_MSA_Architecture_v3.md` |
-| TF 킥오프 계획서 | `/root/AlgoSu/plan/Kick Off/AlgoSu_TF_Kickoff_Plan.md` |
-| Agent 페르소나 프롬프트 | `/root/AlgoSu/plan/Persona Prompt/AlgoSu_TF_Persona_Prompts.md` |
-| UI 디자인 시스템 | `/root/AlgoSu/plan/UI Mockup/algosu-ui-design.html` |
-| 코드 규칙 문서 | `/root/AlgoSu/plan/Code Rules/AlgoSu_Code_Conventions.md` |
+| 아키텍처 설계 | `.claude/commands/algosu-arch.md` |
+| 킥오프 계획 | `.claude/commands/algosu-kickoff.md` |
+| Agent 페르소나 | `agents/{agent-name}/persona.md` |
+| UI 디자인 시스템 | `.claude/commands/algosu-ui.md` |
+| 코드 규칙 | `.claude/commands/algosu-conventions.md` |
 
 ## 마이크로서비스 구성 (5개)
 | 서비스 | 역할 | 기술 |
