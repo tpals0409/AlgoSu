@@ -499,6 +499,41 @@ jobs:
           path: services/ai-analysis/coverage.xml
           retention-days: 7
 
+  test-frontend:
+    name: Test Frontend
+    needs: [detect-changes, quality-frontend]
+    if: needs.detect-changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        id: cache-node
+        with:
+          path: frontend/node_modules
+          key: node-frontend-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            node-frontend-
+      - name: Install dependencies
+        if: steps.cache-node.outputs.cache-hit != 'true'
+        working-directory: frontend
+        run: npm ci
+      - name: Run unit tests
+        working-directory: frontend
+        run: npm test -- --ci --coverage
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-frontend
+          path: frontend/coverage/
+          retention-days: 7
+
   # ============================================================
   # Build Jobs — 테스트 통과 후 Docker 빌드 + GHCR 푸시
   # ============================================================
@@ -673,7 +708,7 @@ jobs:
 
   build-frontend:
     name: Build Frontend (Next.js)
-    needs: [detect-changes, quality-frontend]
+    needs: [detect-changes, test-frontend]
     if: needs.detect-changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     permissions:
