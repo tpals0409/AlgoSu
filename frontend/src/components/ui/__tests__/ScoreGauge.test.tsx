@@ -43,3 +43,46 @@ describe('ScoreGauge', () => {
     expect(container.firstChild).toHaveClass('my-class');
   });
 });
+
+// ═══════════════════════════════════════════════════
+// ScoreGauge — aria 접근성 속성
+// ═══════════════════════════════════════════════════
+describe('ScoreGauge accessibility', () => {
+  it('has role="progressbar"', () => {
+    render(<ScoreGauge score={75} />);
+    expect(screen.getByRole('progressbar')).toBeInTheDocument();
+  });
+
+  it('has aria-valuenow matching the score', () => {
+    render(<ScoreGauge score={85} />);
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '85');
+  });
+
+  it('has aria-valuemin=0 and aria-valuemax=100', () => {
+    render(<ScoreGauge score={60} />);
+    const gauge = screen.getByRole('progressbar');
+    expect(gauge).toHaveAttribute('aria-valuemin', '0');
+    expect(gauge).toHaveAttribute('aria-valuemax', '100');
+  });
+
+  it('has aria-label with score and grade label', () => {
+    render(<ScoreGauge score={90} />);
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-label', '점수 90점 — 우수');
+  });
+
+  it('has aria-label "보통" for mid-range score', () => {
+    render(<ScoreGauge score={65} />);
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-label', '점수 65점 — 보통');
+  });
+
+  it('has aria-label "개선 필요" for low score', () => {
+    render(<ScoreGauge score={30} />);
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-label', '점수 30점 — 개선 필요');
+  });
+
+  it('hides SVG from assistive technology with aria-hidden', () => {
+    const { container } = render(<ScoreGauge score={70} />);
+    const svg = container.querySelector('svg');
+    expect(svg).toHaveAttribute('aria-hidden', 'true');
+  });
+});

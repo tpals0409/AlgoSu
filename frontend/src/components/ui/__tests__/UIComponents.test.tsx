@@ -663,3 +663,67 @@ describe('EmptyState extra coverage', () => {
     expect(container.firstChild).toHaveClass('py-24');
   });
 });
+
+// ═══════════════════════════════════════════════════
+// 19. StatusBadge — aria 접근성 속성
+// ═══════════════════════════════════════════════════
+describe('StatusBadge accessibility', () => {
+  it('has role="status"', () => {
+    render(<StatusBadge label="Active" />);
+    expect(screen.getByRole('status')).toBeInTheDocument();
+  });
+
+  it('role="status" element contains the label text', () => {
+    render(<StatusBadge label="완료" />);
+    expect(screen.getByRole('status')).toHaveTextContent('완료');
+  });
+});
+
+// ═══════════════════════════════════════════════════
+// 20. EmptyState — aria 접근성 속성
+// ═══════════════════════════════════════════════════
+describe('EmptyState accessibility', () => {
+  it('has role="status"', () => {
+    render(<EmptyState title="데이터 없음" />);
+    expect(screen.getByRole('status')).toBeInTheDocument();
+  });
+
+  it('icon wrapper has aria-hidden to hide decorative icon', () => {
+    const { container } = render(<EmptyState title="Empty" />);
+    const iconWrapper = container.querySelector('[aria-hidden]');
+    expect(iconWrapper).toBeInTheDocument();
+  });
+});
+
+// ═══════════════════════════════════════════════════
+// 21. LoadingSpinner — aria 접근성 속성
+// ═══════════════════════════════════════════════════
+describe('LoadingSpinner accessibility', () => {
+  it('has role="status"', () => {
+    render(<LoadingSpinner />);
+    expect(screen.getByRole('status')).toBeInTheDocument();
+  });
+
+  it('has default aria-label "로딩 중..."', () => {
+    render(<LoadingSpinner />);
+    expect(screen.getByRole('status')).toHaveAttribute('aria-label', '로딩 중...');
+  });
+
+  it('has custom aria-label when label prop is provided', () => {
+    render(<LoadingSpinner label="데이터 불러오는 중..." />);
+    expect(screen.getByRole('status')).toHaveAttribute('aria-label', '데이터 불러오는 중...');
+  });
+
+  it('has sr-only text for screen readers', () => {
+    render(<LoadingSpinner label="로딩" />);
+    const srText = screen.getByText('로딩');
+    expect(srText).toHaveClass('sr-only');
+  });
+
+  it('spinner element has aria-hidden to hide decorative animation', () => {
+    const { container } = render(<LoadingSpinner />);
+    const spinner = container.querySelector('[aria-hidden="true"]');
+    expect(spinner).toBeInTheDocument();
+    expect(spinner).toHaveClass('animate-spin-slow');
+  });
+});

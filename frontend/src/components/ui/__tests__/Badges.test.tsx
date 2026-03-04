@@ -262,3 +262,125 @@ describe('CategoryBar', () => {
     expect(container.firstChild).toHaveClass('custom-bar');
   });
 });
+
+/* ================================================================== */
+/*  DiffBadge — aria 접근성 속성                                       */
+/* ================================================================== */
+describe('DiffBadge accessibility', () => {
+  it('has aria-label with tier name in Korean', () => {
+    render(<DiffBadge tier="gold" />);
+    expect(screen.getByLabelText('난이도 골드')).toBeInTheDocument();
+  });
+
+  it('has aria-label with tier and level', () => {
+    render(<DiffBadge tier="silver" level={3} />);
+    expect(screen.getByLabelText('난이도 실버 3')).toBeInTheDocument();
+  });
+
+  it('has aria-label without level when level is null', () => {
+    render(<DiffBadge tier="platinum" level={null} />);
+    expect(screen.getByLabelText('난이도 플래티넘')).toBeInTheDocument();
+  });
+});
+
+/* ================================================================== */
+/*  LangBadge — aria 접근성 속성                                       */
+/* ================================================================== */
+describe('LangBadge accessibility', () => {
+  it('has aria-label with language name', () => {
+    render(<LangBadge language="Python" />);
+    expect(screen.getByLabelText('프로그래밍 언어 Python')).toBeInTheDocument();
+  });
+
+  it('has aria-label for C++', () => {
+    render(<LangBadge language="C++" />);
+    expect(screen.getByLabelText('프로그래밍 언어 C++')).toBeInTheDocument();
+  });
+});
+
+/* ================================================================== */
+/*  ScoreBadge — aria 접근성 속성                                      */
+/* ================================================================== */
+describe('ScoreBadge accessibility', () => {
+  it('has aria-label with score', () => {
+    render(<ScoreBadge score={85} />);
+    expect(screen.getByLabelText('AI 점수 85점')).toBeInTheDocument();
+  });
+
+  it('has aria-label for perfect score', () => {
+    render(<ScoreBadge score={100} />);
+    expect(screen.getByLabelText('AI 점수 100점')).toBeInTheDocument();
+  });
+
+  it('has aria-label for low score', () => {
+    render(<ScoreBadge score={45} />);
+    expect(screen.getByLabelText('AI 점수 45점')).toBeInTheDocument();
+  });
+});
+
+/* ================================================================== */
+/*  CategoryBar — aria 접근성 속성                                     */
+/* ================================================================== */
+describe('CategoryBar accessibility', () => {
+  const item: CategoryItem = {
+    category: '코드 품질',
+    score: 85,
+    grade: 'A',
+    color: 'success',
+    comment: '잘 작성된 코드입니다',
+  };
+
+  it('has role="button"', () => {
+    render(<CategoryBar item={item} />);
+    expect(screen.getByRole('button')).toBeInTheDocument();
+  });
+
+  it('has aria-pressed=false when not selected', () => {
+    render(<CategoryBar item={item} />);
+    expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('has aria-pressed=true when selected', () => {
+    render(<CategoryBar item={item} selected />);
+    expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('has aria-label with category, grade, and score', () => {
+    render(<CategoryBar item={item} />);
+    expect(screen.getByRole('button')).toHaveAttribute('aria-label', '코드 품질 A 85점');
+  });
+
+  it('has tabIndex=0 for keyboard accessibility', () => {
+    render(<CategoryBar item={item} />);
+    expect(screen.getByRole('button')).toHaveAttribute('tabindex', '0');
+  });
+
+  it('triggers onClick on Enter key press', () => {
+    const handleClick = jest.fn();
+    render(<CategoryBar item={item} onClick={handleClick} />);
+    fireEvent.keyDown(screen.getByRole('button'), { key: 'Enter' });
+    expect(handleClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('triggers onClick on Space key press', () => {
+    const handleClick = jest.fn();
+    render(<CategoryBar item={item} onClick={handleClick} />);
+    fireEvent.keyDown(screen.getByRole('button'), { key: ' ' });
+    expect(handleClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not trigger onClick on other key press', () => {
+    const handleClick = jest.fn();
+    render(<CategoryBar item={item} onClick={handleClick} />);
+    fireEvent.keyDown(screen.getByRole('button'), { key: 'Tab' });
+    expect(handleClick).not.toHaveBeenCalled();
+  });
+
+  it('contains inner progressbar with aria-valuenow', () => {
+    render(<CategoryBar item={item} />);
+    const progressbar = screen.getByRole('progressbar');
+    expect(progressbar).toHaveAttribute('aria-valuenow', '85');
+    expect(progressbar).toHaveAttribute('aria-valuemin', '0');
+    expect(progressbar).toHaveAttribute('aria-valuemax', '100');
+  });
+});
