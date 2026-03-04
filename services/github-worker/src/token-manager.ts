@@ -24,9 +24,6 @@ import { config } from './config';
  * - Redis 키: github:app:token:{owner}/{repo} (TTL 3600s 필수)
  */
 
-const TOKEN_TTL = 3600; // 1시간
-const REFRESH_INTERVAL = 50 * 60 * 1000; // 50분
-
 export class TokenManager {
   private redis: Redis;
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
@@ -34,10 +31,10 @@ export class TokenManager {
   constructor() {
     this.redis = new Redis(config.redisUrl);
 
-    // 50분마다 캐시된 모든 토큰 갱신
+    // GITHUB_TOKEN_REFRESH_INTERVAL ms마다 캐시된 모든 토큰 갱신 (기본 50분)
     this.refreshTimer = setInterval(() => {
       void this.refreshAllCachedTokens();
-    }, REFRESH_INTERVAL);
+    }, config.githubTokenRefreshInterval);
   }
 
   /**
@@ -120,7 +117,7 @@ export class TokenManager {
 
     // Redis 캐시 저장 (레포별 키, TTL 필수)
     const cacheKey = `github:app:token:${owner}/${repo}`;
-    await this.redis.set(cacheKey, token, 'EX', TOKEN_TTL);
+    await this.redis.set(cacheKey, token, 'EX', config.githubTokenTtl);
 
     // 보안: 토큰 원문 출력 금지, 레포 정보 출력 금지
     logger.info('Installation Token 갱신 완료', { action: 'TOKEN_REFRESH' });

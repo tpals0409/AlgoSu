@@ -25,7 +25,12 @@ describe('InviteThrottleService', () => {
     jest.clearAllMocks();
 
     const configService = {
-      get: jest.fn().mockReturnValue('redis://localhost:6379'),
+      get: jest.fn().mockImplementation((key: string, defaultValue: unknown) => {
+        if (key === 'INVITE_MAX_FAILURES') return 5;
+        if (key === 'INVITE_LOCK_SECONDS') return 900;
+        if (key === 'REDIS_URL') return 'redis://localhost:6379';
+        return defaultValue;
+      }),
     };
 
     const mockLogger = {

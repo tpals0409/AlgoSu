@@ -10,19 +10,19 @@ import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
-// ─── CONSTANTS ────────────────────────────
-const MAX_FAILURES = 5;
-const LOCK_SECONDS = 900; // 15분
-
 @Injectable()
 export class InviteThrottleService {
   private readonly redis: Redis;
+  private readonly maxFailures: number;
+  private readonly lockSeconds: number;
 
   constructor(
     private readonly configService: ConfigService,
     private readonly logger: StructuredLoggerService,
   ) {
     this.logger.setContext(InviteThrottleService.name);
+    this.maxFailures = this.configService.get<number>('INVITE_MAX_FAILURES', 5);
+    this.lockSeconds = this.configService.get<number>('INVITE_LOCK_SECONDS', 900);
     const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
     this.redis = new Redis(redisUrl);
     this.redis.on('error', (err: Error) => {
@@ -43,10 +43,10 @@ export class InviteThrottleService {
     const count = await this.redis.incr(key);
 
     if (count === 1) {
-      await this.redis.expire(key, LOCK_SECONDS);
+      await this.redis.expire(key, this.lockSeconds);
     }
 
-    if (count >= MAX_FAILURES) {
+    if (count >= this.maxFailures) {
       this.logger.warn(`초대코드 brute force 감지: ip=${ip}, code=***`);
       throw new BadRequestException('초대코드 입력 횟수를 초과했습니다. 15분 후 다시 시도해주세요.');
     }
@@ -64,7 +64,7 @@ export class InviteThrottleService {
     const key = `invite_fail:${ip}:${code}`;
     const count = await this.redis.get(key);
 
-    if (count && Number(count) >= MAX_FAILURES) {
+    if (count && Number(count) >= this.maxFailures) {
       throw new BadRequestException('초대코드 입력 횟수를 초과했습니다. 15분 후 다시 시도해주세요.');
     }
   }

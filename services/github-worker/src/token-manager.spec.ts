@@ -37,6 +37,8 @@ jest.mock('./config', () => ({
     githubAppId: '12345',
     githubAppPrivateKeyBase64: Buffer.from('fake-private-key').toString('base64'),
     githubTokenEncryptionKey: 'a'.repeat(64),
+    githubTokenTtl: 3600,
+    githubTokenRefreshInterval: 50 * 60 * 1000,
   },
 }));
 

@@ -37,4 +37,7 @@ export const config = {
   githubAppPrivateKeyBase64: process.env['GITHUB_APP_PRIVATE_KEY_BASE64'] ?? '',
 
   githubTokenEncryptionKey: getRequired('GITHUB_TOKEN_ENCRYPTION_KEY'),
+
+  githubTokenTtl: parseInt(getOptional('GITHUB_TOKEN_TTL', '3600'), 10),
+  githubTokenRefreshInterval: parseInt(getOptional('GITHUB_TOKEN_REFRESH_INTERVAL', String(50 * 60 * 1000)), 10),
 };
