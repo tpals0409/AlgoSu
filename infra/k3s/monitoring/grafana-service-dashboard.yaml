@@ -752,7 +752,8 @@ data:
               { "selected": true, "text": "gateway", "value": "gateway" },
               { "selected": false, "text": "submission", "value": "submission" },
               { "selected": false, "text": "problem", "value": "problem" },
-              { "selected": false, "text": "identity", "value": "identity" }
+              { "selected": false, "text": "identity", "value": "identity" },
+              { "selected": false, "text": "ai-analysis", "value": "ai_analysis" }
             ],
             "query": "",
             "skipUrlSync": false,
