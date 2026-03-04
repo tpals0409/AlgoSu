@@ -13,6 +13,7 @@ import { Study, StudyMember, StudyInvite } from './study.entity';
 import { User } from '../auth/oauth/user.entity';
 import { NotificationModule } from '../notification/notification.module';
 import { StudyActiveGuard } from '../common/guards/study-active.guard';
+import { StudyMemberGuard } from '../common/guards/study-member.guard';
 
 @Module({
   imports: [
@@ -20,7 +21,7 @@ import { StudyActiveGuard } from '../common/guards/study-active.guard';
     NotificationModule,
   ],
   controllers: [StudyController],
-  providers: [StudyService, InviteThrottleService, StudyActiveGuard],
+  providers: [StudyService, InviteThrottleService, StudyActiveGuard, StudyMemberGuard],
   exports: [StudyService],
 })
 export class StudyModule {}

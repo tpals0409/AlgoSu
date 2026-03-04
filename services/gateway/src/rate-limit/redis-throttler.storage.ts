@@ -42,19 +42,24 @@ export class RedisThrottlerStorage implements ThrottlerStorage, OnModuleDestroy 
     const redisKey = `throttle:${key}`;
 
     try {
-      const totalHits = await this.redis.incr(redisKey);
+      const now = Date.now();
+      const windowStart = now - ttl;
 
-      if (totalHits === 1) {
-        // 첫 번째 요청: TTL 설정 (초 단위)
-        const ttlSeconds = Math.ceil(ttl / 1000);
-        await this.redis.expire(redisKey, ttlSeconds);
-      }
+      // Sliding window: sorted set에 현재 timestamp 추가 + 만료된 항목 제거 + 카운트
+      const pipeline = this.redis.pipeline();
+      pipeline.zremrangebyscore(redisKey, 0, windowStart);
+      pipeline.zadd(redisKey, now, `${now}:${Math.random()}`);
+      pipeline.zcard(redisKey);
+      pipeline.pexpire(redisKey, ttl);
 
-      const ttlRemaining = await this.redis.ttl(redisKey);
+      const results = await pipeline.exec();
+
+      // results[2] = ZCARD 결과
+      const totalHits = (results?.[2]?.[1] as number) ?? 0;
 
       return {
         totalHits,
-        timeToExpire: Math.max(ttlRemaining * 1000, 0),
+        timeToExpire: ttl,
       };
     } catch (error: unknown) {
       // Redis 장애 시 fail-open (가용성 우선)

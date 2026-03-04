@@ -31,6 +31,7 @@ import { UpdateStudyDto } from './dto/update-study.dto';
 import { VerifyInviteDto } from './dto/verify-invite.dto';
 import { NotifyProblemDto } from './dto/notify-problem.dto';
 import { StudyActiveGuard } from '../common/guards/study-active.guard';
+import { StudyMemberGuard } from '../common/guards/study-member.guard';
 
 @ApiTags('Study')
 @Controller('api/studies')
@@ -74,6 +75,7 @@ export class StudyController {
   @ApiOperation({ summary: '스터디 상세 조회' })
   @ApiResponse({ status: 200, description: '스터디 상세 (groundRules 포함)' })
   @Get(':id')
+  @UseGuards(StudyMemberGuard)
   async findOne(
     @Param('id', ParseUUIDPipe) studyId: string,
     @Req() req: Request,
@@ -194,6 +196,7 @@ export class StudyController {
   @ApiOperation({ summary: '스터디 탈퇴' })
   @ApiResponse({ status: 200, description: '탈퇴 완료' })
   @Post(':id/leave')
+  @UseGuards(StudyMemberGuard)
   async leaveStudy(
     @Param('id', ParseUUIDPipe) studyId: string,
     @Req() req: Request,
@@ -230,6 +233,7 @@ export class StudyController {
   @ApiOperation({ summary: '스터디 통계 조회' })
   @ApiResponse({ status: 200, description: '통계 데이터' })
   @Get(':id/stats')
+  @UseGuards(StudyMemberGuard)
   async getStudyStats(
     @Param('id', ParseUUIDPipe) studyId: string,
     @Query('weekNumber') weekNumber: string | undefined,
@@ -247,6 +251,7 @@ export class StudyController {
   @ApiOperation({ summary: '스터디 멤버 목록 조회' })
   @ApiResponse({ status: 200, description: '멤버 목록' })
   @Get(':id/members')
+  @UseGuards(StudyMemberGuard)
   async getMembers(
     @Param('id', ParseUUIDPipe) studyId: string,
     @Req() req: Request,
@@ -263,6 +268,7 @@ export class StudyController {
   @ApiOperation({ summary: '본인 닉네임 변경' })
   @ApiResponse({ status: 200, description: '변경 완료' })
   @Patch(':id/nickname')
+  @UseGuards(StudyMemberGuard)
   async updateNickname(
     @Param('id', ParseUUIDPipe) studyId: string,
     @Req() req: Request,

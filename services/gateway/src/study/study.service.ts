@@ -113,9 +113,7 @@ export class StudyService {
    * @api GET /studies/:id
    * @guard study-member
    */
-  async getStudyById(studyId: string, userId: string): Promise<Study> {
-    await this.verifyMembership(studyId, userId);
-
+  async getStudyById(studyId: string, _userId: string): Promise<Study> {
     const study = await this.studyRepository.findOne({ where: { id: studyId } });
     if (!study) {
       throw new NotFoundException('스터디를 찾을 수 없습니다.');
@@ -395,8 +393,6 @@ export class StudyService {
    * @guard study-member
    */
   async getStudyStats(studyId: string, userId: string, weekNumber?: string) {
-    await this.verifyMembership(studyId, userId);
-
     const submissionServiceUrl = this.configService.getOrThrow<string>('SUBMISSION_SERVICE_URL');
     const internalKey = this.configService.getOrThrow<string>('INTERNAL_KEY_SUBMISSION');
 
@@ -470,10 +466,8 @@ export class StudyService {
    */
   async getMembers(
     studyId: string,
-    userId: string,
+    _userId: string,
   ): Promise<(StudyMember & { username?: string; email?: string; avatar_url?: string | null })[]> {
-    await this.verifyMembership(studyId, userId);
-
     const members = await this.memberRepository.find({ where: { study_id: studyId } });
     const userIds = members.map((m) => m.user_id);
 
