@@ -284,6 +284,7 @@ describe('SubmissionService', () => {
       expect(repo.find).toHaveBeenCalledWith({
         where: { studyId: 'study-uuid-1', userId: 'user-1' },
         order: { createdAt: 'DESC' },
+        select: expect.any(Array),
       });
     });
   });
@@ -300,6 +301,7 @@ describe('SubmissionService', () => {
       expect(repo.find).toHaveBeenCalledWith({
         where: { studyId: 'study-uuid-1', userId: 'user-1', problemId: 'problem-uuid-1' },
         order: { createdAt: 'DESC' },
+        select: expect.any(Array),
       });
     });
   });
