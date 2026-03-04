@@ -165,4 +165,67 @@ describe('DashboardTwoColumn', () => {
     expect(links[0].closest('a')).toHaveAttribute('href', '/submissions');
     expect(links[1].closest('a')).toHaveAttribute('href', '/problems');
   });
+
+  it('방금 전 제출은 "방금 전"을 표시한다', () => {
+    const submissions = [makeSubmission({
+      id: 's-1', problemTitle: '테스트',
+      createdAt: new Date(Date.now() - 30000).toISOString(), // 30초 전
+    })];
+    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} />);
+    expect(screen.getByText('방금 전')).toBeInTheDocument();
+  });
+
+  it('2시간 전 제출은 "N시간 전"을 표시한다', () => {
+    const submissions = [makeSubmission({
+      id: 's-1', problemTitle: '테스트',
+      createdAt: new Date(Date.now() - 2 * 3600000).toISOString(), // 2시간 전
+    })];
+    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} />);
+    expect(screen.getByText('2시간 전')).toBeInTheDocument();
+  });
+
+  it('8일 전 제출은 "M.D" 형식 날짜를 표시한다', () => {
+    const submissions = [makeSubmission({
+      id: 's-1', problemTitle: '테스트',
+      createdAt: new Date(Date.now() - 8 * 86400000).toISOString(), // 8일 전
+    })];
+    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} />);
+    // M.D 형식의 날짜가 있는지 확인 (예: "1.1")
+    const datePattern = /\d+\.\d+/;
+    const timeEl = screen.getByText(datePattern);
+    expect(timeEl).toBeInTheDocument();
+  });
+
+  it('마감 1시간 미만 문제는 "곧 마감"을 표시한다', () => {
+    const problems = [makeProblem({
+      id: 'p-1', title: '긴급 문제',
+      deadline: new Date(Date.now() + 30 * 60000).toISOString(), // 30분 후
+    })];
+    render(<DashboardTwoColumn {...defaultProps} upcomingDeadlines={problems} />);
+    expect(screen.getByText('곧 마감')).toBeInTheDocument();
+  });
+
+  it('마감 몇 시간 남은 문제는 "N시간 남음"을 표시한다', () => {
+    const problems = [makeProblem({
+      id: 'p-1', title: '시간 문제',
+      // 정확히 2시간 + 10분 후 마감 (diffDays=0, diffHours>=1)
+      deadline: new Date(Date.now() + 2 * 3600000 + 600000).toISOString(),
+    })];
+    render(<DashboardTwoColumn {...defaultProps} upcomingDeadlines={problems} />);
+    expect(screen.getByText(/\d+시간 남음/)).toBeInTheDocument();
+  });
+
+  it('제목 없는 제출은 problemId를 잘라 표시한다', () => {
+    const submissions = [makeSubmission({
+      id: 's-1', problemId: 'abcdefgh-1234', problemTitle: undefined,
+    })];
+    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} problemTitleMap={new Map()} />);
+    expect(screen.getByText('문제 abcdefgh')).toBeInTheDocument();
+  });
+
+  it('difficulty가 없는 문제는 DifficultyBadge를 표시하지 않는다', () => {
+    const problems = [makeProblem({ id: 'p-1', difficulty: undefined })];
+    render(<DashboardTwoColumn {...defaultProps} upcomingDeadlines={problems} />);
+    expect(screen.queryByTestId('difficulty-badge')).not.toBeInTheDocument();
+  });
 });
