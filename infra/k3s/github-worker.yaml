@@ -24,9 +24,19 @@ spec:
       labels:
         app: github-worker
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
       terminationGracePeriodSeconds: 30
       containers:
         - name: github-worker
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           image: ghcr.io/OWNER/algosu-github-worker:main-PLACEHOLDER
           envFrom:
             - secretRef:

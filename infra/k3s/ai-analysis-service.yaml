@@ -22,9 +22,19 @@ spec:
       labels:
         app: ai-analysis-service
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
       terminationGracePeriodSeconds: 30
       containers:
         - name: ai-analysis-service
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           image: ghcr.io/OWNER/algosu-ai-analysis:main-PLACEHOLDER
           ports:
             - containerPort: 8000

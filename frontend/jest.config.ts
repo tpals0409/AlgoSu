@@ -12,14 +12,16 @@ const config: Config = {
     '^.+\\.tsx?$': [
       'ts-jest',
       {
-        tsconfig: 'tsconfig.json',
-        jsx: 'react-jsx',
+        tsconfig: 'tsconfig.jest.json',
       },
     ],
   },
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
+  transformIgnorePatterns: [
+    '/node_modules/(?!lucide-react)',
+  ],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   coverageDirectory: 'coverage',
   coverageThreshold: {

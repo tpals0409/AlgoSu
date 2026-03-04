@@ -23,9 +23,19 @@ spec:
       labels:
         app: submission-service
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
       terminationGracePeriodSeconds: 30
       initContainers:
         - name: db-migrate
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           image: ghcr.io/OWNER/algosu-submission:main-PLACEHOLDER
           command: ["node", "./node_modules/typeorm/cli.js", "migration:run", "-d", "dist/src/database/data-source.js"]
           envFrom:
@@ -40,6 +50,12 @@ spec:
               cpu: "250m"
       containers:
         - name: submission-service
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           image: ghcr.io/OWNER/algosu-submission:main-PLACEHOLDER
           ports:
             - containerPort: 3003

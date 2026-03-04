@@ -23,9 +23,19 @@ spec:
       labels:
         app: gateway
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
       terminationGracePeriodSeconds: 30
       containers:
         - name: gateway
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           image: ghcr.io/OWNER/algosu-gateway:main-PLACEHOLDER
           ports:
             - containerPort: 3000

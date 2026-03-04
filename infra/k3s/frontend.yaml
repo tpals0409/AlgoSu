@@ -22,9 +22,19 @@ spec:
       labels:
         app: frontend
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
       terminationGracePeriodSeconds: 10
       containers:
         - name: frontend
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
           image: ghcr.io/OWNER/algosu-frontend:main-PLACEHOLDER
           ports:
             - containerPort: 3001
