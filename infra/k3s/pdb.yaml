@@ -1,0 +1,41 @@
+---
+# AlgoSu PodDisruptionBudget — k3s 설정
+# 노드 유지보수/업그레이드 시 최소 가용 Pod 보장
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: gateway
+  namespace: algosu
+  labels:
+    app: gateway
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: gateway
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: identity-service
+  namespace: algosu
+  labels:
+    app: identity-service
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: identity-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: submission-service
+  namespace: algosu
+  labels:
+    app: submission-service
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: submission-service

@@ -23,6 +23,7 @@ spec:
       labels:
         app: gateway
     spec:
+      terminationGracePeriodSeconds: 30
       containers:
         - name: gateway
           image: ghcr.io/OWNER/algosu-gateway:main-PLACEHOLDER
@@ -46,7 +47,7 @@ spec:
             periodSeconds: 10
           readinessProbe:
             httpGet:
-              path: /health
+              path: /health/ready
               port: 3000
             initialDelaySeconds: 5
             periodSeconds: 5

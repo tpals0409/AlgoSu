@@ -29,6 +29,10 @@ resources:
   # 라우팅
   - ingress.yaml
 
+  # 오토스케일링 & 가용성
+  - hpa.yaml
+  - pdb.yaml
+
   # 네트워크 정책
   - metrics-network-policy.yaml
 

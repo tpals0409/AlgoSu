@@ -22,6 +22,7 @@ spec:
       labels:
         app: identity-service
     spec:
+      terminationGracePeriodSeconds: 30
       initContainers:
         - name: db-migrate
           image: ghcr.io/OWNER/algosu-identity:main-PLACEHOLDER
@@ -59,7 +60,7 @@ spec:
             periodSeconds: 10
           readinessProbe:
             httpGet:
-              path: /health
+              path: /health/ready
               port: 3004
             initialDelaySeconds: 5
             periodSeconds: 5

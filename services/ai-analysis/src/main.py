@@ -95,6 +95,28 @@ async def health():
     }
 
 
+@app.get("/health/ready")
+async def health_ready():
+    """Readiness 체크 -- Worker 스레드 + Redis 연결 확인"""
+    errors = []
+
+    if worker_thread is None or not worker_thread.is_alive():
+        errors.append("Worker thread not running")
+
+    if redis_client:
+        try:
+            redis_client.ping()
+        except Exception:
+            errors.append("Redis not ready")
+    else:
+        errors.append("Redis not initialized")
+
+    if errors:
+        raise HTTPException(status_code=503, detail="; ".join(errors))
+
+    return {"status": "ok"}
+
+
 # ─── CIRCUIT BREAKER ─────────────────────────
 
 

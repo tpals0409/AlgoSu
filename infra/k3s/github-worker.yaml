@@ -24,6 +24,7 @@ spec:
       labels:
         app: github-worker
     spec:
+      terminationGracePeriodSeconds: 30
       containers:
         - name: github-worker
           image: ghcr.io/OWNER/algosu-github-worker:main-PLACEHOLDER

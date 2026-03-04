@@ -23,6 +23,7 @@ spec:
       labels:
         app: submission-service
     spec:
+      terminationGracePeriodSeconds: 30
       initContainers:
         - name: db-migrate
           image: ghcr.io/OWNER/algosu-submission:main-PLACEHOLDER
@@ -61,7 +62,7 @@ spec:
             failureThreshold: 3
           readinessProbe:
             httpGet:
-              path: /health
+              path: /health/ready
               port: 3003
             initialDelaySeconds: 5
             periodSeconds: 5

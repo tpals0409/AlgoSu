@@ -13,15 +13,8 @@ labels:
       environment: prod
 
 patches:
-  # Prod: 핵심 서비스 2 replicas
-  - target:
-      kind: Deployment
-      name: gateway
-    patch: |
-      - op: replace
-        path: /spec/replicas
-        value: 2
-
+  # Prod: identity-service 2 replicas (HPA 미적용 서비스)
+  # gateway, submission-service는 HPA가 replicas를 관리하므로 수동 설정 제거
   - target:
       kind: Deployment
       name: identity-service
@@ -30,12 +23,21 @@ patches:
         path: /spec/replicas
         value: 2
 
+  # Prod: HPA minReplicas 2로 상향 (고가용성)
   - target:
-      kind: Deployment
+      kind: HorizontalPodAutoscaler
+      name: gateway
+    patch: |
+      - op: replace
+        path: /spec/minReplicas
+        value: 2
+
+  - target:
+      kind: HorizontalPodAutoscaler
       name: submission-service
     patch: |
       - op: replace
-        path: /spec/replicas
+        path: /spec/minReplicas
         value: 2
 
   # Prod: Gateway 리소스 강화

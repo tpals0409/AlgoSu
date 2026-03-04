@@ -102,7 +102,10 @@ export class AppModule implements NestModule {
     // Rate Limit — JWT 검증 전 실행 (인증 불필요)
     consumer
       .apply(RateLimitMiddleware)
-      .exclude({ path: 'health', method: RequestMethod.GET })
+      .exclude(
+        { path: 'health', method: RequestMethod.GET },
+        { path: 'health/ready', method: RequestMethod.GET },
+      )
       .forRoutes({ path: '*', method: RequestMethod.ALL });
 
     // JWT 검증
@@ -111,6 +114,7 @@ export class AppModule implements NestModule {
       .apply(JwtMiddleware)
       .exclude(
         { path: 'health', method: RequestMethod.GET },
+        { path: 'health/ready', method: RequestMethod.GET },
         { path: 'metrics', method: RequestMethod.GET },
         { path: 'auth/oauth/(.*)', method: RequestMethod.GET },
         { path: 'auth/github/link/callback', method: RequestMethod.GET },

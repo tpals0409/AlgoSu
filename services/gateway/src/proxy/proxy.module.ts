@@ -11,18 +11,37 @@ import {
   NestModule,
   MiddlewareConsumer,
   RequestMethod,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response, NextFunction } from 'express';
 import { createProxyMiddleware, RequestHandler } from 'http-proxy-middleware';
 import type { IncomingMessage, ServerResponse, ClientRequest } from 'http';
 import { SERVICE_ROUTING_TABLE } from '../common/config/service-keys.config';
+import Redis from 'ioredis';
 
 @Controller()
 class HealthController {
+  private readonly redis: Redis;
+
+  constructor(private readonly configService: ConfigService) {
+    const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
+    this.redis = new Redis(redisUrl, { lazyConnect: true, maxRetriesPerRequest: 1 });
+  }
+
   @Get('health')
   check(): { status: string; timestamp: string } {
     return { status: 'ok', timestamp: new Date().toISOString() };
+  }
+
+  @Get('health/ready')
+  async readiness(): Promise<{ status: string; timestamp: string }> {
+    try {
+      await this.redis.ping();
+      return { status: 'ok', timestamp: new Date().toISOString() };
+    } catch {
+      throw new ServiceUnavailableException('Redis not ready');
+    }
   }
 }
 
@@ -134,6 +153,7 @@ export class ProxyModule implements NestModule {
       .apply(ProxyDispatchMiddleware)
       .exclude(
         { path: 'health', method: RequestMethod.GET },
+        { path: 'health/ready', method: RequestMethod.GET },
         { path: 'metrics', method: RequestMethod.GET },
       )
       .forRoutes({ path: '*', method: RequestMethod.ALL });

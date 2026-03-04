@@ -24,6 +24,7 @@ spec:
       labels:
         app: problem-service
     spec:
+      terminationGracePeriodSeconds: 30
       initContainers:
         - name: db-migrate
           image: ghcr.io/OWNER/algosu-problem:main-PLACEHOLDER
@@ -62,7 +63,7 @@ spec:
             failureThreshold: 3
           readinessProbe:
             httpGet:
-              path: /health
+              path: /health/ready
               port: 3002
             initialDelaySeconds: 5
             periodSeconds: 5

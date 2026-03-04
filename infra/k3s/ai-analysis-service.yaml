@@ -22,6 +22,7 @@ spec:
       labels:
         app: ai-analysis-service
     spec:
+      terminationGracePeriodSeconds: 30
       containers:
         - name: ai-analysis-service
           image: ghcr.io/OWNER/algosu-ai-analysis:main-PLACEHOLDER
@@ -46,7 +47,7 @@ spec:
             failureThreshold: 3
           readinessProbe:
             httpGet:
-              path: /health
+              path: /health/ready
               port: 8000
             initialDelaySeconds: 5
             periodSeconds: 5
