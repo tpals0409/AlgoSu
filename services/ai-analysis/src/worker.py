@@ -30,9 +30,9 @@ MAX_RETRIES = 3
 BACKOFF_BASE = 2  # 지수 백오프 기본값 (초)
 
 # RabbitMQ 재연결 상수
-RECONNECT_INITIAL_DELAY = 1   # 최초 재연결 대기 (초)
-RECONNECT_MAX_DELAY = 30      # 최대 재연결 대기 (초)
-RECONNECT_MULTIPLIER = 2      # 지수 백오프 배수
+RECONNECT_INITIAL_DELAY = 1  # 최초 재연결 대기 (초)
+RECONNECT_MAX_DELAY = 30  # 최대 재연결 대기 (초)
+RECONNECT_MULTIPLIER = 2  # 지수 백오프 배수
 
 
 class AIAnalysisWorker:
