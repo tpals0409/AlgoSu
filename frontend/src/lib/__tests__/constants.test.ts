@@ -8,7 +8,7 @@ import {
   PROBLEM_STATUS_LABELS,
   SAGA_STEP_CONFIG,
 } from '@/lib/constants';
-import type { Difficulty, ProblemStatus, SagaStep } from '@/lib/constants';
+import type { SagaStep } from '@/lib/constants';
 
 describe('DIFFICULTIES', () => {
   it('5개 난이도를 포함한다', () => {

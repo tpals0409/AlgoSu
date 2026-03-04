@@ -1,4 +1,4 @@
-import { ApiError, setCurrentStudyIdForApi, authApi, studyApi, problemApi, submissionApi, draftApi, notificationApi, reviewApi, aiQuotaApi, solvedacApi, studyNoteApi } from '@/lib/api';
+import { ApiError, setCurrentStudyIdForApi, authApi, studyApi, problemApi, submissionApi, draftApi, notificationApi, reviewApi, studyNoteApi } from '@/lib/api';
 
 // ── fetch mock ──
 const mockFetch = jest.fn();
