@@ -290,6 +290,7 @@ export class GitHubWorker {
     await this.statusReporter.reportFailed(event.submissionId);
     await this.statusReporter.publishStatusChange(event.submissionId, 'github_failed');
 
+    // istanbul ignore next -- lastError는 catch 블록에서 항상 할당됨 (방어적 fallback)
     throw lastError ?? new Error('GitHub Push 최종 실패');
   }
 

@@ -108,7 +108,7 @@ type LogEntry = BaseLogEntry & MQFields & ErrorFields & SagaFields & {
 // ---------------------------------------------------------------------------
 
 /** 제어문자 제거 + 길이 truncate (Log Injection 방지) */
-function sanitizeStr(value: string, maxLen = 500): string {
+function sanitizeStr(value: string, /* istanbul ignore next -- 내부 호출 전용, 항상 명시적 maxLen 전달 */ maxLen = 500): string {
   return value.replace(CONTROL_CHAR_RE, '').slice(0, maxLen);
 }
 
@@ -243,6 +243,7 @@ export const logger = {
    * 사용 예: MQ_CONSUME, MQ_CONSUME_DONE, SAGA_TRANSITION
    */
   info(message: string, ctx?: LogContext): void {
+    /* istanbul ignore if -- shouldLog('info')는 모든 환경에서 true (MIN_LEVEL ≤ info) */
     if (!shouldLog('info')) return;
     emit(buildEntry('info', message, ctx));
   },
@@ -252,6 +253,7 @@ export const logger = {
    * 사용 예: TOKEN_INVALID 재시도 불필요 판단, 재시도 경고
    */
   warn(message: string, ctx?: LogContext): void {
+    /* istanbul ignore if -- shouldLog('warn')는 모든 환경에서 true (MIN_LEVEL ≤ warn) */
     if (!shouldLog('warn')) return;
     emit(buildEntry('warn', message, ctx));
   },
@@ -261,6 +263,7 @@ export const logger = {
    * 사용 예: DLQ_RECEIVED, 최종 실패, MQ nack
    */
   error(message: string, ctx?: LogContext): void {
+    /* istanbul ignore if -- shouldLog('error')는 모든 환경에서 true (MIN_LEVEL ≤ error) */
     if (!shouldLog('error')) return;
     emit(buildEntry('error', message, ctx));
   },

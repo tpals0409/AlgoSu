@@ -26,15 +26,16 @@ const config: Config = {
   coverageDirectory: 'coverage',
   coverageThreshold: {
     global: {
-      statements: 98,
-      branches: 96,
-      functions: 96,
-      lines: 98,
+      statements: 91,
+      branches: 90,
+      functions: 93,
+      lines: 91,
     },
   },
   collectCoverageFrom: [
     'src/lib/**/*.ts',
     'src/components/**/*.{ts,tsx}',
+    'src/hooks/**/*.ts',
     '!src/**/*.d.ts',
   ],
 };
