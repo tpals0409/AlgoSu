@@ -5,7 +5,7 @@
 #
 # 대상 서비스:
 #   gateway(3000), identity-service(3004), submission-service(3003),
-#   problem-service(3002), ai-analysis-service(8000)
+#   problem-service(3002), ai-analysis-service(8000), github-worker(9100)
 #
 # 참고: 각 서비스는 애플리케이션 포트와 metrics 포트를 공유하므로,
 # NetworkPolicy는 metrics 전용이 아닌 "Prometheus → 서비스" 방향의
@@ -203,3 +203,34 @@ spec:
       ports:
         - protocol: TCP
           port: 8000
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-scrape-github-worker
+  namespace: algosu
+  labels:
+    app.kubernetes.io/part-of: algosu
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: github-worker
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 9100
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: algosu
+      ports:
+        - protocol: TCP
+          port: 9100

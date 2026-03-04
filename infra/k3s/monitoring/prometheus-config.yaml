@@ -42,8 +42,11 @@ data:
           - targets: ['ai-analysis-service:8000']
         metrics_path: /metrics
 
-      # github-worker: HTTP 서버 없음 (MQ 소비자) — Prometheus 직접 스크랩 불가
-      # 메트릭은 JSON 구조화 로그 → Loki → Grafana 패널로 수집
+      # github-worker: DLQ 카운터 + MQ 처리량 + Node.js 기본 메트릭
+      - job_name: 'github-worker'
+        static_configs:
+          - targets: ['github-worker-metrics:9100']
+        metrics_path: /metrics
 
       - job_name: 'rabbitmq'
         static_configs:

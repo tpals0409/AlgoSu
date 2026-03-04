@@ -20,7 +20,6 @@ import {
   Param,
   Req,
   Res,
-  Logger,
   ParseUUIDPipe,
   UnauthorizedException,
   ForbiddenException,
@@ -31,10 +30,10 @@ import * as jwt from 'jsonwebtoken';
 import Redis from 'ioredis';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationType } from '../notification/notification.entity';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 @Controller('sse')
 export class SseController {
-  private readonly logger = new Logger(SseController.name);
   private readonly jwtSecret: string;
 
   // M13: 공유 Redis subscriber (연결마다 새 인스턴스 생성 방지)
@@ -54,7 +53,9 @@ export class SseController {
   constructor(
     private readonly configService: ConfigService,
     private readonly notificationService: NotificationService,
+    private readonly logger: StructuredLoggerService,
   ) {
+    this.logger.setContext(SseController.name);
     this.jwtSecret = this.configService.getOrThrow<string>('JWT_SECRET');
 
     // M13: 단일 Redis subscriber 인스턴스
@@ -62,7 +63,7 @@ export class SseController {
     this.subscriber = new Redis(redisUrl);
 
     this.subscriber.on('error', (err: Error) => {
-      this.logger.error(`SSE 공유 Redis subscriber 오류: ${err.message}`);
+      this.logger.error('SSE 공유 Redis subscriber 오류', err);
     });
 
     this.subscriber.on('message', (channel: string, message: string) => {
@@ -98,7 +99,7 @@ export class SseController {
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no');
 
-    this.logger.log(`SSE 연결: submissionId=${submissionId}, userId=${userId}`);
+    this.logger.log('SSE 연결', { submissionId });
 
     const channel = `submission:status:${submissionId}`;
 
@@ -112,7 +113,7 @@ export class SseController {
       clearTimeout(connectionTimeout);
       this.removeChannelListener(channel, messageHandler);
       if (!res.writableEnded) res.end();
-      this.logger.log(`SSE 연결 종료: submissionId=${submissionId}`);
+      this.logger.log('SSE 연결 종료', { submissionId });
     };
 
     // M13: 공유 subscriber에 채널 리스너 등록
@@ -142,7 +143,7 @@ export class SseController {
                 message: `제출(${event.submissionId}) ${notifConfig.title}`,
               })
               .catch((err: Error) => {
-                this.logger.error(`알림 생성 실패: ${err.message}`);
+                this.logger.error('알림 생성 실패', err);
               });
           }
 
@@ -153,7 +154,7 @@ export class SseController {
           setTimeout(cleanup, 500);
         }
       } catch (err) {
-        this.logger.error(`SSE 메시지 파싱 오류: ${(err as Error).message}`);
+        this.logger.error('SSE 메시지 파싱 오류', err as Error);
       }
     };
 
@@ -240,7 +241,7 @@ export class SseController {
       }
     } catch (error) {
       if (error instanceof ForbiddenException) throw error;
-      this.logger.error(`소유권 검증 실패: ${(error as Error).message}`);
+      this.logger.error('소유권 검증 실패', error as Error);
       throw new ForbiddenException('제출물 소유권을 확인할 수 없습니다.');
     }
   }
@@ -264,7 +265,7 @@ export class SseController {
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no');
 
-    this.logger.log(`알림 SSE 연결: userId=${userId}`);
+    this.logger.log('알림 SSE 연결');
 
     const channel = `notification:user:${userId}`;
 
@@ -277,7 +278,7 @@ export class SseController {
       clearTimeout(connectionTimeout);
       this.removeChannelListener(channel, messageHandler);
       if (!res.writableEnded) res.end();
-      this.logger.log(`알림 SSE 연결 종료: userId=${userId}`);
+      this.logger.log('알림 SSE 연결 종료');
     };
 
     const messageHandler = (message: string): void => {
@@ -287,7 +288,7 @@ export class SseController {
           res.write(`data: ${message}\n\n`);
         }
       } catch (err) {
-        this.logger.error(`알림 SSE 메시지 전송 오류: ${(err as Error).message}`);
+        this.logger.error('알림 SSE 메시지 전송 오류', err as Error);
       }
     };
 

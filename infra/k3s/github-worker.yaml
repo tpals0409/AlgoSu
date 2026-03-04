@@ -1,6 +1,6 @@
 ---
-# AlgoSu GitHub Worker — k3s Deployment
-# RabbitMQ 소비자 (prefetch=2), 서비스 엔드포인트 없음
+# AlgoSu GitHub Worker — k3s Deployment + Metrics Service
+# RabbitMQ 소비자 (prefetch=2), metrics 엔드포인트 9100
 # C5: RollingUpdate 전략 명시 (UI-6 인프라 개선)
 apiVersion: apps/v1
 kind: Deployment
@@ -30,6 +30,10 @@ spec:
           envFrom:
             - secretRef:
                 name: github-worker-secrets
+          ports:
+            - containerPort: 9100
+              name: metrics
+              protocol: TCP
           resources:
             requests:
               memory: "128Mi"
@@ -57,3 +61,22 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 30
             timeoutSeconds: 5
+---
+# github-worker Metrics Service — Prometheus scraper 전용
+apiVersion: v1
+kind: Service
+metadata:
+  name: github-worker-metrics
+  namespace: algosu
+  labels:
+    app: github-worker
+    component: metrics
+spec:
+  selector:
+    app: github-worker
+  ports:
+    - port: 9100
+      targetPort: 9100
+      name: metrics
+      protocol: TCP
+  type: ClusterIP
