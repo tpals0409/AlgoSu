@@ -35,6 +35,7 @@ resources:
 
   # 네트워크 정책
   - metrics-network-policy.yaml
+  - service-network-policies.yaml
 
   # 모니터링
   - monitoring/alertmanager.yaml

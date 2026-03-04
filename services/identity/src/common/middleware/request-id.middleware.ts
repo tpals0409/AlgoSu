@@ -4,16 +4,19 @@
  * 모든 요청에 X-Request-Id, X-Trace-Id 헤더 부여
  * 규칙 근거: /docs/monitoring-log-rules.md §1-4
  */
-import { Injectable, NestMiddleware, Logger } from '@nestjs/common';
+import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'crypto';
+import { StructuredLoggerService } from '../logger/structured-logger.service';
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 @Injectable()
 export class RequestIdMiddleware implements NestMiddleware {
-  private readonly logger = new Logger(RequestIdMiddleware.name);
+  constructor(private readonly logger: StructuredLoggerService) {
+    this.logger.setContext(RequestIdMiddleware.name);
+  }
 
   use(req: Request, res: Response, next: NextFunction): void {
     // X-Request-Id: 클라이언트 전달값이 UUID 형식이면 재사용

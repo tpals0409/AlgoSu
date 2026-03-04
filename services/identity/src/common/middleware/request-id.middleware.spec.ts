@@ -25,7 +25,8 @@ describe('RequestIdMiddleware', () => {
   let middleware: RequestIdMiddleware;
 
   beforeEach(() => {
-    middleware = new RequestIdMiddleware();
+    const mockLogger = { setContext: jest.fn() };
+    middleware = new RequestIdMiddleware(mockLogger as never);
   });
 
   it('헤더가 없으면 UUID를 새로 생성한다', () => {

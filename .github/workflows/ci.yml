@@ -754,6 +754,7 @@ jobs:
     permissions:
       contents: read
       packages: read
+      security-events: write
     strategy:
       fail-fast: false
       matrix:
@@ -786,7 +787,7 @@ jobs:
         run: |
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
             | sh -s -- -b /usr/local/bin v0.69.2
-      - name: Trivy scan
+      - name: Trivy scan (table)
         if: steps.check.outputs.skip == 'false'
         run: |
           trivy image \
@@ -799,6 +800,25 @@ jobs:
         env:
           TRIVY_USERNAME: ${{ github.actor }}
           TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+      - name: Trivy scan (SARIF)
+        if: always() && steps.check.outputs.skip == 'false'
+        run: |
+          trivy image \
+            --platform linux/arm64 \
+            --severity CRITICAL,HIGH \
+            --ignore-unfixed \
+            --format sarif \
+            --output trivy-results.sarif \
+            "${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:main-${{ github.sha }}"
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload Trivy SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && steps.check.outputs.skip == 'false'
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-${{ matrix.service }}
 
   # ============================================================
   # Deploy — aether-gitops 이미지 태그 업데이트 (ArgoCD 자동 sync)

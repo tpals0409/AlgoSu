@@ -1,7 +1,10 @@
 import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MetricsModule } from './common/metrics/metrics.module';
+import { StructuredLoggerService } from './common/logger/structured-logger.service';
+import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { HealthController } from './health.controller';
 import { User } from './user/user.entity';
@@ -28,6 +31,11 @@ import { User } from './user/user.entity';
     MetricsModule,
   ],
   controllers: [HealthController],
+  providers: [
+    StructuredLoggerService,
+    { provide: APP_FILTER, useClass: GlobalExceptionFilter },
+  ],
+  exports: [StructuredLoggerService],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {

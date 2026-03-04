@@ -25,7 +25,8 @@ describe('GlobalExceptionFilter', () => {
   let filter: GlobalExceptionFilter;
 
   beforeEach(() => {
-    filter = new GlobalExceptionFilter();
+    const mockLogger = { setContext: jest.fn(), error: jest.fn() };
+    filter = new GlobalExceptionFilter(mockLogger as never);
   });
 
   it('HttpException을 올바르게 처리한다', () => {

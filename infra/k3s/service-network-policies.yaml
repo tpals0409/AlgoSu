@@ -1,0 +1,190 @@
+# ============================================================
+# AlgoSu — 서비스간 NetworkPolicy
+# 서비스별 인바운드 트래픽을 필요한 소스로만 제한
+# ============================================================
+
+# -- 1. gateway-ingress: 외부(Traefik)에서만 gateway 접근 허용 --
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: gateway-ingress
+  namespace: algosu
+  labels:
+    app.kubernetes.io/part-of: algosu
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: gateway
+  policyTypes:
+    - Ingress
+  ingress:
+    # Traefik Ingress Controller (kube-system namespace)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 3000
+    # Prometheus scrape 허용
+    - from:
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 3000
+
+# -- 2. identity-ingress: gateway에서만 identity 접근 허용 --
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: identity-ingress
+  namespace: algosu
+  labels:
+    app.kubernetes.io/part-of: algosu
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: identity-service
+  policyTypes:
+    - Ingress
+  ingress:
+    # gateway에서의 트래픽 허용
+    - from:
+        - podSelector:
+            matchLabels:
+              app: gateway
+      ports:
+        - protocol: TCP
+          port: 3004
+    # Prometheus scrape 허용
+    - from:
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 3004
+
+# -- 3. submission-ingress: gateway에서만 submission 접근 허용 --
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: submission-ingress
+  namespace: algosu
+  labels:
+    app.kubernetes.io/part-of: algosu
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: submission-service
+  policyTypes:
+    - Ingress
+  ingress:
+    # gateway에서의 트래픽 허용
+    - from:
+        - podSelector:
+            matchLabels:
+              app: gateway
+      ports:
+        - protocol: TCP
+          port: 3003
+    # Prometheus scrape 허용
+    - from:
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 3003
+
+# -- 4. problem-ingress: gateway에서만 problem 접근 허용 --
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: problem-ingress
+  namespace: algosu
+  labels:
+    app.kubernetes.io/part-of: algosu
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: problem-service
+  policyTypes:
+    - Ingress
+  ingress:
+    # gateway에서의 트래픽 허용
+    - from:
+        - podSelector:
+            matchLabels:
+              app: gateway
+      ports:
+        - protocol: TCP
+          port: 3002
+    # Prometheus scrape 허용
+    - from:
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 3002
+
+# -- 5. rabbitmq-ingress: submission, github-worker, ai-analysis에서만 접근 허용 --
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: rabbitmq-ingress
+  namespace: algosu
+  labels:
+    app.kubernetes.io/part-of: algosu
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: rabbitmq
+  policyTypes:
+    - Ingress
+  ingress:
+    # submission-service에서 AMQP 접근
+    - from:
+        - podSelector:
+            matchLabels:
+              app: submission-service
+      ports:
+        - protocol: TCP
+          port: 5672
+    # github-worker에서 AMQP 접근
+    - from:
+        - podSelector:
+            matchLabels:
+              app: github-worker
+      ports:
+        - protocol: TCP
+          port: 5672
+    # ai-analysis-service에서 AMQP 접근
+    - from:
+        - podSelector:
+            matchLabels:
+              app: ai-analysis-service
+      ports:
+        - protocol: TCP
+          port: 5672
+    # Prometheus scrape 허용 (rabbitmq_prometheus 플러그인)
+    - from:
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 15692
