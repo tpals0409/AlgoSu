@@ -16,6 +16,7 @@ import {
   HttpStatus,
   BadRequestException,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiConsumes } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Request } from 'express';
 import { AvatarService } from './avatar.service';
@@ -23,6 +24,7 @@ import { MAX_FILE_SIZE } from './avatar.constants';
 
 // ─── CONTROLLER ───────────────────────────
 
+@ApiTags('Avatar')
 @Controller('avatar')
 export class AvatarController {
   constructor(private readonly avatarService: AvatarService) {}
@@ -35,6 +37,9 @@ export class AvatarController {
    * @param file - multipart/form-data 'file' 필드
    * @returns avatarUrl (MinIO public URL)
    */
+  @ApiOperation({ summary: '프로필 이미지 업로드' })
+  @ApiConsumes('multipart/form-data')
+  @ApiResponse({ status: 200, description: '업로드 완료, avatarUrl 반환' })
   @Post('upload')
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(
@@ -62,6 +67,8 @@ export class AvatarController {
    * @guard jwt-auth
    * @domain identity
    */
+  @ApiOperation({ summary: '프로필 이미지 삭제' })
+  @ApiResponse({ status: 204, description: '삭제 완료' })
   @Delete()
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteAvatar(@Req() req: Request): Promise<void> {

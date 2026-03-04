@@ -87,6 +87,8 @@ export class StudyController {
    * @api PUT /studies/:id
    * @guard jwt-auth, study-admin, closed-study
    */
+  @ApiOperation({ summary: '스터디 수정 (ADMIN)' })
+  @ApiResponse({ status: 200, description: '수정 완료' })
   @Put(':id')
   @UseGuards(StudyActiveGuard)
   async update(
@@ -103,6 +105,8 @@ export class StudyController {
    * @api DELETE /studies/:id
    * @guard jwt-auth, study-admin, closed-study
    */
+  @ApiOperation({ summary: '스터디 삭제 (ADMIN)' })
+  @ApiResponse({ status: 200, description: '삭제 완료' })
   @Delete(':id')
   @UseGuards(StudyActiveGuard)
   async remove(
@@ -119,6 +123,8 @@ export class StudyController {
    * @api PATCH /studies/:id/ground-rules
    * @guard jwt-auth, study-admin, closed-study
    */
+  @ApiOperation({ summary: '그라운드 룰 수정 (ADMIN)' })
+  @ApiResponse({ status: 200, description: '수정 완료' })
   @Patch(':id/ground-rules')
   @UseGuards(StudyActiveGuard)
   async updateGroundRules(
@@ -135,6 +141,8 @@ export class StudyController {
    * @api POST /studies/:id/invite
    * @guard jwt-auth, study-admin, closed-study
    */
+  @ApiOperation({ summary: '초대 코드 발급 (ADMIN)' })
+  @ApiResponse({ status: 201, description: '초대 코드 발급 완료' })
   @Post(':id/invite')
   @UseGuards(StudyActiveGuard)
   async createInvite(
@@ -150,6 +158,8 @@ export class StudyController {
    * @api POST /studies/verify-invite
    * @guard jwt-auth
    */
+  @ApiOperation({ summary: '초대 코드 유효성 검증' })
+  @ApiResponse({ status: 200, description: '검증 결과' })
   @Post('verify-invite')
   async verifyInvite(
     @Req() req: Request,
@@ -181,6 +191,8 @@ export class StudyController {
    * @api POST /studies/:id/leave
    * @guard jwt-auth, study-member
    */
+  @ApiOperation({ summary: '스터디 탈퇴' })
+  @ApiResponse({ status: 200, description: '탈퇴 완료' })
   @Post(':id/leave')
   async leaveStudy(
     @Param('id', ParseUUIDPipe) studyId: string,
@@ -197,6 +209,8 @@ export class StudyController {
    * @guard jwt-auth, study-admin, closed-study
    * @event STUDY_CLOSED (publish)
    */
+  @ApiOperation({ summary: '스터디 종료 (ADMIN)' })
+  @ApiResponse({ status: 200, description: '종료 완료' })
   @Post(':id/close')
   @UseGuards(StudyActiveGuard)
   async closeStudy(
@@ -213,6 +227,8 @@ export class StudyController {
    * @api GET /studies/:id/stats
    * @guard jwt-auth, study-member
    */
+  @ApiOperation({ summary: '스터디 통계 조회' })
+  @ApiResponse({ status: 200, description: '통계 데이터' })
   @Get(':id/stats')
   async getStudyStats(
     @Param('id', ParseUUIDPipe) studyId: string,
@@ -244,6 +260,8 @@ export class StudyController {
    * @api PATCH /studies/:id/nickname
    * @guard jwt-auth, study-member
    */
+  @ApiOperation({ summary: '본인 닉네임 변경' })
+  @ApiResponse({ status: 200, description: '변경 완료' })
   @Patch(':id/nickname')
   async updateNickname(
     @Param('id', ParseUUIDPipe) studyId: string,
@@ -259,6 +277,8 @@ export class StudyController {
    * @api PATCH /studies/:id/members/:userId/role
    * @guard jwt-auth, study-admin, closed-study
    */
+  @ApiOperation({ summary: '멤버 역할 변경 (ADMIN)' })
+  @ApiResponse({ status: 200, description: '역할 변경 완료' })
   @Patch(':id/members/:userId/role')
   @UseGuards(StudyActiveGuard)
   async changeMemberRole(
@@ -277,6 +297,8 @@ export class StudyController {
    * @api POST /studies/:id/notify-problem
    * @guard jwt-auth, study-admin, closed-study
    */
+  @ApiOperation({ summary: '문제 생성 알림 전송 (ADMIN)' })
+  @ApiResponse({ status: 200, description: '알림 전송 완료' })
   @Post(':id/notify-problem')
   @UseGuards(StudyActiveGuard)
   async notifyProblemCreated(
@@ -300,6 +322,8 @@ export class StudyController {
    * @api DELETE /studies/:id/members/:user_id
    * @guard jwt-auth, study-admin, closed-study
    */
+  @ApiOperation({ summary: '멤버 추방 (ADMIN)' })
+  @ApiResponse({ status: 200, description: '추방 완료' })
   @Delete(':id/members/:user_id')
   @UseGuards(StudyActiveGuard)
   async removeMember(

@@ -24,6 +24,7 @@ import {
   UnauthorizedException,
   ForbiddenException,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import * as jwt from 'jsonwebtoken';
@@ -32,6 +33,7 @@ import { NotificationService } from '../notification/notification.service';
 import { NotificationType } from '../notification/notification.entity';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
+@ApiTags('SSE')
 @Controller('sse')
 export class SseController {
   private readonly jwtSecret: string;
@@ -81,6 +83,8 @@ export class SseController {
    * @api GET /sse/submissions/:id
    * @guard cookie-auth, submission-owner
    */
+  @ApiOperation({ summary: '제출 상태 실시간 스트리밍 (SSE)' })
+  @ApiResponse({ status: 200, description: 'SSE text/event-stream' })
   @Get('submissions/:id')
   async streamStatus(
     @Param('id', ParseUUIDPipe) submissionId: string,
@@ -251,6 +255,8 @@ export class SseController {
    * @api GET /sse/notifications
    * @guard cookie-auth
    */
+  @ApiOperation({ summary: '알림 실시간 스트리밍 (SSE)' })
+  @ApiResponse({ status: 200, description: 'SSE text/event-stream' })
   @Get('notifications')
   async streamNotifications(
     @Req() req: Request,

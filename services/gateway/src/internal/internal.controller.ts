@@ -12,12 +12,14 @@ import {
   UseGuards,
   NotFoundException,
 } from '@nestjs/common';
+import { ApiExcludeController } from '@nestjs/swagger';
 import { InternalKeyGuard } from '../common/guards/internal-key.guard';
 import { OAuthService } from '../auth/oauth/oauth.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { StudyMember, Study } from '../study/study.entity';
 
+@ApiExcludeController()
 @Controller('internal')
 @UseGuards(InternalKeyGuard)
 export class InternalController {

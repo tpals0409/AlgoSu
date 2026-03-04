@@ -5,9 +5,11 @@
  * @related metrics.service.ts
  */
 import { Controller, Get, Res } from '@nestjs/common';
+import { ApiExcludeController } from '@nestjs/swagger';
 import { Response } from 'express';
 import { MetricsService } from './metrics.service';
 
+@ApiExcludeController()
 @Controller('metrics')
 export class MetricsController {
   constructor(private readonly metricsService: MetricsService) {}

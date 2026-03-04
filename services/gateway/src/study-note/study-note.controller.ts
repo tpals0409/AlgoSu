@@ -15,6 +15,7 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
@@ -26,6 +27,7 @@ interface UpstreamErrorBody {
   error?: string;
 }
 
+@ApiTags('Study Notes')
 @Controller('api/study-notes')
 export class StudyNoteProxyController {
   constructor(
@@ -40,6 +42,8 @@ export class StudyNoteProxyController {
    * @api PUT /api/study-notes
    * @guard jwt-auth
    */
+  @ApiOperation({ summary: '스터디 노트 생성/수정' })
+  @ApiResponse({ status: 200, description: '메모 저장 완료' })
   @Put()
   async upsert(@Req() req: Request, @Body() body: unknown) {
     return this.proxyToSubmission(req, '/study-notes', 'PUT', body);
@@ -50,6 +54,8 @@ export class StudyNoteProxyController {
    * @api GET /api/study-notes
    * @guard jwt-auth
    */
+  @ApiOperation({ summary: '스터디 노트 조회' })
+  @ApiResponse({ status: 200, description: '메모 반환' })
   @Get()
   async find(
     @Query('problemId', ParseUUIDPipe) problemId: string,

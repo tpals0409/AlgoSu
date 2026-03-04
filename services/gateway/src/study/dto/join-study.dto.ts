@@ -5,13 +5,15 @@
  * @related StudyService.joinByInviteCode, StudyController.joinStudy
  */
 import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class JoinStudyDto {
+  @ApiProperty({ description: '초대 코드' })
   @IsNotEmpty({ message: '초대 코드는 필수입니다.' })
   @IsString()
   code!: string;
 
-  /** 가입자 닉네임 (study_members에 저장) */
+  @ApiProperty({ description: '가입자 닉네임', maxLength: 50 })
   @IsNotEmpty({ message: '닉네임은 필수입니다.' })
   @IsString()
   @MaxLength(50)
