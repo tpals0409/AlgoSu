@@ -55,13 +55,13 @@ import { StudyNoteProxyModule } from './study-note/study-note.module';
     }),
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
+      inject: [ConfigService, StructuredLoggerService],
+      useFactory: (configService: ConfigService, logger: StructuredLoggerService) => ({
         throttlers: [
           { name: 'default', ttl: 60_000, limit: 60 },
           { name: 'submission', ttl: 60_000, limit: 10 },
         ],
-        storage: new RedisThrottlerStorage(configService),
+        storage: new RedisThrottlerStorage(configService, logger),
       }),
     }),
     TypeOrmModule.forFeature([User]),
