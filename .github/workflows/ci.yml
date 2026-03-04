@@ -296,179 +296,79 @@ jobs:
   # Test Jobs — Quality Gate 통과 후에만 테스트 진행
   # ============================================================
 
-  test-gateway:
-    name: Test Gateway
+  test-node:
+    name: Test ${{ matrix.name }}
     needs: [detect-changes, quality-nestjs]
-    if: needs.detect-changes.outputs.gateway == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: gateway
+            name: Gateway
+            changed: ${{ needs.detect-changes.outputs.gateway }}
+            test_args: '--coverage --ci'
+            work_dir: services/gateway
+          - service: identity
+            name: Identity
+            changed: ${{ needs.detect-changes.outputs.identity }}
+            test_args: '--coverage --ci --passWithNoTests'
+            work_dir: services/identity
+          - service: submission
+            name: Submission
+            changed: ${{ needs.detect-changes.outputs.submission }}
+            test_args: '--coverage --ci --forceExit'
+            work_dir: services/submission
+          - service: problem
+            name: Problem
+            changed: ${{ needs.detect-changes.outputs.problem }}
+            test_args: '--coverage --ci'
+            work_dir: services/problem
+          - service: github-worker
+            name: GitHub Worker
+            changed: ${{ needs.detect-changes.outputs.github-worker }}
+            test_args: '--coverage --ci'
+            work_dir: services/github-worker
     steps:
+      - name: Skip if not changed
+        id: check
+        run: |
+          if [ "${{ matrix.changed }}" != "true" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
       - uses: actions/checkout@v4
+        if: steps.check.outputs.skip == 'false'
       - uses: actions/setup-node@v4
+        if: steps.check.outputs.skip == 'false'
         with:
           node-version: ${{ env.NODE_VERSION }}
       - name: Cache node_modules
+        if: steps.check.outputs.skip == 'false'
         uses: actions/cache@v4
         id: cache-node
         with:
-          path: services/gateway/node_modules
-          key: node-gateway-${{ hashFiles('services/gateway/package-lock.json') }}
+          path: ${{ matrix.work_dir }}/node_modules
+          key: node-${{ matrix.service }}-${{ hashFiles(format('{0}/package-lock.json', matrix.work_dir)) }}
           restore-keys: |
-            node-gateway-
+            node-${{ matrix.service }}-
       - name: Install dependencies
-        if: steps.cache-node.outputs.cache-hit != 'true'
-        working-directory: services/gateway
+        if: steps.check.outputs.skip == 'false' && steps.cache-node.outputs.cache-hit != 'true'
+        working-directory: ${{ matrix.work_dir }}
         run: npm ci
       - name: Run unit tests
-        working-directory: services/gateway
-        run: npm test -- --coverage --ci
+        if: steps.check.outputs.skip == 'false'
+        working-directory: ${{ matrix.work_dir }}
+        run: npm test -- ${{ matrix.test_args }}
       - name: Upload coverage
-        if: always()
+        if: always() && steps.check.outputs.skip == 'false'
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-gateway
-          path: services/gateway/coverage/
-          retention-days: 7
-
-  test-identity:
-    name: Test Identity
-    needs: [detect-changes, quality-nestjs]
-    if: needs.detect-changes.outputs.identity == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      - name: Cache node_modules
-        uses: actions/cache@v4
-        id: cache-node
-        with:
-          path: services/identity/node_modules
-          key: node-identity-${{ hashFiles('services/identity/package-lock.json') }}
-          restore-keys: |
-            node-identity-
-      - name: Install dependencies
-        if: steps.cache-node.outputs.cache-hit != 'true'
-        working-directory: services/identity
-        run: npm ci
-      - name: Run unit tests
-        working-directory: services/identity
-        run: npm test -- --coverage --ci --passWithNoTests
-      - name: Upload coverage
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-identity
-          path: services/identity/coverage/
-          retention-days: 7
-
-  test-submission:
-    name: Test Submission
-    needs: [detect-changes, quality-nestjs]
-    if: needs.detect-changes.outputs.submission == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      - name: Cache node_modules
-        uses: actions/cache@v4
-        id: cache-node
-        with:
-          path: services/submission/node_modules
-          key: node-submission-${{ hashFiles('services/submission/package-lock.json') }}
-          restore-keys: |
-            node-submission-
-      - name: Install dependencies
-        if: steps.cache-node.outputs.cache-hit != 'true'
-        working-directory: services/submission
-        run: npm ci
-      - name: Run unit tests
-        working-directory: services/submission
-        run: npm test -- --coverage --ci --forceExit
-      - name: Upload coverage
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-submission
-          path: services/submission/coverage/
-          retention-days: 7
-
-  test-problem:
-    name: Test Problem
-    needs: [detect-changes, quality-nestjs]
-    if: needs.detect-changes.outputs.problem == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      - name: Cache node_modules
-        uses: actions/cache@v4
-        id: cache-node
-        with:
-          path: services/problem/node_modules
-          key: node-problem-${{ hashFiles('services/problem/package-lock.json') }}
-          restore-keys: |
-            node-problem-
-      - name: Install dependencies
-        if: steps.cache-node.outputs.cache-hit != 'true'
-        working-directory: services/problem
-        run: npm ci
-      - name: Run unit tests
-        working-directory: services/problem
-        run: npm test -- --coverage --ci
-      - name: Upload coverage
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-problem
-          path: services/problem/coverage/
-          retention-days: 7
-
-  test-github-worker:
-    name: Test GitHub Worker
-    needs: [detect-changes, quality-nestjs]
-    if: needs.detect-changes.outputs.github-worker == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      - name: Cache node_modules
-        uses: actions/cache@v4
-        id: cache-node
-        with:
-          path: services/github-worker/node_modules
-          key: node-github-worker-${{ hashFiles('services/github-worker/package-lock.json') }}
-          restore-keys: |
-            node-github-worker-
-      - name: Install dependencies
-        if: steps.cache-node.outputs.cache-hit != 'true'
-        working-directory: services/github-worker
-        run: npm ci
-      - name: Run unit tests
-        working-directory: services/github-worker
-        run: npm test -- --coverage --ci
-      - name: Upload coverage
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-github-worker
-          path: services/github-worker/coverage/
+          name: coverage-${{ matrix.service }}
+          path: ${{ matrix.work_dir }}/coverage/
           retention-days: 7
 
   test-ai-analysis:
@@ -546,173 +446,77 @@ jobs:
   # Build Jobs — 테스트 통과 후 Docker 빌드 + GHCR 푸시
   # ============================================================
 
-  build-gateway:
-    name: Build Gateway (NestJS)
-    needs: [detect-changes, test-gateway]
-    if: needs.detect-changes.outputs.gateway == 'true'
+  build-services:
+    name: Build ${{ matrix.name }}
+    needs: [detect-changes, test-node, test-ai-analysis]
+    if: |
+      !cancelled() &&
+      (needs.test-node.result == 'success' || needs.test-node.result == 'skipped') &&
+      (needs.test-ai-analysis.result == 'success' || needs.test-ai-analysis.result == 'skipped')
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: gateway
+            name: Gateway (NestJS)
+            changed: ${{ needs.detect-changes.outputs.gateway }}
+            context: ./services/gateway
+          - service: identity
+            name: Identity Service (NestJS)
+            changed: ${{ needs.detect-changes.outputs.identity }}
+            context: ./services/identity
+          - service: submission
+            name: Submission Service (NestJS)
+            changed: ${{ needs.detect-changes.outputs.submission }}
+            context: ./services/submission
+          - service: problem
+            name: Problem Service (NestJS)
+            changed: ${{ needs.detect-changes.outputs.problem }}
+            context: ./services/problem
+          - service: github-worker
+            name: GitHub Worker (Node.js)
+            changed: ${{ needs.detect-changes.outputs.github-worker }}
+            context: ./services/github-worker
+          - service: ai-analysis
+            name: AI Analysis Service (FastAPI)
+            changed: ${{ needs.detect-changes.outputs.ai-analysis }}
+            context: ./services/ai-analysis
     steps:
+      - name: Skip if not changed
+        id: check
+        run: |
+          if [ "${{ matrix.changed }}" != "true" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
       - uses: actions/checkout@v4
+        if: steps.check.outputs.skip == 'false'
       - uses: docker/setup-qemu-action@v3
+        if: steps.check.outputs.skip == 'false'
         with:
           platforms: linux/arm64
       - uses: docker/setup-buildx-action@v3
+        if: steps.check.outputs.skip == 'false'
       - uses: docker/login-action@v3
+        if: steps.check.outputs.skip == 'false'
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/build-push-action@v5
+        if: steps.check.outputs.skip == 'false'
         with:
-          context: ./services/gateway
+          context: ${{ matrix.context }}
           platforms: linux/arm64
           push: ${{ github.ref == 'refs/heads/main' }}
-          tags: ${{ env.IMAGE_PREFIX }}-gateway:main-${{ github.sha }}
-          cache-from: type=gha,scope=gateway
-          cache-to: type=gha,mode=max,scope=gateway
-
-  build-identity:
-    name: Build Identity Service (NestJS)
-    needs: [detect-changes, test-identity]
-    if: needs.detect-changes.outputs.identity == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v3
-        with:
-          platforms: linux/arm64
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v5
-        with:
-          context: ./services/identity
-          platforms: linux/arm64
-          push: ${{ github.ref == 'refs/heads/main' }}
-          tags: ${{ env.IMAGE_PREFIX }}-identity:main-${{ github.sha }}
-          cache-from: type=gha,scope=identity
-          cache-to: type=gha,mode=max,scope=identity
-
-  build-submission:
-    name: Build Submission Service (NestJS)
-    needs: [detect-changes, test-submission]
-    if: needs.detect-changes.outputs.submission == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v3
-        with:
-          platforms: linux/arm64
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v5
-        with:
-          context: ./services/submission
-          platforms: linux/arm64
-          push: ${{ github.ref == 'refs/heads/main' }}
-          tags: ${{ env.IMAGE_PREFIX }}-submission:main-${{ github.sha }}
-          cache-from: type=gha,scope=submission
-          cache-to: type=gha,mode=max,scope=submission
-
-  build-problem:
-    name: Build Problem Service (NestJS)
-    needs: [detect-changes, test-problem]
-    if: needs.detect-changes.outputs.problem == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v3
-        with:
-          platforms: linux/arm64
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v5
-        with:
-          context: ./services/problem
-          platforms: linux/arm64
-          push: ${{ github.ref == 'refs/heads/main' }}
-          tags: ${{ env.IMAGE_PREFIX }}-problem:main-${{ github.sha }}
-          cache-from: type=gha,scope=problem
-          cache-to: type=gha,mode=max,scope=problem
-
-  build-github-worker:
-    name: Build GitHub Worker (Node.js)
-    needs: [detect-changes, test-github-worker]
-    if: needs.detect-changes.outputs.github-worker == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v3
-        with:
-          platforms: linux/arm64
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v5
-        with:
-          context: ./services/github-worker
-          platforms: linux/arm64
-          push: ${{ github.ref == 'refs/heads/main' }}
-          tags: ${{ env.IMAGE_PREFIX }}-github-worker:main-${{ github.sha }}
-          cache-from: type=gha,scope=github-worker
-          cache-to: type=gha,mode=max,scope=github-worker
-
-  build-ai-analysis:
-    name: Build AI Analysis Service (FastAPI)
-    needs: [detect-changes, test-ai-analysis]
-    if: needs.detect-changes.outputs.ai-analysis == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v3
-        with:
-          platforms: linux/arm64
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v5
-        with:
-          context: ./services/ai-analysis
-          platforms: linux/arm64
-          push: ${{ github.ref == 'refs/heads/main' }}
-          tags: ${{ env.IMAGE_PREFIX }}-ai-analysis:main-${{ github.sha }}
-          cache-from: type=gha,scope=ai-analysis
-          cache-to: type=gha,mode=max,scope=ai-analysis
+          tags: ${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:main-${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
   build-frontend:
     name: Build Frontend (Next.js)
@@ -757,12 +561,7 @@ jobs:
     name: Trivy Scan — ${{ matrix.service }}
     needs:
       - detect-changes
-      - build-gateway
-      - build-identity
-      - build-submission
-      - build-problem
-      - build-github-worker
-      - build-ai-analysis
+      - build-services
       - build-frontend
     if: github.ref == 'refs/heads/main' && !cancelled()
     runs-on: ubuntu-latest
@@ -775,27 +574,35 @@ jobs:
       matrix:
         include:
           - service: gateway
-            built: ${{ needs.build-gateway.result }}
           - service: identity
-            built: ${{ needs.build-identity.result }}
           - service: submission
-            built: ${{ needs.build-submission.result }}
           - service: problem
-            built: ${{ needs.build-problem.result }}
           - service: github-worker
-            built: ${{ needs.build-github-worker.result }}
           - service: ai-analysis
-            built: ${{ needs.build-ai-analysis.result }}
           - service: frontend
-            built: ${{ needs.build-frontend.result }}
     steps:
-      - name: Skip if not built
+      - name: Check if service was built
         id: check
         run: |
-          if [ "${{ matrix.built }}" != "success" ]; then
-            echo "skip=true" >> $GITHUB_OUTPUT
+          # detect-changes 결과와 build job 성공 여부로 판단
+          CHANGED="${{ needs.detect-changes.outputs[matrix.service] }}"
+          BUILD_SVC="${{ needs.build-services.result }}"
+          BUILD_FE="${{ needs.build-frontend.result }}"
+
+          if [ "${{ matrix.service }}" = "frontend" ]; then
+            if [ "$BUILD_FE" != "success" ]; then
+              echo "skip=true" >> $GITHUB_OUTPUT
+            else
+              echo "skip=false" >> $GITHUB_OUTPUT
+            fi
           else
-            echo "skip=false" >> $GITHUB_OUTPUT
+            # build-services는 matrix job이므로 전체 결과만 확인 가능
+            # changed가 true이고 build-services가 성공이면 실행
+            if [ "$CHANGED" != "true" ] || [ "$BUILD_SVC" != "success" ]; then
+              echo "skip=true" >> $GITHUB_OUTPUT
+            else
+              echo "skip=false" >> $GITHUB_OUTPUT
+            fi
           fi
       - name: Install Trivy
         if: steps.check.outputs.skip == 'false'
@@ -845,24 +652,14 @@ jobs:
       - secret-scan
       - detect-changes
       - trivy-scan
-      - build-gateway
-      - build-identity
-      - build-submission
-      - build-problem
-      - build-github-worker
-      - build-ai-analysis
+      - build-services
       - build-frontend
     # main 브랜치 + 하나 이상의 서비스 빌드 성공 시에만 실행
     if: |
       github.ref == 'refs/heads/main' && !cancelled() &&
       needs.secret-scan.result == 'success' &&
       needs.trivy-scan.result != 'failure' &&
-      (needs.build-gateway.result == 'success' ||
-       needs.build-identity.result == 'success' ||
-       needs.build-submission.result == 'success' ||
-       needs.build-problem.result == 'success' ||
-       needs.build-github-worker.result == 'success' ||
-       needs.build-ai-analysis.result == 'success' ||
+      (needs.build-services.result == 'success' ||
        needs.build-frontend.result == 'success')
     runs-on: ubuntu-latest
     permissions:
@@ -882,13 +679,16 @@ jobs:
           SHA="${{ github.sha }}"
           UPDATED=""
 
-          # 빌드 성공한 서비스만 목록에 추가
-          [ "${{ needs.build-gateway.result }}" = "success" ] && UPDATED="${UPDATED} gateway"
-          [ "${{ needs.build-identity.result }}" = "success" ] && UPDATED="${UPDATED} identity"
-          [ "${{ needs.build-submission.result }}" = "success" ] && UPDATED="${UPDATED} submission"
-          [ "${{ needs.build-problem.result }}" = "success" ] && UPDATED="${UPDATED} problem"
-          [ "${{ needs.build-github-worker.result }}" = "success" ] && UPDATED="${UPDATED} github-worker"
-          [ "${{ needs.build-ai-analysis.result }}" = "success" ] && UPDATED="${UPDATED} ai-analysis"
+          # build-services는 matrix이므로 개별 결과를 알 수 없음
+          # detect-changes로 변경 감지된 서비스 중 build-services가 성공한 경우만
+          if [ "${{ needs.build-services.result }}" = "success" ]; then
+            [ "${{ needs.detect-changes.outputs.gateway }}" = "true" ] && UPDATED="${UPDATED} gateway"
+            [ "${{ needs.detect-changes.outputs.identity }}" = "true" ] && UPDATED="${UPDATED} identity"
+            [ "${{ needs.detect-changes.outputs.submission }}" = "true" ] && UPDATED="${UPDATED} submission"
+            [ "${{ needs.detect-changes.outputs.problem }}" = "true" ] && UPDATED="${UPDATED} problem"
+            [ "${{ needs.detect-changes.outputs.github-worker }}" = "true" ] && UPDATED="${UPDATED} github-worker"
+            [ "${{ needs.detect-changes.outputs.ai-analysis }}" = "true" ] && UPDATED="${UPDATED} ai-analysis"
+          fi
           [ "${{ needs.build-frontend.result }}" = "success" ] && UPDATED="${UPDATED} frontend"
 
           # 변경된 서비스만 이미지 태그 업데이트 (python3 + PyYAML)
@@ -991,11 +791,7 @@ jobs:
     name: E2E Integration Test
     if: github.event_name == 'workflow_dispatch'
     needs:
-      - test-gateway
-      - test-identity
-      - test-submission
-      - test-problem
-      - test-github-worker
+      - test-node
       - test-ai-analysis
     runs-on: ubuntu-latest
     permissions:

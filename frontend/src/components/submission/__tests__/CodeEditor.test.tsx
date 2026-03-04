@@ -37,14 +37,21 @@ jest.mock('next/dynamic', () => {
   return () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const MockEditor = (props: Record<string, any>) => {
-      // Use useLayoutEffect so that editorRef.current is set BEFORE the parent
-      // CodeEditor's useEffect hooks run, enabling coverage of the optional
-      // chaining branches like editorRef.current?.updateOptions(...)
-      React.useLayoutEffect(() => {
-        if (props.beforeMount) props.beforeMount(fakeMonaco);
-        if (props.onMount) props.onMount(fakeEditor, fakeMonaco);
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      }, []);
+      // Call beforeMount and onMount synchronously during render so that
+      // editorRef.current is set before the parent CodeEditor's useEffect hooks
+      // run. This is a side effect during render, acceptable for tests only.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const onMountRef = React.useRef<any>(null);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const beforeMountRef = React.useRef<any>(null);
+      const mountedRef = React.useRef(false);
+      if (!mountedRef.current) {
+        mountedRef.current = true;
+        beforeMountRef.current = props.beforeMount;
+        onMountRef.current = props.onMount;
+        if (beforeMountRef.current) beforeMountRef.current(fakeMonaco);
+        if (onMountRef.current) onMountRef.current(fakeEditor, fakeMonaco);
+      }
       return (
         <div data-testid="monaco-editor" data-language={props.language}>
           {props.value}
