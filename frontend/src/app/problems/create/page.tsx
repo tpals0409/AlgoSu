@@ -1,5 +1,5 @@
 /**
- * @file 문제 생성 페이지 (v2.1 UI 통일 리팩토링)
+ * @file 문제 생성 페이지 (v2.1 UI 통일 리팩토링 + React Hook Form + Zod)
  * @domain problem
  * @layer page
  * @related problemApi, solvedacApi, studyApi, useBojSearch, useLanguageToggle
@@ -7,8 +7,10 @@
 
 'use client';
 
-import { useState, useCallback, type FormEvent, type ReactNode } from 'react';
+import { useState, useCallback, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { CheckCircle2, Search, ExternalLink, Plus, FileText, Clock, X } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
@@ -23,21 +25,19 @@ import { useStudy } from '@/contexts/StudyContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
 import { useBojSearch } from '@/hooks/useBojSearch';
-import { useLanguageToggle } from '@/hooks/useLanguageToggle';
 import { problemApi, studyApi, type CreateProblemData } from '@/lib/api';
 import { DIFFICULTIES, DIFFICULTY_LABELS, LANGUAGES, LANGUAGE_VALUES } from '@/lib/constants';
 import type { Difficulty } from '@/lib/constants';
 import {
   type ProblemFormState,
-  type ProblemFormErrors,
   labelClass,
   selectClass,
   textareaClass,
   getCurrentWeekLabel,
   getWeekOptions,
   getWeekDates,
-  validateProblemForm,
 } from '@/lib/problem-form-utils';
+import { problemCreateSchema, type ProblemCreateFormData } from '@/lib/schemas/problem';
 
 // ─── RENDER ───────────────────────────────
 
@@ -52,9 +52,36 @@ export default function ProblemCreatePage(): ReactNode {
   useRequireStudy();
   const { currentStudyId, currentStudyRole } = useStudy();
 
-  // ─── STATE ──────────────────────────────
+  // ─── FORM (React Hook Form + Zod) ──────
 
-  const [form, setForm] = useState<ProblemFormState>(() => ({
+  const {
+    register,
+    handleSubmit,
+    control,
+    watch,
+    setValue,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<ProblemCreateFormData>({
+    resolver: zodResolver(problemCreateSchema),
+    defaultValues: {
+      title: '',
+      description: '',
+      difficulty: '',
+      weekNumber: getCurrentWeekLabel(),
+      deadline: '',
+      allowedLanguages: [...LANGUAGE_VALUES],
+      sourceUrl: '',
+      sourcePlatform: 'BOJ',
+    },
+  });
+
+  const weekNumber = watch('weekNumber');
+  const allowedLanguages = watch('allowedLanguages');
+
+  // ─── STATE (BOJ 검색 등 비-폼 상태) ────
+
+  const [, setFormProxy] = useState<ProblemFormState>(() => ({
     title: '',
     description: '',
     difficulty: '',
@@ -64,108 +91,104 @@ export default function ProblemCreatePage(): ReactNode {
     sourceUrl: '',
     sourcePlatform: 'BOJ',
   }));
-  const [fieldErrors, setFieldErrors] = useState<ProblemFormErrors>({});
-  const [isLoading, setIsLoading] = useState(false);
   const [created, setCreated] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // ─── HOOKS ──────────────────────────────
+  // ─── BOJ SEARCH HOOK ──────────────────
+
+  const setFormAndSync = useCallback(
+    (updater: React.SetStateAction<ProblemFormState>) => {
+      setFormProxy((prev) => {
+        const next = typeof updater === 'function' ? updater(prev) : updater;
+        if (next.title !== prev.title) setValue('title', next.title);
+        if (next.difficulty !== prev.difficulty) setValue('difficulty', next.difficulty);
+        if (next.sourceUrl !== prev.sourceUrl) setValue('sourceUrl', next.sourceUrl);
+        if (next.sourcePlatform !== prev.sourcePlatform) setValue('sourcePlatform', next.sourcePlatform);
+        return next;
+      });
+    },
+    [setValue],
+  );
+
+  const dummySetFieldErrors = useCallback(() => {}, []);
 
   const {
     bojQuery, setBojQuery, bojSearching, bojError, setBojError,
-    bojResult, bojApplied, handleBojSearch, handleBojKeyDown, handleBojReset,
-  } = useBojSearch(setForm, setFieldErrors);
+    bojResult, bojApplied, handleBojSearch, handleBojKeyDown, handleBojReset: originalBojReset,
+  } = useBojSearch(setFormAndSync, dummySetFieldErrors);
 
-  const handleLanguageToggle = useLanguageToggle(setForm);
+  const handleBojReset = useCallback(() => {
+    originalBojReset();
+    setValue('title', '');
+    setValue('difficulty', '');
+    setValue('sourceUrl', '');
+    setValue('sourcePlatform', 'BOJ');
+  }, [originalBojReset, setValue]);
 
-  // ─── HANDLERS ─────────────────────────────
+  // ─── LANGUAGE TOGGLE ──────────────────
 
-  const handleChange = useCallback(
-    (field: keyof ProblemFormState) =>
-      (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        setForm((prev) => ({
-          ...prev,
-          [field]: e.target.value,
-          ...(field === 'weekNumber' ? { deadline: '' } : {}),
-        }));
-        setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
-      },
-    [],
-  );
-
-  const handleBlur = useCallback(
-    (field: keyof ProblemFormErrors) => () => {
-      setFieldErrors((prev) => {
-        const errors = validateProblemForm(form);
-        return { ...prev, [field]: errors[field] };
-      });
+  const handleLanguageToggle = useCallback(
+    (langValue: string) => {
+      const current = allowedLanguages;
+      const next = current.includes(langValue)
+        ? current.filter((l) => l !== langValue)
+        : [...current, langValue];
+      setValue('allowedLanguages', next);
     },
-    [form],
+    [allowedLanguages, setValue],
   );
 
-  const handleSubmit = useCallback(
-    async (e: FormEvent<HTMLFormElement>): Promise<void> => {
-      e.preventDefault();
-      setSubmitError(null);
+  // ─── SUBMIT ───────────────────────────
 
-      if (!bojApplied) {
-        setBojError('백준 문제를 검색해주세요.');
-        return;
-      }
+  const onSubmit = async (formData: ProblemCreateFormData): Promise<void> => {
+    setSubmitError(null);
 
-      const errors = validateProblemForm(form);
-      if (Object.keys(errors).length > 0) {
-        setFieldErrors(errors);
-        return;
-      }
+    if (!bojApplied) {
+      setBojError('백준 문제를 검색해주세요.');
+      return;
+    }
 
-      setIsLoading(true);
+    try {
+      const data: CreateProblemData = {
+        title: formData.title.trim(),
+        weekNumber: formData.weekNumber.trim(),
+      };
+      if (formData.description?.trim()) data.description = formData.description.trim();
+      if (formData.difficulty) data.difficulty = formData.difficulty as CreateProblemData['difficulty'];
+      if (bojResult?.level) data.level = bojResult.level;
+      if (formData.deadline) data.deadline = new Date(formData.deadline).toISOString();
+      if (formData.allowedLanguages.length > 0) data.allowedLanguages = formData.allowedLanguages;
+      if (bojResult?.tags?.length) data.tags = bojResult.tags;
+      if (formData.sourceUrl?.trim()) data.sourceUrl = formData.sourceUrl.trim();
+      if (formData.sourcePlatform?.trim()) data.sourcePlatform = formData.sourcePlatform.trim();
 
-      try {
-        const data: CreateProblemData = {
-          title: form.title.trim(),
-          weekNumber: form.weekNumber.trim(),
-        };
-        if (form.description.trim()) data.description = form.description.trim();
-        if (form.difficulty) data.difficulty = form.difficulty as CreateProblemData['difficulty'];
-        if (bojResult?.level) data.level = bojResult.level;
-        if (form.deadline) data.deadline = new Date(form.deadline).toISOString();
-        if (form.allowedLanguages.length > 0) data.allowedLanguages = form.allowedLanguages;
-        if (bojResult?.tags?.length) data.tags = bojResult.tags;
-        if (form.sourceUrl.trim()) data.sourceUrl = form.sourceUrl.trim();
-        if (form.sourcePlatform.trim()) data.sourcePlatform = form.sourcePlatform.trim();
+      const createdProblem = await problemApi.create(data);
 
-        const createdProblem = await problemApi.create(data);
-
-        if (currentStudyId) {
-          const notifyWithRetry = async (retries = 2): Promise<void> => {
-            try {
-              await studyApi.notifyProblemCreated(currentStudyId, {
-                problemId: createdProblem.id,
-                problemTitle: createdProblem.title,
-                weekNumber: data.weekNumber,
-              });
-            } catch {
-              if (retries > 0) {
-                await new Promise((r) => setTimeout(r, 1000));
-                await notifyWithRetry(retries - 1);
-              } else {
-                console.error('[ProblemCreate] 알림 전송 최종 실패');
-              }
+      if (currentStudyId) {
+        const notifyWithRetry = async (retries = 2): Promise<void> => {
+          try {
+            await studyApi.notifyProblemCreated(currentStudyId, {
+              problemId: createdProblem.id,
+              problemTitle: createdProblem.title,
+              weekNumber: data.weekNumber,
+            });
+          } catch {
+            if (retries > 0) {
+              await new Promise((r) => setTimeout(r, 1000));
+              await notifyWithRetry(retries - 1);
+            } else {
+              console.error('[ProblemCreate] 알림 전송 최종 실패');
             }
-          };
-          void notifyWithRetry();
-        }
-
-        setCreated(true);
-      } catch (err) {
-        setSubmitError(err instanceof Error ? err.message : '문제 생성에 실패했습니다.');
-      } finally {
-        setIsLoading(false);
+          }
+        };
+        void notifyWithRetry();
       }
-    },
-    [form, bojApplied, bojResult, currentStudyId, setBojError],
-  );
+
+      setCreated(true);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : '문제 생성에 실패했습니다.');
+    }
+  };
 
   // ─── GUARDS ─────────────────────────────
 
@@ -205,7 +228,7 @@ export default function ProblemCreatePage(): ReactNode {
                   variant="primary"
                   size="md"
                   onClick={() => {
-                    setForm({
+                    reset({
                       title: '',
                       description: '',
                       difficulty: '',
@@ -215,9 +238,18 @@ export default function ProblemCreatePage(): ReactNode {
                       sourceUrl: '',
                       sourcePlatform: 'BOJ',
                     });
-                    setFieldErrors({});
+                    setFormProxy({
+                      title: '',
+                      description: '',
+                      difficulty: '',
+                      weekNumber: getCurrentWeekLabel(),
+                      deadline: '',
+                      allowedLanguages: [...LANGUAGE_VALUES],
+                      sourceUrl: '',
+                      sourcePlatform: 'BOJ',
+                    });
                     setCreated(false);
-                    handleBojReset();
+                    originalBojReset();
                     setSubmitError(null);
                   }}
                 >
@@ -344,14 +376,13 @@ export default function ProblemCreatePage(): ReactNode {
               기본 정보
             </CardTitle>
           </CardHeader>
-          <form onSubmit={(e) => void handleSubmit(e)} noValidate>
+          <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} noValidate>
             <CardContent className="space-y-4">
               <Input
                 label="제목"
                 placeholder="백준 검색 시 자동 입력됩니다"
-                value={form.title}
-                onChange={handleChange('title')}
-                error={fieldErrors.title}
+                {...register('title')}
+                error={errors.title?.message}
                 disabled
               />
 
@@ -360,9 +391,8 @@ export default function ProblemCreatePage(): ReactNode {
                 <textarea
                   id="create-description"
                   placeholder="문제에 대한 설명을 입력하세요"
-                  value={form.description}
-                  onChange={handleChange('description')}
-                  disabled={isLoading}
+                  {...register('description')}
+                  disabled={isSubmitting}
                   rows={4}
                   className={textareaClass}
                 />
@@ -373,9 +403,8 @@ export default function ProblemCreatePage(): ReactNode {
                   <label htmlFor="create-difficulty" className={labelClass}>난이도</label>
                   <select
                     id="create-difficulty"
-                    value={form.difficulty}
-                    onChange={handleChange('difficulty')}
-                    disabled={isLoading || bojApplied}
+                    {...register('difficulty')}
+                    disabled={isSubmitting || bojApplied}
                     className={selectClass}
                   >
                     <option value="">선택 안 함</option>
@@ -389,21 +418,29 @@ export default function ProblemCreatePage(): ReactNode {
                   <label htmlFor="create-weekNumber" className={labelClass}>
                     주차 <span className="text-error text-[11px]">필수</span>
                   </label>
-                  <select
-                    id="create-weekNumber"
-                    value={form.weekNumber}
-                    onChange={handleChange('weekNumber')}
-                    onBlur={handleBlur('weekNumber')}
-                    disabled={isLoading}
-                    aria-required
-                    className={`${selectClass} ${fieldErrors.weekNumber ? 'border-error' : ''}`}
-                  >
-                    {getWeekOptions().map((w) => (
-                      <option key={w} value={w}>{w}</option>
-                    ))}
-                  </select>
-                  {fieldErrors.weekNumber && (
-                    <p className="mt-1 text-[11px] text-error">{fieldErrors.weekNumber}</p>
+                  <Controller
+                    name="weekNumber"
+                    control={control}
+                    render={({ field }) => (
+                      <select
+                        id="create-weekNumber"
+                        {...field}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          setValue('deadline', '');
+                        }}
+                        disabled={isSubmitting}
+                        aria-required
+                        className={`${selectClass} ${errors.weekNumber ? 'border-error' : ''}`}
+                      >
+                        {getWeekOptions().map((w) => (
+                          <option key={w} value={w}>{w}</option>
+                        ))}
+                      </select>
+                    )}
+                  />
+                  {errors.weekNumber && (
+                    <p className="mt-1 text-[11px] text-error">{errors.weekNumber.message}</p>
                   )}
                 </div>
               </div>
@@ -424,20 +461,18 @@ export default function ProblemCreatePage(): ReactNode {
                 </label>
                 <select
                   id="create-deadline"
-                  value={form.deadline}
-                  onChange={handleChange('deadline')}
-                  onBlur={handleBlur('deadline')}
-                  disabled={isLoading}
+                  {...register('deadline')}
+                  disabled={isSubmitting}
                   aria-required
-                  className={`${selectClass} ${fieldErrors.deadline ? 'border-error' : ''}`}
+                  className={`${selectClass} ${errors.deadline ? 'border-error' : ''}`}
                 >
                   <option value="" disabled>요일을 선택하세요</option>
-                  {getWeekDates(form.weekNumber).map((d) => (
+                  {getWeekDates(weekNumber).map((d) => (
                     <option key={d.value} value={d.value}>{d.label}</option>
                   ))}
                 </select>
-                {fieldErrors.deadline && (
-                  <p className="mt-1 text-[11px] text-error">{fieldErrors.deadline}</p>
+                {errors.deadline && (
+                  <p className="mt-1 text-[11px] text-error">{errors.deadline.message}</p>
                 )}
               </div>
 
@@ -445,13 +480,13 @@ export default function ProblemCreatePage(): ReactNode {
                 <span className={labelClass}>허용 언어</span>
                 <div className="flex flex-wrap gap-1.5">
                   {LANGUAGES.map((lang) => {
-                    const selected = form.allowedLanguages.includes(lang.value);
+                    const selected = allowedLanguages.includes(lang.value);
                     return (
                       <button
                         key={lang.value}
                         type="button"
                         onClick={() => handleLanguageToggle(lang.value)}
-                        disabled={isLoading}
+                        disabled={isSubmitting}
                         aria-pressed={selected}
                         className={`inline-flex items-center gap-1 text-[11px] font-medium px-3 py-1.5 rounded-badge border transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
                           selected
@@ -471,15 +506,13 @@ export default function ProblemCreatePage(): ReactNode {
 
               <Input
                 label="출처 URL"
-                value={form.sourceUrl}
-                onChange={handleChange('sourceUrl')}
+                {...register('sourceUrl')}
                 disabled
               />
 
               <Input
                 label="출처 플랫폼"
-                value={form.sourcePlatform}
-                onChange={handleChange('sourcePlatform')}
+                {...register('sourcePlatform')}
                 disabled
               />
             </div>
@@ -499,7 +532,7 @@ export default function ProblemCreatePage(): ReactNode {
                 variant="ghost"
                 size="md"
                 className="flex-1"
-                disabled={isLoading}
+                disabled={isSubmitting}
                 onClick={() => router.back()}
               >
                 취소
@@ -509,9 +542,9 @@ export default function ProblemCreatePage(): ReactNode {
                 variant="primary"
                 size="md"
                 className="flex-1"
-                disabled={isLoading}
+                disabled={isSubmitting}
               >
-                {isLoading ? (
+                {isSubmitting ? (
                   <>
                     <InlineSpinner />
                     생성 중...
