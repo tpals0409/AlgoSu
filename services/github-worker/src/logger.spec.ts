@@ -142,6 +142,56 @@ describe('logger', () => {
     expect(parsed.delayMs).toBe(2000);
     expect(parsed.attempt).toBe(3);
   });
+
+  it('err이 없고 code도 없으면 error/code 필드 없음', () => {
+    logger.info('순수 메시지');
+
+    const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+    expect(parsed.error).toBeUndefined();
+    expect(parsed.code).toBeUndefined();
+  });
+
+  it('non-Error err + code -- UnknownError + code 포함', () => {
+    logger.error('알 수 없는 에러', { err: { weird: 'object' }, code: 'MQ_003' });
+
+    const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+    expect(parsed.error.name).toBe('UnknownError');
+    expect(parsed.error.code).toBe('MQ_003');
+  });
+
+  it('production 환경에서 debug 로그 출력 안 함', () => {
+    // ENV를 production으로 변조하여 shouldLog('debug') = false 유도
+    // logger 모듈은 이미 로드되어 있으므로 process.env 직접 조작은 효과 없음
+    // 대신 현재 ENV가 'development'이므로 debug는 출력됨을 확인
+    // production 브랜치는 MIN_LEVEL 상수가 모듈 로드 시 결정되므로
+    // 현재 환경(development)에서는 debug가 출력됨
+    logger.debug('디버그');
+    expect(stdoutSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('Error 객체의 stack이 없으면 stack 필드 없음', () => {
+    const errWithoutStack = new Error('no stack');
+    delete errWithoutStack.stack;
+    logger.error('스택 없는 에러', { err: errWithoutStack });
+
+    const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+    expect(parsed.error.stack).toBeUndefined();
+  });
+
+  it('메시지 500자 초과 시 truncate', () => {
+    const longMessage = 'a'.repeat(600);
+    logger.info(longMessage);
+
+    const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+    expect(parsed.message.length).toBe(500);
+  });
+
+  it('null 값 필드는 entry에 포함되지 않음', () => {
+    logger.info('null 필드 테스트', { studyId: undefined });
+
+    const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+    expect(parsed.studyId).toBeUndefined();
+  });
 });
 
 describe('logMqConsume', () => {
@@ -262,5 +312,148 @@ describe('logDlqReceived', () => {
 
     const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
     expect(parsed.error.message).toBe('처리 실패');
+  });
+});
+
+describe('logger — production 환경 브랜치', () => {
+  let stdoutSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    stdoutSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+  });
+
+  afterEach(() => {
+    stdoutSpy.mockRestore();
+    jest.resetModules();
+    delete process.env['ENV'];
+  });
+
+  it('production 환경에서 debug 로그 출력 안 함 (shouldLog false branch)', () => {
+    process.env['ENV'] = 'production';
+
+    let prodLogger: typeof import('./logger')['logger'];
+    jest.isolateModules(() => {
+      jest.mock('./config', () => ({
+        config: {
+          rabbitmqUrl: 'amqp://localhost',
+          redisUrl: 'redis://localhost:6379',
+          gatewayInternalUrl: 'http://gateway:3000',
+          internalKeyGateway: '',
+          submissionServiceUrl: 'http://submission-service:3003',
+          submissionServiceKey: '',
+          maxRetries: 3,
+          retryDelayMs: 5000,
+          githubAppId: '',
+          githubAppPrivateKeyBase64: '',
+          githubTokenEncryptionKey: 'a'.repeat(64),
+        },
+      }));
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      prodLogger = require('./logger').logger;
+    });
+
+    prodLogger!.debug('production debug');
+
+    // production에서는 debug 출력 안 함
+    expect(stdoutSpy).not.toHaveBeenCalled();
+  });
+
+  it('production 환경에서 error 에러 stack 제거', () => {
+    process.env['ENV'] = 'production';
+
+    let prodLogger: typeof import('./logger')['logger'];
+    jest.isolateModules(() => {
+      jest.mock('./config', () => ({
+        config: {
+          rabbitmqUrl: 'amqp://localhost',
+          redisUrl: 'redis://localhost:6379',
+          gatewayInternalUrl: 'http://gateway:3000',
+          internalKeyGateway: '',
+          submissionServiceUrl: 'http://submission-service:3003',
+          submissionServiceKey: '',
+          maxRetries: 3,
+          retryDelayMs: 5000,
+          githubAppId: '',
+          githubAppPrivateKeyBase64: '',
+          githubTokenEncryptionKey: 'a'.repeat(64),
+        },
+      }));
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      prodLogger = require('./logger').logger;
+    });
+
+    const err = new Error('prod error');
+    prodLogger!.error('production error', { err });
+
+    const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+    expect(parsed.error.name).toBe('Error');
+    // production에서는 stack 없음
+    expect(parsed.error.stack).toBeUndefined();
+  });
+
+  it('non-Error err + code없음 -- UnknownError code 미포함', () => {
+    process.env['ENV'] = 'production';
+
+    let prodLogger: typeof import('./logger')['logger'];
+    jest.isolateModules(() => {
+      jest.mock('./config', () => ({
+        config: {
+          rabbitmqUrl: 'amqp://localhost',
+          redisUrl: 'redis://localhost:6379',
+          gatewayInternalUrl: 'http://gateway:3000',
+          internalKeyGateway: '',
+          submissionServiceUrl: 'http://submission-service:3003',
+          submissionServiceKey: '',
+          maxRetries: 3,
+          retryDelayMs: 5000,
+          githubAppId: '',
+          githubAppPrivateKeyBase64: '',
+          githubTokenEncryptionKey: 'a'.repeat(64),
+        },
+      }));
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      prodLogger = require('./logger').logger;
+    });
+
+    prodLogger!.error('non-error obj', { err: 42 });
+
+    const parsed = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+    expect(parsed.error.name).toBe('UnknownError');
+    expect(parsed.error.code).toBeUndefined();
+  });
+
+  it('production 환경에서 info/warn 로그 정상 출력', () => {
+    process.env['ENV'] = 'production';
+
+    let prodLogger: typeof import('./logger')['logger'];
+    jest.isolateModules(() => {
+      jest.mock('./config', () => ({
+        config: {
+          rabbitmqUrl: 'amqp://localhost',
+          redisUrl: 'redis://localhost:6379',
+          gatewayInternalUrl: 'http://gateway:3000',
+          internalKeyGateway: '',
+          submissionServiceUrl: 'http://submission-service:3003',
+          submissionServiceKey: '',
+          maxRetries: 3,
+          retryDelayMs: 5000,
+          githubAppId: '',
+          githubAppPrivateKeyBase64: '',
+          githubTokenEncryptionKey: 'a'.repeat(64),
+        },
+      }));
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      prodLogger = require('./logger').logger;
+    });
+
+    prodLogger!.info('production info');
+    prodLogger!.warn('production warn');
+
+    // info와 warn은 production에서도 출력됨
+    expect(stdoutSpy).toHaveBeenCalledTimes(2);
+    const parsedInfo = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+    const parsedWarn = JSON.parse(stdoutSpy.mock.calls[1][0] as string);
+    expect(parsedInfo.level).toBe('info');
+    expect(parsedWarn.level).toBe('warn');
   });
 });

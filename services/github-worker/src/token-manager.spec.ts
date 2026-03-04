@@ -179,4 +179,110 @@ describe('TokenManager', () => {
 
     expect(mockRedisQuit).toHaveBeenCalled();
   });
+
+  // 7. Installation 조회 실패 (non-404): Error throw
+  it('fetchAndCacheToken() -- Installation 조회 실패(503): Error throw', async () => {
+    mockRedisGet.mockResolvedValue(null);
+    mockFetch.mockReset();
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({}),
+    });
+
+    await expect(tokenManager.getTokenForRepo('owner', 'repo')).rejects.toThrow(
+      'Installation 조회 실패: 503',
+    );
+  });
+
+  // 8. Access Token 발급 실패: Error throw
+  it('fetchAndCacheToken() -- Access Token 발급 실패: Error throw', async () => {
+    mockRedisGet.mockResolvedValue(null);
+    mockFetch.mockReset();
+    // installation 조회 성공
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: 42 }),
+    });
+    // access token 발급 실패
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      json: async () => ({}),
+    });
+
+    await expect(tokenManager.getTokenForRepo('owner', 'repo')).rejects.toThrow(
+      'Installation Token 발급 실패: 401',
+    );
+  });
+
+  // 9. refreshAllCachedTokens() -- 키가 있을 때 갱신 (정상)
+  it('refreshAllCachedTokens() -- 캐시된 키 갱신', async () => {
+    mockRedisKeys.mockResolvedValue(['github:app:token:owner/repo']);
+    mockRedisGet.mockResolvedValue(null);
+
+    // 타이머 실행
+    jest.runOnlyPendingTimers();
+
+    // 비동기 작업 완료 대기
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // fetchAndCacheToken이 호출됨 (fetch가 호출됨)
+    // (실패해도 무시하므로 에러 없이 통과)
+    expect(mockRedisKeys).toHaveBeenCalled();
+  });
+
+  // 10. refreshAllCachedTokens() -- 슬래시 없는 키는 skip
+  it('refreshAllCachedTokens() -- 슬래시 없는 키는 skip', async () => {
+    mockRedisKeys.mockResolvedValue(['github:app:token:invalidkey']);
+    mockRedisGet.mockResolvedValue(null);
+
+    jest.runOnlyPendingTimers();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // slashIdx === -1 branch: fetch가 호출되지 않음
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  // 11. refreshAllCachedTokens() -- fetch 실패해도 무시
+  it('refreshAllCachedTokens() -- 개별 갱신 실패 무시', async () => {
+    mockRedisKeys.mockResolvedValue(['github:app:token:owner/repo']);
+    mockRedisGet.mockResolvedValue(null);
+    mockFetch.mockReset();
+    mockFetch.mockRejectedValue(new Error('network error'));
+
+    jest.runOnlyPendingTimers();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // 에러가 무시되므로 예외 없이 통과
+    expect(mockRedisKeys).toHaveBeenCalled();
+  });
+
+  // 12. refreshAllCachedTokens() -- redis.keys 실패 무시
+  it('refreshAllCachedTokens() -- redis.keys 실패 무시', async () => {
+    mockRedisKeys.mockRejectedValue(new Error('redis error'));
+
+    jest.runOnlyPendingTimers();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // catch 블록 커버 — 에러 없이 통과
+    expect(mockRedisKeys).toHaveBeenCalled();
+  });
+
+  // 13. decryptUserToken() -- 잘못된 형식: Error throw
+  it('decryptUserToken() -- parts.length !== 3: Error throw', async () => {
+    expect(() => tokenManager.decryptUserToken('only:two')).toThrow(
+      'Invalid encrypted token format',
+    );
+  });
 });

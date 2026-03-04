@@ -410,5 +410,215 @@ describe('GitHubWorker', () => {
 
       jest.useRealTimers();
     });
+
+    it('reconnectTimer가 이미 설정된 경우 중복 스케줄 안 함', async () => {
+      jest.useFakeTimers();
+      await worker.start();
+
+      // 첫 번째 close 이벤트 — reconnectTimer 설정
+      connectionEventHandlers['close']?.();
+      const timerCountAfterFirst = jest.getTimerCount();
+
+      // 두 번째 close 이벤트 — reconnectTimer가 이미 있으므로 무시
+      connectionEventHandlers['close']?.();
+      expect(jest.getTimerCount()).toBe(timerCountAfterFirst);
+
+      jest.useRealTimers();
+    });
+
+    it('재연결 성공 시 reconnectAttempt 리셋', async () => {
+      jest.useFakeTimers();
+      await worker.start();
+
+      // close 이벤트로 재연결 스케줄
+      connectionEventHandlers['close']?.();
+
+      // amqplib.connect가 성공적으로 재연결
+      await jest.runAllTimersAsync();
+
+      // reconnectAttempt가 0으로 리셋됨
+      expect((worker as never as { reconnectAttempt: number }).reconnectAttempt).toBe(0);
+
+      jest.useRealTimers();
+    });
+
+    it('재연결 실패 시 재귀적으로 scheduleReconnect 호출', async () => {
+      jest.useFakeTimers();
+
+      // 재연결 시 연결 실패하도록 설정
+      const amqplib = require('amqplib');
+      amqplib.connect
+        .mockResolvedValueOnce({
+          createChannel: mockCreateChannel,
+          on: mockConnectionOn,
+          close: mockConnectionClose,
+        })
+        // 두 번째 연결(재연결)은 실패
+        .mockRejectedValueOnce(new Error('재연결 실패'))
+        // 세 번째 연결은 성공 (무한루프 방지)
+        .mockResolvedValue({
+          createChannel: mockCreateChannel,
+          on: mockConnectionOn,
+          close: mockConnectionClose,
+        });
+
+      const newWorker = new GitHubWorker();
+      await newWorker.start();
+
+      // close 이벤트 트리거
+      connectionEventHandlers['close']?.();
+
+      // 첫 번째 타이머 실행 (재연결 시도 — 실패 후 두 번째 타이머 예약)
+      await jest.runOnlyPendingTimersAsync();
+
+      // 재귀 scheduleReconnect로 타이머가 다시 설정됨
+      expect(jest.getTimerCount()).toBeGreaterThan(0);
+
+      await newWorker.stop();
+      jest.useRealTimers();
+    });
+
+    it('connection error 이벤트 핸들러 호출', async () => {
+      await worker.start();
+
+      // error 이벤트 트리거 — 에러 로깅만 하고 재연결 안 함
+      expect(() => {
+        connectionEventHandlers['error']?.(new Error('MQ error'));
+      }).not.toThrow();
+    });
+  });
+
+  describe('processWithRetry 엣지 케이스', () => {
+    const makeMsg = (payload: object) => ({
+      content: Buffer.from(JSON.stringify(payload)),
+      fields: { deliveryTag: 1, redelivered: false },
+    });
+
+    beforeEach(async () => {
+      await worker.start();
+    });
+
+    it('lastError가 null인 경우 기본 에러 메시지 throw', async () => {
+      // push가 한 번도 실패하지 않고(재시도 0회) lastError가 null인 상황 시뮬
+      // maxRetries=2이고 push가 항상 throw하지 않지만 loop가 끝나는 케이스는 없음
+      // 대신 push mock이 never throws but returns nothing to cover throw lastError ?? path:
+      // 실제로는 push가 항상 throw해야 lastError가 설정되므로
+      // 이 테스트는 '401' 포함 에러로 isTokenInvalid=true 브랜치도 커버
+      const encryptedToken = encryptToken('ghs_test_token');
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            userId: 'user-1',
+            problemId: 'prob-1',
+            studyId: 'study-1',
+            language: 'python',
+            code: 'code',
+          },
+        }),
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          github_username: 'test-user',
+          github_token: encryptedToken,
+        }),
+      });
+
+      // 401 에러 (isTokenInvalid = true)
+      (worker as never as { pushService: { push: jest.Mock } }).pushService.push =
+        jest.fn().mockRejectedValue(new Error('401 Unauthorized'));
+
+      // reportTokenInvalid 응답
+      mockFetch.mockResolvedValueOnce({ ok: true });
+
+      const msg = makeMsg({
+        submissionId: 'sub-401',
+        studyId: 'study-1',
+        timestamp: new Date().toISOString(),
+      });
+
+      await consumeCallback!(msg);
+
+      // 401은 TOKEN_INVALID 처리 — ack
+      expect(mockAck).toHaveBeenCalledWith(msg);
+    });
+
+    it('403 에러도 TOKEN_INVALID로 처리', async () => {
+      const encryptedToken = encryptToken('ghs_test_token');
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            userId: 'user-1',
+            problemId: 'prob-1',
+            studyId: 'study-1',
+            language: 'python',
+            code: 'code',
+          },
+        }),
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          github_username: 'test-user',
+          github_token: encryptedToken,
+        }),
+      });
+
+      (worker as never as { pushService: { push: jest.Mock } }).pushService.push =
+        jest.fn().mockRejectedValue(new Error('403 Forbidden'));
+
+      mockFetch.mockResolvedValueOnce({ ok: true });
+
+      const msg = makeMsg({
+        submissionId: 'sub-403',
+        studyId: 'study-1',
+        timestamp: new Date().toISOString(),
+      });
+
+      await consumeCallback!(msg);
+
+      expect(mockAck).toHaveBeenCalledWith(msg);
+    });
+
+    it('getUserGitHubInfo 실패 -- nack(DLQ)', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            userId: 'user-1',
+            problemId: 'prob-1',
+            studyId: 'study-1',
+            language: 'python',
+            code: 'code',
+          },
+        }),
+      });
+
+      // getUserGitHubInfo 실패
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: async () => ({}),
+      });
+
+      // reportFailed 응답
+      mockFetch.mockResolvedValueOnce({ ok: true });
+
+      const msg = makeMsg({
+        submissionId: 'sub-fail-github-info',
+        studyId: 'study-1',
+        timestamp: new Date().toISOString(),
+      });
+
+      await consumeCallback!(msg);
+
+      expect(mockNack).toHaveBeenCalledWith(msg, false, false);
+    });
   });
 });

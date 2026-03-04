@@ -104,4 +104,96 @@ describe('GlobalExceptionFilter', () => {
       }),
     );
   });
+
+  it('HttpException 응답이 문자열일 때 메시지와 status 코드를 사용한다', () => {
+    const { host, mockJson, mockStatus } = createMockHost('/api/test');
+    // When getResponse() returns a plain string (not an object), the else branch is taken
+    const exception = new HttpException('Forbidden', HttpStatus.FORBIDDEN);
+    // Override getResponse to return a string directly
+    jest.spyOn(exception, 'getResponse').mockReturnValue('Forbidden' as never);
+
+    filter.catch(exception, host);
+
+    expect(mockStatus).toHaveBeenCalledWith(HttpStatus.FORBIDDEN);
+    expect(mockJson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        statusCode: HttpStatus.FORBIDDEN,
+        message: 'Forbidden',
+        error: 'FORBIDDEN',
+      }),
+    );
+  });
+
+  it('객체 응답에 message 필드가 없으면 exception.message를 사용한다', () => {
+    const { host, mockJson } = createMockHost();
+    // Object response without a message field — triggers the ?? exception.message fallback
+    const exception = new HttpException({ error: 'Bad Request' }, HttpStatus.BAD_REQUEST);
+
+    filter.catch(exception, host);
+
+    expect(mockJson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Http Exception',
+        error: 'Bad Request',
+      }),
+    );
+  });
+
+  it('객체 응답에 error 필드가 없으면 HttpStatus 이름을 사용한다', () => {
+    const { host, mockJson } = createMockHost();
+    // Object response with message but no error field — triggers the ?? HttpStatus[statusCode] fallback
+    const exception = new HttpException({ message: 'custom message' }, HttpStatus.UNPROCESSABLE_ENTITY);
+
+    filter.catch(exception, host);
+
+    expect(mockJson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'custom message',
+        error: 'UNPROCESSABLE_ENTITY',
+      }),
+    );
+  });
+
+  it('객체 응답에 error 필드가 없고 HttpStatus에도 없는 코드면 "Error"를 사용한다', () => {
+    const { host, mockJson } = createMockHost();
+    // Use a non-standard status code (999) so HttpStatus[999] is undefined → fallback to 'Error'
+    const exception = new HttpException({ message: 'custom' }, HttpStatus.BAD_REQUEST);
+    jest.spyOn(exception, 'getStatus').mockReturnValue(999 as never);
+    jest.spyOn(exception, 'getResponse').mockReturnValue({ message: 'custom' } as never);
+
+    filter.catch(exception, host);
+
+    expect(mockJson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'custom',
+        error: 'Error',
+      }),
+    );
+  });
+
+  it('문자열 응답이고 HttpStatus에 없는 코드면 "Error"를 사용한다', () => {
+    const { host, mockJson } = createMockHost();
+    // String response + non-standard status code → else branch where HttpStatus[999] ?? 'Error' = 'Error'
+    const exception = new HttpException('Something', HttpStatus.BAD_REQUEST);
+    jest.spyOn(exception, 'getStatus').mockReturnValue(999 as never);
+    jest.spyOn(exception, 'getResponse').mockReturnValue('Something' as never);
+
+    filter.catch(exception, host);
+
+    expect(mockJson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        statusCode: 999,
+        message: 'Something',
+        error: 'Error',
+      }),
+    );
+  });
+
+  it('스택 없는 알 수 없는 예외도 500으로 처리한다', () => {
+    const { host, mockStatus } = createMockHost();
+    // Non-Error object (no message/stack properties)
+    filter.catch({ code: 'ECONNREFUSED' }, host);
+
+    expect(mockStatus).toHaveBeenCalledWith(HttpStatus.INTERNAL_SERVER_ERROR);
+  });
 });

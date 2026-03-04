@@ -13,6 +13,60 @@ describe('StructuredLoggerService', () => {
     stdoutSpy.mockRestore();
   });
 
+  // ─── production 환경 분기 ──────────────────────────────────
+  describe('production 환경', () => {
+    let prodLogger: StructuredLoggerService;
+    let prodStdoutSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      jest.resetModules();
+      process.env['ENV'] = 'production';
+      // Re-require after env change so module-level constants re-evaluate
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { StructuredLoggerService: ProdLogger } = require('./structured-logger.service') as typeof import('./structured-logger.service');
+      prodLogger = new ProdLogger();
+      prodStdoutSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    });
+
+    afterEach(() => {
+      prodStdoutSpy.mockRestore();
+      delete process.env['ENV'];
+      jest.resetModules();
+    });
+
+    it('production에서는 debug 레벨 로그가 출력되지 않는다', () => {
+      prodLogger.debug('debug in prod');
+
+      expect(prodStdoutSpy).not.toHaveBeenCalled();
+    });
+
+    it('production에서는 verbose 레벨 로그가 출력되지 않는다', () => {
+      prodLogger.verbose('verbose in prod');
+
+      expect(prodStdoutSpy).not.toHaveBeenCalled();
+    });
+
+    it('production에서는 info 레벨 이상의 로그는 출력된다', () => {
+      prodLogger.log('info in prod');
+
+      expect(prodStdoutSpy).toHaveBeenCalledTimes(1);
+      const output = JSON.parse(prodStdoutSpy.mock.calls[0][0]);
+      expect(output.level).toBe('info');
+    });
+
+    it('production에서는 error 객체의 stack이 포함되지 않는다', () => {
+      const err = new Error('prod error');
+      prodLogger.error('failed in prod', err);
+
+      expect(prodStdoutSpy).toHaveBeenCalledTimes(1);
+      const output = JSON.parse(prodStdoutSpy.mock.calls[0][0]);
+      expect(output.error).toBeDefined();
+      expect(output.error.name).toBe('Error');
+      expect(output.error.message).toBe('prod error');
+      expect(output.error.stack).toBeUndefined();
+    });
+  });
+
   // ─── 기본 로그 출력 ──────────────────────────────────
   it('log()는 info 레벨로 JSON 로그를 출력한다', () => {
     logger.log('test message');

@@ -144,4 +144,40 @@ describe('GitHubPushService', () => {
       }),
     );
   });
+
+  // 7. 레포 조회 실패 (non-404) -- 에러 재throw
+  it('push() -- 레포 조회 실패(non-404): 에러 재throw', async () => {
+    const networkError = Object.assign(new Error('Network Error'), { status: 500 });
+    mockReposGet.mockRejectedValue(networkError);
+
+    await expect(service.push(basePushInput)).rejects.toThrow('Network Error');
+
+    expect(mockCreateForAuthenticatedUser).not.toHaveBeenCalled();
+  });
+
+  // 8. getContent가 배열 반환 (디렉토리) -- sha undefined
+  it('push() -- getContent가 배열 반환: sha undefined(새 파일로 처리)', async () => {
+    mockGetContent.mockResolvedValue({
+      data: [{ type: 'file', sha: 'some-sha' }],
+    });
+
+    await service.push(basePushInput);
+
+    expect(mockCreateOrUpdateFileContents).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sha: undefined,
+      }),
+    );
+  });
+
+  // 9. result.content가 null인 경우 sha는 빈 문자열
+  it('push() -- result.content가 null: sha 빈 문자열 반환', async () => {
+    mockCreateOrUpdateFileContents.mockResolvedValue({
+      data: { content: null },
+    });
+
+    const result = await service.push(basePushInput);
+
+    expect(result.sha).toBe('');
+  });
 });
