@@ -17,15 +17,18 @@ RUN npm run build
 # ──────────────────────────────────────────────
 FROM node:20-alpine AS production
 
-# 보안: non-root 사용자 생성 + npm 제거
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup && \
-    rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+# 보안: non-root 사용자 생성
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 WORKDIR /app
 
 COPY --from=builder /tmp/prod_node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./package.json
+
+# ARM64 네이티브 모듈 재빌드 (builder가 x86에서 빌드하므로) + npm 제거
+RUN npm rebuild sharp && \
+    rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 USER appuser
 
