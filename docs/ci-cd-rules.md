@@ -284,8 +284,7 @@ Environment: dev
 
 | 환경 | 태그 형식 | 예시 |
 |------|-----------|------|
-| dev | `dev-{short-sha}` | `dev-a1b2c3d` |
-| prod | `prod-{short-sha}` | `prod-a1b2c3d` |
+| main | `main-{full-sha}` | `main-a1b2c3d4e5f6...` |
 | 릴리스 | `v{semver}` | `v1.2.0` |
 
 **절대 금지:**
@@ -477,7 +476,7 @@ notify:
 
 ### Dependabot (`.github/dependabot.yml`)
 
-- NestJS 5개 + ai-analysis + frontend + GitHub Actions = 8개 에코시스템
+- NestJS 5개 + ai-analysis + frontend + GitHub Actions + Docker 2개 = 10개 에코시스템
 - 주 1회 (월요일 KST 09:00) PR 생성
 - major 업데이트: 자동 머지 금지, 수동 리뷰 필수
 - 보안 패치: 즉시 PR, CI 통과 후 머지
@@ -507,9 +506,8 @@ notify:
 
 ### ESLint 핵심 규칙
 
-- `no-console: 'error'` — JSON structured logging 강제 (`monitoring-log-rules.md` 연계)
-- `@typescript-eslint/no-floating-promises: 'error'`
-- Ruff `T20` — Python print 금지
+- `no-console: 'warn'` — JSON structured logging 권장 (`monitoring-log-rules.md` 연계, 개발 중 디버깅 허용)
+- 향후 강화 예정: `@typescript-eslint/no-floating-promises: 'error'`, Ruff `T20` (Python print 금지)
 
 ---
 
@@ -568,7 +566,7 @@ notify:
 | 9 | ArgoCD GitOps 전환 (SSH 폐지) | ✅ 완료 |
 | 10 | Discord 배포 알림 | ✅ 완료 |
 | 11 | Grafana Annotation (post-sync) | ✅ 완료 |
-| 12 | Dependabot 설정 (8 에코시스템) | ✅ 완료 |
+| 12 | Dependabot 설정 (10 에코시스템) | ✅ 완료 |
 | 13 | CODEOWNERS | ✅ 완료 |
 | 14 | 전 서비스 ESLint 표준화 | ✅ 완료 |
 | 15 | RollingUpdate 전략 매니페스트 적용 | ✅ 완료 |
