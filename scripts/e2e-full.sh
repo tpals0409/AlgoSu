@@ -176,6 +176,70 @@ else
   fail "GET /auth/oauth/google → $STATUS"
 fi
 
+test_case "OAuth Naver URL 생성"
+RESP=$(http_get "/auth/oauth/naver")
+STATUS=$(extract_status "$RESP")
+BODY=$(extract_body "$RESP")
+if [ "$STATUS" = "200" ] || [ "$STATUS" = "302" ]; then
+  if echo "$BODY" | grep -qi "nid.naver.com"; then
+    pass "GET /auth/oauth/naver → $STATUS (naver URL 확인)"
+  else
+    pass "GET /auth/oauth/naver → $STATUS"
+  fi
+else
+  fail "GET /auth/oauth/naver → $STATUS"
+fi
+
+test_case "OAuth Kakao URL 생성"
+RESP=$(http_get "/auth/oauth/kakao")
+STATUS=$(extract_status "$RESP")
+BODY=$(extract_body "$RESP")
+if [ "$STATUS" = "200" ] || [ "$STATUS" = "302" ]; then
+  if echo "$BODY" | grep -qi "kauth.kakao.com"; then
+    pass "GET /auth/oauth/kakao → $STATUS (kakao URL 확인)"
+  else
+    pass "GET /auth/oauth/kakao → $STATUS"
+  fi
+else
+  fail "GET /auth/oauth/kakao → $STATUS"
+fi
+
+test_case "OAuth 잘못된 provider 거부"
+RESP=$(http_get "/auth/oauth/twitter")
+STATUS=$(extract_status "$RESP")
+if [ "$STATUS" = "400" ] || [ "$STATUS" = "404" ]; then
+  pass "GET /auth/oauth/twitter → $STATUS (unsupported provider)"
+else
+  fail "GET /auth/oauth/twitter → $STATUS (expected 400/404)"
+fi
+
+test_case "OAuth Callback — 유효하지 않은 state 거부"
+RESP=$(http_get "/auth/oauth/google/callback?code=test_code&state=invalid_state_value")
+STATUS=$(extract_status "$RESP")
+if [ "$STATUS" = "400" ] || [ "$STATUS" = "302" ]; then
+  pass "Invalid OAuth state → $STATUS"
+else
+  fail "Invalid OAuth state → $STATUS (expected 400/302)"
+fi
+
+test_case "OAuth Callback — 누락된 code 거부"
+RESP=$(http_get "/auth/oauth/google/callback?state=some_state")
+STATUS=$(extract_status "$RESP")
+if [ "$STATUS" = "400" ] || [ "$STATUS" = "302" ]; then
+  pass "Missing OAuth code → $STATUS"
+else
+  fail "Missing OAuth code → $STATUS (expected 400/302)"
+fi
+
+test_case "OAuth Callback — 누락된 state 거부"
+RESP=$(http_get "/auth/oauth/google/callback?code=some_code")
+STATUS=$(extract_status "$RESP")
+if [ "$STATUS" = "400" ] || [ "$STATUS" = "302" ]; then
+  pass "Missing OAuth state → $STATUS"
+else
+  fail "Missing OAuth state → $STATUS (expected 400/302)"
+fi
+
 test_case "미인증 요청 거부"
 RESP=$(http_get "/api/studies")
 STATUS=$(extract_status "$RESP")
@@ -541,6 +605,24 @@ if [ "$STATUS" = "400" ] || [ "$STATUS" = "401" ] || [ "$STATUS" = "403" ]; then
   pass "Invalid X-Study-ID → $STATUS"
 else
   fail "Invalid X-Study-ID → $STATUS (expected 400/401/403)"
+fi
+
+test_case "Naver OAuth Callback — 유효하지 않은 state 거부"
+RESP=$(http_get "/auth/oauth/naver/callback?code=test_code&state=invalid_naver_state")
+STATUS=$(extract_status "$RESP")
+if [ "$STATUS" = "400" ] || [ "$STATUS" = "302" ]; then
+  pass "Naver invalid state → $STATUS"
+else
+  fail "Naver invalid state → $STATUS (expected 400/302)"
+fi
+
+test_case "Kakao OAuth Callback — 유효하지 않은 state 거부"
+RESP=$(http_get "/auth/oauth/kakao/callback?code=test_code&state=invalid_kakao_state")
+STATUS=$(extract_status "$RESP")
+if [ "$STATUS" = "400" ] || [ "$STATUS" = "302" ]; then
+  pass "Kakao invalid state → $STATUS"
+else
+  fail "Kakao invalid state → $STATUS (expected 400/302)"
 fi
 
 test_case "Internal 엔드포인트 외부 접근 차단"
