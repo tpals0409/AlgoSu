@@ -109,7 +109,7 @@ export class StatusReporter {
       `submission:status:${submissionId}`,
       JSON.stringify({
         submissionId,
-        status: 'SKIPPED',
+        status: 'github_skipped',
         timestamp: new Date().toISOString(),
       }),
     );

@@ -15,7 +15,7 @@ class CircuitState(str, Enum):
 
 
 class CircuitBreaker:
-    """Circuit Breaker — Gemini API 보호
+    """Circuit Breaker — Claude API 보호
 
     동작 기준:
     - 실패율 50% 초과 (failure_threshold 연속 실패) → OPEN

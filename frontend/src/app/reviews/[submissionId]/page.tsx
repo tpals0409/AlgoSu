@@ -1,5 +1,5 @@
 /**
- * @file 코드리뷰 2-패널 페이지 (v2 핵심 기능)
+ * @file 코드리뷰 2-패널 페이지 (v2 핵심 기능 + dynamic import 최적화)
  * @domain review
  * @layer page
  * @related CodePanel, CommentThread, CommentForm, ScoreGauge, CategoryBar
@@ -15,6 +15,7 @@
 
 import { useState, useEffect, useCallback, type ReactElement } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import {
   ChevronLeft,
   ChevronRight,
@@ -32,14 +33,59 @@ import {
   type AnalysisResult,
   type ReviewComment,
 } from '@/lib/api';
-import { ScoreGauge } from '@/components/ui/ScoreGauge';
-import { CategoryBar, type CategoryItem } from '@/components/ui/CategoryBar';
 import { LangBadge } from '@/components/ui/LangBadge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Button } from '@/components/ui/Button';
-import { CodePanel, type CodeHighlight } from '@/components/review/CodePanel';
-import { CommentThread } from '@/components/review/CommentThread';
-import { CommentForm } from '@/components/review/CommentForm';
+import type { CodeHighlight } from '@/components/review/CodePanel';
+import type { CategoryItem } from '@/components/ui/CategoryBar';
+
+// ─── DYNAMIC IMPORTS (무거운 리뷰 컴포넌트 lazy load) ──
+
+const CodePanel = dynamic(
+  () => import('@/components/review/CodePanel').then((mod) => ({ default: mod.CodePanel })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex min-h-[400px] w-full items-center justify-center rounded-card border border-border bg-bg-card">
+        <Skeleton className="h-full min-h-[400px] w-full" />
+      </div>
+    ),
+  },
+);
+
+const CommentThread = dynamic(
+  () => import('@/components/review/CommentThread').then((mod) => ({ default: mod.CommentThread })),
+  {
+    loading: () => (
+      <div className="space-y-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} height={48} />
+        ))}
+      </div>
+    ),
+  },
+);
+
+const CommentForm = dynamic(
+  () => import('@/components/review/CommentForm').then((mod) => ({ default: mod.CommentForm })),
+  {
+    loading: () => <Skeleton height={80} />,
+  },
+);
+
+const ScoreGauge = dynamic(
+  () => import('@/components/ui/ScoreGauge').then((mod) => ({ default: mod.ScoreGauge })),
+  {
+    loading: () => <Skeleton variant="circle" width={90} height={90} />,
+  },
+);
+
+const CategoryBar = dynamic(
+  () => import('@/components/ui/CategoryBar').then((mod) => ({ default: mod.CategoryBar })),
+  {
+    loading: () => <Skeleton height={40} />,
+  },
+);
 
 // ─── TYPES ────────────────────────────────
 
@@ -378,7 +424,7 @@ export default function CodeReviewPage(): ReactElement {
             : 'max-w-screen-xl grid-cols-1 lg:grid-cols-[1fr_380px]',
         )}
       >
-        {/* 좌측: 코드 패널 */}
+        {/* 좌측: 코드 패널 (dynamic) */}
         <div className={cn('min-w-0', mobileTab === 'code' ? 'block' : 'hidden lg:block')}>
           <CodePanel
             code={codeContent}
@@ -395,7 +441,7 @@ export default function CodeReviewPage(): ReactElement {
           'lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto',
           mobileTab === 'review' ? 'block' : 'hidden lg:block',
         )}>
-          {/* AI 분석 요약 */}
+          {/* AI 분석 요약 (dynamic: ScoreGauge + CategoryBar) */}
           {analysis && analysis.analysisStatus === 'completed' && (
             <div className="mb-4 rounded-card border border-border bg-bg-card shadow-card">
               <div className="flex items-center gap-4 p-5">
@@ -408,7 +454,7 @@ export default function CodeReviewPage(): ReactElement {
                 </div>
               </div>
 
-              {/* 카테고리 바 */}
+              {/* 카테고리 바 (dynamic) */}
               {categories.length > 0 && (
                 <div className="border-t border-border">
                   {categories.map((cat, idx) => (
@@ -424,7 +470,7 @@ export default function CodeReviewPage(): ReactElement {
             </div>
           )}
 
-          {/* 댓글 섹션 */}
+          {/* 댓글 섹션 (dynamic: CommentThread + CommentForm) */}
           <div className="rounded-card border border-border bg-bg-card p-4 shadow-card">
             <div className="mb-3 text-sm font-semibold text-text">
               {selectedLine ? `Line ${selectedLine} 댓글` : '댓글'}
@@ -442,7 +488,7 @@ export default function CodeReviewPage(): ReactElement {
               selectedLine={selectedLine}
             />
 
-            {/* 댓글 작성 폼 */}
+            {/* 댓글 작성 폼 (dynamic) */}
             <div className="mt-3 border-t border-border pt-3">
               <CommentForm
                 lineNumber={selectedLine}

@@ -133,12 +133,12 @@ export class SseController {
         res.write(`data: ${JSON.stringify(event)}\n\n`);
 
         if (terminalStatuses.includes(event.status)) {
-          // 알림 자동 생성 (비동기 — SSE 응답 차단 방지)
+          // 알림 자동 생성 — 인증된 userId 사용 (event.userId 미전달 이슈 해소)
           const notifConfig = this.STATUS_NOTIFICATION_MAP[event.status];
-          if (notifConfig && event.userId) {
+          if (notifConfig) {
             this.notificationService
               .createNotification({
-                userId: event.userId,
+                userId,
                 type: notifConfig.type,
                 title: notifConfig.title,
                 message: `제출(${event.submissionId}) ${notifConfig.title}`,
@@ -148,8 +148,10 @@ export class SseController {
               });
           }
 
-          res.write(`event: done\n`);
-          res.write(`data: ${JSON.stringify({ status: 'stream_end' })}\n\n`);
+          if (!res.writableEnded) {
+            res.write(`event: done\n`);
+            res.write(`data: ${JSON.stringify({ status: 'stream_end' })}\n\n`);
+          }
           setTimeout(cleanup, 500);
         }
       } catch (err) {

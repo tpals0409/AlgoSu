@@ -3,7 +3,7 @@
  * @domain review
  * @layer dto
  */
-import { IsUUID, IsInt, IsString, IsOptional, MaxLength } from 'class-validator';
+import { IsUUID, IsInt, IsString, IsOptional, IsNotEmpty, MaxLength } from 'class-validator';
 
 export class CreateCommentDto {
   @IsUUID()
@@ -14,6 +14,7 @@ export class CreateCommentDto {
   lineNumber?: number | null;
 
   @IsString()
+  @IsNotEmpty()
   @MaxLength(5000)
   content!: string;
 }

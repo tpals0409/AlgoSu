@@ -38,6 +38,16 @@ spec:
               memory: "256Mi"
               cpu: "500m"
           # H13: Worker 프로세스 + RabbitMQ 연결 상태 확인
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - "node -e \"const net=require('net');const s=new net.Socket();s.setTimeout(2000);s.connect(5672,'rabbitmq',()=>{s.destroy();process.exit(0)});s.on('error',()=>process.exit(1));s.on('timeout',()=>process.exit(1))\""
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
           livenessProbe:
             exec:
               command:

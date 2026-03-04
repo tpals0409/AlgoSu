@@ -1,5 +1,5 @@
 /**
- * @file Dashboard 페이지 (v2 전면 교체)
+ * @file Dashboard 페이지 (v2 전면 교체 + dynamic import 최적화)
  * @domain dashboard
  * @layer page
  * @related AppLayout, AuthContext, StudyContext, useRequireAuth, useAnimVal
@@ -10,20 +10,16 @@
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import {
   FileText,
   Users,
   CheckCircle2,
-  ArrowRight,
   RefreshCw,
-  Clock,
-  BookOpen,
   Github,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
+import { Card } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -42,29 +38,69 @@ import {
   type Submission,
   type Problem,
 } from '@/lib/api';
-import { SAGA_STEP_CONFIG, type SagaStep } from '@/lib/constants';
-import type { Difficulty } from '@/lib/constants';
 import { cn, getCurrentWeekLabel } from '@/lib/utils';
 
-// ─── HELPERS ─────────────────────────────
+// ─── DYNAMIC IMPORTS (번들 최적화) ────────
 
-/** 상대 시간 포맷: 방금 전, N분 전, N시간 전, N일 전 */
-function formatRelativeTime(dateStr: string): string {
-  const now = Date.now();
-  const then = new Date(dateStr).getTime();
-  const diffMs = now - then;
-  const diffMin = Math.floor(diffMs / 60000);
-  const diffHour = Math.floor(diffMs / 3600000);
-  const diffDay = Math.floor(diffMs / 86400000);
+const DashboardWeeklyChart = dynamic(
+  () => import('@/components/dashboard/DashboardWeeklyChart'),
+  {
+    loading: () => (
+      <div className="rounded-card border border-border bg-bg-card p-6 shadow-card">
+        <Skeleton width="40%" height={20} className="mb-4" />
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <Skeleton width={56} height={14} />
+              <Skeleton className="flex-1" height={22} />
+              <Skeleton width={28} height={14} />
+            </div>
+          ))}
+        </div>
+      </div>
+    ),
+  },
+);
 
-  if (diffMin < 1) return '방금 전';
-  if (diffMin < 60) return `${diffMin}분 전`;
-  if (diffHour < 24) return `${diffHour}시간 전`;
-  if (diffDay < 7) return `${diffDay}일 전`;
+const DashboardThisWeek = dynamic(
+  () => import('@/components/dashboard/DashboardThisWeek'),
+  {
+    loading: () => (
+      <div className="rounded-card border border-border bg-bg-card shadow-card overflow-hidden">
+        <div className="border-b border-border px-4 py-3">
+          <Skeleton width={120} height={18} />
+        </div>
+        <div className="space-y-3 p-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} height={36} />
+          ))}
+        </div>
+      </div>
+    ),
+  },
+);
 
-  const d = new Date(dateStr);
-  return `${d.getMonth() + 1}.${d.getDate()}`;
-}
+const DashboardTwoColumn = dynamic(
+  () => import('@/components/dashboard/DashboardTwoColumn'),
+  {
+    loading: () => (
+      <div className="grid gap-3.5 md:grid-cols-2">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="rounded-card border border-border bg-bg-card shadow-card overflow-hidden">
+            <div className="border-b border-border px-4 py-3">
+              <Skeleton width={100} height={16} />
+            </div>
+            <div className="space-y-3 p-4">
+              {Array.from({ length: 3 }).map((_, j) => (
+                <Skeleton key={j} height={36} />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    ),
+  },
+);
 
 // ─── STAT CARD ───────────────────────────
 
@@ -114,48 +150,6 @@ function StatCard({
   }
 
   return <Card className="p-5">{content}</Card>;
-}
-
-// ─── WEEKLY BAR ──────────────────────────
-
-function WeeklyBar({
-  label,
-  value,
-  max,
-  mounted,
-  delay,
-}: {
-  readonly label: string;
-  readonly value: number;
-  readonly max: number;
-  readonly mounted: boolean;
-  readonly delay: number;
-}): ReactNode {
-  const pct = max > 0 ? Math.min(Math.round((value / max) * 100), 100) : 0;
-
-  return (
-    <div className="flex items-center gap-3">
-      <span className="min-w-[56px] text-right font-mono text-xs text-text-2">
-        {label}
-      </span>
-      <div
-        className="h-[22px] flex-1 overflow-hidden rounded-badge"
-        style={{ background: 'var(--bar-track)' }}
-      >
-        <div
-          className="h-full rounded-badge transition-all duration-700 ease-bounce"
-          style={{
-            width: mounted ? `${pct}%` : '0%',
-            background: 'var(--bar-fill)',
-            transitionDelay: `${delay}s`,
-          }}
-        />
-      </div>
-      <span className="min-w-[28px] font-mono text-[13px] font-semibold">
-        {value}
-      </span>
-    </div>
-  );
 }
 
 // ─── RENDER ──────────────────────────────
@@ -461,277 +455,39 @@ export default function DashboardPage(): ReactNode {
           </div>
         )}
 
-        {/* ── WEEKLY CHART ── */}
+        {/* ── WEEKLY CHART (dynamic) ── */}
         {currentStudyId && stats && stats.byWeek.length > 0 && (
-          <Card
-            className="group cursor-pointer"
-            onClick={cycleWeekView}
-            style={fade(0.16)}
-          >
-            <CardHeader className="flex flex-row items-center gap-2.5">
-              <CardTitle>주차별 제출 현황</CardTitle>
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary-soft2 px-2.5 py-1 text-[11px] font-medium text-primary">
-                <span
-                  className="inline-block h-[5px] w-[5px] shrink-0 rounded-full gradient-brand"
-                  aria-hidden
-                />
-                {weekViewLabel}
-              </span>
-              <span className="text-[10px] text-text-3 opacity-0 transition-opacity group-hover:opacity-100">
-                클릭하여 전환
-              </span>
-            </CardHeader>
-            <CardContent>
-              {filteredByWeek.length === 0 ? (
-                <p className="py-4 text-center text-sm text-text-3">
-                  제출 기록이 없습니다.
-                </p>
-              ) : (
-                <div key={weekViewLabel} className="space-y-2.5 animate-fade-in">
-                  {filteredByWeek.slice(0, 5).map((w, i) => {
-                    const pc = problemCountByWeek.get(w.week) ?? 0;
-                    const total = weekViewUserId === null ? pc * members.length : pc;
-                    return (
-                      <WeeklyBar
-                        key={w.week}
-                        label={w.week}
-                        value={w.count}
-                        max={total}
-                        mounted={mounted}
-                        delay={0.3 + i * 0.1}
-                      />
-                    );
-                  })}
-                  {filteredByWeek.length > 5 && (
-                    <Link
-                      href="/analytics"
-                      onClick={(e) => e.stopPropagation()}
-                      className="block pt-1 text-center text-[11px] font-medium text-primary transition-colors hover:underline"
-                    >
-                      전체 {filteredByWeek.length}주 보기 →
-                    </Link>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <DashboardWeeklyChart
+            filteredByWeek={filteredByWeek}
+            weekViewLabel={weekViewLabel}
+            problemCountByWeek={problemCountByWeek}
+            members={members}
+            weekViewUserId={weekViewUserId}
+            mounted={mounted}
+            onCycleView={cycleWeekView}
+            fadeStyle={fade(0.16)}
+          />
         )}
 
-        {/* ── THIS WEEK PROBLEMS ── */}
+        {/* ── THIS WEEK PROBLEMS (dynamic) ── */}
         {currentStudyId && (
-          <Card className="overflow-hidden p-0" style={fade(0.2)}>
-            <CardHeader className="flex flex-row items-center gap-2.5 border-b border-border">
-              <BookOpen className="h-4 w-4 text-primary" aria-hidden />
-              <CardTitle>이번주 문제</CardTitle>
-              <Badge variant="muted">{getCurrentWeekLabel()}</Badge>
-            </CardHeader>
-            {isLoading ? (
-              <div className="space-y-3 p-4">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} height={36} />
-                ))}
-              </div>
-            ) : currentWeekProblems.length === 0 ? (
-              <p className="py-8 text-center text-sm text-text-3">
-                이번주 등록된 문제가 없습니다
-              </p>
-            ) : (
-              <div>
-                {currentWeekProblems.map((p, i) => {
-                  const isSubmitted = submittedProblemIds.has(p.id);
-                  return (
-                    <Link
-                      key={p.id}
-                      href={`/problems/${p.id}`}
-                      className={cn(
-                        'group flex items-center justify-between px-4 py-3.5 transition-all hover:bg-primary-soft',
-                        i < currentWeekProblems.length - 1 && 'border-b border-border',
-                        isSubmitted && 'opacity-50',
-                      )}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          {isSubmitted && (
-                            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden />
-                          )}
-                          <p className={cn(
-                            'truncate text-[13px] font-medium transition-colors',
-                            isSubmitted ? 'text-text-3' : 'group-hover:text-primary',
-                          )}>
-                            {p.title}
-                          </p>
-                        </div>
-                        <div className="mt-0.5 flex items-center gap-1.5">
-                          {p.difficulty && (
-                            <DifficultyBadge difficulty={p.difficulty as Difficulty} level={p.level} />
-                          )}
-                          {p.deadline && (
-                            <span className="font-mono text-[10px] text-text-3">
-                              마감 {new Date(p.deadline).getMonth() + 1}.{new Date(p.deadline).getDate()}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      {isSubmitted ? (
-                        <Badge variant="success">제출 완료</Badge>
-                      ) : (
-                        <Badge variant="warning">미제출</Badge>
-                      )}
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-          </Card>
+          <DashboardThisWeek
+            currentWeekProblems={currentWeekProblems}
+            submittedProblemIds={submittedProblemIds}
+            isLoading={isLoading}
+            fadeStyle={fade(0.2)}
+          />
         )}
 
-        {/* ── TWO COLUMN GRID ── */}
-        <div className="grid gap-3.5 md:grid-cols-2" style={fade(0.24)}>
-          {/* 최근 제출 5건 */}
-          <Card className="overflow-hidden p-0">
-            <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <h2 className="text-sm font-semibold">최근 제출</h2>
-              <Link
-                href="/submissions"
-                className="flex items-center gap-1 text-[11px] font-medium text-primary transition-colors hover:underline"
-              >
-                전체 보기
-                <ArrowRight className="h-3 w-3" aria-hidden />
-              </Link>
-            </div>
-            {isLoading ? (
-              <div className="space-y-3 p-4">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} height={36} />
-                ))}
-              </div>
-            ) : recentSubmissions.length === 0 ? (
-              <p className="py-8 text-center text-sm text-text-3">
-                아직 제출 내역이 없습니다
-              </p>
-            ) : (
-              <div>
-                {recentSubmissions.map((s, i) => (
-                  <Link
-                    key={s.id}
-                    href={
-                      s.sagaStep === 'DONE'
-                        ? `/submissions/${s.id}/analysis`
-                        : `/problems/${s.problemId}`
-                    }
-                    className={cn(
-                      'group flex items-center justify-between px-4 py-3.5 transition-all hover:bg-primary-soft',
-                      i < recentSubmissions.length - 1 && 'border-b border-border',
-                    )}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px] font-medium transition-colors group-hover:text-primary">
-                        {s.problemTitle ?? problemTitleMap.get(s.problemId) ?? `문제 ${s.problemId.slice(0, 8)}`}
-                      </p>
-                      <p className="mt-0.5 font-mono text-[11px] text-text-3">
-                        <span>{s.language}</span>
-                        <span className="mx-1.5 opacity-30">·</span>
-                        <span>{formatRelativeTime(s.createdAt)}</span>
-                      </p>
-                    </div>
-                    <Badge
-                      variant={SAGA_STEP_CONFIG[s.sagaStep as SagaStep]?.variant ?? 'muted'}
-                      dot
-                    >
-                      {SAGA_STEP_CONFIG[s.sagaStep as SagaStep]?.label ?? s.sagaStep}
-                    </Badge>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </Card>
-
-          {/* 마감 임박 문제 */}
-          <Card className="overflow-hidden p-0">
-            <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <h2 className="text-sm font-semibold">마감 임박 문제</h2>
-              <Link
-                href="/problems"
-                className="flex items-center gap-1 text-[11px] font-medium text-primary transition-colors hover:underline"
-              >
-                전체 보기
-                <ArrowRight className="h-3 w-3" aria-hidden />
-              </Link>
-            </div>
-            {isLoading ? (
-              <div className="space-y-3 p-4">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} height={36} />
-                ))}
-              </div>
-            ) : upcomingDeadlines.length === 0 ? (
-              <p className="py-8 text-center text-sm text-text-3">
-                마감 예정인 문제가 없습니다
-              </p>
-            ) : (
-              <div>
-                {upcomingDeadlines.map((p, i) => {
-                  const deadlineDate = new Date(p.deadline);
-                  const now = new Date();
-                  const diffMs = deadlineDate.getTime() - now.getTime();
-                  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-                  const isUrgent = diffHours < 24;
-                  const isSubmitted = submittedProblemIds.has(p.id);
-
-                  return (
-                    <Link
-                      key={p.id}
-                      href={`/problems/${p.id}`}
-                      className={cn(
-                        'group flex items-center justify-between px-4 py-3.5 transition-all hover:bg-primary-soft',
-                        i < upcomingDeadlines.length - 1 && 'border-b border-border',
-                      )}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          {isSubmitted && (
-                            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden />
-                          )}
-                          <p className={cn(
-                            'truncate text-[13px] font-medium transition-colors',
-                            isSubmitted ? 'text-text-3' : 'group-hover:text-primary',
-                          )}>
-                            {p.title}
-                          </p>
-                        </div>
-                        <div className="mt-0.5 flex items-center gap-1.5">
-                          <span className="font-mono text-[10px] text-text-3">
-                            {p.weekNumber}
-                          </span>
-                          {p.difficulty && (
-                            <DifficultyBadge difficulty={p.difficulty as Difficulty} level={p.level} />
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {isSubmitted && (
-                          <Badge variant="success">제출 완료</Badge>
-                        )}
-                        <span className={cn(
-                          'flex items-center gap-1 font-mono text-[11px] whitespace-nowrap',
-                          isUrgent ? 'font-medium text-error animate-pulse-dot' : 'text-text-3',
-                        )}>
-                          <Clock className="h-3 w-3" aria-hidden />
-                          {diffDays > 0
-                            ? `${diffDays}일 남음`
-                            : diffHours > 0
-                              ? `${diffHours}시간 남음`
-                              : '곧 마감'}
-                        </span>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-          </Card>
-        </div>
+        {/* ── TWO COLUMN GRID (dynamic) ── */}
+        <DashboardTwoColumn
+          recentSubmissions={recentSubmissions}
+          upcomingDeadlines={upcomingDeadlines}
+          submittedProblemIds={submittedProblemIds}
+          problemTitleMap={problemTitleMap}
+          isLoading={isLoading}
+          fadeStyle={fade(0.24)}
+        />
       </div>
     </AppLayout>
   );

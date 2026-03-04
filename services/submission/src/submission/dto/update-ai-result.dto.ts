@@ -2,6 +2,7 @@ import {
   IsString,
   IsInt,
   IsOptional,
+  IsNotEmpty,
   Min,
   Max,
   IsIn,
@@ -14,6 +15,7 @@ import {
  */
 export class UpdateAiResultDto {
   @IsString()
+  @IsNotEmpty()
   @MaxLength(50000)
   feedback!: string;
 

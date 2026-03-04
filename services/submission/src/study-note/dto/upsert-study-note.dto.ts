@@ -3,13 +3,14 @@
  * @domain review
  * @layer dto
  */
-import { IsUUID, IsString, MaxLength } from 'class-validator';
+import { IsUUID, IsString, IsNotEmpty, MaxLength } from 'class-validator';
 
 export class UpsertStudyNoteDto {
   @IsUUID()
   problemId!: string;
 
   @IsString()
+  @IsNotEmpty()
   @MaxLength(10000)
   content!: string;
 }

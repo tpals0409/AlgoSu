@@ -97,7 +97,7 @@ export class NotificationService {
   /**
    * 전체 읽음 처리 — userId 기준 미읽음 알림 일괄 업데이트
    * @domain notification
-   * @api POST /api/notifications/read-all
+   * @api PATCH /api/notifications/read-all
    * @guard jwt-auth
    * @param userId - 현재 사용자 ID
    * @returns 처리된 알림 건수
