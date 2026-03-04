@@ -11,9 +11,11 @@ jest.mock('next-themes', () => ({
 }));
 
 jest.mock('next/link', () => {
-  return ({ children, ...props }: { children: React.ReactNode; href: string }) => (
+  const MockLink = ({ children, ...props }: { children: React.ReactNode; href: string }) => (
     <a {...props}>{children}</a>
   );
+  MockLink.displayName = 'MockLink';
+  return MockLink;
 });
 
 jest.mock('@/contexts/AuthContext', () => ({
