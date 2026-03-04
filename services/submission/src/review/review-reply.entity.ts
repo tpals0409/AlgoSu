@@ -52,4 +52,9 @@ export class ReviewReply {
   generatePublicId() {
     this.publicId = this.publicId || uuid();
   }
+
+  toJSON() {
+    const { id, commentId, comment, ...rest } = this as Record<string, unknown>;
+    return rest;
+  }
 }

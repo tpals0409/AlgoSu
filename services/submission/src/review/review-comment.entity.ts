@@ -63,4 +63,9 @@ export class ReviewComment {
   generatePublicId() {
     this.publicId = this.publicId || uuid();
   }
+
+  toJSON() {
+    const { id, submission, ...rest } = this as Record<string, unknown>;
+    return rest;
+  }
 }

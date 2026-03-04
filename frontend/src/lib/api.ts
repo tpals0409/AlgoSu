@@ -440,7 +440,6 @@ export const notificationApi = {
 // ── Review API ──
 
 export interface ReviewComment {
-  id: number;
   publicId: string;
   submissionId: string;
   authorId: string;
@@ -453,9 +452,7 @@ export interface ReviewComment {
 }
 
 export interface ReviewReply {
-  id: number;
   publicId: string;
-  commentId: number;
   authorId: string;
   content: string;
   createdAt: string;

@@ -17,6 +17,7 @@ import {
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
+  HttpException,
   InternalServerErrorException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -102,9 +103,10 @@ export class ReviewProxyController {
    */
   @Get('replies')
   async findReplies(@Req() req: Request) {
+    const params = new URLSearchParams();
     const commentPublicId = req.query['commentPublicId'] as string | undefined;
-    const params = commentPublicId ? `?commentPublicId=${commentPublicId}` : '';
-    return this.proxyToSubmission(req, `/review/replies${params}`, 'GET');
+    if (commentPublicId) params.set('commentPublicId', commentPublicId);
+    return this.proxyToSubmission(req, `/review/replies?${params.toString()}`, 'GET');
   }
 
   // ─── PROXY HELPER ─────────────────────────
@@ -150,10 +152,10 @@ export class ReviewProxyController {
       if (!response.ok) {
         this.logger.warn(`Submission Service 응답 오류: ${response.status}, path=${path}`);
         const errorData = data as { message?: string; statusCode?: number };
-        return {
-          statusCode: errorData.statusCode ?? response.status,
-          message: errorData.message ?? 'Internal service error',
-        };
+        throw new HttpException(
+          errorData.message ?? 'Internal service error',
+          errorData.statusCode ?? response.status,
+        );
       }
 
       return data;
