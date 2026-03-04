@@ -91,6 +91,10 @@ export interface LogContext extends MQFields, SagaFields {
   err?: Error | unknown;
   /** 에러 코드 (GHW_BIZ_001 등, monitoring-log-rules.md §7) */
   code?: string;
+  /** 재연결 대기 시간(ms) */
+  delayMs?: number;
+  /** 재연결 시도 횟수 */
+  attempt?: number;
 }
 
 type LogEntry = BaseLogEntry & MQFields & ErrorFields & SagaFields & {
@@ -172,6 +176,7 @@ function buildEntry(
     'messageSize', 'result', 'durationMs',
     'tag', 'from', 'to', 'studyId', 'userId',
     'step', 'compensationType', 'reason', 'errorCode', 'action',
+    'delayMs', 'attempt',
   ];
 
   for (const key of MQ_SAGA_KEYS) {
