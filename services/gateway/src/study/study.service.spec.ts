@@ -1123,6 +1123,18 @@ describe('StudyService', () => {
         service.notifyProblemCreated(STUDY_ID, OTHER_USER_ID, '문제 A', 'W1', 'problem-1'),
       ).rejects.toThrow(ForbiddenException);
     });
+
+    it('study 조회 null이면 스터디명 fallback "스터디" 사용 (line 676 ?? 분기)', async () => {
+      memberRepository.findOne.mockResolvedValue(mockAdminMember);
+      memberRepository.find.mockResolvedValue([mockAdminMember, mockRegularMember]);
+      // study가 null → studyName = '스터디' fallback
+      studyRepository.findOne.mockResolvedValue(null);
+
+      // 예외 없이 처리되어야 함
+      await expect(
+        service.notifyProblemCreated(STUDY_ID, USER_ID, '문제 B', 'W2', 'problem-2'),
+      ).resolves.toBeUndefined();
+    });
   });
 
   // ============================
@@ -1136,6 +1148,21 @@ describe('StudyService', () => {
       await expect(
         service.updateStudy(STUDY_ID, USER_ID, { name: 'Test' }),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('description 포함 업데이트 시 description도 변경됨 (line 143 true 분기)', async () => {
+      memberRepository.findOne.mockResolvedValue(mockAdminMember);
+      const studyWithDesc = { ...mockStudy, description: '기존 설명' };
+      studyRepository.findOne.mockResolvedValue(studyWithDesc);
+      studyRepository.save.mockImplementation((study: Study) => Promise.resolve(study));
+
+      const result = await service.updateStudy(STUDY_ID, USER_ID, {
+        name: '새 이름',
+        description: '새 설명',
+      });
+
+      expect(result.name).toBe('새 이름');
+      expect(result.description).toBe('새 설명');
     });
   });
 

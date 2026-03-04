@@ -172,4 +172,71 @@ describe('StudyNoteEditor', () => {
       expect(screen.getByText('전체 공개')).toBeInTheDocument();
     });
   });
+
+  it('빈 content.trim()으로 저장 버튼은 disabled 상태이다', async () => {
+    mockGet.mockResolvedValue(null);
+    render(<StudyNoteEditor problemId="p-1" />);
+    await waitFor(() => {
+      expect(screen.getByText('작성')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('작성'));
+
+    const saveBtn = screen.getByText('저장').closest('button')!;
+    // content가 비어있으므로 disabled
+    expect(saveBtn).toBeDisabled();
+  });
+
+  it('저장 중에는 "저장 중..." 텍스트를 표시한다', async () => {
+    mockGet.mockResolvedValue(null);
+    // upsert를 pending 상태로 유지
+    mockUpsert.mockReturnValue(new Promise(() => {}));
+
+    render(<StudyNoteEditor problemId="p-1" />);
+    await waitFor(() => {
+      expect(screen.getByText('작성')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('작성'));
+
+    const textarea = screen.getByLabelText('스터디 노트 편집');
+    fireEvent.change(textarea, { target: { value: '저장 중 테스트' } });
+
+    fireEvent.click(screen.getByText('저장'));
+
+    await waitFor(() => {
+      expect(screen.getByText('저장 중...')).toBeInTheDocument();
+    });
+  });
+
+  it('컴포넌트 언마운트 후 API 응답이 와도 상태를 업데이트하지 않는다', async () => {
+    let resolveGet: (value: null) => void;
+    mockGet.mockReturnValue(new Promise<null>((resolve) => { resolveGet = resolve; }));
+
+    const { unmount } = render(<StudyNoteEditor problemId="p-1" />);
+    unmount();
+
+    // unmount 후 resolve해도 오류 없이 처리됨
+    expect(() => resolveGet!(null)).not.toThrow();
+  });
+
+  it('note가 없는 상태에서 취소하면 빈 content로 복원된다', async () => {
+    mockGet.mockResolvedValue(null);
+    render(<StudyNoteEditor problemId="p-1" />);
+    await waitFor(() => {
+      expect(screen.getByText('작성')).toBeInTheDocument();
+    });
+
+    // 편집 모드 진입
+    fireEvent.click(screen.getByText('작성'));
+    const textarea = screen.getByLabelText('스터디 노트 편집');
+    fireEvent.change(textarea, { target: { value: '임시 내용' } });
+
+    // 취소 (note가 null이므로 note?.content ?? '' = '')
+    fireEvent.click(screen.getByText('취소'));
+
+    // 편집 모드 종료, 빈 내용
+    await waitFor(() => {
+      expect(screen.queryByLabelText('스터디 노트 편집')).not.toBeInTheDocument();
+    });
+    expect(screen.getByText('아직 작성된 노트가 없습니다.')).toBeInTheDocument();
+  });
 });

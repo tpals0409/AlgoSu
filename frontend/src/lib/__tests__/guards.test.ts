@@ -126,3 +126,27 @@ describe('verifyDeadlinePassed', () => {
     expect(opts.headers['X-Study-ID']).toBe('study-abc');
   });
 });
+
+describe('NEXT_PUBLIC_API_BASE_URL 환경변수', () => {
+  const originalEnv = process.env['NEXT_PUBLIC_API_BASE_URL'];
+
+  afterEach(() => {
+    if (originalEnv !== undefined) {
+      process.env['NEXT_PUBLIC_API_BASE_URL'] = originalEnv;
+    } else {
+      delete process.env['NEXT_PUBLIC_API_BASE_URL'];
+    }
+    jest.resetModules();
+  });
+
+  it('NEXT_PUBLIC_API_BASE_URL이 설정되면 해당 URL로 요청한다', async () => {
+    process.env['NEXT_PUBLIC_API_BASE_URL'] = 'https://api.example.com';
+    // 모듈을 재로드하여 새 환경변수 반영
+    jest.resetModules();
+    const { verifyStudyMembership: freshVerify } = await import('@/lib/guards');
+    mockFetch.mockReturnValue(jsonResponse({ id: 's1' }));
+    await freshVerify('s1');
+    const [url] = mockFetch.mock.calls[0];
+    expect(url).toContain('https://api.example.com');
+  });
+});

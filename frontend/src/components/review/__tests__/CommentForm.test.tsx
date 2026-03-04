@@ -77,4 +77,31 @@ describe('CommentForm', () => {
       expect(textarea.value).toBe('');
     });
   });
+
+  it('Shift+Enter는 제출하지 않는다', async () => {
+    render(<CommentForm {...defaultProps} />);
+    const textarea = screen.getByRole('textbox');
+    fireEvent.change(textarea, { target: { value: '줄바꿈 테스트' } });
+    fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: true });
+    // Shift+Enter는 제출하지 않음
+    expect(defaultProps.onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('제출 중에는 textarea와 버튼이 비활성화된다', async () => {
+    let resolveSubmit: () => void;
+    const pendingOnSubmit = jest.fn().mockReturnValue(
+      new Promise<void>((resolve) => { resolveSubmit = resolve; })
+    );
+
+    render(<CommentForm onSubmit={pendingOnSubmit} />);
+    const textarea = screen.getByRole('textbox');
+    fireEvent.change(textarea, { target: { value: '제출 중 테스트' } });
+    fireEvent.click(screen.getByLabelText('댓글 등록'));
+
+    await waitFor(() => {
+      expect(textarea).toBeDisabled();
+    });
+
+    resolveSubmit!();
+  });
 });

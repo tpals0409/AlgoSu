@@ -177,6 +177,28 @@ describe('StatusIndicator', () => {
     const dot = container.querySelector('[aria-hidden]');
     expect(dot).toBeInTheDocument();
   });
+
+  it('size=null일 때 기본 md 사이즈를 사용한다', () => {
+    // TypeScript VariantProps 타입에서 null이 가능하므로 null 처리 경로를 커버
+    const { container } = render(<StatusIndicator status="pending" size={null as never} />);
+    const dot = container.querySelector('[aria-hidden]');
+    expect(dot).toHaveClass('h-2');
+    expect(dot).toHaveClass('w-2');
+  });
+
+  it('sm 사이즈는 작은 도트를 렌더링한다', () => {
+    const { container } = render(<StatusIndicator status="success" size="sm" />);
+    const dot = container.querySelector('[aria-hidden]');
+    expect(dot).toHaveClass('h-1.5');
+    expect(dot).toHaveClass('w-1.5');
+  });
+
+  it('lg 사이즈는 큰 도트를 렌더링한다', () => {
+    const { container } = render(<StatusIndicator status="success" size="lg" />);
+    const dot = container.querySelector('[aria-hidden]');
+    expect(dot).toHaveClass('h-2.5');
+    expect(dot).toHaveClass('w-2.5');
+  });
 });
 
 /* ================================================================== */

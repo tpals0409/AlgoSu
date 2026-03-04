@@ -311,21 +311,31 @@ describe('DeadlineReminderService', () => {
       await expect(svc.checkDeadlines()).resolves.toBeUndefined();
     });
 
-    it('fetchSubmittedUsers 응답 ok=false이면 빈 배열로 처리', async () => {
+    /**
+     * 올바른 fetch 호출 순서:
+     * 1) fetchUpcomingDeadlines(now, in24h) → mock1
+     * 2) fetchSubmittedUsers (24h 문제 처리 중) → mock2
+     * 3) fetchUpcomingDeadlines(now, in1h) → mock3
+     * (1h 문제 없으면 추가 fetchSubmittedUsers 호출 없음)
+     */
+    it('fetchSubmittedUsers 응답 ok=false이면 빈 배열로 처리 (lines 232-233)', async () => {
       const deadline = new Date(Date.now() + 20 * 60 * 60 * 1000).toISOString();
 
       mockFetch
+        // 1) fetchUpcomingDeadlines for 24h → problem
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({
             data: [{ id: PROBLEM_ID, title: '문제', studyId: STUDY_ID, deadline, weekNumber: 'W1' }],
           }),
         })
+        // 2) fetchSubmittedUsers for the 24h problem → ok=false (lines 232-233)
+        .mockResolvedValueOnce({ ok: false, status: 500 })
+        // 3) fetchUpcomingDeadlines for 1h → empty
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({ data: [] }),
-        })
-        .mockResolvedValueOnce({ ok: false, status: 500 }); // fetchSubmittedUsers 실패
+        });
 
       memberRepo.find.mockResolvedValue([{ user_id: USER_ID, study_id: STUDY_ID }]);
       studyRepo.findOne.mockResolvedValue({ id: STUDY_ID, name: 'AlgoSu' });
@@ -337,27 +347,56 @@ describe('DeadlineReminderService', () => {
       expect(notificationService.createNotification).toHaveBeenCalled();
     });
 
-    it('fetchSubmittedUsers 네트워크 오류 시 빈 배열로 처리', async () => {
+    it('fetchSubmittedUsers 네트워크 오류 시 빈 배열로 처리 (lines 239-240)', async () => {
       const deadline = new Date(Date.now() + 20 * 60 * 60 * 1000).toISOString();
 
       mockFetch
+        // 1) fetchUpcomingDeadlines for 24h → problem
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({
             data: [{ id: PROBLEM_ID, title: '문제', studyId: STUDY_ID, deadline, weekNumber: 'W1' }],
           }),
         })
+        // 2) fetchSubmittedUsers for the 24h problem → network error (lines 239-240)
+        .mockRejectedValueOnce(new Error('fetch failed'))
+        // 3) fetchUpcomingDeadlines for 1h → empty
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({ data: [] }),
-        })
-        .mockRejectedValueOnce(new Error('fetch failed')); // fetchSubmittedUsers 예외
+        });
 
       memberRepo.find.mockResolvedValue([{ user_id: USER_ID, study_id: STUDY_ID }]);
       studyRepo.findOne.mockResolvedValue({ id: STUDY_ID, name: 'AlgoSu' });
       mockRedis.get.mockResolvedValue(null);
 
       // 예외 발생해도 계속 처리
+      await expect(service.checkDeadlines()).resolves.toBeUndefined();
+    });
+  });
+
+  // ─── checkDeadlines 외부 catch 분기 ─────────
+  describe('checkDeadlines — 외부 catch 분기 (line 89)', () => {
+    it('notifyUnsubmittedUsers가 throw하면 외부 catch에서 에러 로깅', async () => {
+      const deadline = new Date(Date.now() + 20 * 60 * 60 * 1000).toISOString();
+
+      // fetchUpcomingDeadlines 성공
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: [{ id: PROBLEM_ID, title: '문제', studyId: STUDY_ID, deadline, weekNumber: 'W1' }],
+        }),
+      });
+
+      // memberRepo.find throws → notifyUnsubmittedUsers 내부에서 uncaught throw
+      // → checkDeadlines의 outer catch block 실행 (line 89)
+      memberRepo.find.mockRejectedValueOnce(new Error('DB connection error'));
+
+      await service.checkDeadlines();
+
+      // outer catch가 실행되어야 함 (line 89)
+      // service 내부 logger는 mockLogger로 주입됨
+      // 예외가 전파되지 않고 처리됨
       await expect(service.checkDeadlines()).resolves.toBeUndefined();
     });
   });

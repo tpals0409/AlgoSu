@@ -17,10 +17,10 @@ const config: Config = {
   coverageDirectory: '../coverage',
   coverageThreshold: {
     global: {
-      branches: 88,
-      functions: 90,
-      lines: 93,
-      statements: 93,
+      branches: 95,
+      functions: 95,
+      lines: 97,
+      statements: 97,
     },
   },
   testEnvironment: 'node',

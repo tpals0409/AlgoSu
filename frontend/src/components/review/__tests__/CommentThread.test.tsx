@@ -362,4 +362,13 @@ describe('CommentThread', () => {
     render(<CommentThread {...defaultProps} comments={comments} />);
     expect(screen.queryByText('나')).not.toBeInTheDocument();
   });
+
+  it('replies가 undefined인 댓글도 렌더링된다', () => {
+    const comments = [makeComment({ replies: undefined })];
+    render(<CommentThread {...defaultProps} comments={comments} />);
+    // replies가 undefined이어도 오류 없이 렌더링
+    expect(screen.getByText('좋은 코드네요')).toBeInTheDocument();
+    // 답글 버튼이 없어야 한다
+    expect(screen.queryByText(/답글/)).not.toBeInTheDocument();
+  });
 });

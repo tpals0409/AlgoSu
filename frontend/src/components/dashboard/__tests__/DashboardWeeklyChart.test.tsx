@@ -114,4 +114,48 @@ describe('DashboardWeeklyChart', () => {
     );
     expect(screen.queryByText(/전체.*주 보기/)).not.toBeInTheDocument();
   });
+
+  it('weekViewUserId가 null이 아니면 개인별 max를 사용한다', () => {
+    const weeks = [{ week: '1월1주차', count: 3 }];
+    const pcMap = new Map([['1월1주차', 5]]);
+    render(
+      <DashboardWeeklyChart
+        {...defaultProps}
+        filteredByWeek={weeks}
+        problemCountByWeek={pcMap}
+        weekViewUserId="u-1"
+        members={[{ user_id: 'u-1' }, { user_id: 'u-2' }]}
+      />,
+    );
+    // weekViewUserId !== null → total = pc (개인용), 렌더링 확인
+    expect(screen.getByText('1월1주차')).toBeInTheDocument();
+    expect(screen.getByText('3')).toBeInTheDocument();
+  });
+
+  it('problemCountByWeek에 없는 주차는 max=0으로 바 너비 0%이다', () => {
+    const weeks = [{ week: '없는주차', count: 2 }];
+    render(
+      <DashboardWeeklyChart
+        {...defaultProps}
+        filteredByWeek={weeks}
+        problemCountByWeek={new Map()}
+      />,
+    );
+    expect(screen.getByText('없는주차')).toBeInTheDocument();
+    expect(screen.getByText('2')).toBeInTheDocument();
+  });
+
+  it('mounted=false이면 바 너비가 0%이다', () => {
+    const weeks = [{ week: '1월1주차', count: 3 }];
+    const pcMap = new Map([['1월1주차', 5]]);
+    render(
+      <DashboardWeeklyChart
+        {...defaultProps}
+        filteredByWeek={weeks}
+        problemCountByWeek={pcMap}
+        mounted={false}
+      />,
+    );
+    expect(screen.getByText('1월1주차')).toBeInTheDocument();
+  });
 });

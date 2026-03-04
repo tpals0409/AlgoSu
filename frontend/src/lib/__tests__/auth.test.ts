@@ -185,6 +185,11 @@ describe('isTokenExpired', () => {
     setToken(makeJwt({ exp: futureExp }));
     expect(isTokenExpired()).toBe(false);
   });
+
+  it('디코딩 불가 토큰은 만료 처리', () => {
+    // payload가 null을 반환하면 true (line 49)
+    expect(isTokenExpired('a.!!!.c')).toBe(true);
+  });
 });
 
 // ── getTokenTtlMs ──
@@ -223,6 +228,11 @@ describe('getTokenTtlMs', () => {
 
   it('localStorage 토큰도 없으면 0', () => {
     expect(getTokenTtlMs()).toBe(0);
+  });
+
+  it('디코딩 불가 토큰은 0 반환', () => {
+    // payload가 null을 반환하면 0 (line 63)
+    expect(getTokenTtlMs('a.!!!.c')).toBe(0);
   });
 });
 
@@ -268,6 +278,11 @@ describe('getCurrentUserEmail', () => {
     setToken(makeJwt({ email: 42 }));
     expect(getCurrentUserEmail()).toBeNull();
   });
+
+  it('디코딩 불가 토큰이면 null 반환', () => {
+    localStorage.setItem('algosu:token', 'a.!!!.c');
+    expect(getCurrentUserEmail()).toBeNull();
+  });
 });
 
 describe('getCurrentUserName', () => {
@@ -284,6 +299,11 @@ describe('getCurrentUserName', () => {
     setToken(makeJwt({ name: 100 }));
     expect(getCurrentUserName()).toBeNull();
   });
+
+  it('디코딩 불가 토큰이면 null 반환', () => {
+    localStorage.setItem('algosu:token', 'a.!!!.c');
+    expect(getCurrentUserName()).toBeNull();
+  });
 });
 
 describe('getCurrentOAuthProvider', () => {
@@ -298,6 +318,11 @@ describe('getCurrentOAuthProvider', () => {
 
   it('oauth_provider가 문자열이 아니면 null 반환', () => {
     setToken(makeJwt({ oauth_provider: true }));
+    expect(getCurrentOAuthProvider()).toBeNull();
+  });
+
+  it('디코딩 불가 토큰이면 null 반환', () => {
+    localStorage.setItem('algosu:token', 'a.!!!.c');
     expect(getCurrentOAuthProvider()).toBeNull();
   });
 });

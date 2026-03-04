@@ -137,4 +137,99 @@ describe('AnalyticsCharts', () => {
     const pctEl = screen.getByText('30%');
     expect(pctEl.className).toContain('text-warning');
   });
+
+  it('완료율 50~74%이면 success/warning 스타일이 없다', () => {
+    const props: AnalyticsChartsProps = { ...defaultProps, myCompletionPct: 60 };
+    render(<AnalyticsCharts {...props} />);
+    const pctEl = screen.getByText('60%');
+    expect(pctEl.className).not.toContain('text-success');
+    expect(pctEl.className).not.toContain('text-warning');
+  });
+
+  it('total이 0인 주차는 0% 바로 렌더링된다', () => {
+    const props: AnalyticsChartsProps = {
+      ...defaultProps,
+      myWeeklyData: [{ week: '1월1주차', count: 0 }],
+      problemCountByWeek: new Map([['1월1주차', 0]]),
+    };
+    render(<AnalyticsCharts {...props} />);
+    expect(screen.getByText('0/0')).toBeInTheDocument();
+  });
+
+  it('problemCountByWeek에 없는 주차는 total=0으로 처리된다 (??0 fallback)', () => {
+    const props: AnalyticsChartsProps = {
+      ...defaultProps,
+      myWeeklyData: [{ week: '없는주차', count: 3 }],
+      problemCountByWeek: new Map(), // 빈 맵 - get()이 undefined 반환
+    };
+    render(<AnalyticsCharts {...props} />);
+    // total=0이므로 3/0 표시
+    expect(screen.getByText('3/0')).toBeInTheDocument();
+  });
+
+  it('현재 주차에 해당하는 WeeklyBar는 isCurrent 스타일을 가진다', () => {
+    const props: AnalyticsChartsProps = {
+      ...defaultProps,
+      myWeeklyData: [{ week: '1월3주차', count: 2 }],
+      problemCountByWeek: new Map([['1월3주차', 5]]),
+      currentWeekLabel: '1월3주차',
+    };
+    render(<AnalyticsCharts {...props} />);
+    // isCurrent일 때 text-primary 스타일 확인
+    const weekEl = screen.getByText('1월3주차');
+    expect(weekEl.className).toContain('text-primary');
+  });
+
+  it('ratio >= 0.7인 태그는 isTop 스타일을 가진다', () => {
+    const props: AnalyticsChartsProps = {
+      ...defaultProps,
+      tagDistribution: [{ tag: 'DP', count: 8, max: 10 }],
+    };
+    render(<AnalyticsCharts {...props} />);
+    // isTop = ratio >= 0.7, gradient-brand 클래스가 적용됨
+    const dpTag = screen.getByTitle('DP: 8문제');
+    expect(dpTag.className).toContain('gradient-brand');
+  });
+
+  it('ratio 0.4~0.69인 태그는 isMid 스타일을 가진다', () => {
+    const props: AnalyticsChartsProps = {
+      ...defaultProps,
+      tagDistribution: [{ tag: 'BFS', count: 5, max: 10 }],
+    };
+    render(<AnalyticsCharts {...props} />);
+    // isMid = 0.4 <= ratio < 0.7, bg-bg-alt border-primary/15
+    const bfsTag = screen.getByTitle('BFS: 5문제');
+    expect(bfsTag.className).toContain('bg-bg-alt');
+    expect(bfsTag.className).toContain('border-primary/15');
+  });
+
+  it('ratio < 0.4인 태그는 기본 스타일을 가진다', () => {
+    const props: AnalyticsChartsProps = {
+      ...defaultProps,
+      tagDistribution: [{ tag: '그리디', count: 2, max: 10 }],
+    };
+    render(<AnalyticsCharts {...props} />);
+    const greedyTag = screen.getByTitle('그리디: 2문제');
+    expect(greedyTag.className).toContain('border-border');
+  });
+
+  it('max가 0인 태그는 ratio=0으로 기본 스타일을 가진다', () => {
+    const props: AnalyticsChartsProps = {
+      ...defaultProps,
+      tagDistribution: [{ tag: '정렬', count: 0, max: 0 }],
+    };
+    render(<AnalyticsCharts {...props} />);
+    const sortTag = screen.getByTitle('정렬: 0문제');
+    expect(sortTag.className).toContain('border-border');
+  });
+
+  it('isMid 태그의 count 색상은 text-primary이다', () => {
+    const props: AnalyticsChartsProps = {
+      ...defaultProps,
+      tagDistribution: [{ tag: 'BFS', count: 5, max: 10 }],
+    };
+    render(<AnalyticsCharts {...props} />);
+    const countEl = screen.getByText('5');
+    expect(countEl.className).toContain('text-primary');
+  });
 });

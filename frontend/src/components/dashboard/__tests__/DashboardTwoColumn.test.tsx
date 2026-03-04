@@ -228,4 +228,40 @@ describe('DashboardTwoColumn', () => {
     render(<DashboardTwoColumn {...defaultProps} upcomingDeadlines={problems} />);
     expect(screen.queryByTestId('difficulty-badge')).not.toBeInTheDocument();
   });
+
+  it('30분 전 제출은 "N분 전"을 표시한다', () => {
+    const submissions = [makeSubmission({
+      id: 's-1', problemTitle: '분 테스트',
+      createdAt: new Date(Date.now() - 30 * 60000).toISOString(), // 30분 전
+    })];
+    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} />);
+    expect(screen.getByText('30분 전')).toBeInTheDocument();
+  });
+
+  it('3일 전 제출은 "N일 전"을 표시한다', () => {
+    const submissions = [makeSubmission({
+      id: 's-1', problemTitle: '일 테스트',
+      createdAt: new Date(Date.now() - 3 * 86400000).toISOString(), // 3일 전
+    })];
+    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} />);
+    expect(screen.getByText('3일 전')).toBeInTheDocument();
+  });
+
+  it('제출이 여러 개이면 마지막 항목 제외 모두 border-b가 적용된다', () => {
+    const submissions = [
+      makeSubmission({ id: 's-1', problemTitle: '첫 번째', sagaStep: 'DONE' }),
+      makeSubmission({ id: 's-2', problemTitle: '두 번째', sagaStep: 'DONE' }),
+      makeSubmission({ id: 's-3', problemTitle: '세 번째', sagaStep: 'DONE' }),
+    ];
+    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} />);
+    expect(screen.getByText('첫 번째')).toBeInTheDocument();
+    expect(screen.getByText('두 번째')).toBeInTheDocument();
+    expect(screen.getByText('세 번째')).toBeInTheDocument();
+  });
+
+  it('SAGA_STEP_CONFIG에 없는 sagaStep은 raw step 값을 표시한다', () => {
+    const submissions = [makeSubmission({ id: 's-1', problemTitle: '테스트', sagaStep: 'UNKNOWN_STEP' as never })];
+    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} />);
+    expect(screen.getByText('UNKNOWN_STEP')).toBeInTheDocument();
+  });
 });

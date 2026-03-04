@@ -590,3 +590,76 @@ describe('SkeletonReview', () => {
     expect(panels.length).toBeGreaterThanOrEqual(2);
   });
 });
+
+// ═══════════════════════════════════════════════════
+// 15. Alert - null variant coverage
+// ═══════════════════════════════════════════════════
+describe('Alert null variant coverage', () => {
+  it('variant=null이면 info 기본값을 사용한다', () => {
+    // TypeScript VariantProps에서 null이 가능하므로 null 처리 경로를 커버
+    render(<Alert variant={null as never}>Null variant</Alert>);
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+  });
+});
+
+// ═══════════════════════════════════════════════════
+// 16. Skeleton - string width/height coverage
+// ═══════════════════════════════════════════════════
+describe('Skeleton string dimensions', () => {
+  it('applies string width and height as-is', () => {
+    const { container } = render(<Skeleton width="50%" height="2rem" />);
+    const el = container.querySelector('[aria-hidden]');
+    expect(el).toHaveStyle({ width: '50%', height: '2rem' });
+  });
+});
+
+// ═══════════════════════════════════════════════════
+// 16. Alert - no children
+// ═══════════════════════════════════════════════════
+describe('Alert extra coverage', () => {
+  it('renders without children (no children div)', () => {
+    const { container } = render(<Alert title="오류" />);
+    // children이 없으면 children div가 렌더링되지 않는다
+    const childDiv = container.querySelector('.leading-relaxed.opacity-90');
+    expect(childDiv).not.toBeInTheDocument();
+  });
+
+  it('renders without title (no title p)', () => {
+    render(<Alert>Message only</Alert>);
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument();
+  });
+});
+
+// ═══════════════════════════════════════════════════
+// 17. Input - no label (id branch)
+// ═══════════════════════════════════════════════════
+describe('Input extra coverage', () => {
+  it('no label and no id: does not generate inputId', () => {
+    const { container } = render(<Input placeholder="no label" />);
+    const input = container.querySelector('input');
+    // id가 undefined이므로 속성이 없거나 비어있음
+    expect(input).not.toHaveAttribute('id', expect.stringContaining('input-'));
+  });
+
+  it('explicit id overrides label-based id', () => {
+    const { container } = render(<Input id="custom-id" label="Email" />);
+    const input = container.querySelector('input');
+    expect(input).toHaveAttribute('id', 'custom-id');
+  });
+});
+
+// ═══════════════════════════════════════════════════
+// 18. EmptyState - action with variant
+// ═══════════════════════════════════════════════════
+describe('EmptyState extra coverage', () => {
+  it('action with explicit variant', () => {
+    const onClick = jest.fn();
+    render(<EmptyState title="Empty" action={{ label: 'Go', onClick, variant: 'ghost' }} />);
+    expect(screen.getByRole('button', { name: 'Go' })).toBeInTheDocument();
+  });
+
+  it('lg size applies correct classes', () => {
+    const { container } = render(<EmptyState title="Empty" size="lg" />);
+    expect(container.firstChild).toHaveClass('py-24');
+  });
+});

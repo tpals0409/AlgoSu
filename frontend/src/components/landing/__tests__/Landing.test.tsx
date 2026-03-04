@@ -21,9 +21,10 @@ jest.mock('@/contexts/AuthContext', () => ({
   useAuth: (...args: unknown[]) => mockUseAuth(...args),
 }));
 
-// Mock useInView to always return visible
+// Mock useInView - mutable for per-test control
+let mockVisible = true;
 jest.mock('@/hooks/useInView', () => ({
-  useInView: () => [{ current: null }, true],
+  useInView: () => [{ current: null }, mockVisible],
 }));
 
 // Mock next/link
@@ -39,6 +40,7 @@ jest.mock('next/link', () => {
 
 beforeEach(() => {
   mockReplace.mockClear();
+  mockVisible = true;
   mockUseAuth.mockReturnValue({
     isAuthenticated: false,
     isLoading: false,
@@ -59,6 +61,25 @@ describe('FeatureCards', () => {
     render(<FeatureCards />);
     expect(screen.getByText('스터디에 필요한 모든 것')).toBeInTheDocument();
     expect(screen.getByText('핵심 기능')).toBeInTheDocument();
+  });
+
+  it('visible=false이면 opacity:0 스타일을 적용한다', () => {
+    mockVisible = false;
+    render(<FeatureCards />);
+    // The heading div should have opacity 0 when not visible
+    const section = document.querySelector('#features');
+    expect(section).toBeInTheDocument();
+    // opacity 0 and translateY(28px) are applied via inline style
+    const headingDiv = section!.querySelector('div');
+    expect(headingDiv).toHaveStyle({ opacity: 0 });
+  });
+
+  it('visible=true이면 opacity:1 스타일을 적용한다', () => {
+    mockVisible = true;
+    render(<FeatureCards />);
+    const section = document.querySelector('#features');
+    const headingDiv = section!.querySelector('div');
+    expect(headingDiv).toHaveStyle({ opacity: 1 });
   });
 });
 

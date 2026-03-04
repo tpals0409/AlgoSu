@@ -785,6 +785,84 @@ describe('SseController', () => {
     });
   });
 
+  // ─── removeChannelListener — channel 없을 때 early return (line 339) ──────────
+
+  describe('removeChannelListener — channel 없을 때 early return (line 339)', () => {
+    beforeEach(() => {
+      mockVerify.mockReturnValue({ sub: USER_ID });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ userId: USER_ID }),
+      });
+    });
+
+    it('두 연결이 같은 채널을 공유할 때 마지막 연결 해제 후 채널 삭제, 잔여 해제 시 early return (line 339)', async () => {
+      // 두 번째 USER 연결 (같은 채널)
+      const req1 = createMockReq('valid-token');
+      const res1 = createMockRes();
+      const req2 = createMockReq('valid-token');
+      const res2 = createMockRes();
+
+      // 두 SSE 연결을 같은 채널로 등록
+      await controller.streamStatus(SUBMISSION_ID, req1 as never, res1 as never);
+      await controller.streamStatus(SUBMISSION_ID, req2 as never, res2 as never);
+
+      const closeCb1 = (req1.on as jest.Mock).mock.calls.find(
+        (call: unknown[]) => call[0] === 'close',
+      )?.[1] as () => void;
+      const closeCb2 = (req2.on as jest.Mock).mock.calls.find(
+        (call: unknown[]) => call[0] === 'close',
+      )?.[1] as () => void;
+
+      // 첫 번째 close: handler1 제거, channelListeners.size=1, 채널 유지
+      closeCb1();
+
+      // 두 번째 close: handler2 제거, channelListeners.size=0, 채널 삭제
+      closeCb2();
+
+      // 내부 listeners Map에서 채널이 사라진 상태를 확인
+      // 컨트롤러 내부 map에 직접 접근하여 채널이 없는 상태에서 removeChannelListener 호출
+      const ctrlAny = controller as any;
+      const channel = `submission:status:${SUBMISSION_ID}`;
+      expect(ctrlAny.listeners.has(channel)).toBe(false); // 채널 삭제 확인
+
+      // 이미 삭제된 채널에 대해 removeChannelListener를 직접 호출 → line 339 early return
+      expect(() => ctrlAny.removeChannelListener(channel, () => {})).not.toThrow();
+    });
+  });
+
+  // ─── streamNotifications messageHandler catch 분기 (line 297) ──────────
+
+  describe('streamNotifications — messageHandler 오류 처리 (line 297)', () => {
+    it('res.write가 예외를 던지면 에러 로깅 후 스트림 유지', async () => {
+      mockVerify.mockReturnValue({ sub: USER_ID });
+
+      const req = createMockReq('valid-token');
+      const res = createMockRes();
+
+      // res.write가 throw하도록 설정
+      (res.write as jest.Mock).mockImplementation(() => {
+        throw new Error('write error');
+      });
+
+      await controller.streamNotifications(req as never, res as never);
+
+      const redisMessageHandler = mockRedisOn.mock.calls.find(
+        (call: unknown[]) => call[0] === 'message',
+      )?.[1] as (channel: string, message: string) => void;
+      expect(redisMessageHandler).toBeDefined();
+
+      const channel = `notification:user:${USER_ID}`;
+      // res.writableEnded가 false이므로 write 시도 → throw → catch (line 297)
+      redisMessageHandler(channel, JSON.stringify({ id: 'n3', title: '오류 테스트' }));
+
+      expect(loggerService.error).toHaveBeenCalledWith(
+        '알림 SSE 메시지 전송 오류',
+        expect.any(Error),
+      );
+    });
+  });
+
   // ─── X-Accel-Buffering 헤더 ──────────────
 
   describe('X-Accel-Buffering 헤더', () => {

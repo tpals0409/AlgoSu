@@ -95,4 +95,49 @@ describe('WebVitalsReporter', () => {
     render(<WebVitalsReporter />);
     expect(() => capturedCallback!(makeMockMetric({ name: 'TTFB', value: 800 }))).not.toThrow();
   });
+
+  it('development 환경에서 CLS 메트릭은 *1000을 하고 ms 단위 없이 로그한다', () => {
+    const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    Object.defineProperty(process.env, 'NODE_ENV', {
+      value: 'development',
+      configurable: true,
+    });
+
+    let capturedCallback: ((metric: ReturnType<typeof makeMockMetric>) => void) | undefined;
+    mockUseReportWebVitals.mockImplementation((cb) => {
+      capturedCallback = cb;
+    });
+
+    render(<WebVitalsReporter />);
+    capturedCallback!(makeMockMetric({ name: 'CLS', value: 0.123, rating: 'good' }));
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('CLS:'),
+      expect.anything(),
+    );
+    // CLS 메트릭의 로그 문자열에는 'ms'가 없다
+    const logCall = consoleSpy.mock.calls[0][0] as string;
+    expect(logCall).not.toContain('ms');
+
+    Object.defineProperty(process.env, 'NODE_ENV', {
+      value: 'test',
+      configurable: true,
+    });
+    consoleSpy.mockRestore();
+  });
+
+  it('non-development 환경에서는 console.log를 호출하지 않는다', () => {
+    const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    let capturedCallback: ((metric: ReturnType<typeof makeMockMetric>) => void) | undefined;
+    mockUseReportWebVitals.mockImplementation((cb) => {
+      capturedCallback = cb;
+    });
+
+    render(<WebVitalsReporter />);
+    capturedCallback!(makeMockMetric({ name: 'LCP', value: 2500 }));
+
+    expect(consoleSpy).not.toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
 });
