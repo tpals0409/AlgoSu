@@ -62,12 +62,12 @@ export class StudyMemberGuard implements CanActivate {
 
     if (!member) {
       // 비멤버 캐시 (짧은 TTL)
-      try { await this.redis.set(cacheKey, '0', 'EX', 60); } catch {}
+      try { await this.redis.set(cacheKey, '0', 'EX', 60); } catch { /* Redis 실패 무시 */ }
       throw new ForbiddenException('해당 스터디의 멤버가 아닙니다.');
     }
 
     // 멤버 캐시
-    try { await this.redis.set(cacheKey, '1', 'EX', StudyMemberGuard.CACHE_TTL); } catch {}
+    try { await this.redis.set(cacheKey, '1', 'EX', StudyMemberGuard.CACHE_TTL); } catch { /* Redis 실패 무시 */ }
 
     return true;
   }
