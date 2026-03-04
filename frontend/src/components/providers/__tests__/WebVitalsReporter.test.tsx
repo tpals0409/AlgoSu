@@ -1,5 +1,6 @@
 import { render } from '@testing-library/react';
 import { WebVitalsReporter } from '../WebVitalsReporter';
+import * as webVitals from 'next/web-vitals';
 
 jest.mock('next/web-vitals', () => ({
   useReportWebVitals: jest.fn(),
@@ -17,8 +18,7 @@ describe('WebVitalsReporter', () => {
   });
 
   it('calls useReportWebVitals hook', () => {
-    const { useReportWebVitals } = require('next/web-vitals');
     render(<WebVitalsReporter />);
-    expect(useReportWebVitals).toHaveBeenCalled();
+    expect(webVitals.useReportWebVitals).toHaveBeenCalled();
   });
 });

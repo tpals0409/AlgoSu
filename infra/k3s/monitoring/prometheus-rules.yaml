@@ -252,3 +252,39 @@ data:
             annotations:
               summary: "RabbitMQ unacked 메시지 {{ $value }}건 (임계: 100)"
               description: "RabbitMQ에 처리되지 않은 메시지가 5분간 100건을 초과했습니다."
+
+      # ================================================================
+      # 9. 인프라 — Kubernetes Pod 상태
+      # ================================================================
+      - name: algosu.kubernetes
+        rules:
+          - alert: PodRestartFrequent
+            expr: increase(kube_pod_container_status_restarts_total{namespace="algosu"}[1h]) > 3
+            for: 0m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Pod {{ $labels.pod }} 1시간 내 {{ $value | humanize }}회 재시작"
+              description: "algosu 네임스페이스의 Pod가 빈번하게 재시작하고 있습니다. CrashLoopBackOff 확인 필요."
+
+          - alert: HighCPUUsage
+            expr: |
+              (
+                sum by (pod) (rate(container_cpu_usage_seconds_total{namespace="algosu"}[5m]))
+                / sum by (pod) (kube_pod_container_resource_limits{namespace="algosu", resource="cpu"})
+              ) * 100 > 90
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Pod {{ $labels.pod }} CPU 사용률 {{ $value | printf \"%.1f\" }}% (임계: 90%)"
+              description: "Pod CPU 사용률이 limits 대비 90%를 5분간 초과했습니다. HPA 스케일링 확인."
+
+          - alert: OOMKilled
+            expr: kube_pod_container_status_terminated_reason{namespace="algosu", reason="OOMKilled"} > 0
+            for: 0m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Pod {{ $labels.pod }} OOMKilled"
+              description: "algosu 네임스페이스의 Pod가 메모리 부족으로 종료되었습니다. 메모리 limits 증가 검토."

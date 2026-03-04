@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { TopNav } from '../TopNav';
 
 jest.mock('lucide-react', () => {
-  const Icon = (props: any) => <svg {...props} />;
+  const Icon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />;
   return {
     Sun: Icon,
     Moon: Icon,
