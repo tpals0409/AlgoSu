@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, ConflictException } from '@nestjs/common';
 import { ProblemService } from './problem.service';
 import { Problem, ProblemStatus, Difficulty } from './problem.entity';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
@@ -80,6 +80,42 @@ describe('ProblemService', () => {
   // 1. create()
   // ──────────────────────────────────────────────
   describe('create()', () => {
+    it('sourceUrl 중복: ConflictException 발생', async () => {
+      const dto: CreateProblemDto = {
+        title: '두 수의 합',
+        weekNumber: '3월1주차',
+        sourceUrl: 'https://leetcode.com/problems/two-sum',
+      };
+
+      // 같은 스터디+주차+sourceUrl에 기존 문제 존재
+      dualWrite.findOne.mockResolvedValue(mockProblem);
+
+      await expect(service.create(dto, STUDY_ID, USER_ID)).rejects.toThrow(ConflictException);
+      await expect(service.create(dto, STUDY_ID, USER_ID)).rejects.toThrow(
+        '같은 주차에 이미 등록된 문제입니다.',
+      );
+
+      // save 호출 안 됨
+      expect(dualWrite.save).not.toHaveBeenCalled();
+    });
+
+    it('sourceUrl 없으면 중복 체크 건너뜀', async () => {
+      const dto: CreateProblemDto = {
+        title: '두 수의 합',
+        weekNumber: '3월1주차',
+      };
+
+      dualWrite.save.mockResolvedValue(mockProblem);
+      deadlineCache.setDeadline.mockResolvedValue(undefined);
+      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
+
+      await service.create(dto, STUDY_ID, USER_ID);
+
+      // findOne 미호출 (중복 체크 건너뜀)
+      expect(dualWrite.findOne).not.toHaveBeenCalled();
+      expect(dualWrite.save).toHaveBeenCalled();
+    });
+
     it('문제 생성: DB 저장 + 캐시 설정 + 주차 캐시 무효화', async () => {
       const dto: CreateProblemDto = {
         title: '두 수의 합',
@@ -336,7 +372,71 @@ describe('ProblemService', () => {
   });
 
   // ──────────────────────────────────────────────
-  // 11. findActiveByStudy()
+  // 10-2. update() — weekNumber 변경 시 구 주차 캐시 무효화
+  // ──────────────────────────────────────────────
+  describe('update() — weekNumber 변경', () => {
+    it('weekNumber 변경: 구 주차 + 신 주차 캐시 모두 무효화', async () => {
+      const dto: UpdateProblemDto = { weekNumber: '3월2주차' };
+      const updatedProblem = { ...mockProblem, weekNumber: '3월2주차' } as Problem;
+
+      dualWrite.findOne.mockResolvedValue({ ...mockProblem });
+      dualWrite.saveExisting.mockResolvedValue(updatedProblem);
+      deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
+      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
+
+      await service.update(STUDY_ID, PROBLEM_ID, dto);
+
+      // 두 번 호출: 신 주차 + 구 주차
+      expect(deadlineCache.invalidateWeekProblems).toHaveBeenCalledTimes(2);
+      expect(deadlineCache.invalidateWeekProblems).toHaveBeenCalledWith(STUDY_ID, '3월2주차');
+      expect(deadlineCache.invalidateWeekProblems).toHaveBeenCalledWith(STUDY_ID, '3월1주차');
+    });
+
+    it('weekNumber 미변경: 구 주차 캐시 무효화 안 함', async () => {
+      const dto: UpdateProblemDto = { title: '제목만 변경' };
+      const updatedProblem = { ...mockProblem, title: '제목만 변경' } as Problem;
+
+      dualWrite.findOne.mockResolvedValue({ ...mockProblem });
+      dualWrite.saveExisting.mockResolvedValue(updatedProblem);
+      deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
+      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
+
+      await service.update(STUDY_ID, PROBLEM_ID, dto);
+
+      // 한 번만 호출 (현재 주차만)
+      expect(deadlineCache.invalidateWeekProblems).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // ──────────────────────────────────────────────
+  // 11. delete() — soft delete
+  // ──────────────────────────────────────────────
+  describe('delete()', () => {
+    it('문제 soft delete: CLOSED 상태 + 캐시 무효화', async () => {
+      const problem = { ...mockProblem };
+      dualWrite.findOne.mockResolvedValue(problem);
+      dualWrite.saveExisting.mockResolvedValue({ ...problem, status: ProblemStatus.CLOSED });
+      deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
+      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
+
+      await service.delete(STUDY_ID, PROBLEM_ID);
+
+      expect(dualWrite.saveExisting).toHaveBeenCalledWith(
+        expect.objectContaining({ status: ProblemStatus.CLOSED }),
+      );
+      expect(deadlineCache.invalidateDeadline).toHaveBeenCalledWith(STUDY_ID, PROBLEM_ID);
+      expect(deadlineCache.invalidateWeekProblems).toHaveBeenCalledWith(STUDY_ID, mockProblem.weekNumber);
+    });
+
+    it('존재하지 않는 문제 삭제: NotFoundException', async () => {
+      dualWrite.findOne.mockResolvedValue(null);
+
+      await expect(service.delete(STUDY_ID, 'non-existent')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ──────────────────────────────────────────────
+  // 12. findActiveByStudy()
   // ──────────────────────────────────────────────
   describe('findActiveByStudy()', () => {
     it('ACTIVE 상태 문제만 필터링하여 반환', async () => {
@@ -350,6 +450,28 @@ describe('ProblemService', () => {
         order: { weekNumber: 'DESC', createdAt: 'ASC' },
       });
       expect(result).toEqual(activeProblems);
+    });
+  });
+
+  // ──────────────────────────────────────────────
+  // 13. findAllByStudy()
+  // ──────────────────────────────────────────────
+  describe('findAllByStudy()', () => {
+    it('CLOSED 포함 전체 문제 반환', async () => {
+      const allProblems = [
+        mockProblem,
+        { ...mockProblem, id: 'prob-002', status: ProblemStatus.CLOSED },
+      ];
+      dualWrite.find.mockResolvedValue(allProblems);
+
+      const result = await service.findAllByStudy(STUDY_ID);
+
+      expect(dualWrite.find).toHaveBeenCalledWith({
+        where: { studyId: STUDY_ID },
+        order: { weekNumber: 'ASC', createdAt: 'ASC' },
+      });
+      expect(result).toEqual(allProblems);
+      expect(result).toHaveLength(2);
     });
   });
 });
