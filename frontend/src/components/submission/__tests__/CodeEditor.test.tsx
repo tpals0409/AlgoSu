@@ -531,6 +531,7 @@ describe('CodeEditor', () => {
   });
 
   it('light 테마에서 algosu-light 테마를 사용한다', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     jest.spyOn(require('next-themes'), 'useTheme').mockReturnValue({ resolvedTheme: 'light', setTheme: jest.fn() });
     render(<CodeEditor {...defaultProps} />);
     // resolvedTheme === 'light'이므로 monacoTheme은 'algosu-light'
