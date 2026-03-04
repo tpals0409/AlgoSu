@@ -5,9 +5,10 @@
  * @guard invite-code-lock
  * @related StudyService.joinByInviteCode
  */
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 // ─── CONSTANTS ────────────────────────────
 const MAX_FAILURES = 5;
@@ -15,10 +16,13 @@ const LOCK_SECONDS = 900; // 15분
 
 @Injectable()
 export class InviteThrottleService {
-  private readonly logger = new Logger(InviteThrottleService.name);
   private readonly redis: Redis;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly logger: StructuredLoggerService,
+  ) {
+    this.logger.setContext(InviteThrottleService.name);
     const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
     this.redis = new Redis(redisUrl);
     this.redis.on('error', (err: Error) => {

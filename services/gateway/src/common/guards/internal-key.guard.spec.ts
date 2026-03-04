@@ -22,7 +22,14 @@ describe('InternalKeyGuard', () => {
     configService = {
       getOrThrow: jest.fn().mockReturnValue(VALID_KEY),
     };
-    guard = new InternalKeyGuard(configService as unknown as ConfigService);
+    const mockLogger = {
+      setContext: jest.fn(),
+      log: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+    };
+    guard = new InternalKeyGuard(configService as unknown as ConfigService, mockLogger as any);
   });
 
   // --- 테스트 1: 유효한 Internal Key ---

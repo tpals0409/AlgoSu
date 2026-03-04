@@ -4,10 +4,11 @@
  * @layer service
  * @related rate-limit.middleware.ts
  */
-import { Injectable, OnModuleDestroy, Logger } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { ThrottlerStorage } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 /**
  * Redis 기반 Rate Limit 저장소
@@ -19,10 +20,13 @@ import Redis from 'ioredis';
  */
 @Injectable()
 export class RedisThrottlerStorage implements ThrottlerStorage, OnModuleDestroy {
-  private readonly logger = new Logger(RedisThrottlerStorage.name);
   private readonly redis: Redis;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly logger: StructuredLoggerService,
+  ) {
+    this.logger.setContext(RedisThrottlerStorage.name);
     const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
     this.redis = new Redis(redisUrl, {
       maxRetriesPerRequest: 3,

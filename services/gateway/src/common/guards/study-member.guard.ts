@@ -10,7 +10,6 @@ import {
   ExecutionContext,
   Injectable,
   ForbiddenException,
-  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
@@ -18,10 +17,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { StudyMember } from '../../study/study.entity';
 import { Request } from 'express';
+import { StructuredLoggerService } from '../logger/structured-logger.service';
 
 @Injectable()
 export class StudyMemberGuard implements CanActivate {
-  private readonly logger = new Logger(StudyMemberGuard.name);
   private readonly redis: Redis;
   private static readonly CACHE_TTL = 300; // 5분
 
@@ -29,7 +28,9 @@ export class StudyMemberGuard implements CanActivate {
     private readonly configService: ConfigService,
     @InjectRepository(StudyMember)
     private readonly memberRepo: Repository<StudyMember>,
+    private readonly logger: StructuredLoggerService,
   ) {
+    this.logger.setContext(StudyMemberGuard.name);
     const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
     this.redis = new Redis(redisUrl, { lazyConnect: true, maxRetriesPerRequest: 1 });
   }

@@ -53,9 +53,18 @@ describe('NotificationService', () => {
       delete: jest.fn(),
     };
 
+    const mockLogger = {
+      setContext: jest.fn(),
+      log: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+    };
+
     service = new NotificationService(
       notificationRepo as any,
       configService as unknown as ConfigService,
+      mockLogger as any,
     );
   });
 

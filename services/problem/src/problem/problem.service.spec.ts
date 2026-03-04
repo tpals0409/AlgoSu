@@ -5,6 +5,7 @@ import { Problem, ProblemStatus, Difficulty } from './problem.entity';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
 import { DeadlineCacheService } from '../cache/deadline-cache.service';
 import { DualWriteService } from '../database/dual-write.service';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 describe('ProblemService', () => {
   let service: ProblemService;
@@ -65,6 +66,10 @@ describe('ProblemService', () => {
         {
           provide: DeadlineCacheService,
           useValue: deadlineCache,
+        },
+        {
+          provide: StructuredLoggerService,
+          useValue: { setContext: jest.fn(), log: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
         },
       ],
     }).compile();

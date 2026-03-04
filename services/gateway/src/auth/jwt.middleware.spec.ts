@@ -42,9 +42,18 @@ describe('JwtMiddleware', () => {
       findOne: jest.fn().mockResolvedValue({ id: USER_ID, deleted_at: null }),
     };
 
+    const mockLogger = {
+      setContext: jest.fn(),
+      log: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+    };
+
     middleware = new JwtMiddleware(
       configService as unknown as ConfigService,
       userRepository as any,
+      mockLogger as any,
     );
   });
 

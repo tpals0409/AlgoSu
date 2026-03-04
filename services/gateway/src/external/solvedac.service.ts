@@ -6,10 +6,10 @@
  */
 import {
   Injectable,
-  Logger,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 const SOLVEDAC_API = 'https://solved.ac/api/v3';
 const TIMEOUT_MS = 5_000;
@@ -34,7 +34,9 @@ function levelToDifficulty(level: number): SolvedacProblemInfo['difficulty'] {
 
 @Injectable()
 export class SolvedacService {
-  private readonly logger = new Logger(SolvedacService.name);
+  constructor(private readonly logger: StructuredLoggerService) {
+    this.logger.setContext(SolvedacService.name);
+  }
 
   async fetchProblem(problemId: number): Promise<SolvedacProblemInfo> {
     const controller = new AbortController();

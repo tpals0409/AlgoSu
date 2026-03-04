@@ -3,13 +3,13 @@ import {
   ExecutionContext,
   Injectable,
   ForbiddenException,
-  Logger,
 } from '@nestjs/common';
 import { Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import { REDIS_CLIENT } from '../../cache/cache.module';
 import { Request } from 'express';
+import { StructuredLoggerService } from '../logger/structured-logger.service';
 
 /**
  * 스터디 멤버십 검증 가드 (Problem Service)
@@ -22,13 +22,15 @@ import { Request } from 'express';
  */
 @Injectable()
 export class StudyMemberGuard implements CanActivate {
-  private readonly logger = new Logger(StudyMemberGuard.name);
   private readonly MEMBER_TTL = 600; // 10분
 
   constructor(
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     private readonly configService: ConfigService,
-  ) {}
+    private readonly logger: StructuredLoggerService,
+  ) {
+    this.logger.setContext(StudyMemberGuard.name);
+  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request & { studyRole?: string }>();

@@ -10,12 +10,12 @@ import {
   ExecutionContext,
   Injectable,
   ForbiddenException,
-  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Study, StudyStatus } from '../../study/study.entity';
 import { Request } from 'express';
+import { StructuredLoggerService } from '../logger/structured-logger.service';
 
 /**
  * CUD 엔드포인트에 적용: study.status === 'CLOSED' -> ForbiddenException
@@ -24,12 +24,13 @@ import { Request } from 'express';
  */
 @Injectable()
 export class StudyActiveGuard implements CanActivate {
-  private readonly logger = new Logger(StudyActiveGuard.name);
-
   constructor(
     @InjectRepository(Study)
     private readonly studyRepository: Repository<Study>,
-  ) {}
+    private readonly logger: StructuredLoggerService,
+  ) {
+    this.logger.setContext(StudyActiveGuard.name);
+  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();

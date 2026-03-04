@@ -3,6 +3,7 @@ import { ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { StudyMemberGuard } from './study-member.guard';
 import { REDIS_CLIENT } from '../../cache/cache.module';
+import { StructuredLoggerService } from '../logger/structured-logger.service';
 
 describe('StudyMemberGuard', () => {
   let guard: StudyMemberGuard;
@@ -51,6 +52,10 @@ describe('StudyMemberGuard', () => {
         StudyMemberGuard,
         { provide: REDIS_CLIENT, useValue: redis },
         { provide: ConfigService, useValue: configService },
+        {
+          provide: StructuredLoggerService,
+          useValue: { setContext: jest.fn(), log: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
+        },
       ],
     }).compile();
 

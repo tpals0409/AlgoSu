@@ -31,8 +31,17 @@ describe('RedisThrottlerStorage', () => {
       get: jest.fn().mockReturnValue('redis://localhost:6379'),
     };
 
+    const mockLogger = {
+      setContext: jest.fn(),
+      log: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+    };
+
     storage = new RedisThrottlerStorage(
       configService as unknown as ConfigService,
+      mockLogger as any,
     );
   });
 

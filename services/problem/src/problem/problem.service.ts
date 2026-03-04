@@ -4,20 +4,22 @@
  * @layer service
  * @related problem.controller.ts, problem.entity.ts, deadline-cache.service.ts
  */
-import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { Problem, ProblemStatus } from './problem.entity';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
 import { DeadlineCacheService } from '../cache/deadline-cache.service';
 import { DualWriteService } from '../database/dual-write.service';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 @Injectable()
 export class ProblemService {
-  private readonly logger = new Logger(ProblemService.name);
-
   constructor(
     private readonly dualWrite: DualWriteService,
     private readonly deadlineCache: DeadlineCacheService,
-  ) {}
+    private readonly logger: StructuredLoggerService,
+  ) {
+    this.logger.setContext(ProblemService.name);
+  }
 
   /**
    * 문제 생성 — ADMIN 권한 필수 (컨트롤러에서 studyRole 체크)

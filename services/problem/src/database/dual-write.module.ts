@@ -6,6 +6,7 @@ import { Problem } from '../problem/problem.entity';
 import { DualWriteService } from './dual-write.service';
 import { ReconciliationService } from './reconciliation.service';
 import { getDualWriteMode, DualWriteMode, NEW_DB_CONNECTION } from './dual-write.config';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 /**
  * Dual Write Module — Phase 3 DB 물리 분리
@@ -57,7 +58,7 @@ import { getDualWriteMode, DualWriteMode, NEW_DB_CONNECTION } from './dual-write
     TypeOrmModule.forFeature([Problem]),
     TypeOrmModule.forFeature([Problem], NEW_DB_CONNECTION),
   ],
-  providers: [DualWriteService, ReconciliationService],
+  providers: [DualWriteService, ReconciliationService, StructuredLoggerService],
   exports: [DualWriteService, ReconciliationService, TypeOrmModule],
 })
 export class DualWriteModule {}

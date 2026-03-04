@@ -15,7 +15,6 @@ import {
   Headers,
   UseGuards,
   ParseUUIDPipe,
-  Logger,
   ForbiddenException,
   HttpCode,
   HttpStatus,
@@ -25,6 +24,7 @@ import { ProblemService } from './problem.service';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
 import { InternalKeyGuard } from '../common/guards/internal-key.guard';
 import { StudyMemberGuard } from '../common/guards/study-member.guard';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 /**
  * Problem Controller
@@ -39,9 +39,12 @@ import { StudyMemberGuard } from '../common/guards/study-member.guard';
 @Controller()
 @UseGuards(InternalKeyGuard, StudyMemberGuard)
 export class ProblemController {
-  private readonly logger = new Logger(ProblemController.name);
-
-  constructor(private readonly problemService: ProblemService) {}
+  constructor(
+    private readonly problemService: ProblemService,
+    private readonly logger: StructuredLoggerService,
+  ) {
+    this.logger.setContext(ProblemController.name);
+  }
 
   /**
    * POST / — 문제 생성 (ADMIN 전용)

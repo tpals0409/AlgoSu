@@ -6,6 +6,7 @@ import { CacheModule } from './cache/cache.module';
 import { MetricsModule } from './common/metrics/metrics.module';
 import { DualWriteModule } from './database/dual-write.module';
 import { HealthController } from './health.controller';
+import { StructuredLoggerService } from './common/logger/structured-logger.service';
 
 @Module({
   imports: [
@@ -36,5 +37,7 @@ import { HealthController } from './health.controller';
     CacheModule,
   ],
   controllers: [HealthController],
+  providers: [StructuredLoggerService],
+  exports: [StructuredLoggerService],
 })
 export class AppModule {}

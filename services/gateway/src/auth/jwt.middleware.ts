@@ -17,7 +17,6 @@ import {
   Injectable,
   NestMiddleware,
   UnauthorizedException,
-  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -25,10 +24,10 @@ import { Repository } from 'typeorm';
 import { Request, Response, NextFunction } from 'express';
 import * as jwt from 'jsonwebtoken';
 import { User } from './oauth/user.entity';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 @Injectable()
 export class JwtMiddleware implements NestMiddleware {
-  private readonly logger = new Logger(JwtMiddleware.name);
   private readonly ALLOWED_ALGORITHMS: jwt.Algorithm[] = ['HS256'];
   private readonly UUID_REGEX =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -37,7 +36,10 @@ export class JwtMiddleware implements NestMiddleware {
     private readonly configService: ConfigService,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-  ) {}
+    private readonly logger: StructuredLoggerService,
+  ) {
+    this.logger.setContext(JwtMiddleware.name);
+  }
 
   async use(req: Request, _res: Response, next: NextFunction): Promise<void> {
     const token = this.extractToken(req);

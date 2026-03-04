@@ -4,12 +4,13 @@
  * @layer repository
  * @related problem.service.ts, dual-write.config.ts, reconciliation.service.ts
  */
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOneOptions, FindManyOptions, DeepPartial } from 'typeorm';
 import { Problem } from '../problem/problem.entity';
 import { DualWriteMode, getDualWriteMode, NEW_DB_CONNECTION } from './dual-write.config';
 import { ReconciliationService } from './reconciliation.service';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 import { Counter, Histogram, Gauge, register } from 'prom-client';
 
 // ---- Dual Write 메트릭 (H8) ----
@@ -51,7 +52,6 @@ export const reconciliationRunsTotal = new Counter({
  */
 @Injectable()
 export class DualWriteService implements OnModuleInit {
-  private readonly logger = new Logger(DualWriteService.name);
   private mode: DualWriteMode = DualWriteMode.OFF;
 
   constructor(
@@ -60,7 +60,10 @@ export class DualWriteService implements OnModuleInit {
     @InjectRepository(Problem, NEW_DB_CONNECTION)
     private readonly newRepo: Repository<Problem>,
     private readonly reconciliation: ReconciliationService,
-  ) {}
+    private readonly logger: StructuredLoggerService,
+  ) {
+    this.logger.setContext(DualWriteService.name);
+  }
 
   onModuleInit() {
     this.mode = getDualWriteMode();

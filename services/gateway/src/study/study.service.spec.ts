@@ -122,8 +122,17 @@ describe('StudyService', () => {
       clearFailures: jest.fn().mockResolvedValue(undefined),
     };
 
+    const mockLogger = {
+      setContext: jest.fn(),
+      log: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+    };
+
     service = new StudyService(
       configService as unknown as ConfigService,
+      mockLogger as any,
       studyRepository as any,
       memberRepository as any,
       inviteRepository as any,

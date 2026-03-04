@@ -5,6 +5,7 @@ import { DualWriteService } from './dual-write.service';
 import { ReconciliationService } from './reconciliation.service';
 import { Problem, ProblemStatus, Difficulty } from '../problem/problem.entity';
 import { NEW_DB_CONNECTION, DualWriteMode } from './dual-write.config';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 import { register } from 'prom-client';
 
 // getDualWriteMode 모킹
@@ -81,6 +82,10 @@ describe('DualWriteService', () => {
         {
           provide: ReconciliationService,
           useValue: reconciliation,
+        },
+        {
+          provide: StructuredLoggerService,
+          useValue: { setContext: jest.fn(), log: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
         },
       ],
     }).compile();

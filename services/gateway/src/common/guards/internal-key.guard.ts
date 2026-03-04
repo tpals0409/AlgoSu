@@ -9,11 +9,11 @@ import {
   ExecutionContext,
   Injectable,
   UnauthorizedException,
-  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 import { timingSafeEqual } from 'crypto';
+import { StructuredLoggerService } from '../logger/structured-logger.service';
 
 /**
  * X-Internal-Key 검증 가드
@@ -26,9 +26,12 @@ import { timingSafeEqual } from 'crypto';
  */
 @Injectable()
 export class InternalKeyGuard implements CanActivate {
-  private readonly logger = new Logger(InternalKeyGuard.name);
-
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly logger: StructuredLoggerService,
+  ) {
+    this.logger.setContext(InternalKeyGuard.name);
+  }
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<Request>();

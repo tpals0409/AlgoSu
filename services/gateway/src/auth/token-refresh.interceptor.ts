@@ -13,7 +13,6 @@ import {
   NestInterceptor,
   ExecutionContext,
   CallHandler,
-  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Observable, tap } from 'rxjs';
@@ -21,18 +20,20 @@ import { Request, Response } from 'express';
 import * as jwt from 'jsonwebtoken';
 import { setTokenCookie } from './cookie.util';
 import { OAuthService } from './oauth/oauth.service';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 /** 갱신 임계값: 만료 5분(300초) 이내 */
 const REFRESH_THRESHOLD_SECONDS = 5 * 60;
 
 @Injectable()
 export class TokenRefreshInterceptor implements NestInterceptor {
-  private readonly logger = new Logger(TokenRefreshInterceptor.name);
-
   constructor(
     private readonly configService: ConfigService,
     private readonly oauthService: OAuthService,
-  ) {}
+    private readonly logger: StructuredLoggerService,
+  ) {
+    this.logger.setContext(TokenRefreshInterceptor.name);
+  }
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const req = context.switchToHttp().getRequest<Request>();

@@ -4,7 +4,6 @@ import {
   Get,
   All,
   Res,
-  Logger,
   Injectable,
   NestMiddleware,
   Inject,
@@ -19,6 +18,7 @@ import { createProxyMiddleware, RequestHandler } from 'http-proxy-middleware';
 import type { IncomingMessage, ServerResponse, ClientRequest } from 'http';
 import { SERVICE_ROUTING_TABLE } from '../common/config/service-keys.config';
 import Redis from 'ioredis';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 @Controller()
 class HealthController {
@@ -83,11 +83,12 @@ class ProxyDispatchMiddleware implements NestMiddleware {
   controllers: [HealthController, CatchAllController],
   providers: [
     ProxyDispatchMiddleware,
+    StructuredLoggerService,
     {
       provide: 'PROXY_MIDDLEWARE_MAP',
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => {
-        const logger = new Logger('ProxyModule');
+      inject: [ConfigService, StructuredLoggerService],
+      useFactory: (configService: ConfigService, logger: StructuredLoggerService) => {
+        logger.setContext('ProxyModule');
         const map = new Map<string, RequestHandler>();
 
         for (const route of SERVICE_ROUTING_TABLE) {

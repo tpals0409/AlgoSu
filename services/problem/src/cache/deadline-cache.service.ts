@@ -4,9 +4,10 @@
  * @layer service
  * @related problem.service.ts, cache.module.ts
  */
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import Redis from 'ioredis';
 import { REDIS_CLIENT } from './cache.module';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 /**
  * 마감 시간 Redis 캐싱 서비스
@@ -21,11 +22,15 @@ import { REDIS_CLIENT } from './cache.module';
  */
 @Injectable()
 export class DeadlineCacheService {
-  private readonly logger = new Logger(DeadlineCacheService.name);
   private readonly TTL_SECONDS = 300; // 5분
   private readonly KEY_PREFIX = 'deadline:';
 
-  constructor(@Inject(REDIS_CLIENT) private readonly redis: Redis) {}
+  constructor(
+    @Inject(REDIS_CLIENT) private readonly redis: Redis,
+    private readonly logger: StructuredLoggerService,
+  ) {
+    this.logger.setContext(DeadlineCacheService.name);
+  }
 
   /**
    * 마감 시간 캐시 조회

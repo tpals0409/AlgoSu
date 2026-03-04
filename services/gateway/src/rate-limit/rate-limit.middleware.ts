@@ -4,9 +4,10 @@
  * @layer middleware
  * @related redis-throttler.storage.ts
  */
-import { Injectable, NestMiddleware, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import { Injectable, NestMiddleware, HttpException, HttpStatus } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { RedisThrottlerStorage } from './redis-throttler.storage';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 /**
  * Rate Limit 미들웨어 — 프록시 라우트에도 적용
@@ -16,12 +17,16 @@ import { RedisThrottlerStorage } from './redis-throttler.storage';
  */
 @Injectable()
 export class RateLimitMiddleware implements NestMiddleware {
-  private readonly logger = new Logger(RateLimitMiddleware.name);
   private static readonly DEFAULT_LIMIT = Number(process.env['RATE_LIMIT_DEFAULT']) || 600;
   private static readonly SUBMISSION_LIMIT = 10;
   private static readonly TTL_MS = 60_000;
 
-  constructor(private readonly storage: RedisThrottlerStorage) {}
+  constructor(
+    private readonly storage: RedisThrottlerStorage,
+    private readonly logger: StructuredLoggerService,
+  ) {
+    this.logger.setContext(RateLimitMiddleware.name);
+  }
 
   async use(req: Request, res: Response, next: NextFunction): Promise<void> {
     // /health는 인프라 probe용 — rate limit 제외

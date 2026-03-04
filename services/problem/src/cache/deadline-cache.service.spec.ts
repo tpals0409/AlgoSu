@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DeadlineCacheService } from './deadline-cache.service';
 import { REDIS_CLIENT } from './cache.module';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 describe('DeadlineCacheService', () => {
   let service: DeadlineCacheService;
@@ -22,6 +23,10 @@ describe('DeadlineCacheService', () => {
         {
           provide: REDIS_CLIENT,
           useValue: redis,
+        },
+        {
+          provide: StructuredLoggerService,
+          useValue: { setContext: jest.fn(), log: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
         },
       ],
     }).compile();

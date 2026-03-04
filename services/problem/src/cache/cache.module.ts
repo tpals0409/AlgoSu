@@ -1,6 +1,7 @@
-import { Module, Global, OnModuleDestroy, Logger } from '@nestjs/common';
+import { Module, Global, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 export const REDIS_CLIENT = 'REDIS_CLIENT';
 
@@ -18,7 +19,8 @@ export const REDIS_CLIENT = 'REDIS_CLIENT';
       provide: REDIS_CLIENT,
       inject: [ConfigService],
       useFactory: (configService: ConfigService): Redis => {
-        const logger = new Logger('CacheModule');
+        const logger = new StructuredLoggerService();
+        logger.setContext('CacheModule');
         const redisUrl = configService.get<string>('REDIS_URL', 'redis://localhost:6379');
         const redis = new Redis(redisUrl, {
           maxRetriesPerRequest: 3,

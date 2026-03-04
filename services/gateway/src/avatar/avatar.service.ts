@@ -5,7 +5,7 @@
  * @related AvatarController, MinIO, User.avatar_url
  */
 
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as Minio from 'minio';
 import sharp from 'sharp';
@@ -18,6 +18,7 @@ import {
   MAGIC_BYTES,
   WEBP_SIGNATURE,
 } from './avatar.constants';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 // ─── TYPES ────────────────────────────────
 
@@ -32,11 +33,14 @@ interface UploadResult {
 
 @Injectable()
 export class AvatarService {
-  private readonly logger = new Logger(AvatarService.name);
   private readonly minioClient: Minio.Client;
   private readonly minioEndpoint: string;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly logger: StructuredLoggerService,
+  ) {
+    this.logger.setContext(AvatarService.name);
     const endPoint = this.configService.get<string>('MINIO_ENDPOINT', 'minio');
     const port = this.configService.get<number>('MINIO_PORT', 9000);
     const accessKey = this.configService.get<string>('MINIO_ACCESS_KEY', '');

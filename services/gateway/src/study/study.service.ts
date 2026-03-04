@@ -6,7 +6,6 @@
  */
 import {
   Injectable,
-  Logger,
   NotFoundException,
   ForbiddenException,
   ConflictException,
@@ -22,17 +21,18 @@ import { User } from '../auth/oauth/user.entity';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationType } from '../notification/notification.entity';
 import { InviteThrottleService } from './invite-throttle.service';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 // ─── CONSTANTS ────────────────────────────
 const MAX_MEMBERS = 50;
 
 @Injectable()
 export class StudyService {
-  private readonly logger = new Logger(StudyService.name);
   private readonly redis: Redis;
 
   constructor(
     private readonly configService: ConfigService,
+    private readonly logger: StructuredLoggerService,
     @InjectRepository(Study)
     private readonly studyRepository: Repository<Study>,
     @InjectRepository(StudyMember)
@@ -44,6 +44,7 @@ export class StudyService {
     private readonly notificationService: NotificationService,
     private readonly inviteThrottle: InviteThrottleService,
   ) {
+    this.logger.setContext(StudyService.name);
     const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
     this.redis = new Redis(redisUrl);
     this.redis.on('error', (err: Error) => {

@@ -56,9 +56,18 @@ describe('DeadlineReminderService', () => {
       findOne: jest.fn().mockResolvedValue(null),
     };
 
+    const mockLogger = {
+      setContext: jest.fn(),
+      log: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+    };
+
     service = new DeadlineReminderService(
       configService as unknown as ConfigService,
       notificationService as never,
+      mockLogger as any,
       memberRepo as never,
       studyRepo as never,
     );
@@ -187,9 +196,11 @@ describe('DeadlineReminderService', () => {
       configService.get.mockReturnValue(undefined);
 
       // 서비스 재생성 (설정값 없는 상태)
+      const reLogger = { setContext: jest.fn(), log: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
       service = new DeadlineReminderService(
         configService as unknown as ConfigService,
         notificationService as never,
+        reLogger as any,
         memberRepo as never,
         studyRepo as never,
       );

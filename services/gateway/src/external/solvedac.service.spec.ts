@@ -10,7 +10,14 @@ describe('SolvedacService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new SolvedacService();
+    const mockLogger = {
+      setContext: jest.fn(),
+      log: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+    };
+    service = new SolvedacService(mockLogger as any);
   });
 
   describe('fetchProblem', () => {

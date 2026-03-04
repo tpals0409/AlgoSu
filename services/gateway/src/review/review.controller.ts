@@ -13,7 +13,6 @@ import {
   Param,
   Body,
   Req,
-  Logger,
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
@@ -23,13 +22,17 @@ import {
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 @ApiTags('Review')
 @Controller('api/reviews')
 export class ReviewProxyController {
-  private readonly logger = new Logger(ReviewProxyController.name);
-
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly logger: StructuredLoggerService,
+  ) {
+    this.logger.setContext(ReviewProxyController.name);
+  }
 
   // ─── COMMENTS ──────────────────────────────
 

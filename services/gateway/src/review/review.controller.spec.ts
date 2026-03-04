@@ -35,8 +35,17 @@ describe('ReviewProxyController', () => {
       }),
     };
 
+    const mockLogger = {
+      setContext: jest.fn(),
+      log: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+    };
+
     controller = new ReviewProxyController(
       configService as unknown as ConfigService,
+      mockLogger as any,
     );
   });
 

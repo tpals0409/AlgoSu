@@ -1,9 +1,10 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Problem } from '../problem/problem.entity';
 import { DualWriteMode, getDualWriteMode, NEW_DB_CONNECTION } from './dual-write.config';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 import { reconciliationMismatches, reconciliationRunsTotal } from './dual-write.service';
 
 /**
@@ -16,7 +17,6 @@ import { reconciliationMismatches, reconciliationRunsTotal } from './dual-write.
  */
 @Injectable()
 export class ReconciliationService implements OnModuleInit {
-  private readonly logger = new Logger(ReconciliationService.name);
   private mode: DualWriteMode = DualWriteMode.OFF;
   private mismatchCount = 0;
 
@@ -25,7 +25,10 @@ export class ReconciliationService implements OnModuleInit {
     private readonly oldRepo: Repository<Problem>,
     @InjectRepository(Problem, NEW_DB_CONNECTION)
     private readonly newRepo: Repository<Problem>,
-  ) {}
+    private readonly logger: StructuredLoggerService,
+  ) {
+    this.logger.setContext(ReconciliationService.name);
+  }
 
   onModuleInit() {
     this.mode = getDualWriteMode();

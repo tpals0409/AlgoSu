@@ -5,24 +5,26 @@
  * @related NotificationController, DeadlineReminderService, StudyService
  */
 
-import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Repository, LessThan } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import Redis from 'ioredis';
 import { Notification, NotificationType } from './notification.entity';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 @Injectable()
 export class NotificationService {
-  private readonly logger = new Logger(NotificationService.name);
   private readonly redisPublisher: Redis;
 
   constructor(
     @InjectRepository(Notification)
     private readonly notificationRepo: Repository<Notification>,
     private readonly configService: ConfigService,
+    private readonly logger: StructuredLoggerService,
   ) {
+    this.logger.setContext(NotificationService.name);
     const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
     this.redisPublisher = new Redis(redisUrl);
     this.redisPublisher.on('error', (err: Error) => {

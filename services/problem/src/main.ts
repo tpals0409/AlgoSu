@@ -27,7 +27,9 @@ async function bootstrap(): Promise<void> {
     }),
   );
 
-  app.useGlobalFilters(new GlobalExceptionFilter());
+  const filterLogger = new StructuredLoggerService();
+  filterLogger.setContext('GlobalExceptionFilter');
+  app.useGlobalFilters(new GlobalExceptionFilter(filterLogger));
 
   app.enableShutdownHooks();
 

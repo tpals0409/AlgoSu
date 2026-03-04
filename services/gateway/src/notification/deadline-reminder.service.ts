@@ -5,7 +5,7 @@
  * @related NotificationService, ProblemService (Internal API)
  */
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -14,6 +14,7 @@ import Redis from 'ioredis';
 import { NotificationService } from './notification.service';
 import { NotificationType } from './notification.entity';
 import { StudyMember, Study } from '../study/study.entity';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 // ─── TYPES ────────────────────────────────
 
@@ -31,17 +32,18 @@ interface SubmissionCheckResult {
 
 @Injectable()
 export class DeadlineReminderService {
-  private readonly logger = new Logger(DeadlineReminderService.name);
   private readonly redis: Redis;
 
   constructor(
     private readonly configService: ConfigService,
     private readonly notificationService: NotificationService,
+    private readonly logger: StructuredLoggerService,
     @InjectRepository(StudyMember)
     private readonly memberRepo: Repository<StudyMember>,
     @InjectRepository(Study)
     private readonly studyRepo: Repository<Study>,
   ) {
+    this.logger.setContext(DeadlineReminderService.name);
     const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
     this.redis = new Redis(redisUrl);
     this.redis.on('error', (err: Error) => {
