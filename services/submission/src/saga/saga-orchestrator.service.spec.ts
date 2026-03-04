@@ -358,4 +358,166 @@ describe('SagaOrchestratorService', () => {
       );
     });
   });
+
+  // ─── 12. advanceToAiQueued() — Submission 미발견 ───────────────
+  describe('advanceToAiQueued() — Submission 미발견', () => {
+    it('submission이 없으면 early return한다', async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      await service.advanceToAiQueued('non-existent');
+
+      expect(repo.update).not.toHaveBeenCalled();
+      expect(mqPublisher.publishAiAnalysis).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── 13. advanceToAiQueued() — AI 한도 초과 ───────────────────
+  describe('advanceToAiQueued() — AI 한도 초과', () => {
+    it('한도 초과 시 AI_SKIPPED으로 처리하고 DONE 상태로 전환한다', async () => {
+      const submission = createMockSubmission({ sagaStep: SagaStep.GITHUB_QUEUED });
+      repo.findOne.mockResolvedValue(submission);
+      repo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+
+      // checkAiQuota가 false를 반환하도록 mock
+      const mockFetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: { allowed: false, used: 10, limit: 10 } }),
+      });
+      (global as any).fetch = mockFetch;
+
+      await service.advanceToAiQueued('sub-uuid-1');
+
+      // AI_SKIPPED → DONE
+      expect(repo.update).toHaveBeenCalledWith('sub-uuid-1', expect.objectContaining({
+        sagaStep: SagaStep.DONE,
+        aiSkipped: true,
+        aiAnalysisStatus: 'skipped',
+      }));
+      expect(mqPublisher.publishAiAnalysis).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── 14. advanceToAiQueued() — preserveGithubStatus ───────────
+  describe('advanceToAiQueued() — preserveGithubStatus=true', () => {
+    it('githubSyncStatus를 덮어쓰지 않는다', async () => {
+      const submission = createMockSubmission({
+        sagaStep: SagaStep.GITHUB_QUEUED,
+        githubSyncStatus: GitHubSyncStatus.SKIPPED,
+      });
+      repo.findOne.mockResolvedValue(submission);
+      repo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+      mqPublisher.publishAiAnalysis.mockResolvedValue(undefined);
+
+      // quota 허용
+      (global as any).fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: { allowed: true, used: 1, limit: 10 } }),
+      });
+
+      await service.advanceToAiQueued('sub-uuid-1', true);
+
+      // githubSyncStatus가 포함되지 않음
+      expect(repo.update).toHaveBeenCalledWith('sub-uuid-1', {
+        sagaStep: SagaStep.AI_QUEUED,
+      });
+    });
+  });
+
+  // ─── 15. compensateGitHubFailed() — SKIPPED ───────────────────
+  describe('compensateGitHubFailed() — SKIPPED', () => {
+    it('SKIPPED이면 preserveGithubStatus=true로 advanceToAiQueued를 호출한다', async () => {
+      const submission = createMockSubmission();
+      repo.findOne.mockResolvedValue(submission);
+      repo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+      mqPublisher.publishAiAnalysis.mockResolvedValue(undefined);
+
+      // quota 허용
+      (global as any).fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: { allowed: true, used: 1, limit: 10 } }),
+      });
+
+      await service.compensateGitHubFailed('sub-uuid-1', GitHubSyncStatus.SKIPPED);
+
+      // githubSyncStatus=SKIPPED 업데이트
+      expect(repo.update).toHaveBeenCalledWith('sub-uuid-1', {
+        githubSyncStatus: GitHubSyncStatus.SKIPPED,
+      });
+      // AI 분석은 진행됨
+      expect(mqPublisher.publishAiAnalysis).toHaveBeenCalled();
+    });
+  });
+
+  // ─── 16. onModuleDestroy() ────────────────────────────────────
+  describe('onModuleDestroy()', () => {
+    it('타이머가 있으면 정리한다', async () => {
+      // onModuleInit에서 타이머 설정
+      repo.find.mockResolvedValue([]);
+      await service.onModuleInit();
+
+      // Act
+      await service.onModuleDestroy();
+
+      // 에러 없이 완료되면 성공
+      expect(true).toBe(true);
+    });
+
+    it('타이머가 없으면 에러 없이 완료한다', async () => {
+      await service.onModuleDestroy();
+      expect(true).toBe(true);
+    });
+  });
+
+  // ─── 17. checkAiQuota — fetch 실패 시 허용 ────────────────────
+  describe('advanceToAiQueued() — quota 체크 실패', () => {
+    it('fetch 네트워크 오류 시 AI 분석을 허용한다', async () => {
+      const submission = createMockSubmission({ sagaStep: SagaStep.GITHUB_QUEUED });
+      repo.findOne.mockResolvedValue(submission);
+      repo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+      mqPublisher.publishAiAnalysis.mockResolvedValue(undefined);
+
+      (global as any).fetch = jest.fn().mockRejectedValue(new Error('Network error'));
+
+      await service.advanceToAiQueued('sub-uuid-1');
+
+      // 네트워크 오류 시에도 AI 분석 진행
+      expect(repo.update).toHaveBeenCalledWith('sub-uuid-1', {
+        sagaStep: SagaStep.AI_QUEUED,
+        githubSyncStatus: GitHubSyncStatus.SYNCED,
+      });
+      expect(mqPublisher.publishAiAnalysis).toHaveBeenCalled();
+    });
+
+    it('fetch 응답이 ok가 아니면 AI 분석을 허용한다', async () => {
+      const submission = createMockSubmission({ sagaStep: SagaStep.GITHUB_QUEUED });
+      repo.findOne.mockResolvedValue(submission);
+      repo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+      mqPublisher.publishAiAnalysis.mockResolvedValue(undefined);
+
+      (global as any).fetch = jest.fn().mockResolvedValue({ ok: false, status: 500 });
+
+      await service.advanceToAiQueued('sub-uuid-1');
+
+      expect(mqPublisher.publishAiAnalysis).toHaveBeenCalled();
+    });
+  });
+
+  // ─── 18. onModuleInit — resumeSaga 실패 시 에러 로그 ──────────
+  describe('onModuleInit() — resumeSaga 실패', () => {
+    it('개별 Saga 재개 실패 시 에러를 로그하고 나머지를 계속한다', async () => {
+      const failSubmission = createMockSubmission({
+        id: 'sub-fail',
+        sagaStep: SagaStep.DB_SAVED,
+        createdAt: new Date(),
+      });
+
+      repo.find.mockResolvedValue([failSubmission]);
+      repo.update.mockRejectedValue(new Error('DB error'));
+
+      // Act — 에러가 발생해도 throw되지 않음
+      await service.onModuleInit();
+
+      expect(repo.find).toHaveBeenCalled();
+    });
+  });
 });

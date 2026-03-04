@@ -783,7 +783,6 @@ describe('StudyService', () => {
   // ============================
   describe('getStudyStats', () => {
     it('통계 API 정상 응답 처리', async () => {
-      const mockConfigGet = configService.get;
       // configService.getOrThrow 추가
       configService.getOrThrow = jest.fn()
         .mockReturnValueOnce('http://submission:3000')

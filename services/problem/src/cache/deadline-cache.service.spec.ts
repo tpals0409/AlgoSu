@@ -148,5 +148,83 @@ describe('DeadlineCacheService', () => {
 
       expect(redis.del).toHaveBeenCalledWith(`problem:week:${STUDY_ID}:${weekNumber}`);
     });
+
+    it('Redis 오류 시 조용히 실패', async () => {
+      redis.del.mockRejectedValue(new Error('Redis error'));
+
+      await expect(
+        service.invalidateWeekProblems(STUDY_ID, '3월1주차'),
+      ).resolves.toBeUndefined();
+    });
+  });
+
+  // ──────────────────────────────────────────────
+  // 9. getWeekProblems()
+  // ──────────────────────────────────────────────
+  describe('getWeekProblems()', () => {
+    it('캐시 히트: 저장된 JSON 문자열 반환', async () => {
+      const data = JSON.stringify([{ id: PROBLEM_ID }]);
+      redis.get.mockResolvedValue(data);
+
+      const result = await service.getWeekProblems(STUDY_ID, '3월1주차');
+
+      expect(redis.get).toHaveBeenCalledWith(`problem:week:${STUDY_ID}:3월1주차`);
+      expect(result).toBe(data);
+    });
+
+    it('캐시 미스: null 반환', async () => {
+      redis.get.mockResolvedValue(null);
+
+      const result = await service.getWeekProblems(STUDY_ID, '3월1주차');
+
+      expect(result).toBeNull();
+    });
+
+    it('Redis 오류: null 반환 (fall-through)', async () => {
+      redis.get.mockRejectedValue(new Error('Redis error'));
+
+      const result = await service.getWeekProblems(STUDY_ID, '3월1주차');
+
+      expect(result).toBeNull();
+    });
+  });
+
+  // ──────────────────────────────────────────────
+  // 10. setDeadline 에러 케이스
+  // ──────────────────────────────────────────────
+  describe('setDeadline() 에러 처리', () => {
+    it('Redis 오류 시 조용히 실패', async () => {
+      redis.set.mockRejectedValue(new Error('Redis error'));
+
+      await expect(
+        service.setDeadline(STUDY_ID, PROBLEM_ID, new Date()),
+      ).resolves.toBeUndefined();
+    });
+  });
+
+  // ──────────────────────────────────────────────
+  // 11. invalidateDeadline 에러 케이스
+  // ──────────────────────────────────────────────
+  describe('invalidateDeadline() 에러 처리', () => {
+    it('Redis 오류 시 조용히 실패', async () => {
+      redis.del.mockRejectedValue(new Error('Redis error'));
+
+      await expect(
+        service.invalidateDeadline(STUDY_ID, PROBLEM_ID),
+      ).resolves.toBeUndefined();
+    });
+  });
+
+  // ──────────────────────────────────────────────
+  // 12. setWeekProblems 에러 케이스
+  // ──────────────────────────────────────────────
+  describe('setWeekProblems() 에러 처리', () => {
+    it('Redis 오류 시 조용히 실패', async () => {
+      redis.set.mockRejectedValue(new Error('Redis error'));
+
+      await expect(
+        service.setWeekProblems(STUDY_ID, '3월1주차', '[]'),
+      ).resolves.toBeUndefined();
+    });
   });
 });
