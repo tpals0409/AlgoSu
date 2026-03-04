@@ -59,7 +59,7 @@ export class GitHubWorker {
 
   constructor() {
     this.tokenManager = new TokenManager();
-    this.pushService = new GitHubPushService(this.tokenManager);
+    this.pushService = new GitHubPushService();
     this.statusReporter = new StatusReporter();
     this.gatewayInternalUrl = config.gatewayInternalUrl;
     this.internalKeyGateway = config.internalKeyGateway;

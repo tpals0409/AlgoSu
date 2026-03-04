@@ -1,5 +1,4 @@
 import { GitHubPushService } from './github-push.service';
-import { TokenManager } from './token-manager';
 
 // Octokit 모킹
 const mockGetContent = jest.fn();
@@ -20,8 +19,6 @@ jest.mock('@octokit/rest', () => ({
 
 describe('GitHubPushService', () => {
   let service: GitHubPushService;
-  let mockTokenManager: jest.Mocked<Pick<TokenManager, 'getTokenForRepo'>>;
-
   const basePushInput = {
     submissionId: 'sub-001',
     userId: 'user-42',
@@ -35,11 +32,7 @@ describe('GitHubPushService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockTokenManager = {
-      getTokenForRepo: jest.fn().mockResolvedValue('ghs_mock_token'),
-    };
-
-    service = new GitHubPushService(mockTokenManager as unknown as TokenManager);
+    service = new GitHubPushService();
 
     // 기본: 레포 존재
     mockReposGet.mockResolvedValue({ data: {} });

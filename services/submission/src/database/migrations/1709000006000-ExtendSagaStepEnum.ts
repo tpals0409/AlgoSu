@@ -23,7 +23,7 @@ export class ExtendSagaStepEnum1709000006000 implements MigrationInterface {
     }
   }
 
-  public async down(queryRunner: QueryRunner): Promise<void> {
+  public async down(_queryRunner: QueryRunner): Promise<void> {
     // PostgreSQL에서 enum 값 삭제는 불가 — down은 no-op
   }
 }

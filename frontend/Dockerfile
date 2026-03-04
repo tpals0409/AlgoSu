@@ -1,14 +1,14 @@
 # AlgoSu Frontend — Next.js standalone 멀티스테이지 빌드 (ARM aarch64 호환)
 # 이미지 태그: main-{git-sha} (latest 사용 금지)
 
-FROM --platform=$BUILDPLATFORM node:20-alpine AS builder
+FROM --platform=$BUILDPLATFORM node:22-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001 \
     && npm uninstall -g npm \
     && rm -rf /usr/local/lib/node_modules/npm /opt/yarn-* /usr/local/lib/node_modules/corepack

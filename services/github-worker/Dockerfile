@@ -1,5 +1,5 @@
 # AlgoSu GitHub Worker — 멀티스테이지 빌드 (ARM aarch64 호환)
-FROM --platform=$BUILDPLATFORM node:20-alpine AS builder
+FROM --platform=$BUILDPLATFORM node:22-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev && mv node_modules /tmp/prod_node_modules
@@ -7,7 +7,7 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 RUN addgroup -g 1001 -S nodejs && adduser -S worker -u 1001 && \
     rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 WORKDIR /app

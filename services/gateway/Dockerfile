@@ -1,7 +1,7 @@
 # ──────────────────────────────────────────────
 # Stage 1: Builder (네이티브 플랫폼에서 빌드 — QEMU 크래시 방지)
 # ──────────────────────────────────────────────
-FROM --platform=$BUILDPLATFORM node:20-alpine AS builder
+FROM --platform=$BUILDPLATFORM node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -15,7 +15,7 @@ RUN npm run build
 # ──────────────────────────────────────────────
 # Stage 2: Production
 # ──────────────────────────────────────────────
-FROM node:20-alpine AS production
+FROM node:22-alpine AS production
 
 # 보안: non-root 사용자 생성
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup

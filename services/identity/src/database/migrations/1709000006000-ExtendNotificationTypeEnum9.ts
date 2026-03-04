@@ -34,7 +34,7 @@ export class ExtendNotificationTypeEnum91709000006000
     await queryRunner.query('BEGIN');
   }
 
-  public async down(queryRunner: QueryRunner): Promise<void> {
+  public async down(_queryRunner: QueryRunner): Promise<void> {
     // PostgreSQL ENUM 값 삭제 직접 불가 — forward-only 원칙
     // 운영에서는 down() 실행하지 않음
     // 개발 환경 롤백 시: 타입 재생성 필요 (수동 대응)

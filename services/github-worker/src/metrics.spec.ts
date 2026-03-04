@@ -8,7 +8,6 @@ import http from 'http';
 describe('metrics', () => {
   describe('Prometheus counters', () => {
     it('dlqMessagesTotal 카운터 증가', () => {
-      const before = (dlqMessagesTotal as any).hashMap;
       dlqMessagesTotal.inc({ reason: 'parse_error' });
       // Counter가 에러 없이 호출되는지 확인
       expect(dlqMessagesTotal).toBeDefined();
@@ -40,7 +39,7 @@ describe('metrics', () => {
         server = originalCreateServer.apply(http, args as any);
         // 랜덤 포트에서 리슨
         const originalListen = server.listen.bind(server);
-        server.listen = ((port: any, ...rest: any[]) => {
+        server.listen = ((_port: any, ...rest: any[]) => {
           return originalListen(0, ...rest);
         }) as any;
         return server;
@@ -70,7 +69,7 @@ describe('metrics', () => {
       jest.spyOn(http, 'createServer').mockImplementation((...args: any[]) => {
         server = originalCreateServer.apply(http, args as any);
         const originalListen = server.listen.bind(server);
-        server.listen = ((port: any, ...rest: any[]) => {
+        server.listen = ((_port: any, ...rest: any[]) => {
           return originalListen(0, ...rest);
         }) as any;
         return server;
@@ -101,7 +100,7 @@ describe('metrics', () => {
       jest.spyOn(http, 'createServer').mockImplementation((...args: any[]) => {
         server = originalCreateServer.apply(http, args as any);
         const originalListen = server.listen.bind(server);
-        server.listen = ((port: any, ...rest: any[]) => {
+        server.listen = ((_port: any, ...rest: any[]) => {
           return originalListen(0, ...rest);
         }) as any;
         return server;

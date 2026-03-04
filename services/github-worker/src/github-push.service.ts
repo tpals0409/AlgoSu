@@ -5,7 +5,6 @@
  * @related worker.ts, token-manager.ts
  */
 import { Octokit } from '@octokit/rest';
-import { TokenManager } from './token-manager';
 import { logger } from './logger';
 
 /**
@@ -53,7 +52,7 @@ const LANGUAGE_EXT: Record<string, string> = {
 const REPO_NAME = 'algosu-submissions';
 
 export class GitHubPushService {
-  constructor(private readonly tokenManager: TokenManager) {}
+  constructor() {}
 
   async push(input: PushInput): Promise<PushResult> {
     const octokit = new Octokit({ auth: input.githubToken });

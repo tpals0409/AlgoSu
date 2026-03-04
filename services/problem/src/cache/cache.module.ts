@@ -45,8 +45,6 @@ export const REDIS_CLIENT = 'REDIS_CLIENT';
   exports: [REDIS_CLIENT],
 })
 export class CacheModule implements OnModuleDestroy {
-  constructor(private readonly configService: ConfigService) {}
-
   async onModuleDestroy(): Promise<void> {
     // Redis 연결 정리는 provider에서 자체 관리
   }

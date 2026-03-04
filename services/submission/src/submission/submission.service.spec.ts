@@ -82,7 +82,7 @@ describe('SubmissionService', () => {
   let service: SubmissionService;
   let repo: jest.Mocked<Repository<Submission>>;
   let sagaOrchestrator: jest.Mocked<SagaOrchestratorService>;
-  let configService: jest.Mocked<ConfigService>;
+
 
   // global.fetch 모킹
   const originalFetch = global.fetch;
@@ -100,7 +100,7 @@ describe('SubmissionService', () => {
     service = module.get<SubmissionService>(SubmissionService);
     repo = module.get(getRepositoryToken(Submission));
     sagaOrchestrator = module.get(SagaOrchestratorService);
-    configService = module.get(ConfigService);
+    module.get(ConfigService);
   });
 
   afterEach(() => {
