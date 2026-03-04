@@ -177,7 +177,7 @@ export default function ProblemCreatePage(): ReactNode {
               await new Promise((r) => setTimeout(r, 1000));
               await notifyWithRetry(retries - 1);
             } else {
-              console.error('[ProblemCreate] 알림 전송 최종 실패');
+              // 알림 전송은 부가 기능이므로 최종 실패 시 무시 (문제 생성은 이미 완료됨)
             }
           }
         };

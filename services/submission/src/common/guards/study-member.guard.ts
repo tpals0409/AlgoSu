@@ -16,6 +16,13 @@ import Redis from 'ioredis';
 import { StructuredLoggerService } from '../logger/structured-logger.service';
 
 /**
+ * Express Request에 StudyMemberGuard가 주입하는 멤버십 역할 필드를 추가합니다.
+ */
+interface StudyMemberRequest extends Request {
+  studyMemberRole: string;
+}
+
+/**
  * StudyMember Guard — 스터디 멤버십 사전 검증
  *
  * M4: Redis 캐시 사용 (인메모리 Map 제거)
@@ -70,7 +77,7 @@ export class StudyMemberGuard implements CanActivate {
     }
 
     if (role) {
-      (request as any).studyMemberRole = role;
+      (request as StudyMemberRequest).studyMemberRole = role;
       return true;
     }
 
@@ -111,7 +118,7 @@ export class StudyMemberGuard implements CanActivate {
         await this.redis.set(cacheKey, data.role, 'EX', StudyMemberGuard.CACHE_TTL_SECONDS);
       } catch { /* 캐시 실패 무시 — fail-open */ }
 
-      (request as any).studyMemberRole = data.role;
+      (request as StudyMemberRequest).studyMemberRole = data.role;
 
       return true;
     } catch (error: unknown) {
