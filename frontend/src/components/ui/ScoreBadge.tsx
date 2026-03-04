@@ -21,6 +21,7 @@ function getVariant(score: number): string {
 export function ScoreBadge({ score, className }: ScoreBadgeProps): ReactElement {
   return (
     <span
+      aria-label={`AI 점수 ${score}점`}
       className={cn(
         'inline-flex items-center gap-1 rounded-badge px-2.5 py-0.5 font-mono text-[11px] font-semibold leading-none',
         getVariant(score),

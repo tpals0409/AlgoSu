@@ -30,6 +30,7 @@ export function StatusBadge({
 }: StatusBadgeProps): ReactElement {
   return (
     <span
+      role="status"
       className={cn(
         'inline-flex items-center rounded-badge px-2.5 py-0.5 text-[11px] font-medium leading-none',
         VARIANT_STYLES[variant],

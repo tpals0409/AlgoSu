@@ -134,7 +134,7 @@ export default function AnalyticsCharts({
   return (
     <>
       {/* Section A: 나의 성과 요약 */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4" role="region" aria-label="나의 성과 요약">
         <StatCard
           icon={FileText}
           label="내 제출"

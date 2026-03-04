@@ -40,7 +40,7 @@ export function BackBtn({
       onClick={handleClick}
       className={className}
     >
-      <ChevronLeft />
+      <ChevronLeft aria-hidden="true" />
       {label}
     </Button>
   );

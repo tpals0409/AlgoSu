@@ -31,7 +31,7 @@ const SIZE_CLASSES = {
 function EmptyState({ className, icon: Icon = Inbox, title, description, action, size = 'md', ...props }: EmptyStateProps): React.ReactElement {
   const sizes = SIZE_CLASSES[size];
   return (
-    <div className={cn('flex flex-col items-center justify-center text-center', sizes.wrapper, className)} {...props}>
+    <div role="status" className={cn('flex flex-col items-center justify-center text-center', sizes.wrapper, className)} {...props}>
       <div className={cn('rounded-full bg-muted-soft', sizes.iconWrapper)} aria-hidden>
         <Icon className={cn(sizes.icon, 'text-text-3')} strokeWidth={1.5} aria-hidden />
       </div>

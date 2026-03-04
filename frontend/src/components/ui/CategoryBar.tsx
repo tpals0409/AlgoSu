@@ -47,7 +47,12 @@ export function CategoryBar({
   return (
     <div
       ref={ref}
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.(); } }}
+      aria-pressed={selected}
+      aria-label={`${item.category} ${item.grade} ${item.score}점`}
       className={cn(
         'cursor-pointer border-b border-border px-6 py-4 transition-colors',
         selected ? 'border-l-[3px] border-l-primary bg-primary-soft' : 'border-l-[3px] border-l-transparent',
@@ -67,10 +72,18 @@ export function CategoryBar({
           {Math.round(animWidth)}
         </span>
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-border">
+      <div
+        className="h-1.5 overflow-hidden rounded-full bg-border"
+        role="progressbar"
+        aria-valuenow={item.score}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`${item.category} 점수`}
+      >
         <div
           className={cn('h-full rounded-full transition-[width] duration-100 ease-linear', colors.bar)}
           style={{ width: `${animWidth}%` }}
+          aria-hidden="true"
         />
       </div>
       <p className="mt-2 text-xs leading-relaxed text-text-2">{item.comment}</p>

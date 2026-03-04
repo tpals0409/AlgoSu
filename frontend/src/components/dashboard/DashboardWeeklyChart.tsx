@@ -7,7 +7,7 @@
 
 'use client';
 
-import { type ReactNode } from 'react';
+import type { ReactNode, KeyboardEvent, CSSProperties } from 'react';
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 
@@ -63,7 +63,7 @@ export interface DashboardWeeklyChartProps {
   readonly weekViewUserId: string | null;
   readonly mounted: boolean;
   readonly onCycleView: () => void;
-  readonly fadeStyle: React.CSSProperties;
+  readonly fadeStyle: CSSProperties;
 }
 
 // ─── COMPONENT ───────────────────────────
@@ -80,8 +80,12 @@ export default function DashboardWeeklyChart({
 }: DashboardWeeklyChartProps): ReactNode {
   return (
     <Card
+      role="button"
+      tabIndex={0}
+      aria-label={`주차별 제출 현황 — ${weekViewLabel} (클릭하여 전환)`}
       className="group cursor-pointer"
       onClick={onCycleView}
+      onKeyDown={(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onCycleView(); } }}
       style={fadeStyle}
     >
       <CardHeader className="flex flex-row items-center gap-2.5">

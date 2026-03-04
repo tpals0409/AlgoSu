@@ -43,8 +43,17 @@ export function ScoreGauge({
   const color = getColor(score);
 
   return (
-    <div ref={ref} className={cn('relative', className)} style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90" aria-hidden>
+    <div
+      ref={ref}
+      className={cn('relative', className)}
+      style={{ width: size, height: size }}
+      role="progressbar"
+      aria-valuenow={score}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label={`점수 ${score}점 — ${getLabel(score)}`}
+    >
+      <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
         <circle
           cx={size / 2}
           cy={size / 2}
