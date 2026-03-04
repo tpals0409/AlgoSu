@@ -26,8 +26,12 @@ COPY --from=builder /tmp/prod_node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./package.json
 
-# ARM64 네이티브 모듈 재빌드 (builder가 x86에서 빌드하므로) + npm 제거
-RUN npm rebuild sharp && \
+# ARM64 네이티브 모듈: builder(x86)에서 설치된 x64 바이너리 제거 후 타겟 플랫폼용 설치
+RUN rm -rf node_modules/@img/sharp-linux-x64 \
+           node_modules/@img/sharp-linuxmusl-x64 \
+           node_modules/@img/sharp-libvips-linux-x64 \
+           node_modules/@img/sharp-libvips-linuxmusl-x64 && \
+    npm install --no-save --os=linux --libc=musl --cpu=arm64 sharp && \
     rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 USER appuser
