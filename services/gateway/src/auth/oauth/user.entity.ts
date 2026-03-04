@@ -48,6 +48,9 @@ export class User {
   @Column({ type: 'uuid', unique: true })
   publicId!: string;
 
+  @Column({ type: 'timestamp', nullable: true, default: null })
+  deleted_at!: Date | null;
+
   @CreateDateColumn()
   created_at!: Date;
 

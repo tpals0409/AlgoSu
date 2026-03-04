@@ -40,6 +40,9 @@ export class User {
   @Column({ type: 'varchar', length: 100, nullable: true })
   github_username!: string | null;
 
+  @Column({ type: 'timestamp', nullable: true, default: null })
+  deleted_at!: Date | null;
+
   @CreateDateColumn()
   created_at!: Date;
 

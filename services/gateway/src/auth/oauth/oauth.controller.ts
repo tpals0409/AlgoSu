@@ -141,13 +141,13 @@ export class OAuthController {
 
     try {
       const userId = await this.oauthService.validateAndConsumeGitHubLinkState(state);
-      const user = await this.oauthService.linkGitHub(userId, code);
+      const result = await this.oauthService.linkGitHub(userId, code);
 
-      this.logger.log(`GitHub 연동 완료: userId=${userId}, github=${user.github_username}`);
+      this.logger.log(`GitHub 연동 완료: userId=${userId}, github=${result.github_username}`);
 
       const params = new URLSearchParams({
         github_connected: 'true',
-        github_username: user.github_username ?? '',
+        github_username: result.github_username ?? '',
       });
       res.redirect(`${frontendUrl}/github-link/complete#${params.toString()}`);
     } catch (error) {
@@ -165,7 +165,7 @@ export class OAuthController {
     @Req() req: Request,
   ): Promise<{ message: string }> {
     const userId = req.headers['x-user-id'] as string;
-    await this.oauthService.unlinkGitHub(userId);
+    await this.oauthService.disconnectGitHub(userId);
     this.logger.log(`GitHub 연동 해제: userId=${userId}`);
 
     return { message: 'GitHub 연동이 해제되었습니다.' };
@@ -189,7 +189,15 @@ export class OAuthController {
   @Get('profile')
   async getProfile(
     @Req() req: Request,
-  ): Promise<{ email: string; name: string | null; avatar_url: string | null; oauth_provider: string | null }> {
+  ): Promise<{
+    email: string;
+    name: string | null;
+    avatar_url: string | null;
+    oauth_provider: string | null;
+    github_connected: boolean;
+    github_username: string | null;
+    created_at: Date;
+  }> {
     const userId = req.headers['x-user-id'] as string;
     const user = await this.oauthService.findUserById(userId);
     if (!user) {
@@ -200,55 +208,38 @@ export class OAuthController {
       name: user.name,
       avatar_url: user.avatar_url,
       oauth_provider: user.oauth_provider,
+      github_connected: user.github_connected,
+      github_username: user.github_username,
+      created_at: user.created_at,
     };
   }
 
   /**
-   * PATCH /auth/profile — 프로필 수정 (닉네임 / 아바타)
+   * PATCH /auth/profile — 아바타 수정
    */
   @Patch('profile')
   async updateProfile(
     @Req() req: Request,
-    @Body('name') name: string | undefined,
     @Body('avatar_url') avatarUrl: string | undefined,
-  ): Promise<{ name: string; avatar_url: string | null }> {
+  ): Promise<{ avatar_url: string }> {
     const userId = req.headers['x-user-id'] as string;
 
-    // name 검증 (전달된 경우만)
-    if (name !== undefined) {
-      if (typeof name !== 'string' || name.trim().length === 0) {
-        throw new BadRequestException('닉네임을 입력해주세요.');
-      }
-      if (name.trim().length > 30) {
-        throw new BadRequestException('닉네임은 30자 이하로 입력해주세요.');
-      }
-    }
-
-    // avatar_url 검증 — preset: 형식만 허용
-    if (avatarUrl !== undefined) {
-      if (typeof avatarUrl !== 'string' || !avatarUrl.startsWith('preset:')) {
-        throw new BadRequestException('유효하지 않은 아바타 형식입니다.');
-      }
-      if (avatarUrl.length > 50) {
-        throw new BadRequestException('아바타 URL이 너무 깁니다.');
-      }
-    }
-
-    if (name === undefined && avatarUrl === undefined) {
+    if (avatarUrl === undefined) {
       throw new BadRequestException('변경할 항목이 없습니다.');
     }
 
-    const user = await this.oauthService.updateProfile(
-      userId,
-      name?.trim(),
-      avatarUrl,
-    );
-    if (!user) {
-      throw new NotFoundException('사용자를 찾을 수 없습니다.');
+    // avatar_url 검증 — preset: 형식만 허용
+    if (typeof avatarUrl !== 'string' || !avatarUrl.startsWith('preset:')) {
+      throw new BadRequestException('유효하지 않은 아바타 형식입니다.');
+    }
+    if (avatarUrl.length > 50) {
+      throw new BadRequestException('아바타 URL이 너무 깁니다.');
     }
 
-    this.logger.log(`프로필 수정: userId=${userId}`);
-    return { name: user.name ?? '', avatar_url: user.avatar_url };
+    await this.oauthService.updateAvatar(userId, avatarUrl);
+
+    this.logger.log(`아바타 수정: userId=${userId}`);
+    return { avatar_url: avatarUrl };
   }
 
   /**
@@ -290,5 +281,22 @@ export class OAuthController {
   ): { message: string } {
     res.clearCookie('token', { path: '/' });
     return { message: '로그아웃 되었습니다.' };
+  }
+
+  /**
+   * 회원탈퇴 (소프트 딜리트) — 계정 익명화 + 멤버십/알림 삭제
+   * @api DELETE /auth/account
+   * @guard jwt-auth
+   */
+  @Delete('account')
+  async deleteAccount(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{ message: string }> {
+    const userId = req.headers['x-user-id'] as string;
+    await this.oauthService.softDeleteAccount(userId);
+    res.clearCookie('token', { path: '/' });
+    this.logger.log(`계정 소프트 딜리트: userId=${userId}`);
+    return { message: '계정이 삭제되었습니다.' };
   }
 }

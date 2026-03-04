@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, UpdateResult, DataSource } from 'typeorm';
 import axios from 'axios';
 import * as jwt from 'jsonwebtoken';
 import * as crypto from 'crypto';
@@ -45,6 +45,7 @@ export class OAuthService {
     private readonly configService: ConfigService,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly dataSource: DataSource,
   ) {
     const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
     this.redis = new Redis(redisUrl);
@@ -299,7 +300,30 @@ export class OAuthService {
     return { url: `https://github.com/login/oauth/authorize?${params.toString()}` };
   }
 
-  async linkGitHub(userId: string, code: string): Promise<User> {
+  async connectGitHub(
+    userId: string,
+    githubUserId: string,
+    githubUsername: string,
+    encryptedToken: string | null,
+  ): Promise<UpdateResult> {
+    return this.userRepository.update({ id: userId }, {
+      github_connected: true,
+      github_user_id: githubUserId,
+      github_username: githubUsername,
+      github_token: encryptedToken,
+    });
+  }
+
+  async disconnectGitHub(userId: string): Promise<UpdateResult> {
+    return this.userRepository.update({ id: userId }, {
+      github_connected: false,
+      github_user_id: null,
+      github_username: null,
+      github_token: null,
+    });
+  }
+
+  async linkGitHub(userId: string, code: string): Promise<{ github_username: string }> {
     const clientId = this.configService.getOrThrow<string>('GITHUB_CLIENT_ID');
     const clientSecret = this.configService.getOrThrow<string>('GITHUB_CLIENT_SECRET');
 
@@ -339,39 +363,16 @@ export class OAuthService {
       throw new BadRequestException('GitHub 사용자 정보 조회에 실패했습니다.');
     }
 
-    const user = await this.userRepository.findOne({ where: { id: userId } });
-    if (!user) {
-      throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
-    }
-
-    user.github_connected = true;
-    user.github_user_id = String(githubUser.id);
-    user.github_username = githubUser.login;
-
     // GitHub access token 암호화 저장 (repo push에 필요)
     const encryptionKey = this.configService.get<string>('GITHUB_TOKEN_ENCRYPTION_KEY');
-    if (encryptionKey) {
-      user.github_token = encryptToken(accessToken, encryptionKey);
-    }
+    const encryptedToken = encryptionKey ? encryptToken(accessToken, encryptionKey) : null;
 
-    return this.userRepository.save(user);
+    await this.connectGitHub(userId, String(githubUser.id), githubUser.login, encryptedToken);
+
+    return { github_username: githubUser.login };
   }
 
-  async unlinkGitHub(userId: string): Promise<User> {
-    const user = await this.userRepository.findOne({ where: { id: userId } });
-    if (!user) {
-      throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
-    }
-
-    user.github_connected = false;
-    user.github_user_id = null;
-    user.github_username = null;
-    user.github_token = null;
-
-    return this.userRepository.save(user);
-  }
-
-  async relinkGitHub(userId: string, code: string): Promise<User> {
+  async relinkGitHub(userId: string, code: string): Promise<{ github_username: string }> {
     return this.linkGitHub(userId, code);
   }
 
@@ -381,61 +382,73 @@ export class OAuthService {
     profile: OAuthUserProfile,
     provider: OAuthProvider,
   ): Promise<User> {
-    let user = await this.userRepository.findOne({
+    // 1계정 1OAuth 정책: 다른 제공자로 가입된 이메일은 거부
+    const existing = await this.userRepository.findOne({
       where: { email: profile.email },
     });
 
-    if (user) {
-      // 1계정 1OAuth 정책: 다른 제공자로 가입된 이메일은 거부
-      if (user.oauth_provider !== provider) {
-        const providerLabel: Record<string, string> = {
-          google: 'Google',
-          naver: 'Naver',
-          kakao: 'Kakao',
-        };
-        throw new BadRequestException(
-          `이 이메일은 이미 ${providerLabel[user.oauth_provider] ?? user.oauth_provider}(으)로 가입되어 있습니다. 기존 계정으로 로그인해주세요.`,
-        );
-      }
-      user.name = profile.name;
-      // 프리셋 아바타 사용 중이면 OAuth 사진으로 덮어쓰지 않음
-      if (!user.avatar_url || !user.avatar_url.startsWith('preset:')) {
-        user.avatar_url = profile.avatar_url;
-      }
-      return this.userRepository.save(user);
+    if (existing && existing.oauth_provider !== provider) {
+      const providerLabel: Record<string, string> = {
+        google: 'Google',
+        naver: 'Naver',
+        kakao: 'Kakao',
+      };
+      throw new BadRequestException(
+        `이 이메일은 이미 ${providerLabel[existing.oauth_provider] ?? existing.oauth_provider}(으)로 가입되어 있습니다. 기존 계정으로 로그인해주세요.`,
+      );
     }
 
-    user = this.userRepository.create({
-      email: profile.email,
-      name: profile.name,
-      avatar_url: 'preset:default',
-      oauth_provider: provider,
-      github_connected: false,
-    });
+    // ON CONFLICT 원자적 upsert — avatar_url은 갱신 대상에서 제외 (기존값 무조건 보호)
+    await this.userRepository
+      .createQueryBuilder()
+      .insert()
+      .into(User)
+      .values({
+        email: profile.email,
+        name: profile.name,
+        avatar_url: 'preset:default',
+        oauth_provider: provider,
+        github_connected: false,
+      })
+      .orUpdate(['name'], ['email'])
+      .execute();
 
-    return this.userRepository.save(user);
+    return this.userRepository.findOne({ where: { email: profile.email } }) as Promise<User>;
   }
 
   async findUserById(userId: string): Promise<User | null> {
     return this.userRepository.findOne({ where: { id: userId } });
   }
 
-  async updateProfile(
-    userId: string,
-    name?: string,
-    avatarUrl?: string,
-  ): Promise<User> {
+  async updateAvatar(userId: string, avatarUrl: string): Promise<UpdateResult> {
+    return this.userRepository.update({ id: userId }, { avatar_url: avatarUrl });
+  }
+
+  async softDeleteAccount(userId: string): Promise<void> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
-    if (!user) {
-      throw new Error('사용자를 찾을 수 없습니다.');
+    if (!user || user.deleted_at) {
+      return; // 멱등성: 이미 탈퇴했거나 존재하지 않는 유저
     }
-    if (name !== undefined) {
-      user.name = name;
+
+    const anonymizedEmail = `deleted_${crypto.randomUUID()}@withdrawn.local`;
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      await queryRunner.query(
+        `UPDATE users SET deleted_at = $1, email = $2, name = $3, avatar_url = $4, github_connected = $5, github_user_id = $6, github_username = $7, github_token = $8 WHERE id = $9`,
+        [new Date(), anonymizedEmail, '탈퇴한 사용자', null, false, null, null, null, userId],
+      );
+      await queryRunner.query(`DELETE FROM study_members WHERE user_id = $1`, [userId]);
+      await queryRunner.query(`DELETE FROM notifications WHERE user_id = $1`, [userId]);
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
-    if (avatarUrl !== undefined) {
-      user.avatar_url = avatarUrl;
-    }
-    return this.userRepository.save(user);
   }
 
   // --- JWT 발급 ---

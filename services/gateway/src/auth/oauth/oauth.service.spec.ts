@@ -1,5 +1,6 @@
 import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { DataSource } from 'typeorm';
 import * as jwt from 'jsonwebtoken';
 import { OAuthService } from './oauth.service';
 import { User, OAuthProvider } from './user.entity';
@@ -34,6 +35,8 @@ describe('OAuthService', () => {
   let service: OAuthService;
   let configService: Record<string, jest.Mock>;
   let userRepository: Record<string, jest.Mock>;
+  let mockQueryRunner: Record<string, jest.Mock>;
+  let mockDataSource: Record<string, jest.Mock>;
 
   const JWT_SECRET = 'test-jwt-secret-hs256';
   const CALLBACK_URL = 'https://algosu.test';
@@ -69,11 +72,33 @@ describe('OAuthService', () => {
       findOne: jest.fn(),
       create: jest.fn((data: Partial<User>) => ({ id: 'new-user-id', ...data }) as User),
       save: jest.fn((user: User) => Promise.resolve(user)),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+      createQueryBuilder: jest.fn().mockReturnValue({
+        insert: jest.fn().mockReturnThis(),
+        into: jest.fn().mockReturnThis(),
+        values: jest.fn().mockReturnThis(),
+        orUpdate: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue({ identifiers: [{ id: 'new-user-id' }] }),
+      }),
+    };
+
+    mockQueryRunner = {
+      connect: jest.fn().mockResolvedValue(undefined),
+      startTransaction: jest.fn().mockResolvedValue(undefined),
+      query: jest.fn().mockResolvedValue(undefined),
+      commitTransaction: jest.fn().mockResolvedValue(undefined),
+      rollbackTransaction: jest.fn().mockResolvedValue(undefined),
+      release: jest.fn().mockResolvedValue(undefined),
+    };
+
+    mockDataSource = {
+      createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner),
     };
 
     service = new OAuthService(
       configService as unknown as ConfigService,
       userRepository as any,
+      mockDataSource as unknown as DataSource,
     );
   });
 
@@ -181,19 +206,19 @@ describe('OAuthService', () => {
       // Google user info
       mockAxios.get.mockResolvedValueOnce({ data: mockGoogleProfile });
 
-      // 신규 사용자 (기존 유저 없음)
-      userRepository.findOne.mockResolvedValue(null);
-      userRepository.create.mockReturnValue({
+      const createdUser = {
         id: 'new-user-id',
         email: mockGoogleProfile.email,
         name: mockGoogleProfile.name,
-        avatar_url: mockGoogleProfile.picture,
+        avatar_url: 'preset:default',
         oauth_provider: OAuthProvider.GOOGLE,
         github_connected: false,
-      } as User);
-      userRepository.save.mockImplementation((user: User) =>
-        Promise.resolve({ ...user, id: 'new-user-id' }),
-      );
+      } as User;
+
+      // 신규 사용자: 첫 findOne(1계정1OAuth 체크)=null, 두 번째 findOne(upsert 후 조회)=createdUser
+      userRepository.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(createdUser);
 
       const result = await service.handleCallback('google', 'auth-code', 'valid-state');
 
@@ -208,7 +233,7 @@ describe('OAuthService', () => {
       expect(decoded.sub).toBe('new-user-id');
     });
 
-    it('기존 사용자 — 프로필 업데이트 + JWT 발급', async () => {
+    it('기존 사용자 — name 업데이트 + avatar_url 보호 + JWT 발급', async () => {
       mockAxios.post.mockResolvedValueOnce({
         data: { access_token: 'google-access-token' },
       });
@@ -218,18 +243,27 @@ describe('OAuthService', () => {
         id: 'existing-user-id',
         email: mockGoogleProfile.email,
         name: 'Old Name',
-        avatar_url: null,
+        avatar_url: 'preset:cat',
         oauth_provider: OAuthProvider.GOOGLE,
         github_connected: false,
       } as User;
 
-      userRepository.findOne.mockResolvedValue(existingUser);
-      userRepository.save.mockImplementation((user: User) => Promise.resolve(user));
+      const updatedUser = {
+        ...existingUser,
+        name: mockGoogleProfile.name,
+        avatar_url: 'preset:cat', // avatar_url은 보호되어 기존값 유지
+      } as User;
+
+      // 첫 findOne(1계정1OAuth 체크)=existingUser, 두 번째 findOne(upsert 후 조회)=updatedUser
+      userRepository.findOne
+        .mockResolvedValueOnce(existingUser)
+        .mockResolvedValueOnce(updatedUser);
 
       const result = await service.handleCallback('google', 'auth-code', 'valid-state');
 
       expect(result.user.name).toBe(mockGoogleProfile.name);
-      expect(result.user.avatar_url).toBe(mockGoogleProfile.picture);
+      // avatar_url은 ON CONFLICT에서 갱신 대상 제외 → 기존값 유지
+      expect(result.user.avatar_url).toBe('preset:cat');
     });
 
     it('미지원 provider → BadRequestException', async () => {
@@ -240,10 +274,10 @@ describe('OAuthService', () => {
   });
 
   // ============================
-  // 11-13. linkGitHub
+  // 11-13. linkGitHub + connectGitHub
   // ============================
   describe('linkGitHub', () => {
-    it('정상 연동 — GitHub user 정보 업데이트', async () => {
+    it('정상 연동 — connectGitHub 호출 + github_username 반환', async () => {
       mockAxios.post.mockResolvedValueOnce({
         data: { access_token: 'github-access-token' },
       });
@@ -251,22 +285,17 @@ describe('OAuthService', () => {
         data: { id: '12345', login: 'octocat' },
       });
 
-      const existingUser = {
-        id: 'user-id-1',
-        email: 'user@test.com',
-        github_connected: false,
-        github_user_id: null,
-        github_username: null,
-      } as User;
-
-      userRepository.findOne.mockResolvedValue(existingUser);
-      userRepository.save.mockImplementation((user: User) => Promise.resolve(user));
-
       const result = await service.linkGitHub('user-id-1', 'github-code');
 
-      expect(result.github_connected).toBe(true);
-      expect(result.github_user_id).toBe('12345');
       expect(result.github_username).toBe('octocat');
+      expect(userRepository.update).toHaveBeenCalledWith(
+        { id: 'user-id-1' },
+        expect.objectContaining({
+          github_connected: true,
+          github_user_id: '12345',
+          github_username: 'octocat',
+        }),
+      );
     });
 
     it('GitHub 토큰 교환 실패 → BadRequestException', async () => {
@@ -281,47 +310,43 @@ describe('OAuthService', () => {
         'GitHub 토큰 교환에 실패했습니다.',
       );
     });
+  });
 
-    it('사용자 없음 → UnauthorizedException', async () => {
-      mockAxios.post.mockResolvedValue({
-        data: { access_token: 'github-access-token' },
-      });
-      mockAxios.get.mockResolvedValue({
-        data: { id: '12345', login: 'octocat' },
-      });
+  // ============================
+  // connectGitHub / disconnectGitHub
+  // ============================
+  describe('connectGitHub', () => {
+    it('userRepository.update 호출', async () => {
+      await service.connectGitHub('user-id-1', '12345', 'octocat', 'encrypted-token');
 
-      userRepository.findOne.mockResolvedValue(null);
-
-      await expect(service.linkGitHub('nonexistent-user', 'github-code')).rejects.toThrow(
-        UnauthorizedException,
-      );
-      await expect(service.linkGitHub('nonexistent-user', 'github-code')).rejects.toThrow(
-        '사용자를 찾을 수 없습니다.',
+      expect(userRepository.update).toHaveBeenCalledWith(
+        { id: 'user-id-1' },
+        {
+          github_connected: true,
+          github_user_id: '12345',
+          github_username: 'octocat',
+          github_token: 'encrypted-token',
+        },
       );
     });
   });
 
   // ============================
-  // 14. unlinkGitHub
+  // 14. disconnectGitHub
   // ============================
-  describe('unlinkGitHub', () => {
-    it('정상 연동 해제 — GitHub 필드 null/false 처리', async () => {
-      const existingUser = {
-        id: 'user-id-1',
-        email: 'user@test.com',
-        github_connected: true,
-        github_user_id: '12345',
-        github_username: 'octocat',
-      } as User;
+  describe('disconnectGitHub', () => {
+    it('정상 연동 해제 — userRepository.update 호출', async () => {
+      await service.disconnectGitHub('user-id-1');
 
-      userRepository.findOne.mockResolvedValue(existingUser);
-      userRepository.save.mockImplementation((user: User) => Promise.resolve(user));
-
-      const result = await service.unlinkGitHub('user-id-1');
-
-      expect(result.github_connected).toBe(false);
-      expect(result.github_user_id).toBeNull();
-      expect(result.github_username).toBeNull();
+      expect(userRepository.update).toHaveBeenCalledWith(
+        { id: 'user-id-1' },
+        {
+          github_connected: false,
+          github_user_id: null,
+          github_username: null,
+          github_token: null,
+        },
+      );
     });
   });
 
@@ -387,6 +412,92 @@ describe('OAuthService', () => {
   });
 
   // ============================
+  // softDeleteAccount
+  // ============================
+  describe('softDeleteAccount', () => {
+    it('정상 탈퇴 — 익명화 + 멤버십/알림 삭제', async () => {
+      const activeUser = {
+        id: 'user-to-delete',
+        email: 'test@google.com',
+        name: 'Test User',
+        deleted_at: null,
+      } as User;
+
+      userRepository.findOne.mockResolvedValue(activeUser);
+
+      await service.softDeleteAccount('user-to-delete');
+
+      expect(mockQueryRunner.connect).toHaveBeenCalled();
+      expect(mockQueryRunner.startTransaction).toHaveBeenCalled();
+      // users UPDATE (익명화)
+      expect(mockQueryRunner.query).toHaveBeenCalledWith(
+        expect.stringContaining('UPDATE users SET'),
+        expect.arrayContaining([
+          expect.any(Date),
+          expect.stringContaining('deleted_'),
+          '탈퇴한 사용자',
+          null,
+          false,
+          null,
+          null,
+          null,
+          'user-to-delete',
+        ]),
+      );
+      // study_members DELETE
+      expect(mockQueryRunner.query).toHaveBeenCalledWith(
+        expect.stringContaining('DELETE FROM study_members'),
+        ['user-to-delete'],
+      );
+      // notifications DELETE
+      expect(mockQueryRunner.query).toHaveBeenCalledWith(
+        expect.stringContaining('DELETE FROM notifications'),
+        ['user-to-delete'],
+      );
+      expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
+      expect(mockQueryRunner.release).toHaveBeenCalled();
+    });
+
+    it('멱등성 — 이미 탈퇴한 유저 재요청 시 에러 없음', async () => {
+      const deletedUser = {
+        id: 'deleted-user',
+        email: 'deleted_xxx@withdrawn.local',
+        name: '탈퇴한 사용자',
+        deleted_at: new Date('2026-01-01'),
+      } as User;
+
+      userRepository.findOne.mockResolvedValue(deletedUser);
+
+      await expect(service.softDeleteAccount('deleted-user')).resolves.toBeUndefined();
+      expect(mockQueryRunner.connect).not.toHaveBeenCalled();
+    });
+
+    it('멱등성 — 존재하지 않는 유저 요청 시 에러 없음', async () => {
+      userRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.softDeleteAccount('nonexistent-user')).resolves.toBeUndefined();
+      expect(mockQueryRunner.connect).not.toHaveBeenCalled();
+    });
+
+    it('트랜잭션 롤백 — DB 에러 시 롤백', async () => {
+      const activeUser = {
+        id: 'user-to-delete',
+        email: 'test@google.com',
+        deleted_at: null,
+      } as User;
+
+      userRepository.findOne.mockResolvedValue(activeUser);
+      mockQueryRunner.query
+        .mockResolvedValueOnce(undefined) // UPDATE users
+        .mockRejectedValueOnce(new Error('DB error')); // DELETE study_members 실패
+
+      await expect(service.softDeleteAccount('user-to-delete')).rejects.toThrow('DB error');
+      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
+      expect(mockQueryRunner.release).toHaveBeenCalled();
+    });
+  });
+
+  // ============================
   // 18. issueJwt (private — handleCallback 간접 검증)
   // ============================
   describe('issueJwt (간접 검증)', () => {
@@ -402,18 +513,19 @@ describe('OAuthService', () => {
         data: { email: 'jwt-test@google.com', name: 'JWT Tester' },
       });
 
-      userRepository.findOne.mockResolvedValue(null);
-      userRepository.create.mockReturnValue({
+      const createdUser = {
         id: 'jwt-user-id',
         email: 'jwt-test@google.com',
         name: 'JWT Tester',
-        avatar_url: null,
+        avatar_url: 'preset:default',
         oauth_provider: OAuthProvider.GOOGLE,
         github_connected: false,
-      } as User);
-      userRepository.save.mockImplementation((user: User) =>
-        Promise.resolve({ ...user, id: 'jwt-user-id' }),
-      );
+      } as User;
+
+      // 첫 findOne(1계정1OAuth 체크)=null, 두 번째 findOne(upsert 후 조회)=createdUser
+      userRepository.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(createdUser);
 
       const result = await service.handleCallback('google', 'code', 'state');
 

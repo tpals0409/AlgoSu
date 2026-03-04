@@ -64,6 +64,7 @@ import { StudyNoteProxyModule } from './study-note/study-note.module';
         storage: new RedisThrottlerStorage(configService),
       }),
     }),
+    TypeOrmModule.forFeature([User]),
     ScheduleModule.forRoot(),
     AuthModule,
     OAuthModule,

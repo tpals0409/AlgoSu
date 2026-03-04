@@ -20,8 +20,11 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { Request, Response, NextFunction } from 'express';
 import * as jwt from 'jsonwebtoken';
+import { User } from './oauth/user.entity';
 
 @Injectable()
 export class JwtMiddleware implements NestMiddleware {
@@ -30,9 +33,13 @@ export class JwtMiddleware implements NestMiddleware {
   private readonly UUID_REGEX =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+  ) {}
 
-  use(req: Request, _res: Response, next: NextFunction): void {
+  async use(req: Request, _res: Response, next: NextFunction): Promise<void> {
     const token = this.extractToken(req);
 
     if (!token) {
@@ -81,6 +88,12 @@ export class JwtMiddleware implements NestMiddleware {
 
     if (!userId || typeof userId !== 'string') {
       throw new UnauthorizedException('토큰에 사용자 ID가 없습니다.');
+    }
+
+    // 탈퇴 계정 검증 — deleted_at이 있으면 거부
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (user?.deleted_at) {
+      throw new UnauthorizedException('탈퇴한 계정입니다.');
     }
 
     // 검증 성공 — 내부 서비스 전달용 헤더 주입
