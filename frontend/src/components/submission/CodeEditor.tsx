@@ -16,7 +16,7 @@ import {
 import dynamic from 'next/dynamic';
 import { useTheme } from 'next-themes';
 import type { BeforeMount, OnMount } from '@monaco-editor/react';
-import { Check, Send, RotateCcw } from 'lucide-react';
+import { Check, Send, RotateCcw, Minus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { InlineSpinner } from '@/components/ui/LoadingSpinner';
@@ -27,7 +27,7 @@ import { LANGUAGES } from '@/lib/constants';
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
   loading: () => (
-    <div className="flex h-[480px] w-full items-center justify-center rounded-md border border-border bg-bg-card">
+    <div className="flex h-[520px] w-full items-center justify-center rounded-md border border-border bg-bg-card">
       <span className="text-sm text-text-2">에디터 로딩 중...</span>
     </div>
   ),
@@ -163,9 +163,10 @@ const MONACO_LANG_MAP: Record<string, string> = {
 
 type MonacoInstance = Parameters<BeforeMount>[0];
 
-const LANG_COMPLETIONS: Record<string, { keywords: string[]; builtins: string[]; snippets: { label: string; insert: string; doc: string }[] }> = {
+// 키워드(keywords)는 Monaco 내장 완성과 중복되므로 제거
+// builtins(표준 라이브러리) + snippets(BOJ 템플릿)만 등록
+const LANG_COMPLETIONS: Record<string, { builtins: string[]; snippets: { label: string; insert: string; doc: string }[] }> = {
   python: {
-    keywords: ['def', 'class', 'if', 'elif', 'else', 'for', 'while', 'break', 'continue', 'return', 'import', 'from', 'as', 'try', 'except', 'finally', 'raise', 'with', 'yield', 'lambda', 'pass', 'global', 'nonlocal', 'assert', 'del', 'in', 'not', 'and', 'or', 'is', 'True', 'False', 'None'],
     builtins: ['print', 'input', 'len', 'range', 'enumerate', 'zip', 'map', 'filter', 'sorted', 'reversed', 'list', 'dict', 'set', 'tuple', 'int', 'float', 'str', 'bool', 'abs', 'max', 'min', 'sum', 'any', 'all', 'isinstance', 'type', 'open', 'super', 'property', 'staticmethod', 'classmethod'],
     snippets: [
       { label: 'sys.stdin', insert: 'import sys\ninput = sys.stdin.readline', doc: 'Fast input (BOJ)' },
@@ -176,7 +177,6 @@ const LANG_COMPLETIONS: Record<string, { keywords: string[]; builtins: string[];
     ],
   },
   java: {
-    keywords: ['public', 'private', 'protected', 'static', 'final', 'abstract', 'class', 'interface', 'extends', 'implements', 'new', 'this', 'super', 'if', 'else', 'for', 'while', 'do', 'switch', 'case', 'break', 'continue', 'return', 'try', 'catch', 'finally', 'throw', 'throws', 'import', 'package', 'void', 'int', 'long', 'double', 'float', 'char', 'boolean', 'String', 'null', 'true', 'false'],
     builtins: ['System.out.println', 'System.out.print', 'Integer.parseInt', 'Long.parseLong', 'Math.max', 'Math.min', 'Math.abs', 'Arrays.sort', 'Arrays.fill', 'Collections.sort', 'Collections.reverse', 'StringBuilder', 'BufferedReader', 'InputStreamReader', 'StringTokenizer', 'ArrayList', 'HashMap', 'HashSet', 'LinkedList', 'PriorityQueue', 'TreeMap', 'TreeSet', 'Stack', 'Queue'],
     snippets: [
       { label: 'BufferedReader', insert: 'BufferedReader br = new BufferedReader(new InputStreamReader(System.in));', doc: 'Fast input (BOJ)' },
@@ -184,7 +184,6 @@ const LANG_COMPLETIONS: Record<string, { keywords: string[]; builtins: string[];
     ],
   },
   cpp: {
-    keywords: ['int', 'long', 'double', 'float', 'char', 'bool', 'void', 'string', 'auto', 'const', 'static', 'struct', 'class', 'public', 'private', 'protected', 'virtual', 'override', 'template', 'typename', 'namespace', 'using', 'if', 'else', 'for', 'while', 'do', 'switch', 'case', 'break', 'continue', 'return', 'try', 'catch', 'throw', 'new', 'delete', 'nullptr', 'true', 'false', 'include', 'define', 'typedef', 'sizeof'],
     builtins: ['cout', 'cin', 'endl', 'vector', 'map', 'unordered_map', 'set', 'unordered_set', 'queue', 'priority_queue', 'stack', 'deque', 'pair', 'tuple', 'sort', 'reverse', 'lower_bound', 'upper_bound', 'min', 'max', 'abs', 'swap', 'fill', 'accumulate', 'push_back', 'pop_back', 'emplace_back', 'begin', 'end', 'size', 'empty', 'front', 'back'],
     snippets: [
       { label: 'fast_io', insert: 'ios::sync_with_stdio(false);\ncin.tie(nullptr);', doc: 'Fast I/O (BOJ)' },
@@ -192,29 +191,24 @@ const LANG_COMPLETIONS: Record<string, { keywords: string[]; builtins: string[];
     ],
   },
   javascript: {
-    keywords: ['const', 'let', 'var', 'function', 'class', 'if', 'else', 'for', 'while', 'do', 'switch', 'case', 'break', 'continue', 'return', 'try', 'catch', 'finally', 'throw', 'new', 'this', 'typeof', 'instanceof', 'import', 'export', 'default', 'async', 'await', 'yield', 'of', 'in', 'true', 'false', 'null', 'undefined'],
     builtins: ['console.log', 'parseInt', 'parseFloat', 'Math.max', 'Math.min', 'Math.abs', 'Math.floor', 'Math.ceil', 'Array.from', 'Array.isArray', 'Object.keys', 'Object.values', 'Object.entries', 'JSON.parse', 'JSON.stringify', 'Map', 'Set', 'Promise', 'setTimeout'],
     snippets: [
       { label: 'readline', insert: "const readline = require('readline');\nconst rl = readline.createInterface({ input: process.stdin, output: process.stdout });", doc: 'Node.js input (BOJ)' },
     ],
   },
   go: {
-    keywords: ['package', 'import', 'func', 'var', 'const', 'type', 'struct', 'interface', 'map', 'chan', 'go', 'select', 'if', 'else', 'for', 'range', 'switch', 'case', 'default', 'break', 'continue', 'return', 'defer', 'fallthrough', 'nil', 'true', 'false', 'int', 'int64', 'float64', 'string', 'bool', 'byte', 'rune', 'error'],
     builtins: ['fmt.Println', 'fmt.Printf', 'fmt.Scanf', 'fmt.Sprintf', 'len', 'cap', 'append', 'make', 'new', 'copy', 'delete', 'close', 'panic', 'recover', 'sort.Ints', 'sort.Strings', 'strconv.Atoi', 'strconv.Itoa', 'strings.Split', 'strings.Join', 'bufio.NewReader', 'bufio.NewScanner'],
     snippets: [],
   },
   kotlin: {
-    keywords: ['fun', 'val', 'var', 'class', 'object', 'interface', 'if', 'else', 'when', 'for', 'while', 'do', 'break', 'continue', 'return', 'try', 'catch', 'finally', 'throw', 'import', 'package', 'is', 'as', 'in', 'null', 'true', 'false', 'this', 'super', 'data', 'sealed', 'companion', 'override', 'abstract', 'open', 'private', 'public', 'internal', 'protected', 'lateinit', 'lazy'],
     builtins: ['println', 'readLine', 'readln', 'toInt', 'toLong', 'toDouble', 'split', 'map', 'filter', 'sorted', 'reversed', 'forEach', 'joinToString', 'maxOrNull', 'minOrNull', 'sumOf', 'groupBy', 'associate', 'arrayOf', 'listOf', 'mutableListOf', 'mapOf', 'mutableMapOf', 'setOf', 'mutableSetOf', 'BufferedReader', 'InputStreamReader', 'StringTokenizer'],
     snippets: [],
   },
   rust: {
-    keywords: ['fn', 'let', 'mut', 'const', 'static', 'struct', 'enum', 'impl', 'trait', 'type', 'use', 'mod', 'pub', 'crate', 'self', 'super', 'if', 'else', 'for', 'while', 'loop', 'match', 'break', 'continue', 'return', 'as', 'in', 'ref', 'move', 'async', 'await', 'unsafe', 'where', 'true', 'false', 'i32', 'i64', 'u32', 'u64', 'usize', 'f64', 'String', 'Vec', 'Option', 'Result', 'Some', 'None', 'Ok', 'Err'],
     builtins: ['println!', 'print!', 'format!', 'vec!', 'unwrap', 'expect', 'parse', 'push', 'pop', 'len', 'iter', 'map', 'filter', 'collect', 'sort', 'sort_by', 'reverse', 'contains', 'insert', 'remove', 'split_whitespace', 'trim', 'lines', 'read_line', 'stdin', 'HashMap', 'HashSet', 'BTreeMap', 'BTreeSet', 'VecDeque', 'BinaryHeap'],
     snippets: [],
   },
   c: {
-    keywords: ['int', 'long', 'double', 'float', 'char', 'void', 'unsigned', 'signed', 'const', 'static', 'struct', 'union', 'enum', 'typedef', 'sizeof', 'if', 'else', 'for', 'while', 'do', 'switch', 'case', 'break', 'continue', 'return', 'NULL', 'include', 'define'],
     builtins: ['printf', 'scanf', 'puts', 'gets', 'getchar', 'putchar', 'malloc', 'calloc', 'realloc', 'free', 'memset', 'memcpy', 'strlen', 'strcmp', 'strcpy', 'strcat', 'atoi', 'atol', 'strtol', 'qsort', 'bsearch', 'abs', 'EXIT_SUCCESS', 'EXIT_FAILURE'],
     snippets: [],
   },
@@ -240,12 +234,6 @@ function registerCompletionProviders(monaco: MonacoInstance): void {
         };
 
         const suggestions = [
-          ...data.keywords.map((kw) => ({
-            label: kw,
-            kind: CompletionItemKind.Keyword,
-            insertText: kw,
-            range,
-          })),
           ...data.builtins.map((fn) => ({
             label: fn,
             kind: CompletionItemKind.Function,
@@ -333,6 +321,8 @@ export function CodeEditor({
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [autocomplete, setAutocomplete] = useState(true);
+  const [fontSize, setFontSize] = useState(13);
+  const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
   const [deadlineWarning, setDeadlineWarning] = useState<
     'imminent' | 'approaching' | null
   >(null);
@@ -372,6 +362,11 @@ export function CodeEditor({
     });
   }, [autocomplete]);
 
+  // ─── 폰트 크기 반영 ─────────────────
+  useEffect(() => {
+    editorRef.current?.updateOptions({ fontSize });
+  }, [fontSize]);
+
   // ─── 언어 변경 (템플릿 코드면 자동 교체) ─
   const handleLanguageChange = useCallback(
     (newLang: string) => {
@@ -398,10 +393,6 @@ export function CodeEditor({
   const handleBeforeMount: BeforeMount = useCallback((monaco) => {
     defineThemes(monaco);
     registerCompletionProviders(monaco);
-  }, []);
-
-  const handleMount: OnMount = useCallback((editor) => {
-    editorRef.current = editor;
   }, []);
 
   const handleChange = useCallback(
@@ -432,6 +423,29 @@ export function CodeEditor({
       setError((err as Error).message ?? '제출 중 오류가 발생했습니다.');
     }
   }, [code, deadline, onSubmit]);
+
+  // ─── Ctrl+Enter 단축키 + 커서 위치 ───
+  const submitRef = useRef(handleSubmit);
+  submitRef.current = handleSubmit;
+
+  const handleMount: OnMount = useCallback((editor, monaco) => {
+    editorRef.current = editor;
+
+    // Ctrl+Enter / Cmd+Enter → 제출
+    editor.addAction({
+      id: 'algosu-submit',
+      label: '코드 제출 (Ctrl+Enter)',
+      keybindings: [
+        monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
+      ],
+      run: () => { void submitRef.current(); },
+    });
+
+    // 커서 위치 추적
+    editor.onDidChangeCursorPosition((e) => {
+      setCursorPos({ line: e.position.lineNumber, col: e.position.column });
+    });
+  }, []);
 
   const monacoTheme = resolvedTheme === 'dark' ? 'algosu-dark' : 'algosu-light';
 
@@ -493,6 +507,29 @@ export function CodeEditor({
               자동완성
             </label>
 
+            {/* 폰트 크기 조절 */}
+            <div className="flex items-center gap-0.5">
+              <button
+                type="button"
+                onClick={() => setFontSize((s) => Math.max(10, s - 1))}
+                className="flex items-center justify-center w-5 h-5 rounded text-text-3 transition-colors hover:text-text hover:bg-bg-alt disabled:opacity-40"
+                title="폰트 축소"
+                disabled={fontSize <= 10}
+              >
+                <Minus className="h-2.5 w-2.5" aria-hidden />
+              </button>
+              <span className="text-[10px] text-text-3 tabular-nums w-5 text-center">{fontSize}</span>
+              <button
+                type="button"
+                onClick={() => setFontSize((s) => Math.min(20, s + 1))}
+                className="flex items-center justify-center w-5 h-5 rounded text-text-3 transition-colors hover:text-text hover:bg-bg-alt disabled:opacity-40"
+                title="폰트 확대"
+                disabled={fontSize >= 20}
+              >
+                <Plus className="h-2.5 w-2.5" aria-hidden />
+              </button>
+            </div>
+
             {/* 초기화 */}
             <button
               type="button"
@@ -516,7 +553,7 @@ export function CodeEditor({
 
         {/* ── Monaco Editor ── */}
         <MonacoEditor
-          height="360px"
+          height="520px"
           language={MONACO_LANG_MAP[language] ?? 'plaintext'}
           value={code}
           theme={monacoTheme}
@@ -524,7 +561,7 @@ export function CodeEditor({
           onMount={handleMount}
           onChange={handleChange}
           options={{
-            fontSize: 13,
+            fontSize,
             fontFamily:
               "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
             minimap: { enabled: false },
@@ -546,30 +583,38 @@ export function CodeEditor({
 
         {/* ── 에디터 푸터 (제출 바) ── */}
         <div className="flex items-center justify-between border-t border-border px-4 py-3">
-          <span className="font-mono text-[11px] text-text-3">
-            {code.length}자
-            {!isSubmitting && code.length > 0 && code.length < 10 && (
-              <span className="ml-2 text-warning">({10 - code.length}자 더 필요)</span>
-            )}
-          </span>
-          <Button
-            variant="primary"
-            size="md"
-            onClick={handleSubmit}
-            disabled={isSubmitting || code.length < 10}
-          >
-            {isSubmitting ? (
-              <>
-                <InlineSpinner />
-                제출 중...
-              </>
-            ) : (
-              <>
-                <Send className="h-3.5 w-3.5" aria-hidden />
-                제출하기
-              </>
-            )}
-          </Button>
+          <div className="flex items-center gap-3 font-mono text-[11px] text-text-3">
+            <span>
+              {cursorPos.line}:{cursorPos.col}
+            </span>
+            <span>
+              {code.length}자
+              {!isSubmitting && code.length > 0 && code.length < 10 && (
+                <span className="ml-1 text-warning">({10 - code.length}자 더 필요)</span>
+              )}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="hidden sm:inline text-[10px] text-text-3">Ctrl+Enter</span>
+            <Button
+              variant="primary"
+              size="md"
+              onClick={handleSubmit}
+              disabled={isSubmitting || code.length < 10}
+            >
+              {isSubmitting ? (
+                <>
+                  <InlineSpinner />
+                  제출 중...
+                </>
+              ) : (
+                <>
+                  <Send className="h-3.5 w-3.5" aria-hidden />
+                  제출하기
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
 

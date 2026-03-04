@@ -569,7 +569,7 @@ export default function AnalysisPage(): ReactNode {
                   variant="ghost"
                   size="lg"
                   className="flex-1"
-                  onClick={() => router.push(`/submit/${submission.problemId}`)}
+                  onClick={() => router.push(`/problems/${submission.problemId}`)}
                 >
                   다시 제출
                 </Button>
