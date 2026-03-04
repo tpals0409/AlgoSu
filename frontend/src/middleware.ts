@@ -10,7 +10,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 /** 인증 없이 접근 가능한 경로 패턴 */
-const PUBLIC_PATHS = ['/', '/login', '/auth/callback'];
+const PUBLIC_PATHS = ['/', '/login', '/callback'];
 
 /** 경로가 Public인지 확인 */
 function isPublicPath(pathname: string): boolean {

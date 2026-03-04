@@ -4,12 +4,16 @@ import { TokenManager } from './token-manager';
 // Octokit 모킹
 const mockGetContent = jest.fn();
 const mockCreateOrUpdateFileContents = jest.fn();
+const mockReposGet = jest.fn();
+const mockCreateForAuthenticatedUser = jest.fn();
 
 jest.mock('@octokit/rest', () => ({
   Octokit: jest.fn().mockImplementation(() => ({
     repos: {
+      get: mockReposGet,
       getContent: mockGetContent,
       createOrUpdateFileContents: mockCreateOrUpdateFileContents,
+      createForAuthenticatedUser: mockCreateForAuthenticatedUser,
     },
   })),
 }));
@@ -24,8 +28,8 @@ describe('GitHubPushService', () => {
     problemId: 'prob-7',
     language: 'python',
     code: 'print("hello world")',
-    repoOwner: 'test-owner',
-    repoName: 'test-repo',
+    githubUsername: 'test-owner',
+    githubToken: 'ghs_mock_token',
   };
 
   beforeEach(() => {
@@ -37,6 +41,8 @@ describe('GitHubPushService', () => {
 
     service = new GitHubPushService(mockTokenManager as unknown as TokenManager);
 
+    // 기본: 레포 존재
+    mockReposGet.mockResolvedValue({ data: {} });
     // 기본: 파일 없음 (404)
     mockGetContent.mockRejectedValue(new Error('Not Found'));
     mockCreateOrUpdateFileContents.mockResolvedValue({
@@ -48,7 +54,7 @@ describe('GitHubPushService', () => {
   it('push() -- 새 파일 생성: createOrUpdateFileContents 호출, base64 인코딩', async () => {
     const result = await service.push(basePushInput);
 
-    // Octokit 생성 시 토큰 전달 확인
+    // Octokit 생성 시 유저 토큰 전달 확인
     const { Octokit } = require('@octokit/rest');
     expect(Octokit).toHaveBeenCalledWith({ auth: 'ghs_mock_token' });
 
@@ -56,7 +62,7 @@ describe('GitHubPushService', () => {
     expect(mockCreateOrUpdateFileContents).toHaveBeenCalledWith(
       expect.objectContaining({
         owner: 'test-owner',
-        repo: 'test-repo',
+        repo: 'algosu-submissions',
         content: Buffer.from('print("hello world")').toString('base64'),
         sha: undefined,
       }),
@@ -82,10 +88,10 @@ describe('GitHubPushService', () => {
   });
 
   // 3. 파일 경로 규칙
-  it('push() -- 파일 경로: submissions/{userId}/{problemId}/{submissionId}.{ext}', async () => {
+  it('push() -- 파일 경로: submissions/{problemId}/{submissionId}.{ext}', async () => {
     const result = await service.push(basePushInput);
 
-    const expectedPath = 'submissions/user-42/prob-7/sub-001.py';
+    const expectedPath = 'submissions/prob-7/sub-001.py';
     expect(result.filePath).toBe(expectedPath);
 
     expect(mockCreateOrUpdateFileContents).toHaveBeenCalledWith(
@@ -102,11 +108,11 @@ describe('GitHubPushService', () => {
     expect(pyResult.filePath).toMatch(/\.py$/);
 
     jest.clearAllMocks();
+    mockReposGet.mockResolvedValue({ data: {} });
     mockGetContent.mockRejectedValue(new Error('Not Found'));
     mockCreateOrUpdateFileContents.mockResolvedValue({
       data: { content: { sha: 'sha-java' } },
     });
-    mockTokenManager.getTokenForRepo.mockResolvedValue('ghs_mock_token');
 
     // java -> java
     const javaResult = await service.push({ ...basePushInput, language: 'java' });
@@ -121,6 +127,21 @@ describe('GitHubPushService', () => {
     });
 
     expect(result.filePath).toMatch(/\.txt$/);
-    expect(result.filePath).toBe('submissions/user-42/prob-7/sub-001.txt');
+    expect(result.filePath).toBe('submissions/prob-7/sub-001.txt');
+  });
+
+  // 6. 레포 자동 생성
+  it('push() -- 레포 없으면 자동 생성', async () => {
+    mockReposGet.mockRejectedValue({ status: 404 });
+
+    await service.push(basePushInput);
+
+    expect(mockCreateForAuthenticatedUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'algosu-submissions',
+        private: true,
+        auto_init: true,
+      }),
+    );
   });
 });

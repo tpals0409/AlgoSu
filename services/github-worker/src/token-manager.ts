@@ -1,3 +1,4 @@
+import * as crypto from 'crypto';
 import Redis from 'ioredis';
 import { logger } from './logger';
 import { config } from './config';
@@ -143,6 +144,35 @@ export class TokenManager {
     } catch {
       // 갱신 실패는 무시
     }
+  }
+
+  /**
+   * 유저 GitHub OAuth 토큰 복호화
+   * Gateway에서 AES-256-GCM으로 암호화된 토큰을 복호화
+   * 형식: iv(hex):ciphertext(hex):tag(hex)
+   */
+  decryptUserToken(encrypted: string): string {
+    const keyHex = config.githubTokenEncryptionKey;
+    const key = Buffer.from(keyHex, 'hex');
+
+    const parts = encrypted.split(':');
+    if (parts.length !== 3) {
+      throw new Error('Invalid encrypted token format');
+    }
+
+    const iv = Buffer.from(parts[0], 'hex');
+    const ciphertext = Buffer.from(parts[1], 'hex');
+    const tag = Buffer.from(parts[2], 'hex');
+
+    const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+    decipher.setAuthTag(tag);
+
+    const decrypted = Buffer.concat([
+      decipher.update(ciphertext),
+      decipher.final(),
+    ]);
+
+    return decrypted.toString('utf8');
   }
 
   async close(): Promise<void> {

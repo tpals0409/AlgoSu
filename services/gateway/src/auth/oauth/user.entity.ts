@@ -42,6 +42,9 @@ export class User {
   @Column({ type: 'varchar', length: 100, nullable: true })
   github_username!: string | null;
 
+  @Column({ type: 'text', nullable: true })
+  github_token!: string | null;
+
   @Column({ type: 'uuid', unique: true })
   publicId!: string;
 

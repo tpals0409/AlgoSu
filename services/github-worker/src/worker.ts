@@ -6,13 +6,12 @@ import { logger } from './logger';
 import { config } from './config';
 
 /**
- * GitHub Worker — RabbitMQ 소비자
+ * GitHub Worker — RabbitMQ 소비자 (유저 토큰 기반)
  *
  * 보안 요구사항:
- * - GitHub App Token은 Redis에서만 참조 (로그 노출 금지)
+ * - GitHub 토큰은 AES-256-GCM 복호화 후 즉시 사용, 로그 출력 금지
  * - 메시지에 토큰/키 포함 금지
  * - Gateway Internal API 호출 시 X-Internal-Key 필수
- * - 스터디 레포 정보 로그 출력 금지
  * - prefetch=2: 동시 처리량 제한 (Free Tier 리소스 보호)
  */
 
@@ -22,8 +21,9 @@ interface GitHubPushEvent {
   timestamp: string;
 }
 
-interface StudyInfo {
-  github_repo: string | null;
+interface UserGitHubInfo {
+  github_username: string | null;
+  github_token: string | null;
 }
 
 const QUEUE = 'submission.github_push';
@@ -134,12 +134,12 @@ export class GitHubWorker {
   }
 
   /**
-   * Gateway Internal API로 스터디 github_repo 조회
-   * 보안: X-Internal-Key 필수, 레포 정보 로그 출력 금지
+   * Gateway Internal API로 유저 GitHub 토큰 정보 조회
+   * 보안: X-Internal-Key 필수, 토큰 로그 출력 금지
    */
-  private async getStudyGithubRepo(studyId: string): Promise<string | null> {
+  private async getUserGitHubInfo(userId: string): Promise<UserGitHubInfo> {
     const res = await fetch(
-      `${this.gatewayInternalUrl}/internal/studies/${studyId}`,
+      `${this.gatewayInternalUrl}/internal/users/${userId}/github-token`,
       {
         headers: {
           'X-Internal-Key': this.internalKeyGateway,
@@ -149,65 +149,50 @@ export class GitHubWorker {
     );
 
     if (!res.ok) {
-      throw new Error(`스터디 조회 실패: ${res.status}`);
+      throw new Error(`유저 GitHub 정보 조회 실패: ${res.status}`);
     }
 
-    const body = (await res.json()) as { data: StudyInfo };
-    return body.data.github_repo ?? null;
+    return (await res.json()) as UserGitHubInfo;
   }
 
   private async processWithRetry(event: GitHubPushEvent): Promise<void> {
-    // studyId 필수 검증
-    if (!event.studyId) {
-      logger.error('studyId 누락 — DLQ', {
-        traceId: event.submissionId,
-        code: 'GHW_BIZ_003',
-        tag: 'MQ_CONSUME_DONE',
-        result: 'NACK_DLQ',
-      });
-      throw new Error(`studyId 누락: submissionId=${event.submissionId}`);
-    }
+    // 제출 데이터 조회 (userId 획득)
+    const submission = await this.statusReporter.getSubmission(event.submissionId);
 
-    // 스터디 GitHub 레포 조회
-    const githubRepo = await this.getStudyGithubRepo(event.studyId);
+    // 유저 GitHub 정보 조회
+    const githubInfo = await this.getUserGitHubInfo(submission.userId);
 
-    // github_repo 미연결 → SKIPPED 처리 후 ACK
-    if (!githubRepo) {
-      logger.info('SKIPPED: github_repo 없음', { tag: 'GITHUB_SKIP', traceId: event.submissionId });
+    // GitHub 토큰 없음 → SKIPPED 처리 후 ACK
+    if (!githubInfo.github_username || !githubInfo.github_token) {
+      logger.info('SKIPPED: GitHub 미연동 또는 토큰 없음', { tag: 'GITHUB_SKIP', traceId: event.submissionId });
       await this.statusReporter.reportSkipped(event.submissionId);
       return;
     }
 
-    // github_repo 파싱: "owner/repo" 형식
-    const slashIdx = githubRepo.indexOf('/');
-    if (slashIdx === -1) {
-      logger.error('github_repo 형식 오류 — DLQ', {
-        traceId: event.submissionId,
-        code: 'GHW_BIZ_004',
-        tag: 'MQ_CONSUME_DONE',
-        result: 'NACK_DLQ',
-      });
-      throw new Error(`github_repo 형식 오류: submissionId=${event.submissionId}`);
+    // 토큰 복호화
+    let decryptedToken: string;
+    try {
+      decryptedToken = this.tokenManager.decryptUserToken(githubInfo.github_token);
+    } catch {
+      logger.warn('토큰 복호화 실패', { tag: 'GITHUB_SKIP', traceId: event.submissionId, code: 'GHW_BIZ_005' });
+      await this.statusReporter.reportTokenInvalid(event.submissionId);
+      await this.statusReporter.publishStatusChange(event.submissionId, 'github_token_invalid');
+      return;
     }
-    const repoOwner = githubRepo.slice(0, slashIdx);
-    const repoName = githubRepo.slice(slashIdx + 1);
 
     let lastError: Error | null = null;
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
-        // 제출 데이터 조회
-        const submission = await this.statusReporter.getSubmission(event.submissionId);
-
-        // GitHub Push 실행 (레포 정보 동적 전달)
+        // GitHub Push 실행 (유저 토큰 기반)
         const result = await this.pushService.push({
           submissionId: event.submissionId,
           userId: submission.userId,
           problemId: submission.problemId,
           language: submission.language,
           code: submission.code,
-          repoOwner,
-          repoName,
+          githubUsername: githubInfo.github_username,
+          githubToken: decryptedToken,
         });
 
         // 성공: Saga 상태 업데이트 (GITHUB_QUEUED → AI_QUEUED)

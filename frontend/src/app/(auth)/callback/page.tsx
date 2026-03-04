@@ -31,7 +31,12 @@ function CallbackContent(): ReactNode {
     const errorParam = params.get('error');
 
     if (errorParam) {
-      setError('OAuth 인증에 실패했습니다. 다시 시도해주세요.');
+      const decoded = decodeURIComponent(errorParam);
+      // 백엔드에서 전달한 사용자 친화 메시지가 있으면 그대로 표시
+      const friendlyMessage = decoded.includes('이미') || decoded.includes('가입')
+        ? decoded
+        : 'OAuth 인증에 실패했습니다. 다시 시도해주세요.';
+      setError(friendlyMessage);
       return;
     }
 

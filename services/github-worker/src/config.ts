@@ -32,4 +32,6 @@ export const config = {
 
   githubAppId: process.env['GITHUB_APP_ID'] ?? '',
   githubAppPrivateKeyBase64: process.env['GITHUB_APP_PRIVATE_KEY_BASE64'] ?? '',
+
+  githubTokenEncryptionKey: getRequired('GITHUB_TOKEN_ENCRYPTION_KEY'),
 };

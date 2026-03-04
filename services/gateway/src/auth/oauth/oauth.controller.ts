@@ -56,26 +56,49 @@ export class OAuthController {
     @Param('provider') provider: string,
     @Query('code') code: string,
     @Query('state') state: string,
+    @Query('error') oauthError: string,
     @Res() res: Response,
   ): Promise<void> {
-    if (!code || !state) {
-      throw new BadRequestException('OAuth 콜백에 code 또는 state가 없습니다.');
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3001');
+
+    // OAuth 제공자 에러 (사용자 거부 등) → 프론트엔드 에러 리다이렉트
+    if (oauthError) {
+      this.logger.warn(`OAuth 제공자 에러: provider=${provider}, error=${oauthError}`);
+      res.redirect(`${frontendUrl}/callback#error=${encodeURIComponent(oauthError)}`);
+      return;
     }
 
-    const result = await this.oauthService.handleCallback(provider, code, state);
+    if (!code || !state) {
+      this.logger.warn(`OAuth 콜백 파라미터 누락: provider=${provider}`);
+      res.redirect(`${frontendUrl}/callback#error=missing_params`);
+      return;
+    }
 
-    this.logger.log(`OAuth 로그인 성공: provider=${provider}, userId=${result.user.id}`);
+    try {
+      const result = await this.oauthService.handleCallback(provider, code, state);
 
-    // httpOnly Cookie로 JWT 발급 (fragment 전달 제거)
-    const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
-    setTokenCookie(res, result.accessToken, nodeEnv);
+      this.logger.log(`OAuth 로그인 성공: provider=${provider}, userId=${result.user.id}`);
 
-    // 프론트엔드 리다이렉트 — github_connected만 fragment로 전달 (민감 정보 아님)
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3001');
-    const params = new URLSearchParams({
-      github_connected: String(result.user.github_connected),
-    });
-    res.redirect(`${frontendUrl}/callback#${params.toString()}`);
+      // httpOnly Cookie로 JWT 발급
+      const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
+      setTokenCookie(res, result.accessToken, nodeEnv);
+
+      // 프론트엔드 리다이렉트 — github_connected만 fragment로 전달 (민감 정보 아님)
+      const params = new URLSearchParams({
+        github_connected: String(result.user.github_connected),
+      });
+      res.redirect(`${frontendUrl}/callback#${params.toString()}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'unknown';
+      this.logger.warn(`OAuth 콜백 처리 실패: provider=${provider}, error=${message}`);
+
+      // 중복 제공자 에러 등 사용자 친화 메시지 전달
+      const isUserFacing = error instanceof BadRequestException;
+      const errorParam = isUserFacing
+        ? encodeURIComponent(message)
+        : 'auth_failed';
+      res.redirect(`${frontendUrl}/callback#error=${errorParam}`);
+    }
   }
 
   /**
@@ -99,23 +122,39 @@ export class OAuthController {
   async handleGitHubLinkCallback(
     @Query('code') code: string,
     @Query('state') state: string,
+    @Query('error') oauthError: string,
     @Res() res: Response,
   ): Promise<void> {
-    if (!code || !state) {
-      throw new BadRequestException('GitHub 콜백에 code 또는 state가 없습니다.');
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3001');
+
+    if (oauthError) {
+      this.logger.warn(`GitHub 연동 제공자 에러: error=${oauthError}`);
+      res.redirect(`${frontendUrl}/github-link?error=${encodeURIComponent(oauthError)}`);
+      return;
     }
 
-    const userId = await this.oauthService.validateAndConsumeGitHubLinkState(state);
-    const user = await this.oauthService.linkGitHub(userId, code);
+    if (!code || !state) {
+      this.logger.warn('GitHub 콜백 파라미터 누락');
+      res.redirect(`${frontendUrl}/github-link?error=missing_params`);
+      return;
+    }
 
-    this.logger.log(`GitHub 연동 완료: userId=${userId}, github=${user.github_username}`);
+    try {
+      const userId = await this.oauthService.validateAndConsumeGitHubLinkState(state);
+      const user = await this.oauthService.linkGitHub(userId, code);
 
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3001');
-    const params = new URLSearchParams({
-      github_connected: 'true',
-      github_username: user.github_username ?? '',
-    });
-    res.redirect(`${frontendUrl}/github-link/complete#${params.toString()}`);
+      this.logger.log(`GitHub 연동 완료: userId=${userId}, github=${user.github_username}`);
+
+      const params = new URLSearchParams({
+        github_connected: 'true',
+        github_username: user.github_username ?? '',
+      });
+      res.redirect(`${frontendUrl}/github-link/complete#${params.toString()}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'unknown';
+      this.logger.warn(`GitHub 연동 실패: error=${message}`);
+      res.redirect(`${frontendUrl}/github-link?error=link_failed`);
+    }
   }
 
   /**

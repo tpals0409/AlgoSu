@@ -35,6 +35,17 @@ export class InternalController {
   }
 
   /**
+   * GET /internal/users/:user_id/github-token
+   * GitHub Worker가 유저의 암호화된 토큰 조회 시 사용
+   */
+  @Get('users/:user_id/github-token')
+  async getGitHubToken(
+    @Param('user_id', ParseUUIDPipe) userId: string,
+  ): Promise<{ github_username: string | null; github_token: string | null }> {
+    return this.oauthService.getGitHubTokenInfo(userId);
+  }
+
+  /**
    * GET /internal/studies/:study_id/members/:user_id
    * 스터디 멤버십 조회 — 하위 서비스 StudyMemberGuard에서 호출
    * 멤버면 { role: 'ADMIN' | 'MEMBER' } 반환, 비멤버면 404

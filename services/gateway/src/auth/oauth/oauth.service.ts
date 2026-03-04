@@ -12,6 +12,7 @@ import * as jwt from 'jsonwebtoken';
 import * as crypto from 'crypto';
 import Redis from 'ioredis';
 import { User, OAuthProvider } from './user.entity';
+import { encryptToken } from './token-crypto.util';
 
 interface OAuthTokenResponse {
   access_token: string;
@@ -292,7 +293,7 @@ export class OAuthService {
     const params = new URLSearchParams({
       client_id: clientId,
       redirect_uri: redirectUri,
-      scope: 'read:user',
+      scope: 'repo',
       state,
     });
     return { url: `https://github.com/login/oauth/authorize?${params.toString()}` };
@@ -347,6 +348,12 @@ export class OAuthService {
     user.github_user_id = String(githubUser.id);
     user.github_username = githubUser.login;
 
+    // GitHub access token 암호화 저장 (repo push에 필요)
+    const encryptionKey = this.configService.get<string>('GITHUB_TOKEN_ENCRYPTION_KEY');
+    if (encryptionKey) {
+      user.github_token = encryptToken(accessToken, encryptionKey);
+    }
+
     return this.userRepository.save(user);
   }
 
@@ -359,6 +366,7 @@ export class OAuthService {
     user.github_connected = false;
     user.github_user_id = null;
     user.github_username = null;
+    user.github_token = null;
 
     return this.userRepository.save(user);
   }
@@ -378,6 +386,17 @@ export class OAuthService {
     });
 
     if (user) {
+      // 1계정 1OAuth 정책: 다른 제공자로 가입된 이메일은 거부
+      if (user.oauth_provider !== provider) {
+        const providerLabel: Record<string, string> = {
+          google: 'Google',
+          naver: 'Naver',
+          kakao: 'Kakao',
+        };
+        throw new BadRequestException(
+          `이 이메일은 이미 ${providerLabel[user.oauth_provider] ?? user.oauth_provider}(으)로 가입되어 있습니다. 기존 계정으로 로그인해주세요.`,
+        );
+      }
       user.name = profile.name;
       // 프리셋 아바타 사용 중이면 OAuth 사진으로 덮어쓰지 않음
       if (!user.avatar_url || !user.avatar_url.startsWith('preset:')) {
@@ -516,6 +535,19 @@ export class OAuthService {
     return {
       github_connected: user.github_connected,
       github_username: user.github_username,
+    };
+  }
+
+  async getGitHubTokenInfo(
+    userId: string,
+  ): Promise<{ github_username: string | null; github_token: string | null }> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
+    }
+    return {
+      github_username: user.github_username,
+      github_token: user.github_token,
     };
   }
 }
