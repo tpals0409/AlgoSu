@@ -254,10 +254,6 @@ describe('NotificationToast', () => {
 
     act(() => { jest.advanceTimersByTime(100); });
 
-    // 토스트 본문 참조 저장
-    const buttons = screen.getAllByRole('button');
-    const _toastBody = buttons.find((el) => el.getAttribute('tabindex') === '0')!;
-
     // 닫기로 토스트 제거
     fireEvent.click(screen.getByLabelText('닫기'));
     act(() => { jest.advanceTimersByTime(300); });
