@@ -307,6 +307,21 @@ class TestWorkerStop:
         worker.stop()
         assert worker._stopping is True
 
+    def test_stop_handles_connection_close_error(self, worker, mock_dependencies):
+        """connection.close() 오류 시 예외 무시 및 redis/http 정리"""
+        mock_channel = MagicMock()
+        mock_conn = MagicMock()
+        mock_conn.close.side_effect = Exception("connection close error")
+        worker.channel = mock_channel
+        worker.connection = mock_conn
+
+        # 예외 없이 정상 종료
+        worker.stop()
+        assert worker._stopping is True
+        # redis_client.close()와 http_client.close()는 여전히 호출되어야 함
+        mock_dependencies["redis_client"].close.assert_called()
+        worker.http_client.close.assert_called()
+
 
 class TestCleanupConnection:
     """_cleanup_connection() -- 연결 정리"""
@@ -450,3 +465,92 @@ class TestConnectWithRetry:
             worker._connect_with_retry()
 
         assert call_count == 2
+
+
+class TestStartMethod:
+    """start() -- 재연결 루프 시작"""
+
+    def test_start_calls_connect_with_retry(self, worker, mock_dependencies):
+        """start() 호출 시 _connect_with_retry 실행"""
+        # _connect_with_retry를 모킹하여 무한루프 방지
+        worker._connect_and_consume = MagicMock(side_effect=lambda: setattr(worker, "_stopping", True) or (_ for _ in ()).throw(Exception("done")))
+
+        with patch("src.worker.time.sleep"):
+            worker.start()
+
+        assert worker._stopping is True
+
+    def test_start_resets_stopping_flag(self, worker, mock_dependencies):
+        """start() 호출 시 _stopping 플래그 초기화"""
+        worker._stopping = True
+
+        # _connect_and_consume이 즉시 _stopping=True로 종료
+        def stop_immediately():
+            worker._stopping = True
+            raise Exception("immediate stop")
+
+        worker._connect_and_consume = stop_immediately
+        with patch("src.worker.time.sleep"):
+            worker.start()
+
+        # start가 호출되고 나서 _stopping은 True (루프가 설정함)
+        assert worker._stopping is True
+
+
+class TestConnectAndConsume:
+    """_connect_and_consume() -- RabbitMQ 연결"""
+
+    def test_connect_and_consume_sets_channel(self, worker, mock_dependencies):
+        """pika 연결 및 채널 설정 확인"""
+        with patch("src.worker.pika") as mock_pika:
+            mock_conn = MagicMock()
+            mock_channel = MagicMock()
+            mock_pika.BlockingConnection.return_value = mock_conn
+            mock_pika.URLParameters.return_value = MagicMock()
+            mock_conn.channel.return_value = mock_channel
+
+            # start_consuming을 즉시 종료하도록 모킹
+            mock_channel.start_consuming.return_value = None
+
+            worker._connect_and_consume()
+
+            mock_pika.BlockingConnection.assert_called_once()
+            mock_channel.basic_qos.assert_called_once_with(prefetch_count=2)
+            mock_channel.queue_declare.assert_called_once()
+            mock_channel.basic_consume.assert_called_once()
+            mock_channel.start_consuming.assert_called_once()
+            assert worker.connection == mock_conn
+            assert worker.channel == mock_channel
+
+
+class TestOnMessageExceptionNoUserId:
+    """_on_message() -- 예외 발생 시 userId 없으면 quota 차감 안 함"""
+
+    def test_exception_without_userId_no_quota_decrement(self, worker, mock_dependencies, pika_mocks):
+        """처리 중 예외 발생 시 userId 없으면 quota 차감 안 함"""
+        mock_ch, mock_method, mock_properties = pika_mocks
+        deps = mock_dependencies
+
+        deps["http_client"].get.side_effect = Exception("Network error")
+        # userId 없는 메시지
+        body = json.dumps({"submissionId": "sub-no-user"}).encode()
+
+        worker._on_message(mock_ch, mock_method, mock_properties, body)
+
+        # NACK 확인
+        mock_ch.basic_nack.assert_called_once_with(delivery_tag=42, requeue=False)
+        # decrement quota는 호출되지 않아야 함
+        deps["redis_client"].decr.assert_not_called()
+
+    def test_exception_inner_parse_failure(self, worker, mock_dependencies, pika_mocks):
+        """내부 예외 처리 중 json 파싱도 실패하는 경우"""
+        mock_ch, mock_method, mock_properties = pika_mocks
+        deps = mock_dependencies
+
+        # 잘못된 JSON body
+        body = b"not json at all"
+
+        worker._on_message(mock_ch, mock_method, mock_properties, body)
+
+        # NACK 확인
+        mock_ch.basic_nack.assert_called_once_with(delivery_tag=42, requeue=False)

@@ -209,3 +209,70 @@ describe('StructuredLoggerService', () => {
     expect(raw.endsWith('\n')).toBe(true);
   });
 });
+
+// ─── production 환경 분기 테스트 ─────────────────────────────────
+describe('StructuredLoggerService — production 환경', () => {
+  let stdoutSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    stdoutSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+  });
+
+  afterEach(() => {
+    stdoutSpy.mockRestore();
+    jest.resetModules();
+    delete process.env['ENV'];
+  });
+
+  it('production 환경에서 debug 레벨 로그는 출력되지 않는다 (MIN_LEVEL=info)', () => {
+    process.env['ENV'] = 'production';
+
+    // jest.isolateModules로 production ENV에서 모듈을 새로 로드
+    let ProdLogger: typeof import('./structured-logger.service').StructuredLoggerService;
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      ProdLogger = require('./structured-logger.service').StructuredLoggerService;
+    });
+
+    const prodLogger = new ProdLogger!();
+    prodLogger.debug('this should be filtered');
+
+    // debug < info 이므로 출력되지 않아야 함
+    expect(stdoutSpy).not.toHaveBeenCalled();
+  });
+
+  it('production 환경에서 info 레벨 로그는 출력된다', () => {
+    process.env['ENV'] = 'production';
+
+    let ProdLogger: typeof import('./structured-logger.service').StructuredLoggerService;
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      ProdLogger = require('./structured-logger.service').StructuredLoggerService;
+    });
+
+    const prodLogger = new ProdLogger!();
+    prodLogger.log('info message in production');
+
+    expect(stdoutSpy).toHaveBeenCalledTimes(1);
+    const output = JSON.parse(stdoutSpy.mock.calls[0][0]);
+    expect(output.level).toBe('info');
+  });
+
+  it('production 환경에서 Error 객체의 stack은 포함되지 않는다', () => {
+    process.env['ENV'] = 'production';
+
+    let ProdLogger: typeof import('./structured-logger.service').StructuredLoggerService;
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      ProdLogger = require('./structured-logger.service').StructuredLoggerService;
+    });
+
+    const prodLogger = new ProdLogger!();
+    const err = new Error('prod error with stack');
+    prodLogger.error('error in production', err);
+
+    const output = JSON.parse(stdoutSpy.mock.calls[0][0]);
+    expect(output.error).toBeDefined();
+    expect(output.error.stack).toBeUndefined();
+  });
+});

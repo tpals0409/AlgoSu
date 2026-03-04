@@ -188,6 +188,16 @@ class TestCheckAndIncrementQuota:
         )
         assert resp.status_code == 503
 
+    def test_quota_check_empty_user_id_returns_400(self, client, mock_app_deps):
+        """userId가 빈 문자열이면 400 반환 (POST /quota/check)"""
+        resp = client.post(
+            "/quota/check",
+            params={"userId": ""},
+            headers={"X-Internal-Key": "test-key"},
+        )
+        assert resp.status_code == 400
+        assert "userId" in resp.json()["detail"]
+
 
 class TestHealthReady:
     """GET /health/ready"""
@@ -470,6 +480,70 @@ class TestGroupAnalysis:
             )
             # TTL 설정 확인
             deps["redis_client"].expire.assert_called_once()
+
+
+class TestStartupShutdownEvents:
+    """startup/shutdown 이벤트 처리"""
+
+    def test_startup_initializes_worker_and_redis(self, mock_app_deps):
+        """startup_event: Worker 및 Redis 초기화"""
+        import src.main as main_mod
+        deps = mock_app_deps
+
+        # worker_thread/instance 초기값 확인을 위해 TestClient 생성
+        # TestClient는 lifespan/on_event를 트리거하지 않으므로 직접 호출
+        import asyncio
+
+        # 기존 상태 초기화
+        main_mod.worker_instance = None
+        main_mod.worker_thread = None
+        main_mod.redis_client = None
+
+        asyncio.get_event_loop().run_until_complete(main_mod.startup_event())
+
+        # Worker가 생성되었는지 확인
+        assert main_mod.worker_instance is not None
+        assert main_mod.worker_thread is not None
+        assert main_mod.redis_client is not None
+
+    def test_shutdown_stops_worker_and_redis(self, mock_app_deps):
+        """shutdown_event: Worker 중지 및 Redis 정리"""
+        import src.main as main_mod
+        import asyncio
+
+        mock_worker = MagicMock()
+        mock_redis = MagicMock()
+        main_mod.worker_instance = mock_worker
+        main_mod.redis_client = mock_redis
+
+        asyncio.get_event_loop().run_until_complete(main_mod.shutdown_event())
+
+        mock_worker.stop.assert_called_once()
+        mock_redis.close.assert_called_once()
+
+    def test_shutdown_with_no_worker(self, mock_app_deps):
+        """shutdown_event: Worker 없을 때도 정상"""
+        import src.main as main_mod
+        import asyncio
+
+        main_mod.worker_instance = None
+        mock_redis = MagicMock()
+        main_mod.redis_client = mock_redis
+
+        asyncio.get_event_loop().run_until_complete(main_mod.shutdown_event())
+        mock_redis.close.assert_called_once()
+
+    def test_shutdown_with_no_redis(self, mock_app_deps):
+        """shutdown_event: Redis 없을 때도 정상"""
+        import src.main as main_mod
+        import asyncio
+
+        mock_worker = MagicMock()
+        main_mod.worker_instance = mock_worker
+        main_mod.redis_client = None
+
+        asyncio.get_event_loop().run_until_complete(main_mod.shutdown_event())
+        mock_worker.stop.assert_called_once()
 
 
 class TestGetQuotaXUserIdFallback:

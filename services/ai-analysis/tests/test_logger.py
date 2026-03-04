@@ -177,6 +177,89 @@ class TestSetupLogging:
         assert isinstance(root.handlers[0].formatter, JsonFormatter)
 
 
+class TestJsonFormatterProductionNoStack:
+    """JsonFormatter -- production 환경에서 stack trace 제거"""
+
+    def test_production_excludes_stack_trace(self):
+        """production 환경에서 exc_info가 있어도 stack 필드 없음"""
+        formatter = JsonFormatter()
+
+        try:
+            raise RuntimeError("prod error")
+        except RuntimeError:
+            import sys
+            exc_info = sys.exc_info()
+
+        record = logging.LogRecord(
+            name="test",
+            level=logging.ERROR,
+            pathname="test.py",
+            lineno=1,
+            msg="production error",
+            args=None,
+            exc_info=exc_info,
+        )
+
+        with patch("src.logger.ENV", "production"):
+            output = formatter.format(record)
+
+        parsed = json.loads(output)
+        assert "error" in parsed
+        assert "stack" not in parsed["error"]
+
+    def test_non_production_includes_stack_trace(self):
+        """non-production 환경에서 stack trace 포함"""
+        formatter = JsonFormatter()
+
+        try:
+            raise ValueError("dev error")
+        except ValueError:
+            import sys
+            exc_info = sys.exc_info()
+
+        record = logging.LogRecord(
+            name="test",
+            level=logging.ERROR,
+            pathname="test.py",
+            lineno=1,
+            msg="dev error",
+            args=None,
+            exc_info=exc_info,
+        )
+
+        with patch("src.logger.ENV", "development"):
+            output = formatter.format(record)
+
+        parsed = json.loads(output)
+        assert "error" in parsed
+        assert "stack" in parsed["error"]
+
+    def test_error_with_code_attribute(self):
+        """record.code가 있으면 error_obj에 code 포함"""
+        formatter = JsonFormatter()
+
+        try:
+            raise RuntimeError("coded error")
+        except RuntimeError:
+            import sys
+            exc_info = sys.exc_info()
+
+        record = logging.LogRecord(
+            name="test",
+            level=logging.ERROR,
+            pathname="test.py",
+            lineno=1,
+            msg="error with code",
+            args=None,
+            exc_info=exc_info,
+        )
+        record.code = "ERR_CODE_001"
+
+        output = formatter.format(record)
+        parsed = json.loads(output)
+        assert parsed["error"]["code"] == "ERR_CODE_001"
+
+
 class TestLogHttp:
     """log_http() -- HTTP 구조화 로그"""
 

@@ -143,6 +143,99 @@ class TestBuildPrompt:
         assert "문제 정보:" not in prompt
 
 
+class TestAnalyzeCodeRateLimitError:
+    """6. analyze_code() -- RateLimitError: fallback 반환 + record_failure"""
+
+    @pytest.mark.asyncio
+    async def test_rate_limit_error_returns_delayed(
+        self, client, mock_anthropic, mock_circuit_breaker
+    ):
+        mock_anthropic_mod, mock_client = mock_anthropic
+        # RateLimitError를 실제 Exception 서브클래스로 만들어서 raise
+        mock_client.messages.create.side_effect = mock_anthropic_mod.RateLimitError(
+            "Rate limit exceeded"
+        )
+
+        result = await client.analyze_code(
+            code='print("hello")',
+            language='python',
+        )
+
+        assert result["status"] == "delayed"
+        assert "일시적" in result["feedback"]
+        mock_circuit_breaker.record_failure.assert_called_once()
+
+
+class TestParseResponseMarkdown:
+    """_parse_response() -- 마크다운 코드블록 파싱"""
+
+    def test_parse_markdown_code_block(self):
+        from src.claude_client import ClaudeClient
+        with patch("src.claude_client.anthropic"), \
+             patch("src.claude_client.circuit_breaker"), \
+             patch("src.claude_client.settings") as mock_settings:
+            mock_settings.anthropic_api_key = "test-key"
+            c = ClaudeClient()
+
+        import json
+        payload = json.dumps({
+            "totalScore": 75,
+            "summary": "마크다운 블록 테스트",
+            "categories": [{"name": "style", "score": 75, "comment": "ok"}],
+            "optimizedCode": None,
+        })
+        raw = f"```json\n{payload}\n```"
+        result = c._parse_response(raw)
+        assert result["status"] == "completed"
+        assert result["score"] == 75
+
+    def test_parse_invalid_json_returns_raw(self):
+        from src.claude_client import ClaudeClient
+        with patch("src.claude_client.anthropic"), \
+             patch("src.claude_client.circuit_breaker"), \
+             patch("src.claude_client.settings") as mock_settings:
+            mock_settings.anthropic_api_key = "test-key"
+            c = ClaudeClient()
+
+        result = c._parse_response("not valid json {{{")
+        assert result["status"] == "completed"
+        assert result["score"] == 0
+        assert result["feedback"] == "not valid json {{{"
+
+    def test_parse_plain_json_no_backticks(self):
+        """마크다운 없이 순수 JSON 파싱"""
+        from src.claude_client import ClaudeClient
+        with patch("src.claude_client.anthropic"), \
+             patch("src.claude_client.circuit_breaker"), \
+             patch("src.claude_client.settings") as mock_settings:
+            mock_settings.anthropic_api_key = "test-key"
+            c = ClaudeClient()
+
+        import json
+        payload = json.dumps({
+            "totalScore": 90,
+            "summary": "plain json",
+            "categories": [],
+            "optimizedCode": "optimized",
+        })
+        result = c._parse_response(payload)
+        assert result["status"] == "completed"
+        assert result["score"] == 90
+        assert result["optimized_code"] == "optimized"
+
+    @pytest.mark.asyncio
+    async def test_empty_content_returns_completed(self, client, mock_anthropic, mock_circuit_breaker):
+        """빈 content 처리 -- raw_text='' 로 파싱 시 completed 반환"""
+        _, mock_client = mock_anthropic
+        mock_message = MagicMock()
+        mock_message.content = []
+        mock_client.messages.create.return_value = mock_message
+
+        result = await client.analyze_code(code="x=1", language="python")
+        # empty content => raw_text="" => json decode fails => fallback to raw
+        assert result["status"] == "completed"
+
+
 class TestSecurityCodeLogLimit:
     """5. 보안: 코드 로그 50자 제한"""
 

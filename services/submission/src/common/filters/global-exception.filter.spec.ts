@@ -139,4 +139,56 @@ describe('GlobalExceptionFilter', () => {
       }),
     );
   });
+
+  it('HttpException response가 null이면 else 분기(string response)로 처리한다', () => {
+    // typeof null === 'object' 이지만 null !== null 조건 실패 → else 분기
+    // getResponse()가 null을 반환하는 HttpException을 시뮬레이션
+    const exception = new HttpException('', HttpStatus.BAD_REQUEST);
+    jest.spyOn(exception, 'getResponse').mockReturnValue(null as unknown as string);
+
+    filter.catch(exception, mockHost);
+
+    expect(mockStatus).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+    expect(mockJson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        statusCode: HttpStatus.BAD_REQUEST,
+      }),
+    );
+  });
+
+  it('object response에 error 키 없고 HttpStatus에 없는 statusCode이면 "Error" 폴백 사용', () => {
+    // HttpStatus에 존재하지 않는 커스텀 status code → HttpStatus[statusCode]가 undefined → 'Error' 폴백
+    const customStatusCode = 599; // HttpStatus enum에 없는 값
+    const exception = new HttpException({ message: 'custom error' }, customStatusCode);
+
+    filter.catch(exception, mockHost);
+
+    expect(mockStatus).toHaveBeenCalledWith(customStatusCode);
+    expect(mockJson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        statusCode: customStatusCode,
+        message: 'custom error',
+        error: 'Error',
+      }),
+    );
+  });
+
+  it('string response이고 HttpStatus에 없는 statusCode이면 else 분기에서 "Error" 폴백 사용', () => {
+    // else 분기 (string response) + HttpStatus[statusCode] undefined → 'Error' 폴백
+    const customStatusCode = 598;
+    const exception = new HttpException('Custom Error', customStatusCode);
+    // getResponse()가 string을 반환하도록 (NestJS의 string 첫 인수는 string response)
+    jest.spyOn(exception, 'getResponse').mockReturnValue('Custom Error');
+
+    filter.catch(exception, mockHost);
+
+    expect(mockStatus).toHaveBeenCalledWith(customStatusCode);
+    expect(mockJson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        statusCode: customStatusCode,
+        message: 'Custom Error',
+        error: 'Error',
+      }),
+    );
+  });
 });

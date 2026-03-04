@@ -628,6 +628,42 @@ describe('SubmissionService', () => {
 
       expect(result.byWeek.map((w) => w.week)).toEqual(['2월4주차', '3월1주차', '3월2주차']);
     });
+
+    it('byWeekPerUser 주차 정렬 (parseWeekKey)', async () => {
+      repo.count.mockResolvedValue(20);
+      mockQb.getRawMany
+        .mockResolvedValueOnce([])  // byWeek
+        .mockResolvedValueOnce([
+          { userId: 'u1', week: '3월2주차', count: 3 },
+          { userId: 'u2', week: '2월1주차', count: 5 },
+          { userId: 'u1', week: '3월1주차', count: 2 },
+        ])  // byWeekPerUser
+        .mockResolvedValueOnce([]);  // byMember
+      repo.find.mockResolvedValue([]);
+
+      const result = await service.getStudyStats('study-uuid-1');
+
+      expect(result.byWeekPerUser.map((w) => w.week)).toEqual(['2월1주차', '3월1주차', '3월2주차']);
+    });
+
+    it('parseWeekKey — 패턴에 맞지 않는 week 문자열은 0으로 처리한다', async () => {
+      repo.count.mockResolvedValue(5);
+      // week 값이 정규식 패턴에 맞지 않는 케이스 포함
+      mockQb.getRawMany
+        .mockResolvedValueOnce([
+          { week: 'invalid-format', count: 3 },
+          { week: '3월1주차', count: 5 },
+        ])  // byWeek (invalid + valid 혼합)
+        .mockResolvedValueOnce([])  // byWeekPerUser
+        .mockResolvedValueOnce([]);  // byMember
+      repo.find.mockResolvedValue([]);
+
+      const result = await service.getStudyStats('study-uuid-1');
+
+      // invalid-format 은 parseWeekKey=0 이므로 앞에 정렬됨
+      expect(result.byWeek[0].week).toBe('invalid-format');
+      expect(result.byWeek[1].week).toBe('3월1주차');
+    });
   });
 
   // ─── 14. create() — 지각 제출 (checkLateSubmission) ───────────
@@ -779,6 +815,42 @@ describe('SubmissionService', () => {
       const result = await service.findByStudyAndUser('study-uuid-1', 'user-1');
 
       expect(result).toEqual([]);
+    });
+  });
+
+  // ─── 17. create() — 마감 시간이 미래 (isLate=false) ─────────────
+  describe('create() — 마감 시간이 미래인 경우', () => {
+    it('마감 시간이 미래이면 isLate=false로 저장', async () => {
+      const futureDate = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString(); // 1주일 후
+
+      const fetchMock = jest.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ github_connected: true, github_username: 'test-user' }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ data: { deadline: futureDate, status: 'active' } }),
+        });
+      global.fetch = fetchMock;
+
+      const saved = createMockSubmission({ isLate: false });
+      repo.findOne.mockResolvedValue(null);
+      repo.create.mockReturnValue(saved);
+      repo.save.mockResolvedValue(saved);
+      sagaOrchestrator.advanceToGitHubQueued.mockResolvedValue(undefined);
+
+      const dto: CreateSubmissionDto = {
+        problemId: 'problem-uuid-1',
+        language: 'python',
+        code: 'print("future")',
+      };
+
+      await service.create(dto, 'user-1', 'study-uuid-1');
+
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ isLate: false }),
+      );
     });
   });
 });

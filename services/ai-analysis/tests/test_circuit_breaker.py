@@ -145,3 +145,51 @@ class TestCanExecuteOpen:
 
         assert cb.state == CircuitState.OPEN
         assert cb.can_execute() is False
+
+
+class TestSetStateChangeCallback:
+    """set_state_change_callback() 및 _notify_state_change() 콜백 호출"""
+
+    def test_callback_registered_and_invoked_on_state_change(self, cb: CircuitBreaker):
+        """콜백 등록 후 상태 전이 시 호출 확인"""
+        called_with = []
+
+        def my_callback(state_value: str):
+            called_with.append(state_value)
+
+        cb.set_state_change_callback(my_callback)
+        assert cb._on_state_change is my_callback
+
+        # threshold=5 실패 → OPEN (콜백 호출)
+        for _ in range(5):
+            cb.record_failure()
+
+        assert called_with == ["OPEN"]
+
+    def test_notify_without_callback_does_not_raise(self, cb: CircuitBreaker):
+        """콜백 없으면 _notify_state_change() 호출해도 예외 없음"""
+        assert cb._on_state_change is None
+        cb._notify_state_change()  # 예외 없어야 함
+
+    def test_callback_called_on_half_open_to_closed(self, cb: CircuitBreaker):
+        """HALF_OPEN → CLOSED 전이 시 콜백 호출"""
+        state_changes = []
+        cb.set_state_change_callback(lambda s: state_changes.append(s))
+
+        cb.state = CircuitState.HALF_OPEN
+        cb.half_open_successes = 0
+        # 2회 성공 → CLOSED
+        cb.record_success()
+        cb.record_success()
+
+        assert "CLOSED" in state_changes
+
+    def test_callback_called_on_half_open_to_open_failure(self, cb: CircuitBreaker):
+        """HALF_OPEN → OPEN 전이 시 콜백 호출"""
+        state_changes = []
+        cb.set_state_change_callback(lambda s: state_changes.append(s))
+
+        cb.state = CircuitState.HALF_OPEN
+        cb.record_failure()
+
+        assert "OPEN" in state_changes
