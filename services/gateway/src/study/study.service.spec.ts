@@ -201,18 +201,22 @@ describe('StudyService', () => {
   });
 
   // ============================
-  // 4. getStudyById — 비멤버 접근 → ForbiddenException
+  // 4. getStudyById — Guard가 멤버 검증, 서비스는 스터디 조회만
   // ============================
   describe('getStudyById', () => {
-    it('비멤버 접근 → ForbiddenException', async () => {
-      memberRepository.findOne.mockResolvedValue(null);
+    it('존재하지 않는 스터디 → NotFoundException', async () => {
+      studyRepository.findOne.mockResolvedValue(null);
 
       await expect(
-        service.getStudyById(STUDY_ID, 'non-member-user'),
-      ).rejects.toThrow(ForbiddenException);
-      await expect(
-        service.getStudyById(STUDY_ID, 'non-member-user'),
-      ).rejects.toThrow('해당 스터디의 멤버가 아닙니다.');
+        service.getStudyById(STUDY_ID, USER_ID),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('정상 조회 — 스터디 반환', async () => {
+      studyRepository.findOne.mockResolvedValue(mockStudy);
+
+      const result = await service.getStudyById(STUDY_ID, USER_ID);
+      expect(result.id).toBe(STUDY_ID);
     });
   });
 
