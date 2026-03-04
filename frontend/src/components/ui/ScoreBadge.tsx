@@ -4,7 +4,7 @@
  * @layer component
  */
 
-import type { ReactElement } from 'react';
+import React, { type ReactElement } from 'react';
 import { cn } from '@/lib/utils';
 
 interface ScoreBadgeProps {
@@ -18,7 +18,7 @@ function getVariant(score: number): string {
   return 'bg-error-soft text-error';
 }
 
-export function ScoreBadge({ score, className }: ScoreBadgeProps): ReactElement {
+export const ScoreBadge = React.memo(function ScoreBadge({ score, className }: ScoreBadgeProps): ReactElement {
   return (
     <span
       aria-label={`AI 점수 ${score}점`}
@@ -31,4 +31,4 @@ export function ScoreBadge({ score, className }: ScoreBadgeProps): ReactElement 
       {score}점
     </span>
   );
-}
+});

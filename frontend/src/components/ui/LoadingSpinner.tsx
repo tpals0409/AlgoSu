@@ -35,16 +35,16 @@ export interface LoadingSpinnerProps
   readonly label?: string;
 }
 
-function LoadingSpinner({ className, size, color, label = '로딩 중...', ...props }: LoadingSpinnerProps): React.ReactElement {
+const LoadingSpinner = React.memo(function LoadingSpinner({ className, size, color, label = '로딩 중...', ...props }: LoadingSpinnerProps): React.ReactElement {
   return (
     <span role="status" aria-label={label} className={cn('inline-flex items-center justify-center', className)} {...props}>
       <span aria-hidden="true" className={cn(spinnerVariants({ size, color }))} />
       <span className="sr-only">{label}</span>
     </span>
   );
-}
+});
 
-function FullscreenSpinner({ label = '로딩 중...' }: { readonly label?: string }): React.ReactElement {
+const FullscreenSpinner = React.memo(function FullscreenSpinner({ label = '로딩 중...' }: { readonly label?: string }): React.ReactElement {
   return (
     <div
       role="status"
@@ -55,10 +55,10 @@ function FullscreenSpinner({ label = '로딩 중...' }: { readonly label?: strin
       <p className="text-sm font-medium text-text-3">{label}</p>
     </div>
   );
-}
+});
 
-function InlineSpinner({ className }: { readonly className?: string }): React.ReactElement {
+const InlineSpinner = React.memo(function InlineSpinner({ className }: { readonly className?: string }): React.ReactElement {
   return <LoadingSpinner size="sm" color="current" className={className} label="처리 중..." />;
-}
+});
 
 export { LoadingSpinner, FullscreenSpinner, InlineSpinner };

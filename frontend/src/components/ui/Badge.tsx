@@ -48,7 +48,7 @@ export interface BadgeProps
  * 범용 뱃지 컴포넌트 (상태/정보 표시)
  * @domain common
  */
-function Badge({ className, variant, dot, children, ...props }: BadgeProps): React.ReactElement {
+const Badge = React.memo(function Badge({ className, variant, dot, children, ...props }: BadgeProps): React.ReactElement {
   return (
     <span className={cn(badgeVariants({ variant }), className)} {...props}>
       {dot && (
@@ -60,6 +60,6 @@ function Badge({ className, variant, dot, children, ...props }: BadgeProps): Rea
       {children}
     </span>
   );
-}
+});
 
 export { Badge, badgeVariants };

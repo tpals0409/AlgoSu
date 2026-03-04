@@ -54,7 +54,7 @@ export interface StatusIndicatorProps
   readonly customLabel?: string;
 }
 
-function StatusIndicator({ className, status, size = 'md', showLabel = true, customLabel, ...props }: StatusIndicatorProps): React.ReactElement {
+const StatusIndicator = React.memo(function StatusIndicator({ className, status, size = 'md', showLabel = true, customLabel, ...props }: StatusIndicatorProps): React.ReactElement {
   const label = customLabel ?? STATUS_LABELS[status];
   const dotSize = DOT_SIZE_CLASSES[size ?? 'md'];
   return (
@@ -63,6 +63,6 @@ function StatusIndicator({ className, status, size = 'md', showLabel = true, cus
       {showLabel && <span>{label}</span>}
     </span>
   );
-}
+});
 
 export { StatusIndicator };

@@ -10,7 +10,7 @@
 
 'use client';
 
-import { useRef, useEffect, type ReactElement } from 'react';
+import { useRef, useEffect, useMemo, type ReactElement } from 'react';
 import { MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -46,18 +46,6 @@ const HL_BORDER: Record<string, string> = {
   error: 'border-l-error',
 };
 
-// ─── HELPERS ──────────────────────────────
-
-/** 라인 번호에 해당하는 하이라이트 찾기 */
-function findHighlight(
-  lineNum: number,
-  highlights: CodeHighlight[],
-): CodeHighlight | undefined {
-  return highlights.find(
-    (h) => lineNum >= h.startLine && lineNum <= h.endLine,
-  );
-}
-
 // ─── RENDER ───────────────────────────────
 
 /**
@@ -74,6 +62,17 @@ export function CodePanel({
 }: CodePanelProps): ReactElement {
   const codeRef = useRef<HTMLDivElement>(null);
   const lines = code.split('\n');
+
+  // 하이라이트 맵 메모이제이션 — O(lines) 탐색을 O(1) 룩업으로 최적화
+  const highlightMap = useMemo(() => {
+    const map = new Map<number, CodeHighlight>();
+    for (const h of highlights) {
+      for (let line = h.startLine; line <= h.endLine; line++) {
+        map.set(line, h);
+      }
+    }
+    return map;
+  }, [highlights]);
 
   // 선택된 라인으로 자동 스크롤
   useEffect(() => {
@@ -103,7 +102,7 @@ export function CodePanel({
         {lines.map((line, idx) => {
           const lineNum = idx + 1;
           const isSelected = selectedLine === lineNum;
-          const hl = findHighlight(lineNum, highlights);
+          const hl = highlightMap.get(lineNum);
           const hasComment = commentLines.includes(lineNum);
 
           return (

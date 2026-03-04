@@ -31,6 +31,7 @@ import { Notification } from './notification/notification.entity';
 import { AvatarModule } from './avatar/avatar.module';
 import { ReviewProxyModule } from './review/review.module';
 import { StudyNoteProxyModule } from './study-note/study-note.module';
+import { HealthController } from './health.controller';
 
 @Module({
   imports: [
@@ -79,6 +80,7 @@ import { StudyNoteProxyModule } from './study-note/study-note.module';
     ExternalModule,
     ProxyModule,
   ],
+  controllers: [HealthController],
   providers: [
     JwtMiddleware,
     RedisThrottlerStorage,

@@ -4,7 +4,7 @@
  * @layer component
  */
 
-import type { ReactElement } from 'react';
+import React, { type ReactElement } from 'react';
 import { cn } from '@/lib/utils';
 
 interface LangBadgeProps {
@@ -12,7 +12,7 @@ interface LangBadgeProps {
   readonly className?: string;
 }
 
-export function LangBadge({ language, className }: LangBadgeProps): ReactElement {
+export const LangBadge = React.memo(function LangBadge({ language, className }: LangBadgeProps): ReactElement {
   return (
     <span
       aria-label={`프로그래밍 언어 ${language}`}
@@ -24,4 +24,4 @@ export function LangBadge({ language, className }: LangBadgeProps): ReactElement
       {language}
     </span>
   );
-}
+});

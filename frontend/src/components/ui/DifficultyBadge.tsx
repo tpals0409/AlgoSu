@@ -42,7 +42,7 @@ export interface DifficultyBadgeProps
   readonly showLabel?: boolean;
 }
 
-function DifficultyBadge({ className, difficulty, level, showDot = true, showLabel = true, ...props }: DifficultyBadgeProps): React.ReactElement {
+const DifficultyBadge = React.memo(function DifficultyBadge({ className, difficulty, level, showDot = true, showLabel = true, ...props }: DifficultyBadgeProps): React.ReactElement {
   const label = DIFFICULTY_LABELS[difficulty];
   const tier = level && level > 0 ? ` ${5 - (level - 1) % 5}` : '';
   return (
@@ -51,6 +51,6 @@ function DifficultyBadge({ className, difficulty, level, showDot = true, showLab
       {showLabel && <span>{label}{tier}</span>}
     </span>
   );
-}
+});
 
 export { DifficultyBadge, difficultyBadgeVariants };

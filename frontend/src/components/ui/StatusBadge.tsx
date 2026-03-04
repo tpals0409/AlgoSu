@@ -4,7 +4,7 @@
  * @layer component
  */
 
-import type { ReactElement } from 'react';
+import React, { type ReactElement } from 'react';
 import { cn } from '@/lib/utils';
 
 type StatusVariant = 'success' | 'warning' | 'error' | 'info' | 'muted';
@@ -23,7 +23,7 @@ const VARIANT_STYLES: Record<StatusVariant, string> = {
   muted: 'bg-muted-soft text-muted',
 };
 
-export function StatusBadge({
+export const StatusBadge = React.memo(function StatusBadge({
   label,
   variant = 'muted',
   className,
@@ -40,4 +40,4 @@ export function StatusBadge({
       {label}
     </span>
   );
-}
+});
