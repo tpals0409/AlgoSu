@@ -1,7 +1,7 @@
 {
   "name": "algosu-problem-service",
   "version": "1.0.0",
-  "description": "AlgoSu Problem Service — 주차별 문제 관리, 마감 시간 제어",
+  "description": "AlgoSu Problem Service \u2014 \uc8fc\ucc28\ubcc4 \ubb38\uc81c \uad00\ub9ac, \ub9c8\uac10 \uc2dc\uac04 \uc81c\uc5b4",
   "private": true,
   "scripts": {
     "build": "nest build",
@@ -29,6 +29,10 @@
     "rxjs": "^7.8.1",
     "typeorm": "^0.3.17",
     "uuid": "^9.0.1"
+  },
+  "overrides": {
+    "glob@>=10.2.0 <10.5.0": "10.5.0",
+    "minimatch@>=9.0.0 <9.0.7": "9.0.7"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
