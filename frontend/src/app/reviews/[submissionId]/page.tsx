@@ -209,8 +209,8 @@ export default function CodeReviewPage(): ReactElement {
     });
   };
 
-  const handleReply = async (commentId: number, content: string): Promise<void> => {
-    await reviewApi.createReply({ commentId, content });
+  const handleReply = async (commentPublicId: string, content: string): Promise<void> => {
+    await reviewApi.createReply({ commentPublicId, content });
     const updated = await reviewApi.listComments(submissionId);
     setComments(updated);
   };

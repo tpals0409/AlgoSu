@@ -3,13 +3,14 @@
  * @domain review
  * @layer dto
  */
-import { IsInt, IsString, MaxLength } from 'class-validator';
+import { IsUUID, IsString, IsNotEmpty, MaxLength } from 'class-validator';
 
 export class CreateReplyDto {
-  @IsInt()
-  commentId!: number;
+  @IsUUID()
+  commentPublicId!: string;
 
   @IsString()
+  @IsNotEmpty()
   @MaxLength(5000)
   content!: string;
 }

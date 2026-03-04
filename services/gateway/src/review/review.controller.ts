@@ -60,13 +60,13 @@ export class ReviewProxyController {
    * @api PATCH /api/reviews/comments/:id
    * @guard jwt-auth
    */
-  @Patch('comments/:id')
+  @Patch('comments/:publicId')
   async updateComment(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('publicId', ParseUUIDPipe) publicId: string,
     @Req() req: Request,
     @Body() body: unknown,
   ) {
-    return this.proxyToSubmission(req, `/review/comments/${id}`, 'PATCH', body);
+    return this.proxyToSubmission(req, `/review/comments/${publicId}`, 'PATCH', body);
   }
 
   /**
@@ -74,13 +74,13 @@ export class ReviewProxyController {
    * @api DELETE /api/reviews/comments/:id
    * @guard jwt-auth
    */
-  @Delete('comments/:id')
+  @Delete('comments/:publicId')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteComment(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('publicId', ParseUUIDPipe) publicId: string,
     @Req() req: Request,
   ): Promise<void> {
-    await this.proxyToSubmission(req, `/review/comments/${id}`, 'DELETE');
+    await this.proxyToSubmission(req, `/review/comments/${publicId}`, 'DELETE');
   }
 
   // ─── REPLIES ───────────────────────────────
@@ -102,8 +102,8 @@ export class ReviewProxyController {
    */
   @Get('replies')
   async findReplies(@Req() req: Request) {
-    const commentId = req.query['commentId'] as string | undefined;
-    const params = commentId ? `?commentId=${commentId}` : '';
+    const commentPublicId = req.query['commentPublicId'] as string | undefined;
+    const params = commentPublicId ? `?commentPublicId=${commentPublicId}` : '';
     return this.proxyToSubmission(req, `/review/replies${params}`, 'GET');
   }
 

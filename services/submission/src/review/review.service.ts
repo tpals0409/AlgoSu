@@ -76,11 +76,11 @@ export class ReviewService {
    * @guard submission-owner
    */
   async updateComment(
-    id: number,
+    publicId: string,
     dto: UpdateCommentDto,
     userId: string,
   ): Promise<ReviewComment> {
-    const comment = await this.commentRepo.findOne({ where: { id } });
+    const comment = await this.commentRepo.findOne({ where: { publicId } });
     if (!comment) {
       throw new NotFoundException('댓글을 찾을 수 없습니다.');
     }
@@ -90,7 +90,7 @@ export class ReviewService {
 
     comment.content = dto.content;
     const updated = await this.commentRepo.save(comment);
-    this.logger.log(`댓글 수정: commentId=${id}`);
+    this.logger.log(`댓글 수정: commentPublicId=${publicId}`);
     return updated;
   }
 
@@ -99,8 +99,8 @@ export class ReviewService {
    * @domain review
    * @guard submission-owner
    */
-  async deleteComment(id: number, userId: string): Promise<void> {
-    const comment = await this.commentRepo.findOne({ where: { id } });
+  async deleteComment(publicId: string, userId: string): Promise<void> {
+    const comment = await this.commentRepo.findOne({ where: { publicId } });
     if (!comment) {
       throw new NotFoundException('댓글을 찾을 수 없습니다.');
     }
@@ -108,8 +108,8 @@ export class ReviewService {
       throw new ForbiddenException('본인의 댓글만 삭제할 수 있습니다.');
     }
 
-    await this.commentRepo.softDelete(id);
-    this.logger.log(`댓글 삭제(soft): commentId=${id}`);
+    await this.commentRepo.softDelete(comment.id);
+    this.logger.log(`댓글 삭제(soft): commentPublicId=${publicId}`);
   }
 
   // ─── REPLY CRUD ────────────────────────────
@@ -124,20 +124,20 @@ export class ReviewService {
     userId: string,
   ): Promise<ReviewReply> {
     const comment = await this.commentRepo.findOne({
-      where: { id: dto.commentId },
+      where: { publicId: dto.commentPublicId },
     });
     if (!comment) {
       throw new NotFoundException('원본 댓글을 찾을 수 없습니다.');
     }
 
     const reply = new ReviewReply();
-    reply.commentId = dto.commentId;
+    reply.commentId = comment.id;
     reply.authorId = userId;
     reply.content = dto.content;
 
     const saved = await this.replyRepo.save(reply);
     this.logger.log(
-      `답글 작성: replyId=${saved.publicId}, commentId=${dto.commentId}`,
+      `답글 작성: replyId=${saved.publicId}, commentPublicId=${dto.commentPublicId}`,
     );
     return saved;
   }
@@ -146,9 +146,15 @@ export class ReviewService {
    * 댓글별 대댓글 목록 — deletedAt IS NULL (soft-delete 필터)
    * @domain review
    */
-  async findRepliesByComment(commentId: number): Promise<ReviewReply[]> {
+  async findRepliesByCommentPublicId(commentPublicId: string): Promise<ReviewReply[]> {
+    const comment = await this.commentRepo.findOne({
+      where: { publicId: commentPublicId },
+    });
+    if (!comment) {
+      throw new NotFoundException('댓글을 찾을 수 없습니다.');
+    }
     return this.replyRepo.find({
-      where: { commentId },
+      where: { commentId: comment.id },
       order: { createdAt: 'ASC' },
     });
   }

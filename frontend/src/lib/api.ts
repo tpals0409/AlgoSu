@@ -482,11 +482,11 @@ export const reviewApi = {
   deleteComment: (id: string): Promise<void> =>
     fetchApi(`/api/reviews/comments/${id}`, { method: 'DELETE' }),
 
-  createReply: (data: { commentId: number; content: string }): Promise<ReviewReply> =>
+  createReply: (data: { commentPublicId: string; content: string }): Promise<ReviewReply> =>
     fetchApi('/api/reviews/replies', { method: 'POST', body: JSON.stringify(data) }),
 
-  listReplies: (commentId: number): Promise<ReviewReply[]> =>
-    fetchApi(`/api/reviews/replies?commentId=${commentId}`),
+  listReplies: (commentPublicId: string): Promise<ReviewReply[]> =>
+    fetchApi(`/api/reviews/replies?commentPublicId=${encodeURIComponent(commentPublicId)}`),
 };
 
 // ── Study Notes API ──

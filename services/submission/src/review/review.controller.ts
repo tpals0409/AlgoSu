@@ -15,7 +15,7 @@ import {
   Query,
   Headers,
   UseGuards,
-  ParseIntPipe,
+  ParseUUIDPipe,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -55,7 +55,7 @@ export class ReviewController {
    */
   @Get('comments')
   async findComments(
-    @Query('submissionId') submissionId: string,
+    @Query('submissionId', ParseUUIDPipe) submissionId: string,
     @Headers('x-study-id') studyId: string,
   ) {
     const comments = await this.reviewService.findCommentsBySubmission(
@@ -70,13 +70,13 @@ export class ReviewController {
    * @api PATCH /review/comments/:id
    * @guard study-member, submission-owner
    */
-  @Patch('comments/:id')
+  @Patch('comments/:publicId')
   async updateComment(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('publicId', ParseUUIDPipe) publicId: string,
     @Body() dto: UpdateCommentDto,
     @Headers('x-user-id') userId: string,
   ) {
-    const comment = await this.reviewService.updateComment(id, dto, userId);
+    const comment = await this.reviewService.updateComment(publicId, dto, userId);
     return { data: comment };
   }
 
@@ -85,13 +85,13 @@ export class ReviewController {
    * @api DELETE /review/comments/:id
    * @guard study-member, submission-owner
    */
-  @Delete('comments/:id')
+  @Delete('comments/:publicId')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteComment(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('publicId', ParseUUIDPipe) publicId: string,
     @Headers('x-user-id') userId: string,
   ): Promise<void> {
-    await this.reviewService.deleteComment(id, userId);
+    await this.reviewService.deleteComment(publicId, userId);
   }
 
   // ─── REPLIES ───────────────────────────────
@@ -117,9 +117,9 @@ export class ReviewController {
    */
   @Get('replies')
   async findReplies(
-    @Query('commentId', ParseIntPipe) commentId: number,
+    @Query('commentPublicId', ParseUUIDPipe) commentPublicId: string,
   ) {
-    const replies = await this.reviewService.findRepliesByComment(commentId);
+    const replies = await this.reviewService.findRepliesByCommentPublicId(commentPublicId);
     return { data: replies };
   }
 }

@@ -31,7 +31,7 @@ interface CommentThreadProps {
   readonly currentUserId: string;
   readonly onEdit: (publicId: string, content: string) => void;
   readonly onDelete: (publicId: string) => void;
-  readonly onReply: (commentId: number, content: string) => Promise<void>;
+  readonly onReply: (commentPublicId: string, content: string) => Promise<void>;
   readonly selectedLine?: number | null;
 }
 
@@ -60,7 +60,7 @@ interface CommentItemProps {
   readonly currentUserId: string;
   readonly onEdit: (publicId: string, content: string) => void;
   readonly onDelete: (publicId: string) => void;
-  readonly onReply: (commentId: number, content: string) => Promise<void>;
+  readonly onReply: (commentPublicId: string, content: string) => Promise<void>;
 }
 
 function CommentItem({
@@ -222,7 +222,7 @@ function CommentItem({
             <div className="mt-2 pl-3">
               <CommentForm
                 onSubmit={async (content) => {
-                  await onReply(comment.id, content);
+                  await onReply(comment.publicId, content);
                 }}
               />
             </div>
