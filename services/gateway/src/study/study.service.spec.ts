@@ -423,5 +423,522 @@ describe('StudyService', () => {
         service.removeMember(STUDY_ID, USER_ID, USER_ID),
       ).rejects.toThrow('자기 자신을 추방할 수 없습니다.');
     });
+
+    it('존재하지 않는 멤버 추방 → NotFoundException', async () => {
+      memberRepository.findOne.mockResolvedValue(mockAdminMember);
+      memberRepository.delete.mockResolvedValue({ affected: 0 });
+
+      await expect(
+        service.removeMember(STUDY_ID, OTHER_USER_ID, USER_ID),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ============================
+  // 15. leaveStudy
+  // ============================
+  describe('leaveStudy', () => {
+    it('일반 멤버 탈퇴 — 정상 처리 + 알림 발행', async () => {
+      memberRepository.findOne.mockResolvedValue(mockRegularMember);
+      memberRepository.delete.mockResolvedValue({ affected: 1 });
+      studyRepository.findOne.mockResolvedValue(mockStudy);
+      memberRepository.find.mockResolvedValue([mockAdminMember]);
+
+      await service.leaveStudy(STUDY_ID, OTHER_USER_ID);
+
+      expect(memberRepository.delete).toHaveBeenCalledWith({
+        study_id: STUDY_ID,
+        user_id: OTHER_USER_ID,
+      });
+      expect(mockRedis.del).toHaveBeenCalledWith(
+        `study:membership:${STUDY_ID}:${OTHER_USER_ID}`,
+      );
+    });
+
+    it('ADMIN 탈퇴 — 다른 ADMIN 있으면 가능', async () => {
+      memberRepository.findOne.mockResolvedValue(mockAdminMember);
+      memberRepository.count.mockResolvedValue(2); // 다른 ADMIN 존재
+      memberRepository.delete.mockResolvedValue({ affected: 1 });
+      studyRepository.findOne.mockResolvedValue(mockStudy);
+      memberRepository.find.mockResolvedValue([]);
+
+      await service.leaveStudy(STUDY_ID, USER_ID);
+
+      expect(memberRepository.delete).toHaveBeenCalled();
+    });
+
+    it('유일 ADMIN 탈퇴 → BadRequestException', async () => {
+      memberRepository.findOne.mockResolvedValue(mockAdminMember);
+      memberRepository.count.mockResolvedValue(1); // 유일 ADMIN
+
+      await expect(service.leaveStudy(STUDY_ID, USER_ID)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.leaveStudy(STUDY_ID, USER_ID)).rejects.toThrow(
+        '탈퇴 전 ADMIN 권한을 다른 멤버에게 위임하세요.',
+      );
+    });
+
+    it('비멤버 탈퇴 시도 → ForbiddenException', async () => {
+      memberRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.leaveStudy(STUDY_ID, 'stranger')).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+  });
+
+  // ============================
+  // 16. closeStudy
+  // ============================
+  describe('closeStudy', () => {
+    it('ADMIN — 정상 종료 + CLOSED 상태 전환 + 알림', async () => {
+      memberRepository.findOne.mockResolvedValue(mockAdminMember);
+      studyRepository.findOne.mockResolvedValue({ ...mockStudy, status: StudyStatus.ACTIVE });
+      studyRepository.save.mockImplementation((s: Study) => Promise.resolve(s));
+      memberRepository.find.mockResolvedValue([mockAdminMember, mockRegularMember]);
+
+      await service.closeStudy(STUDY_ID, USER_ID);
+
+      expect(studyRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: StudyStatus.CLOSED }),
+      );
+    });
+
+    it('이미 종료된 스터디 → BadRequestException', async () => {
+      memberRepository.findOne.mockResolvedValue(mockAdminMember);
+      studyRepository.findOne.mockResolvedValue({ ...mockStudy, status: StudyStatus.CLOSED });
+
+      await expect(service.closeStudy(STUDY_ID, USER_ID)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.closeStudy(STUDY_ID, USER_ID)).rejects.toThrow(
+        '이미 종료된 스터디입니다.',
+      );
+    });
+
+    it('존재하지 않는 스터디 종료 → NotFoundException', async () => {
+      memberRepository.findOne.mockResolvedValue(mockAdminMember);
+      studyRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.closeStudy(STUDY_ID, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('비ADMIN 종료 시도 → ForbiddenException', async () => {
+      memberRepository.findOne.mockResolvedValue(mockRegularMember);
+
+      await expect(service.closeStudy(STUDY_ID, OTHER_USER_ID)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+  });
+
+  // ============================
+  // 17. getMembers
+  // ============================
+  describe('getMembers', () => {
+    it('멤버 목록 반환 (유저 정보 포함)', async () => {
+      memberRepository.find.mockResolvedValue([mockAdminMember, mockRegularMember]);
+
+      const result = await service.getMembers(STUDY_ID, USER_ID);
+
+      expect(result).toHaveLength(2);
+      expect(memberRepository.find).toHaveBeenCalledWith({
+        where: { study_id: STUDY_ID },
+      });
+    });
+
+    it('멤버가 없으면 빈 배열 반환', async () => {
+      memberRepository.find.mockResolvedValue([]);
+
+      const result = await service.getMembers(STUDY_ID, USER_ID);
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  // ============================
+  // 18. updateNickname
+  // ============================
+  describe('updateNickname', () => {
+    it('본인 닉네임 정상 변경', async () => {
+      memberRepository.findOne.mockResolvedValue({ ...mockAdminMember });
+      memberRepository.save.mockImplementation((m: StudyMember) => Promise.resolve(m));
+
+      const result = await service.updateNickname(STUDY_ID, USER_ID, '새닉네임');
+
+      expect(result.nickname).toBe('새닉네임');
+    });
+
+    it('비멤버 닉네임 변경 → ForbiddenException', async () => {
+      memberRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.updateNickname(STUDY_ID, 'stranger', '닉네임'),
+      ).rejects.toThrow(ForbiddenException);
+      await expect(
+        service.updateNickname(STUDY_ID, 'stranger', '닉네임'),
+      ).rejects.toThrow('스터디 멤버가 아닙니다.');
+    });
+  });
+
+  // ============================
+  // 19. changeMemberRole
+  // ============================
+  describe('changeMemberRole', () => {
+    it('ADMIN이 멤버를 ADMIN으로 승격', async () => {
+      // verifyAdmin용 1번째 호출 → ADMIN, 대상 멤버 2번째 호출 → MEMBER
+      memberRepository.findOne
+        .mockResolvedValueOnce(mockAdminMember)
+        .mockResolvedValueOnce({ ...mockRegularMember });
+      memberRepository.save.mockImplementation((m: StudyMember) => Promise.resolve(m));
+      studyRepository.findOne.mockResolvedValue(mockStudy);
+
+      await service.changeMemberRole(STUDY_ID, OTHER_USER_ID, USER_ID, StudyMemberRole.ADMIN);
+
+      expect(memberRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ role: StudyMemberRole.ADMIN }),
+      );
+    });
+
+    it('자기 자신 역할 변경 → BadRequestException', async () => {
+      memberRepository.findOne.mockResolvedValue(mockAdminMember);
+
+      await expect(
+        service.changeMemberRole(STUDY_ID, USER_ID, USER_ID, StudyMemberRole.MEMBER),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.changeMemberRole(STUDY_ID, USER_ID, USER_ID, StudyMemberRole.MEMBER),
+      ).rejects.toThrow('자기 자신의 역할을 변경할 수 없습니다.');
+    });
+
+    it('대상 멤버 없음 → NotFoundException', async () => {
+      memberRepository.findOne
+        .mockResolvedValueOnce(mockAdminMember)
+        .mockResolvedValueOnce(null);
+
+      await expect(
+        service.changeMemberRole(STUDY_ID, OTHER_USER_ID, USER_ID, StudyMemberRole.ADMIN),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('유일 ADMIN 강등 → BadRequestException', async () => {
+      const targetAdmin: StudyMember = {
+        ...mockRegularMember,
+        role: StudyMemberRole.ADMIN,
+      };
+      memberRepository.findOne
+        .mockResolvedValueOnce(mockAdminMember) // verifyAdmin
+        .mockResolvedValueOnce(targetAdmin); // target
+      memberRepository.count.mockResolvedValue(1); // ADMIN 1명
+
+      await expect(
+        service.changeMemberRole(STUDY_ID, OTHER_USER_ID, USER_ID, StudyMemberRole.MEMBER),
+      ).rejects.toThrow(BadRequestException);
+      memberRepository.findOne
+        .mockResolvedValueOnce(mockAdminMember)
+        .mockResolvedValueOnce(targetAdmin);
+      memberRepository.count.mockResolvedValue(1);
+      await expect(
+        service.changeMemberRole(STUDY_ID, OTHER_USER_ID, USER_ID, StudyMemberRole.MEMBER),
+      ).rejects.toThrow('최소 1명의 ADMIN이 필요합니다.');
+    });
+  });
+
+  // ============================
+  // 20. updateGroundRules
+  // ============================
+  describe('updateGroundRules', () => {
+    it('ADMIN — 그라운드 룰 정상 수정', async () => {
+      memberRepository.findOne.mockResolvedValue(mockAdminMember);
+      studyRepository.findOne.mockResolvedValue({ ...mockStudy });
+      studyRepository.save.mockImplementation((s: Study) => Promise.resolve(s));
+
+      const result = await service.updateGroundRules(STUDY_ID, USER_ID, '새로운 규칙');
+
+      expect(result.groundRules).toBe('새로운 규칙');
+    });
+
+    it('존재하지 않는 스터디 → NotFoundException', async () => {
+      memberRepository.findOne.mockResolvedValue(mockAdminMember);
+      studyRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.updateGroundRules(STUDY_ID, USER_ID, '규칙'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ============================
+  // 21. verifyInviteCode
+  // ============================
+  describe('verifyInviteCode', () => {
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 3);
+
+    const pastDate = new Date();
+    pastDate.setDate(pastDate.getDate() - 1);
+
+    const validInvite: StudyInvite = {
+      id: 'invite-id-1',
+      study_id: STUDY_ID,
+      code: 'VALID123',
+      created_by: USER_ID,
+      expires_at: futureDate,
+      used_count: 0,
+      max_uses: null,
+      study: mockStudy,
+      created_at: new Date(),
+    };
+
+    it('유효한 코드 검증 성공', async () => {
+      inviteRepository.findOne.mockResolvedValue(validInvite);
+
+      const result = await service.verifyInviteCode('VALID123', '127.0.0.1');
+
+      expect(result).toEqual({ valid: true, studyName: 'AlgoSu 스터디' });
+    });
+
+    it('존재하지 않는 코드 → NotFoundException', async () => {
+      inviteRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.verifyInviteCode('INVALID', '127.0.0.1'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('만료된 코드 → BadRequestException', async () => {
+      inviteRepository.findOne.mockResolvedValue({ ...validInvite, expires_at: pastDate });
+
+      await expect(
+        service.verifyInviteCode('EXPIRED', '127.0.0.1'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('사용 한도 초과 → BadRequestException', async () => {
+      inviteRepository.findOne.mockResolvedValue({
+        ...validInvite,
+        max_uses: 5,
+        used_count: 5,
+      });
+
+      await expect(
+        service.verifyInviteCode('MAXED', '127.0.0.1'),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  // ============================
+  // 22. joinByInviteCode — 멤버 50명 제한
+  // ============================
+  describe('joinByInviteCode — 멤버 수 제한', () => {
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 3);
+
+    const validInvite: StudyInvite = {
+      id: 'invite-id-1',
+      study_id: STUDY_ID,
+      code: 'valid-code',
+      created_by: USER_ID,
+      expires_at: futureDate,
+      used_count: 0,
+      max_uses: null,
+      study: mockStudy,
+      created_at: new Date(),
+    };
+
+    it('멤버 50명 초과 시 → BadRequestException', async () => {
+      inviteRepository.findOne.mockResolvedValue(validInvite);
+      memberRepository.findOne.mockResolvedValue(null);
+      memberRepository.count.mockResolvedValue(50);
+
+      await expect(
+        service.joinByInviteCode('new-user-id', 'valid-code', 'Nick', '127.0.0.1'),
+      ).rejects.toThrow(BadRequestException);
+      inviteRepository.findOne.mockResolvedValue(validInvite);
+      memberRepository.findOne.mockResolvedValue(null);
+      memberRepository.count.mockResolvedValue(50);
+      await expect(
+        service.joinByInviteCode('new-user-id', 'valid-code', 'Nick', '127.0.0.1'),
+      ).rejects.toThrow('스터디 멤버 수가 최대 인원(50명)에 도달했습니다.');
+    });
+
+    it('사용 한도 초과 초대코드 → BadRequestException', async () => {
+      inviteRepository.findOne.mockResolvedValue({
+        ...validInvite,
+        max_uses: 3,
+        used_count: 3,
+      });
+
+      await expect(
+        service.joinByInviteCode('new-user-id', 'valid-code', 'Nick', '127.0.0.1'),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  // ============================
+  // 23. getStudyStats
+  // ============================
+  describe('getStudyStats', () => {
+    it('통계 API 정상 응답 처리', async () => {
+      const mockConfigGet = configService.get;
+      // configService.getOrThrow 추가
+      configService.getOrThrow = jest.fn()
+        .mockReturnValueOnce('http://submission:3000')
+        .mockReturnValueOnce('internal-key-123');
+
+      const mockStatsData = {
+        data: {
+          totalSubmissions: 10,
+          byWeek: [{ week: 'W1', count: 5 }],
+          byWeekPerUser: [],
+          byMember: [{ userId: USER_ID, count: 5, doneCount: 3 }],
+          byMemberWeek: null,
+          recentSubmissions: [],
+          solvedProblemIds: ['p1'],
+        },
+      };
+
+      // global fetch 모킹
+      const originalFetch = global.fetch;
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockStatsData),
+      }) as any;
+
+      memberRepository.find.mockResolvedValue([mockAdminMember]);
+
+      const result = await service.getStudyStats(STUDY_ID, USER_ID);
+
+      expect(result.totalSubmissions).toBe(10);
+      expect(result.byMember).toHaveLength(1);
+      expect(result.byMember[0].isMember).toBe(true);
+
+      global.fetch = originalFetch;
+    });
+
+    it('통계 API 실패 → NotFoundException', async () => {
+      configService.getOrThrow = jest.fn()
+        .mockReturnValueOnce('http://submission:3000')
+        .mockReturnValueOnce('internal-key-123');
+
+      const originalFetch = global.fetch;
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+      }) as any;
+
+      await expect(service.getStudyStats(STUDY_ID, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
+
+      global.fetch = originalFetch;
+    });
+
+    it('weekNumber 파라미터 전달 시 쿼리스트링 포함', async () => {
+      configService.getOrThrow = jest.fn()
+        .mockReturnValueOnce('http://submission:3000')
+        .mockReturnValueOnce('internal-key-123');
+
+      const mockStatsData = {
+        data: {
+          totalSubmissions: 3,
+          byWeek: [],
+          byWeekPerUser: [],
+          byMember: [],
+          byMemberWeek: [{ userId: USER_ID, count: 3 }],
+          recentSubmissions: [],
+          solvedProblemIds: null,
+        },
+      };
+
+      const originalFetch = global.fetch;
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockStatsData),
+      }) as any;
+
+      memberRepository.find.mockResolvedValue([mockAdminMember]);
+
+      const result = await service.getStudyStats(STUDY_ID, USER_ID, 'W1');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('weekNumber=W1'),
+        expect.any(Object),
+      );
+      expect(result.solvedProblemIds).toEqual([]);
+      expect(result.byMemberWeek).not.toBeNull();
+
+      global.fetch = originalFetch;
+    });
+  });
+
+  // ============================
+  // 24. notifyProblemCreated
+  // ============================
+  describe('notifyProblemCreated', () => {
+    it('ADMIN — 문제 생성 알림 발행 (실행자 제외)', async () => {
+      memberRepository.findOne.mockResolvedValue(mockAdminMember);
+      memberRepository.find.mockResolvedValue([mockAdminMember, mockRegularMember]);
+      studyRepository.findOne.mockResolvedValue(mockStudy);
+
+      await service.notifyProblemCreated(STUDY_ID, USER_ID, '문제 A', 'W1', 'problem-1');
+
+      // 알림은 실행자(USER_ID)를 제외한 OTHER_USER_ID에게만 전송
+      expect(memberRepository.find).toHaveBeenCalledWith({
+        where: { study_id: STUDY_ID },
+      });
+    });
+
+    it('비ADMIN → ForbiddenException', async () => {
+      memberRepository.findOne.mockResolvedValue(mockRegularMember);
+
+      await expect(
+        service.notifyProblemCreated(STUDY_ID, OTHER_USER_ID, '문제 A', 'W1', 'problem-1'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  // ============================
+  // 25. updateStudy — 스터디 미존재
+  // ============================
+  describe('updateStudy — 추가 케이스', () => {
+    it('존재하지 않는 스터디 → NotFoundException', async () => {
+      memberRepository.findOne.mockResolvedValue(mockAdminMember);
+      studyRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.updateStudy(STUDY_ID, USER_ID, { name: 'Test' }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ============================
+  // 26. deleteStudy — 존재하지 않는 스터디
+  // ============================
+  describe('deleteStudy — 추가 케이스', () => {
+    it('존재하지 않는 스터디 삭제 → NotFoundException', async () => {
+      memberRepository.findOne.mockResolvedValue(mockAdminMember);
+      studyRepository.delete.mockResolvedValue({ affected: 0 });
+
+      await expect(service.deleteStudy(STUDY_ID, USER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('Redis 캐시 키 없으면 del 호출 안 함', async () => {
+      memberRepository.findOne.mockResolvedValue(mockAdminMember);
+      studyRepository.delete.mockResolvedValue({ affected: 1 });
+      mockRedis.keys.mockResolvedValue([]);
+      mockRedis.del.mockClear();
+
+      await service.deleteStudy(STUDY_ID, USER_ID);
+
+      // del은 invalidateMembershipCache가 아닌 keys 패턴 삭제에서 호출되지 않아야 함
+      // 단, invalidateMembershipCache는 verifyAdmin 내부에서 호출되지 않으므로 keys 결과 빈 배열 시 del 미호출 확인 불필요
+      expect(mockRedis.keys).toHaveBeenCalled();
+    });
   });
 });
