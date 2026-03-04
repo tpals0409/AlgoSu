@@ -46,7 +46,10 @@ interface SSEEvent {
   timestamp: string;
 }
 
-const API_BASE = process.env['NEXT_PUBLIC_API_BASE_URL'] ?? 'http://localhost:3000';
+const API_BASE =
+  typeof process !== 'undefined' && process.env['NEXT_PUBLIC_API_BASE_URL']
+    ? process.env['NEXT_PUBLIC_API_BASE_URL']
+    : '';
 
 export function useSubmissionSSE(submissionId: string | null) {
   const [status, setStatus] = useState<SSEStatus>('connecting');
@@ -147,7 +150,7 @@ export function mapSSEToSteps(status: SSEStatus) {
       detail: status === 'github_token_invalid'
         ? 'GitHub 재연동이 필요합니다'
         : status === 'github_skipped'
-          ? 'GitHub 동기화 건너뜀 (스터디 레포 미설정)'
+          ? 'GitHub 동기화 건너뜀 (GitHub 미연동)'
           : undefined,
     },
     {
