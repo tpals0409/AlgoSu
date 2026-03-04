@@ -935,13 +935,15 @@ function MembersTab({
                       </div>
                     ) : (
                       <>
-                        <p className="truncate text-xs font-medium text-text">
-                          {member.nickname ??
-                            member.username ??
-                            member.email ??
-                            member.user_id.slice(0, 8)}
+                        <p className={`truncate text-xs font-medium ${member.deleted_at ? 'text-text-3 italic' : 'text-text'}`}>
+                          {member.deleted_at
+                            ? '탈퇴한 사용자'
+                            : (member.nickname ??
+                              member.username ??
+                              member.email ??
+                              member.user_id.slice(0, 8))}
                         </p>
-                        {isMe && (
+                        {isMe && !member.deleted_at && (
                           <button
                             type="button"
                             onClick={() => startEditNickname(member.nickname ?? '')}

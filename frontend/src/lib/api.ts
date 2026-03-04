@@ -131,6 +131,7 @@ export interface StudyMember {
   username?: string;
   email?: string;
   avatar_url?: string | null;
+  deleted_at?: string | null;
 }
 
 export interface OAuthUrlResponse {
@@ -228,7 +229,7 @@ export const authApi = {
     fetchApi('/auth/refresh', { method: 'POST' }),
 
   /** 프로필 조회 */
-  getProfile: (): Promise<{ email: string; name: string | null; avatar_url: string | null; oauth_provider: string | null }> =>
+  getProfile: (): Promise<{ email: string; name: string | null; avatar_url: string | null; oauth_provider: string | null; github_connected: boolean; github_username: string | null; created_at: string }> =>
     fetchApi('/auth/profile'),
 
   /** 프로필 수정 (아바타) */
