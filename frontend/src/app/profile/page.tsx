@@ -33,6 +33,7 @@ import { authApi, submissionApi } from '@/lib/api';
 import { getGitHubUsername } from '@/lib/auth';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { AVATAR_PRESETS, getAvatarSrc } from '@/lib/avatars';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
 // ─── CONSTANTS ───────────────────────────
@@ -244,7 +245,7 @@ export default function ProfilePage(): ReactNode {
                 aria-label="아바타 변경"
                 disabled={avatarLoading}
               >
-                <img
+                <Image
                   src={getAvatarSrc(user?.avatarPreset ?? 'default')}
                   alt="프로필 아바타"
                   width={64}
@@ -305,7 +306,7 @@ export default function ProfilePage(): ReactNode {
                         aria-label={preset.label}
                         aria-pressed={isSelected}
                       >
-                        <img
+                        <Image
                           src={getAvatarSrc(preset.key)}
                           alt={preset.label}
                           width={40}

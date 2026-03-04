@@ -15,6 +15,7 @@ import {
   use,
   type ReactNode,
 } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   ChevronLeft,
@@ -889,7 +890,7 @@ function MembersTab({
               )}
             >
               <div className="flex min-w-0 items-center gap-3">
-                <img
+                <Image
                   src={getAvatarSrc(
                     getAvatarPresetKey(member.avatar_url),
                   )}

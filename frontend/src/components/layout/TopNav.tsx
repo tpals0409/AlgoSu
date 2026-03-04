@@ -9,6 +9,7 @@
 
 import type { ReactNode } from 'react';
 import { useState, useRef, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -161,7 +162,7 @@ function ProfileDropdown(): ReactNode {
         onClick={() => setOpen((prev) => !prev)}
         className="w-7 h-7 shrink-0 overflow-hidden rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
-        <img
+        <Image
           src={getAvatarSrc(user?.avatarPreset ?? 'default')}
           alt="아바타"
           width={28}
