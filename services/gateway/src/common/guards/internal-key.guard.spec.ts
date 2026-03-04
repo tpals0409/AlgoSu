@@ -85,4 +85,33 @@ describe('InternalKeyGuard', () => {
 
     expect(() => guard.canActivate(context as any)).toThrow(UnauthorizedException);
   });
+
+  // --- 테스트 7: ip가 undefined인 경우 'unknown' fallback ---
+  it('ip 없는 요청에서 헤더 누락 → UnauthorizedException (ip fallback 커버)', () => {
+    const contextWithNoIp = {
+      switchToHttp: () => ({
+        getRequest: () => ({
+          headers: {}, // x-internal-key 없음
+          path: '/test',
+          ip: undefined, // ip undefined → 'unknown' fallback
+        }),
+      }),
+    };
+
+    expect(() => guard.canActivate(contextWithNoIp as any)).toThrow(UnauthorizedException);
+  });
+
+  it('ip 없는 요청에서 잘못된 키 → UnauthorizedException (ip fallback 커버)', () => {
+    const contextWithNoIp = {
+      switchToHttp: () => ({
+        getRequest: () => ({
+          headers: { 'x-internal-key': 'wrong-key' },
+          path: '/test',
+          ip: undefined, // ip undefined → 'unknown' fallback
+        }),
+      }),
+    };
+
+    expect(() => guard.canActivate(contextWithNoIp as any)).toThrow(UnauthorizedException);
+  });
 });

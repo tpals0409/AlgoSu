@@ -225,5 +225,19 @@ describe('ReviewProxyController', () => {
         controller.createComment(createMockReq() as never, {}),
       ).rejects.toThrow(InternalServerErrorException);
     });
+
+    it('에러 응답에 message/statusCode 없으면 InternalServerErrorException 발생', async () => {
+      // errorData.message null → 'Internal service error' fallback으로 HttpException 생성
+      // 하지만 HttpException은 외부 catch에서 InternalServerErrorException으로 재래핑됨
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 502,
+        json: async () => ({}), // message, statusCode 없음
+      });
+
+      await expect(
+        controller.createComment(createMockReq() as never, {}),
+      ).rejects.toThrow(InternalServerErrorException);
+    });
   });
 });

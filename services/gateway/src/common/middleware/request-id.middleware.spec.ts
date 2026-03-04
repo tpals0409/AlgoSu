@@ -94,6 +94,26 @@ describe('RequestIdMiddleware', () => {
     expect(next).toHaveBeenCalled();
   });
 
+  it('유효한 UUID 형식의 X-Trace-Id는 재사용한다', () => {
+    mockReq.headers['x-trace-id'] = '11111111-2222-3333-4444-555555555555';
+
+    middleware.use(mockReq as any, mockRes as any, next);
+
+    expect(mockReq.headers['x-trace-id']).toBe('11111111-2222-3333-4444-555555555555');
+    expect(mockRes.setHeader).toHaveBeenCalledWith(
+      'X-Trace-Id',
+      '11111111-2222-3333-4444-555555555555',
+    );
+  });
+
+  it('유효하지 않은 X-Trace-Id는 새 UUID로 교체한다', () => {
+    mockReq.headers['x-trace-id'] = 'invalid-trace-id';
+
+    middleware.use(mockReq as any, mockRes as any, next);
+
+    expect(mockReq.headers['x-trace-id']).toBe('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee');
+  });
+
   describe('응답 완료 시 로그', () => {
     it('2xx 응답에 대해 logger.log를 호출한다', () => {
       mockRes.statusCode = 200;

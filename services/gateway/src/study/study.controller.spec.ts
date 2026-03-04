@@ -174,6 +174,29 @@ describe('StudyController', () => {
       expect(studyService.joinByInviteCode).toHaveBeenCalledWith(USER_ID, 'ABC123', '뉴비', '127.0.0.1');
       expect(result).toEqual(expected);
     });
+
+    it('ip fallback — req.ip 없으면 socket.remoteAddress 사용', async () => {
+      const dto = { code: 'XYZ789', nickname: '뉴비2' };
+      studyService.joinByInviteCode.mockResolvedValue({ id: STUDY_ID, role: 'MEMBER' });
+
+      await controller.joinStudy(createMockReq({ ip: undefined }), dto as any);
+
+      expect(studyService.joinByInviteCode).toHaveBeenCalledWith(USER_ID, 'XYZ789', '뉴비2', '127.0.0.1');
+    });
+
+    it('ip/socket 모두 없으면 unknown 사용', async () => {
+      const dto = { code: 'ZZZ000', nickname: '뉴비3' };
+      studyService.joinByInviteCode.mockResolvedValue({ id: STUDY_ID, role: 'MEMBER' });
+
+      const req = {
+        headers: { 'x-user-id': USER_ID },
+        ip: undefined,
+        socket: { remoteAddress: undefined },
+      };
+      await controller.joinStudy(req as never, dto as any);
+
+      expect(studyService.joinByInviteCode).toHaveBeenCalledWith(USER_ID, 'ZZZ000', '뉴비3', 'unknown');
+    });
   });
 
   describe('leaveStudy', () => {

@@ -142,9 +142,7 @@ describe('TokenRefreshInterceptor', () => {
       // jwt.sign에 expiresIn 미지정 시 exp 필드 없음
       const tokenNoExp = jwt.sign({ sub: USER_ID, iat: Math.floor(Date.now() / 1000) }, JWT_SECRET);
       // jwt.decode로 exp가 없는지 확인 (테스트 전제 검증)
-      const decoded = jwt.decode(tokenNoExp) as jwt.JwtPayload;
       // exp 있는 경우 jwt.sign은 기본적으로 exp를 안 붙임 (expiresIn 미지정)
-      // 만약 exp가 있다면 이 테스트는 다른 분기를 커버
 
       const ctx = createContext({ token: tokenNoExp }, { 'x-user-id': USER_ID });
 

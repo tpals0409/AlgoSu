@@ -254,6 +254,126 @@ describe('DeadlineReminderService', () => {
     });
   });
 
+  // ─── fetchUpcomingDeadlines 실패 분기 ─────────
+  describe('fetchUpcomingDeadlines 응답 실패', () => {
+    it('응답 ok=false이면 빈 배열 반환하고 알림 없음', async () => {
+      // 두 fetchUpcomingDeadlines 호출 모두 ok=false
+      mockFetch
+        .mockResolvedValueOnce({ ok: false, status: 503 })
+        .mockResolvedValueOnce({ ok: false, status: 503 });
+
+      await service.checkDeadlines();
+
+      expect(notificationService.createNotification).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── fetchSubmittedUsers 실패 분기 ────────────
+  describe('fetchSubmittedUsers 분기', () => {
+    it('SUBMISSION_SERVICE_URL 미설정이면 스킵', async () => {
+      const deadline = new Date(Date.now() + 20 * 60 * 60 * 1000).toISOString();
+
+      // configService.get에서 SUBMISSION_SERVICE_URL만 undefined 반환
+      const partialConfig: Record<string, jest.Mock> = {
+        get: jest.fn((key: string) => {
+          if (key === 'REDIS_URL') return 'redis://localhost:6379';
+          if (key === 'PROBLEM_SERVICE_URL') return 'http://problem:3000';
+          if (key === 'INTERNAL_KEY_PROBLEM') return 'key-problem';
+          // SUBMISSION_SERVICE_URL and INTERNAL_KEY_SUBMISSION: undefined
+          return undefined;
+        }),
+      };
+      const reLogger = { setContext: jest.fn(), log: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
+      const svc = new DeadlineReminderService(
+        partialConfig as unknown as ConfigService,
+        notificationService as never,
+        reLogger as any,
+        memberRepo as never,
+        studyRepo as never,
+      );
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            data: [{ id: PROBLEM_ID, title: '문제', studyId: STUDY_ID, deadline, weekNumber: 'W1' }],
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ data: [] }),
+        });
+
+      memberRepo.find.mockResolvedValue([{ user_id: USER_ID, study_id: STUDY_ID }]);
+      mockRedis.get.mockResolvedValue(null);
+
+      // SUBMISSION_SERVICE_URL 없어도 예외 없이 처리 (미제출자 0명 → 알림 없음)
+      await expect(svc.checkDeadlines()).resolves.toBeUndefined();
+    });
+
+    it('fetchSubmittedUsers 응답 ok=false이면 빈 배열로 처리', async () => {
+      const deadline = new Date(Date.now() + 20 * 60 * 60 * 1000).toISOString();
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            data: [{ id: PROBLEM_ID, title: '문제', studyId: STUDY_ID, deadline, weekNumber: 'W1' }],
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ data: [] }),
+        })
+        .mockResolvedValueOnce({ ok: false, status: 500 }); // fetchSubmittedUsers 실패
+
+      memberRepo.find.mockResolvedValue([{ user_id: USER_ID, study_id: STUDY_ID }]);
+      studyRepo.findOne.mockResolvedValue({ id: STUDY_ID, name: 'AlgoSu' });
+      mockRedis.get.mockResolvedValue(null);
+
+      // 제출자 조회 실패 시 제출자 없음으로 처리 → 미제출자 모두에게 알림
+      await service.checkDeadlines();
+
+      expect(notificationService.createNotification).toHaveBeenCalled();
+    });
+
+    it('fetchSubmittedUsers 네트워크 오류 시 빈 배열로 처리', async () => {
+      const deadline = new Date(Date.now() + 20 * 60 * 60 * 1000).toISOString();
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            data: [{ id: PROBLEM_ID, title: '문제', studyId: STUDY_ID, deadline, weekNumber: 'W1' }],
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ data: [] }),
+        })
+        .mockRejectedValueOnce(new Error('fetch failed')); // fetchSubmittedUsers 예외
+
+      memberRepo.find.mockResolvedValue([{ user_id: USER_ID, study_id: STUDY_ID }]);
+      studyRepo.findOne.mockResolvedValue({ id: STUDY_ID, name: 'AlgoSu' });
+      mockRedis.get.mockResolvedValue(null);
+
+      // 예외 발생해도 계속 처리
+      await expect(service.checkDeadlines()).resolves.toBeUndefined();
+    });
+  });
+
+  // ─── Redis error callback ─────────────────────
+  describe('Redis 연결 오류 콜백', () => {
+    it('Redis on error 핸들러 등록 및 에러 로깅', () => {
+      const errorCall = (mockRedis.on as jest.Mock).mock.calls.find(
+        (call: [string, ...unknown[]]) => call[0] === 'error',
+      );
+      expect(errorCall).toBeDefined();
+      const handler = errorCall![1] as (err: Error) => void;
+      expect(() => handler(new Error('connection reset'))).not.toThrow();
+    });
+  });
+
   // ─── 멤버가 없는 스터디 ─────────────────────
 
   describe('멤버가 없는 스터디', () => {

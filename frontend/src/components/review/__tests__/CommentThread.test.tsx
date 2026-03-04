@@ -1,6 +1,8 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CommentThread } from '../CommentThread';
 import type { ReviewComment } from '@/lib/api';
+
+// ─── MOCKS ────────────────────────────────────────────────────────────────────
 
 jest.mock('lucide-react', () => {
   const Icon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />;
@@ -24,8 +26,20 @@ jest.mock('@/components/review/ReplyItem', () => ({
 }));
 
 jest.mock('@/components/review/CommentForm', () => ({
-  CommentForm: () => <div data-testid="comment-form" />,
+  CommentForm: ({ onSubmit }: { onSubmit: (content: string) => Promise<void> }) => (
+    <div data-testid="comment-form">
+      <button
+        type="button"
+        onClick={() => onSubmit('test reply')}
+        data-testid="reply-submit"
+      >
+        답글 등록
+      </button>
+    </div>
+  ),
 }));
+
+// ─── TIME HELPERS ─────────────────────────────────────────────────────────────
 
 const NOW = new Date('2025-01-15T12:00:00Z').getTime();
 
@@ -36,6 +50,8 @@ beforeAll(() => {
 afterAll(() => {
   jest.restoreAllMocks();
 });
+
+// ─── FACTORIES ────────────────────────────────────────────────────────────────
 
 const makeComment = (overrides: Partial<ReviewComment> = {}): ReviewComment => ({
   publicId: 'c-1',
@@ -50,6 +66,18 @@ const makeComment = (overrides: Partial<ReviewComment> = {}): ReviewComment => (
   ...overrides,
 });
 
+const makeReply = (overrides: Partial<ReviewComment['replies'][0]> = {}) => ({
+  publicId: 'r-1',
+  commentId: 'c-1',
+  authorId: 'user-xyz',
+  content: '감사합니다',
+  createdAt: new Date(NOW - 2 * 60000).toISOString(),
+  updatedAt: new Date(NOW - 2 * 60000).toISOString(),
+  ...overrides,
+});
+
+// ─── TESTS ────────────────────────────────────────────────────────────────────
+
 describe('CommentThread', () => {
   const defaultProps = {
     currentUserId: 'user-abc-1234',
@@ -57,6 +85,15 @@ describe('CommentThread', () => {
     onDelete: jest.fn(),
     onReply: jest.fn().mockResolvedValue(undefined),
   };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    defaultProps.onEdit = jest.fn();
+    defaultProps.onDelete = jest.fn();
+    defaultProps.onReply = jest.fn().mockResolvedValue(undefined);
+  });
+
+  // ── 기본 렌더링 ──
 
   it('댓글 목록을 렌더링한다', () => {
     const comments = [
@@ -121,5 +158,208 @@ describe('CommentThread', () => {
     render(<CommentThread {...defaultProps} comments={comments} selectedLine={10} />);
     expect(screen.getByText('라인10 댓글')).toBeInTheDocument();
     expect(screen.queryByText('라인20 댓글')).not.toBeInTheDocument();
+  });
+
+  // ── formatRelativeTime 분기 (lines 46-50) ──
+
+  it('방금 전 (1분 미만) 상대 시간을 "방금"으로 표시한다', () => {
+    const comments = [
+      makeComment({ createdAt: new Date(NOW - 30000).toISOString() }), // 30초 전
+    ];
+    render(<CommentThread {...defaultProps} comments={comments} />);
+    expect(screen.getByText('방금')).toBeInTheDocument();
+  });
+
+  it('1시간 이상 상대 시간을 시간 단위로 표시한다', () => {
+    const comments = [
+      makeComment({ createdAt: new Date(NOW - 2 * 3600000).toISOString() }), // 2시간 전
+    ];
+    render(<CommentThread {...defaultProps} comments={comments} />);
+    expect(screen.getByText('2시간 전')).toBeInTheDocument();
+  });
+
+  it('24시간 이상 상대 시간을 일 단위로 표시한다', () => {
+    const comments = [
+      makeComment({ createdAt: new Date(NOW - 3 * 86400000).toISOString() }), // 3일 전
+    ];
+    render(<CommentThread {...defaultProps} comments={comments} />);
+    expect(screen.getByText('3일 전')).toBeInTheDocument();
+  });
+
+  it('7일 이상일 때 날짜 형식으로 표시한다', () => {
+    const pastDate = new Date(NOW - 10 * 86400000); // 10일 전
+    const comments = [
+      makeComment({ createdAt: pastDate.toISOString() }),
+    ];
+    render(<CommentThread {...defaultProps} comments={comments} />);
+    // Should display localized date string (not relative time)
+    const expectedDate = pastDate.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+    expect(screen.getByText(expectedDate)).toBeInTheDocument();
+  });
+
+  // ── 수정 폼 (lines 136-173) ──
+
+  it('수정 버튼 클릭 시 편집 모드로 전환된다', () => {
+    const comments = [makeComment({ content: '원본 댓글' })];
+    render(<CommentThread {...defaultProps} comments={comments} />);
+    fireEvent.click(screen.getByRole('button', { name: '댓글 수정' }));
+    // textarea with aria-label 댓글 수정 appears
+    expect(screen.getByRole('textbox', { name: '댓글 수정' })).toBeInTheDocument();
+    // 원본 댓글 텍스트는 textarea 안에 있음
+    expect(screen.getByDisplayValue('원본 댓글')).toBeInTheDocument();
+  });
+
+  it('편집 모드에서 저장 버튼 클릭 시 onEdit이 호출된다', () => {
+    const comments = [makeComment({ content: '원본 댓글' })];
+    render(<CommentThread {...defaultProps} comments={comments} />);
+    fireEvent.click(screen.getByRole('button', { name: '댓글 수정' }));
+    const textarea = screen.getByRole('textbox', { name: '댓글 수정' });
+    fireEvent.change(textarea, { target: { value: '수정된 댓글' } });
+    fireEvent.click(screen.getByRole('button', { name: '저장' }));
+    expect(defaultProps.onEdit).toHaveBeenCalledWith('c-1', '수정된 댓글');
+  });
+
+  it('편집 모드에서 내용 미변경 시 onEdit이 호출되지 않는다', () => {
+    const comments = [makeComment({ content: '원본 댓글' })];
+    render(<CommentThread {...defaultProps} comments={comments} />);
+    fireEvent.click(screen.getByRole('button', { name: '댓글 수정' }));
+    // 내용 변경 없이 저장 클릭
+    fireEvent.click(screen.getByRole('button', { name: '저장' }));
+    expect(defaultProps.onEdit).not.toHaveBeenCalled();
+  });
+
+  it('편집 모드에서 빈 내용으로 저장 시 onEdit이 호출되지 않는다', () => {
+    const comments = [makeComment({ content: '원본 댓글' })];
+    render(<CommentThread {...defaultProps} comments={comments} />);
+    fireEvent.click(screen.getByRole('button', { name: '댓글 수정' }));
+    const textarea = screen.getByRole('textbox', { name: '댓글 수정' });
+    fireEvent.change(textarea, { target: { value: '   ' } });
+    fireEvent.click(screen.getByRole('button', { name: '저장' }));
+    expect(defaultProps.onEdit).not.toHaveBeenCalled();
+  });
+
+  it('저장 후 편집 모드가 종료된다', () => {
+    const comments = [makeComment({ content: '원본 댓글' })];
+    render(<CommentThread {...defaultProps} comments={comments} />);
+    fireEvent.click(screen.getByRole('button', { name: '댓글 수정' }));
+    const textarea = screen.getByRole('textbox', { name: '댓글 수정' });
+    fireEvent.change(textarea, { target: { value: '수정된 댓글' } });
+    fireEvent.click(screen.getByRole('button', { name: '저장' }));
+    expect(screen.queryByRole('textbox', { name: '댓글 수정' })).not.toBeInTheDocument();
+  });
+
+  it('취소 버튼 클릭 시 편집 모드가 종료되고 내용이 복원된다', () => {
+    const comments = [makeComment({ content: '원본 댓글' })];
+    render(<CommentThread {...defaultProps} comments={comments} />);
+    fireEvent.click(screen.getByRole('button', { name: '댓글 수정' }));
+    const textarea = screen.getByRole('textbox', { name: '댓글 수정' });
+    fireEvent.change(textarea, { target: { value: '임시 수정' } });
+    fireEvent.click(screen.getByRole('button', { name: '취소' }));
+    // 편집 모드 종료
+    expect(screen.queryByRole('textbox', { name: '댓글 수정' })).not.toBeInTheDocument();
+    // 원본 내용이 보인다
+    expect(screen.getByText('원본 댓글')).toBeInTheDocument();
+  });
+
+  it('편집 중에는 수정/삭제 버튼이 숨겨진다', () => {
+    const comments = [makeComment({ content: '원본 댓글' })];
+    render(<CommentThread {...defaultProps} comments={comments} />);
+    fireEvent.click(screen.getByRole('button', { name: '댓글 수정' }));
+    // 편집 중에는 수정/삭제 버튼이 없어야 함
+    expect(screen.queryByRole('button', { name: '댓글 수정' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '댓글 삭제' })).not.toBeInTheDocument();
+  });
+
+  // ── 대댓글 토글 (lines 194-225) ──
+
+  it('대댓글이 있으면 답글 버튼이 표시된다', () => {
+    const reply = makeReply();
+    const comments = [makeComment({ replies: [reply] })];
+    render(<CommentThread {...defaultProps} comments={comments} />);
+    expect(screen.getByText(/답글 1/)).toBeInTheDocument();
+  });
+
+  it('대댓글이 없으면 답글 버튼이 표시되지 않는다', () => {
+    const comments = [makeComment({ replies: [] })];
+    render(<CommentThread {...defaultProps} comments={comments} />);
+    expect(screen.queryByText(/답글/)).not.toBeInTheDocument();
+  });
+
+  it('답글 버튼 클릭 시 대댓글 목록이 표시된다', () => {
+    const reply = makeReply({ publicId: 'r-1', content: '답글 내용' });
+    const comments = [makeComment({ replies: [reply] })];
+    render(<CommentThread {...defaultProps} comments={comments} />);
+    fireEvent.click(screen.getByText(/답글 1/));
+    expect(screen.getByTestId('reply-r-1')).toBeInTheDocument();
+  });
+
+  it('답글 목록이 열릴 때 CommentForm이 표시된다', () => {
+    const reply = makeReply();
+    const comments = [makeComment({ replies: [reply] })];
+    render(<CommentThread {...defaultProps} comments={comments} />);
+    fireEvent.click(screen.getByText(/답글 1/));
+    expect(screen.getByTestId('comment-form')).toBeInTheDocument();
+  });
+
+  it('답글 재클릭 시 대댓글 목록이 닫힌다', () => {
+    const reply = makeReply({ publicId: 'r-1' });
+    const comments = [makeComment({ replies: [reply] })];
+    render(<CommentThread {...defaultProps} comments={comments} />);
+    const toggleBtn = screen.getByText(/답글 1/);
+    fireEvent.click(toggleBtn);
+    expect(screen.getByTestId('reply-r-1')).toBeInTheDocument();
+    fireEvent.click(toggleBtn);
+    expect(screen.queryByTestId('reply-r-1')).not.toBeInTheDocument();
+  });
+
+  it('답글 CommentForm에서 onReply를 호출한다', async () => {
+    const reply = makeReply();
+    const comments = [makeComment({ publicId: 'c-1', replies: [reply] })];
+    render(<CommentThread {...defaultProps} comments={comments} />);
+    fireEvent.click(screen.getByText(/답글 1/));
+    fireEvent.click(screen.getByTestId('reply-submit'));
+    await waitFor(() => {
+      expect(defaultProps.onReply).toHaveBeenCalledWith('c-1', 'test reply');
+    });
+  });
+
+  it('여러 대댓글이 있을 때 모두 표시된다', () => {
+    const replies = [
+      makeReply({ publicId: 'r-1', content: '첫 답글' }),
+      makeReply({ publicId: 'r-2', content: '두번째 답글' }),
+    ];
+    const comments = [makeComment({ replies })];
+    render(<CommentThread {...defaultProps} comments={comments} />);
+    fireEvent.click(screen.getByText(/답글 2/));
+    expect(screen.getByTestId('reply-r-1')).toBeInTheDocument();
+    expect(screen.getByTestId('reply-r-2')).toBeInTheDocument();
+  });
+
+  // ── lineNumber 표시 ──
+
+  it('lineNumber가 있는 댓글에 라인 정보가 표시된다', () => {
+    const comments = [makeComment({ lineNumber: 42 })];
+    render(<CommentThread {...defaultProps} comments={comments} />);
+    expect(screen.getByText('L42')).toBeInTheDocument();
+  });
+
+  it('selectedLine이 있을 때 "Line N" 헤더가 표시된다', () => {
+    const comments = [makeComment({ lineNumber: 10 })];
+    render(<CommentThread {...defaultProps} comments={comments} selectedLine={10} />);
+    expect(screen.getByText('Line 10')).toBeInTheDocument();
+  });
+
+  // ── 본인 여부 배지 ──
+
+  it('본인 댓글에 "나" 배지가 표시된다', () => {
+    const comments = [makeComment({ authorId: 'user-abc-1234' })];
+    render(<CommentThread {...defaultProps} comments={comments} />);
+    expect(screen.getByText('나')).toBeInTheDocument();
+  });
+
+  it('다른 사용자 댓글에 "나" 배지가 없다', () => {
+    const comments = [makeComment({ authorId: 'other-user' })];
+    render(<CommentThread {...defaultProps} comments={comments} />);
+    expect(screen.queryByText('나')).not.toBeInTheDocument();
   });
 });

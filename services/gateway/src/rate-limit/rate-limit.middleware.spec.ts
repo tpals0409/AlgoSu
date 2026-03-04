@@ -142,4 +142,40 @@ describe('RateLimitMiddleware', () => {
       expect(next).toHaveBeenCalled();
     });
   });
+
+  // ──────────────────────────────────────────────
+  // ip fallback 분기
+  // ──────────────────────────────────────────────
+  describe('IP 식별자 fallback', () => {
+    it('ip와 socket.remoteAddress 모두 없으면 unknown 사용', async () => {
+      storage.increment.mockResolvedValue({ totalHits: 1, timeToExpire: 60000 });
+      const req = {
+        path: '/api/studies',
+        method: 'GET',
+        headers: {},
+        ip: undefined,
+        socket: { remoteAddress: undefined },
+      } as unknown as Request;
+
+      await middleware.use(req, mockRes as Response, next);
+
+      expect(storage.increment).toHaveBeenCalledWith('rl:default:ip:unknown', 60000);
+      expect(next).toHaveBeenCalled();
+    });
+
+    it('socket.remoteAddress 있고 ip 없는 경우 socket 주소 사용', async () => {
+      storage.increment.mockResolvedValue({ totalHits: 1, timeToExpire: 60000 });
+      const req = {
+        path: '/api/studies',
+        method: 'GET',
+        headers: {},
+        ip: undefined,
+        socket: { remoteAddress: '10.0.0.1' },
+      } as unknown as Request;
+
+      await middleware.use(req, mockRes as Response, next);
+
+      expect(storage.increment).toHaveBeenCalledWith('rl:default:ip:10.0.0.1', 60000);
+    });
+  });
 });
