@@ -24,8 +24,8 @@ jest.mock('react', () => {
   };
 });
 
-function makeParams(value: Record<string, string>) {
-  const p = Promise.resolve(value) as Promise<Record<string, string>> & { _resolvedValue: Record<string, string> };
+function makeParams(value: { id: string }) {
+  const p = Promise.resolve(value) as Promise<{ id: string }> & { _resolvedValue: { id: string } };
   p._resolvedValue = value;
   return p;
 }

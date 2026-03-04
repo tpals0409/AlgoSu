@@ -244,6 +244,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-ruff-${{ env.PYTHON_VERSION }}
+          restore-keys: |
+            pip-ruff-
+            pip-
       - name: Install ruff
         run: pip install ruff
       - name: ruff lint
@@ -716,6 +724,13 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
+      - name: Cache Next.js build
+        uses: actions/cache@v4
+        with:
+          path: frontend/.next/cache
+          key: nextjs-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            nextjs-
       - uses: docker/setup-qemu-action@v3
         with:
           platforms: linux/arm64
