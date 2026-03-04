@@ -204,14 +204,14 @@ describe('NotifPanel', () => {
 
   allTypes.forEach((type) => {
     it(`${type} 타입 알림이 올바르게 렌더링된다`, () => {
-      const notif = makeNotification({ type, title: `${type} 알림` });
+      const notif = makeNotification({ type: type as never, title: `${type} 알림` });
       render(<NotifPanel open={true} notifications={[notif]} />);
       expect(screen.getByText(`${type} 알림`)).toBeInTheDocument();
     });
   });
 
   it('알 수 없는 타입은 "info" 스타일로 폴백된다', () => {
-    const notif = makeNotification({ type: 'UNKNOWN_TYPE', title: '알 수 없는 알림' });
+    const notif = makeNotification({ type: 'UNKNOWN_TYPE' as never, title: '알 수 없는 알림' });
     render(<NotifPanel open={true} notifications={[notif]} />);
     expect(screen.getByText('알 수 없는 알림')).toBeInTheDocument();
   });

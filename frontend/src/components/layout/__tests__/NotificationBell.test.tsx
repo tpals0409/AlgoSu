@@ -321,7 +321,7 @@ describe('NotificationBell', () => {
   });
 
   it('link도 TYPE_ROUTE도 없으면 router.push를 호출하지 않는다', async () => {
-    const notif = makeNotification({ link: null, type: 'UNKNOWN_TYPE', read: true });
+    const notif = makeNotification({ link: null, type: 'UNKNOWN_TYPE' as never, read: true });
     mockList.mockResolvedValue([notif]);
     await act(async () => {
       render(<NotificationBell />);
@@ -471,7 +471,7 @@ describe('NotificationBell', () => {
 
   typeRouteMap.forEach(({ type, route }) => {
     it(`${type} 알림 클릭 시 ${route}로 이동한다`, async () => {
-      const notif = makeNotification({ type, link: null, read: true });
+      const notif = makeNotification({ type: type as never, link: null, read: true });
       mockList.mockResolvedValue([notif]);
       await act(async () => {
         render(<NotificationBell />);

@@ -66,7 +66,7 @@ const makeComment = (overrides: Partial<ReviewComment> = {}): ReviewComment => (
   ...overrides,
 });
 
-const makeReply = (overrides: Partial<ReviewComment['replies'][0]> = {}) => ({
+const makeReply = (overrides: Partial<NonNullable<ReviewComment['replies']>[0]> = {}) => ({
   publicId: 'r-1',
   commentId: 'c-1',
   authorId: 'user-xyz',

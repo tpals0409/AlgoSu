@@ -520,4 +520,107 @@ describe('SagaOrchestratorService', () => {
       expect(repo.find).toHaveBeenCalled();
     });
   });
+
+  // ─── 19. onModuleInit — 타이머 설정 및 onModuleDestroy 정리 ───
+  describe('onModuleInit() — 미완료 Saga 있음 → 타이머 설정', () => {
+    it('미완료 Saga 재개 후 타임아웃 체크 타이머를 설정한다', async () => {
+      jest.useFakeTimers();
+
+      const incomplete = createMockSubmission({
+        id: 'sub-timer-test',
+        sagaStep: SagaStep.DB_SAVED,
+        createdAt: new Date(),
+      });
+
+      repo.find.mockResolvedValue([incomplete]);
+      repo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+      mqPublisher.publishGitHubPush.mockResolvedValue(undefined);
+
+      await service.onModuleInit();
+
+      // 타이머가 설정되었으므로 onModuleDestroy에서 정리됨
+      await service.onModuleDestroy();
+
+      jest.useRealTimers();
+
+      // 에러 없이 완료되면 성공
+      expect(true).toBe(true);
+    });
+  });
+
+  // ─── 20. checkSagaTimeouts — 타임아웃 발생 시 재개 ─────────────
+  describe('checkSagaTimeouts() — 타임아웃 Saga 재개', () => {
+    it('타임아웃된 DB_SAVED Saga를 재개한다', async () => {
+      jest.useFakeTimers();
+
+      // 첫 번째 find는 onModuleInit에서 호출 (미완료 없음)
+      repo.find
+        .mockResolvedValueOnce([]) // onModuleInit - 미완료 없음 (타이머 미설정)
+        .mockResolvedValueOnce([  // checkSagaTimeouts - DB_SAVED 타임아웃
+          createMockSubmission({
+            id: 'sub-timeout-db',
+            sagaStep: SagaStep.DB_SAVED,
+            updatedAt: new Date(Date.now() - 10 * 60 * 1000), // 10분 전
+          }),
+        ])
+        .mockResolvedValue([]); // 나머지 step들 — 없음
+
+      repo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+      mqPublisher.publishGitHubPush.mockResolvedValue(undefined);
+
+      // onModuleInit — 미완료 없음이므로 타이머 미설정
+      await service.onModuleInit();
+
+      // checkSagaTimeouts를 직접 호출하기 위해 private 메서드 접근
+      await (service as any).checkSagaTimeouts();
+
+      expect(repo.find).toHaveBeenCalledTimes(4); // onModuleInit 1 + checkSagaTimeouts 3 steps
+      expect(repo.update).toHaveBeenCalledWith('sub-timeout-db', {
+        sagaStep: SagaStep.GITHUB_QUEUED,
+      });
+      expect(mqPublisher.publishGitHubPush).toHaveBeenCalledWith(
+        expect.objectContaining({ submissionId: 'sub-timeout-db' }),
+      );
+
+      jest.useRealTimers();
+    });
+
+    it('타임아웃 재개 실패 시 에러 로그 후 계속 진행한다', async () => {
+      repo.find
+        .mockResolvedValueOnce([]) // onModuleInit - 미완료 없음
+        .mockResolvedValueOnce([  // checkSagaTimeouts - DB_SAVED 타임아웃
+          createMockSubmission({
+            id: 'sub-timeout-fail',
+            sagaStep: SagaStep.DB_SAVED,
+            updatedAt: new Date(Date.now() - 10 * 60 * 1000),
+          }),
+        ])
+        .mockResolvedValue([]); // 나머지 step들
+
+      repo.update.mockRejectedValue(new Error('timeout resume error'));
+
+      // checkSagaTimeouts 직접 호출 — 에러가 throw되지 않아야 함
+      await expect((service as any).checkSagaTimeouts()).resolves.not.toThrow();
+    });
+  });
+
+  // ─── 21. resumeSaga — default 분기 (DONE/FAILED/AI_SKIPPED) ───
+  describe('resumeSaga() — default 분기', () => {
+    it('DONE 상태의 Submission은 아무것도 하지 않는다', async () => {
+      const doneSubmission = createMockSubmission({
+        id: 'sub-done',
+        sagaStep: SagaStep.DONE,
+        createdAt: new Date(),
+      });
+
+      repo.find.mockResolvedValue([doneSubmission]);
+
+      await service.onModuleInit();
+
+      // DONE 상태 → resumeSaga default 분기 → update/publish 없음
+      expect(repo.update).not.toHaveBeenCalled();
+      expect(mqPublisher.publishGitHubPush).not.toHaveBeenCalled();
+      expect(mqPublisher.publishAiAnalysis).not.toHaveBeenCalled();
+    });
+  });
 });

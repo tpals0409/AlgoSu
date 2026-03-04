@@ -163,4 +163,57 @@ describe('DraftService', () => {
       });
     });
   });
+
+  // ─── 6. cleanupStaleDrafts() — Cron ───────────────────────────
+  describe('cleanupStaleDrafts() — 만료 Draft 자동 삭제', () => {
+    it('affected > 0이면 삭제 건수를 로그한다', async () => {
+      repo.delete.mockResolvedValue({ affected: 3, raw: [] });
+
+      await service.cleanupStaleDrafts();
+
+      expect(repo.delete).toHaveBeenCalledWith(
+        expect.objectContaining({
+          updatedAt: expect.anything(),
+        }),
+      );
+    });
+
+    it('affected가 0이면 로그하지 않고 정상 완료한다', async () => {
+      repo.delete.mockResolvedValue({ affected: 0, raw: [] });
+
+      await expect(service.cleanupStaleDrafts()).resolves.not.toThrow();
+
+      expect(repo.delete).toHaveBeenCalled();
+    });
+
+    it('affected가 undefined이면 로그하지 않고 정상 완료한다', async () => {
+      repo.delete.mockResolvedValue({ affected: undefined, raw: [] });
+
+      await expect(service.cleanupStaleDrafts()).resolves.not.toThrow();
+    });
+  });
+
+  // ─── 7. upsert() — language/code undefined 시 null 저장 ───────
+  describe('upsert() — 신규 생성 (language/code undefined)', () => {
+    it('language와 code가 undefined이면 null로 저장한다', async () => {
+      const dto: UpsertDraftDto = {
+        problemId: 'problem-uuid-1',
+      };
+
+      const newDraft = createMockDraft({ language: null, code: null });
+      repo.findOne.mockResolvedValue(null);
+      repo.create.mockReturnValue(newDraft);
+      repo.save.mockResolvedValue(newDraft);
+
+      const result = await service.upsert(dto, 'user-1', 'study-uuid-1');
+
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          language: null,
+          code: null,
+        }),
+      );
+      expect(result).toEqual(newDraft);
+    });
+  });
 });

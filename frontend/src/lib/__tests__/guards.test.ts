@@ -67,6 +67,29 @@ describe('verifyAdminRole', () => {
     const result = await verifyAdminRole('s1');
     expect(result).toBe(false);
   });
+
+  it('404 에러 시 false를 반환한다', async () => {
+    mockFetch.mockReturnValue(errorResponse(404));
+    const result = await verifyAdminRole('s1');
+    expect(result).toBe(false);
+  });
+
+  it('500 에러 시 예외를 던진다', async () => {
+    mockFetch.mockReturnValue(errorResponse(500));
+    await expect(verifyAdminRole('s1')).rejects.toThrow(ApiError);
+  });
+
+  it('data.meta 없이 data만 있는 응답에서 role을 추출한다', async () => {
+    mockFetch.mockReturnValue(jsonResponse({ data: { role: 'ADMIN' } }));
+    const result = await verifyAdminRole('s1');
+    expect(result).toBe(true);
+  });
+
+  it('중첩되지 않은 role 응답도 처리한다', async () => {
+    mockFetch.mockReturnValue(jsonResponse({ role: 'MEMBER', id: 's1' }));
+    const result = await verifyAdminRole('s1');
+    expect(result).toBe(false);
+  });
 });
 
 describe('verifyDeadlinePassed', () => {

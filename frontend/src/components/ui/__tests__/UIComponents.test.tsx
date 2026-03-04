@@ -30,7 +30,7 @@ import { Alert } from '../Alert';
 import { BackBtn } from '../BackBtn';
 import { EmptyState } from '../EmptyState';
 import { LoadingSpinner, FullscreenSpinner, InlineSpinner } from '../LoadingSpinner';
-import { Skeleton, SkeletonCard, SkeletonTable } from '../Skeleton';
+import { Skeleton, SkeletonCard, SkeletonTable, SkeletonDashboard, SkeletonListPage, SkeletonProfile, SkeletonReview } from '../Skeleton';
 import { StatusBadge } from '../StatusBadge';
 
 // ═══════════════════════════════════════════════════
@@ -501,5 +501,92 @@ describe('StatusBadge', () => {
   it('applies custom className', () => {
     render(<StatusBadge label="Test" className="ml-2" />);
     expect(screen.getByText('Test')).toHaveClass('ml-2');
+  });
+});
+
+// ═══════════════════════════════════════════════════
+// 11. SkeletonDashboard
+// ═══════════════════════════════════════════════════
+describe('SkeletonDashboard', () => {
+  it('renders with correct aria-label', () => {
+    render(<SkeletonDashboard />);
+    expect(screen.getByLabelText('대시보드 로딩 중')).toBeInTheDocument();
+  });
+
+  it('has aria-busy attribute', () => {
+    render(<SkeletonDashboard />);
+    expect(screen.getByLabelText('대시보드 로딩 중')).toHaveAttribute('aria-busy', 'true');
+  });
+
+  it('renders 4 stat cards', () => {
+    const { container } = render(<SkeletonDashboard />);
+    // 4개의 stat 카드 확인
+    const statCards = container.querySelectorAll('.grid.grid-cols-2 > div');
+    expect(statCards).toHaveLength(4);
+  });
+});
+
+// ═══════════════════════════════════════════════════
+// 12. SkeletonListPage
+// ═══════════════════════════════════════════════════
+describe('SkeletonListPage', () => {
+  it('renders with correct aria-label', () => {
+    render(<SkeletonListPage />);
+    expect(screen.getByLabelText('목록 로딩 중')).toBeInTheDocument();
+  });
+
+  it('renders SkeletonTable inside', () => {
+    render(<SkeletonListPage />);
+    expect(screen.getByLabelText('테이블 로딩 중')).toBeInTheDocument();
+  });
+
+  it('renders with custom rows prop', () => {
+    const { container } = render(<SkeletonListPage rows={3} />);
+    const rows = container.querySelectorAll('.flex.gap-4');
+    expect(rows).toHaveLength(3);
+  });
+});
+
+// ═══════════════════════════════════════════════════
+// 13. SkeletonProfile
+// ═══════════════════════════════════════════════════
+describe('SkeletonProfile', () => {
+  it('renders with correct aria-label', () => {
+    render(<SkeletonProfile />);
+    expect(screen.getByLabelText('프로필 로딩 중')).toBeInTheDocument();
+  });
+
+  it('has aria-busy attribute', () => {
+    render(<SkeletonProfile />);
+    expect(screen.getByLabelText('프로필 로딩 중')).toHaveAttribute('aria-busy', 'true');
+  });
+
+  it('renders SkeletonCard components', () => {
+    const { container } = render(<SkeletonProfile />);
+    // SkeletonCard가 2개 렌더링됨 (grid 내)
+    const cards = container.querySelectorAll('.rounded-card.border');
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+// ═══════════════════════════════════════════════════
+// 14. SkeletonReview
+// ═══════════════════════════════════════════════════
+describe('SkeletonReview', () => {
+  it('renders with correct aria-label', () => {
+    render(<SkeletonReview />);
+    expect(screen.getByLabelText('리뷰 로딩 중')).toBeInTheDocument();
+  });
+
+  it('has aria-busy attribute', () => {
+    render(<SkeletonReview />);
+    expect(screen.getByLabelText('리뷰 로딩 중')).toHaveAttribute('aria-busy', 'true');
+  });
+
+  it('renders 2-panel layout', () => {
+    const { container } = render(<SkeletonReview />);
+    // 2-패널 그리드 (code panel + review panel)
+    const panels = container.querySelectorAll('.rounded-card.border.border-border.bg-bg-card');
+    expect(panels.length).toBeGreaterThanOrEqual(2);
   });
 });

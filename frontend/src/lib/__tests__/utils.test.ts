@@ -39,4 +39,14 @@ describe('getCurrentWeekLabel', () => {
   it('12월 31일은 12월5주차를 반환한다', () => {
     expect(getCurrentWeekLabel(new Date(2025, 11, 31))).toBe('12월5주차');
   });
+
+  it('인자 없이 호출하면 현재 날짜 기준으로 반환한다', () => {
+    const result = getCurrentWeekLabel();
+    // "X월Y주차" 형식인지 확인
+    expect(result).toMatch(/^\d+월\d+주차$/);
+  });
+
+  it('6월 15일은 6월3주차를 반환한다', () => {
+    expect(getCurrentWeekLabel(new Date(2025, 5, 15))).toBe('6월3주차');
+  });
 });

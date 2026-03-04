@@ -37,6 +37,18 @@ beforeEach(() => {
   localStorage.clear();
 });
 
+// ── SSR 환경 (window === undefined) 시뮬레이션 헬퍼 ──
+function withoutWindow(fn: () => void): void {
+  const original = global.window;
+  // @ts-expect-error intentionally setting window to undefined for SSR test
+  delete global.window;
+  try {
+    fn();
+  } finally {
+    global.window = original;
+  }
+}
+
 // ── 토큰 저장/조회/삭제 ──
 
 describe('setToken / getToken / removeToken', () => {
@@ -50,6 +62,24 @@ describe('setToken / getToken / removeToken', () => {
     setToken('abc123');
     removeToken();
     expect(getToken()).toBeNull();
+  });
+
+  it('SSR 환경에서 setToken은 아무 작업도 하지 않는다', () => {
+    withoutWindow(() => {
+      expect(() => setToken('test')).not.toThrow();
+    });
+  });
+
+  it('SSR 환경에서 getToken은 null을 반환한다', () => {
+    withoutWindow(() => {
+      expect(getToken()).toBeNull();
+    });
+  });
+
+  it('SSR 환경에서 removeToken은 아무 작업도 하지 않는다', () => {
+    withoutWindow(() => {
+      expect(() => removeToken()).not.toThrow();
+    });
   });
 });
 
@@ -66,6 +96,24 @@ describe('setRefreshToken / getRefreshToken / removeRefreshToken', () => {
     setRefreshToken('refresh-abc');
     removeRefreshToken();
     expect(getRefreshToken()).toBeNull();
+  });
+
+  it('SSR 환경에서 setRefreshToken은 아무 작업도 하지 않는다', () => {
+    withoutWindow(() => {
+      expect(() => setRefreshToken('test')).not.toThrow();
+    });
+  });
+
+  it('SSR 환경에서 getRefreshToken은 null을 반환한다', () => {
+    withoutWindow(() => {
+      expect(getRefreshToken()).toBeNull();
+    });
+  });
+
+  it('SSR 환경에서 removeRefreshToken은 아무 작업도 하지 않는다', () => {
+    withoutWindow(() => {
+      expect(() => removeRefreshToken()).not.toThrow();
+    });
   });
 });
 
@@ -157,6 +205,25 @@ describe('getTokenTtlMs', () => {
     expect(ttl).toBeGreaterThan(0);
     expect(ttl).toBeLessThanOrEqual(3600 * 1000);
   });
+
+  it('인자 없으면 localStorage 토큰 사용', () => {
+    const futureExp = Math.floor(Date.now() / 1000) + 3600;
+    setToken(makeJwt({ exp: futureExp }));
+    const ttl = getTokenTtlMs();
+    expect(ttl).toBeGreaterThan(0);
+  });
+
+  it('exp가 없으면 0 반환', () => {
+    expect(getTokenTtlMs(makeJwt({ sub: 'user' }))).toBe(0);
+  });
+
+  it('exp가 숫자가 아니면 0 반환', () => {
+    expect(getTokenTtlMs(makeJwt({ exp: 'not-a-number' }))).toBe(0);
+  });
+
+  it('localStorage 토큰도 없으면 0', () => {
+    expect(getTokenTtlMs()).toBe(0);
+  });
 });
 
 // ── 사용자 정보 추출 ──
@@ -168,6 +235,16 @@ describe('getCurrentUserId', () => {
   });
 
   it('토큰이 없으면 null', () => {
+    expect(getCurrentUserId()).toBeNull();
+  });
+
+  it('sub이 문자열이 아니면 null 반환', () => {
+    setToken(makeJwt({ sub: 12345 }));
+    expect(getCurrentUserId()).toBeNull();
+  });
+
+  it('디코딩 불가 토큰이면 null 반환', () => {
+    localStorage.setItem(TOKEN_KEY, 'invalid.token.payload');
     expect(getCurrentUserId()).toBeNull();
   });
 });
@@ -182,6 +259,15 @@ describe('getCurrentUserEmail', () => {
     setToken(makeJwt({ sub: 'user-1' }));
     expect(getCurrentUserEmail()).toBeNull();
   });
+
+  it('토큰이 없으면 null', () => {
+    expect(getCurrentUserEmail()).toBeNull();
+  });
+
+  it('email이 문자열이 아니면 null 반환', () => {
+    setToken(makeJwt({ email: 42 }));
+    expect(getCurrentUserEmail()).toBeNull();
+  });
 });
 
 describe('getCurrentUserName', () => {
@@ -189,12 +275,30 @@ describe('getCurrentUserName', () => {
     setToken(makeJwt({ name: 'John Doe' }));
     expect(getCurrentUserName()).toBe('John Doe');
   });
+
+  it('토큰이 없으면 null', () => {
+    expect(getCurrentUserName()).toBeNull();
+  });
+
+  it('name이 문자열이 아니면 null 반환', () => {
+    setToken(makeJwt({ name: 100 }));
+    expect(getCurrentUserName()).toBeNull();
+  });
 });
 
 describe('getCurrentOAuthProvider', () => {
   it('oauth_provider 클레임을 반환한다', () => {
     setToken(makeJwt({ oauth_provider: 'google' }));
     expect(getCurrentOAuthProvider()).toBe('google');
+  });
+
+  it('토큰이 없으면 null', () => {
+    expect(getCurrentOAuthProvider()).toBeNull();
+  });
+
+  it('oauth_provider가 문자열이 아니면 null 반환', () => {
+    setToken(makeJwt({ oauth_provider: true }));
+    expect(getCurrentOAuthProvider()).toBeNull();
   });
 });
 
@@ -220,5 +324,29 @@ describe('GitHub 연동 상태', () => {
     setGitHubUsername('octocat');
     setGitHubUsername(null);
     expect(getGitHubUsername()).toBeNull();
+  });
+
+  it('SSR 환경에서 getGitHubConnected는 false를 반환한다', () => {
+    withoutWindow(() => {
+      expect(getGitHubConnected()).toBe(false);
+    });
+  });
+
+  it('SSR 환경에서 setGitHubConnected는 아무 작업도 하지 않는다', () => {
+    withoutWindow(() => {
+      expect(() => setGitHubConnected(true)).not.toThrow();
+    });
+  });
+
+  it('SSR 환경에서 getGitHubUsername은 null을 반환한다', () => {
+    withoutWindow(() => {
+      expect(getGitHubUsername()).toBeNull();
+    });
+  });
+
+  it('SSR 환경에서 setGitHubUsername은 아무 작업도 하지 않는다', () => {
+    withoutWindow(() => {
+      expect(() => setGitHubUsername('octocat')).not.toThrow();
+    });
   });
 });

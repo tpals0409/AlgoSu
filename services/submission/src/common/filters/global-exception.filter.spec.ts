@@ -89,4 +89,54 @@ describe('GlobalExceptionFilter', () => {
       }),
     );
   });
+
+  it('HttpException에 object response지만 message 키 없으면 exception.message를 fallback으로 사용한다', () => {
+    // object response without message key
+    const exception = new HttpException(
+      { error: 'Custom Error' }, // no "message" field
+      HttpStatus.UNPROCESSABLE_ENTITY,
+    );
+
+    filter.catch(exception, mockHost);
+
+    expect(mockStatus).toHaveBeenCalledWith(HttpStatus.UNPROCESSABLE_ENTITY);
+    expect(mockJson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        statusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+        error: 'Custom Error',
+      }),
+    );
+  });
+
+  it('HttpException에 object response의 error 키가 없으면 HttpStatus 이름을 fallback으로 사용한다', () => {
+    const exception = new HttpException(
+      { message: 'some message' }, // no "error" field
+      HttpStatus.FORBIDDEN,
+    );
+
+    filter.catch(exception, mockHost);
+
+    expect(mockStatus).toHaveBeenCalledWith(HttpStatus.FORBIDDEN);
+    expect(mockJson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        statusCode: HttpStatus.FORBIDDEN,
+        message: 'some message',
+      }),
+    );
+  });
+
+  it('HttpException의 string response는 message와 error를 HttpStatus로 채운다', () => {
+    // string response (not an object) — else branch at line 49-51
+    const exception = new HttpException('Forbidden', HttpStatus.FORBIDDEN);
+
+    filter.catch(exception, mockHost);
+
+    expect(mockStatus).toHaveBeenCalledWith(HttpStatus.FORBIDDEN);
+    expect(mockJson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        statusCode: HttpStatus.FORBIDDEN,
+        message: 'Forbidden',
+      }),
+    );
+  });
 });

@@ -56,8 +56,8 @@ const mockCreateChannel = jest.fn().mockResolvedValue({
   close: mockChannelClose,
 });
 
-const connectionEventHandlers: Record<string, Function> = {};
-const mockConnectionOn = jest.fn().mockImplementation((event: string, handler: Function) => {
+const connectionEventHandlers: Record<string, (...args: unknown[]) => void> = {};
+const mockConnectionOn = jest.fn().mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
   connectionEventHandlers[event] = handler;
 });
 const mockConnectionClose = jest.fn().mockResolvedValue(undefined);

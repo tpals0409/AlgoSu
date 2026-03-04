@@ -246,4 +246,26 @@ describe('MqPublisherService', () => {
       expect(() => errorCallback(new Error('test error'))).not.toThrow();
     });
   });
+
+  // ─── 11. scheduleReconnect — 재연결 재시도 실패 시 재스케줄 ───
+  describe('scheduleReconnect() — 재연결 재시도 실패 시 재스케줄', () => {
+    it('재연결 시도도 실패하면 scheduleReconnect를 재귀 호출한다', async () => {
+      // 첫 연결 실패
+      amqplib.connect.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+
+      await service.onModuleInit();
+
+      // 재연결 타이머가 1개 설정됨
+      expect(jest.getTimerCount()).toBe(1);
+
+      // 두 번째 연결도 실패
+      amqplib.connect.mockRejectedValueOnce(new Error('ECONNREFUSED again'));
+
+      // 첫 번째 타이머 실행 (재연결 시도 — 실패)
+      await jest.advanceTimersByTimeAsync(1000);
+
+      // 재연결 실패 → 다시 scheduleReconnect → 새 타이머 1개
+      expect(jest.getTimerCount()).toBe(1);
+    });
+  });
 });

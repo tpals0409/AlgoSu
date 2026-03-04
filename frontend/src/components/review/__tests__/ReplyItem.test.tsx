@@ -71,4 +71,22 @@ describe('ReplyItem', () => {
     render(<ReplyItem reply={reply} currentUserId="other" />);
     expect(screen.getByText('방금')).toBeInTheDocument();
   });
+
+  it('7일 이상 경과 시 날짜 형식으로 표시한다', () => {
+    const reply = makeReply({
+      createdAt: new Date(NOW - 10 * 24 * 3600000).toISOString(),
+    });
+    render(<ReplyItem reply={reply} currentUserId="other" />);
+    // toLocaleDateString('ko-KR') 결과 검증 - 숫자가 포함된 날짜 형식
+    const timeEl = screen.getByText(/\d+/);
+    expect(timeEl).toBeInTheDocument();
+  });
+
+  it('6일 경과 시 일 단위로 표시한다', () => {
+    const reply = makeReply({
+      createdAt: new Date(NOW - 6 * 24 * 3600000).toISOString(),
+    });
+    render(<ReplyItem reply={reply} currentUserId="other" />);
+    expect(screen.getByText('6일 전')).toBeInTheDocument();
+  });
 });
