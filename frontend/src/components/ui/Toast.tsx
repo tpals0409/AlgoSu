@@ -80,6 +80,7 @@ export function Toast({ toast, onDismiss }: ToastProps): ReactElement {
         )}
         {toast.action && (
           <button
+            type="button"
             onClick={toast.onAction}
             className={cn('mt-2 flex items-center gap-1 border-none bg-transparent p-0 text-xs font-semibold', styles.badge.split(' ').pop())}
           >
@@ -91,6 +92,7 @@ export function Toast({ toast, onDismiss }: ToastProps): ReactElement {
         )}
       </div>
       <button
+        type="button"
         onClick={handleDismiss}
         aria-label="닫기"
         className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm border-none bg-transparent text-text-3 transition-colors hover:text-text"

@@ -675,7 +675,7 @@ export function CodeEditor({
                 type="button"
                 onClick={() => setFontSize((s) => Math.max(10, s - 1))}
                 className="flex items-center justify-center w-5 h-5 rounded text-text-3 transition-colors hover:text-text hover:bg-bg-alt disabled:opacity-40"
-                title="폰트 축소"
+                aria-label="폰트 축소"
                 disabled={fontSize <= 10}
               >
                 <Minus className="h-2.5 w-2.5" aria-hidden />
@@ -685,7 +685,7 @@ export function CodeEditor({
                 type="button"
                 onClick={() => setFontSize((s) => Math.min(20, s + 1))}
                 className="flex items-center justify-center w-5 h-5 rounded text-text-3 transition-colors hover:text-text hover:bg-bg-alt disabled:opacity-40"
-                title="폰트 확대"
+                aria-label="폰트 확대"
                 disabled={fontSize >= 20}
               >
                 <Plus className="h-2.5 w-2.5" aria-hidden />
@@ -698,7 +698,7 @@ export function CodeEditor({
               onClick={handleReset}
               disabled={isSubmitting}
               className="flex items-center gap-1 text-[11px] text-text-3 transition-colors hover:text-text disabled:opacity-40"
-              title="템플릿으로 초기화"
+              aria-label="템플릿으로 초기화"
             >
               <RotateCcw className="h-3 w-3" aria-hidden />
               <span className="hidden sm:inline">초기화</span>

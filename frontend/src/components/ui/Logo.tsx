@@ -31,6 +31,7 @@ export function Logo({
       viewBox="0 0 40 40"
       fill="none"
       className={className}
+      role="img"
       aria-label="AlgoSu"
     >
       <rect width="40" height="40" rx="8" fill={`url(#${gradientId})`} />

@@ -12,6 +12,7 @@ import type { ReactNode } from 'react';
 import localFont from 'next/font/local';
 import '@/app/globals.css';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
+import { WebVitalsReporter } from '@/components/providers/WebVitalsReporter';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { StudyProvider } from '@/contexts/StudyContext';
 
@@ -62,6 +63,7 @@ export default function RootLayout({ children }: RootLayoutProps): ReactNode {
           enableSystem
           disableTransitionOnChange
         >
+          <WebVitalsReporter />
           <AuthProvider>
             <StudyProvider>
               {children}

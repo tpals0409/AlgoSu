@@ -285,7 +285,7 @@ export function TopNav(): ReactNode {
         {hasStudy && (
           <button
             type="button"
-            aria-label="메뉴 열기"
+            aria-label={mobileMenuOpen ? '메뉴 닫기' : '메뉴 열기'}
             onClick={() => setMobileMenuOpen((v) => !v)}
             className="flex items-center justify-center bg-bg-alt text-text-3 transition-colors hover:text-text sm:hidden w-7 h-7 rounded-sm"
           >

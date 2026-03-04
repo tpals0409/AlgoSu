@@ -84,6 +84,8 @@ export function NotifPanel({
 
   return (
     <div
+      role="region"
+      aria-label="알림 패널"
       className={cn(
         'absolute right-0 top-[calc(100%+8px)] z-50 w-[360px] overflow-hidden rounded-card border border-border bg-bg-card shadow-hover',
         className,
