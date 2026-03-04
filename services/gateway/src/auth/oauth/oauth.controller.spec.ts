@@ -339,10 +339,6 @@ describe('OAuthController', () => {
     });
 
     it('토큰 디코딩 실패 시에도 로그아웃 성공 (쿠키 삭제)', async () => {
-      // jwt.decode를 throw하도록 만들기 위해 revokeRefreshToken에서 예외 발생
-      // 실제로는 jwt.decode가 예외를 거의 안 throw하지만, try/catch 분기를 커버하기 위해
-      // 토큰이 있고 decoded?.['sub']가 falsy(undefined)인 케이스로도 가능
-      // decoded가 null이거나 userId가 없으면 revokeRefreshToken 호출 안 함
       const token = jwt.sign({ someField: 'noid' }, JWT_SECRET); // sub 없음
       const req = createMockReq({ cookies: { token } });
       const res = createMockRes();
@@ -351,6 +347,20 @@ describe('OAuthController', () => {
 
       // sub도 userId도 없으므로 revokeRefreshToken 호출 안 됨
       expect(mockOAuthService.revokeRefreshToken).not.toHaveBeenCalled();
+      expect(res.clearCookie).toHaveBeenCalled();
+      expect(result.message).toContain('로그아웃');
+    });
+
+    it('revokeRefreshToken 실패 시 catch 블록 진입 (line 327)', async () => {
+      // 유효한 토큰으로 userId 추출 성공 → revokeRefreshToken에서 예외 → catch 블록 커버
+      mockOAuthService.revokeRefreshToken.mockRejectedValueOnce(new Error('revoke failed'));
+      const token = jwt.sign({ sub: USER_ID }, JWT_SECRET);
+      const req = createMockReq({ cookies: { token } });
+      const res = createMockRes();
+
+      const result = await controller.logout(req as any, res as any);
+
+      expect(mockOAuthService.revokeRefreshToken).toHaveBeenCalledWith(USER_ID);
       expect(res.clearCookie).toHaveBeenCalled();
       expect(result.message).toContain('로그아웃');
     });

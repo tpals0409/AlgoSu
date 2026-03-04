@@ -200,6 +200,19 @@ describe('AvatarService', () => {
     });
   });
 
+  describe('validateMagicBytes — 지원하지 않는 MIME (line 157)', () => {
+    it('MAGIC_BYTES에 없는 mimetype이면 BadRequestException을 던진다', () => {
+      const buffer = Buffer.from([0x00, 0x00, 0x00, 0x00]);
+      // private 메서드 직접 호출하여 !sig 분기 커버
+      expect(() => {
+        (service as any).validateMagicBytes(buffer, 'image/bmp');
+      }).toThrow(BadRequestException);
+      expect(() => {
+        (service as any).validateMagicBytes(buffer, 'image/bmp');
+      }).toThrow('지원하지 않는 이미지 형식입니다.');
+    });
+  });
+
   describe('deleteAvatar', () => {
     it('MinIO에서 객체를 삭제한다', async () => {
       await service.deleteAvatar('user-1/old-uuid.webp');

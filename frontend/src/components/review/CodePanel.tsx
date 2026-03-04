@@ -77,7 +77,7 @@ export function CodePanel({
   // 선택된 라인으로 자동 스크롤
   useEffect(() => {
     if (selectedLine === null || selectedLine === undefined) return;
-    const el = codeRef.current?.querySelector(
+    const el = /* istanbul ignore next -- ref always attached when effect runs */ codeRef.current?.querySelector(
       `[data-line="${selectedLine}"]`,
     );
     if (el) {

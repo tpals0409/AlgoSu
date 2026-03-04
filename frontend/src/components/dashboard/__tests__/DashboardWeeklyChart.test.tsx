@@ -158,4 +158,46 @@ describe('DashboardWeeklyChart', () => {
     );
     expect(screen.getByText('1월1주차')).toBeInTheDocument();
   });
+
+  it('Enter 키를 누르면 onCycleView가 호출된다 (line 88)', () => {
+    const onCycleView = jest.fn();
+    render(<DashboardWeeklyChart {...defaultProps} onCycleView={onCycleView} />);
+    fireEvent.keyDown(screen.getByTestId('card'), { key: 'Enter' });
+    expect(onCycleView).toHaveBeenCalledTimes(1);
+  });
+
+  it('Space 키를 누르면 onCycleView가 호출된다 (line 88)', () => {
+    const onCycleView = jest.fn();
+    render(<DashboardWeeklyChart {...defaultProps} onCycleView={onCycleView} />);
+    fireEvent.keyDown(screen.getByTestId('card'), { key: ' ' });
+    expect(onCycleView).toHaveBeenCalledTimes(1);
+  });
+
+  it('Enter/Space 외 키로는 onCycleView가 호출되지 않는다', () => {
+    const onCycleView = jest.fn();
+    render(<DashboardWeeklyChart {...defaultProps} onCycleView={onCycleView} />);
+    fireEvent.keyDown(screen.getByTestId('card'), { key: 'Escape' });
+    expect(onCycleView).not.toHaveBeenCalled();
+  });
+
+  it('"전체 N주 보기" 링크 클릭 시 stopPropagation이 호출된다 (line 128)', () => {
+    const weeks = Array.from({ length: 7 }, (_, i) => ({
+      week: `${i + 1}주차`,
+      count: i + 1,
+    }));
+    const pcMap = new Map(weeks.map((w) => [w.week, 10]));
+    const onCycleView = jest.fn();
+    render(
+      <DashboardWeeklyChart
+        {...defaultProps}
+        filteredByWeek={weeks}
+        problemCountByWeek={pcMap}
+        onCycleView={onCycleView}
+      />,
+    );
+    const link = screen.getByText('전체 7주 보기 →');
+    // 링크 클릭 시 stopPropagation으로 인해 카드의 onCycleView가 호출되지 않아야 한다
+    fireEvent.click(link);
+    expect(onCycleView).not.toHaveBeenCalled();
+  });
 });

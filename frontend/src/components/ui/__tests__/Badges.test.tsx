@@ -383,4 +383,18 @@ describe('CategoryBar accessibility', () => {
     expect(progressbar).toHaveAttribute('aria-valuemin', '0');
     expect(progressbar).toHaveAttribute('aria-valuemax', '100');
   });
+
+  it('does not throw when Enter is pressed without onClick (onClick?.() optional chaining)', () => {
+    render(<CategoryBar item={item} />);
+    expect(() => {
+      fireEvent.keyDown(screen.getByRole('button'), { key: 'Enter' });
+    }).not.toThrow();
+  });
+
+  it('does not throw when Space is pressed without onClick (onClick?.() optional chaining)', () => {
+    render(<CategoryBar item={item} />);
+    expect(() => {
+      fireEvent.keyDown(screen.getByRole('button'), { key: ' ' });
+    }).not.toThrow();
+  });
 });

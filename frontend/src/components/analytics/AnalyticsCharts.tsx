@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 
 // ─── StatCard ────────────────────────────
 
-function StatCard({
+export function StatCard({
   icon: Icon,
   label,
   value,

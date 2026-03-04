@@ -140,5 +140,53 @@ describe('sanitize utilities', () => {
       expect(result.status).toBeUndefined();
       expect(result.url).toBeUndefined();
     });
+
+    it('production 환경에서 일반 Error의 stack을 제외한다 (line 103)', () => {
+      const originalEnv = process.env['ENV'];
+      process.env['ENV'] = 'production';
+
+      try {
+        const err = new Error('prod error');
+        const result = sanitizeAxiosError(err);
+        expect(result.name).toBe('Error');
+        expect(result.message).toBe('prod error');
+        expect(result.stack).toBeUndefined();
+      } finally {
+        process.env['ENV'] = originalEnv;
+      }
+    });
+
+    it('Axios 에러에서 message가 undefined이면 기본 메시지 반환 (line 113)', () => {
+      const axiosError = {
+        isAxiosError: true,
+        name: 'AxiosError',
+        message: undefined,
+        config: {},
+        response: {},
+      };
+
+      const result = sanitizeAxiosError(axiosError);
+      expect(result.message).toBe('Unknown axios error');
+    });
+
+    it('production 환경에서 Axios 에러의 stack을 제외한다 (line 119)', () => {
+      const originalEnv = process.env['ENV'];
+      process.env['ENV'] = 'production';
+
+      try {
+        const axiosError = {
+          isAxiosError: true,
+          name: 'AxiosError',
+          message: 'timeout',
+          stack: 'stack trace...',
+          config: {},
+          response: {},
+        };
+        const result = sanitizeAxiosError(axiosError);
+        expect(result.stack).toBeUndefined();
+      } finally {
+        process.env['ENV'] = originalEnv;
+      }
+    });
   });
 });

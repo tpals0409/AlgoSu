@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import AnalyticsCharts from '../AnalyticsCharts';
+import AnalyticsCharts, { StatCard } from '../AnalyticsCharts';
 import type { AnalyticsChartsProps } from '../AnalyticsCharts';
 
 jest.mock('lucide-react', () => {
@@ -231,5 +231,29 @@ describe('AnalyticsCharts', () => {
     render(<AnalyticsCharts {...props} />);
     const countEl = screen.getByText('5');
     expect(countEl.className).toContain('text-primary');
+  });
+});
+
+describe('StatCard', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const MockIcon = ((props: React.SVGProps<SVGSVGElement>) => <svg {...props} />) as any;
+
+  it('loading=true이면 Skeleton을 표시한다 (line 43 true 분기)', () => {
+    render(<StatCard icon={MockIcon} label="테스트" value={42} loading={true} />);
+    expect(screen.getByTestId('skeleton')).toBeInTheDocument();
+    // loading=true이면 value는 표시되지 않는다
+    expect(screen.queryByText('42')).not.toBeInTheDocument();
+  });
+
+  it('loading=false이면 값을 표시한다 (line 43 false 분기)', () => {
+    render(<StatCard icon={MockIcon} label="테스트" value={42} loading={false} />);
+    expect(screen.getByText('42')).toBeInTheDocument();
+    expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument();
+  });
+
+  it('valueClassName이 전달되면 값 엘리먼트에 적용된다', () => {
+    render(<StatCard icon={MockIcon} label="테스트" value="80%" loading={false} valueClassName="text-success" />);
+    const el = screen.getByText('80%');
+    expect(el.className).toContain('text-success');
   });
 });

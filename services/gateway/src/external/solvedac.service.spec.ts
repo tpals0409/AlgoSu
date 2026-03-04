@@ -151,6 +151,14 @@ describe('SolvedacService', () => {
       );
     });
 
+    it('비-Error 객체 throw → ServiceUnavailableException (line 52 else 분기)', async () => {
+      mockFetch.mockRejectedValue('string-error');
+
+      await expect(service.fetchProblem(PROBLEM_ID)).rejects.toThrow(
+        ServiceUnavailableException,
+      );
+    });
+
     it('한국어 태그 없으면 영어 태그 사용', async () => {
       mockFetch.mockResolvedValue({
         ok: true,

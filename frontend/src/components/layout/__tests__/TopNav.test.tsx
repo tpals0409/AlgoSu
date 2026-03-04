@@ -43,12 +43,12 @@ jest.mock('next-themes', () => ({
   useTheme: () => ({ theme: mockTheme, setTheme: mockSetTheme }),
 }));
 
+let mockUser: { email: string | undefined; avatarPreset: string | undefined } | null = null;
+
 jest.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({
     isAuthenticated: mockIsAuthenticated,
-    user: mockIsAuthenticated
-      ? { email: mockUserEmail, avatarPreset: mockUserAvatarPreset }
-      : null,
+    user: mockUser,
     logout: mockLogout,
   }),
 }));
@@ -83,6 +83,7 @@ function resetDefaults() {
   mockPathname = '/';
   mockUserEmail = 'test@example.com';
   mockUserAvatarPreset = 'default';
+  mockUser = { email: mockUserEmail, avatarPreset: mockUserAvatarPreset };
   jest.clearAllMocks();
 }
 
@@ -131,6 +132,7 @@ describe('TopNav — 비인증 상태', () => {
   beforeEach(() => {
     resetDefaults();
     mockIsAuthenticated = false;
+    mockUser = null;
     mockStudies = [];
     mockCurrentStudyId = null;
   });
@@ -467,6 +469,7 @@ describe('TopNav — ProfileDropdown user null 케이스', () => {
 
   it('user.email이 undefined이면 드롭다운에 빈 문자열을 표시한다 (user?.email ?? "" 분기)', () => {
     mockUserEmail = undefined;
+    mockUser = { email: undefined, avatarPreset: 'default' };
     render(<TopNav />);
     // 프로필 버튼 클릭하여 드롭다운 열기
     fireEvent.click(screen.getByRole('button', { name: /프로필 메뉴/ }));
@@ -476,6 +479,7 @@ describe('TopNav — ProfileDropdown user null 케이스', () => {
 
   it('user.avatarPreset이 undefined이면 기본 아바타를 사용한다 (avatarPreset ?? "default" 분기)', () => {
     mockUserAvatarPreset = undefined;
+    mockUser = { email: 'test@example.com', avatarPreset: undefined };
     render(<TopNav />);
     // 렌더링 오류 없이 아바타 이미지가 표시된다
     const img = screen.getByAltText('아바타');
@@ -518,6 +522,21 @@ describe('TopNav — ProfileDropdown user null 케이스', () => {
       fireEvent.mouseDown(document.body);
     });
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
+  it('user가 null이면 프로필 메뉴의 aria-label과 이메일이 빈 문자열이다 (user?.email ?? "" 및 user?.avatarPreset ?? "default" null 분기)', () => {
+    mockUser = null;
+    render(<TopNav />);
+    // user가 null이어도 isAuthenticated=true이므로 ProfileDropdown이 렌더링됨
+    const profileBtn = screen.getByRole('button', { name: /프로필 메뉴/ });
+    expect(profileBtn).toBeInTheDocument();
+    // user?.email이 undefined → '' 표시
+    expect(profileBtn).toHaveAttribute('aria-label', ' 프로필 메뉴');
+    // user?.avatarPreset이 undefined → 'default' 사용
+    expect(screen.getByAltText('아바타')).toBeInTheDocument();
+    // 드롭다운 열기
+    fireEvent.click(profileBtn);
+    expect(screen.getByRole('menu', { name: '프로필 메뉴' })).toBeInTheDocument();
   });
 
   it('ProfileDropdown 내부 클릭 시 드롭다운이 유지된다 (ref.current.contains() = true 분기)', () => {

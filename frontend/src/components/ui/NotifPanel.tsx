@@ -109,7 +109,7 @@ export function NotifPanel({
           unread.map((n) => {
             const notifType = TYPE_MAP[n.type] ?? 'info';
             const style = STYLE_MAP[notifType];
-            const borderClass = style.split(' ').pop() ?? '';
+            const borderClass = /* istanbul ignore next -- pop() always returns string for non-empty arrays */ style.split(' ').pop() ?? '';
             const badgeClasses = style
               .split(' ')
               .slice(0, 2)
