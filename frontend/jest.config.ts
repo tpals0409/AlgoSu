@@ -26,10 +26,10 @@ const config: Config = {
   coverageDirectory: 'coverage',
   coverageThreshold: {
     global: {
-      statements: 68,
-      branches: 60,
-      functions: 57,
-      lines: 71,
+      statements: 74,
+      branches: 65,
+      functions: 61,
+      lines: 77,
     },
   },
   collectCoverageFrom: [
