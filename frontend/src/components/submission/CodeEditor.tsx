@@ -16,7 +16,7 @@ import {
 import dynamic from 'next/dynamic';
 import { useTheme } from 'next-themes';
 import type { BeforeMount, OnMount } from '@monaco-editor/react';
-import { Check, Send, RotateCcw, Minus, Plus } from 'lucide-react';
+import { Check, Send, RotateCcw, Minus, Plus, Maximize2, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { InlineSpinner } from '@/components/ui/LoadingSpinner';
@@ -159,68 +159,194 @@ const MONACO_LANG_MAP: Record<string, string> = {
   kotlin: 'kotlin',
 };
 
-// ─── 언어별 자동완성 키워드 ────────────────
+// ─── BOJ 전용 스니펫 (Monaco 내장 자동완성과 충돌 방지) ──
 
 type MonacoInstance = Parameters<BeforeMount>[0];
 
-// 키워드(keywords)는 Monaco 내장 완성과 중복되므로 제거
-// builtins(표준 라이브러리) + snippets(BOJ 템플릿)만 등록
-const LANG_COMPLETIONS: Record<string, { builtins: string[]; snippets: { label: string; insert: string; doc: string }[] }> = {
-  python: {
-    builtins: ['print', 'input', 'len', 'range', 'enumerate', 'zip', 'map', 'filter', 'sorted', 'reversed', 'list', 'dict', 'set', 'tuple', 'int', 'float', 'str', 'bool', 'abs', 'max', 'min', 'sum', 'any', 'all', 'isinstance', 'type', 'open', 'super', 'property', 'staticmethod', 'classmethod'],
-    snippets: [
-      { label: 'sys.stdin', insert: 'import sys\ninput = sys.stdin.readline', doc: 'Fast input (BOJ)' },
-      { label: 'defaultdict', insert: 'from collections import defaultdict', doc: 'Import defaultdict' },
-      { label: 'deque', insert: 'from collections import deque', doc: 'Import deque' },
-      { label: 'heapq', insert: 'import heapq', doc: 'Import heapq' },
-      { label: 'bisect', insert: 'import bisect', doc: 'Import bisect' },
-    ],
-  },
-  java: {
-    builtins: ['System.out.println', 'System.out.print', 'Integer.parseInt', 'Long.parseLong', 'Math.max', 'Math.min', 'Math.abs', 'Arrays.sort', 'Arrays.fill', 'Collections.sort', 'Collections.reverse', 'StringBuilder', 'BufferedReader', 'InputStreamReader', 'StringTokenizer', 'ArrayList', 'HashMap', 'HashSet', 'LinkedList', 'PriorityQueue', 'TreeMap', 'TreeSet', 'Stack', 'Queue'],
-    snippets: [
-      { label: 'BufferedReader', insert: 'BufferedReader br = new BufferedReader(new InputStreamReader(System.in));', doc: 'Fast input (BOJ)' },
-      { label: 'StringTokenizer', insert: 'StringTokenizer st = new StringTokenizer(br.readLine());', doc: 'Token parser' },
-    ],
-  },
-  cpp: {
-    builtins: ['cout', 'cin', 'endl', 'vector', 'map', 'unordered_map', 'set', 'unordered_set', 'queue', 'priority_queue', 'stack', 'deque', 'pair', 'tuple', 'sort', 'reverse', 'lower_bound', 'upper_bound', 'min', 'max', 'abs', 'swap', 'fill', 'accumulate', 'push_back', 'pop_back', 'emplace_back', 'begin', 'end', 'size', 'empty', 'front', 'back'],
-    snippets: [
-      { label: 'fast_io', insert: 'ios::sync_with_stdio(false);\ncin.tie(nullptr);', doc: 'Fast I/O (BOJ)' },
-      { label: '#include bits', insert: '#include <bits/stdc++.h>', doc: 'All-in-one header' },
-    ],
-  },
-  javascript: {
-    builtins: ['console.log', 'parseInt', 'parseFloat', 'Math.max', 'Math.min', 'Math.abs', 'Math.floor', 'Math.ceil', 'Array.from', 'Array.isArray', 'Object.keys', 'Object.values', 'Object.entries', 'JSON.parse', 'JSON.stringify', 'Map', 'Set', 'Promise', 'setTimeout'],
-    snippets: [
-      { label: 'readline', insert: "const readline = require('readline');\nconst rl = readline.createInterface({ input: process.stdin, output: process.stdout });", doc: 'Node.js input (BOJ)' },
-    ],
-  },
-  go: {
-    builtins: ['fmt.Println', 'fmt.Printf', 'fmt.Scanf', 'fmt.Sprintf', 'len', 'cap', 'append', 'make', 'new', 'copy', 'delete', 'close', 'panic', 'recover', 'sort.Ints', 'sort.Strings', 'strconv.Atoi', 'strconv.Itoa', 'strings.Split', 'strings.Join', 'bufio.NewReader', 'bufio.NewScanner'],
-    snippets: [],
-  },
-  kotlin: {
-    builtins: ['println', 'readLine', 'readln', 'toInt', 'toLong', 'toDouble', 'split', 'map', 'filter', 'sorted', 'reversed', 'forEach', 'joinToString', 'maxOrNull', 'minOrNull', 'sumOf', 'groupBy', 'associate', 'arrayOf', 'listOf', 'mutableListOf', 'mapOf', 'mutableMapOf', 'setOf', 'mutableSetOf', 'BufferedReader', 'InputStreamReader', 'StringTokenizer'],
-    snippets: [],
-  },
-  rust: {
-    builtins: ['println!', 'print!', 'format!', 'vec!', 'unwrap', 'expect', 'parse', 'push', 'pop', 'len', 'iter', 'map', 'filter', 'collect', 'sort', 'sort_by', 'reverse', 'contains', 'insert', 'remove', 'split_whitespace', 'trim', 'lines', 'read_line', 'stdin', 'HashMap', 'HashSet', 'BTreeMap', 'BTreeSet', 'VecDeque', 'BinaryHeap'],
-    snippets: [],
-  },
-  c: {
-    builtins: ['printf', 'scanf', 'puts', 'gets', 'getchar', 'putchar', 'malloc', 'calloc', 'realloc', 'free', 'memset', 'memcpy', 'strlen', 'strcmp', 'strcpy', 'strcat', 'atoi', 'atol', 'strtol', 'qsort', 'bsearch', 'abs', 'EXIT_SUCCESS', 'EXIT_FAILURE'],
-    snippets: [],
-  },
+// builtins/keywords 전부 제거 — Monaco 내장 자동완성이 변수명·키워드를 처리
+// BOJ 알고리즘 문제풀이 전용 스니펫만 등록
+const BOJ_SNIPPETS: Record<string, { label: string; insert: string; doc: string }[]> = {
+  python: [
+    // ─ 입출력
+    { label: '⚡ sys.stdin (빠른 입력)', insert: 'import sys\ninput = sys.stdin.readline\n', doc: 'BOJ 빠른 입력' },
+    { label: '⚡ 여러 줄 입력', insert: 'import sys\ninput = sys.stdin.readline\nn = int(input())\nfor _ in range(n):\n    ', doc: 'N줄 반복 입력' },
+    { label: '⚡ 공백 분리 입력', insert: 'a, b = map(int, input().split())\n', doc: '공백으로 분리된 정수 입력' },
+    { label: '⚡ 리스트 입력', insert: 'arr = list(map(int, input().split()))\n', doc: '정수 리스트 입력' },
+    // ─ collections
+    { label: '📦 defaultdict', insert: 'from collections import defaultdict\n', doc: 'Import defaultdict' },
+    { label: '📦 Counter', insert: 'from collections import Counter\n', doc: 'Import Counter' },
+    { label: '📦 deque', insert: 'from collections import deque\n', doc: 'Import deque' },
+    // ─ 알고리즘 라이브러리
+    { label: '📦 heapq', insert: 'from heapq import heappush, heappop\n', doc: 'heappush, heappop' },
+    { label: '📦 bisect', insert: 'from bisect import bisect_left, bisect_right\n', doc: '이분탐색' },
+    { label: '📦 itertools', insert: 'from itertools import permutations, combinations\n', doc: '순열/조합' },
+    { label: '📦 lru_cache', insert: 'from functools import lru_cache\n', doc: '메모이제이션 데코레이터' },
+    { label: '📦 math', insert: 'import math\n', doc: 'math 모듈' },
+    // ─ 알고리즘 템플릿
+    { label: '🔍 BFS 템플릿', insert: [
+      'from collections import deque',
+      '',
+      'def bfs(start):',
+      '    visited = set([start])',
+      '    queue = deque([start])',
+      '    while queue:',
+      '        node = queue.popleft()',
+      '        for next_node in graph[node]:',
+      '            if next_node not in visited:',
+      '                visited.add(next_node)',
+      '                queue.append(next_node)',
+      '',
+    ].join('\n'), doc: 'BFS 너비우선탐색' },
+    { label: '🔍 DFS 템플릿', insert: [
+      'def dfs(node, visited):',
+      '    visited.add(node)',
+      '    for next_node in graph[node]:',
+      '        if next_node not in visited:',
+      '            dfs(next_node, visited)',
+      '',
+    ].join('\n'), doc: 'DFS 깊이우선탐색 (재귀)' },
+    { label: '🔍 이분탐색', insert: [
+      'def binary_search(arr, target):',
+      '    lo, hi = 0, len(arr) - 1',
+      '    while lo <= hi:',
+      '        mid = (lo + hi) // 2',
+      '        if arr[mid] == target:',
+      '            return mid',
+      '        elif arr[mid] < target:',
+      '            lo = mid + 1',
+      '        else:',
+      '            hi = mid - 1',
+      '    return -1',
+      '',
+    ].join('\n'), doc: '이분탐색 (기본)' },
+    { label: '🔍 Union-Find', insert: [
+      'parent = list(range(n + 1))',
+      '',
+      'def find(x):',
+      '    if parent[x] != x:',
+      '        parent[x] = find(parent[x])',
+      '    return parent[x]',
+      '',
+      'def union(a, b):',
+      '    a, b = find(a), find(b)',
+      '    if a != b:',
+      '        parent[b] = a',
+      '',
+    ].join('\n'), doc: 'Union-Find (경로 압축)' },
+    { label: '🔍 다익스트라', insert: [
+      'import heapq',
+      '',
+      'def dijkstra(start):',
+      '    dist = [float("inf")] * (n + 1)',
+      '    dist[start] = 0',
+      '    heap = [(0, start)]',
+      '    while heap:',
+      '        cost, node = heapq.heappop(heap)',
+      '        if cost > dist[node]:',
+      '            continue',
+      '        for next_node, weight in graph[node]:',
+      '            new_cost = cost + weight',
+      '            if new_cost < dist[next_node]:',
+      '                dist[next_node] = new_cost',
+      '                heapq.heappush(heap, (new_cost, next_node))',
+      '    return dist',
+      '',
+    ].join('\n'), doc: '다익스트라 최단경로' },
+  ],
+  java: [
+    { label: '⚡ BufferedReader (빠른 입력)', insert: 'BufferedReader br = new BufferedReader(new InputStreamReader(System.in));\n', doc: 'BOJ 빠른 입력' },
+    { label: '⚡ StringTokenizer', insert: 'StringTokenizer st = new StringTokenizer(br.readLine());\n', doc: '토큰 파서' },
+    { label: '⚡ StringBuilder', insert: 'StringBuilder sb = new StringBuilder();\n', doc: '빠른 문자열 연결' },
+    { label: '⚡ N줄 입력 루프', insert: [
+      'int n = Integer.parseInt(br.readLine());',
+      'for (int i = 0; i < n; i++) {',
+      '    StringTokenizer st = new StringTokenizer(br.readLine());',
+      '    ',
+      '}',
+    ].join('\n'), doc: 'N줄 반복 입력' },
+    { label: '🔍 BFS 템플릿', insert: [
+      'Queue<Integer> queue = new LinkedList<>();',
+      'boolean[] visited = new boolean[n + 1];',
+      'queue.add(start);',
+      'visited[start] = true;',
+      'while (!queue.isEmpty()) {',
+      '    int node = queue.poll();',
+      '    for (int next : graph[node]) {',
+      '        if (!visited[next]) {',
+      '            visited[next] = true;',
+      '            queue.add(next);',
+      '        }',
+      '    }',
+      '}',
+    ].join('\n'), doc: 'BFS 너비우선탐색' },
+  ],
+  cpp: [
+    { label: '⚡ fast_io', insert: 'ios::sync_with_stdio(false);\ncin.tie(nullptr);\n', doc: 'BOJ 빠른 I/O' },
+    { label: '⚡ bits/stdc++.h', insert: '#include <bits/stdc++.h>\n', doc: '올인원 헤더' },
+    { label: '⚡ 매크로 셋', insert: [
+      '#define ll long long',
+      '#define pii pair<int,int>',
+      '#define vi vector<int>',
+      '#define all(x) (x).begin(),(x).end()',
+      '',
+    ].join('\n'), doc: 'CP 매크로 모음' },
+    { label: '🔍 BFS 템플릿', insert: [
+      'queue<int> q;',
+      'vector<bool> visited(n + 1, false);',
+      'q.push(start);',
+      'visited[start] = true;',
+      'while (!q.empty()) {',
+      '    int node = q.front(); q.pop();',
+      '    for (int next : graph[node]) {',
+      '        if (!visited[next]) {',
+      '            visited[next] = true;',
+      '            q.push(next);',
+      '        }',
+      '    }',
+      '}',
+    ].join('\n'), doc: 'BFS 너비우선탐색' },
+    { label: '🔍 Union-Find', insert: [
+      'int parent[MAX];',
+      'int find(int x) { return parent[x] == x ? x : parent[x] = find(parent[x]); }',
+      'void unite(int a, int b) { parent[find(a)] = find(b); }',
+      '',
+    ].join('\n'), doc: 'Union-Find (경로 압축)' },
+  ],
+  javascript: [
+    { label: '⚡ readline (Node.js 입력)', insert: [
+      "const readline = require('readline');",
+      'const rl = readline.createInterface({ input: process.stdin, output: process.stdout });',
+      'const lines = [];',
+      "rl.on('line', (line) => lines.push(line));",
+      "rl.on('close', () => {",
+      '  ',
+      '});',
+    ].join('\n'), doc: 'Node.js BOJ 입력' },
+  ],
+  typescript: [
+    { label: '⚡ readline (Node.js 입력)', insert: [
+      "const readline = require('readline');",
+      'const rl = readline.createInterface({ input: process.stdin, output: process.stdout });',
+      'const lines: string[] = [];',
+      "rl.on('line', (line: string) => lines.push(line));",
+      "rl.on('close', () => {",
+      '  ',
+      '});',
+    ].join('\n'), doc: 'Node.js BOJ 입력 (TS)' },
+  ],
 };
 
+let snippetsRegistered = false;
+
 function registerCompletionProviders(monaco: MonacoInstance): void {
+  if (snippetsRegistered) return;
+  snippetsRegistered = true;
   const CompletionItemKind = monaco.languages.CompletionItemKind;
   const CompletionItemInsertTextRule = monaco.languages.CompletionItemInsertTextRule;
 
-  for (const [langKey, data] of Object.entries(LANG_COMPLETIONS)) {
+  for (const [langKey, snippets] of Object.entries(BOJ_SNIPPETS)) {
     const monacoLang = MONACO_LANG_MAP[langKey];
-    if (!monacoLang) continue;
+    if (!monacoLang || snippets.length === 0) continue;
 
     monaco.languages.registerCompletionItemProvider(monacoLang, {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -233,24 +359,18 @@ function registerCompletionProviders(monaco: MonacoInstance): void {
           endColumn: word.endColumn,
         };
 
-        const suggestions = [
-          ...data.builtins.map((fn) => ({
-            label: fn,
-            kind: CompletionItemKind.Function,
-            insertText: fn,
-            range,
-          })),
-          ...data.snippets.map((s) => ({
+        return {
+          suggestions: snippets.map((s) => ({
             label: s.label,
             kind: CompletionItemKind.Snippet,
             insertText: s.insert,
             insertTextRules: CompletionItemInsertTextRule.InsertAsSnippet,
             documentation: s.doc,
+            detail: 'AlgoSu BOJ',
+            sortText: '!0' + s.label, // 스니펫을 상단에 표시
             range,
           })),
-        ];
-
-        return { suggestions };
+        };
       },
     });
   }
@@ -305,6 +425,8 @@ interface CodeEditorProps {
   isSubmitting: boolean;
   autoSaveStatus?: 'saving' | 'saved' | 'idle';
   deadline?: string | null;
+  /** Monaco 에디터 높이 (기본 "520px") */
+  editorHeight?: string;
 }
 
 export function CodeEditor({
@@ -316,6 +438,7 @@ export function CodeEditor({
   isSubmitting,
   autoSaveStatus = 'idle',
   deadline,
+  editorHeight = '520px',
 }: CodeEditorProps): ReactNode {
   const { resolvedTheme } = useTheme();
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
@@ -323,9 +446,26 @@ export function CodeEditor({
   const [autocomplete, setAutocomplete] = useState(true);
   const [fontSize, setFontSize] = useState(13);
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
+  const [fullscreen, setFullscreen] = useState(false);
   const [deadlineWarning, setDeadlineWarning] = useState<
     'imminent' | 'approaching' | null
   >(null);
+
+  // ─── Escape로 풀스크린 해제 (자동완성 위젯 닫기와 충돌 방지) ──
+  useEffect(() => {
+    if (!fullscreen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      // Monaco가 Escape를 먼저 처리(자동완성 닫기 등)하면 건너뜀
+      if (e.defaultPrevented) return;
+      // 에디터 suggest 위젯이 보이면 Monaco에 양보
+      const suggestWidget = document.querySelector('.editor-widget.suggest-widget.visible');
+      if (suggestWidget) return;
+      setFullscreen(false);
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [fullscreen]);
 
   // ─── 초기 템플릿 삽입 (드래프트 없이 빈 코드로 마운트 시) ─
   const mountedRef = useRef(false);
@@ -367,6 +507,13 @@ export function CodeEditor({
     editorRef.current?.updateOptions({ fontSize });
   }, [fontSize]);
 
+  // ─── 풀스크린 시 minimap + layout 반영 ──
+  useEffect(() => {
+    editorRef.current?.updateOptions({ minimap: { enabled: fullscreen } });
+    // automaticLayout이 켜져 있지만 안전하게 레이아웃 갱신
+    editorRef.current?.layout();
+  }, [fullscreen]);
+
   // ─── 언어 변경 (템플릿 코드면 자동 교체) ─
   const handleLanguageChange = useCallback(
     (newLang: string) => {
@@ -393,6 +540,16 @@ export function CodeEditor({
   const handleBeforeMount: BeforeMount = useCallback((monaco) => {
     defineThemes(monaco);
     registerCompletionProviders(monaco);
+
+    // JS/TS 진단 활성화 — 문법 오류 빨간 밑줄 표시
+    monaco.languages.typescript?.javascriptDefaults?.setDiagnosticsOptions({
+      noSemanticValidation: false,
+      noSyntaxValidation: false,
+    });
+    monaco.languages.typescript?.typescriptDefaults?.setDiagnosticsOptions({
+      noSemanticValidation: false,
+      noSyntaxValidation: false,
+    });
   }, []);
 
   const handleChange = useCallback(
@@ -450,7 +607,7 @@ export function CodeEditor({
   const monacoTheme = resolvedTheme === 'dark' ? 'algosu-dark' : 'algosu-light';
 
   return (
-    <div className="space-y-3">
+    <div className={fullscreen ? 'fixed inset-0 z-[100] flex flex-col bg-bg-card' : 'space-y-3'}>
       {/* 마감 임박 경고 */}
       {deadlineWarning === 'imminent' && (
         <Alert variant="error">
@@ -463,11 +620,16 @@ export function CodeEditor({
         </Alert>
       )}
 
-      {/* 에디터 카드 (목업 레이아웃: header → editor → footer) */}
-      <div className="overflow-hidden rounded-card border border-border bg-bg-card shadow">
+      {/* 에디터 카드 */}
+      <div className={fullscreen
+        ? 'flex flex-1 flex-col overflow-hidden'
+        : 'overflow-hidden rounded-card border border-border bg-bg-card shadow'
+      }>
         {/* ── 에디터 헤더 ── */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2 sm:px-4 sm:py-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* 언어 선택 — 항상 표시 */}
+            <label htmlFor="language" className="sr-only">프로그래밍 언어</label>
             <select
               id="language"
               value={language}
@@ -482,22 +644,22 @@ export function CodeEditor({
               ))}
             </select>
 
-            {/* 자동저장 상태 */}
+            {/* 자동저장 상태 — 항상 표시 */}
             {autoSaveStatus === 'saving' && (
               <span className="flex items-center gap-1.5 text-[11px] text-text-3">
                 <InlineSpinner />
-                저장 중...
+                <span className="hidden sm:inline">저장 중...</span>
               </span>
             )}
             {autoSaveStatus === 'saved' && (
               <span className="flex items-center gap-1 text-[11px] text-success">
                 <Check className="h-3 w-3" aria-hidden />
-                저장됨
+                <span className="hidden sm:inline">저장됨</span>
               </span>
             )}
 
-            {/* 자동완성 토글 */}
-            <label className="flex items-center gap-1.5 text-[11px] text-text-3 select-none">
+            {/* 자동완성 토글 — 데스크톱만 */}
+            <label className="hidden sm:flex items-center gap-1.5 text-[11px] text-text-3 select-none">
               <input
                 type="checkbox"
                 checked={autocomplete}
@@ -507,8 +669,8 @@ export function CodeEditor({
               자동완성
             </label>
 
-            {/* 폰트 크기 조절 */}
-            <div className="flex items-center gap-0.5">
+            {/* 폰트 크기 — 데스크톱만 */}
+            <div className="hidden sm:flex items-center gap-0.5">
               <button
                 type="button"
                 onClick={() => setFontSize((s) => Math.max(10, s - 1))}
@@ -530,7 +692,7 @@ export function CodeEditor({
               </button>
             </div>
 
-            {/* 초기화 */}
+            {/* 초기화 — 항상 표시 (아이콘만 모바일) */}
             <button
               type="button"
               onClick={handleReset}
@@ -539,58 +701,75 @@ export function CodeEditor({
               title="템플릿으로 초기화"
             >
               <RotateCcw className="h-3 w-3" aria-hidden />
-              초기화
+              <span className="hidden sm:inline">초기화</span>
             </button>
           </div>
 
-          {/* 마감 시간 (우측) */}
-          {deadline && (
-            <span className="text-[11px] text-text-3">
-              마감: {new Date(deadline).toLocaleString('ko-KR')}
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {/* 마감 시간 — 데스크톱만 */}
+            {deadline && (
+              <span className="hidden sm:inline text-[11px] text-text-3">
+                마감: {new Date(deadline).toLocaleString('ko-KR')}
+              </span>
+            )}
+            {/* 풀스크린 토글 */}
+            <button
+              type="button"
+              onClick={() => setFullscreen((f) => !f)}
+              className="flex items-center justify-center w-6 h-6 rounded text-text-3 transition-colors hover:text-text hover:bg-bg-alt"
+              title={fullscreen ? '풀스크린 해제 (Esc)' : '풀스크린'}
+              aria-label={fullscreen ? '풀스크린 해제' : '풀스크린'}
+            >
+              {fullscreen
+                ? <Minimize2 className="h-3.5 w-3.5" aria-hidden />
+                : <Maximize2 className="h-3.5 w-3.5" aria-hidden />
+              }
+            </button>
+          </div>
         </div>
 
         {/* ── Monaco Editor ── */}
-        <MonacoEditor
-          height="520px"
-          language={MONACO_LANG_MAP[language] ?? 'plaintext'}
-          value={code}
-          theme={monacoTheme}
-          beforeMount={handleBeforeMount}
-          onMount={handleMount}
-          onChange={handleChange}
-          options={{
-            fontSize,
-            fontFamily:
-              "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
-            minimap: { enabled: false },
-            scrollBeyondLastLine: false,
-            automaticLayout: true,
-            tabSize: 4,
-            insertSpaces: true,
-            wordWrap: 'on',
-            lineNumbers: 'on',
-            renderLineHighlight: 'line',
-            lineHeight: 22,
-            padding: { top: 14, bottom: 14 },
-            quickSuggestions: autocomplete,
-            suggestOnTriggerCharacters: autocomplete,
-            wordBasedSuggestions: autocomplete ? 'currentDocument' : 'off',
-            readOnly: isSubmitting,
-          }}
-        />
+        <div className={fullscreen ? 'flex-1 min-h-0' : undefined}>
+          <MonacoEditor
+            height={fullscreen ? '100%' : editorHeight}
+            language={MONACO_LANG_MAP[language] ?? 'plaintext'}
+            value={code}
+            theme={monacoTheme}
+            beforeMount={handleBeforeMount}
+            onMount={handleMount}
+            onChange={handleChange}
+            options={{
+              fontSize,
+              fontFamily:
+                "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
+              minimap: { enabled: fullscreen },
+              scrollBeyondLastLine: false,
+              automaticLayout: true,
+              tabSize: 4,
+              insertSpaces: true,
+              wordWrap: 'on',
+              lineNumbers: 'on',
+              renderLineHighlight: 'line',
+              lineHeight: 22,
+              padding: { top: 14, bottom: 14 },
+              quickSuggestions: autocomplete,
+              suggestOnTriggerCharacters: autocomplete,
+              wordBasedSuggestions: autocomplete ? 'currentDocument' : 'off',
+              readOnly: isSubmitting,
+            }}
+          />
+        </div>
 
         {/* ── 에디터 푸터 (제출 바) ── */}
-        <div className="flex items-center justify-between border-t border-border px-4 py-3">
-          <div className="flex items-center gap-3 font-mono text-[11px] text-text-3">
+        <div className="flex items-center justify-between border-t border-border px-3 py-2 sm:px-4 sm:py-3">
+          <div className="flex items-center gap-2 sm:gap-3 font-mono text-[10px] sm:text-[11px] text-text-3">
             <span>
               {cursorPos.line}:{cursorPos.col}
             </span>
             <span>
-              {code.length}자
+              {code.length}<span className="hidden sm:inline">자</span>
               {!isSubmitting && code.length > 0 && code.length < 10 && (
-                <span className="ml-1 text-warning">({10 - code.length}자 더 필요)</span>
+                <span className="ml-1 text-warning">({10 - code.length}<span className="hidden sm:inline">자 더 필요</span>)</span>
               )}
             </span>
           </div>
@@ -605,12 +784,14 @@ export function CodeEditor({
               {isSubmitting ? (
                 <>
                   <InlineSpinner />
-                  제출 중...
+                  <span className="hidden sm:inline">제출 중...</span>
+                  <span className="sm:hidden">제출...</span>
                 </>
               ) : (
                 <>
                   <Send className="h-3.5 w-3.5" aria-hidden />
-                  제출하기
+                  <span className="hidden sm:inline">제출하기</span>
+                  <span className="sm:hidden">제출</span>
                 </>
               )}
             </Button>

@@ -119,7 +119,7 @@ function StepIcon({ status }: { readonly status: StepStatus }): ReactNode {
   );
 }
 
-function StepItem({ step, isLast }: { readonly step: Step; readonly index: number; readonly isLast: boolean }): ReactNode {
+function StepItem({ step, isLast }: { readonly step: Step; readonly isLast: boolean }): ReactNode {
   const statusVariant: Record<StepStatus, 'success' | 'error' | 'warning' | 'info' | 'muted'> = {
     done: 'success',
     failed: 'error',
@@ -247,7 +247,6 @@ export default function SubmissionStatusPage({ params }: PageProps): ReactNode {
                 <StepItem
                   key={step.label}
                   step={step}
-                  index={index}
                   isLast={index === steps.length - 1}
                 />
               ))}
