@@ -1,0 +1,190 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 720" font-family="'Segoe UI', system-ui, -apple-system, sans-serif">
+  <defs>
+    <style>
+      .bg { fill: #0d1117; }
+      .card { rx: 12; ry: 12; stroke-width: 1.5; }
+      .card-pm { fill: #161b22; stroke: #f0883e; }
+      .card-oracle { fill: #161b22; stroke: #58a6ff; }
+      .card-t1 { fill: #161b22; stroke: #f778ba; }
+      .card-t2 { fill: #161b22; stroke: #7ee787; }
+      .card-t3 { fill: #161b22; stroke: #d2a8ff; }
+      .title { fill: #e6edf3; font-size: 13px; font-weight: 600; }
+      .subtitle { fill: #8b949e; font-size: 10px; }
+      .role { fill: #8b949e; font-size: 9.5px; }
+      .line { stroke-width: 1.2; fill: none; }
+      .line-pm { stroke: #f0883e; opacity: 0.5; }
+      .line-oracle { stroke: #58a6ff; opacity: 0.4; }
+      .badge { font-size: 8px; font-weight: 600; letter-spacing: 0.5px; }
+      .badge-t1 { fill: #f778ba; }
+      .badge-t2 { fill: #7ee787; }
+      .badge-t3 { fill: #d2a8ff; }
+      .header { fill: #e6edf3; font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+      .header-sub { fill: #484f58; font-size: 11px; font-weight: 400; }
+      .dot { opacity: 0.6; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect class="bg" width="960" height="720"/>
+
+  <!-- Header -->
+  <text class="header" x="480" y="38" text-anchor="middle">AlgoSu TF Agent Relationship</text>
+  <text class="header-sub" x="480" y="55" text-anchor="middle">Microservice Architecture Transformation Task Force</text>
+
+  <!-- PM Card -->
+  <rect class="card card-pm" x="395" y="75" width="170" height="52"/>
+  <circle cx="420" cy="101" r="8" fill="#f0883e" opacity="0.15"/>
+  <circle cx="420" cy="101" r="3" fill="#f0883e" class="dot"/>
+  <text class="title" x="435" y="97">PM</text>
+  <text class="role" x="435" y="111">프로젝트 매니저</text>
+
+  <!-- Line PM → Oracle -->
+  <line class="line line-pm" x1="480" y1="127" x2="480" y2="155"/>
+  <polygon points="476,153 480,161 484,153" fill="#f0883e" opacity="0.5"/>
+
+  <!-- Oracle Card -->
+  <rect class="card card-oracle" x="375" y="163" width="210" height="56"/>
+  <circle cx="402" cy="191" r="10" fill="#58a6ff" opacity="0.15"/>
+  <circle cx="402" cy="191" r="4" fill="#58a6ff" class="dot"/>
+  <text class="title" x="420" y="187" font-size="14px">Oracle</text>
+  <text class="subtitle" x="420" y="200">심판관 — 총괄 관리자</text>
+  <text class="role" x="420" y="212">최종 기획 결정 · 파일 생성/수정 권한</text>
+
+  <!-- Tier Labels -->
+  <text class="badge badge-t1" x="62" y="270">TIER 1 — MISSION CRITICAL</text>
+  <text class="badge badge-t2" x="328" y="270">TIER 2 — CORE</text>
+  <text class="badge badge-t3" x="700" y="270">TIER 3 — ENHANCEMENT</text>
+
+  <!-- Lines Oracle → Tier groups -->
+  <!-- T1 lines -->
+  <path class="line line-oracle" d="M 430,219 L 430,245 Q 430,255 420,255 L 155,255 Q 145,255 145,265 L 145,285"/>
+  <path class="line line-oracle" d="M 480,219 L 480,245 Q 480,255 470,255 L 155,255"/>
+  <!-- T2 lines -->
+  <path class="line line-oracle" d="M 480,219 L 480,285"/>
+  <!-- T3 lines -->
+  <path class="line line-oracle" d="M 530,219 L 530,245 Q 530,255 540,255 L 810,255 Q 820,255 820,265 L 820,285"/>
+
+  <!-- ═══════ TIER 1 ═══════ -->
+  <!-- Conductor -->
+  <rect class="card card-t1" x="28" y="288" width="180" height="68"/>
+  <text class="title" x="48" y="310">Conductor</text>
+  <text class="subtitle" x="48" y="323">지휘자</text>
+  <text class="role" x="48" y="340">오케스트레이션 · Saga 관리</text>
+  <text class="role" x="48" y="352">서비스 간 트랜잭션 조율</text>
+
+  <!-- Gatekeeper -->
+  <rect class="card card-t1" x="28" y="372" width="180" height="68"/>
+  <text class="title" x="48" y="394">Gatekeeper</text>
+  <text class="subtitle" x="48" y="407">관문지기</text>
+  <text class="role" x="48" y="424">보안 검증 · 인증/인가</text>
+  <text class="role" x="48" y="436">JWT · CORS · 입력 검증</text>
+
+  <!-- Librarian -->
+  <rect class="card card-t1" x="28" y="456" width="180" height="68"/>
+  <text class="title" x="48" y="478">Librarian</text>
+  <text class="subtitle" x="48" y="491">기록관리자</text>
+  <text class="role" x="48" y="508">DB 스키마 · 마이그레이션</text>
+  <text class="role" x="48" y="520">데이터 무결성 관리</text>
+
+  <!-- ═══════ TIER 2 ═══════ -->
+  <!-- Architect -->
+  <rect class="card card-t2" x="270" y="288" width="180" height="68"/>
+  <text class="title" x="290" y="310">Architect</text>
+  <text class="subtitle" x="290" y="323">기반설계자</text>
+  <text class="role" x="290" y="340">인프라 · K8s 매니페스트</text>
+  <text class="role" x="290" y="352">CI/CD · 배포 아키텍처</text>
+
+  <!-- Curator -->
+  <rect class="card card-t2" x="270" y="372" width="180" height="68"/>
+  <text class="title" x="290" y="394">Curator</text>
+  <text class="subtitle" x="290" y="407">출제자</text>
+  <text class="role" x="290" y="424">문제 서비스 · 테스트케이스</text>
+  <text class="role" x="290" y="436">알고리즘 분류 · 난이도</text>
+
+  <!-- Postman -->
+  <rect class="card card-t2" x="270" y="456" width="180" height="68"/>
+  <text class="title" x="290" y="478">Postman</text>
+  <text class="subtitle" x="290" y="491">배달부</text>
+  <text class="role" x="290" y="508">API 설계 · DTO 검증</text>
+  <text class="role" x="290" y="520">서비스 간 통신 규격</text>
+
+  <!-- Scribe -->
+  <rect class="card card-t2" x="270" y="540" width="180" height="68"/>
+  <text class="title" x="290" y="562">Scribe</text>
+  <text class="subtitle" x="290" y="575">서기관</text>
+  <text class="role" x="290" y="592">메모리 · 문서 · 문맥 정리</text>
+  <text class="role" x="290" y="604">Oracle 문서 작업 지원</text>
+
+  <!-- ═══════ TIER 3 ═══════ -->
+  <!-- Sensei -->
+  <rect class="card card-t3" x="548" y="288" width="180" height="68"/>
+  <text class="title" x="568" y="310">Sensei</text>
+  <text class="subtitle" x="568" y="323">분석가</text>
+  <text class="role" x="568" y="340">AI 분석 서비스 로직</text>
+  <text class="role" x="568" y="352">코드 품질 · 복잡도 분석</text>
+
+  <!-- Herald -->
+  <rect class="card card-t3" x="548" y="372" width="180" height="68"/>
+  <text class="title" x="568" y="394">Herald</text>
+  <text class="subtitle" x="568" y="407">전령</text>
+  <text class="role" x="568" y="424">알림 · SSE · 이벤트</text>
+  <text class="role" x="568" y="436">실시간 상태 전달</text>
+
+  <!-- Palette -->
+  <rect class="card card-t3" x="548" y="456" width="180" height="68"/>
+  <text class="title" x="568" y="478">Palette</text>
+  <text class="subtitle" x="568" y="491">팔레트</text>
+  <text class="role" x="568" y="508">UI/UX · 디자인 시스템</text>
+  <text class="role" x="568" y="520">컴포넌트 · 접근성</text>
+
+  <!-- Scout -->
+  <rect class="card card-t3" x="548" y="540" width="180" height="68"/>
+  <text class="title" x="568" y="562">Scout</text>
+  <text class="subtitle" x="568" y="575">정찰병</text>
+  <text class="role" x="568" y="592">배포 검증 · 헬스체크</text>
+  <text class="role" x="568" y="604">클러스터 상태 점검</text>
+
+  <!-- Vertical connector lines for tiers -->
+  <!-- T1 vertical -->
+  <line class="line" x1="118" y1="285" x2="118" y2="288" stroke="#f778ba" opacity="0.3"/>
+  <line class="line" x1="118" y1="356" x2="118" y2="372" stroke="#f778ba" opacity="0.3" stroke-dasharray="3,3"/>
+  <line class="line" x1="118" y1="440" x2="118" y2="456" stroke="#f778ba" opacity="0.3" stroke-dasharray="3,3"/>
+
+  <!-- T2 vertical -->
+  <line class="line" x1="360" y1="285" x2="360" y2="288" stroke="#7ee787" opacity="0.3"/>
+  <line class="line" x1="360" y1="356" x2="360" y2="372" stroke="#7ee787" opacity="0.3" stroke-dasharray="3,3"/>
+  <line class="line" x1="360" y1="440" x2="360" y2="456" stroke="#7ee787" opacity="0.3" stroke-dasharray="3,3"/>
+  <line class="line" x1="360" y1="524" x2="360" y2="540" stroke="#7ee787" opacity="0.3" stroke-dasharray="3,3"/>
+
+  <!-- T3 vertical -->
+  <line class="line" x1="638" y1="285" x2="638" y2="288" stroke="#d2a8ff" opacity="0.3"/>
+  <line class="line" x1="638" y1="356" x2="638" y2="372" stroke="#d2a8ff" opacity="0.3" stroke-dasharray="3,3"/>
+  <line class="line" x1="638" y1="440" x2="638" y2="456" stroke="#d2a8ff" opacity="0.3" stroke-dasharray="3,3"/>
+  <line class="line" x1="638" y1="524" x2="638" y2="540" stroke="#d2a8ff" opacity="0.3" stroke-dasharray="3,3"/>
+
+  <!-- Communication flow legend -->
+  <rect x="28" y="645" width="904" height="55" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+
+  <!-- Legend items -->
+  <line x1="50" y1="672" x2="80" y2="672" stroke="#f0883e" stroke-width="1.5" opacity="0.5"/>
+  <polygon points="76,669 82,672 76,675" fill="#f0883e" opacity="0.5"/>
+  <text class="role" x="88" y="676" fill="#8b949e">PM → Oracle 직접 소통</text>
+
+  <line x1="255" y1="672" x2="285" y2="672" stroke="#58a6ff" stroke-width="1.2" opacity="0.4"/>
+  <text class="role" x="293" y="676" fill="#8b949e">Oracle → Agent 지시/감독</text>
+
+  <circle cx="475" cy="672" r="5" fill="#f778ba" opacity="0.2"/>
+  <circle cx="475" cy="672" r="2" fill="#f778ba"/>
+  <text class="role" x="486" y="676" fill="#8b949e">Tier 1 — Mission Critical</text>
+
+  <circle cx="635" cy="672" r="5" fill="#7ee787" opacity="0.2"/>
+  <circle cx="635" cy="672" r="2" fill="#7ee787"/>
+  <text class="role" x="646" y="676" fill="#8b949e">Tier 2 — Core</text>
+
+  <circle cx="755" cy="672" r="5" fill="#d2a8ff" opacity="0.2"/>
+  <circle cx="755" cy="672" r="2" fill="#d2a8ff"/>
+  <text class="role" x="766" y="676" fill="#8b949e">Tier 3 — Enhancement</text>
+
+  <!-- Watermark -->
+  <text x="930" y="715" text-anchor="end" fill="#30363d" font-size="9px">AlgoSu TF · 2026</text>
+</svg>
