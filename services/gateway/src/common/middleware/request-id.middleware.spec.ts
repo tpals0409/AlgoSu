@@ -147,5 +147,44 @@ describe('RequestIdMiddleware', () => {
         expect.objectContaining({ statusCode: 500 }),
       );
     });
+
+    it('originalUrl이 없으면 req.url을 path로 사용한다', () => {
+      mockReq.originalUrl = undefined;
+      mockReq.url = '/api/fallback';
+      mockRes.statusCode = 200;
+      middleware.use(mockReq as any, mockRes as any, next);
+      finishHandler!();
+
+      expect(mockLogger.log).toHaveBeenCalledWith(
+        expect.stringContaining('/api/fallback'),
+        expect.any(Object),
+      );
+    });
+
+    it('req.ip와 socket.remoteAddress 모두 없으면 unknown을 사용한다', () => {
+      mockReq.ip = undefined;
+      mockReq.socket = { remoteAddress: undefined };
+      mockRes.statusCode = 200;
+      middleware.use(mockReq as any, mockRes as any, next);
+      finishHandler!();
+
+      expect(mockLogger.log).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ statusCode: 200 }),
+      );
+    });
+
+    it('req.ip 없고 socket.remoteAddress 있으면 socket 주소를 사용한다', () => {
+      mockReq.ip = undefined;
+      mockReq.socket = { remoteAddress: '10.0.0.1' };
+      mockRes.statusCode = 200;
+      middleware.use(mockReq as any, mockRes as any, next);
+      finishHandler!();
+
+      expect(mockLogger.log).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ statusCode: 200 }),
+      );
+    });
   });
 });

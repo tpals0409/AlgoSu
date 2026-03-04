@@ -105,6 +105,74 @@ describe('StudyNoteProxyController', () => {
       await expect(controller.upsert(createMockReq(), {})).rejects.toThrow(HttpException);
     });
 
+    it('upstream 에러 응답에 statusCode 없으면 response.status 사용', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 503,
+        json: async () => ({ message: 'Service Unavailable' }),
+      });
+
+      try {
+        await controller.upsert(createMockReq(), {});
+        fail('should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(HttpException);
+        expect((error as HttpException).getStatus()).toBe(503);
+      }
+    });
+
+    it('upstream 에러 응답에 message 없으면 Internal service error 사용', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: async () => ({ statusCode: 500 }),
+      });
+
+      try {
+        await controller.upsert(createMockReq(), {});
+        fail('should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(HttpException);
+        const body = (error as HttpException).getResponse() as Record<string, unknown>;
+        expect(body['message']).toBe('Internal service error');
+      }
+    });
+
+    it('upstream 에러 응답에 error 필드 없으면 HttpStatus 코드명 사용', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({ statusCode: 400, message: 'Bad data' }),
+      });
+
+      try {
+        await controller.upsert(createMockReq(), {});
+        fail('should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(HttpException);
+        const body = (error as HttpException).getResponse() as Record<string, unknown>;
+        // error 필드 없음 → HttpStatus[400] = 'BAD_REQUEST' 또는 숫자 키로 'Error' fallback
+        expect(body['error']).toBeDefined();
+      }
+    });
+
+    it('upstream 에러 응답에 error/statusCode 모두 없으면 Error fallback', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 999,
+        json: async () => ({}),
+      });
+
+      try {
+        await controller.upsert(createMockReq(), {});
+        fail('should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(HttpException);
+        const body = (error as HttpException).getResponse() as Record<string, unknown>;
+        expect(body['error']).toBe('Error');
+      }
+    });
+
     it('네트워크 에러 → 502 Bad Gateway', async () => {
       mockFetch.mockRejectedValue(new Error('ECONNREFUSED'));
 
@@ -115,6 +183,31 @@ describe('StudyNoteProxyController', () => {
         expect(error).toBeInstanceOf(HttpException);
         expect((error as HttpException).getStatus()).toBe(HttpStatus.BAD_GATEWAY);
       }
+    });
+
+    it('Error가 아닌 값이 throw 되어도 502 반환', async () => {
+      mockFetch.mockRejectedValue('string-error');
+
+      try {
+        await controller.upsert(createMockReq(), {});
+        fail('should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(HttpException);
+        expect((error as HttpException).getStatus()).toBe(HttpStatus.BAD_GATEWAY);
+      }
+    });
+
+    it('x-user-id/x-study-id 헤더 없어도 프록시 요청 성공', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ content: 'ok' }),
+      });
+
+      const req = { headers: {} } as never;
+      const result = await controller.upsert(req, { content: 'test' });
+
+      expect(result).toEqual({ content: 'ok' });
     });
   });
 });

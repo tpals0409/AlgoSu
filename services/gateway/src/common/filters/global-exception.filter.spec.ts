@@ -139,5 +139,74 @@ describe('GlobalExceptionFilter', () => {
       // message 필드가 없으면 exception.message(=Unprocessable Entity) fallback
       expect(body.message).toBeDefined();
     });
+
+    it('body에 error 필드 없으면 HttpStatus 코드명으로 fallback', () => {
+      // exceptionResponse가 object이지만 error 필드 없음
+      const exception = new HttpException(
+        { message: 'Not found' },
+        HttpStatus.NOT_FOUND,
+      );
+
+      filter.catch(exception, mockHost);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+      const body = mockRes.json.mock.calls[0][0];
+      // error 필드 없음 → HttpStatus[404] 사용
+      expect(body.error).toBeDefined();
+    });
+
+    it('exceptionResponse가 null이 아닌 object이고 error/message 없으면 HttpStatus로 fallback', () => {
+      // 빈 객체 응답
+      const exception = new HttpException({}, HttpStatus.CONFLICT);
+
+      filter.catch(exception, mockHost);
+
+      expect(mockRes.status).toHaveBeenCalledWith(409);
+      const body = mockRes.json.mock.calls[0][0];
+      expect(body.statusCode).toBe(409);
+      expect(body.error).toBeDefined();
+    });
+
+    it('exceptionResponse가 string일 때 HttpStatus 역매핑 없는 상태코드면 Error fallback', () => {
+      // NestJS HttpException을 직접 조작하여 exceptionResponse가 string이고
+      // getStatus()가 HttpStatus 역매핑이 없는 값을 반환하게 만듦
+      class CustomException extends HttpException {
+        constructor() {
+          super('custom error message', 200);
+        }
+        getStatus(): number {
+          return 999 as number; // HttpStatus 역매핑 없는 값
+        }
+        getResponse(): string {
+          return 'custom error message';
+        }
+      }
+
+      const exception = new CustomException();
+      filter.catch(exception, mockHost);
+
+      const body = mockRes.json.mock.calls[0][0];
+      expect(body.error).toBe('Error');
+    });
+
+    it('exceptionResponse가 object일 때 error 없고 HttpStatus 역매핑도 없으면 Error fallback', () => {
+      class CustomException extends HttpException {
+        constructor() {
+          super({ message: 'custom' }, 200);
+        }
+        getStatus(): number {
+          return 999 as number;
+        }
+        getResponse(): object {
+          return { message: 'custom' };
+        }
+      }
+
+      const exception = new CustomException();
+      filter.catch(exception, mockHost);
+
+      const body = mockRes.json.mock.calls[0][0];
+      expect(body.error).toBe('Error');
+    });
   });
 });

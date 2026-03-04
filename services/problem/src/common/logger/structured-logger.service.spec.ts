@@ -146,3 +146,59 @@ describe('StructuredLoggerService', () => {
     expect(entry.key3).toBe('valid');
   });
 });
+
+// ──────────────────────────────────────────────
+// Production 환경 (ENV=production) 별도 테스트
+// MIN_LEVEL이 'info'가 되어 debug 레벨이 필터링되는 분기 검증
+// ──────────────────────────────────────────────
+describe('StructuredLoggerService (production ENV)', () => {
+  let ProductionLogger: typeof import('./structured-logger.service').StructuredLoggerService;
+  let stdoutSpy: jest.SpyInstance;
+
+  beforeAll(async () => {
+    jest.resetModules();
+    process.env['ENV'] = 'production';
+    const mod = await import('./structured-logger.service');
+    ProductionLogger = mod.StructuredLoggerService;
+  });
+
+  afterAll(() => {
+    delete process.env['ENV'];
+    jest.resetModules();
+  });
+
+  beforeEach(() => {
+    stdoutSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+  });
+
+  afterEach(() => {
+    stdoutSpy.mockRestore();
+  });
+
+  it('production 환경: debug 레벨 필터링 (MIN_LEVEL=info 분기)', () => {
+    // ENV=production → MIN_LEVEL='info' → debug 레벨은 출력 안 됨 (line 54 early return)
+    const logger = new ProductionLogger();
+    logger.debug('디버그 메시지 (출력 안 됨)');
+    expect(stdoutSpy).not.toHaveBeenCalled();
+  });
+
+  it('production 환경: info 레벨 출력됨', () => {
+    // ENV=production → MIN_LEVEL='info' → info 레벨은 출력됨
+    const logger = new ProductionLogger();
+    logger.log('인포 메시지');
+    expect(stdoutSpy).toHaveBeenCalled();
+    const entry = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+    expect(entry.level).toBe('info');
+  });
+
+  it('production 환경: error 스택 미포함 (ENV !== production false 분기)', () => {
+    // ENV=production → error.stack이 entry.error에 포함되지 않음 (line 87 분기)
+    const logger = new ProductionLogger();
+    const err = new Error('프로덕션 에러');
+    logger.error('에러 발생', err);
+    expect(stdoutSpy).toHaveBeenCalled();
+    const entry = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+    expect(entry.error).toBeDefined();
+    expect(entry.error.stack).toBeUndefined();
+  });
+});

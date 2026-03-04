@@ -161,6 +161,19 @@ describe('StudyController', () => {
 
       expect(studyService.verifyInviteCode).toHaveBeenCalledWith('X', '127.0.0.1');
     });
+
+    it('ip/socket 모두 없으면 unknown 사용', async () => {
+      studyService.verifyInviteCode.mockResolvedValue({ valid: false, studyName: '' });
+
+      const req = {
+        headers: { 'x-user-id': USER_ID },
+        ip: undefined,
+        socket: { remoteAddress: undefined },
+      };
+      await controller.verifyInvite(req as never, { code: 'Z' } as any);
+
+      expect(studyService.verifyInviteCode).toHaveBeenCalledWith('Z', 'unknown');
+    });
   });
 
   describe('joinStudy', () => {

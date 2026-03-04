@@ -150,6 +150,54 @@ describe('AvatarService', () => {
       });
       await expect(service.uploadAvatar('user-1', file)).rejects.toThrow(BadRequestException);
     });
+
+    it('WebP 파일 — RIFF 시그니처 일치하면 업로드 성공', async () => {
+      // WebP: RIFF(0x52,0x49,0x46,0x46) at offset 0, WEBP(0x57,0x45,0x42,0x50) at offset 8
+      const webpBuffer = Buffer.alloc(16, 0);
+      webpBuffer[0] = 0x52; webpBuffer[1] = 0x49; webpBuffer[2] = 0x46; webpBuffer[3] = 0x46;
+      webpBuffer[8] = 0x57; webpBuffer[9] = 0x45; webpBuffer[10] = 0x42; webpBuffer[11] = 0x50;
+
+      const file: Express.Multer.File = {
+        fieldname: 'avatar',
+        originalname: 'test.webp',
+        encoding: '7bit',
+        mimetype: 'image/webp',
+        size: 1024,
+        buffer: webpBuffer,
+        destination: '',
+        filename: '',
+        path: '',
+        stream: null as never,
+      };
+
+      const result = await service.uploadAvatar('user-3', file);
+
+      expect(result.objectKey).toBe('user-3/test-uuid.webp');
+      expect(mockPutObject).toHaveBeenCalledTimes(1);
+    });
+
+    it('WebP 파일 — WEBP 시그니처 불일치 시 BadRequestException을 던진다', async () => {
+      // RIFF 시그니처는 맞지만 offset 8의 WEBP 시그니처 불일치
+      const webpBuffer = Buffer.alloc(16, 0);
+      webpBuffer[0] = 0x52; webpBuffer[1] = 0x49; webpBuffer[2] = 0x46; webpBuffer[3] = 0x46;
+      // offset 8: 잘못된 시그니처
+      webpBuffer[8] = 0x00; webpBuffer[9] = 0x00; webpBuffer[10] = 0x00; webpBuffer[11] = 0x00;
+
+      const file: Express.Multer.File = {
+        fieldname: 'avatar',
+        originalname: 'test.webp',
+        encoding: '7bit',
+        mimetype: 'image/webp',
+        size: 1024,
+        buffer: webpBuffer,
+        destination: '',
+        filename: '',
+        path: '',
+        stream: null as never,
+      };
+
+      await expect(service.uploadAvatar('user-3', file)).rejects.toThrow(BadRequestException);
+    });
   });
 
   describe('deleteAvatar', () => {

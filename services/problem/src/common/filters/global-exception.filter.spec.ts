@@ -107,4 +107,86 @@ describe('GlobalExceptionFilter', () => {
       }),
     );
   });
+
+  it('HttpException (객체 응답, message 없음): exception.message 폴백 사용', () => {
+    // body에 message 필드가 없을 때 → exception.message 폴백 (line 44의 ?? 분기)
+    const exception = new HttpException(
+      { error: 'Bad Request', detail: '상세 정보' },
+      HttpStatus.BAD_REQUEST,
+    );
+
+    filter.catch(exception, mockHost);
+
+    expect(mockStatus).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+    expect(mockJson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: exception.message,
+      }),
+    );
+  });
+
+  it('HttpException (객체 응답, error 없음): HttpStatus 폴백 사용', () => {
+    // body에 error 필드가 없을 때 → HttpStatus[statusCode] 폴백 (line 45의 ?? 분기)
+    const exception = new HttpException(
+      { message: '검증 실패' },
+      HttpStatus.UNPROCESSABLE_ENTITY,
+    );
+
+    filter.catch(exception, mockHost);
+
+    expect(mockStatus).toHaveBeenCalledWith(HttpStatus.UNPROCESSABLE_ENTITY);
+    expect(mockJson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        statusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+        message: '검증 실패',
+      }),
+    );
+  });
+
+  it('일반 에러 (stack 없음): stack 없이 로그 기록', () => {
+    const exception = { message: '스택 없는 에러' };
+
+    filter.catch(exception, mockHost);
+
+    expect(mockStatus).toHaveBeenCalledWith(HttpStatus.INTERNAL_SERVER_ERROR);
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.stringContaining('스택 없는 에러'),
+      undefined,
+    );
+  });
+
+  it('HttpException (객체 응답, error 없고 statusCode도 비표준): Error 폴백 사용', () => {
+    // body에 error 없고 HttpStatus[statusCode]도 undefined → 'Error' 폴백 (line 45의 ?? 'Error' 분기)
+    const exception = new HttpException(
+      { message: '비표준 오류' },
+      599 as HttpStatus,
+    );
+
+    filter.catch(exception, mockHost);
+
+    expect(mockStatus).toHaveBeenCalledWith(599);
+    expect(mockJson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        statusCode: 599,
+        message: '비표준 오류',
+        error: 'Error',
+      }),
+    );
+  });
+
+  it('HttpException (문자열 응답, 비표준 statusCode): Error 폴백 사용', () => {
+    // 문자열 응답의 else 분기에서 HttpStatus[statusCode]가 undefined → 'Error' 폴백 (line 48의 ?? 'Error' 분기)
+    const exception = new HttpException('비표준 오류 메시지', 599 as HttpStatus);
+
+    filter.catch(exception, mockHost);
+
+    expect(mockStatus).toHaveBeenCalledWith(599);
+    expect(mockJson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        statusCode: 599,
+        error: 'Error',
+      }),
+    );
+  });
 });

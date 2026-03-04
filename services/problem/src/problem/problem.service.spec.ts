@@ -319,12 +319,61 @@ describe('ProblemService', () => {
         status: 'cache_hit',
       });
     });
+
+    it('DB fallback — problem.deadline null: null 반환 (ternary null 분기)', async () => {
+      // deadline이 null인 문제가 DB에 있을 때 → problem.deadline ? ... : null 분기
+      const problemWithoutDeadline = { ...mockProblem, deadline: null } as unknown as Problem;
+      deadlineCache.getDeadline.mockResolvedValue(null);
+      dualWrite.findOne.mockResolvedValue(problemWithoutDeadline);
+      deadlineCache.setDeadline.mockResolvedValue(undefined);
+
+      const result = await service.getDeadline(STUDY_ID, PROBLEM_ID);
+
+      expect(result).toEqual({
+        deadline: null,
+        status: 'db_hit',
+      });
+    });
   });
 
   // ──────────────────────────────────────────────
   // 10. update()
   // ──────────────────────────────────────────────
   describe('update()', () => {
+    it('전체 수정: description/sourceUrl/sourcePlatform/deadline 필드 업데이트', async () => {
+      const dto: UpdateProblemDto = {
+        description: '수정된 설명',
+        sourceUrl: 'https://codeforces.com/problem/1',
+        sourcePlatform: 'Codeforces',
+        deadline: '2026-04-01T23:59:59.000Z',
+      };
+
+      const updatedProblem = {
+        ...mockProblem,
+        description: '수정된 설명',
+        sourceUrl: 'https://codeforces.com/problem/1',
+        sourcePlatform: 'Codeforces',
+        deadline: new Date('2026-04-01T23:59:59.000Z'),
+      } as Problem;
+
+      dualWrite.findOne.mockResolvedValue({ ...mockProblem });
+      dualWrite.saveExisting.mockResolvedValue(updatedProblem);
+      deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
+      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
+
+      const result = await service.update(STUDY_ID, PROBLEM_ID, dto);
+
+      expect(dualWrite.saveExisting).toHaveBeenCalledWith(
+        expect.objectContaining({
+          description: '수정된 설명',
+          sourceUrl: 'https://codeforces.com/problem/1',
+          sourcePlatform: 'Codeforces',
+          deadline: new Date('2026-04-01T23:59:59.000Z'),
+        }),
+      );
+      expect(result).toEqual(updatedProblem);
+    });
+
     it('부분 수정: 필드 업데이트 + 캐시 무효화', async () => {
       const dto: UpdateProblemDto = {
         title: '수정된 제목',
@@ -410,6 +459,60 @@ describe('ProblemService', () => {
 
       // 한 번만 호출 (현재 주차만)
       expect(deadlineCache.invalidateWeekProblems).toHaveBeenCalledTimes(1);
+    });
+
+    it('allowedLanguages: null로 명시 설정 시 null 저장 (??null 분기)', async () => {
+      // dto.allowedLanguages !== undefined 이면서 null인 경우 → ?? null 분기 실행
+      const dto = { allowedLanguages: null } as unknown as UpdateProblemDto;
+      const updatedProblem = { ...mockProblem, allowedLanguages: null } as Problem;
+
+      dualWrite.findOne.mockResolvedValue({ ...mockProblem });
+      dualWrite.saveExisting.mockResolvedValue(updatedProblem);
+      deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
+      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
+
+      const result = await service.update(STUDY_ID, PROBLEM_ID, dto);
+
+      expect(dualWrite.saveExisting).toHaveBeenCalledWith(
+        expect.objectContaining({ allowedLanguages: null }),
+      );
+      expect(result.allowedLanguages).toBeNull();
+    });
+
+    it('tags: null로 명시 설정 시 null 저장 (??null 분기)', async () => {
+      // dto.tags !== undefined 이면서 null인 경우 → ?? null 분기 실행
+      const dto = { tags: null } as unknown as UpdateProblemDto;
+      const updatedProblem = { ...mockProblem, tags: null } as Problem;
+
+      dualWrite.findOne.mockResolvedValue({ ...mockProblem });
+      dualWrite.saveExisting.mockResolvedValue(updatedProblem);
+      deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
+      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
+
+      const result = await service.update(STUDY_ID, PROBLEM_ID, dto);
+
+      expect(dualWrite.saveExisting).toHaveBeenCalledWith(
+        expect.objectContaining({ tags: null }),
+      );
+      expect(result.tags).toBeNull();
+    });
+
+    it('deadline: 빈 문자열 설정 시 null 저장 (falsy 분기)', async () => {
+      // dto.deadline !== undefined 이면서 falsy('')인 경우 → ternary null 분기 실행
+      const dto = { deadline: '' } as unknown as UpdateProblemDto;
+      const updatedProblem = { ...mockProblem, deadline: null } as unknown as Problem;
+
+      dualWrite.findOne.mockResolvedValue({ ...mockProblem });
+      dualWrite.saveExisting.mockResolvedValue(updatedProblem);
+      deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
+      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
+
+      const result = await service.update(STUDY_ID, PROBLEM_ID, dto);
+
+      expect(dualWrite.saveExisting).toHaveBeenCalledWith(
+        expect.objectContaining({ deadline: null }),
+      );
+      expect(result.deadline).toBeNull();
     });
   });
 

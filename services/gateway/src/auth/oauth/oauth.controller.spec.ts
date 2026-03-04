@@ -176,6 +176,15 @@ describe('OAuthController', () => {
       );
     });
 
+    it('oauthError 있으면 에러 리다이렉트', async () => {
+      const res = createMockRes();
+      await controller.handleGitHubLinkCallback('code', 'state', 'access_denied', res as any);
+
+      expect(res.redirect).toHaveBeenCalledWith(
+        expect.stringContaining('error=access_denied'),
+      );
+    });
+
     it('code/state 누락 -- missing_params', async () => {
       const res = createMockRes();
       await controller.handleGitHubLinkCallback(undefined as any, undefined as any, undefined as any, res as any);
@@ -291,6 +300,15 @@ describe('OAuthController', () => {
 
       await expect(controller.refreshToken(req as any, res as any)).rejects.toThrow(BadRequestException);
     });
+
+    it('토큰에 sub 없으면 BadRequestException', async () => {
+      // sub 없이 서명된 토큰 (userId 대신 다른 필드만 있음)
+      const token = jwt.sign({ someField: 'value' }, JWT_SECRET, { algorithm: 'HS256' });
+      const req = createMockReq({ cookies: { token } });
+      const res = createMockRes();
+
+      await expect(controller.refreshToken(req as any, res as any)).rejects.toThrow('토큰에 사용자 ID가 없습니다.');
+    });
   });
 
   // ============================
@@ -315,6 +333,23 @@ describe('OAuthController', () => {
 
       const result = await controller.logout(req as any, res as any);
 
+      expect(mockOAuthService.revokeRefreshToken).not.toHaveBeenCalled();
+      expect(res.clearCookie).toHaveBeenCalled();
+      expect(result.message).toContain('로그아웃');
+    });
+
+    it('토큰 디코딩 실패 시에도 로그아웃 성공 (쿠키 삭제)', async () => {
+      // jwt.decode를 throw하도록 만들기 위해 revokeRefreshToken에서 예외 발생
+      // 실제로는 jwt.decode가 예외를 거의 안 throw하지만, try/catch 분기를 커버하기 위해
+      // 토큰이 있고 decoded?.['sub']가 falsy(undefined)인 케이스로도 가능
+      // decoded가 null이거나 userId가 없으면 revokeRefreshToken 호출 안 함
+      const token = jwt.sign({ someField: 'noid' }, JWT_SECRET); // sub 없음
+      const req = createMockReq({ cookies: { token } });
+      const res = createMockRes();
+
+      const result = await controller.logout(req as any, res as any);
+
+      // sub도 userId도 없으므로 revokeRefreshToken 호출 안 됨
       expect(mockOAuthService.revokeRefreshToken).not.toHaveBeenCalled();
       expect(res.clearCookie).toHaveBeenCalled();
       expect(result.message).toContain('로그아웃');
