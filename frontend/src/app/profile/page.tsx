@@ -16,9 +16,6 @@ import {
   RefreshCw,
   Link2,
   Unlink,
-  Pencil,
-  Check,
-  X,
   FileText,
   CheckCircle2,
   Trash2,
@@ -30,7 +27,6 @@ import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { InlineSpinner } from '@/components/ui/LoadingSpinner';
-import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudy } from '@/contexts/StudyContext';
 import { authApi, submissionApi } from '@/lib/api';
@@ -65,12 +61,7 @@ export default function ProfilePage(): ReactNode {
   const [githubUsername, setGithubUsernameState] = useState<string | null>(null);
   const [githubLoading, setGithubLoading] = useState(false);
 
-  // 닉네임 인라인 편집
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [editName, setEditName] = useState('');
-  const [nameLoading, setNameLoading] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
-
   const [oauthProvider, setOauthProvider] = useState<string | null>(null);
 
   // 개인 통계
@@ -83,6 +74,7 @@ export default function ProfilePage(): ReactNode {
 
   // 계정 삭제 확인
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // ─── EFFECTS ───────────────────────────
 
@@ -111,43 +103,6 @@ export default function ProfilePage(): ReactNode {
   }, [isReady]);
 
   // ─── HANDLERS ──────────────────────────
-
-  /**
-   * 닉네임 편집 시작
-   * @domain identity
-   */
-  const handleStartEditName = useCallback(() => {
-    setEditName(displayName ?? user?.email?.split('@')[0] ?? '');
-    setIsEditingName(true);
-  }, [displayName, user]);
-
-  /**
-   * 닉네임 저장
-   * @domain identity
-   */
-  const handleSaveName = useCallback(async () => {
-    const trimmed = editName.trim();
-    if (!trimmed) return;
-    setNameLoading(true);
-    setError(null);
-    try {
-      const { name } = await authApi.updateProfile({ name: trimmed });
-      setDisplayName(name);
-      setIsEditingName(false);
-    } catch {
-      setError('닉네임 변경에 실패했습니다.');
-    } finally {
-      setNameLoading(false);
-    }
-  }, [editName]);
-
-  /**
-   * 닉네임 편집 취소
-   * @domain identity
-   */
-  const handleCancelEditName = useCallback(() => {
-    setIsEditingName(false);
-  }, []);
 
   /**
    * GitHub 연동
@@ -228,6 +183,24 @@ export default function ProfilePage(): ReactNode {
     router.replace('/login');
   }, [logout, router]);
 
+  /**
+   * 계정 삭제
+   * @domain identity
+   */
+  const handleDeleteAccount = useCallback(async () => {
+    setDeleteLoading(true);
+    setError(null);
+    try {
+      await authApi.deleteAccount();
+      logout();
+      router.replace('/login');
+    } catch {
+      setError('계정 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      setDeleteLoading(false);
+      setShowDeleteConfirm(false);
+    }
+  }, [logout, router]);
+
   // ─── LOADING ───────────────────────────
 
   if (!isReady) {
@@ -281,56 +254,10 @@ export default function ProfilePage(): ReactNode {
               </button>
 
               <div className="min-w-0 flex-1">
-                {/* 닉네임 (인라인 편집) */}
-                {isEditingName ? (
-                  <div className="flex items-center gap-2">
-                    <Input
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') void handleSaveName();
-                        if (e.key === 'Escape') handleCancelEditName();
-                      }}
-                      maxLength={30}
-                      placeholder="닉네임 입력"
-                      className="h-7 text-sm"
-                      autoFocus
-                      disabled={nameLoading}
-                    />
-                    <button
-                      type="button"
-                      className="flex w-7 h-7 shrink-0 items-center justify-center rounded-md bg-primary text-white transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50"
-                      onClick={() => void handleSaveName()}
-                      disabled={nameLoading || !editName.trim()}
-                      aria-label="저장"
-                    >
-                      <Check className="h-3.5 w-3.5" aria-hidden />
-                    </button>
-                    <button
-                      type="button"
-                      className="flex w-7 h-7 shrink-0 items-center justify-center rounded-md bg-bg-alt text-text-3 transition-colors hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                      onClick={handleCancelEditName}
-                      disabled={nameLoading}
-                      aria-label="취소"
-                    >
-                      <X className="h-3.5 w-3.5" aria-hidden />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <p className="truncate text-sm font-medium text-text">
-                      {displayName ?? user?.email?.split('@')[0] ?? '-'}
-                    </p>
-                    <button
-                      type="button"
-                      className="flex w-6 h-6 shrink-0 items-center justify-center rounded-md text-text-3 transition-colors hover:bg-bg-alt hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                      onClick={handleStartEditName}
-                      aria-label="닉네임 수정"
-                    >
-                      <Pencil className="h-3 w-3" aria-hidden />
-                    </button>
-                  </div>
-                )}
+                {/* 닉네임 (OAuth 이름, 수정 불가) */}
+                <p className="truncate text-sm font-medium text-text">
+                  {displayName ?? user?.email?.split('@')[0] ?? '-'}
+                </p>
 
                 {/* 이메일 + OAuth */}
                 <div className="mt-1 flex items-center gap-2">
@@ -626,12 +553,12 @@ export default function ProfilePage(): ReactNode {
                 이 작업은 되돌릴 수 없습니다. 모든 데이터(제출, 스터디, 프로필)가 영구 삭제됩니다.
               </p>
               <div className="flex justify-end gap-2">
-                <Button variant="ghost" size="sm" onClick={() => setShowDeleteConfirm(false)}>
+                <Button variant="ghost" size="sm" onClick={() => setShowDeleteConfirm(false)} disabled={deleteLoading}>
                   취소
                 </Button>
-                <Button variant="danger" size="sm" disabled>
-                  <Trash2 className="h-3 w-3" />
-                  삭제 확인 (준비 중)
+                <Button variant="danger" size="sm" onClick={() => void handleDeleteAccount()} disabled={deleteLoading}>
+                  {deleteLoading ? <InlineSpinner /> : <Trash2 className="h-3 w-3" />}
+                  {deleteLoading ? '삭제 중...' : '삭제 확인'}
                 </Button>
               </div>
             </div>

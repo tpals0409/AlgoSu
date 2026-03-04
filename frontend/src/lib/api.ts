@@ -231,9 +231,13 @@ export const authApi = {
   getProfile: (): Promise<{ email: string; name: string | null; avatar_url: string | null; oauth_provider: string | null }> =>
     fetchApi('/auth/profile'),
 
-  /** 프로필 수정 (닉네임 / 아바타) */
-  updateProfile: (data: { name?: string; avatar_url?: string }): Promise<{ name: string; avatar_url: string | null }> =>
+  /** 프로필 수정 (아바타) */
+  updateProfile: (data: { avatar_url?: string }): Promise<{ avatar_url: string | null }> =>
     fetchApi('/auth/profile', { method: 'PATCH', body: JSON.stringify(data) }),
+
+  /** 계정 삭제 (소프트 딜리트) */
+  deleteAccount: (): Promise<{ message: string }> =>
+    fetchApi('/auth/account', { method: 'DELETE' }),
 };
 
 // ── Study API ──
