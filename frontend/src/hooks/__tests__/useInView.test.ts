@@ -51,7 +51,6 @@ describe('useInView', () => {
 
     // useEffect 실행 전에 ref를 설정하고 리렌더
     act(() => {
-      // @ts-expect-error -- ref.current 직접 설정 (테스트 목적)
       result.current[0].current = el;
     });
 
@@ -59,7 +58,6 @@ describe('useInView', () => {
     const { result: result2 } = renderHook(() => {
       const hookResult = useInView();
       // 마운트 시 ref에 요소 연결
-      // @ts-expect-error -- ref.current 직접 설정
       hookResult[0].current = el;
       return hookResult;
     });
@@ -78,7 +76,6 @@ describe('useInView', () => {
 
     const { result } = renderHook(() => {
       const hookResult = useInView();
-      // @ts-expect-error -- ref.current 직접 설정
       hookResult[0].current = el;
       return hookResult;
     });
@@ -96,7 +93,6 @@ describe('useInView', () => {
 
     const { unmount } = renderHook(() => {
       const hookResult = useInView();
-      // @ts-expect-error -- ref.current 직접 설정
       hookResult[0].current = el;
       return hookResult;
     });

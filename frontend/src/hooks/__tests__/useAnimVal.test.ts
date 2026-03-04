@@ -60,7 +60,6 @@ describe('useAnimVal', () => {
 
     const { result } = renderHook(() => {
       const hookResult = useAnimVal(100, 1000);
-      // @ts-expect-error -- ref.current 직접 설정
       hookResult[0].current = el;
       return hookResult;
     });
@@ -97,7 +96,6 @@ describe('useAnimVal', () => {
 
     renderHook(() => {
       const hookResult = useAnimVal(100, 1000);
-      // @ts-expect-error -- ref.current 직접 설정
       hookResult[0].current = el;
       return hookResult;
     });
@@ -122,7 +120,6 @@ describe('useAnimVal', () => {
 
     const { result } = renderHook(() => {
       const hookResult = useAnimVal(50, 2000);
-      // @ts-expect-error -- ref.current 직접 설정
       hookResult[0].current = el;
       return hookResult;
     });
@@ -137,7 +134,6 @@ describe('useAnimVal', () => {
 
     const { result } = renderHook(() => {
       const hookResult = useAnimVal(100);
-      // @ts-expect-error -- ref.current 직접 설정
       hookResult[0].current = el;
       return hookResult;
     });
@@ -156,7 +152,6 @@ describe('useAnimVal', () => {
 
     const { unmount } = renderHook(() => {
       const hookResult = useAnimVal(100);
-      // @ts-expect-error -- ref.current 직접 설정
       hookResult[0].current = el;
       return hookResult;
     });
@@ -170,7 +165,6 @@ describe('useAnimVal', () => {
 
     const { unmount } = renderHook(() => {
       const hookResult = useAnimVal(100, 1000);
-      // @ts-expect-error -- ref.current 직접 설정
       hookResult[0].current = el;
       return hookResult;
     });
