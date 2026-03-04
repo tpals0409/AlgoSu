@@ -1,3 +1,9 @@
+/**
+ * @file Solved.ac 외부 API 컨트롤러 — 백준 문제 정보 프록시
+ * @domain problem
+ * @layer controller
+ * @related solvedac.service.ts
+ */
 import { Controller, Get, Param, BadRequestException } from '@nestjs/common';
 import { SolvedacService, SolvedacProblemInfo } from './solvedac.service';
 

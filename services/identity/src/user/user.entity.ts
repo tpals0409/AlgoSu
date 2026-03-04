@@ -1,3 +1,9 @@
+/**
+ * @file User 엔티티 — OAuth 사용자 + GitHub 연동 정보
+ * @domain identity
+ * @layer entity
+ * @related oauth.service.ts, internal.controller.ts
+ */
 import {
   Entity,
   PrimaryGeneratedColumn,

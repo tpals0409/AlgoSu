@@ -72,6 +72,11 @@
     --diff-ruby-color:      #E83C3C;
     --diff-ruby-border:     rgba(232,60,60,0.25);
 
+    /* ── OAuth 브랜드 (테마 불변) ── */
+    --oauth-naver:        #03C75A;
+    --oauth-kakao-bg:     #FEE500;
+    --oauth-kakao-text:   #191919;
+
     /* ── 반경 ── */
     --radius-s: 6px;
     --radius-m: 12px;
@@ -125,6 +130,11 @@
     --shadow-hover:   0 2px 8px rgba(0,0,0,0.30), 0 8px 32px rgba(0,0,0,0.20);
     --shadow-toast:   0 8px 32px rgba(0,0,0,0.40);
     --shadow-glow:    0 4px 24px rgba(160,140,214,0.40);
+
+    /* ── OAuth 브랜드 (테마 불변) ── */
+    --oauth-naver:        #03C75A;
+    --oauth-kakao-bg:     #FEE500;
+    --oauth-kakao-text:   #191919;
 
     /* ── 바 (차트) ── */
     --bar-fill:   linear-gradient(90deg, #A08CD6, #B9A6E8);

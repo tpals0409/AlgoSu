@@ -1,19 +1,28 @@
+/**
+ * @file Internal Key Guard — X-Internal-Key 기반 서비스 간 인증
+ * @domain common
+ * @layer guard
+ * @related ConfigService
+ */
 import {
   CanActivate,
   ExecutionContext,
   Injectable,
   UnauthorizedException,
-  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 import { timingSafeEqual } from 'crypto';
+import { StructuredLoggerService } from '../logger/structured-logger.service';
 
 @Injectable()
 export class InternalKeyGuard implements CanActivate {
-  private readonly logger = new Logger(InternalKeyGuard.name);
+  private readonly logger: StructuredLoggerService;
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly configService: ConfigService) {
+    this.logger = new StructuredLoggerService();
+    this.logger.setContext(InternalKeyGuard.name);
+  }
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<Request>();

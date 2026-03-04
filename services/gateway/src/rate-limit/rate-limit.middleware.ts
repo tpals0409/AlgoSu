@@ -1,3 +1,9 @@
+/**
+ * @file Rate Limit 미들웨어 — 기본 600req/min + 제출 10req/min
+ * @domain common
+ * @layer middleware
+ * @related redis-throttler.storage.ts
+ */
 import { Injectable, NestMiddleware, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { RedisThrottlerStorage } from './redis-throttler.storage';

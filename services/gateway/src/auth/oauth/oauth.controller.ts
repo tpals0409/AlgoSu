@@ -1,5 +1,5 @@
 /**
- * @file OAuth 인증 컨트롤러 — 소셜로그인 + GitHub 연동 + 프로필 관리
+ * @file OAuth 인증 컨트롤러 — 소셜로그인 + GitHub 연동 + 프로필 관리 + 로그아웃
  * @domain identity
  * @layer controller
  * @related OAuthService, JwtMiddleware, TokenRefreshInterceptor
@@ -18,21 +18,26 @@ import {
   Res,
   BadRequestException,
   NotFoundException,
-  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
+import * as jwt from 'jsonwebtoken';
 import { OAuthService } from './oauth.service';
 import { setTokenCookie } from '../cookie.util';
+import { StructuredLoggerService } from '../../common/logger/structured-logger.service';
 
 @Controller('auth')
 export class OAuthController {
-  private readonly logger = new Logger(OAuthController.name);
+  private readonly logger: StructuredLoggerService;
 
   constructor(
     private readonly oauthService: OAuthService,
     private readonly configService: ConfigService,
-  ) {}
+    structuredLogger: StructuredLoggerService,
+  ) {
+    this.logger = structuredLogger;
+    this.logger.setContext(OAuthController.name);
+  }
 
   /**
    * OAuth 인증 시작 — 프로바이더 인증 URL 반환
@@ -244,6 +249,7 @@ export class OAuthController {
 
   /**
    * JWT 갱신 — Cookie의 기존 토큰으로 새 토큰 발급 (httpOnly Cookie 정책)
+   * JwtMiddleware 제외 경로이므로 쿠키에서 직접 JWT를 verify하여 userId 추출
    * @api POST /auth/refresh
    * @guard cookie-auth
    */
@@ -257,9 +263,19 @@ export class OAuthController {
       throw new BadRequestException('인증 쿠키가 없습니다.');
     }
 
-    const userId = req.headers['x-user-id'] as string;
-    if (!userId) {
-      throw new BadRequestException('인증 정보가 없습니다.');
+    const secret = this.configService.getOrThrow<string>('JWT_SECRET');
+    let userId: string;
+
+    try {
+      const payload = jwt.verify(token, secret, { algorithms: ['HS256'] }) as jwt.JwtPayload;
+      const sub = payload['sub'] ?? payload['userId'];
+      if (!sub || typeof sub !== 'string') {
+        throw new BadRequestException('토큰에 사용자 ID가 없습니다.');
+      }
+      userId = sub;
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      throw new BadRequestException('유효하지 않거나 만료된 토큰입니다.');
     }
 
     const user = await this.oauthService.findUserByIdOrThrow(userId);
@@ -272,19 +288,45 @@ export class OAuthController {
   }
 
   /**
-   * 로그아웃 — httpOnly Cookie 삭제
+   * 로그아웃 — httpOnly Cookie 삭제 + Refresh Token 무효화
+   * JWT 미들웨어 제외 경로이므로 쿠키에서 직접 토큰을 디코딩하여 userId 추출
+   * clearCookie 옵션은 setCookie 옵션(cookie.util.ts)과 반드시 일치해야 브라우저가 쿠키를 제거함
    * @api POST /auth/logout
    */
   @Post('logout')
-  logout(
+  async logout(
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): { message: string } {
-    res.clearCookie('token', { path: '/' });
+  ): Promise<{ message: string }> {
+    const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
+
+    // 쿠키에서 JWT 디코딩하여 userId 추출 (서명 검증 없이 — 로그아웃은 무조건 허용)
+    const token = req.cookies?.['token'] as string | undefined;
+    if (token) {
+      try {
+        const decoded = jwt.decode(token) as jwt.JwtPayload | null;
+        const userId = decoded?.['sub'] ?? decoded?.['userId'];
+        if (userId && typeof userId === 'string') {
+          await this.oauthService.revokeRefreshToken(userId);
+          this.logger.log(`로그아웃 Refresh Token 무효화 완료: userId=${userId}`);
+        }
+      } catch {
+        // 디코딩 실패 시에도 쿠키 삭제는 진행 — 로그아웃 자체를 차단하지 않음
+        this.logger.warn('로그아웃 시 토큰 디코딩 실패 — 쿠키만 삭제');
+      }
+    }
+
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      path: '/',
+    });
     return { message: '로그아웃 되었습니다.' };
   }
 
   /**
-   * 회원탈퇴 (소프트 딜리트) — 계정 익명화 + 멤버십/알림 삭제
+   * 회원탈퇴 (소프트 딜리트) — 계정 익명화 + 멤버십/알림 삭제 + Refresh Token 무효화
    * @api DELETE /auth/account
    * @guard jwt-auth
    */
@@ -295,8 +337,15 @@ export class OAuthController {
   ): Promise<{ message: string }> {
     const userId = req.headers['x-user-id'] as string;
     await this.oauthService.softDeleteAccount(userId);
-    res.clearCookie('token', { path: '/' });
-    this.logger.log(`계정 소프트 딜리트: userId=${userId}`);
+    await this.oauthService.revokeRefreshToken(userId);
+    const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      path: '/',
+    });
+    this.logger.log(`계정 소프트 딜리트 + Refresh Token 무효화: userId=${userId}`);
     return { message: '계정이 삭제되었습니다.' };
   }
 }

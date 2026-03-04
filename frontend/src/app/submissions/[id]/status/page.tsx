@@ -9,7 +9,7 @@
 
 import { useState, useEffect, use, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, XCircle, Clock, ChevronLeft, RotateCcw, ArrowRight } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, ChevronLeft, RotateCcw, ArrowRight, Sparkles, LinkIcon } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -17,7 +17,8 @@ import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useSubmissionSSE, mapSSEToSteps, type SSEStatus } from '@/hooks/useSubmissionSSE';
-import { submissionApi, type Submission } from '@/lib/api';
+import { useAiQuota } from '@/hooks/useAiQuota';
+import { submissionApi, authApi, type Submission } from '@/lib/api';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
 
@@ -49,14 +50,10 @@ function getOverallStatusMessage(status: SSEStatus): {
         description: 'AI 분석이 완료되었습니다.',
         variant: 'success',
       };
-    case 'github_failed':
     case 'github_token_invalid':
       return {
         title: 'GitHub 동기화 실패',
-        description:
-          status === 'github_token_invalid'
-            ? 'GitHub 계정 연동을 다시 확인해주세요.'
-            : 'GitHub 동기화 중 오류가 발생했습니다.',
+        description: 'GitHub 계정 연동을 다시 확인해주세요.',
         variant: 'error',
       };
     case 'ai_failed':
@@ -172,14 +169,27 @@ export default function SubmissionStatusPage({ params }: PageProps): ReactNode {
   const router = useRouter();
   const { isAuthenticated } = useRequireAuth();
   useRequireStudy();
+  const { quota } = useAiQuota(isAuthenticated);
 
   // ─── STATE ──────────────────────────────
 
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [initialLoaded, setInitialLoaded] = useState(false);
+  const [relinkLoading, setRelinkLoading] = useState(false);
+
+  // 이미 최종 상태인 제출에는 SSE 연결 불필요
+  const isAlreadyTerminal = submission?.sagaStep === 'DONE' || submission?.sagaStep === 'FAILED';
+  const sseSubmissionId = initialLoaded && !isAlreadyTerminal ? submissionId : null;
 
   // SSE
-  const { status, disconnect } = useSubmissionSSE(submissionId);
+  const { status: sseStatus, disconnect } = useSubmissionSSE(sseSubmissionId);
+
+  // 이미 최종 상태인 제출은 sagaStep 기반으로 상태 표시
+  const status: SSEStatus = isAlreadyTerminal
+    ? (submission?.sagaStep === 'DONE' ? 'done' : 'ai_failed')
+    : sseStatus;
+
   const steps = mapSSEToSteps(status);
   const isTerminal = TERMINAL_STATUSES.includes(status);
   const overallStatus = getOverallStatusMessage(status);
@@ -195,6 +205,8 @@ export default function SubmissionStatusPage({ params }: PageProps): ReactNode {
         setSubmission(data);
       } catch (err: unknown) {
         setLoadError((err as Error).message ?? '제출 정보를 불러오는 데 실패했습니다.');
+      } finally {
+        setInitialLoaded(true);
       }
     };
 
@@ -224,7 +236,18 @@ export default function SubmissionStatusPage({ params }: PageProps): ReactNode {
         {/* 메인 카드 */}
         <Card>
           <CardHeader>
-            <CardTitle>제출 상태</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>제출 상태</CardTitle>
+              {quota && (
+                <Badge
+                  variant={quota.remaining > 0 ? 'muted' : 'warning'}
+                  className="flex items-center gap-1.5"
+                >
+                  <Sparkles className="h-3 w-3" aria-hidden />
+                  {`AI ${quota.used}/${quota.limit}회`}
+                </Badge>
+              )}
+            </div>
             <p className="mt-0.5 font-mono text-[10px] text-text-3">
               {submission
                 ? `${submission.language} / ${new Date(submission.createdAt).toLocaleString('ko-KR')}`
@@ -260,6 +283,51 @@ export default function SubmissionStatusPage({ params }: PageProps): ReactNode {
             </div>
           </CardContent>
         </Card>
+
+        {/* TOKEN_INVALID: GitHub 재연동 안내 */}
+        {status === 'github_token_invalid' && (
+          <Card>
+            <CardContent className="flex items-start gap-3 py-4">
+              <div className="flex items-center justify-center w-8 h-8 shrink-0 rounded-full bg-warning-soft">
+                <LinkIcon className="h-4 w-4 text-warning" aria-hidden />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-text">
+                  GitHub 재연동이 필요합니다
+                </p>
+                <p className="mt-1 text-[11px] text-text-3 leading-relaxed">
+                  GitHub 토큰이 만료되었거나 권한이 변경되었습니다.
+                  재연동 후 다시 제출하면 코드가 GitHub에 자동으로 동기화됩니다.
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    disabled={relinkLoading}
+                    onClick={async () => {
+                      setRelinkLoading(true);
+                      try {
+                        const { url } = await authApi.relinkGitHub();
+                        window.location.href = url;
+                      } catch {
+                        setRelinkLoading(false);
+                      }
+                    }}
+                  >
+                    {relinkLoading ? 'GitHub 연동 중...' : 'GitHub 재연동'}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => router.push('/profile')}
+                  >
+                    프로필에서 설정
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* 완료 후 액션 버튼 */}
         {isTerminal && (

@@ -6,12 +6,13 @@
  * @guard ai-quota
  */
 
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Repository, Not, In, MoreThan, LessThan } from 'typeorm';
 import { Submission, SagaStep, GitHubSyncStatus } from '../submission/submission.entity';
 import { MqPublisherService } from './mq-publisher.service';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 /**
  * Saga Orchestrator -- 제출 플로우 상태 관리
@@ -27,7 +28,7 @@ import { MqPublisherService } from './mq-publisher.service';
  */
 @Injectable()
 export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
-  private readonly logger = new Logger(SagaOrchestratorService.name);
+  private readonly logger: StructuredLoggerService;
 
   // M3: 단계별 타임아웃 (설계서 기준)
   private static readonly STEP_TIMEOUTS: Record<SagaStep, number> = {
@@ -50,6 +51,8 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
     private readonly mqPublisher: MqPublisherService,
     private readonly configService: ConfigService,
   ) {
+    this.logger = new StructuredLoggerService();
+    this.logger.setContext(SagaOrchestratorService.name);
     this.aiAnalysisServiceUrl = this.configService.get<string>(
       'AI_ANALYSIS_SERVICE_URL',
       'http://ai-analysis-service:8000',
@@ -139,8 +142,13 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
    * Step 2 완료: GitHub Push 성공 -> AI 한도 체크 -> AI_QUEUED 또는 AI_SKIPPED
    *
    * @guard ai-quota
+   * @param submissionId 제출 ID
+   * @param preserveGithubStatus true이면 githubSyncStatus를 그대로 유지 (SKIPPED 등)
    */
-  async advanceToAiQueued(submissionId: string): Promise<void> {
+  async advanceToAiQueued(
+    submissionId: string,
+    preserveGithubStatus = false,
+  ): Promise<void> {
     const submission = await this.submissionRepo.findOne({ where: { id: submissionId } });
     if (!submission) {
       this.logger.error(`Submission 미발견: submissionId=${submissionId}`);
@@ -150,11 +158,16 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
     // AI 일일 한도 체크 (AI Analysis Service 호출)
     const quotaAllowed = await this.checkAiQuota(submission.userId);
 
+    // preserveGithubStatus=true일 때 githubSyncStatus를 덮어쓰지 않음
+    const githubStatusUpdate = preserveGithubStatus
+      ? {}
+      : { githubSyncStatus: GitHubSyncStatus.SYNCED };
+
     if (!quotaAllowed) {
       // 한도 초과 -> AI_SKIPPED (DONE으로 직행)
       await this.submissionRepo.update(submissionId, {
         sagaStep: SagaStep.DONE,
-        githubSyncStatus: GitHubSyncStatus.SYNCED,
+        ...githubStatusUpdate,
         aiSkipped: true,
         aiAnalysisStatus: 'skipped',
       });
@@ -168,12 +181,13 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
     // 한도 내 -> AI 분석 큐 발행
     await this.submissionRepo.update(submissionId, {
       sagaStep: SagaStep.AI_QUEUED,
-      githubSyncStatus: GitHubSyncStatus.SYNCED,
+      ...githubStatusUpdate,
     });
 
     await this.mqPublisher.publishAiAnalysis({
       submissionId,
       studyId: submission.studyId,
+      userId: submission.userId,
       timestamp: new Date().toISOString(),
     });
 
@@ -239,8 +253,10 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
 
     // GitHub 실패해도 AI 분석은 진행 (GitHub 동기화와 독립)
     // TOKEN_INVALID인 경우만 AI 분석도 스킵
+    // SKIPPED인 경우 githubSyncStatus를 SYNCED로 덮어쓰지 않음
     if (syncStatus !== GitHubSyncStatus.TOKEN_INVALID) {
-      await this.advanceToAiQueued(submissionId);
+      const preserveGithubStatus = syncStatus === GitHubSyncStatus.SKIPPED;
+      await this.advanceToAiQueued(submissionId, preserveGithubStatus);
     } else {
       // TOKEN_INVALID: sagaStep을 DONE으로 전환하여 타임아웃 재발행 루프 방지
       await this.submissionRepo.update(submissionId, {
@@ -323,6 +339,7 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
         await this.mqPublisher.publishAiAnalysis({
           submissionId: submission.id,
           studyId: submission.studyId,
+          userId: submission.userId,
           timestamp: new Date().toISOString(),
         });
         break;

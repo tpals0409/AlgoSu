@@ -1,3 +1,9 @@
+/**
+ * @file 상태 리포터 — Submission HTTP 콜백 + Redis Pub/Sub 브로드캐스트
+ * @domain github
+ * @layer service
+ * @related worker.ts, sse.controller.ts (gateway)
+ */
 import Redis from 'ioredis';
 import { logger } from './logger';
 import { config } from './config';

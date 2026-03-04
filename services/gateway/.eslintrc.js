@@ -18,7 +18,7 @@ module.exports = {
   },
   ignorePatterns: ['dist/', 'node_modules/', 'prod_node_modules/'],
   rules: {
-    'no-console': 'warn',
+    'no-console': 'error',
     'no-control-regex': 'off',
     '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
     '@typescript-eslint/no-explicit-any': 'warn',

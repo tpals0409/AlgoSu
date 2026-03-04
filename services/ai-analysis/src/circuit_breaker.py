@@ -1,3 +1,9 @@
+"""
+@file Circuit Breaker — Claude API 과부하 보호 패턴
+@domain ai
+@layer service
+@related worker.py, claude_client.py, metrics.py
+"""
 import time
 import logging
 from enum import Enum

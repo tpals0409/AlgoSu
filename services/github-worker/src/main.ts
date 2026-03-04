@@ -1,5 +1,6 @@
 import { GitHubWorker } from './worker';
 import { logger } from './logger';
+import { startMetricsServer } from './metrics';
 
 /**
  * GitHub Worker Entry Point
@@ -10,6 +11,8 @@ import { logger } from './logger';
  */
 async function main(): Promise<void> {
   logger.info('GitHub Worker 시작');
+
+  startMetricsServer();
 
   const worker = new GitHubWorker();
   await worker.start();

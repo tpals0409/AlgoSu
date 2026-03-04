@@ -1,3 +1,9 @@
+/**
+ * @file Internal Submission Controller — 내부 서비스 전용 API
+ * @domain submission
+ * @layer controller
+ * @related SubmissionService, SagaOrchestratorService, InternalKeyGuard
+ */
 import {
   Controller,
   Get,
@@ -8,7 +14,6 @@ import {
   Query,
   ParseUUIDPipe,
   UseGuards,
-  Logger,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -18,6 +23,7 @@ import { InternalKeyGuard } from '../common/guards/internal-key.guard';
 import { UpdateAiResultDto } from './dto/update-ai-result.dto';
 import { GithubSuccessCallbackDto } from './dto/github-success-callback.dto';
 import { GitHubSyncStatus } from './submission.entity';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 /**
  * Internal Submission Controller
@@ -28,12 +34,15 @@ import { GitHubSyncStatus } from './submission.entity';
 @Controller('internal')
 @UseGuards(InternalKeyGuard)
 export class SubmissionInternalController {
-  private readonly logger = new Logger(SubmissionInternalController.name);
+  private readonly logger: StructuredLoggerService;
 
   constructor(
     private readonly submissionService: SubmissionService,
     private readonly sagaOrchestrator: SagaOrchestratorService,
-  ) {}
+  ) {
+    this.logger = new StructuredLoggerService();
+    this.logger.setContext(SubmissionInternalController.name);
+  }
 
   /**
    * GET /internal/:id — 내부 서비스용 제출 데이터 조회

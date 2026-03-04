@@ -28,6 +28,7 @@ import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { notificationApi, type Notification } from '@/lib/api';
 import { NotificationToast } from '@/components/ui/NotificationToast';
+import { useNotificationSSE } from '@/hooks/useNotificationSSE';
 
 // ─── CONSTANTS ───────────────────────────
 
@@ -97,22 +98,27 @@ export function NotificationBell(): ReactNode {
   // ─── HOOKS ─────────────────────────────
 
   /**
-   * 미읽음 수 폴링 (10초마다) + 증가 시 토스트 표시
+   * SSE 실시간 알림 수신 — 새 알림 도착 시 즉시 UI 반영 + 토스트
+   * @domain notification
+   */
+  const handleSSENotification = useCallback((notification: Notification) => {
+    setUnreadCount((prev) => prev + 1);
+    setNotifications((prev) => [notification, ...prev]);
+    setToastNotification(notification);
+  }, []);
+
+  useNotificationSSE(true, handleSSENotification);
+
+  /**
+   * 미읽음 수 폴링 (60초마다, SSE fallback) + 초기 로드
    * @domain notification
    */
   const fetchUnreadCount = useCallback(async () => {
     try {
       const { count } = await notificationApi.unreadCount();
       setUnreadCount(count);
-
-      if (!initialLoadRef.current && count > prevUnreadRef.current) {
-        const latest = await notificationApi.list();
-        const newest = latest.find((n) => !n.read);
-        if (newest) setToastNotification(newest);
-      }
-
-      initialLoadRef.current = false;
       prevUnreadRef.current = count;
+      initialLoadRef.current = false;
     } catch {
       // 조용히 실패
     }
@@ -120,7 +126,7 @@ export function NotificationBell(): ReactNode {
 
   useEffect(() => {
     void fetchUnreadCount();
-    const interval = setInterval(() => void fetchUnreadCount(), 10000);
+    const interval = setInterval(() => void fetchUnreadCount(), 60_000);
     return () => clearInterval(interval);
   }, [fetchUnreadCount]);
 

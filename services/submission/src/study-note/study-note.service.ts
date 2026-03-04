@@ -6,21 +6,24 @@
  */
 import {
   Injectable,
-  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { StudyNote } from './study-note.entity';
 import { UpsertStudyNoteDto } from './dto/upsert-study-note.dto';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 @Injectable()
 export class StudyNoteService {
-  private readonly logger = new Logger(StudyNoteService.name);
+  private readonly logger: StructuredLoggerService;
 
   constructor(
     @InjectRepository(StudyNote)
     private readonly noteRepo: Repository<StudyNote>,
-  ) {}
+  ) {
+    this.logger = new StructuredLoggerService();
+    this.logger.setContext(StudyNoteService.name);
+  }
 
   /**
    * 메모 생성/수정 — problemId + studyId unique 기반 upsert

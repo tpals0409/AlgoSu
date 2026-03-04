@@ -1,3 +1,9 @@
+/**
+ * @file Submission Controller — 코드 제출 + Draft CRUD
+ * @domain submission
+ * @layer controller
+ * @related SubmissionService, DraftService, InternalKeyGuard, StudyMemberGuard
+ */
 import {
   Controller,
   Get,
@@ -11,7 +17,6 @@ import {
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
-  Logger,
   ForbiddenException,
 } from '@nestjs/common';
 import { SubmissionService } from './submission.service';
@@ -20,6 +25,7 @@ import { CreateSubmissionDto, UpsertDraftDto } from './dto/create-submission.dto
 import { PaginationQueryDto } from './dto/pagination-query.dto';
 import { InternalKeyGuard } from '../common/guards/internal-key.guard';
 import { StudyMemberGuard } from '../common/guards/study-member.guard';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 /**
  * Submission Controller
@@ -30,12 +36,15 @@ import { StudyMemberGuard } from '../common/guards/study-member.guard';
 @Controller()
 @UseGuards(InternalKeyGuard, StudyMemberGuard)
 export class SubmissionController {
-  private readonly logger = new Logger(SubmissionController.name);
+  private readonly logger: StructuredLoggerService;
 
   constructor(
     private readonly submissionService: SubmissionService,
     private readonly draftService: DraftService,
-  ) {}
+  ) {
+    this.logger = new StructuredLoggerService();
+    this.logger.setContext(SubmissionController.name);
+  }
 
   /**
    * POST / — 코드 제출 (Saga 시작)

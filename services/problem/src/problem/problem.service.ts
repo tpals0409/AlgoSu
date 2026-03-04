@@ -1,3 +1,9 @@
+/**
+ * @file Problem 서비스 — 문제 CRUD + 마감 시간 캐시 연동
+ * @domain problem
+ * @layer service
+ * @related problem.controller.ts, problem.entity.ts, deadline-cache.service.ts
+ */
 import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { Problem, ProblemStatus } from './problem.entity';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';

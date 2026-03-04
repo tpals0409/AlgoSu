@@ -47,4 +47,4 @@ kubectl apply -f postgres-secret.yaml
 | internal-api-keys.yaml | 서비스별 X-Internal-Key (서비스 간 공유 금지) |
 | jwt-secret.yaml | JWT_SECRET |
 | github-app-secret.yaml | GITHUB_APP_PRIVATE_KEY |
-| gemini-api-secret.yaml | GEMINI_API_KEY |
+| claude-api-secret.yaml | CLAUDE_API_KEY |

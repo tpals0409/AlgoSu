@@ -1,13 +1,19 @@
+/**
+ * @file StudyMember Guard — 스터디 멤버십 사전 검증 + Redis 캐시
+ * @domain common
+ * @layer guard
+ * @related ConfigService, Redis
+ */
 import {
   CanActivate,
   ExecutionContext,
   Injectable,
   ForbiddenException,
-  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 import Redis from 'ioredis';
+import { StructuredLoggerService } from '../logger/structured-logger.service';
 
 /**
  * StudyMember Guard — 스터디 멤버십 사전 검증
@@ -24,11 +30,13 @@ import Redis from 'ioredis';
  */
 @Injectable()
 export class StudyMemberGuard implements CanActivate {
-  private readonly logger = new Logger(StudyMemberGuard.name);
+  private readonly logger: StructuredLoggerService;
   private readonly redis: Redis;
   private static readonly CACHE_TTL_SECONDS = 600; // 10분
 
   constructor(private readonly configService: ConfigService) {
+    this.logger = new StructuredLoggerService();
+    this.logger.setContext(StudyMemberGuard.name);
     const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
     this.redis = new Redis(redisUrl);
     this.redis.on('error', (err: Error) => {

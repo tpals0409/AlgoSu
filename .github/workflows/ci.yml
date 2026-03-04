@@ -618,7 +618,7 @@ jobs:
 
   build-frontend:
     name: Build Frontend (Next.js)
-    needs: detect-changes
+    needs: [detect-changes, quality-frontend]
     if: needs.detect-changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -753,7 +753,7 @@ jobs:
 
       - name: Update image tags for changed services
         run: |
-          cd aether-gitops/algoso/overlays/prod
+          cd aether-gitops/algosu/overlays/prod
           SHA="${{ github.sha }}"
           UPDATED=""
 
@@ -792,7 +792,7 @@ jobs:
             exit 0
           fi
           git add -A
-          git commit -m "deploy(algoso): update image tags → main-${{ github.sha }}"
+          git commit -m "deploy(algosu): update image tags → main-${{ github.sha }}"
           git push
 
   # ============================================================

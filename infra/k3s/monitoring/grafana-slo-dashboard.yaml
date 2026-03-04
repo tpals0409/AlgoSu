@@ -444,7 +444,7 @@ data:
           "collapsed": false,
           "gridPos": { "h": 1, "w": 24, "x": 0, "y": 39 },
           "id": 105,
-          "title": "AI Analysis — Circuit Breaker & Gemini",
+          "title": "AI Analysis — Circuit Breaker & Claude",
           "type": "row"
         },
         {
@@ -509,11 +509,11 @@ data:
             "tooltip": { "mode": "multi" },
             "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] }
           },
-          "title": "Gemini API Request Rate",
+          "title": "Claude API Request Rate",
           "type": "timeseries",
           "targets": [
-            { "expr": "rate(algosu_ai_analysis_gemini_requests_total{status=\"success\"}[5m])", "legendFormat": "Success" },
-            { "expr": "rate(algosu_ai_analysis_gemini_requests_total{status=\"error\"}[5m])", "legendFormat": "Error" }
+            { "expr": "rate(algosu_ai_analysis_claude_requests_total{status=\"success\"}[5m])", "legendFormat": "Success" },
+            { "expr": "rate(algosu_ai_analysis_claude_requests_total{status=\"error\"}[5m])", "legendFormat": "Error" }
           ]
         },
         {

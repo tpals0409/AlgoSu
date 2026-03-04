@@ -1,3 +1,9 @@
+/**
+ * @file Dual Write 서비스 — DB 이중 쓰기 + 마이그레이션 지원
+ * @domain problem
+ * @layer repository
+ * @related problem.service.ts, dual-write.config.ts, reconciliation.service.ts
+ */
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOneOptions, FindManyOptions, DeepPartial } from 'typeorm';

@@ -1,6 +1,9 @@
 /**
- * AlgoSu Gateway — Request ID Middleware
- * ---------------------------------------
+ * @file Request ID 미들웨어 — X-Request-Id + X-Trace-Id 부여 + HTTP 로그
+ * @domain common
+ * @layer middleware
+ * @related structured-logger.service.ts, sanitize.ts
+ *
  * 규칙 근거: /docs/monitoring-log-rules.md §1-4
  *
  * 역할:

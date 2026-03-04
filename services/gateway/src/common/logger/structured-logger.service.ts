@@ -1,6 +1,9 @@
 /**
- * AlgoSu Gateway — Structured Logger Service
- * --------------------------------------------
+ * @file Gateway 구조화 로거 — JSON 포맷 NestJS LoggerService 구현
+ * @domain common
+ * @layer util
+ * @related sanitize.ts, request-id.middleware.ts
+ *
  * 규칙 근거: /docs/monitoring-log-rules.md §1
  *
  * NestJS LoggerService 인터페이스 구현.

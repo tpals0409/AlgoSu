@@ -80,6 +80,7 @@ import { StudyNoteProxyModule } from './study-note/study-note.module';
     ProxyModule,
   ],
   providers: [
+    JwtMiddleware,
     RedisThrottlerStorage,
     RateLimitMiddleware,
     StructuredLoggerService,
@@ -117,6 +118,7 @@ export class AppModule implements NestModule {
         { path: 'auth/logout', method: RequestMethod.POST },
         { path: 'internal/(.*)', method: RequestMethod.ALL },
         { path: 'sse/submissions/:id', method: RequestMethod.GET },
+        { path: 'sse/notifications', method: RequestMethod.GET },
       )
       .forRoutes({ path: '*', method: RequestMethod.ALL });
   }

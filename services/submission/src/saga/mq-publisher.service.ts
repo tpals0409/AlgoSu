@@ -1,6 +1,13 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+/**
+ * @file RabbitMQ 메시지 발행 서비스 — Exchange/Queue 관리 + 지수 백오프 재연결
+ * @domain submission
+ * @layer service
+ * @related SagaOrchestratorService, submission.github_push, submission.ai_analysis
+ */
+import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as amqplib from 'amqplib';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 /**
  * RabbitMQ 메시지 발행 서비스
@@ -22,11 +29,12 @@ interface SubmissionEvent {
   submissionId: string;
   studyId: string;
   timestamp: string;
+  userId?: string;
 }
 
 @Injectable()
 export class MqPublisherService implements OnModuleInit, OnModuleDestroy {
-  private readonly logger = new Logger(MqPublisherService.name);
+  private readonly logger: StructuredLoggerService;
   private connection: amqplib.ChannelModel | null = null;
   private channel: amqplib.Channel | null = null;
 
@@ -36,7 +44,10 @@ export class MqPublisherService implements OnModuleInit, OnModuleDestroy {
   private readonly GITHUB_ROUTING_KEY = 'github.push';
   private readonly AI_ROUTING_KEY = 'ai.analysis';
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly configService: ConfigService) {
+    this.logger = new StructuredLoggerService();
+    this.logger.setContext(MqPublisherService.name);
+  }
 
   async onModuleInit(): Promise<void> {
     try {
@@ -128,6 +139,7 @@ export class MqPublisherService implements OnModuleInit, OnModuleDestroy {
     await this.publish(this.GITHUB_ROUTING_KEY, event);
   }
 
+  /** userId 포함 — AI Worker quota 차감에 필요 */
   async publishAiAnalysis(event: SubmissionEvent): Promise<void> {
     await this.publish(this.AI_ROUTING_KEY, event);
   }

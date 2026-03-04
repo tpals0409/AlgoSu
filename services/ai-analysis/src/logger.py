@@ -1,10 +1,15 @@
 """
+@file AI Analysis 구조화 로거 — JSON 포맷 + Log Injection 방지
+@domain ai
+@layer util
+@related main.py, worker.py, metrics.py
+
 AlgoSu AI Analysis Service — Structured Logger
 -----------------------------------------------
 규칙 근거: /docs/monitoring-log-rules.md
 
 보안 요구사항:
-- gemini_api_key, submission_service_key, internal_api_key 절대 로그 금지
+- claude_api_key, submission_service_key, internal_api_key 절대 로그 금지
 - Authorization / X-Internal-Key 헤더 [REDACTED] 처리
 - 사용자 이메일 원문 금지, path/userAgent 제어문자 제거 + truncate
 - Log Injection 방지: 반드시 JSON 구조화 출력 (문자열 concat 금지)

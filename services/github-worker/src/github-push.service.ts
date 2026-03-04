@@ -1,3 +1,9 @@
+/**
+ * @file GitHub Push 서비스 — 유저 토큰 기반 개인 레포 코드 push
+ * @domain github
+ * @layer service
+ * @related worker.ts, token-manager.ts
+ */
 import { Octokit } from '@octokit/rest';
 import { TokenManager } from './token-manager';
 import { logger } from './logger';

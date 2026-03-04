@@ -19,6 +19,7 @@ import httpx
 
 from .config import settings
 from .claude_client import ClaudeClient
+from .metrics import dlq_messages_total, mq_messages_processed_total
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,11 @@ logger = logging.getLogger(__name__)
 QUEUE = "submission.ai_analysis"
 MAX_RETRIES = 3
 BACKOFF_BASE = 2  # 지수 백오프 기본값 (초)
+
+# RabbitMQ 재연결 상수
+RECONNECT_INITIAL_DELAY = 1   # 최초 재연결 대기 (초)
+RECONNECT_MAX_DELAY = 30      # 최대 재연결 대기 (초)
+RECONNECT_MULTIPLIER = 2      # 지수 백오프 배수
 
 
 class AIAnalysisWorker:
@@ -37,6 +43,10 @@ class AIAnalysisWorker:
     - 코드 내용 로그 미기록 (preview만)
     - Claude API Key 로그 노출 금지
 
+    재연결:
+    - RabbitMQ 연결 끊김 시 지수 백오프로 무한 재시도
+    - 재연결 성공 시 consumer 재등록 및 채널 재설정
+
     @domain ai
     """
 
@@ -44,9 +54,70 @@ class AIAnalysisWorker:
         self.claude = ClaudeClient()
         self.redis_client = redis.from_url(settings.redis_url)
         self.http_client = httpx.Client(timeout=30)
+        self.connection = None
+        self.channel = None
+        self._stopping = False
 
     def start(self):
-        """RabbitMQ 연결 및 큐 구독"""
+        """RabbitMQ 연결 및 큐 구독 (재연결 루프 포함)"""
+        self._stopping = False
+        self._connect_with_retry()
+
+    def _connect_with_retry(self):
+        """
+        RabbitMQ 연결 시도 -- 실패 시 지수 백오프로 무한 재시도
+
+        @domain ai
+        """
+        delay = RECONNECT_INITIAL_DELAY
+        attempt = 0
+
+        while not self._stopping:
+            try:
+                attempt += 1
+                logger.info(f"RabbitMQ 연결 시도: attempt={attempt}")
+                self._connect_and_consume()
+            except Exception as e:
+                if self._stopping:
+                    break
+                logger.error(
+                    f"RabbitMQ 연결 오류 (attempt={attempt}): {str(e)[:200]}, "
+                    f"{delay}초 후 재시도"
+                )
+                # 재연결 전 이전 채널/연결 정리 (리소스 누수 방지)
+                self._cleanup_connection()
+                time.sleep(delay)
+                delay = min(delay * RECONNECT_MULTIPLIER, RECONNECT_MAX_DELAY)
+
+        logger.info("AI Analysis Worker 재연결 루프 종료")
+
+    def _cleanup_connection(self):
+        """
+        pika 채널/연결 정리 -- 재연결 전 리소스 해제
+
+        @domain ai
+        """
+        if self.channel:
+            try:
+                self.channel.close()
+            except Exception:
+                pass
+            self.channel = None
+        if self.connection:
+            try:
+                self.connection.close()
+            except Exception:
+                pass
+            self.connection = None
+
+    def _connect_and_consume(self):
+        """
+        RabbitMQ 연결 + 큐 설정 + 소비 시작
+
+        연결이 끊기면 예외를 raise하여 상위 재연결 루프로 위임.
+
+        @domain ai
+        """
         params = pika.URLParameters(settings.rabbitmq_url)
         self.connection = pika.BlockingConnection(params)
         self.channel = self.connection.channel()
@@ -101,6 +172,7 @@ class AIAnalysisWorker:
             self._publish_status(submission_id, result["status"])
 
             ch.basic_ack(delivery_tag=method.delivery_tag)
+            mq_messages_processed_total.labels(result="ack").inc()
             logger.info(
                 f"AI 분석 완료: submissionId={submission_id}, "
                 f"status={result['status']}, score={result.get('score', 0)}"
@@ -117,6 +189,8 @@ class AIAnalysisWorker:
             except Exception:
                 pass
             ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+            dlq_messages_total.labels(reason="process_failure").inc()
+            mq_messages_processed_total.labels(result="nack_dlq").inc()
 
     def _analyze_with_retry(self, submission: dict) -> dict:
         """
@@ -243,10 +317,17 @@ class AIAnalysisWorker:
 
     def stop(self):
         """Graceful Shutdown"""
+        self._stopping = True
         if hasattr(self, "channel") and self.channel:
-            self.channel.stop_consuming()
+            try:
+                self.channel.stop_consuming()
+            except Exception:
+                pass
         if hasattr(self, "connection") and self.connection:
-            self.connection.close()
+            try:
+                self.connection.close()
+            except Exception:
+                pass
         self.redis_client.close()
         self.http_client.close()
         logger.info("AI Analysis Worker 종료 완료")

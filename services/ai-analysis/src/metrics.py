@@ -1,4 +1,9 @@
 """
+@file AI Analysis Prometheus 메트릭 — HTTP + Circuit Breaker + MQ 카운터
+@domain ai
+@layer util
+@related main.py, worker.py, circuit_breaker.py
+
 AlgoSu AI Analysis Service — Prometheus Metrics
 -------------------------------------------------
 규칙 근거: /docs/monitoring-log-rules.md §9
@@ -78,6 +83,18 @@ ai_quota_checks_total = Counter(
     name="algosu_ai_analysis_quota_checks_total",
     documentation="AI quota check total",
     labelnames=["result"],  # allowed, denied
+)
+
+dlq_messages_total = Counter(
+    name="algosu_ai_analysis_dlq_messages_total",
+    documentation="Total messages sent to DLQ",
+    labelnames=["reason"],  # parse_error, process_failure
+)
+
+mq_messages_processed_total = Counter(
+    name="algosu_ai_analysis_mq_messages_processed_total",
+    documentation="Total MQ messages processed",
+    labelnames=["result"],  # ack, nack_dlq
 )
 
 CIRCUIT_STATE_VALUES: dict[str, float] = {

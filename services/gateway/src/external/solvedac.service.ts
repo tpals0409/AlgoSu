@@ -1,3 +1,9 @@
+/**
+ * @file Solved.ac API 연동 서비스 — 백준 문제 정보 조회
+ * @domain problem
+ * @layer service
+ * @related solvedac.controller.ts
+ */
 import {
   Injectable,
   Logger,

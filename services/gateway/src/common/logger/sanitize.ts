@@ -1,6 +1,9 @@
 /**
- * AlgoSu Gateway — 로그 보안 유틸리티
- * ------------------------------------
+ * @file 로그 보안 유틸리티 — IP 마스킹, 헤더 제거, Log Injection 방지
+ * @domain common
+ * @layer util
+ * @related structured-logger.service.ts, request-id.middleware.ts
+ *
  * 규칙 근거: /docs/monitoring-log-rules.md §3
  *
  * 보안 요구사항:

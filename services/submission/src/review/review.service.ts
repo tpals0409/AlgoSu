@@ -8,7 +8,6 @@ import {
   Injectable,
   ForbiddenException,
   NotFoundException,
-  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -17,17 +16,22 @@ import { ReviewReply } from './review-reply.entity';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 import { CreateReplyDto } from './dto/create-reply.dto';
+import { UpdateReplyDto } from './dto/update-reply.dto';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 @Injectable()
 export class ReviewService {
-  private readonly logger = new Logger(ReviewService.name);
+  private readonly logger: StructuredLoggerService;
 
   constructor(
     @InjectRepository(ReviewComment)
     private readonly commentRepo: Repository<ReviewComment>,
     @InjectRepository(ReviewReply)
     private readonly replyRepo: Repository<ReviewReply>,
-  ) {}
+  ) {
+    this.logger = new StructuredLoggerService();
+    this.logger.setContext(ReviewService.name);
+  }
 
   // ─── COMMENT CRUD ──────────────────────────
 
@@ -157,5 +161,47 @@ export class ReviewService {
       where: { commentId: comment.id },
       order: { createdAt: 'ASC' },
     });
+  }
+
+  /**
+   * 답글 수정 — 본인만 가능 (IDOR 방어)
+   * @domain review
+   * @guard submission-owner
+   */
+  async updateReply(
+    publicId: string,
+    dto: UpdateReplyDto,
+    userId: string,
+  ): Promise<ReviewReply> {
+    const reply = await this.replyRepo.findOne({ where: { publicId } });
+    if (!reply) {
+      throw new NotFoundException('답글을 찾을 수 없습니다.');
+    }
+    if (reply.authorId !== userId) {
+      throw new ForbiddenException('본인의 답글만 수정할 수 있습니다.');
+    }
+
+    reply.content = dto.content;
+    const updated = await this.replyRepo.save(reply);
+    this.logger.log(`답글 수정: replyPublicId=${publicId}`);
+    return updated;
+  }
+
+  /**
+   * 답글 soft-delete — 본인만 가능, @DeleteDateColumn 사용
+   * @domain review
+   * @guard submission-owner
+   */
+  async deleteReply(publicId: string, userId: string): Promise<void> {
+    const reply = await this.replyRepo.findOne({ where: { publicId } });
+    if (!reply) {
+      throw new NotFoundException('답글을 찾을 수 없습니다.');
+    }
+    if (reply.authorId !== userId) {
+      throw new ForbiddenException('본인의 답글만 삭제할 수 있습니다.');
+    }
+
+    await this.replyRepo.softDelete(reply.id);
+    this.logger.log(`답글 삭제(soft): replyPublicId=${publicId}`);
   }
 }

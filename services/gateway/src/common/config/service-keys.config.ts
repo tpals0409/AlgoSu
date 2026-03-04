@@ -1,5 +1,8 @@
 /**
- * 서비스별 Internal API Key 관리
+ * @file 서비스별 Internal API Key + 라우팅 테이블 관리
+ * @domain common
+ * @layer config
+ * @related proxy.module.ts, internal-key.guard.ts
  *
  * 보안 요구사항:
  * - 서비스별 고유 Key 발급 (서비스 간 Key 공유 금지)
@@ -43,7 +46,7 @@ export const SERVICE_ROUTING_TABLE: ServiceKeyConfig[] = [
     prefix: '/api/analysis',
     urlEnvKey: 'AI_ANALYSIS_SERVICE_URL',
     keyEnvKey: 'INTERNAL_KEY_AI_ANALYSIS',
-    description: 'AI Analysis Service — Gemini 기반 코드 분석',
+    description: 'AI Analysis Service — Claude 기반 코드 분석',
   },
 ];
 

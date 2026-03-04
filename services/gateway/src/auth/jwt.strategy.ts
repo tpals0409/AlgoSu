@@ -1,3 +1,9 @@
+/**
+ * @file Passport JWT 전략 — HS256 고정, exp 필수 검증
+ * @domain identity
+ * @layer guard
+ * @related oauth.service.ts, jwt.middleware.ts
+ */
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';

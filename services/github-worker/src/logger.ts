@@ -1,6 +1,9 @@
 /**
- * AlgoSu GitHub Worker — Structured Logger
- * -----------------------------------------
+ * @file GitHub Worker 구조화 로거 — JSON 포맷 + MQ/Saga 확장 필드
+ * @domain github
+ * @layer util
+ * @related worker.ts, metrics.ts
+ *
  * 규칙 근거: /docs/monitoring-log-rules.md
  *
  * 보안 요구사항:

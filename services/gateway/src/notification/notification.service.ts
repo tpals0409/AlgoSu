@@ -7,18 +7,28 @@
 
 import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { ConfigService } from '@nestjs/config';
 import { Repository, LessThan } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import Redis from 'ioredis';
 import { Notification, NotificationType } from './notification.entity';
 
 @Injectable()
 export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
+  private readonly redisPublisher: Redis;
 
   constructor(
     @InjectRepository(Notification)
     private readonly notificationRepo: Repository<Notification>,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
+    this.redisPublisher = new Redis(redisUrl);
+    this.redisPublisher.on('error', (err: Error) => {
+      this.logger.error(`알림 Redis publisher 오류: ${err.message}`);
+    });
+  }
 
   // ─── HELPERS ──────────────────────────────
 
@@ -48,6 +58,23 @@ export class NotificationService {
     this.logger.log(
       `알림 생성: userId=${params.userId}, type=${params.type}, studyId=${params.studyId ?? 'N/A'}`,
     );
+
+    // SSE 실시간 알림: 사용자별 Redis 채널에 publish
+    const channel = `notification:user:${params.userId}`;
+    const payload = JSON.stringify({
+      id: saved.id,
+      userId: saved.userId,
+      type: saved.type,
+      title: saved.title,
+      message: saved.message,
+      link: saved.link,
+      read: saved.read,
+      createdAt: saved.createdAt,
+    });
+    this.redisPublisher.publish(channel, payload).catch((err: Error) => {
+      this.logger.error(`알림 Redis publish 실패: ${err.message}`);
+    });
+
     return saved;
   }
 

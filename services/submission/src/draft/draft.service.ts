@@ -1,8 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common';
+/**
+ * @file Draft(임시저장) 서비스 — UPSERT + 조회 + 삭제
+ * @domain submission
+ * @layer service
+ * @related Draft, CreateSubmissionDto
+ */
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, LessThan } from 'typeorm';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { Draft } from './draft.entity';
 import { UpsertDraftDto } from '../submission/dto/create-submission.dto';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 /**
  * Draft(임시저장) 서비스
@@ -14,12 +22,15 @@ import { UpsertDraftDto } from '../submission/dto/create-submission.dto';
  */
 @Injectable()
 export class DraftService {
-  private readonly logger = new Logger(DraftService.name);
+  private readonly logger: StructuredLoggerService;
 
   constructor(
     @InjectRepository(Draft)
     private readonly draftRepo: Repository<Draft>,
-  ) {}
+  ) {
+    this.logger = new StructuredLoggerService();
+    this.logger.setContext(DraftService.name);
+  }
 
   /**
    * Draft UPSERT — localStorage 30초마다 호출
@@ -69,5 +80,30 @@ export class DraftService {
   async deleteByProblem(studyId: string, userId: string, problemId: string): Promise<void> {
     await this.draftRepo.delete({ studyId, userId, problemId });
     this.logger.debug(`Draft 삭제: studyId=${studyId}, userId=${userId}, problemId=${problemId}`);
+  }
+
+  // ─── CRON ─────────────────────────────────
+
+  /** 7일 경과 Draft 자동 삭제 Cron — 최종 수정 기준 */
+  private static readonly DRAFT_MAX_AGE_DAYS = 7;
+
+  /**
+   * 7일 이상 미수정 Draft 자동 삭제 — 매일 새벽 4시 실행
+   * @domain submission
+   */
+  @Cron(CronExpression.EVERY_DAY_AT_4AM)
+  async cleanupStaleDrafts(): Promise<void> {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - DraftService.DRAFT_MAX_AGE_DAYS);
+
+    const { affected } = await this.draftRepo.delete({
+      updatedAt: LessThan(cutoff),
+    });
+
+    if (affected && affected > 0) {
+      this.logger.log(
+        `만료 Draft ${affected}건 삭제 (${DraftService.DRAFT_MAX_AGE_DAYS}일 경과)`,
+      );
+    }
   }
 }

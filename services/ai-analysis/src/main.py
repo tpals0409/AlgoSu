@@ -14,7 +14,7 @@ from datetime import date
 
 import httpx
 import redis
-from fastapi import FastAPI, HTTPException, Header, Query
+from fastapi import FastAPI, HTTPException, Header, Query, Request
 from pydantic import BaseModel
 
 from .config import settings
@@ -124,11 +124,15 @@ async def cb_status(
 
 @app.get("/quota")
 async def get_quota(
-    user_id: str = Query(alias="userId"),
+    request: Request,
+    user_id: str = Query(alias="userId", default=""),
     x_internal_key: str = Header(alias="X-Internal-Key", default=""),
 ):
     """
     AI 일일 사용량 조회
+
+    Gateway 프록시 경유 시 X-User-ID 헤더에서 userId를 자동 추출.
+    직접 호출 시 userId query param 사용.
 
     @api GET /quota?userId=xxx
     @guard internal-key
@@ -137,8 +141,12 @@ async def get_quota(
     if not hmac.compare_digest(x_internal_key or "", settings.internal_api_key):
         raise HTTPException(status_code=401, detail="Invalid Internal Key")
 
-    if not user_id:
+    # Gateway 프록시가 주입하는 X-User-ID 헤더 fallback
+    resolved_user_id = user_id or request.headers.get("x-user-id", "")
+    if not resolved_user_id:
         raise HTTPException(status_code=400, detail="userId 필수")
+
+    user_id = resolved_user_id
 
     today = date.today().isoformat()
     key = f"ai_limit:{user_id}:{today}"
@@ -223,6 +231,7 @@ async def check_and_increment_quota(
 class GroupAnalysisRequest(BaseModel):
     problem_id: str
     study_id: str
+    user_id: str
 
 
 @app.post("/group-analysis")
@@ -235,10 +244,52 @@ async def group_analysis(
 
     @api POST /group-analysis
     @guard internal-key
+    @guard circuit-breaker
+    @guard ai-quota
     @domain ai
     """
     if not hmac.compare_digest(x_internal_key or "", settings.internal_api_key):
         raise HTTPException(status_code=401, detail="Invalid Internal Key")
+
+    # Circuit Breaker 체크
+    if not circuit_breaker.can_execute():
+        logger.warning(
+            f"그룹 분석 Circuit Breaker OPEN: problemId={req.problem_id}, "
+            f"studyId={req.study_id}"
+        )
+        raise HTTPException(
+            status_code=503,
+            detail="AI 분석 서비스가 일시적으로 중단되었습니다. 잠시 후 다시 시도해 주세요.",
+        )
+
+    # AI 일일 한도 체크 + 증가
+    if not redis_client:
+        raise HTTPException(status_code=503, detail="Redis 미연결")
+
+    today = date.today().isoformat()
+    quota_key = f"ai_limit:{req.user_id}:{today}"
+    limit = settings.ai_daily_limit
+
+    pipe = redis_client.pipeline()
+    pipe.incr(quota_key)
+    pipe.ttl(quota_key)
+    results = pipe.execute()
+    current_usage = int(results[0])
+    ttl = int(results[1])
+
+    if ttl == -1:
+        redis_client.expire(quota_key, 86400)
+
+    if current_usage > limit:
+        redis_client.decr(quota_key)
+        logger.warning(
+            f"그룹 분석 Quota 초과: userId={req.user_id[:8]}***, "
+            f"used={current_usage - 1}, limit={limit}"
+        )
+        raise HTTPException(
+            status_code=429,
+            detail=f"AI 일일 사용 한도({limit}회)를 초과하였습니다.",
+        )
 
     # Submission Service에서 해당 문제의 전체 제출 조회
     try:
@@ -251,10 +302,12 @@ async def group_analysis(
             resp.raise_for_status()
             submissions = resp.json()["data"]
     except Exception as e:
+        redis_client.decr(quota_key)
         logger.error(f"그룹 분석 제출 조회 실패: {str(e)[:200]}")
         raise HTTPException(status_code=502, detail="제출 데이터 조회 실패")
 
     if not submissions:
+        redis_client.decr(quota_key)
         raise HTTPException(status_code=404, detail="해당 문제에 대한 제출이 없습니다.")
 
     # Claude API로 그룹 분석
@@ -280,8 +333,11 @@ async def group_analysis(
 
         raw_text = message.content[0].text if message.content else ""
         result = claude._parse_response(raw_text)
+        circuit_breaker.record_success()
 
     except Exception as e:
+        circuit_breaker.record_failure()
+        redis_client.decr(quota_key)
         logger.error(f"그룹 분석 Claude 호출 실패: {str(e)[:200]}")
         raise HTTPException(status_code=502, detail="AI 분석 실패")
 

@@ -1,0 +1,205 @@
+# ============================================================
+# AlgoSu — /metrics NetworkPolicy
+# Prometheus(app: prometheus)에서만 각 서비스의 metrics 포트 접근 허용
+# 외부 접근: Ingress에 /metrics 경로 미노출 + IngressRoute 차단으로 이중 방어
+#
+# 대상 서비스:
+#   gateway(3000), identity-service(3004), submission-service(3003),
+#   problem-service(3002), ai-analysis-service(8000)
+#
+# 참고: 각 서비스는 애플리케이션 포트와 metrics 포트를 공유하므로,
+# NetworkPolicy는 metrics 전용이 아닌 "Prometheus → 서비스" 방향의
+# 추가 허용 규칙으로 동작합니다.
+# ============================================================
+
+# -- 1. /metrics 외부 노출 차단 (Traefik IngressRoute) -------
+# 우선순위 100으로 Ingress보다 먼저 매칭 → 루프백만 허용 → 외부 403
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: algosu-block-metrics
+  namespace: algosu
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+    - match: Path(`/metrics`)
+      kind: Rule
+      priority: 100
+      middlewares:
+        - name: block-internal-paths
+      services:
+        - name: gateway
+          port: 3000
+
+# -- 2. 서비스별 NetworkPolicy: Prometheus scrape 허용 --------
+# 각 서비스 Pod에 대해 Prometheus Pod에서의 인바운드를 명시적으로 허용
+# 기본 정책(policyTypes: Ingress)이 없으면 모든 인바운드 허용 상태이므로,
+# 이 정책은 향후 default-deny 정책 도입 시 metrics scrape가 유지되도록 보장
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-scrape-gateway
+  namespace: algosu
+  labels:
+    app.kubernetes.io/part-of: algosu
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: gateway
+  policyTypes:
+    - Ingress
+  ingress:
+    # Prometheus에서 metrics scrape 허용
+    - from:
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 3000
+    # 같은 네임스페이스 내 다른 서비스/Ingress 컨트롤러에서의 일반 트래픽 허용
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: algosu
+      ports:
+        - protocol: TCP
+          port: 3000
+    # Traefik Ingress 컨트롤러에서의 외부 트래픽 허용
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 3000
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-scrape-identity
+  namespace: algosu
+  labels:
+    app.kubernetes.io/part-of: algosu
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: identity-service
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 3004
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: algosu
+      ports:
+        - protocol: TCP
+          port: 3004
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-scrape-submission
+  namespace: algosu
+  labels:
+    app.kubernetes.io/part-of: algosu
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: submission-service
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 3003
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: algosu
+      ports:
+        - protocol: TCP
+          port: 3003
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-scrape-problem
+  namespace: algosu
+  labels:
+    app.kubernetes.io/part-of: algosu
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: problem-service
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 3002
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: algosu
+      ports:
+        - protocol: TCP
+          port: 3002
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-scrape-ai-analysis
+  namespace: algosu
+  labels:
+    app.kubernetes.io/part-of: algosu
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: ai-analysis-service
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 8000
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: algosu
+      ports:
+        - protocol: TCP
+          port: 8000

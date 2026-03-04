@@ -1,3 +1,9 @@
+/**
+ * @file Internal API 컨트롤러 — 서비스 간 내부 통신 엔드포인트
+ * @domain common
+ * @layer controller
+ * @related internal-key.guard.ts, oauth.service.ts, study.entity.ts
+ */
 import {
   Controller,
   Get,

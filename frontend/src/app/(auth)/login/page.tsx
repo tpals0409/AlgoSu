@@ -43,14 +43,14 @@ const PROVIDERS: {
     id: 'naver',
     label: 'Naver로 계속하기',
     icon: NaverIcon,
-    className: 'border-transparent bg-[#03C75A] text-white',
+    className: 'border-transparent bg-oauth-naver text-white',
     hoverClassName: 'hover:brightness-95',
   },
   {
     id: 'kakao',
     label: 'Kakao로 계속하기',
     icon: KakaoIcon,
-    className: 'border-transparent bg-[#FEE500] text-[#191919]',
+    className: 'border-transparent bg-oauth-kakao-bg text-oauth-kakao-text',
     hoverClassName: 'hover:brightness-95',
   },
 ];

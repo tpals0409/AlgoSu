@@ -1,3 +1,9 @@
+/**
+ * @file GitHub App Token 관리 + 유저 토큰 AES-256-GCM 복호화
+ * @domain github
+ * @layer service
+ * @related worker.ts, github-push.service.ts, config.ts
+ */
 import * as crypto from 'crypto';
 import Redis from 'ioredis';
 import { logger } from './logger';

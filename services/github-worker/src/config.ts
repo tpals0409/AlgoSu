@@ -1,5 +1,8 @@
 /**
- * M9: GitHub Worker 중앙 Config — process.env 직접 접근 방지
+ * @file GitHub Worker 중앙 Config — 환경변수 관리 + 필수값 검증
+ * @domain github
+ * @layer config
+ * @related worker.ts, token-manager.ts, status-reporter.ts
  *
  * 모든 환경변수를 한 곳에서 읽고, 필수값 검증 포함.
  * 각 모듈에서는 config.xxx로 참조.

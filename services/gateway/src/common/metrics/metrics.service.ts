@@ -1,6 +1,9 @@
 /**
- * AlgoSu — Prometheus Metrics Service
- * ------------------------------------
+ * @file Gateway Prometheus 메트릭 서비스 — HTTP 히스토그램 + 카운터
+ * @domain common
+ * @layer service
+ * @related metrics.controller.ts
+ *
  * 규칙 근거: /docs/monitoring-log-rules.md §9
  *
  * 역할:

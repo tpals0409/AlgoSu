@@ -161,7 +161,7 @@ data:
               severity: critical
             annotations:
               summary: "AI Analysis Circuit Breaker OPEN"
-              description: "Gemini API Circuit Breaker가 열림 상태입니다. AI 분석 기능이 차단되어 있습니다."
+              description: "Claude API Circuit Breaker가 열림 상태입니다. AI 분석 기능이 차단되어 있습니다."
 
       # ================================================================
       # 6. 리소스 사용량

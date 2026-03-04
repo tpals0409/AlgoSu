@@ -1,3 +1,9 @@
+/**
+ * @file GitHub OAuth Token AES-256-GCM 암복호화 유틸리티
+ * @domain identity
+ * @layer util
+ * @related oauth.service.ts, token-manager.ts (github-worker)
+ */
 import * as crypto from 'crypto';
 
 /**

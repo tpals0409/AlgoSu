@@ -1,3 +1,9 @@
+/**
+ * @file Redis 기반 Rate Limit 저장소 — fail-open 정책
+ * @domain common
+ * @layer service
+ * @related rate-limit.middleware.ts
+ */
 import { Injectable, OnModuleDestroy, Logger } from '@nestjs/common';
 import { ThrottlerStorage } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';

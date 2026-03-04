@@ -29,6 +29,9 @@ resources:
   # 라우팅
   - ingress.yaml
 
+  # 네트워크 정책
+  - metrics-network-policy.yaml
+
   # 모니터링
   - monitoring/prometheus-config.yaml
   - monitoring/prometheus-rules.yaml
@@ -36,6 +39,7 @@ resources:
   - monitoring/grafana-datasources.yaml
   - monitoring/grafana-dashboard-provider.yaml
   - monitoring/grafana-slo-dashboard.yaml
+  - monitoring/grafana-service-dashboard.yaml
   - monitoring/loki-config.yaml
   - monitoring/promtail.yaml
 

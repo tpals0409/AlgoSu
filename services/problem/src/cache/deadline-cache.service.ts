@@ -1,3 +1,9 @@
+/**
+ * @file 마감 시간 Redis 캐시 서비스 — TTL 기반 캐시 + 무효화
+ * @domain problem
+ * @layer service
+ * @related problem.service.ts, cache.module.ts
+ */
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import Redis from 'ioredis';
 import { REDIS_CLIENT } from './cache.module';

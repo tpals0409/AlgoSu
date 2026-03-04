@@ -371,6 +371,20 @@ export const submissionApi = {
     fetchApi(`/api/submissions/${submissionId}/analysis`),
 };
 
+// ── AI Quota API ──
+
+export interface AiQuota {
+  used: number;
+  limit: number;
+  remaining: number;
+}
+
+export const aiQuotaApi = {
+  /** AI 일일 사용량 조회 (Gateway 프록시 경유, X-User-ID 자동 주입) */
+  get: (): Promise<AiQuota> =>
+    fetchApi('/api/analysis/quota'),
+};
+
 // ── Draft API ──
 
 export const draftApi = {

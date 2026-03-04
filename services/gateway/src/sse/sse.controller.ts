@@ -8,7 +8,7 @@
  * 메시지 포맷: { submissionId, status, userId?, timestamp }
  *
  * 보안:
- * - H1: JWT 쿼리 토큰 또는 Cookie 인증
+ * - H1: httpOnly Cookie JWT 인증 (Query Token 제거 — Cookie 전용)
  * - S6: submission 소유권 검증 (IDOR 방어)
  * - H16: 최대 연결 시간 5분 (MAX_CONNECTION_MS)
  * - M13: 공유 Redis subscriber 사용 (연결 풀 고갈 방지)
@@ -18,7 +18,6 @@ import {
   Controller,
   Get,
   Param,
-  Query,
   Req,
   Res,
   Logger,
@@ -84,13 +83,12 @@ export class SseController {
   @Get('submissions/:id')
   async streamStatus(
     @Param('id', ParseUUIDPipe) submissionId: string,
-    @Query('token') token: string | undefined,
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    // H1: JWT 인증 — 쿼리 토큰 또는 Cookie
+    // H1: JWT 인증 — httpOnly Cookie 전용 (Query Token 제거)
     const cookieToken = req.cookies?.['token'] as string | undefined;
-    const userId = this.verifyToken(token ?? cookieToken);
+    const userId = this.verifyToken(cookieToken);
 
     // S6: submission 소유권 검증 (IDOR 방어)
     await this.verifySubmissionOwnership(submissionId, userId);
@@ -181,7 +179,7 @@ export class SseController {
 
   private verifyToken(token: string | undefined): string {
     if (!token) {
-      throw new UnauthorizedException('SSE 연결에 인증 토큰이 필요합니다 (?token=xxx).');
+      throw new UnauthorizedException('SSE 연결에 인증 쿠키가 필요합니다.');
     }
 
     try {
@@ -245,6 +243,70 @@ export class SseController {
       this.logger.error(`소유권 검증 실패: ${(error as Error).message}`);
       throw new ForbiddenException('제출물 소유권을 확인할 수 없습니다.');
     }
+  }
+
+  /**
+   * SSE 알림 실시간 스트리밍
+   * @api GET /sse/notifications
+   * @guard cookie-auth
+   */
+  @Get('notifications')
+  async streamNotifications(
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    // H1: JWT 인증 — httpOnly Cookie 전용
+    const cookieToken = req.cookies?.['token'] as string | undefined;
+    const userId = this.verifyToken(cookieToken);
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    this.logger.log(`알림 SSE 연결: userId=${userId}`);
+
+    const channel = `notification:user:${userId}`;
+
+    let cleaned = false;
+
+    const cleanup = (): void => {
+      if (cleaned) return;
+      cleaned = true;
+      clearInterval(heartbeat);
+      clearTimeout(connectionTimeout);
+      this.removeChannelListener(channel, messageHandler);
+      if (!res.writableEnded) res.end();
+      this.logger.log(`알림 SSE 연결 종료: userId=${userId}`);
+    };
+
+    const messageHandler = (message: string): void => {
+      try {
+        if (!res.writableEnded) {
+          res.write(`event: notification\n`);
+          res.write(`data: ${message}\n\n`);
+        }
+      } catch (err) {
+        this.logger.error(`알림 SSE 메시지 전송 오류: ${(err as Error).message}`);
+      }
+    };
+
+    await this.addChannelListener(channel, messageHandler);
+
+    const heartbeat = setInterval(() => {
+      if (!res.writableEnded) res.write(': heartbeat\n\n');
+    }, 30_000);
+
+    // H16: 최대 연결 시간 (5분) — 타임아웃 시 자동 종료 (클라이언트 재연결)
+    const connectionTimeout = setTimeout(() => {
+      if (!res.writableEnded) {
+        res.write(`event: timeout\n`);
+        res.write(`data: ${JSON.stringify({ status: 'connection_timeout', maxMs: SseController.MAX_CONNECTION_MS })}\n\n`);
+      }
+      cleanup();
+    }, SseController.MAX_CONNECTION_MS);
+
+    req.on('close', cleanup);
   }
 
   // --- M13: 공유 Redis subscriber 채널 관리 ---

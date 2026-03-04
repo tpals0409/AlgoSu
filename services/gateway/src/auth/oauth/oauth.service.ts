@@ -1,3 +1,9 @@
+/**
+ * @file OAuth 인증 서비스 — Google/Naver/Kakao 로그인 + GitHub 연동 + JWT 발급
+ * @domain identity
+ * @layer service
+ * @related oauth.controller.ts, user.entity.ts, token-crypto.util.ts
+ */
 import {
   Injectable,
   BadRequestException,
@@ -498,6 +504,14 @@ export class OAuthService {
   private async storeRefreshToken(userId: string, token: string): Promise<void> {
     const TTL = 7 * 24 * 60 * 60; // 7일
     await this.redis.set(`refresh:${userId}`, token, 'EX', TTL);
+  }
+
+  /**
+   * Refresh Token 무효화 — 로그아웃/회원탈퇴 시 Redis에서 삭제
+   * @domain identity
+   */
+  async revokeRefreshToken(userId: string): Promise<void> {
+    await this.redis.del(`refresh:${userId}`);
   }
 
   async refreshAccessToken(refreshToken: string): Promise<{ accessToken: string }> {

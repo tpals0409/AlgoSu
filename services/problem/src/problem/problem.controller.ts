@@ -1,3 +1,9 @@
+/**
+ * @file Problem 컨트롤러 — 문제 CRUD + 마감 시간 조회 API
+ * @domain problem
+ * @layer controller
+ * @related problem.service.ts, InternalKeyGuard, StudyMemberGuard
+ */
 import {
   Controller,
   Get,

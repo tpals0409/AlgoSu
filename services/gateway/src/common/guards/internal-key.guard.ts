@@ -1,3 +1,9 @@
+/**
+ * @file X-Internal-Key 검증 가드 — 서비스 간 통신 인증
+ * @domain common
+ * @layer guard
+ * @related service-keys.config.ts, internal.controller.ts
+ */
 import {
   CanActivate,
   ExecutionContext,

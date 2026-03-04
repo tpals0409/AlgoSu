@@ -13,20 +13,20 @@ import pytest
 def mock_dependencies():
     """Worker의 모든 외부 의존성 모킹"""
     with (
-        patch("src.worker.ClaudeClient") as mock_gemini_cls,
+        patch("src.worker.ClaudeClient") as mock_claude_cls,
         patch("src.worker.redis") as mock_redis_module,
         patch("src.worker.httpx") as mock_httpx_module,
         patch("src.worker.settings") as mock_settings,
     ):
-        # GeminiClient 모킹
-        mock_gemini = MagicMock()
-        mock_gemini.analyze_code = AsyncMock(return_value={
+        # ClaudeClient 모킹
+        mock_claude = MagicMock()
+        mock_claude.analyze_code = AsyncMock(return_value={
             "feedback": "좋은 코드입니다.",
             "optimized_code": None,
             "score": 85,
             "status": "completed",
         })
-        mock_gemini_cls.return_value = mock_gemini
+        mock_claude_cls.return_value = mock_claude
 
         # Redis 모킹
         mock_redis_client = MagicMock()
@@ -43,8 +43,8 @@ def mock_dependencies():
         mock_settings.rabbitmq_url = "amqp://guest:guest@localhost:5672"
 
         yield {
-            "gemini_cls": mock_gemini_cls,
-            "gemini": mock_gemini,
+            "claude_cls": mock_claude_cls,
+            "claude": mock_claude,
             "redis_client": mock_redis_client,
             "http_client": mock_http_client,
             "settings": mock_settings,
@@ -100,8 +100,8 @@ class TestOnMessageSuccess:
         call_url = deps["http_client"].get.call_args[0][0]
         assert "sub-123" in call_url
 
-        # 2) gemini.analyze_code 호출 확인
-        deps["gemini"].analyze_code.assert_called_once()
+        # 2) claude.analyze_code 호출 확인
+        deps["claude"].analyze_code.assert_called_once()
 
         # 3) _report_result 호출 확인 (PATCH method)
         deps["http_client"].patch.assert_called_once()

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ScheduleModule } from '@nestjs/schedule';
 import { SubmissionModule } from './submission/submission.module';
 import { ReviewModule } from './review/review.module';
 import { StudyNoteModule } from './study-note/study-note.module';
@@ -30,6 +31,7 @@ import { HealthController } from './health.controller';
         maxQueryExecutionTime: 200, // 200ms 초과 쿼리 경고 로그 (monitoring-log-rules.md §8-1)
       }),
     }),
+    ScheduleModule.forRoot(),
     MetricsModule,
     SubmissionModule,
     ReviewModule,

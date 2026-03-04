@@ -1,8 +1,13 @@
+/**
+ * @file Submission 서비스 — 제출 CRUD + Saga 연동 + 통계
+ * @domain submission
+ * @layer service
+ * @related Submission, SagaOrchestratorService, CreateSubmissionDto
+ */
 import {
   Injectable,
   ForbiddenException,
   NotFoundException,
-  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -12,17 +17,29 @@ import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { UpdateAiResultDto } from './dto/update-ai-result.dto';
 import { PaginationQueryDto, PaginatedResult } from './dto/pagination-query.dto';
 import { SagaOrchestratorService } from '../saga/saga-orchestrator.service';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
+
+/** 목록 조회 시 선택할 필드 — code/aiFeedback/aiOptimizedCode 대용량 텍스트 제외 */
+const SUBMISSION_LIST_FIELDS: (keyof Submission)[] = [
+  'id', 'publicId', 'studyId', 'userId', 'problemId',
+  'language', 'sagaStep', 'githubSyncStatus', 'githubFilePath',
+  'weekNumber', 'idempotencyKey', 'aiScore', 'aiAnalysisStatus',
+  'aiSkipped', 'isLate', 'createdAt', 'updatedAt',
+];
 
 @Injectable()
 export class SubmissionService {
-  private readonly logger = new Logger(SubmissionService.name);
+  private readonly logger: StructuredLoggerService;
 
   constructor(
     @InjectRepository(Submission)
     private readonly submissionRepo: Repository<Submission>,
     private readonly sagaOrchestrator: SagaOrchestratorService,
     private readonly configService: ConfigService,
-  ) {}
+  ) {
+    this.logger = new StructuredLoggerService();
+    this.logger.setContext(SubmissionService.name);
+  }
 
   /**
    * 코드 제출 — Saga Step 1 (DB 저장)
@@ -98,11 +115,13 @@ export class SubmissionService {
   /**
    * 스터디+사용자별 제출 목록
    * IDOR 방지: studyId + userId 조합 확인
+   * 성능: code/aiFeedback/aiOptimizedCode 대용량 텍스트 제외
    */
   async findByStudyAndUser(studyId: string, userId: string): Promise<Submission[]> {
     return this.submissionRepo.find({
       where: { studyId, userId },
       order: { createdAt: 'DESC' },
+      select: SUBMISSION_LIST_FIELDS,
     });
   }
 
@@ -126,6 +145,7 @@ export class SubmissionService {
 
     const qb = this.submissionRepo
       .createQueryBuilder('s')
+      .select(SUBMISSION_LIST_FIELDS.map((f) => `s.${f}`))
       .where('s.studyId = :studyId', { studyId })
       .andWhere('s.userId = :userId', { userId });
 
@@ -163,22 +183,26 @@ export class SubmissionService {
 
   /**
    * 문제별 제출 목록 (스터디+사용자 본인만)
+   * 성능: code/aiFeedback/aiOptimizedCode 대용량 텍스트 제외
    */
   async findByProblem(studyId: string, userId: string, problemId: string): Promise<Submission[]> {
     return this.submissionRepo.find({
       where: { studyId, userId, problemId },
       order: { createdAt: 'DESC' },
+      select: SUBMISSION_LIST_FIELDS,
     });
   }
 
   /**
    * 문제별 전체 제출 조회 (스터디 단위) — 내부 API 전용
    * 그룹 분석용: 해당 스터디의 해당 문제 모든 제출
+   * 성능: code/aiFeedback/aiOptimizedCode 대용량 텍스트 제외
    */
   async findByProblemForStudy(studyId: string, problemId: string): Promise<Submission[]> {
     return this.submissionRepo.find({
       where: { studyId, problemId },
       order: { createdAt: 'DESC' },
+      select: SUBMISSION_LIST_FIELDS,
     });
   }
 

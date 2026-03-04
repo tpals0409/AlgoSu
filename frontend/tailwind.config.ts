@@ -74,6 +74,13 @@ const config: Config = {
         'code-bg': 'var(--code-bg)',
         'input-bg': 'var(--input-bg)',
 
+        /* ── OAuth 브랜드 ── */
+        oauth: {
+          naver: 'var(--oauth-naver)',
+          'kakao-bg': 'var(--oauth-kakao-bg)',
+          'kakao-text': 'var(--oauth-kakao-text)',
+        },
+
         /* ── 난이도 (solved.ac 6티어) ── */
         diff: {
           'bronze':          'var(--diff-bronze-color)',

@@ -23,6 +23,7 @@ import { ReviewService } from './review.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 import { CreateReplyDto } from './dto/create-reply.dto';
+import { UpdateReplyDto } from './dto/update-reply.dto';
 import { InternalKeyGuard } from '../common/guards/internal-key.guard';
 import { StudyMemberGuard } from '../common/guards/study-member.guard';
 
@@ -121,5 +122,34 @@ export class ReviewController {
   ) {
     const replies = await this.reviewService.findRepliesByCommentPublicId(commentPublicId);
     return { data: replies };
+  }
+
+  /**
+   * PATCH /review/replies/:publicId — 답글 수정 (본인만)
+   * @api PATCH /review/replies/:publicId
+   * @guard study-member, submission-owner
+   */
+  @Patch('replies/:publicId')
+  async updateReply(
+    @Param('publicId', ParseUUIDPipe) publicId: string,
+    @Body() dto: UpdateReplyDto,
+    @Headers('x-user-id') userId: string,
+  ) {
+    const reply = await this.reviewService.updateReply(publicId, dto, userId);
+    return { data: reply };
+  }
+
+  /**
+   * DELETE /review/replies/:publicId — 답글 soft-delete (본인만)
+   * @api DELETE /review/replies/:publicId
+   * @guard study-member, submission-owner
+   */
+  @Delete('replies/:publicId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteReply(
+    @Param('publicId', ParseUUIDPipe) publicId: string,
+    @Headers('x-user-id') userId: string,
+  ): Promise<void> {
+    await this.reviewService.deleteReply(publicId, userId);
   }
 }

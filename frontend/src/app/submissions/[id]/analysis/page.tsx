@@ -24,6 +24,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { submissionApi, type AnalysisResult, type Submission } from '@/lib/api';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
+import { useAiQuota } from '@/hooks/useAiQuota';
 
 // ─── TYPES ────────────────────────────────
 
@@ -142,6 +143,7 @@ export default function AnalysisPage(): ReactNode {
   const router = useRouter();
   const { isReady, isAuthenticated } = useRequireAuth();
   useRequireStudy();
+  const { quota } = useAiQuota(isAuthenticated);
   const submissionId = params.id as string;
   const codeRef = useRef<HTMLDivElement>(null);
 
@@ -263,10 +265,15 @@ export default function AnalysisPage(): ReactNode {
             </p>
           </div>
           {/* AI 분석 일일 할당량 뱃지 */}
-          <Badge variant="muted" className="flex items-center gap-1.5 shrink-0">
-            <Sparkles className="h-3 w-3" aria-hidden />
-            오늘 0/5회
-          </Badge>
+          {quota && (
+            <Badge
+              variant={quota.remaining > 0 ? 'muted' : 'warning'}
+              className="flex items-center gap-1.5 shrink-0"
+            >
+              <Sparkles className="h-3 w-3" aria-hidden />
+              {`오늘 ${quota.used}/${quota.limit}회`}
+            </Badge>
+          )}
         </div>
 
         {/* 에러 */}

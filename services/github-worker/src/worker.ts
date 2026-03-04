@@ -1,9 +1,16 @@
+/**
+ * @file GitHub Worker — RabbitMQ 소비자 + 유저 토큰 기반 Push
+ * @domain github
+ * @layer service
+ * @related github-push.service.ts, token-manager.ts, status-reporter.ts
+ */
 import * as amqplib from 'amqplib';
 import { GitHubPushService } from './github-push.service';
 import { TokenManager } from './token-manager';
 import { StatusReporter } from './status-reporter';
 import { logger } from './logger';
 import { config } from './config';
+import { dlqMessagesTotal, mqMessagesProcessedTotal } from './metrics';
 
 /**
  * GitHub Worker — RabbitMQ 소비자 (유저 토큰 기반)
@@ -13,6 +20,10 @@ import { config } from './config';
  * - 메시지에 토큰/키 포함 금지
  * - Gateway Internal API 호출 시 X-Internal-Key 필수
  * - prefetch=2: 동시 처리량 제한 (Free Tier 리소스 보호)
+ *
+ * 재연결 정책 (M14):
+ * - MQ 연결 끊김 시 process.exit 대신 지수 백오프 재연결
+ * - 1s → 2s → 4s → ... 최대 30s
  */
 
 interface GitHubPushEvent {
@@ -29,6 +40,7 @@ interface UserGitHubInfo {
 const QUEUE = 'submission.github_push';
 const MAX_RETRIES = config.maxRetries;
 const RETRY_DELAY_MS = config.retryDelayMs;
+const MAX_RECONNECT_DELAY_MS = 30_000;
 
 export class GitHubWorker {
   private connection: amqplib.ChannelModel | null = null;
@@ -40,6 +52,11 @@ export class GitHubWorker {
   private readonly gatewayInternalUrl: string;
   private readonly internalKeyGateway: string;
 
+  // M14: 재연결 상태 추적
+  private reconnectAttempt = 0;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private isShuttingDown = false;
+
   constructor() {
     this.tokenManager = new TokenManager();
     this.pushService = new GitHubPushService(this.tokenManager);
@@ -48,16 +65,50 @@ export class GitHubWorker {
     this.internalKeyGateway = config.internalKeyGateway;
   }
 
+  /**
+   * M14: 지수 백오프 재연결 스케줄러
+   * 1s → 2s → 4s → ... 최대 30s
+   */
+  private scheduleReconnect(): void {
+    if (this.isShuttingDown || this.reconnectTimer) return;
+
+    const delay = Math.min(
+      1000 * Math.pow(2, this.reconnectAttempt),
+      MAX_RECONNECT_DELAY_MS,
+    );
+    this.reconnectAttempt++;
+
+    logger.warn('RabbitMQ 재연결 예정', {
+      tag: 'MQ_RECONNECT',
+      delayMs: delay,
+      attempt: this.reconnectAttempt,
+    });
+
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      void this.start().then(() => {
+        this.reconnectAttempt = 0;
+        logger.info('RabbitMQ 재연결 성공', { tag: 'MQ_RECONNECT' });
+      }).catch((err: Error) => {
+        logger.error('RabbitMQ 재연결 실패 — 재시도 예정', { tag: 'MQ_RECONNECT', err });
+        this.scheduleReconnect();
+      });
+    }, delay);
+  }
+
   async start(): Promise<void> {
     this.connection = await amqplib.connect(config.rabbitmqUrl);
 
-    // C5: MQ 연결 오류/종료 핸들러 — unhandledRejection 방지
+    // C5: MQ 연결 오류/종료 핸들러 — M14 재연결 적용
     this.connection.on('error', (err: Error) => {
       logger.error('RabbitMQ 연결 오류', { tag: 'MQ_CONNECTION_ERROR', err });
     });
     this.connection.on('close', () => {
-      logger.warn('RabbitMQ 연결 종료 — 프로세스 종료 (k8s 재시작 의존)', { tag: 'MQ_CONNECTION_CLOSED' });
-      process.exit(1);
+      if (this.isShuttingDown) return;
+      logger.warn('RabbitMQ 연결 종료 — 재연결 시도', { tag: 'MQ_CONNECTION_CLOSED' });
+      this.connection = null;
+      this.channel = null;
+      this.scheduleReconnect();
     });
 
     const channel = await this.connection.createChannel();
@@ -93,6 +144,8 @@ export class GitHubWorker {
           deliveryTag: msg.fields.deliveryTag,
         });
         channel.nack(msg, false, false);
+        dlqMessagesTotal.inc({ reason: 'parse_error' });
+        mqMessagesProcessedTotal.inc({ result: 'nack_dlq' });
         return;
       }
 
@@ -110,6 +163,7 @@ export class GitHubWorker {
         await this.processWithRetry(event);
         channel.ack(msg);
 
+        mqMessagesProcessedTotal.inc({ result: 'ack' });
         logger.info('MQ 메시지 소비 완료', {
           tag: 'MQ_CONSUME_DONE',
           result: 'ACK',
@@ -129,6 +183,8 @@ export class GitHubWorker {
 
         // DLQ로 전송 (nack + requeue=false)
         channel.nack(msg, false, false);
+        dlqMessagesTotal.inc({ reason: 'process_failure' });
+        mqMessagesProcessedTotal.inc({ result: 'nack_dlq' });
       }
     });
   }
@@ -166,6 +222,7 @@ export class GitHubWorker {
     if (!githubInfo.github_username || !githubInfo.github_token) {
       logger.info('SKIPPED: GitHub 미연동 또는 토큰 없음', { tag: 'GITHUB_SKIP', traceId: event.submissionId });
       await this.statusReporter.reportSkipped(event.submissionId);
+      mqMessagesProcessedTotal.inc({ result: 'skipped' });
       return;
     }
 
@@ -177,6 +234,7 @@ export class GitHubWorker {
       logger.warn('토큰 복호화 실패', { tag: 'GITHUB_SKIP', traceId: event.submissionId, code: 'GHW_BIZ_005' });
       await this.statusReporter.reportTokenInvalid(event.submissionId);
       await this.statusReporter.publishStatusChange(event.submissionId, 'github_token_invalid');
+      mqMessagesProcessedTotal.inc({ result: 'skipped' });
       return;
     }
 
@@ -240,6 +298,11 @@ export class GitHubWorker {
   }
 
   async stop(): Promise<void> {
+    this.isShuttingDown = true;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     if (this.channel) await this.channel.close();
     if (this.connection) await this.connection.close();
     await this.tokenManager.close();

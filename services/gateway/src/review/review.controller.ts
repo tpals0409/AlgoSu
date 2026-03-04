@@ -109,6 +109,34 @@ export class ReviewProxyController {
     return this.proxyToSubmission(req, `/review/replies?${params.toString()}`, 'GET');
   }
 
+  /**
+   * PATCH /api/reviews/replies/:publicId — 답글 수정
+   * @api PATCH /api/reviews/replies/:publicId
+   * @guard jwt-auth
+   */
+  @Patch('replies/:publicId')
+  async updateReply(
+    @Param('publicId', ParseUUIDPipe) publicId: string,
+    @Req() req: Request,
+    @Body() body: unknown,
+  ) {
+    return this.proxyToSubmission(req, `/review/replies/${publicId}`, 'PATCH', body);
+  }
+
+  /**
+   * DELETE /api/reviews/replies/:publicId — 답글 soft-delete
+   * @api DELETE /api/reviews/replies/:publicId
+   * @guard jwt-auth
+   */
+  @Delete('replies/:publicId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteReply(
+    @Param('publicId', ParseUUIDPipe) publicId: string,
+    @Req() req: Request,
+  ): Promise<void> {
+    await this.proxyToSubmission(req, `/review/replies/${publicId}`, 'DELETE');
+  }
+
   // ─── PROXY HELPER ─────────────────────────
 
   /**

@@ -1,5 +1,40 @@
 # AlgoSu — k3s Ingress (Traefik 기본 컨트롤러)
 # Gateway API + Frontend 외부 노출
+---
+# /internal 경로 외부 차단용 Middleware
+# sourceRange를 루프백(127.0.0.1/32)만 허용 → 외부에서 오는 요청은 모두 403 반환
+# 클러스터 내부 서비스 간 통신은 ClusterIP Service를 직접 호출하므로 Ingress를 거치지 않음
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: block-internal-paths
+  namespace: algosu
+spec:
+  ipAllowList:
+    sourceRange:
+      - "127.0.0.1/32"
+---
+# /internal 전용 차단 IngressRoute (외부 접근 → 403)
+# 우선순위(priority)를 높여 algosu-ingress보다 먼저 매칭되도록 설정
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: algosu-block-internal
+  namespace: algosu
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+    - match: PathPrefix(`/internal`)
+      kind: Rule
+      priority: 100
+      middlewares:
+        - name: block-internal-paths
+      services:
+        - name: gateway
+          port: 3000
+---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
