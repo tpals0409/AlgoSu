@@ -45,6 +45,9 @@ spec:
                   key: root-password
             - name: POSTGRES_DB
               value: postgres
+          envFrom:
+            - secretRef:
+                name: postgres-init-passwords
           volumeMounts:
             - name: postgres-storage
               mountPath: /var/lib/postgresql/data

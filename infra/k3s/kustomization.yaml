@@ -42,8 +42,8 @@ resources:
 configMapGenerator:
   - name: postgres-init-scripts
     files:
-      - postgres-init/01-create-databases.sql
-      - postgres-init/02-grant-permissions.sql
+      - postgres-init/01-create-databases.sh
+      - postgres-init/02-grant-permissions.sh
     options:
       disableNameSuffixHash: true
 
