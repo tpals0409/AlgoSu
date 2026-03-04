@@ -212,5 +212,606 @@ describe('SseController', () => {
       expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'text/event-stream');
       expect(mockSubscribe).toHaveBeenCalledWith(`notification:user:${USER_ID}`);
     });
+
+    it('알림 메시지 수신 시 SSE 이벤트 전송', async () => {
+      mockVerify.mockReturnValue({ sub: USER_ID });
+
+      const req = createMockReq('valid-token');
+      const res = createMockRes();
+
+      await controller.streamNotifications(req as never, res as never);
+
+      // Redis on('message') 핸들러를 통해 메시지 발송
+      const redisMessageHandler = mockRedisOn.mock.calls.find(
+        (call: unknown[]) => call[0] === 'message',
+      )?.[1] as (channel: string, message: string) => void;
+      expect(redisMessageHandler).toBeDefined();
+
+      const channel = `notification:user:${USER_ID}`;
+      const notifPayload = JSON.stringify({ id: 'n1', title: '테스트 알림' });
+      redisMessageHandler(channel, notifPayload);
+
+      expect(res.write).toHaveBeenCalledWith('event: notification\n');
+      expect(res.write).toHaveBeenCalledWith(`data: ${notifPayload}\n\n`);
+    });
+
+    it('writableEnded 상태에서 메시지 전송 안 함', async () => {
+      mockVerify.mockReturnValue({ sub: USER_ID });
+
+      const req = createMockReq('valid-token');
+      const res = createMockRes();
+
+      await controller.streamNotifications(req as never, res as never);
+
+      // writableEnded 상태로 변경
+      res.writableEnded = true;
+
+      const redisMessageHandler = mockRedisOn.mock.calls.find(
+        (call: unknown[]) => call[0] === 'message',
+      )?.[1] as (channel: string, message: string) => void;
+
+      const channel = `notification:user:${USER_ID}`;
+      // write 호출 횟수 기록 (이전 호출 제외)
+      const writeCallsBefore = (res.write as jest.Mock).mock.calls.length;
+      redisMessageHandler(channel, JSON.stringify({ id: 'n2' }));
+
+      expect((res.write as jest.Mock).mock.calls.length).toBe(writeCallsBefore);
+    });
+
+    it('클라이언트 close 이벤트 시 cleanup 실행', async () => {
+      mockVerify.mockReturnValue({ sub: USER_ID });
+
+      const req = createMockReq('valid-token');
+      const res = createMockRes();
+
+      await controller.streamNotifications(req as never, res as never);
+
+      const closeCb = (req.on as jest.Mock).mock.calls.find(
+        (call: unknown[]) => call[0] === 'close',
+      )?.[1] as () => void;
+      expect(closeCb).toBeDefined();
+
+      closeCb();
+      expect(res.end).toHaveBeenCalled();
+    });
+
+    it('H16: 5분 타임아웃 시 timeout 이벤트 전송 후 cleanup', async () => {
+      mockVerify.mockReturnValue({ sub: USER_ID });
+
+      const req = createMockReq('valid-token');
+      const res = createMockRes();
+
+      await controller.streamNotifications(req as never, res as never);
+
+      // 5분 타이머 트리거
+      jest.advanceTimersByTime(5 * 60 * 1000);
+
+      expect(res.write).toHaveBeenCalledWith('event: timeout\n');
+      expect(res.write).toHaveBeenCalledWith(
+        expect.stringContaining('"connection_timeout"'),
+      );
+      expect(res.end).toHaveBeenCalled();
+    });
+  });
+
+  // ─── verifyToken 엣지 케이스 ─────────────
+
+  describe('verifyToken — 엣지 케이스', () => {
+    it('토큰이 문자열로 디코딩되면 UnauthorizedException', async () => {
+      mockVerify.mockReturnValue('string-payload');
+
+      const req = createMockReq('string-token');
+      const res = createMockRes();
+
+      await expect(
+        controller.streamStatus(SUBMISSION_ID, req as never, res as never),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('토큰에 sub 필드가 없으면 UnauthorizedException', async () => {
+      mockVerify.mockReturnValue({ iat: 123456 }); // sub 없음
+
+      const req = createMockReq('no-sub-token');
+      const res = createMockRes();
+
+      await expect(
+        controller.streamStatus(SUBMISSION_ID, req as never, res as never),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('토큰의 sub가 문자열이 아니면 UnauthorizedException', async () => {
+      mockVerify.mockReturnValue({ sub: 12345 }); // number
+
+      const req = createMockReq('numeric-sub-token');
+      const res = createMockRes();
+
+      await expect(
+        controller.streamStatus(SUBMISSION_ID, req as never, res as never),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('UnauthorizedException 자체가 throw되면 그대로 전파', async () => {
+      mockVerify.mockImplementation(() => {
+        throw new UnauthorizedException('커스텀 인증 오류');
+      });
+
+      const req = createMockReq('custom-error-token');
+      const res = createMockRes();
+
+      await expect(
+        controller.streamStatus(SUBMISSION_ID, req as never, res as never),
+      ).rejects.toThrow('커스텀 인증 오류');
+    });
+  });
+
+  // ─── 소유권 검증 — 네트워크 오류 ──────────
+
+  describe('streamStatus — 소유권 검증 네트워크 오류', () => {
+    it('fetch 네트워크 오류 시 ForbiddenException', async () => {
+      mockVerify.mockReturnValue({ sub: USER_ID });
+      mockFetch.mockRejectedValue(new Error('ECONNREFUSED'));
+
+      const req = createMockReq('valid-token');
+      const res = createMockRes();
+
+      await expect(
+        controller.streamStatus(SUBMISSION_ID, req as never, res as never),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  // ─── streamStatus 메시지 핸들링 ──────────
+
+  describe('streamStatus — 메시지 핸들링', () => {
+    let redisMessageHandler: (channel: string, message: string) => void;
+
+    beforeEach(() => {
+      mockVerify.mockReturnValue({ sub: USER_ID });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ userId: USER_ID }),
+      });
+
+      // Redis on('message') 핸들러 추출
+      redisMessageHandler = mockRedisOn.mock.calls.find(
+        (call: unknown[]) => call[0] === 'message',
+      )?.[1] as (channel: string, message: string) => void;
+    });
+
+    it('비종료 상태 메시지 → SSE status 이벤트 전송 (스트림 유지)', async () => {
+      const req = createMockReq('valid-token');
+      const res = createMockRes();
+
+      await controller.streamStatus(SUBMISSION_ID, req as never, res as never);
+
+      const channel = `submission:status:${SUBMISSION_ID}`;
+      const event = {
+        submissionId: SUBMISSION_ID,
+        status: 'github_pushing',
+        timestamp: new Date().toISOString(),
+      };
+      redisMessageHandler(channel, JSON.stringify(event));
+
+      expect(res.write).toHaveBeenCalledWith('event: status\n');
+      expect(res.write).toHaveBeenCalledWith(`data: ${JSON.stringify(event)}\n\n`);
+      // done 이벤트는 전송되지 않아야 함
+      expect(res.write).not.toHaveBeenCalledWith('event: done\n');
+    });
+
+    it('ai_completed 종료 상태 → done 이벤트 + 알림 생성', async () => {
+      const req = createMockReq('valid-token');
+      const res = createMockRes();
+
+      await controller.streamStatus(SUBMISSION_ID, req as never, res as never);
+
+      const channel = `submission:status:${SUBMISSION_ID}`;
+      const event = {
+        submissionId: SUBMISSION_ID,
+        status: 'ai_completed',
+        timestamp: new Date().toISOString(),
+      };
+      redisMessageHandler(channel, JSON.stringify(event));
+
+      expect(res.write).toHaveBeenCalledWith('event: status\n');
+      expect(res.write).toHaveBeenCalledWith('event: done\n');
+      expect(res.write).toHaveBeenCalledWith(
+        `data: ${JSON.stringify({ status: 'stream_end' })}\n\n`,
+      );
+
+      // 알림 생성 확인
+      expect(notificationService.createNotification).toHaveBeenCalledWith({
+        userId: USER_ID,
+        type: 'AI_COMPLETED',
+        title: 'AI 분석 완료',
+        message: `제출(${SUBMISSION_ID}) AI 분석 완료`,
+      });
+
+      // 500ms 후 cleanup
+      jest.advanceTimersByTime(500);
+      expect(res.end).toHaveBeenCalled();
+    });
+
+    it('ai_failed 종료 상태 → done 이벤트 + AI 분석 실패 알림', async () => {
+      const req = createMockReq('valid-token');
+      const res = createMockRes();
+
+      await controller.streamStatus(SUBMISSION_ID, req as never, res as never);
+
+      const channel = `submission:status:${SUBMISSION_ID}`;
+      const event = {
+        submissionId: SUBMISSION_ID,
+        status: 'ai_failed',
+        timestamp: new Date().toISOString(),
+      };
+      redisMessageHandler(channel, JSON.stringify(event));
+
+      expect(notificationService.createNotification).toHaveBeenCalledWith({
+        userId: USER_ID,
+        type: 'AI_COMPLETED',
+        title: 'AI 분석 실패',
+        message: `제출(${SUBMISSION_ID}) AI 분석 실패`,
+      });
+    });
+
+    it('github_token_invalid 종료 상태 → GitHub 토큰 오류 알림', async () => {
+      const req = createMockReq('valid-token');
+      const res = createMockRes();
+
+      await controller.streamStatus(SUBMISSION_ID, req as never, res as never);
+
+      const channel = `submission:status:${SUBMISSION_ID}`;
+      const event = {
+        submissionId: SUBMISSION_ID,
+        status: 'github_token_invalid',
+        timestamp: new Date().toISOString(),
+      };
+      redisMessageHandler(channel, JSON.stringify(event));
+
+      expect(notificationService.createNotification).toHaveBeenCalledWith({
+        userId: USER_ID,
+        type: 'GITHUB_FAILED',
+        title: 'GitHub 토큰 오류',
+        message: `제출(${SUBMISSION_ID}) GitHub 토큰 오류`,
+      });
+    });
+
+    it('알림 생성 실패 시 에러 로깅만 하고 스트림은 정상 종료', async () => {
+      notificationService.createNotification.mockRejectedValue(
+        new Error('DB connection error'),
+      );
+
+      const req = createMockReq('valid-token');
+      const res = createMockRes();
+
+      await controller.streamStatus(SUBMISSION_ID, req as never, res as never);
+
+      const channel = `submission:status:${SUBMISSION_ID}`;
+      const event = {
+        submissionId: SUBMISSION_ID,
+        status: 'ai_completed',
+        timestamp: new Date().toISOString(),
+      };
+      redisMessageHandler(channel, JSON.stringify(event));
+
+      // done 이벤트는 정상 전송
+      expect(res.write).toHaveBeenCalledWith('event: done\n');
+
+      // Promise rejection이 처리될 때까지 대기
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(loggerService.error).toHaveBeenCalledWith(
+        '알림 생성 실패',
+        expect.any(Error),
+      );
+    });
+
+    it('메시지 파싱 오류 시 에러 로깅', async () => {
+      const req = createMockReq('valid-token');
+      const res = createMockRes();
+
+      await controller.streamStatus(SUBMISSION_ID, req as never, res as never);
+
+      const channel = `submission:status:${SUBMISSION_ID}`;
+      redisMessageHandler(channel, 'invalid-json{{{');
+
+      expect(loggerService.error).toHaveBeenCalledWith(
+        'SSE 메시지 파싱 오류',
+        expect.any(Error),
+      );
+    });
+  });
+
+  // ─── streamStatus 타임아웃 ─────────────────
+
+  describe('streamStatus — H16 타임아웃', () => {
+    beforeEach(() => {
+      mockVerify.mockReturnValue({ sub: USER_ID });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ userId: USER_ID }),
+      });
+    });
+
+    it('5분 타임아웃 시 timeout 이벤트 전송 후 cleanup', async () => {
+      const req = createMockReq('valid-token');
+      const res = createMockRes();
+
+      await controller.streamStatus(SUBMISSION_ID, req as never, res as never);
+
+      jest.advanceTimersByTime(5 * 60 * 1000);
+
+      expect(res.write).toHaveBeenCalledWith('event: timeout\n');
+      expect(res.write).toHaveBeenCalledWith(
+        expect.stringContaining('"connection_timeout"'),
+      );
+      expect(res.write).toHaveBeenCalledWith(
+        expect.stringContaining(`${5 * 60 * 1000}`),
+      );
+      expect(res.end).toHaveBeenCalled();
+    });
+
+    it('writableEnded 상태에서 타임아웃 → write 호출 안 함', async () => {
+      const req = createMockReq('valid-token');
+      const res = createMockRes();
+
+      await controller.streamStatus(SUBMISSION_ID, req as never, res as never);
+
+      // 먼저 close로 종료
+      const closeCb = (req.on as jest.Mock).mock.calls.find(
+        (call: unknown[]) => call[0] === 'close',
+      )?.[1] as () => void;
+      closeCb();
+
+      res.writableEnded = true;
+      const writeCallsAfterClose = (res.write as jest.Mock).mock.calls.length;
+
+      jest.advanceTimersByTime(5 * 60 * 1000);
+
+      // 이미 cleanup 되었으므로 추가 write 없음
+      expect((res.write as jest.Mock).mock.calls.length).toBe(writeCallsAfterClose);
+    });
+  });
+
+  // ─── 이중 cleanup 방지 ───────────────────
+
+  describe('streamStatus — 이중 cleanup 방지', () => {
+    beforeEach(() => {
+      mockVerify.mockReturnValue({ sub: USER_ID });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ userId: USER_ID }),
+      });
+    });
+
+    it('cleanup 2회 호출 시 res.end는 1회만 실행', async () => {
+      const req = createMockReq('valid-token');
+      const res = createMockRes();
+
+      await controller.streamStatus(SUBMISSION_ID, req as never, res as never);
+
+      const closeCb = (req.on as jest.Mock).mock.calls.find(
+        (call: unknown[]) => call[0] === 'close',
+      )?.[1] as () => void;
+
+      closeCb();
+      closeCb(); // 2회 호출
+
+      expect(res.end).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // ─── heartbeat ──────────────────────────
+
+  describe('streamStatus — heartbeat', () => {
+    beforeEach(() => {
+      mockVerify.mockReturnValue({ sub: USER_ID });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ userId: USER_ID }),
+      });
+    });
+
+    it('30초마다 heartbeat 전송', async () => {
+      const req = createMockReq('valid-token');
+      const res = createMockRes();
+
+      await controller.streamStatus(SUBMISSION_ID, req as never, res as never);
+
+      jest.advanceTimersByTime(30_000);
+      expect(res.write).toHaveBeenCalledWith(': heartbeat\n\n');
+
+      jest.advanceTimersByTime(30_000);
+      // heartbeat가 2번 호출되었는지 확인
+      const heartbeatCalls = (res.write as jest.Mock).mock.calls.filter(
+        (call: unknown[]) => call[0] === ': heartbeat\n\n',
+      );
+      expect(heartbeatCalls.length).toBe(2);
+    });
+
+    it('writableEnded 상태에서 heartbeat 전송 안 함', async () => {
+      const req = createMockReq('valid-token');
+      const res = createMockRes();
+
+      await controller.streamStatus(SUBMISSION_ID, req as never, res as never);
+
+      res.writableEnded = true;
+      const writeCallsBefore = (res.write as jest.Mock).mock.calls.length;
+
+      jest.advanceTimersByTime(30_000);
+
+      expect((res.write as jest.Mock).mock.calls.length).toBe(writeCallsBefore);
+    });
+  });
+
+  // ─── streamNotifications heartbeat + 이중 cleanup ──
+
+  describe('streamNotifications — heartbeat + 이중 cleanup', () => {
+    beforeEach(() => {
+      mockVerify.mockReturnValue({ sub: USER_ID });
+    });
+
+    it('30초마다 heartbeat 전송', async () => {
+      const req = createMockReq('valid-token');
+      const res = createMockRes();
+
+      await controller.streamNotifications(req as never, res as never);
+
+      jest.advanceTimersByTime(30_000);
+      expect(res.write).toHaveBeenCalledWith(': heartbeat\n\n');
+    });
+
+    it('이중 cleanup 방지', async () => {
+      const req = createMockReq('valid-token');
+      const res = createMockRes();
+
+      await controller.streamNotifications(req as never, res as never);
+
+      const closeCb = (req.on as jest.Mock).mock.calls.find(
+        (call: unknown[]) => call[0] === 'close',
+      )?.[1] as () => void;
+
+      closeCb();
+      closeCb();
+
+      expect(res.end).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // ─── Redis 공유 subscriber ──────────────
+
+  describe('Redis 공유 subscriber', () => {
+    it('Redis error 이벤트 핸들러 등록', () => {
+      const errorHandler = mockRedisOn.mock.calls.find(
+        (call: unknown[]) => call[0] === 'error',
+      );
+      expect(errorHandler).toBeDefined();
+
+      // error 핸들러 호출 시 로깅만 수행
+      const errCb = errorHandler[1] as (err: Error) => void;
+      errCb(new Error('Redis connection lost'));
+      expect(loggerService.error).toHaveBeenCalledWith(
+        'SSE 공유 Redis subscriber 오류',
+        expect.any(Error),
+      );
+    });
+
+    it('message 핸들러 — 구독 안 된 채널 메시지는 무시', () => {
+      const msgHandler = mockRedisOn.mock.calls.find(
+        (call: unknown[]) => call[0] === 'message',
+      )?.[1] as (channel: string, message: string) => void;
+
+      // 구독 안 된 채널로 메시지 보내도 오류 없이 무시
+      expect(() => {
+        msgHandler('unknown:channel', JSON.stringify({ data: 'test' }));
+      }).not.toThrow();
+    });
+  });
+
+  // ─── 채널 리스너 관리 ──────────────────
+
+  describe('채널 리스너 관리 (addChannelListener / removeChannelListener)', () => {
+    beforeEach(() => {
+      mockVerify.mockReturnValue({ sub: USER_ID });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ userId: USER_ID }),
+      });
+    });
+
+    it('같은 채널에 2번째 구독 시 Redis subscribe 재호출 안 함', async () => {
+      // 첫 번째 연결
+      const req1 = createMockReq('valid-token');
+      const res1 = createMockRes();
+      await controller.streamStatus(SUBMISSION_ID, req1 as never, res1 as never);
+
+      const subscribeCallCount = mockSubscribe.mock.calls.length;
+
+      // 두 번째 연결 (같은 채널)
+      const req2 = createMockReq('valid-token');
+      const res2 = createMockRes();
+      await controller.streamStatus(SUBMISSION_ID, req2 as never, res2 as never);
+
+      // Redis subscribe는 추가 호출 안 함 (이미 구독 중)
+      expect(mockSubscribe.mock.calls.length).toBe(subscribeCallCount);
+    });
+
+    it('마지막 리스너 제거 시 Redis unsubscribe 호출', async () => {
+      const req = createMockReq('valid-token');
+      const res = createMockRes();
+
+      await controller.streamStatus(SUBMISSION_ID, req as never, res as never);
+
+      const closeCb = (req.on as jest.Mock).mock.calls.find(
+        (call: unknown[]) => call[0] === 'close',
+      )?.[1] as () => void;
+      closeCb();
+
+      expect(mockUnsubscribe).toHaveBeenCalledWith(
+        `submission:status:${SUBMISSION_ID}`,
+      );
+    });
+
+    it('2개 리스너 중 1개만 제거 시 unsubscribe 호출 안 함', async () => {
+      // 첫 번째 연결
+      const req1 = createMockReq('valid-token');
+      const res1 = createMockRes();
+      await controller.streamStatus(SUBMISSION_ID, req1 as never, res1 as never);
+
+      // 두 번째 연결
+      const req2 = createMockReq('valid-token');
+      const res2 = createMockRes();
+      await controller.streamStatus(SUBMISSION_ID, req2 as never, res2 as never);
+
+      // 첫 번째 연결만 종료
+      const closeCb1 = (req1.on as jest.Mock).mock.calls.find(
+        (call: unknown[]) => call[0] === 'close',
+      )?.[1] as () => void;
+      closeCb1();
+
+      // 아직 리스너가 남아있으므로 unsubscribe 안 함
+      expect(mockUnsubscribe).not.toHaveBeenCalled();
+
+      // 두 번째 연결도 종료
+      const closeCb2 = (req2.on as jest.Mock).mock.calls.find(
+        (call: unknown[]) => call[0] === 'close',
+      )?.[1] as () => void;
+      closeCb2();
+
+      // 이제 unsubscribe 호출
+      expect(mockUnsubscribe).toHaveBeenCalledWith(
+        `submission:status:${SUBMISSION_ID}`,
+      );
+    });
+  });
+
+  // ─── X-Accel-Buffering 헤더 ──────────────
+
+  describe('X-Accel-Buffering 헤더', () => {
+    it('streamStatus — X-Accel-Buffering: no 설정', async () => {
+      mockVerify.mockReturnValue({ sub: USER_ID });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ userId: USER_ID }),
+      });
+
+      const req = createMockReq('valid-token');
+      const res = createMockRes();
+
+      await controller.streamStatus(SUBMISSION_ID, req as never, res as never);
+
+      expect(res.setHeader).toHaveBeenCalledWith('X-Accel-Buffering', 'no');
+    });
+
+    it('streamNotifications — X-Accel-Buffering: no 설정', async () => {
+      mockVerify.mockReturnValue({ sub: USER_ID });
+
+      const req = createMockReq('valid-token');
+      const res = createMockRes();
+
+      await controller.streamNotifications(req as never, res as never);
+
+      expect(res.setHeader).toHaveBeenCalledWith('X-Accel-Buffering', 'no');
+    });
   });
 });
