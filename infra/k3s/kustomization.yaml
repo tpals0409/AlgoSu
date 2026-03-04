@@ -37,6 +37,7 @@ resources:
   - metrics-network-policy.yaml
 
   # 모니터링
+  - monitoring/alertmanager.yaml
   - monitoring/prometheus-config.yaml
   - monitoring/prometheus-rules.yaml
   - monitoring/grafana.yaml

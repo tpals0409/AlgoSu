@@ -1,0 +1,273 @@
+import { ConfigService } from '@nestjs/config';
+import { DeadlineReminderService } from './deadline-reminder.service';
+import { NotificationType } from './notification.entity';
+
+// --- ioredis 모킹 ---
+const mockRedis = {
+  set: jest.fn().mockResolvedValue('OK'),
+  get: jest.fn().mockResolvedValue(null),
+  on: jest.fn().mockReturnThis(),
+};
+
+jest.mock('ioredis', () => {
+  return jest.fn().mockImplementation(() => mockRedis);
+});
+
+// --- global fetch 모킹 ---
+const mockFetch = jest.fn();
+global.fetch = mockFetch;
+
+describe('DeadlineReminderService', () => {
+  let service: DeadlineReminderService;
+  let notificationService: Record<string, jest.Mock>;
+  let memberRepo: Record<string, jest.Mock>;
+  let studyRepo: Record<string, jest.Mock>;
+  let configService: Record<string, jest.Mock>;
+
+  const STUDY_ID = 'study-id-1';
+  const PROBLEM_ID = 'problem-id-1';
+  const USER_ID = 'user-id-1';
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    configService = {
+      get: jest.fn((key: string) => {
+        const map: Record<string, string> = {
+          REDIS_URL: 'redis://localhost:6379',
+          PROBLEM_SERVICE_URL: 'http://problem:3000',
+          INTERNAL_KEY_PROBLEM: 'key-problem',
+          SUBMISSION_SERVICE_URL: 'http://submission:3000',
+          INTERNAL_KEY_SUBMISSION: 'key-submission',
+        };
+        return map[key] ?? undefined;
+      }),
+    };
+
+    notificationService = {
+      createNotification: jest.fn().mockResolvedValue(undefined),
+    };
+
+    memberRepo = {
+      find: jest.fn().mockResolvedValue([]),
+    };
+
+    studyRepo = {
+      findOne: jest.fn().mockResolvedValue(null),
+    };
+
+    service = new DeadlineReminderService(
+      configService as unknown as ConfigService,
+      notificationService as never,
+      memberRepo as never,
+      studyRepo as never,
+    );
+  });
+
+  // ─── checkDeadlines ─────────────────────────
+
+  describe('checkDeadlines', () => {
+    it('마감 임박 문제가 없으면 알림 없이 완료', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: [] }),
+      });
+
+      await service.checkDeadlines();
+
+      expect(notificationService.createNotification).not.toHaveBeenCalled();
+    });
+
+    it('24h 마감 임박 문제 — 미제출자에게 알림 전송', async () => {
+      const deadline = new Date(Date.now() + 20 * 60 * 60 * 1000).toISOString();
+
+      // fetchUpcomingDeadlines: 24h 호출 시 문제 1건, 1h 호출 시 0건
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            data: [
+              { id: PROBLEM_ID, title: '두 수의 합', studyId: STUDY_ID, deadline, weekNumber: 'W1' },
+            ],
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ data: [] }),
+        })
+        // fetchSubmittedUsers
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ submittedUserIds: [] }),
+        });
+
+      memberRepo.find.mockResolvedValue([
+        { user_id: USER_ID, study_id: STUDY_ID },
+      ]);
+      studyRepo.findOne.mockResolvedValue({ id: STUDY_ID, name: 'AlgoSu' });
+      mockRedis.get.mockResolvedValue(null);
+
+      await service.checkDeadlines();
+
+      expect(notificationService.createNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: USER_ID,
+          type: NotificationType.DEADLINE_REMINDER,
+        }),
+      );
+      expect(mockRedis.set).toHaveBeenCalled();
+    });
+
+    it('이미 알림 발송된 사용자는 Redis 중복 방지로 스킵', async () => {
+      const deadline = new Date(Date.now() + 20 * 60 * 60 * 1000).toISOString();
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            data: [
+              { id: PROBLEM_ID, title: '문제', studyId: STUDY_ID, deadline, weekNumber: 'W1' },
+            ],
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ data: [] }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ submittedUserIds: [] }),
+        });
+
+      memberRepo.find.mockResolvedValue([{ user_id: USER_ID, study_id: STUDY_ID }]);
+      studyRepo.findOne.mockResolvedValue({ id: STUDY_ID, name: 'Test' });
+      mockRedis.get.mockResolvedValue('1'); // 이미 발송
+
+      await service.checkDeadlines();
+
+      expect(notificationService.createNotification).not.toHaveBeenCalled();
+    });
+
+    it('이미 제출한 사용자는 알림 대상에서 제외', async () => {
+      const deadline = new Date(Date.now() + 20 * 60 * 60 * 1000).toISOString();
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            data: [
+              { id: PROBLEM_ID, title: '문제', studyId: STUDY_ID, deadline, weekNumber: 'W1' },
+            ],
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ data: [] }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ submittedUserIds: [USER_ID] }),
+        });
+
+      memberRepo.find.mockResolvedValue([{ user_id: USER_ID, study_id: STUDY_ID }]);
+
+      await service.checkDeadlines();
+
+      expect(notificationService.createNotification).not.toHaveBeenCalled();
+    });
+
+    it('fetchUpcomingDeadlines 실패 시 에러 잡고 계속 진행', async () => {
+      mockFetch.mockRejectedValue(new Error('network error'));
+
+      // 에러 발생해도 throw 하지 않음
+      await expect(service.checkDeadlines()).resolves.toBeUndefined();
+    });
+
+    it('PROBLEM_SERVICE_URL 미설정 시 빈 배열 반환하고 스킵', async () => {
+      configService.get.mockReturnValue(undefined);
+
+      // 서비스 재생성 (설정값 없는 상태)
+      service = new DeadlineReminderService(
+        configService as unknown as ConfigService,
+        notificationService as never,
+        memberRepo as never,
+        studyRepo as never,
+      );
+
+      await service.checkDeadlines();
+
+      expect(mockFetch).not.toHaveBeenCalled();
+      expect(notificationService.createNotification).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── 1시간 긴급 알림 ─────────────────────────
+
+  describe('1시간 긴급 알림', () => {
+    it('1h 마감 임박 시 [긴급] 라벨 포함 알림 전송', async () => {
+      const deadline = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+
+      mockFetch
+        // 24h 호출
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ data: [] }),
+        })
+        // 1h 호출
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            data: [
+              { id: PROBLEM_ID, title: '긴급문제', studyId: STUDY_ID, deadline, weekNumber: 'W2' },
+            ],
+          }),
+        })
+        // fetchSubmittedUsers
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ submittedUserIds: [] }),
+        });
+
+      memberRepo.find.mockResolvedValue([{ user_id: USER_ID, study_id: STUDY_ID }]);
+      studyRepo.findOne.mockResolvedValue({ id: STUDY_ID, name: 'AlgoSu' });
+      mockRedis.get.mockResolvedValue(null);
+
+      await service.checkDeadlines();
+
+      expect(notificationService.createNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: '[긴급] 마감 임박',
+          message: expect.stringContaining('1시간'),
+        }),
+      );
+    });
+  });
+
+  // ─── 멤버가 없는 스터디 ─────────────────────
+
+  describe('멤버가 없는 스터디', () => {
+    it('멤버가 없으면 알림 건너뜀', async () => {
+      const deadline = new Date(Date.now() + 20 * 60 * 60 * 1000).toISOString();
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            data: [
+              { id: PROBLEM_ID, title: '문제', studyId: STUDY_ID, deadline, weekNumber: 'W1' },
+            ],
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ data: [] }),
+        });
+
+      memberRepo.find.mockResolvedValue([]); // 멤버 없음
+
+      await service.checkDeadlines();
+
+      expect(notificationService.createNotification).not.toHaveBeenCalled();
+    });
+  });
+});
