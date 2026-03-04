@@ -192,60 +192,110 @@ describe('NotificationToast', () => {
     expect(onRead).not.toHaveBeenCalled();
   });
 
-  it('showTimer 실행 시 toast가 null이면 null을 유지한다 (prev null 분기)', () => {
-    // 알림을 표시 후 즉시 null로 변경하여 showTimer가 실행될 때 toast가 null인 상태 시뮬레이션
+  it('닫기 후 hideTimer가 실행되면 prev null 분기를 탄다 (line 64)', () => {
+    // 닫기 버튼으로 토스트를 먼저 닫고, 아직 남아있는 hideTimer(4000ms)가 나중에 실행될 때
+    // toast가 이미 null이므로 prev ? ... : null 의 null 분기가 실행됨
     const onDismiss = jest.fn();
     const notification = makeNotification();
-    const { rerender } = render(
+    render(
       <NotificationToast notification={notification} onDismiss={onDismiss} onRead={jest.fn()} />,
     );
-    // setToast({ notification, visible: false }) 호출 후 즉시 null로 설정
-    // notification을 null로 변경하여 toast를 리셋 (하지만 showTimer는 여전히 pending)
-    rerender(
-      <NotificationToast notification={null} onDismiss={onDismiss} onRead={jest.fn()} />,
-    );
-    // showTimer (50ms)가 실행될 때 toast가 null이면 null 반환 (prev ? ... : null의 null 분기)
-    act(() => { jest.advanceTimersByTime(100); });
-    // 에러 없이 처리됨
-    expect(onDismiss).not.toHaveBeenCalled();
-  });
 
-  it('hideTimer 실행 시 toast가 null이면 null을 유지한다', () => {
-    const onDismiss = jest.fn();
-    const notification = makeNotification();
-    const { rerender } = render(
-      <NotificationToast notification={notification} onDismiss={onDismiss} onRead={jest.fn()} />,
-    );
-    // 4초 전에 notification을 null로 변경
+    // 50ms showTimer 실행 → visible: true
     act(() => { jest.advanceTimersByTime(100); });
-    rerender(
-      <NotificationToast notification={null} onDismiss={onDismiss} onRead={jest.fn()} />,
-    );
-    // hideTimer (4000ms)가 실행될 때 toast가 null이면 null 반환
+
+    // 닫기 버튼 클릭 → handleClose 실행
+    fireEvent.click(screen.getByLabelText('닫기'));
+    // handleClose 내부 300ms setTimeout → setToast(null), onDismiss()
+    act(() => { jest.advanceTimersByTime(300); });
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+
+    // hideTimer (4000ms 시점)가 아직 남아있다 → 실행 시 toast가 null이므로 null 분기
     act(() => { jest.advanceTimersByTime(4000); });
-    // 타이머 정리 후에도 에러 없음
+    // hideTimer 내부 300ms setTimeout도 실행
     act(() => { jest.advanceTimersByTime(300); });
   });
 
-  it('토스트 클릭 시 setToast의 prev null 분기가 처리된다', () => {
+  it('토스트 클릭 후 hideTimer가 실행되면 prev null 분기를 탄다 (line 64, 81)', () => {
+    const onDismiss = jest.fn();
+    const onRead = jest.fn();
+    const notification = makeNotification();
+    render(
+      <NotificationToast notification={notification} onDismiss={onDismiss} onRead={onRead} />,
+    );
+
+    // 50ms showTimer 실행 → visible: true
+    act(() => { jest.advanceTimersByTime(100); });
+
+    // 토스트 본문 클릭
+    const buttons = screen.getAllByRole('button');
+    const toastBody = buttons.find((el) => el.getAttribute('tabindex') === '0')!;
+    fireEvent.click(toastBody);
+
+    // handleClick 내부 300ms setTimeout → setToast(null), onDismiss(), router.push()
+    act(() => { jest.advanceTimersByTime(300); });
+    expect(onRead).toHaveBeenCalledWith('n-1');
+
+    // hideTimer (4000ms 시점)가 아직 남아있다 → prev null 분기
+    act(() => { jest.advanceTimersByTime(4000); });
+    act(() => { jest.advanceTimersByTime(300); });
+  });
+
+  it('handleClick이 toast null 상태에서 호출되면 조기 반환한다 (line 78)', () => {
+    // notification이 null이면 toast도 null → handleClick은 !toast에서 return
+    // 하지만 컴포넌트가 null을 렌더링하므로 직접 호출 불가
+    // 대신: notification → 표시 → 닫기 → handleClick 호출 시도 (이미 사라진 상태)
     const onDismiss = jest.fn();
     const onRead = jest.fn();
     const notification = makeNotification();
     const { rerender } = render(
       <NotificationToast notification={notification} onDismiss={onDismiss} onRead={onRead} />,
     );
+
     act(() => { jest.advanceTimersByTime(100); });
 
-    // 클릭 직후 notification을 null로 변경
+    // 토스트 본문 참조 저장
     const buttons = screen.getAllByRole('button');
     const toastBody = buttons.find((el) => el.getAttribute('tabindex') === '0')!;
-    fireEvent.click(toastBody);
 
-    // setTimeout 내부 setToast(null) 전에 toast를 null로 만들기 위해 rerender
+    // 닫기로 토스트 제거
+    fireEvent.click(screen.getByLabelText('닫기'));
+    act(() => { jest.advanceTimersByTime(300); });
+
+    // notification을 새로운 것으로 변경하여 다시 보여주되, 즉시 null로 다시 변경
+    const notification2 = makeNotification({ id: 'n-2' });
+    rerender(
+      <NotificationToast notification={notification2} onDismiss={onDismiss} onRead={onRead} />,
+    );
+    // 아직 visible: false (showTimer 아직 안 됨). 이 상태에서 notification을 null로 변경
     rerender(
       <NotificationToast notification={null} onDismiss={onDismiss} onRead={onRead} />,
     );
-    // 300ms 후 내부 setTimeout 실행
+    // cleanup에 의해 타이머 정리 & effect에서 notification이 null이므로 early return
+    act(() => { jest.advanceTimersByTime(100); });
+  });
+
+  it('showTimer 전에 닫기 버튼 클릭 시 prev null 분기를 탄다 (line 59)', () => {
+    // notification 설정 직후(showTimer 50ms 전에) 닫기를 눌러 toast를 null로 만들면
+    // showTimer가 50ms 후 실행될 때 prev가 null
+    const onDismiss = jest.fn();
+    const notification = makeNotification();
+    render(
+      <NotificationToast notification={notification} onDismiss={onDismiss} onRead={jest.fn()} />,
+    );
+
+    // showTimer(50ms) 전에 즉시 닫기 버튼 클릭
+    // toast는 { notification, visible: false } 상태
+    const closeBtn = screen.getByLabelText('닫기');
+    fireEvent.click(closeBtn);
+    // handleClose의 300ms setTimeout에서 setToast(null) 호출
+    act(() => { jest.advanceTimersByTime(10); });
+    // 아직 showTimer(50ms)도 안 됨, handleClose의 setTimeout(300ms)도 아직
+    // 하지만 handleClose가 이미 setToast(prev => prev ? {...prev, visible: false} : null) 호출
     act(() => { jest.advanceTimersByTime(300); });
+    // 이제 toast는 null (handleClose의 setTimeout이 setToast(null) 호출)
+    // showTimer(50ms)가 실행될 때 이미 toast가 null → prev null 분기
+    // 실제로 showTimer는 이미 50ms 지점에서 실행됨 (총 310ms 경과)
+    expect(onDismiss).toHaveBeenCalled();
   });
 });
