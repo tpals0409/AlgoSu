@@ -853,3 +853,110 @@ jobs:
           echo "Grafana annotation will be created by ArgoCD post-sync hook"
           echo "Deploy SHA: ${{ github.sha }}"
           echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+  # ============================================================
+  # E2E Test — 전체 서비스 통합 테스트 (수동 트리거 전용)
+  #
+  # workflow_dispatch로만 실행 가능.
+  # docker-compose 기반 인프라 + 전 서비스 기동 후 e2e-full.sh 실행.
+  # 향후 docker-compose 기반 통합 테스트 환경이 준비되면 활성화.
+  # ============================================================
+
+  e2e-test:
+    name: E2E Integration Test
+    if: github.event_name == 'workflow_dispatch'
+    needs:
+      - test-gateway
+      - test-identity
+      - test-submission
+      - test-problem
+      - test-github-worker
+      - test-ai-analysis
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start infrastructure services
+        run: |
+          docker compose -f docker-compose.dev.yml up -d
+          echo "Waiting for infrastructure services to be healthy..."
+          docker compose -f docker-compose.dev.yml ps
+        env:
+          POSTGRES_ROOT_PASSWORD: e2e_test_password
+          REDIS_PASSWORD: e2e_test_redis
+          RABBITMQ_USER: e2e_user
+          RABBITMQ_PASSWORD: e2e_test_rabbitmq
+
+      - name: Wait for infrastructure readiness
+        run: |
+          # PostgreSQL
+          for i in $(seq 1 30); do
+            if docker compose -f docker-compose.dev.yml exec -T postgres pg_isready -U algosu_root 2>/dev/null; then
+              echo "PostgreSQL is ready"
+              break
+            fi
+            echo "Waiting for PostgreSQL... ($i/30)"
+            sleep 2
+          done
+
+          # Redis
+          for i in $(seq 1 20); do
+            if docker compose -f docker-compose.dev.yml exec -T redis redis-cli -a e2e_test_redis ping 2>/dev/null | grep -q PONG; then
+              echo "Redis is ready"
+              break
+            fi
+            echo "Waiting for Redis... ($i/20)"
+            sleep 2
+          done
+
+          # RabbitMQ
+          for i in $(seq 1 30); do
+            if docker compose -f docker-compose.dev.yml exec -T rabbitmq rabbitmq-diagnostics ping 2>/dev/null; then
+              echo "RabbitMQ is ready"
+              break
+            fi
+            echo "Waiting for RabbitMQ... ($i/30)"
+            sleep 2
+          done
+        env:
+          POSTGRES_ROOT_PASSWORD: e2e_test_password
+          REDIS_PASSWORD: e2e_test_redis
+          RABBITMQ_USER: e2e_user
+          RABBITMQ_PASSWORD: e2e_test_rabbitmq
+
+      - name: Run E2E tests
+        run: |
+          chmod +x scripts/e2e-full.sh
+          ./scripts/e2e-full.sh
+        env:
+          GATEWAY_URL: http://localhost:3000
+
+      - name: Collect service logs on failure
+        if: failure()
+        run: |
+          echo "=== Docker Compose Logs ==="
+          docker compose -f docker-compose.dev.yml logs --tail=100
+        env:
+          POSTGRES_ROOT_PASSWORD: e2e_test_password
+          REDIS_PASSWORD: e2e_test_redis
+          RABBITMQ_USER: e2e_user
+          RABBITMQ_PASSWORD: e2e_test_rabbitmq
+
+      - name: Upload logs artifact on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-logs
+          path: /tmp/e2e-logs/
+          retention-days: 7
+
+      - name: Teardown infrastructure
+        if: always()
+        run: docker compose -f docker-compose.dev.yml down -v
+        env:
+          POSTGRES_ROOT_PASSWORD: e2e_test_password
+          REDIS_PASSWORD: e2e_test_redis
+          RABBITMQ_USER: e2e_user
+          RABBITMQ_PASSWORD: e2e_test_rabbitmq

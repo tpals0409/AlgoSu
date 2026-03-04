@@ -18,6 +18,7 @@ import {
   UseGuards,
   ParseUUIDPipe,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Request } from 'express';
 import { StudyService } from './study.service';
 import { Study, StudyMember } from './study.entity';
@@ -31,6 +32,7 @@ import { VerifyInviteDto } from './dto/verify-invite.dto';
 import { NotifyProblemDto } from './dto/notify-problem.dto';
 import { StudyActiveGuard } from '../common/guards/study-active.guard';
 
+@ApiTags('Study')
 @Controller('api/studies')
 export class StudyController {
   constructor(private readonly studyService: StudyService) {}
@@ -40,6 +42,8 @@ export class StudyController {
    * @api POST /studies
    * @guard jwt-auth
    */
+  @ApiOperation({ summary: '스터디 생성' })
+  @ApiResponse({ status: 201, description: '스터디 생성 완료' })
   @Post()
   async create(
     @Req() req: Request,
@@ -54,6 +58,8 @@ export class StudyController {
    * @api GET /studies
    * @guard jwt-auth
    */
+  @ApiOperation({ summary: '내 스터디 목록 조회' })
+  @ApiResponse({ status: 200, description: '스터디 목록' })
   @Get()
   async findMyStudies(@Req() req: Request): Promise<Study[]> {
     const userId = req.headers['x-user-id'] as string;
@@ -65,6 +71,8 @@ export class StudyController {
    * @api GET /studies/:id
    * @guard jwt-auth, study-member
    */
+  @ApiOperation({ summary: '스터디 상세 조회' })
+  @ApiResponse({ status: 200, description: '스터디 상세 (groundRules 포함)' })
   @Get(':id')
   async findOne(
     @Param('id', ParseUUIDPipe) studyId: string,
@@ -156,6 +164,8 @@ export class StudyController {
    * @api POST /studies/join
    * @guard jwt-auth, invite-code-lock
    */
+  @ApiOperation({ summary: '초대 코드로 스터디 가입' })
+  @ApiResponse({ status: 201, description: '가입 완료' })
   @Post('join')
   async joinStudy(
     @Req() req: Request,
@@ -218,6 +228,8 @@ export class StudyController {
    * @api GET /studies/:id/members
    * @guard jwt-auth, study-member
    */
+  @ApiOperation({ summary: '스터디 멤버 목록 조회' })
+  @ApiResponse({ status: 200, description: '멤버 목록' })
   @Get(':id/members')
   async getMembers(
     @Param('id', ParseUUIDPipe) studyId: string,

@@ -19,6 +19,7 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import * as jwt from 'jsonwebtoken';
@@ -26,6 +27,7 @@ import { OAuthService } from './oauth.service';
 import { setTokenCookie } from '../cookie.util';
 import { StructuredLoggerService } from '../../common/logger/structured-logger.service';
 
+@ApiTags('Auth')
 @Controller('auth')
 export class OAuthController {
   private readonly logger: StructuredLoggerService;
@@ -43,6 +45,8 @@ export class OAuthController {
    * OAuth 인증 시작 — 프로바이더 인증 URL 반환
    * @api GET /auth/oauth/:provider
    */
+  @ApiOperation({ summary: 'OAuth 인증 시작 — 프로바이더 인증 URL 반환' })
+  @ApiResponse({ status: 200, description: '인증 URL 반환' })
   @Get('oauth/:provider')
   async startOAuth(
     @Param('provider') provider: string,
@@ -56,6 +60,8 @@ export class OAuthController {
    * @api GET /auth/oauth/:provider/callback
    * @guard cookie-auth
    */
+  @ApiOperation({ summary: 'OAuth 콜백 — JWT 발급 후 프론트엔드 리다이렉트' })
+  @ApiResponse({ status: 302, description: '프론트엔드 리다이렉트' })
   @Get('oauth/:provider/callback')
   async handleOAuthCallback(
     @Param('provider') provider: string,
@@ -191,6 +197,8 @@ export class OAuthController {
   /**
    * GET /auth/profile — 프로필 조회
    */
+  @ApiOperation({ summary: '프로필 조회' })
+  @ApiResponse({ status: 200, description: '사용자 프로필' })
   @Get('profile')
   async getProfile(
     @Req() req: Request,
@@ -253,6 +261,8 @@ export class OAuthController {
    * @api POST /auth/refresh
    * @guard cookie-auth
    */
+  @ApiOperation({ summary: 'JWT 갱신 — Cookie 기반' })
+  @ApiResponse({ status: 200, description: '토큰 갱신 성공' })
   @Post('refresh')
   async refreshToken(
     @Req() req: Request,
@@ -293,6 +303,8 @@ export class OAuthController {
    * clearCookie 옵션은 setCookie 옵션(cookie.util.ts)과 반드시 일치해야 브라우저가 쿠키를 제거함
    * @api POST /auth/logout
    */
+  @ApiOperation({ summary: '로그아웃 — Cookie 삭제 + Refresh Token 무효화' })
+  @ApiResponse({ status: 200, description: '로그아웃 성공' })
   @Post('logout')
   async logout(
     @Req() req: Request,
@@ -330,6 +342,8 @@ export class OAuthController {
    * @api DELETE /auth/account
    * @guard jwt-auth
    */
+  @ApiOperation({ summary: '회원탈퇴 — 계정 소프트 딜리트' })
+  @ApiResponse({ status: 200, description: '탈퇴 완료' })
   @Delete('account')
   async deleteAccount(
     @Req() req: Request,

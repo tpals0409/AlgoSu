@@ -20,9 +20,11 @@ import {
   HttpException,
   InternalServerErrorException,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 
+@ApiTags('Review')
 @Controller('api/reviews')
 export class ReviewProxyController {
   private readonly logger = new Logger(ReviewProxyController.name);
@@ -36,6 +38,8 @@ export class ReviewProxyController {
    * @api POST /api/reviews/comments
    * @guard jwt-auth
    */
+  @ApiOperation({ summary: '댓글 작성' })
+  @ApiResponse({ status: 201, description: '댓글 생성 완료' })
   @Post('comments')
   async createComment(@Req() req: Request, @Body() body: unknown) {
     return this.proxyToSubmission(req, '/review/comments', 'POST', body);
@@ -46,6 +50,8 @@ export class ReviewProxyController {
    * @api GET /api/reviews/comments
    * @guard jwt-auth
    */
+  @ApiOperation({ summary: '제출별 댓글 목록 조회' })
+  @ApiResponse({ status: 200, description: '댓글 목록' })
   @Get('comments')
   async findComments(@Req() req: Request) {
     const params = new URLSearchParams();

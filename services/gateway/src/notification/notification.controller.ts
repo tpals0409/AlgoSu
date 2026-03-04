@@ -13,10 +13,12 @@ import {
   Req,
   ParseUUIDPipe,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Request } from 'express';
 import { NotificationService } from './notification.service';
 import { Notification } from './notification.entity';
 
+@ApiTags('Notification')
 @Controller('api/notifications')
 export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
@@ -26,6 +28,8 @@ export class NotificationController {
    * @api GET /api/notifications
    * @guard jwt-auth
    */
+  @ApiOperation({ summary: '내 알림 목록 (미읽음, 최근 50개)' })
+  @ApiResponse({ status: 200, description: '알림 목록' })
   @Get()
   async getMyNotifications(@Req() req: Request): Promise<Notification[]> {
     const userId = req.headers['x-user-id'] as string;
@@ -37,6 +41,8 @@ export class NotificationController {
    * @api GET /api/notifications/unread-count
    * @guard jwt-auth
    */
+  @ApiOperation({ summary: '미읽음 알림 수 조회' })
+  @ApiResponse({ status: 200, description: '미읽음 수' })
   @Get('unread-count')
   async getUnreadCount(@Req() req: Request): Promise<{ count: number }> {
     const userId = req.headers['x-user-id'] as string;
@@ -49,6 +55,8 @@ export class NotificationController {
    * @api PATCH /api/notifications/read-all
    * @guard jwt-auth
    */
+  @ApiOperation({ summary: '전체 읽음 처리' })
+  @ApiResponse({ status: 200, description: '처리된 알림 수' })
   @Patch('read-all')
   async markAllRead(@Req() req: Request): Promise<{ affected: number }> {
     const userId = req.headers['x-user-id'] as string;

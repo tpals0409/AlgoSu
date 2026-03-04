@@ -8,6 +8,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import cookieParser = require('cookie-parser');
 import { AppModule } from './app.module';
@@ -49,9 +50,25 @@ async function bootstrap(): Promise<void> {
 
   app.enableShutdownHooks();
 
+  // Swagger — 프로덕션 비활성화
+  const nodeEnv = configService.get<string>('NODE_ENV', 'development');
+  if (nodeEnv !== 'production') {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('AlgoSu Gateway API')
+      .setDescription('알고리즘 스터디 관리 플랫폼 API')
+      .setVersion('1.0')
+      .addCookieAuth('token')
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('api-docs', app, document);
+  }
+
   const port = configService.get<number>('PORT', 3000);
   await app.listen(port);
   structuredLogger.log(`Gateway is running on port ${port}`);
+  if (nodeEnv !== 'production') {
+    structuredLogger.log(`Swagger UI: http://localhost:${port}/api-docs`);
+  }
 }
 
 void bootstrap();
