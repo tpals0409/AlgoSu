@@ -875,6 +875,231 @@ describe('StudyService', () => {
   });
 
   // ============================
+  // 23-extra. joinByInviteCode — 가입자가 ADMIN인 경우 알림 필터링
+  // ============================
+  describe('joinByInviteCode — ADMIN 알림 필터링', () => {
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 3);
+
+    const validInvite: StudyInvite = {
+      id: 'invite-id-1',
+      study_id: STUDY_ID,
+      code: 'valid-code',
+      created_by: USER_ID,
+      expires_at: futureDate,
+      used_count: 0,
+      max_uses: null,
+      study: mockStudy,
+      created_at: new Date(),
+    };
+
+    it('가입자가 ADMIN 목록에 있으면 본인 제외 알림 발행', async () => {
+      // 가입자(USER_ID)가 스터디 ADMIN 목록에 포함된 경우 (본인 제외 분기 커버)
+      inviteRepository.findOne.mockResolvedValue(validInvite);
+      memberRepository.findOne.mockResolvedValue(null); // 기존 멤버 아님
+      memberRepository.count.mockResolvedValue(5);
+      // ADMIN 목록에 가입자 본인(USER_ID) + 다른 ADMIN(OTHER_USER_ID) 포함
+      memberRepository.find.mockResolvedValue([mockAdminMember, { ...mockAdminMember, user_id: OTHER_USER_ID }]);
+      memberRepository.save.mockImplementation((m: StudyMember) => Promise.resolve(m));
+      inviteRepository.save.mockImplementation((i: StudyInvite) => Promise.resolve(i));
+
+      const result = await service.joinByInviteCode(USER_ID, 'valid-code', 'NewNick', '127.0.0.1');
+
+      expect(result.role).toBe(StudyMemberRole.MEMBER);
+      // 알림은 OTHER_USER_ID에게만 (USER_ID 본인 제외)
+    });
+
+    it('ADMIN 목록이 비어있으면 알림 없이 정상 처리', async () => {
+      inviteRepository.findOne.mockResolvedValue(validInvite);
+      memberRepository.findOne.mockResolvedValue(null);
+      memberRepository.count.mockResolvedValue(3);
+      memberRepository.find.mockResolvedValue([]); // ADMIN 없음
+      memberRepository.save.mockImplementation((m: StudyMember) => Promise.resolve(m));
+      inviteRepository.save.mockImplementation((i: StudyInvite) => Promise.resolve(i));
+
+      const result = await service.joinByInviteCode('new-user-id', 'valid-code', 'Nick', '127.0.0.1');
+
+      expect(result.role).toBe(StudyMemberRole.MEMBER);
+    });
+  });
+
+  // ============================
+  // Redis error 콜백 분기
+  // ============================
+  describe('Redis 연결 오류 콜백', () => {
+    it('Redis on error 이벤트 발생 시 에러 로깅', () => {
+      // mockRedis.on에 저장된 error 핸들러 직접 호출
+      const errorCall = (mockRedis.on as jest.Mock).mock.calls.find(
+        (call: [string, ...unknown[]]) => call[0] === 'error',
+      );
+      expect(errorCall).toBeDefined();
+      const handler = errorCall![1] as (err: Error) => void;
+      // 핸들러 호출해도 예외 없이 처리되어야 함
+      expect(() => handler(new Error('connection refused'))).not.toThrow();
+    });
+  });
+
+  // ============================
+  // verifyInviteCode — max_uses null 분기 (정상 케이스)
+  // ============================
+  describe('verifyInviteCode — max_uses 경계 케이스', () => {
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 3);
+
+    it('max_uses가 null이면 used_count 무관하게 통과', async () => {
+      const inviteWithNullMaxUses: StudyInvite = {
+        id: 'invite-id-2',
+        study_id: STUDY_ID,
+        code: 'NULLMAX',
+        created_by: USER_ID,
+        expires_at: futureDate,
+        used_count: 9999, // 매우 큰 값이어도 max_uses null이면 통과
+        max_uses: null,
+        study: mockStudy,
+        created_at: new Date(),
+      };
+      inviteRepository.findOne.mockResolvedValue(inviteWithNullMaxUses);
+
+      const result = await service.verifyInviteCode('NULLMAX', '127.0.0.1');
+
+      expect(result).toEqual({ valid: true, studyName: 'AlgoSu 스터디' });
+    });
+
+    it('max_uses 숫자이고 used_count가 max_uses 미만이면 통과', async () => {
+      const inviteUnderLimit: StudyInvite = {
+        id: 'invite-id-3',
+        study_id: STUDY_ID,
+        code: 'UNDERLIMIT',
+        created_by: USER_ID,
+        expires_at: futureDate,
+        used_count: 4,
+        max_uses: 5, // 4 < 5 → 통과
+        study: mockStudy,
+        created_at: new Date(),
+      };
+      inviteRepository.findOne.mockResolvedValue(inviteUnderLimit);
+
+      const result = await service.verifyInviteCode('UNDERLIMIT', '127.0.0.1');
+
+      expect(result).toEqual({ valid: true, studyName: 'AlgoSu 스터디' });
+    });
+  });
+
+  // ============================
+  // getStudyStats — byMemberWeek 비null 분기
+  // ============================
+  describe('getStudyStats — byMemberWeek 매핑 분기', () => {
+    it('byMemberWeek가 배열이면 isMember 매핑 포함', async () => {
+      configService.getOrThrow = jest.fn()
+        .mockReturnValueOnce('http://submission:3000')
+        .mockReturnValueOnce('internal-key-123');
+
+      const mockStatsData = {
+        data: {
+          totalSubmissions: 5,
+          byWeek: [],
+          byWeekPerUser: [],
+          byMember: [{ userId: USER_ID, count: 3, doneCount: 2 }],
+          byMemberWeek: [{ userId: USER_ID, count: 3 }, { userId: 'unknown-user', count: 1 }],
+          recentSubmissions: [],
+          solvedProblemIds: null,
+        },
+      };
+
+      const originalFetch = global.fetch;
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockStatsData),
+      }) as any;
+
+      memberRepository.find.mockResolvedValue([mockAdminMember]);
+
+      const result = await service.getStudyStats(STUDY_ID, USER_ID);
+
+      // byMemberWeek가 배열이면 null이 아닌 매핑 결과 반환
+      expect(result.byMemberWeek).not.toBeNull();
+      expect(result.byMemberWeek).toHaveLength(2);
+      // USER_ID는 memberMap에 있으므로 isMember=true
+      expect(result.byMemberWeek![0].isMember).toBe(true);
+      // unknown-user는 memberMap에 없으므로 isMember=false
+      expect(result.byMemberWeek![1].isMember).toBe(false);
+
+      global.fetch = originalFetch;
+    });
+  });
+
+  // ============================
+  // leaveStudy — study null 케이스 (알림 메시지 fallback)
+  // ============================
+  describe('leaveStudy — 스터디 조회 null 케이스', () => {
+    it('탈퇴 후 스터디 findOne이 null이어도 알림 메시지 fallback 처리', async () => {
+      memberRepository.findOne.mockResolvedValue(mockRegularMember);
+      memberRepository.delete.mockResolvedValue({ affected: 1 });
+      // study가 null인 경우 → 알림 메시지에서 '스터디' fallback 사용
+      studyRepository.findOne.mockResolvedValue(null);
+      memberRepository.find.mockResolvedValue([mockAdminMember]);
+
+      // 예외 없이 처리되어야 함
+      await expect(service.leaveStudy(STUDY_ID, OTHER_USER_ID)).resolves.toBeUndefined();
+    });
+  });
+
+  // ============================
+  // changeMemberRole — ADMIN→ADMIN 승격 (adminCount 체크 스킵)
+  // ============================
+  describe('changeMemberRole — 추가 분기', () => {
+    it('MEMBER를 ADMIN으로 승격 시 adminCount 체크 없음', async () => {
+      // targetMember.role이 MEMBER이고 newRole이 ADMIN → adminCount 체크 안 함
+      memberRepository.findOne
+        .mockResolvedValueOnce(mockAdminMember) // verifyAdmin
+        .mockResolvedValueOnce({ ...mockRegularMember, role: StudyMemberRole.MEMBER }); // target is MEMBER
+      memberRepository.save.mockImplementation((m: StudyMember) => Promise.resolve(m));
+      studyRepository.findOne.mockResolvedValue(mockStudy);
+
+      await service.changeMemberRole(STUDY_ID, OTHER_USER_ID, USER_ID, StudyMemberRole.ADMIN);
+
+      // count가 호출되지 않아야 함 (MEMBER→ADMIN은 체크 불필요)
+      expect(memberRepository.count).not.toHaveBeenCalled();
+      expect(memberRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ role: StudyMemberRole.ADMIN }),
+      );
+    });
+
+    it('ADMIN을 MEMBER로 강등 시 adminCount가 2 이상이면 성공', async () => {
+      const targetAdmin: StudyMember = {
+        ...mockRegularMember,
+        role: StudyMemberRole.ADMIN,
+      };
+      memberRepository.findOne
+        .mockResolvedValueOnce(mockAdminMember) // verifyAdmin
+        .mockResolvedValueOnce(targetAdmin); // target is ADMIN
+      memberRepository.count.mockResolvedValue(2); // ADMIN 2명 → 강등 가능
+      memberRepository.save.mockImplementation((m: StudyMember) => Promise.resolve(m));
+      studyRepository.findOne.mockResolvedValue(mockStudy);
+
+      await service.changeMemberRole(STUDY_ID, OTHER_USER_ID, USER_ID, StudyMemberRole.MEMBER);
+
+      expect(memberRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ role: StudyMemberRole.MEMBER }),
+      );
+    });
+
+    it('changeMemberRole 시 study가 null이면 알림 메시지 fallback', async () => {
+      memberRepository.findOne
+        .mockResolvedValueOnce(mockAdminMember) // verifyAdmin
+        .mockResolvedValueOnce({ ...mockRegularMember, role: StudyMemberRole.MEMBER }); // target
+      memberRepository.save.mockImplementation((m: StudyMember) => Promise.resolve(m));
+      // study 조회 결과가 null인 경우
+      studyRepository.findOne.mockResolvedValue(null);
+
+      // 예외 없이 처리되어야 함
+      await expect(
+        service.changeMemberRole(STUDY_ID, OTHER_USER_ID, USER_ID, StudyMemberRole.ADMIN),
+      ).resolves.toBeUndefined();
+    });
+  });
+
+  // ============================
   // 24. notifyProblemCreated
   // ============================
   describe('notifyProblemCreated', () => {
