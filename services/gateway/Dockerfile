@@ -1,11 +1,12 @@
 # ──────────────────────────────────────────────
-# Stage 1: Builder
+# Stage 1: Builder (네이티브 플랫폼에서 빌드 — QEMU 크래시 방지)
 # ──────────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM --platform=$BUILDPLATFORM node:20-alpine AS builder
 
 WORKDIR /app
 
 COPY package*.json ./
+RUN npm ci --omit=dev && cp -R node_modules prod_node_modules
 RUN npm ci
 
 COPY . .
@@ -16,17 +17,15 @@ RUN npm run build
 # ──────────────────────────────────────────────
 FROM node:20-alpine AS production
 
-# 보안: non-root 사용자 생성
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+# 보안: non-root 사용자 생성 + npm 제거
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup && \
+    rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force && \
-    rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
-
-# 빌드 결과물만 복사 (.env 파일 COPY 금지)
+COPY --from=builder /app/prod_node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package.json ./package.json
 
 USER appuser
 
