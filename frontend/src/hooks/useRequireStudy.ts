@@ -15,7 +15,7 @@ import { useStudy } from '@/contexts/StudyContext';
 
 export function useRequireStudy(): { isStudyReady: boolean } {
   const router = useRouter();
-  const { studies, studiesLoaded } = useStudy();
+  const { studies, studiesLoaded, currentStudyId } = useStudy();
 
   useEffect(() => {
     if (studiesLoaded && studies.length === 0) {
@@ -23,5 +23,5 @@ export function useRequireStudy(): { isStudyReady: boolean } {
     }
   }, [studiesLoaded, studies, router]);
 
-  return { isStudyReady: studiesLoaded && studies.length > 0 };
+  return { isStudyReady: studiesLoaded && studies.length > 0 && currentStudyId !== null };
 }

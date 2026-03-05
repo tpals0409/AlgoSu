@@ -226,10 +226,10 @@ export default function DashboardPage(): ReactNode {
   }, [currentStudyId]);
 
   useEffect(() => {
-    if (isAuthenticated && studiesLoaded) {
+    if (isAuthenticated && studiesLoaded && currentStudyId) {
       void loadDashboard();
     }
-  }, [isAuthenticated, studiesLoaded, loadDashboard]);
+  }, [isAuthenticated, studiesLoaded, currentStudyId, loadDashboard]);
 
   // ─── DERIVED STATE ────────────────────────
 
