@@ -60,7 +60,10 @@ export function StudyProvider({ children }: StudyProviderProps): ReactNode {
   const [studiesLoaded, setStudiesLoaded] = useState(false);
   const [currentStudyId, setCurrentStudyId] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem(STUDY_STORAGE_KEY);
+    const stored = localStorage.getItem(STUDY_STORAGE_KEY);
+    // 자식 useEffect보다 먼저 API 모듈에 studyId를 동기 설정
+    setCurrentStudyIdForApi(stored);
+    return stored;
   });
 
   // currentStudyId가 변경될 때 localStorage + api 모듈 동기화
