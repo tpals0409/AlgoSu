@@ -71,6 +71,17 @@ function LoginContent(): ReactNode {
     return () => clearTimeout(timer);
   }, []);
 
+  // bfcache 복원 시 로딩 상태 리셋 (OAuth 리다이렉트 후 뒤로가기 대응)
+  useEffect(() => {
+    const handlePageShow = (e: PageTransitionEvent): void => {
+      if (e.persisted) {
+        setLoadingProvider(null);
+      }
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, []);
+
   // 이미 인증된 경우 대시보드로 리다이렉트
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
