@@ -337,15 +337,13 @@ export default function StudyRoomPage(): ReactElement {
                       key={p.id}
                       role="button"
                       tabIndex={0}
-                      onClick={() => isClosed && handleSelectProblem(p)}
+                      onClick={() => handleSelectProblem(p)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' && isClosed) handleSelectProblem(p);
+                        if (e.key === 'Enter') handleSelectProblem(p);
                       }}
                       className={cn(
                         'flex items-center justify-between rounded-card border border-border bg-bg-card px-5 py-4 shadow-card transition-all',
-                        isClosed
-                          ? 'cursor-pointer hover:-translate-y-0.5 hover:shadow-hover'
-                          : 'cursor-default opacity-55',
+                        'cursor-pointer hover:-translate-y-0.5 hover:shadow-hover',
                       )}
                     >
                       <div className="flex items-center gap-3">
