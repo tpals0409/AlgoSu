@@ -107,9 +107,9 @@ export default function StudyRoomPage(): ReactElement {
 
   // ─── EFFECTS ────────────────────────────
 
-  /** 문제 목록 로드 */
+  /** 문제 목록 로드 (studyId 동기화 완료 후) */
   useEffect(() => {
-    if (!isAuthenticated || authLoading) return;
+    if (!isAuthenticated || authLoading || !currentStudyId) return;
     let cancelled = false;
     setLoadingProblems(true);
     setError(null);
@@ -126,7 +126,7 @@ export default function StudyRoomPage(): ReactElement {
       });
 
     return () => { cancelled = true; };
-  }, [isAuthenticated, authLoading]);
+  }, [isAuthenticated, authLoading, currentStudyId]);
 
   /** 선택된 문제의 제출 목록 로드 */
   const loadSubmissions = useCallback(async (problem: Problem): Promise<void> => {

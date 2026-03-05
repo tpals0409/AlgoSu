@@ -106,6 +106,7 @@ export function StudyProvider({ children }: StudyProviderProps): ReactNode {
 
   const setCurrentStudy = useCallback((studyId: string) => {
     setCurrentStudyId(studyId);
+    setCurrentStudyIdForApi(studyId);
   }, []);
 
   const setStudies = useCallback((newStudies: Study[]) => {
@@ -124,6 +125,7 @@ export function StudyProvider({ children }: StudyProviderProps): ReactNode {
 
   const clearCurrentStudy = useCallback(() => {
     setCurrentStudyId(null);
+    setCurrentStudyIdForApi(null);
   }, []);
 
   const value: StudyContextValue = {
