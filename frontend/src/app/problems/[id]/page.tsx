@@ -73,7 +73,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
   // ─── EFFECTS ────────────────────────────
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !currentStudyId) return;
     let cancelled = false;
 
     const load = async (): Promise<void> => {
@@ -101,7 +101,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
 
     void load();
     return () => { cancelled = true; };
-  }, [isAuthenticated, problemId]);
+  }, [isAuthenticated, currentStudyId, problemId]);
 
   // ─── AUTO-SAVE ──────────────────────────
 

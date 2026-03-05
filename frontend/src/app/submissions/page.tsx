@@ -63,7 +63,7 @@ export default function SubmissionsPage(): ReactNode {
   const router = useRouter();
   const { isReady, isAuthenticated } = useRequireAuth();
   useRequireStudy();
-  const { currentStudyName } = useStudy();
+  const { currentStudyId, currentStudyName } = useStudy();
 
   // ─── STATE ──────────────────────────────
 
@@ -98,17 +98,17 @@ export default function SubmissionsPage(): ReactNode {
   }, [page, filterLanguage, filterSagaStep, filterWeek]);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && currentStudyId) {
       void loadSubmissions();
     }
-  }, [isAuthenticated, loadSubmissions]);
+  }, [isAuthenticated, currentStudyId, loadSubmissions]);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !currentStudyId) return;
     void problemApi.findAllIncludingClosed().then((problems) => {
       setProblemDetailMap(new Map(problems.map((p) => [p.id, { title: p.title, difficulty: p.difficulty, weekNumber: p.weekNumber }])));
     }).catch(() => {});
-  }, [isAuthenticated]);
+  }, [isAuthenticated, currentStudyId]);
 
   // ─── HANDLERS ─────────────────────────────
 

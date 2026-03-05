@@ -26,6 +26,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { useStudy } from '@/contexts/StudyContext';
+import { useRequireStudy } from '@/hooks/useRequireStudy';
 import {
   submissionApi,
   reviewApi,
@@ -173,6 +175,8 @@ export default function CodeReviewPage(): ReactElement {
   const params = useParams<{ submissionId: string }>();
   const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  useRequireStudy();
+  const { currentStudyId } = useStudy();
 
   // ─── STATE ──────────────────────────────
   const [submission, setSubmission] = useState<Submission | null>(null);
@@ -217,9 +221,9 @@ export default function CodeReviewPage(): ReactElement {
   }, [submissionId]);
 
   useEffect(() => {
-    if (!isAuthenticated || authLoading) return;
+    if (!isAuthenticated || authLoading || !currentStudyId) return;
     void loadData();
-  }, [isAuthenticated, authLoading, loadData]);
+  }, [isAuthenticated, authLoading, currentStudyId, loadData]);
 
   // ─── HANDLERS ───────────────────────────
 

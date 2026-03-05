@@ -24,6 +24,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { submissionApi, type AnalysisResult, type Submission } from '@/lib/api';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
+import { useStudy } from '@/contexts/StudyContext';
 import { useAiQuota } from '@/hooks/useAiQuota';
 
 // ─── TYPES ────────────────────────────────
@@ -143,6 +144,7 @@ export default function AnalysisPage(): ReactNode {
   const router = useRouter();
   const { isReady, isAuthenticated } = useRequireAuth();
   useRequireStudy();
+  const { currentStudyId } = useStudy();
   const { quota } = useAiQuota(isAuthenticated);
   const submissionId = params.id as string;
   const codeRef = useRef<HTMLDivElement>(null);
@@ -178,10 +180,10 @@ export default function AnalysisPage(): ReactNode {
   }, [submissionId]);
 
   useEffect(() => {
-    if (isAuthenticated && submissionId) {
+    if (isAuthenticated && submissionId && currentStudyId) {
       void loadData();
     }
-  }, [isAuthenticated, submissionId, loadData]);
+  }, [isAuthenticated, submissionId, currentStudyId, loadData]);
 
   // 폴링 (pending/delayed 상태)
   useEffect(() => {

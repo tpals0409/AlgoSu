@@ -62,7 +62,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
   const router = useRouter();
   const { isAuthenticated } = useRequireAuth();
   useRequireStudy();
-  const { currentStudyRole } = useStudy();
+  const { currentStudyId, currentStudyRole } = useStudy();
 
   // ─── STATE ──────────────────────────────
 
@@ -108,7 +108,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
   // ─── EFFECTS ────────────────────────────
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !currentStudyId) return;
     let cancelled = false;
 
     const load = async (): Promise<void> => {
@@ -141,7 +141,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
 
     void load();
     return () => { cancelled = true; };
-  }, [isAuthenticated, problemId]);
+  }, [isAuthenticated, currentStudyId, problemId]);
 
   // ─── HANDLERS ─────────────────────────────
 

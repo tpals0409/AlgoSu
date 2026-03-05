@@ -55,7 +55,7 @@ export default function ProfilePage(): ReactNode {
   const { isReady } = useRequireAuth();
   const { user, logout, githubConnected, updateGitHubStatus, updateAvatar } =
     useAuth();
-  const { studies } = useStudy();
+  const { studies, currentStudyId } = useStudy();
 
   // ─── STATE ─────────────────────────────
   const [error, setError] = useState<string | null>(null);
@@ -93,7 +93,7 @@ export default function ProfilePage(): ReactNode {
   }, []);
 
   useEffect(() => {
-    if (!isReady) return;
+    if (!isReady || !currentStudyId) return;
     setStatsLoading(true);
     submissionApi.list({ page: 1, limit: 1 })
       .then((result) => {
@@ -101,7 +101,7 @@ export default function ProfilePage(): ReactNode {
       })
       .catch(() => {})
       .finally(() => setStatsLoading(false));
-  }, [isReady]);
+  }, [isReady, currentStudyId]);
 
   // ─── HANDLERS ──────────────────────────
 

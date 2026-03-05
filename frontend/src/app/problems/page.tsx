@@ -89,10 +89,10 @@ export default function ProblemsPage(): ReactNode {
   }, [currentStudyId]);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && currentStudyId) {
       void loadProblems();
     }
-  }, [isAuthenticated, loadProblems]);
+  }, [isAuthenticated, currentStudyId, loadProblems]);
 
   // ─── HANDLERS ─────────────────────────────
 

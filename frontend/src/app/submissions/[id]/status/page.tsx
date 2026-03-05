@@ -21,6 +21,7 @@ import { useAiQuota } from '@/hooks/useAiQuota';
 import { submissionApi, authApi, type Submission } from '@/lib/api';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
+import { useStudy } from '@/contexts/StudyContext';
 
 // ─── TYPES ────────────────────────────────
 
@@ -169,6 +170,7 @@ export default function SubmissionStatusPage({ params }: PageProps): ReactNode {
   const router = useRouter();
   const { isAuthenticated } = useRequireAuth();
   useRequireStudy();
+  const { currentStudyId } = useStudy();
   const { quota } = useAiQuota(isAuthenticated);
 
   // ─── STATE ──────────────────────────────
@@ -197,7 +199,7 @@ export default function SubmissionStatusPage({ params }: PageProps): ReactNode {
   // ─── EFFECTS ────────────────────────────
 
   useEffect(() => {
-    if (!submissionId || !isAuthenticated) return;
+    if (!submissionId || !isAuthenticated || !currentStudyId) return;
 
     const load = async (): Promise<void> => {
       try {
@@ -211,7 +213,7 @@ export default function SubmissionStatusPage({ params }: PageProps): ReactNode {
     };
 
     void load();
-  }, [submissionId, isAuthenticated]);
+  }, [submissionId, isAuthenticated, currentStudyId]);
 
   return (
     <AppLayout>
