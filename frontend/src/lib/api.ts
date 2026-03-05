@@ -176,8 +176,10 @@ async function fetchApi<T>(
     ...(options.headers as Record<string, string>),
   };
 
-  if (_currentStudyId) {
-    headers['X-Study-ID'] = _currentStudyId;
+  const studyId = _currentStudyId
+    ?? (typeof window !== 'undefined' ? localStorage.getItem('algosu:current-study-id') : null);
+  if (studyId) {
+    headers['X-Study-ID'] = studyId;
   }
 
   const res = await fetch(`${API_BASE}${path}`, {

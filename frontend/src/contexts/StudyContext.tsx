@@ -113,14 +113,23 @@ export function StudyProvider({ children }: StudyProviderProps): ReactNode {
     setStudiesState(newStudies);
     // 현재 선택된 스터디가 목록에 없으면 초기화
     setCurrentStudyId((prev) => {
-      if (prev && !newStudies.find((s) => s.id === prev)) return null;
+      if (prev && !newStudies.find((s) => s.id === prev)) {
+        setCurrentStudyIdForApi(null);
+        return null;
+      }
       return prev;
     });
   }, []);
 
   const removeStudy = useCallback((studyId: string) => {
     setStudiesState((prev) => prev.filter((s) => s.id !== studyId));
-    setCurrentStudyId((prev) => (prev === studyId ? null : prev));
+    setCurrentStudyId((prev) => {
+      if (prev === studyId) {
+        setCurrentStudyIdForApi(null);
+        return null;
+      }
+      return prev;
+    });
   }, []);
 
   const clearCurrentStudy = useCallback(() => {
