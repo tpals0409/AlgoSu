@@ -22,6 +22,7 @@ import { TokenRefreshInterceptor } from './auth/token-refresh.interceptor';
 import { RedisThrottlerStorage } from './rate-limit/redis-throttler.storage';
 import { RateLimitMiddleware } from './rate-limit/rate-limit.middleware';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
+import { LoggerModule } from './common/logger/logger.module';
 import { StructuredLoggerService } from './common/logger/structured-logger.service';
 import { MetricsModule } from './common/metrics/metrics.module';
 import { User } from './auth/oauth/user.entity';
@@ -79,20 +80,19 @@ import { HealthController } from './health.controller';
     MetricsModule,
     ExternalModule,
     ProxyModule,
+    LoggerModule,
   ],
   controllers: [HealthController],
   providers: [
     JwtMiddleware,
     RedisThrottlerStorage,
     RateLimitMiddleware,
-    StructuredLoggerService,
     // T1: 토큰 자동 갱신 인터셉터 — 만료 5분 이내 시 새 쿠키 발급
     {
       provide: APP_INTERCEPTOR,
       useClass: TokenRefreshInterceptor,
     },
   ],
-  exports: [StructuredLoggerService],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {

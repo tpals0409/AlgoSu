@@ -7,11 +7,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { StudyNoteProxyController } from './study-note.controller';
-import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 @Module({
   imports: [ConfigModule],
   controllers: [StudyNoteProxyController],
-  providers: [StructuredLoggerService],
 })
 export class StudyNoteProxyModule {}

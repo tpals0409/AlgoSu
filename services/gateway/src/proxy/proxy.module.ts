@@ -83,7 +83,6 @@ class ProxyDispatchMiddleware implements NestMiddleware {
   controllers: [HealthController, CatchAllController],
   providers: [
     ProxyDispatchMiddleware,
-    StructuredLoggerService,
     {
       provide: 'PROXY_MIDDLEWARE_MAP',
       inject: [ConfigService, StructuredLoggerService],
