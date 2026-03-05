@@ -16,7 +16,7 @@ import { StructuredLoggerService } from '../logger/structured-logger.service';
  *
  * 검증 순서:
  * 1. X-User-ID + X-Study-ID 헤더 추출
- * 2. Redis 캐시 확인: study:membership:{study_id}:{user_id} (TTL 10분)
+ * 2. Redis 캐시 확인: problem:membership:{study_id}:{user_id} (TTL 10분)
  * 3. 캐시 miss → Gateway Internal API 호출
  * 4. 비멤버 → 403 Forbidden
  */
@@ -48,7 +48,7 @@ export class StudyMemberGuard implements CanActivate {
       throw new ForbiddenException('X-Study-ID 헤더가 필요합니다.');
     }
 
-    const cacheKey = `study:membership:${studyId}:${userId}`;
+    const cacheKey = `problem:membership:${studyId}:${userId}`;
     let role: string | null = null;
 
     // 1. Redis 캐시 확인

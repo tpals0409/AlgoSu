@@ -96,7 +96,7 @@ describe('StudyMemberGuard', () => {
       const result = await guard.canActivate(ctx);
 
       expect(result).toBe(true);
-      expect(redis.get).toHaveBeenCalledWith(`study:membership:${STUDY_ID}:${USER_ID}`);
+      expect(redis.get).toHaveBeenCalledWith(`problem:membership:${STUDY_ID}:${USER_ID}`);
       const req = ctx.switchToHttp().getRequest() as Record<string, unknown>;
       expect(req.studyRole).toBe('ADMIN');
     });
@@ -143,7 +143,7 @@ describe('StudyMemberGuard', () => {
         { headers: { 'x-internal-key': 'test-key' } },
       );
       expect(redis.set).toHaveBeenCalledWith(
-        `study:membership:${STUDY_ID}:${USER_ID}`,
+        `problem:membership:${STUDY_ID}:${USER_ID}`,
         'MEMBER',
         'EX',
         600,
