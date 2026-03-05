@@ -30,6 +30,9 @@ export const config = {
   submissionServiceUrl: getOptional('SUBMISSION_SERVICE_URL', 'http://submission-service:3003'),
   submissionServiceKey: getOptional('SUBMISSION_SERVICE_KEY', ''),
 
+  problemServiceUrl: getOptional('PROBLEM_SERVICE_URL', 'http://problem-service:3002'),
+  problemServiceKey: getOptional('PROBLEM_SERVICE_KEY', ''),
+
   maxRetries: parseInt(getOptional('MAX_RETRIES', '3'), 10),
   retryDelayMs: parseInt(getOptional('RETRY_DELAY_MS', '5000'), 10),
 

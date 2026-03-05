@@ -225,7 +225,7 @@ export class GitHubWorker {
   ): Promise<{ title: string; weekNumber: string; sourcePlatform: string; sourceUrl: string }> {
     try {
       const res = await fetch(
-        `${this.problemServiceUrl}/${problemId}`,
+        `${this.problemServiceUrl}/internal/${problemId}`,
         {
           headers: {
             'x-internal-key': this.problemServiceKey,

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ProblemController } from './problem.controller';
+import { InternalProblemController } from './internal-problem.controller';
 import { ProblemService } from './problem.service';
 import { DeadlineCacheService } from '../cache/deadline-cache.service';
 import { StudyMemberGuard } from '../common/guards/study-member.guard';
@@ -8,7 +9,7 @@ import { StructuredLoggerService } from '../common/logger/structured-logger.serv
 
 @Module({
   imports: [DualWriteModule],
-  controllers: [ProblemController],
+  controllers: [ProblemController, InternalProblemController],
   providers: [ProblemService, DeadlineCacheService, StudyMemberGuard, StructuredLoggerService],
   exports: [ProblemService, DeadlineCacheService],
 })

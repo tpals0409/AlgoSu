@@ -28,6 +28,8 @@ jest.mock('./config', () => ({
     internalKeyGateway: 'test-internal-key',
     submissionServiceUrl: 'http://submission-service:3003',
     submissionServiceKey: 'test-sub-key',
+    problemServiceUrl: 'http://problem-service:3002',
+    problemServiceKey: 'test-problem-key',
     maxRetries: 2,
     retryDelayMs: 10, // 테스트에서 빠르게
     githubAppId: '',
@@ -175,6 +177,14 @@ describe('GitHubWorker', () => {
         }),
       });
 
+      // getProblemInfo 응답 (internal 엔드포인트)
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: { title: '두 수의 합', weekNumber: '3월1주차', sourcePlatform: 'baekjoon', sourceUrl: '' },
+        }),
+      });
+
       // getUserGitHubInfo 응답 -- 토큰 없음
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -212,6 +222,14 @@ describe('GitHubWorker', () => {
             language: 'python',
             code: 'print("hi")',
           },
+        }),
+      });
+
+      // getProblemInfo 응답 (internal 엔드포인트)
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: { title: '두 수의 합', weekNumber: '3월1주차', sourcePlatform: 'baekjoon', sourceUrl: '' },
         }),
       });
 
@@ -263,6 +281,14 @@ describe('GitHubWorker', () => {
         }),
       });
 
+      // getProblemInfo 응답 (internal 엔드포인트)
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: { title: '두 수의 합', weekNumber: '3월1주차', sourcePlatform: 'baekjoon', sourceUrl: '' },
+        }),
+      });
+
       // getUserGitHubInfo
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -305,6 +331,14 @@ describe('GitHubWorker', () => {
         }),
       });
 
+      // getProblemInfo 응답 (internal 엔드포인트)
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: { title: '문제', weekNumber: '1주차', sourcePlatform: '', sourceUrl: '' },
+        }),
+      });
+
       // getUserGitHubInfo -- 잘못된 암호화 토큰
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -342,6 +376,14 @@ describe('GitHubWorker', () => {
             language: 'python',
             code: 'code',
           },
+        }),
+      });
+
+      // getProblemInfo 응답 (internal 엔드포인트)
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: { title: '문제', weekNumber: '1주차', sourcePlatform: '', sourceUrl: '' },
         }),
       });
 
@@ -519,6 +561,14 @@ describe('GitHubWorker', () => {
         }),
       });
 
+      // getProblemInfo 응답 (internal 엔드포인트)
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: { title: '문제', weekNumber: '1주차', sourcePlatform: '', sourceUrl: '' },
+        }),
+      });
+
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
@@ -562,6 +612,14 @@ describe('GitHubWorker', () => {
         }),
       });
 
+      // getProblemInfo 응답 (internal 엔드포인트)
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: { title: '문제', weekNumber: '1주차', sourcePlatform: '', sourceUrl: '' },
+        }),
+      });
+
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
@@ -597,6 +655,14 @@ describe('GitHubWorker', () => {
             language: 'python',
             code: 'code',
           },
+        }),
+      });
+
+      // getProblemInfo 응답 (internal 엔드포인트)
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: { title: '문제', weekNumber: '1주차', sourcePlatform: '', sourceUrl: '' },
         }),
       });
 
