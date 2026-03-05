@@ -405,6 +405,7 @@ export class OAuthService {
     }
 
     // ON CONFLICT 원자적 upsert — avatar_url은 갱신 대상에서 제외 (기존값 무조건 보호)
+    // createQueryBuilder.insert()는 @BeforeInsert 훅을 우회하므로 publicId를 명시적으로 생성
     await this.userRepository
       .createQueryBuilder()
       .insert()
@@ -415,6 +416,7 @@ export class OAuthService {
         avatar_url: 'preset:default',
         oauth_provider: provider,
         github_connected: false,
+        publicId: crypto.randomUUID(),
       })
       .orUpdate(['name'], ['email'])
       .execute();
