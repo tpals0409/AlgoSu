@@ -115,12 +115,12 @@ describe('HomeRedirect', () => {
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
-  it('redirects to /dashboard when authenticated', () => {
+  it('redirects to /studies when authenticated', () => {
     mockUseAuth.mockReturnValue({
       isAuthenticated: true,
       isLoading: false,
     });
     render(<HomeRedirect />);
-    expect(mockReplace).toHaveBeenCalledWith('/dashboard');
+    expect(mockReplace).toHaveBeenCalledWith('/studies');
   });
 });
