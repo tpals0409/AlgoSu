@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 # ─── CONSTANTS ────────────────────────────────
 
-MODEL_ID = "claude-sonnet-4-20250514"
+MODEL_ID = "claude-haiku-4-5-20251001"
 MAX_TOKENS = 4096
 
 
