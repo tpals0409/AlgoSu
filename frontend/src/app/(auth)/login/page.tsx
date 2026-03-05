@@ -85,7 +85,7 @@ function LoginContent(): ReactNode {
   // 이미 인증된 경우 대시보드로 리다이렉트
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      router.replace('/dashboard');
+      router.replace('/studies');
     }
   }, [authLoading, isAuthenticated, router]);
 

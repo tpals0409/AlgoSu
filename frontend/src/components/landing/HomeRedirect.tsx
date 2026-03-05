@@ -12,7 +12,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
 /**
- * 인증된 유저를 /dashboard로 리다이렉트
+ * 인증된 유저를 /studies로 리다이렉트
  * @domain common
  */
 export function HomeRedirect(): null {
@@ -22,7 +22,7 @@ export function HomeRedirect(): null {
   useEffect(() => {
     if (isLoading) return;
     if (isAuthenticated) {
-      router.replace('/dashboard');
+      router.replace('/studies');
     }
   }, [isAuthenticated, isLoading, router]);
 
