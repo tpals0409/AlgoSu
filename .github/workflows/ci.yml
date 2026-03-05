@@ -604,6 +604,12 @@ jobs:
               echo "skip=false" >> $GITHUB_OUTPUT
             fi
           fi
+      - name: Checkout (for .trivyignore)
+        if: steps.check.outputs.skip == 'false'
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .trivyignore
+          sparse-checkout-cone-mode: false
       - name: Install Trivy
         if: steps.check.outputs.skip == 'false'
         run: |
@@ -617,6 +623,7 @@ jobs:
             --severity CRITICAL,HIGH \
             --exit-code 1 \
             --ignore-unfixed \
+            --ignorefile .trivyignore \
             --format table \
             "${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:main-${{ github.sha }}"
         env:
@@ -629,6 +636,7 @@ jobs:
             --platform linux/arm64 \
             --severity CRITICAL,HIGH \
             --ignore-unfixed \
+            --ignorefile .trivyignore \
             --format sarif \
             --output trivy-results.sarif \
             "${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:main-${{ github.sha }}"
