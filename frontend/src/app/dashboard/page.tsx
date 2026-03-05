@@ -17,6 +17,8 @@ import {
   CheckCircle2,
   RefreshCw,
   Github,
+  BookOpenCheck,
+  ChevronRight,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card } from '@/components/ui/Card';
@@ -453,6 +455,26 @@ export default function DashboardPage(): ReactNode {
               valueColor="text-success"
             />
           </div>
+        )}
+
+        {/* ── STUDY ROOM CARD ── */}
+        {currentStudyId && (
+          <Link href="/study-room">
+            <Card className="group cursor-pointer border-primary/20 bg-primary-soft transition-all hover:border-primary/40 hover:shadow-md" style={fade(0.12)}>
+              <div className="flex items-center justify-between px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10">
+                    <BookOpenCheck className="h-4 w-4 text-primary" aria-hidden />
+                  </div>
+                  <div>
+                    <p className="text-[13px] font-medium text-text">스터디룸</p>
+                    <p className="text-[11px] text-text-3">마감된 문제의 풀이를 함께 리뷰하고 토론하세요</p>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-text-3 transition-transform group-hover:translate-x-0.5" aria-hidden />
+              </div>
+            </Card>
+          </Link>
         )}
 
         {/* ── WEEKLY CHART (dynamic) ── */}

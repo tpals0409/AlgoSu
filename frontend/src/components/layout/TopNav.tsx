@@ -36,6 +36,7 @@ const NAV_LINKS = [
   { href: '/dashboard', label: '대시보드' },
   { href: '/problems', label: '문제' },
   { href: '/submissions', label: '제출' },
+  { href: '/study-room', label: '스터디룸' },
   { href: '/analytics', label: '분석' },
 ] as const;
 
