@@ -31,7 +31,7 @@ SYSTEM_PROMPT = """당신은 알고리즘 코드 분석 전문가입니다.
 JSON 스키마:
 {
   "totalScore": number,
-  "summary": "전체 요약 (한국어, 2-3문장)",
+  "summary": "전체 요약 (한국어, 5-7문장: 코드의 핵심 접근 방식, 주요 강점, 개선이 필요한 부분, 구체적인 개선 방향을 포함)",
   "categories": [
     {
       "name": "correctness" | "efficiency" | "readability" | "structure" | "bestPractice",

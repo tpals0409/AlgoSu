@@ -21,6 +21,7 @@ import { LangBadge } from '@/components/ui/LangBadge';
 import { ScoreGauge } from '@/components/ui/ScoreGauge';
 import { CategoryBar, type CategoryItem } from '@/components/ui/CategoryBar';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { CodeBlock } from '@/components/ui/CodeBlock';
 import { submissionApi, type AnalysisResult, type Submission } from '@/lib/api';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
@@ -195,6 +196,16 @@ export default function AnalysisPage(): ReactNode {
       if (pollTimerRef.current) clearInterval(pollTimerRef.current);
     };
   }, [analysis, loadData]);
+
+  // 브라우저 탭 제목 설정
+  useEffect(() => {
+    if (submission?.problemTitle) {
+      document.title = `AI 코드 분석 | ${submission.problemTitle}`;
+    } else {
+      document.title = 'AI 코드 분석';
+    }
+    return () => { document.title = 'AlgoSu'; };
+  }, [submission?.problemTitle]);
 
   // 탭 복귀 시 재로드
   useEffect(() => {
@@ -449,7 +460,7 @@ export default function AnalysisPage(): ReactNode {
             )}
 
             {/* 코드 비교 */}
-            {(analysis.feedback || parsed.optimizedCode) && (
+            {(submission?.code || parsed.optimizedCode) && (
               <div ref={codeRef}>
                 <Card className="p-0 overflow-hidden">
                   {/* 탭 */}
@@ -477,76 +488,42 @@ export default function AnalysisPage(): ReactNode {
                     </div>
                   )}
 
-                  {/* 코드 뷰 (간단한 라인넘버 + 하이라이트) */}
-                  <div className="bg-code-bg overflow-auto min-h-[180px]">
+                  {/* 코드 뷰 (Syntax Highlighted) */}
+                  <div className="overflow-auto min-h-[180px]">
                     {(() => {
-                      const codeStr = codeTab === 'optimized' && parsed.optimizedCode
-                        ? parsed.optimizedCode
-                        : (analysis.feedback ? '' : '');
-
-                      // feedback이 있는데 코드가 없으면 텍스트 피드백 표시
-                      if (!codeStr && codeTab === 'original') {
-                        return (
-                          <div className="p-4 text-xs text-text-3">
-                            제출한 코드를 확인하려면 제출 상세 페이지를 방문하세요.
-                          </div>
-                        );
-                      }
+                      const codeStr = codeTab === 'optimized'
+                        ? (parsed.optimizedCode ?? '')
+                        : (submission?.code ?? '');
 
                       if (!codeStr) {
                         return (
-                          <div className="p-4 text-xs text-text-3">
-                            최적화 코드가 제공되지 않았습니다.
+                          <div className="p-4 text-xs text-text-3 bg-code-bg">
+                            {codeTab === 'original'
+                              ? '제출한 코드를 불러올 수 없습니다.'
+                              : '최적화 코드가 제공되지 않았습니다.'}
                           </div>
                         );
                       }
 
-                      const lines = codeStr.split('\n');
                       const hlLines = new Set<number>();
+                      let hlColor: 'success' | 'warning' | 'error' = 'success';
                       if (selectedCat !== null && codeTab === 'original' && parsed.categories[selectedCat]) {
                         for (const hl of parsed.categories[selectedCat].highlights) {
                           for (let l = hl.startLine; l <= hl.endLine; l++) {
                             hlLines.add(l);
                           }
                         }
+                        hlColor = getGrade(parsed.categories[selectedCat].score).color;
                       }
 
-                      return lines.map((line, i) => {
-                        const isHL = hlLines.has(i + 1);
-                        const catColor = selectedCat !== null && parsed.categories[selectedCat]
-                          ? getGrade(parsed.categories[selectedCat].score).color
-                          : 'success';
-                        return (
-                          <div
-                            key={i}
-                            className={`flex ${
-                              isHL
-                                ? catColor === 'success' ? 'bg-success-soft border-l-[3px] border-l-success' : catColor === 'warning' ? 'bg-warning-soft border-l-[3px] border-l-warning' : 'bg-error-soft border-l-[3px] border-l-error'
-                                : 'border-l-[3px] border-l-transparent'
-                            } transition-colors`}
-                          >
-                            <span
-                              className={`w-10 min-w-[40px] text-right pr-3 text-xs font-mono leading-[22px] select-none ${
-                                isHL ? 'opacity-80 font-semibold text-text' : 'opacity-40 text-text-3'
-                              }`}
-                              style={{ paddingTop: i === 0 ? '14px' : 0, paddingBottom: i === lines.length - 1 ? '14px' : 0 }}
-                            >
-                              {i + 1}
-                            </span>
-                            <pre
-                              className="m-0 font-mono text-xs leading-[22px]"
-                              style={{
-                                paddingTop: i === 0 ? '14px' : 0,
-                                paddingBottom: i === lines.length - 1 ? '14px' : 0,
-                                color: isHL ? 'var(--text)' : 'var(--text2)',
-                                fontWeight: isHL ? 500 : 400,
-                              }}
-                            >
-                              {line || ' '}
-                            </pre>
-                          </div>
-                        );
-                      });
+                      return (
+                        <CodeBlock
+                          code={codeStr}
+                          language={submission?.language ?? 'text'}
+                          highlightLines={hlLines.size > 0 ? hlLines : undefined}
+                          highlightColor={hlColor}
+                        />
+                      );
                     })()}
                   </div>
 
@@ -557,15 +534,19 @@ export default function AnalysisPage(): ReactNode {
                         <Badge variant="default">AI 추천</Badge>
                       )}
                     </div>
-                    {parsed.optimizedCode && codeTab === 'optimized' && (
-                      <button
-                        onClick={() => void handleCopy(parsed.optimizedCode!)}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-badge border border-border text-text-2 text-[11px] font-medium hover:bg-bg-alt transition-colors"
-                      >
-                        {copied ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
-                        {copied ? '복사됨' : '복사'}
-                      </button>
-                    )}
+                    {(() => {
+                      const copyTarget = codeTab === 'optimized' ? parsed.optimizedCode : submission?.code;
+                      if (!copyTarget) return null;
+                      return (
+                        <button
+                          onClick={() => void handleCopy(copyTarget)}
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-badge border border-border text-text-2 text-[11px] font-medium hover:bg-bg-alt transition-colors"
+                        >
+                          {copied ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
+                          {copied ? '복사됨' : '복사'}
+                        </button>
+                      );
+                    })()}
                   </div>
                 </Card>
               </div>

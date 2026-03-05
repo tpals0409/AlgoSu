@@ -69,6 +69,7 @@ export interface Submission {
   problemId: string;
   problemTitle?: string;
   language: string;
+  code?: string;
   sagaStep: 'DB_SAVED' | 'GITHUB_QUEUED' | 'AI_QUEUED' | 'DONE' | 'FAILED';
   aiScore?: number | null;
   createdAt: string;
