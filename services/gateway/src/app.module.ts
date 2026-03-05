@@ -56,13 +56,13 @@ import { HealthController } from './health.controller';
     }),
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
-      inject: [ConfigService, StructuredLoggerService],
-      useFactory: (configService: ConfigService, logger: StructuredLoggerService) => ({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
         throttlers: [
           { name: 'default', ttl: 60_000, limit: 60 },
           { name: 'submission', ttl: 60_000, limit: 10 },
         ],
-        storage: new RedisThrottlerStorage(configService, logger),
+        storage: new RedisThrottlerStorage(configService, new StructuredLoggerService()),
       }),
     }),
     TypeOrmModule.forFeature([User]),
