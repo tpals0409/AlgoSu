@@ -51,6 +51,8 @@ export class GitHubWorker {
 
   private readonly gatewayInternalUrl: string;
   private readonly internalKeyGateway: string;
+  private readonly problemServiceUrl: string;
+  private readonly problemServiceKey: string;
 
   // M14: 재연결 상태 추적
   private reconnectAttempt = 0;
@@ -63,6 +65,8 @@ export class GitHubWorker {
     this.statusReporter = new StatusReporter();
     this.gatewayInternalUrl = config.gatewayInternalUrl;
     this.internalKeyGateway = config.internalKeyGateway;
+    this.problemServiceUrl = config.problemServiceUrl;
+    this.problemServiceKey = config.problemServiceKey;
   }
 
   /**
@@ -211,9 +215,57 @@ export class GitHubWorker {
     return (await res.json()) as UserGitHubInfo;
   }
 
+  /**
+   * Problem Service에서 문제 정보 조회 (제목, 주차)
+   */
+  private async getProblemInfo(
+    problemId: string,
+    studyId: string,
+    userId: string,
+  ): Promise<{ title: string; weekNumber: string; sourcePlatform: string; sourceUrl: string }> {
+    try {
+      const res = await fetch(
+        `${this.problemServiceUrl}/${problemId}`,
+        {
+          headers: {
+            'x-internal-key': this.problemServiceKey,
+            'x-study-id': studyId,
+            'x-user-id': userId,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+      if (!res.ok) {
+        logger.warn(`Problem 정보 조회 실패 (${res.status}) — 기본값 사용`, {
+          tag: 'PROBLEM_FETCH',
+        });
+        return { title: problemId, weekNumber: '', sourcePlatform: '', sourceUrl: '' };
+      }
+
+      const body = (await res.json()) as {
+        data: { title: string; weekNumber: string; sourcePlatform: string; sourceUrl: string };
+      };
+      return {
+        title: body.data.title ?? problemId,
+        weekNumber: body.data.weekNumber ?? '',
+        sourcePlatform: body.data.sourcePlatform ?? '',
+        sourceUrl: body.data.sourceUrl ?? '',
+      };
+    } catch {
+      logger.warn('Problem 정보 조회 예외 — 기본값 사용', {
+        tag: 'PROBLEM_FETCH',
+      });
+      return { title: problemId, weekNumber: '', sourcePlatform: '', sourceUrl: '' };
+    }
+  }
+
   private async processWithRetry(event: GitHubPushEvent): Promise<void> {
     // 제출 데이터 조회 (userId 획득)
     const submission = await this.statusReporter.getSubmission(event.submissionId);
+
+    // 문제 정보 조회 (제목, 주차)
+    const problemInfo = await this.getProblemInfo(submission.problemId, event.studyId, submission.userId);
 
     // 유저 GitHub 정보 조회
     const githubInfo = await this.getUserGitHubInfo(submission.userId);
@@ -251,6 +303,10 @@ export class GitHubWorker {
           code: submission.code,
           githubUsername: githubInfo.github_username,
           githubToken: decryptedToken,
+          problemTitle: problemInfo.title,
+          weekNumber: problemInfo.weekNumber,
+          sourcePlatform: problemInfo.sourcePlatform,
+          sourceUrl: problemInfo.sourceUrl,
         });
 
         // 성공: Saga 상태 업데이트 (GITHUB_QUEUED → AI_QUEUED)
