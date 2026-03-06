@@ -1,3 +1,0 @@
-# multer CVE-2026-3520: npm override로 2.1.1 설치됨
-# @nestjs/platform-express의 package.json 선언(2.0.2)이 Trivy에 오탐으로 감지
-CVE-2026-3520
