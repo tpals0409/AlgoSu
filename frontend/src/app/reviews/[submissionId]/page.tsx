@@ -281,7 +281,7 @@ export default function CodeReviewPage(): ReactElement {
     return (
       <div className="flex min-h-screen flex-col bg-bg">
         {!focusMode && <NavPlaceholder />}
-        <div className="mx-auto grid w-full max-w-screen-xl flex-1 grid-cols-1 gap-4 px-4 py-6 lg:grid-cols-[1fr_380px]">
+        <div className="mx-auto grid w-full max-w-container flex-1 grid-cols-1 gap-4 px-4 py-6 lg:grid-cols-[1fr_380px]">
           <Skeleton height={500} />
           <div className="space-y-4">
             <Skeleton height={160} />
@@ -326,7 +326,7 @@ export default function CodeReviewPage(): ReactElement {
       {/* 헤더 (focus mode에서 숨김) */}
       {!focusMode && (
         <header className="glass-nav sticky top-0 z-50 border-b border-border">
-          <div className="mx-auto flex h-14 max-w-screen-xl items-center justify-between px-4">
+          <div className="mx-auto flex h-14 max-w-container items-center justify-between px-4">
             <div className="flex items-center gap-3">
               <button
                 type="button"
@@ -400,7 +400,7 @@ export default function CodeReviewPage(): ReactElement {
 
       {/* 안내 배너 */}
       {!focusMode && (
-        <div className="mx-auto max-w-screen-xl px-4 pt-3">
+        <div className="mx-auto max-w-container px-4 pt-3">
           <div className="flex items-center gap-2 rounded-card border border-info/20 bg-info-soft px-4 py-2.5">
             <AlertCircle className="h-3.5 w-3.5 shrink-0 text-info" aria-hidden />
             <p className="text-[12px] text-text-2">
@@ -441,7 +441,7 @@ export default function CodeReviewPage(): ReactElement {
           'mx-auto grid w-full flex-1 gap-4 px-4 py-4',
           focusMode
             ? 'max-w-none grid-cols-1 lg:grid-cols-[1fr_380px] pt-10'
-            : 'max-w-screen-xl grid-cols-1 lg:grid-cols-[1fr_380px]',
+            : 'max-w-container grid-cols-1 lg:grid-cols-[1fr_380px]',
         )}
       >
         {/* 좌측: 코드 패널 (dynamic) */}
@@ -532,7 +532,7 @@ export default function CodeReviewPage(): ReactElement {
 function NavPlaceholder(): ReactElement {
   return (
     <div className="glass-nav sticky top-0 z-50 border-b border-border">
-      <div className="mx-auto flex h-14 max-w-screen-xl items-center px-4">
+      <div className="mx-auto flex h-14 max-w-container items-center px-4">
         <Skeleton width={200} height={20} />
       </div>
     </div>

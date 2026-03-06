@@ -64,13 +64,13 @@ export function Toast({ toast, onDismiss }: ToastProps): ReactElement {
       role="alert"
       aria-live="polite"
       className={cn(
-        'relative flex w-full max-w-[380px] items-start gap-2.5 overflow-hidden rounded-lg border border-border bg-bg-card p-3.5 shadow-toast transition-all duration-300 ease-bounce',
+        'relative flex w-full max-w-[380px] items-start gap-2.5 overflow-hidden rounded-card border border-border bg-bg-card p-3.5 shadow-toast transition-all duration-300 ease-bounce',
         'border-l-[3px]',
         styles.border,
         visible && !exiting ? 'translate-x-0 opacity-100' : 'translate-x-6 opacity-0',
       )}
     >
-      <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', styles.badge)}>
+      <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-md', styles.badge)}>
         <ToastIcon type={toast.type} />
       </div>
       <div className="min-w-0 flex-1">

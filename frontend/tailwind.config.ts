@@ -184,7 +184,6 @@ const config: Config = {
 
       maxWidth: {
         container: '1120px',
-        'container-wide': '1200px',
       },
     },
   },

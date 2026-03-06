@@ -10,7 +10,7 @@ import { CheckCircle2, XCircle, AlertTriangle, Info, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const alertVariants = cva(
-  ['relative flex gap-3 rounded-lg border p-4', 'text-sm', '[&>svg]:mt-0.5 [&>svg]:shrink-0'],
+  ['relative flex gap-3 rounded-card border p-4', 'text-sm', '[&>svg]:mt-0.5 [&>svg]:shrink-0'],
   {
     variants: {
       variant: {

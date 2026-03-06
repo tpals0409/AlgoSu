@@ -60,7 +60,7 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
       {/* 컨텐츠 영역 */}
       <main
         className={cn(
-          'mx-auto w-full max-w-screen-xl flex-1 px-4 py-6 sm:px-6 lg:px-8',
+          'mx-auto w-full max-w-container flex-1 px-4 py-6 sm:px-6 lg:px-8',
           className,
         )}
       >
