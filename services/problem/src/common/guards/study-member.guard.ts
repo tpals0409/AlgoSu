@@ -60,24 +60,48 @@ export class StudyMemberGuard implements CanActivate {
 
     // 2. 캐시 miss → Gateway Internal API 호출
     if (!role) {
+      const gatewayUrl = this.configService.get<string>('GATEWAY_INTERNAL_URL', 'http://localhost:3000');
+      const internalKey = this.configService.get<string>('INTERNAL_KEY_GATEWAY', '');
+
       try {
-        const gatewayUrl = this.configService.get<string>('GATEWAY_INTERNAL_URL', 'http://localhost:3000');
-        const internalKey = this.configService.get<string>('INTERNAL_KEY_GATEWAY', '');
         const response = await fetch(
           `${gatewayUrl}/internal/studies/${studyId}/members/${userId}`,
-          { headers: { 'x-internal-key': internalKey } },
+          {
+            method: 'GET',
+            headers: {
+              'x-internal-key': internalKey,
+              'Content-Type': 'application/json',
+            },
+          },
         );
 
-        if (response.ok) {
-          const data = (await response.json()) as { role: string };
-          role = data.role;
-          // Redis에 캐싱
+        if (response.status === 404) {
+          this.logger.warn(`스터디 멤버 아님: studyId=${studyId}, userId=${userId}`);
+          throw new ForbiddenException('스터디 멤버가 아닙니다.');
+        }
+
+        if (!response.ok) {
+          this.logger.error(
+            `Gateway 멤버십 확인 실패: status=${response.status}, path=${request.path}`,
+          );
+          throw new ForbiddenException('스터디 멤버가 아닙니다.');
+        }
+
+        const data = (await response.json()) as { role: string };
+        role = data.role;
+
+        // Redis에 캐싱
+        if (role) {
           try {
             await this.redis.set(cacheKey, role, 'EX', this.MEMBER_TTL);
-          } catch { /* 캐시 실패 무시 */ }
+          } catch (cacheErr: unknown) {
+            this.logger.warn(`Redis 캐시 저장 실패: ${(cacheErr as Error).message}`);
+          }
         }
       } catch (error: unknown) {
-        this.logger.warn(`Gateway 멤버십 확인 실패: ${(error as Error).message}`);
+        if (error instanceof ForbiddenException) throw error;
+        this.logger.error(`Gateway 멤버십 확인 실패: ${(error as Error).message}`);
+        throw new ForbiddenException('스터디 멤버가 아닙니다.');
       }
     }
 

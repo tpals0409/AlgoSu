@@ -140,7 +140,13 @@ describe('StudyMemberGuard', () => {
       expect(result).toBe(true);
       expect(mockFetch).toHaveBeenCalledWith(
         `http://gateway:3000/internal/studies/${STUDY_ID}/members/${USER_ID}`,
-        { headers: { 'x-internal-key': 'test-key' } },
+        {
+          method: 'GET',
+          headers: {
+            'x-internal-key': 'test-key',
+            'Content-Type': 'application/json',
+          },
+        },
       );
       expect(redis.set).toHaveBeenCalledWith(
         `problem:membership:${STUDY_ID}:${USER_ID}`,

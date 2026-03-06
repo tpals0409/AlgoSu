@@ -33,9 +33,9 @@ import { HealthController } from './health.controller';
     }),
     ScheduleModule.forRoot(),
     MetricsModule,
-    SubmissionModule,
     ReviewModule,
     StudyNoteModule,
+    SubmissionModule,
   ],
   controllers: [HealthController],
 })

@@ -116,7 +116,9 @@ export class StudyMemberGuard implements CanActivate {
       // Redis에 캐싱
       try {
         await this.redis.set(cacheKey, data.role, 'EX', StudyMemberGuard.CACHE_TTL_SECONDS);
-      } catch { /* 캐시 실패 무시 — fail-open */ }
+      } catch (cacheErr: unknown) {
+        this.logger.warn(`Redis 캐시 저장 실패: ${(cacheErr as Error).message}`);
+      }
 
       (request as StudyMemberRequest).studyMemberRole = data.role;
 
