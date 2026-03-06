@@ -162,9 +162,9 @@ export default function SubmissionsPage(): ReactNode {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {/* Stat Cards */}
+            {/* Stat Cards (md 이상에서만 표시) */}
             {data && (
-              <div className="flex items-center gap-3">
+              <div className="hidden md:flex items-center gap-3">
                 <div className="flex items-center gap-2 rounded-card border border-border bg-bg-card px-3.5 py-2 shadow">
                   <FileText className="h-3.5 w-3.5 text-primary" aria-hidden />
                   <span className="font-mono text-lg font-bold text-primary">{data.meta.total}</span>
@@ -294,9 +294,9 @@ export default function SubmissionsPage(): ReactNode {
         {!isLoading && data && data.data.length > 0 && (
           <>
             <Card className="p-0 overflow-hidden">
-              {/* 헤더 행 */}
+              {/* 헤더 행 (md 이상에서만 표시) */}
               <div
-                className="grid items-center gap-x-2 px-4 py-2.5 border-b border-border font-mono text-[10px] uppercase tracking-wider text-text-3 min-w-[520px]"
+                className="hidden md:grid items-center gap-x-2 px-4 py-2.5 border-b border-border font-mono text-[10px] uppercase tracking-wider text-text-3"
                 style={{ gridTemplateColumns: '64px 1fr 80px 72px 100px 80px 72px' }}
               >
                 <span>주차</span>
@@ -325,55 +325,80 @@ export default function SubmissionsPage(): ReactNode {
                 return (
                   <div
                     key={submission.id}
-                    className="grid items-center gap-x-2 w-full px-4 py-3 border-b border-border last:border-b-0 hover:bg-primary-soft transition-colors min-w-[520px]"
+                    className="w-full px-4 py-3 border-b border-border last:border-b-0 hover:bg-primary-soft transition-colors block md:grid md:items-center md:gap-x-2"
                     style={{ gridTemplateColumns: '64px 1fr 80px 72px 100px 80px 72px' }}
                   >
-                    {/* 주차 */}
-                    <span className="font-mono text-[11px] text-text-3 truncate">
+                    {/* 모바일 카드 뷰 */}
+                    <div className="md:hidden space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[13px] font-medium text-text truncate flex-1 min-w-0">
+                          {submission.problemTitle ?? problemDetailMap.get(submission.problemId)?.title ?? `문제 ${submission.problemId.slice(0, 8)}`}
+                        </p>
+                        <Badge variant={sagaConfig.variant} dot>
+                          {sagaConfig.label}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-[11px] text-text-3">
+                          {problemDetailMap.get(submission.problemId)?.weekNumber ?? '-'}
+                        </span>
+                        <LangBadge language={submission.language} />
+                        <span className="font-mono text-[10px] text-text-3">
+                          {formatDate(submission.createdAt)}
+                        </span>
+                        {isDone && (
+                          <Link
+                            href={`/submissions/${submission.id}/analysis`}
+                            className="text-[11px] font-medium text-primary hover:underline"
+                          >
+                            결과 보기
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 데스크탑 테이블 행 (md 이상) */}
+                    <span className="hidden md:block font-mono text-[11px] text-text-3 truncate">
                       {problemDetailMap.get(submission.problemId)?.weekNumber ?? '-'}
                     </span>
-
-                    {/* 문제명 */}
-                    <div className="min-w-0">
+                    <div className="hidden md:block min-w-0">
                       <p className="text-[13px] font-medium text-text truncate">
                         {submission.problemTitle ?? problemDetailMap.get(submission.problemId)?.title ?? `문제 ${submission.problemId.slice(0, 8)}`}
                       </p>
                     </div>
-
-                    {/* 난이도 */}
-                    {(() => {
-                      const diff = problemDetailMap.get(submission.problemId)?.difficulty;
-                      return diff ? (
-                        <DifficultyBadge difficulty={diff as Difficulty} />
-                      ) : (
-                        <span className="font-mono text-[10px] text-text-3">--</span>
-                      );
-                    })()}
-
-                    {/* 언어 */}
-                    <LangBadge language={submission.language} />
-
-                    {/* 제출시간 */}
-                    <span className="font-mono text-[10px] text-text-3 whitespace-nowrap">
+                    <span className="hidden md:block">
+                      {(() => {
+                        const diff = problemDetailMap.get(submission.problemId)?.difficulty;
+                        return diff ? (
+                          <DifficultyBadge difficulty={diff as Difficulty} />
+                        ) : (
+                          <span className="font-mono text-[10px] text-text-3">--</span>
+                        );
+                      })()}
+                    </span>
+                    <span className="hidden md:block">
+                      <LangBadge language={submission.language} />
+                    </span>
+                    <span className="hidden md:block font-mono text-[10px] text-text-3 whitespace-nowrap">
                       {formatDate(submission.createdAt)}
                     </span>
-
-                    {/* 상태 */}
-                    <Badge variant={sagaConfig.variant} dot>
-                      {sagaConfig.label}
-                    </Badge>
-
-                    {/* AI 분석 */}
-                    {isDone ? (
-                      <Link
-                        href={`/submissions/${submission.id}/analysis`}
-                        className="text-[11px] font-medium text-primary transition-colors hover:underline whitespace-nowrap"
-                      >
-                        결과 보기
-                      </Link>
-                    ) : (
-                      <span className="font-mono text-[10px] text-text-3">-</span>
-                    )}
+                    <span className="hidden md:block">
+                      <Badge variant={sagaConfig.variant} dot>
+                        {sagaConfig.label}
+                      </Badge>
+                    </span>
+                    <span className="hidden md:block">
+                      {isDone ? (
+                        <Link
+                          href={`/submissions/${submission.id}/analysis`}
+                          className="text-[11px] font-medium text-primary transition-colors hover:underline whitespace-nowrap"
+                        >
+                          결과 보기
+                        </Link>
+                      ) : (
+                        <span className="font-mono text-[10px] text-text-3">-</span>
+                      )}
+                    </span>
                   </div>
                 );
               })}

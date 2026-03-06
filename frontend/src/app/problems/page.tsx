@@ -277,9 +277,9 @@ export default function ProblemsPage(): ReactNode {
         {!isLoading && filteredProblems.length > 0 && (
           <>
             <Card className="p-0 overflow-hidden">
-              {/* 헤더 행 */}
+              {/* 헤더 행 (md 이상에서만 표시) */}
               <div
-                className="grid items-center gap-x-2 px-4 py-2.5 border-b border-border font-mono text-[10px] uppercase tracking-wider text-text-3 min-w-[500px]"
+                className="hidden md:grid items-center gap-x-2 px-4 py-2.5 border-b border-border font-mono text-[10px] uppercase tracking-wider text-text-3"
                 style={{ gridTemplateColumns: '64px 1fr 80px 100px 72px' }}
               >
                 <span>주차</span>
@@ -301,16 +301,42 @@ export default function ProblemsPage(): ReactNode {
                     type="button"
                     onClick={() => handleProblemClick(problem.id)}
                     aria-label={`${problem.title} 문제 보기`}
-                    className="grid items-center gap-x-2 w-full px-4 py-3 text-left border-b border-border last:border-b-0 hover:bg-primary-soft transition-colors min-w-[500px]"
+                    className="w-full text-left border-b border-border last:border-b-0 hover:bg-primary-soft transition-colors block md:grid md:items-center md:gap-x-2 px-4 py-3"
                     style={{ gridTemplateColumns: '64px 1fr 80px 100px 72px' }}
                   >
-                    {/* 주차 */}
-                    <span className="font-mono text-[11px] text-text-3 truncate">
+                    {/* 모바일 카드 뷰 */}
+                    <div className="md:hidden space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0 flex items-center gap-2 flex-1">
+                          <p className="text-[13px] font-medium text-text truncate">
+                            {problem.title}
+                          </p>
+                          {isSolved && (
+                            <span className="flex items-center justify-center shrink-0 w-4 h-4 rounded-full bg-success-soft">
+                              <Check className="w-2.5 h-2.5 text-success" />
+                            </span>
+                          )}
+                        </div>
+                        <Badge variant={problem.status === 'ACTIVE' ? 'success' : 'muted'}>
+                          {problem.status === 'ACTIVE' ? '진행 중' : problem.status === 'DRAFT' ? '초안' : '종료'}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-[11px] text-text-3">{problem.weekNumber}</span>
+                        {problem.difficulty && (
+                          <DifficultyBadge difficulty={problem.difficulty as Difficulty} level={problem.level} />
+                        )}
+                        {deadlineDate && (
+                          <TimerBadge deadline={deadlineDate} />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 데스크탑 테이블 행 (md 이상) */}
+                    <span className="hidden md:block font-mono text-[11px] text-text-3 truncate">
                       {problem.weekNumber}
                     </span>
-
-                    {/* 문제 제목 + 풀이 완료 체크 */}
-                    <div className="min-w-0 flex items-center gap-2">
+                    <div className="hidden md:flex min-w-0 items-center gap-2">
                       <p className="text-[13px] font-medium text-text truncate">
                         {problem.title}
                       </p>
@@ -320,16 +346,14 @@ export default function ProblemsPage(): ReactNode {
                         </span>
                       )}
                     </div>
-
-                    {/* 난이도 */}
-                    {problem.difficulty ? (
-                      <DifficultyBadge difficulty={problem.difficulty as Difficulty} level={problem.level} />
-                    ) : (
-                      <span className="font-mono text-[10px] text-text-3">--</span>
-                    )}
-
-                    {/* 마감 */}
-                    <div>
+                    <span className="hidden md:block">
+                      {problem.difficulty ? (
+                        <DifficultyBadge difficulty={problem.difficulty as Difficulty} level={problem.level} />
+                      ) : (
+                        <span className="font-mono text-[10px] text-text-3">--</span>
+                      )}
+                    </span>
+                    <div className="hidden md:block">
                       {deadlineDate && !isExpired && problem.status === 'ACTIVE' ? (
                         <TimerBadge deadline={deadlineDate} />
                       ) : deadlineDate && isExpired ? (
@@ -338,11 +362,11 @@ export default function ProblemsPage(): ReactNode {
                         <span className="font-mono text-[10px] text-text-3">--</span>
                       )}
                     </div>
-
-                    {/* 상태 */}
-                    <Badge variant={problem.status === 'ACTIVE' ? 'success' : 'muted'}>
-                      {problem.status === 'ACTIVE' ? '진행 중' : problem.status === 'DRAFT' ? '초안' : '종료'}
-                    </Badge>
+                    <span className="hidden md:block">
+                      <Badge variant={problem.status === 'ACTIVE' ? 'success' : 'muted'}>
+                        {problem.status === 'ACTIVE' ? '진행 중' : problem.status === 'DRAFT' ? '초안' : '종료'}
+                      </Badge>
+                    </span>
                   </button>
                 );
               })}

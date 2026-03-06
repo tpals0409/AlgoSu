@@ -427,7 +427,7 @@ export default function DashboardPage(): ReactNode {
 
         {/* ── STAT CARDS ── */}
         {currentStudyId && (
-          <div className="grid grid-cols-3 gap-3.5" style={fade(0.08)}>
+          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3" style={fade(0.08)}>
             <StatCard
               icon={FileText}
               label="내 제출 (이번 스터디 전체)"

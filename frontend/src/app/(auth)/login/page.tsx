@@ -186,7 +186,7 @@ function LoginContent(): ReactNode {
                     type="button"
                     disabled={isDisabled}
                     onClick={() => void handleOAuth(provider.id)}
-                    className={`flex h-12 w-full items-center justify-center gap-2.5 rounded-md border text-sm font-medium transition-all disabled:opacity-50 ${provider.className} ${provider.hoverClassName}`}
+                    className={`flex h-12 w-full items-center justify-center gap-2.5 rounded-btn border text-sm font-medium transition-all disabled:opacity-50 ${provider.className} ${provider.hoverClassName}`}
                     style={fade(0.25 + idx * 0.08)}
                   >
                     {isCurrentLoading ? (

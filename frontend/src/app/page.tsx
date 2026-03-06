@@ -135,7 +135,7 @@ export default function LandingPage(): ReactNode {
 
           {/* 카운터 통계 */}
           <div
-            className="mt-12 flex justify-center gap-10"
+            className="mt-12 flex justify-center gap-6 sm:gap-10"
             style={fadeStyle(heroVisible, 0.4)}
           >
             <div className="text-center" ref={counterRef2}>
@@ -233,7 +233,7 @@ export default function LandingPage(): ReactNode {
 
           {/* 오른쪽: 코드 에디터 미리보기 */}
           <div
-            className="overflow-hidden rounded-lg border border-border bg-code-bg shadow"
+            className="overflow-hidden rounded-card border border-border bg-code-bg shadow"
             style={fadeStyle(codeVisible, 0.15)}
           >
             {/* 에디터 헤더 */}
@@ -281,7 +281,7 @@ export default function LandingPage(): ReactNode {
           <h2 className="mb-12 text-[26px] font-bold tracking-tight">
             3단계로 시작하세요
           </h2>
-          <div className="grid grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-6">
             {[
               { step: '01', title: '스터디 생성', desc: '스터디를 만들고 초대 코드로 팀원을 모으세요.' },
               { step: '02', title: '문제 풀이 & 제출', desc: '배정된 문제를 풀고 코드를 제출하세요. GitHub에 자동 동기화.' },
@@ -356,7 +356,7 @@ export default function LandingPage(): ReactNode {
           </p>
           <Link
             href="/login"
-            className="inline-flex h-[52px] items-center rounded-lg px-9 text-base font-semibold text-white shadow-glow gradient-brand transition-all hover:brightness-110"
+            className="inline-flex h-[52px] items-center rounded-btn px-9 text-base font-semibold text-white shadow-glow gradient-brand transition-all hover:brightness-110"
           >
             무료로 시작하기
           </Link>
