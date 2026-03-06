@@ -60,6 +60,10 @@ jest.mock('@/components/layout/NotificationBell', () => ({
   NotificationBell: () => <div data-testid="notification-bell" />,
 }));
 
+jest.mock('@/components/ui/CodeBlock', () => ({
+  CodeBlock: ({ code }: { code: string }) => <pre data-testid="code-block">{code}</pre>,
+}));
+
 jest.mock('@/components/ui/Card', () => ({
   Card: ({ children }: { children: React.ReactNode }) => <div data-testid="card">{children}</div>,
   CardHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,

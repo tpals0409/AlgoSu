@@ -93,6 +93,14 @@ jest.mock('@/lib/avatars', () => ({
   getAvatarSrc: () => '/avatar.png',
 }));
 
+jest.mock('next/link', () => {
+  const MockLink = ({ children, ...props }: { children: React.ReactNode; href: string }) => (
+    <a {...props}>{children}</a>
+  );
+  MockLink.displayName = 'MockLink';
+  return MockLink;
+});
+
 jest.mock('lucide-react', () => {
   const Icon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />;
   return {
@@ -101,6 +109,8 @@ jest.mock('lucide-react', () => {
     CheckCircle2: Icon,
     RefreshCw: Icon,
     Github: Icon,
+    BookOpenCheck: Icon,
+    ChevronRight: Icon,
   };
 });
 
