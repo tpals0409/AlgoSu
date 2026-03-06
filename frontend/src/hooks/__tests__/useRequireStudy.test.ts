@@ -33,6 +33,7 @@ describe('useRequireStudy', () => {
     mockUseStudy.mockReturnValue({
       studies: [{ id: '1', name: 'test', role: 'MEMBER' }],
       studiesLoaded: true,
+      currentStudyId: '1',
     });
 
     const { result } = renderHook(() => useRequireStudy());

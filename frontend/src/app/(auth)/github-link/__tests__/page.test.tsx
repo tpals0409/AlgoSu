@@ -23,7 +23,13 @@ jest.mock('@/components/ui/Alert', () => ({
 }));
 
 jest.mock('@/components/ui/LoadingSpinner', () => ({
+  LoadingSpinner: () => <span data-testid="loading-spinner" />,
   InlineSpinner: () => <span data-testid="inline-spinner" />,
+}));
+
+const mockSearchParams = new URLSearchParams();
+jest.mock('next/navigation', () => ({
+  useSearchParams: () => mockSearchParams,
 }));
 
 const mockLinkGitHub = jest.fn();
