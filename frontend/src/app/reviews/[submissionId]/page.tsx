@@ -309,9 +309,7 @@ export default function CodeReviewPage(): ReactElement {
     );
   }
 
-  // 코드는 analysis의 optimizedCode가 아닌 원본 코드 (향후 submission.code 사용)
-  // 현재는 analysis.optimizedCode를 원본 코드의 fallback으로 사용
-  const codeContent = analysis?.optimizedCode ?? '// 코드를 불러올 수 없습니다.';
+  const codeContent = submission?.code ?? analysis?.optimizedCode ?? '// 코드를 불러올 수 없습니다.';
 
   return (
     <div className="flex min-h-screen flex-col bg-bg">

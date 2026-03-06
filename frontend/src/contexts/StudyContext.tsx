@@ -89,12 +89,22 @@ export function StudyProvider({ children }: StudyProviderProps): ReactNode {
         const data = await studyApi.list();
         if (!cancelled) {
           setStudiesState(data);
-          // 스터디가 있는데 선택된 스터디가 없으면 첫 번째 자동 선택
           setCurrentStudyId((prev) => {
+            // 선택된 스터디가 없으면 첫 번째 자동 선택
             if (!prev && data.length > 0) {
               const autoId = data[0].id;
               setCurrentStudyIdForApi(autoId);
               return autoId;
+            }
+            // 선택된 스터디가 목록에 없으면 첫 번째로 폴백
+            if (prev && !data.find((s) => s.id === prev)) {
+              if (data.length > 0) {
+                const fallbackId = data[0].id;
+                setCurrentStudyIdForApi(fallbackId);
+                return fallbackId;
+              }
+              setCurrentStudyIdForApi(null);
+              return null;
             }
             return prev;
           });

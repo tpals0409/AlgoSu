@@ -17,11 +17,13 @@ export function useRequireStudy(): { isStudyReady: boolean } {
   const router = useRouter();
   const { studies, studiesLoaded, currentStudyId } = useStudy();
 
+  const isValidStudy = currentStudyId !== null && studies.some((s) => s.id === currentStudyId);
+
   useEffect(() => {
-    if (studiesLoaded && studies.length === 0) {
+    if (studiesLoaded && (studies.length === 0 || !isValidStudy)) {
       router.replace('/studies');
     }
-  }, [studiesLoaded, studies, router]);
+  }, [studiesLoaded, studies, isValidStudy, router]);
 
-  return { isStudyReady: studiesLoaded && studies.length > 0 && currentStudyId !== null };
+  return { isStudyReady: studiesLoaded && studies.length > 0 && isValidStudy };
 }
