@@ -370,8 +370,8 @@ export default function AnalysisPage(): ReactNode {
                     )}
 
                     {/* Quick Stats 그리드 */}
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="flex items-center gap-2.5 rounded-lg bg-bg-alt px-3 py-2.5">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                      <div className="flex items-center gap-2.5 rounded-card bg-bg-alt px-3 py-2.5">
                         <div className="flex items-center justify-center w-7 h-7 rounded-md bg-primary-soft text-primary shrink-0">
                           <Clock className="h-3.5 w-3.5" aria-hidden />
                         </div>
@@ -382,7 +382,7 @@ export default function AnalysisPage(): ReactNode {
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2.5 rounded-lg bg-bg-alt px-3 py-2.5">
+                      <div className="flex items-center gap-2.5 rounded-card bg-bg-alt px-3 py-2.5">
                         <div className="flex items-center justify-center w-7 h-7 rounded-md bg-info-soft text-info shrink-0">
                           <Box className="h-3.5 w-3.5" aria-hidden />
                         </div>
@@ -393,7 +393,7 @@ export default function AnalysisPage(): ReactNode {
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2.5 rounded-lg bg-bg-alt px-3 py-2.5">
+                      <div className="flex items-center gap-2.5 rounded-card bg-bg-alt px-3 py-2.5">
                         <div className="flex items-center justify-center w-7 h-7 rounded-md bg-success-soft text-success shrink-0">
                           <Code2 className="h-3.5 w-3.5" aria-hidden />
                         </div>

@@ -589,7 +589,7 @@ function OverviewTab({ study, stats, members }: OverviewTabProps): ReactNode {
       {stats ? (
         <>
           {/* 숫자 카드 */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <StatCard
               label="총 제출"
               value={stats.totalSubmissions}
@@ -733,7 +733,7 @@ function OverviewTab({ study, stats, members }: OverviewTabProps): ReactNode {
         </>
       ) : (
         <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Skeleton height={80} />
             <Skeleton height={80} />
             <Skeleton height={80} />
@@ -816,7 +816,7 @@ function MembersTab({
           <CardContent className="py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-soft text-primary">
+                <div className="flex h-8 w-8 items-center justify-center rounded-btn bg-primary-soft text-primary">
                   <Plus className="h-3.5 w-3.5" aria-hidden />
                 </div>
                 <span className="text-sm font-semibold text-text">

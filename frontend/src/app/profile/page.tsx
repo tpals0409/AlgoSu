@@ -287,7 +287,7 @@ export default function ProfilePage(): ReactNode {
                 <p className="mb-3 text-[12px] font-medium text-text">
                   아바타 선택
                 </p>
-                <div className="grid grid-cols-5 gap-3">
+                <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
                   {AVATAR_PRESETS.map((preset) => {
                     const isSelected =
                       (user?.avatarPreset ?? 'default') === preset.key;
@@ -326,7 +326,7 @@ export default function ProfilePage(): ReactNode {
         </Card>
 
         {/* 개인 통계 */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Card>
             <CardContent className="flex items-center gap-3 py-4">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary-soft">
