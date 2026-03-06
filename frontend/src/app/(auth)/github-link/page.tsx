@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { Suspense, useState, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import type { ReactNode } from 'react';
 import {
   Card,
@@ -12,12 +13,25 @@ import {
 } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
-import { InlineSpinner } from '@/components/ui/LoadingSpinner';
+import { LoadingSpinner, InlineSpinner } from '@/components/ui/LoadingSpinner';
 import { authApi } from '@/lib/api';
 
-export default function GitHubLinkPage(): ReactNode {
+function GitHubLinkContent(): ReactNode {
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const errorParam = searchParams.get('error');
+    if (errorParam) {
+      const decoded = decodeURIComponent(errorParam);
+      const messages: Record<string, string> = {
+        missing_params: 'GitHub 인증 정보가 누락되었습니다. 다시 시도해주세요.',
+        link_failed: 'GitHub 연동에 실패했습니다. 다시 시도해주세요.',
+      };
+      setError(messages[decoded] ?? 'GitHub 연동 중 오류가 발생했습니다. 다시 시도해주세요.');
+    }
+  }, [searchParams]);
 
   const handleLinkGitHub = useCallback(async () => {
     setError(null);
@@ -85,5 +99,13 @@ export default function GitHubLinkPage(): ReactNode {
         </p>
       </CardFooter>
     </Card>
+  );
+}
+
+export default function GitHubLinkPage(): ReactNode {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <GitHubLinkContent />
+    </Suspense>
   );
 }

@@ -3,6 +3,7 @@
 import { Suspense } from 'react';
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { LoadingSpinner, InlineSpinner } from '@/components/ui/LoadingSpinner';
 import { Alert } from '@/components/ui/Alert';
@@ -97,9 +98,9 @@ function CallbackContent(): ReactNode {
           {error}
         </Alert>
         <div className="text-center">
-          <a href="/login" className="text-sm text-primary underline-offset-4 transition-colors hover:text-primary-light hover:underline">
+          <Link href="/login" className="text-sm text-primary underline-offset-4 transition-colors hover:text-primary-light hover:underline">
             로그인 페이지로 돌아가기
-          </a>
+          </Link>
         </div>
       </div>
     );
