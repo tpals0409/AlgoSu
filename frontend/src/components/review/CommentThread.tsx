@@ -29,6 +29,7 @@ import { CommentForm } from '@/components/review/CommentForm';
 interface CommentThreadProps {
   readonly comments: ReviewComment[];
   readonly currentUserId: string;
+  readonly nicknameMap?: Record<string, string>;
   readonly onEdit: (publicId: string, content: string) => void;
   readonly onDelete: (publicId: string) => void;
   readonly onReply: (commentPublicId: string, content: string) => Promise<void>;
@@ -58,6 +59,7 @@ function formatRelativeTime(iso: string): string {
 interface CommentItemProps {
   readonly comment: ReviewComment;
   readonly currentUserId: string;
+  readonly nicknameMap?: Record<string, string>;
   readonly onEdit: (publicId: string, content: string) => void;
   readonly onDelete: (publicId: string) => void;
   readonly onReply: (commentPublicId: string, content: string) => Promise<void>;
@@ -66,10 +68,12 @@ interface CommentItemProps {
 function CommentItem({
   comment,
   currentUserId,
+  nicknameMap = {},
   onEdit,
   onDelete,
   onReply,
 }: CommentItemProps): ReactElement {
+  const authorName = nicknameMap[comment.authorId] ?? comment.authorId.slice(0, 8);
   const [showReplies, setShowReplies] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
@@ -104,14 +108,14 @@ function CommentItem({
               : 'bg-bg-alt text-text-2',
           )}
         >
-          {comment.authorId.slice(0, 2).toUpperCase()}
+          {authorName.slice(0, 2).toUpperCase()}
         </div>
 
         <div className="min-w-0 flex-1">
           {/* 헤더 */}
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] font-medium text-text">
-              {comment.authorId.slice(0, 8)}
+              {authorName}
             </span>
             {isAuthor && (
               <span className="rounded-badge bg-primary-soft px-1.5 py-0.5 text-[9px] font-medium text-primary">
@@ -212,6 +216,7 @@ function CommentItem({
                   key={r.publicId}
                   reply={r}
                   currentUserId={currentUserId}
+                  nicknameMap={nicknameMap}
                 />
               ))}
             </div>
@@ -242,6 +247,7 @@ function CommentItem({
 export function CommentThread({
   comments,
   currentUserId,
+  nicknameMap,
   onEdit,
   onDelete,
   onReply,
@@ -277,6 +283,7 @@ export function CommentThread({
           key={comment.publicId}
           comment={comment}
           currentUserId={currentUserId}
+          nicknameMap={nicknameMap}
           onEdit={onEdit}
           onDelete={onDelete}
           onReply={onReply}

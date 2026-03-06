@@ -31,6 +31,7 @@ import { useRequireStudy } from '@/hooks/useRequireStudy';
 import {
   submissionApi,
   reviewApi,
+  studyApi,
   type Submission,
   type AnalysisResult,
   type ReviewComment,
@@ -185,6 +186,7 @@ export default function CodeReviewPage(): ReactElement {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [nicknameMap, setNicknameMap] = useState<Record<string, string>>({});
   const [selectedLine, setSelectedLine] = useState<number | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [focusMode, setFocusMode] = useState(false);
@@ -218,7 +220,15 @@ export default function CodeReviewPage(): ReactElement {
     } finally {
       setLoading(false);
     }
-  }, [submissionId]);
+    if (currentStudyId) {
+      const members = await studyApi.getMembers(currentStudyId).catch(() => []);
+      const map: Record<string, string> = {};
+      for (const m of members) {
+        if (m.nickname) map[m.user_id] = m.nickname;
+      }
+      setNicknameMap(map);
+    }
+  }, [submissionId, currentStudyId]);
 
   useEffect(() => {
     if (!isAuthenticated || authLoading || !currentStudyId) return;
@@ -334,6 +344,14 @@ export default function CodeReviewPage(): ReactElement {
                   {submission.problemTitle ?? '코드 리뷰'}
                 </span>
                 <LangBadge language={submission.language} />
+                {submission.userId && nicknameMap[submission.userId] && (
+                  <>
+                    <span className="text-[10px] text-text-3 opacity-30">|</span>
+                    <span className="text-xs text-text-2">
+                      {nicknameMap[submission.userId]}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
 
@@ -484,6 +502,7 @@ export default function CodeReviewPage(): ReactElement {
             <CommentThread
               comments={comments}
               currentUserId={currentUserId}
+              nicknameMap={nicknameMap}
               onEdit={handleEditComment}
               onDelete={handleDeleteComment}
               onReply={handleReply}

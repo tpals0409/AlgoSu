@@ -16,6 +16,7 @@ import type { ReviewReply } from '@/lib/api';
 interface ReplyItemProps {
   readonly reply: ReviewReply;
   readonly currentUserId: string;
+  readonly nicknameMap?: Record<string, string>;
 }
 
 // ─── HELPERS ──────────────────────────────
@@ -42,8 +43,9 @@ function formatRelativeTime(iso: string): string {
  * 대댓글 아이템 -- 작성자 + 내용 + 시간
  * @domain review
  */
-export function ReplyItem({ reply, currentUserId }: ReplyItemProps): ReactElement {
+export function ReplyItem({ reply, currentUserId, nicknameMap = {} }: ReplyItemProps): ReactElement {
   const isAuthor = reply.authorId === currentUserId;
+  const authorName = nicknameMap[reply.authorId] ?? reply.authorId.slice(0, 8);
 
   return (
     <div className="flex gap-2 py-2">
@@ -55,12 +57,12 @@ export function ReplyItem({ reply, currentUserId }: ReplyItemProps): ReactElemen
             : 'bg-bg-alt text-text-2',
         )}
       >
-        {reply.authorId.slice(0, 2).toUpperCase()}
+        {authorName.slice(0, 2).toUpperCase()}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <span className="text-[11px] font-medium text-text">
-            {reply.authorId.slice(0, 8)}
+            {authorName}
           </span>
           {isAuthor && (
             <span className="rounded-badge bg-primary-soft px-1.5 py-0.5 text-[9px] font-medium text-primary">

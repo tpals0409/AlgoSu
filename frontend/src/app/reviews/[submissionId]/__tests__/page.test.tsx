@@ -87,6 +87,7 @@ jest.mock('@/lib/avatars', () => ({
 const mockFindById = jest.fn();
 const mockGetAnalysis = jest.fn();
 const mockListComments = jest.fn();
+const mockGetMembers = jest.fn().mockResolvedValue([]);
 
 jest.mock('@/lib/api', () => ({
   submissionApi: {
@@ -99,6 +100,9 @@ jest.mock('@/lib/api', () => ({
     updateComment: jest.fn().mockResolvedValue({}),
     deleteComment: jest.fn().mockResolvedValue({}),
     createReply: jest.fn().mockResolvedValue({}),
+  },
+  studyApi: {
+    getMembers: (...args: unknown[]) => mockGetMembers(...args),
   },
 }));
 

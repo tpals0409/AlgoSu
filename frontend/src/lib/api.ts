@@ -66,6 +66,7 @@ export interface UpdateProblemData {
 
 export interface Submission {
   id: string;
+  userId?: string;
   problemId: string;
   problemTitle?: string;
   language: string;
