@@ -91,12 +91,10 @@ describe('SubmissionInternalController', () => {
       expect(result).toEqual({ data: mockList });
     });
 
-    it('studyId가 없으면 400 에러를 반환한다', async () => {
-      const result = await controller.findByProblemForStudy('prob-1', undefined as any);
-
-      expect(result).toEqual(
-        expect.objectContaining({ statusCode: 400 }),
-      );
+    it('studyId가 없으면 BadRequestException을 throw한다', async () => {
+      await expect(
+        controller.findByProblemForStudy('prob-1', undefined as any),
+      ).rejects.toThrow('studyId 쿼리 파라미터가 필요합니다.');
     });
   });
 
