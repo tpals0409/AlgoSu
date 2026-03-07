@@ -27,9 +27,10 @@ import { useStudy } from '@/contexts/StudyContext';
 import {
   problemApi,
   submissionApi,
+  studyApi,
+  ApiError,
   type Problem,
   type Submission,
-  type PaginatedResponse,
 } from '@/lib/api';
 import { DiffBadge } from '@/components/ui/DiffBadge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -95,6 +96,8 @@ export default function StudyRoomPage(): ReactElement {
   const [loadingProblems, setLoadingProblems] = useState(true);
   const [loadingSubmissions, setLoadingSubmissions] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notSubmitted, setNotSubmitted] = useState(false);
+  const [nicknameMap, setNicknameMap] = useState<Record<string, string>>({});
 
   const studyId = params.id;
 
@@ -125,21 +128,36 @@ export default function StudyRoomPage(): ReactElement {
         if (!cancelled) setLoadingProblems(false);
       });
 
+    if (currentStudyId) {
+      studyApi.getMembers(currentStudyId).then((members) => {
+        if (cancelled) return;
+        const map: Record<string, string> = {};
+        for (const m of members) {
+          if (m.nickname) map[m.user_id] = m.nickname;
+          else if (m.username) map[m.user_id] = m.username;
+        }
+        setNicknameMap(map);
+      }).catch(() => {});
+    }
+
     return () => { cancelled = true; };
   }, [isAuthenticated, authLoading, currentStudyId]);
 
   /** 선택된 문제의 제출 목록 로드 */
   const loadSubmissions = useCallback(async (problem: Problem): Promise<void> => {
     setLoadingSubmissions(true);
+    setNotSubmitted(false);
     try {
-      const result: PaginatedResponse<Submission> = await submissionApi.list({
-        limit: 50,
-      });
-      // 해당 문제의 제출만 필터
-      const filtered = result.data.filter((s) => s.problemId === problem.id);
-      setSubmissions(filtered);
-    } catch {
-      setSubmissions([]);
+      const data = await submissionApi.listByProblemForStudy(problem.id);
+      setSubmissions(data);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 403) {
+        setNotSubmitted(true);
+        setSubmissions([]);
+      } else {
+        setError('제출 목록을 불러오지 못했습니다.');
+        setSubmissions([]);
+      }
     } finally {
       setLoadingSubmissions(false);
     }
@@ -155,6 +173,7 @@ export default function StudyRoomPage(): ReactElement {
   const handleBack = (): void => {
     setSelectedProblem(null);
     setSubmissions([]);
+    setNotSubmitted(false);
   };
 
   const handleGoToReview = (submissionId: string): void => {
@@ -177,7 +196,13 @@ export default function StudyRoomPage(): ReactElement {
 
   if (!isAuthenticated) {
     router.push('/login');
-    return <></>;
+    return (
+      <AppLayout>
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <Skeleton height={32} width="40%" />
+        </div>
+      </AppLayout>
+    );
   }
 
   return (
@@ -236,6 +261,14 @@ export default function StudyRoomPage(): ReactElement {
                   <Skeleton height={48} />
                   <Skeleton height={48} />
                 </div>
+              ) : notSubmitted ? (
+                <div className="py-10 text-center">
+                  <Code2 className="mx-auto mb-2 h-6 w-6 text-primary opacity-60" />
+                  <p className="text-sm font-medium text-text">문제를 먼저 제출해주세요</p>
+                  <p className="mt-1 text-xs text-text-3">
+                    제출 후 다른 스터디원의 풀이를 볼 수 있습니다
+                  </p>
+                </div>
               ) : submissions.length === 0 ? (
                 <div className="py-10 text-center">
                   <Code2 className="mx-auto mb-2 h-6 w-6 text-text-3 opacity-40" />
@@ -260,11 +293,11 @@ export default function StudyRoomPage(): ReactElement {
                     >
                       <div className="flex items-center gap-3">
                         <div className="flex h-8 w-8 items-center justify-center rounded-badge bg-bg-alt text-[10px] font-semibold text-text-2">
-                          {(sub.problemTitle ?? sub.id).slice(0, 2).toUpperCase()}
+                          {(sub.userId && nicknameMap[sub.userId]) ? nicknameMap[sub.userId].slice(0, 2) : '?'}
                         </div>
                         <div>
                           <div className="text-[13px] font-medium text-text">
-                            {sub.problemTitle ?? `제출 ${sub.id.slice(0, 8)}`}
+                            {(sub.userId && nicknameMap[sub.userId]) ? nicknameMap[sub.userId] : '익명'}
                           </div>
                           <div className="mt-0.5 flex items-center gap-1 text-[11px] text-text-3">
                             <LangBadge language={sub.language} />
@@ -374,9 +407,7 @@ export default function StudyRoomPage(): ReactElement {
                             {timeLeft}
                           </span>
                         )}
-                        {isClosed && (
-                          <ChevronRight className="h-3.5 w-3.5 text-text-3" />
-                        )}
+                        <ChevronRight className="h-3.5 w-3.5 text-text-3" />
                       </div>
                     </div>
                   );

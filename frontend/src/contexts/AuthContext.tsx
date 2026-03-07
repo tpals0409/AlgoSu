@@ -30,6 +30,7 @@ import { getAvatarPresetKey } from '@/lib/avatars';
 // ── TYPES ────────────────────────────────
 
 interface AuthUser {
+  id: string;
   email: string;
   avatarPreset: string;
 }
@@ -72,6 +73,7 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
       try {
         const profile = await authApi.getProfile();
         setUser({
+          id: profile.id,
           email: profile.email,
           avatarPreset: getAvatarPresetKey(profile.avatar_url),
         });
@@ -92,13 +94,14 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
     setSessionExpired(false);
     authApi.getProfile().then((profile) => {
       setUser({
+        id: profile.id,
         email: profile.email,
         avatarPreset: getAvatarPresetKey(profile.avatar_url),
       });
       setGithubConnected(getGitHubConnected());
     }).catch(() => {
       // 프로필 로드 실패 — 일단 기본 상태로 진행 (쿠키가 있으니 페이지 이동 후 재시도)
-      setUser({ email: '', avatarPreset: 'default' });
+      setUser({ id: '', email: '', avatarPreset: 'default' });
     });
   }, []);
 

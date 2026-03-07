@@ -97,12 +97,15 @@ export class ProblemService {
   async getDeadline(
     studyId: string,
     problemId: string,
-  ): Promise<{ deadline: string | null; status: string }> {
-    // 캐시 우선
+  ): Promise<{ deadline: string | null; weekNumber: string | null; status: string }> {
+    // 캐시 우선 — weekNumber는 캐시에 없으므로 DB fallback 필요
     const cached = await this.deadlineCache.getDeadline(studyId, problemId);
     if (cached !== null) {
+      // weekNumber 조회를 위해 DB에서 problem을 가져옴
+      const problem = await this.findById(studyId, problemId);
       return {
         deadline: cached === 'null' ? null : cached,
+        weekNumber: problem.weekNumber ?? null,
         status: 'cache_hit',
       };
     }
@@ -113,6 +116,7 @@ export class ProblemService {
 
     return {
       deadline: problem.deadline ? problem.deadline.toISOString() : null,
+      weekNumber: problem.weekNumber ?? null,
       status: 'db_hit',
     };
   }

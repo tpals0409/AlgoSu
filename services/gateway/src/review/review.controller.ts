@@ -197,6 +197,7 @@ export class ReviewProxyController {
 
       return data;
     } catch (error: unknown) {
+      if (error instanceof HttpException) throw error;
       this.logger.error(`Submission Service 프록시 실패: path=${path}, ${(error as Error).message}`);
       throw new InternalServerErrorException('코드리뷰 서비스 요청에 실패했습니다.');
     }

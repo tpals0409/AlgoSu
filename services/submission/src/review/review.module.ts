@@ -10,9 +10,10 @@ import { ReviewComment } from './review-comment.entity';
 import { ReviewReply } from './review-reply.entity';
 import { ReviewController } from './review.controller';
 import { ReviewService } from './review.service';
+import { Submission } from '../submission/submission.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ReviewComment, ReviewReply])],
+  imports: [TypeOrmModule.forFeature([ReviewComment, ReviewReply, Submission])],
   controllers: [ReviewController],
   providers: [ReviewService],
   exports: [ReviewService],

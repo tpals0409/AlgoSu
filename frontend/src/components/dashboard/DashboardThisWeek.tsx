@@ -10,6 +10,7 @@
 import { type ReactNode, useMemo } from 'react';
 import Link from 'next/link';
 import { BookOpen, CheckCircle2 } from 'lucide-react';
+import { useStudy } from '@/contexts/StudyContext';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
@@ -35,6 +36,7 @@ export default function DashboardThisWeek({
   isLoading,
   fadeStyle,
 }: DashboardThisWeekProps): ReactNode {
+  const { currentStudyId } = useStudy();
   const weekLabel = useMemo(() => getCurrentWeekLabel(), []);
 
   const problemItems = useMemo(
@@ -99,9 +101,15 @@ export default function DashboardThisWeek({
           ))}
         </div>
       ) : currentWeekProblems.length === 0 ? (
-        <p className="py-8 text-center text-sm text-text-3">
-          이번주 등록된 문제가 없습니다
-        </p>
+        <div className="py-8 text-center">
+          <p className="text-sm text-text-3">이번주 등록된 문제가 없습니다</p>
+          <Link
+            href={currentStudyId ? `/studies/${currentStudyId}/room` : '/study-room'}
+            className="mt-3 inline-flex items-center gap-1 rounded-btn bg-primary px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-primary-hover"
+          >
+            지난 문제 보기
+          </Link>
+        </div>
       ) : (
         <div>{problemItems}</div>
       )}

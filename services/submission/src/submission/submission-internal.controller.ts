@@ -16,6 +16,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  BadRequestException,
 } from '@nestjs/common';
 import { SubmissionService } from './submission.service';
 import { SagaOrchestratorService } from '../saga/saga-orchestrator.service';
@@ -90,7 +91,7 @@ export class SubmissionInternalController {
     @Query('studyId') studyId: string,
   ) {
     if (!studyId) {
-      return { statusCode: 400, message: 'studyId 쿼리 파라미터가 필요합니다.' };
+      throw new BadRequestException('studyId 쿼리 파라미터가 필요합니다.');
     }
     const submissions = await this.submissionService.findByProblemForStudy(studyId, problemId);
     return { data: submissions };

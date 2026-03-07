@@ -193,7 +193,7 @@ export default function CodeReviewPage(): ReactElement {
   const [mobileTab, setMobileTab] = useState<'code' | 'review'>('code');
 
   const submissionId = params.submissionId;
-  const currentUserId = user?.email ?? '';
+  const currentUserId = user?.id ?? '';
   const categories = parseFeedback(analysis?.feedback ?? null);
   const highlights = categoriesToHighlights(categories, selectedCategory);
   const commentLines = [...new Set(comments.filter((c) => c.lineNumber).map((c) => c.lineNumber as number))];
@@ -302,7 +302,7 @@ export default function CodeReviewPage(): ReactElement {
       <div className="flex min-h-screen flex-col bg-bg">
         <NavPlaceholder />
         <div className="flex flex-1 items-center justify-center">
-          <div className="text-center">
+          <div className="text-center" aria-live="polite">
             <AlertCircle className="mx-auto mb-3 h-8 w-8 text-error opacity-60" aria-hidden />
             <p className="text-sm text-text-2">{error ?? '제출물을 찾을 수 없습니다.'}</p>
             <Button
@@ -330,12 +330,12 @@ export default function CodeReviewPage(): ReactElement {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => router.back()}
+                onClick={() => router.push('/submissions')}
                 className="flex items-center gap-1 text-xs text-text-3 transition-colors hover:text-text"
-                aria-label="뒤로가기"
+                aria-label="제출 목록으로 이동"
               >
                 <ChevronRight className="h-3.5 w-3.5 rotate-180" aria-hidden />
-                돌아가기
+                제출 목록
               </button>
               <span className="text-[10px] text-text-3 opacity-30">|</span>
               <div className="flex items-center gap-2">
@@ -374,7 +374,7 @@ export default function CodeReviewPage(): ReactElement {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.push('/submissions')}
               className="flex items-center gap-1 text-xs text-text-3 hover:text-text transition-colors"
             >
               <ChevronLeft className="h-3.5 w-3.5" aria-hidden />

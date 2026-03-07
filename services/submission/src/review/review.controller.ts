@@ -106,8 +106,9 @@ export class ReviewController {
   async createReply(
     @Body() dto: CreateReplyDto,
     @Headers('x-user-id') userId: string,
+    @Headers('x-study-id') studyId: string,
   ) {
-    const reply = await this.reviewService.createReply(dto, userId);
+    const reply = await this.reviewService.createReply(dto, userId, studyId);
     return { data: reply };
   }
 

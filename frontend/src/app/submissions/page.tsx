@@ -325,8 +325,15 @@ export default function SubmissionsPage(): ReactNode {
                 return (
                   <div
                     key={submission.id}
-                    className="w-full px-4 py-3 border-b border-border last:border-b-0 hover:bg-primary-soft transition-colors block md:grid md:items-center md:gap-x-2"
+                    className="w-full px-4 py-3 border-b border-border last:border-b-0 cursor-pointer hover:bg-primary-soft transition-colors block md:grid md:items-center md:gap-x-2"
                     style={{ gridTemplateColumns: '64px 1fr 80px 72px 100px 80px 72px' }}
+                    onClick={() => {
+                      if (submission.sagaStep === 'DONE') {
+                        router.push(`/submissions/${submission.id}/analysis`);
+                      } else {
+                        router.push(`/submissions/${submission.id}/status`);
+                      }
+                    }}
                   >
                     {/* 모바일 카드 뷰 */}
                     <div className="md:hidden space-y-2">
@@ -350,6 +357,7 @@ export default function SubmissionsPage(): ReactNode {
                           <Link
                             href={`/submissions/${submission.id}/analysis`}
                             className="text-[11px] font-medium text-primary hover:underline"
+                            onClick={(e) => e.stopPropagation()}
                           >
                             결과 보기
                           </Link>
@@ -392,6 +400,7 @@ export default function SubmissionsPage(): ReactNode {
                         <Link
                           href={`/submissions/${submission.id}/analysis`}
                           className="text-[11px] font-medium text-primary transition-colors hover:underline whitespace-nowrap"
+                          onClick={(e) => e.stopPropagation()}
                         >
                           결과 보기
                         </Link>

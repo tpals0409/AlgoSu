@@ -33,6 +33,7 @@ export function StudyNoteEditor({ problemId }: StudyNoteEditorProps): ReactEleme
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // 노트 로드
   useEffect(() => {
@@ -54,6 +55,7 @@ export function StudyNoteEditor({ problemId }: StudyNoteEditorProps): ReactEleme
 
   const handleSave = async (): Promise<void> => {
     setSaving(true);
+    setSaveError(null);
     try {
       const saved = await studyNoteApi.upsert({
         problemId,
@@ -61,6 +63,8 @@ export function StudyNoteEditor({ problemId }: StudyNoteEditorProps): ReactEleme
       });
       setNote(saved);
       setEditing(false);
+    } catch {
+      setSaveError('저장에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setSaving(false);
     }
@@ -99,12 +103,16 @@ export function StudyNoteEditor({ problemId }: StudyNoteEditorProps): ReactEleme
               placeholder="스터디 노트를 작성해주세요..."
               aria-label="스터디 노트 편집"
             />
+            {saveError && (
+              <p className="mt-2 text-xs text-error">{saveError}</p>
+            )}
             <div className="mt-3 flex justify-end gap-2">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => {
                   setEditing(false);
+                  setSaveError(null);
                   setContent(note?.content ?? '');
                 }}
               >

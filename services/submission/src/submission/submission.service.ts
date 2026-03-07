@@ -64,7 +64,7 @@ export class SubmissionService {
     }
 
     // A3: 지각 제출 체크 — 마감 시간 초과 시 isLate=true (제출은 허용)
-    const isLate = await this.checkLateSubmission(studyId, dto.problemId);
+    const { isLate, weekNumber } = await this.checkLateSubmission(studyId, dto.problemId);
 
     // DB 저장 (Step 1)
     const submission = this.submissionRepo.create({
@@ -76,6 +76,7 @@ export class SubmissionService {
       sagaStep: SagaStep.DB_SAVED,
       idempotencyKey: dto.idempotencyKey ?? null,
       isLate,
+      weekNumber,
     });
 
     const saved = await this.submissionRepo.save(submission);
@@ -342,13 +343,17 @@ export class SubmissionService {
   }
 
   /**
-   * A3: 마감 시간 체크 — Problem Service 내부 API 호출
-   * deadline이 지났으면 true, 아직이면 false
-   * 조회 실패 시 안전하게 false 반환 (제출 차단하지 않음)
+   * A3: 마감 시간 체크 + weekNumber 조회 — Problem Service 내부 API 호출
+   * deadline이 지났으면 isLate=true, 아직이면 false
+   * weekNumber: Problem에 설정된 주차 정보
+   * 조회 실패 시 안전하게 { isLate: false, weekNumber: null } 반환 (제출 차단하지 않음)
    * @domain submission
    * @guard problem-deadline
    */
-  private async checkLateSubmission(studyId: string, problemId: string): Promise<boolean> {
+  private async checkLateSubmission(
+    studyId: string,
+    problemId: string,
+  ): Promise<{ isLate: boolean; weekNumber: string | null }> {
     try {
       const problemServiceUrl = this.configService.getOrThrow<string>('PROBLEM_SERVICE_URL');
       const internalKey = this.configService.getOrThrow<string>('INTERNAL_KEY_GATEWAY');
@@ -367,20 +372,25 @@ export class SubmissionService {
 
       if (!response.ok) {
         this.logger.warn(`마감 시간 조회 실패: problemId=${problemId}, status=${response.status}`);
-        return false;
+        return { isLate: false, weekNumber: null };
       }
 
-      const result = (await response.json()) as { data: { deadline: string | null; status: string } };
-      const deadline = result.data.deadline;
+      const result = (await response.json()) as {
+        data: { deadline: string | null; weekNumber: string | null; status: string };
+      };
+      const { deadline, weekNumber } = result.data;
 
       if (!deadline) {
-        return false; // 마감 시간 미설정 -> 지각 아님
+        return { isLate: false, weekNumber: weekNumber ?? null };
       }
 
-      return new Date(deadline) < new Date();
+      return {
+        isLate: new Date(deadline) < new Date(),
+        weekNumber: weekNumber ?? null,
+      };
     } catch (error: unknown) {
       this.logger.warn(`마감 시간 조회 에러: problemId=${problemId}, ${(error as Error).message}`);
-      return false; // 조회 실패 시 안전하게 false
+      return { isLate: false, weekNumber: null };
     }
   }
 

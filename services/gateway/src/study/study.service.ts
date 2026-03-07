@@ -438,6 +438,7 @@ export class StudyService {
     const mapMemberInfo = (m: { userId: string; count: number; doneCount: number }) => ({
       userId: m.userId,
       isMember: memberMap.has(m.userId),
+      nickname: memberMap.get(m.userId)?.nickname ?? null,
       count: m.count,
       doneCount: m.doneCount,
     });
@@ -450,9 +451,13 @@ export class StudyService {
       byMemberWeek: data.byMemberWeek?.map((m) => ({
         userId: m.userId,
         isMember: memberMap.has(m.userId),
+        nickname: memberMap.get(m.userId)?.nickname ?? null,
         count: m.count,
       })) ?? null,
-      recentSubmissions: data.recentSubmissions,
+      recentSubmissions: (data.recentSubmissions as { userId: string; [key: string]: unknown }[]).map((s) => ({
+        ...s,
+        nickname: memberMap.get(s.userId)?.nickname ?? null,
+      })),
       solvedProblemIds: data.solvedProblemIds ?? [],
     };
   }
@@ -727,6 +732,11 @@ export class StudyService {
    * @domain study
    */
   private async invalidateMembershipCache(studyId: string, userId: string): Promise<void> {
-    await this.redis.del(`study:membership:${studyId}:${userId}`);
+    // gateway, problem, submission 서비스 모두 같은 Redis 인스턴스 사용
+    await Promise.all([
+      this.redis.del(`study:membership:${studyId}:${userId}`),
+      this.redis.del(`problem:membership:${studyId}:${userId}`),
+      this.redis.del(`submission:membership:${studyId}:${userId}`),
+    ]);
   }
 }

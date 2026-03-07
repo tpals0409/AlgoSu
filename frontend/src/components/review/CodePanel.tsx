@@ -111,7 +111,7 @@ export function CodePanel({
               data-line={lineNum}
               onClick={() => onLineClick?.(lineNum)}
               role="button"
-              tabIndex={0}
+              tabIndex={-1}
               aria-label={`Line ${lineNum}`}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {

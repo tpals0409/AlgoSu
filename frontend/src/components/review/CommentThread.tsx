@@ -183,7 +183,11 @@ function CommentItem({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onDelete(comment.publicId)}
+                  onClick={() => {
+                    if (window.confirm('댓글을 삭제하시겠습니까?')) {
+                      onDelete(comment.publicId);
+                    }
+                  }}
                   className="flex items-center gap-0.5 text-[10px] text-text-3 transition-colors hover:text-error"
                   aria-label="댓글 삭제"
                 >

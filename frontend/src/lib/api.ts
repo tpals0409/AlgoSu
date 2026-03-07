@@ -260,7 +260,7 @@ export const authApi = {
     fetchApi('/auth/refresh', { method: 'POST' }),
 
   /** 프로필 조회 */
-  getProfile: (): Promise<{ email: string; name: string | null; avatar_url: string | null; oauth_provider: string | null; github_connected: boolean; github_username: string | null; created_at: string }> =>
+  getProfile: (): Promise<{ id: string; email: string; name: string | null; avatar_url: string | null; oauth_provider: string | null; github_connected: boolean; github_username: string | null; created_at: string }> =>
     fetchApi('/auth/profile'),
 
   /** 프로필 수정 (아바타) */
@@ -397,6 +397,9 @@ export const submissionApi = {
     const qs = query.toString();
     return fetchApi(`/api/submissions${qs ? `?${qs}` : ''}`);
   },
+
+  listByProblemForStudy: (problemId: string): Promise<Submission[]> =>
+    fetchApi<Submission[]>(`/api/submissions/study-submissions/${problemId}`),
 
   getAnalysis: (submissionId: string): Promise<AnalysisResult> =>
     fetchApi(`/api/submissions/${submissionId}/analysis`),

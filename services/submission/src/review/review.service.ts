@@ -13,6 +13,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ReviewComment } from './review-comment.entity';
 import { ReviewReply } from './review-reply.entity';
+import { Submission } from '../submission/submission.entity';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 import { CreateReplyDto } from './dto/create-reply.dto';
@@ -28,6 +29,8 @@ export class ReviewService {
     private readonly commentRepo: Repository<ReviewComment>,
     @InjectRepository(ReviewReply)
     private readonly replyRepo: Repository<ReviewReply>,
+    @InjectRepository(Submission)
+    private readonly submissionRepo: Repository<Submission>,
   ) {
     this.logger = new StructuredLoggerService();
     this.logger.setContext(ReviewService.name);
@@ -45,6 +48,18 @@ export class ReviewService {
     userId: string,
     studyId: string,
   ): Promise<ReviewComment> {
+    const submission = await this.submissionRepo.findOne({
+      where: { id: dto.submissionId },
+    });
+    if (!submission) {
+      throw new NotFoundException('제출을 찾을 수 없습니다.');
+    }
+    if (submission.studyId !== studyId) {
+      throw new ForbiddenException(
+        '해당 스터디의 제출이 아닙니다.',
+      );
+    }
+
     const comment = new ReviewComment();
     comment.submissionId = dto.submissionId;
     comment.authorId = userId;
@@ -126,12 +141,25 @@ export class ReviewService {
   async createReply(
     dto: CreateReplyDto,
     userId: string,
+    studyId: string,
   ): Promise<ReviewReply> {
     const comment = await this.commentRepo.findOne({
       where: { publicId: dto.commentPublicId },
     });
     if (!comment) {
       throw new NotFoundException('원본 댓글을 찾을 수 없습니다.');
+    }
+
+    const submission = await this.submissionRepo.findOne({
+      where: { id: comment.submissionId },
+    });
+    if (!submission) {
+      throw new NotFoundException('제출을 찾을 수 없습니다.');
+    }
+    if (submission.studyId !== studyId) {
+      throw new ForbiddenException(
+        '해당 스터디의 제출이 아닙니다.',
+      );
     }
 
     const reply = new ReviewReply();

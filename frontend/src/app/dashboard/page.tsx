@@ -459,7 +459,7 @@ export default function DashboardPage(): ReactNode {
 
         {/* ── STUDY ROOM CARD ── */}
         {currentStudyId && (
-          <Link href="/study-room">
+          <Link href={currentStudyId ? `/studies/${currentStudyId}/room` : '/study-room'}>
             <Card className="group cursor-pointer border-primary/20 bg-primary-soft transition-all hover:border-primary/40 hover:shadow-md" style={fade(0.12)}>
               <div className="flex items-center justify-between px-4 py-3">
                 <div className="flex items-center gap-3">

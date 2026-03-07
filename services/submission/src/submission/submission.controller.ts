@@ -76,6 +76,32 @@ export class SubmissionController {
   }
 
   /**
+   * GET /study-submissions/:problemId — 스터디 전체 제출 목록 (본인 제출 후 열람 가능)
+   *
+   * 본인이 해당 문제에 제출한 경우에만 스터디 전체 제출 목록 반환.
+   * SUBMISSION_LIST_FIELDS만 반환 (code 제외).
+   */
+  @Get('study-submissions/:problemId')
+  async findByProblemForStudy(
+    @Param('problemId', ParseUUIDPipe) problemId: string,
+    @Headers('x-user-id') userId: string,
+    @Headers('x-study-id') studyId: string,
+  ) {
+    // 본인 제출 여부 확인
+    const mySubmissions = await this.submissionService.findByProblem(studyId, userId, problemId);
+
+    if (!mySubmissions || mySubmissions.length === 0) {
+      throw new ForbiddenException(
+        '이 문제에 제출한 후 다른 스터디원의 풀이를 볼 수 있습니다.',
+      );
+    }
+
+    // 스터디 전체 제출 반환 (SUBMISSION_LIST_FIELDS — code 제외)
+    const submissions = await this.submissionService.findByProblemForStudy(studyId, problemId);
+    return { data: submissions };
+  }
+
+  /**
    * GET /:id — 제출 단건 조회
    */
   @Get(':id')
@@ -86,9 +112,24 @@ export class SubmissionController {
   ) {
     const submission = await this.submissionService.findById(id);
 
-    // IDOR 방지: 본인 데이터 + 동일 스터디만 접근
-    if (submission.userId !== userId || submission.studyId !== studyId) {
+    // IDOR 방지: 동일 스터디 필수
+    if (submission.studyId !== studyId) {
       throw new ForbiddenException('다른 사용자의 제출에 접근할 수 없습니다.');
+    }
+
+    // 본인이 아닌 경우: 해당 문제에 요청자의 제출이 있어야 열람 가능
+    if (submission.userId !== userId) {
+      const mySubmissions = await this.submissionService.findByProblem(
+        studyId,
+        userId,
+        submission.problemId,
+      );
+
+      if (!mySubmissions || mySubmissions.length === 0) {
+        throw new ForbiddenException(
+          '이 문제에 제출한 후 다른 스터디원의 풀이를 볼 수 있습니다.',
+        );
+      }
     }
 
     return { data: submission };
@@ -106,8 +147,24 @@ export class SubmissionController {
   ) {
     const submission = await this.submissionService.findById(id);
 
-    if (submission.userId !== userId || submission.studyId !== studyId) {
+    // IDOR 방지: 동일 스터디 필수
+    if (submission.studyId !== studyId) {
       throw new ForbiddenException('다른 사용자의 분석 결과에 접근할 수 없습니다.');
+    }
+
+    // 본인이 아닌 경우: 해당 문제에 요청자의 제출이 있어야 열람 가능
+    if (submission.userId !== userId) {
+      const mySubmissions = await this.submissionService.findByProblem(
+        studyId,
+        userId,
+        submission.problemId,
+      );
+
+      if (!mySubmissions || mySubmissions.length === 0) {
+        throw new ForbiddenException(
+          '이 문제에 제출한 후 다른 스터디원의 풀이를 볼 수 있습니다.',
+        );
+      }
     }
 
     return {
