@@ -37,6 +37,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { LangBadge } from '@/components/ui/LangBadge';
 import { Skeleton, SkeletonCard } from '@/components/ui/Skeleton';
 import { StudyNoteEditor } from '@/components/review/StudyNoteEditor';
+import { getAvatarPresetKey, getAvatarSrc } from '@/lib/avatars';
 
 // ─── TYPES ────────────────────────────────
 
@@ -300,25 +301,13 @@ export default function StudyRoomPage(): ReactElement {
                       )}
                     >
                       <div className="flex items-center gap-3">
-                        {sub.userId && avatarMap[sub.userId] ? (
-                          <img
-                            src={avatarMap[sub.userId]!}
-                            alt=""
-                            className="h-8 w-8 rounded-full object-cover"
-                            onError={(e) => {
-                              const target = e.currentTarget;
-                              target.style.display = 'none';
-                              const fallback = target.nextElementSibling as HTMLElement | null;
-                              if (fallback) fallback.style.display = 'flex';
-                            }}
-                          />
-                        ) : null}
-                        <div
-                          className="flex h-8 w-8 items-center justify-center rounded-full bg-bg-alt text-[10px] font-semibold text-text-2"
-                          style={{ display: sub.userId && avatarMap[sub.userId] ? 'none' : 'flex' }}
-                        >
-                          {(sub.userId && nicknameMap[sub.userId]) ? nicknameMap[sub.userId].slice(0, 2) : '?'}
-                        </div>
+                        <img
+                          src={sub.userId && avatarMap[sub.userId]
+                            ? getAvatarSrc(getAvatarPresetKey(avatarMap[sub.userId]))
+                            : getAvatarSrc('default')}
+                          alt=""
+                          className="h-8 w-8 rounded-full object-cover"
+                        />
                         <div>
                           <div className="text-[13px] font-medium text-text">
                             {(sub.userId && nicknameMap[sub.userId]) ? nicknameMap[sub.userId] : '익명'}
