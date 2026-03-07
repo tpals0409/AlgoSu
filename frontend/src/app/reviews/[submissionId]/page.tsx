@@ -103,14 +103,58 @@ interface FeedbackCategory {
 
 // ─── HELPERS ──────────────────────────────
 
+/** score → color 변환 */
+function scoreToColor(score: number): 'success' | 'warning' | 'error' {
+  if (score >= 80) return 'success';
+  if (score >= 60) return 'warning';
+  return 'error';
+}
+
+/** score → grade 변환 */
+function scoreToGrade(score: number): string {
+  if (score >= 90) return 'A';
+  if (score >= 80) return 'B';
+  if (score >= 70) return 'C';
+  if (score >= 60) return 'D';
+  return 'F';
+}
+
 /** feedback JSON 파싱 -> 카테고리 + 하이라이트 추출 */
 function parseFeedback(feedbackStr: string | null): FeedbackCategory[] {
   if (!feedbackStr) return [];
   try {
     const parsed = JSON.parse(feedbackStr) as {
-      categories?: FeedbackCategory[];
+      categories?: Array<{
+        name?: string;
+        category?: string;
+        score: number;
+        grade?: string;
+        color?: string;
+        comment: string;
+        lines?: number[];
+        highlights?: Array<{ startLine: number; endLine: number }>;
+      }>;
     };
-    return parsed.categories ?? [];
+    if (!parsed.categories) return [];
+    return parsed.categories.map((cat) => {
+      const lines = cat.lines ?? (cat.highlights
+        ? cat.highlights.flatMap((h) => {
+            const result: number[] = [];
+            for (let l = h.startLine; l <= h.endLine; l++) result.push(l);
+            return result;
+          })
+        : []);
+      return {
+        category: cat.category ?? cat.name ?? '',
+        score: cat.score,
+        grade: cat.grade ?? scoreToGrade(cat.score),
+        color: (cat.color === 'success' || cat.color === 'warning' || cat.color === 'error')
+          ? cat.color
+          : scoreToColor(cat.score),
+        comment: cat.comment,
+        lines,
+      };
+    });
   } catch {
     return [];
   }

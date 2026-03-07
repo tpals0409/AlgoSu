@@ -8,12 +8,15 @@ interface ErrorPageProps {
   readonly reset: () => void;
 }
 
-export default function ReviewDetailErrorPage({ reset }: ErrorPageProps): ReactNode {
+export default function ReviewDetailErrorPage({ error, reset }: ErrorPageProps): ReactNode {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-bg px-4">
       <h1 className="text-4xl font-bold text-text">리뷰 오류</h1>
       <p className="mt-4 text-sm text-text-3">
         코드 리뷰를 불러올 수 없습니다.
+      </p>
+      <p className="mt-2 max-w-md break-all rounded bg-bg-alt px-3 py-2 font-mono text-xs text-error">
+        {error.message}
       </p>
       <div className="mt-6 flex gap-3">
         <button
