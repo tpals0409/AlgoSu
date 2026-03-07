@@ -269,17 +269,16 @@ describe('ProblemService', () => {
     it('캐시 히트: cache_hit 상태 반환', async () => {
       const cachedDeadline = '2026-03-07T23:59:59.000Z';
       deadlineCache.getDeadline.mockResolvedValue(cachedDeadline);
+      dualWrite.findOne.mockResolvedValue(mockProblem);
 
       const result = await service.getDeadline(STUDY_ID, PROBLEM_ID);
 
       expect(deadlineCache.getDeadline).toHaveBeenCalledWith(STUDY_ID, PROBLEM_ID);
       expect(result).toEqual({
         deadline: cachedDeadline,
+        weekNumber: '3월1주차',
         status: 'cache_hit',
       });
-
-      // DB 미조회
-      expect(dualWrite.findOne).not.toHaveBeenCalled();
     });
 
     it('캐시 미스: DB fallback, db_hit 상태 반환', async () => {
@@ -304,6 +303,7 @@ describe('ProblemService', () => {
 
       expect(result).toEqual({
         deadline: mockProblem.deadline!.toISOString(),
+        weekNumber: '3월1주차',
         status: 'db_hit',
       });
     });
@@ -311,11 +311,13 @@ describe('ProblemService', () => {
     it('deadline null: cache_hit에서 null 반환', async () => {
       // deadline이 null인 경우 캐시에 'null' 문자열로 저장됨
       deadlineCache.getDeadline.mockResolvedValue('null');
+      dualWrite.findOne.mockResolvedValue(mockProblem);
 
       const result = await service.getDeadline(STUDY_ID, PROBLEM_ID);
 
       expect(result).toEqual({
         deadline: null,
+        weekNumber: '3월1주차',
         status: 'cache_hit',
       });
     });
@@ -331,6 +333,7 @@ describe('ProblemService', () => {
 
       expect(result).toEqual({
         deadline: null,
+        weekNumber: '3월1주차',
         status: 'db_hit',
       });
     });
