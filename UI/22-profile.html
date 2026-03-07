@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>#22 Profile - AlgoSu Mockup</title><link rel="stylesheet" href="shared.css"></head>
+<body>
+<div class="page">
+  <div class="nav"><div class="nav-inner"><a href="00-index.html" class="nav-logo" style="text-decoration:none"><div class="logo-icon">A</div> AlgoSu</a><div class="nav-links"><a href="06-dashboard.html" class="nav-link">Dashboard</a><a href="12-problems.html" class="nav-link">Problems</a><a href="18-submissions.html" class="nav-link">Submissions</a><a href="22-profile.html" class="nav-link active">Profile</a></div></div></div>
+  <div class="main">
+    <div style="max-width:640px;margin:0 auto;" class="space-y-5">
+      <h1 class="text-xl font-bold">Profile</h1>
+
+      <!-- Avatar + Info -->
+      <div class="card">
+        <div class="card-body">
+          <div class="flex items-center gap-4">
+            <div class="avatar" style="width:64px;height:64px;font-size:22px;cursor:pointer;" title="Click to change avatar">JK</div>
+            <div style="flex:1">
+              <p class="text-sm font-bold">junkim@gmail.com</p>
+              <div class="flex items-center gap-2 mt-1">
+                <span class="badge badge-info">Google</span>
+              </div>
+              <p class="text-xs text-muted mt-1">Joined 2026.02.15</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Avatar Picker -->
+      <div class="card">
+        <div class="card-header flex items-center justify-between">
+          <span class="card-title">Change Avatar</span>
+        </div>
+        <div class="card-body">
+          <div class="flex gap-3" style="flex-wrap:wrap;">
+            <div class="avatar" style="width:48px;height:48px;font-size:16px;cursor:pointer;border:2px solid var(--primary);">BN</div>
+            <div class="avatar" style="width:48px;height:48px;font-size:16px;cursor:pointer;opacity:0.6;">CT</div>
+            <div class="avatar" style="width:48px;height:48px;font-size:16px;cursor:pointer;opacity:0.6;">FX</div>
+            <div class="avatar" style="width:48px;height:48px;font-size:16px;cursor:pointer;opacity:0.6;">OW</div>
+            <div class="avatar" style="width:48px;height:48px;font-size:16px;cursor:pointer;opacity:0.6;">PG</div>
+            <div class="avatar" style="width:48px;height:48px;font-size:16px;cursor:pointer;opacity:0.6;">RB</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GitHub Connection -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">GitHub Connection</span></div>
+        <div class="card-body">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div style="width:36px;height:36px;background:var(--bg-alt);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;">GH</div>
+              <div>
+                <p class="text-sm font-bold">junkim-dev</p>
+                <p class="text-xs text-muted">Connected</p>
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <button class="btn btn-ghost btn-sm">Refresh</button>
+              <button class="btn btn-ghost btn-sm" style="color:var(--error)">Disconnect</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">My Stats</span></div>
+        <div class="card-body">
+          <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:12px;">
+            <div class="text-center">
+              <p class="stat-value text-primary">12</p>
+              <p class="text-xs text-muted mt-1">Submissions</p>
+            </div>
+            <div class="text-center">
+              <p class="stat-value text-success">8</p>
+              <p class="text-xs text-muted mt-1">Completed</p>
+            </div>
+            <div class="text-center">
+              <p class="stat-value">78.5</p>
+              <p class="text-xs text-muted mt-1">Avg Score</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Study List -->
+      <div class="card" style="overflow:hidden;padding:0;">
+        <div class="card-header"><span class="card-title">My Studies</span></div>
+        <div class="flex items-center justify-between px-4 py-3" style="border-bottom:1px solid var(--border)">
+          <div>
+            <span class="text-sm font-bold">Algorithm Master</span>
+            <span class="badge badge-info" style="margin-left:8px">Admin</span>
+          </div>
+          <span class="text-xs text-muted">5 members</span>
+        </div>
+        <div class="flex items-center justify-between px-4 py-3">
+          <div>
+            <span class="text-sm font-bold">Coding Test Prep</span>
+            <span class="badge badge-muted" style="margin-left:8px">Member</span>
+          </div>
+          <span class="text-xs text-muted">8 members</span>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex gap-3">
+        <button class="btn btn-ghost" style="flex:1">Logout</button>
+      </div>
+
+      <!-- Danger Zone -->
+      <div class="card" style="border-color:rgba(255,107,107,0.3);">
+        <div class="card-body flex items-center justify-between">
+          <div>
+            <p class="text-sm font-bold" style="color:var(--error)">Delete Account</p>
+            <p class="text-xs text-muted">Permanently delete your account and all data.</p>
+          </div>
+          <button class="btn btn-ghost btn-sm" style="color:var(--error)">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="mockup-label">#22 Profile</div>
+</body></html>

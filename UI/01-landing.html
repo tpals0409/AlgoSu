@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>#01 Landing - AlgoSu Mockup</title>
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<div class="page">
+  <!-- NAV -->
+  <div class="nav">
+    <div class="nav-inner">
+      <div class="nav-logo"><div class="logo-icon">A</div> AlgoSu</div>
+      <div class="flex items-center gap-2">
+        <span class="btn-ghost btn-sm" style="font-size:11px">Dark</span>
+        <a href="02-login.html" class="btn btn-primary btn-sm">Start</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- HERO -->
+  <section class="hero-glow" style="padding:100px 24px 60px; text-align:center;">
+    <div style="max-width:720px; margin:0 auto;">
+      <div class="flex justify-center gap-2 mb-4" style="flex-wrap:wrap">
+        <span class="diff-badge diff-bronze">Bronze</span>
+        <span class="diff-badge diff-silver">Silver</span>
+        <span class="diff-badge diff-gold">Gold</span>
+        <span class="diff-badge diff-platinum">Platinum</span>
+        <span class="diff-badge diff-diamond">Diamond</span>
+      </div>
+      <h1 style="font-size:clamp(32px,5vw,52px); font-weight:700; line-height:1.15; letter-spacing:-0.03em;">
+        Algorithm Study's<br><span class="gradient-text">New Standard</span>
+      </h1>
+      <p style="color:var(--text-2); font-size:clamp(14px,2vw,17px); margin-top:16px; max-width:460px; margin-left:auto; margin-right:auto;">
+        From problem solving to GitHub sync, AI code analysis.<br>Grow together with your team.
+      </p>
+      <div class="flex justify-center gap-3 mt-3" style="margin-top:32px">
+        <a href="02-login.html" class="btn btn-primary btn-lg" style="background:linear-gradient(135deg,var(--primary),#a29bfe);">Start Free</a>
+        <button class="btn btn-ghost btn-lg">Learn More</button>
+      </div>
+      <div class="flex justify-center gap-4" style="margin-top:48px">
+        <div class="text-center">
+          <div class="font-mono font-bold text-primary" style="font-size:22px">2,400+</div>
+          <div class="text-xs text-muted mt-1">Submissions</div>
+        </div>
+        <div class="text-center">
+          <div class="font-mono font-bold text-primary" style="font-size:22px">150+</div>
+          <div class="text-xs text-muted mt-1">Active Studies</div>
+        </div>
+        <div class="text-center">
+          <div class="font-mono font-bold text-primary" style="font-size:22px">98%</div>
+          <div class="text-xs text-muted mt-1">Satisfaction</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section style="max-width:1080px; margin:0 auto; padding:0 24px 60px;">
+    <div class="grid grid-3 gap-4">
+      <div class="card p-5">
+        <div style="width:40px;height:40px;background:var(--primary-soft);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--primary);margin-bottom:12px;">GH</div>
+        <div class="font-bold text-sm mb-2">GitHub Auto-Sync</div>
+        <div class="text-xs text-muted">Submitted code is automatically pushed to GitHub.</div>
+      </div>
+      <div class="card p-5">
+        <div style="width:40px;height:40px;background:var(--success-soft);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--success);margin-bottom:12px;">AI</div>
+        <div class="font-bold text-sm mb-2">AI Code Analysis</div>
+        <div class="text-xs text-muted">Time complexity, code quality, improvement directions.</div>
+      </div>
+      <div class="card p-5">
+        <div style="width:40px;height:40px;background:var(--info-soft);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--info);margin-bottom:12px;">ST</div>
+        <div class="font-bold text-sm mb-2">Study Management</div>
+        <div class="text-xs text-muted">Weekly problems, deadline management, member stats.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CODE PREVIEW -->
+  <section style="max-width:1080px; margin:0 auto; padding:0 24px 60px;">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:32px; align-items:center;">
+      <div>
+        <span class="badge badge-success" style="margin-bottom:16px; display:inline-flex;">AI ANALYSIS</span>
+        <h2 style="font-size:26px; font-weight:700; margin-bottom:12px;">Submit code,<br>AI analyzes it</h2>
+        <p class="text-sm text-muted" style="margin-bottom:24px">Time complexity, code quality, improvement directions.<br>AI provides detailed feedback.</p>
+        <div class="flex gap-4">
+          <div class="text-center">
+            <div style="width:56px;height:56px;border-radius:50%;border:3px solid var(--success);display:flex;align-items:center;justify-content:center;">
+              <span class="font-mono font-bold text-success">92</span>
+            </div>
+            <div class="text-xs text-muted mt-1">Excellent</div>
+          </div>
+          <div class="text-center">
+            <div style="width:56px;height:56px;border-radius:50%;border:3px solid var(--warning);display:flex;align-items:center;justify-content:center;">
+              <span class="font-mono font-bold" style="color:var(--warning)">65</span>
+            </div>
+            <div class="text-xs text-muted mt-1">Average</div>
+          </div>
+          <div class="text-center">
+            <div style="width:56px;height:56px;border-radius:50%;border:3px solid var(--error);display:flex;align-items:center;justify-content:center;">
+              <span class="font-mono font-bold" style="color:var(--error)">30</span>
+            </div>
+            <div class="text-xs text-muted mt-1">Improve</div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="overflow:hidden">
+        <div class="code-header">
+          <div class="code-dots">
+            <div class="code-dot" style="background:#FF5F56"></div>
+            <div class="code-dot" style="background:#FFBD2E"></div>
+            <div class="code-dot" style="background:#27C93F"></div>
+          </div>
+          <span class="text-xs text-muted">solution.py</span>
+        </div>
+        <div class="code-block">
+def two_sum(nums, target):
+    seen = {}
+    for i, num in enumerate(nums):
+        complement = target - num
+        if complement in seen:
+            return [seen[complement], i]
+        seen[num] = i
+    raise ValueError("No solution")
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--primary-soft);border-top:1px solid var(--border);">
+          <span class="text-xs font-bold text-primary">AI Analysis Complete -- 92pts</span>
+          <span class="text-xs font-bold text-primary" style="cursor:pointer">View Feedback &rarr;</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section style="background:var(--bg-alt); border-top:1px solid var(--border); border-bottom:1px solid var(--border); padding:72px 24px;">
+    <div style="max-width:800px; margin:0 auto; text-align:center;">
+      <span class="badge badge-primary" style="margin-bottom:16px; display:inline-flex;">HOW TO USE</span>
+      <h2 style="font-size:26px; font-weight:700; margin-bottom:48px;">Get started in 3 steps</h2>
+      <div class="grid grid-3 gap-4">
+        <div class="text-center">
+          <div class="font-mono font-bold text-primary" style="font-size:32px; opacity:0.3;">01</div>
+          <h3 class="text-sm font-bold mb-2">Create Study</h3>
+          <p class="text-xs text-muted">Create a study and invite team members with invite code.</p>
+        </div>
+        <div class="text-center">
+          <div class="font-mono font-bold text-primary" style="font-size:32px; opacity:0.3;">02</div>
+          <h3 class="text-sm font-bold mb-2">Solve & Submit</h3>
+          <p class="text-xs text-muted">Solve assigned problems and submit code. Auto-sync with GitHub.</p>
+        </div>
+        <div class="text-center">
+          <div class="font-mono font-bold text-primary" style="font-size:32px; opacity:0.3;">03</div>
+          <h3 class="text-sm font-bold mb-2">AI Review & Grow</h3>
+          <p class="text-xs text-muted">Grow your skills through AI analysis feedback.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- OPEN STUDIES -->
+  <section style="max-width:1080px; margin:0 auto; padding:60px 24px;">
+    <div class="text-center mb-4">
+      <span class="badge badge-primary" style="margin-bottom:16px; display:inline-flex;">OPEN STUDIES</span>
+      <h2 style="font-size:26px; font-weight:700;">Join a study group</h2>
+    </div>
+    <div class="grid grid-3 gap-3">
+      <div class="card p-5">
+        <div class="font-bold text-sm mb-2">Algorithm Master</div>
+        <div class="text-xs text-muted mb-3">8 members | Just now</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:96%;background:linear-gradient(90deg,var(--primary),#a29bfe)"></div></div>
+      </div>
+      <div class="card p-5">
+        <div class="font-bold text-sm mb-2">PS Study</div>
+        <div class="text-xs text-muted mb-3">5 members | 2h ago</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:60%;background:linear-gradient(90deg,var(--primary),#a29bfe)"></div></div>
+      </div>
+      <div class="card p-5">
+        <div class="font-bold text-sm mb-2">Coding Test Prep</div>
+        <div class="text-xs text-muted mb-3">12 members | 5h ago</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:100%;background:linear-gradient(90deg,var(--primary),#a29bfe)"></div></div>
+      </div>
+    </div>
+    <div class="text-center mt-3" style="margin-top:32px">
+      <a href="02-login.html" class="btn btn-primary">Create Study</a>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section style="padding:80px 24px; text-align:center;">
+    <h2 style="font-size:30px; font-weight:700; margin-bottom:12px;">Start now</h2>
+    <p class="text-sm text-muted mb-4" style="margin-bottom:32px">Create a free study and grow your algorithm skills with your team.</p>
+    <a href="02-login.html" class="btn btn-primary btn-lg" style="background:linear-gradient(135deg,var(--primary),#a29bfe); height:52px; padding:0 36px; font-size:16px;">Start Free</a>
+  </section>
+
+  <!-- FOOTER -->
+  <footer style="border-top:1px solid var(--border); padding:32px; text-align:center;">
+    <div class="flex items-center justify-center gap-2 mb-2">
+      <div class="logo-icon" style="width:20px;height:20px;font-size:8px;border-radius:4px;background:var(--primary);color:white;display:flex;align-items:center;justify-content:center;font-weight:800">A</div>
+      <span class="text-sm font-bold text-muted">AlgoSu</span>
+    </div>
+    <p class="text-xs text-muted">&copy; 2026 AlgoSu. All rights reserved.</p>
+  </footer>
+</div>
+<div class="mockup-label">#01 Landing</div>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>#14 Problem Detail - AlgoSu Mockup</title><link rel="stylesheet" href="shared.css"></head>
+<body>
+<div class="page">
+  <div class="nav"><div class="nav-inner"><a href="00-index.html" class="nav-logo" style="text-decoration:none"><div class="logo-icon">A</div> AlgoSu</a><div class="nav-links"><a href="06-dashboard.html" class="nav-link">Dashboard</a><a href="12-problems.html" class="nav-link active">Problems</a><a href="18-submissions.html" class="nav-link">Submissions</a></div></div></div>
+  <div class="main space-y-5">
+    <!-- Header -->
+    <div class="flex items-center gap-3">
+      <a href="12-problems.html" style="width:28px;height:28px;background:var(--bg-alt);border-radius:var(--radius-btn);display:flex;align-items:center;justify-content:center;color:var(--text-3);text-decoration:none;font-size:12px">&larr;</a>
+      <div style="flex:1">
+        <div class="flex items-center gap-2">
+          <h1 class="text-xl font-bold">Two Sum</h1>
+          <span class="diff-badge diff-gold">Gold</span>
+          <span class="badge badge-warning">Open</span>
+        </div>
+        <p class="text-xs text-muted mt-1">Week 2 -- Deadline: 03.10</p>
+      </div>
+      <div class="flex gap-2">
+        <a href="15-problem-edit.html" class="btn btn-ghost btn-sm" style="text-decoration:none">Edit</a>
+        <a href="#" class="btn btn-ghost btn-sm" style="color:var(--error);text-decoration:none">Delete</a>
+      </div>
+    </div>
+
+    <!-- Split Layout -->
+    <div class="two-col" style="align-items:start;">
+      <!-- Left: Problem Info -->
+      <div class="space-y-4">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Problem Info</span></div>
+          <div class="card-body space-y-3">
+            <p class="text-sm">Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.</p>
+            <div style="border-top:1px solid var(--border);padding-top:12px;" class="space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-muted">Source</span>
+                <a href="#" class="text-xs text-primary" style="text-decoration:none">BOJ 1000 &nearr;</a>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-muted">Allowed Languages</span>
+                <div class="flex gap-1">
+                  <span class="badge badge-primary" style="font-size:10px">Python</span>
+                  <span class="badge badge-primary" style="font-size:10px">Java</span>
+                  <span class="badge badge-primary" style="font-size:10px">C++</span>
+                </div>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-muted">Deadline</span>
+                <span class="badge badge-error">2 days left</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Auto-save indicator -->
+        <div class="flex items-center gap-2">
+          <span style="width:6px;height:6px;border-radius:50%;background:var(--success);"></span>
+          <span class="text-xs text-muted">Draft auto-saved</span>
+        </div>
+      </div>
+
+      <!-- Right: Code Editor -->
+      <div class="space-y-3">
+        <div class="card">
+          <div class="card-header flex items-center justify-between">
+            <span class="card-title">Submit Code</span>
+            <select class="input" style="width:auto;min-width:100px;padding:4px 8px;font-size:12px;">
+              <option>Python</option>
+              <option>Java</option>
+              <option>C++</option>
+            </select>
+          </div>
+          <div class="card-body">
+            <div class="code-block">
+              <pre><code><span class="line-number">1</span>  def two_sum(nums, target):
+<span class="line-number">2</span>      seen = {}
+<span class="line-number">3</span>      for i, num in enumerate(nums):
+<span class="line-number">4</span>          complement = target - num
+<span class="line-number">5</span>          if complement in seen:
+<span class="line-number">6</span>              return [seen[complement], i]
+<span class="line-number">7</span>          seen[num] = i
+<span class="line-number">8</span>      return []</code></pre>
+            </div>
+          </div>
+          <div class="card-footer">
+            <button class="btn btn-primary" style="flex:1">Submit Code</button>
+          </div>
+        </div>
+
+        <!-- GitHub Warning -->
+        <div class="alert alert-warning">
+          <strong>GitHub Required</strong> -- Connect GitHub to submit code.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="mockup-label">#14 Problem Detail + Submit</div>
+</body></html>

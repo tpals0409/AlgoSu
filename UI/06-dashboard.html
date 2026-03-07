@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>#06 Dashboard - AlgoSu Mockup</title>
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<div class="page">
+  <div class="nav">
+    <div class="nav-inner">
+      <a href="00-index.html" class="nav-logo" style="text-decoration:none"><div class="logo-icon">A</div> AlgoSu</a>
+      <div class="nav-links">
+        <a href="06-dashboard.html" class="nav-link active">Dashboard</a>
+        <a href="12-problems.html" class="nav-link">Problems</a>
+        <a href="18-submissions.html" class="nav-link">Submissions</a>
+        <a href="11-study-room.html" class="nav-link">Study Room</a>
+        <a href="22-profile.html" class="nav-link">Profile</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="main space-y-5">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-bold">Dashboard</h1>
+        <p class="text-xs text-muted mt-1">Welcome! -- Algorithm Study</p>
+      </div>
+      <button class="btn btn-ghost btn-sm">Refresh</button>
+    </div>
+
+    <!-- GitHub Banner -->
+    <div class="card" style="border-color:rgba(253,203,110,0.3);background:var(--warning-soft);">
+      <div class="flex items-center justify-between px-4 py-3">
+        <div class="flex items-center gap-3">
+          <span style="font-size:20px">GH</span>
+          <div>
+            <p class="text-sm font-bold">GitHub connection required</p>
+            <p class="text-xs text-muted">Connect GitHub to submit code.</p>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm">Connect</button>
+      </div>
+    </div>
+
+    <!-- Stat Cards -->
+    <div class="grid grid-3 gap-3">
+      <a href="18-submissions.html" class="card p-5" style="text-decoration:none;color:inherit;">
+        <div class="flex items-center gap-3">
+          <div style="width:36px;height:36px;background:var(--bg-alt);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:14px;">FT</div>
+          <div>
+            <p class="stat-value text-primary">12</p>
+            <p class="text-xs text-muted mt-1">My Submissions (Total)</p>
+          </div>
+        </div>
+      </a>
+      <div class="card p-5">
+        <div class="flex items-center gap-3">
+          <div style="width:36px;height:36px;background:var(--bg-alt);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:14px;">US</div>
+          <div>
+            <p class="stat-value">5</p>
+            <p class="text-xs text-muted mt-1">Active Members</p>
+          </div>
+        </div>
+      </div>
+      <a href="07-analytics.html" class="card p-5" style="text-decoration:none;color:inherit;">
+        <div class="flex items-center gap-3">
+          <div style="width:36px;height:36px;background:var(--bg-alt);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:14px;">OK</div>
+          <div>
+            <p class="stat-value text-success">75%</p>
+            <p class="text-xs text-muted mt-1">Overall Completion</p>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <!-- Study Room Card -->
+    <a href="11-study-room.html" class="card" style="text-decoration:none;color:inherit;border-color:rgba(108,92,231,0.2);background:var(--primary-soft);">
+      <div class="flex items-center justify-between px-4 py-3">
+        <div class="flex items-center gap-3">
+          <div style="width:36px;height:36px;background:rgba(108,92,231,0.1);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:14px;">SR</div>
+          <div>
+            <p class="text-sm font-bold">Study Room</p>
+            <p class="text-xs text-muted">Review and discuss closed problem solutions together</p>
+          </div>
+        </div>
+        <span class="text-muted">&rarr;</span>
+      </div>
+    </a>
+
+    <!-- Weekly Chart -->
+    <div class="card">
+      <div class="card-header flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="card-title">Weekly Submissions</span>
+          <span class="badge badge-primary">All</span>
+        </div>
+        <button class="btn btn-ghost btn-sm">Toggle View</button>
+      </div>
+      <div class="card-body space-y-3">
+        <div class="flex items-center gap-3">
+          <span class="font-mono text-xs text-muted" style="min-width:56px;text-align:right">Mar W1</span>
+          <div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:80%;background:var(--primary)"></div></div>
+          <span class="font-mono text-xs font-bold" style="min-width:28px">8</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="font-mono text-xs text-muted" style="min-width:56px;text-align:right">Feb W4</span>
+          <div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:60%;background:var(--primary)"></div></div>
+          <span class="font-mono text-xs font-bold" style="min-width:28px">6</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="font-mono text-xs text-muted" style="min-width:56px;text-align:right">Feb W3</span>
+          <div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:100%;background:var(--primary)"></div></div>
+          <span class="font-mono text-xs font-bold" style="min-width:28px">10</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="font-mono text-xs text-muted" style="min-width:56px;text-align:right">Feb W2</span>
+          <div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:40%;background:var(--primary)"></div></div>
+          <span class="font-mono text-xs font-bold" style="min-width:28px">4</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- This Week -->
+    <div class="card" style="overflow:hidden;padding:0;">
+      <div class="card-header"><span class="card-title">This Week's Problems</span></div>
+      <div style="padding:0">
+        <div class="flex items-center justify-between px-4 py-3" style="border-bottom:1px solid var(--border)">
+          <div class="flex items-center gap-2">
+            <span class="badge badge-success" style="width:16px;height:16px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px">V</span>
+            <span class="text-sm">Two Sum</span>
+          </div>
+          <span class="badge badge-success">Submitted</span>
+        </div>
+        <div class="flex items-center justify-between px-4 py-3" style="border-bottom:1px solid var(--border)">
+          <div class="flex items-center gap-2">
+            <span style="width:16px;height:16px;border:1px solid var(--border);border-radius:50%;"></span>
+            <span class="text-sm">Binary Search</span>
+          </div>
+          <span class="badge badge-warning">Not Submitted</span>
+        </div>
+        <div class="flex items-center justify-between px-4 py-3">
+          <div class="flex items-center gap-2">
+            <span style="width:16px;height:16px;border:1px solid var(--border);border-radius:50%;"></span>
+            <span class="text-sm">Graph Traversal</span>
+          </div>
+          <span class="badge badge-warning">Not Submitted</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Two Column -->
+    <div class="two-col">
+      <div class="card" style="overflow:hidden;padding:0;">
+        <div class="card-header"><span class="card-title">Recent Submissions</span></div>
+        <div class="px-4 py-3" style="border-bottom:1px solid var(--border);padding:12px 16px;">
+          <div class="flex items-center justify-between">
+            <span class="text-sm">Two Sum</span>
+            <span class="badge badge-success">Done</span>
+          </div>
+          <span class="font-mono text-xs text-muted">python | 03.07</span>
+        </div>
+        <div class="px-4 py-3" style="padding:12px 16px;">
+          <div class="flex items-center justify-between">
+            <span class="text-sm">DP Optimization</span>
+            <span class="badge badge-info">Analyzing</span>
+          </div>
+          <span class="font-mono text-xs text-muted">java | 03.06</span>
+        </div>
+      </div>
+      <div class="card" style="overflow:hidden;padding:0;">
+        <div class="card-header"><span class="card-title">Upcoming Deadlines</span></div>
+        <div class="px-4 py-3" style="border-bottom:1px solid var(--border);padding:12px 16px;">
+          <div class="flex items-center justify-between">
+            <span class="text-sm">Binary Search</span>
+            <span class="badge badge-error">2 days left</span>
+          </div>
+        </div>
+        <div class="px-4 py-3" style="padding:12px 16px;">
+          <div class="flex items-center justify-between">
+            <span class="text-sm">Graph Traversal</span>
+            <span class="badge badge-warning">5 days left</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="mockup-label">#06 Dashboard</div>
+</body>
+</html>

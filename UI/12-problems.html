@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>#12 Problems - AlgoSu Mockup</title><link rel="stylesheet" href="shared.css"></head>
+<body>
+<div class="page">
+  <div class="nav"><div class="nav-inner"><a href="00-index.html" class="nav-logo" style="text-decoration:none"><div class="logo-icon">A</div> AlgoSu</a><div class="nav-links"><a href="06-dashboard.html" class="nav-link">Dashboard</a><a href="12-problems.html" class="nav-link active">Problems</a><a href="18-submissions.html" class="nav-link">Submissions</a><a href="11-study-room.html" class="nav-link">Study Room</a></div></div></div>
+  <div class="main space-y-5">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-bold">Problems</h1>
+        <p class="text-xs text-muted mt-1">Algorithm Master -- 12 problems</p>
+      </div>
+      <a href="13-problem-create.html" class="btn btn-primary btn-sm" style="text-decoration:none">+ Add Problem</a>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-bar">
+      <div class="flex items-center gap-2" style="flex:1">
+        <input class="input" placeholder="Search problems..." style="max-width:200px;">
+        <select class="input" style="max-width:120px;">
+          <option>All Difficulty</option>
+          <option>Bronze</option>
+          <option>Silver</option>
+          <option>Gold</option>
+          <option>Platinum</option>
+        </select>
+        <select class="input" style="max-width:100px;">
+          <option>All Weeks</option>
+          <option>Week 1</option>
+          <option>Week 2</option>
+          <option>Week 3</option>
+        </select>
+        <select class="input" style="max-width:120px;">
+          <option>All Status</option>
+          <option>Open</option>
+          <option>Closed</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="card" style="overflow:hidden;padding:0;">
+      <table class="table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Title</th>
+            <th>Difficulty</th>
+            <th>Week</th>
+            <th>Deadline</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="cursor:pointer;" onclick="location.href='14-problem-detail.html'">
+            <td><span style="color:var(--success);font-size:14px;">&#10003;</span></td>
+            <td class="font-bold">Two Sum</td>
+            <td><span class="diff-badge diff-gold">Gold</span></td>
+            <td class="text-muted">W1</td>
+            <td class="font-mono text-xs text-muted">03.05</td>
+            <td><span class="badge badge-muted">Closed</span></td>
+          </tr>
+          <tr style="cursor:pointer;" onclick="location.href='14-problem-detail.html'">
+            <td><span style="color:var(--success);font-size:14px;">&#10003;</span></td>
+            <td class="font-bold">Binary Search</td>
+            <td><span class="diff-badge diff-silver">Silver</span></td>
+            <td class="text-muted">W1</td>
+            <td class="font-mono text-xs text-muted">03.05</td>
+            <td><span class="badge badge-muted">Closed</span></td>
+          </tr>
+          <tr style="cursor:pointer;" onclick="location.href='14-problem-detail.html'">
+            <td></td>
+            <td class="font-bold">Graph Traversal</td>
+            <td><span class="diff-badge diff-gold">Gold</span></td>
+            <td class="text-muted">W2</td>
+            <td class="font-mono text-xs text-muted">03.10</td>
+            <td><span class="badge badge-warning">Open</span></td>
+          </tr>
+          <tr style="cursor:pointer;" onclick="location.href='14-problem-detail.html'">
+            <td></td>
+            <td class="font-bold">DP Optimization</td>
+            <td><span class="diff-badge diff-platinum">Plat</span></td>
+            <td class="text-muted">W2</td>
+            <td class="font-mono text-xs text-muted">03.10</td>
+            <td><span class="badge badge-warning">Open</span></td>
+          </tr>
+          <tr style="cursor:pointer;" onclick="location.href='14-problem-detail.html'">
+            <td></td>
+            <td class="font-bold">Shortest Path</td>
+            <td><span class="diff-badge diff-gold">Gold</span></td>
+            <td class="text-muted">W2</td>
+            <td class="font-mono text-xs text-muted">03.12</td>
+            <td><span class="badge badge-success">Open</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="flex items-center justify-center gap-2">
+      <button class="btn btn-ghost btn-sm" disabled>&larr;</button>
+      <span class="text-xs text-muted">1 / 2</span>
+      <button class="btn btn-ghost btn-sm">&rarr;</button>
+    </div>
+  </div>
+</div>
+<div class="mockup-label">#12 Problems</div>
+</body></html>

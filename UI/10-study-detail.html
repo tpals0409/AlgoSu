@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>#10 Study Detail - AlgoSu Mockup</title><link rel="stylesheet" href="shared.css"></head>
+<body>
+<div class="page">
+  <div class="nav"><div class="nav-inner"><a href="00-index.html" class="nav-logo" style="text-decoration:none"><div class="logo-icon">A</div> AlgoSu</a><div class="nav-links"><a href="06-dashboard.html" class="nav-link">Dashboard</a><a href="12-problems.html" class="nav-link">Problems</a><a href="18-submissions.html" class="nav-link">Submissions</a><a href="22-profile.html" class="nav-link">Profile</a></div></div></div>
+  <div class="main space-y-5">
+    <!-- Header -->
+    <div class="flex items-center gap-3">
+      <a href="08-studies.html" style="width:28px;height:28px;background:var(--bg-alt);border-radius:var(--radius-btn);display:flex;align-items:center;justify-content:center;color:var(--text-3);text-decoration:none;font-size:12px">&larr;</a>
+      <div style="flex:1">
+        <h1 class="text-xl font-bold">Algorithm Master</h1>
+        <p class="text-xs text-muted">Weekly algorithm study group</p>
+      </div>
+      <span class="badge badge-info">Admin</span>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('overview')">Overview</button>
+      <button class="tab" onclick="showTab('members')">Members</button>
+      <button class="tab" onclick="showTab('settings')">Settings</button>
+    </div>
+
+    <!-- Overview Tab -->
+    <div id="tab-overview">
+      <!-- Stats -->
+      <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">
+        <div class="card p-4 text-center"><p class="text-xs text-muted">Members</p><p class="stat-value mt-1" style="font-size:22px">5</p></div>
+        <div class="card p-4 text-center"><p class="text-xs text-muted">Problems</p><p class="stat-value text-primary mt-1" style="font-size:22px">12</p></div>
+        <div class="card p-4 text-center"><p class="text-xs text-muted">Submissions</p><p class="stat-value text-success mt-1" style="font-size:22px">48</p></div>
+      </div>
+
+      <!-- Invite Code -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">Invite Code</span></div>
+        <div class="card-body">
+          <div class="flex items-center gap-2">
+            <code style="flex:1;background:var(--bg-alt);padding:8px 12px;border-radius:var(--radius);font-size:13px;letter-spacing:2px;">ABC-XYZ-123</code>
+            <button class="btn btn-ghost btn-sm">Copy</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ground Rules -->
+      <div class="card" style="margin-top:16px;">
+        <div class="card-header"><span class="card-title">Ground Rules</span></div>
+        <div class="card-body space-y-2">
+          <div class="flex items-center gap-2"><div style="width:6px;height:6px;border-radius:50%;background:var(--primary);flex-shrink:0;"></div><span class="text-sm text-muted">Submit before deadline</span></div>
+          <div class="flex items-center gap-2"><div style="width:6px;height:6px;border-radius:50%;background:var(--primary);flex-shrink:0;"></div><span class="text-sm text-muted">Review at least 2 peers per week</span></div>
+          <div class="flex items-center gap-2"><div style="width:6px;height:6px;border-radius:50%;background:var(--primary);flex-shrink:0;"></div><span class="text-sm text-muted">Use respectful language in reviews</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Members Tab -->
+    <div id="tab-members" style="display:none;">
+      <div class="card" style="overflow:hidden;padding:0;">
+        <div class="card-header flex items-center justify-between">
+          <span class="card-title">Members (5)</span>
+          <button class="btn btn-primary btn-sm">+ Invite</button>
+        </div>
+        <!-- Member 1 -->
+        <div class="flex items-center justify-between px-4 py-3" style="border-bottom:1px solid var(--border)">
+          <div class="flex items-center gap-3">
+            <div class="avatar avatar-sm">JK</div>
+            <div>
+              <span class="text-sm font-bold">junkim</span>
+              <span class="badge badge-info" style="margin-left:8px">Admin</span>
+              <p class="text-xs text-muted">12 submissions</p>
+            </div>
+          </div>
+        </div>
+        <!-- Member 2 -->
+        <div class="flex items-center justify-between px-4 py-3" style="border-bottom:1px solid var(--border)">
+          <div class="flex items-center gap-3">
+            <div class="avatar avatar-sm">SL</div>
+            <div>
+              <span class="text-sm font-bold">seulgi</span>
+              <span class="badge badge-muted" style="margin-left:8px">Member</span>
+              <p class="text-xs text-muted">10 submissions</p>
+            </div>
+          </div>
+          <button class="btn btn-ghost btn-sm" style="color:var(--error)">Kick</button>
+        </div>
+        <!-- Member 3 -->
+        <div class="flex items-center justify-between px-4 py-3" style="border-bottom:1px solid var(--border)">
+          <div class="flex items-center gap-3">
+            <div class="avatar avatar-sm">MJ</div>
+            <div>
+              <span class="text-sm font-bold">minjae</span>
+              <span class="badge badge-muted" style="margin-left:8px">Member</span>
+              <p class="text-xs text-muted">8 submissions</p>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button class="btn btn-ghost btn-sm">Promote</button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--error)">Kick</button>
+          </div>
+        </div>
+        <!-- Member 4 -->
+        <div class="flex items-center justify-between px-4 py-3" style="border-bottom:1px solid var(--border)">
+          <div class="flex items-center gap-3">
+            <div class="avatar avatar-sm">YH</div>
+            <div>
+              <span class="text-sm font-bold">yuna</span>
+              <span class="badge badge-muted" style="margin-left:8px">Member</span>
+              <p class="text-xs text-muted">6 submissions</p>
+            </div>
+          </div>
+          <button class="btn btn-ghost btn-sm" style="color:var(--error)">Kick</button>
+        </div>
+        <!-- Member 5 -->
+        <div class="flex items-center justify-between px-4 py-3">
+          <div class="flex items-center gap-3">
+            <div class="avatar avatar-sm">HS</div>
+            <div>
+              <span class="text-sm font-bold">hyunsu</span>
+              <span class="badge badge-muted" style="margin-left:8px">Member</span>
+              <p class="text-xs text-muted">3 submissions</p>
+            </div>
+          </div>
+          <button class="btn btn-ghost btn-sm" style="color:var(--error)">Kick</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Tab -->
+    <div id="tab-settings" style="display:none;">
+      <div class="card">
+        <div class="card-header"><span class="card-title">Study Settings</span></div>
+        <div class="card-body space-y-4">
+          <div>
+            <label class="input-label">Study Name</label>
+            <input class="input" value="Algorithm Master">
+          </div>
+          <div>
+            <label class="input-label">Description</label>
+            <input class="input" value="Weekly algorithm study group">
+          </div>
+        </div>
+        <div class="card-footer">
+          <button class="btn btn-primary" style="flex:1">Save Changes</button>
+        </div>
+      </div>
+      <!-- Danger Zone -->
+      <div class="card" style="margin-top:16px;border-color:rgba(255,107,107,0.3);">
+        <div class="card-header"><span class="card-title" style="color:var(--error)">Danger Zone</span></div>
+        <div class="card-body space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-bold">Leave Study</p>
+              <p class="text-xs text-muted">You will lose access to this study.</p>
+            </div>
+            <button class="btn btn-ghost btn-sm" style="color:var(--error)">Leave</button>
+          </div>
+          <div style="border-top:1px solid var(--border);padding-top:12px;" class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-bold">Delete Study</p>
+              <p class="text-xs text-muted">This action cannot be undone.</p>
+            </div>
+            <button class="btn btn-ghost btn-sm" style="color:var(--error)">Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="mockup-label">#10 Study Detail</div>
+<script>
+function showTab(name) {
+  ['overview','members','settings'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t===name?'block':'none';
+  });
+  document.querySelectorAll('.tab').forEach((el,i) => {
+    el.classList.toggle('active', ['overview','members','settings'][i]===name);
+  });
+}
+</script>
+</body></html>

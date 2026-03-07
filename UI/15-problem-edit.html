@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>#15 Problem Edit - AlgoSu Mockup</title><link rel="stylesheet" href="shared.css"></head>
+<body>
+<div class="page">
+  <div class="nav"><div class="nav-inner"><a href="00-index.html" class="nav-logo" style="text-decoration:none"><div class="logo-icon">A</div> AlgoSu</a><div class="nav-links"><a href="06-dashboard.html" class="nav-link">Dashboard</a><a href="12-problems.html" class="nav-link active">Problems</a><a href="18-submissions.html" class="nav-link">Submissions</a></div></div></div>
+  <div class="main">
+    <div style="max-width:640px;margin:0 auto;" class="space-y-4">
+      <a href="14-problem-detail.html" class="text-xs text-muted" style="text-decoration:none;">&larr; Back to Problem</a>
+      <div>
+        <h1 class="text-xl font-bold">Edit Problem</h1>
+        <p class="text-xs text-muted mt-1">Modify problem details</p>
+      </div>
+
+      <!-- Status Change -->
+      <div class="card" style="border-color:rgba(108,92,231,0.3);background:var(--primary-soft);">
+        <div class="card-body">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-bold">Problem Status</p>
+              <p class="text-xs text-muted">Currently: <span class="badge badge-warning">Open</span></p>
+            </div>
+            <button class="btn btn-ghost btn-sm">Close Problem</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Form -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">Problem Details</span></div>
+        <div class="card-body space-y-4">
+          <div>
+            <label class="input-label">Title *</label>
+            <input class="input" value="Two Sum">
+          </div>
+          <div>
+            <label class="input-label">Description</label>
+            <textarea class="input" style="min-height:80px;resize:vertical;">Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.</textarea>
+          </div>
+          <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px;">
+            <div>
+              <label class="input-label">Difficulty *</label>
+              <select class="input">
+                <option>Bronze</option>
+                <option>Silver</option>
+                <option selected>Gold</option>
+                <option>Platinum</option>
+                <option>Diamond</option>
+              </select>
+            </div>
+            <div>
+              <label class="input-label">Week *</label>
+              <select class="input">
+                <option>Week 1</option>
+                <option selected>Week 2</option>
+                <option>Week 3</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="input-label">Deadline *</label>
+            <input class="input" type="date" value="2026-03-10">
+          </div>
+          <div>
+            <label class="input-label">Allowed Languages</label>
+            <div class="flex gap-2" style="flex-wrap:wrap;">
+              <span class="badge badge-primary" style="cursor:pointer">Python &#10003;</span>
+              <span class="badge badge-primary" style="cursor:pointer">Java &#10003;</span>
+              <span class="badge badge-primary" style="cursor:pointer">C++ &#10003;</span>
+              <span class="badge badge-muted" style="cursor:pointer">JavaScript</span>
+              <span class="badge badge-muted" style="cursor:pointer">Go</span>
+            </div>
+          </div>
+          <div>
+            <label class="input-label">Source URL</label>
+            <input class="input" value="https://www.acmicpc.net/problem/1000">
+          </div>
+        </div>
+        <div class="card-footer">
+          <button class="btn btn-ghost" style="flex:1">Cancel</button>
+          <button class="btn btn-primary" style="flex:1">Save Changes</button>
+        </div>
+      </div>
+
+      <!-- Danger -->
+      <div class="card" style="border-color:rgba(255,107,107,0.3);">
+        <div class="card-body flex items-center justify-between">
+          <div>
+            <p class="text-sm font-bold" style="color:var(--error)">Delete Problem</p>
+            <p class="text-xs text-muted">This will remove all submissions.</p>
+          </div>
+          <button class="btn btn-ghost btn-sm" style="color:var(--error)">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="mockup-label">#15 Problem Edit</div>
+</body></html>

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>#20 AI Analysis - AlgoSu Mockup</title><link rel="stylesheet" href="shared.css"></head>
+<body>
+<div class="page">
+  <div class="nav"><div class="nav-inner"><a href="00-index.html" class="nav-logo" style="text-decoration:none"><div class="logo-icon">A</div> AlgoSu</a><div class="nav-links"><a href="06-dashboard.html" class="nav-link">Dashboard</a><a href="12-problems.html" class="nav-link">Problems</a><a href="18-submissions.html" class="nav-link active">Submissions</a></div></div></div>
+  <div class="main space-y-5">
+    <!-- Header -->
+    <div class="flex items-center gap-3">
+      <a href="18-submissions.html" style="width:28px;height:28px;background:var(--bg-alt);border-radius:var(--radius-btn);display:flex;align-items:center;justify-content:center;color:var(--text-3);text-decoration:none;font-size:12px">&larr;</a>
+      <div style="flex:1">
+        <h1 class="text-xl font-bold">AI Analysis</h1>
+        <div class="flex items-center gap-2 mt-1">
+          <span class="text-xs text-muted">Two Sum</span>
+          <span class="badge badge-primary" style="font-size:10px">python</span>
+          <span class="text-xs text-muted">03.07 14:30</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Score Gauge + Summary -->
+    <div class="two-col" style="align-items:start;">
+      <div class="card text-center" style="padding:24px;">
+        <div class="score-gauge">
+          <svg viewBox="0 0 120 120" width="120" height="120">
+            <circle cx="60" cy="60" r="52" fill="none" stroke="var(--border)" stroke-width="8"/>
+            <circle cx="60" cy="60" r="52" fill="none" stroke="var(--success)" stroke-width="8" stroke-dasharray="277" stroke-dashoffset="42" stroke-linecap="round" transform="rotate(-90 60 60)"/>
+            <text x="60" y="56" text-anchor="middle" fill="var(--text-1)" font-size="28" font-weight="bold">85</text>
+            <text x="60" y="74" text-anchor="middle" fill="var(--text-3)" font-size="11">/ 100</text>
+          </svg>
+          <p class="text-xs text-muted mt-2">Overall Score</p>
+          <span class="badge badge-success mt-1">Excellent</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Summary</span></div>
+        <div class="card-body">
+          <p class="text-sm" style="line-height:1.6;">Clean solution using a hash map for O(n) time complexity. Good variable naming and concise logic. Consider adding input validation and handling edge cases like empty arrays.</p>
+          <div class="flex gap-2 mt-3" style="flex-wrap:wrap;">
+            <div style="background:var(--bg-alt);border-radius:var(--radius);padding:6px 10px;">
+              <span class="text-xs text-muted">Time</span>
+              <span class="font-mono text-sm font-bold" style="margin-left:4px;">O(n)</span>
+            </div>
+            <div style="background:var(--bg-alt);border-radius:var(--radius);padding:6px 10px;">
+              <span class="text-xs text-muted">Space</span>
+              <span class="font-mono text-sm font-bold" style="margin-left:4px;">O(n)</span>
+            </div>
+            <div style="background:var(--bg-alt);border-radius:var(--radius);padding:6px 10px;">
+              <span class="text-xs text-muted">Lines</span>
+              <span class="font-mono text-sm font-bold" style="margin-left:4px;">8</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Category Bars -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">Category Scores</span></div>
+      <div class="card-body space-y-4">
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-sm">Correctness</span>
+            <span class="font-mono text-sm font-bold" style="color:var(--success)">90</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:90%;background:var(--success)"></div></div>
+          <p class="text-xs text-muted mt-1">Handles all standard test cases correctly.</p>
+        </div>
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-sm">Efficiency</span>
+            <span class="font-mono text-sm font-bold" style="color:var(--success)">85</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:85%;background:var(--success)"></div></div>
+          <p class="text-xs text-muted mt-1">O(n) time using hash map. O(n) space is optimal for this approach.</p>
+        </div>
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-sm">Readability</span>
+            <span class="font-mono text-sm font-bold" style="color:var(--success)">88</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:88%;background:var(--success)"></div></div>
+          <p class="text-xs text-muted mt-1">Clear variable names and concise logic flow.</p>
+        </div>
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-sm">Best Practices</span>
+            <span class="font-mono text-sm font-bold" style="color:var(--info)">78</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:78%;background:var(--info)"></div></div>
+          <p class="text-xs text-muted mt-1">Could add type hints and docstring for better documentation.</p>
+        </div>
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-sm">Edge Cases</span>
+            <span class="font-mono text-sm font-bold" style="color:var(--warning)">70</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:70%;background:var(--warning)"></div></div>
+          <p class="text-xs text-muted mt-1">Missing handling for empty array and duplicate values.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Code Compare -->
+    <div class="two-col" style="align-items:start;">
+      <!-- Original Code -->
+      <div class="card">
+        <div class="card-header flex items-center justify-between">
+          <span class="card-title">Original Code</span>
+          <button class="btn btn-ghost btn-sm">Copy</button>
+        </div>
+        <div class="card-body" style="padding:0;">
+          <div class="code-block" style="border-radius:0;">
+            <pre><code><span class="line-number">1</span>  def two_sum(nums, target):
+<span class="line-number">2</span>      seen = {}
+<span class="line-number">3</span>      for i, num in enumerate(nums):
+<span class="line-number">4</span>          complement = target - num
+<span class="line-number">5</span>          if complement in seen:
+<span class="line-number">6</span>              return [seen[complement], i]
+<span class="line-number">7</span>          seen[num] = i
+<span class="line-number">8</span>      return []</code></pre>
+          </div>
+        </div>
+      </div>
+      <!-- Optimized Code -->
+      <div class="card">
+        <div class="card-header flex items-center justify-between">
+          <span class="card-title">Suggested Improvement</span>
+          <button class="btn btn-ghost btn-sm">Copy</button>
+        </div>
+        <div class="card-body" style="padding:0;">
+          <div class="code-block" style="border-radius:0;">
+            <pre><code><span class="line-number"> 1</span>  from typing import List
+<span class="line-number"> 2</span>
+<span class="line-number"> 3</span>  def two_sum(nums: List[int], target: int) -> List[int]:
+<span class="line-number"> 4</span>      """Find two indices that sum to target."""
+<span class="line-number"> 5</span>      if not nums:
+<span class="line-number"> 6</span>          return []
+<span class="line-number"> 7</span>      seen: dict[int, int] = {}
+<span class="line-number"> 8</span>      for i, num in enumerate(nums):
+<span class="line-number"> 9</span>          complement = target - num
+<span class="line-number">10</span>          if complement in seen:
+<span class="line-number">11</span>              return [seen[complement], i]
+<span class="line-number">12</span>          seen[num] = i
+<span class="line-number">13</span>      return []</code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="mockup-label">#20 AI Analysis</div>
+</body></html>
