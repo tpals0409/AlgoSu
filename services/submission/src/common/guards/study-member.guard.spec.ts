@@ -108,6 +108,15 @@ describe('StudyMemberGuard', () => {
       );
       expect(mockFetch).not.toHaveBeenCalled();
     });
+
+    it('Redis 캐시에 유효하지 않은 role이면 ForbiddenException', async () => {
+      mockRedis.get.mockResolvedValue('VIEWER');
+      const ctx = createMockContext();
+
+      await expect(guard.canActivate(ctx)).rejects.toThrow(ForbiddenException);
+      await expect(guard.canActivate(ctx)).rejects.toThrow('스터디 멤버가 아닙니다.');
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
   });
 
   // ──────────────────────────────────────────────

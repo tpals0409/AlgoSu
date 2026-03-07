@@ -5,3 +5,6 @@ CVE-2026-3304
 # multer CVE-2026-3520: npm override로 2.1.1 설치됨 (gateway)
 # @nestjs/platform-express/package.json 선언(2.0.2)이 Trivy에 오탐으로 감지
 CVE-2026-3520
+
+# zlib CVE-2026-22184: Alpine base image 취약점 — 상위 패치 대기 (2026-03-07)
+CVE-2026-22184

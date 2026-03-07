@@ -23,6 +23,7 @@ const config: Config = {
     },
   },
   testEnvironment: 'node',
+  forceExit: true,
 };
 
 export default config;
