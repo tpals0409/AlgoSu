@@ -18,7 +18,7 @@ import { StructuredLoggerService } from '../logger/structured-logger.service';
  * 1. X-User-ID + X-Study-ID 헤더 추출
  * 2. Redis 캐시 확인: problem:membership:{study_id}:{user_id} (TTL 10분)
  * 3. 캐시 miss → Gateway Internal API 호출
- * 4. 비멤버 → 403 Forbidden
+ * 4. 비멤버 → 403 Forbidden (fail-close)
  */
 @Injectable()
 export class StudyMemberGuard implements CanActivate {
