@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { ReviewService } from './review.service';
 import { ReviewComment } from './review-comment.entity';
 import { ReviewReply } from './review-reply.entity';
+import { Submission } from '../submission/submission.entity';
 
 // ─── Mock 팩토리 ────────────────────────────────────────────────
 const mockCommentRepo = () => ({
@@ -19,6 +20,10 @@ const mockReplyRepo = () => ({
   findOne: jest.fn(),
   save: jest.fn(),
   softDelete: jest.fn(),
+});
+
+const mockSubmissionRepo = () => ({
+  findOne: jest.fn(),
 });
 
 // ─── 테스트 헬퍼 ────────────────────────────────────────────────
@@ -57,6 +62,7 @@ describe('ReviewService', () => {
   let service: ReviewService;
   let commentRepo: jest.Mocked<Repository<ReviewComment>>;
   let replyRepo: jest.Mocked<Repository<ReviewReply>>;
+  let submissionRepo: jest.Mocked<Repository<Submission>>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -64,12 +70,14 @@ describe('ReviewService', () => {
         ReviewService,
         { provide: getRepositoryToken(ReviewComment), useFactory: mockCommentRepo },
         { provide: getRepositoryToken(ReviewReply), useFactory: mockReplyRepo },
+        { provide: getRepositoryToken(Submission), useFactory: mockSubmissionRepo },
       ],
     }).compile();
 
     service = module.get<ReviewService>(ReviewService);
     commentRepo = module.get(getRepositoryToken(ReviewComment));
     replyRepo = module.get(getRepositoryToken(ReviewReply));
+    submissionRepo = module.get(getRepositoryToken(Submission));
   });
 
   afterEach(() => {
@@ -81,6 +89,7 @@ describe('ReviewService', () => {
   describe('createComment() — 댓글 작성', () => {
     it('정상적으로 댓글을 생성한다', async () => {
       const saved = createMockComment();
+      submissionRepo.findOne.mockResolvedValue({ id: 'sub-uuid-1', studyId: 'study-uuid-1' } as any);
       commentRepo.save.mockResolvedValue(saved);
 
       const result = await service.createComment(
@@ -103,6 +112,7 @@ describe('ReviewService', () => {
 
     it('lineNumber가 없으면 null로 저장한다', async () => {
       const saved = createMockComment({ lineNumber: null });
+      submissionRepo.findOne.mockResolvedValue({ id: 'sub-uuid-1', studyId: 'study-uuid-1' } as any);
       commentRepo.save.mockResolvedValue(saved);
 
       await service.createComment(
@@ -203,12 +213,14 @@ describe('ReviewService', () => {
     it('원본 댓글이 존재하면 정상적으로 답글을 생성한다', async () => {
       const comment = createMockComment();
       commentRepo.findOne.mockResolvedValue(comment);
+      submissionRepo.findOne.mockResolvedValue({ id: 'sub-uuid-1', studyId: 'study-uuid-1' } as any);
       const saved = createMockReply();
       replyRepo.save.mockResolvedValue(saved);
 
       const result = await service.createReply(
         { commentPublicId: 'comment-pub-1', content: '감사합니다' },
         'user-1',
+        'study-uuid-1',
       );
 
       expect(commentRepo.findOne).toHaveBeenCalledWith({
@@ -231,6 +243,7 @@ describe('ReviewService', () => {
         service.createReply(
           { commentPublicId: 'non-existent', content: '답글' },
           'user-1',
+          'study-uuid-1',
         ),
       ).rejects.toThrow(NotFoundException);
     });

@@ -92,10 +92,10 @@ describe('ReviewController', () => {
       const mockReply = { id: 'r-1', ...dto };
       reviewService.createReply.mockResolvedValue(mockReply as any);
 
-      const result = await controller.createReply(dto, 'user-1');
+      const result = await controller.createReply(dto, 'user-1', 'study-1');
 
       expect(result).toEqual({ data: mockReply });
-      expect(reviewService.createReply).toHaveBeenCalledWith(dto, 'user-1');
+      expect(reviewService.createReply).toHaveBeenCalledWith(dto, 'user-1', 'study-1');
     });
   });
 

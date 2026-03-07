@@ -88,6 +88,7 @@ describe('CommentThread', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    window.confirm = jest.fn(() => true);
     defaultProps.onEdit = jest.fn();
     defaultProps.onDelete = jest.fn();
     defaultProps.onReply = jest.fn().mockResolvedValue(undefined);

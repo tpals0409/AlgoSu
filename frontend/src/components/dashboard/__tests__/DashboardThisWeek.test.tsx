@@ -47,6 +47,10 @@ jest.mock('@/components/ui/Skeleton', () => ({
   Skeleton: () => <div data-testid="skeleton" />,
 }));
 
+jest.mock('@/contexts/StudyContext', () => ({
+  useStudy: () => ({ currentStudyId: 'test-study-id' }),
+}));
+
 jest.mock('@/lib/utils', () => ({
   cn: (...args: string[]) => args.filter(Boolean).join(' '),
   getCurrentWeekLabel: () => '1월3주차',

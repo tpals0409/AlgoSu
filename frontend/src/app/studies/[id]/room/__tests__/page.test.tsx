@@ -64,6 +64,17 @@ jest.mock('@/lib/api', () => ({
   },
   submissionApi: {
     list: jest.fn().mockResolvedValue({ data: [], meta: {} }),
+    listByProblemForStudy: jest.fn().mockResolvedValue([]),
+  },
+  studyApi: {
+    getMembers: jest.fn().mockResolvedValue([]),
+  },
+  ApiError: class ApiError extends Error {
+    status: number;
+    constructor(message: string, status: number) {
+      super(message);
+      this.status = status;
+    }
   },
 }));
 
