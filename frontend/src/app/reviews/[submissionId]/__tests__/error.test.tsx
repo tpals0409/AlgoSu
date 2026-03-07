@@ -38,10 +38,10 @@ describe('ReviewDetailErrorPage', () => {
     expect(mockReset).toHaveBeenCalledTimes(1);
   });
 
-  it('리뷰 목록으로 링크가 렌더링된다', () => {
+  it('스터디 목록으로 링크가 렌더링된다', () => {
     render(<ReviewDetailErrorPage error={mockError} reset={mockReset} />);
-    const link = screen.getByRole('link', { name: '리뷰 목록으로' });
+    const link = screen.getByRole('link', { name: '스터디 목록으로' });
     expect(link).toBeInTheDocument();
-    expect(link).toHaveAttribute('href', '/reviews');
+    expect(link).toHaveAttribute('href', '/studies');
   });
 });

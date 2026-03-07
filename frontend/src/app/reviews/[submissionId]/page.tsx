@@ -215,7 +215,8 @@ export default function CodeReviewPage(): ReactElement {
       setSubmission(sub);
       setAnalysis(anal);
       setComments(cmts);
-    } catch {
+    } catch (err) {
+      console.error('[CodeReviewPage] loadData failed:', err);
       setError('데이터를 불러오지 못했습니다.');
     } finally {
       setLoading(false);
@@ -330,12 +331,12 @@ export default function CodeReviewPage(): ReactElement {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => router.push('/submissions')}
+                onClick={() => router.push(currentStudyId ? `/studies/${currentStudyId}/room` : '/studies')}
                 className="flex items-center gap-1 text-xs text-text-3 transition-colors hover:text-text"
-                aria-label="제출 목록으로 이동"
+                aria-label="스터디룸으로 이동"
               >
                 <ChevronRight className="h-3.5 w-3.5 rotate-180" aria-hidden />
-                제출 목록
+                스터디룸
               </button>
               <span className="text-[10px] text-text-3 opacity-30">|</span>
               <div className="flex items-center gap-2">
@@ -374,11 +375,11 @@ export default function CodeReviewPage(): ReactElement {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => router.push('/submissions')}
+              onClick={() => router.push(currentStudyId ? `/studies/${currentStudyId}/room` : '/studies')}
               className="flex items-center gap-1 text-xs text-text-3 hover:text-text transition-colors"
             >
               <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
-              나가기
+              스터디룸
             </button>
             <span className="h-4 w-px bg-border" />
             <span className="text-xs font-medium text-text truncate max-w-[200px]">

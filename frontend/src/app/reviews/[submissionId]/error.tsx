@@ -24,10 +24,10 @@ export default function ReviewDetailErrorPage({ reset }: ErrorPageProps): ReactN
           다시 시도
         </button>
         <Link
-          href="/reviews"
+          href="/studies"
           className="rounded-btn border border-border px-4 py-2 text-sm font-medium text-text transition-colors hover:bg-bg-2"
         >
-          리뷰 목록으로
+          스터디 목록으로
         </Link>
       </div>
     </div>

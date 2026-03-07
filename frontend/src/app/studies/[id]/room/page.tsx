@@ -98,6 +98,7 @@ export default function StudyRoomPage(): ReactElement {
   const [error, setError] = useState<string | null>(null);
   const [notSubmitted, setNotSubmitted] = useState(false);
   const [nicknameMap, setNicknameMap] = useState<Record<string, string>>({});
+  const [avatarMap, setAvatarMap] = useState<Record<string, string | null>>({});
 
   const studyId = params.id;
 
@@ -131,12 +132,15 @@ export default function StudyRoomPage(): ReactElement {
     if (currentStudyId) {
       studyApi.getMembers(currentStudyId).then((members) => {
         if (cancelled) return;
-        const map: Record<string, string> = {};
+        const nMap: Record<string, string> = {};
+        const aMap: Record<string, string | null> = {};
         for (const m of members) {
-          if (m.nickname) map[m.user_id] = m.nickname;
-          else if (m.username) map[m.user_id] = m.username;
+          if (m.nickname) nMap[m.user_id] = m.nickname;
+          else if (m.username) nMap[m.user_id] = m.username;
+          aMap[m.user_id] = m.avatar_url ?? null;
         }
-        setNicknameMap(map);
+        setNicknameMap(nMap);
+        setAvatarMap(aMap);
       }).catch(() => {});
     }
 
@@ -149,7 +153,11 @@ export default function StudyRoomPage(): ReactElement {
     setNotSubmitted(false);
     try {
       const data = await submissionApi.listByProblemForStudy(problem.id);
-      setSubmissions(data);
+      // userId별 최신 제출만 필터 (백엔드가 createdAt DESC 정렬)
+      const latestByUser = data.filter((sub, idx, arr) =>
+        arr.findIndex((s) => s.userId === sub.userId) === idx,
+      );
+      setSubmissions(latestByUser);
     } catch (err) {
       if (err instanceof ApiError && err.status === 403) {
         setNotSubmitted(true);
@@ -292,7 +300,23 @@ export default function StudyRoomPage(): ReactElement {
                       )}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-badge bg-bg-alt text-[10px] font-semibold text-text-2">
+                        {sub.userId && avatarMap[sub.userId] ? (
+                          <img
+                            src={avatarMap[sub.userId]!}
+                            alt=""
+                            className="h-8 w-8 rounded-full object-cover"
+                            onError={(e) => {
+                              const target = e.currentTarget;
+                              target.style.display = 'none';
+                              const fallback = target.nextElementSibling as HTMLElement | null;
+                              if (fallback) fallback.style.display = 'flex';
+                            }}
+                          />
+                        ) : null}
+                        <div
+                          className="flex h-8 w-8 items-center justify-center rounded-full bg-bg-alt text-[10px] font-semibold text-text-2"
+                          style={{ display: sub.userId && avatarMap[sub.userId] ? 'none' : 'flex' }}
+                        >
                           {(sub.userId && nicknameMap[sub.userId]) ? nicknameMap[sub.userId].slice(0, 2) : '?'}
                         </div>
                         <div>
