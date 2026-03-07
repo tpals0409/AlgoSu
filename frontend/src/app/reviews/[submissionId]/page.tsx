@@ -375,12 +375,16 @@ export default function CodeReviewPage(): ReactElement {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => router.back()}
+                onClick={() => router.push(
+                  currentStudyId
+                    ? `/studies/${currentStudyId}/room?problemId=${submission.problemId}`
+                    : '/studies',
+                )}
                 className="flex items-center gap-1 text-xs text-text-3 transition-colors hover:text-text"
-                aria-label="뒤로가기"
+                aria-label="제출 목록으로 이동"
               >
                 <ChevronRight className="h-3.5 w-3.5 rotate-180" aria-hidden />
-                뒤로가기
+                제출 목록
               </button>
               <span className="text-[10px] text-text-3 opacity-30">|</span>
               <div className="flex items-center gap-2">
@@ -419,11 +423,15 @@ export default function CodeReviewPage(): ReactElement {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => router.back()}
+              onClick={() => router.push(
+                currentStudyId
+                  ? `/studies/${currentStudyId}/room?problemId=${submission?.problemId ?? ''}`
+                  : '/studies',
+              )}
               className="flex items-center gap-1 text-xs text-text-3 hover:text-text transition-colors"
             >
               <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
-              뒤로가기
+              제출 목록
             </button>
             <span className="h-4 w-px bg-border" />
             <span className="text-xs font-medium text-text truncate max-w-[200px]">

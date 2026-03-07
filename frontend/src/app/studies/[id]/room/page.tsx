@@ -12,7 +12,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, type ReactElement } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   Code2,
   Users,
@@ -87,6 +87,7 @@ function getSagaStatus(
 export default function StudyRoomPage(): ReactElement {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { currentStudyId, setCurrentStudy } = useStudy();
 
@@ -121,7 +122,17 @@ export default function StudyRoomPage(): ReactElement {
 
     problemApi.findAll()
       .then((data) => {
-        if (!cancelled) setProblems(data);
+        if (cancelled) return;
+        setProblems(data);
+        // query param problemId가 있으면 해당 문제 자동 선택 (뒤로가기 복원)
+        const qsProblemId = searchParams.get('problemId');
+        if (qsProblemId) {
+          const target = data.find((p) => p.id === qsProblemId);
+          if (target) {
+            setSelectedProblem(target);
+            void loadSubmissions(target);
+          }
+        }
       })
       .catch(() => {
         if (!cancelled) setError('문제 목록을 불러오지 못했습니다.');
