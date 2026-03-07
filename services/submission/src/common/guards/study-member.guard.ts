@@ -77,6 +77,10 @@ export class StudyMemberGuard implements CanActivate {
     }
 
     if (role) {
+      if (role !== 'ADMIN' && role !== 'MEMBER') {
+        this.logger.warn(`스터디 멤버 역할 검증 실패: studyId=${studyId}, userId=${userId}, role=${role}`);
+        throw new ForbiddenException('스터디 멤버가 아닙니다.');
+      }
       (request as StudyMemberRequest).studyMemberRole = role;
       return true;
     }

@@ -62,10 +62,11 @@ export class StudyMemberGuard implements CanActivate {
     if (!role) {
       const gatewayUrl = this.configService.get<string>('GATEWAY_INTERNAL_URL', 'http://localhost:3000');
       const internalKey = this.configService.get<string>('INTERNAL_KEY_GATEWAY', '');
+      const url = `${gatewayUrl}/internal/studies/${studyId}/members/${userId}`;
 
       try {
         const response = await fetch(
-          `${gatewayUrl}/internal/studies/${studyId}/members/${userId}`,
+          url,
           {
             method: 'GET',
             headers: {
@@ -106,6 +107,7 @@ export class StudyMemberGuard implements CanActivate {
     }
 
     if (!role || (role !== 'ADMIN' && role !== 'MEMBER')) {
+      this.logger.warn(`스터디 멤버 역할 검증 실패: studyId=${studyId}, userId=${userId}, role=${role}`);
       throw new ForbiddenException('스터디 멤버가 아닙니다.');
     }
 

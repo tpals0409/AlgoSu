@@ -1,4 +1,4 @@
-import { ApiError, setCurrentStudyIdForApi, authApi, studyApi, problemApi, submissionApi, draftApi, aiQuotaApi, notificationApi, reviewApi, studyNoteApi, solvedacApi } from '@/lib/api';
+import { ApiError, StudyRequiredError, setCurrentStudyIdForApi, authApi, studyApi, problemApi, submissionApi, draftApi, aiQuotaApi, notificationApi, reviewApi, studyNoteApi, solvedacApi } from '@/lib/api';
 
 // ── fetch mock ──
 const mockFetch = jest.fn();
@@ -30,7 +30,8 @@ function noContentResponse() {
 
 beforeEach(() => {
   mockFetch.mockReset();
-  setCurrentStudyIdForApi(null);
+  // 대부분의 테스트에서 멤버십 필수 경로 가드에 걸리지 않도록 기본 studyId 설정
+  setCurrentStudyIdForApi('test-study');
 });
 
 // ── ApiError ──
@@ -308,12 +309,69 @@ describe('fetchApi error 분기', () => {
     expect(result).toEqual([{ id: '1' }]);
   });
 
-  it('X-Study-ID 헤더가 없을 때 헤더에 포함되지 않는다', async () => {
+  it('X-Study-ID 헤더가 없을 때 비멤버십 경로에서는 헤더에 포함되지 않는다', async () => {
     setCurrentStudyIdForApi(null);
     mockFetch.mockReturnValue(jsonResponse({ email: 'test@test.com' }));
-    await authApi.getProfile();
+    await authApi.getProfile(); // /auth/profile — 비멤버십 경로
     const [, opts] = mockFetch.mock.calls[0];
     expect(opts.headers['X-Study-ID']).toBeUndefined();
+  });
+});
+
+// ── StudyRequiredError ──
+
+describe('StudyRequiredError (멤버십 필수 경로 가드)', () => {
+  beforeEach(() => {
+    setCurrentStudyIdForApi(null);
+    // localStorage도 비워서 fallback 방지
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('algosu:current-study-id');
+    }
+  });
+
+  it('studyId 없이 /api/problems 호출 시 StudyRequiredError를 던진다', async () => {
+    await expect(problemApi.findAll()).rejects.toThrow(StudyRequiredError);
+    await expect(problemApi.findAll()).rejects.toThrow('스터디를 선택해주세요');
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('studyId 없이 /api/submissions 호출 시 StudyRequiredError를 던진다', async () => {
+    await expect(submissionApi.list()).rejects.toThrow(StudyRequiredError);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('studyId 없이 /api/reviews 호출 시 StudyRequiredError를 던진다', async () => {
+    await expect(reviewApi.listComments('s1')).rejects.toThrow(StudyRequiredError);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('studyId 없이 /api/study-notes 호출 시 StudyRequiredError를 던진다', async () => {
+    await expect(studyNoteApi.upsert({ problemId: 'p1', content: 'test' })).rejects.toThrow(StudyRequiredError);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('studyId 없이 /api/analysis 호출 시 StudyRequiredError를 던진다', async () => {
+    await expect(aiQuotaApi.get()).rejects.toThrow(StudyRequiredError);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('studyId 없이 비멤버십 경로(/auth, /api/studies, /api/notifications)는 정상 동작', async () => {
+    mockFetch.mockReturnValue(jsonResponse({ email: 'test@test.com' }));
+    await expect(authApi.getProfile()).resolves.toBeDefined();
+
+    mockFetch.mockReturnValue(jsonResponse([]));
+    await expect(studyApi.list()).resolves.toBeDefined();
+
+    mockFetch.mockReturnValue(jsonResponse([]));
+    await expect(notificationApi.list()).resolves.toBeDefined();
+  });
+
+  it('studyId가 있으면 멤버십 경로도 정상 동작', async () => {
+    setCurrentStudyIdForApi('study-123');
+    mockFetch.mockReturnValue(jsonResponse([]));
+    await expect(problemApi.findAll()).resolves.toBeDefined();
+    const [, opts] = mockFetch.mock.calls[0];
+    expect(opts.headers['X-Study-ID']).toBe('study-123');
   });
 });
 

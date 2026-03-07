@@ -15,8 +15,11 @@ const API_BASE =
     : '';
 
 // ── 모듈 레벨 현재 스터디 ID (StudyContext에서 설정) ──
-
-let _currentStudyId: string | null = null;
+// SSR 환경에서는 null, 클라이언트에서는 localStorage에서 즉시 복원하여 하이드레이션 레이스 방지
+let _currentStudyId: string | null =
+  typeof window !== 'undefined'
+    ? localStorage.getItem('algosu:current-study-id')
+    : null;
 
 export function setCurrentStudyIdForApi(id: string | null): void {
   _currentStudyId = id;
@@ -164,6 +167,28 @@ export class ApiError extends Error {
   }
 }
 
+/** 스터디 미선택 상태에서 멤버십 필수 API를 호출했을 때 발생 */
+export class StudyRequiredError extends Error {
+  constructor(path: string) {
+    super(`스터디를 선택해주세요. (요청 경로: ${path})`);
+    this.name = 'StudyRequiredError';
+  }
+}
+
+// ── 멤버십 필수 경로 판별 ──
+
+const MEMBERSHIP_REQUIRED_PREFIXES = [
+  '/api/problems',
+  '/api/submissions',
+  '/api/reviews',
+  '/api/study-notes',
+  '/api/analysis',
+] as const;
+
+function requiresMembership(path: string): boolean {
+  return MEMBERSHIP_REQUIRED_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
+
 // ── fetch 래퍼 ──
 
 /**
@@ -182,6 +207,8 @@ async function fetchApi<T>(
     ?? (typeof window !== 'undefined' ? localStorage.getItem('algosu:current-study-id') : null);
   if (studyId) {
     headers['X-Study-ID'] = studyId;
+  } else if (requiresMembership(path)) {
+    throw new StudyRequiredError(path);
   }
 
   const res = await fetch(`${API_BASE}${path}`, {
