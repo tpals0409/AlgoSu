@@ -83,12 +83,12 @@ export default function DashboardWeeklyChart({
       role="button"
       tabIndex={0}
       aria-label={`주차별 제출 현황 — ${weekViewLabel} (클릭하여 전환)`}
-      className="group cursor-pointer"
+      className="group cursor-pointer overflow-hidden p-0"
       onClick={onCycleView}
       onKeyDown={(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onCycleView(); } }}
       style={fadeStyle}
     >
-      <CardHeader className="flex flex-row items-center gap-2.5">
+      <CardHeader className="flex flex-row items-center gap-2.5 px-4 pt-4">
         <CardTitle>주차별 제출 현황</CardTitle>
         <span className="inline-flex items-center gap-1 rounded-full bg-primary-soft2 px-2.5 py-1 text-[11px] font-medium text-primary">
           <span

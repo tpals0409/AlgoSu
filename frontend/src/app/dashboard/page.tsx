@@ -14,10 +14,9 @@ import dynamic from 'next/dynamic';
 import {
   FileText,
   Users,
-  CheckCircle2,
-  RefreshCw,
+  BarChart3,
   Github,
-  BookOpenCheck,
+  MessageCircle,
   ChevronRight,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -162,7 +161,8 @@ export default function DashboardPage(): ReactNode {
   const { isStudyReady } = useRequireStudy();
   const { isAuthenticated, githubConnected } = useAuth();
   const { user } = useAuth();
-  const { currentStudyId, currentStudyName, studiesLoaded } = useStudy();
+  const { currentStudyId, studiesLoaded } = useStudy();
+
 
   const [stats, setStats] = useState<StudyStats | null>(null);
   const [members, setMembers] = useState<StudyMember[]>([]);
@@ -184,6 +184,83 @@ export default function DashboardPage(): ReactNode {
   const loadDashboard = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+
+    // ── DEV MOCK DATA ──────────────────────────────────────────────
+    if (process.env.NEXT_PUBLIC_DEV_MOCK === 'true') {
+      const mockMembers: StudyMember[] = [
+        { id: 'm1', study_id: 'dev-study-001', user_id: 'dev-user-001', role: 'ADMIN', joined_at: '2025-01-01T00:00:00Z', nickname: '김민준', username: 'kimmin', email: 'dev@algosu.kr', avatar_url: '' },
+        { id: 'm2', study_id: 'dev-study-001', user_id: 'dev-user-002', role: 'MEMBER', joined_at: '2025-01-02T00:00:00Z', nickname: '이서연', username: 'seoyeon', email: 'user2@algosu.kr', avatar_url: '' },
+        { id: 'm3', study_id: 'dev-study-001', user_id: 'dev-user-003', role: 'MEMBER', joined_at: '2025-01-02T00:00:00Z', nickname: '박지호', username: 'jiho', email: 'user3@algosu.kr', avatar_url: '' },
+        { id: 'm4', study_id: 'dev-study-001', user_id: 'dev-user-004', role: 'MEMBER', joined_at: '2025-01-03T00:00:00Z', nickname: '최유진', username: 'yujin', email: 'user4@algosu.kr', avatar_url: '' },
+        { id: 'm5', study_id: 'dev-study-001', user_id: 'dev-user-005', role: 'MEMBER', joined_at: '2025-01-03T00:00:00Z', nickname: '강민서', username: 'minseo', email: 'user5@algosu.kr', avatar_url: '' },
+        { id: 'm6', study_id: 'dev-study-001', user_id: 'dev-user-006', role: 'MEMBER', joined_at: '2025-01-04T00:00:00Z', nickname: '정하늘', username: 'haneul', email: 'user6@algosu.kr', avatar_url: '' },
+        { id: 'm7', study_id: 'dev-study-001', user_id: 'dev-user-007', role: 'MEMBER', joined_at: '2025-01-04T00:00:00Z', nickname: '한승우', username: 'seungwoo', email: 'user7@algosu.kr', avatar_url: '' },
+        { id: 'm8', study_id: 'dev-study-001', user_id: 'dev-user-008', role: 'MEMBER', joined_at: '2025-01-05T00:00:00Z', nickname: '오지수', username: 'jisoo', email: 'user8@algosu.kr', avatar_url: '' },
+      ];
+      const mockStats: StudyStats = {
+        totalSubmissions: 63,
+        solvedProblemIds: ['prob-001', 'prob-003'],
+        recentSubmissions: [],
+        byMemberWeek: null,
+        byWeek: [
+          { week: '3월1주차', count: 12 },
+          { week: '2월4주차', count: 18 },
+          { week: '2월3주차', count: 15 },
+          { week: '2월2주차', count: 10 },
+          { week: '2월1주차', count: 8 },
+        ],
+        byMember: [
+          { userId: 'dev-user-001', isMember: true, count: 12, doneCount: 10 },
+          { userId: 'dev-user-002', isMember: true, count: 8, doneCount: 7 },
+          { userId: 'dev-user-003', isMember: true, count: 10, doneCount: 9 },
+          { userId: 'dev-user-004', isMember: true, count: 6, doneCount: 5 },
+          { userId: 'dev-user-005', isMember: true, count: 9, doneCount: 8 },
+        ],
+        byWeekPerUser: [
+          { userId: 'dev-user-001', week: '3월1주차', count: 3 },
+          { userId: 'dev-user-001', week: '2월4주차', count: 4 },
+          { userId: 'dev-user-001', week: '2월3주차', count: 3 },
+          { userId: 'dev-user-001', week: '2월2주차', count: 1 },
+          { userId: 'dev-user-001', week: '2월1주차', count: 1 },
+          { userId: 'dev-user-002', week: '3월1주차', count: 2 },
+          { userId: 'dev-user-002', week: '2월4주차', count: 3 },
+          { userId: 'dev-user-003', week: '3월1주차', count: 2 },
+          { userId: 'dev-user-003', week: '2월4주차', count: 4 },
+          { userId: 'dev-user-003', week: '2월3주차', count: 4 },
+        ],
+      };
+      const currentWeek = getCurrentWeekLabel();
+      const mockActiveProblems: Problem[] = [
+        { id: 'prob-001', title: '두 수의 합', weekNumber: currentWeek, status: 'ACTIVE', difficulty: 'SILVER', level: 2, deadline: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), description: '', allowedLanguages: [] },
+        { id: 'prob-002', title: '최단 경로', weekNumber: currentWeek, status: 'ACTIVE', difficulty: 'GOLD', level: 4, deadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), description: '', allowedLanguages: [] },
+        { id: 'prob-003', title: '이분 탐색', weekNumber: '2월4주차', status: 'ACTIVE', difficulty: 'SILVER', level: 3, deadline: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), description: '', allowedLanguages: [] },
+      ];
+      const mockAllProblems: Problem[] = [
+        ...mockActiveProblems,
+        { id: 'prob-004', title: 'BFS 탐색', weekNumber: '2월3주차', status: 'CLOSED', difficulty: 'SILVER', level: 2, deadline: '', description: '', allowedLanguages: [] },
+        { id: 'prob-005', title: 'DFS와 BFS', weekNumber: '2월2주차', status: 'CLOSED', difficulty: 'GOLD', level: 3, deadline: '', description: '', allowedLanguages: [] },
+        { id: 'prob-006', title: '다익스트라', weekNumber: '2월1주차', status: 'CLOSED', difficulty: 'GOLD', level: 4, deadline: '', description: '', allowedLanguages: [] },
+        { id: 'prob-007', title: '플로이드 워셜', weekNumber: '1월4주차', status: 'CLOSED', difficulty: 'PLATINUM', level: 1, deadline: '', description: '', allowedLanguages: [] },
+        { id: 'prob-008', title: '크루스칼', weekNumber: '1월3주차', status: 'CLOSED', difficulty: 'GOLD', level: 2, deadline: '', description: '', allowedLanguages: [] },
+        { id: 'prob-009', title: '프림 알고리즘', weekNumber: '1월2주차', status: 'CLOSED', difficulty: 'GOLD', level: 5, deadline: '', description: '', allowedLanguages: [] },
+        { id: 'prob-010', title: '위상 정렬', weekNumber: '1월1주차', status: 'CLOSED', difficulty: 'GOLD', level: 4, deadline: '', description: '', allowedLanguages: [] },
+      ];
+      const mockSubmissions: Submission[] = [
+        { id: 'sub-001', problemId: 'prob-001', problemTitle: '두 수의 합', language: 'Python', sagaStep: 'DONE', createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString() },
+        { id: 'sub-002', problemId: 'prob-002', problemTitle: '최단 경로', language: 'Java', sagaStep: 'AI_QUEUED', createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString() },
+        { id: 'sub-003', problemId: 'prob-003', problemTitle: '이분 탐색', language: 'Python', sagaStep: 'DONE', createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+      ];
+      setMembers(mockMembers);
+      setStats(mockStats);
+      setActiveProblems(mockActiveProblems);
+      setAllProblems(mockAllProblems);
+      setRecentSubmissions(mockSubmissions);
+      setIsLoading(false);
+      return;
+    }
+
+    // ──────────────────────────────────────────────────────────────
+
     try {
       const results = await Promise.allSettled([
         currentStudyId ? studyApi.getStats(currentStudyId, getCurrentWeekLabel()) : Promise.resolve(null),
@@ -227,6 +304,7 @@ export default function DashboardPage(): ReactNode {
     }
   }, [currentStudyId]);
 
+
   useEffect(() => {
     if (isAuthenticated && studiesLoaded && currentStudyId) {
       void loadDashboard();
@@ -262,20 +340,8 @@ export default function DashboardPage(): ReactNode {
     });
   }, [activeProblems, submittedProblemIds]);
 
-  const upcomingDeadlines = useMemo(() => {
-    const now = new Date();
-    const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    return activeProblems
-      .filter(
-        (p) =>
-          p.status === 'ACTIVE' &&
-          p.deadline &&
-          new Date(p.deadline) > now &&
-          new Date(p.deadline) <= sevenDaysLater,
-      )
-      .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
-      .slice(0, 5);
-  }, [activeProblems]);
+
+
 
   const myStats = useMemo(() => {
     if (!stats?.byMember.length || !myUserId) return { count: 0, doneCount: 0 };
@@ -378,27 +444,17 @@ export default function DashboardPage(): ReactNode {
         {/* ── HEADER ── */}
         <div className="flex items-center justify-between" style={fade(0)}>
           <div>
-            <h1 className="text-[22px] font-bold tracking-tight text-text">대시보드</h1>
-            <p className="mt-0.5 text-xs text-text-3">
+            <h1 className="text-[22px] font-bold tracking-tight text-text">
               {(() => {
                 const me = myUserId ? members.find((m) => m.user_id === myUserId) : null;
-                const displayName = me?.nickname ?? user?.email;
-                return displayName ? `${displayName}님, 안녕하세요!` : '환영합니다';
+                const displayName = me?.nickname ?? user?.email?.split('@')[0];
+                return displayName ? `안녕하세요, ${displayName}님 👋` : '안녕하세요 👋';
               })()}
-              {currentStudyName ? ` — ${currentStudyName}` : ''}
+            </h1>
+            <p className="mt-0.5 text-xs text-text-3">
+              오늘도 꾸준히 성장하는 하루 되세요.
             </p>
           </div>
-          {currentStudyId && (
-            <button
-              type="button"
-              className="flex h-[34px] items-center gap-1.5 rounded-btn border border-border bg-transparent px-3.5 text-xs font-medium text-text-2 transition-colors hover:text-text disabled:opacity-50"
-              onClick={() => void loadDashboard()}
-              disabled={isLoading}
-            >
-              <RefreshCw className={cn('h-3.5 w-3.5', isLoading && 'animate-spin')} />
-              새로고침
-            </button>
-          )}
         </div>
 
         {error && (
@@ -425,88 +481,91 @@ export default function DashboardPage(): ReactNode {
           </Card>
         )}
 
-        {/* ── STAT CARDS ── */}
+        {/* ── STAT CARDS + STUDY ROOM (4열) ── */}
         {currentStudyId && (
-          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3" style={fade(0.08)}>
+          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-4" style={fade(0.08)}>
             <StatCard
               icon={FileText}
-              label="내 제출 (이번 스터디 전체)"
+              label="제출 수"
               value={statsLoading ? '' : myStats.count}
               loading={statsLoading}
               href="/submissions"
               animRef={submissionRef}
-              valueColor="text-primary"
             />
             <StatCard
               icon={Users}
-              label="활성 멤버"
+              label="알고리즘 마스터"
               value={statsLoading ? '' : members.length}
               loading={statsLoading}
               href={currentStudyId ? `/studies/${currentStudyId}` : undefined}
               animRef={memberRef}
+              valueColor="text-primary"
             />
             <StatCard
-              icon={CheckCircle2}
-              label="전체 문제 기준"
-              value={statsLoading ? '' : `${myCompletionPct}%`}
+              icon={BarChart3}
+              label="통계"
+              value={statsLoading ? '' : `${myCompletionPct}점`}
               loading={statsLoading}
               href="/analytics"
               animRef={completionRef}
-              valueColor="text-success"
+              valueColor="text-primary"
+            />
+            {/* 스터디룸 카드 - 그라데이션 보라 */}
+            <Link href={currentStudyId ? `/studies/${currentStudyId}/room` : '/study-room'}>
+              <Card className="group cursor-pointer p-5 text-white transition-all hover:brightness-105" style={{ ...fade(0.08), background: 'var(--gradient-brand)' }}>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-md bg-white/20">
+                    <MessageCircle className="h-4 w-4 text-white" aria-hidden />
+                  </div>
+                  <div>
+                    <p className="font-mono text-[28px] font-bold leading-none tracking-tight text-white">스터디룸</p>
+                    <p className="mt-1 text-[11px] text-white/70">입장하기</p>
+                  </div>
+                </div>
+              </Card>
+            </Link>
+          </div>
+        )}
+
+        {/* ── WEEKLY CHART (dynamic) ── */}
+        {/* ── MIDDLE ROW: 주차별 차트(좌) + 진행 중인 문제(우) ── */}
+        {currentStudyId && (
+          <div className="grid gap-3.5 md:grid-cols-[3fr_2fr]" style={fade(0.16)}>
+            {/* 주차별 제출 현황 차트 */}
+            {stats && stats.byWeek.length > 0 ? (
+              <DashboardWeeklyChart
+                filteredByWeek={filteredByWeek}
+                weekViewLabel={weekViewLabel}
+                problemCountByWeek={problemCountByWeek}
+                members={members}
+                weekViewUserId={weekViewUserId}
+                mounted={mounted}
+                onCycleView={cycleWeekView}
+                fadeStyle={{}}
+              />
+            ) : (
+              <div className="rounded-card border border-border bg-bg-card p-6 shadow-card">
+                <p className="text-sm text-text-3">아직 제출 데이터가 없습니다.</p>
+              </div>
+            )}
+
+            {/* 진행 중인 문제 */}
+            <DashboardThisWeek
+              currentWeekProblems={currentWeekProblems}
+              submittedProblemIds={submittedProblemIds}
+              isLoading={isLoading}
+              fadeStyle={{}}
             />
           </div>
         )}
 
-        {/* ── STUDY ROOM CARD ── */}
-        {currentStudyId && (
-          <Link href={currentStudyId ? `/studies/${currentStudyId}/room` : '/study-room'}>
-            <Card className="group cursor-pointer border-primary/20 bg-primary-soft transition-all hover:border-primary/40 hover:shadow-md" style={fade(0.12)}>
-              <div className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10">
-                    <BookOpenCheck className="h-4 w-4 text-primary" aria-hidden />
-                  </div>
-                  <div>
-                    <p className="text-[13px] font-medium text-text">스터디룸</p>
-                    <p className="text-[11px] text-text-3">마감된 문제의 풀이를 함께 리뷰하고 토론하세요</p>
-                  </div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-text-3 transition-transform group-hover:translate-x-0.5" aria-hidden />
-              </div>
-            </Card>
-          </Link>
-        )}
-
-        {/* ── WEEKLY CHART (dynamic) ── */}
-        {currentStudyId && stats && stats.byWeek.length > 0 && (
-          <DashboardWeeklyChart
-            filteredByWeek={filteredByWeek}
-            weekViewLabel={weekViewLabel}
-            problemCountByWeek={problemCountByWeek}
-            members={members}
-            weekViewUserId={weekViewUserId}
-            mounted={mounted}
-            onCycleView={cycleWeekView}
-            fadeStyle={fade(0.16)}
-          />
-        )}
-
-        {/* ── THIS WEEK PROBLEMS (dynamic) ── */}
-        {currentStudyId && (
-          <DashboardThisWeek
-            currentWeekProblems={currentWeekProblems}
-            submittedProblemIds={submittedProblemIds}
-            isLoading={isLoading}
-            fadeStyle={fade(0.2)}
-          />
-        )}
-
-        {/* ── TWO COLUMN GRID (dynamic) ── */}
+        {/* ── BOTTOM: 최근 제출 (풀 너비) ── */}
         <DashboardTwoColumn
           recentSubmissions={recentSubmissions}
-          upcomingDeadlines={upcomingDeadlines}
+          upcomingDeadlines={[]}
           submittedProblemIds={submittedProblemIds}
           problemTitleMap={problemTitleMap}
+          allProblems={allProblems}
           isLoading={isLoading}
           fadeStyle={fade(0.24)}
         />
@@ -514,3 +573,4 @@ export default function DashboardPage(): ReactNode {
     </AppLayout>
   );
 }
+

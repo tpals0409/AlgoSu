@@ -10,7 +10,7 @@
 import { type ReactNode } from 'react';
 import Link from 'next/link';
 import { ArrowRight, CheckCircle2, Clock } from 'lucide-react';
-import { Card } from '@/components/ui/Card';
+import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -18,6 +18,26 @@ import type { Submission, Problem } from '@/lib/api';
 import { SAGA_STEP_CONFIG, type SagaStep } from '@/lib/constants';
 import type { Difficulty } from '@/lib/constants';
 import { cn } from '@/lib/utils';
+
+// ─── DIFFICULTY STYLES (CSS 변수 기반) ────
+
+const DIFF_DOT_STYLE: Record<string, React.CSSProperties> = {
+  bronze:   { backgroundColor: 'var(--diff-bronze-color)' },
+  silver:   { backgroundColor: 'var(--diff-silver-color)' },
+  gold:     { backgroundColor: 'var(--diff-gold-color)' },
+  platinum: { backgroundColor: 'var(--diff-platinum-color)' },
+  diamond:  { backgroundColor: 'var(--diff-diamond-color)' },
+  ruby:     { backgroundColor: 'var(--diff-ruby-color)' },
+};
+
+const DIFF_BADGE_STYLE: Record<string, React.CSSProperties> = {
+  bronze:   { backgroundColor: 'var(--diff-bronze-bg)',   color: 'var(--diff-bronze-color)' },
+  silver:   { backgroundColor: 'var(--diff-silver-bg)',   color: 'var(--diff-silver-color)' },
+  gold:     { backgroundColor: 'var(--diff-gold-bg)',     color: 'var(--diff-gold-color)' },
+  platinum: { backgroundColor: 'var(--diff-platinum-bg)', color: 'var(--diff-platinum-color)' },
+  diamond:  { backgroundColor: 'var(--diff-diamond-bg)',  color: 'var(--diff-diamond-color)' },
+  ruby:     { backgroundColor: 'var(--diff-ruby-bg)',     color: 'var(--diff-ruby-color)' },
+};
 
 // ─── HELPERS ─────────────────────────────
 
@@ -46,6 +66,7 @@ export interface DashboardTwoColumnProps {
   readonly upcomingDeadlines: Problem[];
   readonly submittedProblemIds: Set<string>;
   readonly problemTitleMap: Map<string, string>;
+  readonly allProblems: Problem[];
   readonly isLoading: boolean;
   readonly fadeStyle: React.CSSProperties;
 }
@@ -57,23 +78,25 @@ export default function DashboardTwoColumn({
   upcomingDeadlines,
   submittedProblemIds,
   problemTitleMap,
+  allProblems,
   isLoading,
   fadeStyle,
 }: DashboardTwoColumnProps): ReactNode {
+  const problemMap = new Map(allProblems.map((p) => [p.id, p]));
   return (
-    <div className="grid gap-3.5 md:grid-cols-2" style={fadeStyle}>
+    <div className={upcomingDeadlines.length > 0 ? "grid gap-3.5 md:grid-cols-2" : "block"} style={fadeStyle}>
+
       {/* 최근 제출 5건 */}
       <Card className="overflow-hidden p-0">
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <h2 className="text-sm font-semibold">최근 제출</h2>
+        <CardHeader className="flex flex-row items-center justify-between px-4 pb-2 pt-4">
+          <CardTitle>최근 제출</CardTitle>
           <Link
             href="/submissions"
-            className="flex items-center gap-1 text-[11px] font-medium text-primary transition-colors hover:underline"
+            className="flex items-center gap-0.5 text-[12px] font-medium text-text-3 transition-colors hover:text-primary"
           >
-            전체 보기
-            <ArrowRight className="h-3 w-3" aria-hidden />
+            전체 보기 <ArrowRight className="h-3 w-3" />
           </Link>
-        </div>
+        </CardHeader>
         {isLoading ? (
           <div className="space-y-3 p-4">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -95,19 +118,35 @@ export default function DashboardTwoColumn({
                     : `/problems/${s.problemId}`
                 }
                 className={cn(
-                  'group flex items-center justify-between px-4 py-3.5 transition-all hover:bg-primary-soft',
-                  i < recentSubmissions.length - 1 && 'border-b border-border',
+                  'group flex items-center justify-between px-6 py-3.5 transition-all hover:bg-primary-soft',
                 )}
               >
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-medium transition-colors group-hover:text-primary">
+                  <p className="truncate text-[13px] font-semibold transition-colors group-hover:text-primary">
                     {s.problemTitle ?? problemTitleMap.get(s.problemId) ?? `문제 ${s.problemId.slice(0, 8)}`}
                   </p>
-                  <p className="mt-0.5 font-mono text-[11px] text-text-3">
-                    <span>{s.language}</span>
-                    <span className="mx-1.5 opacity-30">·</span>
-                    <span>{formatRelativeTime(s.createdAt)}</span>
-                  </p>
+                  <div className="mt-1 flex items-center gap-2">
+                    {(() => {
+                      const problem = problemMap.get(s.problemId);
+                      if (!problem?.difficulty) return null;
+                      const diffKey = (problem.difficulty as string).toLowerCase();
+                      const dotStyle = DIFF_DOT_STYLE[diffKey] ?? { backgroundColor: 'var(--text-3)' };
+                      const badgeStyle = DIFF_BADGE_STYLE[diffKey] ?? { backgroundColor: 'var(--bg-alt)', color: 'var(--text-2)' };
+                      const label = `${(problem.difficulty as string).charAt(0).toUpperCase()}${(problem.difficulty as string).slice(1).toLowerCase()} ${problem.level ?? ''}`.trim();
+                      return (
+                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium" style={badgeStyle}>
+                          <span className="h-1.5 w-1.5 rounded-full" style={dotStyle} />
+                          {label}
+                        </span>
+                      );
+                    })()}
+                    <span className="rounded-full bg-bg-alt px-2 py-0.5 text-[11px] font-medium text-text-2">
+                      {s.language}
+                    </span>
+                    <span className="text-[11px] text-text-3">
+                      {formatRelativeTime(s.createdAt)}
+                    </span>
+                  </div>
                 </div>
                 <Badge
                   variant={SAGA_STEP_CONFIG[s.sagaStep as SagaStep]?.variant ?? 'muted'}
@@ -121,29 +160,18 @@ export default function DashboardTwoColumn({
         )}
       </Card>
 
-      {/* 마감 임박 문제 */}
-      <Card className="overflow-hidden p-0">
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <h2 className="text-sm font-semibold">마감 임박 문제</h2>
-          <Link
-            href="/problems"
-            className="flex items-center gap-1 text-[11px] font-medium text-primary transition-colors hover:underline"
-          >
-            전체 보기
-            <ArrowRight className="h-3 w-3" aria-hidden />
-          </Link>
-        </div>
-        {isLoading ? (
-          <div className="space-y-3 p-4">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} height={36} />
-            ))}
-          </div>
-        ) : upcomingDeadlines.length === 0 ? (
-          <p className="py-8 text-center text-sm text-text-3">
-            마감 예정인 문제가 없습니다
-          </p>
-        ) : (
+      {/* 마감 임박 문제 - upcomingDeadlines가 있을 때만 렌더 */}
+      {upcomingDeadlines.length > 0 && (
+        <Card className="overflow-hidden p-0">
+          <CardHeader className="flex flex-row items-center justify-between px-4 pb-2 pt-4">
+            <CardTitle>마감 임박 문제</CardTitle>
+            <Link
+              href="/problems"
+              className="flex items-center gap-0.5 text-[12px] font-medium text-text-3 transition-colors hover:text-primary"
+            >
+              전체 보기 <ArrowRight className="h-3 w-3" />
+            </Link>
+          </CardHeader>
           <div>
             {upcomingDeadlines.map((p, i) => {
               const deadlineDate = new Date(p.deadline);
@@ -159,7 +187,7 @@ export default function DashboardTwoColumn({
                   key={p.id}
                   href={`/problems/${p.id}`}
                   className={cn(
-                    'group flex items-center justify-between px-4 py-3.5 transition-all hover:bg-primary-soft',
+                    'group flex items-center justify-between px-6 py-3.5 transition-all hover:bg-primary-soft',
                     i < upcomingDeadlines.length - 1 && 'border-b border-border',
                   )}
                 >
@@ -204,8 +232,9 @@ export default function DashboardTwoColumn({
               );
             })}
           </div>
-        )}
-      </Card>
+        </Card>
+      )}
     </div>
   );
 }
+
