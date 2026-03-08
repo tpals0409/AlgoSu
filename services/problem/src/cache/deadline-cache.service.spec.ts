@@ -120,7 +120,7 @@ describe('DeadlineCacheService', () => {
   // 7. setWeekProblems()
   // ──────────────────────────────────────────────
   describe('setWeekProblems()', () => {
-    it('주차별 캐시 설정: TTL 600 확인', async () => {
+    it('주차별 캐시 설정: TTL 60 확인 (race condition 방어)', async () => {
       const weekNumber = '3월1주차';
       const data = JSON.stringify([{ id: PROBLEM_ID, title: '두 수의 합' }]);
       redis.set.mockResolvedValue('OK');
@@ -131,7 +131,7 @@ describe('DeadlineCacheService', () => {
         `problem:week:${STUDY_ID}:${weekNumber}`,
         data,
         'EX',
-        600,
+        60,
       );
     });
   });

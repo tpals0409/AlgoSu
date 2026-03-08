@@ -9,7 +9,7 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
-import { Repository, Not, In, MoreThan, LessThan } from 'typeorm';
+import { Repository, Not, In, MoreThan, LessThan, QueryRunner } from 'typeorm';
 import { Submission, SagaStep, GitHubSyncStatus } from '../submission/submission.entity';
 import { MqPublisherService } from './mq-publisher.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
@@ -125,9 +125,18 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
     }
 
     // 멱등성 순서: DB 먼저 -> MQ 나중
-    await this.submissionRepo.update(submissionId, {
-      sagaStep: SagaStep.GITHUB_QUEUED,
-    });
+    // 낙관적 락: WHERE sagaStep = DB_SAVED 조건으로 역진행 방지
+    const result = await this.submissionRepo.update(
+      { id: submissionId, sagaStep: SagaStep.DB_SAVED },
+      { sagaStep: SagaStep.GITHUB_QUEUED },
+    );
+
+    if (result.affected === 0) {
+      this.logger.warn(
+        `Saga 상태 전이 스킵 (낙관적 락): submissionId=${submissionId}, expected=DB_SAVED`,
+      );
+      return;
+    }
 
     await this.mqPublisher.publishGitHubPush({
       submissionId,
@@ -165,12 +174,23 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
 
     if (!quotaAllowed) {
       // 한도 초과 -> AI_SKIPPED (DONE으로 직행)
-      await this.submissionRepo.update(submissionId, {
-        sagaStep: SagaStep.DONE,
-        ...githubStatusUpdate,
-        aiSkipped: true,
-        aiAnalysisStatus: 'skipped',
-      });
+      // 낙관적 락: WHERE sagaStep = GITHUB_QUEUED
+      const skipResult = await this.submissionRepo.update(
+        { id: submissionId, sagaStep: SagaStep.GITHUB_QUEUED },
+        {
+          sagaStep: SagaStep.DONE,
+          ...githubStatusUpdate,
+          aiSkipped: true,
+          aiAnalysisStatus: 'skipped',
+        },
+      );
+
+      if (skipResult.affected === 0) {
+        this.logger.warn(
+          `Saga 상태 전이 스킵 (낙관적 락): submissionId=${submissionId}, expected=GITHUB_QUEUED (AI_SKIPPED 경로)`,
+        );
+        return;
+      }
 
       this.logger.log(
         `AI 한도 초과 -> AI_SKIPPED: submissionId=${submissionId}, userId=${submission.userId}`,
@@ -179,10 +199,21 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
     }
 
     // 한도 내 -> AI 분석 큐 발행
-    await this.submissionRepo.update(submissionId, {
-      sagaStep: SagaStep.AI_QUEUED,
-      ...githubStatusUpdate,
-    });
+    // 낙관적 락: WHERE sagaStep = GITHUB_QUEUED
+    const result = await this.submissionRepo.update(
+      { id: submissionId, sagaStep: SagaStep.GITHUB_QUEUED },
+      {
+        sagaStep: SagaStep.AI_QUEUED,
+        ...githubStatusUpdate,
+      },
+    );
+
+    if (result.affected === 0) {
+      this.logger.warn(
+        `Saga 상태 전이 스킵 (낙관적 락): submissionId=${submissionId}, expected=GITHUB_QUEUED`,
+      );
+      return;
+    }
 
     await this.mqPublisher.publishAiAnalysis({
       submissionId,
@@ -231,11 +262,38 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Step 3 완료: AI 분석 성공 -> DONE
+   * @param queryRunner 외부 트랜잭션 참여 시 전달 (updateAiResult 원자성 보장)
    */
-  async advanceToDone(submissionId: string): Promise<void> {
-    await this.submissionRepo.update(submissionId, {
-      sagaStep: SagaStep.DONE,
-    });
+  async advanceToDone(submissionId: string, queryRunner?: QueryRunner): Promise<void> {
+    // 낙관적 락: WHERE sagaStep IN (AI_QUEUED, AI_SKIPPED)
+    const expectedSteps = In([SagaStep.AI_QUEUED, SagaStep.AI_SKIPPED]);
+
+    if (queryRunner) {
+      const result = await queryRunner.manager.update(
+        Submission,
+        { id: submissionId, sagaStep: expectedSteps },
+        { sagaStep: SagaStep.DONE },
+      );
+
+      if (result.affected === 0) {
+        this.logger.warn(
+          `Saga 상태 전이 스킵 (낙관적 락): submissionId=${submissionId}, expected=AI_QUEUED|AI_SKIPPED (QR 경로)`,
+        );
+        return;
+      }
+    } else {
+      const result = await this.submissionRepo.update(
+        { id: submissionId, sagaStep: expectedSteps },
+        { sagaStep: SagaStep.DONE },
+      );
+
+      if (result.affected === 0) {
+        this.logger.warn(
+          `Saga 상태 전이 스킵 (낙관적 락): submissionId=${submissionId}, expected=AI_QUEUED|AI_SKIPPED`,
+        );
+        return;
+      }
+    }
 
     this.logger.log(`Saga 완료: submissionId=${submissionId}, step=DONE`);
   }
@@ -247,9 +305,18 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
     submissionId: string,
     syncStatus: GitHubSyncStatus,
   ): Promise<void> {
-    await this.submissionRepo.update(submissionId, {
-      githubSyncStatus: syncStatus,
-    });
+    // 낙관적 락: WHERE sagaStep = GITHUB_QUEUED
+    const result = await this.submissionRepo.update(
+      { id: submissionId, sagaStep: SagaStep.GITHUB_QUEUED },
+      { githubSyncStatus: syncStatus },
+    );
+
+    if (result.affected === 0) {
+      this.logger.warn(
+        `Saga 보상 트랜잭션 스킵 (낙관적 락): submissionId=${submissionId}, expected=GITHUB_QUEUED (compensateGitHubFailed)`,
+      );
+      return;
+    }
 
     // GitHub 실패해도 AI 분석은 진행 (GitHub 동기화와 독립)
     // TOKEN_INVALID인 경우만 AI 분석도 스킵
@@ -273,9 +340,18 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
    */
   async compensateAiFailed(submissionId: string): Promise<void> {
     // AI 실패해도 제출 자체는 DONE 처리 (분석만 DELAYED)
-    await this.submissionRepo.update(submissionId, {
-      sagaStep: SagaStep.DONE,
-    });
+    // 낙관적 락: WHERE sagaStep = AI_QUEUED
+    const result = await this.submissionRepo.update(
+      { id: submissionId, sagaStep: SagaStep.AI_QUEUED },
+      { sagaStep: SagaStep.DONE },
+    );
+
+    if (result.affected === 0) {
+      this.logger.warn(
+        `Saga 보상 트랜잭션 스킵 (낙관적 락): submissionId=${submissionId}, expected=AI_QUEUED (compensateAiFailed)`,
+      );
+      return;
+    }
 
     this.logger.warn(`AI 분석 실패 -- 제출은 DONE 처리: submissionId=${submissionId}`);
   }

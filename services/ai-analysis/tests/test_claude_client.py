@@ -72,21 +72,22 @@ class TestAnalyzeCodeSuccess:
 
 
 class TestAnalyzeCodeCircuitBreakerOpen:
-    """2. analyze_code() -- Circuit Breaker OPEN: fallback, status='delayed'"""
+    """2. analyze_code() -- Circuit Breaker OPEN: CircuitBreakerOpenError raise"""
 
     @pytest.mark.asyncio
-    async def test_circuit_breaker_open_returns_delayed(
+    async def test_circuit_breaker_open_raises_error(
         self, client, mock_anthropic, mock_circuit_breaker
     ):
+        from src.claude_client import CircuitBreakerOpenError
+
         mock_circuit_breaker.can_execute.return_value = False
 
-        result = await client.analyze_code(
-            code='print("hello")',
-            language='python',
-        )
+        with pytest.raises(CircuitBreakerOpenError):
+            await client.analyze_code(
+                code='print("hello")',
+                language='python',
+            )
 
-        assert result["status"] == "delayed"
-        assert "일시적" in result["feedback"]
         # Claude API가 호출되지 않아야 함
         _, mock_client = mock_anthropic
         mock_client.messages.create.assert_not_called()

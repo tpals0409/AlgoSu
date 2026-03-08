@@ -104,6 +104,14 @@ describe('StatusReporter', () => {
         }),
       );
     });
+
+    it('응답 실패 시 에러 throw', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
+
+      await expect(
+        reporter.reportSuccess('sub-001', 'submissions/prob-1/sub-001.py'),
+      ).rejects.toThrow('reportSuccess 실패: 500');
+    });
   });
 
   describe('reportFailed', () => {
@@ -117,6 +125,14 @@ describe('StatusReporter', () => {
         expect.objectContaining({ method: 'POST' }),
       );
     });
+
+    it('응답 실패 시 에러 throw', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 502 });
+
+      await expect(reporter.reportFailed('sub-001')).rejects.toThrow(
+        'reportFailed 실패: 502',
+      );
+    });
   });
 
   describe('reportTokenInvalid', () => {
@@ -128,6 +144,14 @@ describe('StatusReporter', () => {
       expect(mockFetch).toHaveBeenCalledWith(
         'http://submission-service:3003/internal/sub-001/github-token-invalid',
         expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    it('응답 실패 시 에러 throw', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 503 });
+
+      await expect(reporter.reportTokenInvalid('sub-001')).rejects.toThrow(
+        'reportTokenInvalid 실패: 503',
       );
     });
   });
@@ -147,6 +171,16 @@ describe('StatusReporter', () => {
         'submission:status:sub-001',
         expect.stringContaining('"status":"github_skipped"'),
       );
+    });
+
+    it('응답 실패 시 에러 throw (Pub/Sub 미발행)', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
+
+      await expect(reporter.reportSkipped('sub-001')).rejects.toThrow(
+        'reportSkipped 실패: 500',
+      );
+
+      expect(mockRedisPublish).not.toHaveBeenCalled();
     });
   });
 

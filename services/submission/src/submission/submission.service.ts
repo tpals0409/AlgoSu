@@ -10,7 +10,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Submission, SagaStep } from './submission.entity';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
@@ -36,6 +36,7 @@ export class SubmissionService {
     private readonly submissionRepo: Repository<Submission>,
     private readonly sagaOrchestrator: SagaOrchestratorService,
     private readonly configService: ConfigService,
+    private readonly dataSource: DataSource,
   ) {
     this.logger = new StructuredLoggerService();
     this.logger.setContext(SubmissionService.name);
@@ -210,6 +211,7 @@ export class SubmissionService {
   /**
    * AI 분석 결과 저장 + Saga DONE 전환
    * AI Analysis Service 콜백 — 내부 API 전용
+   * QueryRunner 트랜잭션으로 save + sagaStep 업데이트를 원자적으로 처리
    */
   async updateAiResult(id: string, dto: UpdateAiResultDto): Promise<Submission> {
     const submission = await this.findById(id);
@@ -219,12 +221,33 @@ export class SubmissionService {
     submission.aiOptimizedCode = dto.optimizedCode ?? null;
     submission.aiAnalysisStatus = dto.analysisStatus;
 
-    const updated = await this.submissionRepo.save(submission);
+    const needsDoneTransition =
+      dto.analysisStatus === 'completed' || dto.analysisStatus === 'failed';
 
-    // 분석 완료 시 Saga DONE 전환
-    if (dto.analysisStatus === 'completed' || dto.analysisStatus === 'failed') {
-      await this.sagaOrchestrator.advanceToDone(id);
+    if (needsDoneTransition) {
+      // 트랜잭션으로 save + sagaStep DONE 전환을 원자적으로 처리
+      const qr = this.dataSource.createQueryRunner();
+      await qr.connect();
+      await qr.startTransaction();
+      try {
+        const updated = await qr.manager.save(Submission, submission);
+        await this.sagaOrchestrator.advanceToDone(id, qr);
+        await qr.commitTransaction();
+
+        this.logger.log(
+          `AI 결과 업데이트: submissionId=${id}, status=${dto.analysisStatus}, score=${dto.score}`,
+        );
+        return updated;
+      } catch (err) {
+        await qr.rollbackTransaction();
+        throw err;
+      } finally {
+        await qr.release();
+      }
     }
+
+    // DONE 전환 불필요 시 (delayed 등) 단순 save
+    const updated = await this.submissionRepo.save(submission);
 
     this.logger.log(
       `AI 결과 업데이트: submissionId=${id}, status=${dto.analysisStatus}, score=${dto.score}`,

@@ -5,6 +5,7 @@
  * @related github-push.service.ts, token-manager.ts, status-reporter.ts
  */
 import * as amqplib from 'amqplib';
+import Redis from 'ioredis';
 import { GitHubPushService } from './github-push.service';
 import { TokenManager } from './token-manager';
 import { StatusReporter } from './status-reporter';
@@ -41,6 +42,7 @@ const QUEUE = 'submission.github_push';
 const MAX_RETRIES = config.maxRetries;
 const RETRY_DELAY_MS = config.retryDelayMs;
 const MAX_RECONNECT_DELAY_MS = 30_000;
+const IDEMPOTENCY_TTL_SECONDS = 3600;
 
 export class GitHubWorker {
   private connection: amqplib.ChannelModel | null = null;
@@ -48,6 +50,7 @@ export class GitHubWorker {
   private pushService: GitHubPushService;
   private tokenManager: TokenManager;
   private statusReporter: StatusReporter;
+  private redis: Redis;
 
   private readonly gatewayInternalUrl: string;
   private readonly internalKeyGateway: string;
@@ -63,6 +66,7 @@ export class GitHubWorker {
     this.tokenManager = new TokenManager();
     this.pushService = new GitHubPushService();
     this.statusReporter = new StatusReporter();
+    this.redis = new Redis(config.redisUrl);
     this.gatewayInternalUrl = config.gatewayInternalUrl;
     this.internalKeyGateway = config.internalKeyGateway;
     this.problemServiceUrl = config.problemServiceUrl;
@@ -156,6 +160,21 @@ export class GitHubWorker {
       const startTime = Date.now();
 
       try {
+        // C-7: submissionId 기반 멱등성 체크
+        const idempotencyKey = `ghw:processed:${event.submissionId}`;
+        const alreadyProcessed = await this.redis.get(idempotencyKey);
+
+        if (alreadyProcessed) {
+          logger.info('중복 메시지 — ACK만 수행', {
+            tag: 'MQ_IDEMPOTENT_SKIP',
+            traceId: event.submissionId,
+            deliveryTag: msg.fields.deliveryTag,
+          });
+          channel.ack(msg);
+          mqMessagesProcessedTotal.inc({ result: 'idempotent_skip' });
+          return;
+        }
+
         logger.info('MQ 메시지 소비 시작', {
           tag: 'MQ_CONSUME',
           queue: QUEUE,
@@ -165,6 +184,10 @@ export class GitHubWorker {
         });
 
         await this.processWithRetry(event);
+
+        // 처리 완료 후 멱등성 키 기록 (TTL 1시간)
+        await this.redis.set(idempotencyKey, '1', 'EX', IDEMPOTENCY_TTL_SECONDS);
+
         channel.ack(msg);
 
         mqMessagesProcessedTotal.inc({ result: 'ack' });
@@ -184,6 +207,17 @@ export class GitHubWorker {
           durationMs: Date.now() - startTime,
           err: error as Error,
         });
+
+        // H-6: NACK 전 Submission에 실패 보고 (best-effort)
+        try {
+          await this.statusReporter.reportFailed(event.submissionId);
+        } catch (reportErr) {
+          logger.warn('실패 보고도 실패', {
+            tag: 'REPORT_FAILED_ERR',
+            traceId: event.submissionId,
+            err: reportErr as Error,
+          });
+        }
 
         // DLQ로 전송 (nack + requeue=false)
         channel.nack(msg, false, false);
@@ -364,6 +398,7 @@ export class GitHubWorker {
     if (this.connection) await this.connection.close();
     await this.tokenManager.close();
     await this.statusReporter.close();
+    await this.redis.quit();
     logger.info('종료 완료');
   }
 }

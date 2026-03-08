@@ -44,13 +44,16 @@ export class StudyMemberGuard implements CanActivate {
       throw new ForbiddenException('사용자 또는 스터디 정보가 없습니다.');
     }
 
-    const cacheKey = `study:membership:${studyId}:${userId}`;
+    const cacheKey = `membership:${studyId}:${userId}`;
+    const deniedKey = `${cacheKey}:denied`;
 
     // 1. Redis 캐시 확인
     try {
       const cached = await this.redis.get(cacheKey);
-      if (cached === '1') return true;
-      if (cached === '0') throw new ForbiddenException('해당 스터디의 멤버가 아닙니다.');
+      if (cached === 'ADMIN' || cached === 'MEMBER') return true;
+
+      const denied = await this.redis.get(deniedKey);
+      if (denied) throw new ForbiddenException('해당 스터디의 멤버가 아닙니다.');
     } catch (err) {
       if (err instanceof ForbiddenException) throw err;
       this.logger.warn(`Redis 캐시 조회 실패 — DB 폴백: ${(err as Error).message}`);
@@ -62,15 +65,15 @@ export class StudyMemberGuard implements CanActivate {
     });
 
     if (!member) {
-      // 비멤버 캐시 (짧은 TTL)
-      try { await this.redis.set(cacheKey, '0', 'EX', 60); } catch (err: unknown) {
+      // 비멤버: denied 키에 캐시 (짧은 TTL 60초)
+      try { await this.redis.set(deniedKey, '1', 'EX', 60); } catch (err: unknown) {
         this.logger.warn(`Redis 캐시 저장 실패 (비멤버): ${(err as Error).message}`);
       }
       throw new ForbiddenException('해당 스터디의 멤버가 아닙니다.');
     }
 
-    // 멤버 캐시
-    try { await this.redis.set(cacheKey, '1', 'EX', StudyMemberGuard.CACHE_TTL); } catch (err: unknown) {
+    // 멤버: role 문자열로 캐시 (TTL 300초)
+    try { await this.redis.set(cacheKey, member.role, 'EX', StudyMemberGuard.CACHE_TTL); } catch (err: unknown) {
       this.logger.warn(`Redis 캐시 저장 실패 (멤버): ${(err as Error).message}`);
     }
 

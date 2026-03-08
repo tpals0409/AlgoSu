@@ -22,6 +22,17 @@ MODEL_ID = "claude-haiku-4-5-20251001"
 MAX_TOKENS = 4096
 
 
+class CircuitBreakerOpenError(Exception):
+    """Circuit Breaker OPEN 상태 전용 예외
+
+    Worker에서 catch하여 NACK+requeue 처리에 사용.
+
+    @domain ai
+    """
+
+    pass
+
+
 class ClaudeClient:
     """Claude Sonnet API 클라이언트 -- Circuit Breaker 적용
 
@@ -53,8 +64,8 @@ class ClaudeClient:
         @returns: 구조화된 분석 결과 dict
         """
         if not circuit_breaker.can_execute():
-            logger.warning("Circuit Breaker OPEN -- fallback 반환")
-            return self._fallback_result()
+            logger.warning("Circuit Breaker OPEN -- NACK+requeue 위임")
+            raise CircuitBreakerOpenError("Circuit Breaker OPEN")
 
         try:
             user_prompt = build_user_prompt(

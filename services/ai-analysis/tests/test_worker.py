@@ -119,6 +119,68 @@ class TestOnMessageSuccess:
         mock_ch.basic_nack.assert_not_called()
 
 
+class TestOnMessagePublishFailureBestEffort:
+    """_on_message() -- Redis publish 실패해도 ACK (best-effort)"""
+
+    def test_publish_failure_still_acks(self, worker, mock_dependencies, pika_mocks):
+        """_publish_status 실패 시에도 _report_result 성공이면 ACK"""
+        mock_ch, mock_method, mock_properties = pika_mocks
+        deps = mock_dependencies
+
+        # _get_submission 모킹
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {
+            "data": {"code": "def sol(): return 1", "language": "python"},
+        }
+        mock_resp.raise_for_status = MagicMock()
+        deps["http_client"].get.return_value = mock_resp
+
+        # _report_result 모킹 (성공)
+        mock_patch_resp = MagicMock()
+        mock_patch_resp.raise_for_status = MagicMock()
+        deps["http_client"].patch.return_value = mock_patch_resp
+
+        # Redis publish 실패
+        deps["redis_client"].publish.side_effect = Exception("Redis connection lost")
+
+        body = json.dumps({"submissionId": "sub-pub-fail"}).encode()
+
+        worker._on_message(mock_ch, mock_method, mock_properties, body)
+
+        # _report_result 호출 확인
+        deps["http_client"].patch.assert_called_once()
+
+        # ACK 확인 (publish 실패에도 불구하고)
+        mock_ch.basic_ack.assert_called_once_with(delivery_tag=42)
+        mock_ch.basic_nack.assert_not_called()
+
+    def test_report_failure_nacks(self, worker, mock_dependencies, pika_mocks):
+        """_report_result 실패 시 NACK"""
+        mock_ch, mock_method, mock_properties = pika_mocks
+        deps = mock_dependencies
+
+        # _get_submission 모킹
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {
+            "data": {"code": "def sol(): return 1", "language": "python"},
+        }
+        mock_resp.raise_for_status = MagicMock()
+        deps["http_client"].get.return_value = mock_resp
+
+        # _report_result 실패 (PATCH raises)
+        mock_patch_resp = MagicMock()
+        mock_patch_resp.raise_for_status.side_effect = Exception("Submission service down")
+        deps["http_client"].patch.return_value = mock_patch_resp
+
+        body = json.dumps({"submissionId": "sub-report-fail"}).encode()
+
+        worker._on_message(mock_ch, mock_method, mock_properties, body)
+
+        # NACK 확인
+        mock_ch.basic_nack.assert_called_once_with(delivery_tag=42, requeue=False)
+        mock_ch.basic_ack.assert_not_called()
+
+
 class TestOnMessageFailure:
     """2. _on_message() -- 실패: NACK (requeue=False)"""
 
@@ -228,15 +290,17 @@ class TestAnalyzeWithRetry:
             assert result["status"] == "failed"
             assert mock_dependencies["claude"].analyze_code.call_count == 3
 
-    def test_delayed_status_returns_immediately(self, worker, mock_dependencies):
-        """delayed 상태도 즉시 반환"""
-        mock_dependencies["claude"].analyze_code = AsyncMock(return_value={
-            "status": "delayed", "feedback": "later", "score": 0, "optimized_code": None,
-        })
+    def test_circuit_breaker_open_propagates(self, worker, mock_dependencies):
+        """CircuitBreakerOpenError는 상위로 전파"""
+        from src.claude_client import CircuitBreakerOpenError
+
+        mock_dependencies["claude"].analyze_code = AsyncMock(
+            side_effect=CircuitBreakerOpenError("Circuit Breaker OPEN")
+        )
 
         submission = {"code": "x", "language": "python"}
-        result = worker._analyze_with_retry(submission)
-        assert result["status"] == "delayed"
+        with pytest.raises(CircuitBreakerOpenError):
+            worker._analyze_with_retry(submission)
         mock_dependencies["claude"].analyze_code.assert_called_once()
 
 
@@ -438,6 +502,138 @@ class TestOnMessageWithUserId:
 
         # NACK 확인
         mock_ch.basic_nack.assert_called_once()
+
+
+class TestOnMessageCircuitBreakerOpen:
+    """_on_message() -- CircuitBreakerOpenError 시 NACK+requeue"""
+
+    def test_circuit_breaker_open_requeue(self, worker, mock_dependencies, pika_mocks):
+        """Circuit Breaker OPEN 시 NACK+requeue (delivery_count < MAX_REQUEUE)"""
+        from src.claude_client import CircuitBreakerOpenError
+
+        mock_ch, mock_method, mock_properties = pika_mocks
+        deps = mock_dependencies
+
+        # _get_submission 모킹
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"data": {"code": "x", "language": "python"}}
+        mock_resp.raise_for_status = MagicMock()
+        deps["http_client"].get.return_value = mock_resp
+
+        # CircuitBreakerOpenError 발생
+        deps["claude"].analyze_code = AsyncMock(
+            side_effect=CircuitBreakerOpenError("CB OPEN")
+        )
+
+        # delivery_count = 0 (첫 번째 시도)
+        mock_properties.headers = None
+
+        body = json.dumps({"submissionId": "sub-cb-open"}).encode()
+
+        worker._on_message(mock_ch, mock_method, mock_properties, body)
+
+        # NACK with requeue=True
+        mock_ch.basic_nack.assert_called_once_with(
+            delivery_tag=42, requeue=True
+        )
+        mock_ch.basic_ack.assert_not_called()
+
+    def test_circuit_breaker_open_dlq_on_max_requeue(self, worker, mock_dependencies, pika_mocks):
+        """Circuit Breaker requeue 한도 초과 시 DLQ 전송 + delayed 보고"""
+        from src.claude_client import CircuitBreakerOpenError
+
+        mock_ch, mock_method, mock_properties = pika_mocks
+        deps = mock_dependencies
+
+        # _get_submission 모킹
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"data": {"code": "x", "language": "python"}}
+        mock_resp.raise_for_status = MagicMock()
+        deps["http_client"].get.return_value = mock_resp
+
+        # _report_result 모킹 (delayed 보고)
+        mock_patch_resp = MagicMock()
+        mock_patch_resp.raise_for_status = MagicMock()
+        deps["http_client"].patch.return_value = mock_patch_resp
+
+        # CircuitBreakerOpenError 발생
+        deps["claude"].analyze_code = AsyncMock(
+            side_effect=CircuitBreakerOpenError("CB OPEN")
+        )
+
+        # delivery_count = 3 (MAX_REQUEUE 초과)
+        mock_properties.headers = {"x-delivery-count": 3}
+
+        body = json.dumps({"submissionId": "sub-cb-max"}).encode()
+
+        worker._on_message(mock_ch, mock_method, mock_properties, body)
+
+        # NACK with requeue=False (DLQ)
+        mock_ch.basic_nack.assert_called_once_with(
+            delivery_tag=42, requeue=False
+        )
+        mock_ch.basic_ack.assert_not_called()
+
+        # delayed 상태 보고 확인
+        deps["http_client"].patch.assert_called_once()
+        call_kwargs = deps["http_client"].patch.call_args
+        payload = call_kwargs[1]["json"]
+        assert payload["analysisStatus"] == "delayed"
+
+    def test_circuit_breaker_requeue_with_delivery_count_header(self, worker, mock_dependencies, pika_mocks):
+        """x-delivery-count 헤더로 requeue 횟수 판단"""
+        from src.claude_client import CircuitBreakerOpenError
+
+        mock_ch, mock_method, mock_properties = pika_mocks
+        deps = mock_dependencies
+
+        # _get_submission 모킹
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"data": {"code": "x", "language": "python"}}
+        mock_resp.raise_for_status = MagicMock()
+        deps["http_client"].get.return_value = mock_resp
+
+        deps["claude"].analyze_code = AsyncMock(
+            side_effect=CircuitBreakerOpenError("CB OPEN")
+        )
+
+        # delivery_count = 2 (아직 한도 이내)
+        mock_properties.headers = {"x-delivery-count": 2}
+
+        body = json.dumps({"submissionId": "sub-cb-2"}).encode()
+
+        worker._on_message(mock_ch, mock_method, mock_properties, body)
+
+        # requeue=True (아직 MAX_REQUEUE 미만)
+        mock_ch.basic_nack.assert_called_once_with(
+            delivery_tag=42, requeue=True
+        )
+
+
+class TestGetDeliveryCount:
+    """_get_delivery_count() -- delivery count 조회"""
+
+    def test_no_headers(self, worker, mock_dependencies):
+        """헤더 없으면 0 반환"""
+        mock_props = MagicMock()
+        mock_props.headers = None
+        assert worker._get_delivery_count(mock_props) == 0
+
+    def test_x_delivery_count(self, worker, mock_dependencies):
+        """x-delivery-count 헤더 사용"""
+        mock_props = MagicMock()
+        mock_props.headers = {"x-delivery-count": 5}
+        assert worker._get_delivery_count(mock_props) == 5
+
+    def test_retry_count_fallback(self, worker, mock_dependencies):
+        """retry_count 커스텀 헤더 fallback"""
+        mock_props = MagicMock()
+        mock_props.headers = {"retry_count": 2}
+        assert worker._get_delivery_count(mock_props) == 2
+
+    def test_none_properties(self, worker, mock_dependencies):
+        """properties가 None이면 0 반환"""
+        assert worker._get_delivery_count(None) == 0
 
 
 class TestConnectWithRetry:

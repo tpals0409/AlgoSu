@@ -62,7 +62,7 @@ export class StatusReporter {
    * GitHub Push 성공 보고
    */
   async reportSuccess(submissionId: string, filePath: string): Promise<void> {
-    await fetch(`${this.submissionUrl}/internal/${submissionId}/github-success`, {
+    const resp = await fetch(`${this.submissionUrl}/internal/${submissionId}/github-success`, {
       method: 'POST',
       headers: {
         'X-Internal-Key': this.submissionKey,
@@ -70,32 +70,44 @@ export class StatusReporter {
       },
       body: JSON.stringify({ filePath }),
     });
+
+    if (!resp.ok) {
+      throw new Error(`reportSuccess 실패: ${resp.status}`);
+    }
   }
 
   /**
    * GitHub Push 실패 보고
    */
   async reportFailed(submissionId: string): Promise<void> {
-    await fetch(`${this.submissionUrl}/internal/${submissionId}/github-failed`, {
+    const resp = await fetch(`${this.submissionUrl}/internal/${submissionId}/github-failed`, {
       method: 'POST',
       headers: {
         'X-Internal-Key': this.submissionKey,
         'Content-Type': 'application/json',
       },
     });
+
+    if (!resp.ok) {
+      throw new Error(`reportFailed 실패: ${resp.status}`);
+    }
   }
 
   /**
    * TOKEN_INVALID 보고
    */
   async reportTokenInvalid(submissionId: string): Promise<void> {
-    await fetch(`${this.submissionUrl}/internal/${submissionId}/github-token-invalid`, {
+    const resp = await fetch(`${this.submissionUrl}/internal/${submissionId}/github-token-invalid`, {
       method: 'POST',
       headers: {
         'X-Internal-Key': this.submissionKey,
         'Content-Type': 'application/json',
       },
     });
+
+    if (!resp.ok) {
+      throw new Error(`reportTokenInvalid 실패: ${resp.status}`);
+    }
   }
 
   /**
@@ -103,13 +115,17 @@ export class StatusReporter {
    * github_sync_status = SKIPPED 로 업데이트
    */
   async reportSkipped(submissionId: string): Promise<void> {
-    await fetch(`${this.submissionUrl}/internal/${submissionId}/github-skipped`, {
+    const resp = await fetch(`${this.submissionUrl}/internal/${submissionId}/github-skipped`, {
       method: 'POST',
       headers: {
         'X-Internal-Key': this.submissionKey,
         'Content-Type': 'application/json',
       },
     });
+
+    if (!resp.ok) {
+      throw new Error(`reportSkipped 실패: ${resp.status}`);
+    }
 
     await this.redis.publish(
       `submission:status:${submissionId}`,

@@ -150,6 +150,24 @@ describe('GitHubWorker', () => {
       expect(mockNack).not.toHaveBeenCalled();
     });
 
+    it('C-7: 이미 처리된 submissionId -- 멱등성 스킵(ACK만)', async () => {
+      // Redis에 이미 처리된 키 존재
+      mockRedisGet.mockResolvedValueOnce('1');
+
+      const msg = makeMsg({
+        submissionId: 'sub-dup',
+        studyId: 'study-1',
+        timestamp: new Date().toISOString(),
+      });
+
+      await consumeCallback!(msg);
+
+      expect(mockAck).toHaveBeenCalledWith(msg);
+      expect(mockNack).not.toHaveBeenCalled();
+      // processWithRetry는 호출되지 않으므로 fetch도 호출되지 않음
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
     it('JSON 파싱 실패 -- nack(DLQ)', async () => {
       const invalidMsg = {
         content: Buffer.from('not json!!!'),
@@ -399,7 +417,10 @@ describe('GitHubWorker', () => {
       // push 항상 실패 (일반 에러 -- 재시도 대상)
       (worker as any).pushService.push = jest.fn().mockRejectedValue(new Error('Network timeout'));
 
-      // reportFailed
+      // reportFailed (processWithRetry 내부)
+      mockFetch.mockResolvedValueOnce({ ok: true });
+
+      // H-6: reportFailed (catch 블록 best-effort)
       mockFetch.mockResolvedValueOnce({ ok: true });
 
       const msg = makeMsg({
@@ -642,6 +663,50 @@ describe('GitHubWorker', () => {
       await consumeCallback!(msg);
 
       expect(mockAck).toHaveBeenCalledWith(msg);
+    });
+
+    it('H-6: catch 블록 reportFailed 실패해도 nack 정상 수행', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            userId: 'user-1',
+            problemId: 'prob-1',
+            studyId: 'study-1',
+            language: 'python',
+            code: 'code',
+          },
+        }),
+      });
+
+      // getProblemInfo
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: { title: '문제', weekNumber: '1주차', sourcePlatform: '', sourceUrl: '' },
+        }),
+      });
+
+      // getUserGitHubInfo 실패 → processWithRetry throw
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: async () => ({}),
+      });
+
+      // catch 블록 reportFailed도 실패 (best-effort이므로 무시)
+      mockFetch.mockRejectedValueOnce(new Error('네트워크 장애'));
+
+      const msg = makeMsg({
+        submissionId: 'sub-h6',
+        studyId: 'study-1',
+        timestamp: new Date().toISOString(),
+      });
+
+      await consumeCallback!(msg);
+
+      // reportFailed 실패해도 nack은 정상 수행
+      expect(mockNack).toHaveBeenCalledWith(msg, false, false);
     });
 
     it('getUserGitHubInfo 실패 -- nack(DLQ)', async () => {

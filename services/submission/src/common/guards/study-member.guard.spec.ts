@@ -104,7 +104,7 @@ describe('StudyMemberGuard', () => {
 
       expect(result).toBe(true);
       expect(mockRedis.get).toHaveBeenCalledWith(
-        `submission:membership:${STUDY_ID}:${USER_ID}`,
+        `membership:${STUDY_ID}:${USER_ID}`,
       );
       expect(mockFetch).not.toHaveBeenCalled();
     });
@@ -150,10 +150,10 @@ describe('StudyMemberGuard', () => {
         },
       );
       expect(mockRedis.set).toHaveBeenCalledWith(
-        `submission:membership:${STUDY_ID}:${USER_ID}`,
+        `membership:${STUDY_ID}:${USER_ID}`,
         'MEMBER',
         'EX',
-        600,
+        300,
       );
     });
 

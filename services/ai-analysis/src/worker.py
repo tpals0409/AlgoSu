@@ -18,7 +18,7 @@ import redis
 import httpx
 
 from .config import settings
-from .claude_client import ClaudeClient
+from .claude_client import ClaudeClient, CircuitBreakerOpenError
 from .metrics import dlq_messages_total, mq_messages_processed_total
 
 logger = logging.getLogger(__name__)
@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 QUEUE = "submission.ai_analysis"
 MAX_RETRIES = 3
 BACKOFF_BASE = 2  # 지수 백오프 기본값 (초)
+MAX_REQUEUE = 3  # Circuit Breaker requeue 최대 횟수
 
 # RabbitMQ 재연결 상수
 RECONNECT_INITIAL_DELAY = 1  # 최초 재연결 대기 (초)
@@ -141,9 +142,32 @@ class AIAnalysisWorker:
 
         self.channel.start_consuming()
 
+    def _get_delivery_count(self, properties) -> int:
+        """
+        RabbitMQ 메시지 delivery count 조회
+
+        x-delivery-count 헤더(RabbitMQ 3.8+) 또는 커스텀 retry_count 사용.
+
+        @domain ai
+        @param properties: pika BasicProperties
+        @returns: 현재 delivery 횟수 (0-based)
+        """
+        if properties and properties.headers:
+            # RabbitMQ 3.8+ quorum queue: x-delivery-count
+            count = properties.headers.get("x-delivery-count", 0)
+            if count:
+                return int(count)
+            # 커스텀 헤더 fallback
+            count = properties.headers.get("retry_count", 0)
+            if count:
+                return int(count)
+        return 0
+
     def _on_message(self, ch, method, properties, body):
         """
         메시지 처리 콜백 -- 재시도 3회 (exponential backoff)
+
+        CircuitBreakerOpenError 발생 시 NACK+requeue (최대 MAX_REQUEUE회).
 
         @event AI_ANALYSIS_COMPLETED (publish)
         @event AI_ANALYSIS_FAILED (publish)
@@ -165,18 +189,62 @@ class AIAnalysisWorker:
                 if user_id:
                     self._decrement_quota(user_id)
 
-            # 분석 결과 저장 (Submission Service 콜백)
+            # 1) 분석 결과 저장 (Submission Service 콜백 — 필수, 실패 시 NACK)
             self._report_result(submission_id, result)
 
-            # Redis Pub/Sub 브로드캐스트
-            self._publish_status(submission_id, result["status"])
+            # 2) Redis Pub/Sub 브로드캐스트 (best-effort — 실패해도 ACK 진행)
+            try:
+                self._publish_status(submission_id, result["status"])
+            except Exception as pub_err:
+                logger.warning(
+                    f"Redis publish 실패 (best-effort): submissionId={submission_id}, "
+                    f"error={str(pub_err)[:200]}"
+                )
 
+            # 3) 모든 필수 작업 성공 후 ACK
             ch.basic_ack(delivery_tag=method.delivery_tag)
             mq_messages_processed_total.labels(result="ack").inc()
             logger.info(
                 f"AI 분석 완료: submissionId={submission_id}, "
                 f"status={result['status']}, score={result.get('score', 0)}"
             )
+
+        except CircuitBreakerOpenError:
+            # Circuit Breaker OPEN -- requeue 횟수 제한
+            delivery_count = self._get_delivery_count(properties)
+            try:
+                event_data = json.loads(body)
+                sid = event_data.get("submissionId", "unknown")
+            except Exception:
+                sid = "unknown"
+
+            if delivery_count < MAX_REQUEUE:
+                logger.warning(
+                    f"Circuit Breaker OPEN -- NACK+requeue: "
+                    f"submissionId={sid}, delivery={delivery_count + 1}/{MAX_REQUEUE}"
+                )
+                ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+                mq_messages_processed_total.labels(result="nack_requeue").inc()
+            else:
+                logger.error(
+                    f"Circuit Breaker OPEN -- requeue 한도 초과, DLQ 전송: "
+                    f"submissionId={sid}, delivery={delivery_count + 1}"
+                )
+                # 한도 초과 시 delayed 상태를 DB에 저장하여 사용자에게 알림
+                try:
+                    self._report_result(sid, {
+                        "feedback": "AI 분석이 일시적으로 지연되고 있습니다. 잠시 후 다시 확인해주세요.",
+                        "optimized_code": None,
+                        "score": 0,
+                        "status": "delayed",
+                    })
+                except Exception as report_err:
+                    logger.warning(
+                        f"delayed 상태 보고 실패: {str(report_err)[:200]}"
+                    )
+                ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+                dlq_messages_total.labels(reason="circuit_breaker_exhausted").inc()
+                mq_messages_processed_total.labels(result="nack_dlq").inc()
 
         except Exception as e:
             logger.error(f"AI 분석 처리 실패: {str(e)[:200]}")
@@ -196,14 +264,18 @@ class AIAnalysisWorker:
         """
         Claude AI 분석 -- 최대 3회 재시도 (exponential backoff)
 
+        CircuitBreakerOpenError는 catch하지 않고 상위로 전파.
+
         @domain ai
         @param submission: 제출 데이터 dict
         @returns: 분석 결과 dict
+        @raises CircuitBreakerOpenError: Circuit Breaker OPEN 시
         """
         import asyncio
 
         last_result = None
         for attempt in range(1, MAX_RETRIES + 1):
+            # CircuitBreakerOpenError는 전파 (상위 _on_message에서 처리)
             result = asyncio.run(
                 self.claude.analyze_code(
                     code=submission["code"],
@@ -213,7 +285,7 @@ class AIAnalysisWorker:
                 )
             )
 
-            if result["status"] in ("completed", "delayed"):
+            if result["status"] == "completed":
                 return result
 
             last_result = result

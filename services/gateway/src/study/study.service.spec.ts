@@ -32,6 +32,7 @@ describe('StudyService', () => {
   let studyRepository: Record<string, jest.Mock>;
   let memberRepository: Record<string, jest.Mock>;
   let inviteRepository: Record<string, jest.Mock>;
+  let mockQueryRunner: Record<string, any>;
 
   const USER_ID = 'user-id-admin';
   const OTHER_USER_ID = 'user-id-member';
@@ -130,6 +131,41 @@ describe('StudyService', () => {
       debug: jest.fn(),
     };
 
+    mockQueryRunner = {
+      connect: jest.fn().mockResolvedValue(undefined),
+      startTransaction: jest.fn().mockResolvedValue(undefined),
+      commitTransaction: jest.fn().mockResolvedValue(undefined),
+      rollbackTransaction: jest.fn().mockResolvedValue(undefined),
+      release: jest.fn().mockResolvedValue(undefined),
+      isTransactionActive: false,
+      manager: {
+        create: jest.fn((entity: any, data: any) => {
+          if (entity === Study) return studyRepository.create(data);
+          if (entity === StudyMember) return memberRepository.create(data);
+          return data;
+        }),
+        save: jest.fn((entity: any) => Promise.resolve(entity)),
+        findOne: jest.fn((entity: any, opts: any) => {
+          if (entity === StudyMember) return memberRepository.findOne(opts);
+          if (entity === StudyInvite) return inviteRepository.findOne(opts);
+          return studyRepository.findOne(opts);
+        }),
+        find: jest.fn((entity: any, opts: any) => {
+          if (entity === StudyMember) return memberRepository.find(opts);
+          return [];
+        }),
+        count: jest.fn((entity: any, opts: any) => {
+          if (entity === StudyMember) return memberRepository.count(opts);
+          return 0;
+        }),
+        delete: jest.fn().mockResolvedValue({ affected: 1 }),
+      },
+    };
+
+    const mockDataSource = {
+      createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner),
+    };
+
     service = new StudyService(
       configService as unknown as ConfigService,
       mockLogger as any,
@@ -139,6 +175,7 @@ describe('StudyService', () => {
       userRepository as any,
       notificationService as any,
       inviteThrottle as any,
+      mockDataSource as any,
     );
   });
 
@@ -164,7 +201,7 @@ describe('StudyService', () => {
         created_by: USER_ID,
         status: StudyStatus.ACTIVE,
       });
-      expect(studyRepository.save).toHaveBeenCalled();
+      expect(mockQueryRunner.manager.save).toHaveBeenCalled();
 
       // ADMIN 멤버 등록 확인 (닉네임 포함)
       expect(memberRepository.create).toHaveBeenCalledWith({
@@ -173,7 +210,7 @@ describe('StudyService', () => {
         role: StudyMemberRole.ADMIN,
         nickname: 'Admin',
       });
-      expect(memberRepository.save).toHaveBeenCalled();
+      expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
     });
 
     // ============================
@@ -186,7 +223,7 @@ describe('StudyService', () => {
       await service.createStudy(USER_ID, { name: 'Test', nickname: 'Admin' });
 
       expect(mockRedis.del).toHaveBeenCalledWith(
-        `study:membership:${STUDY_ID}:${USER_ID}`,
+        `membership:${STUDY_ID}:${USER_ID}`,
       );
     });
   });
@@ -265,17 +302,17 @@ describe('StudyService', () => {
       memberRepository.findOne.mockResolvedValue(mockAdminMember);
       studyRepository.delete.mockResolvedValue({ affected: 1 });
       mockRedis.keys.mockResolvedValue([
-        `study:membership:${STUDY_ID}:user1`,
-        `study:membership:${STUDY_ID}:user2`,
+        `membership:${STUDY_ID}:user1`,
+        `membership:${STUDY_ID}:user2`,
       ]);
 
       await service.deleteStudy(STUDY_ID, USER_ID);
 
       expect(studyRepository.delete).toHaveBeenCalledWith(STUDY_ID);
-      expect(mockRedis.keys).toHaveBeenCalledWith(`study:membership:${STUDY_ID}:*`);
+      expect(mockRedis.keys).toHaveBeenCalledWith(`membership:${STUDY_ID}:*`);
       expect(mockRedis.del).toHaveBeenCalledWith(
-        `study:membership:${STUDY_ID}:user1`,
-        `study:membership:${STUDY_ID}:user2`,
+        `membership:${STUDY_ID}:user1`,
+        `membership:${STUDY_ID}:user2`,
       );
     });
 
@@ -396,17 +433,16 @@ describe('StudyService', () => {
   // ============================
   describe('removeMember', () => {
     it('ADMIN이 멤버 추방 — DB 삭제 + 캐시 무효화', async () => {
-      memberRepository.findOne.mockResolvedValue(mockAdminMember);
-      memberRepository.delete.mockResolvedValue({ affected: 1 });
+      memberRepository.findOne
+        .mockResolvedValueOnce(mockAdminMember) // admin 권한 검증 (via manager.findOne)
+        .mockResolvedValueOnce(mockRegularMember); // target member (via manager.findOne)
 
       await service.removeMember(STUDY_ID, OTHER_USER_ID, USER_ID);
 
-      expect(memberRepository.delete).toHaveBeenCalledWith({
-        study_id: STUDY_ID,
-        user_id: OTHER_USER_ID,
-      });
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalled();
+      expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
       expect(mockRedis.del).toHaveBeenCalledWith(
-        `study:membership:${STUDY_ID}:${OTHER_USER_ID}`,
+        `membership:${STUDY_ID}:${OTHER_USER_ID}`,
       );
     });
 
@@ -425,8 +461,9 @@ describe('StudyService', () => {
     });
 
     it('존재하지 않는 멤버 추방 → NotFoundException', async () => {
-      memberRepository.findOne.mockResolvedValue(mockAdminMember);
-      memberRepository.delete.mockResolvedValue({ affected: 0 });
+      memberRepository.findOne
+        .mockResolvedValueOnce(mockAdminMember) // admin 권한 검증 (via manager.findOne)
+        .mockResolvedValueOnce(null); // target member not found (via manager.findOne)
 
       await expect(
         service.removeMember(STUDY_ID, OTHER_USER_ID, USER_ID),
@@ -440,31 +477,28 @@ describe('StudyService', () => {
   describe('leaveStudy', () => {
     it('일반 멤버 탈퇴 — 정상 처리 + 알림 발행', async () => {
       memberRepository.findOne.mockResolvedValue(mockRegularMember);
-      memberRepository.delete.mockResolvedValue({ affected: 1 });
       studyRepository.findOne.mockResolvedValue(mockStudy);
       memberRepository.find.mockResolvedValue([mockAdminMember]);
 
       await service.leaveStudy(STUDY_ID, OTHER_USER_ID);
 
-      expect(memberRepository.delete).toHaveBeenCalledWith({
-        study_id: STUDY_ID,
-        user_id: OTHER_USER_ID,
-      });
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalled();
+      expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
       expect(mockRedis.del).toHaveBeenCalledWith(
-        `study:membership:${STUDY_ID}:${OTHER_USER_ID}`,
+        `membership:${STUDY_ID}:${OTHER_USER_ID}`,
       );
     });
 
     it('ADMIN 탈퇴 — 다른 ADMIN 있으면 가능', async () => {
       memberRepository.findOne.mockResolvedValue(mockAdminMember);
       memberRepository.count.mockResolvedValue(2); // 다른 ADMIN 존재
-      memberRepository.delete.mockResolvedValue({ affected: 1 });
       studyRepository.findOne.mockResolvedValue(mockStudy);
       memberRepository.find.mockResolvedValue([]);
 
       await service.leaveStudy(STUDY_ID, USER_ID);
 
-      expect(memberRepository.delete).toHaveBeenCalled();
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalled();
+      expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
     });
 
     it('유일 ADMIN 탈퇴 → BadRequestException', async () => {
@@ -589,16 +623,15 @@ describe('StudyService', () => {
   // ============================
   describe('changeMemberRole', () => {
     it('ADMIN이 멤버를 ADMIN으로 승격', async () => {
-      // verifyAdmin용 1번째 호출 → ADMIN, 대상 멤버 2번째 호출 → MEMBER
+      // verifyAdmin용 1번째 호출 → ADMIN, 대상 멤버 2번째 호출 → MEMBER (via manager.findOne)
       memberRepository.findOne
         .mockResolvedValueOnce(mockAdminMember)
         .mockResolvedValueOnce({ ...mockRegularMember });
-      memberRepository.save.mockImplementation((m: StudyMember) => Promise.resolve(m));
       studyRepository.findOne.mockResolvedValue(mockStudy);
 
       await service.changeMemberRole(STUDY_ID, OTHER_USER_ID, USER_ID, StudyMemberRole.ADMIN);
 
-      expect(memberRepository.save).toHaveBeenCalledWith(
+      expect(mockQueryRunner.manager.save).toHaveBeenCalledWith(
         expect.objectContaining({ role: StudyMemberRole.ADMIN }),
       );
     });
@@ -1052,15 +1085,14 @@ describe('StudyService', () => {
       // targetMember.role이 MEMBER이고 newRole이 ADMIN → adminCount 체크 안 함
       memberRepository.findOne
         .mockResolvedValueOnce(mockAdminMember) // verifyAdmin
-        .mockResolvedValueOnce({ ...mockRegularMember, role: StudyMemberRole.MEMBER }); // target is MEMBER
-      memberRepository.save.mockImplementation((m: StudyMember) => Promise.resolve(m));
+        .mockResolvedValueOnce({ ...mockRegularMember, role: StudyMemberRole.MEMBER }); // target is MEMBER (via manager.findOne)
       studyRepository.findOne.mockResolvedValue(mockStudy);
 
       await service.changeMemberRole(STUDY_ID, OTHER_USER_ID, USER_ID, StudyMemberRole.ADMIN);
 
       // count가 호출되지 않아야 함 (MEMBER→ADMIN은 체크 불필요)
-      expect(memberRepository.count).not.toHaveBeenCalled();
-      expect(memberRepository.save).toHaveBeenCalledWith(
+      expect(mockQueryRunner.manager.count).not.toHaveBeenCalled();
+      expect(mockQueryRunner.manager.save).toHaveBeenCalledWith(
         expect.objectContaining({ role: StudyMemberRole.ADMIN }),
       );
     });
@@ -1072,14 +1104,13 @@ describe('StudyService', () => {
       };
       memberRepository.findOne
         .mockResolvedValueOnce(mockAdminMember) // verifyAdmin
-        .mockResolvedValueOnce(targetAdmin); // target is ADMIN
+        .mockResolvedValueOnce(targetAdmin); // target is ADMIN (via manager.findOne)
       memberRepository.count.mockResolvedValue(2); // ADMIN 2명 → 강등 가능
-      memberRepository.save.mockImplementation((m: StudyMember) => Promise.resolve(m));
       studyRepository.findOne.mockResolvedValue(mockStudy);
 
       await service.changeMemberRole(STUDY_ID, OTHER_USER_ID, USER_ID, StudyMemberRole.MEMBER);
 
-      expect(memberRepository.save).toHaveBeenCalledWith(
+      expect(mockQueryRunner.manager.save).toHaveBeenCalledWith(
         expect.objectContaining({ role: StudyMemberRole.MEMBER }),
       );
     });

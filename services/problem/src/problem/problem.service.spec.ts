@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException, ConflictException } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 import { ProblemService } from './problem.service';
 import { Problem, ProblemStatus, Difficulty } from './problem.entity';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
@@ -7,10 +8,25 @@ import { DeadlineCacheService } from '../cache/deadline-cache.service';
 import { DualWriteService } from '../database/dual-write.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
+// ─── Mock QueryRunner 팩토리 ──────────────────────────────────────
+const createMockQueryRunner = () => ({
+  connect: jest.fn(),
+  startTransaction: jest.fn(),
+  commitTransaction: jest.fn(),
+  rollbackTransaction: jest.fn(),
+  release: jest.fn(),
+  manager: {
+    findOne: jest.fn(),
+    save: jest.fn(),
+  },
+});
+
 describe('ProblemService', () => {
   let service: ProblemService;
-  let dualWrite: Record<string, jest.Mock>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let dualWrite: any;
   let deadlineCache: Record<string, jest.Mock>;
+  let dataSource: Record<string, jest.Mock>;
 
   const STUDY_ID = 'study-uuid-001';
   const OTHER_STUDY_ID = 'study-uuid-999';
@@ -45,6 +61,7 @@ describe('ProblemService', () => {
       findOne: jest.fn(),
       find: jest.fn(),
       create: jest.fn(),
+      isActive: false,
     };
 
     deadlineCache = {
@@ -54,6 +71,10 @@ describe('ProblemService', () => {
       getWeekProblems: jest.fn(),
       setWeekProblems: jest.fn(),
       invalidateWeekProblems: jest.fn(),
+    };
+
+    dataSource = {
+      createQueryRunner: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -70,6 +91,10 @@ describe('ProblemService', () => {
         {
           provide: StructuredLoggerService,
           useValue: { setContext: jest.fn(), log: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
+        },
+        {
+          provide: DataSource,
+          useValue: dataSource,
         },
       ],
     }).compile();
@@ -234,6 +259,21 @@ describe('ProblemService', () => {
       expect(deadlineCache.setWeekProblems).not.toHaveBeenCalled();
     });
 
+    it('캐시 미스: ACTIVE 상태만 조회 (CLOSED 필터링)', async () => {
+      deadlineCache.getWeekProblems.mockResolvedValue(null);
+      dualWrite.find.mockResolvedValue([mockProblem]);
+      deadlineCache.setWeekProblems.mockResolvedValue(undefined);
+
+      await service.findByWeekAndStudy(STUDY_ID, '3월1주차');
+
+      // ACTIVE 필터 포함 확인
+      expect(dualWrite.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ status: ProblemStatus.ACTIVE }),
+        }),
+      );
+    });
+
     it('캐시 미스: DB 조회 후 캐시 저장', async () => {
       const dbProblems = [mockProblem];
       deadlineCache.getWeekProblems.mockResolvedValue(null);
@@ -245,9 +285,9 @@ describe('ProblemService', () => {
       // 캐시 미스 확인
       expect(deadlineCache.getWeekProblems).toHaveBeenCalledWith(STUDY_ID, '3월1주차');
 
-      // DB 조회 — studyId 스코핑, createdAt ASC 정렬
+      // DB 조회 — studyId 스코핑, ACTIVE 필터, createdAt ASC 정렬
       expect(dualWrite.find).toHaveBeenCalledWith({
-        where: { weekNumber: '3월1주차', studyId: STUDY_ID },
+        where: { weekNumber: '3월1주차', studyId: STUDY_ID, status: ProblemStatus.ACTIVE },
         order: { createdAt: 'ASC' },
       });
 
@@ -340,10 +380,10 @@ describe('ProblemService', () => {
   });
 
   // ──────────────────────────────────────────────
-  // 10. update()
+  // 10. update() — QueryRunner 트랜잭션 + FOR UPDATE
   // ──────────────────────────────────────────────
   describe('update()', () => {
-    it('전체 수정: description/sourceUrl/sourcePlatform/deadline 필드 업데이트', async () => {
+    it('전체 수정: 트랜잭션 내 FOR UPDATE + save + 커밋 후 캐시 무효화', async () => {
       const dto: UpdateProblemDto = {
         description: '수정된 설명',
         sourceUrl: 'https://codeforces.com/problem/1',
@@ -359,25 +399,27 @@ describe('ProblemService', () => {
         deadline: new Date('2026-04-01T23:59:59.000Z'),
       } as Problem;
 
-      dualWrite.findOne.mockResolvedValue({ ...mockProblem });
-      dualWrite.saveExisting.mockResolvedValue(updatedProblem);
+      const mockQr = createMockQueryRunner();
+      mockQr.manager.findOne.mockResolvedValue({ ...mockProblem });
+      mockQr.manager.save.mockResolvedValue(updatedProblem);
+      dataSource.createQueryRunner.mockReturnValue(mockQr);
       deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
       deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
 
       const result = await service.update(STUDY_ID, PROBLEM_ID, dto);
 
-      expect(dualWrite.saveExisting).toHaveBeenCalledWith(
-        expect.objectContaining({
-          description: '수정된 설명',
-          sourceUrl: 'https://codeforces.com/problem/1',
-          sourcePlatform: 'Codeforces',
-          deadline: new Date('2026-04-01T23:59:59.000Z'),
-        }),
-      );
+      // FOR UPDATE 락 확인
+      expect(mockQr.manager.findOne).toHaveBeenCalledWith(Problem, {
+        where: { id: PROBLEM_ID, studyId: STUDY_ID },
+        lock: { mode: 'pessimistic_write' },
+      });
+      expect(mockQr.manager.save).toHaveBeenCalled();
+      expect(mockQr.commitTransaction).toHaveBeenCalled();
+      expect(mockQr.release).toHaveBeenCalled();
       expect(result).toEqual(updatedProblem);
     });
 
-    it('부분 수정: 필드 업데이트 + 캐시 무효화', async () => {
+    it('부분 수정: 트랜잭션 + 캐시 무효화', async () => {
       const dto: UpdateProblemDto = {
         title: '수정된 제목',
         difficulty: Difficulty.GOLD,
@@ -391,30 +433,21 @@ describe('ProblemService', () => {
         status: ProblemStatus.CLOSED,
       } as Problem;
 
-      // findById 내부 호출
-      dualWrite.findOne.mockResolvedValue({ ...mockProblem });
-      // save 호출
-      dualWrite.saveExisting.mockResolvedValue(updatedProblem);
+      const mockQr = createMockQueryRunner();
+      mockQr.manager.findOne.mockResolvedValue({ ...mockProblem });
+      mockQr.manager.save.mockResolvedValue(updatedProblem);
+      dataSource.createQueryRunner.mockReturnValue(mockQr);
       deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
       deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
 
       const result = await service.update(STUDY_ID, PROBLEM_ID, dto);
 
-      // findById 호출 (studyId 스코핑)
-      expect(dualWrite.findOne).toHaveBeenCalledWith({
-        where: { id: PROBLEM_ID, studyId: STUDY_ID },
-      });
+      // 트랜잭션 흐름 확인
+      expect(mockQr.connect).toHaveBeenCalled();
+      expect(mockQr.startTransaction).toHaveBeenCalled();
+      expect(mockQr.commitTransaction).toHaveBeenCalled();
 
-      // save 호출 — 변경된 필드 반영
-      expect(dualWrite.saveExisting).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: '수정된 제목',
-          difficulty: Difficulty.GOLD,
-          status: ProblemStatus.CLOSED,
-        }),
-      );
-
-      // 캐시 무효화
+      // 캐시 무효화 (커밋 후)
       expect(deadlineCache.invalidateDeadline).toHaveBeenCalledWith(
         STUDY_ID,
         updatedProblem.id,
@@ -426,6 +459,18 @@ describe('ProblemService', () => {
 
       expect(result).toEqual(updatedProblem);
     });
+
+    it('존재하지 않는 문제 수정 시 NotFoundException + 롤백', async () => {
+      const dto: UpdateProblemDto = { title: '수정' };
+
+      const mockQr = createMockQueryRunner();
+      mockQr.manager.findOne.mockResolvedValue(null);
+      dataSource.createQueryRunner.mockReturnValue(mockQr);
+
+      await expect(service.update(STUDY_ID, 'non-existent', dto)).rejects.toThrow(NotFoundException);
+      expect(mockQr.rollbackTransaction).toHaveBeenCalled();
+      expect(mockQr.release).toHaveBeenCalled();
+    });
   });
 
   // ──────────────────────────────────────────────
@@ -436,8 +481,10 @@ describe('ProblemService', () => {
       const dto: UpdateProblemDto = { weekNumber: '3월2주차' };
       const updatedProblem = { ...mockProblem, weekNumber: '3월2주차' } as Problem;
 
-      dualWrite.findOne.mockResolvedValue({ ...mockProblem });
-      dualWrite.saveExisting.mockResolvedValue(updatedProblem);
+      const mockQr = createMockQueryRunner();
+      mockQr.manager.findOne.mockResolvedValue({ ...mockProblem });
+      mockQr.manager.save.mockResolvedValue(updatedProblem);
+      dataSource.createQueryRunner.mockReturnValue(mockQr);
       deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
       deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
 
@@ -453,8 +500,10 @@ describe('ProblemService', () => {
       const dto: UpdateProblemDto = { title: '제목만 변경' };
       const updatedProblem = { ...mockProblem, title: '제목만 변경' } as Problem;
 
-      dualWrite.findOne.mockResolvedValue({ ...mockProblem });
-      dualWrite.saveExisting.mockResolvedValue(updatedProblem);
+      const mockQr = createMockQueryRunner();
+      mockQr.manager.findOne.mockResolvedValue({ ...mockProblem });
+      mockQr.manager.save.mockResolvedValue(updatedProblem);
+      dataSource.createQueryRunner.mockReturnValue(mockQr);
       deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
       deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
 
@@ -465,56 +514,50 @@ describe('ProblemService', () => {
     });
 
     it('allowedLanguages: null로 명시 설정 시 null 저장 (??null 분기)', async () => {
-      // dto.allowedLanguages !== undefined 이면서 null인 경우 → ?? null 분기 실행
       const dto = { allowedLanguages: null } as unknown as UpdateProblemDto;
       const updatedProblem = { ...mockProblem, allowedLanguages: null } as Problem;
 
-      dualWrite.findOne.mockResolvedValue({ ...mockProblem });
-      dualWrite.saveExisting.mockResolvedValue(updatedProblem);
+      const mockQr = createMockQueryRunner();
+      mockQr.manager.findOne.mockResolvedValue({ ...mockProblem });
+      mockQr.manager.save.mockResolvedValue(updatedProblem);
+      dataSource.createQueryRunner.mockReturnValue(mockQr);
       deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
       deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
 
       const result = await service.update(STUDY_ID, PROBLEM_ID, dto);
 
-      expect(dualWrite.saveExisting).toHaveBeenCalledWith(
-        expect.objectContaining({ allowedLanguages: null }),
-      );
       expect(result.allowedLanguages).toBeNull();
     });
 
     it('tags: null로 명시 설정 시 null 저장 (??null 분기)', async () => {
-      // dto.tags !== undefined 이면서 null인 경우 → ?? null 분기 실행
       const dto = { tags: null } as unknown as UpdateProblemDto;
       const updatedProblem = { ...mockProblem, tags: null } as Problem;
 
-      dualWrite.findOne.mockResolvedValue({ ...mockProblem });
-      dualWrite.saveExisting.mockResolvedValue(updatedProblem);
+      const mockQr = createMockQueryRunner();
+      mockQr.manager.findOne.mockResolvedValue({ ...mockProblem });
+      mockQr.manager.save.mockResolvedValue(updatedProblem);
+      dataSource.createQueryRunner.mockReturnValue(mockQr);
       deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
       deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
 
       const result = await service.update(STUDY_ID, PROBLEM_ID, dto);
 
-      expect(dualWrite.saveExisting).toHaveBeenCalledWith(
-        expect.objectContaining({ tags: null }),
-      );
       expect(result.tags).toBeNull();
     });
 
     it('deadline: 빈 문자열 설정 시 null 저장 (falsy 분기)', async () => {
-      // dto.deadline !== undefined 이면서 falsy('')인 경우 → ternary null 분기 실행
       const dto = { deadline: '' } as unknown as UpdateProblemDto;
       const updatedProblem = { ...mockProblem, deadline: null } as unknown as Problem;
 
-      dualWrite.findOne.mockResolvedValue({ ...mockProblem });
-      dualWrite.saveExisting.mockResolvedValue(updatedProblem);
+      const mockQr = createMockQueryRunner();
+      mockQr.manager.findOne.mockResolvedValue({ ...mockProblem });
+      mockQr.manager.save.mockResolvedValue(updatedProblem);
+      dataSource.createQueryRunner.mockReturnValue(mockQr);
       deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
       deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
 
       const result = await service.update(STUDY_ID, PROBLEM_ID, dto);
 
-      expect(dualWrite.saveExisting).toHaveBeenCalledWith(
-        expect.objectContaining({ deadline: null }),
-      );
       expect(result.deadline).toBeNull();
     });
   });

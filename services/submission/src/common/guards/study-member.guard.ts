@@ -29,7 +29,7 @@ interface StudyMemberRequest extends Request {
  *
  * 검증 순서:
  * 1. X-User-ID + X-Study-ID 헤더 추출
- * 2. Redis 캐시 확인: submission:membership:{study_id}:{user_id} (TTL 10분)
+ * 2. Redis 캐시 확인: membership:{study_id}:{user_id} (TTL 10분)
  * 3. 캐시 miss → Gateway Internal API 호출
  * 4. 비멤버 → 403 Forbidden
  *
@@ -39,7 +39,7 @@ interface StudyMemberRequest extends Request {
 export class StudyMemberGuard implements CanActivate {
   private readonly logger: StructuredLoggerService;
   private readonly redis: Redis;
-  private static readonly CACHE_TTL_SECONDS = 600; // 10분
+  private static readonly CACHE_TTL_SECONDS = 300; // 5분 — 통일 규격
 
   constructor(private readonly configService: ConfigService) {
     this.logger = new StructuredLoggerService();
@@ -66,7 +66,7 @@ export class StudyMemberGuard implements CanActivate {
       throw new ForbiddenException('X-Study-ID 헤더가 필요합니다.');
     }
 
-    const cacheKey = `submission:membership:${studyId}:${userId}`;
+    const cacheKey = `membership:${studyId}:${userId}`;
     let role: string | null = null;
 
     // M4: Redis 캐시 확인

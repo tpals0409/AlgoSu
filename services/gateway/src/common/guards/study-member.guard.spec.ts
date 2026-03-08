@@ -88,19 +88,33 @@ describe('StudyMemberGuard', () => {
   // Redis 캐시 히트
   // ──────────────────────────────────────────────
   describe('캐시 히트', () => {
-    it('캐시 값 "1" — true 반환 (멤버)', async () => {
-      mockRedis.get.mockResolvedValue('1');
+    it('캐시 값 "ADMIN" — true 반환 (멤버)', async () => {
+      mockRedis.get.mockResolvedValue('ADMIN');
       const ctx = createMockContext();
 
       const result = await guard.canActivate(ctx);
 
       expect(result).toBe(true);
-      expect(mockRedis.get).toHaveBeenCalledWith(`study:membership:${STUDY_ID}:${USER_ID}`);
+      expect(mockRedis.get).toHaveBeenCalledWith(`membership:${STUDY_ID}:${USER_ID}`);
       expect(memberRepo.findOne).not.toHaveBeenCalled();
     });
 
-    it('캐시 값 "0" — ForbiddenException (비멤버 캐시)', async () => {
-      mockRedis.get.mockResolvedValue('0');
+    it('캐시 값 "MEMBER" — true 반환', async () => {
+      mockRedis.get.mockResolvedValue('MEMBER');
+      const ctx = createMockContext();
+
+      const result = await guard.canActivate(ctx);
+
+      expect(result).toBe(true);
+      expect(memberRepo.findOne).not.toHaveBeenCalled();
+    });
+
+    it('denied 키 존재 — ForbiddenException (비멤버 캐시)', async () => {
+      mockRedis.get.mockImplementation((key: string) => {
+        if (key === `membership:${STUDY_ID}:${USER_ID}`) return Promise.resolve(null);
+        if (key === `membership:${STUDY_ID}:${USER_ID}:denied`) return Promise.resolve('1');
+        return Promise.resolve(null);
+      });
       const ctx = createMockContext();
 
       await expect(guard.canActivate(ctx)).rejects.toThrow(ForbiddenException);
@@ -117,8 +131,8 @@ describe('StudyMemberGuard', () => {
       mockRedis.get.mockResolvedValue(null); // 캐시 미스
     });
 
-    it('DB에 멤버 존재 — true 반환 + Redis에 "1" 캐싱', async () => {
-      memberRepo.findOne.mockResolvedValue({ id: 'member-1', study_id: STUDY_ID, user_id: USER_ID });
+    it('DB에 멤버 존재 — true 반환 + Redis에 role 캐싱', async () => {
+      memberRepo.findOne.mockResolvedValue({ id: 'member-1', study_id: STUDY_ID, user_id: USER_ID, role: 'MEMBER' });
       mockRedis.set.mockResolvedValue('OK');
       const ctx = createMockContext();
 
@@ -129,22 +143,22 @@ describe('StudyMemberGuard', () => {
         where: { study_id: STUDY_ID, user_id: USER_ID },
       });
       expect(mockRedis.set).toHaveBeenCalledWith(
-        `study:membership:${STUDY_ID}:${USER_ID}`,
-        '1',
+        `membership:${STUDY_ID}:${USER_ID}`,
+        'MEMBER',
         'EX',
         300,
       );
     });
 
-    it('DB에 멤버 없음 — ForbiddenException + Redis에 "0" 캐싱 (60초 TTL)', async () => {
+    it('DB에 멤버 없음 — ForbiddenException + denied 키 캐싱 (60초 TTL)', async () => {
       memberRepo.findOne.mockResolvedValue(null);
       mockRedis.set.mockResolvedValue('OK');
       const ctx = createMockContext();
 
       await expect(guard.canActivate(ctx)).rejects.toThrow(ForbiddenException);
       expect(mockRedis.set).toHaveBeenCalledWith(
-        `study:membership:${STUDY_ID}:${USER_ID}`,
-        '0',
+        `membership:${STUDY_ID}:${USER_ID}:denied`,
+        '1',
         'EX',
         60,
       );

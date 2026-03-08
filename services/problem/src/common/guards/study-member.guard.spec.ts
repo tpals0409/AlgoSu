@@ -96,7 +96,7 @@ describe('StudyMemberGuard', () => {
       const result = await guard.canActivate(ctx);
 
       expect(result).toBe(true);
-      expect(redis.get).toHaveBeenCalledWith(`problem:membership:${STUDY_ID}:${USER_ID}`);
+      expect(redis.get).toHaveBeenCalledWith(`membership:${STUDY_ID}:${USER_ID}`);
       const req = ctx.switchToHttp().getRequest() as Record<string, unknown>;
       expect(req.studyRole).toBe('ADMIN');
     });
@@ -149,10 +149,10 @@ describe('StudyMemberGuard', () => {
         },
       );
       expect(redis.set).toHaveBeenCalledWith(
-        `problem:membership:${STUDY_ID}:${USER_ID}`,
+        `membership:${STUDY_ID}:${USER_ID}`,
         'MEMBER',
         'EX',
-        600,
+        300,
       );
 
       mockFetch.mockRestore();

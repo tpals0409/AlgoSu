@@ -16,6 +16,7 @@ import { StructuredLoggerService } from '../common/logger/structured-logger.serv
  * - 캐시 키: `deadline:{studyId}:{problemId}` — 스터디별 마감 캐시 분리
  * - 캐시 값: ISO 8601 날짜 문자열 또는 'null' (마감 없음)
  * - TTL: 300초 (5분) — 마감 시간 변경은 빈번하지 않음
+ * - 주차별 문제 목록 TTL: 60초 — 캐시 무효화 race condition 방어 (stale 최대 60초)
  * - Submission Service가 내부 HTTP로 조회 시 캐시 우선 반환
  *
  * 보안: Redis TTL 필수 설정, studyId 스코핑으로 cross-study 접근 방지
@@ -77,7 +78,7 @@ export class DeadlineCacheService {
   /**
    * 주차별 문제 목록 캐시
    * 키: `problem:week:{studyId}:{weekNumber}`
-   * TTL: 600초 (10분)
+   * TTL: 60초 — update() 커밋~캐시 무효화 간 race condition 방어
    */
   async getWeekProblems(studyId: string, weekNumber: string): Promise<string | null> {
     try {
@@ -89,7 +90,7 @@ export class DeadlineCacheService {
 
   async setWeekProblems(studyId: string, weekNumber: string, data: string): Promise<void> {
     try {
-      await this.redis.set(`problem:week:${studyId}:${weekNumber}`, data, 'EX', 600);
+      await this.redis.set(`problem:week:${studyId}:${weekNumber}`, data, 'EX', 60);
     } catch (error: unknown) {
       this.logger.warn(`주차별 캐시 설정 실패: ${(error as Error).message}`);
     }

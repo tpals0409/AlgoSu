@@ -5,6 +5,7 @@
  * @related problem.controller.ts, problem.entity.ts, deadline-cache.service.ts
  */
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 import { Problem, ProblemStatus } from './problem.entity';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
 import { DeadlineCacheService } from '../cache/deadline-cache.service';
@@ -17,6 +18,7 @@ export class ProblemService {
     private readonly dualWrite: DualWriteService,
     private readonly deadlineCache: DeadlineCacheService,
     private readonly logger: StructuredLoggerService,
+    private readonly dataSource: DataSource,
   ) {
     this.logger.setContext(ProblemService.name);
   }
@@ -81,7 +83,7 @@ export class ProblemService {
     }
 
     const problems = await this.dualWrite.find({
-      where: { weekNumber, studyId },
+      where: { weekNumber, studyId, status: ProblemStatus.ACTIVE },
       order: { createdAt: 'ASC' },
     });
 
@@ -123,41 +125,68 @@ export class ProblemService {
 
   /**
    * 문제 수정 — studyId 스코핑
+   * QueryRunner 트랜잭션 + FOR UPDATE 비관적 락으로 Lost Update 방지
+   * 캐시 무효화는 트랜잭션 커밋 후 실행
    */
   async update(studyId: string, id: string, dto: UpdateProblemDto): Promise<Problem> {
-    const problem = await this.findById(studyId, id);
+    const qr = this.dataSource.createQueryRunner();
+    await qr.connect();
+    await qr.startTransaction();
 
-    // M7: weekNumber 변경 감지용 — 변경 전 값 보존
-    const oldWeekNumber = problem.weekNumber;
+    try {
+      // FOR UPDATE 비관적 락으로 동시 수정 방지
+      const problem = await qr.manager.findOne(Problem, {
+        where: { id, studyId },
+        lock: { mode: 'pessimistic_write' },
+      });
 
-    if (dto.title !== undefined) problem.title = dto.title;
-    if (dto.description !== undefined) problem.description = dto.description;
-    if (dto.weekNumber !== undefined) problem.weekNumber = dto.weekNumber;
-    if (dto.difficulty !== undefined) problem.difficulty = dto.difficulty;
-    if (dto.sourceUrl !== undefined) problem.sourceUrl = dto.sourceUrl;
-    if (dto.sourcePlatform !== undefined) problem.sourcePlatform = dto.sourcePlatform;
-    if (dto.deadline !== undefined) problem.deadline = dto.deadline ? new Date(dto.deadline) : null;
-    if (dto.allowedLanguages !== undefined) {
-      problem.allowedLanguages = dto.allowedLanguages ?? null;
+      if (!problem) {
+        throw new NotFoundException(`문제를 찾을 수 없습니다: id=${id}`);
+      }
+
+      // M7: weekNumber 변경 감지용 — 변경 전 값 보존
+      const oldWeekNumber = problem.weekNumber;
+
+      if (dto.title !== undefined) problem.title = dto.title;
+      if (dto.description !== undefined) problem.description = dto.description;
+      if (dto.weekNumber !== undefined) problem.weekNumber = dto.weekNumber;
+      if (dto.difficulty !== undefined) problem.difficulty = dto.difficulty;
+      if (dto.sourceUrl !== undefined) problem.sourceUrl = dto.sourceUrl;
+      if (dto.sourcePlatform !== undefined) problem.sourcePlatform = dto.sourcePlatform;
+      if (dto.deadline !== undefined) problem.deadline = dto.deadline ? new Date(dto.deadline) : null;
+      if (dto.allowedLanguages !== undefined) {
+        problem.allowedLanguages = dto.allowedLanguages ?? null;
+      }
+      if (dto.tags !== undefined) {
+        problem.tags = dto.tags ?? null;
+      }
+      if (dto.status !== undefined) problem.status = dto.status as ProblemStatus;
+
+      const saved = await qr.manager.save(Problem, problem);
+      await qr.commitTransaction();
+
+      // 캐시 무효화 — 트랜잭션 커밋 후 실행
+      await this.deadlineCache.invalidateDeadline(studyId, saved.id);
+      await this.deadlineCache.invalidateWeekProblems(studyId, saved.weekNumber);
+
+      // M7: weekNumber 변경 시 구 주차 캐시도 무효화
+      if (dto.weekNumber !== undefined && dto.weekNumber !== oldWeekNumber) {
+        await this.deadlineCache.invalidateWeekProblems(studyId, oldWeekNumber);
+      }
+
+      // Dual Write — 트랜잭션 커밋 후 비동기 쓰기
+      if (this.dualWrite.isActive) {
+        void this.dualWrite.saveExisting(saved);
+      }
+
+      this.logger.log(`문제 수정: id=${saved.id}, studyId=${studyId}`);
+      return saved;
+    } catch (err) {
+      await qr.rollbackTransaction();
+      throw err;
+    } finally {
+      await qr.release();
     }
-    if (dto.tags !== undefined) {
-      problem.tags = dto.tags ?? null;
-    }
-    if (dto.status !== undefined) problem.status = dto.status as ProblemStatus;
-
-    const saved = await this.dualWrite.saveExisting(problem);
-
-    // 캐시 무효화
-    await this.deadlineCache.invalidateDeadline(studyId, saved.id);
-    await this.deadlineCache.invalidateWeekProblems(studyId, saved.weekNumber);
-
-    // M7: weekNumber 변경 시 구 주차 캐시도 무효화
-    if (dto.weekNumber !== undefined && dto.weekNumber !== oldWeekNumber) {
-      await this.deadlineCache.invalidateWeekProblems(studyId, oldWeekNumber);
-    }
-
-    this.logger.log(`문제 수정: id=${saved.id}, studyId=${studyId}`);
-    return saved;
   }
 
   /**

@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { SubmissionService } from './submission.service';
 import { Submission, SagaStep, GitHubSyncStatus } from './submission.entity';
 import { SagaOrchestratorService } from '../saga/saga-orchestrator.service';
@@ -52,6 +52,22 @@ const mockConfigService = () => ({
   }),
 });
 
+const createMockTransactionRunner = () => ({
+  connect: jest.fn(),
+  startTransaction: jest.fn(),
+  commitTransaction: jest.fn(),
+  rollbackTransaction: jest.fn(),
+  release: jest.fn(),
+  manager: {
+    save: jest.fn(),
+    update: jest.fn(),
+  },
+});
+
+const mockDataSource = () => ({
+  createQueryRunner: jest.fn(),
+});
+
 // ─── 테스트 헬퍼 ────────────────────────────────────────────────
 const createMockSubmission = (overrides: Partial<Submission> = {}): Submission => ({
   id: 'sub-uuid-1',
@@ -82,6 +98,7 @@ describe('SubmissionService', () => {
   let service: SubmissionService;
   let repo: jest.Mocked<Repository<Submission>>;
   let sagaOrchestrator: jest.Mocked<SagaOrchestratorService>;
+  let dataSource: jest.Mocked<DataSource>;
 
 
   // global.fetch 모킹
@@ -94,12 +111,14 @@ describe('SubmissionService', () => {
         { provide: getRepositoryToken(Submission), useFactory: mockSubmissionRepo },
         { provide: SagaOrchestratorService, useFactory: mockSagaOrchestrator },
         { provide: ConfigService, useFactory: mockConfigService },
+        { provide: DataSource, useFactory: mockDataSource },
       ],
     }).compile();
 
     service = module.get<SubmissionService>(SubmissionService);
     repo = module.get(getRepositoryToken(Submission));
     sagaOrchestrator = module.get(SagaOrchestratorService);
+    dataSource = module.get(DataSource);
     module.get(ConfigService);
   });
 
@@ -363,12 +382,14 @@ describe('SubmissionService', () => {
 
   // ─── 11. updateAiResult() — AI 분석 결과 저장 ─────────────────
   describe('updateAiResult()', () => {
-    it('AI 분석 결과를 저장하고 completed 시 Saga DONE 전환', async () => {
+    it('AI 분석 결과를 저장하고 completed 시 트랜잭션으로 Saga DONE 전환', async () => {
       const submission = createMockSubmission();
+      const savedSubmission = createMockSubmission({ aiFeedback: '좋은 코드입니다', aiScore: 85, aiAnalysisStatus: 'completed' });
       repo.findOne.mockResolvedValue(submission);
-      repo.save.mockResolvedValue(
-        createMockSubmission({ aiFeedback: '좋은 코드입니다', aiScore: 85, aiAnalysisStatus: 'completed' }),
-      );
+
+      const mockQr = createMockTransactionRunner();
+      mockQr.manager.save.mockResolvedValue(savedSubmission);
+      (dataSource.createQueryRunner as jest.Mock).mockReturnValue(mockQr);
       sagaOrchestrator.advanceToDone.mockResolvedValue(undefined);
 
       const dto: UpdateAiResultDto = {
@@ -380,15 +401,23 @@ describe('SubmissionService', () => {
 
       const result = await service.updateAiResult('sub-uuid-1', dto);
 
-      expect(repo.save).toHaveBeenCalled();
-      expect(sagaOrchestrator.advanceToDone).toHaveBeenCalledWith('sub-uuid-1');
+      expect(mockQr.connect).toHaveBeenCalled();
+      expect(mockQr.startTransaction).toHaveBeenCalled();
+      expect(mockQr.manager.save).toHaveBeenCalled();
+      expect(sagaOrchestrator.advanceToDone).toHaveBeenCalledWith('sub-uuid-1', mockQr);
+      expect(mockQr.commitTransaction).toHaveBeenCalled();
+      expect(mockQr.release).toHaveBeenCalled();
       expect(result.aiScore).toBe(85);
     });
 
-    it('AI 분석 failed 시에도 Saga DONE 전환', async () => {
+    it('AI 분석 failed 시에도 트랜잭션으로 Saga DONE 전환', async () => {
       const submission = createMockSubmission();
+      const savedSubmission = createMockSubmission({ aiAnalysisStatus: 'failed' });
       repo.findOne.mockResolvedValue(submission);
-      repo.save.mockResolvedValue(createMockSubmission({ aiAnalysisStatus: 'failed' }));
+
+      const mockQr = createMockTransactionRunner();
+      mockQr.manager.save.mockResolvedValue(savedSubmission);
+      (dataSource.createQueryRunner as jest.Mock).mockReturnValue(mockQr);
       sagaOrchestrator.advanceToDone.mockResolvedValue(undefined);
 
       const dto: UpdateAiResultDto = {
@@ -399,10 +428,11 @@ describe('SubmissionService', () => {
 
       await service.updateAiResult('sub-uuid-1', dto);
 
-      expect(sagaOrchestrator.advanceToDone).toHaveBeenCalledWith('sub-uuid-1');
+      expect(sagaOrchestrator.advanceToDone).toHaveBeenCalledWith('sub-uuid-1', mockQr);
+      expect(mockQr.commitTransaction).toHaveBeenCalled();
     });
 
-    it('AI 분석 delayed 시 Saga DONE 전환하지 않는다', async () => {
+    it('AI 분석 delayed 시 Saga DONE 전환하지 않는다 (트랜잭션 미사용)', async () => {
       const submission = createMockSubmission();
       repo.findOne.mockResolvedValue(submission);
       repo.save.mockResolvedValue(createMockSubmission({ aiAnalysisStatus: 'delayed' }));
@@ -416,12 +446,17 @@ describe('SubmissionService', () => {
       await service.updateAiResult('sub-uuid-1', dto);
 
       expect(sagaOrchestrator.advanceToDone).not.toHaveBeenCalled();
+      expect(dataSource.createQueryRunner).not.toHaveBeenCalled();
     });
 
     it('optimizedCode가 null이면 null로 저장', async () => {
       const submission = createMockSubmission();
       repo.findOne.mockResolvedValue(submission);
-      repo.save.mockImplementation(async (s) => s as Submission);
+
+      const mockQr = createMockTransactionRunner();
+      mockQr.manager.save.mockImplementation(async (_entity: any, s: any) => s);
+      (dataSource.createQueryRunner as jest.Mock).mockReturnValue(mockQr);
+      sagaOrchestrator.advanceToDone.mockResolvedValue(undefined);
 
       const dto: UpdateAiResultDto = {
         feedback: '피드백',
@@ -431,7 +466,7 @@ describe('SubmissionService', () => {
 
       await service.updateAiResult('sub-uuid-1', dto);
 
-      const savedArg = repo.save.mock.calls[0][0] as Submission;
+      const savedArg = mockQr.manager.save.mock.calls[0][1] as Submission;
       expect(savedArg.aiOptimizedCode).toBeNull();
     });
 
@@ -447,6 +482,26 @@ describe('SubmissionService', () => {
       await expect(service.updateAiResult('non-existent', dto)).rejects.toThrow(
         NotFoundException,
       );
+    });
+
+    it('트랜잭션 실패 시 롤백 후 에러를 전파한다', async () => {
+      const submission = createMockSubmission();
+      repo.findOne.mockResolvedValue(submission);
+
+      const mockQr = createMockTransactionRunner();
+      mockQr.manager.save.mockRejectedValue(new Error('DB write failed'));
+      (dataSource.createQueryRunner as jest.Mock).mockReturnValue(mockQr);
+
+      const dto: UpdateAiResultDto = {
+        feedback: '피드백',
+        score: 70,
+        analysisStatus: 'completed',
+      };
+
+      await expect(service.updateAiResult('sub-uuid-1', dto)).rejects.toThrow('DB write failed');
+      expect(mockQr.rollbackTransaction).toHaveBeenCalled();
+      expect(mockQr.release).toHaveBeenCalled();
+      expect(mockQr.commitTransaction).not.toHaveBeenCalled();
     });
   });
 

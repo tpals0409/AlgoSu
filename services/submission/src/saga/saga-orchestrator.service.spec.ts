@@ -88,10 +88,11 @@ describe('SagaOrchestratorService', () => {
       // Act
       await service.advanceToGitHubQueued('sub-uuid-1', 'study-uuid-1');
 
-      // Assert: DB 업데이트가 먼저 호출됨
-      expect(repo.update).toHaveBeenCalledWith('sub-uuid-1', {
-        sagaStep: SagaStep.GITHUB_QUEUED,
-      });
+      // Assert: DB 업데이트가 먼저 호출됨 (낙관적 락 WHERE 조건 포함)
+      expect(repo.update).toHaveBeenCalledWith(
+        { id: 'sub-uuid-1', sagaStep: SagaStep.DB_SAVED },
+        { sagaStep: SagaStep.GITHUB_QUEUED },
+      );
       expect(mqPublisher.publishGitHubPush).toHaveBeenCalledWith(
         expect.objectContaining({
           submissionId: 'sub-uuid-1',
@@ -103,6 +104,15 @@ describe('SagaOrchestratorService', () => {
       const updateOrder = repo.update.mock.invocationCallOrder[0];
       const publishOrder = mqPublisher.publishGitHubPush.mock.invocationCallOrder[0];
       expect(updateOrder).toBeLessThan(publishOrder);
+    });
+
+    it('affected=0이면 MQ 발행 없이 return한다 (낙관적 락)', async () => {
+      repo.update.mockResolvedValue({ affected: 0, raw: [], generatedMaps: [] });
+
+      await service.advanceToGitHubQueued('sub-uuid-1', 'study-uuid-1');
+
+      expect(repo.update).toHaveBeenCalled();
+      expect(mqPublisher.publishGitHubPush).not.toHaveBeenCalled();
     });
   });
 
@@ -139,17 +149,30 @@ describe('SagaOrchestratorService', () => {
       // Act
       await service.advanceToAiQueued('sub-uuid-1');
 
-      // Assert
-      expect(repo.update).toHaveBeenCalledWith('sub-uuid-1', {
-        sagaStep: SagaStep.AI_QUEUED,
-        githubSyncStatus: GitHubSyncStatus.SYNCED,
-      });
+      // Assert (낙관적 락 WHERE 조건 포함)
+      expect(repo.update).toHaveBeenCalledWith(
+        { id: 'sub-uuid-1', sagaStep: SagaStep.GITHUB_QUEUED },
+        {
+          sagaStep: SagaStep.AI_QUEUED,
+          githubSyncStatus: GitHubSyncStatus.SYNCED,
+        },
+      );
       expect(mqPublisher.publishAiAnalysis).toHaveBeenCalledWith(
         expect.objectContaining({
           submissionId: 'sub-uuid-1',
           studyId: 'study-uuid-1',
         }),
       );
+    });
+
+    it('affected=0이면 MQ 발행 없이 return한다 (낙관적 락)', async () => {
+      const submission = createMockSubmission({ sagaStep: SagaStep.GITHUB_QUEUED });
+      repo.findOne.mockResolvedValue(submission);
+      repo.update.mockResolvedValue({ affected: 0, raw: [], generatedMaps: [] });
+
+      await service.advanceToAiQueued('sub-uuid-1');
+
+      expect(mqPublisher.publishAiAnalysis).not.toHaveBeenCalled();
     });
   });
 
@@ -161,10 +184,47 @@ describe('SagaOrchestratorService', () => {
       // Act
       await service.advanceToDone('sub-uuid-1');
 
-      // Assert
-      expect(repo.update).toHaveBeenCalledWith('sub-uuid-1', {
-        sagaStep: SagaStep.DONE,
-      });
+      // Assert (낙관적 락 WHERE 조건 포함)
+      expect(repo.update).toHaveBeenCalledWith(
+        { id: 'sub-uuid-1', sagaStep: expect.anything() },
+        { sagaStep: SagaStep.DONE },
+      );
+    });
+
+    it('affected=0이면 로그 warn 후 return한다 (낙관적 락)', async () => {
+      repo.update.mockResolvedValue({ affected: 0, raw: [], generatedMaps: [] });
+
+      await service.advanceToDone('sub-uuid-1');
+
+      expect(repo.update).toHaveBeenCalled();
+    });
+
+    it('QueryRunner 경로에서도 낙관적 락이 적용된다', async () => {
+      const mockQr = {
+        manager: {
+          update: jest.fn().mockResolvedValue({ affected: 1 }),
+        },
+      } as any;
+
+      await service.advanceToDone('sub-uuid-1', mockQr);
+
+      expect(mockQr.manager.update).toHaveBeenCalledWith(
+        Submission,
+        { id: 'sub-uuid-1', sagaStep: expect.anything() },
+        { sagaStep: SagaStep.DONE },
+      );
+    });
+
+    it('QueryRunner 경로에서 affected=0이면 return한다', async () => {
+      const mockQr = {
+        manager: {
+          update: jest.fn().mockResolvedValue({ affected: 0 }),
+        },
+      } as any;
+
+      await service.advanceToDone('sub-uuid-1', mockQr);
+
+      expect(mockQr.manager.update).toHaveBeenCalled();
     });
   });
 
@@ -179,16 +239,29 @@ describe('SagaOrchestratorService', () => {
       // Act
       await service.compensateGitHubFailed('sub-uuid-1', GitHubSyncStatus.FAILED);
 
-      // Assert: githubSyncStatus=FAILED 업데이트
-      expect(repo.update).toHaveBeenCalledWith('sub-uuid-1', {
-        githubSyncStatus: GitHubSyncStatus.FAILED,
-      });
-      // AI 분석 진행 (advanceToAiQueued 호출됨)
-      expect(repo.update).toHaveBeenCalledWith('sub-uuid-1', {
-        sagaStep: SagaStep.AI_QUEUED,
-        githubSyncStatus: GitHubSyncStatus.SYNCED,
-      });
+      // Assert: githubSyncStatus=FAILED 업데이트 (낙관적 락 WHERE 조건 포함)
+      expect(repo.update).toHaveBeenCalledWith(
+        { id: 'sub-uuid-1', sagaStep: SagaStep.GITHUB_QUEUED },
+        { githubSyncStatus: GitHubSyncStatus.FAILED },
+      );
+      // AI 분석 진행 (advanceToAiQueued 호출됨 — GITHUB_QUEUED에서 변경됨)
+      expect(repo.update).toHaveBeenCalledWith(
+        { id: 'sub-uuid-1', sagaStep: SagaStep.GITHUB_QUEUED },
+        {
+          sagaStep: SagaStep.AI_QUEUED,
+          githubSyncStatus: GitHubSyncStatus.SYNCED,
+        },
+      );
       expect(mqPublisher.publishAiAnalysis).toHaveBeenCalled();
+    });
+
+    it('affected=0이면 AI 분석도 스킵한다 (낙관적 락)', async () => {
+      repo.update.mockResolvedValue({ affected: 0, raw: [], generatedMaps: [] });
+
+      await service.compensateGitHubFailed('sub-uuid-1', GitHubSyncStatus.FAILED);
+
+      expect(repo.update).toHaveBeenCalledTimes(1);
+      expect(mqPublisher.publishAiAnalysis).not.toHaveBeenCalled();
     });
   });
 
@@ -200,10 +273,11 @@ describe('SagaOrchestratorService', () => {
       // Act
       await service.compensateGitHubFailed('sub-uuid-1', GitHubSyncStatus.TOKEN_INVALID);
 
-      // Assert: githubSyncStatus=TOKEN_INVALID 업데이트
-      expect(repo.update).toHaveBeenCalledWith('sub-uuid-1', {
-        githubSyncStatus: GitHubSyncStatus.TOKEN_INVALID,
-      });
+      // Assert: githubSyncStatus=TOKEN_INVALID 업데이트 (낙관적 락 WHERE 조건 포함)
+      expect(repo.update).toHaveBeenCalledWith(
+        { id: 'sub-uuid-1', sagaStep: SagaStep.GITHUB_QUEUED },
+        { githubSyncStatus: GitHubSyncStatus.TOKEN_INVALID },
+      );
       // AI 분석 호출 없음
       expect(mqPublisher.publishAiAnalysis).not.toHaveBeenCalled();
     });
@@ -217,10 +291,19 @@ describe('SagaOrchestratorService', () => {
       // Act
       await service.compensateAiFailed('sub-uuid-1');
 
-      // Assert
-      expect(repo.update).toHaveBeenCalledWith('sub-uuid-1', {
-        sagaStep: SagaStep.DONE,
-      });
+      // Assert (낙관적 락 WHERE 조건 포함)
+      expect(repo.update).toHaveBeenCalledWith(
+        { id: 'sub-uuid-1', sagaStep: SagaStep.AI_QUEUED },
+        { sagaStep: SagaStep.DONE },
+      );
+    });
+
+    it('affected=0이면 로그 warn 후 return한다 (낙관적 락)', async () => {
+      repo.update.mockResolvedValue({ affected: 0, raw: [], generatedMaps: [] });
+
+      await service.compensateAiFailed('sub-uuid-1');
+
+      expect(repo.update).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -249,10 +332,11 @@ describe('SagaOrchestratorService', () => {
           order: { createdAt: 'ASC' },
         }),
       );
-      // DB_SAVED 상태 -> advanceToGitHubQueued 호출됨
-      expect(repo.update).toHaveBeenCalledWith('sub-incomplete', {
-        sagaStep: SagaStep.GITHUB_QUEUED,
-      });
+      // DB_SAVED 상태 -> advanceToGitHubQueued 호출됨 (낙관적 락 WHERE 조건 포함)
+      expect(repo.update).toHaveBeenCalledWith(
+        { id: 'sub-incomplete', sagaStep: SagaStep.DB_SAVED },
+        { sagaStep: SagaStep.GITHUB_QUEUED },
+      );
       expect(mqPublisher.publishGitHubPush).toHaveBeenCalledWith(
         expect.objectContaining({
           submissionId: 'sub-incomplete',
@@ -295,10 +379,11 @@ describe('SagaOrchestratorService', () => {
       // Act (onModuleInit -> resumeSaga 간접 호출)
       await service.onModuleInit();
 
-      // Assert: advanceToGitHubQueued 경로 — DB 업데이트 + MQ 발행
-      expect(repo.update).toHaveBeenCalledWith('sub-db-saved', {
-        sagaStep: SagaStep.GITHUB_QUEUED,
-      });
+      // Assert: advanceToGitHubQueued 경로 — DB 업데이트 + MQ 발행 (낙관적 락)
+      expect(repo.update).toHaveBeenCalledWith(
+        { id: 'sub-db-saved', sagaStep: SagaStep.DB_SAVED },
+        { sagaStep: SagaStep.GITHUB_QUEUED },
+      );
       expect(mqPublisher.publishGitHubPush).toHaveBeenCalledWith(
         expect.objectContaining({
           submissionId: 'sub-db-saved',
@@ -387,12 +472,15 @@ describe('SagaOrchestratorService', () => {
 
       await service.advanceToAiQueued('sub-uuid-1');
 
-      // AI_SKIPPED → DONE
-      expect(repo.update).toHaveBeenCalledWith('sub-uuid-1', expect.objectContaining({
-        sagaStep: SagaStep.DONE,
-        aiSkipped: true,
-        aiAnalysisStatus: 'skipped',
-      }));
+      // AI_SKIPPED → DONE (낙관적 락 WHERE 조건 포함)
+      expect(repo.update).toHaveBeenCalledWith(
+        { id: 'sub-uuid-1', sagaStep: SagaStep.GITHUB_QUEUED },
+        expect.objectContaining({
+          sagaStep: SagaStep.DONE,
+          aiSkipped: true,
+          aiAnalysisStatus: 'skipped',
+        }),
+      );
       expect(mqPublisher.publishAiAnalysis).not.toHaveBeenCalled();
     });
   });
@@ -416,10 +504,11 @@ describe('SagaOrchestratorService', () => {
 
       await service.advanceToAiQueued('sub-uuid-1', true);
 
-      // githubSyncStatus가 포함되지 않음
-      expect(repo.update).toHaveBeenCalledWith('sub-uuid-1', {
-        sagaStep: SagaStep.AI_QUEUED,
-      });
+      // githubSyncStatus가 포함되지 않음 (낙관적 락 WHERE 조건 포함)
+      expect(repo.update).toHaveBeenCalledWith(
+        { id: 'sub-uuid-1', sagaStep: SagaStep.GITHUB_QUEUED },
+        { sagaStep: SagaStep.AI_QUEUED },
+      );
     });
   });
 
@@ -439,10 +528,11 @@ describe('SagaOrchestratorService', () => {
 
       await service.compensateGitHubFailed('sub-uuid-1', GitHubSyncStatus.SKIPPED);
 
-      // githubSyncStatus=SKIPPED 업데이트
-      expect(repo.update).toHaveBeenCalledWith('sub-uuid-1', {
-        githubSyncStatus: GitHubSyncStatus.SKIPPED,
-      });
+      // githubSyncStatus=SKIPPED 업데이트 (낙관적 락 WHERE 조건 포함)
+      expect(repo.update).toHaveBeenCalledWith(
+        { id: 'sub-uuid-1', sagaStep: SagaStep.GITHUB_QUEUED },
+        { githubSyncStatus: GitHubSyncStatus.SKIPPED },
+      );
       // AI 분석은 진행됨
       expect(mqPublisher.publishAiAnalysis).toHaveBeenCalled();
     });
@@ -480,11 +570,14 @@ describe('SagaOrchestratorService', () => {
 
       await service.advanceToAiQueued('sub-uuid-1');
 
-      // 네트워크 오류 시에도 AI 분석 진행
-      expect(repo.update).toHaveBeenCalledWith('sub-uuid-1', {
-        sagaStep: SagaStep.AI_QUEUED,
-        githubSyncStatus: GitHubSyncStatus.SYNCED,
-      });
+      // 네트워크 오류 시에도 AI 분석 진행 (낙관적 락 WHERE 조건 포함)
+      expect(repo.update).toHaveBeenCalledWith(
+        { id: 'sub-uuid-1', sagaStep: SagaStep.GITHUB_QUEUED },
+        {
+          sagaStep: SagaStep.AI_QUEUED,
+          githubSyncStatus: GitHubSyncStatus.SYNCED,
+        },
+      );
       expect(mqPublisher.publishAiAnalysis).toHaveBeenCalled();
     });
 
@@ -575,9 +668,10 @@ describe('SagaOrchestratorService', () => {
       await (service as any).checkSagaTimeouts();
 
       expect(repo.find).toHaveBeenCalledTimes(4); // onModuleInit 1 + checkSagaTimeouts 3 steps
-      expect(repo.update).toHaveBeenCalledWith('sub-timeout-db', {
-        sagaStep: SagaStep.GITHUB_QUEUED,
-      });
+      expect(repo.update).toHaveBeenCalledWith(
+        { id: 'sub-timeout-db', sagaStep: SagaStep.DB_SAVED },
+        { sagaStep: SagaStep.GITHUB_QUEUED },
+      );
       expect(mqPublisher.publishGitHubPush).toHaveBeenCalledWith(
         expect.objectContaining({ submissionId: 'sub-timeout-db' }),
       );
