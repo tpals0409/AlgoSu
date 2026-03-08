@@ -25,6 +25,13 @@ export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
   DIAMOND: 'Diamond',
 };
 
+/** BOJ 원시 레벨(1~30) → 티어 내 등급(5~1) 변환. 이미 1~5면 그대로. */
+export function toTierLevel(rawLevel: number | null | undefined): number | null {
+  if (rawLevel == null || rawLevel <= 0) return null;
+  if (rawLevel >= 1 && rawLevel <= 5) return rawLevel;
+  return 5 - ((rawLevel - 1) % 5);
+}
+
 export const DIFFICULTY_COLORS: Record<Difficulty, string> = {
   BRONZE: '#ad5600',
   SILVER: '#435f7a',

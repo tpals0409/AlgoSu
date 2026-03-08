@@ -15,7 +15,7 @@ import { Alert } from '@/components/ui/Alert';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { problemApi, studyApi, type Problem } from '@/lib/api';
 import { useStudy } from '@/contexts/StudyContext';
-import { DIFFICULTIES, DIFFICULTY_LABELS } from '@/lib/constants';
+import { DIFFICULTIES, DIFFICULTY_LABELS, toTierLevel } from '@/lib/constants';
 import type { Difficulty } from '@/lib/constants';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
@@ -349,7 +349,8 @@ export default function ProblemsPage(): ReactNode {
                         const diffKey = (problem.difficulty as string).toLowerCase();
                         const dotStyle = DIFF_DOT_STYLE[diffKey] ?? { backgroundColor: 'var(--text-3)' };
                         const badgeStyle = DIFF_BADGE_STYLE[diffKey] ?? { backgroundColor: 'var(--bg-alt)', color: 'var(--text-2)' };
-                        const label = `${DIFFICULTY_LABELS[problem.difficulty as Difficulty] ?? problem.difficulty} ${problem.level ?? ''}`.trim();
+                        const displayLv = toTierLevel(problem.level);
+                        const label = `${DIFFICULTY_LABELS[problem.difficulty as Difficulty] ?? problem.difficulty}${displayLv ? ` ${displayLv}` : ''}`;
                         return (
                           <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium" style={badgeStyle}>
                             <span className="h-1.5 w-1.5 rounded-full" style={dotStyle} aria-hidden />

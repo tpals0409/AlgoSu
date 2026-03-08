@@ -5,52 +5,57 @@
  * @related Badge, DiffBadge, constants
  */
 import * as React from 'react';
-import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
-import { type Difficulty, DIFFICULTY_LABELS } from '@/lib/constants';
+import { type Difficulty, DIFFICULTY_LABELS, toTierLevel } from '@/lib/constants';
 
-const difficultyBadgeVariants = cva(
-  ['inline-flex items-center gap-1 rounded-badge px-2.5 py-0.5', 'text-[11px] font-semibold leading-none tracking-wide', 'border transition-colors duration-150'],
-  {
-    variants: {
-      difficulty: {
-        BRONZE:   'bg-diff-bronze/10 text-diff-bronze border-diff-bronze/30',
-        SILVER:   'bg-diff-silver/10 text-diff-silver border-diff-silver/30',
-        GOLD:     'bg-diff-gold/10 text-diff-gold border-diff-gold/30',
-        PLATINUM: 'bg-diff-platinum/10 text-diff-platinum border-diff-platinum/30',
-        DIAMOND:  'bg-diff-diamond/10 text-diff-diamond border-diff-diamond/30',
-      },
-    },
-    defaultVariants: { difficulty: 'BRONZE' },
-  },
-);
-
-const DIFFICULTY_DOT_CLASSES: Record<Difficulty, string> = {
-  BRONZE:   'bg-diff-bronze',
-  SILVER:   'bg-diff-silver',
-  GOLD:     'bg-diff-gold',
-  PLATINUM: 'bg-diff-platinum',
-  DIAMOND:  'bg-diff-diamond',
+/** CSS 변수 기반 난이도 색상 — 모든 환경에서 동작 */
+const DIFF_STYLES: Record<Difficulty, { color: string; bg: string; border: string }> = {
+  BRONZE:   { color: 'var(--diff-bronze-color)',   bg: 'var(--diff-bronze-bg)',   border: 'var(--diff-bronze-color)' },
+  SILVER:   { color: 'var(--diff-silver-color)',   bg: 'var(--diff-silver-bg)',   border: 'var(--diff-silver-color)' },
+  GOLD:     { color: 'var(--diff-gold-color)',     bg: 'var(--diff-gold-bg)',     border: 'var(--diff-gold-color)' },
+  PLATINUM: { color: 'var(--diff-platinum-color)', bg: 'var(--diff-platinum-bg)', border: 'var(--diff-platinum-color)' },
+  DIAMOND:  { color: 'var(--diff-diamond-color)',  bg: 'var(--diff-diamond-bg)',  border: 'var(--diff-diamond-color)' },
 };
 
 export interface DifficultyBadgeProps
-  extends Omit<React.HTMLAttributes<HTMLSpanElement>, 'children'>,
-    VariantProps<typeof difficultyBadgeVariants> {
+  extends Omit<React.HTMLAttributes<HTMLSpanElement>, 'children'> {
   readonly difficulty: Difficulty;
   readonly level?: number | null;
   readonly showDot?: boolean;
   readonly showLabel?: boolean;
 }
 
-const DifficultyBadge = React.memo(function DifficultyBadge({ className, difficulty, level, showDot = true, showLabel = true, ...props }: DifficultyBadgeProps): React.ReactElement {
+const DifficultyBadge = React.memo(function DifficultyBadge({ className, difficulty, level, showDot = true, showLabel = true, style, ...props }: DifficultyBadgeProps): React.ReactElement {
   const label = DIFFICULTY_LABELS[difficulty];
-  const tier = level && level > 0 ? ` ${level}` : '';
+  const displayLevel = toTierLevel(level);
+  const tier = displayLevel ? ` ${displayLevel}` : '';
+  const colors = DIFF_STYLES[difficulty] ?? DIFF_STYLES.BRONZE;
+
   return (
-    <span className={cn(difficultyBadgeVariants({ difficulty }), className)} aria-label={`난이도: ${label}${tier}`} {...props}>
-      {showDot && <span aria-hidden className={cn('inline-block h-1.5 w-1.5 rounded-full', DIFFICULTY_DOT_CLASSES[difficulty])} />}
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 rounded-full px-2 py-0.5',
+        'text-[11px] font-medium',
+        className,
+      )}
+      style={{
+        backgroundColor: colors.bg,
+        color: colors.color,
+        ...style,
+      }}
+      aria-label={`난이도: ${label}${tier}`}
+      {...props}
+    >
+      {showDot && (
+        <span
+          aria-hidden
+          className="inline-block h-1.5 w-1.5 rounded-full shrink-0"
+          style={{ backgroundColor: colors.color }}
+        />
+      )}
       {showLabel && <span>{label}{tier}</span>}
     </span>
   );
 });
 
-export { DifficultyBadge, difficultyBadgeVariants };
+export { DifficultyBadge };

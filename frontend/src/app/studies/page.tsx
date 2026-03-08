@@ -282,9 +282,9 @@ export default function StudiesPage(): ReactNode {
                 {studies.map((study) => (
                   <Card
                     key={study.id}
-                    className="overflow-hidden p-0 transition-all hover:border-primary/50 hover:shadow-hover"
+                    className="flex flex-col overflow-hidden p-0 transition-all hover:border-primary/50 hover:shadow-hover"
                   >
-                    <CardContent className="flex flex-col gap-3 p-5 pb-0">
+                    <CardContent className="flex flex-1 flex-col gap-3 p-5 pb-0">
                       {/* 상단: 아바타 + 이름/뱃지/멤버수 + 설정 */}
                       <div className="flex items-start gap-3">
                         <div

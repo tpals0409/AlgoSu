@@ -162,7 +162,7 @@ export default function AnalyticsCharts({
         />
         <StatCard
           icon={Flame}
-          value={`${streak}일`}
+          value={`${streak}주`}
           label="연속 제출"
           sub={streakRank}
         />
@@ -307,7 +307,7 @@ export default function AnalyticsCharts({
           <div className="space-y-3">
             {tagData.map((row) => (
                 <div key={row.tag} className="flex items-center gap-3">
-                  <span className="w-16 text-[13px] text-text shrink-0 truncate">{row.tag}</span>
+                  <span className="w-16 text-[13px] text-text shrink-0 truncate" title={row.tag}>{row.tag}</span>
                   <div className="flex-1 h-5 rounded-sm overflow-hidden" style={{ backgroundColor: 'var(--bg-alt)' }}>
                     <div
                       className="h-full rounded-sm transition-all duration-700 ease-out"

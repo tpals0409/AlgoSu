@@ -19,7 +19,7 @@ import {
   type Submission,
 } from '@/lib/api';
 import { useStudy } from '@/contexts/StudyContext';
-import { DIFFICULTIES, DIFFICULTY_LABELS, type Difficulty } from '@/lib/constants';
+import { DIFFICULTIES, DIFFICULTY_LABELS, toTierLevel, type Difficulty } from '@/lib/constants';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
 
@@ -321,7 +321,7 @@ export default function SubmissionsPage(): ReactNode {
               const title = s.problemTitle ?? pInfo?.title ?? `문제 ${s.problemId}`;
               const diffKey = pInfo?.difficulty ? (pInfo.difficulty as string).toLowerCase() : '';
               const diffLabel = pInfo?.difficulty
-                ? `${DIFFICULTY_LABELS[pInfo.difficulty as Difficulty] ?? pInfo.difficulty} ${pInfo.level ?? ''}`.trim()
+                ? `${DIFFICULTY_LABELS[pInfo.difficulty as Difficulty] ?? pInfo.difficulty}${toTierLevel(pInfo.level) ? ` ${toTierLevel(pInfo.level)}` : ''}`
                 : '';
               const status = getStatusDisplay(s.sagaStep);
               const lang = LANG_AVATAR[s.language] ?? { label: s.language.slice(0, 2).toUpperCase(), bg: 'var(--bg-alt)', color: 'var(--text-3)' };

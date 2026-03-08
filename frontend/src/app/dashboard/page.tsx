@@ -160,7 +160,7 @@ export default function DashboardPage(): ReactNode {
   const { isStudyReady } = useRequireStudy();
   const { isAuthenticated, githubConnected } = useAuth();
   const { user } = useAuth();
-  const { currentStudyId, studiesLoaded } = useStudy();
+  const { currentStudyId, currentStudyName, studiesLoaded } = useStudy();
 
 
   const [stats, setStats] = useState<StudyStats | null>(null);
@@ -273,10 +273,29 @@ export default function DashboardPage(): ReactNode {
   }, [stats, myUserId]);
 
   const myUniqueProblemCount = useMemo(() => {
-    if (!stats?.byWeekPerUser.length || !myUserId) return 0;
-    return stats.byWeekPerUser
-      .filter((r) => r.userId === myUserId)
-      .reduce((sum, r) => sum + r.count, 0);
+    if (!stats || !myUserId) return 0;
+    // solvedProblemIds가 있으면 직접 사용 (userId 필터 적용된 결과)
+    if (stats.solvedProblemIds?.length) return stats.solvedProblemIds.length;
+    // fallback: recentSubmissions에서 DONE 제출의 고유 문제 수
+    const doneIds = new Set(
+      (stats.recentSubmissions ?? [])
+        .filter((s) => s.userId === myUserId && s.sagaStep === 'DONE')
+        .map((s) => s.problemId),
+    );
+    return doneIds.size;
+  }, [stats, myUserId]);
+
+  // AI 코드분석 평균 점수 (문제별 최고 점수 기준)
+  const myAvgAIScore = useMemo(() => {
+    if (!stats || !myUserId) return 0;
+    const bestByProblem = new Map<string, number>();
+    for (const s of stats.recentSubmissions ?? []) {
+      if (s.userId !== myUserId || s.aiScore == null) continue;
+      const prev = bestByProblem.get(s.problemId) ?? 0;
+      if (s.aiScore > prev) bestByProblem.set(s.problemId, s.aiScore);
+    }
+    const scores = Array.from(bestByProblem.values());
+    return scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
   }, [stats, myUserId]);
 
   const myCompletionPct = allProblems.length > 0
@@ -311,20 +330,47 @@ export default function DashboardPage(): ReactNode {
 
   const filteredByWeek = useMemo(() => {
     if (!stats) return [];
+
+    // problemId → weekNumber 매핑
+    const problemWeekMap = new Map<string, string>();
+    for (const p of allProblems) problemWeekMap.set(p.id, p.weekNumber);
+
+    // byWeekPerUser가 있으면 사용, 없으면 recentSubmissions에서 도출
     let result: { week: string; count: number }[];
-    if (weekViewUserId === null) {
-      const weekMap = new Map<string, number>();
-      for (const r of stats.byWeekPerUser) {
-        weekMap.set(r.week, (weekMap.get(r.week) ?? 0) + r.count);
+
+    if (stats.byWeekPerUser.length > 0) {
+      if (weekViewUserId === null) {
+        const weekMap = new Map<string, number>();
+        for (const r of stats.byWeekPerUser) {
+          weekMap.set(r.week, (weekMap.get(r.week) ?? 0) + r.count);
+        }
+        result = Array.from(weekMap.entries()).map(([week, count]) => ({ week, count }));
+      } else {
+        result = stats.byWeekPerUser
+          .filter((r) => r.userId === weekViewUserId)
+          .map((r) => ({ week: r.week, count: r.count }));
       }
-      result = Array.from(weekMap.entries()).map(([week, count]) => ({ week, count }));
     } else {
-      result = stats.byWeekPerUser
-        .filter((r) => r.userId === weekViewUserId)
-        .map((r) => ({ week: r.week, count: r.count }));
+      // recentSubmissions → 주차별 고유 문제 수
+      const weekProblemMap = new Map<string, Set<string>>();
+      for (const s of stats.recentSubmissions ?? []) {
+        if (weekViewUserId !== null && s.userId !== weekViewUserId) continue;
+        const week = problemWeekMap.get(s.problemId);
+        if (!week) continue;
+        if (!weekProblemMap.has(week)) weekProblemMap.set(week, new Set());
+        weekProblemMap.get(week)!.add(s.problemId);
+      }
+      // allProblems의 모든 주차 포함 (제출 없는 주차도 0으로 표시)
+      const allWeeks = new Set<string>();
+      for (const p of allProblems) allWeeks.add(p.weekNumber);
+      result = Array.from(allWeeks).map((week) => ({
+        week,
+        count: weekProblemMap.get(week)?.size ?? 0,
+      }));
     }
+
     return result.sort((a, b) => parseWeekKey(b.week) - parseWeekKey(a.week));
-  }, [stats, weekViewUserId, parseWeekKey]);
+  }, [stats, weekViewUserId, parseWeekKey, allProblems]);
 
   const getViewLabel = useCallback((userId: string | null) => {
     if (userId === null) return '전체';
@@ -417,7 +463,7 @@ export default function DashboardPage(): ReactNode {
             />
             <StatCard
               icon={Users}
-              label="알고리즘 마스터"
+              label={currentStudyName ?? '스터디'}
               value={statsLoading ? '' : members.length}
               loading={statsLoading}
               href={currentStudyId ? `/studies/${currentStudyId}` : undefined}
@@ -427,7 +473,7 @@ export default function DashboardPage(): ReactNode {
             <StatCard
               icon={BarChart3}
               label="통계"
-              value={statsLoading ? '' : `${myCompletionPct}점`}
+              value={statsLoading ? '' : `${myAvgAIScore}점`}
               loading={statsLoading}
               href="/analytics"
               animRef={completionRef}
@@ -455,7 +501,7 @@ export default function DashboardPage(): ReactNode {
         {currentStudyId && (
           <div className="grid gap-3.5 md:grid-cols-[3fr_2fr]" style={fade(0.16)}>
             {/* 주차별 제출 현황 차트 */}
-            {stats && stats.byWeek.length > 0 ? (
+            {stats && stats.totalSubmissions > 0 ? (
               <DashboardWeeklyChart
                 filteredByWeek={filteredByWeek}
                 weekViewLabel={weekViewLabel}

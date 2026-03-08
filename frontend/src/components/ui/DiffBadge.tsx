@@ -6,6 +6,7 @@
 
 import React, { type ReactElement } from 'react';
 import { cn } from '@/lib/utils';
+import { toTierLevel } from '@/lib/constants';
 
 type DiffTier = 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond' | 'ruby' | 'unrated';
 
@@ -36,7 +37,8 @@ const TIER_STYLES: Record<DiffTier, string> = {
 };
 
 export const DiffBadge = React.memo(function DiffBadge({ tier, level, className }: DiffBadgeProps): ReactElement {
-  const label = level ? `${TIER_LABELS[tier]} ${level}` : TIER_LABELS[tier];
+  const displayLevel = toTierLevel(level);
+  const label = displayLevel ? `${TIER_LABELS[tier]} ${displayLevel}` : TIER_LABELS[tier];
 
   return (
     <span

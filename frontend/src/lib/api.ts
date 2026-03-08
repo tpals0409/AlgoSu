@@ -216,6 +216,7 @@ async function fetchApi<T>(
     ...options,
     headers,
     credentials: 'include',
+    cache: 'no-store',
   });
 
   if (res.status === 204) {

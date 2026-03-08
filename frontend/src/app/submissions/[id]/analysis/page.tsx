@@ -23,6 +23,7 @@ import { submissionApi, problemApi, type AnalysisResult, type Submission } from 
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
 import { useStudy } from '@/contexts/StudyContext';
+import { toTierLevel } from '@/lib/constants';
 
 // ─── TYPES ────────────────────────────────
 
@@ -164,7 +165,7 @@ export default function AnalysisPage(): ReactNode {
   const [barsAnimated, setBarsAnimated] = useState(false);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const [problemMeta, setProblemMeta] = useState<{ difficulty?: string; level?: number; tags?: string[] } | null>(null);
+  const [problemMeta, setProblemMeta] = useState<{ title?: string; difficulty?: string; level?: number; tags?: string[] } | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -204,6 +205,7 @@ export default function AnalysisPage(): ReactNode {
         try {
           const problem = await problemApi.findById(sub.problemId);
           setProblemMeta({
+            title: problem.title,
             difficulty: problem.difficulty,
             level: problem.level ?? undefined,
             tags: problem.tags ?? undefined,
@@ -234,13 +236,14 @@ export default function AnalysisPage(): ReactNode {
   }, [analysis, loadData]);
 
   useEffect(() => {
-    if (submission?.problemTitle) {
-      document.title = `AI 코드 분석 | ${submission.problemTitle}`;
+    const title = submission?.problemTitle ?? problemMeta?.title;
+    if (title) {
+      document.title = `AI 코드 분석 | ${title}`;
     } else {
       document.title = 'AI 코드 분석';
     }
     return () => { document.title = 'AlgoSu'; };
-  }, [submission?.problemTitle]);
+  }, [submission?.problemTitle, problemMeta?.title]);
 
   useEffect(() => {
     const handleVisibility = () => {
@@ -283,7 +286,7 @@ export default function AnalysisPage(): ReactNode {
   // 난이도 키
   const diffKey = (problemMeta?.difficulty ?? '').toLowerCase();
   const diffLabel = problemMeta?.difficulty
-    ? `${DIFFICULTY_LABELS[problemMeta.difficulty] ?? problemMeta.difficulty} ${problemMeta.level ?? ''}`.trim()
+    ? `${DIFFICULTY_LABELS[problemMeta.difficulty] ?? problemMeta.difficulty}${toTierLevel(problemMeta.level) ? ` ${toTierLevel(problemMeta.level)}` : ''}`
     : '';
 
   // 코드 줄 수
@@ -304,7 +307,7 @@ export default function AnalysisPage(): ReactNode {
               <ArrowLeft className="h-5 w-5" style={{ color: 'var(--text)' }} />
             </button>
             <h1 className="text-xl font-bold tracking-tight text-text">
-              {submission?.problemTitle ?? `제출 ${submissionId.slice(0, 8)}`}
+              {submission?.problemTitle ?? problemMeta?.title ?? `제출 ${submissionId.slice(0, 8)}`}
             </h1>
           </div>
 

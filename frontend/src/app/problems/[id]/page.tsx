@@ -25,7 +25,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useStudy } from '@/contexts/StudyContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
-import { DIFFICULTY_LABELS, SAGA_STEP_CONFIG } from '@/lib/constants';
+import { DIFFICULTY_LABELS, SAGA_STEP_CONFIG, toTierLevel } from '@/lib/constants';
 import type { Difficulty, SagaStep } from '@/lib/constants';
 
 // ─── DIFFICULTY STYLES (CSS 변수 기반, 대시보드 패턴 통일) ────
@@ -250,7 +250,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
   const isActive = problem.status === 'ACTIVE';
   const diffKey = problem.difficulty ? (problem.difficulty as string).toLowerCase() : '';
   const diffLabel = problem.difficulty
-    ? `${DIFFICULTY_LABELS[problem.difficulty as Difficulty] ?? problem.difficulty} ${problem.level ?? ''}`.trim()
+    ? `${DIFFICULTY_LABELS[problem.difficulty as Difficulty] ?? problem.difficulty}${toTierLevel(problem.level) ? ` ${toTierLevel(problem.level)}` : ''}`
     : '';
 
   // 마감일 포맷

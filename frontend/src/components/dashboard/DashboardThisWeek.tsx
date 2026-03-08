@@ -14,7 +14,7 @@ import { useStudy } from '@/contexts/StudyContext';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
 import type { Problem } from '@/lib/api';
-import type { Difficulty } from '@/lib/constants';
+import { toTierLevel, type Difficulty } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 
 // ─── HELPERS ────────────────────────────
@@ -74,7 +74,7 @@ export default function DashboardThisWeek({
   isLoading,
   fadeStyle,
 }: DashboardThisWeekProps): ReactNode {
-  const { currentStudyId } = useStudy();
+  const { currentStudyId: _currentStudyId } = useStudy();
 
   const problemItems = useMemo(
     () =>
@@ -84,7 +84,8 @@ export default function DashboardThisWeek({
         const diffKey = difficulty.toLowerCase();
         const dotStyle = DIFFICULTY_DOT_STYLE[diffKey] ?? { backgroundColor: 'var(--text-3)' };
         const badgeStyle = DIFFICULTY_BADGE_STYLE[diffKey] ?? { backgroundColor: 'var(--bg-alt)', color: 'var(--text-2)' };
-        const diffLabel = difficulty ? `${difficulty.charAt(0).toUpperCase()}${difficulty.slice(1).toLowerCase()} ${p.level ?? ''}`.trim() : '';
+        const displayLevel = toTierLevel(p.level);
+        const diffLabel = difficulty ? `${difficulty.charAt(0).toUpperCase()}${difficulty.slice(1).toLowerCase()}${displayLevel ? ` ${displayLevel}` : ''}` : '';
 
         return (
           <Link
@@ -156,12 +157,6 @@ export default function DashboardThisWeek({
       ) : currentWeekProblems.length === 0 ? (
         <div className="py-8 text-center">
           <p className="text-sm text-text-3">진행 중인 문제가 없습니다</p>
-          <Link
-            href={currentStudyId ? `/studies/${currentStudyId}/room` : '/study-room'}
-            className="mt-3 inline-flex items-center gap-1 rounded-btn bg-primary px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-primary-hover"
-          >
-            문제 보기
-          </Link>
         </div>
       ) : (
         <div>{problemItems}</div>

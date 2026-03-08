@@ -82,6 +82,7 @@ const defaultProps: DashboardTwoColumnProps = {
   upcomingDeadlines: [],
   submittedProblemIds: new Set(),
   problemTitleMap: new Map(),
+  allProblems: [],
   isLoading: false,
   fadeStyle: {},
 };

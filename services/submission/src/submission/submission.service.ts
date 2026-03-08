@@ -243,7 +243,7 @@ export class SubmissionService {
     byWeekPerUser: { userId: string; week: string; count: number }[];
     byMember: { userId: string; count: number; doneCount: number }[];
     byMemberWeek: { userId: string; count: number }[] | null;
-    recentSubmissions: { id: string; userId: string; problemId: string; language: string; sagaStep: string; createdAt: Date }[];
+    recentSubmissions: { id: string; userId: string; problemId: string; language: string; sagaStep: string; aiScore: number | null; createdAt: Date }[];
     solvedProblemIds: string[] | null;
   }> {
     const totalSubmissions = await this.submissionRepo.count({
@@ -306,7 +306,7 @@ export class SubmissionService {
       where: { studyId },
       order: { createdAt: 'DESC' },
       take: 10,
-      select: ['id', 'userId', 'problemId', 'language', 'sagaStep', 'createdAt'],
+      select: ['id', 'userId', 'problemId', 'language', 'sagaStep', 'aiScore', 'createdAt'],
     });
 
     // 주차별 멤버 통계 — 고유 문제 수 (weekNumber 파라미터가 있을 때만)

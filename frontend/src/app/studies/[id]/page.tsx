@@ -32,6 +32,7 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Alert } from '@/components/ui/Alert';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   studyApi,
@@ -350,25 +351,31 @@ function ProblemsTab({
 }: {
   readonly problems: Problem[];
 }): ReactNode {
+  // deadline이 지난 ACTIVE 문제는 종료로 간주
+  const isExpired = (p: Problem) =>
+    p.status === 'ACTIVE' && new Date(p.deadline) < new Date();
+
   const activeProblems = problems
-    .filter((p) => p.status === 'ACTIVE')
+    .filter((p) => p.status === 'ACTIVE' && !isExpired(p))
     .map((p, idx) => ({
       id: p.id,
       number: idx + 1,
       title: p.title,
       difficulty: p.difficulty,
+      level: p.level,
       tier: difficultyToTier(p.difficulty),
       tags: p.tags ?? [],
       dDay: calcDDay(p.deadline),
     }));
 
   const endedProblems = problems
-    .filter((p) => p.status === 'CLOSED')
+    .filter((p) => p.status === 'CLOSED' || isExpired(p))
     .map((p, idx) => ({
       id: p.id,
       number: idx + 1,
       title: p.title,
       difficulty: p.difficulty,
+      level: p.level,
       tier: difficultyToTier(p.difficulty),
       tags: p.tags ?? [],
       ended: true as const,
@@ -419,7 +426,7 @@ function ProblemsTab({
  * 문제 카드
  * @domain study
  */
-function ProblemCard({ problem }: { readonly problem: { id: string; number: number; title: string; difficulty: string; tier: string; tags: string[]; dDay?: string; ended?: boolean } }): ReactNode {
+function ProblemCard({ problem }: { readonly problem: { id: string; number: number; title: string; difficulty: string; level?: number | null; tier: string; tags: string[]; dDay?: string; ended?: boolean } }): ReactNode {
   return (
     <Card className="p-0 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3">
@@ -438,15 +445,9 @@ function ProblemCard({ problem }: { readonly problem: { id: string; number: numb
                 {problem.title}
               </span>
               {/* 난이도 뱃지 */}
-              <span
-                className="inline-flex items-center rounded-badge px-2 py-0.5 text-[11px] font-medium"
-                style={{
-                  color: `var(--diff-${problem.tier}-color)`,
-                  backgroundColor: `var(--diff-${problem.tier}-bg)`,
-                }}
-              >
-                {problem.difficulty}
-              </span>
+              {problem.difficulty && (
+                <DifficultyBadge difficulty={problem.difficulty as import('@/lib/constants').Difficulty} level={problem.level} />
+              )}
             </div>
             {/* 태그 */}
             <div className="flex items-center gap-1.5 mt-0.5">
@@ -519,10 +520,17 @@ function MembersTab({
     }
   }, [studyId, nicknameValue, onNicknameUpdated]);
 
-  /** byMember 맵 — userId → { count, doneCount } */
-  const memberStatsMap = new Map(
-    (stats?.byMember ?? []).map((s) => [s.userId, s]),
-  );
+  /** 멤버별 고유 문제 제출 수 — recentSubmissions에서 도출 */
+  const memberUniqueProblemMap = new Map<string, number>();
+  const perUserProblems = new Map<string, Set<string>>();
+  for (const s of stats?.recentSubmissions ?? []) {
+    if (s.sagaStep !== 'DONE') continue;
+    if (!perUserProblems.has(s.userId ?? '')) perUserProblems.set(s.userId ?? '', new Set());
+    perUserProblems.get(s.userId ?? '')!.add(s.problemId);
+  }
+  for (const [uid, pids] of perUserProblems) {
+    memberUniqueProblemMap.set(uid, pids.size);
+  }
 
   // 본인을 맨 위로 정렬
   const sorted = [...members].sort((a, b) => {
@@ -542,9 +550,8 @@ function MembersTab({
     const role = member.role;
     const email = member.email ?? '';
     const color = 'var(--primary)';
-    const memberStat = memberStatsMap.get(member.user_id);
-    const submissions = memberStat?.count ?? 0;
-    const done = memberStat?.doneCount ?? 0;
+    const submissions = memberUniqueProblemMap.get(member.user_id) ?? 0;
+    const done = submissions;
     const total = totalProblems;
     const pct = total > 0 ? (done / total) * 100 : 0;
     const initial = name.charAt(0);

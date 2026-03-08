@@ -6,6 +6,7 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { ChevronRight } from 'lucide-react';
+import { toTierLevel } from '@/lib/constants';
 // ── Types & constants (extracted from v3.0 mock data) ────────────────────────
 
 export type Difficulty = 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND' | 'RUBY';
@@ -120,7 +121,7 @@ export function DiffBadge({ difficulty, level }: { difficulty: Difficulty; level
       style={{ color: cfg.color, background: cfg.bg }}
     >
       <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: cfg.color }} />
-      {cfg.label}{lv !== null ? ` ${lv}` : ''}
+      {cfg.label}{toTierLevel(lv) !== null ? ` ${toTierLevel(lv)}` : ''}
     </span>
   );
 }

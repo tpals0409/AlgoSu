@@ -27,7 +27,6 @@ import {
   type StudyStats,
   type Problem,
 } from '@/lib/api';
-import { getCurrentUserId } from '@/lib/auth';
 
 // ─── DYNAMIC IMPORT ──────────────────────
 
@@ -82,7 +81,8 @@ export default function AnalyticsPage(): ReactNode {
     transition: `opacity .5s cubic-bezier(.16,1,.3,1) ${delay}s, transform .5s cubic-bezier(.16,1,.3,1) ${delay}s`,
   });
 
-  const myId = useMemo(() => getCurrentUserId(), []);
+  // AuthContext에서 user.id 직접 사용 (httpOnly Cookie 인증)
+  const myId = user?.id ?? null;
   const userName = myNickname ?? user?.email?.split('@')[0] ?? '사용자';
 
   const loadData = useCallback(async () => {
@@ -93,6 +93,7 @@ export default function AnalyticsPage(): ReactNode {
       const results = await Promise.allSettled([
         studyApi.getStats(currentStudyId),
         problemApi.findAllIncludingClosed(),
+        studyApi.getMembers(currentStudyId),
       ]);
       if (results[0].status === 'fulfilled') {
         setStats(results[0].value as StudyStats);
@@ -102,20 +103,16 @@ export default function AnalyticsPage(): ReactNode {
       if (results[1].status === 'fulfilled') {
         setAllProblems((results[1].value as Problem[]) ?? []);
       }
+      if (results[2].status === 'fulfilled') {
+        const memberData = results[2].value as { user_id: string; nickname?: string; email?: string }[];
+        const me = memberData.find((m) => m.user_id === myId);
+        if (me?.nickname) setMyNickname(me.nickname);
+      }
     } catch {
       setError('데이터를 불러오는 데 실패했습니다.');
     } finally {
       setIsLoading(false);
     }
-  }, [currentStudyId]);
-
-  // 닉네임 로드
-  useEffect(() => {
-    if (!currentStudyId || !myId) return;
-    studyApi.getMembers(currentStudyId).then((members) => {
-      const me = members.find((m) => m.user_id === myId);
-      if (me?.nickname) setMyNickname(me.nickname);
-    }).catch(() => {});
   }, [currentStudyId, myId]);
 
   useEffect(() => {
@@ -135,23 +132,43 @@ export default function AnalyticsPage(): ReactNode {
     return me ? { count: me.count, doneCount: me.doneCount } : { count: 0, doneCount: 0 };
   }, [stats, myId]);
 
-  const myUniqueProblemCount = useMemo(() => {
-    if (!stats?.byWeekPerUser.length || !myId) return 0;
-    return stats.byWeekPerUser
-      .filter((r) => r.userId === myId)
-      .reduce((sum, r) => sum + r.count, 0);
+  // 내가 완료(DONE)한 고유 문제 수 — recentSubmissions에서 직접 도출
+  const myDoneProblemIds = useMemo(() => {
+    if (!stats || !myId) return new Set<string>();
+    return new Set(
+      (stats.recentSubmissions ?? [])
+        .filter((s) => s.userId === myId && s.sagaStep === 'DONE')
+        .map((s) => s.problemId),
+    );
   }, [stats, myId]);
+
+  const myUniqueProblemCount = myDoneProblemIds.size;
 
   const myCompletionPct = allProblems.length > 0
     ? Math.round((myUniqueProblemCount / allProblems.length) * 100)
     : 0;
 
   const myWeeklyData = useMemo(() => {
-    if (!myId) return [];
+    if (!myId || !stats) return [];
+
+    // problemId → weekNumber 매핑
+    const problemWeekMap = new Map<string, string>();
+    for (const p of allProblems) problemWeekMap.set(p.id, p.weekNumber);
+
+    // byWeekPerUser가 있으면 사용, 없으면 recentSubmissions에서 도출
     const myWeekMap = new Map<string, number>();
-    for (const r of stats?.byWeekPerUser ?? []) {
-      if (r.userId === myId) myWeekMap.set(r.week, r.count);
+    if (stats.byWeekPerUser.length > 0) {
+      for (const r of stats.byWeekPerUser) {
+        if (r.userId === myId) myWeekMap.set(r.week, r.count);
+      }
+    } else {
+      for (const sub of stats.recentSubmissions ?? []) {
+        if (sub.userId !== myId) continue;
+        const week = problemWeekMap.get(sub.problemId);
+        if (week) myWeekMap.set(week, (myWeekMap.get(week) ?? 0) + 1);
+      }
     }
+
     const allWeeks = new Set<string>();
     for (const p of allProblems) allWeeks.add(p.weekNumber);
     for (const w of myWeekMap.keys()) allWeeks.add(w);
@@ -160,10 +177,8 @@ export default function AnalyticsPage(): ReactNode {
       .sort((a, b) => parseWeekKey(a.week) - parseWeekKey(b.week));
   }, [stats, myId, allProblems]);
 
-  const myProblemIds = useMemo(
-    () => new Set(stats?.solvedProblemIds ?? []),
-    [stats],
-  );
+  // 내가 풀이한 문제 ID (태그 분포 계산용)
+  const myProblemIds = myDoneProblemIds;
 
   const tagDistribution = useMemo(() => {
     const countMap = new Map<string, number>();
@@ -264,12 +279,69 @@ export default function AnalyticsPage(): ReactNode {
             totalSubmissions={myStats.count}
             solvedProblems={myUniqueProblemCount}
             completionPct={myCompletionPct}
-            avgAIScore={myStats.doneCount > 0 ? Math.round(myStats.doneCount / myStats.count * 100) : 0}
-            streak={0}
-            streakRank=""
+            avgAIScore={(() => {
+              // 문제별 최고 점수만 반영
+              const bestByProblem = new Map<string, number>();
+              for (const s of stats.recentSubmissions ?? []) {
+                if (s.userId !== myId || s.aiScore == null) continue;
+                const prev = bestByProblem.get(s.problemId) ?? 0;
+                if (s.aiScore > prev) bestByProblem.set(s.problemId, s.aiScore);
+              }
+              const scores = Array.from(bestByProblem.values());
+              return scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+            })()}
+            streak={myWeeklyData.length > 0 ? (() => {
+              // 최근 주차부터 연속 제출 주 수 계산
+              let consecutive = 0;
+              const sorted = [...myWeeklyData].sort((a, b) => parseWeekKey(b.week) - parseWeekKey(a.week));
+              for (const w of sorted) {
+                if (w.count > 0) consecutive++;
+                else break;
+              }
+              return consecutive;
+            })() : 0}
+            streakRank={`최근 ${myWeeklyData.length}주 중`}
             weeklyData={myWeeklyData}
-            aiScoreData={[]}
-            difficultyData={[]}
+            aiScoreData={(() => {
+              // 문제별 최고 점수만 추이에 반영
+              const bestByProblem = new Map<string, { score: number; createdAt: string; title: string }>();
+              for (const s of stats.recentSubmissions ?? []) {
+                if (s.userId !== myId || s.aiScore == null) continue;
+                const prev = bestByProblem.get(s.problemId);
+                if (!prev || s.aiScore > prev.score) {
+                  bestByProblem.set(s.problemId, {
+                    score: s.aiScore,
+                    createdAt: s.createdAt,
+                    title: s.problemTitle ?? s.problemId.slice(0, 8),
+                  });
+                }
+              }
+              return Array.from(bestByProblem.values())
+                .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+                .map((v) => ({
+                  date: new Date(v.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }),
+                  score: v.score,
+                  problem: v.title,
+                }));
+            })()}
+            difficultyData={(() => {
+              const DIFFICULTY_ORDER: { key: string; color: string }[] = [
+                { key: 'BRONZE', color: '#AD5600' },
+                { key: 'SILVER', color: '#7B8894' },
+                { key: 'GOLD', color: '#D6A000' },
+                { key: 'PLATINUM', color: '#39C5BB' },
+                { key: 'DIAMOND', color: '#40A0E0' },
+              ];
+              const countMap = new Map<string, number>();
+              for (const p of allProblems) {
+                if (!myProblemIds.has(p.id)) continue;
+                const d = p.difficulty ?? '미분류';
+                countMap.set(d, (countMap.get(d) ?? 0) + 1);
+              }
+              return DIFFICULTY_ORDER
+                .filter((d) => countMap.has(d.key))
+                .map((d) => ({ tier: d.key, count: countMap.get(d.key)!, color: d.color }));
+            })()}
             tagData={tagDistribution}
             userName={userName}
           />
