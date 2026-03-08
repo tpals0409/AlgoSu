@@ -28,8 +28,9 @@ import { useRequireStudy } from '@/hooks/useRequireStudy';
 const STATUS_TABS = [
   { value: '', label: '전체' },
   { value: 'DONE', label: '분석 완료' },
-  { value: 'AI_QUEUED', label: '분석 중' },
-  { value: 'QUEUED', label: '대기 중' },
+  { value: 'AI_QUEUED', label: 'AI 분석 대기' },
+  { value: 'GITHUB_QUEUED', label: 'GitHub 동기화' },
+  { value: 'DB_SAVED', label: '저장됨' },
   { value: 'FAILED', label: '실패' },
 ] as const;
 
@@ -81,16 +82,17 @@ function relativeTime(dateStr: string): string {
   return `${Math.floor(days / 30)}개월 전`;
 }
 
-/** 상태를 Figma 라벨로 변환 */
+/** 상태를 라벨로 변환 */
 function getStatusDisplay(sagaStep: string): { label: string; bg: string; color: string; dot: boolean } {
   switch (sagaStep) {
     case 'DONE':
       return { label: '분석 완료', bg: 'var(--success-soft)', color: 'var(--success)', dot: true };
     case 'AI_QUEUED':
-      return { label: '분석 중', bg: 'var(--warning-soft)', color: 'var(--warning)', dot: false };
+      return { label: 'AI 분석 대기', bg: 'var(--warning-soft)', color: 'var(--warning)', dot: false };
     case 'GITHUB_QUEUED':
+      return { label: 'GitHub 동기화 중', bg: 'var(--primary-soft)', color: 'var(--primary)', dot: false };
     case 'DB_SAVED':
-      return { label: '대기 중', bg: 'var(--bg-alt)', color: 'var(--text-3)', dot: false };
+      return { label: '저장됨', bg: 'var(--bg-alt)', color: 'var(--text-3)', dot: false };
     case 'FAILED':
       return { label: '실패', bg: 'var(--error-soft)', color: 'var(--error)', dot: false };
     default:
@@ -170,9 +172,7 @@ export default function SubmissionsPage(): ReactNode {
         if (!title.toLowerCase().includes(q)) return false;
       }
       if (filterStatus) {
-        if (filterStatus === 'QUEUED') {
-          if (s.sagaStep !== 'GITHUB_QUEUED' && s.sagaStep !== 'DB_SAVED') return false;
-        } else if (s.sagaStep !== filterStatus) return false;
+        if (s.sagaStep !== filterStatus) return false;
       }
       if (filterDifficulty) {
         const diff = problemMap.get(s.problemId)?.difficulty;
@@ -392,10 +392,15 @@ export default function SubmissionsPage(): ReactNode {
                         <Loader2 className="h-4 w-4 animate-spin" />
                         <span className="text-[12px] font-medium">분석 중</span>
                       </div>
+                    ) : s.sagaStep === 'GITHUB_QUEUED' ? (
+                      <div className="flex items-center gap-1.5" style={{ color: 'var(--primary)' }}>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span className="text-[12px] font-medium">GitHub</span>
+                      </div>
                     ) : s.sagaStep === 'FAILED' ? (
                       <span className="text-[12px] font-medium" style={{ color: 'var(--error)' }}>실패</span>
                     ) : (
-                      <span className="text-[12px] font-medium" style={{ color: 'var(--text-3)' }}>대기 중</span>
+                      <span className="text-[12px] font-medium" style={{ color: 'var(--text-3)' }}>저장됨</span>
                     )}
                   </div>
                 </button>

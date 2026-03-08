@@ -3,9 +3,11 @@
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function GitHubLinkCompletePage(): ReactNode {
   const router = useRouter();
+  const { updateGitHubStatus } = useAuth();
 
   useEffect(() => {
     const hash = window.location.hash.slice(1);
@@ -15,15 +17,12 @@ export default function GitHubLinkCompletePage(): ReactNode {
     const githubUsername = params.get('github_username');
 
     if (githubConnected === 'true') {
-      localStorage.setItem('algosu:github-connected', 'true');
-      if (githubUsername) {
-        localStorage.setItem('algosu:github-username', githubUsername);
-      }
+      updateGitHubStatus(true, githubUsername);
       router.replace('/studies');
     } else {
       router.replace('/github-link');
     }
-  }, [router]);
+  }, [router, updateGitHubStatus]);
 
   return (
     <div className="flex items-center justify-center p-8">

@@ -31,6 +31,16 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Alert } from '@/components/ui/Alert';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from '@/components/ui/alert-dialog';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import {
   studyApi,
@@ -89,6 +99,9 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
   const [codeExpiry, setCodeExpiry] = useState(0);
   const [codeActive, setCodeActive] = useState(false);
   const [isRefreshingCode, setIsRefreshingCode] = useState(false);
+
+  // 멤버 강퇴 확인 다이얼로그
+  const [removeMember, setRemoveMember] = useState<SettingsMember | null>(null);
 
   // 삭제
   const [isDeleting, setIsDeleting] = useState(false);
@@ -217,17 +230,14 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
     }
   };
 
-  /** 멤버 내보내기 */
-  const handleRemoveMember = async (member: SettingsMember): Promise<void> => {
-    const confirmed = window.confirm(
-      `"${member.name}" 님을 스터디에서 내보내시겠습니까?\n이 작업은 되돌릴 수 없습니다.`,
-    );
-    if (!confirmed) return;
-
+  /** 멤버 내보내기 (AlertDialog 확인 후 실행) */
+  const handleRemoveMemberConfirm = async (): Promise<void> => {
+    if (!removeMember) return;
+    const member = removeMember;
+    setRemoveMember(null);
     setError(null);
     try {
       await studyApi.removeMember(studyId, member.userId);
-      // 멤버 목록 새로고침
       const updatedMembers = await studyApi.getMembers(studyId);
       setMembers(updatedMembers);
       setSuccessMsg(`${member.name} 님이 스터디에서 내보내졌습니다.`);
@@ -576,7 +586,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                     type="button"
                     className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-text-3 transition-colors hover:bg-error-soft hover:text-error"
                     aria-label={`${member.name} 내보내기`}
-                    onClick={() => void handleRemoveMember(member)}
+                    onClick={() => setRemoveMember(member)}
                   >
                     <Trash2 className="h-4 w-4" aria-hidden />
                   </button>
@@ -696,6 +706,28 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
           </Card>
         </section>
       </div>
+
+      {/* ── 멤버 강퇴 확인 다이얼로그 ── */}
+      <AlertDialog open={removeMember !== null} onOpenChange={(open) => { if (!open) setRemoveMember(null); }}>
+        <AlertDialogContent className="bg-bg-card border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-text">멤버 내보내기</AlertDialogTitle>
+            <AlertDialogDescription className="text-text-2">
+              &quot;{removeMember?.name}&quot; 님을 스터디에서 내보내시겠습니까?
+              <br />이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-border text-text hover:bg-bg-alt">취소</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-error text-white hover:bg-error/90"
+              onClick={() => void handleRemoveMemberConfirm()}
+            >
+              내보내기
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }

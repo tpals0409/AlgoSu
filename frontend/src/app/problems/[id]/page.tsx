@@ -54,7 +54,7 @@ interface PageProps {
   readonly params: Promise<{ id: string }>;
 }
 
-type AutoSaveStatus = 'idle' | 'saving' | 'saved';
+type AutoSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 // ─── RENDER ───────────────────────────────
 
@@ -144,6 +144,10 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
     onLocalSaved: useCallback(() => {
       setAutoSaveStatus('saved');
       setTimeout(() => setAutoSaveStatus('idle'), 2000);
+    }, []),
+    onSaveFailed: useCallback(() => {
+      setAutoSaveStatus('error');
+      setTimeout(() => setAutoSaveStatus('idle'), 3000);
     }, []),
     onServerSave: useCallback(
       async (data: { code: string; language: string }): Promise<void> => {

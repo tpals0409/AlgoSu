@@ -16,7 +16,7 @@ import {
 import dynamic from 'next/dynamic';
 import { useTheme } from 'next-themes';
 import type { BeforeMount, OnMount } from '@monaco-editor/react';
-import { Check, Send, RotateCcw, Minus, Plus, Maximize2, Minimize2 } from 'lucide-react';
+import { Check, Send, RotateCcw, Minus, Plus, Maximize2, Minimize2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { InlineSpinner } from '@/components/ui/LoadingSpinner';
@@ -423,7 +423,7 @@ interface CodeEditorProps {
   onLanguageChange: (lang: string) => void;
   onSubmit: () => Promise<void>;
   isSubmitting: boolean;
-  autoSaveStatus?: 'saving' | 'saved' | 'idle';
+  autoSaveStatus?: 'saving' | 'saved' | 'idle' | 'error';
   deadline?: string | null;
   /** Monaco 에디터 높이 (기본 "520px") */
   editorHeight?: string;
@@ -685,6 +685,12 @@ export function CodeEditor({
                 <span className="hidden sm:inline">저장됨</span>
               </span>
             )}
+            {autoSaveStatus === 'error' && (
+              <span className="flex items-center gap-1 text-[11px] text-error">
+                <AlertCircle className="h-3 w-3" aria-hidden />
+                <span className="hidden sm:inline">저장 실패</span>
+              </span>
+            )}
 
             {/* 폰트 크기 — 데스크톱만 */}
             <div className="hidden sm:flex items-center gap-0.5">
@@ -746,7 +752,7 @@ export function CodeEditor({
         </div>
 
         {/* ── Monaco Editor ── */}
-        <div className={fullscreen ? 'flex-1 min-h-0' : undefined}>
+        <div className={fullscreen ? 'flex-1 min-h-0' : 'max-h-[50vh] sm:max-h-none overflow-hidden'}>
           <MonacoEditor
             height={fullscreen ? '100%' : editorHeight}
             language={MONACO_LANG_MAP[language] ?? 'plaintext'}

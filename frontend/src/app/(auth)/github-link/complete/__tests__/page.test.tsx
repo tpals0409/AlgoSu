@@ -2,15 +2,21 @@ import { render, screen } from '@testing-library/react';
 import GitHubLinkCompletePage from '../page';
 
 const mockReplace = jest.fn();
+const mockUpdateGitHubStatus = jest.fn();
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: mockReplace, back: jest.fn() }),
 }));
 
+jest.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({
+    updateGitHubStatus: mockUpdateGitHubStatus,
+  }),
+}));
+
 describe('GitHubLinkCompletePage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    localStorage.clear();
     window.location.hash = '';
   });
 
@@ -19,13 +25,12 @@ describe('GitHubLinkCompletePage', () => {
     expect(screen.getByText('GitHub 연동 처리 중...')).toBeInTheDocument();
   });
 
-  it('github_connected=true이면 localStorage에 저장하고 /studies로 리다이렉트한다', () => {
+  it('github_connected=true이면 AuthContext를 업데이트하고 /studies로 리다이렉트한다', () => {
     window.location.hash = '#github_connected=true&github_username=testuser';
 
     render(<GitHubLinkCompletePage />);
 
-    expect(localStorage.getItem('algosu:github-connected')).toBe('true');
-    expect(localStorage.getItem('algosu:github-username')).toBe('testuser');
+    expect(mockUpdateGitHubStatus).toHaveBeenCalledWith(true, 'testuser');
     expect(mockReplace).toHaveBeenCalledWith('/studies');
   });
 

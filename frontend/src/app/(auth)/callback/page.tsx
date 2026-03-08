@@ -17,7 +17,6 @@ import {
 } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
-import { setGitHubConnected } from '@/lib/auth';
 import { authApi } from '@/lib/api';
 
 /**
@@ -36,7 +35,7 @@ type CallbackStep = 'loading' | 'error' | 'github-prompt';
 
 function CallbackContent(): ReactNode {
   const router = useRouter();
-  const { loginFromCookie } = useAuth();
+  const { loginFromCookie, updateGitHubStatus } = useAuth();
   const [step, setStep] = useState<CallbackStep>('loading');
   const [error, setError] = useState<string | null>(null);
   const [linkLoading, setLinkLoading] = useState(false);
@@ -62,9 +61,9 @@ function CallbackContent(): ReactNode {
     // httpOnly Cookie로 JWT가 이미 설정됨 — AuthContext에 알림
     loginFromCookie();
 
-    // GitHub 연동 상태 저장
+    // GitHub 연동 상태 저장 (AuthContext SSoT)
     if (githubConnected !== null) {
-      setGitHubConnected(githubConnected === 'true');
+      updateGitHubStatus(githubConnected === 'true');
     }
 
     if (githubConnected === 'false') {
@@ -73,7 +72,7 @@ function CallbackContent(): ReactNode {
       // github_connected=true 또는 파라미터 없음 → 홈으로
       router.replace('/');
     }
-  }, [router, loginFromCookie]);
+  }, [router, loginFromCookie, updateGitHubStatus]);
 
   const handleLinkGitHub = useCallback(async () => {
     setLinkError(null);

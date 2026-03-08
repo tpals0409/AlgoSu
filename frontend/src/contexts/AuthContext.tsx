@@ -20,7 +20,6 @@ import {
   type ReactNode,
 } from 'react';
 import {
-  getGitHubConnected,
   setGitHubConnected as setGitHubConnectedStorage,
   setGitHubUsername as setGitHubUsernameStorage,
   removeToken,
@@ -89,7 +88,8 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
           email: profile.email,
           avatarPreset: getAvatarPresetKey(profile.avatar_url),
         });
-        setGithubConnected(getGitHubConnected());
+        setGithubConnected(profile.github_connected ?? false);
+        setGitHubConnectedStorage(profile.github_connected ?? false);
       } catch {
         // 401 또는 네트워크 에러 → 미인증 상태
         setUser(null);
@@ -111,7 +111,8 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
         email: profile.email,
         avatarPreset: getAvatarPresetKey(profile.avatar_url),
       });
-      setGithubConnected(getGitHubConnected());
+      setGithubConnected(profile.github_connected ?? false);
+      setGitHubConnectedStorage(profile.github_connected ?? false);
     }).catch(() => {
       // 프로필 로드 실패 — 일단 기본 상태로 진행 (쿠키가 있으니 페이지 이동 후 재시도)
       setUser({ id: '', email: '', avatarPreset: 'default' });

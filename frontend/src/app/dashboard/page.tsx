@@ -17,6 +17,7 @@ import {
   BarChart3,
   Github,
   MessageCircle,
+  X,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card } from '@/components/ui/Card';
@@ -46,7 +47,7 @@ const DashboardWeeklyChart = dynamic(
   () => import('@/components/dashboard/DashboardWeeklyChart'),
   {
     loading: () => (
-      <div className="rounded-card border border-border bg-bg-card p-6 shadow-card">
+      <div className="min-h-[260px] rounded-card border border-border bg-bg-card p-6 shadow-card">
         <Skeleton width="40%" height={20} className="mb-4" />
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -66,7 +67,7 @@ const DashboardThisWeek = dynamic(
   () => import('@/components/dashboard/DashboardThisWeek'),
   {
     loading: () => (
-      <div className="rounded-card border border-border bg-bg-card shadow-card overflow-hidden">
+      <div className="min-h-[220px] rounded-card border border-border bg-bg-card shadow-card overflow-hidden">
         <div className="border-b border-border px-4 py-3">
           <Skeleton width={120} height={18} />
         </div>
@@ -86,7 +87,7 @@ const DashboardTwoColumn = dynamic(
     loading: () => (
       <div className="grid gap-3.5 md:grid-cols-2">
         {Array.from({ length: 2 }).map((_, i) => (
-          <div key={i} className="rounded-card border border-border bg-bg-card shadow-card overflow-hidden">
+          <div key={i} className="min-h-[240px] rounded-card border border-border bg-bg-card shadow-card overflow-hidden">
             <div className="border-b border-border px-4 py-3">
               <Skeleton width={100} height={16} />
             </div>
@@ -178,6 +179,13 @@ export default function DashboardPage(): ReactNode {
   }>({ stats: null, submissions: null, problems: null, members: null });
   const [mounted, setMounted] = useState(false);
   const [weekViewUserId, setWeekViewUserId] = useState<string | null>(null);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setBannerDismissed(sessionStorage.getItem('algosu:github-banner-dismissed') === 'true');
+    }
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => setMounted(true), 50);
@@ -461,19 +469,32 @@ export default function DashboardPage(): ReactNode {
         )}
 
         {/* ── GITHUB ONBOARDING BANNER ── */}
-        {!githubConnected && !isLoading && (
+        {!githubConnected && !isLoading && !bannerDismissed && (
           <Card className="border-warning/30 bg-warning-soft" style={fade(0.06)}>
             <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
                 <Github className="h-5 w-5 shrink-0 text-warning" aria-hidden />
                 <div>
                   <p className="text-[13px] font-medium text-text">GitHub 연동이 필요합니다</p>
                   <p className="text-[11px] text-text-3">코드를 제출하려면 GitHub 계정을 먼저 연동해주세요.</p>
                 </div>
               </div>
-              <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => router.push('/github-link')}>
-                연동하기
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => router.push('/github-link')}>
+                  연동하기
+                </Button>
+                <button
+                  type="button"
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-3 transition-colors hover:bg-bg-alt hover:text-text"
+                  aria-label="배너 닫기"
+                  onClick={() => {
+                    setBannerDismissed(true);
+                    sessionStorage.setItem('algosu:github-banner-dismissed', 'true');
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </Card>
         )}

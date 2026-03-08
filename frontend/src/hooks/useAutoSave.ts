@@ -32,6 +32,7 @@ interface UseAutoSaveOptions {
   language: string;
   onServerSave?: (data: AutoSaveData) => Promise<void>;
   onLocalSaved?: () => void;
+  onSaveFailed?: () => void;
   enabled?: boolean;
 }
 
@@ -53,6 +54,7 @@ export function useAutoSave({
   language,
   onServerSave,
   onLocalSaved,
+  onSaveFailed,
   enabled = true,
 }: UseAutoSaveOptions) {
   const localDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -79,7 +81,7 @@ export function useAutoSave({
           JSON.stringify(saveData),
         );
       } catch {
-        // localStorage 용량 초과 등 — 무시
+        onSaveFailed?.();
       }
     },
     [problemId, studyId],
@@ -144,7 +146,7 @@ export function useAutoSave({
         });
         lastServerSaveRef.current = now;
       } catch {
-        // 서버 저장 실패 — localStorage에는 이미 있으므로 무시
+        onSaveFailed?.();
       }
     }, SERVER_SAVE_INTERVAL);
 

@@ -53,7 +53,10 @@ async function searchSolvedAC(query: string): Promise<SolvedProblem[]> {
   );
   if (!res.ok) throw new Error(`solved.ac API error: ${res.status}`);
   const data = await res.json();
-  return (data.items ?? []) as SolvedProblem[];
+  if (!data || !Array.isArray(data.items)) {
+    throw new Error('검색 결과를 불러오지 못했습니다. 다시 시도해주세요.');
+  }
+  return data.items as SolvedProblem[];
 }
 
 // ── 주차 계산 (월~일 기준) ───────────────────────────────────────────────────
@@ -170,9 +173,10 @@ function SearchStep({ onSelect }: { onSelect: (p: SolvedProblem) => void }) {
       try {
         const items = await searchSolvedAC(query.trim());
         setResults(items.slice(0, 10));
-      } catch {
-        setError('검색 중 오류가 발생했습니다. 다시 시도해주세요.');
-        setResults([]);
+      } catch (err) {
+        setError(err instanceof Error && err.message
+          ? err.message
+          : '검색 중 오류가 발생했습니다. 다시 시도해주세요.');
       } finally {
         setLoading(false);
       }

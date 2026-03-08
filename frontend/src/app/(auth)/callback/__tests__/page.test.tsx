@@ -13,6 +13,7 @@ jest.mock('@/contexts/AuthContext', () => ({
     user: null,
     logout: jest.fn(),
     loginFromCookie: jest.fn(),
+    updateGitHubStatus: jest.fn(),
   }),
 }));
 
@@ -40,10 +41,6 @@ jest.mock('@/components/ui/Button', () => ({
   Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
     <button {...props}>{children}</button>
   ),
-}));
-
-jest.mock('@/lib/auth', () => ({
-  setGitHubConnected: jest.fn(),
 }));
 
 jest.mock('@/lib/api', () => ({
