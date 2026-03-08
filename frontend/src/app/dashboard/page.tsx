@@ -142,15 +142,15 @@ function StatCard({
 
   if (href) {
     return (
-      <Link href={href}>
-        <Card className="cursor-pointer p-5 transition-colors hover:bg-bg-alt">
+      <Link href={href} className="h-full">
+        <Card className="h-full cursor-pointer p-5 transition-colors hover:bg-bg-alt">
           {content}
         </Card>
       </Link>
     );
   }
 
-  return <Card className="p-5">{content}</Card>;
+  return <Card className="h-full p-5">{content}</Card>;
 }
 
 // ─── RENDER ──────────────────────────────
@@ -536,8 +536,8 @@ export default function DashboardPage(): ReactNode {
               valueColor="text-primary"
             />
             {/* 스터디룸 카드 - 그라데이션 보라 */}
-            <Link href={currentStudyId ? `/studies/${currentStudyId}/room` : '/study-room'}>
-              <Card className="group cursor-pointer p-5 text-white transition-all hover:brightness-105" style={{ ...fade(0.08), background: 'var(--gradient-brand)' }}>
+            <Link href={currentStudyId ? `/studies/${currentStudyId}/room` : '/study-room'} className="h-full">
+              <Card className="group h-full cursor-pointer p-5 text-white transition-all hover:brightness-105" style={{ ...fade(0.08), background: 'var(--gradient-brand)' }}>
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-md bg-white/20">
                     <MessageCircle className="h-4 w-4 text-white" aria-hidden />
