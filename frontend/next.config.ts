@@ -31,6 +31,10 @@ const nextConfig: NextConfig = {
         source: '/auth/:path*',
         destination: `${apiBaseUrl}/auth/:path*`,
       },
+      {
+        source: '/solved-ac/:path*',
+        destination: 'https://solved.ac/api/v3/:path*',
+      },
     ];
   },
   async headers() {

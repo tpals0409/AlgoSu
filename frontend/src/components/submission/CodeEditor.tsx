@@ -442,6 +442,7 @@ export function CodeEditor({
 }: CodeEditorProps): ReactNode {
   const { resolvedTheme } = useTheme();
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
+  const monacoRef = useRef<MonacoInstance | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [autocomplete, setAutocomplete] = useState(true);
   const [fontSize, setFontSize] = useState(13);
@@ -468,15 +469,15 @@ export function CodeEditor({
   }, [fullscreen]);
 
   // ─── 초기 템플릿 삽입 (드래프트 없이 빈 코드로 마운트 시) ─
-  const mountedRef = useRef(false);
+  const [templateApplied, setTemplateApplied] = useState(false);
   useEffect(() => {
-    if (mountedRef.current) return;
-    mountedRef.current = true;
+    if (templateApplied) return;
     if (!code.trim() && BOJ_TEMPLATES[language]) {
       onCodeChange(BOJ_TEMPLATES[language]);
+      setTemplateApplied(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [templateApplied]);
 
   // ─── 마감 임박 경고 타이머 ────────────
   useEffect(() => {
@@ -541,15 +542,41 @@ export function CodeEditor({
     defineThemes(monaco);
     registerCompletionProviders(monaco);
 
-    // JS/TS 진단 활성화 — 문법 오류 빨간 밑줄 표시
+    // Node.js 기본 타입 선언 (BOJ 템플릿용 — require, process, console)
+    const nodeTypes = `
+      declare function require(module: string): any;
+      declare namespace process {
+        const stdin: any;
+        const stdout: any;
+        const argv: string[];
+        const env: Record<string, string | undefined>;
+      }
+      declare namespace console {
+        function log(...args: any[]): void;
+        function error(...args: any[]): void;
+      }
+    `;
+
+    // JS 진단 — 문법 오류만 (의미 오류 무시, Node.js 환경이라 타입 제한적)
     monaco.languages.typescript?.javascriptDefaults?.setDiagnosticsOptions({
-      noSemanticValidation: false,
+      noSemanticValidation: true,
       noSyntaxValidation: false,
     });
+
+    // TS 진단 — Node.js 타입 추가 + 완화된 컴파일러 옵션
     monaco.languages.typescript?.typescriptDefaults?.setDiagnosticsOptions({
       noSemanticValidation: false,
       noSyntaxValidation: false,
     });
+    monaco.languages.typescript?.typescriptDefaults?.setCompilerOptions({
+      target: monaco.languages.typescript.ScriptTarget.ESNext,
+      module: monaco.languages.typescript.ModuleKind.CommonJS,
+      allowJs: true,
+      strict: false,
+      noEmit: true,
+    });
+    monaco.languages.typescript?.typescriptDefaults?.addExtraLib(nodeTypes, 'node.d.ts');
+    monaco.languages.typescript?.javascriptDefaults?.addExtraLib(nodeTypes, 'node.d.ts');
   }, []);
 
   const handleChange = useCallback(
@@ -587,6 +614,7 @@ export function CodeEditor({
 
   const handleMount: OnMount = useCallback((editor, monaco) => {
     editorRef.current = editor;
+    monacoRef.current = monaco;
 
     // Ctrl+Enter / Cmd+Enter → 제출
     editor.addAction({
@@ -657,17 +685,6 @@ export function CodeEditor({
                 <span className="hidden sm:inline">저장됨</span>
               </span>
             )}
-
-            {/* 자동완성 토글 — 데스크톱만 */}
-            <label className="hidden sm:flex items-center gap-1.5 text-[11px] text-text-3 select-none">
-              <input
-                type="checkbox"
-                checked={autocomplete}
-                onChange={(e) => setAutocomplete(e.target.checked)}
-                className="rounded border-border accent-primary"
-              />
-              자동완성
-            </label>
 
             {/* 폰트 크기 — 데스크톱만 */}
             <div className="hidden sm:flex items-center gap-0.5">

@@ -7,7 +7,7 @@
 import { useState, useEffect, useRef } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import {
-  Search, X, ArrowLeft, Plus, Loader2, ExternalLink, CalendarDays, AlertCircle,
+  Search, X, ArrowLeft, Plus, Loader2, ExternalLink, AlertCircle,
 } from 'lucide-react';
 import { Btn, type Difficulty, DIFFICULTY_CONFIG } from './AlgosuUI';
 
@@ -48,12 +48,92 @@ const TIER_NAMES = [
 
 async function searchSolvedAC(query: string): Promise<SolvedProblem[]> {
   const res = await fetch(
-    `https://solved.ac/api/v3/search/problem?query=${encodeURIComponent(query)}&page=1`,
+    `/solved-ac/search/problem?query=${encodeURIComponent(query)}&page=1`,
     { headers: { Accept: 'application/json' } },
   );
   if (!res.ok) throw new Error(`solved.ac API error: ${res.status}`);
   const data = await res.json();
   return (data.items ?? []) as SolvedProblem[];
+}
+
+// ── 주차 계산 (월~일 기준) ───────────────────────────────────────────────────
+
+const DOW_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
+
+/** 해당 월의 첫 번째 일요일 날짜 (= 1주차 마지막 날) */
+function getFirstSunday(year: number, month: number): number {
+  const firstDow = new Date(year, month - 1, 1).getDay(); // 0=Sun..6=Sat
+  return 1 + (7 - firstDow) % 7; // 1일이 일요일이면 1, 월요일이면 7
+}
+
+/** 해당 월의 총 주차 수 */
+function getTotalWeeks(year: number, month: number): number {
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const firstSun = getFirstSunday(year, month);
+  if (daysInMonth <= firstSun) return 1;
+  return 1 + Math.ceil((daysInMonth - firstSun) / 7);
+}
+
+/** 오늘 날짜의 월/주차 */
+function getCurrentWeekInfo(): { year: number; month: number; week: number } {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const date = now.getDate();
+  const firstSun = getFirstSunday(year, month);
+  const week = date <= firstSun ? 1 : Math.ceil((date - firstSun) / 7) + 1;
+  return { year, month, week };
+}
+
+/** 현재 주차 기준 이전/현재/다음 3개 옵션 */
+function generateWeekOptions(): string[] {
+  const { year, month, week } = getCurrentWeekInfo();
+  const options: string[] = [];
+  for (let i = -1; i <= 1; i++) {
+    let y = year, m = month, w = week + i;
+    if (w < 1) {
+      m -= 1;
+      if (m < 1) { m = 12; y -= 1; }
+      w = getTotalWeeks(y, m);
+    }
+    if (w > getTotalWeeks(y, m)) {
+      m += 1;
+      if (m > 12) { m = 1; y += 1; }
+      w = 1;
+    }
+    options.push(`${m}월${w}주차`);
+  }
+  return options;
+}
+
+/** 주차 문자열 → 해당 주의 월~일 날짜 목록 */
+function getWeekDates(weekStr: string): { label: string; value: string }[] {
+  const match = weekStr.match(/(\d+)월(\d+)주차/);
+  if (!match) return [];
+  const month = parseInt(match[1]);
+  const week = parseInt(match[2]);
+  const year = new Date().getFullYear();
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const firstSun = getFirstSunday(year, month);
+
+  let startDate: number, endDate: number;
+  if (week === 1) {
+    startDate = 1;
+    endDate = Math.min(firstSun, daysInMonth);
+  } else {
+    startDate = firstSun + 1 + (week - 2) * 7; // 월요일
+    endDate = Math.min(startDate + 6, daysInMonth); // 일요일 or 월말
+  }
+
+  const dates: { label: string; value: string }[] = [];
+  for (let d = startDate; d <= endDate; d++) {
+    const date = new Date(year, month - 1, d);
+    dates.push({
+      label: `${DOW_LABELS[date.getDay()]}요일 (${month}/${d})`,
+      value: date.toISOString(),
+    });
+  }
+  return dates;
 }
 
 // ── Field components ─────────────────────────────────────────────────────────
@@ -115,23 +195,31 @@ function SearchStep({ onSelect }: { onSelect: (p: SolvedProblem) => void }) {
           />
           <input
             ref={inputRef}
-            type="search"
+            type="text"
             placeholder="문제 번호 또는 제목으로 검색…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="h-10 w-full rounded-btn border pl-9 pr-10 text-[13px] outline-none"
             style={{
-              background: 'var(--input-bg)',
-              borderColor: 'var(--primary)',
+              background: 'var(--bg-card)',
+              borderColor: 'var(--border)',
               color: 'var(--text)',
-              boxShadow: '0 0 0 3px var(--primary-soft)',
             }}
           />
-          {loading && (
+          {loading ? (
             <Loader2
               className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin"
               style={{ color: 'var(--primary)' }}
             />
+          ) : query && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center h-5 w-5 rounded-full transition-opacity hover:opacity-70"
+              style={{ backgroundColor: 'var(--bg-alt)', color: 'var(--text-3)' }}
+            >
+              <X className="h-3 w-3" />
+            </button>
           )}
         </div>
         <p className="mt-2 text-[11px]" style={{ color: 'var(--text-3)' }}>
@@ -140,7 +228,7 @@ function SearchStep({ onSelect }: { onSelect: (p: SolvedProblem) => void }) {
       </div>
 
       {/* Results */}
-      <div className="flex-1 overflow-y-auto px-5 pb-5" style={{ maxHeight: 360 }}>
+      <div className="flex-1 overflow-y-auto px-5 pt-2 pb-5" style={{ maxHeight: 360 }}>
         {/* Error */}
         {error && (
           <div
@@ -319,7 +407,7 @@ function ConfirmStep({
         {/* Problem info card */}
         <div
           className="rounded-card border p-4"
-          style={{ background: 'var(--bg-alt)', borderColor: 'var(--border)' }}
+          style={{ borderColor: 'var(--border)' }}
         >
           <div className="flex items-start gap-3">
             <div
@@ -371,20 +459,23 @@ function ConfirmStep({
         {/* Week number */}
         <div className="space-y-1.5">
           <FieldLabel>주차 *</FieldLabel>
-          <input
-            type="text"
-            placeholder="예) 3월2주차"
+          <select
             value={weekNumber}
-            onChange={(e) => { setWeekNumber(e.target.value); setErrors((er) => ({ ...er, weekNumber: undefined })); }}
-            className="h-9 w-full rounded-btn border px-3 text-[13px] outline-none transition-[border-color]"
+            onChange={(e) => { setWeekNumber(e.target.value); setDeadline(''); setErrors((er) => ({ ...er, weekNumber: undefined })); }}
+            className="h-9 w-full rounded-btn border px-3 text-[13px] outline-none transition-[border-color] appearance-none bg-[length:16px] bg-[right_8px_center] bg-no-repeat"
             style={{
-              background: 'var(--input-bg)',
               borderColor: errors.weekNumber ? 'var(--error)' : 'var(--border)',
-              color: 'var(--text)',
+              color: weekNumber ? 'var(--text)' : 'var(--text-3)',
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E")`,
             }}
             onFocus={(e) => !errors.weekNumber && (e.currentTarget.style.borderColor = 'var(--primary)')}
             onBlur={(e) => (e.currentTarget.style.borderColor = errors.weekNumber ? 'var(--error)' : 'var(--border)')}
-          />
+          >
+            <option value="" disabled>주차를 선택하세요</option>
+            {generateWeekOptions().map((w) => (
+              <option key={w} value={w}>{w}</option>
+            ))}
+          </select>
           {errors.weekNumber && (
             <p className="text-[11px]" style={{ color: 'var(--error)' }}>{errors.weekNumber}</p>
           )}
@@ -393,26 +484,24 @@ function ConfirmStep({
         {/* Deadline */}
         <div className="space-y-1.5">
           <FieldLabel>마감일 *</FieldLabel>
-          <div className="relative">
-            <CalendarDays
-              className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 pointer-events-none"
-              style={{ color: 'var(--text-3)' }}
-            />
-            <input
-              type="date"
-              value={deadline}
-              onChange={(e) => { setDeadline(e.target.value); setErrors((er) => ({ ...er, deadline: undefined })); }}
-              className="h-9 w-full rounded-btn border pl-8 pr-3 text-[13px] outline-none transition-[border-color]"
-              style={{
-                background: 'var(--input-bg)',
-                borderColor: errors.deadline ? 'var(--error)' : 'var(--border)',
-                color: deadline ? 'var(--text)' : 'var(--text-3)',
-                colorScheme: 'dark',
-              }}
-              onFocus={(e) => !errors.deadline && (e.currentTarget.style.borderColor = 'var(--primary)')}
-              onBlur={(e) => (e.currentTarget.style.borderColor = errors.deadline ? 'var(--error)' : 'var(--border)')}
-            />
-          </div>
+          <select
+            value={deadline}
+            onChange={(e) => { setDeadline(e.target.value); setErrors((er) => ({ ...er, deadline: undefined })); }}
+            disabled={!weekNumber}
+            className="h-9 w-full rounded-btn border px-3 text-[13px] outline-none transition-[border-color] appearance-none bg-[length:16px] bg-[right_8px_center] bg-no-repeat disabled:opacity-50"
+            style={{
+              borderColor: errors.deadline ? 'var(--error)' : 'var(--border)',
+              color: deadline ? 'var(--text)' : 'var(--text-3)',
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E")`,
+            }}
+            onFocus={(e) => !errors.deadline && (e.currentTarget.style.borderColor = 'var(--primary)')}
+            onBlur={(e) => (e.currentTarget.style.borderColor = errors.deadline ? 'var(--error)' : 'var(--border)')}
+          >
+            <option value="" disabled>{weekNumber ? '요일을 선택하세요' : '주차를 먼저 선택하세요'}</option>
+            {weekNumber && getWeekDates(weekNumber).map((d) => (
+              <option key={d.value} value={d.value}>{d.label}</option>
+            ))}
+          </select>
           {errors.deadline && (
             <p className="text-[11px]" style={{ color: 'var(--error)' }}>{errors.deadline}</p>
           )}
@@ -422,7 +511,7 @@ function ConfirmStep({
       {/* Footer */}
       <div
         className="flex items-center justify-end gap-2 border-t px-5 py-3.5"
-        style={{ borderColor: 'var(--border)', background: 'var(--bg-alt)' }}
+        style={{ borderColor: 'var(--border)' }}
       >
         <Btn variant="outline" size="md" onClick={onBack}>뒤로</Btn>
         <Btn variant="primary" size="md" onClick={handleAdd}>
@@ -488,7 +577,7 @@ export function AddProblemModal({ open, onClose, onAdd: onAddCallback }: AddProb
       level: diffLevel,
       weekNumber,
       status: 'ACTIVE' as const,
-      deadline: new Date(deadline).toISOString(),
+      deadline,
       tags: tagNames,
       sourceUrl: `https://www.acmicpc.net/problem/${selected.problemId}`,
       sourcePlatform: 'BOJ',

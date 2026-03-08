@@ -41,14 +41,14 @@ const PROVIDERS: {
   },
   {
     id: 'naver',
-    label: 'Naver로 계속하기',
+    label: '네이버로 계속하기',
     icon: NaverIcon,
     className: 'border-transparent bg-oauth-naver text-white',
     hoverClassName: 'hover:brightness-95',
   },
   {
     id: 'kakao',
-    label: 'Kakao로 계속하기',
+    label: '카카오로 계속하기',
     icon: KakaoIcon,
     className: 'border-transparent bg-oauth-kakao-bg text-oauth-kakao-text',
     hoverClassName: 'hover:brightness-95',
@@ -131,11 +131,10 @@ function LoginContent(): ReactNode {
           </Link>
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="flex items-center gap-1 rounded-btn px-2 py-1 text-[11px] text-text-3 hover:text-text hover:bg-bg-alt transition-colors"
+            className="flex h-9 w-9 items-center justify-center rounded-btn text-text-3 hover:text-text hover:bg-bg-alt transition-colors"
             aria-label="테마 전환"
           >
-            {theme === 'dark' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-            {theme === 'dark' ? '다크' : '라이트'}
+            {theme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
           </button>
         </div>
       </nav>
@@ -148,19 +147,19 @@ function LoginContent(): ReactNode {
           style={{ background: 'var(--hero-glow)' }}
         />
 
-        <div className="relative w-full max-w-[400px]" style={fade(0)}>
-          {/* 로그인 카드 */}
-          <div className="rounded-card border border-border bg-bg-card pt-10 pb-8 px-8 shadow">
+        <div className="relative w-full max-w-[360px]" style={fade(0)}>
+          {/* 로그인 컨텐츠 */}
+          <div className="pt-10 pb-8 px-8">
             {/* 로고 + 제목 */}
             <div className="mb-8 text-center" style={fade(0.1)}>
               <div className="mx-auto mb-4 flex justify-center">
                 <Logo size={48} />
               </div>
-              <h1 className="mb-1.5 text-[22px] font-bold tracking-tight text-text">
-                AlgoSu에 로그인
+              <h1 className="mb-1.5 text-[26px] font-bold tracking-tight text-text leading-snug">
+                AlgoSu에 오신 것을<br />환영합니다
               </h1>
               <p className="text-[13px] text-text-3">
-                알고리즘 스터디 플랫폼
+                소셜 계정으로 간편하게 로그인하세요.
               </p>
             </div>
 
@@ -206,29 +205,9 @@ function LoginContent(): ReactNode {
               style={fade(0.45)}
             >
               로그인 시{' '}
-              <span className="cursor-pointer text-primary">서비스 약관</span> 및{' '}
-              <span className="cursor-pointer text-primary">개인정보 처리방침</span>에 동의합니다.
+              <span className="cursor-pointer text-primary">서비스 이용약관</span> 및{' '}
+              <span className="cursor-pointer text-primary">개인정보처리방침</span>에 동의하는 것으로 간주됩니다.
             </p>
-          </div>
-
-          {/* 하단 기능 뱃지 */}
-          <div
-            className="mt-7 flex justify-center gap-6"
-            style={fade(0.5)}
-          >
-            {[
-              { label: 'GitHub 연동', icon: LinkIcon },
-              { label: 'AI 코드 리뷰', icon: AIIcon },
-              { label: '성장 통계', icon: ChartIcon },
-            ].map((f) => (
-              <div
-                key={f.label}
-                className="flex items-center gap-1.5 text-[11px] text-text-3"
-              >
-                <f.icon />
-                {f.label}
-              </div>
-            ))}
           </div>
         </div>
       </main>
@@ -296,30 +275,3 @@ function KakaoIcon(): ReactNode {
   );
 }
 
-function LinkIcon(): ReactNode {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
-      <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
-    </svg>
-  );
-}
-
-function AIIcon(): ReactNode {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden>
-      <circle cx="12" cy="12" r="3" />
-      <path d="M12 1v4m0 14v4M4.22 4.22l2.83 2.83m9.9 9.9l2.83 2.83M1 12h4m14 0h4M4.22 19.78l2.83-2.83m9.9-9.9l2.83-2.83" />
-    </svg>
-  );
-}
-
-function ChartIcon(): ReactNode {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M18 20V10" />
-      <path d="M12 20V4" />
-      <path d="M6 20v-6" />
-    </svg>
-  );
-}

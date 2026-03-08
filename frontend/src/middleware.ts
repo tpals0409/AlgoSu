@@ -28,6 +28,12 @@ function sanitizeRedirect(redirect: string): string {
 }
 
 export function middleware(request: NextRequest): NextResponse {
+  // ── DEV MOCK: 인증 체크 전체 바이패스 ──────────────────────────
+  if (process.env.NEXT_PUBLIC_DEV_MOCK === 'true') {
+    return NextResponse.next();
+  }
+  // ────────────────────────────────────────────────────────────────
+
   const { pathname } = request.nextUrl;
   const hasToken = request.cookies.has('token');
 
@@ -55,6 +61,7 @@ export function middleware(request: NextRequest): NextResponse {
 
   return NextResponse.next();
 }
+
 
 export const config = {
   matcher: [

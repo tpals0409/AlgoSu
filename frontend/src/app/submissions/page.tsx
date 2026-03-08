@@ -1,262 +1,305 @@
 /**
- * @file 제출 목록 페이지 (v2 전면 교체)
+ * @file 제출 목록 페이지 (Figma 디자인 반영)
  * @domain submission
  * @layer page
- * @related submissionApi, problemApi, LangBadge, StatusBadge, ScoreBadge
+ * @related submissionApi, problemApi
  */
 
 'use client';
 
-import { useState, useEffect, useCallback, type ReactNode } from 'react';
-import Link from 'next/link';
+import React, { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileText, ChevronLeft, ChevronRight, Filter, X, Search } from 'lucide-react';
+import { FileText, Search, Loader2 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { LangBadge } from '@/components/ui/LangBadge';
-import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
-import { SkeletonTable } from '@/components/ui/Skeleton';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import {
   submissionApi,
   problemApi,
   type Submission,
-  type PaginatedResponse,
-  type SubmissionListParams,
 } from '@/lib/api';
 import { useStudy } from '@/contexts/StudyContext';
-import { SAGA_STEP_CONFIG, LANGUAGE_VALUES, type SagaStep, type Difficulty } from '@/lib/constants';
+import { SAGA_STEP_CONFIG, DIFFICULTIES, DIFFICULTY_LABELS, type SagaStep, type Difficulty } from '@/lib/constants';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
 
 // ─── CONSTANTS ────────────────────────────
 
-const SAGA_STEP_KEYS = Object.keys(SAGA_STEP_CONFIG) as SagaStep[];
-const PAGE_SIZE = 10;
+const STATUS_TABS = [
+  { value: '', label: '전체' },
+  { value: 'DONE', label: '분석 완료' },
+  { value: 'AI_QUEUED', label: '분석 중' },
+  { value: 'QUEUED', label: '대기 중' },
+  { value: 'FAILED', label: '실패' },
+] as const;
 
-// ─── HELPERS ──────────────────────────────
+// ─── DIFFICULTY STYLES (CSS 변수 기반, 문제 목록 패턴 통일) ────
 
-/**
- * ISO 날짜를 MM.DD HH:mm 포맷으로 변환
- * @domain submission
- */
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  const hours = String(d.getHours()).padStart(2, '0');
-  const minutes = String(d.getMinutes()).padStart(2, '0');
-  return `${month}.${day} ${hours}:${minutes}`;
+const DIFF_DOT_STYLE: Record<string, React.CSSProperties> = {
+  bronze:   { backgroundColor: 'var(--diff-bronze-color)' },
+  silver:   { backgroundColor: 'var(--diff-silver-color)' },
+  gold:     { backgroundColor: 'var(--diff-gold-color)' },
+  platinum: { backgroundColor: 'var(--diff-platinum-color)' },
+  diamond:  { backgroundColor: 'var(--diff-diamond-color)' },
+  ruby:     { backgroundColor: 'var(--diff-ruby-color)' },
+};
+
+const DIFF_BADGE_STYLE: Record<string, React.CSSProperties> = {
+  bronze:   { backgroundColor: 'var(--diff-bronze-bg)',   color: 'var(--diff-bronze-color)' },
+  silver:   { backgroundColor: 'var(--diff-silver-bg)',   color: 'var(--diff-silver-color)' },
+  gold:     { backgroundColor: 'var(--diff-gold-bg)',     color: 'var(--diff-gold-color)' },
+  platinum: { backgroundColor: 'var(--diff-platinum-bg)', color: 'var(--diff-platinum-color)' },
+  diamond:  { backgroundColor: 'var(--diff-diamond-bg)',  color: 'var(--diff-diamond-color)' },
+  ruby:     { backgroundColor: 'var(--diff-ruby-bg)',     color: 'var(--diff-ruby-color)' },
+};
+
+// 언어 아바타 색상
+const LANG_AVATAR: Record<string, { label: string; bg: string; color: string }> = {
+  python:     { label: 'PY', bg: '#3572A520', color: '#3572A5' },
+  javascript: { label: 'JS', bg: '#f1e05a20', color: '#b8a000' },
+  typescript: { label: 'TS', bg: '#3178c620', color: '#3178c6' },
+  java:       { label: 'JA', bg: '#b0731420', color: '#b07314' },
+  cpp:        { label: 'CP', bg: '#f3428520', color: '#f34285' },
+  c:          { label: 'C',  bg: '#555555220', color: '#555555' },
+  go:         { label: 'GO', bg: '#00ADD820', color: '#00ADD8' },
+  rust:       { label: 'RS', bg: '#dea58420', color: '#dea584' },
+  kotlin:     { label: 'KT', bg: '#A97BFF20', color: '#A97BFF' },
+};
+
+// ─── HELPERS ─────────────────────────────
+
+/** 상대 시간 표시 (Figma: "6시간 전", "1일 전") */
+function relativeTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return '방금 전';
+  if (minutes < 60) return `${minutes}분 전`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}시간 전`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}일 전`;
+  return `${Math.floor(days / 30)}개월 전`;
+}
+
+/** 상태를 Figma 라벨로 변환 */
+function getStatusDisplay(sagaStep: string): { label: string; bg: string; color: string; dot: boolean } {
+  switch (sagaStep) {
+    case 'DONE':
+      return { label: '분석 완료', bg: 'var(--success-soft)', color: 'var(--success)', dot: true };
+    case 'AI_QUEUED':
+      return { label: '분석 중', bg: 'var(--warning-soft)', color: 'var(--warning)', dot: false };
+    case 'GITHUB_QUEUED':
+    case 'DB_SAVED':
+      return { label: '대기 중', bg: 'var(--bg-alt)', color: 'var(--text-3)', dot: false };
+    case 'FAILED':
+      return { label: '실패', bg: 'var(--error-soft)', color: 'var(--error)', dot: false };
+    default:
+      return { label: sagaStep, bg: 'var(--bg-alt)', color: 'var(--text-3)', dot: false };
+  }
+}
+
+/** 점수 색상 */
+function scoreColor(score: number): string {
+  if (score >= 80) return 'var(--success)';
+  if (score >= 60) return 'var(--warning)';
+  return 'var(--error)';
 }
 
 // ─── RENDER ───────────────────────────────
 
-/**
- * 제출 목록 페이지
- * @domain submission
- */
 export default function SubmissionsPage(): ReactNode {
   const router = useRouter();
-  const { isReady, isAuthenticated } = useRequireAuth();
+  const { isAuthenticated } = useRequireAuth();
   useRequireStudy();
-  const { currentStudyId, currentStudyName } = useStudy();
+  const { currentStudyId } = useStudy();
 
   // ─── STATE ──────────────────────────────
 
-  const [data, setData] = useState<PaginatedResponse<Submission> | null>(null);
-  const [problemDetailMap, setProblemDetailMap] = useState<Map<string, { title: string; difficulty?: string; weekNumber?: string }>>(new Map());
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [problemMap, setProblemMap] = useState<Map<string, { title: string; difficulty?: string; level?: number; weekNumber?: string }>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [filterLanguage, setFilterLanguage] = useState('');
-  const [filterSagaStep, setFilterSagaStep] = useState('');
-  const [filterWeek, setFilterWeek] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
   const [filterSearch, setFilterSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterDifficulty, setFilterDifficulty] = useState('');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setMounted(true), 50);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const fade = (delay = 0): React.CSSProperties => ({
+    opacity: mounted ? 1 : 0,
+    transform: mounted ? 'translateY(0)' : 'translateY(16px)',
+    transition: `opacity .5s cubic-bezier(.16,1,.3,1) ${delay}s, transform .5s cubic-bezier(.16,1,.3,1) ${delay}s`,
+  });
 
   // ─── API ────────────────────────────────
 
-  const loadSubmissions = useCallback(async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const params: SubmissionListParams = { page, limit: PAGE_SIZE };
-      if (filterLanguage) params.language = filterLanguage;
-      if (filterSagaStep) params.sagaStep = filterSagaStep;
-      if (filterWeek) params.weekNumber = filterWeek;
-      const result = await submissionApi.list(params);
-      setData(result);
+      // ── DEV MOCK ──────────────────────────────────────────────
+      if (process.env.NEXT_PUBLIC_DEV_MOCK === 'true') {
+        const now = new Date();
+        const d = (hours: number) => new Date(now.getTime() + hours * 3600000).toISOString();
+        setSubmissions([
+          { id: 's1', problemId: 'p1', problemTitle: '두 수의 합', language: 'python', sagaStep: 'DONE', aiScore: 92, createdAt: d(-6) },
+          { id: 's2', problemId: 'p2', problemTitle: '최단 경로', language: 'java', sagaStep: 'AI_QUEUED', aiScore: null, createdAt: d(-9) },
+          { id: 's3', problemId: 'p3', problemTitle: '이분 탐색', language: 'cpp', sagaStep: 'DONE', aiScore: 78, createdAt: d(-24) },
+          { id: 's4', problemId: 'p4', problemTitle: 'DP 입문', language: 'python', sagaStep: 'DONE', aiScore: 85, createdAt: d(-48) },
+          { id: 's5', problemId: 'p5', problemTitle: '트리의 지름', language: 'cpp', sagaStep: 'DONE', aiScore: 73, createdAt: d(-72) },
+          { id: 's6', problemId: 'p6', problemTitle: '플로이드 워셜', language: 'python', sagaStep: 'DONE', aiScore: 88, createdAt: d(-120) },
+          { id: 's7', problemId: 'p1', problemTitle: '두 수의 합', language: 'python', sagaStep: 'FAILED', aiScore: null, createdAt: d(-12) },
+          { id: 's8', problemId: 'p7', problemTitle: 'LCA', language: 'cpp', sagaStep: 'GITHUB_QUEUED', aiScore: null, createdAt: d(-168) },
+          { id: 's9', problemId: 'p3', problemTitle: '이분 탐색', language: 'python', sagaStep: 'DONE', aiScore: 65, createdAt: d(-48) },
+          { id: 's10', problemId: 'p10', problemTitle: '스택 수열', language: 'java', sagaStep: 'DONE', aiScore: 95, createdAt: d(-240) },
+        ]);
+        setProblemMap(new Map([
+          ['p1', { title: '두 수의 합', difficulty: 'SILVER', level: 2, weekNumber: '3월1주차' }],
+          ['p2', { title: '최단 경로', difficulty: 'GOLD', level: 4, weekNumber: '3월1주차' }],
+          ['p3', { title: '이분 탐색', difficulty: 'SILVER', level: 4, weekNumber: '2월4주차' }],
+          ['p4', { title: 'DP 입문', difficulty: 'BRONZE', level: 1, weekNumber: '2월3주차' }],
+          ['p5', { title: '트리의 지름', difficulty: 'GOLD', level: 2, weekNumber: '2월2주차' }],
+          ['p6', { title: '플로이드 워셜', difficulty: 'GOLD', level: 5, weekNumber: '2월1주차' }],
+          ['p7', { title: 'LCA', difficulty: 'PLATINUM', level: 3, weekNumber: '1월4주차' }],
+          ['p10', { title: '스택 수열', difficulty: 'SILVER', level: 1, weekNumber: '1월1주차' }],
+        ]));
+        setIsLoading(false);
+        return;
+      }
+      // ────────────────────────────────────────────────────────────
+
+      const [result, problems] = await Promise.all([
+        submissionApi.list({ page: 1, limit: 100 }),
+        problemApi.findAllIncludingClosed().catch(() => []),
+      ]);
+      setSubmissions(result.data);
+      setProblemMap(new Map(problems.map((p) => [p.id, { title: p.title, difficulty: p.difficulty, level: p.level, weekNumber: p.weekNumber }])));
     } catch (err: unknown) {
       setError((err as Error).message ?? '제출 이력을 불러오는 데 실패했습니다.');
     } finally {
       setIsLoading(false);
     }
-  }, [page, filterLanguage, filterSagaStep, filterWeek]);
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated && currentStudyId) {
-      void loadSubmissions();
+      void loadData();
     }
-  }, [isAuthenticated, currentStudyId, loadSubmissions]);
+  }, [isAuthenticated, currentStudyId, loadData]);
 
-  useEffect(() => {
-    if (!isAuthenticated || !currentStudyId) return;
-    void problemApi.findAllIncludingClosed().then((problems) => {
-      setProblemDetailMap(new Map(problems.map((p) => [p.id, { title: p.title, difficulty: p.difficulty, weekNumber: p.weekNumber }])));
-    }).catch(() => {});
-  }, [isAuthenticated, currentStudyId]);
+  // ─── FILTERING ──────────────────────────
 
-  // ─── HANDLERS ─────────────────────────────
-
-  const handleFilterChange = useCallback(
-    (setter: (v: string) => void) =>
-      (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
-        setter(e.target.value);
-        setPage(1);
-      },
-    [],
-  );
-
-  const handleResetFilters = useCallback(() => {
-    setFilterLanguage('');
-    setFilterSagaStep('');
-    setFilterWeek('');
-    setFilterSearch('');
-    setPage(1);
-  }, []);
-
-  const totalPages = data?.meta.totalPages ?? 1;
-  const hasFilters = filterLanguage || filterSagaStep || filterWeek || filterSearch;
-
-  // 평균 AI 점수 계산 (aiScore가 있는 제출만)
-  const scoredSubmissions = data?.data.filter((s) => s.aiScore != null) ?? [];
-  const avgAiScore =
-    scoredSubmissions.length > 0
-      ? Math.round(scoredSubmissions.reduce((sum, s) => sum + (s.aiScore ?? 0), 0) / scoredSubmissions.length)
-      : null;
-
-  if (!isReady) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-bg">
-        <LoadingSpinner size="lg" color="primary" />
-        <p className="text-sm text-text-3">로딩 중...</p>
-      </div>
-    );
-  }
+  const filtered = useMemo(() => {
+    return submissions.filter((s) => {
+      if (filterSearch) {
+        const q = filterSearch.toLowerCase();
+        const title = s.problemTitle ?? problemMap.get(s.problemId)?.title ?? '';
+        if (!title.toLowerCase().includes(q)) return false;
+      }
+      if (filterStatus) {
+        if (filterStatus === 'QUEUED') {
+          if (s.sagaStep !== 'GITHUB_QUEUED' && s.sagaStep !== 'DB_SAVED') return false;
+        } else if (s.sagaStep !== filterStatus) return false;
+      }
+      if (filterDifficulty) {
+        const diff = problemMap.get(s.problemId)?.difficulty;
+        if (diff !== filterDifficulty) return false;
+      }
+      return true;
+    });
+  }, [submissions, filterSearch, filterStatus, filterDifficulty, problemMap]);
 
   return (
     <AppLayout>
       <div className="space-y-4">
         {/* 헤더 */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-[22px] font-bold tracking-tight text-text">
-              {currentStudyName ? `${currentStudyName} · 제출 이력` : '제출 이력'}
-            </h1>
-            <p className="mt-0.5 font-mono text-[10px] text-text-3">
-              {data ? `총 ${data.meta.total}건` : '불러오는 중...'}
-            </p>
+        <div style={fade(0)}>
+          <h1 className="text-[22px] font-bold tracking-tight text-text">제출 이력</h1>
+          <p className="text-[13px] mt-1" style={{ color: 'var(--text-3)' }}>
+            내가 제출한 코드와 AI 분석 결과를 확인하세요.
+          </p>
+        </div>
+
+        {/* 검색 + 상태 필터 */}
+        <div className="flex items-center gap-3" style={fade(0.06)}>
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none" style={{ color: 'var(--text-3)' }} aria-hidden />
+            <input
+              type="text"
+              placeholder="문제명 검색..."
+              value={filterSearch}
+              onChange={(e) => setFilterSearch(e.target.value)}
+              className="w-full h-[44px] pl-10 pr-4 rounded-xl text-text text-sm font-body outline-none transition-[border-color] duration-150 placeholder:text-text-3 focus:border-primary"
+              style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
+            />
           </div>
-          <div className="flex items-center gap-3">
-            {/* Stat Cards (md 이상에서만 표시) */}
-            {data && (
-              <div className="hidden md:flex items-center gap-3">
-                <div className="flex items-center gap-2 rounded-card border border-border bg-bg-card px-3.5 py-2 shadow">
-                  <FileText className="h-3.5 w-3.5 text-primary" aria-hidden />
-                  <span className="font-mono text-lg font-bold text-primary">{data.meta.total}</span>
-                  <span className="text-[11px] text-text-3">총 제출</span>
-                </div>
-                <div className="flex items-center gap-2 rounded-card border border-border bg-bg-card px-3.5 py-2 shadow">
-                  <svg className="h-3.5 w-3.5 text-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden>
-                    <circle cx="12" cy="12" r="3" />
-                    <path d="M12 1v4m0 14v4M4.22 4.22l2.83 2.83m9.9 9.9l2.83 2.83M1 12h4m14 0h4M4.22 19.78l2.83-2.83m9.9-9.9l2.83-2.83" />
-                  </svg>
-                  <span className="font-mono text-lg font-bold text-success">{avgAiScore ?? '\u2014'}</span>
-                  <span className="text-[11px] text-text-3">평균 점수</span>
-                </div>
-              </div>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowFilters((v) => !v)}
-            >
-              <Filter className="h-3.5 w-3.5" aria-hidden />
-              필터
-            </Button>
+          <div className="flex items-center shrink-0">
+            {STATUS_TABS.map((tab) => (
+              <button
+                key={tab.value}
+                type="button"
+                onClick={() => setFilterStatus(tab.value)}
+                className="px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors"
+                style={
+                  filterStatus === tab.value
+                    ? { backgroundColor: 'var(--bg-card)', color: 'var(--primary)', border: '1px solid var(--border)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }
+                    : { color: 'var(--text-3)' }
+                }
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* 필터 패널 */}
-        {showFilters && (
-          <Card className="p-3">
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="relative flex-1 min-w-[160px]">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-3 pointer-events-none" aria-hidden />
-                <input
-                  type="text"
-                  placeholder="문제 검색..."
-                  value={filterSearch}
-                  onChange={(e) => { setFilterSearch(e.target.value); setPage(1); }}
-                  className="w-full h-[34px] pl-8 pr-3 rounded-btn border border-border bg-input-bg text-text text-xs outline-none placeholder:text-text-3 focus:border-primary"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label htmlFor="filter-language" className="block text-[10px] font-medium uppercase tracking-wider text-text-3">언어</label>
-                <select
-                  id="filter-language"
-                  value={filterLanguage}
-                  onChange={handleFilterChange(setFilterLanguage)}
-                  className="h-[34px] px-2.5 pr-7 rounded-btn border border-border bg-input-bg text-text text-xs outline-none cursor-pointer focus:border-primary appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239C9A95%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_8px_center]"
-                >
-                  <option value="">전체</option>
-                  {LANGUAGE_VALUES.map((lang) => (
-                    <option key={lang} value={lang}>{lang}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label htmlFor="filter-saga" className="block text-[10px] font-medium uppercase tracking-wider text-text-3">상태</label>
-                <select
-                  id="filter-saga"
-                  value={filterSagaStep}
-                  onChange={handleFilterChange(setFilterSagaStep)}
-                  className="h-[34px] px-2.5 pr-7 rounded-btn border border-border bg-input-bg text-text text-xs outline-none cursor-pointer focus:border-primary appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239C9A95%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_8px_center]"
-                >
-                  <option value="">전체</option>
-                  {SAGA_STEP_KEYS.map((step) => (
-                    <option key={step} value={step}>{SAGA_STEP_CONFIG[step].label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label htmlFor="filter-week" className="block text-[10px] font-medium uppercase tracking-wider text-text-3">주차</label>
-                <input
-                  id="filter-week"
-                  type="text"
-                  placeholder="예: 3월1주차"
-                  value={filterWeek}
-                  onChange={handleFilterChange(setFilterWeek)}
-                  className="h-[34px] w-24 px-2.5 rounded-btn border border-border bg-input-bg text-text text-xs outline-none focus:border-primary"
-                />
-              </div>
-
-              {hasFilters && (
-                <Button variant="ghost" size="sm" onClick={handleResetFilters}>
-                  <X className="h-3 w-3" />
-                  초기화
-                </Button>
-              )}
-            </div>
-          </Card>
-        )}
+        {/* 난이도 필터 pills */}
+        <div className="flex items-center gap-2 flex-wrap" style={fade(0.1)}>
+          <button
+            type="button"
+            onClick={() => setFilterDifficulty('')}
+            className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[12px] font-medium transition-all hover:shadow-sm hover:brightness-95 hover:scale-105"
+            style={
+              !filterDifficulty
+                ? { backgroundColor: 'var(--primary)', color: '#fff' }
+                : { backgroundColor: 'var(--bg-card)', color: 'var(--text-2)', border: '1px solid var(--border)' }
+            }
+          >
+            전체
+          </button>
+          {DIFFICULTIES.map((d) => {
+            const diffKey = d.toLowerCase();
+            const isActive = filterDifficulty === d;
+            return (
+              <button
+                key={d}
+                type="button"
+                onClick={() => setFilterDifficulty(d)}
+                className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[12px] font-medium transition-all hover:shadow-sm hover:brightness-95 hover:scale-105"
+                style={
+                  isActive
+                    ? { backgroundColor: 'var(--primary)', color: '#fff' }
+                    : DIFF_BADGE_STYLE[diffKey] ?? { backgroundColor: 'var(--bg-card)', color: 'var(--text-2)' }
+                }
+              >
+                <span className="h-1.5 w-1.5 rounded-full" style={isActive ? { backgroundColor: '#fff' } : (DIFF_DOT_STYLE[diffKey] ?? {})} aria-hidden />
+                {DIFFICULTY_LABELS[d]}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[12px] font-medium transition-all opacity-50 cursor-not-allowed"
+            style={DIFF_BADGE_STYLE.ruby ?? {}}
+            disabled
+          >
+            <span className="h-1.5 w-1.5 rounded-full" style={DIFF_DOT_STYLE.ruby ?? {}} aria-hidden />
+            Ruby
+          </button>
+        </div>
 
         {/* 에러 */}
         {error && (
@@ -265,205 +308,131 @@ export default function SubmissionsPage(): ReactNode {
           </Alert>
         )}
 
-        {/* 로딩 */}
+        {/* 로딩 스켈레톤 */}
         {isLoading && (
-          <Card className="p-4">
-            <SkeletonTable rows={5} />
-          </Card>
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4 px-5 py-4 rounded-xl border border-border bg-bg-card animate-pulse">
+                <div className="h-10 w-10 rounded-full" style={{ backgroundColor: 'var(--bg-alt)' }} />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-1/3 rounded" style={{ backgroundColor: 'var(--bg-alt)' }} />
+                  <div className="h-3 w-1/4 rounded" style={{ backgroundColor: 'var(--bg-alt)' }} />
+                </div>
+              </div>
+            ))}
+          </div>
         )}
 
         {/* 빈 상태 */}
-        {!isLoading && !error && data && data.data.length === 0 && (
+        {!isLoading && !error && submissions.length === 0 && (
           <EmptyState
             icon={FileText}
             title="제출 이력이 없습니다"
-            description={
-              hasFilters
-                ? '필터 조건에 맞는 제출이 없습니다.'
-                : '아직 제출한 코드가 없습니다. 문제를 풀어보세요!'
-            }
-            action={
-              hasFilters
-                ? { label: '필터 초기화', onClick: handleResetFilters }
-                : { label: '문제 목록', onClick: () => router.push('/problems') }
-            }
+            description="아직 제출한 코드가 없습니다. 문제를 풀어보세요!"
+            action={{ label: '문제 목록', onClick: () => router.push('/problems') }}
           />
         )}
 
-        {/* 제출 목록 테이블 */}
-        {!isLoading && data && data.data.length > 0 && (
-          <>
-            <Card className="p-0 overflow-hidden">
-              {/* 헤더 행 (md 이상에서만 표시) */}
-              <div
-                className="hidden md:grid items-center gap-x-2 px-4 py-2.5 border-b border-border font-mono text-[10px] uppercase tracking-wider text-text-3"
-                style={{ gridTemplateColumns: '64px 1fr 80px 72px 100px 80px 72px' }}
-              >
-                <span>주차</span>
-                <span>문제</span>
-                <span>난이도</span>
-                <span>언어</span>
-                <span>제출시간</span>
-                <span>상태</span>
-                <span>AI</span>
-              </div>
+        {/* 필터 결과 없음 */}
+        {!isLoading && submissions.length > 0 && filtered.length === 0 && (
+          <EmptyState
+            icon={Search}
+            title="검색 결과가 없습니다"
+            description="필터 조건을 변경해 보세요."
+            action={{ label: '필터 초기화', onClick: () => { setFilterSearch(''); setFilterStatus(''); setFilterDifficulty(''); } }}
+            size="sm"
+          />
+        )}
 
-              {/* 데이터 행 */}
-              {data.data
-                .filter((submission) => {
-                  if (!filterSearch) return true;
-                  const title = submission.problemTitle ?? problemDetailMap.get(submission.problemId)?.title ?? '';
-                  return title.toLowerCase().includes(filterSearch.toLowerCase());
-                })
-                .map((submission) => {
-                const sagaConfig = SAGA_STEP_CONFIG[submission.sagaStep] ?? {
-                  label: submission.sagaStep,
-                  variant: 'muted' as const,
-                };
-                const isDone = submission.sagaStep === 'DONE';
+        {/* 제출 목록 (카드) */}
+        {!isLoading && filtered.length > 0 && (
+          <div className="space-y-2" style={fade(0.14)}>
+            {filtered.map((s) => {
+              const pInfo = problemMap.get(s.problemId);
+              const title = s.problemTitle ?? pInfo?.title ?? `문제 ${s.problemId}`;
+              const diffKey = pInfo?.difficulty ? (pInfo.difficulty as string).toLowerCase() : '';
+              const diffLabel = pInfo?.difficulty
+                ? `${DIFFICULTY_LABELS[pInfo.difficulty as Difficulty] ?? pInfo.difficulty} ${pInfo.level ?? ''}`.trim()
+                : '';
+              const status = getStatusDisplay(s.sagaStep);
+              const lang = LANG_AVATAR[s.language] ?? { label: s.language.slice(0, 2).toUpperCase(), bg: 'var(--bg-alt)', color: 'var(--text-3)' };
+              const isDone = s.sagaStep === 'DONE';
 
-                return (
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => router.push(isDone ? `/submissions/${s.id}/analysis` : `/submissions/${s.id}/status`)}
+                  aria-label={`${title} 제출 보기`}
+                  className="group flex items-center gap-4 w-full px-5 py-4 rounded-xl border border-border transition-colors text-left bg-bg-card hover:bg-bg-alt"
+                >
+                  {/* 언어 아바타 (라운드 스퀘어, 난이도 색상) */}
                   <div
-                    key={submission.id}
-                    className="w-full px-4 py-3 border-b border-border last:border-b-0 cursor-pointer hover:bg-primary-soft transition-colors block md:grid md:items-center md:gap-x-2"
-                    style={{ gridTemplateColumns: '64px 1fr 80px 72px 100px 80px 72px' }}
-                    onClick={() => {
-                      if (submission.sagaStep === 'DONE') {
-                        router.push(`/submissions/${submission.id}/analysis`);
-                      } else {
-                        router.push(`/submissions/${submission.id}/status`);
-                      }
-                    }}
+                    className="flex items-center justify-center shrink-0 h-10 w-10 rounded-lg text-[11px] font-bold"
+                    style={{ backgroundColor: DIFF_BADGE_STYLE[diffKey]?.backgroundColor ?? 'var(--bg-alt)', color: DIFF_BADGE_STYLE[diffKey]?.color ?? 'var(--text-3)' }}
                   >
-                    {/* 모바일 카드 뷰 */}
-                    <div className="md:hidden space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-[13px] font-medium text-text truncate flex-1 min-w-0">
-                          {submission.problemTitle ?? problemDetailMap.get(submission.problemId)?.title ?? `문제 ${submission.problemId.slice(0, 8)}`}
-                        </p>
-                        <Badge variant={sagaConfig.variant} dot>
-                          {sagaConfig.label}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono text-[11px] text-text-3">
-                          {problemDetailMap.get(submission.problemId)?.weekNumber ?? '-'}
-                        </span>
-                        <LangBadge language={submission.language} />
-                        <span className="font-mono text-[10px] text-text-3">
-                          {formatDate(submission.createdAt)}
-                        </span>
-                        {isDone && (
-                          <Link
-                            href={`/submissions/${submission.id}/analysis`}
-                            className="text-[11px] font-medium text-primary hover:underline"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            결과 보기
-                          </Link>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* 데스크탑 테이블 행 (md 이상) */}
-                    <span className="hidden md:block font-mono text-[11px] text-text-3 truncate">
-                      {problemDetailMap.get(submission.problemId)?.weekNumber ?? '-'}
-                    </span>
-                    <div className="hidden md:block min-w-0">
-                      <p className="text-[13px] font-medium text-text truncate">
-                        {submission.problemTitle ?? problemDetailMap.get(submission.problemId)?.title ?? `문제 ${submission.problemId.slice(0, 8)}`}
-                      </p>
-                    </div>
-                    <span className="hidden md:block">
-                      {(() => {
-                        const diff = problemDetailMap.get(submission.problemId)?.difficulty;
-                        return diff ? (
-                          <DifficultyBadge difficulty={diff as Difficulty} />
-                        ) : (
-                          <span className="font-mono text-[10px] text-text-3">--</span>
-                        );
-                      })()}
-                    </span>
-                    <span className="hidden md:block">
-                      <LangBadge language={submission.language} />
-                    </span>
-                    <span className="hidden md:block font-mono text-[10px] text-text-3 whitespace-nowrap">
-                      {formatDate(submission.createdAt)}
-                    </span>
-                    <span className="hidden md:block">
-                      <Badge variant={sagaConfig.variant} dot>
-                        {sagaConfig.label}
-                      </Badge>
-                    </span>
-                    <span className="hidden md:block">
-                      {isDone ? (
-                        <Link
-                          href={`/submissions/${submission.id}/analysis`}
-                          className="text-[11px] font-medium text-primary transition-colors hover:underline whitespace-nowrap"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          결과 보기
-                        </Link>
-                      ) : (
-                        <span className="font-mono text-[10px] text-text-3">-</span>
-                      )}
-                    </span>
+                    {lang.label}
                   </div>
-                );
-              })}
-            </Card>
 
-            {/* 페이지네이션 */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-1.5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={page <= 1 || isLoading}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                </Button>
-
-                {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
-                  .reduce<(number | 'ellipsis')[]>((acc, p, idx, arr) => {
-                    if (idx > 0 && p - (arr[idx - 1] as number) > 1) {
-                      acc.push('ellipsis');
-                    }
-                    acc.push(p);
-                    return acc;
-                  }, [])
-                  .map((item, i) =>
-                    item === 'ellipsis' ? (
-                      <span key={`e-${i}`} className="px-1 text-text-3 text-xs">...</span>
-                    ) : (
-                      <button
-                        key={item}
-                        type="button"
-                        onClick={() => setPage(item)}
-                        className={`flex h-8 w-8 items-center justify-center rounded-btn text-xs font-medium transition-colors ${
-                          item === page
-                            ? 'bg-primary text-white'
-                            : 'text-text-2 border border-border hover:bg-bg-alt'
-                        }`}
+                  {/* 문제 정보 */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-semibold text-text truncate transition-colors group-hover:text-primary">
+                      {title}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      {/* 난이도 뱃지 */}
+                      {diffLabel && (
+                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium" style={DIFF_BADGE_STYLE[diffKey] ?? {}}>
+                          <span className="h-1.5 w-1.5 rounded-full" style={DIFF_DOT_STYLE[diffKey] ?? {}} aria-hidden />
+                          {diffLabel}
+                        </span>
+                      )}
+                      {/* 언어 뱃지 */}
+                      <span
+                        className="rounded-full px-2 py-0.5 text-[11px] font-medium uppercase"
+                        style={{ backgroundColor: 'var(--bg-alt)', color: 'var(--text-2)' }}
                       >
-                        {item}
-                      </button>
-                    ),
-                  )}
+                        {s.language}
+                      </span>
+                      {/* 상태 뱃지 */}
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
+                        style={{ backgroundColor: status.bg, color: status.color }}
+                      >
+                        {status.dot && <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: status.color }} aria-hidden />}
+                        {status.label}
+                      </span>
+                      {/* 상대 시간 */}
+                      <span className="text-[11px] font-medium" style={{ color: 'var(--text-3)' }}>
+                        {relativeTime(s.createdAt)}
+                      </span>
+                    </div>
+                  </div>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={page >= totalPages || isLoading}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                >
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            )}
-          </>
+                  {/* 우측: AI 점수 or 상태 */}
+                  <div className="shrink-0 text-right">
+                    {s.aiScore != null ? (
+                      <>
+                        <span className="text-[20px] font-bold leading-none" style={{ color: scoreColor(s.aiScore) }}>
+                          {s.aiScore}
+                        </span>
+                        <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-3)' }}>/100</p>
+                      </>
+                    ) : s.sagaStep === 'AI_QUEUED' ? (
+                      <div className="flex items-center gap-1.5" style={{ color: 'var(--warning)' }}>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span className="text-[12px] font-medium">분석 중</span>
+                      </div>
+                    ) : s.sagaStep === 'FAILED' ? (
+                      <span className="text-[12px] font-medium" style={{ color: 'var(--error)' }}>실패</span>
+                    ) : (
+                      <span className="text-[12px] font-medium" style={{ color: 'var(--text-3)' }}>대기 중</span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         )}
       </div>
     </AppLayout>

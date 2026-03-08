@@ -83,6 +83,24 @@ export function StudyProvider({ children }: StudyProviderProps): ReactNode {
       setStudiesLoaded(false);
       return;
     }
+
+    // ── DEV MOCK ──────────────────────────────────────────────
+    if (process.env.NEXT_PUBLIC_DEV_MOCK === 'true') {
+      const mockStudy: Study = {
+        id: 'dev-study-001',
+        name: '알고리즘 마스터즈',
+        description: '개발용 테스트 스터디',
+        role: 'ADMIN',
+        memberCount: 5,
+      };
+      setStudiesState([mockStudy]);
+      setCurrentStudyId('dev-study-001');
+      setCurrentStudyIdForApi('dev-study-001');
+      setStudiesLoaded(true);
+      return;
+    }
+    // ──────────────────────────────────────────────────────────
+
     let cancelled = false;
     const load = async () => {
       try {
@@ -118,6 +136,7 @@ export function StudyProvider({ children }: StudyProviderProps): ReactNode {
     void load();
     return () => { cancelled = true; };
   }, [authLoading, isAuthenticated]);
+
 
   const currentStudy = currentStudyId
     ? studies.find((s) => s.id === currentStudyId)

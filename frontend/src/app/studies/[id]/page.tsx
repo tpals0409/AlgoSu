@@ -1,5 +1,5 @@
 /**
- * @file 스터디 상세 페이지 — 3탭 (Overview / Members / Settings)
+ * @file 스터디 상세 페이지 — 3탭 (그라운드룰 / 문제 / 멤버)
  * @domain study
  * @layer page
  * @related StudyContext, studyApi, AppLayout
@@ -11,57 +11,39 @@ import {
   useState,
   useEffect,
   useCallback,
-  useRef,
   use,
   type ReactNode,
+  type CSSProperties,
 } from 'react';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
-  ChevronLeft,
-  Copy,
-  Check,
-  UserMinus,
-  Trash2,
-  BarChart3,
-  Settings,
-  Users,
-  Plus,
+  ArrowLeft,
   Shield,
-  LogOut,
+  BookOpen,
+  Users,
+  Settings,
+  Crown,
   Pencil,
+  Check,
+  X,
 } from 'lucide-react';
-import { createPortal } from 'react-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Alert } from '@/components/ui/Alert';
-import { LoadingSpinner, InlineSpinner } from '@/components/ui/LoadingSpinner';
-import { Skeleton } from '@/components/ui/Skeleton';
-import { useStudy } from '@/contexts/StudyContext';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   studyApi,
   type Study,
   type StudyMember,
-  type StudyStats,
 } from '@/lib/api';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
-import { getAvatarPresetKey, getAvatarSrc } from '@/lib/avatars';
 import { cn } from '@/lib/utils';
 
 // ─── TYPES ───────────────────────────────
 
-type TabKey = 'overview' | 'members' | 'settings';
+type TabKey = 'rules' | 'problems' | 'members';
 
 interface PageProps {
   readonly params: Promise<{ id: string }>;
@@ -69,11 +51,99 @@ interface PageProps {
 
 // ─── CONSTANTS ───────────────────────────
 
-const TABS: { key: TabKey; label: string; icon: typeof Users; adminOnly?: boolean }[] = [
-  { key: 'overview', label: '개요', icon: BarChart3 },
+const TABS: { key: TabKey; label: string; icon: typeof Users }[] = [
+  { key: 'rules', label: '그라운드룰', icon: Shield },
+  { key: 'problems', label: '문제', icon: BookOpen },
   { key: 'members', label: '멤버', icon: Users },
-  { key: 'settings', label: '설정', icon: Settings, adminOnly: true },
 ];
+
+// ─── MOCK DATA ──────────────────────────
+
+const MOCK_GROUND_RULES = `## 참여 규칙
+- 매주 **최소 1문제** 이상 제출해야 합니다.
+- 마감 기한 내에 제출하지 못한 경우, 사유를 채널에 공유해주세요.
+- 스터디 모임에는 **사전 고지 없이 결석하지 않습니다.**
+
+## 문제 풀이 방식
+- 풀이 코드는 반드시 **본인이 직접 작성**해야 합니다.
+- 외부 코드를 참고한 경우 출처를 주석으로 명시하세요.
+- AI 도구(ChatGPT 등)는 **최후의 수단**으로만 활용합니다.
+
+## 코드 리뷰
+- 다른 멤버의 코드에 **건설적인 피드백**을 남겨주세요.
+- 비난이나 비하 발언은 **금지**합니다.
+- 리뷰는 제출 후 **2일 이내**에 완료해주세요.
+
+## 커뮤니케이션
+- 스터디 채널에서 질문은 언제든 환영합니다.
+- 모르는 것을 모른다고 말하는 문화를 만들어갑시다.
+- 서로를 존중하고 격려하는 분위기를 유지합니다.`;
+
+interface MockProblem {
+  id: string;
+  number: number;
+  title: string;
+  difficulty: string;
+  tier: string;
+  tags: string[];
+  dDay?: string;
+  ended?: boolean;
+}
+
+const MOCK_PROBLEMS_ACTIVE: MockProblem[] = [
+  { id: 'p1', number: 1, title: '두 수의 합', difficulty: 'Silver 2', tier: 'silver', tags: ['해시', '배열'], dDay: 'D-2 마감' },
+  { id: 'p2', number: 2, title: '최단 경로', difficulty: 'Gold 4', tier: 'gold', tags: ['다익스트라', '그래프'], dDay: 'D-3 마감' },
+];
+
+const MOCK_PROBLEMS_ENDED: MockProblem[] = [
+  { id: 'p3', number: 3, title: '이분 탐색', difficulty: 'Silver 4', tier: 'silver', tags: ['이분탐색'], ended: true },
+  { id: 'p4', number: 4, title: 'DP 입문', difficulty: 'Bronze 1', tier: 'bronze', tags: ['DP'], ended: true },
+  { id: 'p5', number: 5, title: '트리의 지름', difficulty: 'Gold 2', tier: 'gold', tags: ['트리', 'BFS'], ended: true },
+  { id: 'p6', number: 6, title: '플로이드 워셜', difficulty: 'Gold 5', tier: 'gold', tags: ['플로이드', '그래프'], ended: true },
+];
+
+interface MockMember {
+  id: string;
+  name: string;
+  role: 'ADMIN' | 'MEMBER';
+  isMe: boolean;
+  email: string;
+  color: string;
+  submissions: number;
+  done: number;
+  total: number;
+}
+
+const MOCK_MEMBERS: MockMember[] = [
+  { id: 'm1', name: '김민준', role: 'ADMIN', isMe: true, email: 'minjun@example.com', color: '#E8A830', submissions: 12, done: 10, total: 12 },
+  { id: 'm2', name: '이지현', role: 'MEMBER', isMe: false, email: 'jhyun@example.com', color: '#3DAA6D', submissions: 9, done: 8, total: 9 },
+  { id: 'm3', name: '박서준', role: 'MEMBER', isMe: false, email: 'seojun@example.com', color: '#3B82CE', submissions: 7, done: 6, total: 7 },
+  { id: 'm4', name: '최하은', role: 'MEMBER', isMe: false, email: 'haeun@example.com', color: '#7C6AAE', submissions: 8, done: 7, total: 8 },
+  { id: 'm5', name: '정우진', role: 'MEMBER', isMe: false, email: 'woojin@example.com', color: '#E05448', submissions: 6, done: 5, total: 6 },
+];
+
+// ─── MARKDOWN RENDERER ─────────────────
+
+/**
+ * 간단한 마크다운 → HTML 변환 (##, **, -)
+ * @domain common
+ */
+function renderMarkdown(md: string): string {
+  return md
+    .split('\n')
+    .map((line) => {
+      if (line.startsWith('## ')) {
+        return `<h3 style="font-size:15px;font-weight:700;margin:20px 0 8px;padding-left:4px;color:var(--text)">${line.slice(3)}</h3>`;
+      }
+      if (line.startsWith('- ')) {
+        const content = line.slice(2).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        return `<li style="font-size:13px;color:var(--text-2);margin:4px 0;margin-left:20px;padding-left:8px;list-style:disc">${content}</li>`;
+      }
+      if (line.trim() === '') return '<br/>';
+      return `<p style="font-size:13px;color:var(--text-2)">${line}</p>`;
+    })
+    .join('');
+}
 
 // ─── RENDER ──────────────────────────────
 
@@ -88,60 +158,33 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
   const { user } = useAuth();
 
   // ─── STATE ─────────────────────────────
-  const [tab, setTab] = useState<TabKey>('overview');
+  const [tab, setTab] = useState<TabKey>('rules');
   const [study, setStudy] = useState<Study | null>(null);
   const [members, setMembers] = useState<StudyMember[]>([]);
-  const [stats, setStats] = useState<StudyStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // email 매칭으로 현재 사용자 ID 도출 (httpOnly Cookie → localStorage 토큰 없음)
+  // mount animation
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setMounted(true), 50);
+    return () => clearTimeout(t);
+  }, []);
+
+  const fade = (delay = 0): CSSProperties => ({
+    opacity: mounted ? 1 : 0,
+    transform: mounted ? 'translateY(0)' : 'translateY(16px)',
+    transition: `opacity .5s cubic-bezier(.16,1,.3,1) ${delay}s, transform .5s cubic-bezier(.16,1,.3,1) ${delay}s`,
+  });
+
+  // email 매칭으로 현재 사용자 ID 도출
   const myUserId = members.find((m) => m.email === user?.email)?.user_id ?? null;
-
-  // 초대 코드
-  const [inviteCode, setInviteCode] = useState<string | null>(null);
-  const [inviteRemaining, setInviteRemaining] = useState<string | null>(null);
-  const [isInviting, setIsInviting] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [showCopyToast, setShowCopyToast] = useState(false);
-  const inviteTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // 확인 모달 (추방 / 탈퇴)
-  const [kickTarget, setKickTarget] = useState<StudyMember | null>(null);
-  const [isKicking, setIsKicking] = useState(false);
-  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
-  const [isLeaving, setIsLeaving] = useState(false);
-
-  // 설정 수정
-  const [editName, setEditName] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [isSavingEdit, setIsSavingEdit] = useState(false);
-
-  // 역할 변경
-  const [roleChanging, setRoleChanging] = useState<string | null>(null);
-
-  // 스터디 삭제
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  // Ground Rules
-  const [groundRules, setGroundRules] = useState('');
-
-  // ─── HELPERS ───────────────────────────
 
   const isAdmin = members.some(
     (m) => m.user_id === myUserId && m.role === 'ADMIN',
   );
 
-  const isLastAdmin =
-    isAdmin && members.filter((m) => m.role === 'ADMIN').length === 1;
-
   // ─── EFFECTS ───────────────────────────
-
-  useEffect(() => {
-    return () => {
-      if (inviteTimerRef.current) clearInterval(inviteTimerRef.current);
-    };
-  }, []);
 
   /**
    * 스터디 데이터 로드
@@ -150,6 +193,27 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
   const loadStudyData = useCallback(async (): Promise<void> => {
     setIsLoading(true);
     setError(null);
+
+    // DEV MOCK
+    if (process.env.NEXT_PUBLIC_DEV_MOCK === 'true') {
+      setStudy({
+        id: studyId,
+        name: '알고리즘 마스터',
+        description: 'LeetCode & BOJ 기반 스터디',
+        role: 'ADMIN',
+        memberCount: 5,
+      });
+      setMembers([
+        { id: 'm1', study_id: studyId, user_id: 'dev-user-001', role: 'ADMIN', joined_at: '2025-01-01T00:00:00Z', nickname: '김민준', username: 'kimmin', email: 'dev@algosu.kr', avatar_url: '' },
+        { id: 'm2', study_id: studyId, user_id: 'dev-user-002', role: 'MEMBER', joined_at: '2025-01-02T00:00:00Z', nickname: '이지현', username: 'jhyun', email: 'jhyun@example.com', avatar_url: '' },
+        { id: 'm3', study_id: studyId, user_id: 'dev-user-003', role: 'MEMBER', joined_at: '2025-01-03T00:00:00Z', nickname: '박서준', username: 'seojun', email: 'seojun@example.com', avatar_url: '' },
+        { id: 'm4', study_id: studyId, user_id: 'dev-user-004', role: 'MEMBER', joined_at: '2025-01-04T00:00:00Z', nickname: '최하은', username: 'haeun', email: 'haeun@example.com', avatar_url: '' },
+        { id: 'm5', study_id: studyId, user_id: 'dev-user-005', role: 'MEMBER', joined_at: '2025-01-05T00:00:00Z', nickname: '정우진', username: 'woojin', email: 'woojin@example.com', avatar_url: '' },
+      ]);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const [studyData, memberData] = await Promise.all([
         studyApi.getById(studyId),
@@ -157,11 +221,6 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
       ]);
       setStudy(studyData);
       setMembers(memberData);
-      setEditName(studyData.name);
-      setEditDescription(studyData.description ?? '');
-
-      // 통계는 비차단 로드
-      studyApi.getStats(studyId).then(setStats).catch(() => {});
     } catch (err: unknown) {
       setError(
         (err as Error).message ??
@@ -177,204 +236,6 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
       void loadStudyData();
     }
   }, [isAuthenticated, loadStudyData]);
-
-  // ─── HANDLERS ──────────────────────────
-
-  /**
-   * 초대 코드 생성
-   * @domain study
-   * @guard study-admin
-   */
-  const handleInvite = useCallback(async (): Promise<void> => {
-    setIsInviting(true);
-    try {
-      const result = await studyApi.invite(studyId);
-      setInviteCode(result.code);
-
-      const expiresAt = new Date(result.expires_at).getTime();
-      if (inviteTimerRef.current) clearInterval(inviteTimerRef.current);
-      const tick = () => {
-        const diff = expiresAt - Date.now();
-        if (diff <= 0) {
-          setInviteCode(null);
-          setInviteRemaining(null);
-          if (inviteTimerRef.current) clearInterval(inviteTimerRef.current);
-          return;
-        }
-        const m = Math.floor(diff / 60000);
-        const s = Math.floor((diff % 60000) / 1000);
-        setInviteRemaining(`${m}:${String(s).padStart(2, '0')}`);
-      };
-      tick();
-      inviteTimerRef.current = setInterval(tick, 1000);
-
-      await navigator.clipboard.writeText(result.code);
-      setCopied(true);
-      setShowCopyToast(true);
-      setTimeout(() => setCopied(false), 2000);
-      setTimeout(() => setShowCopyToast(false), 2000);
-    } catch {
-      setError('초대 코드 생성에 실패했습니다.');
-    } finally {
-      setIsInviting(false);
-    }
-  }, [studyId]);
-
-  /**
-   * 클립보드 복사
-   * @domain study
-   */
-  const handleCopy = useCallback(async (): Promise<void> => {
-    if (!inviteCode) return;
-    await navigator.clipboard.writeText(inviteCode);
-    setCopied(true);
-    setShowCopyToast(true);
-    setTimeout(() => setCopied(false), 2000);
-    setTimeout(() => setShowCopyToast(false), 2000);
-  }, [inviteCode]);
-
-  /**
-   * 멤버 추방
-   * @domain study
-   * @guard study-admin
-   */
-  const handleKick = useCallback(async (): Promise<void> => {
-    if (!kickTarget) return;
-    setIsKicking(true);
-    try {
-      await studyApi.removeMember(studyId, kickTarget.user_id);
-      setMembers((prev) => prev.filter((m) => m.id !== kickTarget.id));
-      setKickTarget(null);
-    } catch {
-      setError('멤버 추방에 실패했습니다.');
-    } finally {
-      setIsKicking(false);
-    }
-  }, [studyId, kickTarget]);
-
-  /**
-   * 스터디 탈퇴 (자기 자신)
-   * @domain study
-   * @guard study-member
-   */
-  const handleLeave = useCallback(async (): Promise<void> => {
-    if (!myUserId) return;
-    setIsLeaving(true);
-    try {
-      await studyApi.removeMember(studyId, myUserId);
-      setShowLeaveConfirm(false);
-      router.replace('/studies');
-    } catch {
-      setError('스터디 탈퇴에 실패했습니다.');
-    } finally {
-      setIsLeaving(false);
-    }
-  }, [studyId, myUserId, router]);
-
-  /**
-   * 역할 변경
-   * @domain study
-   * @guard study-admin
-   */
-  const handleRoleChange = useCallback(
-    async (
-      member: StudyMember,
-      newRole: 'ADMIN' | 'MEMBER',
-    ): Promise<void> => {
-      const roleLabel = newRole === 'ADMIN' ? '관리자' : '멤버';
-      const confirmed = window.confirm(
-        `${member.nickname ?? member.username ?? member.user_id.slice(0, 8)}님의 역할을 "${roleLabel}"(으)로 변경하시겠습니까?`,
-      );
-      if (!confirmed) return;
-
-      setRoleChanging(member.id);
-      try {
-        await studyApi.changeRole(studyId, member.user_id, newRole);
-        setMembers((prev) =>
-          prev.map((m) =>
-            m.id === member.id ? { ...m, role: newRole } : m,
-          ),
-        );
-      } catch {
-        setError('역할 변경에 실패했습니다.');
-      } finally {
-        setRoleChanging(null);
-      }
-    },
-    [studyId],
-  );
-
-  /**
-   * 본인 닉네임 변경
-   * @domain study
-   * @guard study-member
-   */
-  const handleNicknameUpdate = useCallback(async (nickname: string): Promise<void> => {
-    try {
-      await studyApi.updateNickname(studyId, nickname);
-      setMembers((prev) =>
-        prev.map((m) =>
-          m.user_id === myUserId ? { ...m, nickname } : m,
-        ),
-      );
-    } catch {
-      setError('닉네임 변경에 실패했습니다.');
-    }
-  }, [studyId, myUserId]);
-
-  /**
-   * 스터디 설정 저장
-   * @domain study
-   * @guard study-admin
-   */
-  const handleSaveEdit = useCallback(async (): Promise<void> => {
-    setIsSavingEdit(true);
-    try {
-      const updated = await studyApi.update(studyId, {
-        name: editName.trim(),
-        description: editDescription.trim() || undefined,
-      });
-      setStudy(updated);
-    } catch {
-      setError('스터디 설정 수정에 실패했습니다.');
-    } finally {
-      setIsSavingEdit(false);
-    }
-  }, [studyId, editName, editDescription]);
-
-  /**
-   * Ground Rules 저장
-   * @domain study
-   * @guard study-admin
-   * @note API 미구현 — 추후 studyApi.updateGroundRules 연동 시 교체
-   */
-  const handleSaveGroundRules = useCallback((): void => {
-    if (!groundRules.trim()) return;
-    alert('Ground Rules가 임시 저장되었습니다. (API 연동 후 서버에 저장됩니다)');
-  }, [groundRules]);
-
-  /**
-   * 스터디 삭제
-   * @domain study
-   * @guard study-admin
-   */
-  const { removeStudy } = useStudy();
-  const handleDeleteStudy = useCallback(async (): Promise<void> => {
-    const confirmed = window.confirm(
-      '정말 이 스터디를 삭제하시겠습니까? 모든 데이터가 영구 삭제되며 되돌릴 수 없습니다.',
-    );
-    if (!confirmed) return;
-
-    setIsDeleting(true);
-    try {
-      await studyApi.delete(studyId);
-      removeStudy(studyId);
-      router.replace('/studies');
-    } catch {
-      setError('스터디 삭제에 실패했습니다.');
-      setIsDeleting(false);
-    }
-  }, [studyId, removeStudy, router]);
 
   // ─── LOADING / ERROR ───────────────────
 
@@ -393,42 +254,71 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
       <AppLayout>
         <div className="space-y-4">
           <Alert variant="error">{error}</Alert>
-          <Button
-            variant="ghost"
-            size="sm"
+          <button
+            type="button"
             onClick={() => router.push('/studies')}
+            className="flex items-center justify-center shrink-0 h-9 w-9 rounded-full transition-colors hover:bg-bg-alt"
           >
-            <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
-            스터디 목록
-          </Button>
+            <ArrowLeft className="h-5 w-5" style={{ color: 'var(--text)' }} />
+          </button>
+          <span className="text-sm text-text-2">스터디 목록</span>
         </div>
       </AppLayout>
     );
   }
 
-  // ADMIN이 아니면 settings 탭 숨김
-  const visibleTabs = TABS.filter((t) => !t.adminOnly || isAdmin);
+  const isMock = process.env.NEXT_PUBLIC_DEV_MOCK === 'true';
+  const memberCount = isMock ? MOCK_MEMBERS.length : members.length;
 
   return (
     <AppLayout>
-      <div className="mx-auto max-w-3xl space-y-5">
-        {/* 뒤로가기 + 스터디명 */}
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push('/studies')}
-          >
-            <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
-          </Button>
-          <div>
-            <h1 className="text-[22px] font-bold tracking-tight text-text">
-              {study?.name ?? ''}
-            </h1>
-            {study?.description && (
-              <p className="text-sm text-text-2">{study.description}</p>
-            )}
+      <div className="space-y-5">
+        {/* ── HEADER ── */}
+        <div className="flex items-center justify-between" style={fade(0)}>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => router.push('/studies')}
+              className="flex items-center justify-center shrink-0 h-9 w-9 rounded-full transition-colors hover:bg-bg-alt"
+            >
+              <ArrowLeft className="h-5 w-5" style={{ color: 'var(--text)' }} />
+            </button>
+            <div
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white"
+              style={{ backgroundColor: 'var(--primary)' }}
+            >
+              {study?.name?.charAt(0) ?? ''}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="text-[22px] font-bold tracking-tight text-text truncate">
+                  {study?.name ?? ''}
+                </h1>
+                {isAdmin && (
+                  <Badge className="bg-bg-alt text-text-2">
+                    <Crown className="h-3 w-3" aria-hidden />
+                    관리자
+                  </Badge>
+                )}
+              </div>
+              <span className="text-xs text-text-3">
+                {study?.description ? `${study.description} · ` : ''}
+                {memberCount}명 참여
+              </span>
+            </div>
           </div>
+
+          {/* 설정 아이콘 (ADMIN만) */}
+          {isAdmin && (
+            <button
+              type="button"
+              className="shrink-0 rounded-lg p-1.5 text-text-3 transition-colors hover:bg-bg-alt hover:text-text"
+              onClick={() => router.push(`/studies/${studyId}/settings`)}
+              aria-label="스터디 설정"
+            >
+              <Settings className="h-4.5 w-4.5" aria-hidden />
+            </button>
+          )}
         </div>
 
         {error && (
@@ -437,9 +327,12 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
           </Alert>
         )}
 
-        {/* 탭 바 */}
-        <div className="flex gap-1 rounded-card border border-border bg-bg-card p-1 shadow">
-          {visibleTabs.map((t) => {
+        {/* ── TAB BAR ── */}
+        <div
+          className="flex gap-1 rounded-card border border-border bg-bg-card p-1 shadow"
+          style={fade(0.06)}
+        >
+          {TABS.map((t) => {
             const Icon = t.icon;
             return (
               <button
@@ -460,829 +353,360 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
           })}
         </div>
 
-        {/* 탭 내용 */}
-        {tab === 'overview' && (
-          <OverviewTab
-            study={study}
-            stats={stats}
-            members={members}
-          />
-        )}
+        {/* ── TAB CONTENT ── */}
+        <div style={fade(0.12)}>
+          {tab === 'rules' && (
+            <RulesTab isAdmin={isAdmin} isMock={isMock} />
+          )}
 
-        {tab === 'members' && (
-          <MembersTab
-            studyId={studyId}
-            members={members}
-            myUserId={myUserId}
-            isAdmin={isAdmin}
-            isLastAdmin={isLastAdmin}
-            inviteCode={inviteCode}
-            inviteRemaining={inviteRemaining}
-            isInviting={isInviting}
-            copied={copied}
-            roleChanging={roleChanging}
-            onInvite={() => void handleInvite()}
-            onCopy={() => void handleCopy()}
-            onRoleChange={handleRoleChange}
-            onKick={setKickTarget}
-            onLeave={() => setShowLeaveConfirm(true)}
-            onNicknameUpdate={handleNicknameUpdate}
-          />
-        )}
+          {tab === 'problems' && (
+            <ProblemsTab isMock={isMock} />
+          )}
 
-        {tab === 'settings' && isAdmin && (
-          <SettingsTab
-            editName={editName}
-            editDescription={editDescription}
-            isSavingEdit={isSavingEdit}
-            isDeleting={isDeleting}
-            groundRules={groundRules}
-            onNameChange={setEditName}
-            onDescriptionChange={setEditDescription}
-            onGroundRulesChange={setGroundRules}
-            onSaveGroundRules={handleSaveGroundRules}
-            onSave={() => void handleSaveEdit()}
-            onDelete={() => void handleDeleteStudy()}
-          />
-        )}
+          {tab === 'members' && (
+            <MembersTab
+              members={members}
+              myUserId={myUserId}
+              isMock={isMock}
+            />
+          )}
+        </div>
       </div>
-
-      {/* 추방 확인 모달 */}
-      {kickTarget && (
-        <ConfirmModal
-          title="멤버 추방"
-          description={`정말 ${kickTarget.nickname ?? kickTarget.username ?? kickTarget.user_id.slice(0, 8)}님을 추방하시겠습니까? 이 작업은 되돌릴 수 없습니다.`}
-          confirmLabel="추방"
-          isLoading={isKicking}
-          onConfirm={() => void handleKick()}
-          onCancel={() => setKickTarget(null)}
-        />
-      )}
-
-      {/* 탈퇴 확인 모달 */}
-      {showLeaveConfirm && (
-        <ConfirmModal
-          title="스터디 탈퇴"
-          description="정말 이 스터디에서 탈퇴하시겠습니까?"
-          confirmLabel="탈퇴"
-          isLoading={isLeaving}
-          onConfirm={() => void handleLeave()}
-          onCancel={() => setShowLeaveConfirm(false)}
-        />
-      )}
-
-      {/* 복사 토스트 */}
-      {showCopyToast &&
-        typeof document !== 'undefined' &&
-        createPortal(
-          <div className="fixed bottom-6 left-1/2 z-[100] -translate-x-1/2 animate-fade-in">
-            <div className="flex items-center gap-2 rounded-card border border-border bg-bg-card px-4 py-2.5 shadow-modal">
-              <Check className="h-4 w-4 text-success" aria-hidden />
-              <span className="text-[12px] font-medium text-text">
-                초대 코드가 복사되었습니다
-              </span>
-            </div>
-          </div>,
-          document.body,
-        )}
     </AppLayout>
   );
 }
 
-// ─── OVERVIEW TAB ────────────────────────
+// ─── RULES TAB ──────────────────────────
 
-interface OverviewTabProps {
-  readonly study: Study | null;
-  readonly stats: StudyStats | null;
-  readonly members: StudyMember[];
+/**
+ * 그라운드룰 탭 — 마크다운 렌더링
+ * @domain study
+ */
+function RulesTab({
+  isAdmin,
+  isMock,
+}: {
+  readonly isAdmin: boolean;
+  readonly isMock: boolean;
+}): ReactNode {
+  const rulesHtml = isMock ? renderMarkdown(MOCK_GROUND_RULES) : '';
+
+  return (
+    <div className="space-y-4 animate-fade-in">
+      <Card>
+        <CardContent className="py-5">
+          {/* 헤더 */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Shield className="h-4 w-4 text-primary" aria-hidden />
+              <span className="text-sm font-semibold text-text">그라운드룰</span>
+            </div>
+          </div>
+
+          {/* 마크다운 콘텐츠 */}
+          {rulesHtml ? (
+            <div
+              dangerouslySetInnerHTML={{ __html: rulesHtml }}
+              style={{ lineHeight: '1.7' }}
+            />
+          ) : (
+            <p className="text-sm text-text-3">
+              아직 그라운드룰이 등록되지 않았습니다.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─── PROBLEMS TAB ───────────────────────
+
+/**
+ * 문제 탭 — 진행 중 / 종료된 문제
+ * @domain study
+ */
+function ProblemsTab({
+  isMock,
+}: {
+  readonly isMock: boolean;
+}): ReactNode {
+  const activeProblems = isMock ? MOCK_PROBLEMS_ACTIVE : [];
+  const endedProblems = isMock ? MOCK_PROBLEMS_ENDED : [];
+
+  return (
+    <div className="space-y-5 animate-fade-in">
+      {/* 진행 중 */}
+      <div className="space-y-2">
+        <p className="text-sm font-semibold text-text">진행 중</p>
+        {activeProblems.length > 0 ? (
+          <div className="space-y-2">
+            {activeProblems.map((p) => (
+              <ProblemCard key={p.id} problem={p} />
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <CardContent className="py-6 text-center">
+              <p className="text-sm text-text-3">진행 중인 문제가 없습니다.</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* 종료된 문제 */}
+      <div className="space-y-2">
+        <p className="text-sm font-semibold text-text">종료된 문제</p>
+        {endedProblems.length > 0 ? (
+          <div className="space-y-2">
+            {endedProblems.map((p) => (
+              <ProblemCard key={p.id} problem={p} />
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <CardContent className="py-6 text-center">
+              <p className="text-sm text-text-3">종료된 문제가 없습니다.</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
 }
 
 /**
- * Overview 탭 — 스터디 정보 + 통계 요약
+ * 문제 카드
  * @domain study
  */
-function OverviewTab({ study, stats, members }: OverviewTabProps): ReactNode {
+function ProblemCard({ problem }: { readonly problem: MockProblem }): ReactNode {
   return (
-    <div className="space-y-4 animate-fade-in">
-      {/* 스터디 정보 */}
-      <Card>
-        <CardContent className="space-y-3 py-4">
-          <div className="grid grid-cols-2 gap-4">
-            <InfoItem label="스터디명" value={study?.name ?? '-'} />
-            <InfoItem
-              label="멤버"
-              value={`${members.length}명`}
-            />
-            <InfoItem
-              label="GitHub 연동"
-              value={study?.githubRepo ?? '미연동'}
-            />
-            <InfoItem
-              label="내 역할"
-              value={study?.role === 'ADMIN' ? '관리자' : '멤버'}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 통계 요약 */}
-      {stats ? (
-        <>
-          {/* 숫자 카드 */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <StatCard
-              label="총 제출"
-              value={stats.totalSubmissions}
-              color="text-primary"
-            />
-            <StatCard
-              label="풀이 문제"
-              value={stats.solvedProblemIds.length}
-              color="text-success"
-            />
-            <StatCard
-              label="활성 멤버"
-              value={members.length}
-              color="text-text"
-            />
+    <Card className="p-0 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-3 min-w-0">
+          {/* 원형 번호 */}
+          <div
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+            style={{ backgroundColor: 'var(--primary)' }}
+          >
+            {problem.number}
           </div>
 
-          {/* 주차별 제출 */}
-          {stats.byWeek.length > 0 && (
-            <Card>
-              <CardContent className="py-4">
-                <p className="mb-3 text-sm font-semibold text-text">
-                  주차별 제출 추이
-                </p>
-                <div className="space-y-2">
-                  {stats.byWeek.slice(0, 6).map((w) => {
-                    const maxCount = Math.max(
-                      ...stats.byWeek.map((wk) => wk.count),
-                      1,
-                    );
-                    const pct = (w.count / maxCount) * 100;
-                    return (
-                      <div
-                        key={w.week}
-                        className="flex items-center gap-3"
-                      >
-                        <span className="min-w-[56px] text-right font-mono text-xs text-text-2">
-                          {w.week}
-                        </span>
-                        <div className="h-5 flex-1 overflow-hidden rounded-badge bg-bg-alt">
-                          <div
-                            className="h-full rounded-badge transition-all duration-700 ease-bounce"
-                            style={{
-                              width: `${pct}%`,
-                              background: 'var(--bar-fill)',
-                            }}
-                          />
-                        </div>
-                        <span className="min-w-[28px] font-mono text-xs font-semibold text-text">
-                          {w.count}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* 멤버별 풀이 */}
-          {stats.byMember.length > 0 && (
-            <Card>
-              <CardContent className="py-4">
-                <p className="mb-3 text-sm font-semibold text-text">
-                  멤버별 풀이
-                </p>
-                <div className="space-y-2">
-                  {stats.byMember.map((m) => {
-                    const maxCount = Math.max(
-                      ...stats.byMember.map((mb) => mb.count),
-                      1,
-                    );
-                    const pct = (m.count / maxCount) * 100;
-                    return (
-                      <div
-                        key={m.userId}
-                        className="flex items-center gap-3"
-                      >
-                        <span className="min-w-[56px] truncate text-right text-xs text-text-2">
-                          {m.userId.slice(0, 8)}
-                        </span>
-                        <div className="h-5 flex-1 overflow-hidden rounded-badge bg-bg-alt">
-                          <div
-                            className="h-full rounded-badge transition-all duration-700 ease-bounce"
-                            style={{
-                              width: `${pct}%`,
-                              background: 'var(--bar-fill)',
-                            }}
-                          />
-                        </div>
-                        <span className="min-w-[28px] font-mono text-xs font-semibold text-text">
-                          {m.count}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* 난이도 분포 */}
-          <Card>
-            <CardHeader className="px-4 py-3">
-              <CardTitle className="text-[13px]">난이도 분포</CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-4">
-              <div className="space-y-2">
-                {(['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND'] as const).map((tier) => (
-                  <div key={tier} className="flex items-center gap-2">
-                    <span className="w-16 text-[10px] font-mono text-text-3">{tier}</span>
-                    <div className="flex-1 h-2 rounded-full bg-bg-alt">
-                      <div
-                        className="h-2 rounded-full"
-                        style={{ width: '0%', backgroundColor: `var(--diff-${tier.toLowerCase()}-color)` }}
-                      />
-                    </div>
-                    <span className="w-6 text-[10px] font-mono text-text-3 text-right">0</span>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-3 text-center text-[11px] text-text-3">
-                문제 데이터 연동 후 표시됩니다.
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* 언어 분포 */}
-          <Card>
-            <CardHeader className="px-4 py-3">
-              <CardTitle className="text-[13px]">언어 분포</CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-4">
-              <div className="rounded-btn border border-border bg-bg-alt px-4 py-6 text-center">
-                <p className="text-[11px] text-text-3">
-                  제출 데이터 연동 후 언어별 분포가 표시됩니다.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </>
-      ) : (
-        <div className="space-y-3">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Skeleton height={80} />
-            <Skeleton height={80} />
-            <Skeleton height={80} />
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-medium text-text truncate">
+                {problem.title}
+              </span>
+              {/* 난이도 뱃지 */}
+              <span
+                className="inline-flex items-center rounded-badge px-2 py-0.5 text-[11px] font-medium"
+                style={{
+                  color: `var(--diff-${problem.tier}-color)`,
+                  backgroundColor: `var(--diff-${problem.tier}-bg)`,
+                }}
+              >
+                {problem.difficulty}
+              </span>
+            </div>
+            {/* 태그 */}
+            <div className="flex items-center gap-1.5 mt-0.5">
+              {problem.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="text-[11px] text-text-3"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
           </div>
-          <Skeleton height={160} />
         </div>
-      )}
-    </div>
+
+        {/* D-day or 종료 */}
+        {problem.dDay && (
+          <Badge variant="warning">{problem.dDay}</Badge>
+        )}
+        {problem.ended && (
+          <Badge className="bg-bg-alt text-text-3">종료</Badge>
+        )}
+      </div>
+    </Card>
   );
 }
 
 // ─── MEMBERS TAB ─────────────────────────
 
-interface MembersTabProps {
-  readonly studyId: string;
-  readonly members: StudyMember[];
-  readonly myUserId: string | null;
-  readonly isAdmin: boolean;
-  readonly isLastAdmin: boolean;
-  readonly inviteCode: string | null;
-  readonly inviteRemaining: string | null;
-  readonly isInviting: boolean;
-  readonly copied: boolean;
-  readonly roleChanging: string | null;
-  readonly onInvite: () => void;
-  readonly onCopy: () => void;
-  readonly onRoleChange: (member: StudyMember, role: 'ADMIN' | 'MEMBER') => Promise<void>;
-  readonly onKick: (member: StudyMember) => void;
-  readonly onLeave: () => void;
-  readonly onNicknameUpdate: (nickname: string) => Promise<void>;
-}
-
 /**
- * Members 탭 — 멤버 목록, 초대, 역할 변경, 추방, 탈퇴
+ * 멤버 탭 — 본인 상단 고정 + 닉네임 수정 + 프로그레스 바
  * @domain study
  */
 function MembersTab({
   members,
   myUserId,
-  isAdmin,
-  isLastAdmin,
-  inviteCode,
-  inviteRemaining,
-  isInviting,
-  copied,
-  roleChanging,
-  onInvite,
-  onCopy,
-  onRoleChange,
-  onKick,
-  onLeave,
-  onNicknameUpdate,
-}: MembersTabProps): ReactNode {
+  isMock,
+}: {
+  readonly members: StudyMember[];
+  readonly myUserId: string | null;
+  readonly isMock: boolean;
+}): ReactNode {
+  const mockMembers = isMock ? MOCK_MEMBERS : [];
+  const rawMembers = isMock ? mockMembers : members;
+
+  // 닉네임 수정 상태
   const [editingNickname, setEditingNickname] = useState(false);
-  const [nicknameInput, setNicknameInput] = useState('');
-  const [isSavingNickname, setIsSavingNickname] = useState(false);
+  const [nicknameValue, setNicknameValue] = useState('');
 
-  const startEditNickname = useCallback((currentNickname: string) => {
-    setNicknameInput(currentNickname);
-    setEditingNickname(true);
-  }, []);
+  // 본인을 맨 위로 정렬
+  const sorted = [...rawMembers].sort((a, b) => {
+    const aIsMe = 'submissions' in a ? (a as MockMember).isMe : (a as StudyMember).user_id === myUserId;
+    const bIsMe = 'submissions' in b ? (b as MockMember).isMe : (b as StudyMember).user_id === myUserId;
+    if (aIsMe && !bIsMe) return -1;
+    if (!aIsMe && bIsMe) return 1;
+    return 0;
+  });
 
-  const saveNickname = useCallback(async () => {
-    const trimmed = nicknameInput.trim();
-    if (!trimmed) return;
-    setIsSavingNickname(true);
-    try {
-      await onNicknameUpdate(trimmed);
-      setEditingNickname(false);
-    } finally {
-      setIsSavingNickname(false);
-    }
-  }, [nicknameInput, onNicknameUpdate]);
+  // 본인 / 나머지 분리
+  const me = sorted.find((m) => {
+    return 'submissions' in m ? (m as MockMember).isMe : (m as StudyMember).user_id === myUserId;
+  });
+  const others = sorted.filter((m) => {
+    return 'submissions' in m ? !(m as MockMember).isMe : (m as StudyMember).user_id !== myUserId;
+  });
 
-  return (
-    <div className="space-y-4 animate-fade-in">
-      {/* 초대 코드 (ADMIN) */}
-      {isAdmin && (
-        <Card>
-          <CardContent className="py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-btn bg-primary-soft text-primary">
-                  <Plus className="h-3.5 w-3.5" aria-hidden />
-                </div>
-                <span className="text-sm font-semibold text-text">
-                  멤버 초대
-                </span>
-              </div>
-              {!inviteCode && (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={onInvite}
-                  disabled={isInviting}
-                >
-                  {isInviting ? (
-                    <>
-                      <InlineSpinner />
-                      생성 중...
-                    </>
-                  ) : (
-                    '초대 코드 생성'
-                  )}
-                </Button>
-              )}
+  const renderRow = (member: (typeof sorted)[number], isMe: boolean) => {
+    const isMockMember = 'submissions' in member;
+    const name = isMockMember
+      ? (member as MockMember).name
+      : ((member as StudyMember).nickname ?? (member as StudyMember).username ?? (member as StudyMember).email ?? '');
+    const role = isMockMember ? (member as MockMember).role : (member as StudyMember).role;
+    const email = isMockMember ? (member as MockMember).email : ((member as StudyMember).email ?? '');
+    const color = isMockMember ? (member as MockMember).color : 'var(--primary)';
+    const submissions = isMockMember ? (member as MockMember).submissions : 0;
+    const done = isMockMember ? (member as MockMember).done : 0;
+    const total = isMockMember ? (member as MockMember).total : 0;
+    const pct = total > 0 ? (done / total) * 100 : 0;
+    const initial = name.charAt(0);
+
+    return (
+      <div key={member.id} className="px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+              style={{ backgroundColor: isMe ? 'var(--primary)' : color }}
+            >
+              {initial}
             </div>
-            {inviteCode && (
-              <div className="mt-3 flex items-center gap-2">
-                <code className="flex flex-1 items-center justify-between rounded-btn border border-border bg-bg-alt px-3 py-2 font-mono text-sm text-primary">
-                  <span>{inviteCode}</span>
-                  {inviteRemaining && (
-                    <span className="text-[11px] text-text-3">
-                      {inviteRemaining}
-                    </span>
-                  )}
-                </code>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onCopy}
-                  className={copied ? 'text-success' : ''}
-                >
-                  {copied ? (
-                    <Check className="h-3.5 w-3.5" aria-hidden />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5" aria-hidden />
-                  )}
-                  {copied ? '복사됨' : '복사'}
-                </Button>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                {isMe && editingNickname ? (
+                  <div className="flex items-center gap-1">
+                    <input
+                      className="w-28 rounded-md border border-primary bg-bg px-2 py-0.5 text-sm font-medium text-text outline-none"
+                      value={nicknameValue}
+                      onChange={(e) => setNicknameValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') setEditingNickname(false);
+                        if (e.key === 'Escape') setEditingNickname(false);
+                      }}
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      className="rounded p-0.5 text-success hover:bg-success/10"
+                      onClick={() => setEditingNickname(false)}
+                      aria-label="저장"
+                    >
+                      <Check className="h-3.5 w-3.5" aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded p-0.5 text-text-3 hover:bg-bg-alt"
+                      onClick={() => setEditingNickname(false)}
+                      aria-label="취소"
+                    >
+                      <X className="h-3.5 w-3.5" aria-hidden />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <span className="text-sm font-medium text-text truncate">{name}</span>
+                    {isMe && (
+                      <button
+                        type="button"
+                        className="rounded p-0.5 text-text-3 hover:text-primary"
+                        onClick={() => {
+                          setNicknameValue(name);
+                          setEditingNickname(true);
+                        }}
+                        aria-label="닉네임 수정"
+                      >
+                        <Pencil className="h-3 w-3" aria-hidden />
+                      </button>
+                    )}
+                  </>
+                )}
+                {role === 'ADMIN' ? (
+                  <Badge className="bg-bg-alt text-text-2">
+                    <Crown className="h-2.5 w-2.5" aria-hidden />
+                    관리자
+                  </Badge>
+                ) : (
+                  <Badge className="bg-bg-alt text-text-2">멤버</Badge>
+                )}
+                {isMe && !editingNickname && (
+                  <span
+                    className="rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+                    style={{ backgroundColor: 'var(--primary-soft)', color: 'var(--primary)' }}
+                  >
+                    나
+                  </span>
+                )}
               </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+              <p className="text-[11px] text-text-3 truncate">{email}</p>
+            </div>
+          </div>
 
-      {/* 멤버 목록 */}
-      <Card className="overflow-hidden p-0">
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-text">멤버</span>
-            <Badge variant="default">{members.length}명</Badge>
+          <div className="shrink-0 text-right">
+            <p className="text-sm font-semibold text-text">{submissions}제출</p>
+            <p className="text-[11px] text-text-3">{done}/{total} 완료</p>
           </div>
         </div>
 
-        {members.map((member, idx) => {
-          const isMe = member.user_id === myUserId;
-          return (
-            <div
-              key={member.id}
-              className={cn(
-                'flex items-center justify-between px-4 py-3 transition-colors hover:bg-primary-soft',
-                idx < members.length - 1 && 'border-b border-border',
-              )}
-            >
-              <div className="flex min-w-0 items-center gap-3">
-                <Image
-                  src={getAvatarSrc(
-                    getAvatarPresetKey(member.avatar_url),
-                  )}
-                  alt={member.nickname ?? member.username ?? '멤버'}
-                  width={32}
-                  height={32}
-                  className="shrink-0 rounded-full"
-                />
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    {isMe && editingNickname ? (
-                      <div className="flex items-center gap-1.5">
-                        <input
-                          value={nicknameInput}
-                          onChange={(e) => setNicknameInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') void saveNickname();
-                            if (e.key === 'Escape') setEditingNickname(false);
-                          }}
-                          disabled={isSavingNickname}
-                          maxLength={50}
-                          className="w-28 rounded-btn border border-primary bg-bg-alt px-2 py-0.5 text-xs text-text outline-none"
-                          autoFocus
-                        />
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          onClick={() => void saveNickname()}
-                          disabled={isSavingNickname || !nicknameInput.trim()}
-                          className="h-6 px-2 text-[10px]"
-                        >
-                          {isSavingNickname ? <InlineSpinner /> : '저장'}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setEditingNickname(false)}
-                          disabled={isSavingNickname}
-                          className="h-6 px-2 text-[10px]"
-                        >
-                          취소
-                        </Button>
-                      </div>
-                    ) : (
-                      <>
-                        <p className={`truncate text-xs font-medium ${member.deleted_at ? 'text-text-3 italic' : 'text-text'}`}>
-                          {member.deleted_at
-                            ? '탈퇴한 사용자'
-                            : (member.nickname ??
-                              member.username ??
-                              member.email ??
-                              member.user_id.slice(0, 8))}
-                        </p>
-                        {isMe && !member.deleted_at && (
-                          <button
-                            type="button"
-                            onClick={() => startEditNickname(member.nickname ?? '')}
-                            className="text-text-3 hover:text-primary transition-colors"
-                            title="닉네임 변경"
-                          >
-                            <Pencil className="h-3 w-3" aria-hidden />
-                          </button>
-                        )}
-                      </>
-                    )}
-                    {member.role === 'ADMIN' && (
-                      <Badge variant="info">
-                        <Shield className="mr-0.5 h-2.5 w-2.5" aria-hidden />
-                        관리자
-                      </Badge>
-                    )}
-                    {isMe && !editingNickname && (
-                      <span className="text-[10px] text-text-3">(나)</span>
-                    )}
-                  </div>
-                  <p className="font-mono text-[10px] text-text-3">
-                    {member.joined_at
-                      ? new Date(member.joined_at).toLocaleDateString('ko-KR')
-                      : ''}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex shrink-0 items-center gap-2">
-                {/* ADMIN이고 본인이 아닌 멤버: 역할 변경 + 추방 */}
-                {isAdmin && !isMe && (
-                  <>
-                    <select
-                      value={member.role}
-                      onChange={(e) =>
-                        void onRoleChange(
-                          member,
-                          e.target.value as 'ADMIN' | 'MEMBER',
-                        )
-                      }
-                      disabled={roleChanging === member.id}
-                      className="rounded-btn border border-border bg-bg-alt px-2 py-1 text-[11px] text-text outline-none transition-colors focus:border-primary disabled:opacity-50"
-                    >
-                      <option value="ADMIN">관리자</option>
-                      <option value="MEMBER">멤버</option>
-                    </select>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onKick(member)}
-                      className="text-error transition-colors hover:text-error"
-                    >
-                      <UserMinus className="h-3.5 w-3.5" aria-hidden />
-                    </Button>
-                  </>
-                )}
-
-                {/* 본인: 탈퇴 버튼 (마지막 ADMIN이면 비활성) */}
-                {isMe && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={onLeave}
-                    disabled={isLastAdmin}
-                    title={
-                      isLastAdmin
-                        ? '마지막 관리자는 탈퇴할 수 없습니다. 다른 멤버에게 관리자를 위임하세요.'
-                        : '스터디 탈퇴'
-                    }
-                    className="text-text-3 transition-colors hover:text-error"
-                  >
-                    <LogOut className="h-3.5 w-3.5" aria-hidden />
-                  </Button>
-                )}
-
-                {/* ADMIN이 아니고 본인이 아닌 멤버: 역할 뱃지만 표시 */}
-                {!isAdmin && !isMe && (
-                  <Badge
-                    variant={member.role === 'ADMIN' ? 'info' : 'muted'}
-                  >
-                    {member.role === 'ADMIN' ? '관리자' : '멤버'}
-                  </Badge>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </Card>
-    </div>
-  );
-}
-
-// ─── SETTINGS TAB ────────────────────────
-
-interface SettingsTabProps {
-  readonly editName: string;
-  readonly editDescription: string;
-  readonly isSavingEdit: boolean;
-  readonly isDeleting: boolean;
-  readonly groundRules: string;
-  readonly onNameChange: (v: string) => void;
-  readonly onDescriptionChange: (v: string) => void;
-  readonly onGroundRulesChange: (v: string) => void;
-  readonly onSaveGroundRules: () => void;
-  readonly onSave: () => void;
-  readonly onDelete: () => void;
-}
-
-/**
- * Settings 탭 — 스터디 이름/설명 수정 + 삭제
- * @domain study
- * @guard study-admin
- */
-function SettingsTab({
-  editName,
-  editDescription,
-  isSavingEdit,
-  isDeleting,
-  groundRules,
-  onNameChange,
-  onDescriptionChange,
-  onGroundRulesChange,
-  onSaveGroundRules,
-  onSave,
-  onDelete,
-}: SettingsTabProps): ReactNode {
-  return (
-    <div className="space-y-4 animate-fade-in">
-      {/* 스터디 정보 수정 */}
-      <Card>
-        <CardHeader>
-          <CardTitle>스터디 설정</CardTitle>
-          <CardDescription>스터디 이름과 설명을 수정합니다.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Input
-            label="스터디 이름"
-            value={editName}
-            onChange={(e) => onNameChange(e.target.value)}
-            disabled={isSavingEdit}
+        <div
+          className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full"
+          style={{ backgroundColor: 'var(--bg-alt)' }}
+        >
+          <div
+            className="h-full rounded-full transition-all duration-700 ease-bounce"
+            style={{
+              width: `${pct}%`,
+              backgroundColor: isMe ? 'var(--primary)' : color,
+            }}
           />
-          <div className="flex flex-col">
-            <label
-              htmlFor="edit-description"
-              className="mb-[5px] text-[11px] font-medium text-text-2"
-            >
-              설명 (선택)
-            </label>
-            <textarea
-              id="edit-description"
-              value={editDescription}
-              onChange={(e) => onDescriptionChange(e.target.value)}
-              disabled={isSavingEdit}
-              rows={3}
-              className="w-full resize-y rounded-badge border border-border bg-bg-alt px-3 py-2 text-xs text-text outline-none transition-colors placeholder:text-text-3 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
-            />
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="animate-fade-in">
+      <Card className="p-0 overflow-hidden">
+        {/* 본인 */}
+        {me && renderRow(me, true)}
+
+        {/* 구분선 */}
+        {me && others.length > 0 && (
+          <div className="border-t-2 border-dashed border-border" />
+        )}
+
+        {/* 나머지 멤버 */}
+        {others.map((member, idx) => (
+          <div key={member.id}>
+            {idx > 0 && <div className="border-t border-border" />}
+            {renderRow(member, false)}
           </div>
-        </CardContent>
-        <CardFooter className="flex justify-end gap-3">
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={onSave}
-            disabled={isSavingEdit || !editName.trim()}
-          >
-            {isSavingEdit ? (
-              <>
-                <InlineSpinner />
-                저장 중...
-              </>
-            ) : (
-              '저장'
-            )}
-          </Button>
-        </CardFooter>
-      </Card>
-
-      {/* Ground Rules (B5) — API 미구현, alert 대체 */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Ground Rules</CardTitle>
-          <CardDescription>
-            스터디 운영 규칙을 설정합니다.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h3 className="text-[13px] font-medium text-text">그라운드 룰</h3>
-              <span className="text-[10px] font-mono text-text-3">{groundRules.length}/500</span>
-            </div>
-            <textarea
-              value={groundRules}
-              onChange={(e) => onGroundRulesChange(e.target.value.slice(0, 500))}
-              placeholder="스터디 규칙을 작성하세요..."
-              rows={4}
-              className="w-full rounded-badge border border-border bg-input-bg px-3 py-2 text-xs text-text placeholder:text-text-3 focus:border-primary outline-none resize-none"
-            />
-            <Button variant="primary" size="sm" onClick={onSaveGroundRules}>
-              저장
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 위험 영역: 스터디 삭제 */}
-      <Card className="border-error/30">
-        <CardHeader>
-          <CardTitle className="text-error">위험 영역</CardTitle>
-          <CardDescription>
-            스터디를 삭제하면 모든 데이터가 영구 삭제됩니다.
-          </CardDescription>
-        </CardHeader>
-        <CardFooter>
-          <Button
-            variant="danger"
-            size="sm"
-            onClick={onDelete}
-            disabled={isDeleting}
-          >
-            {isDeleting ? (
-              <>
-                <InlineSpinner />
-                삭제 중...
-              </>
-            ) : (
-              <>
-                <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                스터디 삭제
-              </>
-            )}
-          </Button>
-        </CardFooter>
-      </Card>
-    </div>
-  );
-}
-
-// ─── SHARED COMPONENTS ───────────────────
-
-/**
- * 정보 항목 (label + value)
- * @domain common
- */
-function InfoItem({
-  label,
-  value,
-}: {
-  readonly label: string;
-  readonly value: string;
-}): ReactNode {
-  return (
-    <div>
-      <p className="text-[11px] text-text-3">{label}</p>
-      <p className="mt-0.5 text-sm font-medium text-text">{value}</p>
-    </div>
-  );
-}
-
-/**
- * 통계 숫자 카드
- * @domain study
- */
-function StatCard({
-  label,
-  value,
-  color,
-}: {
-  readonly label: string;
-  readonly value: number;
-  readonly color: string;
-}): ReactNode {
-  return (
-    <Card>
-      <CardContent className="py-4 text-center">
-        <p className="text-[11px] text-text-3">{label}</p>
-        <p className={cn('mt-1 font-mono text-2xl font-bold', color)}>
-          {value}
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
-
-/**
- * 확인 모달 (추방 / 탈퇴 공용)
- * @domain common
- */
-function ConfirmModal({
-  title,
-  description,
-  confirmLabel,
-  isLoading,
-  onConfirm,
-  onCancel,
-}: {
-  readonly title: string;
-  readonly description: string;
-  readonly confirmLabel: string;
-  readonly isLoading: boolean;
-  readonly onConfirm: () => void;
-  readonly onCancel: () => void;
-}): ReactNode {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm">
-      <Card className="mx-4 w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>{title}</CardTitle>
-          <CardDescription>{description}</CardDescription>
-        </CardHeader>
-        <CardFooter className="flex gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="flex-1"
-            onClick={onCancel}
-            disabled={isLoading}
-          >
-            취소
-          </Button>
-          <Button
-            variant="danger"
-            size="sm"
-            className="flex-1"
-            onClick={onConfirm}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <>
-                <InlineSpinner />
-                처리 중...
-              </>
-            ) : (
-              confirmLabel
-            )}
-          </Button>
-        </CardFooter>
+        ))}
       </Card>
     </div>
   );

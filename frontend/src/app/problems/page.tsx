@@ -1,37 +1,31 @@
 /**
- * @file 문제 목록 페이지 (v2 전면 교체)
+ * @file 문제 목록 페이지 (Figma 디자인 반영)
  * @domain problem
  * @layer page
- * @related problemApi, studyApi, DifficultyBadge, TimerBadge, AppLayout
+ * @related problemApi, studyApi, DifficultyBadge, AppLayout
  */
 
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { BookOpen, Plus, Search, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BookOpen, Plus, Search, Check } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
-import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
-import { TimerBadge } from '@/components/ui/TimerBadge';
 import { Alert } from '@/components/ui/Alert';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { SkeletonTable } from '@/components/ui/Skeleton';
 import { problemApi, studyApi, type Problem } from '@/lib/api';
 import { useStudy } from '@/contexts/StudyContext';
-import { DIFFICULTIES, DIFFICULTY_LABELS, PROBLEM_STATUSES, PROBLEM_STATUS_LABELS } from '@/lib/constants';
+import { DIFFICULTIES, DIFFICULTY_LABELS } from '@/lib/constants';
 import type { Difficulty } from '@/lib/constants';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
+import { AddProblemModal, type NewProblemData } from '@/components/ui/AddProblemModal';
 
 // ─── TYPES ────────────────────────────────
 
 interface Filters {
   search: string;
   difficulty: string;
-  weekNumber: string;
   status: string;
 }
 
@@ -40,9 +34,46 @@ interface Filters {
 const INITIAL_FILTERS: Filters = {
   search: '',
   difficulty: '',
-  weekNumber: '',
   status: '',
 };
+
+const STATUS_TABS = [
+  { value: '', label: '전체' },
+  { value: 'ACTIVE', label: '진행 중' },
+  { value: 'CLOSED', label: '종료' },
+] as const;
+
+// ─── DIFFICULTY STYLES (CSS 변수 기반, 대시보드 패턴 통일) ────
+
+const DIFF_DOT_STYLE: Record<string, React.CSSProperties> = {
+  bronze:   { backgroundColor: 'var(--diff-bronze-color)' },
+  silver:   { backgroundColor: 'var(--diff-silver-color)' },
+  gold:     { backgroundColor: 'var(--diff-gold-color)' },
+  platinum: { backgroundColor: 'var(--diff-platinum-color)' },
+  diamond:  { backgroundColor: 'var(--diff-diamond-color)' },
+  ruby:     { backgroundColor: 'var(--diff-ruby-color)' },
+};
+
+const DIFF_BADGE_STYLE: Record<string, React.CSSProperties> = {
+  bronze:   { backgroundColor: 'var(--diff-bronze-bg)',   color: 'var(--diff-bronze-color)' },
+  silver:   { backgroundColor: 'var(--diff-silver-bg)',   color: 'var(--diff-silver-color)' },
+  gold:     { backgroundColor: 'var(--diff-gold-bg)',     color: 'var(--diff-gold-color)' },
+  platinum: { backgroundColor: 'var(--diff-platinum-bg)', color: 'var(--diff-platinum-color)' },
+  diamond:  { backgroundColor: 'var(--diff-diamond-bg)',  color: 'var(--diff-diamond-color)' },
+  ruby:     { backgroundColor: 'var(--diff-ruby-bg)',     color: 'var(--diff-ruby-color)' },
+};
+
+// ─── HELPERS ─────────────────────────────
+
+/** D-day 표시 (Figma: "D-N" 또는 "마감") */
+function getDdayDisplay(deadline: string | null, status: string): { label: string; color: string } {
+  if (status !== 'ACTIVE') return { label: '마감', color: 'var(--text-3)' };
+  if (!deadline) return { label: '', color: '' };
+  const remaining = new Date(deadline).getTime() - Date.now();
+  if (remaining <= 0) return { label: '마감', color: 'var(--text-3)' };
+  const days = Math.ceil(remaining / 86400000);
+  return { label: `D-${days}`, color: 'var(--error)' };
+}
 
 // ─── RENDER ───────────────────────────────
 
@@ -54,7 +85,7 @@ export default function ProblemsPage(): ReactNode {
   const router = useRouter();
   const { isAuthenticated } = useRequireAuth();
   useRequireStudy();
-  const { currentStudyId, currentStudyRole, currentStudyName } = useStudy();
+  const { currentStudyId, currentStudyRole } = useStudy();
   const isAdmin = currentStudyRole === 'ADMIN';
 
   // ─── STATE ──────────────────────────────
@@ -64,8 +95,19 @@ export default function ProblemsPage(): ReactNode {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
-  const [page, setPage] = useState(1);
-  const PAGE_SIZE = 10;
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setMounted(true), 50);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const fade = (delay = 0): React.CSSProperties => ({
+    opacity: mounted ? 1 : 0,
+    transform: mounted ? 'translateY(0)' : 'translateY(16px)',
+    transition: `opacity .5s cubic-bezier(.16,1,.3,1) ${delay}s, transform .5s cubic-bezier(.16,1,.3,1) ${delay}s`,
+  });
 
   // ─── API ────────────────────────────────
 
@@ -73,6 +115,29 @@ export default function ProblemsPage(): ReactNode {
     setIsLoading(true);
     setError(null);
     try {
+      // ── DEV MOCK ──────────────────────────────────────────────
+      if (process.env.NEXT_PUBLIC_DEV_MOCK === 'true') {
+        const now = new Date();
+        const d = (days: number) => new Date(now.getTime() + days * 86400000).toISOString();
+        const mockData: Problem[] = [
+          { id: 'p1', title: '두 수의 합', difficulty: 'SILVER', level: 2, status: 'ACTIVE', deadline: d(2), description: '', weekNumber: '3월1주차', sourceUrl: 'https://boj.kr/1000', sourcePlatform: 'BOJ', allowedLanguages: ['python', 'java'], tags: ['해시'] },
+          { id: 'p2', title: '최단 경로', difficulty: 'GOLD', level: 4, status: 'ACTIVE', deadline: d(3), description: '', weekNumber: '3월1주차', sourceUrl: 'https://boj.kr/1753', sourcePlatform: 'BOJ', allowedLanguages: ['python', 'cpp'], tags: ['다익스트라', '그래프'] },
+          { id: 'p3', title: '이분 탐색', difficulty: 'SILVER', level: 4, status: 'CLOSED', deadline: d(-5), description: '', weekNumber: '2월4주차', sourceUrl: 'https://boj.kr/1920', sourcePlatform: 'BOJ', allowedLanguages: ['python'], tags: ['이분탐색'] },
+          { id: 'p4', title: 'DP 입문', difficulty: 'BRONZE', level: 1, status: 'CLOSED', deadline: d(-10), description: '', weekNumber: '2월3주차', sourceUrl: 'https://boj.kr/1003', sourcePlatform: 'BOJ', allowedLanguages: ['python', 'java'], tags: ['DP'] },
+          { id: 'p5', title: '트리의 지름', difficulty: 'GOLD', level: 2, status: 'CLOSED', deadline: d(-14), description: '', weekNumber: '2월2주차', sourceUrl: 'https://boj.kr/1167', sourcePlatform: 'BOJ', allowedLanguages: ['cpp'], tags: ['트리', 'BFS'] },
+          { id: 'p6', title: '플로이드 워셜', difficulty: 'GOLD', level: 5, status: 'CLOSED', deadline: d(-20), description: '', weekNumber: '2월1주차', sourceUrl: 'https://boj.kr/11404', sourcePlatform: 'BOJ', allowedLanguages: ['python', 'java'], tags: ['플로이드'] },
+          { id: 'p7', title: 'LCA', difficulty: 'PLATINUM', level: 3, status: 'CLOSED', deadline: d(-25), description: '', weekNumber: '1월4주차', sourceUrl: 'https://boj.kr/11438', sourcePlatform: 'BOJ', allowedLanguages: ['cpp'], tags: ['LCA', '트리'] },
+          { id: 'p8', title: '세그먼트 트리', difficulty: 'PLATINUM', level: 1, status: 'CLOSED', deadline: d(-30), description: '', weekNumber: '1월3주차', sourceUrl: 'https://boj.kr/2042', sourcePlatform: 'BOJ', allowedLanguages: ['cpp', 'java'], tags: ['세그먼트트리'] },
+          { id: 'p9', title: 'KMP', difficulty: 'DIAMOND', level: 5, status: 'CLOSED', deadline: d(-35), description: '', weekNumber: '1월2주차', sourceUrl: 'https://boj.kr/1786', sourcePlatform: 'BOJ', allowedLanguages: ['cpp'], tags: ['문자열', 'KMP'] },
+          { id: 'p10', title: '스택 수열', difficulty: 'SILVER', level: 1, status: 'CLOSED', deadline: d(-40), description: '', weekNumber: '1월1주차', sourceUrl: 'https://boj.kr/1874', sourcePlatform: 'BOJ', allowedLanguages: ['python', 'java'], tags: ['스택'] },
+        ];
+        setProblems(mockData);
+        setSolvedIds(new Set(['p3', 'p4', 'p10']));
+        setIsLoading(false);
+        return;
+      }
+      // ────────────────────────────────────────────────────────────
+
       const [data, stats] = await Promise.all([
         problemApi.findAll(),
         currentStudyId ? studyApi.getStats(currentStudyId) : null,
@@ -105,15 +170,13 @@ export default function ProblemsPage(): ReactNode {
 
   const handleFilterChange = (key: keyof Filters, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
-    setPage(1);
   };
 
-  const handleResetFilters = () => {
-    setFilters(INITIAL_FILTERS);
-    setPage(1);
-  };
+  const handleAddProblem = useCallback((newProblem: NewProblemData) => {
+    setProblems((prev) => [newProblem as unknown as Problem, ...prev]);
+  }, []);
 
-  // ─── HELPERS ──────────────────────────────
+  // ─── FILTERING ──────────────────────────
 
   const filteredProblems = useMemo(() => {
     return problems.filter((p) => {
@@ -127,9 +190,6 @@ export default function ProblemsPage(): ReactNode {
       if (filters.difficulty && p.difficulty !== filters.difficulty) {
         return false;
       }
-      if (filters.weekNumber && p.weekNumber !== filters.weekNumber) {
-        return false;
-      }
       if (filters.status && p.status !== filters.status) {
         return false;
       }
@@ -137,107 +197,93 @@ export default function ProblemsPage(): ReactNode {
     });
   }, [problems, filters]);
 
-  const weekNumbers = useMemo(() => {
-    const weeks = [...new Set(problems.map((p) => p.weekNumber).filter(Boolean))];
-    return weeks.sort();
-  }, [problems]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredProblems.length / PAGE_SIZE));
-  const paginatedProblems = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
-    return filteredProblems.slice(start, start + PAGE_SIZE);
-  }, [filteredProblems, page]);
-
-  const hasActiveFilters = filters.search || filters.difficulty || filters.weekNumber || filters.status;
-
   return (
     <AppLayout>
       <div className="space-y-4">
         {/* 헤더 */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-[22px] font-bold tracking-tight text-text">
-              {currentStudyName ? `${currentStudyName} · 문제 목록` : '문제 목록'}
-            </h1>
-            {!isLoading && problems.length > 0 && (
-              <p className="font-mono text-[10px] text-text-3 mt-0.5">
-                {filteredProblems.length}개 문제
-              </p>
-            )}
-          </div>
-          {isAdmin && (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => router.push('/problems/create')}
-            >
-              <Plus />
-              문제 추가
-            </Button>
-          )}
+        <div style={fade(0)}>
+          <h1 className="text-[22px] font-bold tracking-tight text-text">문제 목록</h1>
+          <p className="text-[13px] mt-1" style={{ color: 'var(--text-3)' }}>
+            스터디 문제를 확인하고 코드를 제출하세요.
+          </p>
         </div>
 
-        {/* 필터 바 */}
-        {!isLoading && problems.length > 0 && (
-          <Card className="p-3">
-            <div className="flex flex-wrap items-center gap-2">
-              {/* 검색 */}
-              <div className="relative flex-1 min-w-[160px]">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-3 pointer-events-none" aria-hidden />
-                <input
-                  type="text"
-                  placeholder="문제명, BOJ 번호, 태그 검색..."
-                  value={filters.search}
-                  onChange={(e) => handleFilterChange('search', e.target.value)}
-                  className="w-full h-[34px] pl-8 pr-3 rounded-btn border border-border bg-input-bg text-text text-xs font-body outline-none transition-[border-color] duration-150 placeholder:text-text-3 focus:border-primary"
-                />
-              </div>
-
-              {/* 난이도 */}
-              <select
-                value={filters.difficulty}
-                onChange={(e) => handleFilterChange('difficulty', e.target.value)}
-                className="h-[34px] px-2.5 pr-7 rounded-btn border border-border bg-input-bg text-text text-xs font-body outline-none cursor-pointer focus:border-primary appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239C9A95%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_8px_center]"
+        {/* 검색 + 상태 필터 */}
+        <div className="flex items-center gap-3" style={fade(0.06)}>
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none" style={{ color: 'var(--text-3)' }} aria-hidden />
+            <input
+              type="text"
+              placeholder="문제 검색..."
+              value={filters.search}
+              onChange={(e) => handleFilterChange('search', e.target.value)}
+              className="w-full h-[44px] pl-10 pr-4 rounded-xl text-text text-sm font-body outline-none transition-[border-color] duration-150 placeholder:text-text-3 focus:border-primary"
+              style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
+            />
+          </div>
+          <div className="flex items-center shrink-0">
+            {STATUS_TABS.map((tab) => (
+              <button
+                key={tab.value}
+                type="button"
+                onClick={() => handleFilterChange('status', tab.value)}
+                className="px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors"
+                style={
+                  filters.status === tab.value
+                    ? { backgroundColor: 'var(--bg-card)', color: 'var(--primary)', border: '1px solid var(--border)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }
+                    : { color: 'var(--text-3)' }
+                }
               >
-                <option value="">전체</option>
-                {DIFFICULTIES.map((d) => (
-                  <option key={d} value={d}>{DIFFICULTY_LABELS[d]}</option>
-                ))}
-              </select>
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
-              {/* 주차 */}
-              <select
-                value={filters.weekNumber}
-                onChange={(e) => handleFilterChange('weekNumber', e.target.value)}
-                className="h-[34px] px-2.5 pr-7 rounded-btn border border-border bg-input-bg text-text text-xs font-body outline-none cursor-pointer focus:border-primary appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239C9A95%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_8px_center]"
+        {/* 난이도 필터 pills */}
+        <div className="flex items-center gap-2 flex-wrap" style={fade(0.1)}>
+          <button
+            type="button"
+            onClick={() => handleFilterChange('difficulty', '')}
+            className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[12px] font-medium transition-all hover:shadow-sm hover:brightness-95 hover:scale-105"
+            style={
+              !filters.difficulty
+                ? { backgroundColor: 'var(--primary)', color: '#fff' }
+                : { backgroundColor: 'var(--bg-card)', color: 'var(--text-2)', border: '1px solid var(--border)' }
+            }
+          >
+            전체
+          </button>
+          {DIFFICULTIES.map((d) => {
+            const diffKey = d.toLowerCase();
+            const isActive = filters.difficulty === d;
+            return (
+              <button
+                key={d}
+                type="button"
+                onClick={() => handleFilterChange('difficulty', d)}
+                className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[12px] font-medium transition-all hover:shadow-sm hover:brightness-95 hover:scale-105"
+                style={
+                  isActive
+                    ? { backgroundColor: 'var(--primary)', color: '#fff' }
+                    : DIFF_BADGE_STYLE[diffKey] ?? { backgroundColor: 'var(--bg-card)', color: 'var(--text-2)' }
+                }
               >
-                <option value="">전체</option>
-                {weekNumbers.map((w) => (
-                  <option key={w} value={w}>{w}</option>
-                ))}
-              </select>
-
-              {/* 상태 */}
-              <select
-                value={filters.status}
-                onChange={(e) => handleFilterChange('status', e.target.value)}
-                className="h-[34px] px-2.5 pr-7 rounded-btn border border-border bg-input-bg text-text text-xs font-body outline-none cursor-pointer focus:border-primary appearance-none bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239C9A95%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_8px_center]"
-              >
-                <option value="">전체</option>
-                {PROBLEM_STATUSES.map((s) => (
-                  <option key={s} value={s}>{PROBLEM_STATUS_LABELS[s]}</option>
-                ))}
-              </select>
-
-              {/* 초기화 */}
-              {hasActiveFilters && (
-                <Button variant="ghost" size="sm" onClick={handleResetFilters}>
-                  초기화
-                </Button>
-              )}
-            </div>
-          </Card>
-        )}
+                <span className="h-1.5 w-1.5 rounded-full" style={isActive ? { backgroundColor: '#fff' } : (DIFF_DOT_STYLE[diffKey] ?? {})} aria-hidden />
+                {DIFFICULTY_LABELS[d]}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[12px] font-medium transition-all opacity-50 cursor-not-allowed"
+            style={DIFF_BADGE_STYLE.ruby ?? { backgroundColor: 'var(--bg-card)', color: 'var(--text-2)' }}
+            disabled
+          >
+            <span className="h-1.5 w-1.5 rounded-full" style={DIFF_DOT_STYLE.ruby ?? {}} aria-hidden />
+            Ruby
+          </button>
+        </div>
 
         {/* 에러 */}
         {error && (
@@ -248,9 +294,17 @@ export default function ProblemsPage(): ReactNode {
 
         {/* 로딩 스켈레톤 */}
         {isLoading && (
-          <Card className="p-4">
-            <SkeletonTable rows={5} />
-          </Card>
+          <div className="rounded-xl border border-border overflow-hidden" style={{ backgroundColor: 'var(--bg-card)' }}>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4 px-5 py-4 border-b border-border last:border-b-0 animate-pulse">
+                <div className="h-10 w-10 rounded-full" style={{ backgroundColor: 'var(--bg-alt)' }} />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-1/3 rounded" style={{ backgroundColor: 'var(--bg-alt)' }} />
+                  <div className="h-3 w-1/4 rounded" style={{ backgroundColor: 'var(--bg-alt)' }} />
+                </div>
+              </div>
+            ))}
+          </div>
         )}
 
         {/* 빈 상태 */}
@@ -268,163 +322,115 @@ export default function ProblemsPage(): ReactNode {
             icon={Search}
             title="검색 결과가 없습니다"
             description="필터 조건을 변경해 보세요."
-            action={{ label: '필터 초기화', onClick: handleResetFilters }}
+            action={{ label: '필터 초기화', onClick: () => setFilters(INITIAL_FILTERS) }}
             size="sm"
           />
         )}
 
-        {/* 문제 목록 테이블 */}
+        {/* 문제 목록 */}
         {!isLoading && filteredProblems.length > 0 && (
-          <>
-            <Card className="p-0 overflow-hidden">
-              {/* 헤더 행 (md 이상에서만 표시) */}
-              <div
-                className="hidden md:grid items-center gap-x-2 px-4 py-2.5 border-b border-border font-mono text-[10px] uppercase tracking-wider text-text-3"
-                style={{ gridTemplateColumns: '64px 1fr 80px 100px 72px' }}
-              >
-                <span>주차</span>
-                <span>문제</span>
-                <span>난이도</span>
-                <span>마감</span>
-                <span>상태</span>
-              </div>
+          <div className="space-y-2" style={fade(0.14)}>
+            {filteredProblems.map((problem) => {
+              const dday = getDdayDisplay(problem.deadline, problem.status);
+              const isSolved = solvedIds.has(problem.id);
 
-              {/* 데이터 행 */}
-              {paginatedProblems.map((problem) => {
-                const deadlineDate = problem.deadline ? new Date(problem.deadline) : null;
-                const isExpired = deadlineDate ? deadlineDate < new Date() : true;
-                const isSolved = solvedIds.has(problem.id);
-
-                return (
-                  <button
-                    key={problem.id}
-                    type="button"
-                    onClick={() => handleProblemClick(problem.id)}
-                    aria-label={`${problem.title} 문제 보기`}
-                    className="w-full text-left border-b border-border last:border-b-0 hover:bg-primary-soft transition-colors block md:grid md:items-center md:gap-x-2 px-4 py-3"
-                    style={{ gridTemplateColumns: '64px 1fr 80px 100px 72px' }}
+              return (
+                <button
+                  key={problem.id}
+                  type="button"
+                  onClick={() => handleProblemClick(problem.id)}
+                  aria-label={`${problem.title} 문제 보기`}
+                  className="group flex items-center gap-4 w-full px-5 py-4 rounded-xl border border-border transition-colors text-left bg-bg-card hover:bg-bg-alt"
+                >
+                  {/* BOJ 아이콘 */}
+                  <div
+                    className="flex items-center justify-center shrink-0 h-10 w-10 rounded-lg"
+                    style={{ backgroundColor: 'var(--bg-alt)' }}
                   >
-                    {/* 모바일 카드 뷰 */}
-                    <div className="md:hidden space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="min-w-0 flex items-center gap-2 flex-1">
-                          <p className="text-[13px] font-medium text-text truncate">
-                            {problem.title}
-                          </p>
-                          {isSolved && (
-                            <span className="flex items-center justify-center shrink-0 w-4 h-4 rounded-full bg-success-soft">
-                              <Check className="w-2.5 h-2.5 text-success" />
-                            </span>
-                          )}
-                        </div>
-                        <Badge variant={problem.status === 'ACTIVE' ? 'success' : 'muted'}>
-                          {problem.status === 'ACTIVE' ? '진행 중' : problem.status === 'DRAFT' ? '초안' : '종료'}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono text-[11px] text-text-3">{problem.weekNumber}</span>
-                        {problem.difficulty && (
-                          <DifficultyBadge difficulty={problem.difficulty as Difficulty} level={problem.level} />
-                        )}
-                        {deadlineDate && (
-                          <TimerBadge deadline={deadlineDate} />
-                        )}
-                      </div>
-                    </div>
-
-                    {/* 데스크탑 테이블 행 (md 이상) */}
-                    <span className="hidden md:block font-mono text-[11px] text-text-3 truncate">
-                      {problem.weekNumber}
+                    <span className="text-[10px] font-bold" style={{ color: 'var(--text-3)' }}>
+                      {problem.sourcePlatform ?? 'BOJ'}
                     </span>
-                    <div className="hidden md:flex min-w-0 items-center gap-2">
-                      <p className="text-[13px] font-medium text-text truncate">
+                  </div>
+
+                  {/* 문제 정보 */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-[14px] font-semibold text-text truncate transition-colors group-hover:text-primary">
                         {problem.title}
                       </p>
                       {isSolved && (
-                        <span className="flex items-center justify-center shrink-0 w-4 h-4 rounded-full bg-success-soft">
-                          <Check className="w-2.5 h-2.5 text-success" />
+                        <span
+                          className="flex items-center justify-center shrink-0 w-4 h-4 rounded-full"
+                          style={{ backgroundColor: 'var(--success-soft)' }}
+                        >
+                          <Check className="w-2.5 h-2.5" style={{ color: 'var(--success)' }} />
                         </span>
                       )}
                     </div>
-                    <span className="hidden md:block">
-                      {problem.difficulty ? (
-                        <DifficultyBadge difficulty={problem.difficulty as Difficulty} level={problem.level} />
-                      ) : (
-                        <span className="font-mono text-[10px] text-text-3">--</span>
-                      )}
-                    </span>
-                    <div className="hidden md:block">
-                      {deadlineDate && !isExpired && problem.status === 'ACTIVE' ? (
-                        <TimerBadge deadline={deadlineDate} />
-                      ) : deadlineDate && isExpired ? (
-                        <TimerBadge deadline={deadlineDate} />
-                      ) : (
-                        <span className="font-mono text-[10px] text-text-3">--</span>
-                      )}
-                    </div>
-                    <span className="hidden md:block">
-                      <Badge variant={problem.status === 'ACTIVE' ? 'success' : 'muted'}>
-                        {problem.status === 'ACTIVE' ? '진행 중' : problem.status === 'DRAFT' ? '초안' : '종료'}
-                      </Badge>
-                    </span>
-                  </button>
-                );
-              })}
-            </Card>
-
-            {/* 페이지네이션 */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-1.5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                </Button>
-
-                {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
-                  .reduce<(number | 'ellipsis')[]>((acc, p, idx, arr) => {
-                    if (idx > 0 && p - (arr[idx - 1] as number) > 1) {
-                      acc.push('ellipsis');
-                    }
-                    acc.push(p);
-                    return acc;
-                  }, [])
-                  .map((item, i) =>
-                    item === 'ellipsis' ? (
-                      <span key={`e-${i}`} className="px-1 text-text-3 text-xs">...</span>
-                    ) : (
-                      <button
-                        key={item}
-                        type="button"
-                        onClick={() => setPage(item)}
-                        className={`flex h-8 w-8 items-center justify-center rounded-btn text-xs font-medium transition-colors ${
-                          item === page
-                            ? 'bg-primary text-white'
-                            : 'text-text-2 border border-border hover:bg-bg-alt'
-                        }`}
+                    <div className="flex items-center gap-2 mt-1">
+                      {problem.difficulty && (() => {
+                        const diffKey = (problem.difficulty as string).toLowerCase();
+                        const dotStyle = DIFF_DOT_STYLE[diffKey] ?? { backgroundColor: 'var(--text-3)' };
+                        const badgeStyle = DIFF_BADGE_STYLE[diffKey] ?? { backgroundColor: 'var(--bg-alt)', color: 'var(--text-2)' };
+                        const label = `${DIFFICULTY_LABELS[problem.difficulty as Difficulty] ?? problem.difficulty} ${problem.level ?? ''}`.trim();
+                        return (
+                          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium" style={badgeStyle}>
+                            <span className="h-1.5 w-1.5 rounded-full" style={dotStyle} aria-hidden />
+                            {label}
+                          </span>
+                        );
+                      })()}
+                      <span
+                        className="inline-flex items-center gap-1 rounded-badge px-2 py-0.5 text-[11px] font-medium"
+                        style={
+                          problem.status === 'ACTIVE'
+                            ? { backgroundColor: 'var(--success-soft)', color: 'var(--success)' }
+                            : { backgroundColor: 'var(--bg-alt)', color: 'var(--text-3)' }
+                        }
                       >
-                        {item}
-                      </button>
-                    ),
-                  )}
+                        {problem.status === 'ACTIVE' && (
+                          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--success)' }} aria-hidden />
+                        )}
+                        {problem.status === 'ACTIVE' ? '진행 중' : '종료'}
+                      </span>
+                      <span className="text-[11px] font-medium" style={{ color: 'var(--text-3)' }}>
+                        {problem.weekNumber}
+                      </span>
+                    </div>
+                  </div>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                >
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            )}
-          </>
+                  {/* D-day */}
+                  {dday.label && (
+                    <span className="shrink-0 text-[13px] font-bold" style={{ color: dday.color }}>
+                      {dday.label}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         )}
       </div>
+
+      {/* 플로팅 문제 추가 버튼 + 모달 */}
+      {isAdmin && (
+        <>
+          <button
+            type="button"
+            onClick={() => setShowAddModal(true)}
+            className="fixed bottom-6 right-6 inline-flex items-center gap-2 px-5 py-3 rounded-full text-white text-[14px] font-semibold shadow-lg transition-transform hover:scale-105 z-50"
+            style={{ backgroundColor: 'var(--primary)' }}
+          >
+            <Plus className="h-4 w-4" />
+            문제 추가
+          </button>
+          <AddProblemModal
+            open={showAddModal}
+            onClose={() => setShowAddModal(false)}
+            onAdd={handleAddProblem}
+          />
+        </>
+      )}
     </AppLayout>
   );
 }

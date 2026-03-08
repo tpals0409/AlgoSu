@@ -18,11 +18,11 @@ export const DIFFICULTIES: readonly Difficulty[] = [
 ] as const;
 
 export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
-  BRONZE: '브론즈',
-  SILVER: '실버',
-  GOLD: '골드',
-  PLATINUM: '플래티넘',
-  DIAMOND: '다이아',
+  BRONZE: 'Bronze',
+  SILVER: 'Silver',
+  GOLD: 'Gold',
+  PLATINUM: 'Platinum',
+  DIAMOND: 'Diamond',
 };
 
 export const DIFFICULTY_COLORS: Record<Difficulty, string> = {

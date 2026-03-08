@@ -1,5 +1,5 @@
 /**
- * @file 문제 상세 + 코드 제출 통합 페이지
+ * @file 문제 상세 + 코드 제출 통합 페이지 (Figma 디자인 반영)
  * @domain problem, submission
  * @layer page
  * @related problemApi, submissionApi, draftApi, CodeEditor, useAutoSave
@@ -7,31 +7,46 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, use, type ReactNode } from 'react';
+import React, { useState, useEffect, useCallback, use, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  ChevronLeft,
-  Pencil,
-  Trash2,
+  ArrowLeft,
   ExternalLink,
+  Trash2,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
-import { TimerBadge } from '@/components/ui/TimerBadge';
-import { LangBadge } from '@/components/ui/LangBadge';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { CodeEditor } from '@/components/submission/CodeEditor';
 import { useAutoSave } from '@/hooks/useAutoSave';
-import { problemApi, submissionApi, draftApi, type Problem } from '@/lib/api';
+import { problemApi, submissionApi, draftApi, type Problem, type Submission } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudy } from '@/contexts/StudyContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
-import type { Difficulty } from '@/lib/constants';
+import { DIFFICULTY_LABELS, SAGA_STEP_CONFIG } from '@/lib/constants';
+import type { Difficulty, SagaStep } from '@/lib/constants';
+
+// ─── DIFFICULTY STYLES (CSS 변수 기반, 대시보드 패턴 통일) ────
+
+const DIFF_DOT_STYLE: Record<string, React.CSSProperties> = {
+  bronze:   { backgroundColor: 'var(--diff-bronze-color)' },
+  silver:   { backgroundColor: 'var(--diff-silver-color)' },
+  gold:     { backgroundColor: 'var(--diff-gold-color)' },
+  platinum: { backgroundColor: 'var(--diff-platinum-color)' },
+  diamond:  { backgroundColor: 'var(--diff-diamond-color)' },
+  ruby:     { backgroundColor: 'var(--diff-ruby-color)' },
+};
+
+const DIFF_BADGE_STYLE: Record<string, React.CSSProperties> = {
+  bronze:   { backgroundColor: 'var(--diff-bronze-bg)',   color: 'var(--diff-bronze-color)' },
+  silver:   { backgroundColor: 'var(--diff-silver-bg)',   color: 'var(--diff-silver-color)' },
+  gold:     { backgroundColor: 'var(--diff-gold-bg)',     color: 'var(--diff-gold-color)' },
+  platinum: { backgroundColor: 'var(--diff-platinum-bg)', color: 'var(--diff-platinum-color)' },
+  diamond:  { backgroundColor: 'var(--diff-diamond-bg)',  color: 'var(--diff-diamond-color)' },
+  ruby:     { backgroundColor: 'var(--diff-ruby-bg)',     color: 'var(--diff-ruby-color)' },
+};
 
 // ─── TYPES ────────────────────────────────
 
@@ -61,7 +76,6 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
   const [problem, setProblem] = useState<Problem | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   // 코드 제출 관련
   const [code, setCode] = useState<string>('');
@@ -69,6 +83,21 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [autoSaveStatus, setAutoSaveStatus] = useState<AutoSaveStatus>('idle');
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setMounted(true), 50);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const fade = (delay = 0): React.CSSProperties => ({
+    opacity: mounted ? 1 : 0,
+    transform: mounted ? 'translateY(0)' : 'translateY(16px)',
+    transition: `opacity .5s cubic-bezier(.16,1,.3,1) ${delay}s, transform .5s cubic-bezier(.16,1,.3,1) ${delay}s`,
+  });
 
   // ─── EFFECTS ────────────────────────────
 
@@ -80,6 +109,44 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
       setIsLoading(true);
       setError(null);
       try {
+        // ── DEV MOCK ──────────────────────────────────────────────
+        if (process.env.NEXT_PUBLIC_DEV_MOCK === 'true') {
+          const now = new Date();
+          const d = (days: number) => new Date(now.getTime() + days * 86400000).toISOString();
+          const mockProblems: Record<string, Problem> = {
+            p1: { id: 'p1', title: '두 수의 합', difficulty: 'SILVER', level: 2, status: 'ACTIVE', deadline: d(2), description: '정수 n개로 이루어진 수열에서 ai + aj = x를 만족하는 쌍의 수를 구하라.', weekNumber: '3월1주차', sourceUrl: 'https://boj.kr/1000', sourcePlatform: 'BOJ', allowedLanguages: ['python', 'java'], tags: ['해시', '배열'] },
+            p2: { id: 'p2', title: '최단 경로', difficulty: 'GOLD', level: 4, status: 'ACTIVE', deadline: d(3), description: '방향 그래프가 주어지면 주어진 시작점에서 다른 모든 정점으로의 최단 경로를 구하는 프로그램을 작성하시오.', weekNumber: '3월1주차', sourceUrl: 'https://boj.kr/1753', sourcePlatform: 'BOJ', allowedLanguages: ['python', 'cpp'], tags: ['다익스트라', '그래프'] },
+            p3: { id: 'p3', title: '이분 탐색', difficulty: 'SILVER', level: 4, status: 'CLOSED', deadline: d(-5), description: 'N개의 정수 A[1], A[2], ..., A[N]이 주어져 있을 때, 이 안에 X라는 정수가 존재하는지 알아내는 프로그램을 작성하시오.', weekNumber: '2월4주차', sourceUrl: 'https://boj.kr/1920', sourcePlatform: 'BOJ', allowedLanguages: ['python'], tags: ['이분탐색'] },
+            p4: { id: 'p4', title: 'DP 입문', difficulty: 'BRONZE', level: 1, status: 'CLOSED', deadline: d(-10), description: '피보나치 함수에서 0과 1이 각각 몇 번 출력되는지 구하시오.', weekNumber: '2월3주차', sourceUrl: 'https://boj.kr/1003', sourcePlatform: 'BOJ', allowedLanguages: ['python', 'java'], tags: ['DP'] },
+          };
+          if (!cancelled) {
+            const mockProblem = mockProblems[problemId] ?? mockProblems.p1;
+            setProblem(mockProblem);
+            // mock 제출 이력
+            const mockSubmissions: Record<string, Submission[]> = {
+              p1: [
+                { id: 's1', problemId: 'p1', problemTitle: '두 수의 합', language: 'python', sagaStep: 'DONE', aiScore: 85, createdAt: d(-0.5) },
+                { id: 's2', problemId: 'p1', problemTitle: '두 수의 합', language: 'python', sagaStep: 'FAILED', aiScore: null, createdAt: d(-1) },
+              ],
+              p2: [
+                { id: 's3', problemId: 'p2', problemTitle: '최단 경로', language: 'cpp', sagaStep: 'AI_QUEUED', aiScore: null, createdAt: d(-0.2) },
+              ],
+              p3: [
+                { id: 's4', problemId: 'p3', problemTitle: '이분 탐색', language: 'python', sagaStep: 'DONE', aiScore: 92, createdAt: d(-6) },
+                { id: 's5', problemId: 'p3', problemTitle: '이분 탐색', language: 'python', sagaStep: 'DONE', aiScore: 78, createdAt: d(-7) },
+                { id: 's6', problemId: 'p3', problemTitle: '이분 탐색', language: 'python', sagaStep: 'DONE', aiScore: 65, createdAt: d(-8) },
+              ],
+              p4: [
+                { id: 's7', problemId: 'p4', problemTitle: 'DP 입문', language: 'java', sagaStep: 'DONE', aiScore: 100, createdAt: d(-11) },
+              ],
+            };
+            setSubmissions(mockSubmissions[problemId] ?? []);
+            setIsLoading(false);
+          }
+          return;
+        }
+        // ────────────────────────────────────────────────────────────
+
         const [problemData, draftData] = await Promise.all([
           problemApi.findById(problemId),
           draftApi.find(problemId).catch(() => null),
@@ -138,21 +205,6 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
 
   // ─── HANDLERS ─────────────────────────────
 
-  const handleDelete = async (): Promise<void> => {
-    const confirmed = window.confirm(
-      '정말 이 문제를 삭제하시겠습니까? 관련 제출 기록도 함께 삭제됩니다.',
-    );
-    if (!confirmed) return;
-
-    setIsDeleting(true);
-    try {
-      await problemApi.delete(problemId);
-      router.replace('/problems');
-    } catch {
-      setIsDeleting(false);
-    }
-  };
-
   const handleCodeChange = useCallback((newCode: string): void => {
     setCode(newCode);
     setAutoSaveStatus('saving');
@@ -191,6 +243,20 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
     }
   }, [problem, language, code, problemId, clearLocal, router, githubConnected]);
 
+  const handleDelete = useCallback(async (): Promise<void> => {
+    setIsDeleting(true);
+    try {
+      if (process.env.NEXT_PUBLIC_DEV_MOCK !== 'true') {
+        await problemApi.remove(problemId);
+      }
+      router.push('/problems');
+    } catch (err: unknown) {
+      setError((err as Error).message ?? '삭제 중 오류가 발생했습니다.');
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  }, [problemId, router]);
+
   // ─── LOADING ────────────────────────────
 
   if (isLoading) {
@@ -211,7 +277,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
         <div className="space-y-4">
           <Alert variant="error">{error ?? '문제를 찾을 수 없습니다.'}</Alert>
           <Button variant="ghost" size="sm" onClick={() => router.push('/problems')}>
-            <ChevronLeft />
+            <ArrowLeft />
             문제 목록
           </Button>
         </div>
@@ -219,168 +285,259 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
     );
   }
 
-  const deadlineDate = problem.deadline ? new Date(problem.deadline) : null;
   const isActive = problem.status === 'ACTIVE';
+  const diffKey = problem.difficulty ? (problem.difficulty as string).toLowerCase() : '';
+  const diffLabel = problem.difficulty
+    ? `${DIFFICULTY_LABELS[problem.difficulty as Difficulty] ?? problem.difficulty} ${problem.level ?? ''}`.trim()
+    : '';
 
-  // ─── 문제 정보 패널 (좌측 / 모바일 상단) ───
-  const problemPanel = (
-    <div className="space-y-5">
-      {/* 뒤로가기 + 관리 */}
-      <div className="flex items-center justify-between">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push('/problems')}
-          className="-ml-1"
-        >
-          <ChevronLeft />
-          문제 목록
-        </Button>
-        {isAdmin && (
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push(`/problems/${problemId}/edit`)}
-            >
-              <Pencil />
-              수정
-            </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              disabled={isDeleting}
-              onClick={() => void handleDelete()}
-            >
-              <Trash2 />
-              삭제
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {/* 문제 정보 카드 */}
-      <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-center gap-2 mb-2">
-            <Badge variant="info">{problem.weekNumber}</Badge>
-            {problem.difficulty && (
-              <DifficultyBadge difficulty={problem.difficulty as Difficulty} level={problem.level} />
-            )}
-            <Badge variant={isActive ? 'success' : 'muted'}>
-              {isActive ? '진행 중' : '종료'}
-            </Badge>
-            {deadlineDate && <TimerBadge deadline={deadlineDate} />}
-          </div>
-          <CardTitle className="text-xl">{problem.title}</CardTitle>
-        </CardHeader>
-
-        <CardContent className="space-y-4">
-          {problem.description && (
-            <p className="text-sm leading-relaxed text-text-2 whitespace-pre-wrap">
-              {problem.description}
-            </p>
-          )}
-
-          {problem.tags && problem.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {problem.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="rounded-full bg-bg-alt px-2.5 py-0.5 text-[10px] font-medium text-text-2"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {problem.allowedLanguages && problem.allowedLanguages.length > 0 && (
-            <div>
-              <span className="block text-[11px] font-medium text-text-3 mb-1.5">허용 언어</span>
-              <div className="flex flex-wrap gap-1.5">
-                {problem.allowedLanguages.map((lang) => (
-                  <LangBadge key={lang} language={lang} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {problem.sourceUrl && (
-            <a
-              href={problem.sourceUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary transition-colors hover:underline"
-            >
-              <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-              {problem.sourcePlatform ?? '출처'} 에서 보기
-            </a>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* GitHub 미연동 경고 */}
-      {isActive && !githubConnected && (
-        <Alert variant="warning" title="GitHub 연동 필요">
-          코드를 제출하려면 먼저 GitHub 계정을 연동해주세요.{' '}
-          <Button
-            variant="link"
-            size="sm"
-            onClick={() => router.push('/github-link')}
-            className="inline h-auto p-0 text-inherit underline font-medium"
-          >
-            GitHub 연동하기
-          </Button>
-        </Alert>
-      )}
-
-      {/* 제출 에러 */}
-      {submitError && (
-        <Alert variant="error" onClose={() => setSubmitError(null)}>
-          {submitError}
-        </Alert>
-      )}
-
-      {/* 모바일: 마감 안내 */}
-      {!isActive && (
-        <Alert variant="warning" title="제출 마감">
-          이 문제는 마감되었습니다. 더 이상 제출할 수 없습니다.
-        </Alert>
-      )}
-    </div>
-  );
-
-  // ─── 에디터 패널 (우측 / 모바일 하단) ───
-  const editorPanel = isActive ? (
-    <CodeEditor
-      code={code}
-      language={language}
-      onCodeChange={handleCodeChange}
-      onLanguageChange={handleLanguageChange}
-      onSubmit={handleSubmit}
-      isSubmitting={isSubmitting}
-      autoSaveStatus={autoSaveStatus}
-      deadline={problem.deadline}
-      editorHeight="calc(100vh - 16rem)"
-    />
-  ) : null;
+  // 마감일 포맷
+  const deadlineFormatted = problem.deadline
+    ? (() => {
+        const d = new Date(problem.deadline);
+        const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+        return `${d.getMonth() + 1}월 ${d.getDate()}일 (${dayNames[d.getDay()]})`;
+      })()
+    : '-';
 
   return (
-    <AppLayout className="lg:!max-w-none lg:!px-4">
-      {/* 데스크톱(lg+): 좌우 스플릿뷰 / 모바일: 세로 스택 */}
-      <div className="lg:flex lg:gap-5 lg:items-start">
-        {/* 좌측: 문제 정보 (데스크톱에서 고정 폭, 스크롤) */}
-        <div className="lg:w-[420px] lg:shrink-0 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pr-1">
-          {problemPanel}
+    <AppLayout>
+      <div className="space-y-4">
+        {/* ─── 헤더: ← + 제목 + 삭제 ─── */}
+        <div className="flex items-center gap-3" style={fade(0)}>
+          <button
+            type="button"
+            onClick={() => router.push('/problems')}
+            className="flex items-center justify-center shrink-0 h-9 w-9 rounded-full transition-colors hover:bg-bg-alt"
+          >
+            <ArrowLeft className="h-5 w-5" style={{ color: 'var(--text)' }} />
+          </button>
+          <h1 className="flex-1 text-[22px] font-bold tracking-tight text-text">{problem.title}</h1>
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => setShowDeleteConfirm(true)}
+              className="flex items-center justify-center shrink-0 h-9 w-9 rounded-full transition-colors hover:bg-bg-alt"
+              aria-label="문제 삭제"
+            >
+              <Trash2 className="h-4 w-4" style={{ color: 'var(--text-3)' }} />
+            </button>
+          )}
         </div>
 
-        {/* 우측: 코드 에디터 (데스크톱에서 나머지 공간) */}
-        {editorPanel && (
-          <div className="flex-1 min-w-0 mt-5 lg:mt-0">
-            {editorPanel}
+        {/* 삭제 확인 */}
+        {showDeleteConfirm && (
+          <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: 'var(--error)', backgroundColor: 'var(--error-soft)' }}>
+            <p className="text-[13px] font-medium" style={{ color: 'var(--error)' }}>
+              이 문제를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="px-3 py-1.5 rounded-lg text-[13px] font-medium text-white transition-opacity disabled:opacity-50"
+                style={{ backgroundColor: 'var(--error)' }}
+              >
+                {isDeleting ? '삭제 중...' : '삭제'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt"
+                style={{ color: 'var(--text-2)' }}
+              >
+                취소
+              </button>
+            </div>
           </div>
         )}
+
+        {/* ─── 2열 레이아웃 (모바일: 1열 스택 / 데스크톱: 좌+우) ─── */}
+        <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-start" style={fade(0.1)}>
+
+          {/* ─── 좌측: 문제 정보 + 코드 제출 ─── */}
+          <div className="flex-1 min-w-0 space-y-4">
+
+            {/* 문제 정보 카드 */}
+            <div className="rounded-xl border border-border p-5 space-y-4 bg-bg-card">
+              {/* 뱃지 줄 */}
+              <div className="flex flex-wrap items-center gap-2">
+                {diffLabel && (
+                  <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium" style={DIFF_BADGE_STYLE[diffKey] ?? {}}>
+                    <span className="h-1.5 w-1.5 rounded-full" style={DIFF_DOT_STYLE[diffKey] ?? {}} aria-hidden />
+                    {diffLabel}
+                  </span>
+                )}
+                <span
+                  className="inline-flex items-center gap-1 rounded-badge px-2 py-0.5 text-[11px] font-medium"
+                  style={
+                    isActive
+                      ? { backgroundColor: 'var(--success-soft)', color: 'var(--success)' }
+                      : { backgroundColor: 'var(--bg-alt)', color: 'var(--text-3)' }
+                  }
+                >
+                  {isActive && <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--success)' }} aria-hidden />}
+                  {isActive ? '진행 중' : '종료'}
+                </span>
+                {problem.tags?.map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-full px-2 py-0.5 text-[11px] font-medium"
+                    style={{ backgroundColor: 'var(--bg-alt)', color: 'var(--text-2)' }}
+                  >
+                    {tag}
+                  </span>
+                ))}
+                <span className="text-[11px] font-medium" style={{ color: 'var(--text-3)' }}>
+                  {problem.weekNumber}
+                </span>
+              </div>
+
+              {/* 설명 */}
+              {problem.description && (
+                <p className="text-[13px] leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--text-2)' }}>
+                  {problem.description}
+                </p>
+              )}
+
+              {/* 출처 링크 */}
+              {problem.sourceUrl && (
+                <a
+                  href={problem.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-[12px] font-medium transition-colors hover:underline"
+                  style={{ color: 'var(--primary)' }}
+                >
+                  <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                  {problem.sourcePlatform ?? 'BOJ'}에서 문제 보기
+                </a>
+              )}
+            </div>
+
+            {/* 코드 제출 (Monaco 에디터) */}
+            {isActive && (
+              <div className="space-y-3">
+                {/* 제출 에러 */}
+                {submitError && (
+                  <Alert variant="error" onClose={() => setSubmitError(null)}>
+                    {submitError}
+                  </Alert>
+                )}
+
+                {/* GitHub 미연동 경고 */}
+                {!githubConnected && (
+                  <Alert variant="warning" title="GitHub 연동 필요">
+                    코드를 제출하려면 먼저 GitHub 계정을 연동해주세요.{' '}
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => router.push('/github-link')}
+                      className="inline h-auto p-0 text-inherit underline font-medium"
+                    >
+                      GitHub 연동하기
+                    </Button>
+                  </Alert>
+                )}
+
+                <CodeEditor
+                  code={code}
+                  language={language}
+                  onCodeChange={handleCodeChange}
+                  onLanguageChange={handleLanguageChange}
+                  onSubmit={handleSubmit}
+                  isSubmitting={isSubmitting}
+                  autoSaveStatus={autoSaveStatus}
+                  deadline={problem.deadline}
+                  editorHeight="420px"
+                />
+              </div>
+            )}
+
+            {/* 마감 안내 */}
+            {!isActive && (
+              <Alert variant="warning" title="제출 마감">
+                이 문제는 마감되었습니다. 더 이상 제출할 수 없습니다.
+              </Alert>
+            )}
+          </div>
+
+          {/* ─── 우측 사이드바 (모바일: 전체폭 / 데스크톱: 260px) ─── */}
+          <div className="w-full lg:w-[260px] shrink-0 space-y-4">
+
+            {/* 마감 정보 */}
+            <div className="rounded-xl border border-border p-5 space-y-3 bg-bg-card">
+              <h3 className="text-[14px] font-bold text-text">마감 정보</h3>
+              <div className="flex items-center justify-between">
+                <span className="text-[13px]" style={{ color: 'var(--text-3)' }}>마감일</span>
+                <span className="text-[13px] font-medium text-text">{deadlineFormatted}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[13px]" style={{ color: 'var(--text-3)' }}>주차</span>
+                <span className="text-[13px] font-medium text-text">{problem.weekNumber}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[13px]" style={{ color: 'var(--text-3)' }}>플랫폼</span>
+                <span className="text-[13px] font-medium text-text">{problem.sourcePlatform ?? '-'}</span>
+              </div>
+            </div>
+
+            {/* 제출 현황 */}
+            <div className="rounded-xl border border-border p-5 bg-bg-card">
+              <h3 className="text-[14px] font-bold text-text mb-3">제출 현황</h3>
+              {submissions.length === 0 ? (
+                <p className="text-[13px]" style={{ color: 'var(--text-3)' }}>
+                  아직 제출 데이터가 없습니다.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {submissions.map((s) => {
+                    const stepCfg = SAGA_STEP_CONFIG[s.sagaStep as SagaStep];
+                    const time = new Date(s.createdAt);
+                    const timeStr = `${time.getMonth() + 1}/${time.getDate()} ${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}`;
+                    const variantColors: Record<string, { bg: string; color: string }> = {
+                      success: { bg: 'var(--success-soft)', color: 'var(--success)' },
+                      warning: { bg: 'var(--warning-soft)', color: 'var(--warning)' },
+                      error:   { bg: 'var(--error-soft)',   color: 'var(--error)' },
+                      info:    { bg: 'var(--primary-soft)',  color: 'var(--primary)' },
+                      muted:   { bg: 'var(--bg-alt)',       color: 'var(--text-3)' },
+                    };
+                    const vc = variantColors[stepCfg?.variant ?? 'muted'];
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => router.push(`/submissions/${s.id}/status`)}
+                        className="flex items-center gap-2 w-full rounded-lg p-2 text-left transition-colors hover:bg-bg-alt"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className="inline-flex items-center rounded-badge px-1.5 py-0.5 text-[10px] font-semibold"
+                              style={{ backgroundColor: vc.bg, color: vc.color }}
+                            >
+                              {stepCfg?.label ?? s.sagaStep}
+                            </span>
+                            <span className="text-[10px] font-medium uppercase" style={{ color: 'var(--text-3)' }}>
+                              {s.language}
+                            </span>
+                          </div>
+                          <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-3)' }}>{timeStr}</p>
+                        </div>
+                        {s.aiScore != null && (
+                          <span className="text-[13px] font-bold" style={{ color: s.aiScore >= 80 ? 'var(--success)' : s.aiScore >= 60 ? 'var(--warning)' : 'var(--error)' }}>
+                            {s.aiScore}점
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </AppLayout>
   );

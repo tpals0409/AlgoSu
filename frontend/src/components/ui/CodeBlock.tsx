@@ -110,7 +110,7 @@ export function CodeBlock({
         fontSize: '13px',
         lineHeight: '22px',
         borderRadius: 0,
-        background: isDark ? '#14141A' : '#F7F5F2',
+        background: isDark ? '#14141A' : '#FFFFFF',
       }}
     >
       {code}

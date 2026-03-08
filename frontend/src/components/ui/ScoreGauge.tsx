@@ -16,6 +16,7 @@ interface ScoreGaugeProps {
   readonly score: number;
   readonly size?: number;
   readonly className?: string;
+  readonly label?: string;
 }
 
 function getColor(score: number): string {
@@ -34,6 +35,7 @@ export function ScoreGauge({
   score,
   size = 140,
   className,
+  label,
 }: ScoreGaugeProps): ReactElement {
   const [ref, animScore] = useAnimVal(score, 1200);
   const strokeWidth = 8;
@@ -83,7 +85,7 @@ export function ScoreGauge({
           {Math.round(animScore)}
         </span>
         <span className="mt-[-2px] text-xs font-medium text-text-3">
-          {getLabel(score)}
+          {label ?? getLabel(score)}
         </span>
       </div>
     </div>

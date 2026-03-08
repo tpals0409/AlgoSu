@@ -67,9 +67,19 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
   /**
    * 초기 마운트 시 서버에 프로필 조회하여 인증 상태 확인.
    * httpOnly Cookie가 있으면 서버가 자동 인증, 없으면 401.
+   *
+   * ⚡ DEV MOCK: NEXT_PUBLIC_DEV_MOCK=true 시 실제 API 호출 없이 mock 유저 반환
    */
   useEffect(() => {
     const initAuth = async (): Promise<void> => {
+      // ── DEV MOCK ──────────────────────────────────────────────
+      if (process.env.NEXT_PUBLIC_DEV_MOCK === 'true') {
+        setUser({ id: 'dev-user-001', email: 'dev@algosu.kr', avatarPreset: 'default' });
+        setGithubConnected(true);
+        setIsLoading(false);
+        return;
+      }
+      // ──────────────────────────────────────────────────────────
       try {
         const profile = await authApi.getProfile();
         setUser({
@@ -88,6 +98,7 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
 
     void initAuth();
   }, []);
+
 
   /** OAuth 콜백 후 호출 — 쿠키에 토큰이 이미 있으므로 프로필만 로드 */
   const loginFromCookie = useCallback((): void => {

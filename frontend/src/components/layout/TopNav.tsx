@@ -11,7 +11,7 @@ import type { ReactNode } from 'react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import {
   Sun,
   Moon,
@@ -43,7 +43,6 @@ const NAV_LINKS = [
 // ─── STUDY SELECTOR ──────────────────────────
 
 function StudySelector(): ReactNode {
-  const router = useRouter();
   const { currentStudyId, studies, setCurrentStudy } = useStudy();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -79,8 +78,14 @@ function StudySelector(): ReactNode {
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((prev) => !prev)}
-        className="inline-flex items-center gap-1 rounded-badge bg-primary-soft px-3 py-1.5 text-[11px] font-medium text-text-2 border border-border transition-colors hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="inline-flex items-center gap-1.5 rounded-badge bg-primary-soft px-3 py-1.5 text-[11px] font-medium text-text-2 border border-border transition-colors hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
+        <div
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] text-[9px] font-bold text-white"
+          style={{ background: 'var(--primary)' }}
+        >
+          {currentStudy?.name?.charAt(0) ?? ''}
+        </div>
         <span className="max-w-[80px] truncate">
           {currentStudy?.name ?? '스터디 선택'}
         </span>
@@ -110,21 +115,19 @@ function StudySelector(): ReactNode {
                 setOpen(false);
               }}
             >
+              <div
+                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] text-[9px] font-bold text-white"
+                style={{
+                  background: study.id === currentStudyId
+                    ? 'var(--primary)'
+                    : 'var(--text-3)',
+                }}
+              >
+                {study.name.charAt(0)}
+              </div>
               <span className="truncate">{study.name}</span>
             </button>
           ))}
-          <div className="border-t border-border">
-            <button
-              type="button"
-              className="flex w-full items-center px-3 py-2.5 text-left text-[12px] text-text-2 transition-colors hover:bg-bg-alt"
-              onClick={() => {
-                setOpen(false);
-                router.push('/studies');
-              }}
-            >
-              모든 스터디 보기
-            </button>
-          </div>
         </div>
       )}
     </div>

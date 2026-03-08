@@ -44,7 +44,7 @@ export interface DifficultyBadgeProps
 
 const DifficultyBadge = React.memo(function DifficultyBadge({ className, difficulty, level, showDot = true, showLabel = true, ...props }: DifficultyBadgeProps): React.ReactElement {
   const label = DIFFICULTY_LABELS[difficulty];
-  const tier = level && level > 0 ? ` ${5 - (level - 1) % 5}` : '';
+  const tier = level && level > 0 ? ` ${level}` : '';
   return (
     <span className={cn(difficultyBadgeVariants({ difficulty }), className)} aria-label={`난이도: ${label}${tier}`} {...props}>
       {showDot && <span aria-hidden className={cn('inline-block h-1.5 w-1.5 rounded-full', DIFFICULTY_DOT_CLASSES[difficulty])} />}
