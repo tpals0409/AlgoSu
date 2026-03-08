@@ -164,6 +164,11 @@ export default function AnalysisPage(): ReactNode {
   const [showOptimized, setShowOptimized] = useState(false);
   const [barsAnimated, setBarsAnimated] = useState(false);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollCountRef = useRef(0);
+  const pollStartRef = useRef<number | null>(null);
+  const [pollTimedOut, setPollTimedOut] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const MAX_POLL_COUNT = 60; // 최대 60회 (10분)
 
   const [problemMeta, setProblemMeta] = useState<{ title?: string; difficulty?: string; level?: number; tags?: string[] } | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -227,13 +232,38 @@ export default function AnalysisPage(): ReactNode {
     }
   }, [isAuthenticated, submissionId, currentStudyId, loadData]);
 
-  // 폴링 (pending/delayed 상태)
+  // 폴링 (pending/delayed 상태) — 최대 60회(10분) 제한
   useEffect(() => {
     if (!analysis) return;
     if (analysis.analysisStatus !== 'pending' && analysis.analysisStatus !== 'delayed') return;
-    pollTimerRef.current = setInterval(() => { void loadData(); }, 10_000);
-    return () => { if (pollTimerRef.current) clearInterval(pollTimerRef.current); };
-  }, [analysis, loadData]);
+    if (pollTimedOut) return;
+
+    // 폴링 시작 시점 기록
+    if (!pollStartRef.current) pollStartRef.current = Date.now();
+
+    // 경과 시간 업데이트 타이머
+    const elapsedTimer = setInterval(() => {
+      if (pollStartRef.current) {
+        setElapsedSeconds(Math.floor((Date.now() - pollStartRef.current) / 1000));
+      }
+    }, 1000);
+
+    pollTimerRef.current = setInterval(() => {
+      pollCountRef.current += 1;
+      if (pollCountRef.current >= MAX_POLL_COUNT) {
+        if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+        clearInterval(elapsedTimer);
+        setPollTimedOut(true);
+        return;
+      }
+      void loadData();
+    }, 10_000);
+
+    return () => {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+      clearInterval(elapsedTimer);
+    };
+  }, [analysis, loadData, pollTimedOut]);
 
   useEffect(() => {
     const title = submission?.problemTitle ?? problemMeta?.title;
@@ -267,6 +297,7 @@ export default function AnalysisPage(): ReactNode {
 
   const handleManualRefresh = useCallback(() => {
     if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+    pollCountRef.current = 0;
     void loadData();
   }, [loadData]);
 
@@ -399,13 +430,18 @@ export default function AnalysisPage(): ReactNode {
         )}
 
         {/* ─── PENDING ───────────────────────── */}
-        {!isLoading && analysis && analysis.analysisStatus === 'pending' && (
+        {!isLoading && analysis && analysis.analysisStatus === 'pending' && !pollTimedOut && (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-16 gap-4">
               <LoadingSpinner size="lg" />
               <div className="text-center">
                 <p className="text-sm font-medium text-text">AI 분석 중...</p>
                 <p className="mt-1 text-[11px] text-text-3">분석이 완료되면 자동으로 결과가 표시됩니다.</p>
+                {elapsedSeconds > 0 && (
+                  <p className="mt-1 text-[11px] text-text-3">
+                    경과 시간: {Math.floor(elapsedSeconds / 60)}분 {elapsedSeconds % 60}초
+                  </p>
+                )}
               </div>
               <Button variant="ghost" size="sm" onClick={handleManualRefresh}>새로고침</Button>
             </CardContent>
@@ -413,7 +449,7 @@ export default function AnalysisPage(): ReactNode {
         )}
 
         {/* ─── DELAYED ───────────────────────── */}
-        {!isLoading && analysis && analysis.analysisStatus === 'delayed' && (
+        {!isLoading && analysis && analysis.analysisStatus === 'delayed' && !pollTimedOut && (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-16 gap-4">
               <div className="flex items-center justify-center rounded-full bg-warning-soft p-4">
@@ -422,8 +458,35 @@ export default function AnalysisPage(): ReactNode {
               <div className="text-center">
                 <p className="text-sm font-medium text-text">분석 지연 중</p>
                 <p className="mt-1 text-[11px] text-text-3">AI 분석 서비스가 일시적으로 지연되고 있습니다.</p>
+                {elapsedSeconds > 0 && (
+                  <p className="mt-1 text-[11px] text-text-3">
+                    경과 시간: {Math.floor(elapsedSeconds / 60)}분 {elapsedSeconds % 60}초
+                  </p>
+                )}
               </div>
               <Button variant="ghost" size="sm" onClick={handleManualRefresh}>새로고침</Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ─── POLL TIMEOUT ───────────────────── */}
+        {!isLoading && pollTimedOut && (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-16 gap-4">
+              <div className="flex items-center justify-center rounded-full p-4" style={{ backgroundColor: 'var(--warning-soft)' }}>
+                <Clock className="h-8 w-8" style={{ color: 'var(--warning)' }} aria-hidden />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium text-text">분석이 예상보다 오래 걸리고 있습니다</p>
+                <p className="mt-1 text-[11px] text-text-3">나중에 다시 확인해주세요.</p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => {
+                pollCountRef.current = 0;
+                pollStartRef.current = Date.now();
+                setElapsedSeconds(0);
+                setPollTimedOut(false);
+                void loadData();
+              }}>새로고침</Button>
             </CardContent>
           </Card>
         )}

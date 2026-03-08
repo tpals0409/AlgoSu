@@ -46,6 +46,7 @@ let capturedSSECallback: ((n: Notification) => void) | null = null;
 jest.mock('@/hooks/useNotificationSSE', () => ({
   useNotificationSSE: jest.fn((_enabled: boolean, cb: (n: Notification) => void) => {
     capturedSSECallback = cb;
+    return { sseDisconnected: false };
   }),
 }));
 

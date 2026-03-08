@@ -110,7 +110,7 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
     setToastNotification(notification);
   }, []);
 
-  useNotificationSSE(true, handleSSENotification);
+  const { sseDisconnected } = useNotificationSSE(true, handleSSENotification);
 
   /**
    * 미읽음 수 폴링 (60초마다, SSE fallback) + 초기 로드
@@ -238,9 +238,10 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
             ref={bellRef}
             type="button"
             onClick={handleToggle}
-            aria-label={`알림 ${unreadCount > 0 ? `(${unreadCount}개 미읽음)` : ''}`}
+            aria-label={`알림 ${unreadCount > 0 ? `(${unreadCount}개 미읽음)` : ''}${sseDisconnected ? ' (실시간 연결 끊김)' : ''}`}
             aria-haspopup="true"
             aria-expanded={open}
+            title={sseDisconnected ? '실시간 알림 연결이 끊어졌습니다. 60초마다 갱신됩니다.' : undefined}
             className={cn(
               'flex w-full items-center gap-2.5 rounded-btn px-3 py-2 text-[13px] font-medium transition-all duration-150',
               open
@@ -248,7 +249,16 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
                 : 'text-text-3 hover:bg-bg-alt hover:text-text-2',
             )}
           >
-            <Bell className="h-4 w-4 shrink-0" aria-hidden />
+            <span className="relative shrink-0">
+              <Bell className="h-4 w-4" aria-hidden />
+              {sseDisconnected && (
+                <span
+                  className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full"
+                  style={{ backgroundColor: 'var(--warning)' }}
+                  aria-hidden
+                />
+              )}
+            </span>
             <span className="flex-1 text-left">알림</span>
             {unreadCount > 0 && (
               <span
@@ -263,9 +273,10 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
           <button
             ref={bellRef}
             type="button"
-            aria-label={`알림 ${unreadCount > 0 ? `(${unreadCount}개 미읽음)` : ''}`}
+            aria-label={`알림 ${unreadCount > 0 ? `(${unreadCount}개 미읽음)` : ''}${sseDisconnected ? ' (실시간 연결 끊김)' : ''}`}
             aria-haspopup="true"
             aria-expanded={open}
+            title={sseDisconnected ? '실시간 알림 연결이 끊어졌습니다. 60초마다 갱신됩니다.' : undefined}
             onClick={handleToggle}
             className={cn(
               'relative flex items-center justify-center bg-bg-alt w-7 h-7 rounded-sm',
@@ -275,6 +286,13 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
             )}
           >
             <Bell className="h-3.5 w-3.5" aria-hidden />
+            {sseDisconnected && (
+              <span
+                className="absolute -left-0.5 -top-0.5 h-2 w-2 rounded-full"
+                style={{ backgroundColor: 'var(--warning)' }}
+                aria-hidden
+              />
+            )}
             {unreadCount > 0 && (
               <span
                 className="absolute -right-1 -top-1 flex items-center justify-center rounded-full bg-error text-white min-w-4 h-4 text-[9px] font-bold px-1"

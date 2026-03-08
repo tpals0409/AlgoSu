@@ -170,6 +170,12 @@ export default function DashboardPage(): ReactNode {
   const [allProblems, setAllProblems] = useState<Problem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sectionErrors, setSectionErrors] = useState<{
+    stats: string | null;
+    submissions: string | null;
+    problems: string | null;
+    members: string | null;
+  }>({ stats: null, submissions: null, problems: null, members: null });
   const [mounted, setMounted] = useState(false);
   const [weekViewUserId, setWeekViewUserId] = useState<string | null>(null);
 
@@ -183,6 +189,7 @@ export default function DashboardPage(): ReactNode {
   const loadDashboard = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    setSectionErrors({ stats: null, submissions: null, problems: null, members: null });
 
     try {
       const results = await Promise.allSettled([
@@ -193,28 +200,40 @@ export default function DashboardPage(): ReactNode {
         problemApi.findAllIncludingClosed(),
       ]);
 
+      const errors = { stats: null as string | null, submissions: null as string | null, problems: null as string | null, members: null as string | null };
+
       if (results[0].status === 'fulfilled' && results[0].value) {
         setStats(results[0].value as StudyStats);
-      } else {
-        setStats(null);
+      } else if (results[0].status === 'rejected') {
+        errors.stats = '통계를 불러올 수 없습니다.';
       }
 
       if (results[1].status === 'fulfilled') {
         const paginated = results[1].value as { data: Submission[]; meta: unknown };
         setRecentSubmissions(paginated.data ?? []);
+      } else {
+        errors.submissions = '최근 제출 목록을 불러올 수 없습니다.';
       }
 
       if (results[2].status === 'fulfilled') {
         setActiveProblems((results[2].value as Problem[]) ?? []);
+      } else {
+        errors.problems = '문제 목록을 불러올 수 없습니다.';
       }
 
       if (results[3].status === 'fulfilled') {
         setMembers((results[3].value as StudyMember[]) ?? []);
+      } else if (results[3].status === 'rejected') {
+        errors.members = '멤버 목록을 불러올 수 없습니다.';
       }
 
       if (results[4].status === 'fulfilled') {
         setAllProblems((results[4].value as Problem[]) ?? []);
+      } else {
+        errors.problems = errors.problems ?? '문제 목록을 불러올 수 없습니다.';
       }
+
+      setSectionErrors(errors);
 
       const allFailed = results.every((r) => r.status === 'rejected');
       if (allFailed) {
@@ -450,6 +469,13 @@ export default function DashboardPage(): ReactNode {
           </Card>
         )}
 
+        {/* ── 섹션별 에러 배너 ── */}
+        {(sectionErrors.stats || sectionErrors.members) && (
+          <Alert variant="error" style={fade(0.07)}>
+            {[sectionErrors.stats, sectionErrors.members].filter(Boolean).join(' ')}
+          </Alert>
+        )}
+
         {/* ── STAT CARDS + STUDY ROOM (4열) ── */}
         {currentStudyId && (
           <div className="grid grid-cols-2 gap-3 sm:gap-3.5 md:grid-cols-4" style={fade(0.08)}>
@@ -496,6 +522,13 @@ export default function DashboardPage(): ReactNode {
           </div>
         )}
 
+        {/* ── 문제 섹션 에러 배너 ── */}
+        {sectionErrors.problems && (
+          <Alert variant="error" style={fade(0.14)}>
+            {sectionErrors.problems}
+          </Alert>
+        )}
+
         {/* ── WEEKLY CHART (dynamic) ── */}
         {/* ── MIDDLE ROW: 주차별 차트(좌) + 진행 중인 문제(우) ── */}
         {currentStudyId && (
@@ -526,6 +559,13 @@ export default function DashboardPage(): ReactNode {
               fadeStyle={{}}
             />
           </div>
+        )}
+
+        {/* ── 제출 섹션 에러 배너 ── */}
+        {sectionErrors.submissions && (
+          <Alert variant="error" style={fade(0.22)}>
+            {sectionErrors.submissions}
+          </Alert>
         )}
 
         {/* ── BOTTOM: 최근 제출 (풀 너비) ── */}

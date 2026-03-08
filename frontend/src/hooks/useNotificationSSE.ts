@@ -12,7 +12,7 @@
  */
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Notification } from '@/lib/api';
 
 // ─── CONSTANTS ────────────────────────────
@@ -37,11 +37,12 @@ const RECONNECT_BASE_MS = 3000;
 export function useNotificationSSE(
   enabled: boolean,
   onNotification: (notification: Notification) => void,
-): void {
+): { sseDisconnected: boolean } {
   const abortControllerRef = useRef<AbortController | null>(null);
   const reconnectAttemptRef = useRef(0);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onNotificationRef = useRef(onNotification);
+  const [sseDisconnected, setSseDisconnected] = useState(false);
 
   // 콜백 ref 최신 유지 (리렌더 시 재연결 방지)
   onNotificationRef.current = onNotification;
@@ -78,8 +79,9 @@ export function useNotificationSSE(
           return;
         }
 
-        // 연결 성공 시 재연결 카운터 리셋
+        // 연결 성공 시 재연결 카운터 리셋 + 연결 복구 표시
         reconnectAttemptRef.current = 0;
+        setSseDisconnected(false);
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
@@ -124,6 +126,7 @@ export function useNotificationSSE(
       reconnectAttemptRef.current += 1;
       if (reconnectAttemptRef.current > MAX_RECONNECT_ATTEMPTS) {
         // 최대 재연결 초과 시 폴링 fallback으로 동작 (SSE 중단)
+        setSseDisconnected(true);
         return;
       }
 
@@ -142,4 +145,6 @@ export function useNotificationSSE(
       disconnect();
     };
   }, [enabled, disconnect]);
+
+  return { sseDisconnected };
 }

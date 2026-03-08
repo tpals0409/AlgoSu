@@ -225,6 +225,15 @@ async function fetchApi<T>(
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({})) as { message?: string };
+
+    // 401 세션 만료 시 로그인 페이지로 리다이렉트
+    if (res.status === 401 && typeof window !== 'undefined') {
+      const currentPath = window.location.pathname;
+      if (!currentPath.startsWith('/login') && !currentPath.startsWith('/callback')) {
+        window.location.href = '/login?error=session_expired';
+      }
+    }
+
     throw new ApiError(body.message ?? HTTP_ERROR_MESSAGES[res.status] ?? `서버 오류 (${res.status})`, res.status);
   }
 

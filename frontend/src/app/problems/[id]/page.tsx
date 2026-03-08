@@ -181,6 +181,10 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
 
   const handleSubmit = useCallback(async (): Promise<void> => {
     if (!problem) return;
+    if (!code.trim()) {
+      setSubmitError('코드를 입력해주세요.');
+      return;
+    }
     if (!githubConnected) {
       setSubmitError('GitHub 계정을 먼저 연동해주세요.');
       return;

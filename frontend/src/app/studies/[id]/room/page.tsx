@@ -32,6 +32,7 @@ import {
   Brain,
   BarChart3,
   ExternalLink,
+  ShieldAlert,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -172,6 +173,7 @@ export default function StudyRoomPage(): ReactElement {
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notSubmitted, setNotSubmitted] = useState(false);
+  const [accessDenied, setAccessDenied] = useState(false);
   const [nicknameMap, setNicknameMap] = useState<Record<string, string>>({});
   const [avatarMap, setAvatarMap] = useState<Record<string, string | null>>({});
   const [members, setMembers] = useState<StudyMember[]>([]);
@@ -270,6 +272,7 @@ export default function StudyRoomPage(): ReactElement {
   const loadSubmissions = useCallback(async (problem: Problem): Promise<void> => {
     setLoadingSubmissions(true);
     setNotSubmitted(false);
+    setAccessDenied(false);
     try {
       const data = await submissionApi.listByProblemForStudy(problem.id);
       const latestByUser = data.filter((sub, idx, arr) =>
@@ -278,7 +281,12 @@ export default function StudyRoomPage(): ReactElement {
       setSubmissions(latestByUser);
     } catch (err) {
       if (err instanceof ApiError && err.status === 403) {
-        setNotSubmitted(true);
+        const msg = (err.message ?? '').toLowerCase();
+        if (msg.includes('not submitted') || msg.includes('제출')) {
+          setNotSubmitted(true);
+        } else {
+          setAccessDenied(true);
+        }
         setSubmissions([]);
       } else {
         setError('제출 목록을 불러오지 못했습니다.');
@@ -410,6 +418,7 @@ export default function StudyRoomPage(): ReactElement {
           submissions={submissions}
           loading={loadingSubmissions}
           notSubmitted={notSubmitted}
+          accessDenied={accessDenied}
           nicknameMap={nicknameMap}
           avatarMap={avatarMap}
           error={error}
@@ -580,9 +589,9 @@ function ProblemTimelineCard({ problem, barsAnimated, submittedCount, totalMembe
 
 // ─── SUBMISSION VIEW (2단계) ─────────────
 
-function SubmissionView({ problem, submissions, loading, notSubmitted, nicknameMap, avatarMap, error, totalMembers, submittedCount, analyzedCount, onBack, onSelectSubmission }: {
+function SubmissionView({ problem, submissions, loading, notSubmitted, accessDenied, nicknameMap, avatarMap, error, totalMembers, submittedCount, analyzedCount, onBack, onSelectSubmission }: {
   readonly problem: Problem; readonly submissions: Submission[]; readonly loading: boolean;
-  readonly notSubmitted: boolean; readonly nicknameMap: Record<string, string>;
+  readonly notSubmitted: boolean; readonly accessDenied: boolean; readonly nicknameMap: Record<string, string>;
   readonly avatarMap: Record<string, string | null>; readonly error: string | null;
   readonly totalMembers: number; readonly submittedCount: number; readonly analyzedCount: number;
   readonly onBack: () => void; readonly onSelectSubmission: (sub: Submission) => void;
@@ -657,6 +666,12 @@ function SubmissionView({ problem, submissions, loading, notSubmitted, nicknameM
       {/* 로딩 / 미제출 / 제출 목록 */}
       {loading ? (
         <div className="space-y-3"><SkeletonCard /><SkeletonCard /></div>
+      ) : accessDenied ? (
+        <Card><CardContent className="py-10 text-center">
+          <ShieldAlert className="mx-auto mb-2 h-6 w-6 text-error opacity-60" />
+          <p className="text-sm font-medium text-text">이 스터디에 접근 권한이 없습니다</p>
+          <p className="mt-1 text-xs text-text-3">스터디 멤버만 제출 내역을 볼 수 있습니다</p>
+        </CardContent></Card>
       ) : notSubmitted ? (
         <Card><CardContent className="py-10 text-center">
           <Code2 className="mx-auto mb-2 h-6 w-6 text-primary opacity-60" />

@@ -38,6 +38,7 @@ import {
   type StudyMember,
 } from '@/lib/api';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { MarkdownViewer } from '@/components/ui/MarkdownViewer';
 
 // ─── TYPES ───────────────────────────────
 
@@ -52,25 +53,6 @@ interface SettingsMember {
   email: string;
   role: 'ADMIN' | 'MEMBER';
   color: string;
-}
-
-// ─── MARKDOWN RENDERER ─────────────────
-
-function renderMarkdown(md: string): string {
-  return md
-    .split('\n')
-    .map((line) => {
-      if (line.startsWith('## ')) {
-        return `<h3 style="font-size:15px;font-weight:700;margin:20px 0 8px;padding-left:4px;color:var(--text)">${line.slice(3)}</h3>`;
-      }
-      if (line.startsWith('- ')) {
-        const content = line.slice(2).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        return `<li style="font-size:13px;color:var(--text-2);margin:4px 0;margin-left:20px;padding-left:8px;list-style:disc">${content}</li>`;
-      }
-      if (line.trim() === '') return '<br/>';
-      return `<p style="font-size:13px;color:var(--text-2)">${line}</p>`;
-    })
-    .join('');
 }
 
 // ─── RENDER ──────────────────────────────
@@ -529,9 +511,10 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
               ) : (
                 <div
                   className="min-h-[200px] rounded-btn border border-border bg-bg p-4"
-                  dangerouslySetInnerHTML={{ __html: renderMarkdown(rulesText) }}
                   style={{ lineHeight: '1.7' }}
-                />
+                >
+                  <MarkdownViewer content={rulesText} />
+                </div>
               )}
 
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

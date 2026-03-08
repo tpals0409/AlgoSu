@@ -378,7 +378,11 @@ function ConfirmStep({
   function validate() {
     const e: typeof errors = {};
     if (!weekNumber.trim()) e.weekNumber = '주차를 입력하세요.';
-    if (!deadline) e.deadline = '마감일을 선택하세요.';
+    if (!deadline) {
+      e.deadline = '마감일을 선택하세요.';
+    } else if (new Date(deadline) < new Date()) {
+      e.deadline = '과거 날짜는 선택할 수 없습니다.';
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   }
