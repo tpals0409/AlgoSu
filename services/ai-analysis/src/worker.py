@@ -232,16 +232,17 @@ class AIAnalysisWorker:
                 )
                 # 한도 초과 시 delayed 상태를 DB에 저장하여 사용자에게 알림
                 try:
-                    self._report_result(sid, {
-                        "feedback": "AI 분석이 일시적으로 지연되고 있습니다. 잠시 후 다시 확인해주세요.",
-                        "optimized_code": None,
-                        "score": 0,
-                        "status": "delayed",
-                    })
-                except Exception as report_err:
-                    logger.warning(
-                        f"delayed 상태 보고 실패: {str(report_err)[:200]}"
+                    self._report_result(
+                        sid,
+                        {
+                            "feedback": "AI 분석이 일시적으로 지연되고 있습니다. 잠시 후 다시 확인해주세요.",
+                            "optimized_code": None,
+                            "score": 0,
+                            "status": "delayed",
+                        },
                     )
+                except Exception as report_err:
+                    logger.warning(f"delayed 상태 보고 실패: {str(report_err)[:200]}")
                 ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
                 dlq_messages_total.labels(reason="circuit_breaker_exhausted").inc()
                 mq_messages_processed_total.labels(result="nack_dlq").inc()
