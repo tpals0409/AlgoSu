@@ -404,6 +404,20 @@ export class OAuthService {
       );
     }
 
+    // 탈퇴 유저 계정 복구: deleted_at 초기화 + 프로필 재설정
+    if (existing?.deleted_at) {
+      await this.userRepository.update(
+        { id: existing.id },
+        {
+          deleted_at: null,
+          name: profile.name,
+          avatar_url: 'preset:default',
+          github_connected: false,
+        },
+      );
+      return this.userRepository.findOne({ where: { id: existing.id } }) as Promise<User>;
+    }
+
     // ON CONFLICT 원자적 upsert — avatar_url은 갱신 대상에서 제외 (기존값 무조건 보호)
     // createQueryBuilder.insert()는 @BeforeInsert 훅을 우회하므로 publicId를 명시적으로 생성
     await this.userRepository

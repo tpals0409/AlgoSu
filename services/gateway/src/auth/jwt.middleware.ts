@@ -92,9 +92,12 @@ export class JwtMiddleware implements NestMiddleware {
       throw new UnauthorizedException('토큰에 사용자 ID가 없습니다.');
     }
 
-    // 탈퇴 계정 검증 — deleted_at이 있으면 거부
+    // 탈퇴/삭제 계정 검증
     const user = await this.userRepository.findOne({ where: { id: userId } });
-    if (user?.deleted_at) {
+    if (!user) {
+      throw new UnauthorizedException('존재하지 않는 계정입니다. 다시 로그인해주세요.');
+    }
+    if (user.deleted_at) {
       throw new UnauthorizedException('탈퇴한 계정입니다.');
     }
 

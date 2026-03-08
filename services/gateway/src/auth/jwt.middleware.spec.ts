@@ -203,14 +203,14 @@ describe('JwtMiddleware', () => {
       );
     });
 
-    it('존재하지 않는 사용자 — 정상 통과 (deleted_at null)', async () => {
+    it('존재하지 않는 사용자 — 401 거부', async () => {
       userRepository.findOne.mockResolvedValue(null);
       const token = createValidToken();
       const req = createMockRequest({ cookies: { token } });
 
-      await middleware.use(req, mockRes, mockNext);
-
-      expect(mockNext).toHaveBeenCalled();
+      await expect(middleware.use(req, mockRes, mockNext)).rejects.toThrow(
+        '존재하지 않는 계정입니다. 다시 로그인해주세요.',
+      );
     });
   });
 
