@@ -83,7 +83,8 @@ function formatRelativeTime(dateStr: string): string {
  * 알림 벨 + 드롭다운 패널 + 토스트
  * @domain notification
  */
-export function NotificationBell(): ReactNode {
+export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): ReactNode {
+  const placement = props?.placement ?? 'sidebar';
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -205,37 +206,73 @@ export function NotificationBell(): ReactNode {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // 패널 위치: sidebar → 위쪽으로 열림 / header → 아래쪽으로 열림
+  const panelCls =
+    placement === 'sidebar'
+      ? 'absolute bottom-full right-0 mb-2'
+      : 'absolute right-0 top-full mt-2';
+
   return (
     <>
       <div className="relative" ref={ref}>
         {/* 벨 버튼 */}
-        <button
-          type="button"
-          aria-label={`알림 ${unreadCount > 0 ? `(${unreadCount}개 미읽음)` : ''}`}
-          aria-haspopup="true"
-          aria-expanded={open}
-          onClick={handleToggle}
-          className={cn(
-            'relative flex items-center justify-center bg-bg-alt w-7 h-7 rounded-sm',
-            'text-text-3 transition-colors',
-            'hover:text-text',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-          )}
-        >
-          <Bell className="h-3.5 w-3.5" aria-hidden />
-          {unreadCount > 0 && (
-            <span
-              className="absolute -right-1 -top-1 flex items-center justify-center rounded-full bg-error text-white min-w-4 h-4 text-[9px] font-bold px-1"
-            >
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </span>
-          )}
-        </button>
+        {placement === 'sidebar' ? (
+          <button
+            type="button"
+            onClick={handleToggle}
+            aria-label={`알림 ${unreadCount > 0 ? `(${unreadCount}개 미읽음)` : ''}`}
+            aria-haspopup="true"
+            aria-expanded={open}
+            className={cn(
+              'flex w-full items-center gap-2.5 rounded-btn px-3 py-2 text-[13px] font-medium transition-all duration-150',
+              open
+                ? 'bg-primary-soft text-primary'
+                : 'text-text-3 hover:bg-bg-alt hover:text-text-2',
+            )}
+          >
+            <Bell className="h-4 w-4 shrink-0" aria-hidden />
+            <span className="flex-1 text-left">알림</span>
+            {unreadCount > 0 && (
+              <span
+                className="flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold text-white"
+                style={{ background: 'var(--primary)' }}
+              >
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+        ) : (
+          <button
+            type="button"
+            aria-label={`알림 ${unreadCount > 0 ? `(${unreadCount}개 미읽음)` : ''}`}
+            aria-haspopup="true"
+            aria-expanded={open}
+            onClick={handleToggle}
+            className={cn(
+              'relative flex items-center justify-center bg-bg-alt w-7 h-7 rounded-sm',
+              'text-text-3 transition-colors',
+              'hover:text-text',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+            )}
+          >
+            <Bell className="h-3.5 w-3.5" aria-hidden />
+            {unreadCount > 0 && (
+              <span
+                className="absolute -right-1 -top-1 flex items-center justify-center rounded-full bg-error text-white min-w-4 h-4 text-[9px] font-bold px-1"
+              >
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </button>
+        )}
 
         {/* 드롭다운 */}
         {open && (
           <div
-            className="absolute right-0 top-full z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-card border border-border bg-bg-card shadow-modal"
+            className={cn(
+              'z-50 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-card border border-border bg-bg-card shadow-modal',
+              panelCls,
+            )}
             role="menu"
             aria-label="알림 목록"
           >

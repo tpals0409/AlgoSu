@@ -1,215 +1,370 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 /* ════════════════════════════════════════════
-   DESIGN TOKENS — AlgoSu UI Design System v2
-   CSS 변수 기반 듀얼 테마 (Light / Dark)
+   AlgoSu globals.css — merged from v3.0:
+     fonts.css → tailwind.css → theme.css
    ════════════════════════════════════════════ */
 
-@layer base {
-  :root {
-    /* ── 배경/서피스 ── */
-    --bg:             #FAFAF8;
-    --bg-alt:         #F3F1EE;
-    --bg-card:        #FFFFFF;
-    --border:         #E8E5E0;
-    --border-hover:   #D0CCC5;
+/* ── Fonts (from fonts.css) ── */
+@import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800;900&display=swap');
 
-    /* ── 텍스트 ── */
-    --text:           #1A1917;
-    --text2:          #5C5A55;
-    --text3:          #9C9A95;
+/* ── Tailwind (from tailwind.css) ── */
+@import 'tailwindcss' source(none);
+@source '../**/*.{js,ts,jsx,tsx}';
 
-    /* ── 브랜드 ── */
-    --primary:        #7C6AAE;
-    --primary-light:  #9B8BC8;
-    --primary-soft:   rgba(124,106,174,0.08);
-    --primary-soft2:  rgba(124,106,174,0.15);
-    --accent:         #C4A6FF;
+@import 'tw-animate-css';
 
-    /* ── 상태 ── */
-    --success:        #3DAA6D;
-    --success-soft:   rgba(61,170,109,0.10);
-    --warning:        #E8A830;
-    --warning-soft:   rgba(232,168,48,0.10);
-    --error:          #E05448;
-    --error-soft:     rgba(224,84,72,0.10);
-    --info:           #3B82CE;
-    --info-soft:      rgba(59,130,206,0.10);
-    --muted:          #9C9A95;
-    --muted-soft:     rgba(156,154,149,0.12);
+/* ── Theme (from theme.css) ── */
+@custom-variant dark (&:is(.dark *));
 
-    /* ── 특수 배경 ── */
-    --nav-bg:         rgba(250,250,248,0.88);
-    --code-bg:        #F7F5F2;
-    --input-bg:       #F3F1EE;
-    --hero-glow:      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(124,106,174,0.12) 0%, transparent 70%);
+/* ────────────────────────────────────────────
+   AlgoSu Design Tokens — Light Mode (default)
+   ──────────────────────────────────────────── */
+:root {
+  /* ── Core Brand ── */
+  --primary:        #7C6AAE;
+  --primary-light:  #9B8BC8;
+  --accent:         #C4A6FF;
 
-    /* ── 그림자 ── */
-    --shadow:         0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04);
-    --shadow-hover:   0 2px 8px rgba(0,0,0,0.06), 0 8px 32px rgba(0,0,0,0.06);
-    --shadow-toast:   0 8px 32px rgba(0,0,0,0.12);
-    --shadow-glow:    0 4px 24px rgba(124,106,174,0.35);
+  /* ── Status ── */
+  --success:  #3DAA6D;
+  --warning:  #E8A830;
+  --error:    #E05448;
+  --info:     #3B82CE;
 
-    /* ── 난이도 (solved.ac) ── */
-    --diff-bronze-bg:       rgba(173,86,0,0.12);
-    --diff-bronze-color:    #C06800;
-    --diff-bronze-border:   rgba(173,86,0,0.25);
-    --diff-silver-bg:       rgba(67,95,122,0.12);
-    --diff-silver-color:    #5A7B99;
-    --diff-silver-border:   rgba(67,95,122,0.25);
-    --diff-gold-bg:         rgba(236,144,3,0.12);
-    --diff-gold-color:      #D48A00;
-    --diff-gold-border:     rgba(236,144,3,0.25);
-    --diff-platinum-bg:     rgba(39,226,164,0.12);
-    --diff-platinum-color:  #20C490;
-    --diff-platinum-border: rgba(39,226,164,0.25);
-    --diff-diamond-bg:      rgba(0,180,252,0.12);
-    --diff-diamond-color:   #00A8E8;
-    --diff-diamond-border:  rgba(0,180,252,0.25);
-    --diff-ruby-bg:         rgba(232,60,60,0.12);
-    --diff-ruby-color:      #E83C3C;
-    --diff-ruby-border:     rgba(232,60,60,0.25);
+  /* ── Background layers ── */
+  --bg:       #FAFAF8;
+  --bg-alt:   #F0EFF9;
+  --bg-card:  #FFFFFF;
+  --code-bg:  #F5F4FC;
 
-    /* ── OAuth 브랜드 (테마 불변) ── */
-    --oauth-naver:        #03C75A;
-    --oauth-kakao-bg:     #FEE500;
-    --oauth-kakao-text:   #191919;
+  /* ── Text ── */
+  --text:    #1A1917;
+  --text-2:  #5C5A55;
+  --text-3:  #9C9A95;
 
-    /* ── 반경 ── */
-    --radius-s: 6px;
-    --radius-m: 12px;
-    --radius-l: 16px;
+  /* ── Border ── */
+  --border:  rgba(124, 106, 174, 0.15);
 
-    /* ── 바 (차트) ── */
-    --bar-fill:   linear-gradient(90deg, #7C6AAE, #9B8BC8);
-    --bar-track:  #EDEBE6;
-  }
+  /* ── Soft tints (10 % opacity fills) ── */
+  --primary-soft:  rgba(124, 106, 174, 0.10);
+  --success-soft:  rgba(61, 170, 109, 0.10);
+  --warning-soft:  rgba(232, 168, 48,  0.10);
+  --error-soft:    rgba(224, 84,  72,  0.10);
+  --info-soft:     rgba(59,  130, 206, 0.10);
 
-  .dark {
-    /* ── 배경/서피스 ── */
-    --bg:             #0F0F12;
-    --bg-alt:         #17171C;
-    --bg-card:        #1C1C22;
-    --border:         #2A2A32;
-    --border-hover:   #3A3A44;
+  /* ── Input ── */
+  --input-bg:  #F5F4FC;
 
-    /* ── 텍스트 ── */
-    --text:           #EDEDEB;
-    --text2:          #A5A5A0;
-    --text3:          #6C6C68;
+  /* ── OAuth brand ── */
+  --oauth-naver:     #03C75A;
+  --oauth-kakao-bg:  #FEE500;
+  --oauth-kakao-text:#191919;
 
-    /* ── 브랜드 ── */
-    --primary:        #A08CD6;
-    --primary-light:  #B9A6E8;
-    --primary-soft:   rgba(160,140,214,0.10);
-    --primary-soft2:  rgba(160,140,214,0.18);
-    --accent:         #C4A6FF;
+  /* ── Difficulty tier colors ── */
+  --diff-bronze-color:   #AD5600;
+  --diff-silver-color:   #435F7A;
+  --diff-gold-color:     #EC9003;
+  --diff-platinum-color: #27E2A4;
+  --diff-diamond-color:  #00B4FC;
+  --diff-ruby-color:     #FF0062;
 
-    /* ── 상태 ── */
-    --success:        #4EC87A;
-    --success-soft:   rgba(78,200,122,0.12);
-    --warning:        #F0B840;
-    --warning-soft:   rgba(240,184,64,0.12);
-    --error:          #F06458;
-    --error-soft:     rgba(240,100,88,0.12);
-    --info:           #5B9FE8;
-    --info-soft:      rgba(91,159,232,0.12);
-    --muted:          #6C6C68;
-    --muted-soft:     rgba(108,108,104,0.15);
+  /* ── Diff badge soft backgrounds ── */
+  --diff-bronze-bg:   rgba(173, 86,   0,   0.10);
+  --diff-silver-bg:   rgba(67,  95,  122,  0.10);
+  --diff-gold-bg:     rgba(236, 144,  3,   0.10);
+  --diff-platinum-bg: rgba(39,  226, 164,  0.10);
+  --diff-diamond-bg:  rgba(0,   180, 252,  0.10);
+  --diff-ruby-bg:     rgba(255,   0,  98,  0.10);
 
-    /* ── 특수 배경 ── */
-    --nav-bg:         rgba(15,15,18,0.88);
-    --code-bg:        #14141A;
-    --input-bg:       #17171C;
-    --hero-glow:      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(160,140,214,0.15) 0%, transparent 70%);
+  /* ── Shadows ── */
+  --shadow-card:  0 1px 3px rgba(124, 106, 174, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-hover: 0 4px 12px rgba(124, 106, 174, 0.16), 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-modal: 0 8px 32px rgba(124, 106, 174, 0.20), 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-glow:  0 0 24px rgba(124, 106, 174, 0.35);
 
-    /* ── 그림자 ── */
-    --shadow:         0 1px 3px rgba(0,0,0,0.20), 0 4px 16px rgba(0,0,0,0.15);
-    --shadow-hover:   0 2px 8px rgba(0,0,0,0.30), 0 8px 32px rgba(0,0,0,0.20);
-    --shadow-toast:   0 8px 32px rgba(0,0,0,0.40);
-    --shadow-glow:    0 4px 24px rgba(160,140,214,0.40);
+  /* ── Gradients ── */
+  --gradient-brand: linear-gradient(135deg, #7C6AAE 0%, #9B8BC8 50%, #C4A6FF 100%);
+  --hero-glow: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(124, 106, 174, 0.14) 0%, transparent 70%);
 
-    /* ── OAuth 브랜드 (테마 불변) ── */
-    --oauth-naver:        #03C75A;
-    --oauth-kakao-bg:     #FEE500;
-    --oauth-kakao-text:   #191919;
+  /* ── Bar chart fill ── */
+  --bar-fill: linear-gradient(90deg, #7C6AAE, #C4A6FF);
 
-    /* ── 바 (차트) ── */
-    --bar-fill:   linear-gradient(90deg, #A08CD6, #B9A6E8);
-    --bar-track:  #222228;
-  }
+  /* ── Radius ── */
+  --radius-card:   12px;
+  --radius-btn:     8px;
+  --radius-badge:   6px;
+  --radius-full:  9999px;
 
-  /* ── 글로벌 리셋 ── */
-  * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
+  /* ── Container ── */
+  --max-container: 1140px;
 
-  html {
-    scroll-behavior: smooth;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
+  /* ── shadcn/ui compat tokens ── */
+  --font-size: 16px;
+  --background:           #FAFAF8;
+  --foreground:           #1A1917;
+  --card:                 #FFFFFF;
+  --card-foreground:      #1A1917;
+  --popover:              #FFFFFF;
+  --popover-foreground:   #1A1917;
+  --primary-foreground:   #FFFFFF;
+  --secondary:            #F0EFF9;
+  --secondary-foreground: #1A1917;
+  --muted:                #F0EFF9;
+  --muted-foreground:     #9C9A95;
+  --accent-foreground:    #1A1917;
+  --destructive:          #E05448;
+  --destructive-foreground: #FFFFFF;
+  --input:                transparent;
+  --input-background:     #F5F4FC;
+  --switch-background:    #C4B8E8;
+  --ring:                 rgba(124, 106, 174, 0.40);
+  --radius:               0.625rem;
+  --font-weight-medium:   500;
+  --font-weight-normal:   400;
+  --chart-1: #7C6AAE;
+  --chart-2: #3DAA6D;
+  --chart-3: #E8A830;
+  --chart-4: #3B82CE;
+  --chart-5: #C4A6FF;
+  --sidebar:                    #FFFFFF;
+  --sidebar-foreground:         #1A1917;
+  --sidebar-primary:            #7C6AAE;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent:             #F0EFF9;
+  --sidebar-accent-foreground:  #1A1917;
+  --sidebar-border:             rgba(124, 106, 174, 0.15);
+  --sidebar-ring:               rgba(124, 106, 174, 0.40);
 
-  body {
-    background-color: var(--bg);
-    color: var(--text);
-    font-family: var(--font-body), 'Noto Sans KR', sans-serif;
-    line-height: 1.6;
-    min-height: 100vh;
-  }
-
-  ::selection {
-    background: var(--primary-soft2);
-  }
-
-  /* ── 스크롤바 ── */
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  ::-webkit-scrollbar-track {
-    background: var(--bg-alt);
-  }
-  ::-webkit-scrollbar-thumb {
-    background: var(--primary-light);
-    border-radius: 9999px;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--primary);
-  }
+  /* ── Font (from fonts.css) ── */
+  --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
 }
 
-/* ════════════════════════════════════════════
-   UTILITIES
-   ════════════════════════════════════════════ */
+/* ────────────────────────────────────────────
+   Dark Mode
+   ──────────────────────────────────────────── */
+.dark {
+  /* ── Core Brand ── */
+  --primary:        #A08CD6;
+  --primary-light:  #B9A6E8;
+  --accent:         #C4A6FF;
 
+  /* ── Status ── */
+  --success:  #4EC87A;
+  --warning:  #F0B840;
+  --error:    #F06458;
+  --info:     #5B9FE8;
+
+  /* ── Background layers ── */
+  --bg:       #0F0F12;
+  --bg-alt:   #17161C;
+  --bg-card:  #1C1C22;
+  --code-bg:  #141318;
+
+  /* ── Text ── */
+  --text:    #EDEDEB;
+  --text-2:  #A5A5A0;
+  --text-3:  #6A6A65;
+
+  /* ── Border ── */
+  --border:  rgba(160, 140, 214, 0.18);
+
+  /* ── Soft tints ── */
+  --primary-soft:  rgba(160, 140, 214, 0.12);
+  --success-soft:  rgba(78,  200, 122, 0.12);
+  --warning-soft:  rgba(240, 184,  64, 0.12);
+  --error-soft:    rgba(240, 100,  88, 0.12);
+  --info-soft:     rgba(91,  159, 232, 0.12);
+
+  /* ── Input ── */
+  --input-bg:  #22212B;
+
+  /* ── Shadows ── */
+  --shadow-card:  0 1px 4px rgba(0, 0, 0, 0.30), 0 1px 2px rgba(0, 0, 0, 0.20);
+  --shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.40), 0 2px 6px rgba(160, 140, 214, 0.20);
+  --shadow-modal: 0 8px 40px rgba(0, 0, 0, 0.60), 0 2px 8px rgba(0, 0, 0, 0.40);
+  --shadow-glow:  0 0 32px rgba(160, 140, 214, 0.40);
+
+  /* ── Gradients ── */
+  --gradient-brand: linear-gradient(135deg, #A08CD6 0%, #B9A6E8 50%, #C4A6FF 100%);
+  --hero-glow: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(160, 140, 214, 0.18) 0%, transparent 70%);
+
+  /* ── Bar chart fill ── */
+  --bar-fill: linear-gradient(90deg, #A08CD6, #C4A6FF);
+
+  /* ── shadcn/ui compat tokens ── */
+  --background:           #0F0F12;
+  --foreground:           #EDEDEB;
+  --card:                 #1C1C22;
+  --card-foreground:      #EDEDEB;
+  --popover:              #1C1C22;
+  --popover-foreground:   #EDEDEB;
+  --primary-foreground:   #0F0F12;
+  --secondary:            #17161C;
+  --secondary-foreground: #EDEDEB;
+  --muted:                #17161C;
+  --muted-foreground:     #6A6A65;
+  --accent-foreground:    #EDEDEB;
+  --destructive:          #F06458;
+  --destructive-foreground: #0F0F12;
+  --input:                #22212B;
+  --input-background:     #22212B;
+  --switch-background:    #3A3648;
+  --ring:                 rgba(160, 140, 214, 0.40);
+  --chart-1: #A08CD6;
+  --chart-2: #4EC87A;
+  --chart-3: #F0B840;
+  --chart-4: #5B9FE8;
+  --chart-5: #C4A6FF;
+  --sidebar:                    #1C1C22;
+  --sidebar-foreground:         #EDEDEB;
+  --sidebar-primary:            #A08CD6;
+  --sidebar-primary-foreground: #0F0F12;
+  --sidebar-accent:             #17161C;
+  --sidebar-accent-foreground:  #EDEDEB;
+  --sidebar-border:             rgba(160, 140, 214, 0.18);
+  --sidebar-ring:               rgba(160, 140, 214, 0.40);
+}
+
+/* ────────────────────────────────────────────
+   Tailwind v4 @theme mapping
+   ──────────────────────────────────────────── */
+@theme inline {
+  /* shadcn compat */
+  --color-background:           var(--background);
+  --color-foreground:           var(--foreground);
+  --color-card:                 var(--card);
+  --color-card-foreground:      var(--card-foreground);
+  --color-popover:              var(--popover);
+  --color-popover-foreground:   var(--popover-foreground);
+  --color-primary:              var(--primary);
+  --color-primary-foreground:   var(--primary-foreground);
+  --color-secondary:            var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted:                var(--muted);
+  --color-muted-foreground:     var(--muted-foreground);
+  --color-accent:               var(--accent);
+  --color-accent-foreground:    var(--accent-foreground);
+  --color-destructive:          var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border:               var(--border);
+  --color-input:                var(--input);
+  --color-input-background:     var(--input-background);
+  --color-switch-background:    var(--switch-background);
+  --color-ring:                 var(--ring);
+  --color-chart-1:              var(--chart-1);
+  --color-chart-2:              var(--chart-2);
+  --color-chart-3:              var(--chart-3);
+  --color-chart-4:              var(--chart-4);
+  --color-chart-5:              var(--chart-5);
+  --radius-sm:  calc(var(--radius) - 4px);
+  --radius-md:  calc(var(--radius) - 2px);
+  --radius-lg:  var(--radius);
+  --radius-xl:  calc(var(--radius) + 4px);
+  --color-sidebar:                    var(--sidebar);
+  --color-sidebar-foreground:         var(--sidebar-foreground);
+  --color-sidebar-primary:            var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent:             var(--sidebar-accent);
+  --color-sidebar-accent-foreground:  var(--sidebar-accent-foreground);
+  --color-sidebar-border:             var(--sidebar-border);
+  --color-sidebar-ring:               var(--sidebar-ring);
+
+  /* ── AlgoSu brand tokens ── */
+  --color-primary-light:  var(--primary-light);
+
+  --color-success:        var(--success);
+  --color-warning:        var(--warning);
+  --color-error:          var(--error);
+  --color-info:           var(--info);
+
+  --color-bg:             var(--bg);
+  --color-bg-alt:         var(--bg-alt);
+  --color-bg-card:        var(--bg-card);
+  --color-code-bg:        var(--code-bg);
+  --color-input-bg:       var(--input-bg);
+
+  --color-text:           var(--text);
+  --color-text-2:         var(--text-2);
+  --color-text-3:         var(--text-3);
+
+  --color-primary-soft:   var(--primary-soft);
+  --color-success-soft:   var(--success-soft);
+  --color-warning-soft:   var(--warning-soft);
+  --color-error-soft:     var(--error-soft);
+  --color-info-soft:      var(--info-soft);
+
+  --color-oauth-naver:      var(--oauth-naver);
+  --color-oauth-kakao-bg:   var(--oauth-kakao-bg);
+  --color-oauth-kakao-text: var(--oauth-kakao-text);
+
+  /* Font */
+  --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+/* ── Font rules (from fonts.css) ── */
+* {
+  font-family: var(--font-sans);
+}
+
+code, pre, .font-mono {
+  font-family: var(--font-mono);
+}
+
+/* ────────────────────────────────────────────
+   Global utility classes
+   ──────────────────────────────────────────── */
 @layer utilities {
-  .gradient-brand {
-    background: linear-gradient(135deg, var(--primary), var(--accent));
-  }
+  /* Radius shortcuts */
+  .rounded-card  { border-radius: var(--radius-card); }
+  .rounded-btn   { border-radius: var(--radius-btn); }
+  .rounded-badge { border-radius: var(--radius-badge); }
 
-  .gradient-brand-text {
-    background: linear-gradient(135deg, var(--primary), var(--accent));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
+  /* Shadow shortcuts */
+  .shadow-card  { box-shadow: var(--shadow-card); }
+  .shadow-hover { box-shadow: var(--shadow-hover); }
+  .shadow-modal { box-shadow: var(--shadow-modal); }
+  .shadow-glow  { box-shadow: var(--shadow-glow); }
 
+  /* Container */
+  .max-w-container { max-width: var(--max-container); }
+
+  /* Glassmorphism nav */
   .glass-nav {
-    background: var(--nav-bg);
-    backdrop-filter: blur(20px) saturate(180%);
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+  .dark .glass-nav {
+    background: rgba(15, 15, 18, 0.88);
   }
 
-  .glass {
-    backdrop-filter: blur(20px) saturate(180%);
+  /* Brand gradient */
+  .gradient-brand {
+    background: var(--gradient-brand);
+  }
+  .gradient-brand-text {
+    background: var(--gradient-brand);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Fade-in animation */
+  .animate-fade-in {
+    animation: fade-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Ease-bounce for bar charts */
+  .ease-bounce {
+    transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 }
 
-/* ── Keyframes ── */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
 @keyframes shrink {
   from { width: 100%; }
@@ -226,14 +381,75 @@
   50% { opacity: 0.4; }
 }
 
-/* ── 접근성: prefers-reduced-motion ── */
+/* ────────────────────────────────────────────
+   Base styles
+   ──────────────────────────────────────────── */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    font-size: var(--font-size);
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    @apply antialiased;
+  }
+
+  h1 {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+  h2 {
+    font-size: var(--text-xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+  h3 {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+  h4 {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+  label {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+  button {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+  input {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-normal);
+    line-height: 1.5;
+  }
+}
+
+/* ── Accessibility ── */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
 }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-alt); }
+::-webkit-scrollbar-thumb { background: var(--primary-light); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+::selection { background: var(--primary-soft); }

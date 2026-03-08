@@ -12,11 +12,17 @@ jest.mock('lucide-react', () => {
     Sun: Icon,
     Moon: Icon,
     ChevronDown: Icon,
+    Check: Icon,
+    Plus: Icon,
     Menu: Icon,
     X: Icon,
     User: Icon,
-    Settings: Icon,
-    LogOut: Icon,
+    LayoutDashboard: Icon,
+    Users: Icon,
+    BookOpen: Icon,
+    FileText: Icon,
+    MessagesSquare: Icon,
+    BarChart3: Icon,
   };
 });
 
@@ -25,8 +31,17 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/',
 }));
 
+jest.mock('next/image', () => ({
+  __esModule: true,
+  default: (props: Record<string, unknown>) => <img {...props} />,
+}));
+
 jest.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'light', setTheme: jest.fn() }),
+}));
+
+jest.mock('sonner', () => ({
+  Toaster: () => <div data-testid="toaster" />,
 }));
 
 jest.mock('@/contexts/AuthContext', () => ({
@@ -36,6 +51,7 @@ jest.mock('@/contexts/AuthContext', () => ({
 jest.mock('@/contexts/StudyContext', () => ({
   useStudy: () => ({
     currentStudyId: null,
+    currentStudyName: null,
     studies: [],
     setCurrentStudy: jest.fn(),
   }),
@@ -45,12 +61,12 @@ jest.mock('@/components/layout/NotificationBell', () => ({
   NotificationBell: () => <div data-testid="notification-bell" />,
 }));
 
-jest.mock('@/components/layout/TopNav', () => ({
-  TopNav: () => <nav data-testid="top-nav">TopNav</nav>,
-}));
-
 jest.mock('@/lib/avatars', () => ({
   getAvatarSrc: () => '/avatar.png',
+}));
+
+jest.mock('@/components/ui/Logo', () => ({
+  Logo: () => <div data-testid="logo" />,
 }));
 
 beforeEach(() => {
@@ -64,20 +80,18 @@ beforeEach(() => {
 });
 
 describe('AppLayout', () => {
-  it('renders children and TopNav', () => {
+  it('renders children', () => {
     render(
       <AppLayout>
         <div data-testid="child">Hello</div>
       </AppLayout>,
     );
-    expect(screen.getByTestId('top-nav')).toBeInTheDocument();
     expect(screen.getByTestId('child')).toBeInTheDocument();
   });
 
-  it('renders footer with copyright', () => {
+  it('renders main content area', () => {
     render(<AppLayout>content</AppLayout>);
-    const year = new Date().getFullYear().toString();
-    expect(screen.getByText(new RegExp(`${year}.*AlgoSu`))).toBeInTheDocument();
+    expect(screen.getByText('content')).toBeInTheDocument();
   });
 
   it('does not show session expired overlay by default', () => {
