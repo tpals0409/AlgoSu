@@ -797,7 +797,7 @@ jobs:
 
   e2e-test:
     name: E2E Integration Test
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && inputs.rebuild_all != 'true'
     needs:
       - test-node
       - test-ai-analysis
