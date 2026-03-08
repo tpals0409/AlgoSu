@@ -14,7 +14,7 @@
 import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   Users,
@@ -77,7 +77,6 @@ function SidebarStudySelector({
 }: {
   onNavigate: () => void;
 }): ReactNode {
-  const router = useRouter();
   const { currentStudyId, currentStudyName, studies, setCurrentStudy } =
     useStudy();
   const [open, setOpen] = useState(false);
@@ -208,29 +207,6 @@ function SidebarStudySelector({
               );
             })}
           </div>
-          <div
-            className="border-t p-1"
-            style={{ borderColor: 'var(--border)' }}
-          >
-            <button
-              type="button"
-              onClick={() => {
-                router.push('/studies');
-                setOpen(false);
-                onNavigate();
-              }}
-              className="flex w-full items-center gap-2 rounded-btn px-2.5 py-1.5 text-left transition-colors hover:bg-bg-alt"
-            >
-              <Plus
-                className="h-3 w-3"
-                style={{ color: 'var(--text-3)' }}
-                aria-hidden
-              />
-              <span className="text-[11px]" style={{ color: 'var(--text-3)' }}>
-                스터디 관리
-              </span>
-            </button>
-          </div>
         </div>
       )}
     </div>
@@ -266,6 +242,8 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
 
   function isActive(href: string): boolean {
     if (href === '/dashboard') return pathname === '/dashboard';
+    if (href === '/studies') return pathname === '/studies';
+    if (href === '/study-room') return pathname === '/study-room' || /^\/studies\/[^/]+\/room/.test(pathname);
     return pathname === href || pathname.startsWith(href + '/');
   }
 

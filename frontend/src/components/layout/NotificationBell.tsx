@@ -93,8 +93,10 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
   const [toastNotification, setToastNotification] =
     useState<Notification | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const bellRef = useRef<HTMLButtonElement>(null);
   const prevUnreadRef = useRef<number>(0);
   const initialLoadRef = useRef(true);
+  const [panelStyle, setPanelStyle] = useState<React.CSSProperties>({});
 
   // ─── HOOKS ─────────────────────────────
 
@@ -156,10 +158,31 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
       const next = !prev;
       if (next) {
         void loadNotifications();
+        // 벨 버튼 기준으로 패널 위치 계산 (fixed)
+        if (bellRef.current) {
+          const rect = bellRef.current.getBoundingClientRect();
+          const isDesktop = window.innerWidth >= 1024; // lg breakpoint
+          if (placement === 'sidebar') {
+            setPanelStyle({
+              position: 'fixed',
+              bottom: window.innerHeight - rect.top + 8,
+              ...(isDesktop
+                ? { left: rect.left }                          // 데스크탑: 사이드바 왼쪽 → 오른쪽으로 펼침
+                : { right: window.innerWidth - rect.right }),  // 모바일: 사이드바 오른쪽 → 왼쪽으로 펼침
+            });
+          } else {
+            // 헤더: 버튼 아래쪽으로 열림, 오른쪽 정렬
+            setPanelStyle({
+              position: 'fixed',
+              top: rect.bottom + 8,
+              right: window.innerWidth - rect.right,
+            });
+          }
+        }
       }
       return next;
     });
-  }, [loadNotifications]);
+  }, [loadNotifications, placement]);
 
   // ─── HANDLERS ──────────────────────────
 
@@ -206,18 +229,13 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // 패널 위치: sidebar → 위쪽으로 열림 / header → 아래쪽으로 열림
-  const panelCls =
-    placement === 'sidebar'
-      ? 'absolute bottom-full right-0 mb-2'
-      : 'absolute right-0 top-full mt-2';
-
   return (
     <>
-      <div className="relative" ref={ref}>
+      <div ref={ref}>
         {/* 벨 버튼 */}
         {placement === 'sidebar' ? (
           <button
+            ref={bellRef}
             type="button"
             onClick={handleToggle}
             aria-label={`알림 ${unreadCount > 0 ? `(${unreadCount}개 미읽음)` : ''}`}
@@ -243,6 +261,7 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
           </button>
         ) : (
           <button
+            ref={bellRef}
             type="button"
             aria-label={`알림 ${unreadCount > 0 ? `(${unreadCount}개 미읽음)` : ''}`}
             aria-haspopup="true"
@@ -269,10 +288,8 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
         {/* 드롭다운 */}
         {open && (
           <div
-            className={cn(
-              'z-50 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-card border border-border bg-bg-card shadow-modal',
-              panelCls,
-            )}
+            className="z-[60] w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-card border border-border bg-bg-card shadow-modal"
+            style={panelStyle}
             role="menu"
             aria-label="알림 목록"
           >
