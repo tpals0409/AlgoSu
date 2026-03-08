@@ -298,8 +298,9 @@ describe('StudyService', () => {
   // 6-7. deleteStudy
   // ============================
   describe('deleteStudy', () => {
-    it('정상 삭제 — DB 삭제 + Redis 패턴 캐시 삭제', async () => {
+    it('정상 삭제 — ADMIN 1명 + DB 삭제 + Redis 패턴 캐시 삭제', async () => {
       memberRepository.findOne.mockResolvedValue(mockAdminMember);
+      memberRepository.count.mockResolvedValue(1);
       studyRepository.delete.mockResolvedValue({ affected: 1 });
       mockRedis.keys.mockResolvedValue([
         `membership:${STUDY_ID}:user1`,
@@ -308,11 +309,23 @@ describe('StudyService', () => {
 
       await service.deleteStudy(STUDY_ID, USER_ID);
 
+      expect(memberRepository.count).toHaveBeenCalledWith({
+        where: { study_id: STUDY_ID, role: StudyMemberRole.ADMIN },
+      });
       expect(studyRepository.delete).toHaveBeenCalledWith(STUDY_ID);
       expect(mockRedis.keys).toHaveBeenCalledWith(`membership:${STUDY_ID}:*`);
       expect(mockRedis.del).toHaveBeenCalledWith(
         `membership:${STUDY_ID}:user1`,
         `membership:${STUDY_ID}:user2`,
+      );
+    });
+
+    it('ADMIN 2명 이상 → BadRequestException', async () => {
+      memberRepository.findOne.mockResolvedValue(mockAdminMember);
+      memberRepository.count.mockResolvedValue(2);
+
+      await expect(service.deleteStudy(STUDY_ID, USER_ID)).rejects.toThrow(
+        BadRequestException,
       );
     });
 

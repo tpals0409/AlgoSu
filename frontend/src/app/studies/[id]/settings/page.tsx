@@ -658,10 +658,19 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
             style={{ backgroundColor: 'var(--error-soft)' }}
           >
             <CardContent className="space-y-3 py-5">
-              <p className="text-[13px] text-text-2">
-                스터디를 삭제하면 모든 문제·제출 기록·분석 결과가 영구 삭제됩니다.
-              </p>
-              {showDeleteConfirm ? (
+              <div className="space-y-1.5 text-[13px] text-text-2">
+                <p className="font-medium">스터디 삭제 정책</p>
+                <ul className="list-inside list-disc space-y-0.5 text-[12px]">
+                  <li>관리자가 1명일 때만 삭제할 수 있습니다.</li>
+                  <li>삭제 시 모든 문제·제출 기록·분석 결과가 영구 삭제됩니다.</li>
+                  <li>삭제된 스터디는 복구할 수 없습니다.</li>
+                </ul>
+              </div>
+              {members.filter((m) => m.role === 'ADMIN').length > 1 ? (
+                <p className="text-[12px] font-medium" style={{ color: 'var(--error)' }}>
+                  관리자가 2명 이상이므로 삭제할 수 없습니다. 다른 관리자의 권한을 해제한 후 다시 시도하세요.
+                </p>
+              ) : showDeleteConfirm ? (
                 <div className="space-y-3">
                   <p className="text-[12px] font-medium" style={{ color: 'var(--error)' }}>
                     삭제를 확인하려면 스터디 이름 &quot;{study?.name}&quot;을 입력하세요.

@@ -161,12 +161,22 @@ export class StudyService {
   }
 
   /**
-   * 스터디 삭제 (ADMIN만)
+   * 스터디 삭제 (ADMIN 1명일 때만 허용)
    * @domain study
    * @guard study-admin
+   * @policy 관리자가 2명 이상이면 삭제 불가 — 단독 관리자만 삭제 가능
    */
   async deleteStudy(studyId: string, userId: string): Promise<void> {
     await this.verifyAdmin(studyId, userId);
+
+    const adminCount = await this.memberRepository.count({
+      where: { study_id: studyId, role: StudyMemberRole.ADMIN },
+    });
+    if (adminCount > 1) {
+      throw new BadRequestException(
+        '관리자가 2명 이상인 스터디는 삭제할 수 없습니다. 다른 관리자의 권한을 해제한 후 다시 시도하세요.',
+      );
+    }
 
     const result = await this.studyRepository.delete(studyId);
     if (result.affected === 0) {
