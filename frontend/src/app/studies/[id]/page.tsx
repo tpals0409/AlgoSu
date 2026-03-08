@@ -192,7 +192,7 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="text-[22px] font-bold tracking-tight text-text truncate">
+                <h1 className="text-lg sm:text-[22px] font-bold tracking-tight text-text truncate">
                   {study?.name ?? ''}
                 </h1>
                 {isAdmin && (
@@ -567,11 +567,11 @@ function MembersTab({
               {initial}
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
                 {isMe && editingNickname ? (
                   <div className="flex items-center gap-1">
                     <input
-                      className="w-28 rounded-md border border-primary bg-bg px-2 py-0.5 text-sm font-medium text-text outline-none"
+                      className="w-24 sm:w-28 rounded-md border border-primary bg-bg px-2 py-0.5 text-sm font-medium text-text outline-none"
                       value={nicknameValue}
                       onChange={(e) => setNicknameValue(e.target.value)}
                       onKeyDown={(e) => {

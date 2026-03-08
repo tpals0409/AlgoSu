@@ -161,7 +161,7 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
         // 벨 버튼 기준으로 패널 위치 계산 (fixed)
         if (bellRef.current) {
           const rect = bellRef.current.getBoundingClientRect();
-          const isDesktop = window.innerWidth >= 1024; // lg breakpoint
+          const isDesktop = window.innerWidth >= 768; // md breakpoint
           if (placement === 'sidebar') {
             setPanelStyle({
               position: 'fixed',
@@ -288,7 +288,7 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
         {/* 드롭다운 */}
         {open && (
           <div
-            className="z-[60] w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-card border border-border bg-bg-card shadow-modal"
+            className="z-[60] w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-card border border-border bg-bg-card shadow-modal sm:max-w-80"
             style={panelStyle}
             role="menu"
             aria-label="알림 목록"

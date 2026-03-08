@@ -130,7 +130,7 @@ function StatCard({
         {loading ? (
           <Skeleton height={28} width={60} />
         ) : (
-          <p className={cn('font-mono text-[28px] font-bold leading-none tracking-tight', valueColor ?? 'text-text')}>
+          <p className={cn('font-mono text-xl sm:text-[28px] font-bold leading-none tracking-tight', valueColor ?? 'text-text')}>
             {value}
           </p>
         )}
@@ -435,15 +435,15 @@ export default function DashboardPage(): ReactNode {
         {/* ── GITHUB ONBOARDING BANNER ── */}
         {!githubConnected && !isLoading && (
           <Card className="border-warning/30 bg-warning-soft" style={fade(0.06)}>
-            <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
-                <Github className="h-5 w-5 text-warning" aria-hidden />
+                <Github className="h-5 w-5 shrink-0 text-warning" aria-hidden />
                 <div>
                   <p className="text-[13px] font-medium text-text">GitHub 연동이 필요합니다</p>
                   <p className="text-[11px] text-text-3">코드를 제출하려면 GitHub 계정을 먼저 연동해주세요.</p>
                 </div>
               </div>
-              <Button variant="outline" size="sm" onClick={() => router.push('/github-link')}>
+              <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => router.push('/github-link')}>
                 연동하기
               </Button>
             </div>
@@ -452,7 +452,7 @@ export default function DashboardPage(): ReactNode {
 
         {/* ── STAT CARDS + STUDY ROOM (4열) ── */}
         {currentStudyId && (
-          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-4" style={fade(0.08)}>
+          <div className="grid grid-cols-2 gap-3 sm:gap-3.5 md:grid-cols-4" style={fade(0.08)}>
             <StatCard
               icon={FileText}
               label="제출 수"
@@ -487,7 +487,7 @@ export default function DashboardPage(): ReactNode {
                     <MessageCircle className="h-4 w-4 text-white" aria-hidden />
                   </div>
                   <div>
-                    <p className="font-mono text-[28px] font-bold leading-none tracking-tight text-white">스터디룸</p>
+                    <p className="font-mono text-xl sm:text-[28px] font-bold leading-none tracking-tight text-white">스터디룸</p>
                     <p className="mt-1 text-[11px] text-white/70">입장하기</p>
                   </div>
                 </div>

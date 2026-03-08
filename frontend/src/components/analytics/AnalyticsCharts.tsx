@@ -86,9 +86,9 @@ function StatCard({
   readonly style?: CSSProperties;
 }): ReactNode {
   return (
-    <Card className="flex items-center justify-between px-5 py-4" style={style}>
-      <div>
-        <p className="text-2xl font-bold text-text">{value}</p>
+    <Card className="flex items-center justify-between px-3 py-3 sm:px-5 sm:py-4" style={style}>
+      <div className="min-w-0">
+        <p className="text-lg sm:text-2xl font-bold text-text truncate">{value}</p>
         {sub && <p className="text-[11px] text-text-3">{sub}</p>}
         {!sub && <p className="text-[11px] text-text-3">{label}</p>}
       </div>
@@ -174,33 +174,43 @@ export default function AnalyticsCharts({
           <TrendingUp className="h-4 w-4" style={{ color: 'var(--primary)' }} />
           <span className="text-[14px] font-semibold text-text">주차별 제출 추이</span>
         </div>
-        <div className="h-[200px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={weeklyData} barSize={28}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-              <XAxis
-                dataKey="week"
-                tick={{ fontSize: 11, fill: 'var(--text-3)' }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tick={{ fontSize: 11, fill: 'var(--text-3)' }}
-                axisLine={false}
-                tickLine={false}
-                allowDecimals={false}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'var(--bg-card)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                }}
-              />
-              <Bar dataKey="count" fill="var(--primary)" radius={[4, 4, 0, 0]} name="제출" />
-            </BarChart>
-          </ResponsiveContainer>
+        <div className="overflow-x-auto" style={{ backgroundColor: 'var(--bg-card)' }}>
+          <div className="h-[200px]" style={{ minWidth: Math.max(weeklyData.length * 56, 300) }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={weeklyData}
+                barSize={weeklyData.length > 12 ? 16 : 28}
+                style={{ outline: 'none' }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis
+                  dataKey="week"
+                  tick={{ fontSize: 11, fill: 'var(--text-3)' }}
+                  axisLine={false}
+                  tickLine={false}
+                  interval={weeklyData.length > 12 ? Math.floor(weeklyData.length / 10) : 0}
+                  angle={weeklyData.length > 8 ? -45 : 0}
+                  textAnchor={weeklyData.length > 8 ? 'end' : 'middle'}
+                  height={weeklyData.length > 8 ? 50 : 30}
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: 'var(--text-3)' }}
+                  axisLine={false}
+                  tickLine={false}
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                  }}
+                />
+                <Bar dataKey="count" fill="var(--primary)" radius={[4, 4, 0, 0]} name="제출" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </Card>
 
@@ -218,41 +228,47 @@ export default function AnalyticsCharts({
             평균 {avgAIScore}점
           </span>
         </div>
-        <div className="h-[180px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={aiScoreData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 11, fill: 'var(--text-3)' }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                domain={[60, 100]}
-                tick={{ fontSize: 11, fill: 'var(--text-3)' }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'var(--bg-card)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                }}
-              />
-              <Line
-                type="monotone"
-                dataKey="score"
-                stroke="var(--primary)"
-                strokeWidth={2.5}
-                dot={{ fill: 'var(--primary)', strokeWidth: 0, r: 4 }}
-                activeDot={{ r: 6, fill: 'var(--primary)' }}
-                name="AI 점수"
-              />
-            </LineChart>
-          </ResponsiveContainer>
+        <div className="overflow-x-auto" style={{ backgroundColor: 'var(--bg-card)' }}>
+          <div className="h-[180px]" style={{ minWidth: Math.max(aiScoreData.length * 56, 300) }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={aiScoreData} style={{ outline: 'none' }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 11, fill: 'var(--text-3)' }}
+                  axisLine={false}
+                  tickLine={false}
+                  interval={aiScoreData.length > 12 ? Math.floor(aiScoreData.length / 10) : 0}
+                  angle={aiScoreData.length > 8 ? -45 : 0}
+                  textAnchor={aiScoreData.length > 8 ? 'end' : 'middle'}
+                  height={aiScoreData.length > 8 ? 50 : 30}
+                />
+                <YAxis
+                  domain={[60, 100]}
+                  tick={{ fontSize: 11, fill: 'var(--text-3)' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="score"
+                  stroke="var(--primary)"
+                  strokeWidth={2.5}
+                  dot={{ fill: 'var(--primary)', strokeWidth: 0, r: 4 }}
+                  activeDot={{ r: 6, fill: 'var(--primary)' }}
+                  name="AI 점수"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </Card>
 

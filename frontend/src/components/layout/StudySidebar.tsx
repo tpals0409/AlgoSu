@@ -5,13 +5,13 @@
  * @related StudyContext, TopNav
  *
  * 스터디 페이지 전용 사이드바.
- * 데스크톱: 좌측 고정, 모바일: 접이식 오버레이.
+ * 데스크톱: 좌측 고정, 모바일(< md): 슬라이드 오버레이 + 백드롭.
  * 네비게이션: 개요 | 문제 | 제출 | 멤버 | 설정 (ADMIN만)
  */
 
 'use client';
 
-import { useState, useEffect, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -23,6 +23,8 @@ import {
   ChevronDown,
   PanelLeftClose,
   PanelLeft,
+  Menu,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStudy } from '@/contexts/StudyContext';
@@ -58,40 +60,49 @@ export function StudySidebar(): ReactNode {
   } = useStudy();
 
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [studyDropdownOpen, setStudyDropdownOpen] = useState(false);
 
-  // 모바일에서는 기본 접힘
+  const closeMobile = useCallback(() => setMobileOpen(false), []);
+
+  // Lock body scroll when mobile sidebar is open
   useEffect(() => {
-    const mq = window.matchMedia('(max-width: 768px)');
-    setCollapsed(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setCollapsed(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
+    document.body.style.overflow = mobileOpen ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileOpen]);
+
+  // Close mobile sidebar on route change
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   if (!currentStudyId) return null;
 
   const isAdmin = currentStudyRole === 'ADMIN';
 
-  return (
-    <aside
-      className={cn(
-        'flex shrink-0 flex-col border-r border-border bg-bg transition-all duration-200',
-        collapsed ? 'w-[52px]' : 'w-[220px]',
-      )}
-    >
+  // Shared nav content (used in both desktop aside and mobile overlay)
+  const navContent = (
+    <>
       {/* 스터디 선택 헤더 */}
       <div className="border-b border-border px-3 py-3">
-        {collapsed ? (
-          <button
-            type="button"
-            aria-label="사이드바 확장"
-            onClick={() => setCollapsed(false)}
-            className="flex h-7 w-7 items-center justify-center rounded-badge text-text-3 transition-colors hover:bg-bg-alt hover:text-text"
-          >
-            <PanelLeft className="h-4 w-4" aria-hidden />
-          </button>
-        ) : (
+        {/* Desktop: collapsed view */}
+        {collapsed && (
+          <div className="hidden md:block">
+            <button
+              type="button"
+              aria-label="사이드바 확장"
+              onClick={() => setCollapsed(false)}
+              className="flex h-7 w-7 items-center justify-center rounded-badge text-text-3 transition-colors hover:bg-bg-alt hover:text-text"
+            >
+              <PanelLeft className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
+        )}
+
+        {/* Expanded view (always shown on mobile overlay, conditionally on desktop) */}
+        <div className={cn(collapsed ? 'md:hidden' : '')}>
           <div className="flex items-center justify-between gap-1">
             <div className="relative min-w-0 flex-1">
               <button
@@ -153,16 +164,27 @@ export function StudySidebar(): ReactNode {
               )}
             </div>
 
+            {/* Desktop: collapse toggle */}
             <button
               type="button"
               aria-label="사이드바 접기"
               onClick={() => setCollapsed(true)}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-badge text-text-3 transition-colors hover:bg-bg-alt hover:text-text"
+              className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-badge text-text-3 transition-colors hover:bg-bg-alt hover:text-text md:flex"
             >
               <PanelLeftClose className="h-4 w-4" aria-hidden />
             </button>
+
+            {/* Mobile: close button */}
+            <button
+              type="button"
+              aria-label="사이드바 닫기"
+              onClick={closeMobile}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-badge text-text-3 transition-colors hover:bg-bg-alt hover:text-text md:hidden"
+            >
+              <X className="h-4 w-4" aria-hidden />
+            </button>
           </div>
-        )}
+        </div>
       </div>
 
       {/* 네비게이션 링크 */}
@@ -172,7 +194,6 @@ export function StudySidebar(): ReactNode {
             if (adminOnly && !isAdmin) return null;
 
             const linkHref = href(currentStudyId);
-            // 정확히 매칭하거나 하위 경로
             const isActive =
               pathname === linkHref || pathname.startsWith(linkHref + '/');
 
@@ -181,13 +202,14 @@ export function StudySidebar(): ReactNode {
                 <Link
                   href={linkHref}
                   title={collapsed ? label : undefined}
+                  onClick={closeMobile}
                   className={cn(
                     'flex items-center gap-2.5 rounded-badge text-xs transition-colors duration-150',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                     isActive
                       ? 'bg-primary-soft text-primary font-medium'
                       : 'text-text-2 hover:bg-bg-alt hover:text-text',
-                    collapsed ? 'justify-center px-0 py-2' : 'px-3 py-2',
+                    collapsed ? 'md:justify-center md:px-0 px-3 py-2' : 'px-3 py-2',
                   )}
                 >
                   <Icon
@@ -197,13 +219,61 @@ export function StudySidebar(): ReactNode {
                     )}
                     aria-hidden
                   />
-                  {!collapsed && <span>{label}</span>}
+                  {collapsed ? (
+                    <span className="md:hidden">{label}</span>
+                  ) : (
+                    <span>{label}</span>
+                  )}
                 </Link>
               </li>
             );
           })}
         </ul>
       </nav>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Mobile: hamburger trigger button */}
+      <button
+        type="button"
+        aria-label="스터디 메뉴 열기"
+        onClick={() => setMobileOpen(true)}
+        className="fixed bottom-4 right-4 z-30 flex h-12 w-12 items-center justify-center rounded-full shadow-lg md:hidden"
+        style={{ background: 'var(--primary)', color: 'white' }}
+      >
+        <Menu className="h-5 w-5" aria-hidden />
+      </button>
+
+      {/* Mobile: backdrop overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm md:hidden"
+          onClick={closeMobile}
+          aria-hidden
+        />
+      )}
+
+      {/* Mobile: slide-in overlay sidebar */}
+      <aside
+        className={cn(
+          'fixed left-0 top-0 z-50 flex h-screen w-[220px] flex-col border-r border-border bg-bg transition-transform duration-300 md:hidden',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full',
+        )}
+      >
+        {navContent}
+      </aside>
+
+      {/* Desktop: static sidebar */}
+      <aside
+        className={cn(
+          'hidden shrink-0 flex-col border-r border-border bg-bg transition-all duration-200 md:flex',
+          collapsed ? 'w-[52px]' : 'w-[220px]',
+        )}
+      >
+        {navContent}
+      </aside>
+    </>
   );
 }

@@ -322,7 +322,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
           <div className="flex-1 min-w-0 space-y-4">
 
             {/* 문제 정보 카드 */}
-            <div className="rounded-xl border border-border p-5 space-y-4 bg-bg-card">
+            <div className="rounded-xl border border-border p-3 sm:p-5 space-y-3 sm:space-y-4 bg-bg-card">
               {/* 뱃지 줄 */}
               <div className="flex flex-wrap items-center gap-2">
                 {diffLabel && (
@@ -429,7 +429,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
           <div className="w-full lg:w-[260px] shrink-0 space-y-4">
 
             {/* 마감 정보 */}
-            <div className="rounded-xl border border-border p-5 space-y-3 bg-bg-card">
+            <div className="rounded-xl border border-border p-3 sm:p-5 space-y-3 bg-bg-card">
               <h3 className="text-[14px] font-bold text-text">마감 정보</h3>
               <div className="flex items-center justify-between">
                 <span className="text-[13px]" style={{ color: 'var(--text-3)' }}>마감일</span>
@@ -446,7 +446,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
             </div>
 
             {/* 제출 현황 */}
-            <div className="rounded-xl border border-border p-5 bg-bg-card">
+            <div className="rounded-xl border border-border p-3 sm:p-5 bg-bg-card">
               <h3 className="text-[14px] font-bold text-text mb-3">제출 현황</h3>
               {submissions.length === 0 ? (
                 <p className="text-[13px]" style={{ color: 'var(--text-3)' }}>

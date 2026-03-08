@@ -86,7 +86,7 @@ function StudySelector(): ReactNode {
         >
           {currentStudy?.name?.charAt(0) ?? ''}
         </div>
-        <span className="max-w-[80px] truncate">
+        <span className="max-w-[48px] truncate sm:max-w-[80px]">
           {currentStudy?.name ?? '스터디 선택'}
         </span>
         <ChevronDown className="h-3 w-3 shrink-0" aria-hidden />
@@ -255,10 +255,10 @@ export function TopNav(): ReactNode {
         {/* 로고 */}
         <Link
           href="/"
-          className="flex items-center gap-2 text-text transition-opacity hover:opacity-80 font-bold text-base tracking-tight"
+          className="flex shrink-0 items-center gap-2 text-text transition-opacity hover:opacity-80 font-bold text-base tracking-tight"
         >
           <Logo size={28} />
-          AlgoSu
+          <span className="hidden sm:inline">AlgoSu</span>
         </Link>
 
         {/* 네비 항목 */}
@@ -303,7 +303,7 @@ export function TopNav(): ReactNode {
         )}
 
         {/* 우측 영역 */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {isAuthenticated && <StudySelector />}
 
           {/* 테마 토글 */}

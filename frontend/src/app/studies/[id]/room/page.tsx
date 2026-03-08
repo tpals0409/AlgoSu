@@ -432,7 +432,7 @@ export default function StudyRoomPage(): ReactElement {
           <p className="mt-0.5 text-sm text-text-2">문제를 선택해 멤버별 제출 코드를 확인하세요.</p>
         </div>
 
-        <div className="grid grid-cols-3 gap-3" style={fade(0.06)}>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3" style={fade(0.06)}>
           <StatCard icon={<BookOpen className="h-5 w-5" />} iconBg="var(--primary-soft)" iconColor="var(--primary)" value={stats.totalProblems} label="전체 문제" />
           <StatCard icon={<Users className="h-5 w-5" />} iconBg="var(--info-soft, rgba(59,130,206,0.12))" iconColor="var(--info, #3B82CE)" value={stats.totalSubmissions} label="총 제출" />
           <StatCard icon={<Sparkles className="h-5 w-5" />} iconBg="var(--success-soft)" iconColor="var(--success)" value={stats.totalAnalyzed} label="분석 완료" />
@@ -546,7 +546,7 @@ function ProblemTimelineCard({ problem, barsAnimated, submittedCount, totalMembe
     <Card className="overflow-hidden p-0 cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-hover" onClick={() => onSelect(problem)}>
       <div className="flex">
         <div className="w-1 shrink-0" style={{ backgroundColor: `var(--diff-${tier}-color)` }} />
-        <div className="flex-1 px-5 py-4">
+        <div className="flex-1 px-3 py-3 sm:px-5 sm:py-4">
           <div className="flex items-center gap-2 mb-2">
             <DifficultyBadge difficulty={problem.difficulty} level={problem.level} />
             {isActive ? (
@@ -611,8 +611,8 @@ function SubmissionView({ problem, submissions, loading, notSubmitted, nicknameM
           <ArrowLeft className="h-5 w-5" style={{ color: 'var(--text)' }} />
         </button>
         <div>
-          <h1 className="text-[22px] font-bold tracking-tight text-text">{problem.title}</h1>
-          <p className="mt-0.5 text-sm text-text-3">{problem.weekNumber} · 멤버별 제출 현황</p>
+          <h1 className="text-lg sm:text-[22px] font-bold tracking-tight text-text">{problem.title}</h1>
+          <p className="mt-0.5 text-xs sm:text-sm text-text-3">{problem.weekNumber} · 멤버별 제출 현황</p>
         </div>
       </div>
 
@@ -624,8 +624,8 @@ function SubmissionView({ problem, submissions, loading, notSubmitted, nicknameM
       {/* 정보 카드 */}
       <Card className="p-0 overflow-hidden" style={vfade(0.06)}>
         <div className="px-5 py-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <div className="flex flex-wrap items-center gap-2">
               <DifficultyBadge difficulty={problem.difficulty} level={problem.level} />
               {(problem.tags ?? []).map((tag) => (
                 <span key={tag} className="rounded-badge px-2 py-0.5 text-[11px]" style={{ backgroundColor: 'var(--bg-alt)', color: 'var(--text-3)' }}>{tag}</span>
@@ -637,7 +637,7 @@ function SubmissionView({ problem, submissions, loading, notSubmitted, nicknameM
               </a>
             )}
           </div>
-          <div className="grid grid-cols-3 text-center">
+          <div className="grid grid-cols-3 gap-2 text-center">
             <div>
               <div className="flex items-center justify-center gap-1.5"><Users className="h-4 w-4 text-text-3" /><span className="text-lg font-bold text-text">{totalMembers}</span></div>
               <p className="text-[11px] text-text-3">전체 멤버</p>
@@ -843,7 +843,7 @@ function AnalysisView({ problem, submission, analysis, loading, nicknameMap, ava
                 <Brain className="h-4 w-4" style={{ color: 'var(--primary)' }} />AI 분석 결과
               </span>
             </div>
-            <div className="px-5 py-5 space-y-5">
+            <div className="px-3 py-4 sm:px-5 sm:py-5 space-y-5">
               <div className="flex justify-center">
                 <ScoreGauge score={totalScore} size={160} label="/ 100" />
               </div>

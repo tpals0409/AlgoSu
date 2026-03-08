@@ -306,7 +306,7 @@ export default function AnalysisPage(): ReactNode {
             >
               <ArrowLeft className="h-5 w-5" style={{ color: 'var(--text)' }} />
             </button>
-            <h1 className="text-xl font-bold tracking-tight text-text">
+            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-text truncate">
               {submission?.problemTitle ?? problemMeta?.title ?? `제출 ${submissionId.slice(0, 8)}`}
             </h1>
           </div>
@@ -364,14 +364,14 @@ export default function AnalysisPage(): ReactNode {
           </div>
 
           {/* 시간 + 문제 보기 링크 */}
-          <div className="flex items-center justify-between">
-            <span className="text-[12px] text-text-3">
+          <div className="flex flex-wrap items-center justify-between gap-1">
+            <span className="text-[11px] sm:text-[12px] text-text-3">
               {submission ? `${relativeTime(submission.createdAt)} · ${new Date(submission.createdAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })} ${new Date(submission.createdAt).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit', hour12: true })}` : ''}
             </span>
             {submission && (
               <Link
                 href={`/problems/${submission.problemId}`}
-                className="inline-flex items-center gap-1 text-[12px] font-medium text-primary hover:underline"
+                className="inline-flex items-center gap-1 text-[12px] font-medium text-primary hover:underline shrink-0"
               >
                 문제 보기
                 <ExternalLink className="h-3 w-3" aria-hidden />
@@ -490,7 +490,7 @@ export default function AnalysisPage(): ReactNode {
                   </span>
                 </div>
 
-                <div className="px-5 py-5 space-y-5">
+                <div className="px-3 sm:px-5 py-4 sm:py-5 space-y-5">
                   {/* 원형 점수 게이지 */}
                   <div className="flex justify-center">
                     <ScoreGauge score={parsed.totalScore} size={160} label="/ 100" />

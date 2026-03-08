@@ -118,7 +118,7 @@ export default function DashboardTwoColumn({
                     : `/problems/${s.problemId}`
                 }
                 className={cn(
-                  'group flex items-center justify-between px-6 py-3.5 transition-all hover:bg-primary-soft',
+                  'group flex items-center justify-between px-4 py-3 sm:px-6 sm:py-3.5 transition-all hover:bg-primary-soft',
                 )}
               >
                 <div className="min-w-0 flex-1">
@@ -187,7 +187,7 @@ export default function DashboardTwoColumn({
                   key={p.id}
                   href={`/problems/${p.id}`}
                   className={cn(
-                    'group flex items-center justify-between px-6 py-3.5 transition-all hover:bg-primary-soft',
+                    'group flex items-center justify-between px-4 py-3 sm:px-6 sm:py-3.5 transition-all hover:bg-primary-soft',
                     i < upcomingDeadlines.length - 1 && 'border-b border-border',
                   )}
                 >

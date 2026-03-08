@@ -375,7 +375,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
           <h2 className="text-sm font-semibold text-text-3">스터디 이미지</h2>
           <Card>
             <CardContent className="py-5">
-              <div className="flex items-center gap-5">
+              <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-5">
                 {/* 아바타 미리보기 */}
                 <div className="relative shrink-0">
                   {avatarPreview ? (
@@ -534,7 +534,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                 />
               )}
 
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-[11px] text-text-3">
                   Markdown 지원: **굵게**, *기울임*, ## 제목, - 목록
                 </span>
@@ -612,7 +612,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                 <Input
                   value={codeActive ? inviteCode : (inviteCode ? '만료됨' : '코드를 생성해주세요')}
                   readOnly
-                  className={`font-mono text-sm ${!codeActive ? 'text-text-3' : ''} ${inviteCode && !codeActive ? 'line-through' : ''}`}
+                  className={`min-w-0 font-mono text-sm ${!codeActive ? 'text-text-3' : ''} ${inviteCode && !codeActive ? 'line-through' : ''}`}
                 />
                 <button
                   type="button"
@@ -677,7 +677,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                     value={deleteConfirmName}
                     onChange={(e) => setDeleteConfirmName(e.target.value)}
                     placeholder={study?.name ?? ''}
-                    className="max-w-xs"
+                    className="w-full sm:max-w-xs"
                   />
                   <div className="flex items-center gap-2">
                     <Button

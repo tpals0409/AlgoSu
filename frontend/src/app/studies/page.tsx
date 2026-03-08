@@ -117,14 +117,15 @@ export default function StudiesPage(): ReactNode {
   // ─── HANDLERS ──────────────────────────
 
   /**
-   * 스터디 카드 "자세히 보기" → 스터디 상세 이동
+   * 스터디 카드 클릭 → 현재 스터디 설정 후 대시보드 이동
    * @domain study
    */
   const handleStudyClick = useCallback(
     (study: Study) => {
-      router.push(`/studies/${study.id}`);
+      setCurrentStudy(study.id);
+      router.push('/dashboard');
     },
-    [router],
+    [setCurrentStudy, router],
   );
 
   /**
@@ -282,7 +283,8 @@ export default function StudiesPage(): ReactNode {
                 {studies.map((study) => (
                   <Card
                     key={study.id}
-                    className="flex flex-col overflow-hidden p-0 transition-all hover:border-primary/50 hover:shadow-hover"
+                    className="flex cursor-pointer flex-col overflow-hidden p-0 transition-all hover:border-primary/50 hover:shadow-hover"
+                    onClick={() => handleStudyClick(study)}
                   >
                     <CardContent className="flex flex-1 flex-col gap-3 p-5 pb-0">
                       {/* 상단: 아바타 + 이름/뱃지/멤버수 + 설정 */}
@@ -343,7 +345,10 @@ export default function StudiesPage(): ReactNode {
                       type="button"
                       className="mt-3 flex w-full items-center justify-center gap-1 py-3 text-sm font-medium text-white transition-colors hover:opacity-90"
                       style={{ backgroundColor: 'var(--primary)' }}
-                      onClick={() => handleStudyClick(study)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStudyClick(study);
+                      }}
                     >
                       자세히 보기
                       <ArrowRight className="h-3.5 w-3.5" aria-hidden />

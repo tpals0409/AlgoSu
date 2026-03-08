@@ -23,8 +23,10 @@ import {
   getGitHubConnected,
   setGitHubConnected as setGitHubConnectedStorage,
   setGitHubUsername as setGitHubUsernameStorage,
+  removeToken,
+  removeRefreshToken,
 } from '@/lib/auth';
-import { authApi } from '@/lib/api';
+import { authApi, setCurrentStudyIdForApi } from '@/lib/api';
 import { getAvatarPresetKey } from '@/lib/avatars';
 
 // ── TYPES ────────────────────────────────
@@ -118,14 +120,26 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
 
   /** 로그아웃 — 서버에 Cookie 삭제 요청 후 로컬 상태 초기화 */
   const logout = useCallback((): void => {
-    // 서버에 logout 요청 (쿠키 삭제)
-    fetch('/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
-    setGitHubConnectedStorage(false);
-    setGitHubUsernameStorage(null);
+    // 1) 로컬 상태 즉시 초기화
     setUser(null);
     setGithubConnected(false);
     setSessionExpired(false);
-    window.location.href = '/login';
+
+    // 2) localStorage 전체 정리
+    setGitHubConnectedStorage(false);
+    setGitHubUsernameStorage(null);
+    removeToken();
+    removeRefreshToken();
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('algosu:current-study-id');
+    }
+    setCurrentStudyIdForApi(null);
+
+    // 3) 서버에 logout 요청 (httpOnly Cookie 삭제) — 완료 후 리다이렉트
+    fetch('/auth/logout', { method: 'POST', credentials: 'include' })
+      .finally(() => {
+        window.location.href = '/login';
+      });
   }, []);
 
   /** GitHub 연동 상태 업데이트 (단일 진실 원천) */

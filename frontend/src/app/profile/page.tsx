@@ -8,7 +8,6 @@
 'use client';
 
 import { useState, useEffect, useCallback, type ReactNode, type CSSProperties } from 'react';
-import { useRouter } from 'next/navigation';
 import {
   Github,
   LogOut,
@@ -47,7 +46,6 @@ const OAUTH_PROVIDER_LABELS: Record<string, string> = {
  * @domain identity
  */
 export default function ProfilePage(): ReactNode {
-  const router = useRouter();
   const { isReady } = useRequireAuth();
   const { user, logout, githubConnected, updateGitHubStatus, updateAvatar } =
     useAuth();
@@ -176,8 +174,7 @@ export default function ProfilePage(): ReactNode {
    */
   const handleLogout = useCallback(() => {
     logout();
-    router.replace('/login');
-  }, [logout, router]);
+  }, [logout]);
 
   /**
    * 계정 삭제
@@ -189,13 +186,12 @@ export default function ProfilePage(): ReactNode {
     try {
       await authApi.deleteAccount();
       logout();
-      router.replace('/login');
     } catch {
       setError('계정 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.');
       setDeleteLoading(false);
       setShowDeleteConfirm(false);
     }
-  }, [logout, router]);
+  }, [logout]);
 
   // ─── LOADING ───────────────────────────
 
@@ -410,7 +406,7 @@ export default function ProfilePage(): ReactNode {
               </div>
               {/* 재연동 / 해제 (연동 상태일 때) */}
               {githubConnected && (
-                <div className="mt-3 flex items-center gap-2 pl-[52px]">
+                <div className="mt-3 flex items-center gap-2 pl-0 sm:pl-[52px]">
                   <button
                     type="button"
                     disabled={githubLoading}
@@ -438,11 +434,11 @@ export default function ProfilePage(): ReactNode {
             {/* 계정 관리 */}
             <Card className="p-5" style={fade(0.2)}>
               <h3 className="text-[14px] font-semibold text-text mb-4">계정 관리</h3>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="flex items-center gap-2 rounded-btn px-4 py-2 text-[13px] font-medium text-text-2 transition-colors hover:bg-bg-alt"
+                  className="flex items-center justify-center gap-2 rounded-btn px-4 py-2 text-[13px] font-medium text-text-2 transition-colors hover:bg-bg-alt"
                   style={{ border: '1px solid var(--border)' }}
                 >
                   <LogOut className="h-4 w-4" aria-hidden />
@@ -451,7 +447,7 @@ export default function ProfilePage(): ReactNode {
                 <button
                   type="button"
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="flex items-center gap-2 rounded-btn px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-90"
+                  className="flex items-center justify-center gap-2 rounded-btn px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-90"
                   style={{ background: 'var(--error)' }}
                 >
                   계정 탈퇴
@@ -464,7 +460,7 @@ export default function ProfilePage(): ReactNode {
         {/* 계정 삭제 확인 다이얼로그 */}
         {showDeleteConfirm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm">
-            <div className="w-full max-w-sm rounded-card border border-border bg-bg-card p-6 shadow-modal">
+            <div className="mx-4 w-full max-w-sm rounded-card border border-border bg-bg-card p-5 sm:p-6 shadow-modal">
               <h3 className="text-[15px] font-bold text-error mb-2">정말 계정을 삭제하시겠습니까?</h3>
               <p className="text-[12px] text-text-3 mb-5">
                 이 작업은 되돌릴 수 없습니다. 모든 데이터(제출, 스터디, 프로필)가 영구 삭제됩니다.

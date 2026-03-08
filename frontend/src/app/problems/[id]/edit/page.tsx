@@ -546,7 +546,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
               </div>
             )}
 
-            <CardFooter className="flex items-center justify-between">
+            <CardFooter className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-between gap-3">
               <div className="flex gap-3">
                 <Button
                   type="button"
@@ -554,6 +554,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                   size="md"
                   disabled={isSubmitting || isDeleting}
                   onClick={() => router.back()}
+                  className="flex-1 sm:flex-initial"
                 >
                   취소
                 </Button>
@@ -562,6 +563,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                   variant="primary"
                   size="md"
                   disabled={isSubmitting || isDeleting}
+                  className="flex-1 sm:flex-initial"
                 >
                   {isSubmitting ? (
                     <>

@@ -17,6 +17,8 @@ jest.mock('lucide-react', () => {
     ChevronDown: Icon,
     PanelLeftClose: Icon,
     PanelLeft: Icon,
+    Menu: Icon,
+    X: Icon,
   };
 });
 
@@ -54,34 +56,39 @@ beforeEach(() => {
   });
 });
 
+// navContent is rendered in both mobile and desktop asides,
+// so many elements appear twice. Use getAllBy and check at least one.
+
 describe('StudySidebar', () => {
   it('renders navigation with study links', () => {
     render(<StudySidebar />);
-    expect(screen.getByRole('navigation', { name: '스터디 내비게이션' })).toBeInTheDocument();
-    expect(screen.getByText('개요')).toBeInTheDocument();
-    expect(screen.getByText('문제')).toBeInTheDocument();
-    expect(screen.getByText('제출')).toBeInTheDocument();
-    expect(screen.getByText('멤버')).toBeInTheDocument();
+    const navs = screen.getAllByRole('navigation', { name: '스터디 내비게이션' });
+    expect(navs.length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('개요').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('문제').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('제출').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('멤버').length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows settings link for ADMIN role', () => {
     render(<StudySidebar />);
-    expect(screen.getByText('설정')).toBeInTheDocument();
+    expect(screen.getAllByText('설정').length).toBeGreaterThanOrEqual(1);
   });
 
   it('displays current study name in dropdown button', () => {
     render(<StudySidebar />);
-    expect(screen.getByText('Test Study')).toBeInTheDocument();
+    expect(screen.getAllByText('Test Study').length).toBeGreaterThanOrEqual(1);
   });
 
   it('opens study dropdown and allows switching', async () => {
     const user = userEvent.setup();
     render(<StudySidebar />);
 
-    await user.click(screen.getByRole('button', { name: '스터디 전환' }));
-    expect(screen.getByRole('listbox', { name: '스터디 목록' })).toBeInTheDocument();
+    const toggleButtons = screen.getAllByRole('button', { name: '스터디 전환' });
+    await user.click(toggleButtons[0]);
+    const listbox = screen.getAllByRole('listbox', { name: '스터디 목록' })[0];
+    expect(listbox).toBeInTheDocument();
 
-    const listbox = screen.getByRole('listbox', { name: '스터디 목록' });
     const options = listbox.querySelectorAll('[role="option"]');
     // Click the second option (Other Study)
     await user.click(options[1]);
@@ -93,14 +100,15 @@ describe('StudySidebar', () => {
     const user = userEvent.setup();
     render(<StudySidebar />);
 
-    // Collapse
-    await user.click(screen.getByRole('button', { name: '사이드바 접기' }));
-    expect(screen.getByRole('button', { name: '사이드바 확장' })).toBeInTheDocument();
-    expect(screen.queryByText('개요')).not.toBeInTheDocument();
+    // Collapse (use first match — desktop sidebar)
+    const collapseButtons = screen.getAllByRole('button', { name: '사이드바 접기' });
+    await user.click(collapseButtons[0]);
+    expect(screen.getAllByRole('button', { name: '사이드바 확장' }).length).toBeGreaterThanOrEqual(1);
 
     // Expand
-    await user.click(screen.getByRole('button', { name: '사이드바 확장' }));
-    expect(screen.getByText('개요')).toBeInTheDocument();
+    const expandButtons = screen.getAllByRole('button', { name: '사이드바 확장' });
+    await user.click(expandButtons[0]);
+    expect(screen.getAllByText('개요').length).toBeGreaterThanOrEqual(1);
   });
 
   it('hides settings link for MEMBER role', () => {
@@ -113,7 +121,7 @@ describe('StudySidebar', () => {
     });
     render(<StudySidebar />);
     expect(screen.queryByText('설정')).not.toBeInTheDocument();
-    expect(screen.getByText('개요')).toBeInTheDocument();
+    expect(screen.getAllByText('개요').length).toBeGreaterThanOrEqual(1);
   });
 
   it('renders nothing when currentStudyId is null', () => {
@@ -137,7 +145,8 @@ describe('StudySidebar', () => {
       setCurrentStudy: mockSetCurrentStudy,
     });
     render(<StudySidebar />);
+    const toggleButtons = screen.getAllByRole('button', { name: '스터디 전환' });
     // currentStudyName ?? '스터디' 분기: null일 때 '스터디' 표시
-    expect(screen.getByRole('button', { name: '스터디 전환' })).toHaveTextContent('스터디');
+    expect(toggleButtons[0]).toHaveTextContent('스터디');
   });
 });

@@ -447,7 +447,7 @@ export default function ProblemCreatePage(): ReactNode {
             </CardContent>
 
             {/* 마감 & 설정 */}
-            <div className="px-6 pb-6 space-y-4">
+            <div className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-4">
               <div className="flex items-center gap-2 pt-2">
                 <div className="flex items-center justify-center w-7 h-7 rounded-md bg-primary-soft text-primary">
                   <Clock className="h-3.5 w-3.5" />

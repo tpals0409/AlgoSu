@@ -371,8 +371,8 @@ export default function CodeReviewPage(): ReactElement {
       {/* 헤더 (focus mode에서 숨김) */}
       {!focusMode && (
         <header className="glass-nav sticky top-0 z-50 border-b border-border">
-          <div className="mx-auto flex h-14 max-w-container items-center justify-between px-4">
-            <div className="flex items-center gap-3">
+          <div className="mx-auto flex h-14 max-w-container items-center justify-between gap-2 px-3 sm:px-4">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <button
                 type="button"
                 onClick={() => router.push(
@@ -380,23 +380,23 @@ export default function CodeReviewPage(): ReactElement {
                     ? `/studies/${currentStudyId}/room?problemId=${submission.problemId}`
                     : '/studies',
                 )}
-                className="flex items-center gap-1 text-xs text-text-3 transition-colors hover:text-text"
+                className="flex items-center gap-1 text-xs text-text-3 transition-colors hover:text-text shrink-0"
                 aria-label="제출 목록으로 이동"
               >
                 <ChevronRight className="h-3.5 w-3.5 rotate-180" aria-hidden />
-                제출 목록
+                <span className="hidden sm:inline">제출 목록</span>
               </button>
-              <span className="text-[10px] text-text-3 opacity-30">|</span>
-              <div className="flex items-center gap-2">
-                <Code2 className="h-4 w-4 text-primary" aria-hidden />
-                <span className="text-sm font-semibold text-text">
+              <span className="text-[10px] text-text-3 opacity-30 hidden sm:inline">|</span>
+              <div className="flex items-center gap-2 min-w-0">
+                <Code2 className="h-4 w-4 text-primary shrink-0" aria-hidden />
+                <span className="text-sm font-semibold text-text truncate">
                   {submission.problemTitle ?? '코드 리뷰'}
                 </span>
                 <LangBadge language={submission.language} />
                 {submission.userId && nicknameMap[submission.userId] && (
                   <>
-                    <span className="text-[10px] text-text-3 opacity-30">|</span>
-                    <span className="text-xs text-text-2">
+                    <span className="text-[10px] text-text-3 opacity-30 hidden sm:inline">|</span>
+                    <span className="text-xs text-text-2 hidden sm:inline">
                       {nicknameMap[submission.userId]}
                     </span>
                   </>
@@ -409,9 +409,10 @@ export default function CodeReviewPage(): ReactElement {
               size="sm"
               onClick={() => setFocusMode(true)}
               aria-label="Focus 모드"
+              className="shrink-0"
             >
               <Maximize2 className="h-3.5 w-3.5" aria-hidden />
-              Focus
+              <span className="hidden sm:inline">Focus</span>
             </Button>
           </div>
         </header>
@@ -469,7 +470,7 @@ export default function CodeReviewPage(): ReactElement {
           type="button"
           onClick={() => setMobileTab('code')}
           className={cn(
-            'flex-1 py-2 text-xs font-medium text-center transition-colors',
+            'flex-1 min-h-[44px] py-2.5 text-xs font-medium text-center transition-colors',
             mobileTab === 'code' ? 'text-primary border-b-2 border-primary' : 'text-text-3',
           )}
         >
@@ -480,7 +481,7 @@ export default function CodeReviewPage(): ReactElement {
           type="button"
           onClick={() => setMobileTab('review')}
           className={cn(
-            'flex-1 py-2 text-xs font-medium text-center transition-colors',
+            'flex-1 min-h-[44px] py-2.5 text-xs font-medium text-center transition-colors',
             mobileTab === 'review' ? 'text-primary border-b-2 border-primary' : 'text-text-3',
           )}
         >
@@ -491,7 +492,7 @@ export default function CodeReviewPage(): ReactElement {
       {/* 메인: 2-패널 레이아웃 */}
       <div
         className={cn(
-          'mx-auto grid w-full flex-1 gap-4 px-4 py-4',
+          'mx-auto grid w-full flex-1 gap-3 sm:gap-4 px-2 sm:px-4 py-3 sm:py-4',
           focusMode
             ? 'max-w-none grid-cols-1 lg:grid-cols-[1fr_380px] pt-10'
             : 'max-w-container grid-cols-1 lg:grid-cols-[1fr_380px]',

@@ -436,6 +436,25 @@ code, pre, .font-mono {
   }
 }
 
+/* ── Recharts: suppress focus outlines & white flash ── */
+.recharts-wrapper,
+.recharts-wrapper svg,
+.recharts-wrapper *:focus,
+.recharts-wrapper *:focus-visible,
+.recharts-surface,
+.recharts-surface:focus,
+.recharts-surface:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+.recharts-wrapper,
+.recharts-wrapper svg {
+  background-color: transparent !important;
+}
+.recharts-tooltip-cursor {
+  fill: var(--primary-soft) !important;
+}
+
 /* ── Accessibility ── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

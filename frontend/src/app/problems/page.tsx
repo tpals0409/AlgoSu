@@ -186,7 +186,7 @@ export default function ProblemsPage(): ReactNode {
         </div>
 
         {/* 검색 + 상태 필터 */}
-        <div className="flex items-center gap-3" style={fade(0.06)}>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3" style={fade(0.06)}>
           <div className="relative flex-1">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none" style={{ color: 'var(--text-3)' }} aria-hidden />
             <input
@@ -198,13 +198,13 @@ export default function ProblemsPage(): ReactNode {
               style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
             />
           </div>
-          <div className="flex items-center shrink-0">
+          <div className="flex items-center shrink-0 overflow-x-auto">
             {STATUS_TABS.map((tab) => (
               <button
                 key={tab.value}
                 type="button"
                 onClick={() => handleFilterChange('status', tab.value)}
-                className="px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors"
+                className="px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors whitespace-nowrap"
                 style={
                   filters.status === tab.value
                     ? { backgroundColor: 'var(--bg-card)', color: 'var(--primary)', border: '1px solid var(--border)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }
@@ -317,7 +317,7 @@ export default function ProblemsPage(): ReactNode {
                   type="button"
                   onClick={() => handleProblemClick(problem.id)}
                   aria-label={`${problem.title} 문제 보기`}
-                  className="group flex items-center gap-4 w-full px-5 py-4 rounded-xl border border-border transition-colors text-left bg-bg-card hover:bg-bg-alt"
+                  className="group flex items-center gap-3 sm:gap-4 w-full px-3 sm:px-5 py-3 sm:py-4 rounded-xl border border-border transition-colors text-left bg-bg-card hover:bg-bg-alt"
                 >
                   {/* BOJ 아이콘 */}
                   <div

@@ -4,8 +4,8 @@
  * @layer component
  * @related NotificationBell, AuthContext, StudyContext
  *
- * 데스크탑: 왼쪽 220px 고정 사이드바
- * 모바일: 오른쪽 슬라이드 오버레이 사이드바 + 상단 모바일 헤더
+ * 데스크탑(>= md/768px): 왼쪽 220px 고정 사이드바
+ * 모바일(< md/768px): 오른쪽 슬라이드 오버레이 사이드바 + 상단 모바일 헤더
  * 세션 만료 오버레이 포함.
  */
 
@@ -256,7 +256,7 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
             {/* Mobile overlay backdrop */}
             {sidebarOpen && (
               <div
-                className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
+                className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm md:hidden"
                 onClick={closeSidebar}
                 aria-hidden
               />
@@ -265,10 +265,10 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
             <aside
               className={cn(
                 'fixed right-0 top-0 z-50 flex h-screen w-[220px] flex-col border-l transition-transform duration-300',
-                'lg:left-0 lg:right-auto lg:border-l-0 lg:border-r lg:translate-x-0',
+                'md:left-0 md:right-auto md:border-l-0 md:border-r md:translate-x-0',
                 sidebarOpen
                   ? 'translate-x-0'
-                  : 'translate-x-full lg:translate-x-0',
+                  : 'translate-x-full md:translate-x-0',
               )}
               style={{
                 background: 'var(--bg-card)',
@@ -297,7 +297,7 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
                   type="button"
                   aria-label="사이드바 닫기"
                   onClick={closeSidebar}
-                  className="rounded-btn p-1 lg:hidden"
+                  className="rounded-btn p-1 md:hidden"
                   style={{ color: 'var(--text-3)' }}
                 >
                   <X className="h-4 w-4" aria-hidden />
@@ -385,7 +385,7 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
         {/* ── Mobile top bar ─────────────────────────────── */}
         {hasStudy && (
           <header
-            className="glass-nav fixed right-0 top-0 z-30 flex h-14 items-center justify-between border-b px-4 lg:hidden"
+            className="glass-nav fixed right-0 top-0 z-30 flex h-14 items-center justify-between border-b px-4 md:hidden"
             style={{ left: 0, borderColor: 'var(--border)' }}
           >
             <Link
@@ -444,11 +444,11 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
         )}
 
         {/* ── Main content ───────────────────────────────── */}
-        <main className={hasStudy ? 'lg:ml-[220px]' : ''}>
+        <main className={hasStudy ? 'md:ml-[220px]' : ''}>
           <div
             className={cn(
               hasStudy
-                ? 'px-4 py-6 pt-[72px] lg:px-6 lg:pt-6'
+                ? 'px-4 py-6 pt-[72px] md:px-6 md:pt-6'
                 : 'mx-auto w-full max-w-container px-4 py-6 sm:px-6 lg:px-8',
               className,
             )}
