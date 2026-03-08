@@ -254,7 +254,7 @@ export default function CodeReviewPage(): ReactElement {
       const [sub, anal, cmts] = await Promise.all([
         submissionApi.findById(submissionId),
         submissionApi.getAnalysis(submissionId).catch(() => null),
-        reviewApi.listComments(submissionId),
+        reviewApi.listComments(submissionId).catch(() => []),
       ]);
       setSubmission(sub);
       setAnalysis(anal);

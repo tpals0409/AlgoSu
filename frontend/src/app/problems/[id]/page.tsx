@@ -251,7 +251,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
     );
   }
 
-  const isActive = problem.status === 'ACTIVE';
+  const isActive = problem.status === 'ACTIVE' && (!problem.deadline || new Date(problem.deadline) > new Date());
   const diffKey = problem.difficulty ? (problem.difficulty as string).toLowerCase() : '';
   const diffLabel = problem.difficulty
     ? `${DIFFICULTY_LABELS[problem.difficulty as Difficulty] ?? problem.difficulty}${toTierLevel(problem.level) ? ` ${toTierLevel(problem.level)}` : ''}`

@@ -32,6 +32,8 @@ import { useNotificationSSE } from '@/hooks/useNotificationSSE';
 
 // ─── CONSTANTS ───────────────────────────
 
+const MAX_NOTIFICATIONS = 50;
+
 /** 알림 타입별 클릭 시 이동할 경로 (link 없는 경우 fallback) */
 const TYPE_ROUTE: Record<string, string> = {
   ROLE_CHANGED: '/studies',
@@ -106,7 +108,7 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
    */
   const handleSSENotification = useCallback((notification: Notification) => {
     setUnreadCount((prev) => prev + 1);
-    setNotifications((prev) => [notification, ...prev]);
+    setNotifications((prev) => [notification, ...prev].slice(0, MAX_NOTIFICATIONS));
     setToastNotification(notification);
   }, []);
 
@@ -141,7 +143,7 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
     setIsLoading(true);
     try {
       const data = await notificationApi.list();
-      setNotifications(data);
+      setNotifications(data.slice(0, MAX_NOTIFICATIONS));
     } catch {
       // 조용히 실패
     } finally {

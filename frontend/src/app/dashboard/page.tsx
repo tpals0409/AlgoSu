@@ -344,7 +344,16 @@ export default function DashboardPage(): ReactNode {
 
   const parseWeekKey = useCallback((w: string) => {
     const m = w.match(/^(\d+)월(\d+)주차$/);
-    return m ? Number(m[1]) * 100 + Number(m[2]) : 0;
+    if (!m) return 0;
+    const month = Number(m[1]);
+    const week = Number(m[2]);
+    // 현재 월 기준으로 연도를 추정하여 연도 경계(12월→1월) 정렬 문제 해결
+    const now = new Date();
+    const curMonth = now.getMonth() + 1; // 1-12
+    const curYear = now.getFullYear();
+    // 현재 월보다 6개월 이상 뒤의 월이면 전년도로 간주
+    const year = month > curMonth + 6 ? curYear - 1 : curYear;
+    return year * 10000 + month * 100 + week;
   }, []);
 
   const filteredByWeek = useMemo(() => {

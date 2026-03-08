@@ -12,6 +12,7 @@ import {
   useEffect,
   useCallback,
   useMemo,
+  useRef,
   type ReactElement,
   type ReactNode,
   type CSSProperties,
@@ -217,6 +218,8 @@ export default function StudyRoomPage(): ReactElement {
     }
   }, [studyId, currentStudyId, setCurrentStudy]);
 
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   // ─── EFFECTS ────────────────────────────
 
   useEffect(() => {
@@ -266,20 +269,23 @@ export default function StudyRoomPage(): ReactElement {
       }).catch(() => {});
     }
 
-    return () => { cancelled = true; };
+    return () => { cancelled = true; abortControllerRef.current?.abort(); };
   }, [isAuthenticated, authLoading, currentStudyId]);
 
-  const loadSubmissions = useCallback(async (problem: Problem): Promise<void> => {
+  const loadSubmissions = useCallback(async (problem: Problem, signal?: AbortSignal): Promise<void> => {
     setLoadingSubmissions(true);
     setNotSubmitted(false);
     setAccessDenied(false);
     try {
       const data = await submissionApi.listByProblemForStudy(problem.id);
+      if (signal?.aborted) return;
       const latestByUser = data.filter((sub, idx, arr) =>
         arr.findIndex((s) => s.userId === sub.userId) === idx,
       );
       setSubmissions(latestByUser);
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      if (signal?.aborted) return;
       if (err instanceof ApiError && err.status === 403) {
         const msg = (err.message ?? '').toLowerCase();
         if (msg.includes('not submitted') || msg.includes('제출')) {
@@ -293,7 +299,7 @@ export default function StudyRoomPage(): ReactElement {
         setSubmissions([]);
       }
     } finally {
-      setLoadingSubmissions(false);
+      if (!signal?.aborted) setLoadingSubmissions(false);
     }
   }, []);
 
@@ -339,11 +345,14 @@ export default function StudyRoomPage(): ReactElement {
   // ─── HANDLERS ───────────────────────────
 
   const handleSelectProblem = (problem: Problem): void => {
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
     setSelectedProblem(problem);
     setSelectedSubmission(null);
     setAnalysis(null);
     window.history.pushState({ view: 'submission' }, '');
-    void loadSubmissions(problem);
+    void loadSubmissions(problem, controller.signal);
   };
 
   const handleBack = (): void => {

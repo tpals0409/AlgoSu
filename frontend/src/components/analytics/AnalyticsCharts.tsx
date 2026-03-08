@@ -174,44 +174,50 @@ export default function AnalyticsCharts({
           <TrendingUp className="h-4 w-4" style={{ color: 'var(--primary)' }} />
           <span className="text-[14px] font-semibold text-text">주차별 제출 추이</span>
         </div>
-        <div className="overflow-x-auto" style={{ backgroundColor: 'var(--bg-card)' }}>
-          <div className="h-[200px]" style={{ minWidth: Math.max(weeklyData.length * 56, 300) }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={weeklyData}
-                barSize={weeklyData.length > 12 ? 16 : 28}
-                style={{ outline: 'none' }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis
-                  dataKey="week"
-                  tick={{ fontSize: 11, fill: 'var(--text-3)' }}
-                  axisLine={false}
-                  tickLine={false}
-                  interval={weeklyData.length > 12 ? Math.floor(weeklyData.length / 10) : 0}
-                  angle={weeklyData.length > 8 ? -45 : 0}
-                  textAnchor={weeklyData.length > 8 ? 'end' : 'middle'}
-                  height={weeklyData.length > 8 ? 50 : 30}
-                />
-                <YAxis
-                  tick={{ fontSize: 11, fill: 'var(--text-3)' }}
-                  axisLine={false}
-                  tickLine={false}
-                  allowDecimals={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'var(--bg-card)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                  }}
-                />
-                <Bar dataKey="count" fill="var(--primary)" radius={[4, 4, 0, 0]} name="제출" />
-              </BarChart>
-            </ResponsiveContainer>
+        {weeklyData.length === 0 ? (
+          <div className="h-[200px] flex items-center justify-center text-text-3 text-sm">
+            아직 제출 기록이 없습니다.
           </div>
-        </div>
+        ) : (
+          <div className="overflow-x-auto" style={{ backgroundColor: 'var(--bg-card)' }}>
+            <div className="h-[200px]" style={{ minWidth: Math.max(weeklyData.length * 56, 300) }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={weeklyData}
+                  barSize={weeklyData.length > 12 ? 16 : 28}
+                  style={{ outline: 'none' }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis
+                    dataKey="week"
+                    tick={{ fontSize: 11, fill: 'var(--text-3)' }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval={weeklyData.length > 12 ? Math.floor(weeklyData.length / 10) : 0}
+                    angle={weeklyData.length > 8 ? -45 : 0}
+                    textAnchor={weeklyData.length > 8 ? 'end' : 'middle'}
+                    height={weeklyData.length > 8 ? 50 : 30}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: 'var(--text-3)' }}
+                    axisLine={false}
+                    tickLine={false}
+                    allowDecimals={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'var(--bg-card)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                    }}
+                  />
+                  <Bar dataKey="count" fill="var(--primary)" radius={[4, 4, 0, 0]} name="제출" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* ── AI 점수 추이 (Line Chart + 리스트) ── */}
@@ -228,48 +234,54 @@ export default function AnalyticsCharts({
             평균 {avgAIScore}점
           </span>
         </div>
-        <div className="overflow-x-auto" style={{ backgroundColor: 'var(--bg-card)' }}>
-          <div className="h-[180px]" style={{ minWidth: Math.max(aiScoreData.length * 56, 300) }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={aiScoreData} style={{ outline: 'none' }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 11, fill: 'var(--text-3)' }}
-                  axisLine={false}
-                  tickLine={false}
-                  interval={aiScoreData.length > 12 ? Math.floor(aiScoreData.length / 10) : 0}
-                  angle={aiScoreData.length > 8 ? -45 : 0}
-                  textAnchor={aiScoreData.length > 8 ? 'end' : 'middle'}
-                  height={aiScoreData.length > 8 ? 50 : 30}
-                />
-                <YAxis
-                  domain={[60, 100]}
-                  tick={{ fontSize: 11, fill: 'var(--text-3)' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'var(--bg-card)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="score"
-                  stroke="var(--primary)"
-                  strokeWidth={2.5}
-                  dot={{ fill: 'var(--primary)', strokeWidth: 0, r: 4 }}
-                  activeDot={{ r: 6, fill: 'var(--primary)' }}
-                  name="AI 점수"
-                />
-              </LineChart>
-            </ResponsiveContainer>
+        {aiScoreData.length === 0 ? (
+          <div className="h-[200px] flex items-center justify-center text-text-3 text-sm">
+            분석 완료된 제출이 없습니다.
           </div>
-        </div>
+        ) : (
+          <div className="overflow-x-auto" style={{ backgroundColor: 'var(--bg-card)' }}>
+            <div className="h-[180px]" style={{ minWidth: Math.max(aiScoreData.length * 56, 300) }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={aiScoreData} style={{ outline: 'none' }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 11, fill: 'var(--text-3)' }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval={aiScoreData.length > 12 ? Math.floor(aiScoreData.length / 10) : 0}
+                    angle={aiScoreData.length > 8 ? -45 : 0}
+                    textAnchor={aiScoreData.length > 8 ? 'end' : 'middle'}
+                    height={aiScoreData.length > 8 ? 50 : 30}
+                  />
+                  <YAxis
+                    domain={[60, 100]}
+                    tick={{ fontSize: 11, fill: 'var(--text-3)' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'var(--bg-card)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="score"
+                    stroke="var(--primary)"
+                    strokeWidth={2.5}
+                    dot={{ fill: 'var(--primary)', strokeWidth: 0, r: 4 }}
+                    activeDot={{ r: 6, fill: 'var(--primary)' }}
+                    name="AI 점수"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* ── 난이도별 해결 수 + 알고리즘 태그 분포 (2열) ── */}
@@ -280,38 +292,46 @@ export default function AnalyticsCharts({
             <BarChart3 className="h-4 w-4" style={{ color: 'var(--primary)' }} />
             <span className="text-[14px] font-semibold text-text">난이도별 해결 수</span>
           </div>
-          <div className="space-y-3">
-            {difficultyData.map((row) => (
-              <div key={row.tier} className="flex items-center gap-3">
-                <div className="flex items-center gap-2 w-20 shrink-0">
-                  <span
-                    className="h-2.5 w-2.5 rounded-full shrink-0"
-                    style={{ backgroundColor: row.color }}
-                  />
-                  <span className="text-[13px] text-text">{row.tier}</span>
-                </div>
-                <div className="flex-1 h-5 rounded-sm overflow-hidden" style={{ backgroundColor: 'var(--bg-alt)' }}>
-                  <div
-                    className="h-full rounded-sm transition-all duration-700 ease-out"
-                    style={{
-                      width: barsAnimated ? `${(row.count / diffMax) * 100}%` : '0%',
-                      backgroundColor: row.color,
-                    }}
-                  />
-                </div>
-                <span className="w-6 text-right text-[13px] font-semibold text-text shrink-0">{row.count}</span>
+          {difficultyData.length === 0 ? (
+            <div className="h-[200px] flex items-center justify-center text-text-3 text-sm">
+              아직 문제를 해결하지 않았습니다.
+            </div>
+          ) : (
+            <>
+              <div className="space-y-3">
+                {difficultyData.map((row) => (
+                  <div key={row.tier} className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 w-20 shrink-0">
+                      <span
+                        className="h-2.5 w-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: row.color }}
+                      />
+                      <span className="text-[13px] text-text">{row.tier}</span>
+                    </div>
+                    <div className="flex-1 h-5 rounded-sm overflow-hidden" style={{ backgroundColor: 'var(--bg-alt)' }}>
+                      <div
+                        className="h-full rounded-sm transition-all duration-700 ease-out"
+                        style={{
+                          width: barsAnimated ? `${(row.count / diffMax) * 100}%` : '0%',
+                          backgroundColor: row.color,
+                        }}
+                      />
+                    </div>
+                    <span className="w-6 text-right text-[13px] font-semibold text-text shrink-0">{row.count}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <div className="mt-auto pt-4 flex justify-end">
-            <span
-              className="flex items-center gap-1.5 text-[12px] font-medium"
-              style={{ color: 'var(--success)' }}
-            >
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              총 {difficultyData.reduce((s, r) => s + r.count, 0)}문제 해결 완료
-            </span>
-          </div>
+              <div className="mt-auto pt-4 flex justify-end">
+                <span
+                  className="flex items-center gap-1.5 text-[12px] font-medium"
+                  style={{ color: 'var(--success)' }}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  총 {difficultyData.reduce((s, r) => s + r.count, 0)}문제 해결 완료
+                </span>
+              </div>
+            </>
+          )}
         </Card>
 
         {/* 알고리즘 태그 분포 */}
@@ -320,24 +340,30 @@ export default function AnalyticsCharts({
             <Tag className="h-4 w-4" style={{ color: 'var(--primary)' }} />
             <span className="text-[14px] font-semibold text-text">알고리즘 태그 분포</span>
           </div>
-          <div className="space-y-3">
-            {tagData.map((row) => (
-                <div key={row.tag} className="flex items-center gap-3">
-                  <span className="w-16 text-[13px] text-text shrink-0 truncate" title={row.tag}>{row.tag}</span>
-                  <div className="flex-1 h-5 rounded-sm overflow-hidden" style={{ backgroundColor: 'var(--bg-alt)' }}>
-                    <div
-                      className="h-full rounded-sm transition-all duration-700 ease-out"
-                      style={{
-                        width: barsAnimated ? `${(row.count / tagMax) * 100}%` : '0%',
-                        backgroundColor: 'var(--primary)',
-                        opacity: 0.5 + (row.count / tagMax) * 0.5,
-                      }}
-                    />
+          {tagData.length === 0 ? (
+            <div className="h-[200px] flex items-center justify-center text-text-3 text-sm">
+              아직 문제를 해결하지 않았습니다.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {tagData.map((row) => (
+                  <div key={row.tag} className="flex items-center gap-3">
+                    <span className="w-16 text-[13px] text-text shrink-0 truncate" title={row.tag}>{row.tag}</span>
+                    <div className="flex-1 h-5 rounded-sm overflow-hidden" style={{ backgroundColor: 'var(--bg-alt)' }}>
+                      <div
+                        className="h-full rounded-sm transition-all duration-700 ease-out"
+                        style={{
+                          width: barsAnimated ? `${(row.count / tagMax) * 100}%` : '0%',
+                          backgroundColor: 'var(--primary)',
+                          opacity: 0.5 + (row.count / tagMax) * 0.5,
+                        }}
+                      />
+                    </div>
+                    <span className="w-6 text-right text-[13px] font-semibold text-text shrink-0">{row.count}</span>
                   </div>
-                  <span className="w-6 text-right text-[13px] font-semibold text-text shrink-0">{row.count}</span>
-                </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </Card>
       </div>
 
