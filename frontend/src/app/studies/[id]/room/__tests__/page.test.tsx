@@ -69,6 +69,15 @@ jest.mock('@/lib/api', () => ({
   },
   studyApi: {
     getMembers: jest.fn().mockResolvedValue([]),
+    getStats: jest.fn().mockResolvedValue({
+      totalSubmissions: 0,
+      byWeek: [],
+      byWeekPerUser: [],
+      byMember: [],
+      byMemberWeek: null,
+      recentSubmissions: [],
+      solvedProblemIds: [],
+    }),
   },
   ApiError: class ApiError extends Error {
     status: number;
@@ -85,23 +94,25 @@ jest.mock('@/lib/utils', () => ({
 
 jest.mock('@/lib/avatars', () => ({
   getAvatarSrc: () => '/avatar.png',
+  getAvatarPresetKey: () => 'default',
 }));
 
 jest.mock('lucide-react', () => {
   const Icon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />;
   return {
-    Code2: Icon,
+    BookOpen: Icon,
     Users: Icon,
+    Sparkles: Icon,
+    Code2: Icon,
     ChevronRight: Icon,
-    Clock: Icon,
     AlertCircle: Icon,
   };
 });
 
 describe('StudyRoomPage', () => {
-  it('코드 리뷰 타이틀이 렌더링된다', async () => {
+  it('스터디룸 타이틀이 렌더링된다', async () => {
     render(<StudyRoomPage />);
-    expect(await screen.findByText('코드 리뷰')).toBeInTheDocument();
+    expect(await screen.findByText('스터디룸')).toBeInTheDocument();
   });
 
   it('AppLayout 안에 렌더링된다', () => {
@@ -109,9 +120,9 @@ describe('StudyRoomPage', () => {
     expect(screen.getByTestId('app-layout')).toBeInTheDocument();
   });
 
-  it('안내 배너가 표시된다', () => {
+  it('안내 텍스트가 표시된다', () => {
     render(<StudyRoomPage />);
-    expect(screen.getByText(/마감 전 코드는 본인만 볼 수 있으며/)).toBeInTheDocument();
+    expect(screen.getByText('문제를 선택해 멤버별 제출 코드를 확인하세요.')).toBeInTheDocument();
   });
 
   it('문제가 없으면 빈 상태가 표시된다', async () => {
@@ -121,7 +132,7 @@ describe('StudyRoomPage', () => {
 });
 
 describe('StudyRoomPage - with problems', () => {
-  it('문제 목록이 표시된다', async () => {
+  it('문제 목록이 주차별로 표시된다', async () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { problemApi } = require('@/lib/api');
     problemApi.findAll.mockResolvedValue([
@@ -138,5 +149,6 @@ describe('StudyRoomPage - with problems', () => {
 
     render(<StudyRoomPage />);
     expect(await screen.findByText('Two Sum')).toBeInTheDocument();
+    expect(screen.getByText('1월1주차')).toBeInTheDocument();
   });
 });

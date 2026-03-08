@@ -115,29 +115,6 @@ export default function ProblemsPage(): ReactNode {
     setIsLoading(true);
     setError(null);
     try {
-      // ── DEV MOCK ──────────────────────────────────────────────
-      if (process.env.NEXT_PUBLIC_DEV_MOCK === 'true') {
-        const now = new Date();
-        const d = (days: number) => new Date(now.getTime() + days * 86400000).toISOString();
-        const mockData: Problem[] = [
-          { id: 'p1', title: '두 수의 합', difficulty: 'SILVER', level: 2, status: 'ACTIVE', deadline: d(2), description: '', weekNumber: '3월1주차', sourceUrl: 'https://boj.kr/1000', sourcePlatform: 'BOJ', allowedLanguages: ['python', 'java'], tags: ['해시'] },
-          { id: 'p2', title: '최단 경로', difficulty: 'GOLD', level: 4, status: 'ACTIVE', deadline: d(3), description: '', weekNumber: '3월1주차', sourceUrl: 'https://boj.kr/1753', sourcePlatform: 'BOJ', allowedLanguages: ['python', 'cpp'], tags: ['다익스트라', '그래프'] },
-          { id: 'p3', title: '이분 탐색', difficulty: 'SILVER', level: 4, status: 'CLOSED', deadline: d(-5), description: '', weekNumber: '2월4주차', sourceUrl: 'https://boj.kr/1920', sourcePlatform: 'BOJ', allowedLanguages: ['python'], tags: ['이분탐색'] },
-          { id: 'p4', title: 'DP 입문', difficulty: 'BRONZE', level: 1, status: 'CLOSED', deadline: d(-10), description: '', weekNumber: '2월3주차', sourceUrl: 'https://boj.kr/1003', sourcePlatform: 'BOJ', allowedLanguages: ['python', 'java'], tags: ['DP'] },
-          { id: 'p5', title: '트리의 지름', difficulty: 'GOLD', level: 2, status: 'CLOSED', deadline: d(-14), description: '', weekNumber: '2월2주차', sourceUrl: 'https://boj.kr/1167', sourcePlatform: 'BOJ', allowedLanguages: ['cpp'], tags: ['트리', 'BFS'] },
-          { id: 'p6', title: '플로이드 워셜', difficulty: 'GOLD', level: 5, status: 'CLOSED', deadline: d(-20), description: '', weekNumber: '2월1주차', sourceUrl: 'https://boj.kr/11404', sourcePlatform: 'BOJ', allowedLanguages: ['python', 'java'], tags: ['플로이드'] },
-          { id: 'p7', title: 'LCA', difficulty: 'PLATINUM', level: 3, status: 'CLOSED', deadline: d(-25), description: '', weekNumber: '1월4주차', sourceUrl: 'https://boj.kr/11438', sourcePlatform: 'BOJ', allowedLanguages: ['cpp'], tags: ['LCA', '트리'] },
-          { id: 'p8', title: '세그먼트 트리', difficulty: 'PLATINUM', level: 1, status: 'CLOSED', deadline: d(-30), description: '', weekNumber: '1월3주차', sourceUrl: 'https://boj.kr/2042', sourcePlatform: 'BOJ', allowedLanguages: ['cpp', 'java'], tags: ['세그먼트트리'] },
-          { id: 'p9', title: 'KMP', difficulty: 'DIAMOND', level: 5, status: 'CLOSED', deadline: d(-35), description: '', weekNumber: '1월2주차', sourceUrl: 'https://boj.kr/1786', sourcePlatform: 'BOJ', allowedLanguages: ['cpp'], tags: ['문자열', 'KMP'] },
-          { id: 'p10', title: '스택 수열', difficulty: 'SILVER', level: 1, status: 'CLOSED', deadline: d(-40), description: '', weekNumber: '1월1주차', sourceUrl: 'https://boj.kr/1874', sourcePlatform: 'BOJ', allowedLanguages: ['python', 'java'], tags: ['스택'] },
-        ];
-        setProblems(mockData);
-        setSolvedIds(new Set(['p3', 'p4', 'p10']));
-        setIsLoading(false);
-        return;
-      }
-      // ────────────────────────────────────────────────────────────
-
       const [data, stats] = await Promise.all([
         problemApi.findAll(),
         currentStudyId ? studyApi.getStats(currentStudyId) : null,

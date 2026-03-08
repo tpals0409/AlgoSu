@@ -17,7 +17,6 @@ import {
   BarChart3,
   Github,
   MessageCircle,
-  ChevronRight,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card } from '@/components/ui/Card';
@@ -184,82 +183,6 @@ export default function DashboardPage(): ReactNode {
   const loadDashboard = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-
-    // ── DEV MOCK DATA ──────────────────────────────────────────────
-    if (process.env.NEXT_PUBLIC_DEV_MOCK === 'true') {
-      const mockMembers: StudyMember[] = [
-        { id: 'm1', study_id: 'dev-study-001', user_id: 'dev-user-001', role: 'ADMIN', joined_at: '2025-01-01T00:00:00Z', nickname: '김민준', username: 'kimmin', email: 'dev@algosu.kr', avatar_url: '' },
-        { id: 'm2', study_id: 'dev-study-001', user_id: 'dev-user-002', role: 'MEMBER', joined_at: '2025-01-02T00:00:00Z', nickname: '이서연', username: 'seoyeon', email: 'user2@algosu.kr', avatar_url: '' },
-        { id: 'm3', study_id: 'dev-study-001', user_id: 'dev-user-003', role: 'MEMBER', joined_at: '2025-01-02T00:00:00Z', nickname: '박지호', username: 'jiho', email: 'user3@algosu.kr', avatar_url: '' },
-        { id: 'm4', study_id: 'dev-study-001', user_id: 'dev-user-004', role: 'MEMBER', joined_at: '2025-01-03T00:00:00Z', nickname: '최유진', username: 'yujin', email: 'user4@algosu.kr', avatar_url: '' },
-        { id: 'm5', study_id: 'dev-study-001', user_id: 'dev-user-005', role: 'MEMBER', joined_at: '2025-01-03T00:00:00Z', nickname: '강민서', username: 'minseo', email: 'user5@algosu.kr', avatar_url: '' },
-        { id: 'm6', study_id: 'dev-study-001', user_id: 'dev-user-006', role: 'MEMBER', joined_at: '2025-01-04T00:00:00Z', nickname: '정하늘', username: 'haneul', email: 'user6@algosu.kr', avatar_url: '' },
-        { id: 'm7', study_id: 'dev-study-001', user_id: 'dev-user-007', role: 'MEMBER', joined_at: '2025-01-04T00:00:00Z', nickname: '한승우', username: 'seungwoo', email: 'user7@algosu.kr', avatar_url: '' },
-        { id: 'm8', study_id: 'dev-study-001', user_id: 'dev-user-008', role: 'MEMBER', joined_at: '2025-01-05T00:00:00Z', nickname: '오지수', username: 'jisoo', email: 'user8@algosu.kr', avatar_url: '' },
-      ];
-      const mockStats: StudyStats = {
-        totalSubmissions: 63,
-        solvedProblemIds: ['prob-001', 'prob-003'],
-        recentSubmissions: [],
-        byMemberWeek: null,
-        byWeek: [
-          { week: '3월1주차', count: 12 },
-          { week: '2월4주차', count: 18 },
-          { week: '2월3주차', count: 15 },
-          { week: '2월2주차', count: 10 },
-          { week: '2월1주차', count: 8 },
-        ],
-        byMember: [
-          { userId: 'dev-user-001', isMember: true, count: 12, doneCount: 10 },
-          { userId: 'dev-user-002', isMember: true, count: 8, doneCount: 7 },
-          { userId: 'dev-user-003', isMember: true, count: 10, doneCount: 9 },
-          { userId: 'dev-user-004', isMember: true, count: 6, doneCount: 5 },
-          { userId: 'dev-user-005', isMember: true, count: 9, doneCount: 8 },
-        ],
-        byWeekPerUser: [
-          { userId: 'dev-user-001', week: '3월1주차', count: 3 },
-          { userId: 'dev-user-001', week: '2월4주차', count: 4 },
-          { userId: 'dev-user-001', week: '2월3주차', count: 3 },
-          { userId: 'dev-user-001', week: '2월2주차', count: 1 },
-          { userId: 'dev-user-001', week: '2월1주차', count: 1 },
-          { userId: 'dev-user-002', week: '3월1주차', count: 2 },
-          { userId: 'dev-user-002', week: '2월4주차', count: 3 },
-          { userId: 'dev-user-003', week: '3월1주차', count: 2 },
-          { userId: 'dev-user-003', week: '2월4주차', count: 4 },
-          { userId: 'dev-user-003', week: '2월3주차', count: 4 },
-        ],
-      };
-      const currentWeek = getCurrentWeekLabel();
-      const mockActiveProblems: Problem[] = [
-        { id: 'prob-001', title: '두 수의 합', weekNumber: currentWeek, status: 'ACTIVE', difficulty: 'SILVER', level: 2, deadline: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), description: '', allowedLanguages: [] },
-        { id: 'prob-002', title: '최단 경로', weekNumber: currentWeek, status: 'ACTIVE', difficulty: 'GOLD', level: 4, deadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), description: '', allowedLanguages: [] },
-        { id: 'prob-003', title: '이분 탐색', weekNumber: '2월4주차', status: 'ACTIVE', difficulty: 'SILVER', level: 3, deadline: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), description: '', allowedLanguages: [] },
-      ];
-      const mockAllProblems: Problem[] = [
-        ...mockActiveProblems,
-        { id: 'prob-004', title: 'BFS 탐색', weekNumber: '2월3주차', status: 'CLOSED', difficulty: 'SILVER', level: 2, deadline: '', description: '', allowedLanguages: [] },
-        { id: 'prob-005', title: 'DFS와 BFS', weekNumber: '2월2주차', status: 'CLOSED', difficulty: 'GOLD', level: 3, deadline: '', description: '', allowedLanguages: [] },
-        { id: 'prob-006', title: '다익스트라', weekNumber: '2월1주차', status: 'CLOSED', difficulty: 'GOLD', level: 4, deadline: '', description: '', allowedLanguages: [] },
-        { id: 'prob-007', title: '플로이드 워셜', weekNumber: '1월4주차', status: 'CLOSED', difficulty: 'PLATINUM', level: 1, deadline: '', description: '', allowedLanguages: [] },
-        { id: 'prob-008', title: '크루스칼', weekNumber: '1월3주차', status: 'CLOSED', difficulty: 'GOLD', level: 2, deadline: '', description: '', allowedLanguages: [] },
-        { id: 'prob-009', title: '프림 알고리즘', weekNumber: '1월2주차', status: 'CLOSED', difficulty: 'GOLD', level: 5, deadline: '', description: '', allowedLanguages: [] },
-        { id: 'prob-010', title: '위상 정렬', weekNumber: '1월1주차', status: 'CLOSED', difficulty: 'GOLD', level: 4, deadline: '', description: '', allowedLanguages: [] },
-      ];
-      const mockSubmissions: Submission[] = [
-        { id: 'sub-001', problemId: 'prob-001', problemTitle: '두 수의 합', language: 'Python', sagaStep: 'DONE', createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString() },
-        { id: 'sub-002', problemId: 'prob-002', problemTitle: '최단 경로', language: 'Java', sagaStep: 'AI_QUEUED', createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString() },
-        { id: 'sub-003', problemId: 'prob-003', problemTitle: '이분 탐색', language: 'Python', sagaStep: 'DONE', createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
-      ];
-      setMembers(mockMembers);
-      setStats(mockStats);
-      setActiveProblems(mockActiveProblems);
-      setAllProblems(mockAllProblems);
-      setRecentSubmissions(mockSubmissions);
-      setIsLoading(false);
-      return;
-    }
-
-    // ──────────────────────────────────────────────────────────────
 
     try {
       const results = await Promise.allSettled([

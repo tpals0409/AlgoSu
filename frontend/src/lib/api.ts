@@ -124,6 +124,7 @@ export interface Study {
   githubRepo?: string;
   role: 'ADMIN' | 'MEMBER';
   memberCount?: number;
+  groundRules?: string | null;
 }
 
 export interface StudyMember {
@@ -338,6 +339,12 @@ export const studyApi = {
 
   delete: (studyId: string): Promise<void> =>
     fetchApi(`/api/studies/${studyId}`, { method: 'DELETE' }),
+
+  updateGroundRules: (studyId: string, groundRules: string): Promise<Study> =>
+    fetchApi(`/api/studies/${studyId}/ground-rules`, {
+      method: 'PATCH',
+      body: JSON.stringify({ groundRules }),
+    }),
 
   updateNickname: (studyId: string, nickname: string): Promise<{ nickname: string }> =>
     fetchApi(`/api/studies/${studyId}/nickname`, {

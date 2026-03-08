@@ -444,7 +444,7 @@ export function CodeEditor({
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const monacoRef = useRef<MonacoInstance | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [autocomplete, setAutocomplete] = useState(true);
+  const [autocomplete, _setAutocomplete] = useState(true);
   const [fontSize, setFontSize] = useState(13);
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
   const [fullscreen, setFullscreen] = useState(false);

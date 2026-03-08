@@ -19,7 +19,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { ScoreGauge } from '@/components/ui/ScoreGauge';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { CodeBlock } from '@/components/ui/CodeBlock';
-import { submissionApi, type AnalysisResult, type Submission } from '@/lib/api';
+import { submissionApi, problemApi, type AnalysisResult, type Submission } from '@/lib/api';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
 import { useStudy } from '@/contexts/StudyContext';
@@ -164,7 +164,6 @@ export default function AnalysisPage(): ReactNode {
   const [barsAnimated, setBarsAnimated] = useState(false);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // mock에서 사용할 추가 정보
   const [problemMeta, setProblemMeta] = useState<{ difficulty?: string; level?: number; tags?: string[] } | null>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -178,6 +177,7 @@ export default function AnalysisPage(): ReactNode {
       const timer = setTimeout(() => setBarsAnimated(true), 400);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [isLoading, analysis?.analysisStatus]);
 
   const fade = (delay = 0): React.CSSProperties => ({
@@ -192,48 +192,26 @@ export default function AnalysisPage(): ReactNode {
     setIsLoading(true);
     setError(null);
     try {
-      // ── DEV MOCK ────────────────────────────
-      if (process.env.NEXT_PUBLIC_DEV_MOCK === 'true') {
-        const now = new Date();
-        setSubmission({
-          id: submissionId,
-          problemId: 'p1',
-          problemTitle: '두 수의 합',
-          language: 'python',
-          sagaStep: 'DONE',
-          aiScore: 92,
-          createdAt: new Date(now.getTime() - 6 * 3600000).toISOString(),
-          code: `def two_sum(nums, target):\n    seen = {}\n    for i, num in enumerate(nums):\n        complement = target - num\n        if complement in seen:\n            return [seen[complement], i]\n        seen[num] = i\n    raise ValueError("No solution")`,
-        });
-        setAnalysis({
-          feedback: JSON.stringify({
-            totalScore: 92,
-            summary: '해시맵을 사용하여 O(n) 시간 복잡도로 문제를 효율적으로 해결했습니다. 변수명이 명확하고 코드 구조가 이해하기 쉽습니다. 예외 처리도 적절히 구현되어 있습니다. 한 줄 표현식(walrus operator)을 활용하면 코드를 더 간결하게 만들 수 있습니다.',
-            timeComplexity: 'O(n)',
-            spaceComplexity: 'O(n)',
-            codeLines: 8,
-            categories: [
-              { name: 'efficiency', score: 95, comment: 'O(n) 시간, O(n) 공간으로 최적 솔루션입니다. 단일 순회로 결과를 도출하는 우수한 접근입니다.', highlights: [] },
-              { name: 'readability', score: 90, comment: '변수명이 직관적이고 코드 흐름이 명확합니다. 타입 힌트를 추가하면 더 좋습니다.', highlights: [] },
-              { name: 'correctness', score: 92, comment: '엣지 케이스(빈 배열, 단일 원소)에 대한 처리가 잘 되어 있습니다.', highlights: [] },
-            ],
-          }),
-          score: 92,
-          optimizedCode: `def two_sum(nums: list[int], target: int) -> list[int]:\n    seen: dict[int, int] = {}\n    for i, num in enumerate(nums):\n        if (comp := target - num) in seen:\n            return [seen[comp], i]\n        seen[num] = i\n    raise ValueError("No solution")`,
-          analysisStatus: 'completed',
-        });
-        setProblemMeta({ difficulty: 'SILVER', level: 2, tags: ['해시', '배열'] });
-        setIsLoading(false);
-        return;
-      }
-      // ────────────────────────────────────────
-
       const [sub, analysisResult] = await Promise.all([
         submissionApi.findById(submissionId),
         submissionApi.getAnalysis(submissionId),
       ]);
       setSubmission(sub);
       setAnalysis(analysisResult);
+
+      // 문제 메타데이터 로드 (problemId가 있는 경우)
+      if (sub.problemId) {
+        try {
+          const problem = await problemApi.findById(sub.problemId);
+          setProblemMeta({
+            difficulty: problem.difficulty,
+            level: problem.level ?? undefined,
+            tags: problem.tags ?? undefined,
+          });
+        } catch {
+          // 문제 메타 로드 실패는 비차단 — 난이도 뱃지만 미표시
+        }
+      }
     } catch (err: unknown) {
       setError((err as Error).message ?? 'AI 분석 결과를 불러오는 데 실패했습니다.');
     } finally {
@@ -310,7 +288,6 @@ export default function AnalysisPage(): ReactNode {
 
   // 코드 줄 수
   const codeStr = submission?.code ?? '';
-  const codeLineCount = parsed?.codeLines ?? countCodeLines(codeStr);
 
   return (
     <AppLayout>

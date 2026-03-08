@@ -96,29 +96,6 @@ export default function StudiesPage(): ReactNode {
     setIsLoading(true);
     setError(null);
     try {
-      // DEV MOCK: API 대신 목업 데이터 사용
-      if (process.env.NEXT_PUBLIC_DEV_MOCK === 'true') {
-        const mockData: Study[] = [
-          {
-            id: 'dev-study-001',
-            name: '알고리즘 마스터',
-            description: 'LeetCode & BOJ 기반 스터디',
-            role: 'ADMIN',
-            memberCount: 8,
-          },
-          {
-            id: 'dev-study-002',
-            name: 'PS 스터디',
-            description: '코딩테스트 대비 집중 풀이',
-            role: 'MEMBER',
-            memberCount: 5,
-          },
-        ];
-        setLocalStudies(mockData);
-        setStudies(mockData);
-        setIsLoading(false);
-        return;
-      }
       const data = await studyApi.list();
       setLocalStudies(data);
       setStudies(data);

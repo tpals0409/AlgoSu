@@ -19,7 +19,7 @@ import {
   type Submission,
 } from '@/lib/api';
 import { useStudy } from '@/contexts/StudyContext';
-import { SAGA_STEP_CONFIG, DIFFICULTIES, DIFFICULTY_LABELS, type SagaStep, type Difficulty } from '@/lib/constants';
+import { DIFFICULTIES, DIFFICULTY_LABELS, type Difficulty } from '@/lib/constants';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
 
@@ -141,43 +141,12 @@ export default function SubmissionsPage(): ReactNode {
     setIsLoading(true);
     setError(null);
     try {
-      // ── DEV MOCK ──────────────────────────────────────────────
-      if (process.env.NEXT_PUBLIC_DEV_MOCK === 'true') {
-        const now = new Date();
-        const d = (hours: number) => new Date(now.getTime() + hours * 3600000).toISOString();
-        setSubmissions([
-          { id: 's1', problemId: 'p1', problemTitle: '두 수의 합', language: 'python', sagaStep: 'DONE', aiScore: 92, createdAt: d(-6) },
-          { id: 's2', problemId: 'p2', problemTitle: '최단 경로', language: 'java', sagaStep: 'AI_QUEUED', aiScore: null, createdAt: d(-9) },
-          { id: 's3', problemId: 'p3', problemTitle: '이분 탐색', language: 'cpp', sagaStep: 'DONE', aiScore: 78, createdAt: d(-24) },
-          { id: 's4', problemId: 'p4', problemTitle: 'DP 입문', language: 'python', sagaStep: 'DONE', aiScore: 85, createdAt: d(-48) },
-          { id: 's5', problemId: 'p5', problemTitle: '트리의 지름', language: 'cpp', sagaStep: 'DONE', aiScore: 73, createdAt: d(-72) },
-          { id: 's6', problemId: 'p6', problemTitle: '플로이드 워셜', language: 'python', sagaStep: 'DONE', aiScore: 88, createdAt: d(-120) },
-          { id: 's7', problemId: 'p1', problemTitle: '두 수의 합', language: 'python', sagaStep: 'FAILED', aiScore: null, createdAt: d(-12) },
-          { id: 's8', problemId: 'p7', problemTitle: 'LCA', language: 'cpp', sagaStep: 'GITHUB_QUEUED', aiScore: null, createdAt: d(-168) },
-          { id: 's9', problemId: 'p3', problemTitle: '이분 탐색', language: 'python', sagaStep: 'DONE', aiScore: 65, createdAt: d(-48) },
-          { id: 's10', problemId: 'p10', problemTitle: '스택 수열', language: 'java', sagaStep: 'DONE', aiScore: 95, createdAt: d(-240) },
-        ]);
-        setProblemMap(new Map([
-          ['p1', { title: '두 수의 합', difficulty: 'SILVER', level: 2, weekNumber: '3월1주차' }],
-          ['p2', { title: '최단 경로', difficulty: 'GOLD', level: 4, weekNumber: '3월1주차' }],
-          ['p3', { title: '이분 탐색', difficulty: 'SILVER', level: 4, weekNumber: '2월4주차' }],
-          ['p4', { title: 'DP 입문', difficulty: 'BRONZE', level: 1, weekNumber: '2월3주차' }],
-          ['p5', { title: '트리의 지름', difficulty: 'GOLD', level: 2, weekNumber: '2월2주차' }],
-          ['p6', { title: '플로이드 워셜', difficulty: 'GOLD', level: 5, weekNumber: '2월1주차' }],
-          ['p7', { title: 'LCA', difficulty: 'PLATINUM', level: 3, weekNumber: '1월4주차' }],
-          ['p10', { title: '스택 수열', difficulty: 'SILVER', level: 1, weekNumber: '1월1주차' }],
-        ]));
-        setIsLoading(false);
-        return;
-      }
-      // ────────────────────────────────────────────────────────────
-
       const [result, problems] = await Promise.all([
         submissionApi.list({ page: 1, limit: 100 }),
         problemApi.findAllIncludingClosed().catch(() => []),
       ]);
       setSubmissions(result.data);
-      setProblemMap(new Map(problems.map((p) => [p.id, { title: p.title, difficulty: p.difficulty, level: p.level, weekNumber: p.weekNumber }])));
+      setProblemMap(new Map(problems.map((p) => [p.id, { title: p.title, difficulty: p.difficulty ?? undefined, level: p.level ?? undefined, weekNumber: p.weekNumber ?? undefined }])));
     } catch (err: unknown) {
       setError((err as Error).message ?? '제출 이력을 불러오는 데 실패했습니다.');
     } finally {

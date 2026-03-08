@@ -109,7 +109,7 @@ export default function DashboardTwoColumn({
           </p>
         ) : (
           <div>
-            {recentSubmissions.map((s, i) => (
+            {recentSubmissions.map((s) => (
               <Link
                 key={s.id}
                 href={

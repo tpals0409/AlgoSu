@@ -48,49 +48,6 @@ const AnalyticsCharts = dynamic(
   },
 );
 
-// ─── MOCK DATA ───────────────────────────
-
-const MOCK_WEEKLY = [
-  { week: '1월1주', count: 2 },
-  { week: '1월2주', count: 2 },
-  { week: '1월3주', count: 1 },
-  { week: '1월4주', count: 1 },
-  { week: '2월1주', count: 3 },
-  { week: '2월2주', count: 3 },
-  { week: '2월3주', count: 4 },
-  { week: '2월4주', count: 4 },
-  { week: '3월1주', count: 5 },
-];
-
-const MOCK_AI_SCORES = [
-  { date: '2/3', score: 80, problem: '스택 수열' },
-  { date: '2/10', score: 78, problem: 'DP 입문' },
-  { date: '2/14', score: 83, problem: '이분 탐색' },
-  { date: '2/19', score: 88, problem: '트리의 지름' },
-  { date: '2/25', score: 83, problem: 'LCA' },
-  { date: '3/1', score: 96, problem: '최단 경로' },
-  { date: '3/5', score: 92, problem: '두 수의 합' },
-];
-
-const MOCK_DIFFICULTY = [
-  { tier: 'Bronze', count: 4, color: 'var(--diff-bronze-color)' },
-  { tier: 'Silver', count: 8, color: 'var(--diff-silver-color)' },
-  { tier: 'Gold', count: 6, color: 'var(--diff-gold-color)' },
-  { tier: 'Platinum', count: 3, color: 'var(--diff-platinum-color)' },
-  { tier: 'Diamond', count: 1, color: 'var(--diff-diamond-color)' },
-];
-
-const MOCK_TAGS = [
-  { tag: '그래프', count: 7 },
-  { tag: 'DP', count: 6 },
-  { tag: '트리', count: 5 },
-  { tag: '이분탐색', count: 4 },
-  { tag: '해시', count: 3 },
-  { tag: '스택', count: 3 },
-  { tag: '문자열', count: 2 },
-  { tag: 'BFS/DFS', count: 2 },
-];
-
 // ─── HELPERS ─────────────────────────────
 
 function parseWeekKey(w: string): number {
@@ -125,7 +82,6 @@ export default function AnalyticsPage(): ReactNode {
     transition: `opacity .5s cubic-bezier(.16,1,.3,1) ${delay}s, transform .5s cubic-bezier(.16,1,.3,1) ${delay}s`,
   });
 
-  const isMock = process.env.NEXT_PUBLIC_DEV_MOCK === 'true';
   const myId = useMemo(() => getCurrentUserId(), []);
   const userName = myNickname ?? user?.email?.split('@')[0] ?? '사용자';
 
@@ -153,7 +109,7 @@ export default function AnalyticsPage(): ReactNode {
     }
   }, [currentStudyId]);
 
-  // 닉네임 로드 (Mock/API 공통)
+  // 닉네임 로드
   useEffect(() => {
     if (!currentStudyId || !myId) return;
     studyApi.getMembers(currentStudyId).then((members) => {
@@ -163,17 +119,13 @@ export default function AnalyticsPage(): ReactNode {
   }, [currentStudyId, myId]);
 
   useEffect(() => {
-    if (isMock) {
-      setIsLoading(false);
-      return;
-    }
     if (!isAuthenticated || !studiesLoaded) return;
     if (currentStudyId) {
       void loadData();
     } else {
       setIsLoading(false);
     }
-  }, [isAuthenticated, studiesLoaded, currentStudyId, loadData, isMock]);
+  }, [isAuthenticated, studiesLoaded, currentStudyId, loadData]);
 
   // ─── API 통계 계산 ────────────────────
 
@@ -235,40 +187,6 @@ export default function AnalyticsPage(): ReactNode {
       </div>
     );
   }
-
-  // ─── MOCK 모드 ─────────────────────────
-
-  if (isMock) {
-    return (
-      <AppLayout>
-        <div className="space-y-4">
-          {/* 헤더 */}
-          <div style={fade(0)}>
-            <h1 className="text-[22px] font-bold tracking-tight text-text">내 통계</h1>
-            <p className="mt-0.5 text-sm text-text-3">
-              {userName}님의 알고리즘 학습 현황
-            </p>
-          </div>
-
-          <AnalyticsCharts
-            totalSubmissions={28}
-            solvedProblems={22}
-            completionPct={79}
-            avgAIScore={87}
-            streak={5}
-            streakRank="스터디 내 1위"
-            weeklyData={MOCK_WEEKLY}
-            aiScoreData={MOCK_AI_SCORES}
-            difficultyData={MOCK_DIFFICULTY}
-            tagData={MOCK_TAGS}
-            userName={userName}
-          />
-        </div>
-      </AppLayout>
-    );
-  }
-
-  // ─── API 모드 ──────────────────────────
 
   return (
     <AppLayout>

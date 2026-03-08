@@ -32,7 +32,6 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Alert } from '@/components/ui/Alert';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { useAuth } from '@/contexts/AuthContext';
 import {
   studyApi,
   type Study,
@@ -46,43 +45,14 @@ interface PageProps {
   readonly params: Promise<{ id: string }>;
 }
 
-// ─── MOCK DATA ──────────────────────────
-
 interface SettingsMember {
   id: string;
+  userId: string;
   name: string;
   email: string;
   role: 'ADMIN' | 'MEMBER';
   color: string;
 }
-
-const MOCK_MEMBERS: SettingsMember[] = [
-  { id: 'm1', name: '김민준', email: 'minjun@example.com', role: 'ADMIN', color: '#E8A830' },
-  { id: 'm2', name: '이지현', email: 'jhyun@example.com', role: 'MEMBER', color: '#3DAA6D' },
-  { id: 'm3', name: '박서준', email: 'seojun@example.com', role: 'MEMBER', color: '#3B82CE' },
-  { id: 'm4', name: '최하은', email: 'haeun@example.com', role: 'MEMBER', color: '#7C6AAE' },
-  { id: 'm5', name: '정우진', email: 'woojin@example.com', role: 'MEMBER', color: '#E05448' },
-];
-
-const MOCK_GROUND_RULES = `## 참여 규칙
-- 매주 **최소 1문제** 이상 제출해야 합니다.
-- 마감 기한 내에 제출하지 못한 경우, 사유를 채널에 공유해주세요.
-- 스터디 모임에는 **사전 고지 없이 결석하지 않습니다.**
-
-## 문제 풀이 방식
-- 풀이 코드는 반드시 **본인이 직접 작성**해야 합니다.
-- 외부 코드를 참고한 경우 출처를 주석으로 명시하세요.
-- AI 도구(ChatGPT 등)는 **최후의 수단**으로만 활용합니다.
-
-## 코드 리뷰
-- 다른 멤버의 코드에 **건설적인 피드백**을 남겨주세요.
-- 비난이나 비하 발언은 **금지**합니다.
-- 리뷰는 제출 후 **2일 이내**에 완료해주세요.
-
-## 커뮤니케이션
-- 스터디 채널에서 질문은 언제든 환영합니다.
-- 모르는 것을 모른다고 말하는 문화를 만들어갑시다.
-- 서로를 존중하고 격려하는 분위기를 유지합니다.`;
 
 // ─── MARKDOWN RENDERER ─────────────────
 
@@ -109,31 +79,39 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
   const { id: studyId } = use(params);
   const router = useRouter();
   const { isAuthenticated } = useRequireAuth();
-  const { user } = useAuth();
 
   // ─── STATE ─────────────────────────────
   const [study, setStudy] = useState<Study | null>(null);
   const [members, setMembers] = useState<StudyMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   // 기본 정보 폼
   const [studyName, setStudyName] = useState('');
   const [studyDesc, setStudyDesc] = useState('');
+  const [isSavingInfo, setIsSavingInfo] = useState(false);
 
   // 그라운드룰
   const [rulesText, setRulesText] = useState('');
   const [rulesMode, setRulesMode] = useState<'edit' | 'preview'>('edit');
+  const [isSavingRules, setIsSavingRules] = useState(false);
 
   // 아바타
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
   // 초대 코드
-  const [inviteCode, setInviteCode] = useState('ALGO-7X3K');
+  const [inviteCode, setInviteCode] = useState('');
   const [codeCopied, setCodeCopied] = useState(false);
-  const [codeExpiry, setCodeExpiry] = useState(300); // 5분 = 300초
-  const [codeActive, setCodeActive] = useState(true);
+  const [codeExpiry, setCodeExpiry] = useState(0);
+  const [codeActive, setCodeActive] = useState(false);
+  const [isRefreshingCode, setIsRefreshingCode] = useState(false);
+
+  // 삭제
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // mount animation
   const [mounted, setMounted] = useState(false);
@@ -142,7 +120,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
     return () => clearTimeout(t);
   }, []);
 
-  // 초대코드 5분 타이머
+  // 초대코드 타이머
   useEffect(() => {
     if (!codeActive) return;
     if (codeExpiry <= 0) {
@@ -161,6 +139,13 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
     return () => clearInterval(timer);
   }, [codeActive, codeExpiry]);
 
+  /** 성공 메시지 자동 제거 */
+  useEffect(() => {
+    if (!successMsg) return;
+    const t = setTimeout(() => setSuccessMsg(null), 3000);
+    return () => clearTimeout(t);
+  }, [successMsg]);
+
   const fade = (delay = 0): CSSProperties => ({
     opacity: mounted ? 1 : 0,
     transform: mounted ? 'translateY(0)' : 'translateY(16px)',
@@ -172,28 +157,6 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
   const loadStudyData = useCallback(async (): Promise<void> => {
     setIsLoading(true);
     setError(null);
-
-    if (process.env.NEXT_PUBLIC_DEV_MOCK === 'true') {
-      setStudy({
-        id: studyId,
-        name: '알고리즘 마스터',
-        description: 'LeetCode & BOJ 기반 스터디',
-        role: 'ADMIN',
-        memberCount: 5,
-      });
-      setStudyName('알고리즘 마스터');
-      setStudyDesc('LeetCode & BOJ 기반 스터디');
-      setRulesText(MOCK_GROUND_RULES);
-      setMembers([
-        { id: 'm1', study_id: studyId, user_id: 'dev-user-001', role: 'ADMIN', joined_at: '2025-01-01T00:00:00Z', nickname: '김민준', username: 'kimmin', email: 'dev@algosu.kr', avatar_url: '' },
-        { id: 'm2', study_id: studyId, user_id: 'dev-user-002', role: 'MEMBER', joined_at: '2025-01-02T00:00:00Z', nickname: '이지현', username: 'jhyun', email: 'jhyun@example.com', avatar_url: '' },
-        { id: 'm3', study_id: studyId, user_id: 'dev-user-003', role: 'MEMBER', joined_at: '2025-01-03T00:00:00Z', nickname: '박서준', username: 'seojun', email: 'seojun@example.com', avatar_url: '' },
-        { id: 'm4', study_id: studyId, user_id: 'dev-user-004', role: 'MEMBER', joined_at: '2025-01-04T00:00:00Z', nickname: '최하은', username: 'haeun', email: 'haeun@example.com', avatar_url: '' },
-        { id: 'm5', study_id: studyId, user_id: 'dev-user-005', role: 'MEMBER', joined_at: '2025-01-05T00:00:00Z', nickname: '정우진', username: 'woojin', email: 'woojin@example.com', avatar_url: '' },
-      ]);
-      setIsLoading(false);
-      return;
-    }
 
     try {
       const [studyData, memberData] = await Promise.all([
@@ -222,6 +185,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
 
   // ─── HANDLERS ──────────────────────────
 
+  /** 아바타 미리보기 */
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -229,23 +193,108 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
     setAvatarPreview(url);
   };
 
+  /** 아바타 미리보기 제거 */
   const handleAvatarRemove = (): void => {
     setAvatarPreview(null);
     if (avatarInputRef.current) avatarInputRef.current.value = '';
   };
 
+  /** 기본 정보 저장 (스터디 이름 + 소개) */
+  const handleSaveInfo = async (): Promise<void> => {
+    if (!studyName.trim()) {
+      setError('스터디 이름을 입력해주세요.');
+      return;
+    }
+    setIsSavingInfo(true);
+    setError(null);
+    try {
+      const updated = await studyApi.update(studyId, {
+        name: studyName.trim(),
+        description: studyDesc.trim(),
+      });
+      setStudy(updated);
+      setSuccessMsg('기본 정보가 저장되었습니다.');
+    } catch (err: unknown) {
+      setError((err as Error).message ?? '기본 정보 저장에 실패했습니다.');
+    } finally {
+      setIsSavingInfo(false);
+    }
+  };
+
+  /** 그라운드룰 저장 */
+  const handleSaveRules = async (): Promise<void> => {
+    setIsSavingRules(true);
+    setError(null);
+    try {
+      await studyApi.updateGroundRules(studyId, rulesText);
+      setSuccessMsg('그라운드룰이 저장되었습니다.');
+    } catch (err: unknown) {
+      setError((err as Error).message ?? '그라운드룰 저장에 실패했습니다.');
+    } finally {
+      setIsSavingRules(false);
+    }
+  };
+
+  /** 멤버 내보내기 */
+  const handleRemoveMember = async (member: SettingsMember): Promise<void> => {
+    const confirmed = window.confirm(
+      `"${member.name}" 님을 스터디에서 내보내시겠습니까?\n이 작업은 되돌릴 수 없습니다.`,
+    );
+    if (!confirmed) return;
+
+    setError(null);
+    try {
+      await studyApi.removeMember(studyId, member.userId);
+      // 멤버 목록 새로고침
+      const updatedMembers = await studyApi.getMembers(studyId);
+      setMembers(updatedMembers);
+      setSuccessMsg(`${member.name} 님이 스터디에서 내보내졌습니다.`);
+    } catch (err: unknown) {
+      setError((err as Error).message ?? '멤버 내보내기에 실패했습니다.');
+    }
+  };
+
+  /** 초대 코드 복사 */
   const handleCopyCode = async (): Promise<void> => {
     await navigator.clipboard.writeText(inviteCode);
     setCodeCopied(true);
     setTimeout(() => setCodeCopied(false), 2000);
   };
 
-  const handleRefreshCode = (): void => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    const code = `ALGO-${Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')}`;
-    setInviteCode(code);
-    setCodeExpiry(300);
-    setCodeActive(true);
+  /** 초대 코드 재생성 — API 호출 */
+  const handleRefreshCode = async (): Promise<void> => {
+    setIsRefreshingCode(true);
+    setError(null);
+    try {
+      const result = await studyApi.invite(studyId);
+      setInviteCode(result.code);
+      // 만료 시각으로부터 남은 초 계산
+      const expiresAt = new Date(result.expires_at).getTime();
+      const remainingSec = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+      setCodeExpiry(remainingSec);
+      setCodeActive(remainingSec > 0);
+    } catch (err: unknown) {
+      setError((err as Error).message ?? '초대 코드 생성에 실패했습니다.');
+    } finally {
+      setIsRefreshingCode(false);
+    }
+  };
+
+  /** 스터디 삭제 */
+  const handleDeleteStudy = async (): Promise<void> => {
+    if (deleteConfirmName !== study?.name) {
+      setError('스터디 이름이 일치하지 않습니다.');
+      return;
+    }
+    setIsDeleting(true);
+    setError(null);
+    try {
+      await studyApi.delete(studyId);
+      router.push('/studies');
+    } catch (err: unknown) {
+      setError((err as Error).message ?? '스터디 삭제에 실패했습니다.');
+      setIsDeleting(false);
+    }
   };
 
   // ─── LOADING / ERROR ───────────────────
@@ -278,16 +327,14 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
     );
   }
 
-  const isMock = process.env.NEXT_PUBLIC_DEV_MOCK === 'true';
-  const displayMembers: SettingsMember[] = isMock
-    ? MOCK_MEMBERS
-    : members.map((m) => ({
-        id: m.id,
-        name: m.nickname ?? m.username ?? m.email ?? '',
-        email: m.email ?? '',
-        role: m.role,
-        color: 'var(--primary)',
-      }));
+  const displayMembers: SettingsMember[] = members.map((m) => ({
+    id: m.id,
+    userId: m.user_id,
+    name: m.nickname ?? m.username ?? m.email ?? '',
+    email: m.email ?? '',
+    role: m.role,
+    color: 'var(--primary)',
+  }));
 
   return (
     <AppLayout>
@@ -314,6 +361,12 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
         {error && (
           <Alert variant="error" onClose={() => setError(null)}>
             {error}
+          </Alert>
+        )}
+
+        {successMsg && (
+          <Alert variant="success" onClose={() => setSuccessMsg(null)}>
+            {successMsg}
           </Alert>
         )}
 
@@ -418,7 +471,13 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                 />
               </div>
               <div className="flex justify-end">
-                <Button size="sm">저장</Button>
+                <Button
+                  size="sm"
+                  onClick={() => void handleSaveInfo()}
+                  disabled={isSavingInfo}
+                >
+                  {isSavingInfo ? '저장 중...' : '저장'}
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -479,7 +538,13 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                 <span className="text-[11px] text-text-3">
                   Markdown 지원: **굵게**, *기울임*, ## 제목, - 목록
                 </span>
-                <Button size="sm">저장</Button>
+                <Button
+                  size="sm"
+                  onClick={() => void handleSaveRules()}
+                  disabled={isSavingRules}
+                >
+                  {isSavingRules ? '저장 중...' : '저장'}
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -528,6 +593,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                     type="button"
                     className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-text-3 transition-colors hover:bg-error-soft hover:text-error"
                     aria-label={`${member.name} 내보내기`}
+                    onClick={() => void handleRemoveMember(member)}
                   >
                     <Trash2 className="h-4 w-4" aria-hidden />
                   </button>
@@ -544,14 +610,14 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
             <CardContent className="space-y-3 py-4">
               <div className="flex items-center gap-2">
                 <Input
-                  value={codeActive ? inviteCode : '만료됨'}
+                  value={codeActive ? inviteCode : (inviteCode ? '만료됨' : '코드를 생성해주세요')}
                   readOnly
-                  className={`font-mono text-sm ${!codeActive ? 'text-text-3 line-through' : ''}`}
+                  className={`font-mono text-sm ${!codeActive ? 'text-text-3' : ''} ${inviteCode && !codeActive ? 'line-through' : ''}`}
                 />
                 <button
                   type="button"
                   className="shrink-0 rounded-lg border border-border p-2.5 text-text-3 transition-colors hover:bg-bg-alt hover:text-text disabled:opacity-40"
-                  onClick={handleCopyCode}
+                  onClick={() => void handleCopyCode()}
                   disabled={!codeActive}
                   aria-label="초대 코드 복사"
                 >
@@ -559,11 +625,12 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                 </button>
                 <button
                   type="button"
-                  className="shrink-0 rounded-lg border border-border p-2.5 text-text-3 transition-colors hover:bg-bg-alt hover:text-text"
-                  onClick={handleRefreshCode}
+                  className="shrink-0 rounded-lg border border-border p-2.5 text-text-3 transition-colors hover:bg-bg-alt hover:text-text disabled:opacity-40"
+                  onClick={() => void handleRefreshCode()}
+                  disabled={isRefreshingCode}
                   aria-label="초대 코드 재생성"
                 >
-                  <RefreshCw className="h-4 w-4" aria-hidden />
+                  <RefreshCw className={`h-4 w-4 ${isRefreshingCode ? 'animate-spin' : ''}`} aria-hidden />
                 </button>
               </div>
               <div className="flex items-center justify-between">
@@ -578,8 +645,8 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                     {' '}후 만료
                   </p>
                 ) : (
-                  <p className="text-xs" style={{ color: 'var(--error)' }}>
-                    코드가 만료되었습니다. 새로 생성해주세요.
+                  <p className="text-xs" style={{ color: inviteCode ? 'var(--error)' : 'var(--text-3)' }}>
+                    {inviteCode ? '코드가 만료되었습니다. 새로 생성해주세요.' : '초대 코드를 생성하세요.'}
                   </p>
                 )}
                 {codeCopied && (
@@ -601,12 +668,47 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
               <p className="text-[13px] text-text-2">
                 스터디를 삭제하면 모든 문제·제출 기록·분석 결과가 영구 삭제됩니다.
               </p>
-              <Button
-                className="bg-error text-white hover:bg-error/90"
-                size="sm"
-              >
-                스터디 삭제
-              </Button>
+              {showDeleteConfirm ? (
+                <div className="space-y-3">
+                  <p className="text-[12px] font-medium" style={{ color: 'var(--error)' }}>
+                    삭제를 확인하려면 스터디 이름 &quot;{study?.name}&quot;을 입력하세요.
+                  </p>
+                  <Input
+                    value={deleteConfirmName}
+                    onChange={(e) => setDeleteConfirmName(e.target.value)}
+                    placeholder={study?.name ?? ''}
+                    className="max-w-xs"
+                  />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      className="bg-error text-white hover:bg-error/90"
+                      size="sm"
+                      onClick={() => void handleDeleteStudy()}
+                      disabled={isDeleting || deleteConfirmName !== study?.name}
+                    >
+                      {isDeleting ? '삭제 중...' : '삭제 확인'}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setShowDeleteConfirm(false);
+                        setDeleteConfirmName('');
+                      }}
+                    >
+                      취소
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  className="bg-error text-white hover:bg-error/90"
+                  size="sm"
+                  onClick={() => setShowDeleteConfirm(true)}
+                >
+                  스터디 삭제
+                </Button>
+              )}
             </CardContent>
           </Card>
         </section>

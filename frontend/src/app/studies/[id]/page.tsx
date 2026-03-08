@@ -35,8 +35,11 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   studyApi,
+  problemApi,
   type Study,
   type StudyMember,
+  type Problem,
+  type StudyStats,
 } from '@/lib/api';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { cn } from '@/lib/utils';
@@ -57,94 +60,6 @@ const TABS: { key: TabKey; label: string; icon: typeof Users }[] = [
   { key: 'members', label: '멤버', icon: Users },
 ];
 
-// ─── MOCK DATA ──────────────────────────
-
-const MOCK_GROUND_RULES = `## 참여 규칙
-- 매주 **최소 1문제** 이상 제출해야 합니다.
-- 마감 기한 내에 제출하지 못한 경우, 사유를 채널에 공유해주세요.
-- 스터디 모임에는 **사전 고지 없이 결석하지 않습니다.**
-
-## 문제 풀이 방식
-- 풀이 코드는 반드시 **본인이 직접 작성**해야 합니다.
-- 외부 코드를 참고한 경우 출처를 주석으로 명시하세요.
-- AI 도구(ChatGPT 등)는 **최후의 수단**으로만 활용합니다.
-
-## 코드 리뷰
-- 다른 멤버의 코드에 **건설적인 피드백**을 남겨주세요.
-- 비난이나 비하 발언은 **금지**합니다.
-- 리뷰는 제출 후 **2일 이내**에 완료해주세요.
-
-## 커뮤니케이션
-- 스터디 채널에서 질문은 언제든 환영합니다.
-- 모르는 것을 모른다고 말하는 문화를 만들어갑시다.
-- 서로를 존중하고 격려하는 분위기를 유지합니다.`;
-
-interface MockProblem {
-  id: string;
-  number: number;
-  title: string;
-  difficulty: string;
-  tier: string;
-  tags: string[];
-  dDay?: string;
-  ended?: boolean;
-}
-
-const MOCK_PROBLEMS_ACTIVE: MockProblem[] = [
-  { id: 'p1', number: 1, title: '두 수의 합', difficulty: 'Silver 2', tier: 'silver', tags: ['해시', '배열'], dDay: 'D-2 마감' },
-  { id: 'p2', number: 2, title: '최단 경로', difficulty: 'Gold 4', tier: 'gold', tags: ['다익스트라', '그래프'], dDay: 'D-3 마감' },
-];
-
-const MOCK_PROBLEMS_ENDED: MockProblem[] = [
-  { id: 'p3', number: 3, title: '이분 탐색', difficulty: 'Silver 4', tier: 'silver', tags: ['이분탐색'], ended: true },
-  { id: 'p4', number: 4, title: 'DP 입문', difficulty: 'Bronze 1', tier: 'bronze', tags: ['DP'], ended: true },
-  { id: 'p5', number: 5, title: '트리의 지름', difficulty: 'Gold 2', tier: 'gold', tags: ['트리', 'BFS'], ended: true },
-  { id: 'p6', number: 6, title: '플로이드 워셜', difficulty: 'Gold 5', tier: 'gold', tags: ['플로이드', '그래프'], ended: true },
-];
-
-interface MockMember {
-  id: string;
-  name: string;
-  role: 'ADMIN' | 'MEMBER';
-  isMe: boolean;
-  email: string;
-  color: string;
-  submissions: number;
-  done: number;
-  total: number;
-}
-
-const MOCK_MEMBERS: MockMember[] = [
-  { id: 'm1', name: '김민준', role: 'ADMIN', isMe: true, email: 'minjun@example.com', color: '#E8A830', submissions: 12, done: 10, total: 12 },
-  { id: 'm2', name: '이지현', role: 'MEMBER', isMe: false, email: 'jhyun@example.com', color: '#3DAA6D', submissions: 9, done: 8, total: 9 },
-  { id: 'm3', name: '박서준', role: 'MEMBER', isMe: false, email: 'seojun@example.com', color: '#3B82CE', submissions: 7, done: 6, total: 7 },
-  { id: 'm4', name: '최하은', role: 'MEMBER', isMe: false, email: 'haeun@example.com', color: '#7C6AAE', submissions: 8, done: 7, total: 8 },
-  { id: 'm5', name: '정우진', role: 'MEMBER', isMe: false, email: 'woojin@example.com', color: '#E05448', submissions: 6, done: 5, total: 6 },
-];
-
-// ─── MARKDOWN RENDERER ─────────────────
-
-/**
- * 간단한 마크다운 → HTML 변환 (##, **, -)
- * @domain common
- */
-function renderMarkdown(md: string): string {
-  return md
-    .split('\n')
-    .map((line) => {
-      if (line.startsWith('## ')) {
-        return `<h3 style="font-size:15px;font-weight:700;margin:20px 0 8px;padding-left:4px;color:var(--text)">${line.slice(3)}</h3>`;
-      }
-      if (line.startsWith('- ')) {
-        const content = line.slice(2).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        return `<li style="font-size:13px;color:var(--text-2);margin:4px 0;margin-left:20px;padding-left:8px;list-style:disc">${content}</li>`;
-      }
-      if (line.trim() === '') return '<br/>';
-      return `<p style="font-size:13px;color:var(--text-2)">${line}</p>`;
-    })
-    .join('');
-}
-
 // ─── RENDER ──────────────────────────────
 
 /**
@@ -161,6 +76,8 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
   const [tab, setTab] = useState<TabKey>('rules');
   const [study, setStudy] = useState<Study | null>(null);
   const [members, setMembers] = useState<StudyMember[]>([]);
+  const [problems, setProblems] = useState<Problem[]>([]);
+  const [stats, setStats] = useState<StudyStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -194,33 +111,17 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
     setIsLoading(true);
     setError(null);
 
-    // DEV MOCK
-    if (process.env.NEXT_PUBLIC_DEV_MOCK === 'true') {
-      setStudy({
-        id: studyId,
-        name: '알고리즘 마스터',
-        description: 'LeetCode & BOJ 기반 스터디',
-        role: 'ADMIN',
-        memberCount: 5,
-      });
-      setMembers([
-        { id: 'm1', study_id: studyId, user_id: 'dev-user-001', role: 'ADMIN', joined_at: '2025-01-01T00:00:00Z', nickname: '김민준', username: 'kimmin', email: 'dev@algosu.kr', avatar_url: '' },
-        { id: 'm2', study_id: studyId, user_id: 'dev-user-002', role: 'MEMBER', joined_at: '2025-01-02T00:00:00Z', nickname: '이지현', username: 'jhyun', email: 'jhyun@example.com', avatar_url: '' },
-        { id: 'm3', study_id: studyId, user_id: 'dev-user-003', role: 'MEMBER', joined_at: '2025-01-03T00:00:00Z', nickname: '박서준', username: 'seojun', email: 'seojun@example.com', avatar_url: '' },
-        { id: 'm4', study_id: studyId, user_id: 'dev-user-004', role: 'MEMBER', joined_at: '2025-01-04T00:00:00Z', nickname: '최하은', username: 'haeun', email: 'haeun@example.com', avatar_url: '' },
-        { id: 'm5', study_id: studyId, user_id: 'dev-user-005', role: 'MEMBER', joined_at: '2025-01-05T00:00:00Z', nickname: '정우진', username: 'woojin', email: 'woojin@example.com', avatar_url: '' },
-      ]);
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      const [studyData, memberData] = await Promise.all([
+      const [studyData, memberData, problemData, statsData] = await Promise.all([
         studyApi.getById(studyId),
         studyApi.getMembers(studyId),
+        problemApi.findAllIncludingClosed().catch(() => [] as Problem[]),
+        studyApi.getStats(studyId).catch(() => null),
       ]);
       setStudy(studyData);
       setMembers(memberData);
+      setProblems(problemData);
+      setStats(statsData);
     } catch (err: unknown) {
       setError(
         (err as Error).message ??
@@ -267,8 +168,7 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
     );
   }
 
-  const isMock = process.env.NEXT_PUBLIC_DEV_MOCK === 'true';
-  const memberCount = isMock ? MOCK_MEMBERS.length : members.length;
+  const memberCount = members.length;
 
   return (
     <AppLayout>
@@ -356,18 +256,21 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
         {/* ── TAB CONTENT ── */}
         <div style={fade(0.12)}>
           {tab === 'rules' && (
-            <RulesTab isAdmin={isAdmin} isMock={isMock} />
+            <RulesTab isAdmin={isAdmin} groundRules={study?.groundRules ?? null} />
           )}
 
           {tab === 'problems' && (
-            <ProblemsTab isMock={isMock} />
+            <ProblemsTab problems={problems} />
           )}
 
           {tab === 'members' && (
             <MembersTab
               members={members}
               myUserId={myUserId}
-              isMock={isMock}
+              studyId={studyId}
+              stats={stats}
+              totalProblems={problems.length}
+              onNicknameUpdated={loadStudyData}
             />
           )}
         </div>
@@ -379,18 +282,16 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
 // ─── RULES TAB ──────────────────────────
 
 /**
- * 그라운드룰 탭 — 마크다운 렌더링
+ * 그라운드룰 탭 — 텍스트 렌더링 (groundRules 필드 from Study)
  * @domain study
  */
 function RulesTab({
-  isAdmin,
-  isMock,
+  isAdmin: _isAdmin,
+  groundRules,
 }: {
   readonly isAdmin: boolean;
-  readonly isMock: boolean;
+  readonly groundRules: string | null;
 }): ReactNode {
-  const rulesHtml = isMock ? renderMarkdown(MOCK_GROUND_RULES) : '';
-
   return (
     <div className="space-y-4 animate-fade-in">
       <Card>
@@ -403,12 +304,11 @@ function RulesTab({
             </div>
           </div>
 
-          {/* 마크다운 콘텐츠 */}
-          {rulesHtml ? (
-            <div
-              dangerouslySetInnerHTML={{ __html: rulesHtml }}
-              style={{ lineHeight: '1.7' }}
-            />
+          {/* 그라운드룰 콘텐츠 */}
+          {groundRules ? (
+            <div className="prose prose-sm max-w-none text-text whitespace-pre-wrap text-sm leading-relaxed">
+              {groundRules}
+            </div>
           ) : (
             <p className="text-sm text-text-3">
               아직 그라운드룰이 등록되지 않았습니다.
@@ -423,16 +323,56 @@ function RulesTab({
 // ─── PROBLEMS TAB ───────────────────────
 
 /**
+ * 난이도를 티어 문자열로 변환 (CSS 변수 매핑용)
+ */
+function difficultyToTier(difficulty: string): string {
+  return difficulty.toLowerCase();
+}
+
+/**
+ * D-day 계산 — deadline까지 남은 일수
+ */
+function calcDDay(deadline: string): string {
+  const now = new Date();
+  const dl = new Date(deadline);
+  const diff = Math.ceil((dl.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  if (diff < 0) return '마감';
+  if (diff === 0) return 'D-Day';
+  return `D-${diff}`;
+}
+
+/**
  * 문제 탭 — 진행 중 / 종료된 문제
  * @domain study
  */
 function ProblemsTab({
-  isMock,
+  problems,
 }: {
-  readonly isMock: boolean;
+  readonly problems: Problem[];
 }): ReactNode {
-  const activeProblems = isMock ? MOCK_PROBLEMS_ACTIVE : [];
-  const endedProblems = isMock ? MOCK_PROBLEMS_ENDED : [];
+  const activeProblems = problems
+    .filter((p) => p.status === 'ACTIVE')
+    .map((p, idx) => ({
+      id: p.id,
+      number: idx + 1,
+      title: p.title,
+      difficulty: p.difficulty,
+      tier: difficultyToTier(p.difficulty),
+      tags: p.tags ?? [],
+      dDay: calcDDay(p.deadline),
+    }));
+
+  const endedProblems = problems
+    .filter((p) => p.status === 'CLOSED')
+    .map((p, idx) => ({
+      id: p.id,
+      number: idx + 1,
+      title: p.title,
+      difficulty: p.difficulty,
+      tier: difficultyToTier(p.difficulty),
+      tags: p.tags ?? [],
+      ended: true as const,
+    }));
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -479,7 +419,7 @@ function ProblemsTab({
  * 문제 카드
  * @domain study
  */
-function ProblemCard({ problem }: { readonly problem: MockProblem }): ReactNode {
+function ProblemCard({ problem }: { readonly problem: { id: string; number: number; title: string; difficulty: string; tier: string; tags: string[]; dDay?: string; ended?: boolean } }): ReactNode {
   return (
     <Card className="p-0 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3">
@@ -543,47 +483,69 @@ function ProblemCard({ problem }: { readonly problem: MockProblem }): ReactNode 
 function MembersTab({
   members,
   myUserId,
-  isMock,
+  studyId,
+  stats,
+  totalProblems,
+  onNicknameUpdated,
 }: {
   readonly members: StudyMember[];
   readonly myUserId: string | null;
-  readonly isMock: boolean;
+  readonly studyId: string;
+  readonly stats: StudyStats | null;
+  readonly totalProblems: number;
+  readonly onNicknameUpdated: () => Promise<void>;
 }): ReactNode {
-  const mockMembers = isMock ? MOCK_MEMBERS : [];
-  const rawMembers = isMock ? mockMembers : members;
-
   // 닉네임 수정 상태
   const [editingNickname, setEditingNickname] = useState(false);
   const [nicknameValue, setNicknameValue] = useState('');
+  const [nicknameSaving, setNicknameSaving] = useState(false);
+
+  /** 닉네임 저장 — studyApi.updateNickname 호출 */
+  const saveNickname = useCallback(async () => {
+    if (!nicknameValue.trim()) {
+      setEditingNickname(false);
+      return;
+    }
+    setNicknameSaving(true);
+    try {
+      await studyApi.updateNickname(studyId, nicknameValue.trim());
+      setEditingNickname(false);
+      // 멤버 목록 갱신
+      await onNicknameUpdated();
+    } catch {
+      // 저장 실패 시 편집 상태 유지
+    } finally {
+      setNicknameSaving(false);
+    }
+  }, [studyId, nicknameValue, onNicknameUpdated]);
+
+  /** byMember 맵 — userId → { count, doneCount } */
+  const memberStatsMap = new Map(
+    (stats?.byMember ?? []).map((s) => [s.userId, s]),
+  );
 
   // 본인을 맨 위로 정렬
-  const sorted = [...rawMembers].sort((a, b) => {
-    const aIsMe = 'submissions' in a ? (a as MockMember).isMe : (a as StudyMember).user_id === myUserId;
-    const bIsMe = 'submissions' in b ? (b as MockMember).isMe : (b as StudyMember).user_id === myUserId;
+  const sorted = [...members].sort((a, b) => {
+    const aIsMe = a.user_id === myUserId;
+    const bIsMe = b.user_id === myUserId;
     if (aIsMe && !bIsMe) return -1;
     if (!aIsMe && bIsMe) return 1;
     return 0;
   });
 
   // 본인 / 나머지 분리
-  const me = sorted.find((m) => {
-    return 'submissions' in m ? (m as MockMember).isMe : (m as StudyMember).user_id === myUserId;
-  });
-  const others = sorted.filter((m) => {
-    return 'submissions' in m ? !(m as MockMember).isMe : (m as StudyMember).user_id !== myUserId;
-  });
+  const me = sorted.find((m) => m.user_id === myUserId);
+  const others = sorted.filter((m) => m.user_id !== myUserId);
 
-  const renderRow = (member: (typeof sorted)[number], isMe: boolean) => {
-    const isMockMember = 'submissions' in member;
-    const name = isMockMember
-      ? (member as MockMember).name
-      : ((member as StudyMember).nickname ?? (member as StudyMember).username ?? (member as StudyMember).email ?? '');
-    const role = isMockMember ? (member as MockMember).role : (member as StudyMember).role;
-    const email = isMockMember ? (member as MockMember).email : ((member as StudyMember).email ?? '');
-    const color = isMockMember ? (member as MockMember).color : 'var(--primary)';
-    const submissions = isMockMember ? (member as MockMember).submissions : 0;
-    const done = isMockMember ? (member as MockMember).done : 0;
-    const total = isMockMember ? (member as MockMember).total : 0;
+  const renderRow = (member: StudyMember, isMe: boolean) => {
+    const name = member.nickname ?? member.username ?? member.email ?? '';
+    const role = member.role;
+    const email = member.email ?? '';
+    const color = 'var(--primary)';
+    const memberStat = memberStatsMap.get(member.user_id);
+    const submissions = memberStat?.count ?? 0;
+    const done = memberStat?.doneCount ?? 0;
+    const total = totalProblems;
     const pct = total > 0 ? (done / total) * 100 : 0;
     const initial = name.charAt(0);
 
@@ -606,15 +568,17 @@ function MembersTab({
                       value={nicknameValue}
                       onChange={(e) => setNicknameValue(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') setEditingNickname(false);
+                        if (e.key === 'Enter') void saveNickname();
                         if (e.key === 'Escape') setEditingNickname(false);
                       }}
+                      disabled={nicknameSaving}
                       autoFocus
                     />
                     <button
                       type="button"
-                      className="rounded p-0.5 text-success hover:bg-success/10"
-                      onClick={() => setEditingNickname(false)}
+                      className="rounded p-0.5 text-success hover:bg-success/10 disabled:opacity-50"
+                      onClick={() => void saveNickname()}
+                      disabled={nicknameSaving}
                       aria-label="저장"
                     >
                       <Check className="h-3.5 w-3.5" aria-hidden />
@@ -623,6 +587,7 @@ function MembersTab({
                       type="button"
                       className="rounded p-0.5 text-text-3 hover:bg-bg-alt"
                       onClick={() => setEditingNickname(false)}
+                      disabled={nicknameSaving}
                       aria-label="취소"
                     >
                       <X className="h-3.5 w-3.5" aria-hidden />

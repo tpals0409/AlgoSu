@@ -109,50 +109,14 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
       setIsLoading(true);
       setError(null);
       try {
-        // ── DEV MOCK ──────────────────────────────────────────────
-        if (process.env.NEXT_PUBLIC_DEV_MOCK === 'true') {
-          const now = new Date();
-          const d = (days: number) => new Date(now.getTime() + days * 86400000).toISOString();
-          const mockProblems: Record<string, Problem> = {
-            p1: { id: 'p1', title: '두 수의 합', difficulty: 'SILVER', level: 2, status: 'ACTIVE', deadline: d(2), description: '정수 n개로 이루어진 수열에서 ai + aj = x를 만족하는 쌍의 수를 구하라.', weekNumber: '3월1주차', sourceUrl: 'https://boj.kr/1000', sourcePlatform: 'BOJ', allowedLanguages: ['python', 'java'], tags: ['해시', '배열'] },
-            p2: { id: 'p2', title: '최단 경로', difficulty: 'GOLD', level: 4, status: 'ACTIVE', deadline: d(3), description: '방향 그래프가 주어지면 주어진 시작점에서 다른 모든 정점으로의 최단 경로를 구하는 프로그램을 작성하시오.', weekNumber: '3월1주차', sourceUrl: 'https://boj.kr/1753', sourcePlatform: 'BOJ', allowedLanguages: ['python', 'cpp'], tags: ['다익스트라', '그래프'] },
-            p3: { id: 'p3', title: '이분 탐색', difficulty: 'SILVER', level: 4, status: 'CLOSED', deadline: d(-5), description: 'N개의 정수 A[1], A[2], ..., A[N]이 주어져 있을 때, 이 안에 X라는 정수가 존재하는지 알아내는 프로그램을 작성하시오.', weekNumber: '2월4주차', sourceUrl: 'https://boj.kr/1920', sourcePlatform: 'BOJ', allowedLanguages: ['python'], tags: ['이분탐색'] },
-            p4: { id: 'p4', title: 'DP 입문', difficulty: 'BRONZE', level: 1, status: 'CLOSED', deadline: d(-10), description: '피보나치 함수에서 0과 1이 각각 몇 번 출력되는지 구하시오.', weekNumber: '2월3주차', sourceUrl: 'https://boj.kr/1003', sourcePlatform: 'BOJ', allowedLanguages: ['python', 'java'], tags: ['DP'] },
-          };
-          if (!cancelled) {
-            const mockProblem = mockProblems[problemId] ?? mockProblems.p1;
-            setProblem(mockProblem);
-            // mock 제출 이력
-            const mockSubmissions: Record<string, Submission[]> = {
-              p1: [
-                { id: 's1', problemId: 'p1', problemTitle: '두 수의 합', language: 'python', sagaStep: 'DONE', aiScore: 85, createdAt: d(-0.5) },
-                { id: 's2', problemId: 'p1', problemTitle: '두 수의 합', language: 'python', sagaStep: 'FAILED', aiScore: null, createdAt: d(-1) },
-              ],
-              p2: [
-                { id: 's3', problemId: 'p2', problemTitle: '최단 경로', language: 'cpp', sagaStep: 'AI_QUEUED', aiScore: null, createdAt: d(-0.2) },
-              ],
-              p3: [
-                { id: 's4', problemId: 'p3', problemTitle: '이분 탐색', language: 'python', sagaStep: 'DONE', aiScore: 92, createdAt: d(-6) },
-                { id: 's5', problemId: 'p3', problemTitle: '이분 탐색', language: 'python', sagaStep: 'DONE', aiScore: 78, createdAt: d(-7) },
-                { id: 's6', problemId: 'p3', problemTitle: '이분 탐색', language: 'python', sagaStep: 'DONE', aiScore: 65, createdAt: d(-8) },
-              ],
-              p4: [
-                { id: 's7', problemId: 'p4', problemTitle: 'DP 입문', language: 'java', sagaStep: 'DONE', aiScore: 100, createdAt: d(-11) },
-              ],
-            };
-            setSubmissions(mockSubmissions[problemId] ?? []);
-            setIsLoading(false);
-          }
-          return;
-        }
-        // ────────────────────────────────────────────────────────────
-
-        const [problemData, draftData] = await Promise.all([
+        const [problemData, draftData, submissionData] = await Promise.all([
           problemApi.findById(problemId),
           draftApi.find(problemId).catch(() => null),
+          submissionApi.listByProblemForStudy(problemId).catch(() => [] as Submission[]),
         ]);
         if (cancelled) return;
         setProblem(problemData);
+        setSubmissions(submissionData);
         if (draftData) {
           setCode(draftData.code);
           setLanguage(draftData.language);
@@ -246,9 +210,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
   const handleDelete = useCallback(async (): Promise<void> => {
     setIsDeleting(true);
     try {
-      if (process.env.NEXT_PUBLIC_DEV_MOCK !== 'true') {
-        await problemApi.remove(problemId);
-      }
+      await problemApi.delete(problemId);
       router.push('/problems');
     } catch (err: unknown) {
       setError((err as Error).message ?? '삭제 중 오류가 발생했습니다.');
