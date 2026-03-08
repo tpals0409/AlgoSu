@@ -80,11 +80,11 @@ describe('GitHubPushService', () => {
     );
   });
 
-  // 3. 파일 경로 규칙
-  it('push() -- 파일 경로: submissions/{problemId}/{submissionId}.{ext}', async () => {
+  // 3. 파일 경로 규칙: {weekFolder}/{fileName}.{ext}
+  it('push() -- 파일 경로: {weekFolder}/{title}.{ext} (weekNumber 없으면 etc)', async () => {
     const result = await service.push(basePushInput);
 
-    const expectedPath = 'submissions/prob-7/sub-001.py';
+    const expectedPath = 'etc/prob-7.py';
     expect(result.filePath).toBe(expectedPath);
 
     expect(mockCreateOrUpdateFileContents).toHaveBeenCalledWith(
@@ -120,7 +120,7 @@ describe('GitHubPushService', () => {
     });
 
     expect(result.filePath).toMatch(/\.txt$/);
-    expect(result.filePath).toBe('submissions/prob-7/sub-001.txt');
+    expect(result.filePath).toBe('etc/prob-7.txt');
   });
 
   // 6. 레포 자동 생성
@@ -132,7 +132,7 @@ describe('GitHubPushService', () => {
     expect(mockCreateForAuthenticatedUser).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'algosu-submissions',
-        private: true,
+        private: false,
         auto_init: true,
       }),
     );
