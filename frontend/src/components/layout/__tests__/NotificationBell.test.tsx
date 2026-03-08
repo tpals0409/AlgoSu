@@ -134,12 +134,12 @@ describe('NotificationBell', () => {
     expect(screen.getByText('5')).toBeInTheDocument();
   });
 
-  it('99개 초과 시 99+를 표시한다', async () => {
+  it('9개 초과 시 9+를 표시한다 (sidebar placement)', async () => {
     mockUnreadCount.mockResolvedValue({ count: 150 });
     await act(async () => {
       render(<NotificationBell />);
     });
-    expect(screen.getByText('99+')).toBeInTheDocument();
+    expect(screen.getByText('9+')).toBeInTheDocument();
   });
 
   it('벨 클릭 시 드롭다운이 열린다', async () => {
