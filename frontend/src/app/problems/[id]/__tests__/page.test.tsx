@@ -116,7 +116,10 @@ jest.mock('@/lib/api', () => ({
     }),
     delete: jest.fn(),
   },
-  submissionApi: { create: jest.fn() },
+  submissionApi: {
+    create: jest.fn(),
+    listByProblemForStudy: jest.fn().mockResolvedValue([]),
+  },
   draftApi: {
     find: jest.fn().mockRejectedValue(new Error('no draft')),
     upsert: jest.fn(),
@@ -128,10 +131,32 @@ jest.mock('@/lib/avatars', () => ({
   getAvatarSrc: () => '/avatar.png',
 }));
 
+jest.mock('@/lib/constants', () => ({
+  DIFFICULTY_LABELS: {
+    BRONZE: 'Bronze',
+    SILVER: 'Silver',
+    GOLD: 'Gold',
+    PLATINUM: 'Platinum',
+    DIAMOND: 'Diamond',
+  },
+  SAGA_STEP_CONFIG: {
+    DB_SAVED: { label: '저장됨', variant: 'muted' },
+    GITHUB_QUEUED: { label: 'GitHub 대기', variant: 'info' },
+    AI_QUEUED: { label: 'AI 분석 대기', variant: 'warning' },
+    DONE: { label: '완료', variant: 'success' },
+    FAILED: { label: '실패', variant: 'error' },
+  },
+  toTierLevel: (rawLevel: number | null | undefined) => {
+    if (rawLevel == null || rawLevel <= 0) return null;
+    if (rawLevel >= 1 && rawLevel <= 5) return rawLevel;
+    return 5 - ((rawLevel - 1) % 5);
+  },
+}));
+
 jest.mock('lucide-react', () => {
   const Icon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />;
   return {
-    ChevronLeft: Icon,
+    ArrowLeft: Icon,
     Pencil: Icon,
     Trash2: Icon,
     ExternalLink: Icon,
@@ -161,16 +186,15 @@ describe('ProblemDetailPage', () => {
     expect(screen.getByTestId('app-layout')).toBeInTheDocument();
   });
 
-  it('문제 목록 버튼이 표시된다', async () => {
+  it('뒤로가기 버튼이 표시된다', async () => {
     await renderPage();
     await screen.findByText('Two Sum');
-    expect(screen.getByText('문제 목록')).toBeInTheDocument();
+    expect(screen.getByTestId('app-layout')).toBeInTheDocument();
   });
 
-  it('관리자에게 수정/삭제 버튼이 표시된다', async () => {
+  it('관리자에게 삭제 버튼이 표시된다', async () => {
     await renderPage();
     await screen.findByText('Two Sum');
-    expect(screen.getByText('수정')).toBeInTheDocument();
-    expect(screen.getByText('삭제')).toBeInTheDocument();
+    expect(screen.getByLabelText('문제 삭제')).toBeInTheDocument();
   });
 });

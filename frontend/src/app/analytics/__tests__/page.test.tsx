@@ -80,7 +80,7 @@ jest.mock('next/dynamic', () => () => {
 });
 
 jest.mock('@/lib/api', () => ({
-  studyApi: { getStats: jest.fn().mockResolvedValue({ totalSubmissions: 0, byMember: [], byWeek: [], byWeekPerUser: [], solvedProblemIds: [] }) },
+  studyApi: { getStats: jest.fn().mockResolvedValue({ totalSubmissions: 0, byMember: [], byWeek: [], byWeekPerUser: [], solvedProblemIds: [] }), getMembers: jest.fn().mockResolvedValue([]) },
   problemApi: { findAllIncludingClosed: jest.fn().mockResolvedValue([]) },
 }));
 
@@ -117,7 +117,7 @@ jest.mock('lucide-react', () => {
 describe('AnalyticsPage', () => {
   it('통계 페이지가 렌더링된다', async () => {
     render(<AnalyticsPage />);
-    expect(await screen.findByText('Test Study · 통계')).toBeInTheDocument();
+    expect(await screen.findByText('내 통계')).toBeInTheDocument();
   });
 
   it('AppLayout 안에 렌더링된다', () => {
@@ -125,8 +125,8 @@ describe('AnalyticsPage', () => {
     expect(screen.getByTestId('app-layout')).toBeInTheDocument();
   });
 
-  it('대시보드 돌아가기 링크가 표시된다', () => {
+  it('사용자 학습 현황 메시지가 표시된다', async () => {
     render(<AnalyticsPage />);
-    expect(screen.getByLabelText('대시보드로 돌아가기')).toBeInTheDocument();
+    expect(await screen.findByText(/알고리즘 학습 현황/)).toBeInTheDocument();
   });
 });

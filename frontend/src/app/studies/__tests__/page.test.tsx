@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import StudiesPage from '../page';
 
 const mockPush = jest.fn();
@@ -33,6 +33,7 @@ jest.mock('@/lib/api', () => ({
     list: jest.fn().mockResolvedValue([]),
     verifyInvite: jest.fn(),
     join: jest.fn(),
+    create: jest.fn(),
   },
   ApiError: class ApiError extends Error {},
 }));
@@ -59,11 +60,22 @@ jest.mock('@/components/ui/Button', () => ({
   },
 }));
 
-jest.mock('@/components/ui/Input', () => ({
-  Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => (
-    <input {...props} />
-  ),
-}));
+jest.mock('@/components/ui/Input', () => {
+  const { forwardRef } = jest.requireActual<typeof import('react')>('react');
+  return {
+    Input: forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement> & { label?: string; error?: string }>(
+      function MockInput({ label, error, ...props }, ref) {
+        return (
+          <div>
+            {label && <label>{label}</label>}
+            <input ref={ref} {...props} />
+            {error && <span>{error}</span>}
+          </div>
+        );
+      },
+    ),
+  };
+});
 
 jest.mock('@/components/ui/Alert', () => ({
   Alert: ({ children }: { children: React.ReactNode }) => (
@@ -78,7 +90,7 @@ jest.mock('@/components/ui/Badge', () => ({
 }));
 
 jest.mock('@/components/ui/EmptyState', () => ({
-  EmptyState: ({ title, description }: { title: string; description: string }) => (
+  EmptyState: ({ title, description, icon: _icon, action: _action }: { title: string; description: string; icon?: unknown; action?: unknown }) => (
     <div data-testid="empty-state">
       <p>{title}</p>
       <p>{description}</p>
@@ -90,9 +102,34 @@ jest.mock('@/components/ui/Skeleton', () => ({
   SkeletonCard: () => <div data-testid="skeleton-card" />,
 }));
 
+jest.mock('@/components/ui/LoadingSpinner', () => ({
+  InlineSpinner: () => <span data-testid="inline-spinner" />,
+}));
+
+jest.mock('@/lib/utils', () => ({
+  cn: (...args: (string | boolean | undefined)[]) => args.filter(Boolean).join(' '),
+}));
+
+jest.mock('react-hook-form', () => ({
+  useForm: () => ({
+    register: () => ({}),
+    handleSubmit: (fn: (data: Record<string, unknown>) => void) => (e: { preventDefault: () => void }) => { e.preventDefault(); fn({}); },
+    formState: { errors: {}, isSubmitting: false },
+    reset: jest.fn(),
+  }),
+}));
+
+jest.mock('@hookform/resolvers/zod', () => ({
+  zodResolver: () => jest.fn(),
+}));
+
+jest.mock('@/lib/schemas/study', () => ({
+  studyCreateSchema: {},
+}));
+
 jest.mock('lucide-react', () => {
   const Icon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />;
-  return { Users: Icon, Plus: Icon, ArrowRight: Icon };
+  return { Users: Icon, Plus: Icon, ArrowRight: Icon, Crown: Icon, Settings: Icon };
 });
 
 describe('StudiesPage', () => {
@@ -102,13 +139,13 @@ describe('StudiesPage', () => {
 
   it('페이지 헤더가 렌더링된다', async () => {
     render(<StudiesPage />);
-    expect(screen.getByText('내 스터디')).toBeInTheDocument();
-    expect(screen.getByText('참여 중인 스터디를 선택하거나 새로 만드세요.')).toBeInTheDocument();
+    expect(screen.getAllByText('내 스터디').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('참여 중인 스터디를 관리하세요.')).toBeInTheDocument();
   });
 
-  it('스터디 만들기 링크가 표시된다', () => {
+  it('스터디 탐색 탭이 표시된다', () => {
     render(<StudiesPage />);
-    expect(screen.getByText('스터디 만들기')).toBeInTheDocument();
+    expect(screen.getByText('스터디 탐색')).toBeInTheDocument();
   });
 
   it('AppLayout으로 감싸져 렌더링된다', () => {
@@ -116,8 +153,10 @@ describe('StudiesPage', () => {
     expect(screen.getByTestId('app-layout')).toBeInTheDocument();
   });
 
-  it('초대 코드 입력 영역이 표시된다', () => {
+  it('초대 코드 입력 영역이 스터디 탐색 탭에서 표시된다', () => {
     render(<StudiesPage />);
+    const exploreTab = screen.getByText('스터디 탐색');
+    fireEvent.click(exploreTab);
     expect(screen.getByText('초대 코드로 가입')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('초대 코드 입력')).toBeInTheDocument();
   });

@@ -112,8 +112,18 @@ jest.mock('lucide-react', () => {
     FileText: Icon,
     CheckCircle2: Icon,
     Trash2: Icon,
+    Pencil: Icon,
+    Camera: Icon,
   };
 });
+
+jest.mock('next/image', () => ({
+  __esModule: true,
+  default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => (
+    // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
+    <img {...props} />
+  ),
+}));
 
 describe('ProfilePage', () => {
   it('프로필 페이지가 렌더링된다', () => {
@@ -126,9 +136,9 @@ describe('ProfilePage', () => {
     expect(screen.getByTestId('app-layout')).toBeInTheDocument();
   });
 
-  it('계정 정보 섹션이 표시된다', () => {
+  it('기본 정보 섹션이 표시된다', () => {
     render(<ProfilePage />);
-    expect(screen.getByText('계정 정보 및 연동 설정')).toBeInTheDocument();
+    expect(screen.getByText('기본 정보')).toBeInTheDocument();
   });
 
   it('GitHub 연동 섹션이 표시된다', () => {
@@ -137,9 +147,9 @@ describe('ProfilePage', () => {
     expect(elements.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('소속 스터디 섹션이 표시된다', () => {
+  it('계정 관리 섹션이 표시된다', () => {
     render(<ProfilePage />);
-    expect(screen.getByText('소속 스터디')).toBeInTheDocument();
+    expect(screen.getByText('계정 관리')).toBeInTheDocument();
   });
 
   it('로그아웃 버튼이 표시된다', () => {
@@ -147,9 +157,8 @@ describe('ProfilePage', () => {
     expect(screen.getByText('로그아웃')).toBeInTheDocument();
   });
 
-  it('계정 삭제 섹션이 표시된다', () => {
+  it('계정 탈퇴 버튼이 표시된다', () => {
     render(<ProfilePage />);
-    const elements = screen.getAllByText('계정 삭제');
-    expect(elements.length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('계정 탈퇴')).toBeInTheDocument();
   });
 });

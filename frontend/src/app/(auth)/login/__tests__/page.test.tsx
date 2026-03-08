@@ -51,14 +51,14 @@ jest.mock('lucide-react', () => {
 describe('LoginPage', () => {
   it('로그인 페이지가 렌더링된다', () => {
     render(<LoginPage />);
-    expect(screen.getByText('AlgoSu에 로그인')).toBeInTheDocument();
+    expect(screen.getByText(/AlgoSu에 오신 것을/)).toBeInTheDocument();
   });
 
   it('OAuth 프로바이더 버튼들이 표시된다', () => {
     render(<LoginPage />);
     expect(screen.getByText('Google로 계속하기')).toBeInTheDocument();
-    expect(screen.getByText('Naver로 계속하기')).toBeInTheDocument();
-    expect(screen.getByText('Kakao로 계속하기')).toBeInTheDocument();
+    expect(screen.getByText('네이버로 계속하기')).toBeInTheDocument();
+    expect(screen.getByText('카카오로 계속하기')).toBeInTheDocument();
   });
 
   it('테마 전환 버튼이 존재한다', () => {
@@ -71,10 +71,9 @@ describe('LoginPage', () => {
     expect(screen.getByText('AlgoSu')).toBeInTheDocument();
   });
 
-  it('하단 기능 뱃지들이 표시된다', () => {
+  it('약관 안내 텍스트가 표시된다', () => {
     render(<LoginPage />);
-    expect(screen.getByText('GitHub 연동')).toBeInTheDocument();
-    expect(screen.getByText('AI 코드 리뷰')).toBeInTheDocument();
-    expect(screen.getByText('성장 통계')).toBeInTheDocument();
+    expect(screen.getByText(/서비스 이용약관/)).toBeInTheDocument();
+    expect(screen.getByText(/개인정보처리방침/)).toBeInTheDocument();
   });
 });

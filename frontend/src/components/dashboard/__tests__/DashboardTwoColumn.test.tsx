@@ -23,6 +23,12 @@ jest.mock('@/components/ui/Card', () => ({
   Card: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
     <div data-testid="card" {...props}>{children}</div>
   ),
+  CardHeader: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+    <div data-testid="card-header" {...props}>{children}</div>
+  ),
+  CardTitle: ({ children }: React.HTMLAttributes<HTMLHeadingElement>) => (
+    <h3>{children}</h3>
+  ),
 }));
 
 jest.mock('@/components/ui/Badge', () => ({
@@ -88,10 +94,21 @@ const defaultProps: DashboardTwoColumnProps = {
 };
 
 describe('DashboardTwoColumn', () => {
-  it('최근 제출과 마감 임박 헤더를 렌더링한다', () => {
+  it('최근 제출 헤더를 렌더링한다', () => {
     render(<DashboardTwoColumn {...defaultProps} />);
     expect(screen.getByText('최근 제출')).toBeInTheDocument();
+  });
+
+  it('마감 임박 문제가 있으면 마감 임박 헤더를 렌더링한다', () => {
+    const problems = [makeProblem({ id: 'p-1' })];
+    render(<DashboardTwoColumn {...defaultProps} upcomingDeadlines={problems} />);
+    expect(screen.getByText('최근 제출')).toBeInTheDocument();
     expect(screen.getByText('마감 임박 문제')).toBeInTheDocument();
+  });
+
+  it('마감 임박 문제가 없으면 마감 임박 섹션을 렌더링하지 않는다', () => {
+    render(<DashboardTwoColumn {...defaultProps} />);
+    expect(screen.queryByText('마감 임박 문제')).not.toBeInTheDocument();
   });
 
   it('로딩 중에는 Skeleton을 표시한다', () => {
@@ -102,11 +119,6 @@ describe('DashboardTwoColumn', () => {
   it('제출이 없으면 안내 메시지를 표시한다', () => {
     render(<DashboardTwoColumn {...defaultProps} />);
     expect(screen.getByText('아직 제출 내역이 없습니다')).toBeInTheDocument();
-  });
-
-  it('마감 문제가 없으면 안내 메시지를 표시한다', () => {
-    render(<DashboardTwoColumn {...defaultProps} />);
-    expect(screen.getByText('마감 예정인 문제가 없습니다')).toBeInTheDocument();
   });
 
   it('제출 목록을 렌더링한다', () => {
@@ -164,7 +176,6 @@ describe('DashboardTwoColumn', () => {
     render(<DashboardTwoColumn {...defaultProps} />);
     const links = screen.getAllByText('전체 보기');
     expect(links[0].closest('a')).toHaveAttribute('href', '/submissions');
-    expect(links[1].closest('a')).toHaveAttribute('href', '/problems');
   });
 
   it('방금 전 제출은 "방금 전"을 표시한다', () => {
@@ -248,7 +259,7 @@ describe('DashboardTwoColumn', () => {
     expect(screen.getByText('3일 전')).toBeInTheDocument();
   });
 
-  it('제출이 여러 개이면 마지막 항목 제외 모두 border-b가 적용된다', () => {
+  it('제출이 여러 개이면 모두 렌더링된다', () => {
     const submissions = [
       makeSubmission({ id: 's-1', problemTitle: '첫 번째', sagaStep: 'DONE' }),
       makeSubmission({ id: 's-2', problemTitle: '두 번째', sagaStep: 'DONE' }),
@@ -266,8 +277,7 @@ describe('DashboardTwoColumn', () => {
     expect(screen.getByText('UNKNOWN_STEP')).toBeInTheDocument();
   });
 
-  it('마감 임박 문제가 여러 개이면 마지막 항목에 border-b가 없다 (i < length-1 false 분기)', () => {
-    // Branch 22 at L163: i < upcomingDeadlines.length - 1 의 false 분기 (마지막 항목)
+  it('마감 임박 문제가 여러 개이면 모두 렌더링된다', () => {
     const problems = [
       makeProblem({ id: 'p-1', title: '첫 번째 문제', deadline: new Date(Date.now() + 86400000).toISOString() }),
       makeProblem({ id: 'p-2', title: '마지막 문제', deadline: new Date(Date.now() + 86400000 * 2).toISOString() }),

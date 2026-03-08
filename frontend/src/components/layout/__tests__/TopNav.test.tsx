@@ -112,6 +112,7 @@ describe('TopNav — 기본 렌더링', () => {
     expect(screen.getByText('대시보드')).toBeInTheDocument();
     expect(screen.getByText('문제')).toBeInTheDocument();
     expect(screen.getByText('제출')).toBeInTheDocument();
+    expect(screen.getByText('스터디룸')).toBeInTheDocument();
     expect(screen.getByText('분석')).toBeInTheDocument();
   });
 
@@ -207,23 +208,33 @@ describe('TopNav — StudySelector dropdown', () => {
   it('드롭다운에 스터디 목록이 표시된다', () => {
     render(<TopNav />);
     fireEvent.click(screen.getByRole('button', { name: '스터디 전환' }));
-    expect(screen.getByRole('option', { name: 'Test Study' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Another Study' })).toBeInTheDocument();
+    const listbox = screen.getByRole('listbox', { name: '스터디 목록' });
+    expect(listbox).toBeInTheDocument();
+    // Options contain initial letter + study name
+    const options = listbox.querySelectorAll('[role="option"]');
+    expect(options).toHaveLength(2);
+    expect(listbox).toHaveTextContent('Test Study');
+    expect(listbox).toHaveTextContent('Another Study');
   });
 
   it('스터디 선택 시 setCurrentStudy가 호출되고 드롭다운이 닫힌다', () => {
     render(<TopNav />);
     fireEvent.click(screen.getByRole('button', { name: '스터디 전환' }));
-    fireEvent.click(screen.getByRole('option', { name: 'Another Study' }));
+    const listbox = screen.getByRole('listbox', { name: '스터디 목록' });
+    const options = listbox.querySelectorAll('[role="option"]');
+    // Click the second option (Another Study)
+    fireEvent.click(options[1]);
     expect(mockSetCurrentStudy).toHaveBeenCalledWith('study-2');
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
   });
 
-  it('"모든 스터디 보기" 클릭 시 /studies로 push하고 드롭다운이 닫힌다', () => {
+  it('스터디 선택 시 드롭다운이 닫힌다', () => {
     render(<TopNav />);
     fireEvent.click(screen.getByRole('button', { name: '스터디 전환' }));
-    fireEvent.click(screen.getByText('모든 스터디 보기'));
-    expect(mockRouterPush).toHaveBeenCalledWith('/studies');
+    const listbox = screen.getByRole('listbox');
+    expect(listbox).toBeInTheDocument();
+    const options = listbox.querySelectorAll('[role="option"]');
+    fireEvent.click(options[0]);
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
   });
 

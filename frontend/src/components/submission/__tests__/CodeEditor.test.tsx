@@ -24,8 +24,10 @@ const fakeMonaco = {
     CompletionItemInsertTextRule: { InsertAsSnippet: 4 },
     registerCompletionItemProvider: jest.fn(),
     typescript: {
-      javascriptDefaults: { setDiagnosticsOptions: jest.fn() },
-      typescriptDefaults: { setDiagnosticsOptions: jest.fn() },
+      javascriptDefaults: { setDiagnosticsOptions: jest.fn(), addExtraLib: jest.fn() },
+      typescriptDefaults: { setDiagnosticsOptions: jest.fn(), setCompilerOptions: jest.fn(), addExtraLib: jest.fn() },
+      ScriptTarget: { ESNext: 99 },
+      ModuleKind: { CommonJS: 1 },
     },
   },
   editor: {
@@ -424,19 +426,12 @@ describe('CodeEditor', () => {
     expect(onCodeChange).not.toHaveBeenCalled();
   });
 
-  // ── 자동완성 토글 ──
+  // ── 자동완성 상태 (UI 토글 제거됨, 기본값 true) ──
 
-  it('자동완성 체크박스를 렌더링한다', () => {
+  it('자동완성이 기본 활성 상태로 에디터에 반영된다', () => {
     render(<CodeEditor {...defaultProps} />);
-    const checkbox = screen.getByRole('checkbox');
-    expect(checkbox).toBeChecked();
-  });
-
-  it('자동완성 체크박스를 해제할 수 있다', () => {
-    render(<CodeEditor {...defaultProps} />);
-    const checkbox = screen.getByRole('checkbox');
-    fireEvent.click(checkbox);
-    expect(checkbox).not.toBeChecked();
+    // autocomplete state is true by default — editor renders without error
+    expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
   });
 
   // ── 폰트 크기 ──

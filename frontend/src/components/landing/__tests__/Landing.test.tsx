@@ -10,7 +10,18 @@ const mockUseAuth = jest.fn();
 
 jest.mock('lucide-react', () => {
   const Icon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />;
-  return { BookOpen: Icon, GitBranch: Icon, Zap: Icon };
+  return {
+    BookOpen: Icon,
+    GitBranch: Icon,
+    Zap: Icon,
+    Code2: Icon,
+    Github: Icon,
+    Users: Icon,
+    BarChart2: Icon,
+    MonitorPlay: Icon,
+    CheckSquare: Icon,
+    ArrowRight: Icon,
+  };
 });
 
 jest.mock('next/navigation', () => ({
@@ -38,6 +49,16 @@ jest.mock('next/link', () => {
   return MockLink;
 });
 
+// Mock Button component with asChild support
+jest.mock('@/components/ui/Button', () => ({
+  Button: ({ children, asChild, ...props }: { children: React.ReactNode; asChild?: boolean; [key: string]: unknown }) => {
+    if (asChild) {
+      return <>{children}</>;
+    }
+    return <button {...props}>{children}</button>;
+  },
+}));
+
 beforeEach(() => {
   mockReplace.mockClear();
   mockVisible = true;
@@ -50,17 +71,19 @@ beforeEach(() => {
 // ─── FeatureCards ─────────────────────────
 
 describe('FeatureCards', () => {
-  it('renders three feature cards with titles', () => {
+  it('renders six feature cards with titles', () => {
     render(<FeatureCards />);
-    expect(screen.getByText('체계적인 문제 관리')).toBeInTheDocument();
+    expect(screen.getByText('AI 코드 분석')).toBeInTheDocument();
     expect(screen.getByText('GitHub 자동 동기화')).toBeInTheDocument();
-    expect(screen.getByText('AI 코드 리뷰')).toBeInTheDocument();
+    expect(screen.getByText('스터디 협업')).toBeInTheDocument();
+    expect(screen.getByText('통계 대시보드')).toBeInTheDocument();
+    expect(screen.getByText('실시간 스터디룸')).toBeInTheDocument();
+    expect(screen.getByText('진도 관리')).toBeInTheDocument();
   });
 
   it('renders the section heading', () => {
     render(<FeatureCards />);
     expect(screen.getByText('스터디에 필요한 모든 것')).toBeInTheDocument();
-    expect(screen.getByText('핵심 기능')).toBeInTheDocument();
   });
 
   it('visible=false이면 opacity:0 스타일을 적용한다', () => {
@@ -86,15 +109,15 @@ describe('FeatureCards', () => {
 // ─── HeroButtons ─────────────────────────
 
 describe('HeroButtons', () => {
-  it('renders login and features links', () => {
+  it('renders login and demo links', () => {
     render(<HeroButtons />);
     const loginLink = screen.getByText('무료로 시작하기');
     expect(loginLink).toBeInTheDocument();
     expect(loginLink.closest('a')).toHaveAttribute('href', '/login');
 
-    const featuresLink = screen.getByText('둘러보기');
-    expect(featuresLink).toBeInTheDocument();
-    expect(featuresLink.closest('a')).toHaveAttribute('href', '#features');
+    const demoLink = screen.getByText('데모 보기');
+    expect(demoLink).toBeInTheDocument();
+    expect(demoLink.closest('a')).toHaveAttribute('href', '#features');
   });
 });
 

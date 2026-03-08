@@ -38,8 +38,8 @@ jest.mock('@/components/layout/AppLayout', () => ({
   ),
 }));
 
-jest.mock('@/components/ui/DiffBadge', () => ({
-  DiffBadge: () => <span data-testid="diff-badge" />,
+jest.mock('@/components/ui/DifficultyBadge', () => ({
+  DifficultyBadge: () => <span data-testid="difficulty-badge" />,
 }));
 
 jest.mock('@/components/ui/StatusBadge', () => ({
@@ -59,9 +59,27 @@ jest.mock('@/components/review/StudyNoteEditor', () => ({
   StudyNoteEditor: () => <div data-testid="study-note-editor" />,
 }));
 
+jest.mock('@/components/ui/CodeBlock', () => ({
+  CodeBlock: () => <div data-testid="code-block" />,
+}));
+
+jest.mock('@/components/ui/ScoreGauge', () => ({
+  ScoreGauge: () => <div data-testid="score-gauge" />,
+}));
+
+jest.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({
+    isAuthenticated: true,
+    isLoading: false,
+    user: { email: 'test@example.com', avatarPreset: 'default' },
+    logout: jest.fn(),
+  }),
+}));
+
 jest.mock('@/lib/api', () => ({
   problemApi: {
     findAll: jest.fn().mockResolvedValue([]),
+    findAllIncludingClosed: jest.fn().mockResolvedValue([]),
   },
   submissionApi: {
     list: jest.fn().mockResolvedValue({ data: [], meta: {} }),
@@ -105,7 +123,15 @@ jest.mock('lucide-react', () => {
     Sparkles: Icon,
     Code2: Icon,
     ChevronRight: Icon,
+    ChevronDown: Icon,
     AlertCircle: Icon,
+    CheckCircle2: Icon,
+    ArrowLeft: Icon,
+    Copy: Icon,
+    Check: Icon,
+    Brain: Icon,
+    BarChart3: Icon,
+    ExternalLink: Icon,
   };
 });
 
@@ -135,7 +161,7 @@ describe('StudyRoomPage - with problems', () => {
   it('문제 목록이 주차별로 표시된다', async () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { problemApi } = require('@/lib/api');
-    problemApi.findAll.mockResolvedValue([
+    problemApi.findAllIncludingClosed.mockResolvedValue([
       {
         id: 'p-1',
         title: 'Two Sum',

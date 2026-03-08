@@ -24,12 +24,6 @@ jest.mock('@/components/ui/Logo', () => ({
   ),
 }));
 
-jest.mock('@/components/ui/DiffBadge', () => ({
-  DiffBadge: ({ tier }: { tier: string }) => (
-    <span data-testid={`diff-badge-${tier}`}>{tier}</span>
-  ),
-}));
-
 jest.mock('@/components/landing/HomeRedirect', () => ({
   HomeRedirect: () => <div data-testid="home-redirect" />,
 }));
@@ -46,13 +40,9 @@ jest.mock('@/hooks/useInView', () => ({
   useInView: () => [{ current: null }, true],
 }));
 
-jest.mock('@/hooks/useAnimVal', () => ({
-  useAnimVal: (target: number) => [{ current: null }, target],
-}));
-
 jest.mock('lucide-react', () => {
   const Icon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />;
-  return { Sun: Icon, Moon: Icon };
+  return { Sun: Icon, Moon: Icon, ArrowRight: Icon };
 });
 
 describe('LandingPage', () => {
@@ -74,12 +64,6 @@ describe('LandingPage', () => {
     expect(screen.getByRole('button', { name: '테마 전환' })).toBeInTheDocument();
   });
 
-  it('난이도 뱃지들이 표시된다', () => {
-    render(<LandingPage />);
-    expect(screen.getByTestId('diff-badge-bronze')).toBeInTheDocument();
-    expect(screen.getByTestId('diff-badge-diamond')).toBeInTheDocument();
-  });
-
   it('HomeRedirect 컴포넌트가 렌더링된다', () => {
     render(<LandingPage />);
     expect(screen.getByTestId('home-redirect')).toBeInTheDocument();
@@ -90,25 +74,17 @@ describe('LandingPage', () => {
     expect(screen.getByTestId('feature-cards')).toBeInTheDocument();
   });
 
-  it('카운터 통계가 표시된다', () => {
+  it('사용자 후기 섹션이 표시된다', () => {
     render(<LandingPage />);
-    expect(screen.getByText('풀이 제출')).toBeInTheDocument();
-    expect(screen.getByText('활성 스터디')).toBeInTheDocument();
-    expect(screen.getByText('만족도')).toBeInTheDocument();
+    expect(screen.getByText('사용자 후기')).toBeInTheDocument();
+    expect(screen.getByText('이서연')).toBeInTheDocument();
+    expect(screen.getByText('박준서')).toBeInTheDocument();
+    expect(screen.getByText('최예린')).toBeInTheDocument();
   });
 
-  it('3단계 사용 방법이 표시된다', () => {
+  it('AI 코드 분석 베타 배지가 표시된다', () => {
     render(<LandingPage />);
-    expect(screen.getByText('스터디 생성')).toBeInTheDocument();
-    expect(screen.getByText('문제 풀이 & 제출')).toBeInTheDocument();
-    expect(screen.getByText('AI 리뷰 & 성장')).toBeInTheDocument();
-  });
-
-  it('오픈 스터디 목록이 표시된다', () => {
-    render(<LandingPage />);
-    expect(screen.getByText('알고리즘 마스터')).toBeInTheDocument();
-    expect(screen.getByText('PS 스터디')).toBeInTheDocument();
-    expect(screen.getByText('코딩테스트 준비반')).toBeInTheDocument();
+    expect(screen.getByText('AI 코드 분석 β 오픈')).toBeInTheDocument();
   });
 
   it('최하단 CTA 섹션이 표시된다', () => {
@@ -120,5 +96,15 @@ describe('LandingPage', () => {
   it('푸터가 표시된다', () => {
     render(<LandingPage />);
     expect(screen.getByText(/All rights reserved/)).toBeInTheDocument();
+  });
+
+  it('로그인 링크가 표시된다', () => {
+    render(<LandingPage />);
+    expect(screen.getByText('로그인')).toBeInTheDocument();
+  });
+
+  it('서브타이틀이 표시된다', () => {
+    render(<LandingPage />);
+    expect(screen.getByText(/문제 풀이부터 GitHub 동기화/)).toBeInTheDocument();
   });
 });

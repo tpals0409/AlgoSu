@@ -107,6 +107,19 @@ jest.mock('@/lib/api', () => ({
 }));
 
 jest.mock('@/lib/constants', () => ({
+  DIFFICULTIES: ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND'],
+  DIFFICULTY_LABELS: {
+    BRONZE: 'Bronze',
+    SILVER: 'Silver',
+    GOLD: 'Gold',
+    PLATINUM: 'Platinum',
+    DIAMOND: 'Diamond',
+  },
+  toTierLevel: (rawLevel: number | null | undefined) => {
+    if (rawLevel == null || rawLevel <= 0) return null;
+    if (rawLevel >= 1 && rawLevel <= 5) return rawLevel;
+    return 5 - ((rawLevel - 1) % 5);
+  },
   SAGA_STEP_CONFIG: {
     INIT: { label: '초기화', variant: 'muted' },
     GITHUB_PUSH: { label: 'GitHub Push', variant: 'info' },
@@ -130,13 +143,14 @@ jest.mock('lucide-react', () => {
     Filter: Icon,
     X: Icon,
     Search: Icon,
+    Loader2: Icon,
   };
 });
 
 describe('SubmissionsPage', () => {
   it('제출 목록 페이지가 렌더링된다', async () => {
     render(<SubmissionsPage />);
-    expect(await screen.findByText('Test Study · 제출 이력')).toBeInTheDocument();
+    expect(await screen.findByText('제출 이력')).toBeInTheDocument();
   });
 
   it('AppLayout 안에 렌더링된다', () => {
@@ -144,8 +158,8 @@ describe('SubmissionsPage', () => {
     expect(screen.getByTestId('app-layout')).toBeInTheDocument();
   });
 
-  it('필터 버튼이 표시된다', () => {
+  it('상태 탭이 표시된다', () => {
     render(<SubmissionsPage />);
-    expect(screen.getByText('필터')).toBeInTheDocument();
+    expect(screen.getByText('분석 완료')).toBeInTheDocument();
   });
 });

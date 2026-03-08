@@ -60,6 +60,10 @@ jest.mock('@/components/ui/Badge', () => ({
   Badge: ({ children }: { children: React.ReactNode }) => <span data-testid="badge">{children}</span>,
 }));
 
+jest.mock('@/components/ui/DifficultyBadge', () => ({
+  DifficultyBadge: () => <span data-testid="difficulty-badge" />,
+}));
+
 jest.mock('@/components/ui/Button', () => ({
   Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
     <button {...props}>{children}</button>
@@ -125,6 +129,7 @@ jest.mock('@/lib/api', () => ({
       solvedProblemIds: ['p1'],
       byWeek: [{ week: '3월1주차', count: 3 }],
       byMember: [{ userId: 'user-1', count: 3, doneCount: 2 }],
+      recentSubmissions: [],
     }),
     invite: jest.fn(),
     removeMember: jest.fn(),
@@ -132,6 +137,9 @@ jest.mock('@/lib/api', () => ({
     updateNickname: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
+  },
+  problemApi: {
+    findAllIncludingClosed: jest.fn().mockResolvedValue([]),
   },
 }));
 
@@ -152,18 +160,15 @@ jest.mock('react-dom', () => ({
 jest.mock('lucide-react', () => {
   const Icon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />;
   return {
-    ChevronLeft: Icon,
-    Copy: Icon,
-    Check: Icon,
-    UserMinus: Icon,
-    Trash2: Icon,
-    BarChart3: Icon,
-    Settings: Icon,
-    Users: Icon,
-    Plus: Icon,
+    ArrowLeft: Icon,
     Shield: Icon,
-    LogOut: Icon,
+    BookOpen: Icon,
+    Users: Icon,
+    Settings: Icon,
+    Crown: Icon,
     Pencil: Icon,
+    Check: Icon,
+    X: Icon,
   };
 });
 
@@ -194,8 +199,8 @@ describe('StudyDetailPage', () => {
   it('탭 버튼들이 표시된다', async () => {
     await renderPage();
     await screen.findAllByText('Test Study');
-    expect(screen.getByText('개요')).toBeInTheDocument();
+    expect(screen.getAllByText('그라운드룰').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('문제').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('멤버').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('설정')).toBeInTheDocument();
   });
 });

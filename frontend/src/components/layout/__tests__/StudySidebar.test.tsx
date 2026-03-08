@@ -81,7 +81,10 @@ describe('StudySidebar', () => {
     await user.click(screen.getByRole('button', { name: '스터디 전환' }));
     expect(screen.getByRole('listbox', { name: '스터디 목록' })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('option', { name: 'Other Study' }));
+    const listbox = screen.getByRole('listbox', { name: '스터디 목록' });
+    const options = listbox.querySelectorAll('[role="option"]');
+    // Click the second option (Other Study)
+    await user.click(options[1]);
     expect(mockSetCurrentStudy).toHaveBeenCalledWith('study-2');
     expect(mockPush).toHaveBeenCalledWith('/studies/study-2');
   });

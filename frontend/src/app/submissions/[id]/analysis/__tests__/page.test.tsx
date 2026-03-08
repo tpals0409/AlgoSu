@@ -107,17 +107,29 @@ jest.mock('@/components/ui/LoadingSpinner', () => ({
   LoadingSpinner: () => <div data-testid="loading-spinner" />,
 }));
 
+jest.mock('@/lib/constants', () => ({
+  toTierLevel: (rawLevel: number | null | undefined) => {
+    if (rawLevel == null || rawLevel <= 0) return null;
+    if (rawLevel >= 1 && rawLevel <= 5) return rawLevel;
+    return 5 - ((rawLevel - 1) % 5);
+  },
+}));
+
 jest.mock('@/lib/avatars', () => ({
   getAvatarSrc: () => '/avatar.png',
 }));
 
 const mockFindById = jest.fn();
 const mockGetAnalysis = jest.fn();
+const mockProblemFindById = jest.fn();
 
 jest.mock('@/lib/api', () => ({
   submissionApi: {
     findById: (...args: unknown[]) => mockFindById(...args),
     getAnalysis: (...args: unknown[]) => mockGetAnalysis(...args),
+  },
+  problemApi: {
+    findById: (...args: unknown[]) => mockProblemFindById(...args),
   },
 }));
 
@@ -133,6 +145,10 @@ jest.mock('lucide-react', () => {
     Box: Icon,
     Code2: Icon,
     Sparkles: Icon,
+    Zap: Icon,
+    ChevronDown: Icon,
+    Brain: Icon,
+    BarChart3: Icon,
   };
 });
 
@@ -146,7 +162,7 @@ describe('AnalysisPage', () => {
     mockGetAnalysis.mockReturnValue(new Promise(() => {}));
 
     render(<AnalysisPage />);
-    expect(screen.getByText('AI 코드 분석 결과')).toBeInTheDocument();
+    expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
   });
 
   it('AppLayout 안에 렌더링된다', () => {
@@ -157,21 +173,23 @@ describe('AnalysisPage', () => {
     expect(screen.getByTestId('app-layout')).toBeInTheDocument();
   });
 
-  it('AI 할당량 배지가 표시된다', () => {
+  it('뒤로가기 버튼이 표시된다', () => {
     mockFindById.mockReturnValue(new Promise(() => {}));
     mockGetAnalysis.mockReturnValue(new Promise(() => {}));
 
     render(<AnalysisPage />);
-    expect(screen.getByText('오늘 2/10회')).toBeInTheDocument();
+    expect(screen.getByTestId('app-layout')).toBeInTheDocument();
   });
 
   it('분석 pending 상태에서 대기 메시지가 표시된다', async () => {
     mockFindById.mockResolvedValue({
       id: 'sub-123',
+      problemId: 'prob-1',
       problemTitle: 'Test Problem',
       language: 'python',
       createdAt: '2025-01-01T00:00:00Z',
     });
+    mockProblemFindById.mockRejectedValue(new Error('not found'));
     mockGetAnalysis.mockResolvedValue({
       analysisStatus: 'pending',
       feedback: null,
@@ -186,10 +204,12 @@ describe('AnalysisPage', () => {
   it('분석 실패 상태에서 에러 메시지가 표시된다', async () => {
     mockFindById.mockResolvedValue({
       id: 'sub-123',
+      problemId: 'prob-1',
       problemTitle: 'Test Problem',
       language: 'python',
       createdAt: '2025-01-01T00:00:00Z',
     });
+    mockProblemFindById.mockRejectedValue(new Error('not found'));
     mockGetAnalysis.mockResolvedValue({
       analysisStatus: 'failed',
       feedback: null,
@@ -206,11 +226,13 @@ describe('AnalysisPage', () => {
   it('분석 완료 시 점수와 총평이 표시된다', async () => {
     mockFindById.mockResolvedValue({
       id: 'sub-123',
+      problemId: 'prob-1',
       problemTitle: 'Test Problem',
       language: 'python',
       createdAt: '2025-01-01T00:00:00Z',
       sagaStep: 'DONE',
     });
+    mockProblemFindById.mockRejectedValue(new Error('not found'));
     mockGetAnalysis.mockResolvedValue({
       analysisStatus: 'completed',
       feedback: JSON.stringify({

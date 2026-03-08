@@ -53,12 +53,12 @@ describe('DiffBadge', () => {
 describe('DifficultyBadge', () => {
   it('renders difficulty label', () => {
     render(<DifficultyBadge difficulty="GOLD" />);
-    expect(screen.getByText(/골드/)).toBeInTheDocument();
+    expect(screen.getByText(/Gold/)).toBeInTheDocument();
   });
 
   it('has aria-label with difficulty name', () => {
     render(<DifficultyBadge difficulty="DIAMOND" />);
-    expect(screen.getByLabelText(/난이도: 다이아/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/난이도: Diamond/)).toBeInTheDocument();
   });
 
   it('shows dot by default', () => {
@@ -75,13 +75,13 @@ describe('DifficultyBadge', () => {
 
   it('hides label when showLabel=false', () => {
     render(<DifficultyBadge difficulty="BRONZE" showLabel={false} />);
-    expect(screen.queryByText(/브론즈/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Bronze/)).not.toBeInTheDocument();
   });
 
   it('renders tier number from level', () => {
-    // level=1 -> tier 5, level=2 -> tier 4, etc.
+    // toTierLevel: 1-5 stays as-is, level 11 → 5, level 15 → 1
     render(<DifficultyBadge difficulty="GOLD" level={1} />);
-    expect(screen.getByText(/골드 5/)).toBeInTheDocument();
+    expect(screen.getByText(/Gold 1/)).toBeInTheDocument();
   });
 
   it('applies custom className', () => {

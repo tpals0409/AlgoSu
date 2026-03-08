@@ -69,7 +69,7 @@ describe('AnalyticsCharts', () => {
     expect(screen.getByText('28')).toBeInTheDocument();
     expect(screen.getByText('22문제')).toBeInTheDocument();
     expect(screen.getByText('87점')).toBeInTheDocument();
-    expect(screen.getByText('5일')).toBeInTheDocument();
+    expect(screen.getByText('5주')).toBeInTheDocument();
   });
 
   it('주차별 제출 추이 섹션을 표시한다', () => {

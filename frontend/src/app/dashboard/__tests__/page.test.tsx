@@ -106,11 +106,9 @@ jest.mock('lucide-react', () => {
   return {
     FileText: Icon,
     Users: Icon,
-    CheckCircle2: Icon,
-    RefreshCw: Icon,
+    BarChart3: Icon,
     Github: Icon,
-    BookOpenCheck: Icon,
-    ChevronRight: Icon,
+    MessageCircle: Icon,
   };
 });
 
@@ -124,7 +122,7 @@ jest.mock('next/dynamic', () => () => {
 describe('DashboardPage', () => {
   it('대시보드 페이지가 렌더링된다', () => {
     render(<DashboardPage />);
-    expect(screen.getByText('대시보드')).toBeInTheDocument();
+    expect(screen.getByText(/안녕하세요/)).toBeInTheDocument();
   });
 
   it('AppLayout 안에 렌더링된다', () => {
@@ -132,8 +130,8 @@ describe('DashboardPage', () => {
     expect(screen.getByTestId('app-layout')).toBeInTheDocument();
   });
 
-  it('새로고침 버튼이 표시된다', () => {
+  it('성장 메시지가 표시된다', () => {
     render(<DashboardPage />);
-    expect(screen.getByText('새로고침')).toBeInTheDocument();
+    expect(screen.getByText('오늘도 꾸준히 성장하는 하루 되세요.')).toBeInTheDocument();
   });
 });

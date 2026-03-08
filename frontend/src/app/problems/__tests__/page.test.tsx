@@ -92,10 +92,25 @@ jest.mock('@/lib/api', () => ({
 }));
 
 jest.mock('@/lib/constants', () => ({
-  DIFFICULTIES: ['EASY', 'MEDIUM', 'HARD'],
-  DIFFICULTY_LABELS: { EASY: '쉬움', MEDIUM: '보통', HARD: '어려움' },
+  DIFFICULTIES: ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND'],
+  DIFFICULTY_LABELS: {
+    BRONZE: 'Bronze',
+    SILVER: 'Silver',
+    GOLD: 'Gold',
+    PLATINUM: 'Platinum',
+    DIAMOND: 'Diamond',
+  },
+  toTierLevel: (rawLevel: number | null | undefined) => {
+    if (rawLevel == null || rawLevel <= 0) return null;
+    if (rawLevel >= 1 && rawLevel <= 5) return rawLevel;
+    return 5 - ((rawLevel - 1) % 5);
+  },
   PROBLEM_STATUSES: ['ACTIVE', 'CLOSED'],
   PROBLEM_STATUS_LABELS: { ACTIVE: '진행 중', CLOSED: '종료' },
+}));
+
+jest.mock('@/components/ui/AddProblemModal', () => ({
+  AddProblemModal: () => <div data-testid="add-problem-modal" />,
 }));
 
 jest.mock('@/lib/avatars', () => ({
@@ -117,7 +132,7 @@ jest.mock('lucide-react', () => {
 describe('ProblemsPage', () => {
   it('문제 목록 페이지가 렌더링된다', async () => {
     render(<ProblemsPage />);
-    expect(await screen.findByText('Test Study · 문제 목록')).toBeInTheDocument();
+    expect(await screen.findByText('문제 목록')).toBeInTheDocument();
   });
 
   it('AppLayout 안에 렌더링된다', () => {

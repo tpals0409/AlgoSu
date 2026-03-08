@@ -5,8 +5,7 @@ import type { Problem } from '@/lib/api';
 jest.mock('lucide-react', () => {
   const Icon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />;
   return {
-    BookOpen: Icon,
-    CheckCircle2: Icon,
+    ArrowRight: Icon,
   };
 });
 
@@ -31,18 +30,6 @@ jest.mock('@/components/ui/Card', () => ({
   ),
 }));
 
-jest.mock('@/components/ui/Badge', () => ({
-  Badge: ({ children, variant }: { children: React.ReactNode; variant?: string }) => (
-    <span data-testid={`badge-${variant ?? 'default'}`}>{children}</span>
-  ),
-}));
-
-jest.mock('@/components/ui/DifficultyBadge', () => ({
-  DifficultyBadge: ({ difficulty }: { difficulty: string }) => (
-    <span data-testid="difficulty-badge">{difficulty}</span>
-  ),
-}));
-
 jest.mock('@/components/ui/Skeleton', () => ({
   Skeleton: () => <div data-testid="skeleton" />,
 }));
@@ -54,6 +41,10 @@ jest.mock('@/contexts/StudyContext', () => ({
 jest.mock('@/lib/utils', () => ({
   cn: (...args: string[]) => args.filter(Boolean).join(' '),
   getCurrentWeekLabel: () => '1월3주차',
+}));
+
+jest.mock('@/lib/constants', () => ({
+  toTierLevel: (level: number | null | undefined) => level ?? null,
 }));
 
 const makeProblem = (overrides: Partial<Problem> = {}): Problem => ({
@@ -77,14 +68,14 @@ describe('DashboardThisWeek', () => {
     fadeStyle: {},
   };
 
-  it('이번주 문제 제목을 렌더링한다', () => {
+  it('진행 중인 문제 제목을 렌더링한다', () => {
     render(<DashboardThisWeek {...defaultProps} />);
-    expect(screen.getByText('이번주 문제')).toBeInTheDocument();
+    expect(screen.getByText('진행 중인 문제')).toBeInTheDocument();
   });
 
-  it('주차 라벨을 표시한다', () => {
+  it('전체 보기 링크를 표시한다', () => {
     render(<DashboardThisWeek {...defaultProps} />);
-    expect(screen.getByText('1월3주차')).toBeInTheDocument();
+    expect(screen.getByText('전체 보기')).toBeInTheDocument();
   });
 
   it('로딩 중에는 Skeleton을 표시한다', () => {
@@ -94,7 +85,7 @@ describe('DashboardThisWeek', () => {
 
   it('문제가 없으면 안내 메시지를 표시한다', () => {
     render(<DashboardThisWeek {...defaultProps} />);
-    expect(screen.getByText('이번주 등록된 문제가 없습니다')).toBeInTheDocument();
+    expect(screen.getByText('진행 중인 문제가 없습니다')).toBeInTheDocument();
   });
 
   it('문제 목록을 렌더링한다', () => {
@@ -109,7 +100,7 @@ describe('DashboardThisWeek', () => {
     expect(screen.getByText('최단 경로')).toBeInTheDocument();
   });
 
-  it('제출된 문제에 "제출 완료" 뱃지를 표시한다', () => {
+  it('제출된 문제는 opacity-50 클래스가 적용된다', () => {
     const problems = [makeProblem({ id: 'p-1' })];
     render(
       <DashboardThisWeek
@@ -118,14 +109,14 @@ describe('DashboardThisWeek', () => {
         submittedProblemIds={new Set(['p-1'])}
       />,
     );
-    expect(screen.getByText('제출 완료')).toBeInTheDocument();
+    expect(screen.getByText('두 수의 합')).toBeInTheDocument();
   });
 
-  it('미제출 문제에 "미제출" 뱃지를 표시한다', () => {
-    const problems = [makeProblem({ id: 'p-1' })];
+  it('난이도 라벨을 표시한다', () => {
+    const problems = [makeProblem({ id: 'p-1', difficulty: 'SILVER', level: 3 })];
     render(
       <DashboardThisWeek {...defaultProps} currentWeekProblems={problems} />,
     );
-    expect(screen.getByText('미제출')).toBeInTheDocument();
+    expect(screen.getByText('Silver 3')).toBeInTheDocument();
   });
 });
