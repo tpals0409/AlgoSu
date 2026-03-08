@@ -346,11 +346,11 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
                   className="flex w-full items-center gap-2.5 rounded-btn px-3 py-2 text-[13px] font-medium text-text-3 transition-all duration-150 hover:bg-bg-alt hover:text-text-2"
                 >
                   {isDark ? (
-                    <Sun className="h-4 w-4 shrink-0" aria-hidden />
-                  ) : (
                     <Moon className="h-4 w-4 shrink-0" aria-hidden />
+                  ) : (
+                    <Sun className="h-4 w-4 shrink-0" aria-hidden />
                   )}
-                  {isDark ? '라이트 모드' : '다크 모드'}
+                  {isDark ? '다크 모드' : '라이트 모드'}
                 </button>
 
                 {/* Profile link */}
