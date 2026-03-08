@@ -347,7 +347,8 @@ export default function StudiesPage(): ReactNode {
                       style={{ backgroundColor: 'var(--primary)' }}
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleStudyClick(study);
+                        setCurrentStudy(study.id);
+                        router.push(`/studies/${study.id}/room`);
                       }}
                     >
                       자세히 보기
