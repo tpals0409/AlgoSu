@@ -20,6 +20,7 @@ import {
   ArrowLeft,
   Camera,
   Crown,
+  ShieldCheck,
   Trash2,
   Copy,
   RefreshCw,
@@ -48,6 +49,7 @@ import {
   type StudyMember,
 } from '@/lib/api';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { MarkdownViewer } from '@/components/ui/MarkdownViewer';
 
 // ─── TYPES ───────────────────────────────
@@ -71,6 +73,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
   const { id: studyId } = use(params);
   const router = useRouter();
   const { isAuthenticated } = useRequireAuth();
+  const { user } = useAuth();
 
   // ─── STATE ─────────────────────────────
   const [study, setStudy] = useState<Study | null>(null);
@@ -243,6 +246,20 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
       setSuccessMsg(`${member.name} 님이 스터디에서 내보내졌습니다.`);
     } catch (err: unknown) {
       setError((err as Error).message ?? '멤버 내보내기에 실패했습니다.');
+    }
+  };
+
+  /** 멤버 역할 변경 */
+  const handleChangeRole = async (member: SettingsMember, newRole: 'ADMIN' | 'MEMBER'): Promise<void> => {
+    setError(null);
+    try {
+      await studyApi.changeRole(studyId, member.userId, newRole);
+      const updatedMembers = await studyApi.getMembers(studyId);
+      setMembers(updatedMembers);
+      const roleLabel = newRole === 'ADMIN' ? '관리자' : '멤버';
+      setSuccessMsg(`${member.name} 님의 역할이 ${roleLabel}(으)로 변경되었습니다.`);
+    } catch (err: unknown) {
+      setError((err as Error).message ?? '역할 변경에 실패했습니다.');
     }
   };
 
@@ -573,24 +590,49 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                   </div>
                 </div>
 
-                {member.role === 'ADMIN' ? (
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center">
-                    <Crown
-                      className="h-4 w-4"
-                      style={{ color: 'var(--primary)' }}
-                      aria-label="관리자"
-                    />
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-text-3 transition-colors hover:bg-error-soft hover:text-error"
-                    aria-label={`${member.name} 내보내기`}
-                    onClick={() => setRemoveMember(member)}
-                  >
-                    <Trash2 className="h-4 w-4" aria-hidden />
-                  </button>
-                )}
+                <div className="flex shrink-0 items-center gap-1">
+                  {member.role === 'ADMIN' ? (
+                    <>
+                      <div className="flex h-7 w-7 items-center justify-center">
+                        <Crown
+                          className="h-4 w-4"
+                          style={{ color: 'var(--primary)' }}
+                          aria-label="관리자"
+                        />
+                      </div>
+                      {member.userId !== user?.id && (
+                        <button
+                          type="button"
+                          className="flex h-7 items-center gap-1 rounded-lg px-2 text-[11px] font-medium text-text-3 transition-colors hover:bg-bg-alt hover:text-text-2"
+                          aria-label={`${member.name} 멤버로 변경`}
+                          onClick={() => void handleChangeRole(member, 'MEMBER')}
+                        >
+                          멤버로 변경
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        className="flex h-7 items-center gap-1 rounded-lg px-2 text-[11px] font-medium text-text-3 transition-colors hover:bg-primary/10 hover:text-primary"
+                        aria-label={`${member.name} 관리자로 변경`}
+                        onClick={() => void handleChangeRole(member, 'ADMIN')}
+                      >
+                        <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
+                        관리자
+                      </button>
+                      <button
+                        type="button"
+                        className="flex h-7 w-7 items-center justify-center rounded-lg text-text-3 transition-colors hover:bg-error-soft hover:text-error"
+                        aria-label={`${member.name} 내보내기`}
+                        onClick={() => setRemoveMember(member)}
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden />
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             ))}
           </Card>
