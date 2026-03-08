@@ -1216,6 +1216,7 @@ describe('StudyService', () => {
   describe('deleteStudy — 추가 케이스', () => {
     it('존재하지 않는 스터디 삭제 → NotFoundException', async () => {
       memberRepository.findOne.mockResolvedValue(mockAdminMember);
+      memberRepository.count.mockResolvedValue(1);
       studyRepository.delete.mockResolvedValue({ affected: 0 });
 
       await expect(service.deleteStudy(STUDY_ID, USER_ID)).rejects.toThrow(
@@ -1225,6 +1226,7 @@ describe('StudyService', () => {
 
     it('Redis 캐시 키 없으면 del 호출 안 함', async () => {
       memberRepository.findOne.mockResolvedValue(mockAdminMember);
+      memberRepository.count.mockResolvedValue(1);
       studyRepository.delete.mockResolvedValue({ affected: 1 });
       mockRedis.keys.mockResolvedValue([]);
       mockRedis.del.mockClear();
