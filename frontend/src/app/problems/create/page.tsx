@@ -383,7 +383,9 @@ export default function ProblemCreatePage(): ReactNode {
                 placeholder="백준 검색 시 자동 입력됩니다"
                 {...register('title')}
                 error={errors.title?.message}
-                disabled
+                readOnly
+                tabIndex={-1}
+                className="cursor-default opacity-70"
               />
 
               <div className="flex flex-col">
@@ -507,13 +509,17 @@ export default function ProblemCreatePage(): ReactNode {
               <Input
                 label="출처 URL"
                 {...register('sourceUrl')}
-                disabled
+                readOnly
+                tabIndex={-1}
+                className="cursor-default opacity-70"
               />
 
               <Input
                 label="출처 플랫폼"
                 {...register('sourcePlatform')}
-                disabled
+                readOnly
+                tabIndex={-1}
+                className="cursor-default opacity-70"
               />
             </div>
 
