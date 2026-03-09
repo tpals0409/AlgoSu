@@ -423,7 +423,8 @@ describe('SseController', () => {
         userId: USER_ID,
         type: 'AI_COMPLETED',
         title: 'AI 분석 완료',
-        message: `제출(${SUBMISSION_ID}) AI 분석 완료`,
+        message: 'AI 분석 완료',
+        link: `/submissions/${SUBMISSION_ID}/analysis`,
       });
 
       // 500ms 후 cleanup
@@ -449,7 +450,8 @@ describe('SseController', () => {
         userId: USER_ID,
         type: 'AI_COMPLETED',
         title: 'AI 분석 실패',
-        message: `제출(${SUBMISSION_ID}) AI 분석 실패`,
+        message: 'AI 분석 실패',
+        link: `/submissions/${SUBMISSION_ID}/analysis`,
       });
     });
 
@@ -471,7 +473,8 @@ describe('SseController', () => {
         userId: USER_ID,
         type: 'GITHUB_FAILED',
         title: 'GitHub 토큰 오류',
-        message: `제출(${SUBMISSION_ID}) GitHub 토큰 오류`,
+        message: 'GitHub 토큰 오류',
+        link: `/submissions/${SUBMISSION_ID}/analysis`,
       });
     });
 

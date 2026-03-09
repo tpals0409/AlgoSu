@@ -144,7 +144,8 @@ export class SseController {
                 userId,
                 type: notifConfig.type,
                 title: notifConfig.title,
-                message: `제출(${event.submissionId}) ${notifConfig.title}`,
+                message: notifConfig.title,
+                link: `/submissions/${event.submissionId}/analysis`,
               })
               .catch((err: Error) => {
                 this.logger.error('알림 생성 실패', err);
