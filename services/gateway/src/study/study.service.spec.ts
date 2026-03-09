@@ -846,6 +846,8 @@ describe('StudyService', () => {
       const mockStatsData = {
         data: {
           totalSubmissions: 10,
+          uniqueSubmissions: 8,
+          uniqueAnalyzed: 6,
           byWeek: [{ week: 'W1', count: 5 }],
           byWeekPerUser: [],
           byMember: [{ userId: USER_ID, count: 5, doneCount: 3 }],
@@ -867,6 +869,8 @@ describe('StudyService', () => {
       const result = await service.getStudyStats(STUDY_ID, USER_ID);
 
       expect(result.totalSubmissions).toBe(10);
+      expect(result.uniqueSubmissions).toBe(8);
+      expect(result.uniqueAnalyzed).toBe(6);
       expect(result.byMember).toHaveLength(1);
       expect(result.byMember[0].isMember).toBe(true);
 

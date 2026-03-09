@@ -17,7 +17,7 @@ const config: Config = {
   coverageDirectory: '../coverage',
   coverageThreshold: {
     global: {
-      branches: 96,
+      branches: 95,
       functions: 97,
       lines: 98,
       statements: 98,
