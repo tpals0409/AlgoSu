@@ -147,6 +147,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   efficiency: '효율성',
   readability: '가독성',
   correctness: '정확성',
+  structure: '코드 구조',
+  bestPractice: '모범 사례',
   style: '코드 스타일',
   maintainability: '유지보수성',
 };
