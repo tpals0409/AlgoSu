@@ -10,7 +10,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
-import { Moon, Sun, ArrowRight } from 'lucide-react';
+import { Moon, Sun } from 'lucide-react';
 import { Logo } from '@/components/ui/Logo';
 import { HomeRedirect } from '@/components/landing/HomeRedirect';
 import { HeroButtons } from '@/components/landing/HeroButtons';
@@ -79,12 +79,6 @@ export default function LandingPage(): ReactNode {
             </button>
             <Link
               href="/login"
-              className="inline-flex h-9 items-center rounded-btn px-[18px] text-[13px] font-semibold text-text-2 border border-border hover:bg-bg-alt transition-colors"
-            >
-              로그인
-            </Link>
-            <Link
-              href="/login"
               className="inline-flex h-9 items-center rounded-btn bg-primary px-[18px] text-[13px] font-semibold text-white transition-all hover:brightness-110"
             >
               시작하기
@@ -105,17 +99,6 @@ export default function LandingPage(): ReactNode {
         />
 
         <div className="relative mx-auto max-w-[720px] px-6">
-          {/* AI 분석 베타 배지 */}
-          <div
-            className="mb-7 flex justify-center"
-            style={fadeStyle(heroVisible, 0)}
-          >
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-bg-card px-4 py-1.5 text-[12px] font-medium text-text-2 shadow-sm">
-              <span className="h-1.5 w-1.5 rounded-full bg-success" />
-              AI 코드 분석 β 오픈
-            </span>
-          </div>
-
           {/* 타이틀 */}
           <h1
             className="mb-4 text-[clamp(32px,5vw,52px)] font-bold leading-tight tracking-tighter"
@@ -190,21 +173,15 @@ export default function LandingPage(): ReactNode {
       {/* ── FINAL CTA ── */}
       <section ref={ctaRef} className="px-6 py-20">
         <div
-          className="mx-auto max-w-[760px] rounded-card border border-border bg-bg-card p-16 text-center shadow"
+          className="mx-auto max-w-[760px] text-center"
           style={fadeStyle(ctaVisible, 0)}
         >
           <h2 className="mb-3 text-[30px] font-bold tracking-tight">
             지금 바로 시작하세요
           </h2>
-          <p className="mb-8 text-sm leading-relaxed text-text-2">
+          <p className="text-sm leading-relaxed text-text-2">
             스터디 개설부터 AI 분석까지, 5분이면 충분합니다.
           </p>
-          <Link
-            href="/login"
-            className="inline-flex h-[52px] items-center gap-2 rounded-btn px-9 text-base font-semibold text-white shadow-glow gradient-brand transition-all hover:brightness-110"
-          >
-            무료로 시작하기 <ArrowRight className="h-4 w-4" />
-          </Link>
         </div>
       </section>
 

@@ -26,10 +26,9 @@ export function HeroButtons(): ReactNode {
           </Link>
         </Button>
         <Button asChild size="lg" variant="ghost">
-          <Link href="#features">데모 보기</Link>
+          <Link href="#features">핵심 기능</Link>
         </Button>
       </div>
-      <p className="text-[12px] text-text-3">신용카드 불필요 · 무제한 무료 플랜</p>
     </div>
   );
 }

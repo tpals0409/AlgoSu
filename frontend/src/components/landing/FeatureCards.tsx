@@ -8,7 +8,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Code2, Github, Users, BarChart2, MonitorPlay, CheckSquare } from 'lucide-react';
+import { Code2, Github, Users, BarChart2, MessageSquareCode, CheckSquare } from 'lucide-react';
 import { useInView } from '@/hooks/useInView';
 
 // ─── CONSTANTS ────────────────────────────
@@ -41,9 +41,9 @@ const FEATURES: Feature[] = [
     desc: '주차별 제출 현황, 난이도 분포, 언어별 통계로 성장 곡선을 한눈에 확인.',
   },
   {
-    icon: MonitorPlay,
-    title: '실시간 스터디룸',
-    desc: '화상 · 채팅 · 공유 에디터로 팀원과 함께 실시간으로 문제를 풀어보세요.',
+    icon: MessageSquareCode,
+    title: '코드 리뷰',
+    desc: '팀원의 풀이를 비교하고 AI 분석 결과를 함께 확인. 서로의 코드에서 배우세요.',
   },
   {
     icon: CheckSquare,
