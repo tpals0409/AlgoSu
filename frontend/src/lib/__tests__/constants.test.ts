@@ -11,8 +11,8 @@ import {
 import type { SagaStep } from '@/lib/constants';
 
 describe('DIFFICULTIES', () => {
-  it('5개 난이도를 포함한다', () => {
-    expect(DIFFICULTIES).toHaveLength(5);
+  it('6개 난이도를 포함한다', () => {
+    expect(DIFFICULTIES).toHaveLength(6);
   });
 
   it('모든 난이도에 라벨이 있다', () => {

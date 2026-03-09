@@ -17,7 +17,7 @@ const TIMEOUT_MS = 5_000;
 export interface SolvedacProblemInfo {
   problemId: number;
   title: string;
-  difficulty: 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND' | null;
+  difficulty: 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND' | 'RUBY' | null;
   level: number;
   sourceUrl: string;
   tags: string[];
@@ -29,7 +29,8 @@ function levelToDifficulty(level: number): SolvedacProblemInfo['difficulty'] {
   if (level <= 10) return 'SILVER';
   if (level <= 15) return 'GOLD';
   if (level <= 20) return 'PLATINUM';
-  return 'DIAMOND';
+  if (level <= 25) return 'DIAMOND';
+  return 'RUBY';
 }
 
 @Injectable()

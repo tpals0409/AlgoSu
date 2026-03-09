@@ -14,6 +14,7 @@ export enum Difficulty {
   GOLD = 'GOLD',
   PLATINUM = 'PLATINUM',
   DIAMOND = 'DIAMOND',
+  RUBY = 'RUBY',
 }
 
 export enum ProblemStatus {

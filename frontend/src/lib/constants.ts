@@ -11,10 +11,10 @@
 
 // ── Difficulty ──
 
-export type Difficulty = 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND';
+export type Difficulty = 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND' | 'RUBY';
 
 export const DIFFICULTIES: readonly Difficulty[] = [
-  'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND',
+  'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND', 'RUBY',
 ] as const;
 
 export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
@@ -23,6 +23,7 @@ export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
   GOLD: 'Gold',
   PLATINUM: 'Platinum',
   DIAMOND: 'Diamond',
+  RUBY: '루비',
 };
 
 /** BOJ 원시 레벨(1~30) → 티어 내 등급(5~1) 변환. 이미 1~5면 그대로. */
@@ -38,6 +39,7 @@ export const DIFFICULTY_COLORS: Record<Difficulty, string> = {
   GOLD: '#ec9a00',
   PLATINUM: '#27e2a4',
   DIAMOND: '#00b4fc',
+  RUBY: '#FF0062',
 };
 
 // ── Language ──

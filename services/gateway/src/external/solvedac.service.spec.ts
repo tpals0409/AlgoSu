@@ -101,15 +101,26 @@ describe('SolvedacService', () => {
       expect(result.difficulty).toBe('PLATINUM');
     });
 
-    it('레벨별 난이도 매핑 — DIAMOND(21+)', async () => {
+    it('레벨별 난이도 매핑 — DIAMOND(21~25)', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
         status: 200,
-        json: async () => ({ ...mockApiResponse, level: 25 }),
+        json: async () => ({ ...mockApiResponse, level: 23 }),
       });
 
       const result = await service.fetchProblem(PROBLEM_ID);
       expect(result.difficulty).toBe('DIAMOND');
+    });
+
+    it('레벨별 난이도 매핑 — RUBY(26+)', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ ...mockApiResponse, level: 28 }),
+      });
+
+      const result = await service.fetchProblem(PROBLEM_ID);
+      expect(result.difficulty).toBe('RUBY');
     });
 
     it('레벨 0 → difficulty null', async () => {

@@ -15,6 +15,7 @@ const DIFF_STYLES: Record<Difficulty, { color: string; bg: string; border: strin
   GOLD:     { color: 'var(--diff-gold-color)',     bg: 'var(--diff-gold-bg)',     border: 'var(--diff-gold-color)' },
   PLATINUM: { color: 'var(--diff-platinum-color)', bg: 'var(--diff-platinum-bg)', border: 'var(--diff-platinum-color)' },
   DIAMOND:  { color: 'var(--diff-diamond-color)',  bg: 'var(--diff-diamond-bg)',  border: 'var(--diff-diamond-color)' },
+  RUBY:     { color: 'var(--diff-ruby-color)',     bg: 'var(--diff-ruby-bg)',     border: 'var(--diff-ruby-color)' },
 };
 
 export interface DifficultyBadgeProps

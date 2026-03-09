@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/Badge';
 import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import type { Submission, Problem } from '@/lib/api';
-import { SAGA_STEP_CONFIG, type SagaStep } from '@/lib/constants';
+import { SAGA_STEP_CONFIG, type SagaStep, toTierLevel } from '@/lib/constants';
 import type { Difficulty } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 
@@ -132,7 +132,8 @@ export default function DashboardTwoColumn({
                       const diffKey = (problem.difficulty as string).toLowerCase();
                       const dotStyle = DIFF_DOT_STYLE[diffKey] ?? { backgroundColor: 'var(--text-3)' };
                       const badgeStyle = DIFF_BADGE_STYLE[diffKey] ?? { backgroundColor: 'var(--bg-alt)', color: 'var(--text-2)' };
-                      const label = `${(problem.difficulty as string).charAt(0).toUpperCase()}${(problem.difficulty as string).slice(1).toLowerCase()} ${problem.level ?? ''}`.trim();
+                      const tierLevel = toTierLevel(problem.level);
+                      const label = `${(problem.difficulty as string).charAt(0).toUpperCase()}${(problem.difficulty as string).slice(1).toLowerCase()}${tierLevel != null ? ` ${tierLevel}` : ''}`.trim();
                       return (
                         <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium" style={badgeStyle}>
                           <span className="h-1.5 w-1.5 rounded-full" style={dotStyle} />

@@ -30,7 +30,7 @@ export function setCurrentStudyIdForApi(id: string | null): void {
 export interface Problem {
   id: string;
   title: string;
-  difficulty: 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND';
+  difficulty: 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND' | 'RUBY';
   level?: number | null;
   status: 'ACTIVE' | 'CLOSED' | 'DRAFT';
   deadline: string; // ISO 날짜
