@@ -65,14 +65,15 @@ async function searchSolvedAC(query: string): Promise<SolvedProblem[]> {
 
 const DOW_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 
-/** 현재 월의 전체 주차 + 다음달 1주차 */
+/** 현재 주차부터 이후 주차만 표시 (현재 월 + 다음달 1주차) */
 function generateWeekOptions(): string[] {
   const now = new Date();
   const month = now.getMonth() + 1;
+  const currentWeek = Math.ceil(now.getDate() / 7);
   const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const totalWeeks = Math.ceil(lastDay / 7);
   const options: string[] = [];
-  for (let w = 1; w <= totalWeeks; w++) {
+  for (let w = currentWeek; w <= totalWeeks; w++) {
     options.push(`${month}월${w}주차`);
   }
   const nextMonth = month === 12 ? 1 : month + 1;
