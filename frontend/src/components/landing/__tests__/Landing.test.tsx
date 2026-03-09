@@ -18,7 +18,7 @@ jest.mock('lucide-react', () => {
     Github: Icon,
     Users: Icon,
     BarChart2: Icon,
-    MonitorPlay: Icon,
+    MessageSquareCode: Icon,
     CheckSquare: Icon,
     ArrowRight: Icon,
   };
@@ -77,7 +77,7 @@ describe('FeatureCards', () => {
     expect(screen.getByText('GitHub 자동 동기화')).toBeInTheDocument();
     expect(screen.getByText('스터디 협업')).toBeInTheDocument();
     expect(screen.getByText('통계 대시보드')).toBeInTheDocument();
-    expect(screen.getByText('실시간 스터디룸')).toBeInTheDocument();
+    expect(screen.getByText('코드 리뷰')).toBeInTheDocument();
     expect(screen.getByText('진도 관리')).toBeInTheDocument();
   });
 
@@ -115,9 +115,9 @@ describe('HeroButtons', () => {
     expect(loginLink).toBeInTheDocument();
     expect(loginLink.closest('a')).toHaveAttribute('href', '/login');
 
-    const demoLink = screen.getByText('데모 보기');
-    expect(demoLink).toBeInTheDocument();
-    expect(demoLink.closest('a')).toHaveAttribute('href', '#features');
+    const featureLink = screen.getByText('핵심 기능');
+    expect(featureLink).toBeInTheDocument();
+    expect(featureLink.closest('a')).toHaveAttribute('href', '#features');
   });
 });
 

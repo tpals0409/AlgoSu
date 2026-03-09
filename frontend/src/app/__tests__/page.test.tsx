@@ -42,7 +42,7 @@ jest.mock('@/hooks/useInView', () => ({
 
 jest.mock('lucide-react', () => {
   const Icon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />;
-  return { Sun: Icon, Moon: Icon, ArrowRight: Icon };
+  return { Sun: Icon, Moon: Icon };
 });
 
 describe('LandingPage', () => {
@@ -82,15 +82,9 @@ describe('LandingPage', () => {
     expect(screen.getByText('최예린')).toBeInTheDocument();
   });
 
-  it('AI 코드 분석 베타 배지가 표시된다', () => {
-    render(<LandingPage />);
-    expect(screen.getByText('AI 코드 분석 β 오픈')).toBeInTheDocument();
-  });
-
   it('최하단 CTA 섹션이 표시된다', () => {
     render(<LandingPage />);
     expect(screen.getByText('지금 바로 시작하세요')).toBeInTheDocument();
-    expect(screen.getByText('무료로 시작하기')).toBeInTheDocument();
   });
 
   it('푸터가 표시된다', () => {
@@ -98,9 +92,9 @@ describe('LandingPage', () => {
     expect(screen.getByText(/All rights reserved/)).toBeInTheDocument();
   });
 
-  it('로그인 링크가 표시된다', () => {
+  it('시작하기 링크가 표시된다', () => {
     render(<LandingPage />);
-    expect(screen.getByText('로그인')).toBeInTheDocument();
+    expect(screen.getByText('시작하기')).toBeInTheDocument();
   });
 
   it('서브타이틀이 표시된다', () => {
