@@ -108,6 +108,7 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
    * @domain notification
    */
   const handleSSENotification = useCallback((notification: Notification) => {
+    if (notification.read) return;
     setUnreadCount((prev) => prev + 1);
     setNotifications((prev) => [notification, ...prev].slice(0, MAX_NOTIFICATIONS));
     if (!displayedToastIds.current.has(notification.id)) {
