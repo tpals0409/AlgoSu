@@ -31,6 +31,7 @@ import {
   Check,
   Plus,
   Clock,
+  LogOut,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Toaster } from 'sonner';
@@ -382,6 +383,29 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
           </>
         )}
 
+        {/* ── No-study top bar (로그아웃 접근용) ──────────── */}
+        {isAuthenticated && !hasStudy && (
+          <header
+            className="fixed left-0 right-0 top-0 z-30 flex h-14 items-center justify-between border-b px-4"
+            style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
+          >
+            <Link href="/studies" className="flex items-center gap-2">
+              <Logo size={24} />
+              <span className="text-[14px] font-bold" style={{ color: 'var(--text)' }}>
+                AlgoSu
+              </span>
+            </Link>
+            <button
+              type="button"
+              onClick={logout}
+              className="flex items-center gap-1.5 rounded-btn px-3 py-1.5 text-[13px] font-medium text-text-3 transition-colors hover:bg-bg-alt hover:text-error"
+            >
+              <LogOut className="h-4 w-4" aria-hidden />
+              로그아웃
+            </button>
+          </header>
+        )}
+
         {/* ── Mobile top bar ─────────────────────────────── */}
         {hasStudy && (
           <header
@@ -449,7 +473,9 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
             className={cn(
               hasStudy
                 ? 'px-4 py-6 pt-[72px] md:px-6 md:pt-6'
-                : 'mx-auto w-full max-w-container px-4 py-6 sm:px-6 lg:px-8',
+                : isAuthenticated
+                  ? 'mx-auto w-full max-w-container px-4 py-6 pt-[72px] sm:px-6 lg:px-8'
+                  : 'mx-auto w-full max-w-container px-4 py-6 sm:px-6 lg:px-8',
               className,
             )}
           >
