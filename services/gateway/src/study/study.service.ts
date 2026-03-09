@@ -358,9 +358,9 @@ export class StudyService {
 
     try {
       // FOR UPDATE 비관적 락으로 invite 조회 — race condition 방지
+      // relations와 pessimistic_write를 함께 사용하면 LEFT JOIN + FOR UPDATE 충돌
       const invite = await queryRunner.manager.findOne(StudyInvite, {
         where: { code },
-        relations: ['study'],
         lock: { mode: 'pessimistic_write' },
       });
       if (!invite) {
@@ -368,6 +368,16 @@ export class StudyService {
         await this.inviteThrottle.recordFailure(ip, code);
         throw new NotFoundException('유효하지 않은 초대 코드입니다.');
       }
+
+      // study를 별도 조회 (LEFT JOIN + FOR UPDATE 충돌 회피)
+      const study = await queryRunner.manager.findOne(Study, {
+        where: { id: invite.study_id },
+      });
+      if (!study) {
+        await queryRunner.rollbackTransaction();
+        throw new NotFoundException('스터디를 찾을 수 없습니다.');
+      }
+      invite.study = study;
 
       // 만료 체크
       if (invite.expires_at < new Date()) {
@@ -419,7 +429,6 @@ export class StudyService {
       await this.inviteThrottle.clearFailures(ip, code);
 
       // 가입 알림 발행 — ADMIN에게 MEMBER_JOINED 알림
-      const study = invite.study;
       const admins = await this.memberRepository.find({
         where: { study_id: study.id, role: StudyMemberRole.ADMIN },
       });

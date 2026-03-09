@@ -396,6 +396,7 @@ describe('StudyService', () => {
 
     it('정상 가입 — MEMBER 역할로 등록 (닉네임 + brute force 방어)', async () => {
       inviteRepository.findOne.mockResolvedValue(validInvite);
+      studyRepository.findOne.mockResolvedValue(mockStudy); // study 별도 조회
       memberRepository.findOne.mockResolvedValue(null); // 기존 멤버 아님
       memberRepository.count.mockResolvedValue(5); // B1: 50명 미만
       memberRepository.find.mockResolvedValue([]); // 알림 대상
@@ -411,6 +412,7 @@ describe('StudyService', () => {
     it('만료된 초대 코드 → BadRequestException', async () => {
       const expiredInvite = { ...validInvite, expires_at: pastDate };
       inviteRepository.findOne.mockResolvedValue(expiredInvite);
+      studyRepository.findOne.mockResolvedValue(mockStudy);
 
       await expect(service.joinByInviteCode('new-user-id', 'expired-code', 'Nick', '127.0.0.1')).rejects.toThrow(
         BadRequestException,
@@ -422,6 +424,7 @@ describe('StudyService', () => {
 
     it('이미 멤버인 사용자 → ConflictException', async () => {
       inviteRepository.findOne.mockResolvedValue(validInvite);
+      studyRepository.findOne.mockResolvedValue(mockStudy);
       memberRepository.findOne.mockResolvedValue(mockRegularMember); // 이미 멤버
 
       await expect(
@@ -800,6 +803,7 @@ describe('StudyService', () => {
 
     it('멤버 50명 초과 시 → BadRequestException', async () => {
       inviteRepository.findOne.mockResolvedValue(validInvite);
+      studyRepository.findOne.mockResolvedValue(mockStudy);
       memberRepository.findOne.mockResolvedValue(null);
       memberRepository.count.mockResolvedValue(50);
 
@@ -807,6 +811,7 @@ describe('StudyService', () => {
         service.joinByInviteCode('new-user-id', 'valid-code', 'Nick', '127.0.0.1'),
       ).rejects.toThrow(BadRequestException);
       inviteRepository.findOne.mockResolvedValue(validInvite);
+      studyRepository.findOne.mockResolvedValue(mockStudy);
       memberRepository.findOne.mockResolvedValue(null);
       memberRepository.count.mockResolvedValue(50);
       await expect(
@@ -820,6 +825,7 @@ describe('StudyService', () => {
         max_uses: 3,
         used_count: 3,
       });
+      studyRepository.findOne.mockResolvedValue(mockStudy);
 
       await expect(
         service.joinByInviteCode('new-user-id', 'valid-code', 'Nick', '127.0.0.1'),
@@ -945,6 +951,7 @@ describe('StudyService', () => {
     it('가입자가 ADMIN 목록에 있으면 본인 제외 알림 발행', async () => {
       // 가입자(USER_ID)가 스터디 ADMIN 목록에 포함된 경우 (본인 제외 분기 커버)
       inviteRepository.findOne.mockResolvedValue(validInvite);
+      studyRepository.findOne.mockResolvedValue(mockStudy);
       memberRepository.findOne.mockResolvedValue(null); // 기존 멤버 아님
       memberRepository.count.mockResolvedValue(5);
       // ADMIN 목록에 가입자 본인(USER_ID) + 다른 ADMIN(OTHER_USER_ID) 포함
@@ -960,6 +967,7 @@ describe('StudyService', () => {
 
     it('ADMIN 목록이 비어있으면 알림 없이 정상 처리', async () => {
       inviteRepository.findOne.mockResolvedValue(validInvite);
+      studyRepository.findOne.mockResolvedValue(mockStudy);
       memberRepository.findOne.mockResolvedValue(null);
       memberRepository.count.mockResolvedValue(3);
       memberRepository.find.mockResolvedValue([]); // ADMIN 없음
