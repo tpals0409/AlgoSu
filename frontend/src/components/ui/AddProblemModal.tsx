@@ -10,6 +10,8 @@ import {
   Search, X, ArrowLeft, Plus, Loader2, ExternalLink, AlertCircle,
 } from 'lucide-react';
 import { Btn, type Difficulty, DIFFICULTY_CONFIG } from './AlgosuUI';
+import { problemApi, studyApi, type CreateProblemData } from '@/lib/api';
+import { useStudy } from '@/contexts/StudyContext';
 
 // ── solved.ac types ──────────────────────────────────────────────────────────
 
@@ -363,10 +365,14 @@ function ConfirmStep({
   problem,
   onBack,
   onAdd,
+  isAdding,
+  addError,
 }: {
   problem: SolvedProblem;
   onBack: () => void;
   onAdd: (weekNumber: string, deadline: string) => void;
+  isAdding?: boolean;
+  addError?: string | null;
 }) {
   const [weekNumber, setWeekNumber] = useState('');
   const [deadline, setDeadline] = useState('');
@@ -521,12 +527,24 @@ function ConfirmStep({
         className="flex items-center justify-end gap-2 border-t px-5 py-3.5"
         style={{ borderColor: 'var(--border)' }}
       >
-        <Btn variant="outline" size="md" onClick={onBack}>뒤로</Btn>
-        <Btn variant="primary" size="md" onClick={handleAdd}>
-          <Plus className="h-3.5 w-3.5" />
-          문제 추가
+        <Btn variant="outline" size="md" onClick={onBack} disabled={isAdding}>뒤로</Btn>
+        <Btn variant="primary" size="md" onClick={handleAdd} disabled={isAdding}>
+          {isAdding ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Plus className="h-3.5 w-3.5" />
+          )}
+          {isAdding ? '추가 중...' : '문제 추가'}
         </Btn>
       </div>
+      {addError && (
+        <div className="px-5 pb-3">
+          <p className="text-[11px] font-medium" style={{ color: 'var(--error)' }}>
+            <AlertCircle className="inline h-3 w-3 mr-1" />
+            {addError}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -558,10 +576,14 @@ interface AddProblemModalProps {
 export function AddProblemModal({ open, onClose, onAdd: onAddCallback }: AddProblemModalProps) {
   const [step, setStep] = useState<Step>('search');
   const [selected, setSelected] = useState<SolvedProblem | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+  const { currentStudyId } = useStudy();
 
   function handleClose() {
     setStep('search');
     setSelected(null);
+    setAddError(null);
     onClose();
   }
 
@@ -570,30 +592,58 @@ export function AddProblemModal({ open, onClose, onAdd: onAddCallback }: AddProb
     setStep('confirm');
   }
 
-  function handleAdd(weekNumber: string, deadline: string) {
-    if (!selected) return;
+  async function handleAdd(weekNumber: string, deadline: string) {
+    if (!selected || isAdding) return;
 
     const { difficulty, level: diffLevel } = toOurDiff(selected.level);
     const tagNames = selected.tags
       .slice(0, 5)
       .map((t) => t.displayNames.find((d) => d.language === 'ko')?.name ?? t.key);
 
-    const newProblem = {
-      id: `prob-${Date.now()}`,
-      title: selected.titleKo,
-      difficulty,
-      level: diffLevel,
-      weekNumber,
-      status: 'ACTIVE' as const,
-      deadline,
-      tags: tagNames,
-      sourceUrl: `https://www.acmicpc.net/problem/${selected.problemId}`,
-      sourcePlatform: 'BOJ',
-      description: '',
-    };
+    setIsAdding(true);
+    setAddError(null);
 
-    onAddCallback?.(newProblem);
-    handleClose();
+    try {
+      const data: CreateProblemData = {
+        title: selected.titleKo,
+        weekNumber,
+        difficulty: difficulty as CreateProblemData['difficulty'],
+        level: diffLevel,
+        deadline: new Date(deadline).toISOString(),
+        tags: tagNames,
+        sourceUrl: `https://www.acmicpc.net/problem/${selected.problemId}`,
+        sourcePlatform: 'BOJ',
+      };
+
+      const created = await problemApi.create(data);
+
+      if (currentStudyId) {
+        void studyApi.notifyProblemCreated(currentStudyId, {
+          problemId: created.id,
+          problemTitle: created.title,
+          weekNumber,
+        }).catch(() => {});
+      }
+
+      onAddCallback?.({
+        id: created.id,
+        title: created.title,
+        difficulty: created.difficulty as Difficulty,
+        level: created.level ?? diffLevel,
+        weekNumber: created.weekNumber,
+        status: 'ACTIVE' as const,
+        deadline: created.deadline,
+        tags: created.tags ?? tagNames,
+        sourceUrl: created.sourceUrl ?? data.sourceUrl ?? '',
+        sourcePlatform: created.sourcePlatform ?? 'BOJ',
+        description: created.description ?? '',
+      });
+      handleClose();
+    } catch (err: unknown) {
+      setAddError(err instanceof Error ? err.message : '문제 추가에 실패했습니다.');
+    } finally {
+      setIsAdding(false);
+    }
   }
 
   return (
@@ -674,7 +724,9 @@ export function AddProblemModal({ open, onClose, onAdd: onAddCallback }: AddProb
             <ConfirmStep
               problem={selected}
               onBack={() => setStep('search')}
-              onAdd={handleAdd}
+              onAdd={(w, d) => void handleAdd(w, d)}
+              isAdding={isAdding}
+              addError={addError}
             />
           )}
         </Dialog.Content>
