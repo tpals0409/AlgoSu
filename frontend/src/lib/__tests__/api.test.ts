@@ -514,9 +514,9 @@ describe('problemApi 추가 분기', () => {
     expect(mockFetch.mock.calls[0][0]).toContain('/api/problems/active');
   });
 
-  it('findAllIncludingClosed는 GET /api/problems/all로 요청한다', async () => {
+  it('findAllProblems는 GET /api/problems/all로 요청한다', async () => {
     mockFetch.mockReturnValue(jsonResponse([]));
-    await problemApi.findAllIncludingClosed();
+    await problemApi.findAllProblems();
     expect(mockFetch.mock.calls[0][0]).toContain('/api/problems/all');
   });
 

@@ -78,7 +78,7 @@ export class ProblemController {
   }
 
   /**
-   * GET /all — 스터디별 전체 문제 목록 (CLOSED 포함)
+   * GET /all — 스터디별 전체 문제 목록 (ACTIVE만)
    */
   @Get('all')
   async findAll(@Headers('x-study-id') studyId: string) {

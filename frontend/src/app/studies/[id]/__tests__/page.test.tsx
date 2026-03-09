@@ -139,7 +139,7 @@ jest.mock('@/lib/api', () => ({
     delete: jest.fn(),
   },
   problemApi: {
-    findAllIncludingClosed: jest.fn().mockResolvedValue([]),
+    findAllProblems: jest.fn().mockResolvedValue([]),
   },
 }));
 

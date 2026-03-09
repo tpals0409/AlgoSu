@@ -145,7 +145,7 @@ export default function SubmissionsPage(): ReactNode {
     try {
       const [result, problems] = await Promise.all([
         submissionApi.list({ page: 1, limit: 100 }),
-        problemApi.findAllIncludingClosed().catch(() => []),
+        problemApi.findAllProblems().catch(() => []),
       ]);
       setSubmissions(result.data);
       setProblemMap(new Map(problems.map((p) => [p.id, { title: p.title, difficulty: p.difficulty ?? undefined, level: p.level ?? undefined, weekNumber: p.weekNumber ?? undefined }])));

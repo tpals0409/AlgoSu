@@ -79,7 +79,7 @@ jest.mock('@/contexts/AuthContext', () => ({
 jest.mock('@/lib/api', () => ({
   problemApi: {
     findAll: jest.fn().mockResolvedValue([]),
-    findAllIncludingClosed: jest.fn().mockResolvedValue([]),
+    findAllProblems: jest.fn().mockResolvedValue([]),
   },
   submissionApi: {
     list: jest.fn().mockResolvedValue({ data: [], meta: {} }),
@@ -161,7 +161,7 @@ describe('StudyRoomPage - with problems', () => {
   it('문제 목록이 주차별로 표시된다', async () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { problemApi } = require('@/lib/api');
-    problemApi.findAllIncludingClosed.mockResolvedValue([
+    problemApi.findAllProblems.mockResolvedValue([
       {
         id: 'p-1',
         title: 'Two Sum',

@@ -205,7 +205,7 @@ export default function DashboardPage(): ReactNode {
         submissionApi.list({ page: 1, limit: 5 }),
         problemApi.findAll(),
         currentStudyId ? studyApi.getMembers(currentStudyId) : Promise.resolve([]),
-        problemApi.findAllIncludingClosed(),
+        problemApi.findAllProblems(),
       ]);
 
       const errors = { stats: null as string | null, submissions: null as string | null, problems: null as string | null, members: null as string | null };

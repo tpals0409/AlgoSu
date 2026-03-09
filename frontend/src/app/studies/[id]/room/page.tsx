@@ -228,7 +228,7 @@ export default function StudyRoomPage(): ReactElement {
     setLoadingProblems(true);
     setError(null);
 
-    problemApi.findAllIncludingClosed()
+    problemApi.findAllProblems()
       .then((data) => {
         if (cancelled) return;
         setProblems(data);

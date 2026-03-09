@@ -116,7 +116,7 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
       const [studyData, memberData, problemData, statsData] = await Promise.all([
         studyApi.getById(studyId),
         studyApi.getMembers(studyId),
-        problemApi.findAllIncludingClosed().catch(() => [] as Problem[]),
+        problemApi.findAllProblems().catch(() => [] as Problem[]),
         studyApi.getStats(studyId).catch(() => null),
       ]);
       setStudy(studyData);

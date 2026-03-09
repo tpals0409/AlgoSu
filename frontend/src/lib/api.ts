@@ -378,8 +378,8 @@ export const problemApi = {
   findAll: (): Promise<Problem[]> =>
     fetchApi('/api/problems/active'),
 
-  /** 전체 문제 목록 (CLOSED 포함) — 대시보드 통계용 */
-  findAllIncludingClosed: (): Promise<Problem[]> =>
+  /** 전체 문제 목록 (ACTIVE만) — 대시보드·스터디룸 통계용 */
+  findAllProblems: (): Promise<Problem[]> =>
     fetchApi('/api/problems/all'),
 
   findById: (id: string): Promise<Problem> =>
