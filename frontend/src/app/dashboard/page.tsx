@@ -135,7 +135,7 @@ function StatCard({
             {value}
           </p>
         )}
-        <p className="mt-1 whitespace-nowrap text-[11px] font-bold text-text-3">{label}</p>
+        <p className="mt-1 whitespace-nowrap text-xs font-medium text-text-3">{label}</p>
       </div>
     </div>
   );
@@ -516,7 +516,7 @@ export default function DashboardPage(): ReactNode {
 
         {/* ── STAT CARDS + STUDY ROOM (4열) ── */}
         {currentStudyId && (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-3.5 md:grid-cols-4" style={fade(0.08)}>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-3.5 lg:grid-cols-4" style={fade(0.08)}>
             <StatCard
               icon={FileText}
               label="제출 수"
@@ -551,8 +551,8 @@ export default function DashboardPage(): ReactNode {
                     <MessageCircle className="h-4 w-4 text-white" aria-hidden />
                   </div>
                   <div className="min-w-0">
-                    <p className="whitespace-nowrap font-mono text-xl sm:text-[28px] font-bold leading-none tracking-tight text-white">스터디룸</p>
-                    <p className="mt-1 whitespace-nowrap text-[11px] font-bold text-white/70">입장하기</p>
+                    <p className="whitespace-nowrap text-xl sm:text-[28px] font-bold leading-none tracking-tight text-white">스터디룸</p>
+                    <p className="mt-1 whitespace-nowrap text-xs font-medium text-white/70">입장하기</p>
                   </div>
                 </div>
               </Card>

@@ -30,7 +30,7 @@ function WeeklyBar({
 
   return (
     <div className="flex items-center gap-3">
-      <span className="min-w-[56px] text-right font-mono text-xs text-text-2">
+      <span className="min-w-[56px] text-right text-xs font-medium text-text-2">
         {label}
       </span>
       <div
