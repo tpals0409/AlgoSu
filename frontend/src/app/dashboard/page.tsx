@@ -127,15 +127,15 @@ function StatCard({
       <div className="flex h-9 w-9 items-center justify-center rounded-md bg-bg-alt">
         <Icon className="h-4 w-4 text-primary" aria-hidden />
       </div>
-      <div>
+      <div className="min-w-0">
         {loading ? (
           <Skeleton height={28} width={60} />
         ) : (
-          <p className={cn('font-mono text-xl sm:text-[28px] font-bold leading-none tracking-tight', valueColor ?? 'text-text')}>
+          <p className={cn('whitespace-nowrap font-mono text-xl sm:text-[28px] font-bold leading-none tracking-tight', valueColor ?? 'text-text')}>
             {value}
           </p>
         )}
-        <p className="mt-1 text-[11px] text-text-3">{label}</p>
+        <p className="mt-1 whitespace-nowrap text-[11px] font-bold text-text-3">{label}</p>
       </div>
     </div>
   );
@@ -550,9 +550,9 @@ export default function DashboardPage(): ReactNode {
                   <div className="flex h-9 w-9 items-center justify-center rounded-md bg-white/20">
                     <MessageCircle className="h-4 w-4 text-white" aria-hidden />
                   </div>
-                  <div>
-                    <p className="font-mono text-xl sm:text-[28px] font-bold leading-none tracking-tight text-white">스터디룸</p>
-                    <p className="mt-1 text-[11px] text-white/70">입장하기</p>
+                  <div className="min-w-0">
+                    <p className="whitespace-nowrap font-mono text-xl sm:text-[28px] font-bold leading-none tracking-tight text-white">스터디룸</p>
+                    <p className="mt-1 whitespace-nowrap text-[11px] font-bold text-white/70">입장하기</p>
                   </div>
                 </div>
               </Card>

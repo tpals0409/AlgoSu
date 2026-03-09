@@ -201,7 +201,7 @@ export default function SubmissionsPage(): ReactNode {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none" style={{ color: 'var(--text-3)' }} aria-hidden />
             <input
               type="text"
-              placeholder="문제명 검색..."
+              placeholder="문제 검색..."
               value={filterSearch}
               onChange={(e) => setFilterSearch(e.target.value)}
               className="w-full h-[44px] pl-10 pr-4 rounded-xl text-text text-sm font-body outline-none transition-[border-color] duration-150 placeholder:text-text-3 focus:border-primary"
