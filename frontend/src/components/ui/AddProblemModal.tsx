@@ -65,15 +65,6 @@ async function searchSolvedAC(query: string): Promise<SolvedProblem[]> {
 
 const DOW_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 
-/** 오늘 날짜의 월/주차 */
-function getCurrentWeekInfo(): { year: number; month: number; week: number } {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
-  const week = Math.ceil(now.getDate() / 7);
-  return { year, month, week };
-}
-
 /** 현재 월의 전체 주차 + 다음달 1주차 */
 function generateWeekOptions(): string[] {
   const now = new Date();
