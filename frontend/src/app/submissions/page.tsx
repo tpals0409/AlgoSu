@@ -259,15 +259,6 @@ export default function SubmissionsPage(): ReactNode {
               </button>
             );
           })}
-          <button
-            type="button"
-            className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[12px] font-medium transition-all opacity-50 cursor-not-allowed"
-            style={DIFF_BADGE_STYLE.ruby ?? {}}
-            disabled
-          >
-            <span className="h-1.5 w-1.5 rounded-full" style={DIFF_DOT_STYLE.ruby ?? {}} aria-hidden />
-            Ruby
-          </button>
         </div>
 
         {/* 에러 */}

@@ -23,7 +23,7 @@ export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
   GOLD: 'Gold',
   PLATINUM: 'Platinum',
   DIAMOND: 'Diamond',
-  RUBY: '루비',
+  RUBY: 'Ruby',
 };
 
 /** BOJ 원시 레벨(1~30) → 티어 내 등급(5~1) 변환. 이미 1~5면 그대로. */
