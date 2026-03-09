@@ -79,9 +79,9 @@ describe('DifficultyBadge', () => {
   });
 
   it('renders tier number from level', () => {
-    // toTierLevel: 1-5 stays as-is, level 11 → 5, level 15 → 1
-    render(<DifficultyBadge difficulty="GOLD" level={1} />);
-    expect(screen.getByText(/Gold 1/)).toBeInTheDocument();
+    // toTierLevel: level 1 → 5(Bronze5), level 11 → 5(Gold5), level 12 → 4(Gold4), level 15 → 1(Gold1)
+    render(<DifficultyBadge difficulty="GOLD" level={12} />);
+    expect(screen.getByText(/Gold 4/)).toBeInTheDocument();
   });
 
   it('applies custom className', () => {

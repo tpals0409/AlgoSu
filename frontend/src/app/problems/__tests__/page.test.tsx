@@ -110,7 +110,6 @@ jest.mock('@/lib/constants', () => ({
   },
   toTierLevel: (rawLevel: number | null | undefined) => {
     if (rawLevel == null || rawLevel <= 0) return null;
-    if (rawLevel >= 1 && rawLevel <= 5) return rawLevel;
     return 5 - ((rawLevel - 1) % 5);
   },
   PROBLEM_STATUSES: ['ACTIVE', 'CLOSED'],

@@ -26,10 +26,9 @@ export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
   RUBY: 'Ruby',
 };
 
-/** BOJ 원시 레벨(1~30) → 티어 내 등급(5~1) 변환. 이미 1~5면 그대로. */
+/** BOJ 원시 레벨(1~30) → 티어 내 등급(5~1) 변환. 예: 1→5(Bronze5), 12→4(Gold4), 30→1(Ruby1) */
 export function toTierLevel(rawLevel: number | null | undefined): number | null {
   if (rawLevel == null || rawLevel <= 0) return null;
-  if (rawLevel >= 1 && rawLevel <= 5) return rawLevel;
   return 5 - ((rawLevel - 1) % 5);
 }
 
