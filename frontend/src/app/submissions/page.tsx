@@ -166,6 +166,8 @@ export default function SubmissionsPage(): ReactNode {
 
   const filtered = useMemo(() => {
     return submissions.filter((s) => {
+      // 삭제된 문제(problemMap에 없는)의 제출은 표시하지 않음
+      if (!problemMap.has(s.problemId)) return false;
       if (filterSearch) {
         const q = filterSearch.toLowerCase();
         const title = s.problemTitle ?? problemMap.get(s.problemId)?.title ?? '';
