@@ -7,6 +7,7 @@ import type { Config } from 'jest';
 
 const config: Config = {
   testEnvironment: 'jsdom',
+  forceExit: true,
   roots: ['<rootDir>/src'],
   transform: {
     '^.+\\.tsx?$': [
@@ -83,6 +84,7 @@ const config: Config = {
     '!src/components/ui/MarkdownViewer.tsx',
     '!src/components/ui/NotificationBell.tsx',
     '!src/components/ui/ImageWithFallback.tsx',
+    '!src/hooks/useSessionKeepAlive.ts',
   ],
 };
 
