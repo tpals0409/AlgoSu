@@ -12,7 +12,7 @@ RUN rm -rf /tmp/prod_node_modules/@img/sharp-linux-x64 \
            /tmp/prod_node_modules/@img/sharp-linuxmusl-x64 \
            /tmp/prod_node_modules/@img/sharp-libvips-linux-x64 \
            /tmp/prod_node_modules/@img/sharp-libvips-linuxmusl-x64 && \
-    npm install --no-save --os=linux --libc=musl --cpu=arm64 --prefix=/tmp/prod_node_modules sharp
+    cd /tmp/prod_node_modules && npm install --no-save --os=linux --libc=musl --cpu=arm64 sharp
 RUN npm ci
 
 COPY . .
