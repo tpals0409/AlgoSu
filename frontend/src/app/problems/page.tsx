@@ -13,6 +13,7 @@ import { BookOpen, Plus, Search, Check } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Alert } from '@/components/ui/Alert';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { problemApi, studyApi, type Problem } from '@/lib/api';
 import { useStudy } from '@/contexts/StudyContext';
 import { DIFFICULTIES, DIFFICULTY_LABELS, toTierLevel } from '@/lib/constants';
@@ -198,31 +199,24 @@ export default function ProblemsPage(): ReactNode {
               style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
             />
           </div>
-          <div className="flex items-center shrink-0 overflow-x-auto">
-            {STATUS_TABS.map((tab) => (
-              <button
-                key={tab.value}
-                type="button"
-                onClick={() => handleFilterChange('status', tab.value)}
-                className="px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors whitespace-nowrap"
-                style={
-                  filters.status === tab.value
-                    ? { backgroundColor: 'var(--bg-card)', color: 'var(--primary)', border: '1px solid var(--border)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }
-                    : { color: 'var(--text-3)' }
-                }
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+          <Select value={filters.status} onValueChange={(v) => handleFilterChange('status', v === '__all__' ? '' : v)}>
+            <SelectTrigger className="h-[44px] w-[130px] shrink-0 rounded-xl text-[13px] font-medium" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+              <SelectValue placeholder="상태 선택" />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_TABS.map((tab) => (
+                <SelectItem key={tab.value || '__all__'} value={tab.value || '__all__'}>{tab.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* 난이도 필터 pills */}
-        <div className="flex items-center gap-2 flex-wrap" style={fade(0.1)}>
+        <div className="flex items-center gap-2 overflow-x-auto" style={fade(0.1)}>
           <button
             type="button"
             onClick={() => handleFilterChange('difficulty', '')}
-            className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[12px] font-medium transition-all hover:shadow-sm hover:brightness-95 hover:scale-105"
+            className="inline-flex items-center gap-1 shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-[12px] font-medium transition-all hover:shadow-sm hover:brightness-95 hover:scale-105"
             style={
               !filters.difficulty
                 ? { backgroundColor: 'var(--primary)', color: '#fff' }
@@ -239,7 +233,7 @@ export default function ProblemsPage(): ReactNode {
                 key={d}
                 type="button"
                 onClick={() => handleFilterChange('difficulty', d)}
-                className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[12px] font-medium transition-all hover:shadow-sm hover:brightness-95 hover:scale-105"
+                className="inline-flex items-center gap-1 shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-[12px] font-medium transition-all hover:shadow-sm hover:brightness-95 hover:scale-105"
                 style={
                   isActive
                     ? { backgroundColor: 'var(--primary)', color: '#fff' }

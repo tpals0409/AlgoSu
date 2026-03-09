@@ -116,7 +116,7 @@ function StatCard({
 }: {
   readonly icon: typeof FileText;
   readonly label: string;
-  readonly value: string | number;
+  readonly value: ReactNode;
   readonly loading: boolean;
   readonly href?: string;
   readonly animRef?: React.RefObject<HTMLDivElement | null>;
@@ -537,7 +537,7 @@ export default function DashboardPage(): ReactNode {
             <StatCard
               icon={BarChart3}
               label="통계"
-              value={statsLoading ? '' : `${myAvgAIScore}점`}
+              value={statsLoading ? '' : <>{myAvgAIScore}<span className="font-sans">점</span></>}
               loading={statsLoading}
               href="/analytics"
               animRef={completionRef}
@@ -570,7 +570,7 @@ export default function DashboardPage(): ReactNode {
         {/* ── WEEKLY CHART (dynamic) ── */}
         {/* ── MIDDLE ROW: 주차별 차트(좌) + 진행 중인 문제(우) ── */}
         {currentStudyId && (
-          <div className="grid gap-3.5 md:grid-cols-[3fr_2fr]" style={fade(0.16)}>
+          <div className="grid gap-3.5 md:grid-cols-2" style={fade(0.16)}>
             {/* 주차별 제출 현황 차트 */}
             {stats && stats.totalSubmissions > 0 ? (
               <DashboardWeeklyChart
