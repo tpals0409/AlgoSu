@@ -200,7 +200,7 @@ export default function ProblemsPage(): ReactNode {
             />
           </div>
           <Select value={filters.status} onValueChange={(v) => handleFilterChange('status', v === '__all__' ? '' : v)}>
-            <SelectTrigger className="h-[44px] w-[130px] shrink-0 rounded-xl text-[13px] font-medium" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+            <SelectTrigger className="h-[44px] w-[130px] shrink-0 self-end sm:self-auto rounded-xl text-[13px] font-medium" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}>
               <SelectValue placeholder="상태 선택" />
             </SelectTrigger>
             <SelectContent>
@@ -212,7 +212,7 @@ export default function ProblemsPage(): ReactNode {
         </div>
 
         {/* 난이도 필터 pills */}
-        <div className="flex items-center gap-2 overflow-x-auto" style={fade(0.1)}>
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide" style={fade(0.1)}>
           <button
             type="button"
             onClick={() => handleFilterChange('difficulty', '')}

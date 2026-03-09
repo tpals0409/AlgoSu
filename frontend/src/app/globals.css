@@ -483,4 +483,7 @@ code, pre, .font-mono {
 ::-webkit-scrollbar-thumb { background: var(--primary-light); border-radius: 9999px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
 
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+
 ::selection { background: var(--primary-soft); }
