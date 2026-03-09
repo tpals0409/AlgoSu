@@ -122,13 +122,18 @@ class ClaudeClient:
         @returns: 파싱된 분석 결과 dict
         """
         try:
-            # 마크다운 코드 블록 제거 (```json ... ``` 패턴)
+            # 마크다운 코드 블록 제거 — 최외곽 ```json ... ``` 만 strip
             cleaned = raw_text.strip()
             if cleaned.startswith("```"):
                 first_newline = cleaned.index("\n")
-                last_backtick = cleaned.rfind("```")
-                if last_backtick > first_newline:
-                    cleaned = cleaned[first_newline + 1 : last_backtick].strip()
+                # 끝에서부터 줄 단위로 ``` 를 찾아 최외곽 닫힘만 제거
+                lines = cleaned.split("\n")
+                end_idx = len(cleaned)
+                for i in range(len(lines) - 1, 0, -1):
+                    if lines[i].strip() == "```":
+                        end_idx = sum(len(l) + 1 for l in lines[:i])
+                        break
+                cleaned = cleaned[first_newline + 1 : end_idx].strip()
 
             parsed = json.loads(cleaned)
 
@@ -156,9 +161,14 @@ class ClaudeClient:
 
         except (json.JSONDecodeError, ValueError, KeyError) as e:
             logger.warning(f"Claude 응답 파싱 실패: {str(e)[:100]}")
-            # 파싱 실패 시 원본 텍스트를 feedback으로 사용
+            # 파싱 실패 시에도 마크다운 블록 strip 후 저장
+            fallback = raw_text.strip()
+            if fallback.startswith("```"):
+                fallback = fallback.split("\n", 1)[-1]  # 첫 줄 제거
+                if fallback.rstrip().endswith("```"):
+                    fallback = fallback.rstrip()[:-3].rstrip()
             return {
-                "feedback": raw_text[:50000],
+                "feedback": fallback[:50000],
                 "optimized_code": None,
                 "score": 0,
                 "status": "completed",
