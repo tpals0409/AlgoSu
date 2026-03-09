@@ -116,6 +116,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
         ]);
         if (cancelled) return;
         setProblem(problemData);
+        document.title = `${problemData.title} | AlgoSu`;
         setSubmissions(submissionData);
         if (draftData) {
           setCode(draftData.code);
