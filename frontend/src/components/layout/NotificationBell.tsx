@@ -98,18 +98,22 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
   const bellRef = useRef<HTMLButtonElement>(null);
   const prevUnreadRef = useRef<number>(0);
   const initialLoadRef = useRef(true);
+  const displayedToastIds = useRef(new Set<string>());
   const [panelStyle, setPanelStyle] = useState<React.CSSProperties>({});
 
   // ─── HOOKS ─────────────────────────────
 
   /**
-   * SSE 실시간 알림 수신 — 새 알림 도착 시 즉시 UI 반영 + 토스트
+   * SSE 실시간 알림 수신 — 새 알림 도착 시 즉시 UI 반영 + 토스트 (중복 방지)
    * @domain notification
    */
   const handleSSENotification = useCallback((notification: Notification) => {
     setUnreadCount((prev) => prev + 1);
     setNotifications((prev) => [notification, ...prev].slice(0, MAX_NOTIFICATIONS));
-    setToastNotification(notification);
+    if (!displayedToastIds.current.has(notification.id)) {
+      displayedToastIds.current.add(notification.id);
+      setToastNotification(notification);
+    }
   }, []);
 
   const { sseDisconnected } = useNotificationSSE(true, handleSSENotification);
