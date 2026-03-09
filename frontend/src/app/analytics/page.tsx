@@ -134,21 +134,30 @@ export default function AnalyticsPage(): ReactNode {
 
   // ─── API 통계 계산 ────────────────────
 
-  const myStats = useMemo(() => {
-    if (!stats?.byMember.length || !myId) return { count: 0, doneCount: 0 };
-    const me = stats.byMember.find((m) => m.userId === myId);
-    return me ? { count: me.count, doneCount: me.doneCount } : { count: 0, doneCount: 0 };
-  }, [stats, myId]);
+  const activeProblemIds = useMemo(() => new Set(allProblems.map((p) => p.id)), [allProblems]);
 
-  // 내가 완료(DONE)한 고유 문제 수 — recentSubmissions에서 직접 도출
+  // 내 제출 중 활성 문제만, 같은 문제는 1회만 집계
+  const myStats = useMemo(() => {
+    if (!stats || !myId) return { count: 0, doneCount: 0 };
+    const submitted = new Set<string>();
+    const done = new Set<string>();
+    for (const s of stats.recentSubmissions ?? []) {
+      if (s.userId !== myId || !activeProblemIds.has(s.problemId)) continue;
+      submitted.add(s.problemId);
+      if (s.sagaStep === 'DONE') done.add(s.problemId);
+    }
+    return { count: submitted.size, doneCount: done.size };
+  }, [stats, myId, activeProblemIds]);
+
+  // 내가 완료(DONE)한 고유 문제 수 — 활성 문제만
   const myDoneProblemIds = useMemo(() => {
     if (!stats || !myId) return new Set<string>();
     return new Set(
       (stats.recentSubmissions ?? [])
-        .filter((s) => s.userId === myId && s.sagaStep === 'DONE')
+        .filter((s) => s.userId === myId && s.sagaStep === 'DONE' && activeProblemIds.has(s.problemId))
         .map((s) => s.problemId),
     );
-  }, [stats, myId]);
+  }, [stats, myId, activeProblemIds]);
 
   const myUniqueProblemCount = myDoneProblemIds.size;
 
@@ -170,10 +179,17 @@ export default function AnalyticsPage(): ReactNode {
         if (r.userId === myId) myWeekMap.set(r.week, r.count);
       }
     } else {
+      // 활성 문제만, 같은 문제는 주차당 1회만 집계
+      const weekProblemSeen = new Map<string, Set<string>>();
       for (const sub of stats.recentSubmissions ?? []) {
-        if (sub.userId !== myId) continue;
+        if (sub.userId !== myId || !activeProblemIds.has(sub.problemId)) continue;
         const week = problemWeekMap.get(sub.problemId);
-        if (week) myWeekMap.set(week, (myWeekMap.get(week) ?? 0) + 1);
+        if (!week) continue;
+        if (!weekProblemSeen.has(week)) weekProblemSeen.set(week, new Set());
+        if (!weekProblemSeen.get(week)!.has(sub.problemId)) {
+          weekProblemSeen.get(week)!.add(sub.problemId);
+          myWeekMap.set(week, (myWeekMap.get(week) ?? 0) + 1);
+        }
       }
     }
 
@@ -183,7 +199,7 @@ export default function AnalyticsPage(): ReactNode {
     return Array.from(allWeeks)
       .map((week) => ({ week, count: myWeekMap.get(week) ?? 0 }))
       .sort((a, b) => parseWeekKey(a.week) - parseWeekKey(b.week));
-  }, [stats, myId, allProblems]);
+  }, [stats, myId, allProblems, activeProblemIds]);
 
   // 내가 풀이한 문제 ID (태그 분포 계산용)
   const myProblemIds = myDoneProblemIds;
@@ -288,10 +304,10 @@ export default function AnalyticsPage(): ReactNode {
             solvedProblems={myUniqueProblemCount}
             completionPct={myCompletionPct}
             avgAIScore={(() => {
-              // 문제별 최고 점수만 반영
+              // 활성 문제별 최고 점수만 반영 (같은 문제 1회)
               const bestByProblem = new Map<string, number>();
               for (const s of stats.recentSubmissions ?? []) {
-                if (s.userId !== myId || s.aiScore == null) continue;
+                if (s.userId !== myId || s.aiScore == null || !activeProblemIds.has(s.problemId)) continue;
                 const prev = bestByProblem.get(s.problemId) ?? 0;
                 if (s.aiScore > prev) bestByProblem.set(s.problemId, s.aiScore);
               }
@@ -311,10 +327,10 @@ export default function AnalyticsPage(): ReactNode {
             streakRank={`최근 ${myWeeklyData.length}주 중`}
             weeklyData={myWeeklyData}
             aiScoreData={(() => {
-              // 문제별 최고 점수만 추이에 반영
+              // 활성 문제별 최고 점수만 추이에 반영 (같은 문제 1회)
               const bestByProblem = new Map<string, { score: number; createdAt: string; title: string }>();
               for (const s of stats.recentSubmissions ?? []) {
-                if (s.userId !== myId || s.aiScore == null) continue;
+                if (s.userId !== myId || s.aiScore == null || !activeProblemIds.has(s.problemId)) continue;
                 const prev = bestByProblem.get(s.problemId);
                 if (!prev || s.aiScore > prev.score) {
                   bestByProblem.set(s.problemId, {

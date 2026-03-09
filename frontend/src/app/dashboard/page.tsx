@@ -271,6 +271,8 @@ export default function DashboardPage(): ReactNode {
     return me?.user_id ?? null;
   }, [user, members]);
 
+  const activeProblemIds = useMemo(() => new Set(allProblems.map((p) => p.id)), [allProblems]);
+
   const problemTitleMap = useMemo(() => {
     return new Map(allProblems.map((p) => [p.id, p.title]));
   }, [allProblems]);
@@ -293,37 +295,42 @@ export default function DashboardPage(): ReactNode {
 
 
 
+  // 내 제출 중 활성 문제만, 같은 문제는 1회만 집계
   const myStats = useMemo(() => {
-    if (!stats?.byMember.length || !myUserId) return { count: 0, doneCount: 0 };
-    const me = stats.byMember.find((m) => m.userId === myUserId);
-    return me ? { count: me.count, doneCount: me.doneCount } : { count: 0, doneCount: 0 };
-  }, [stats, myUserId]);
+    if (!stats || !myUserId) return { count: 0, doneCount: 0 };
+    const submitted = new Set<string>();
+    const done = new Set<string>();
+    for (const s of stats.recentSubmissions ?? []) {
+      if (s.userId !== myUserId || !activeProblemIds.has(s.problemId)) continue;
+      submitted.add(s.problemId);
+      if (s.sagaStep === 'DONE') done.add(s.problemId);
+    }
+    return { count: submitted.size, doneCount: done.size };
+  }, [stats, myUserId, activeProblemIds]);
 
   const myUniqueProblemCount = useMemo(() => {
     if (!stats || !myUserId) return 0;
-    // solvedProblemIds가 있으면 직접 사용 (userId 필터 적용된 결과)
-    if (stats.solvedProblemIds?.length) return stats.solvedProblemIds.length;
-    // fallback: recentSubmissions에서 DONE 제출의 고유 문제 수
+    // recentSubmissions에서 DONE + 활성 문제의 고유 문제 수
     const doneIds = new Set(
       (stats.recentSubmissions ?? [])
-        .filter((s) => s.userId === myUserId && s.sagaStep === 'DONE')
+        .filter((s) => s.userId === myUserId && s.sagaStep === 'DONE' && activeProblemIds.has(s.problemId))
         .map((s) => s.problemId),
     );
     return doneIds.size;
-  }, [stats, myUserId]);
+  }, [stats, myUserId, activeProblemIds]);
 
-  // AI 코드분석 평균 점수 (문제별 최고 점수 기준)
+  // AI 코드분석 평균 점수 (활성 문제별 최고 점수 기준, 같은 문제 1회)
   const myAvgAIScore = useMemo(() => {
     if (!stats || !myUserId) return 0;
     const bestByProblem = new Map<string, number>();
     for (const s of stats.recentSubmissions ?? []) {
-      if (s.userId !== myUserId || s.aiScore == null) continue;
+      if (s.userId !== myUserId || s.aiScore == null || !activeProblemIds.has(s.problemId)) continue;
       const prev = bestByProblem.get(s.problemId) ?? 0;
       if (s.aiScore > prev) bestByProblem.set(s.problemId, s.aiScore);
     }
     const scores = Array.from(bestByProblem.values());
     return scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
-  }, [stats, myUserId]);
+  }, [stats, myUserId, activeProblemIds]);
 
   const myCompletionPct = allProblems.length > 0
     ? Math.round((myUniqueProblemCount / allProblems.length) * 100)
@@ -387,10 +394,11 @@ export default function DashboardPage(): ReactNode {
           .map((r) => ({ week: r.week, count: r.count }));
       }
     } else {
-      // recentSubmissions → 주차별 고유 문제 수
+      // recentSubmissions → 주차별 고유 문제 수 (활성 문제만)
       const weekProblemMap = new Map<string, Set<string>>();
       for (const s of stats.recentSubmissions ?? []) {
         if (weekViewUserId !== null && s.userId !== weekViewUserId) continue;
+        if (!activeProblemIds.has(s.problemId)) continue;
         const week = problemWeekMap.get(s.problemId);
         if (!week) continue;
         if (!weekProblemMap.has(week)) weekProblemMap.set(week, new Set());
@@ -406,7 +414,7 @@ export default function DashboardPage(): ReactNode {
     }
 
     return result.sort((a, b) => parseWeekKey(b.week) - parseWeekKey(a.week));
-  }, [stats, weekViewUserId, parseWeekKey, allProblems]);
+  }, [stats, weekViewUserId, parseWeekKey, allProblems, activeProblemIds]);
 
   const getViewLabel = useCallback((userId: string | null) => {
     if (userId === null) return '전체';
