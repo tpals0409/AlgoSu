@@ -229,7 +229,7 @@ async function fetchApi<T>(
     // 401 세션 만료 시 로그인 페이지로 리다이렉트
     if (res.status === 401 && typeof window !== 'undefined') {
       const currentPath = window.location.pathname;
-      if (!currentPath.startsWith('/login') && !currentPath.startsWith('/callback')) {
+      if (!currentPath.startsWith('/login') && !currentPath.startsWith('/callback') && currentPath !== '/') {
         window.location.href = '/login?error=session_expired';
       }
     }
