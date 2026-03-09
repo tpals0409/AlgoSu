@@ -65,12 +65,6 @@ async function searchSolvedAC(query: string): Promise<SolvedProblem[]> {
 
 const DOW_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 
-/** 해당 월의 총 주차 수 (단순 7일 구간) */
-function getTotalWeeks(year: number, month: number): number {
-  const daysInMonth = new Date(year, month, 0).getDate();
-  return Math.ceil(daysInMonth / 7);
-}
-
 /** 오늘 날짜의 월/주차 */
 function getCurrentWeekInfo(): { year: number; month: number; week: number } {
   const now = new Date();
