@@ -89,7 +89,12 @@ function countCodeLines(code: string | null): number | null {
 function parseFeedback(feedback: string | null, score: number | null, optimizedCode: string | null): ParsedFeedback | null {
   if (!feedback) return null;
   try {
-    const parsed = JSON.parse(feedback);
+    // 마크다운 코드 블록 제거 (```json ... ```)
+    let cleaned = feedback.trim();
+    if (cleaned.startsWith('```')) {
+      cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
+    }
+    const parsed = JSON.parse(cleaned);
     const categories: FeedbackCategory[] = (parsed.categories ?? []).map((c: Record<string, unknown>) => ({
       name: c.name as string ?? '',
       score: c.score as number ?? 0,
