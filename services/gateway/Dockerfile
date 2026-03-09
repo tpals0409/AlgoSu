@@ -8,11 +8,17 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev && mv node_modules /tmp/prod_node_modules
 # ARM64용 sharp 바이너리를 네이티브(x86)에서 미리 다운로드 — Stage 2 QEMU 실행 제거
+# npm install은 항상 node_modules/ 하위에 설치하므로, 직접 @img 바이너리 패키지만 교체
 RUN rm -rf /tmp/prod_node_modules/@img/sharp-linux-x64 \
            /tmp/prod_node_modules/@img/sharp-linuxmusl-x64 \
            /tmp/prod_node_modules/@img/sharp-libvips-linux-x64 \
            /tmp/prod_node_modules/@img/sharp-libvips-linuxmusl-x64 && \
-    cd /tmp/prod_node_modules && npm install --no-save --os=linux --libc=musl --cpu=arm64 sharp
+    cd /tmp && mkdir -p _sharp && cd _sharp && \
+    npm init -y > /dev/null 2>&1 && \
+    npm install --no-save --os=linux --libc=musl --cpu=arm64 sharp && \
+    cp -r node_modules/@img/sharp-linuxmusl-arm64 /tmp/prod_node_modules/@img/ && \
+    cp -r node_modules/@img/sharp-libvips-linuxmusl-arm64 /tmp/prod_node_modules/@img/ && \
+    cd /tmp && rm -rf _sharp
 RUN npm ci
 
 COPY . .
