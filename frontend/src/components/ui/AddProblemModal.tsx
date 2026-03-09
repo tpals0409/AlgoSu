@@ -61,22 +61,14 @@ async function searchSolvedAC(query: string): Promise<SolvedProblem[]> {
   return data.items as SolvedProblem[];
 }
 
-// ── 주차 계산 (월~일 기준) ───────────────────────────────────────────────────
+// ── 주차 계산 (단순 7일 구간) ─────────────────────────────────────────────────
 
 const DOW_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 
-/** 해당 월의 첫 번째 일요일 날짜 (= 1주차 마지막 날) */
-function getFirstSunday(year: number, month: number): number {
-  const firstDow = new Date(year, month - 1, 1).getDay(); // 0=Sun..6=Sat
-  return 1 + (7 - firstDow) % 7; // 1일이 일요일이면 1, 월요일이면 7
-}
-
-/** 해당 월의 총 주차 수 */
+/** 해당 월의 총 주차 수 (단순 7일 구간) */
 function getTotalWeeks(year: number, month: number): number {
   const daysInMonth = new Date(year, month, 0).getDate();
-  const firstSun = getFirstSunday(year, month);
-  if (daysInMonth <= firstSun) return 1;
-  return 1 + Math.ceil((daysInMonth - firstSun) / 7);
+  return Math.ceil(daysInMonth / 7);
 }
 
 /** 오늘 날짜의 월/주차 */
@@ -84,57 +76,45 @@ function getCurrentWeekInfo(): { year: number; month: number; week: number } {
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
-  const date = now.getDate();
-  const firstSun = getFirstSunday(year, month);
-  const week = date <= firstSun ? 1 : Math.ceil((date - firstSun) / 7) + 1;
+  const week = Math.ceil(now.getDate() / 7);
   return { year, month, week };
 }
 
-/** 현재 주차 기준 이전/현재/다음 3개 옵션 */
+/** 현재 월의 전체 주차 + 다음달 1주차 */
 function generateWeekOptions(): string[] {
-  const { year, month, week } = getCurrentWeekInfo();
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const totalWeeks = Math.ceil(lastDay / 7);
   const options: string[] = [];
-  for (let i = -1; i <= 1; i++) {
-    let y = year, m = month, w = week + i;
-    if (w < 1) {
-      m -= 1;
-      if (m < 1) { m = 12; y -= 1; }
-      w = getTotalWeeks(y, m);
-    }
-    if (w > getTotalWeeks(y, m)) {
-      m += 1;
-      if (m > 12) { m = 1; y += 1; }
-      w = 1;
-    }
-    options.push(`${m}월${w}주차`);
+  for (let w = 1; w <= totalWeeks; w++) {
+    options.push(`${month}월${w}주차`);
   }
+  const nextMonth = month === 12 ? 1 : month + 1;
+  options.push(`${nextMonth}월1주차`);
   return options;
 }
 
-/** 주차 문자열 → 해당 주의 월~일 날짜 목록 */
+/** 주차 문자열 → 해당 주의 날짜 목록 (단순 7일 구간, KST 23:59:59) */
 function getWeekDates(weekStr: string): { label: string; value: string }[] {
   const match = weekStr.match(/(\d+)월(\d+)주차/);
   if (!match) return [];
   const month = parseInt(match[1]);
   const week = parseInt(match[2]);
-  const year = new Date().getFullYear();
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const firstSun = getFirstSunday(year, month);
+  const now = new Date();
+  const year = now.getFullYear();
+  const adjustedYear = month < now.getMonth() + 1 && month === 1 ? year + 1 : year;
+  const daysInMonth = new Date(adjustedYear, month, 0).getDate();
 
-  let startDate: number, endDate: number;
-  if (week === 1) {
-    startDate = 1;
-    endDate = Math.min(firstSun, daysInMonth);
-  } else {
-    startDate = firstSun + 1 + (week - 2) * 7; // 월요일
-    endDate = Math.min(startDate + 6, daysInMonth); // 일요일 or 월말
-  }
+  const startDate = (week - 1) * 7 + 1;
+  const endDate = Math.min(week * 7, daysInMonth);
 
   const dates: { label: string; value: string }[] = [];
   for (let d = startDate; d <= endDate; d++) {
-    const date = new Date(year, month - 1, d);
+    const date = new Date(adjustedYear, month - 1, d, 23, 59, 59);
+    const dayName = DOW_LABELS[date.getDay()];
     dates.push({
-      label: `${DOW_LABELS[date.getDay()]}요일 (${month}/${d})`,
+      label: `${dayName}요일 (${month}/${d})`,
       value: date.toISOString(),
     });
   }
