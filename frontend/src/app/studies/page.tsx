@@ -348,7 +348,7 @@ export default function StudiesPage(): ReactNode {
                       onClick={(e) => {
                         e.stopPropagation();
                         setCurrentStudy(study.id);
-                        router.push(`/studies/${study.id}/room`);
+                        router.push(`/studies/${study.id}`);
                       }}
                     >
                       자세히 보기
