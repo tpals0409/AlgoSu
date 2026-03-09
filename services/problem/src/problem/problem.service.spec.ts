@@ -612,21 +612,18 @@ describe('ProblemService', () => {
   // 13. findAllByStudy()
   // ──────────────────────────────────────────────
   describe('findAllByStudy()', () => {
-    it('CLOSED 포함 전체 문제 반환', async () => {
-      const allProblems = [
-        mockProblem,
-        { ...mockProblem, id: 'prob-002', status: ProblemStatus.CLOSED },
-      ];
-      dualWrite.find.mockResolvedValue(allProblems);
+    it('ACTIVE 문제만 반환 (CLOSED 제외)', async () => {
+      const activeProblems = [mockProblem];
+      dualWrite.find.mockResolvedValue(activeProblems);
 
       const result = await service.findAllByStudy(STUDY_ID);
 
       expect(dualWrite.find).toHaveBeenCalledWith({
-        where: { studyId: STUDY_ID },
+        where: { studyId: STUDY_ID, status: ProblemStatus.ACTIVE },
         order: { weekNumber: 'ASC', createdAt: 'ASC' },
       });
-      expect(result).toEqual(allProblems);
-      expect(result).toHaveLength(2);
+      expect(result).toEqual(activeProblems);
+      expect(result).toHaveLength(1);
     });
   });
 });

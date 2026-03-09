@@ -217,11 +217,11 @@ export class ProblemService {
   }
 
   /**
-   * 전체 문제 목록 (CLOSED 포함) — studyId 스코핑
+   * 전체 문제 목록 (ACTIVE만) — studyId 스코핑
    */
   async findAllByStudy(studyId: string): Promise<Problem[]> {
     const problems = await this.dualWrite.find({
-      where: { studyId },
+      where: { studyId, status: ProblemStatus.ACTIVE },
       order: { weekNumber: 'ASC', createdAt: 'ASC' },
     });
     return problems;
