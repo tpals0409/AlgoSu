@@ -109,7 +109,7 @@ export default function DashboardTwoColumn({
           </p>
         ) : (
           <div>
-            {recentSubmissions.map((s) => (
+            {recentSubmissions.filter((s) => problemMap.has(s.problemId)).map((s) => (
               <Link
                 key={s.id}
                 href={

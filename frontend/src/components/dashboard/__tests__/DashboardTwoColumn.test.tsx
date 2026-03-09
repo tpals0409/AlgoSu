@@ -59,6 +59,7 @@ jest.mock('@/lib/constants', () => ({
     DONE: { label: '완료', variant: 'success' },
     FAILED: { label: '실패', variant: 'error' },
   },
+  toTierLevel: (level?: number | null) => level ?? null,
 }));
 
 const makeSubmission = (overrides: Partial<Submission> = {}): Submission => ({
@@ -123,11 +124,12 @@ describe('DashboardTwoColumn', () => {
 
   it('제출 목록을 렌더링한다', () => {
     const submissions = [
-      makeSubmission({ id: 's-1', problemTitle: '두 수의 합', sagaStep: 'DONE' }),
-      makeSubmission({ id: 's-2', problemTitle: '최단 경로', sagaStep: 'AI_QUEUED' }),
+      makeSubmission({ id: 's-1', problemId: 'p-1', problemTitle: '두 수의 합', sagaStep: 'DONE' }),
+      makeSubmission({ id: 's-2', problemId: 'p-2', problemTitle: '최단 경로', sagaStep: 'AI_QUEUED' }),
     ];
+    const problems = [makeProblem({ id: 'p-1' }), makeProblem({ id: 'p-2', title: '최단 경로' })];
     render(
-      <DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} />,
+      <DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} allProblems={problems} />,
     );
     expect(screen.getByText('두 수의 합')).toBeInTheDocument();
     expect(screen.getByText('최단 경로')).toBeInTheDocument();
@@ -167,6 +169,7 @@ describe('DashboardTwoColumn', () => {
         {...defaultProps}
         recentSubmissions={submissions}
         problemTitleMap={titleMap}
+        allProblems={[makeProblem({ id: 'p-99' })]}
       />,
     );
     expect(screen.getByText('맵에서 가져온 제목')).toBeInTheDocument();
@@ -180,28 +183,28 @@ describe('DashboardTwoColumn', () => {
 
   it('방금 전 제출은 "방금 전"을 표시한다', () => {
     const submissions = [makeSubmission({
-      id: 's-1', problemTitle: '테스트',
+      id: 's-1', problemId: 'p-1', problemTitle: '테스트',
       createdAt: new Date(Date.now() - 30000).toISOString(), // 30초 전
     })];
-    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} />);
+    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} allProblems={[makeProblem({ id: 'p-1' })]} />);
     expect(screen.getByText('방금 전')).toBeInTheDocument();
   });
 
   it('2시간 전 제출은 "N시간 전"을 표시한다', () => {
     const submissions = [makeSubmission({
-      id: 's-1', problemTitle: '테스트',
+      id: 's-1', problemId: 'p-1', problemTitle: '테스트',
       createdAt: new Date(Date.now() - 2 * 3600000).toISOString(), // 2시간 전
     })];
-    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} />);
+    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} allProblems={[makeProblem({ id: 'p-1' })]} />);
     expect(screen.getByText('2시간 전')).toBeInTheDocument();
   });
 
   it('8일 전 제출은 "M.D" 형식 날짜를 표시한다', () => {
     const submissions = [makeSubmission({
-      id: 's-1', problemTitle: '테스트',
+      id: 's-1', problemId: 'p-1', problemTitle: '테스트',
       createdAt: new Date(Date.now() - 8 * 86400000).toISOString(), // 8일 전
     })];
-    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} />);
+    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} allProblems={[makeProblem({ id: 'p-1' })]} />);
     // M.D 형식의 날짜가 있는지 확인 (예: "1.1")
     const datePattern = /\d+\.\d+/;
     const timeEl = screen.getByText(datePattern);
@@ -231,7 +234,7 @@ describe('DashboardTwoColumn', () => {
     const submissions = [makeSubmission({
       id: 's-1', problemId: 'abcdefgh-1234', problemTitle: undefined,
     })];
-    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} problemTitleMap={new Map()} />);
+    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} problemTitleMap={new Map()} allProblems={[makeProblem({ id: 'abcdefgh-1234' })]} />);
     expect(screen.getByText('문제 abcdefgh')).toBeInTheDocument();
   });
 
@@ -243,37 +246,38 @@ describe('DashboardTwoColumn', () => {
 
   it('30분 전 제출은 "N분 전"을 표시한다', () => {
     const submissions = [makeSubmission({
-      id: 's-1', problemTitle: '분 테스트',
+      id: 's-1', problemId: 'p-1', problemTitle: '분 테스트',
       createdAt: new Date(Date.now() - 30 * 60000).toISOString(), // 30분 전
     })];
-    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} />);
+    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} allProblems={[makeProblem({ id: 'p-1' })]} />);
     expect(screen.getByText('30분 전')).toBeInTheDocument();
   });
 
   it('3일 전 제출은 "N일 전"을 표시한다', () => {
     const submissions = [makeSubmission({
-      id: 's-1', problemTitle: '일 테스트',
+      id: 's-1', problemId: 'p-1', problemTitle: '일 테스트',
       createdAt: new Date(Date.now() - 3 * 86400000).toISOString(), // 3일 전
     })];
-    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} />);
+    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} allProblems={[makeProblem({ id: 'p-1' })]} />);
     expect(screen.getByText('3일 전')).toBeInTheDocument();
   });
 
   it('제출이 여러 개이면 모두 렌더링된다', () => {
     const submissions = [
-      makeSubmission({ id: 's-1', problemTitle: '첫 번째', sagaStep: 'DONE' }),
-      makeSubmission({ id: 's-2', problemTitle: '두 번째', sagaStep: 'DONE' }),
-      makeSubmission({ id: 's-3', problemTitle: '세 번째', sagaStep: 'DONE' }),
+      makeSubmission({ id: 's-1', problemId: 'p-1', problemTitle: '첫 번째', sagaStep: 'DONE' }),
+      makeSubmission({ id: 's-2', problemId: 'p-2', problemTitle: '두 번째', sagaStep: 'DONE' }),
+      makeSubmission({ id: 's-3', problemId: 'p-3', problemTitle: '세 번째', sagaStep: 'DONE' }),
     ];
-    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} />);
+    const problems = [makeProblem({ id: 'p-1' }), makeProblem({ id: 'p-2' }), makeProblem({ id: 'p-3' })];
+    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} allProblems={problems} />);
     expect(screen.getByText('첫 번째')).toBeInTheDocument();
     expect(screen.getByText('두 번째')).toBeInTheDocument();
     expect(screen.getByText('세 번째')).toBeInTheDocument();
   });
 
   it('SAGA_STEP_CONFIG에 없는 sagaStep은 raw step 값을 표시한다', () => {
-    const submissions = [makeSubmission({ id: 's-1', problemTitle: '테스트', sagaStep: 'UNKNOWN_STEP' as never })];
-    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} />);
+    const submissions = [makeSubmission({ id: 's-1', problemId: 'p-1', problemTitle: '테스트', sagaStep: 'UNKNOWN_STEP' as never })];
+    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} allProblems={[makeProblem({ id: 'p-1' })]} />);
     expect(screen.getByText('UNKNOWN_STEP')).toBeInTheDocument();
   });
 
