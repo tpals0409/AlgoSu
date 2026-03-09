@@ -19,6 +19,7 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
+import { useSessionKeepAlive } from '@/hooks/useSessionKeepAlive';
 import {
   setGitHubConnected as setGitHubConnectedStorage,
   setGitHubUsername as setGitHubUsernameStorage,
@@ -156,6 +157,16 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
     await authApi.updateProfile({ avatar_url: avatarUrl });
     setUser((prev) => prev ? { ...prev, avatarPreset: presetKey } : prev);
   }, []);
+
+  // 세션 유지 — 활동 감지 + heartbeat + 만료 팝업
+  const handleSessionExpired = useCallback(() => {
+    setSessionExpired(true);
+  }, []);
+
+  useSessionKeepAlive({
+    enabled: user !== null,
+    onSessionExpired: handleSessionExpired,
+  });
 
   const value: AuthContextValue = {
     user,

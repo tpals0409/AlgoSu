@@ -18,6 +18,7 @@ import {
   Res,
   BadRequestException,
   NotFoundException,
+  HttpCode,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
@@ -255,6 +256,20 @@ export class OAuthController {
 
     this.logger.log(`아바타 수정: userId=${userId}`);
     return { avatar_url: avatarUrl };
+  }
+
+  /**
+   * 세션 heartbeat — 사용자 활동 감지 시 프론트엔드에서 호출
+   * JwtMiddleware 통과 → TokenRefreshInterceptor가 만료 임박 시 자동 갱신
+   * @api GET /auth/heartbeat
+   * @guard jwt
+   */
+  @ApiOperation({ summary: '세션 heartbeat' })
+  @ApiResponse({ status: 204, description: '세션 유효' })
+  @Get('heartbeat')
+  @HttpCode(204)
+  heartbeat(): void {
+    // TokenRefreshInterceptor가 자동 갱신 처리 — 별도 로직 불필요
   }
 
   /**
