@@ -139,6 +139,8 @@ jest.mock('@/lib/constants', () => ({
     PLATINUM: 'Platinum',
     DIAMOND: 'Diamond',
   },
+  DIFF_DOT_STYLE: {},
+  DIFF_BADGE_STYLE: {},
   SAGA_STEP_CONFIG: {
     DB_SAVED: { label: '저장됨', variant: 'muted' },
     GITHUB_QUEUED: { label: 'GitHub 대기', variant: 'info' },

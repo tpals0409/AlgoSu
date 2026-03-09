@@ -25,28 +25,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useStudy } from '@/contexts/StudyContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
-import { DIFFICULTY_LABELS, SAGA_STEP_CONFIG, toTierLevel } from '@/lib/constants';
+import { DIFFICULTY_LABELS, DIFF_DOT_STYLE, DIFF_BADGE_STYLE, SAGA_STEP_CONFIG, toTierLevel } from '@/lib/constants';
 import type { Difficulty, SagaStep } from '@/lib/constants';
 
-// ─── DIFFICULTY STYLES (CSS 변수 기반, 대시보드 패턴 통일) ────
-
-const DIFF_DOT_STYLE: Record<string, React.CSSProperties> = {
-  bronze:   { backgroundColor: 'var(--diff-bronze-color)' },
-  silver:   { backgroundColor: 'var(--diff-silver-color)' },
-  gold:     { backgroundColor: 'var(--diff-gold-color)' },
-  platinum: { backgroundColor: 'var(--diff-platinum-color)' },
-  diamond:  { backgroundColor: 'var(--diff-diamond-color)' },
-  ruby:     { backgroundColor: 'var(--diff-ruby-color)' },
-};
-
-const DIFF_BADGE_STYLE: Record<string, React.CSSProperties> = {
-  bronze:   { backgroundColor: 'var(--diff-bronze-bg)',   color: 'var(--diff-bronze-color)' },
-  silver:   { backgroundColor: 'var(--diff-silver-bg)',   color: 'var(--diff-silver-color)' },
-  gold:     { backgroundColor: 'var(--diff-gold-bg)',     color: 'var(--diff-gold-color)' },
-  platinum: { backgroundColor: 'var(--diff-platinum-bg)', color: 'var(--diff-platinum-color)' },
-  diamond:  { backgroundColor: 'var(--diff-diamond-bg)',  color: 'var(--diff-diamond-color)' },
-  ruby:     { backgroundColor: 'var(--diff-ruby-bg)',     color: 'var(--diff-ruby-color)' },
-};
 
 // ─── TYPES ────────────────────────────────
 

@@ -378,15 +378,11 @@ export default function StudyRoomPage(): ReactElement {
     window.history.back();
   };
 
-  const stats = useMemo(() => {
-    const activeProblemIds = new Set(problems.map((p) => p.id));
-    const activeSubmissions = (studyStats?.recentSubmissions ?? []).filter((s) => activeProblemIds.has(s.problemId));
-    return {
-      totalProblems: problems.length,
-      totalSubmissions: activeSubmissions.length,
-      totalAnalyzed: activeSubmissions.filter((s) => s.sagaStep === 'DONE').length,
-    };
-  }, [problems, studyStats]);
+  const stats = useMemo(() => ({
+    totalProblems: problems.length,
+    totalSubmissions: studyStats?.uniqueSubmissions ?? 0,
+    totalAnalyzed: studyStats?.uniqueAnalyzed ?? 0,
+  }), [problems, studyStats]);
 
   // ─── RENDER ─────────────────────────────
 

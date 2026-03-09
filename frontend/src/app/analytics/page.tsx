@@ -27,6 +27,7 @@ import {
   type StudyStats,
   type Problem,
 } from '@/lib/api';
+import { DIFFICULTY_COLORS, DIFFICULTIES } from '@/lib/constants';
 
 // ─── DYNAMIC IMPORT ──────────────────────
 
@@ -349,13 +350,7 @@ export default function AnalyticsPage(): ReactNode {
                 }));
             })()}
             difficultyData={(() => {
-              const DIFFICULTY_ORDER: { key: string; color: string }[] = [
-                { key: 'BRONZE', color: '#AD5600' },
-                { key: 'SILVER', color: '#7B8894' },
-                { key: 'GOLD', color: '#D6A000' },
-                { key: 'PLATINUM', color: '#39C5BB' },
-                { key: 'DIAMOND', color: '#40A0E0' },
-              ];
+              const DIFFICULTY_ORDER = DIFFICULTIES.map((key) => ({ key, color: DIFFICULTY_COLORS[key] }));
               const countMap = new Map<string, number>();
               for (const p of allProblems) {
                 if (!myProblemIds.has(p.id)) continue;

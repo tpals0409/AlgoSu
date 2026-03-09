@@ -300,6 +300,8 @@ export interface MemberWeekStat {
 
 export interface StudyStats {
   totalSubmissions: number;
+  uniqueSubmissions: number;
+  uniqueAnalyzed: number;
   byWeek: { week: string; count: number }[];
   byWeekPerUser: { userId: string; week: string; count: number }[];
   byMember: MemberStat[];

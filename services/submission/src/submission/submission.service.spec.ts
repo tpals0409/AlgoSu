@@ -607,6 +607,8 @@ describe('SubmissionService', () => {
     it('기본 통계를 반환한다 (weekNumber/userId 미지정)', async () => {
       repo.count.mockResolvedValue(42);
       mockQb.getRawMany
+        .mockResolvedValueOnce([{ uniqueSubmissions: 30 }])  // uniqueSubmissions
+        .mockResolvedValueOnce([{ uniqueAnalyzed: 25 }])     // uniqueAnalyzed
         .mockResolvedValueOnce([{ week: '3월1주차', count: 10 }])  // byWeek
         .mockResolvedValueOnce([{ userId: 'u1', week: '3월1주차', count: 3 }]) // byWeekPerUser
         .mockResolvedValueOnce([{ userId: 'u1', count: 10, doneCount: 8 }]);  // byMember
@@ -615,6 +617,8 @@ describe('SubmissionService', () => {
       const result = await service.getStudyStats('study-uuid-1');
 
       expect(result.totalSubmissions).toBe(42);
+      expect(result.uniqueSubmissions).toBe(30);
+      expect(result.uniqueAnalyzed).toBe(25);
       expect(result.byWeek).toEqual([{ week: '3월1주차', count: 10 }]);
       expect(result.byWeekPerUser).toEqual([{ userId: 'u1', week: '3월1주차', count: 3 }]);
       expect(result.byMember).toEqual([{ userId: 'u1', count: 10, doneCount: 8 }]);
@@ -626,6 +630,8 @@ describe('SubmissionService', () => {
     it('weekNumber 지정 시 byMemberWeek 통계 포함', async () => {
       repo.count.mockResolvedValue(10);
       mockQb.getRawMany
+        .mockResolvedValueOnce([{ uniqueSubmissions: 0 }])
+        .mockResolvedValueOnce([{ uniqueAnalyzed: 0 }])
         .mockResolvedValueOnce([])  // byWeek
         .mockResolvedValueOnce([])  // byWeekPerUser
         .mockResolvedValueOnce([])  // byMember
@@ -640,6 +646,8 @@ describe('SubmissionService', () => {
     it('userId 지정 시 solvedProblemIds 포함', async () => {
       repo.count.mockResolvedValue(10);
       mockQb.getRawMany
+        .mockResolvedValueOnce([{ uniqueSubmissions: 0 }])
+        .mockResolvedValueOnce([{ uniqueAnalyzed: 0 }])
         .mockResolvedValueOnce([])  // byWeek
         .mockResolvedValueOnce([])  // byWeekPerUser
         .mockResolvedValueOnce([])  // byMember
@@ -654,6 +662,8 @@ describe('SubmissionService', () => {
     it('weekNumber과 userId 모두 지정', async () => {
       repo.count.mockResolvedValue(5);
       mockQb.getRawMany
+        .mockResolvedValueOnce([{ uniqueSubmissions: 0 }])
+        .mockResolvedValueOnce([{ uniqueAnalyzed: 0 }])
         .mockResolvedValueOnce([])  // byWeek
         .mockResolvedValueOnce([])  // byWeekPerUser
         .mockResolvedValueOnce([])  // byMember
@@ -670,6 +680,8 @@ describe('SubmissionService', () => {
     it('byWeek 주차 정렬 (parseWeekKey)', async () => {
       repo.count.mockResolvedValue(20);
       mockQb.getRawMany
+        .mockResolvedValueOnce([{ uniqueSubmissions: 0 }])
+        .mockResolvedValueOnce([{ uniqueAnalyzed: 0 }])
         .mockResolvedValueOnce([
           { week: '3월2주차', count: 5 },
           { week: '2월4주차', count: 8 },
@@ -687,6 +699,8 @@ describe('SubmissionService', () => {
     it('byWeekPerUser 주차 정렬 (parseWeekKey)', async () => {
       repo.count.mockResolvedValue(20);
       mockQb.getRawMany
+        .mockResolvedValueOnce([{ uniqueSubmissions: 0 }])
+        .mockResolvedValueOnce([{ uniqueAnalyzed: 0 }])
         .mockResolvedValueOnce([])  // byWeek
         .mockResolvedValueOnce([
           { userId: 'u1', week: '3월2주차', count: 3 },
@@ -705,6 +719,8 @@ describe('SubmissionService', () => {
       repo.count.mockResolvedValue(5);
       // week 값이 정규식 패턴에 맞지 않는 케이스 포함
       mockQb.getRawMany
+        .mockResolvedValueOnce([{ uniqueSubmissions: 0 }])
+        .mockResolvedValueOnce([{ uniqueAnalyzed: 0 }])
         .mockResolvedValueOnce([
           { week: 'invalid-format', count: 3 },
           { week: '3월1주차', count: 5 },

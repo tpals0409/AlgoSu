@@ -262,6 +262,8 @@ export class SubmissionService {
    */
   async getStudyStats(studyId: string, weekNumber?: string, userId?: string): Promise<{
     totalSubmissions: number;
+    uniqueSubmissions: number;
+    uniqueAnalyzed: number;
     byWeek: { week: string; count: number }[];
     byWeekPerUser: { userId: string; week: string; count: number }[];
     byMember: { userId: string; count: number; doneCount: number }[];
@@ -272,6 +274,21 @@ export class SubmissionService {
     const totalSubmissions = await this.submissionRepo.count({
       where: { studyId },
     });
+
+    // 고유 제출 수 (problemId+userId 기준 dedup) — 인원별 중복 제출은 1건으로 처리
+    const [{ uniqueSubmissions }] = await this.submissionRepo
+      .createQueryBuilder('s')
+      .select('COUNT(DISTINCT s.problem_id || s.user_id)::int', 'uniqueSubmissions')
+      .where('s.study_id = :studyId', { studyId })
+      .getRawMany<{ uniqueSubmissions: number }>();
+
+    // 고유 분석 완료 수 (problemId+userId 기준 dedup, sagaStep=DONE)
+    const [{ uniqueAnalyzed }] = await this.submissionRepo
+      .createQueryBuilder('s')
+      .select('COUNT(DISTINCT s.problem_id || s.user_id)::int', 'uniqueAnalyzed')
+      .where('s.study_id = :studyId', { studyId })
+      .andWhere("s.saga_step = 'DONE'")
+      .getRawMany<{ uniqueAnalyzed: number }>();
 
     const parseWeekKey = (w: string) => {
       const m = w.match(/^(\d+)월(\d+)주차$/);
@@ -324,7 +341,7 @@ export class SubmissionService {
       doneCount: Number(r.doneCount),
     }));
 
-    // 최근 제출 10건
+    // 최근 제출 10건 (표시용)
     const recentSubmissions = await this.submissionRepo.find({
       where: { studyId },
       order: { createdAt: 'DESC' },
@@ -362,7 +379,7 @@ export class SubmissionService {
       solvedProblemIds = rows.map((r) => r.problemId);
     }
 
-    return { totalSubmissions, byWeek, byWeekPerUser, byMember, byMemberWeek, recentSubmissions, solvedProblemIds };
+    return { totalSubmissions, uniqueSubmissions: Number(uniqueSubmissions), uniqueAnalyzed: Number(uniqueAnalyzed), byWeek, byWeekPerUser, byMember, byMemberWeek, recentSubmissions, solvedProblemIds };
   }
 
   /**

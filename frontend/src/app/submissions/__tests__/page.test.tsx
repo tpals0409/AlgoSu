@@ -123,6 +123,8 @@ jest.mock('@/lib/constants', () => ({
     PLATINUM: 'Platinum',
     DIAMOND: 'Diamond',
   },
+  DIFF_DOT_STYLE: {},
+  DIFF_BADGE_STYLE: {},
   toTierLevel: (rawLevel: number | null | undefined) => {
     if (rawLevel == null || rawLevel <= 0) return null;
     return 5 - ((rawLevel - 1) % 5);

@@ -28,13 +28,12 @@ export interface SolvedProblem {
   acceptedUserCount: number;
 }
 
-// solved.ac level → our Difficulty + level
+// solved.ac level(0~30) → our Difficulty + level(원시값 그대로 저장)
 function toOurDiff(solvedLevel: number): { difficulty: Difficulty; level: number } {
-  if (solvedLevel === 0) return { difficulty: 'BRONZE', level: 1 };
+  if (solvedLevel <= 0) return { difficulty: 'BRONZE', level: 1 };
   const tiers: Difficulty[] = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND', 'RUBY'];
   const tierIdx = Math.min(Math.floor((solvedLevel - 1) / 5), 5);
-  const lvl = ((solvedLevel - 1) % 5) + 1;
-  return { difficulty: tiers[tierIdx], level: lvl };
+  return { difficulty: tiers[tierIdx], level: solvedLevel };
 }
 
 // Full tier label (e.g. "Gold III")

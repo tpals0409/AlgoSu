@@ -59,6 +59,8 @@ jest.mock('@/lib/constants', () => ({
     DONE: { label: '완료', variant: 'success' },
     FAILED: { label: '실패', variant: 'error' },
   },
+  DIFF_DOT_STYLE: {},
+  DIFF_BADGE_STYLE: {},
   toTierLevel: (level?: number | null) => level ?? null,
 }));
 

@@ -20,7 +20,7 @@ import {
   type Submission,
 } from '@/lib/api';
 import { useStudy } from '@/contexts/StudyContext';
-import { DIFFICULTIES, DIFFICULTY_LABELS, toTierLevel, type Difficulty } from '@/lib/constants';
+import { DIFFICULTIES, DIFFICULTY_LABELS, DIFF_DOT_STYLE, DIFF_BADGE_STYLE, toTierLevel, type Difficulty } from '@/lib/constants';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
 
@@ -35,25 +35,6 @@ const STATUS_TABS = [
   { value: 'FAILED', label: '실패' },
 ] as const;
 
-// ─── DIFFICULTY STYLES (CSS 변수 기반, 문제 목록 패턴 통일) ────
-
-const DIFF_DOT_STYLE: Record<string, React.CSSProperties> = {
-  bronze:   { backgroundColor: 'var(--diff-bronze-color)' },
-  silver:   { backgroundColor: 'var(--diff-silver-color)' },
-  gold:     { backgroundColor: 'var(--diff-gold-color)' },
-  platinum: { backgroundColor: 'var(--diff-platinum-color)' },
-  diamond:  { backgroundColor: 'var(--diff-diamond-color)' },
-  ruby:     { backgroundColor: 'var(--diff-ruby-color)' },
-};
-
-const DIFF_BADGE_STYLE: Record<string, React.CSSProperties> = {
-  bronze:   { backgroundColor: 'var(--diff-bronze-bg)',   color: 'var(--diff-bronze-color)' },
-  silver:   { backgroundColor: 'var(--diff-silver-bg)',   color: 'var(--diff-silver-color)' },
-  gold:     { backgroundColor: 'var(--diff-gold-bg)',     color: 'var(--diff-gold-color)' },
-  platinum: { backgroundColor: 'var(--diff-platinum-bg)', color: 'var(--diff-platinum-color)' },
-  diamond:  { backgroundColor: 'var(--diff-diamond-bg)',  color: 'var(--diff-diamond-color)' },
-  ruby:     { backgroundColor: 'var(--diff-ruby-bg)',     color: 'var(--diff-ruby-color)' },
-};
 
 // 언어 아바타 색상
 const LANG_AVATAR: Record<string, { label: string; bg: string; color: string }> = {

@@ -14,30 +14,11 @@ import { useStudy } from '@/contexts/StudyContext';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
 import type { Problem } from '@/lib/api';
-import { toTierLevel, type Difficulty } from '@/lib/constants';
+import { DIFF_DOT_STYLE, DIFF_BADGE_STYLE, toTierLevel, type Difficulty } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 
 // ─── HELPERS ────────────────────────────
 
-/** 난이도별 도트 색상 — CSS 변수(--diff-*-color) 기반 inline style */
-const DIFFICULTY_DOT_STYLE: Record<string, React.CSSProperties> = {
-  bronze:   { backgroundColor: 'var(--diff-bronze-color)' },
-  silver:   { backgroundColor: 'var(--diff-silver-color)' },
-  gold:     { backgroundColor: 'var(--diff-gold-color)' },
-  platinum: { backgroundColor: 'var(--diff-platinum-color)' },
-  diamond:  { backgroundColor: 'var(--diff-diamond-color)' },
-  ruby:     { backgroundColor: 'var(--diff-ruby-color)' },
-};
-
-/** 난이도별 뱃지 배경 — CSS 변수(--diff-*-bg, --diff-*-color) 기반 inline style */
-const DIFFICULTY_BADGE_STYLE: Record<string, React.CSSProperties> = {
-  bronze:   { backgroundColor: 'var(--diff-bronze-bg)',   color: 'var(--diff-bronze-color)' },
-  silver:   { backgroundColor: 'var(--diff-silver-bg)',   color: 'var(--diff-silver-color)' },
-  gold:     { backgroundColor: 'var(--diff-gold-bg)',     color: 'var(--diff-gold-color)' },
-  platinum: { backgroundColor: 'var(--diff-platinum-bg)', color: 'var(--diff-platinum-color)' },
-  diamond:  { backgroundColor: 'var(--diff-diamond-bg)',  color: 'var(--diff-diamond-color)' },
-  ruby:     { backgroundColor: 'var(--diff-ruby-bg)',     color: 'var(--diff-ruby-color)' },
-};
 
 function getDDay(deadline: string): { label: string; style: React.CSSProperties } {
   const diff = Math.ceil((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
@@ -82,8 +63,8 @@ export default function DashboardThisWeek({
         const isSubmitted = submittedProblemIds.has(p.id);
         const difficulty = (p.difficulty ?? '') as Difficulty;
         const diffKey = difficulty.toLowerCase();
-        const dotStyle = DIFFICULTY_DOT_STYLE[diffKey] ?? { backgroundColor: 'var(--text-3)' };
-        const badgeStyle = DIFFICULTY_BADGE_STYLE[diffKey] ?? { backgroundColor: 'var(--bg-alt)', color: 'var(--text-2)' };
+        const dotStyle = DIFF_DOT_STYLE[diffKey] ?? { backgroundColor: 'var(--text-3)' };
+        const badgeStyle = DIFF_BADGE_STYLE[diffKey] ?? { backgroundColor: 'var(--bg-alt)', color: 'var(--text-2)' };
         const displayLevel = toTierLevel(p.level);
         const diffLabel = difficulty ? `${difficulty.charAt(0).toUpperCase()}${difficulty.slice(1).toLowerCase()}${displayLevel ? ` ${displayLevel}` : ''}` : '';
 

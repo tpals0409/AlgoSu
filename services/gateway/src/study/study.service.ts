@@ -505,6 +505,8 @@ export class StudyService {
 
     const data = result.data as {
       totalSubmissions: number;
+      uniqueSubmissions: number;
+      uniqueAnalyzed: number;
       byWeek: { week: string; count: number }[];
       byWeekPerUser: { userId: string; week: string; count: number }[];
       byMember: { userId: string; count: number; doneCount: number }[];
@@ -523,6 +525,8 @@ export class StudyService {
 
     return {
       totalSubmissions: data.totalSubmissions,
+      uniqueSubmissions: data.uniqueSubmissions ?? 0,
+      uniqueAnalyzed: data.uniqueAnalyzed ?? 0,
       byWeek: data.byWeek,
       byWeekPerUser: data.byWeekPerUser,
       byMember: data.byMember.map(mapMemberInfo),

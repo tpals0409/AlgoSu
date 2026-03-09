@@ -23,7 +23,7 @@ import { submissionApi, problemApi, type AnalysisResult, type Submission } from 
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
 import { useStudy } from '@/contexts/StudyContext';
-import { toTierLevel } from '@/lib/constants';
+import { DIFF_DOT_STYLE, DIFF_BADGE_STYLE, toTierLevel } from '@/lib/constants';
 
 // ─── TYPES ────────────────────────────────
 
@@ -43,26 +43,6 @@ interface FeedbackCategory {
   comment: string;
   highlights: { startLine: number; endLine: number }[];
 }
-
-// ─── DIFFICULTY STYLES ───────────────────
-
-const DIFF_DOT_STYLE: Record<string, React.CSSProperties> = {
-  bronze: { backgroundColor: 'var(--diff-bronze-color)' },
-  silver: { backgroundColor: 'var(--diff-silver-color)' },
-  gold: { backgroundColor: 'var(--diff-gold-color)' },
-  platinum: { backgroundColor: 'var(--diff-platinum-color)' },
-  diamond: { backgroundColor: 'var(--diff-diamond-color)' },
-  ruby: { backgroundColor: 'var(--diff-ruby-color)' },
-};
-
-const DIFF_BADGE_STYLE: Record<string, React.CSSProperties> = {
-  bronze: { backgroundColor: 'var(--diff-bronze-bg)', color: 'var(--diff-bronze-color)' },
-  silver: { backgroundColor: 'var(--diff-silver-bg)', color: 'var(--diff-silver-color)' },
-  gold: { backgroundColor: 'var(--diff-gold-bg)', color: 'var(--diff-gold-color)' },
-  platinum: { backgroundColor: 'var(--diff-platinum-bg)', color: 'var(--diff-platinum-color)' },
-  diamond: { backgroundColor: 'var(--diff-diamond-bg)', color: 'var(--diff-diamond-color)' },
-  ruby: { backgroundColor: 'var(--diff-ruby-bg)', color: 'var(--diff-ruby-color)' },
-};
 
 const DIFFICULTY_LABELS: Record<string, string> = {
   BRONZE: 'Bronze', SILVER: 'Silver', GOLD: 'Gold',

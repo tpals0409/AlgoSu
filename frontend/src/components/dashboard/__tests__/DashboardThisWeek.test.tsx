@@ -44,6 +44,8 @@ jest.mock('@/lib/utils', () => ({
 }));
 
 jest.mock('@/lib/constants', () => ({
+  DIFF_DOT_STYLE: {},
+  DIFF_BADGE_STYLE: {},
   toTierLevel: (level: number | null | undefined) => level ?? null,
 }));
 
