@@ -47,9 +47,9 @@ const nextConfig: NextConfig = {
             value: [
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net blob:",
-              "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+              "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com",
               `img-src 'self' blob: data: ${minioUrl}`.trim(),
-              "font-src 'self' https://cdn.jsdelivr.net",
+              "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com",
               `connect-src 'self' ${apiBaseUrl} https://cdn.jsdelivr.net`.trim(),
               "worker-src 'self' blob:",
               "frame-ancestors 'none'",
