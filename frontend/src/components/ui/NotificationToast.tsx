@@ -6,7 +6,7 @@
  */
 'use client';
 
-import { useState, useEffect, useCallback, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import {
@@ -47,9 +47,17 @@ export function NotificationToast({
 }: NotificationToastProps): ReactNode {
   const router = useRouter();
   const [toast, setToast] = useState<ToastItem | null>(null);
+  const onDismissRef = useRef(onDismiss);
+  const onReadRef = useRef(onRead);
+  onDismissRef.current = onDismiss;
+  onReadRef.current = onRead;
+  const lastNotificationIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!notification) return;
+    // 같은 알림 중복 표시 방지
+    if (notification.id === lastNotificationIdRef.current) return;
+    lastNotificationIdRef.current = notification.id;
 
     // 새 알림 표시
     setToast({ notification, visible: false });
@@ -64,7 +72,7 @@ export function NotificationToast({
       setToast((prev) => /* istanbul ignore next -- defensive null guard */ (prev ? { ...prev, visible: false } : null));
       setTimeout(() => {
         setToast(null);
-        onDismiss();
+        onDismissRef.current();
       }, 300);
     }, 4000);
 
@@ -72,20 +80,22 @@ export function NotificationToast({
       clearTimeout(showTimer);
       clearTimeout(hideTimer);
     };
-  }, [notification, onDismiss]);
+  }, [notification]);
 
   const handleClick = useCallback(() => {
-    /* istanbul ignore next -- unreachable: component returns null when toast is null */
-    if (!toast) return;
-    const { id, link } = toast.notification;
-    onRead(id);
-    setToast((prev) => /* istanbul ignore next -- defensive null guard */ (prev ? { ...prev, visible: false } : null));
-    setTimeout(() => {
-      setToast(null);
-      onDismiss();
-      if (link) router.push(link);
-    }, 300);
-  }, [toast, onDismiss, onRead, router]);
+    setToast((prev) => {
+      /* istanbul ignore next -- unreachable: component returns null when toast is null */
+      if (!prev) return null;
+      const { id, link } = prev.notification;
+      onReadRef.current(id);
+      setTimeout(() => {
+        setToast(null);
+        onDismissRef.current();
+        if (link) router.push(link);
+      }, 300);
+      return { ...prev, visible: false };
+    });
+  }, [router]);
 
   const handleClose = useCallback(
     (e: React.MouseEvent) => {
@@ -93,10 +103,10 @@ export function NotificationToast({
       setToast((prev) => /* istanbul ignore next -- defensive null guard */ (prev ? { ...prev, visible: false } : null));
       setTimeout(() => {
         setToast(null);
-        onDismiss();
+        onDismissRef.current();
       }, 300);
     },
-    [onDismiss],
+    [],
   );
 
   if (!toast) return null;

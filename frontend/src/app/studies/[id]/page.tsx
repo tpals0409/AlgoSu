@@ -123,6 +123,7 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
       setMembers(memberData);
       setProblems(problemData);
       setStats(statsData);
+      document.title = `${studyData.name} | AlgoSu`;
     } catch (err: unknown) {
       setError(
         (err as Error).message ??
@@ -271,6 +272,7 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
               studyId={studyId}
               stats={stats}
               totalProblems={problems.length}
+              activeProblemIds={problems.map((p) => p.id)}
               onNicknameUpdated={loadStudyData}
             />
           )}
@@ -487,6 +489,7 @@ function MembersTab({
   studyId,
   stats,
   totalProblems,
+  activeProblemIds,
   onNicknameUpdated,
 }: {
   readonly members: StudyMember[];
@@ -494,6 +497,7 @@ function MembersTab({
   readonly studyId: string;
   readonly stats: StudyStats | null;
   readonly totalProblems: number;
+  readonly activeProblemIds: string[];
   readonly onNicknameUpdated: () => Promise<void>;
 }): ReactNode {
   // 닉네임 수정 상태
@@ -520,11 +524,13 @@ function MembersTab({
     }
   }, [studyId, nicknameValue, onNicknameUpdated]);
 
-  /** 멤버별 고유 문제 제출 수 — recentSubmissions에서 도출 */
+  /** 멤버별 고유 문제 제출 수 — recentSubmissions에서 도출 (삭제된 문제 제외) */
+  const activeSet = new Set(activeProblemIds);
   const memberUniqueProblemMap = new Map<string, number>();
   const perUserProblems = new Map<string, Set<string>>();
   for (const s of stats?.recentSubmissions ?? []) {
     if (s.sagaStep !== 'DONE') continue;
+    if (!activeSet.has(s.problemId)) continue;
     if (!perUserProblems.has(s.userId ?? '')) perUserProblems.set(s.userId ?? '', new Set());
     perUserProblems.get(s.userId ?? '')!.add(s.problemId);
   }

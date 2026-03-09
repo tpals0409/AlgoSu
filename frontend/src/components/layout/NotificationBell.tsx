@@ -109,12 +109,15 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
    */
   const handleSSENotification = useCallback((notification: Notification) => {
     if (notification.read) return;
+    if (displayedToastIds.current.has(notification.id)) return;
+    displayedToastIds.current.add(notification.id);
     setUnreadCount((prev) => prev + 1);
-    setNotifications((prev) => [notification, ...prev].slice(0, MAX_NOTIFICATIONS));
-    if (!displayedToastIds.current.has(notification.id)) {
-      displayedToastIds.current.add(notification.id);
-      setToastNotification(notification);
-    }
+    setNotifications((prev) => {
+      // 중복 알림 방지
+      if (prev.some((n) => n.id === notification.id)) return prev;
+      return [notification, ...prev].slice(0, MAX_NOTIFICATIONS);
+    });
+    setToastNotification(notification);
   }, []);
 
   const { sseDisconnected } = useNotificationSSE(true, handleSSENotification);
@@ -224,6 +227,9 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
       // 조용히 실패
     }
   }, []);
+
+  const handleToastDismiss = useCallback(() => setToastNotification(null), []);
+  const handleToastRead = useCallback((id: string) => void handleMarkRead(id), [handleMarkRead]);
 
   // 외부 클릭 닫기
   useEffect(() => {
@@ -442,8 +448,8 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
       {/* 하단 토스트 알림 */}
       <NotificationToast
         notification={toastNotification}
-        onDismiss={() => setToastNotification(null)}
-        onRead={(id) => void handleMarkRead(id)}
+        onDismiss={handleToastDismiss}
+        onRead={handleToastRead}
       />
     </>
   );

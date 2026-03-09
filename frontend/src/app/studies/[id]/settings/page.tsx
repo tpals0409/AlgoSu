@@ -111,12 +111,14 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
   const [deleteConfirmName, setDeleteConfirmName] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  // mount animation
+  // mount animation — 로딩 완료 후 트리거
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
+    if (isLoading) return;
+    setMounted(false);
     const t = setTimeout(() => setMounted(true), 50);
     return () => clearTimeout(t);
-  }, []);
+  }, [isLoading]);
 
   // 초대코드 타이머
   useEffect(() => {
@@ -165,6 +167,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
       setStudyName(studyData.name);
       setStudyDesc(studyData.description ?? '');
       setMembers(memberData);
+      document.title = `${studyData.name} 설정 | AlgoSu`;
     } catch (err: unknown) {
       setError(
         (err as Error).message ??
