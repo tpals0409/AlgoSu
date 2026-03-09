@@ -199,11 +199,11 @@ export default function StudyRoomPage(): ReactElement {
 
   const weekGroups = useMemo(() => groupProblemsByWeek(problems), [problems]);
 
-  /** 문제별 제출 수 맵 */
+  /** 문제별 제출 수 + 분석 완료 수 맵 */
   const submissionCountByProblem = useMemo(() => {
-    const map = new Map<string, number>();
+    const map = new Map<string, { count: number; analyzedCount: number }>();
     for (const entry of studyStats?.submitterCountByProblem ?? []) {
-      map.set(entry.problemId, entry.count);
+      map.set(entry.problemId, { count: entry.count, analyzedCount: entry.analyzedCount });
     }
     return map;
   }, [studyStats]);
@@ -416,8 +416,9 @@ export default function StudyRoomPage(): ReactElement {
 
   // 2단계: 제출 현황 뷰
   if (selectedProblem) {
-    const submittedCount = submissions.length;
-    const analyzedCount = submissions.filter((s) => s.sagaStep === 'DONE').length;
+    const problemStats = submissionCountByProblem.get(selectedProblem.id);
+    const submittedCount = problemStats?.count ?? 0;
+    const analyzedCount = problemStats?.analyzedCount ?? 0;
 
     return (
       <AppLayout>
@@ -511,7 +512,7 @@ function StatCard({ icon, iconBg, iconColor, value, label }: {
 
 function WeekSection({ week, barsAnimated, submissionCountByProblem, totalMembers, onSelect }: {
   readonly week: WeekGroup; readonly barsAnimated: boolean;
-  readonly submissionCountByProblem: Map<string, number>;
+  readonly submissionCountByProblem: Map<string, { count: number; analyzedCount: number }>;
   readonly totalMembers: number;
   readonly onSelect: (p: Problem) => void;
 }): ReactNode {
@@ -537,7 +538,7 @@ function WeekSection({ week, barsAnimated, submissionCountByProblem, totalMember
             key={p.id}
             problem={p}
             barsAnimated={barsAnimated}
-            submittedCount={submissionCountByProblem.get(p.id) ?? 0}
+            submittedCount={submissionCountByProblem.get(p.id)?.count ?? 0}
             totalMembers={totalMembers}
             onSelect={onSelect}
           />

@@ -837,9 +837,16 @@ describe('StudyService', () => {
   // 23. getStudyStats
   // ============================
   describe('getStudyStats', () => {
+    const mockActiveProblemIdsResponse = {
+      ok: true,
+      json: () => Promise.resolve({ data: ['p1', 'p2'] }),
+    };
+
     it('통계 API 정상 응답 처리', async () => {
-      // configService.getOrThrow 추가
+      // getOrThrow: problem URL, problem key, submission URL, submission key
       configService.getOrThrow = jest.fn()
+        .mockReturnValueOnce('http://problem:3000')
+        .mockReturnValueOnce('internal-key-problem')
         .mockReturnValueOnce('http://submission:3000')
         .mockReturnValueOnce('internal-key-123');
 
@@ -854,16 +861,18 @@ describe('StudyService', () => {
           byMemberWeek: null,
           recentSubmissions: [],
           solvedProblemIds: ['p1'],
-          submitterCountByProblem: [{ problemId: 'p1', count: 2 }],
+          submitterCountByProblem: [{ problemId: 'p1', count: 2, analyzedCount: 1 }],
         },
       };
 
-      // global fetch 모킹
+      // global fetch 모킹: 1차 = active problem IDs, 2차 = stats
       const originalFetch = global.fetch;
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockStatsData),
-      }) as any;
+      global.fetch = jest.fn()
+        .mockResolvedValueOnce(mockActiveProblemIdsResponse)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockStatsData),
+        }) as any;
 
       memberRepository.find.mockResolvedValue([mockAdminMember]);
 
@@ -874,21 +883,30 @@ describe('StudyService', () => {
       expect(result.uniqueAnalyzed).toBe(6);
       expect(result.byMember).toHaveLength(1);
       expect(result.byMember[0].isMember).toBe(true);
-      expect(result.submitterCountByProblem).toEqual([{ problemId: 'p1', count: 2 }]);
+      expect(result.submitterCountByProblem).toEqual([{ problemId: 'p1', count: 2, analyzedCount: 1 }]);
+      // activeProblemIds가 submission stats 호출에 포함되어야 함
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('activeProblemIds=p1%2Cp2'),
+        expect.any(Object),
+      );
 
       global.fetch = originalFetch;
     });
 
     it('통계 API 실패 → NotFoundException', async () => {
       configService.getOrThrow = jest.fn()
+        .mockReturnValueOnce('http://problem:3000')
+        .mockReturnValueOnce('internal-key-problem')
         .mockReturnValueOnce('http://submission:3000')
         .mockReturnValueOnce('internal-key-123');
 
       const originalFetch = global.fetch;
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: false,
-        status: 500,
-      }) as any;
+      global.fetch = jest.fn()
+        .mockResolvedValueOnce(mockActiveProblemIdsResponse)
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 500,
+        }) as any;
 
       await expect(service.getStudyStats(STUDY_ID, USER_ID)).rejects.toThrow(
         NotFoundException,
@@ -899,6 +917,8 @@ describe('StudyService', () => {
 
     it('weekNumber 파라미터 전달 시 쿼리스트링 포함', async () => {
       configService.getOrThrow = jest.fn()
+        .mockReturnValueOnce('http://problem:3000')
+        .mockReturnValueOnce('internal-key-problem')
         .mockReturnValueOnce('http://submission:3000')
         .mockReturnValueOnce('internal-key-123');
 
@@ -916,10 +936,12 @@ describe('StudyService', () => {
       };
 
       const originalFetch = global.fetch;
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockStatsData),
-      }) as any;
+      global.fetch = jest.fn()
+        .mockResolvedValueOnce(mockActiveProblemIdsResponse)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockStatsData),
+        }) as any;
 
       memberRepository.find.mockResolvedValue([mockAdminMember]);
 
@@ -931,6 +953,48 @@ describe('StudyService', () => {
       );
       expect(result.solvedProblemIds).toEqual([]);
       expect(result.byMemberWeek).not.toBeNull();
+
+      global.fetch = originalFetch;
+    });
+
+    it('ACTIVE 문제 조회 실패 시 activeProblemIds 없이 기존 동작 유지', async () => {
+      configService.getOrThrow = jest.fn()
+        .mockReturnValueOnce('http://problem:3000')
+        .mockReturnValueOnce('internal-key-problem')
+        .mockReturnValueOnce('http://submission:3000')
+        .mockReturnValueOnce('internal-key-123');
+
+      const mockStatsData = {
+        data: {
+          totalSubmissions: 5,
+          uniqueSubmissions: 3,
+          uniqueAnalyzed: 2,
+          byWeek: [],
+          byWeekPerUser: [],
+          byMember: [],
+          byMemberWeek: null,
+          recentSubmissions: [],
+          solvedProblemIds: null,
+          submitterCountByProblem: [],
+        },
+      };
+
+      const originalFetch = global.fetch;
+      global.fetch = jest.fn()
+        .mockResolvedValueOnce({ ok: false, status: 500 }) // problem service 실패
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockStatsData),
+        }) as any;
+
+      memberRepository.find.mockResolvedValue([]);
+
+      const result = await service.getStudyStats(STUDY_ID, USER_ID);
+
+      expect(result.totalSubmissions).toBe(5);
+      // activeProblemIds가 없으므로 쿼리스트링에 미포함
+      const statsCall = (global.fetch as jest.Mock).mock.calls[1][0] as string;
+      expect(statsCall).not.toContain('activeProblemIds');
 
       global.fetch = originalFetch;
     });
@@ -1055,6 +1119,8 @@ describe('StudyService', () => {
   describe('getStudyStats — byMemberWeek 매핑 분기', () => {
     it('byMemberWeek가 배열이면 isMember 매핑 포함', async () => {
       configService.getOrThrow = jest.fn()
+        .mockReturnValueOnce('http://problem:3000')
+        .mockReturnValueOnce('internal-key-problem')
         .mockReturnValueOnce('http://submission:3000')
         .mockReturnValueOnce('internal-key-123');
 
@@ -1072,10 +1138,15 @@ describe('StudyService', () => {
       };
 
       const originalFetch = global.fetch;
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockStatsData),
-      }) as any;
+      global.fetch = jest.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ data: ['p1'] }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockStatsData),
+        }) as any;
 
       memberRepository.find.mockResolvedValue([mockAdminMember]);
 

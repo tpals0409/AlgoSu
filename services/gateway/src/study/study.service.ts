@@ -472,12 +472,18 @@ export class StudyService {
    * @guard study-member
    */
   async getStudyStats(studyId: string, userId: string, weekNumber?: string) {
+    // ACTIVE 문제 ID 조회 — 삭제(CLOSED) 문제 제출을 집계에서 제외
+    const activeProblemIds = await this.fetchActiveProblemIds(studyId);
+
     const submissionServiceUrl = this.configService.getOrThrow<string>('SUBMISSION_SERVICE_URL');
     const internalKey = this.configService.getOrThrow<string>('INTERNAL_KEY_SUBMISSION');
 
     const params = new URLSearchParams();
     if (weekNumber) params.set('weekNumber', weekNumber);
     params.set('userId', userId);
+    if (activeProblemIds) {
+      params.set('activeProblemIds', activeProblemIds.join(','));
+    }
     const qs = `?${params.toString()}`;
     const response = await fetch(
       `${submissionServiceUrl}/internal/stats/${studyId}${qs}`,
@@ -513,7 +519,7 @@ export class StudyService {
       byMemberWeek: { userId: string; count: number }[] | null;
       recentSubmissions: unknown[];
       solvedProblemIds: string[] | null;
-      submitterCountByProblem: { problemId: string; count: number }[];
+      submitterCountByProblem: { problemId: string; count: number; analyzedCount: number }[];
     };
 
     const mapMemberInfo = (m: { userId: string; count: number; doneCount: number }) => ({
@@ -544,6 +550,39 @@ export class StudyService {
       solvedProblemIds: data.solvedProblemIds ?? [],
       submitterCountByProblem: data.submitterCountByProblem ?? [],
     };
+  }
+
+  /**
+   * Problem Service에서 ACTIVE 문제 ID 목록 조회
+   * 실패 시 undefined 반환 (기존 동작 유지 — 전체 집계)
+   */
+  private async fetchActiveProblemIds(studyId: string): Promise<string[] | undefined> {
+    try {
+      const problemServiceUrl = this.configService.getOrThrow<string>('PROBLEM_SERVICE_URL');
+      const internalKey = this.configService.getOrThrow<string>('INTERNAL_KEY_PROBLEM');
+
+      const response = await fetch(
+        `${problemServiceUrl}/internal/active-ids/${studyId}`,
+        {
+          method: 'GET',
+          headers: {
+            'x-internal-key': internalKey,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+      if (!response.ok) {
+        this.logger.warn(`ACTIVE 문제 ID 조회 실패: studyId=${studyId}, status=${response.status}`);
+        return undefined;
+      }
+
+      const result = (await response.json()) as { data: string[] };
+      return result.data;
+    } catch (error: unknown) {
+      this.logger.warn(`ACTIVE 문제 ID 조회 오류: studyId=${studyId}, ${(error as Error).message}`);
+      return undefined;
+    }
   }
 
   // ─── 멤버 관리 ────────────────────────────────

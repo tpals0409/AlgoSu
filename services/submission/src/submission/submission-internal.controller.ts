@@ -106,8 +106,10 @@ export class SubmissionInternalController {
     @Param('studyId', ParseUUIDPipe) studyId: string,
     @Query('weekNumber') weekNumber?: string,
     @Query('userId') userId?: string,
+    @Query('activeProblemIds') activeProblemIds?: string,
   ) {
-    const stats = await this.submissionService.getStudyStats(studyId, weekNumber, userId);
+    const ids = activeProblemIds ? activeProblemIds.split(',').filter(Boolean) : undefined;
+    const stats = await this.submissionService.getStudyStats(studyId, weekNumber, userId, ids);
     return { data: stats };
   }
 

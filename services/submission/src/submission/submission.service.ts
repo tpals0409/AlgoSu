@@ -10,7 +10,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, In } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Submission, SagaStep } from './submission.entity';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
@@ -260,7 +260,7 @@ export class SubmissionService {
    * 스터디 통계 조회 — 내부 API 전용
    * Gateway에서 GET /api/studies/:id/stats 호출 시 사용
    */
-  async getStudyStats(studyId: string, weekNumber?: string, userId?: string): Promise<{
+  async getStudyStats(studyId: string, weekNumber?: string, userId?: string, activeProblemIds?: string[]): Promise<{
     totalSubmissions: number;
     uniqueSubmissions: number;
     uniqueAnalyzed: number;
@@ -270,26 +270,55 @@ export class SubmissionService {
     byMemberWeek: { userId: string; count: number }[] | null;
     recentSubmissions: { id: string; userId: string; problemId: string; language: string; sagaStep: string; aiScore: number | null; createdAt: Date }[];
     solvedProblemIds: string[] | null;
-    submitterCountByProblem: { problemId: string; count: number }[];
+    submitterCountByProblem: { problemId: string; count: number; analyzedCount: number }[];
   }> {
-    const totalSubmissions = await this.submissionRepo.count({
-      where: { studyId },
-    });
+    // activeProblemIds가 빈 배열이면 ACTIVE 문제가 없으므로 즉시 빈 결과 반환
+    if (activeProblemIds && activeProblemIds.length === 0) {
+      return {
+        totalSubmissions: 0,
+        uniqueSubmissions: 0,
+        uniqueAnalyzed: 0,
+        byWeek: [],
+        byWeekPerUser: [],
+        byMember: [],
+        byMemberWeek: weekNumber ? [] : null,
+        recentSubmissions: [],
+        solvedProblemIds: userId ? [] : null,
+        submitterCountByProblem: [],
+      };
+    }
+
+    // 헬퍼: QueryBuilder에 activeProblemIds 필터 추가
+    const applyProblemFilter = (qb: { andWhere: (condition: string, params?: Record<string, unknown>) => unknown }) => {
+      if (activeProblemIds) {
+        qb.andWhere('s.problem_id IN (:...activeProblemIds)', { activeProblemIds });
+      }
+    };
+
+    const totalSubmissions = activeProblemIds
+      ? await this.submissionRepo
+          .createQueryBuilder('s')
+          .where('s.study_id = :studyId', { studyId })
+          .andWhere('s.problem_id IN (:...activeProblemIds)', { activeProblemIds })
+          .getCount()
+      : await this.submissionRepo.count({ where: { studyId } });
 
     // 고유 제출 수 (problemId+userId 기준 dedup) — 인원별 중복 제출은 1건으로 처리
-    const [{ uniqueSubmissions }] = await this.submissionRepo
+    const uniqueSubmissionsQb = this.submissionRepo
       .createQueryBuilder('s')
-      .select('COUNT(DISTINCT s.problem_id || s.user_id)::int', '"uniqueSubmissions"')
-      .where('s.study_id = :studyId', { studyId })
-      .getRawMany<{ uniqueSubmissions: number }>();
+      .select('COUNT(DISTINCT s.problem_id || s.user_id)::int', 'cnt')
+      .where('s.study_id = :studyId', { studyId });
+    applyProblemFilter(uniqueSubmissionsQb);
+    const [{ cnt: uniqueSubmissions }] = await uniqueSubmissionsQb.getRawMany<{ cnt: number }>();
 
     // 고유 분석 완료 수 (problemId+userId 기준 dedup, sagaStep=DONE)
-    const [{ uniqueAnalyzed }] = await this.submissionRepo
+    const uniqueAnalyzedQb = this.submissionRepo
       .createQueryBuilder('s')
-      .select('COUNT(DISTINCT s.problem_id || s.user_id)::int', '"uniqueAnalyzed"')
+      .select('COUNT(DISTINCT s.problem_id || s.user_id)::int', 'cnt')
       .where('s.study_id = :studyId', { studyId })
-      .andWhere("s.saga_step = 'DONE'")
-      .getRawMany<{ uniqueAnalyzed: number }>();
+      .andWhere("s.saga_step = 'DONE'");
+    applyProblemFilter(uniqueAnalyzedQb);
+    const [{ cnt: uniqueAnalyzed }] = await uniqueAnalyzedQb.getRawMany<{ cnt: number }>();
 
     const parseWeekKey = (w: string) => {
       const m = w.match(/^(\d+)월(\d+)주차$/);
@@ -297,44 +326,46 @@ export class SubmissionService {
     };
 
     // 주차별 통계 — 스터디 전체 총 제출 건수
-    const byWeekRaw = await this.submissionRepo
+    const byWeekQb = this.submissionRepo
       .createQueryBuilder('s')
       .select('s.week_number', 'week')
       .addSelect('COUNT(*)::int', 'count')
       .where('s.study_id = :studyId', { studyId })
-      .andWhere('s.week_number IS NOT NULL')
-      .groupBy('s.week_number')
-      .getRawMany<{ week: string; count: number }>();
+      .andWhere('s.week_number IS NOT NULL');
+    applyProblemFilter(byWeekQb);
+    byWeekQb.groupBy('s.week_number');
+    const byWeekRaw = await byWeekQb.getRawMany<{ week: string; count: number }>();
 
     const byWeek = byWeekRaw
       .map((r) => ({ week: String(r.week), count: Number(r.count) }))
       .sort((a, b) => parseWeekKey(a.week) - parseWeekKey(b.week));
 
     // 유저별 주차 통계 — 개인별 고유 문제 수
-    const byWeekPerUserRaw = await this.submissionRepo
+    const byWeekPerUserQb = this.submissionRepo
       .createQueryBuilder('s')
       .select('s.user_id', 'userId')
       .addSelect('s.week_number', 'week')
       .addSelect('COUNT(DISTINCT s.problem_id)::int', 'count')
       .where('s.study_id = :studyId', { studyId })
-      .andWhere('s.week_number IS NOT NULL')
-      .groupBy('s.user_id')
-      .addGroupBy('s.week_number')
-      .getRawMany<{ userId: string; week: string; count: number }>();
+      .andWhere('s.week_number IS NOT NULL');
+    applyProblemFilter(byWeekPerUserQb);
+    byWeekPerUserQb.groupBy('s.user_id').addGroupBy('s.week_number');
+    const byWeekPerUserRaw = await byWeekPerUserQb.getRawMany<{ userId: string; week: string; count: number }>();
 
     const byWeekPerUser = byWeekPerUserRaw
       .map((r) => ({ userId: r.userId, week: String(r.week), count: Number(r.count) }))
       .sort((a, b) => parseWeekKey(a.week) - parseWeekKey(b.week));
 
     // 멤버별 통계
-    const byMemberRaw = await this.submissionRepo
+    const byMemberQb = this.submissionRepo
       .createQueryBuilder('s')
       .select('s.user_id', 'userId')
       .addSelect('COUNT(*)::int', 'count')
       .addSelect(`SUM(CASE WHEN s.saga_step = 'DONE' THEN 1 ELSE 0 END)::int`, 'doneCount')
-      .where('s.study_id = :studyId', { studyId })
-      .groupBy('s.user_id')
-      .getRawMany<{ userId: string; count: number; doneCount: number }>();
+      .where('s.study_id = :studyId', { studyId });
+    applyProblemFilter(byMemberQb);
+    byMemberQb.groupBy('s.user_id');
+    const byMemberRaw = await byMemberQb.getRawMany<{ userId: string; count: number; doneCount: number }>();
 
     const byMember = byMemberRaw.map((r) => ({
       userId: r.userId,
@@ -343,38 +374,49 @@ export class SubmissionService {
     }));
 
     // 최근 제출 10건 (표시용)
-    const recentSubmissions = await this.submissionRepo.find({
-      where: { studyId },
-      order: { createdAt: 'DESC' },
-      take: 10,
-      select: ['id', 'userId', 'problemId', 'language', 'sagaStep', 'aiScore', 'createdAt'],
-    });
+    const recentSubmissions = activeProblemIds
+      ? await this.submissionRepo.find({
+          where: { studyId, problemId: In(activeProblemIds) },
+          order: { createdAt: 'DESC' },
+          take: 10,
+          select: ['id', 'userId', 'problemId', 'language', 'sagaStep', 'aiScore', 'createdAt'],
+        })
+      : await this.submissionRepo.find({
+          where: { studyId },
+          order: { createdAt: 'DESC' },
+          take: 10,
+          select: ['id', 'userId', 'problemId', 'language', 'sagaStep', 'aiScore', 'createdAt'],
+        });
 
-    // 문제별 유니크 제출자 수 — 스터디룸 문제카드 X/N명 표시용
-    const submitterCountByProblemRaw = await this.submissionRepo
+    // 문제별 유니크 제출자 수 + 분석 완료 수 — 스터디룸 문제카드 X/N명 표시용
+    const submitterCountByProblemQb = this.submissionRepo
       .createQueryBuilder('s')
-      .select('s.problem_id', '"problemId"')
-      .addSelect('COUNT(DISTINCT s.user_id)::int', '"count"')
-      .where('s.study_id = :studyId', { studyId })
-      .groupBy('s.problem_id')
-      .getRawMany<{ problemId: string; count: number }>();
+      .select('s.problem_id', 'problemid')
+      .addSelect('COUNT(DISTINCT s.user_id)::int', 'cnt')
+      .addSelect(`COUNT(DISTINCT CASE WHEN s.saga_step = 'DONE' THEN s.user_id END)::int`, 'donecnt')
+      .where('s.study_id = :studyId', { studyId });
+    applyProblemFilter(submitterCountByProblemQb);
+    submitterCountByProblemQb.groupBy('s.problem_id');
+    const submitterCountByProblemRaw = await submitterCountByProblemQb.getRawMany<{ problemid: string; cnt: number; donecnt: number }>();
 
     const submitterCountByProblem = submitterCountByProblemRaw.map((r) => ({
-      problemId: r.problemId,
-      count: Number(r.count),
+      problemId: r.problemid,
+      count: Number(r.cnt),
+      analyzedCount: Number(r.donecnt),
     }));
 
     // 주차별 멤버 통계 — 고유 문제 수 (weekNumber 파라미터가 있을 때만)
     let byMemberWeek: { userId: string; count: number }[] | null = null;
     if (weekNumber) {
-      const byMemberWeekRaw = await this.submissionRepo
+      const byMemberWeekQb = this.submissionRepo
         .createQueryBuilder('s')
         .select('s.user_id', 'userId')
         .addSelect('COUNT(DISTINCT s.problem_id)::int', 'count')
         .where('s.study_id = :studyId', { studyId })
-        .andWhere('s.week_number = :weekNumber', { weekNumber })
-        .groupBy('s.user_id')
-        .getRawMany<{ userId: string; count: number }>();
+        .andWhere('s.week_number = :weekNumber', { weekNumber });
+      applyProblemFilter(byMemberWeekQb);
+      byMemberWeekQb.groupBy('s.user_id');
+      const byMemberWeekRaw = await byMemberWeekQb.getRawMany<{ userId: string; count: number }>();
 
       byMemberWeek = byMemberWeekRaw.map((r) => ({
         userId: r.userId,
@@ -385,12 +427,13 @@ export class SubmissionService {
     // 특정 유저의 풀이 문제 ID 목록 (analytics 태그 분포용)
     let solvedProblemIds: string[] | null = null;
     if (userId) {
-      const rows = await this.submissionRepo
+      const solvedQb = this.submissionRepo
         .createQueryBuilder('s')
         .select('DISTINCT s.problem_id', 'problemId')
         .where('s.study_id = :studyId', { studyId })
-        .andWhere('s.user_id = :userId', { userId })
-        .getRawMany<{ problemId: string }>();
+        .andWhere('s.user_id = :userId', { userId });
+      applyProblemFilter(solvedQb);
+      const rows = await solvedQb.getRawMany<{ problemId: string }>();
       solvedProblemIds = rows.map((r) => r.problemId);
     }
 

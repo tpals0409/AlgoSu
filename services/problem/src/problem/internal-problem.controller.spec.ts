@@ -44,6 +44,7 @@ describe('InternalProblemController', () => {
   beforeEach(async () => {
     service = {
       findById: jest.fn(),
+      findActiveByStudy: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -87,6 +88,31 @@ describe('InternalProblemController', () => {
       service.findById.mockRejectedValue(new Error('DB 연결 실패'));
 
       await expect(controller.findById(PROBLEM_ID, STUDY_ID)).rejects.toThrow('DB 연결 실패');
+    });
+  });
+
+  // ──────────────────────────────────────────────
+  // GET /internal/active-ids/:studyId — ACTIVE 문제 ID 목록
+  // ──────────────────────────────────────────────
+  describe('getActiveProblemIds()', () => {
+    it('ACTIVE 문제 ID 배열 반환', async () => {
+      service.findActiveByStudy.mockResolvedValue([
+        { id: 'p1', title: '문제1' },
+        { id: 'p2', title: '문제2' },
+      ]);
+
+      const result = await controller.getActiveProblemIds(STUDY_ID);
+
+      expect(service.findActiveByStudy).toHaveBeenCalledWith(STUDY_ID);
+      expect(result).toEqual({ data: ['p1', 'p2'] });
+    });
+
+    it('ACTIVE 문제가 없으면 빈 배열 반환', async () => {
+      service.findActiveByStudy.mockResolvedValue([]);
+
+      const result = await controller.getActiveProblemIds(STUDY_ID);
+
+      expect(result).toEqual({ data: [] });
     });
   });
 });

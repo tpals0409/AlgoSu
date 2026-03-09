@@ -39,6 +39,19 @@ export class InternalProblemController {
   }
 
   /**
+   * GET /internal/active-ids/:studyId — ACTIVE 문제 ID 목록 조회
+   * Gateway stats 집계 시 삭제(CLOSED) 문제 필터링용
+   */
+  @Get('active-ids/:studyId')
+  async getActiveProblemIds(
+    @Param('studyId', ParseUUIDPipe) studyId: string,
+  ) {
+    const problems = await this.problemService.findActiveByStudy(studyId);
+    const ids = problems.map((p) => p.id);
+    return { data: ids };
+  }
+
+  /**
    * GET /internal/:id — 내부 서비스 전용 문제 단건 조회
    * StudyMemberGuard 없이 InternalKeyGuard만으로 접근 허용
    */
