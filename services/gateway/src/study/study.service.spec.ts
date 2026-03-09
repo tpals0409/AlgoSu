@@ -298,10 +298,10 @@ describe('StudyService', () => {
   // 6-7. deleteStudy
   // ============================
   describe('deleteStudy', () => {
-    it('정상 삭제 — ADMIN 1명 + DB 삭제 + Redis 패턴 캐시 삭제', async () => {
+    it('정상 삭제 — ADMIN 1명 + 트랜잭션 삭제 + Redis 패턴 캐시 삭제', async () => {
       memberRepository.findOne.mockResolvedValue(mockAdminMember);
       memberRepository.count.mockResolvedValue(1);
-      studyRepository.delete.mockResolvedValue({ affected: 1 });
+      mockQueryRunner.manager.delete.mockResolvedValue({ affected: 1 });
       mockRedis.keys.mockResolvedValue([
         `membership:${STUDY_ID}:user1`,
         `membership:${STUDY_ID}:user2`,
@@ -312,7 +312,10 @@ describe('StudyService', () => {
       expect(memberRepository.count).toHaveBeenCalledWith({
         where: { study_id: STUDY_ID, role: StudyMemberRole.ADMIN },
       });
-      expect(studyRepository.delete).toHaveBeenCalledWith(STUDY_ID);
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(StudyInvite, { study_id: STUDY_ID });
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(StudyMember, { study_id: STUDY_ID });
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(Study, { id: STUDY_ID });
+      expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
       expect(mockRedis.keys).toHaveBeenCalledWith(`membership:${STUDY_ID}:*`);
       expect(mockRedis.del).toHaveBeenCalledWith(
         `membership:${STUDY_ID}:user1`,
@@ -1217,7 +1220,9 @@ describe('StudyService', () => {
     it('존재하지 않는 스터디 삭제 → NotFoundException', async () => {
       memberRepository.findOne.mockResolvedValue(mockAdminMember);
       memberRepository.count.mockResolvedValue(1);
-      studyRepository.delete.mockResolvedValue({ affected: 0 });
+      mockQueryRunner.manager.delete.mockResolvedValueOnce({ affected: 0 })
+        .mockResolvedValueOnce({ affected: 0 })
+        .mockResolvedValueOnce({ affected: 0 });
 
       await expect(service.deleteStudy(STUDY_ID, USER_ID)).rejects.toThrow(
         NotFoundException,
@@ -1227,7 +1232,7 @@ describe('StudyService', () => {
     it('Redis 캐시 키 없으면 del 호출 안 함', async () => {
       memberRepository.findOne.mockResolvedValue(mockAdminMember);
       memberRepository.count.mockResolvedValue(1);
-      studyRepository.delete.mockResolvedValue({ affected: 1 });
+      mockQueryRunner.manager.delete.mockResolvedValue({ affected: 1 });
       mockRedis.keys.mockResolvedValue([]);
       mockRedis.del.mockClear();
 

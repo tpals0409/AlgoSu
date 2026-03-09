@@ -178,9 +178,29 @@ export class StudyService {
       );
     }
 
-    const result = await this.studyRepository.delete(studyId);
-    if (result.affected === 0) {
-      throw new NotFoundException('스터디를 찾을 수 없습니다.');
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // FK 제약 순서: invite → member → study
+      await queryRunner.manager.delete(StudyInvite, { study_id: studyId });
+      await queryRunner.manager.delete(StudyMember, { study_id: studyId });
+      const result = await queryRunner.manager.delete(Study, { id: studyId });
+
+      if (result.affected === 0) {
+        await queryRunner.rollbackTransaction();
+        throw new NotFoundException('스터디를 찾을 수 없습니다.');
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      if (queryRunner.isTransactionActive) {
+        await queryRunner.rollbackTransaction();
+      }
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
 
     // Redis 캐시 패턴 삭제 (통일 키 규격)
