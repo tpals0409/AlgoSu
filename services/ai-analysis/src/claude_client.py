@@ -131,7 +131,7 @@ class ClaudeClient:
                 end_idx = len(cleaned)
                 for i in range(len(lines) - 1, 0, -1):
                     if lines[i].strip() == "```":
-                        end_idx = sum(len(l) + 1 for l in lines[:i])
+                        end_idx = sum(len(line) + 1 for line in lines[:i])
                         break
                 cleaned = cleaned[first_newline + 1 : end_idx].strip()
 

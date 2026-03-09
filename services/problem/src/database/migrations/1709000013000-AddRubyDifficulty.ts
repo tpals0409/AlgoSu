@@ -8,8 +8,7 @@ export class AddRubyDifficulty1709000013000 implements MigrationInterface {
   }
 
   public async down(): Promise<void> {
-    console.warn(
-      'Cannot remove enum value RUBY from difficulty_enum — PostgreSQL does not support DROP VALUE. Manual intervention required.',
-    );
+    // PostgreSQL does not support DROP VALUE from enum — manual intervention required
+    void 0;
   }
 }
