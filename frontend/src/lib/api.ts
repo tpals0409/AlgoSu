@@ -308,6 +308,7 @@ export interface StudyStats {
   byMemberWeek: MemberWeekStat[] | null;
   recentSubmissions: Submission[];
   solvedProblemIds: string[];
+  submitterCountByProblem: { problemId: string; count: number }[];
 }
 
 export const studyApi = {

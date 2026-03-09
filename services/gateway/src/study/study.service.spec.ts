@@ -854,6 +854,7 @@ describe('StudyService', () => {
           byMemberWeek: null,
           recentSubmissions: [],
           solvedProblemIds: ['p1'],
+          submitterCountByProblem: [{ problemId: 'p1', count: 2 }],
         },
       };
 
@@ -873,6 +874,7 @@ describe('StudyService', () => {
       expect(result.uniqueAnalyzed).toBe(6);
       expect(result.byMember).toHaveLength(1);
       expect(result.byMember[0].isMember).toBe(true);
+      expect(result.submitterCountByProblem).toEqual([{ problemId: 'p1', count: 2 }]);
 
       global.fetch = originalFetch;
     });
@@ -909,6 +911,7 @@ describe('StudyService', () => {
           byMemberWeek: [{ userId: USER_ID, count: 3 }],
           recentSubmissions: [],
           solvedProblemIds: null,
+          submitterCountByProblem: [],
         },
       };
 
@@ -1064,6 +1067,7 @@ describe('StudyService', () => {
           byMemberWeek: [{ userId: USER_ID, count: 3 }, { userId: 'unknown-user', count: 1 }],
           recentSubmissions: [],
           solvedProblemIds: null,
+          submitterCountByProblem: [],
         },
       };
 

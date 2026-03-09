@@ -95,6 +95,7 @@ jest.mock('@/lib/api', () => ({
       byMemberWeek: null,
       recentSubmissions: [],
       solvedProblemIds: [],
+      submitterCountByProblem: [],
     }),
   },
   ApiError: class ApiError extends Error {

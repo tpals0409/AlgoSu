@@ -201,10 +201,9 @@ export default function StudyRoomPage(): ReactElement {
 
   /** 문제별 제출 수 맵 */
   const submissionCountByProblem = useMemo(() => {
-    const map = new Map<string, Set<string>>();
-    for (const s of studyStats?.recentSubmissions ?? []) {
-      if (!map.has(s.problemId)) map.set(s.problemId, new Set());
-      if (s.userId) map.get(s.problemId)!.add(s.userId);
+    const map = new Map<string, number>();
+    for (const entry of studyStats?.submitterCountByProblem ?? []) {
+      map.set(entry.problemId, entry.count);
     }
     return map;
   }, [studyStats]);
@@ -512,7 +511,7 @@ function StatCard({ icon, iconBg, iconColor, value, label }: {
 
 function WeekSection({ week, barsAnimated, submissionCountByProblem, totalMembers, onSelect }: {
   readonly week: WeekGroup; readonly barsAnimated: boolean;
-  readonly submissionCountByProblem: Map<string, Set<string>>;
+  readonly submissionCountByProblem: Map<string, number>;
   readonly totalMembers: number;
   readonly onSelect: (p: Problem) => void;
 }): ReactNode {
@@ -538,7 +537,7 @@ function WeekSection({ week, barsAnimated, submissionCountByProblem, totalMember
             key={p.id}
             problem={p}
             barsAnimated={barsAnimated}
-            submittedCount={submissionCountByProblem.get(p.id)?.size ?? 0}
+            submittedCount={submissionCountByProblem.get(p.id) ?? 0}
             totalMembers={totalMembers}
             onSelect={onSelect}
           />

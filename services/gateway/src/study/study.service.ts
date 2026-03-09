@@ -513,6 +513,7 @@ export class StudyService {
       byMemberWeek: { userId: string; count: number }[] | null;
       recentSubmissions: unknown[];
       solvedProblemIds: string[] | null;
+      submitterCountByProblem: { problemId: string; count: number }[];
     };
 
     const mapMemberInfo = (m: { userId: string; count: number; doneCount: number }) => ({
@@ -541,6 +542,7 @@ export class StudyService {
         nickname: memberMap.get(s.userId)?.nickname ?? null,
       })),
       solvedProblemIds: data.solvedProblemIds ?? [],
+      submitterCountByProblem: data.submitterCountByProblem ?? [],
     };
   }
 

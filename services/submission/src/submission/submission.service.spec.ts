@@ -611,7 +611,8 @@ describe('SubmissionService', () => {
         .mockResolvedValueOnce([{ uniqueAnalyzed: 25 }])     // uniqueAnalyzed
         .mockResolvedValueOnce([{ week: '3월1주차', count: 10 }])  // byWeek
         .mockResolvedValueOnce([{ userId: 'u1', week: '3월1주차', count: 3 }]) // byWeekPerUser
-        .mockResolvedValueOnce([{ userId: 'u1', count: 10, doneCount: 8 }]);  // byMember
+        .mockResolvedValueOnce([{ userId: 'u1', count: 10, doneCount: 8 }])  // byMember
+        .mockResolvedValueOnce([{ problemId: 'p1', count: 2 }, { problemId: 'p2', count: 1 }]); // submitterCountByProblem
       repo.find.mockResolvedValue([createMockSubmission()]); // recentSubmissions
 
       const result = await service.getStudyStats('study-uuid-1');
@@ -625,6 +626,7 @@ describe('SubmissionService', () => {
       expect(result.byMemberWeek).toBeNull();
       expect(result.solvedProblemIds).toBeNull();
       expect(result.recentSubmissions).toHaveLength(1);
+      expect(result.submitterCountByProblem).toEqual([{ problemId: 'p1', count: 2 }, { problemId: 'p2', count: 1 }]);
     });
 
     it('weekNumber 지정 시 byMemberWeek 통계 포함', async () => {
@@ -635,6 +637,7 @@ describe('SubmissionService', () => {
         .mockResolvedValueOnce([])  // byWeek
         .mockResolvedValueOnce([])  // byWeekPerUser
         .mockResolvedValueOnce([])  // byMember
+        .mockResolvedValueOnce([])  // submitterCountByProblem
         .mockResolvedValueOnce([{ userId: 'u1', count: 5 }]); // byMemberWeek
       repo.find.mockResolvedValue([]);
 
@@ -651,6 +654,7 @@ describe('SubmissionService', () => {
         .mockResolvedValueOnce([])  // byWeek
         .mockResolvedValueOnce([])  // byWeekPerUser
         .mockResolvedValueOnce([])  // byMember
+        .mockResolvedValueOnce([])  // submitterCountByProblem
         .mockResolvedValueOnce([{ problemId: 'p1' }, { problemId: 'p2' }]); // solvedProblemIds
       repo.find.mockResolvedValue([]);
 
@@ -667,6 +671,7 @@ describe('SubmissionService', () => {
         .mockResolvedValueOnce([])  // byWeek
         .mockResolvedValueOnce([])  // byWeekPerUser
         .mockResolvedValueOnce([])  // byMember
+        .mockResolvedValueOnce([])  // submitterCountByProblem
         .mockResolvedValueOnce([{ userId: 'u1', count: 2 }])  // byMemberWeek
         .mockResolvedValueOnce([{ problemId: 'p1' }]); // solvedProblemIds
       repo.find.mockResolvedValue([]);
@@ -688,7 +693,8 @@ describe('SubmissionService', () => {
           { week: '3월1주차', count: 7 },
         ])
         .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([]);
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]); // submitterCountByProblem
       repo.find.mockResolvedValue([]);
 
       const result = await service.getStudyStats('study-uuid-1');
@@ -707,7 +713,8 @@ describe('SubmissionService', () => {
           { userId: 'u2', week: '2월1주차', count: 5 },
           { userId: 'u1', week: '3월1주차', count: 2 },
         ])  // byWeekPerUser
-        .mockResolvedValueOnce([]);  // byMember
+        .mockResolvedValueOnce([])  // byMember
+        .mockResolvedValueOnce([]);  // submitterCountByProblem
       repo.find.mockResolvedValue([]);
 
       const result = await service.getStudyStats('study-uuid-1');
@@ -726,7 +733,8 @@ describe('SubmissionService', () => {
           { week: '3월1주차', count: 5 },
         ])  // byWeek (invalid + valid 혼합)
         .mockResolvedValueOnce([])  // byWeekPerUser
-        .mockResolvedValueOnce([]);  // byMember
+        .mockResolvedValueOnce([])  // byMember
+        .mockResolvedValueOnce([]);  // submitterCountByProblem
       repo.find.mockResolvedValue([]);
 
       const result = await service.getStudyStats('study-uuid-1');

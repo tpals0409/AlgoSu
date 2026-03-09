@@ -270,6 +270,7 @@ export class SubmissionService {
     byMemberWeek: { userId: string; count: number }[] | null;
     recentSubmissions: { id: string; userId: string; problemId: string; language: string; sagaStep: string; aiScore: number | null; createdAt: Date }[];
     solvedProblemIds: string[] | null;
+    submitterCountByProblem: { problemId: string; count: number }[];
   }> {
     const totalSubmissions = await this.submissionRepo.count({
       where: { studyId },
@@ -278,14 +279,14 @@ export class SubmissionService {
     // 고유 제출 수 (problemId+userId 기준 dedup) — 인원별 중복 제출은 1건으로 처리
     const [{ uniqueSubmissions }] = await this.submissionRepo
       .createQueryBuilder('s')
-      .select('COUNT(DISTINCT s.problem_id || s.user_id)::int', 'uniqueSubmissions')
+      .select('COUNT(DISTINCT s.problem_id || s.user_id)::int', '"uniqueSubmissions"')
       .where('s.study_id = :studyId', { studyId })
       .getRawMany<{ uniqueSubmissions: number }>();
 
     // 고유 분석 완료 수 (problemId+userId 기준 dedup, sagaStep=DONE)
     const [{ uniqueAnalyzed }] = await this.submissionRepo
       .createQueryBuilder('s')
-      .select('COUNT(DISTINCT s.problem_id || s.user_id)::int', 'uniqueAnalyzed')
+      .select('COUNT(DISTINCT s.problem_id || s.user_id)::int', '"uniqueAnalyzed"')
       .where('s.study_id = :studyId', { studyId })
       .andWhere("s.saga_step = 'DONE'")
       .getRawMany<{ uniqueAnalyzed: number }>();
@@ -349,6 +350,20 @@ export class SubmissionService {
       select: ['id', 'userId', 'problemId', 'language', 'sagaStep', 'aiScore', 'createdAt'],
     });
 
+    // 문제별 유니크 제출자 수 — 스터디룸 문제카드 X/N명 표시용
+    const submitterCountByProblemRaw = await this.submissionRepo
+      .createQueryBuilder('s')
+      .select('s.problem_id', '"problemId"')
+      .addSelect('COUNT(DISTINCT s.user_id)::int', '"count"')
+      .where('s.study_id = :studyId', { studyId })
+      .groupBy('s.problem_id')
+      .getRawMany<{ problemId: string; count: number }>();
+
+    const submitterCountByProblem = submitterCountByProblemRaw.map((r) => ({
+      problemId: r.problemId,
+      count: Number(r.count),
+    }));
+
     // 주차별 멤버 통계 — 고유 문제 수 (weekNumber 파라미터가 있을 때만)
     let byMemberWeek: { userId: string; count: number }[] | null = null;
     if (weekNumber) {
@@ -379,7 +394,7 @@ export class SubmissionService {
       solvedProblemIds = rows.map((r) => r.problemId);
     }
 
-    return { totalSubmissions, uniqueSubmissions: Number(uniqueSubmissions), uniqueAnalyzed: Number(uniqueAnalyzed), byWeek, byWeekPerUser, byMember, byMemberWeek, recentSubmissions, solvedProblemIds };
+    return { totalSubmissions, uniqueSubmissions: Number(uniqueSubmissions), uniqueAnalyzed: Number(uniqueAnalyzed), byWeek, byWeekPerUser, byMember, byMemberWeek, recentSubmissions, solvedProblemIds, submitterCountByProblem };
   }
 
   /**
