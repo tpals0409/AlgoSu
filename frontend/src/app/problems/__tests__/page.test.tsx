@@ -38,6 +38,14 @@ jest.mock('@/hooks/useRequireStudy', () => ({
   useRequireStudy: () => ({ isStudyReady: true }),
 }));
 
+jest.mock('@/components/ui/select', () => ({
+  Select: ({ children, onValueChange }: { children: React.ReactNode; value?: string; onValueChange?: (v: string) => void }) => <div data-testid="select">{children}</div>,
+  SelectTrigger: ({ children }: { children: React.ReactNode }) => <button data-testid="select-trigger">{children}</button>,
+  SelectValue: ({ placeholder }: { placeholder?: string }) => <span>{placeholder}</span>,
+  SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => <div data-value={value}>{children}</div>,
+}));
+
 jest.mock('@/components/layout/AppLayout', () => ({
   AppLayout: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="app-layout">{children}</div>
