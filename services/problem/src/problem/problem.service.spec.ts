@@ -176,6 +176,7 @@ describe('ProblemService', () => {
         deadline: new Date(dto.deadline!),
         allowedLanguages: dto.allowedLanguages,
         tags: null,
+        status: ProblemStatus.ACTIVE,
         studyId: STUDY_ID,
         createdBy: USER_ID,
       });

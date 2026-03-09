@@ -49,6 +49,7 @@ export class ProblemService {
       deadline: dto.deadline ? new Date(dto.deadline) : null,
       allowedLanguages: dto.allowedLanguages ?? null,
       tags: dto.tags ?? null,
+      status: ProblemStatus.ACTIVE,
       studyId,
       createdBy,
     });
