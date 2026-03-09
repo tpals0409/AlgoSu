@@ -7,6 +7,11 @@ WORKDIR /app
 
 COPY package*.json ./
 RUN npm ci --omit=dev && mv node_modules /tmp/prod_node_modules
+# ARM64용 sharp 바이너리를 네이티브(x86)에서 미리 다운로드 — Stage 2 QEMU 실행 제거
+RUN cd /tmp/prod_node_modules && \
+    rm -rf @img/sharp-linux-x64 @img/sharp-linuxmusl-x64 \
+           @img/sharp-libvips-linux-x64 @img/sharp-libvips-linuxmusl-x64 && \
+    npm install --no-save --os=linux --libc=musl --cpu=arm64 sharp
 RUN npm ci
 
 COPY . .
@@ -26,13 +31,8 @@ COPY --from=builder /tmp/prod_node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./package.json
 
-# ARM64 네이티브 모듈: builder(x86)에서 설치된 x64 바이너리 제거 후 타겟 플랫폼용 설치
-RUN rm -rf node_modules/@img/sharp-linux-x64 \
-           node_modules/@img/sharp-linuxmusl-x64 \
-           node_modules/@img/sharp-libvips-linux-x64 \
-           node_modules/@img/sharp-libvips-linuxmusl-x64 && \
-    npm install --no-save --os=linux --libc=musl --cpu=arm64 sharp && \
-    rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+# npm 제거 (보안 + 이미지 경량화) — sharp ARM64 바이너리는 Stage 1에서 설치 완료
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 USER appuser
 
