@@ -103,10 +103,10 @@ describe('SubmissionInternalController', () => {
       const mockStats = { total: 10, avgScore: 80 };
       submissionService.getStudyStats.mockResolvedValue(mockStats as any);
 
-      const result = await controller.getStudyStats('study-1', '1', 'user-1');
+      const result = await controller.getStudyStats('study-1', '1', 'user-1', undefined);
 
       expect(result).toEqual({ data: mockStats });
-      expect(submissionService.getStudyStats).toHaveBeenCalledWith('study-1', '1', 'user-1');
+      expect(submissionService.getStudyStats).toHaveBeenCalledWith('study-1', '1', 'user-1', undefined);
     });
   });
 
