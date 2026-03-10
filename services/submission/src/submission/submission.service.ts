@@ -471,7 +471,7 @@ export class SubmissionService {
       }
 
       const response = await fetch(
-        `${problemServiceUrl}/deadline/${problemId}`,
+        `${problemServiceUrl}/internal/deadline/${problemId}`,
         { method: 'GET', headers },
       );
 

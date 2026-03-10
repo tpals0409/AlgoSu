@@ -45,6 +45,7 @@ describe('InternalProblemController', () => {
     service = {
       findById: jest.fn(),
       findActiveByStudy: jest.fn(),
+      getDeadline: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -61,6 +62,21 @@ describe('InternalProblemController', () => {
       .compile();
 
     controller = module.get<InternalProblemController>(InternalProblemController);
+  });
+
+  // ──────────────────────────────────────────────
+  // GET /internal/deadline/:id — 마감 시간 조회
+  // ──────────────────────────────────────────────
+  describe('getDeadline()', () => {
+    it('마감 시간 조회 결과 반환', async () => {
+      const deadlineResult = { deadline: '2026-03-07T23:59:59.000Z', status: 'cache_hit' };
+      service.getDeadline.mockResolvedValue(deadlineResult);
+
+      const result = await controller.getDeadline(PROBLEM_ID, STUDY_ID);
+
+      expect(service.getDeadline).toHaveBeenCalledWith(STUDY_ID, PROBLEM_ID);
+      expect(result).toEqual({ data: deadlineResult });
+    });
   });
 
   // ──────────────────────────────────────────────

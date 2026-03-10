@@ -41,7 +41,6 @@ describe('ProblemController', () => {
       findByWeekAndStudy: jest.fn(),
       findAllByStudy: jest.fn(),
       findActiveByStudy: jest.fn(),
-      getDeadline: jest.fn(),
       findById: jest.fn(),
       delete: jest.fn(),
       update: jest.fn(),
@@ -137,21 +136,6 @@ describe('ProblemController', () => {
 
       expect(service.findActiveByStudy).toHaveBeenCalledWith(STUDY_ID);
       expect(result).toEqual({ data: [mockProblem] });
-    });
-  });
-
-  // ──────────────────────────────────────────────
-  // GET /deadline/:id
-  // ──────────────────────────────────────────────
-  describe('getDeadline()', () => {
-    it('마감 시간 조회 결과 반환', async () => {
-      const deadlineResult = { deadline: '2026-03-07T23:59:59.000Z', status: 'cache_hit' };
-      service.getDeadline.mockResolvedValue(deadlineResult);
-
-      const result = await controller.getDeadline(PROBLEM_ID, STUDY_ID);
-
-      expect(service.getDeadline).toHaveBeenCalledWith(STUDY_ID, PROBLEM_ID);
-      expect(result).toEqual({ data: deadlineResult });
     });
   });
 

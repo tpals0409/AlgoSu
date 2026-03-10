@@ -4,7 +4,7 @@
  * @layer controller
  * @related problem.service.ts, InternalKeyGuard
  *
- * GitHub Worker 등 내부 서비스에서 문제 정보를 조회할 때 사용.
+ * GitHub Worker, Submission 등 내부 서비스에서 문제 정보를 조회할 때 사용.
  * StudyMemberGuard를 거치지 않고 InternalKeyGuard만 적용하여
  * 서비스 간 통신 시 403 문제를 방지한다.
  */
@@ -49,6 +49,19 @@ export class InternalProblemController {
     const problems = await this.problemService.findActiveByStudy(studyId);
     const ids = problems.map((p) => p.id);
     return { data: ids };
+  }
+
+  /**
+   * GET /internal/deadline/:id — 마감 시간 조회 (Submission Service 내부 연동용)
+   * studyId 컨텍스트 포함 — 캐시 우선 → DB fallback
+   */
+  @Get('deadline/:id')
+  async getDeadline(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Headers('x-study-id') studyId: string,
+  ) {
+    const result = await this.problemService.getDeadline(studyId, id);
+    return { data: result };
   }
 
   /**
