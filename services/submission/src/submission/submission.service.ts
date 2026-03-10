@@ -470,7 +470,7 @@ export class SubmissionService {
   ): Promise<{ isLate: boolean; weekNumber: string | null }> {
     try {
       const problemServiceUrl = this.configService.getOrThrow<string>('PROBLEM_SERVICE_URL');
-      const internalKey = this.configService.getOrThrow<string>('INTERNAL_KEY_GATEWAY');
+      const internalKey = this.configService.getOrThrow<string>('PROBLEM_SERVICE_KEY');
 
       const headers: Record<string, string> = {
         'x-internal-key': internalKey,
