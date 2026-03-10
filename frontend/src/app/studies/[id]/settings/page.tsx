@@ -41,6 +41,8 @@ import {
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useAuth } from '@/contexts/AuthContext';
 import { MarkdownViewer } from '@/components/ui/MarkdownViewer';
+import { getAvatarPresetKey, getAvatarSrc } from '@/lib/avatars';
+import Image from 'next/image';
 
 // ─── TYPES ───────────────────────────────
 
@@ -55,6 +57,7 @@ interface SettingsMember {
   email: string;
   role: 'ADMIN' | 'MEMBER';
   color: string;
+  avatarUrl: string | null;
 }
 
 // ─── RENDER ──────────────────────────────
@@ -340,6 +343,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
     email: m.email ?? '',
     role: m.role,
     color: 'var(--primary)',
+    avatarUrl: m.avatar_url ?? null,
   }));
 
   return (
@@ -571,12 +575,22 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                 }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-                    style={{ backgroundColor: member.color }}
-                  >
-                    {member.name.charAt(0)}
-                  </div>
+                  {member.avatarUrl ? (
+                    <Image
+                      src={getAvatarSrc(getAvatarPresetKey(member.avatarUrl))}
+                      alt={member.name}
+                      width={36}
+                      height={36}
+                      className="h-9 w-9 shrink-0 rounded-full"
+                    />
+                  ) : (
+                    <div
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                      style={{ backgroundColor: member.color }}
+                    >
+                      {member.name.charAt(0)}
+                    </div>
+                  )}
                   <div className="min-w-0">
                     <span className="text-sm font-medium text-text truncate block">
                       {member.name}

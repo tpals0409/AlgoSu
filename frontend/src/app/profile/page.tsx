@@ -242,7 +242,7 @@ export default function ProfilePage(): ReactNode {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2" style={fade(0.05)}>
 
           {/* ── 왼쪽: 프로필 카드 ── */}
-          <Card className="flex items-center justify-center p-6">
+          <Card className="flex flex-col items-center justify-center p-6">
             <div className="flex flex-col items-center">
               {/* 아바타 */}
               <div className="relative">
@@ -298,7 +298,7 @@ export default function ProfilePage(): ReactNode {
 
             {/* 아바타 선택 그리드 */}
             {showAvatarPicker && (
-              <div className="mt-5 rounded-card border p-4" style={{ borderColor: 'var(--border)', background: 'var(--bg-alt)' }}>
+              <div className="mt-5 w-full rounded-card border p-4" style={{ borderColor: 'var(--border)', background: 'var(--bg-alt)' }}>
                 <p className="mb-3 text-[12px] font-medium text-text">아바타 선택</p>
                 <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
                   {AVATAR_PRESETS.map((preset) => {

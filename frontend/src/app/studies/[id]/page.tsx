@@ -44,6 +44,8 @@ import {
 } from '@/lib/api';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { cn } from '@/lib/utils';
+import { getAvatarPresetKey, getAvatarSrc } from '@/lib/avatars';
+import Image from 'next/image';
 
 // ─── TYPES ───────────────────────────────
 
@@ -177,7 +179,7 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
       <div className="space-y-5">
         {/* ── HEADER ── */}
         <div className="flex items-center justify-between" style={fade(0)}>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
               onClick={() => router.push('/studies')}
@@ -452,7 +454,7 @@ function ProblemCard({ problem }: { readonly problem: { id: string; number: numb
               )}
             </div>
             {/* 태그 */}
-            <div className="flex items-center gap-1.5 mt-0.5">
+            <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
               {problem.tags.map((tag) => (
                 <span
                   key={tag}
@@ -566,12 +568,22 @@ function MembersTab({
       <div key={member.id} className="px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            <div
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-              style={{ backgroundColor: isMe ? 'var(--primary)' : color }}
-            >
-              {initial}
-            </div>
+            {member.avatar_url ? (
+              <Image
+                src={getAvatarSrc(getAvatarPresetKey(member.avatar_url))}
+                alt={name}
+                width={36}
+                height={36}
+                className="h-9 w-9 shrink-0 rounded-full"
+              />
+            ) : (
+              <div
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                style={{ backgroundColor: isMe ? 'var(--primary)' : color }}
+              >
+                {initial}
+              </div>
+            )}
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1.5">
                 {isMe && editingNickname ? (
