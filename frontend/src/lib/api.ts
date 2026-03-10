@@ -585,3 +585,119 @@ export const studyNoteApi = {
       },
     ),
 };
+
+// ── Public API (인증 불필요) ──
+
+/** 공유 스터디 메타 정보 */
+export interface SharedStudyData {
+  studyName: string;
+  memberCount: number;
+  createdBy: { id: string; name: string | null; avatarUrl: string | null };
+  members: Array<{ userId: string; nickname: string; role: string }>;
+}
+
+/** 퍼블릭 프로필 데이터 */
+export interface PublicProfile {
+  name: string | null;
+  avatarUrl: string | null;
+  studies: Array<{
+    studyName: string;
+    memberCount: number;
+    shareLink: string | null;
+    totalSubmissions: number;
+    averageAiScore: number | null;
+  }>;
+  totalSubmissions: number;
+  averageAiScore: number | null;
+}
+
+/** 인증 불필요 공개 API fetch */
+async function fetchPublicApi<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' },
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { message?: string };
+    throw new ApiError(body.message ?? `서버 오류 (${res.status})`, res.status);
+  }
+
+  const json = await res.json();
+  if (json !== null && typeof json === 'object' && 'data' in json && !('meta' in json)) {
+    return (json as { data: T }).data;
+  }
+  return json as T;
+}
+
+export const publicApi = {
+  /** 공유 링크 스터디 정보 조회 */
+  getSharedStudy: (token: string): Promise<SharedStudyData> =>
+    fetchPublicApi(`/api/public/shared/${token}`),
+
+  /** 공유 스터디 문제 목록 */
+  getSharedProblems: (token: string): Promise<Problem[]> =>
+    fetchPublicApi(`/api/public/shared/${token}/problems`),
+
+  /** 공유 스터디 제출 목록 */
+  getSharedSubmissions: (token: string): Promise<Submission[]> =>
+    fetchPublicApi(`/api/public/shared/${token}/submissions`),
+
+  /** 공유 AI 분석 결과 */
+  getSharedAnalysis: (token: string, submissionId: string): Promise<AnalysisResult> =>
+    fetchPublicApi(`/api/public/shared/${token}/analysis/${submissionId}`),
+
+  /** 퍼블릭 프로필 조회 */
+  getPublicProfile: (slug: string): Promise<PublicProfile> =>
+    fetchPublicApi(`/api/public/profile/${slug}`),
+};
+
+// ── ShareLink 관리 API (인증 필수) ──
+
+export interface ShareLinkData {
+  id: string;
+  token: string;
+  study_id: string;
+  created_by: string;
+  expires_at: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export const shareLinkApi = {
+  /** 공유 링크 생성 */
+  create: (studyId: string, data?: { expiresAt?: string }): Promise<ShareLinkData> =>
+    fetchApi(`/api/studies/${studyId}/share-links`, {
+      method: 'POST',
+      body: JSON.stringify(data ?? {}),
+    }),
+
+  /** 스터디별 공유 링크 목록 */
+  list: (studyId: string): Promise<ShareLinkData[]> =>
+    fetchApi(`/api/studies/${studyId}/share-links`),
+
+  /** 공유 링크 비활성화 */
+  deactivate: (studyId: string, linkId: string): Promise<{ message: string }> =>
+    fetchApi(`/api/studies/${studyId}/share-links/${linkId}`, { method: 'DELETE' }),
+};
+
+// ── Settings API (인증 필수) ──
+
+export interface ProfileSettings {
+  profileSlug: string | null;
+  isProfilePublic: boolean;
+}
+
+export const settingsApi = {
+  /** 프로필 설정 조회 */
+  getProfile: (): Promise<ProfileSettings> =>
+    fetchApi('/api/users/me/settings'),
+
+  /** 프로필 설정 업데이트 */
+  updateProfile: (data: { profileSlug?: string; isProfilePublic?: boolean }): Promise<ProfileSettings> =>
+    fetchApi('/api/users/me/settings/profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+};

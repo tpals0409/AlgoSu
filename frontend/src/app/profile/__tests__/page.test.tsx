@@ -62,6 +62,10 @@ jest.mock('@/components/ui/Button', () => ({
   ),
 }));
 
+jest.mock('@/components/profile/ShareLinkManager', () => ({
+  ShareLinkManager: () => <div data-testid="share-link-manager" />,
+}));
+
 jest.mock('@/components/ui/Alert', () => ({
   Alert: ({ children }: { children: React.ReactNode }) => <div data-testid="alert">{children}</div>,
 }));

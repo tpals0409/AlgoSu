@@ -28,6 +28,7 @@ import { authApi } from '@/lib/api';
 import { getGitHubUsername } from '@/lib/auth';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { AVATAR_PRESETS, getAvatarSrc } from '@/lib/avatars';
+import { ShareLinkManager } from '@/components/profile/ShareLinkManager';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
@@ -519,6 +520,9 @@ export default function ProfilePage(): ReactNode {
             </div>
           </div>
         )}
+
+        {/* 공유 링크 관리 (W2-4) */}
+        <ShareLinkManager />
       </div>
     </AppLayout>
   );
