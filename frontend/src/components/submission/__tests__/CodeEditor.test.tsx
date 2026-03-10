@@ -5,8 +5,7 @@ import { CodeEditor } from '../CodeEditor';
 // Alert mock captures onClose for testing error dismissal
 let mockAlertOnClose: (() => void) | undefined;
 
-// Fake Monaco editor object — exposes updateOptions, layout, focus, addAction,
-// and onDidChangeCursorPosition so that editorRef.current is non-null in tests.
+// Fake Monaco editor object
 const fakeEditor = {
   updateOptions: jest.fn(),
   layout: jest.fn(),
@@ -15,21 +14,11 @@ const fakeEditor = {
   onDidChangeCursorPosition: jest.fn(),
 };
 
-// Fake monaco instance (only the subset used in handleMount / handleBeforeMount)
+// Fake monaco instance
 const fakeMonaco = {
   KeyMod: { CtrlCmd: 2048 },
   KeyCode: { Enter: 3 },
-  languages: {
-    CompletionItemKind: { Snippet: 27 },
-    CompletionItemInsertTextRule: { InsertAsSnippet: 4 },
-    registerCompletionItemProvider: jest.fn(),
-    typescript: {
-      javascriptDefaults: { setDiagnosticsOptions: jest.fn(), addExtraLib: jest.fn() },
-      typescriptDefaults: { setDiagnosticsOptions: jest.fn(), setCompilerOptions: jest.fn(), addExtraLib: jest.fn() },
-      ScriptTarget: { ESNext: 99 },
-      ModuleKind: { CommonJS: 1 },
-    },
-  },
+  languages: {},
   editor: {
     defineTheme: jest.fn(),
   },
@@ -39,9 +28,6 @@ jest.mock('next/dynamic', () => {
   return () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const MockEditor = (props: Record<string, any>) => {
-      // Call beforeMount and onMount synchronously during render so that
-      // editorRef.current is set before the parent CodeEditor's useEffect hooks
-      // run. This is a side effect during render, acceptable for tests only.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const onMountRef = React.useRef<any>(null);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -87,7 +73,6 @@ jest.mock('@/components/ui/LoadingSpinner', () => ({
 }));
 
 jest.mock('lucide-react', () => ({
-  Check: () => <span data-testid="icon-check" />,
   Send: () => <span data-testid="icon-send" />,
   RotateCcw: () => <span data-testid="icon-reset" />,
   Minus: () => <span data-testid="icon-minus" />,
@@ -118,13 +103,6 @@ describe('CodeEditor', () => {
     expect(select).toHaveValue('python');
   });
 
-  it('언어 변경 시 onLanguageChange를 호출한다', () => {
-    render(<CodeEditor {...defaultProps} />);
-    const select = screen.getByLabelText('프로그래밍 언어');
-    fireEvent.change(select, { target: { value: 'java' } });
-    expect(defaultProps.onLanguageChange).toHaveBeenCalledWith('java');
-  });
-
   it('제출 버튼을 렌더링한다', () => {
     render(<CodeEditor {...defaultProps} />);
     expect(screen.getAllByText(/제출/).length).toBeGreaterThan(0);
@@ -139,13 +117,13 @@ describe('CodeEditor', () => {
 
   it('초기화 버튼을 렌더링한다', () => {
     render(<CodeEditor {...defaultProps} />);
-    expect(screen.getByLabelText('템플릿으로 초기화')).toBeInTheDocument();
+    expect(screen.getByLabelText('코드 초기화')).toBeInTheDocument();
   });
 
-  it('초기화 버튼 클릭 시 onCodeChange를 호출한다', () => {
+  it('초기화 버튼 클릭 시 빈 문자열로 초기화한다', () => {
     render(<CodeEditor {...defaultProps} />);
-    fireEvent.click(screen.getByLabelText('템플릿으로 초기화'));
-    expect(defaultProps.onCodeChange).toHaveBeenCalled();
+    fireEvent.click(screen.getByLabelText('코드 초기화'));
+    expect(defaultProps.onCodeChange).toHaveBeenCalledWith('');
   });
 
   it('커서 위치를 표시한다', () => {
@@ -156,16 +134,6 @@ describe('CodeEditor', () => {
   it('코드 길이를 표시한다', () => {
     render(<CodeEditor {...defaultProps} />);
     expect(screen.getByText(`${defaultProps.code.length}`)).toBeInTheDocument();
-  });
-
-  it('autoSaveStatus가 saving일 때 스피너를 보여준다', () => {
-    render(<CodeEditor {...defaultProps} autoSaveStatus="saving" />);
-    expect(screen.getByTestId('spinner')).toBeInTheDocument();
-  });
-
-  it('autoSaveStatus가 saved일 때 체크 아이콘을 보여준다', () => {
-    render(<CodeEditor {...defaultProps} autoSaveStatus="saved" />);
-    expect(screen.getByTestId('icon-check')).toBeInTheDocument();
   });
 
   it('풀스크린 토글 버튼을 렌더링한다', () => {
@@ -179,54 +147,59 @@ describe('CodeEditor', () => {
     expect(select).toBeDisabled();
   });
 
-  // ── 제출 핸들러 에러 케이스 ──
+  // ── 제출 확인 팝업 ──
 
-  it('코드 길이가 5자이면 하단에 글자 수를 표시한다', () => {
-    const props = { ...defaultProps, code: 'short' };
-    render(<CodeEditor {...props} />);
-    // 코드 길이 표시 (5자)
-    expect(screen.getByText('5')).toBeInTheDocument();
-    // 제출 버튼 disabled
-    const allBtns = screen.getAllByRole('button');
-    const submitBtns = allBtns.filter(b => b.textContent?.includes('제출'));
-    expect(submitBtns.some(b => b.hasAttribute('disabled'))).toBe(true);
-  });
-
-  it('코드 길이가 10자 미만일 때 남은 글자 수 경고를 표시한다', () => {
-    const shortCode = 'abc'; // 3자
-    render(<CodeEditor {...defaultProps} code={shortCode} />);
-    expect(screen.getByText(/7/)).toBeInTheDocument(); // 10-3=7자 더 필요
-  });
-
-  it('코드 길이가 10자 미만이면 제출 버튼이 비활성화된다', () => {
-    render(<CodeEditor {...defaultProps} code="short" />);
+  it('제출 버튼 클릭 시 확인 팝업이 표시된다', async () => {
+    render(<CodeEditor {...defaultProps} />);
     const buttons = screen.getAllByRole('button');
-    const submitBtns = buttons.filter(b => b.textContent?.includes('제출'));
-    expect(submitBtns.some(b => b.hasAttribute('disabled'))).toBe(true);
+    const submitBtns = buttons.filter(b => !b.hasAttribute('disabled') && b.textContent?.includes('제출'));
+    await act(async () => {
+      fireEvent.click(submitBtns[0]);
+    });
+    expect(screen.getByText('코드를 제출하시겠습니까?')).toBeInTheDocument();
   });
 
-  it('코드가 10자 이상이면 제출을 시도한다', async () => {
+  it('확인 팝업에서 제출을 클릭하면 onSubmit이 호출된다', async () => {
     const onSubmit = jest.fn().mockResolvedValue(undefined);
     render(<CodeEditor {...defaultProps} onSubmit={onSubmit} />);
     const buttons = screen.getAllByRole('button');
     const submitBtns = buttons.filter(b => !b.hasAttribute('disabled') && b.textContent?.includes('제출'));
-    if (submitBtns.length > 0) {
-      await act(async () => {
-        fireEvent.click(submitBtns[0]);
-      });
-      expect(onSubmit).toHaveBeenCalled();
-    }
+    await act(async () => {
+      fireEvent.click(submitBtns[0]);
+    });
+    // 팝업의 "제출" 버튼 클릭
+    const confirmBtn = screen.getAllByRole('button').find(b => b.textContent === '제출');
+    await act(async () => {
+      fireEvent.click(confirmBtn!);
+    });
+    expect(onSubmit).toHaveBeenCalled();
+  });
+
+  it('확인 팝업에서 취소를 클릭하면 팝업이 닫힌다', async () => {
+    render(<CodeEditor {...defaultProps} />);
+    const buttons = screen.getAllByRole('button');
+    const submitBtns = buttons.filter(b => !b.hasAttribute('disabled') && b.textContent?.includes('제출'));
+    await act(async () => {
+      fireEvent.click(submitBtns[0]);
+    });
+    expect(screen.getByText('코드를 제출하시겠습니까?')).toBeInTheDocument();
+    const cancelBtn = screen.getAllByRole('button').find(b => b.textContent === '취소');
+    fireEvent.click(cancelBtn!);
+    expect(screen.queryByText('코드를 제출하시겠습니까?')).not.toBeInTheDocument();
   });
 
   it('onSubmit이 실패하면 에러 메시지를 표시한다', async () => {
     const onSubmit = jest.fn().mockRejectedValue(new Error('서버 오류'));
     render(<CodeEditor {...defaultProps} onSubmit={onSubmit} />);
+    // 제출 클릭 → 확인 팝업 → 제출 확인
     await act(async () => {
       const buttons = screen.getAllByRole('button');
       const submitBtns = buttons.filter(b => !b.hasAttribute('disabled') && b.textContent?.includes('제출'));
-      if (submitBtns.length > 0) {
-        fireEvent.click(submitBtns[0]);
-      }
+      fireEvent.click(submitBtns[0]);
+    });
+    const confirmBtn = screen.getAllByRole('button').find(b => b.textContent === '제출');
+    await act(async () => {
+      fireEvent.click(confirmBtn!);
     });
     await waitFor(() => {
       expect(screen.getByTestId('alert')).toBeInTheDocument();
@@ -239,14 +212,15 @@ describe('CodeEditor', () => {
     await act(async () => {
       const buttons = screen.getAllByRole('button');
       const submitBtns = buttons.filter(b => !b.hasAttribute('disabled') && b.textContent?.includes('제출'));
-      if (submitBtns.length > 0) {
-        fireEvent.click(submitBtns[0]);
-      }
+      fireEvent.click(submitBtns[0]);
+    });
+    const confirmBtn = screen.getAllByRole('button').find(b => b.textContent === '제출');
+    await act(async () => {
+      fireEvent.click(confirmBtn!);
     });
     await waitFor(() => {
       expect(screen.getByTestId('alert')).toBeInTheDocument();
     });
-    // onClose를 호출하면 에러가 지워진다
     if (mockAlertOnClose) {
       act(() => mockAlertOnClose!());
       await waitFor(() => {
@@ -271,6 +245,45 @@ describe('CodeEditor', () => {
     expect(screen.getByText('마감 시간이 지났습니다.')).toBeInTheDocument();
   });
 
+  // ── 언어 변경 확인 팝업 ──
+
+  it('코드가 있을 때 언어 변경 시 확인 팝업이 표시된다', () => {
+    render(<CodeEditor {...defaultProps} />);
+    const select = screen.getByLabelText('프로그래밍 언어');
+    fireEvent.change(select, { target: { value: 'java' } });
+    expect(screen.getByText('언어를 변경하시겠습니까?')).toBeInTheDocument();
+  });
+
+  it('언어 변경 팝업에서 변경을 클릭하면 코드가 초기화된다', () => {
+    render(<CodeEditor {...defaultProps} />);
+    const select = screen.getByLabelText('프로그래밍 언어');
+    fireEvent.change(select, { target: { value: 'java' } });
+    const changeBtn = screen.getAllByRole('button').find(b => b.textContent === '변경');
+    fireEvent.click(changeBtn!);
+    expect(defaultProps.onLanguageChange).toHaveBeenCalledWith('java');
+    expect(defaultProps.onCodeChange).toHaveBeenCalledWith('');
+  });
+
+  it('언어 변경 팝업에서 취소를 클릭하면 팝업이 닫힌다', () => {
+    render(<CodeEditor {...defaultProps} />);
+    const select = screen.getByLabelText('프로그래밍 언어');
+    fireEvent.change(select, { target: { value: 'java' } });
+    expect(screen.getByText(/코드가 삭제됩니다/)).toBeInTheDocument();
+    const cancelBtn = screen.getAllByRole('button').find(b => b.textContent === '취소');
+    fireEvent.click(cancelBtn!);
+    expect(screen.queryByText('언어를 변경하시겠습니까?')).not.toBeInTheDocument();
+    // onLanguageChange는 호출되지 않아야 함
+    expect(defaultProps.onLanguageChange).not.toHaveBeenCalled();
+  });
+
+  it('빈 코드일 때 언어 변경 시 팝업 없이 바로 변경된다', () => {
+    render(<CodeEditor {...defaultProps} code="" />);
+    const select = screen.getByLabelText('프로그래밍 언어');
+    fireEvent.change(select, { target: { value: 'java' } });
+    expect(defaultProps.onLanguageChange).toHaveBeenCalledWith('java');
+    expect(screen.queryByText('언어를 변경하시겠습니까?')).not.toBeInTheDocument();
+  });
+
   // ── 마감 임박 경고 타이머 ──
 
   it('deadline이 없으면 마감 경고를 표시하지 않는다', () => {
@@ -279,19 +292,19 @@ describe('CodeEditor', () => {
   });
 
   it('deadline이 1분 미만이면 imminent 경고를 표시한다', () => {
-    const imminentDeadline = new Date(Date.now() + 30000).toISOString(); // 30초 뒤
+    const imminentDeadline = new Date(Date.now() + 30000).toISOString();
     render(<CodeEditor {...defaultProps} deadline={imminentDeadline} />);
     expect(screen.getByText('마감까지 1분 미만 남았습니다. 지금 바로 제출하세요!')).toBeInTheDocument();
   });
 
   it('deadline이 5분 미만이면 approaching 경고를 표시한다', () => {
-    const approachingDeadline = new Date(Date.now() + 2 * 60 * 1000).toISOString(); // 2분 뒤
+    const approachingDeadline = new Date(Date.now() + 2 * 60 * 1000).toISOString();
     render(<CodeEditor {...defaultProps} deadline={approachingDeadline} />);
     expect(screen.getByText('마감까지 5분 이내입니다. 제출을 서두르세요.')).toBeInTheDocument();
   });
 
   it('deadline이 5분 이상이면 경고를 표시하지 않는다', () => {
-    const farDeadline = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10분 뒤
+    const farDeadline = new Date(Date.now() + 10 * 60 * 1000).toISOString();
     render(<CodeEditor {...defaultProps} deadline={farDeadline} />);
     expect(screen.queryByText(/마감까지/)).not.toBeInTheDocument();
   });
@@ -341,28 +354,11 @@ describe('CodeEditor', () => {
       Object.defineProperty(event, 'defaultPrevented', { value: true });
       window.dispatchEvent(event);
     });
-    // defaultPrevented이면 풀스크린이 유지되어야 함
     expect(screen.getByLabelText('풀스크린 해제')).toBeInTheDocument();
   });
 
-  it('풀스크린 상태에서 suggest-widget이 있으면 Escape를 무시한다', () => {
+  it('풀스크린 아닐 때는 Escape 키 이벤트 리스너가 없다', () => {
     render(<CodeEditor {...defaultProps} />);
-    fireEvent.click(screen.getByLabelText('풀스크린'));
-    // suggest widget 시뮬레이션
-    const widget = document.createElement('div');
-    widget.className = 'editor-widget suggest-widget visible';
-    document.body.appendChild(widget);
-    act(() => {
-      fireEvent.keyDown(window, { key: 'Escape' });
-    });
-    // suggest-widget이 있으면 풀스크린이 유지되어야 함
-    expect(screen.getByLabelText('풀스크린 해제')).toBeInTheDocument();
-    document.body.removeChild(widget);
-  });
-
-  it('풀스크린 아닐 때는 Escape 키 이벤트 리스너가 없다 (no-op)', () => {
-    render(<CodeEditor {...defaultProps} />);
-    // fullscreen=false 상태에서 Escape 눌러도 아무 변화 없음
     act(() => {
       fireEvent.keyDown(window, { key: 'Escape' });
     });
@@ -378,120 +374,21 @@ describe('CodeEditor', () => {
     expect(screen.getByLabelText('풀스크린 해제')).toBeInTheDocument();
   });
 
-  // ── 초기 템플릿 삽입 ──
+  // ── 코드 길이 검증 ──
 
-  it('빈 코드로 마운트 시 BOJ 템플릿을 삽입한다', () => {
-    const onCodeChange = jest.fn();
-    render(<CodeEditor {...defaultProps} code="" onCodeChange={onCodeChange} />);
-    expect(onCodeChange).toHaveBeenCalledWith(expect.stringContaining('sys.stdin'));
+  it('코드 길이가 5자이면 제출 버튼이 비활성화된다', () => {
+    const props = { ...defaultProps, code: 'short' };
+    render(<CodeEditor {...props} />);
+    expect(screen.getByText('5')).toBeInTheDocument();
+    const allBtns = screen.getAllByRole('button');
+    const submitBtns = allBtns.filter(b => b.textContent?.includes('제출'));
+    expect(submitBtns.some(b => b.hasAttribute('disabled'))).toBe(true);
   });
 
-  it('코드가 있으면 템플릿을 삽입하지 않는다', () => {
-    const onCodeChange = jest.fn();
-    render(<CodeEditor {...defaultProps} code="my custom code here" onCodeChange={onCodeChange} />);
-    expect(onCodeChange).not.toHaveBeenCalled();
-  });
-
-  it('언어에 해당하는 템플릿이 없으면 템플릿을 삽입하지 않는다', () => {
-    const onCodeChange = jest.fn();
-    render(<CodeEditor {...defaultProps} code="" language="unknown_lang" onCodeChange={onCodeChange} />);
-    expect(onCodeChange).not.toHaveBeenCalled();
-  });
-
-  // ── 언어 변경 (템플릿 코드 교체) ──
-
-  it('현재 코드가 템플릿이면 언어 변경 시 새 템플릿으로 교체한다', () => {
-    const pythonTemplate = 'import sys\ninput = sys.stdin.readline\n\n';
-    const onCodeChange = jest.fn();
-    render(<CodeEditor {...defaultProps} code={pythonTemplate} onCodeChange={onCodeChange} />);
-    const select = screen.getByLabelText('프로그래밍 언어');
-    fireEvent.change(select, { target: { value: 'java' } });
-    expect(onCodeChange).toHaveBeenCalledWith(expect.stringContaining('BufferedReader'));
-  });
-
-  it('현재 코드가 비어있으면 언어 변경 시 새 템플릿으로 교체한다', () => {
-    const onCodeChange = jest.fn();
-    render(<CodeEditor {...defaultProps} code="" onCodeChange={onCodeChange} language="python" />);
-    onCodeChange.mockClear(); // 초기 템플릿 삽입 호출 초기화
-    const select = screen.getByLabelText('프로그래밍 언어');
-    fireEvent.change(select, { target: { value: 'java' } });
-    expect(onCodeChange).toHaveBeenCalled();
-  });
-
-  it('커스텀 코드가 있으면 언어 변경 시 코드를 교체하지 않는다', () => {
-    const onCodeChange = jest.fn();
-    render(<CodeEditor {...defaultProps} code="my custom solution" onCodeChange={onCodeChange} />);
-    const select = screen.getByLabelText('프로그래밍 언어');
-    fireEvent.change(select, { target: { value: 'java' } });
-    expect(onCodeChange).not.toHaveBeenCalled();
-  });
-
-  // ── 자동완성 상태 (UI 토글 제거됨, 기본값 true) ──
-
-  it('자동완성이 기본 활성 상태로 에디터에 반영된다', () => {
-    render(<CodeEditor {...defaultProps} />);
-    // autocomplete state is true by default — editor renders without error
-    expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
-  });
-
-  // ── 폰트 크기 ──
-
-  it('폰트 축소 버튼을 렌더링한다', () => {
-    render(<CodeEditor {...defaultProps} />);
-    expect(screen.getByLabelText('폰트 축소')).toBeInTheDocument();
-  });
-
-  it('폰트 확대 버튼을 렌더링한다', () => {
-    render(<CodeEditor {...defaultProps} />);
-    expect(screen.getByLabelText('폰트 확대')).toBeInTheDocument();
-  });
-
-  it('폰트 확대 버튼 클릭 시 폰트 크기가 증가한다', () => {
-    render(<CodeEditor {...defaultProps} />);
-    expect(screen.getByText('13')).toBeInTheDocument(); // 기본 폰트 크기
-    fireEvent.click(screen.getByLabelText('폰트 확대'));
-    expect(screen.getByText('14')).toBeInTheDocument();
-  });
-
-  it('폰트 축소 버튼 클릭 시 폰트 크기가 감소한다', () => {
-    render(<CodeEditor {...defaultProps} />);
-    fireEvent.click(screen.getByLabelText('폰트 축소'));
-    expect(screen.getByText('12')).toBeInTheDocument();
-  });
-
-  it('폰트 크기 최소(10)에서 축소 버튼이 비활성화된다', () => {
-    render(<CodeEditor {...defaultProps} />);
-    // 10까지 축소 (13 -> 10은 3번)
-    for (let i = 0; i < 3; i++) {
-      fireEvent.click(screen.getByLabelText('폰트 축소'));
-    }
-    expect(screen.getByLabelText('폰트 축소')).toBeDisabled();
-  });
-
-  it('폰트 크기 최대(20)에서 확대 버튼이 비활성화된다', () => {
-    render(<CodeEditor {...defaultProps} />);
-    // 20까지 확대 (13 -> 20은 7번)
-    for (let i = 0; i < 7; i++) {
-      fireEvent.click(screen.getByLabelText('폰트 확대'));
-    }
-    expect(screen.getByLabelText('폰트 확대')).toBeDisabled();
-  });
-
-  // ── language가 MONACO_LANG_MAP에 없는 경우 (plaintext fallback) ──
-
-  it('알 수 없는 언어는 plaintext로 fallback된다', () => {
-    render(<CodeEditor {...defaultProps} language="unknown_lang" />);
-    // Monaco 모킹이 있으므로 단순히 에러 없이 렌더링되면 OK
-    expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
-  });
-
-  // ── BOJ_TEMPLATES에 없는 언어의 초기화 ──
-
-  it('BOJ_TEMPLATES에 없는 언어에서 초기화 버튼 클릭 시 빈 문자열로 교체한다', () => {
-    const onCodeChange = jest.fn();
-    render(<CodeEditor {...defaultProps} language="unknown_lang" code="some code" onCodeChange={onCodeChange} />);
-    fireEvent.click(screen.getByLabelText('템플릿으로 초기화'));
-    expect(onCodeChange).toHaveBeenCalledWith('');
+  it('코드 길이가 10자 미만일 때 남은 글자 수 경고를 표시한다', () => {
+    const shortCode = 'abc';
+    render(<CodeEditor {...defaultProps} code={shortCode} />);
+    expect(screen.getByText(/7/)).toBeInTheDocument();
   });
 
   it('코드가 100KB 초과이면 제출 시 에러를 표시한다', async () => {
@@ -511,60 +408,59 @@ describe('CodeEditor', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it('코드가 10자 미만이면 제출 시 에러를 표시한다', async () => {
-    const shortCode = 'ab'; // 2자
-    const onSubmit = jest.fn();
-    render(<CodeEditor {...defaultProps} code={shortCode} onSubmit={onSubmit} />);
-    // 제출 버튼은 disabled이므로 handleSubmit을 직접 트리거해야 함
-    // 실제로 button disabled={isSubmitting || code.length < 10} 이므로 버튼이 disabled
-    // 이 경우 handleSubmit 내부의 code.length < 10 분기가 제출 버튼 disabled로 인해 도달 불가
-    // → 대신 코드 길이가 10 이상이지만 handleSubmit 내에서 길이 체크에 걸리는 경우는 없음
-    // 이 테스트는 제출 버튼 disabled 확인으로 충분
-    const buttons = screen.getAllByRole('button');
-    const submitBtns = buttons.filter(b => b.textContent?.includes('제출'));
-    expect(submitBtns.some(b => b.hasAttribute('disabled'))).toBe(true);
-  });
+  // ── 폰트 크기 ──
 
-  it('light 테마에서 algosu-light 테마를 사용한다', () => {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    jest.spyOn(require('next-themes'), 'useTheme').mockReturnValue({ resolvedTheme: 'light', setTheme: jest.fn() });
+  it('폰트 축소 버튼을 렌더링한다', () => {
     render(<CodeEditor {...defaultProps} />);
-    // resolvedTheme === 'light'이므로 monacoTheme은 'algosu-light'
+    expect(screen.getByLabelText('폰트 축소')).toBeInTheDocument();
+  });
+
+  it('폰트 확대 버튼을 렌더링한다', () => {
+    render(<CodeEditor {...defaultProps} />);
+    expect(screen.getByLabelText('폰트 확대')).toBeInTheDocument();
+  });
+
+  it('폰트 확대 버튼 클릭 시 폰트 크기가 증가한다', () => {
+    render(<CodeEditor {...defaultProps} />);
+    expect(screen.getByText('13')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('폰트 확대'));
+    expect(screen.getByText('14')).toBeInTheDocument();
+  });
+
+  it('폰트 축소 버튼 클릭 시 폰트 크기가 감소한다', () => {
+    render(<CodeEditor {...defaultProps} />);
+    fireEvent.click(screen.getByLabelText('폰트 축소'));
+    expect(screen.getByText('12')).toBeInTheDocument();
+  });
+
+  it('폰트 크기 최소(10)에서 축소 버튼이 비활성화된다', () => {
+    render(<CodeEditor {...defaultProps} />);
+    for (let i = 0; i < 3; i++) {
+      fireEvent.click(screen.getByLabelText('폰트 축소'));
+    }
+    expect(screen.getByLabelText('폰트 축소')).toBeDisabled();
+  });
+
+  it('폰트 크기 최대(20)에서 확대 버튼이 비활성화된다', () => {
+    render(<CodeEditor {...defaultProps} />);
+    for (let i = 0; i < 7; i++) {
+      fireEvent.click(screen.getByLabelText('폰트 확대'));
+    }
+    expect(screen.getByLabelText('폰트 확대')).toBeDisabled();
+  });
+
+  // ── 기타 ──
+
+  it('알 수 없는 언어는 plaintext로 fallback된다', () => {
+    render(<CodeEditor {...defaultProps} language="unknown_lang" />);
     expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
-  });
-
-  it('빈 코드로 두 번째 마운트 시 템플릿을 다시 삽입하지 않는다 (mountedRef 분기)', () => {
-    const onCodeChange = jest.fn();
-    const { unmount } = render(
-      <CodeEditor {...defaultProps} code="" onCodeChange={onCodeChange} />,
-    );
-    expect(onCodeChange).toHaveBeenCalledTimes(1); // 첫 마운트 시 템플릿 삽입
-    unmount();
-    onCodeChange.mockClear();
-    // 동일 컴포넌트를 다시 마운트하면 mountedRef가 리셋되므로 다시 호출됨
-    // (React는 unmount 시 ref를 리셋하지 않으므로 isolateModules 필요)
-    render(<CodeEditor {...defaultProps} code="" onCodeChange={onCodeChange} />);
-    // 새 인스턴스이므로 mountedRef도 새로 생성됨 → 다시 호출
-    expect(onCodeChange).toHaveBeenCalled();
-  });
-
-  it('언어 변경 시 새 언어에 BOJ 템플릿이 없으면 코드를 교체하지 않는다', () => {
-    const onCodeChange = jest.fn();
-    render(<CodeEditor {...defaultProps} code="" onCodeChange={onCodeChange} />);
-    onCodeChange.mockClear();
-    const select = screen.getByLabelText('프로그래밍 언어');
-    fireEvent.change(select, { target: { value: 'unknown_lang' } });
-    // isTemplateCode = true (빈코드 trim후) but BOJ_TEMPLATES['unknown_lang']이 없음
-    expect(onCodeChange).not.toHaveBeenCalled();
   });
 
   it('onDidChangeCursorPosition 콜백이 커서 위치를 업데이트한다', async () => {
     render(<CodeEditor {...defaultProps} />);
-    // onMount가 호출되어 editorRef.current가 설정됨
     await waitFor(() => {
       expect(fakeEditor.onDidChangeCursorPosition).toHaveBeenCalled();
     });
-    // 등록된 커서 위치 변경 콜백 호출
     const cursorCb = fakeEditor.onDidChangeCursorPosition.mock.calls[0]?.[0];
     if (cursorCb) {
       act(() => {
@@ -580,31 +476,21 @@ describe('CodeEditor', () => {
     await waitFor(() => {
       expect(fakeEditor.addAction).toHaveBeenCalled();
     });
-    // addAction에 등록된 run 콜백 호출 (Ctrl+Enter 단축키)
     const actionArg = fakeEditor.addAction.mock.calls[0]?.[0];
     if (actionArg?.run) {
       await act(async () => {
         actionArg.run();
-        // void submitRef.current() is async, wait for it
         await Promise.resolve();
       });
-      expect(onSubmit).toHaveBeenCalled();
+      // Ctrl+Enter triggers handleSubmit which shows confirm popup
+      expect(screen.getByText('코드를 제출하시겠습니까?')).toBeInTheDocument();
     }
   });
 
-  it('onSubmit 에러에 message가 없으면 기본 에러 메시지를 표시한다', async () => {
-    const errObj = { message: undefined };
-    const onSubmit = jest.fn().mockRejectedValue(errObj);
-    render(<CodeEditor {...defaultProps} onSubmit={onSubmit} />);
-    await act(async () => {
-      const buttons = screen.getAllByRole('button');
-      const submitBtns = buttons.filter(b => !b.hasAttribute('disabled') && b.textContent?.includes('제출'));
-      if (submitBtns.length > 0) {
-        fireEvent.click(submitBtns[0]);
-      }
-    });
-    await waitFor(() => {
-      expect(screen.getByTestId('alert')).toBeInTheDocument();
-    });
+  it('light 테마에서 algosu-light 테마를 사용한다', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    jest.spyOn(require('next-themes'), 'useTheme').mockReturnValue({ resolvedTheme: 'light', setTheme: jest.fn() });
+    render(<CodeEditor {...defaultProps} />);
+    expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
   });
 });

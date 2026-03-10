@@ -40,13 +40,6 @@ jest.mock('@/hooks/useRequireStudy', () => ({
   useRequireStudy: () => ({ isStudyReady: true }),
 }));
 
-jest.mock('@/hooks/useAutoSave', () => ({
-  useAutoSave: () => ({
-    loadFromLocal: jest.fn().mockReturnValue(null),
-    clearLocal: jest.fn(),
-  }),
-}));
-
 jest.mock('@/components/layout/AppLayout', () => ({
   AppLayout: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="app-layout">{children}</div>
@@ -118,12 +111,7 @@ jest.mock('@/lib/api', () => ({
   },
   submissionApi: {
     create: jest.fn(),
-    listByProblemForStudy: jest.fn().mockResolvedValue([]),
-  },
-  draftApi: {
-    find: jest.fn().mockRejectedValue(new Error('no draft')),
-    upsert: jest.fn(),
-    remove: jest.fn(),
+    list: jest.fn().mockResolvedValue({ data: [], meta: { total: 0 } }),
   },
 }));
 

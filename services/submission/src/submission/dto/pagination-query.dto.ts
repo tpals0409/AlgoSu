@@ -42,6 +42,10 @@ export class PaginationQueryDto {
   @IsOptional()
   @IsString()
   weekNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  problemId?: string;
 }
 
 export interface PaginatedResult<T> {

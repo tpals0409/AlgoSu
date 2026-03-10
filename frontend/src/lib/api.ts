@@ -95,6 +95,7 @@ export interface SubmissionListParams {
   language?: string;
   sagaStep?: string;
   weekNumber?: string;
+  problemId?: string;
 }
 
 export interface AnalysisResult {
@@ -414,6 +415,7 @@ export const submissionApi = {
     if (params?.language) query.set('language', params.language);
     if (params?.sagaStep) query.set('sagaStep', params.sagaStep);
     if (params?.weekNumber) query.set('weekNumber', params.weekNumber);
+    if (params?.problemId) query.set('problemId', params.problemId);
     const qs = query.toString();
     return fetchApi(`/api/submissions${qs ? `?${qs}` : ''}`);
   },

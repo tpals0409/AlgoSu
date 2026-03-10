@@ -2,7 +2,7 @@
  * @file 문제 상세 + 코드 제출 통합 페이지 (Figma 디자인 반영)
  * @domain problem, submission
  * @layer page
- * @related problemApi, submissionApi, draftApi, CodeEditor, useAutoSave
+ * @related problemApi, submissionApi, CodeEditor
  */
 
 'use client';
@@ -19,8 +19,7 @@ import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { CodeEditor } from '@/components/submission/CodeEditor';
-import { useAutoSave } from '@/hooks/useAutoSave';
-import { problemApi, submissionApi, draftApi, type Problem, type Submission } from '@/lib/api';
+import { problemApi, submissionApi, type Problem, type Submission } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudy } from '@/contexts/StudyContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
@@ -35,7 +34,7 @@ interface PageProps {
   readonly params: Promise<{ id: string }>;
 }
 
-type AutoSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+
 
 // ─── RENDER ───────────────────────────────
 
@@ -63,7 +62,6 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
   const [language, setLanguage] = useState<string>('python');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [autoSaveStatus, setAutoSaveStatus] = useState<AutoSaveStatus>('idle');
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -90,19 +88,14 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
       setIsLoading(true);
       setError(null);
       try {
-        const [problemData, draftData, submissionData] = await Promise.all([
+        const [problemData, submissionData] = await Promise.all([
           problemApi.findById(problemId),
-          draftApi.find(problemId).catch(() => null),
-          submissionApi.listByProblemForStudy(problemId).catch(() => [] as Submission[]),
+          submissionApi.list({ problemId, limit: 100 }).then((r) => r.data).catch(() => [] as Submission[]),
         ]);
         if (cancelled) return;
         setProblem(problemData);
         document.title = `${problemData.title} | AlgoSu`;
         setSubmissions(submissionData);
-        if (draftData) {
-          setCode(draftData.code);
-          setLanguage(draftData.language);
-        }
       } catch (err: unknown) {
         if (!cancelled) {
           setError((err as Error).message ?? '문제를 불러오는 데 실패했습니다.');
@@ -116,53 +109,14 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
     return () => { cancelled = true; };
   }, [isAuthenticated, currentStudyId, problemId]);
 
-  // ─── AUTO-SAVE ──────────────────────────
-
-  const { loadFromLocal, clearLocal } = useAutoSave({
-    problemId,
-    studyId: currentStudyId,
-    code,
-    language,
-    onLocalSaved: useCallback(() => {
-      setAutoSaveStatus('saved');
-      setTimeout(() => setAutoSaveStatus('idle'), 2000);
-    }, []),
-    onSaveFailed: useCallback(() => {
-      setAutoSaveStatus('error');
-      setTimeout(() => setAutoSaveStatus('idle'), 3000);
-    }, []),
-    onServerSave: useCallback(
-      async (data: { code: string; language: string }): Promise<void> => {
-        try {
-          await draftApi.upsert(problemId, { language: data.language, code: data.code });
-        } catch {
-          // 서버 저장 실패 — localStorage에 이미 저장됨
-        }
-      },
-      [problemId],
-    ),
-    enabled: !isLoading && problem !== null && problem.status === 'ACTIVE',
-  });
-
-  useEffect(() => {
-    if (isLoading || code) return;
-    const local = loadFromLocal();
-    if (local) {
-      setCode(local.code);
-      setLanguage(local.language);
-    }
-  }, [isLoading, code, loadFromLocal]);
-
   // ─── HANDLERS ─────────────────────────────
 
   const handleCodeChange = useCallback((newCode: string): void => {
     setCode(newCode);
-    setAutoSaveStatus('saving');
   }, []);
 
   const handleLanguageChange = useCallback((lang: string): void => {
     setLanguage(lang);
-    setAutoSaveStatus('saving');
   }, []);
 
   const handleSubmit = useCallback(async (): Promise<void> => {
@@ -186,16 +140,13 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
         code,
       });
 
-      clearLocal();
-      void draftApi.remove(problemId).catch(() => {});
-
       router.push(`/submissions/${submission.id}/status`);
     } catch (err: unknown) {
       setSubmitError((err as Error).message ?? '제출 중 오류가 발생했습니다.');
     } finally {
       setIsSubmitting(false);
     }
-  }, [problem, language, code, problemId, clearLocal, router, githubConnected]);
+  }, [problem, language, code, problemId, router, githubConnected]);
 
   const handleDelete = useCallback(async (): Promise<void> => {
     setIsDeleting(true);
@@ -400,7 +351,6 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
                   onLanguageChange={handleLanguageChange}
                   onSubmit={handleSubmit}
                   isSubmitting={isSubmitting}
-                  autoSaveStatus={autoSaveStatus}
                   deadline={problem.deadline}
                   editorHeight="420px"
                 />

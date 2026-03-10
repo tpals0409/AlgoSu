@@ -65,7 +65,7 @@ export class SubmissionService {
     }
 
     // A3: 지각 제출 체크 — 마감 시간 초과 시 isLate=true (제출은 허용)
-    const { isLate, weekNumber } = await this.checkLateSubmission(studyId, dto.problemId);
+    const { isLate, weekNumber } = await this.checkLateSubmission(studyId, dto.problemId, userId);
 
     // DB 저장 (Step 1)
     const submission = this.submissionRepo.create({
@@ -161,6 +161,10 @@ export class SubmissionService {
 
     if (query.weekNumber) {
       qb.andWhere('s.weekNumber = :weekNumber', { weekNumber: query.weekNumber });
+    }
+
+    if (query.problemId) {
+      qb.andWhere('s.problemId = :problemId', { problemId: query.problemId });
     }
 
     qb.orderBy(
@@ -451,21 +455,24 @@ export class SubmissionService {
   private async checkLateSubmission(
     studyId: string,
     problemId: string,
+    userId?: string,
   ): Promise<{ isLate: boolean; weekNumber: string | null }> {
     try {
       const problemServiceUrl = this.configService.getOrThrow<string>('PROBLEM_SERVICE_URL');
       const internalKey = this.configService.getOrThrow<string>('INTERNAL_KEY_GATEWAY');
 
+      const headers: Record<string, string> = {
+        'x-internal-key': internalKey,
+        'x-study-id': studyId,
+        'Content-Type': 'application/json',
+      };
+      if (userId) {
+        headers['x-user-id'] = userId;
+      }
+
       const response = await fetch(
         `${problemServiceUrl}/deadline/${problemId}`,
-        {
-          method: 'GET',
-          headers: {
-            'x-internal-key': internalKey,
-            'x-study-id': studyId,
-            'Content-Type': 'application/json',
-          },
-        },
+        { method: 'GET', headers },
       );
 
       if (!response.ok) {
