@@ -24,5 +24,6 @@ export default {
     ],
     'scope-empty': [1, 'never'],
     'subject-max-length': [2, 'always', 100],
+    'subject-case': [0],
   },
 };

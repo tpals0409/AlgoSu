@@ -478,10 +478,12 @@ function SubmissionListView({ problem, submissions, onSelect, onBack, createdByU
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {submissions.map((sub) => {
             const memberName = getMemberDisplayName(sub.userId, createdByUserId, token, members);
+            const isOwner = !!(sub.userId && createdByUserId && shouldShowRealName(sub.userId, createdByUserId));
             return (
               <Card
                 key={sub.id}
                 className="cursor-pointer p-4 transition-all hover:-translate-y-0.5 hover:shadow-sm"
+                style={isOwner ? { animation: 'glow-pulse 3s ease-in-out infinite', borderColor: 'var(--primary)' } : undefined}
                 onClick={() => onSelect(sub)}
               >
                 <div className="flex items-center gap-3">
@@ -494,6 +496,14 @@ function SubmissionListView({ problem, submissions, onSelect, onBack, createdByU
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-[13px] font-semibold" style={{ color: 'var(--text)' }}>{memberName}</span>
+                      {isOwner && (
+                        <span
+                          className="rounded-full px-2 py-0.5 text-[10px] font-bold"
+                          style={{ backgroundColor: 'var(--primary-soft)', color: 'var(--primary)' }}
+                        >
+                          내 제출
+                        </span>
+                      )}
                       <span
                         className="rounded-full px-2 py-0.5 text-[11px] font-medium uppercase"
                         style={{ backgroundColor: 'var(--bg-alt)', color: 'var(--text-2)' }}
