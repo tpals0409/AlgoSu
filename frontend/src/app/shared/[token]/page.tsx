@@ -20,14 +20,17 @@ import {
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import {
-  Code2, Brain, Users, AlertCircle, ArrowLeft,
+  Brain, Users, AlertCircle, ArrowLeft,
   ChevronRight, FileText, CheckCircle2, Sparkles, Copy, Check,
+  Clock, Zap, ChevronDown, BarChart3,
 } from 'lucide-react';
 import { GuestProvider, useGuest } from '@/contexts/GuestContext';
 import { publicApi, type Problem, type Submission, type AnalysisResult } from '@/lib/api';
 import { getAnonymousName, shouldShowRealName } from '@/lib/anonymize';
 import { getAvatarSrc } from '@/lib/avatars';
 import { Card } from '@/components/ui/Card';
+import { ScoreGauge } from '@/components/ui/ScoreGauge';
+import { CodeBlock } from '@/components/ui/CodeBlock';
 import {
   DIFF_BADGE_STYLE,
   DIFFICULTY_LABELS,
@@ -35,48 +38,99 @@ import {
   type Difficulty,
 } from '@/lib/constants';
 
-/* ───────────────── 피드백 파싱 ───────────────── */
+/* ───────────────── 피드백 파싱 (분석 페이지 동일) ───────────────── */
 
-type FeedbackHighlight = string | { startLine?: number; endLine?: number; type?: string; message?: string };
+interface ParsedFeedback {
+  totalScore: number;
+  summary: string;
+  categories: FeedbackCategory[];
+  optimizedCode: string | null;
+  timeComplexity: string | null;
+  spaceComplexity: string | null;
+}
 
 interface FeedbackCategory {
-  name?: string;
-  category?: string;
-  score?: number;
-  comment?: string;
-  highlights?: FeedbackHighlight[];
+  name: string;
+  score: number;
+  comment: string;
+  highlights: { startLine: number; endLine: number }[];
 }
 
-function parseFeedback(feedback: string | null): FeedbackCategory[] {
-  if (!feedback) return [];
-  try {
-    let rawJson = feedback;
-    try { JSON.parse(rawJson); } catch {
-      const start = rawJson.indexOf('{');
-      if (start === -1) return [];
-      let depth = 0, end = -1;
-      for (let i = start; i < rawJson.length; i++) {
-        if (rawJson[i] === '{') depth++;
-        else if (rawJson[i] === '}') { depth--; if (depth === 0) { end = i; break; } }
-      }
-      if (end === -1) return [];
-      rawJson = rawJson.substring(start, end + 1);
-    }
-    const parsed = JSON.parse(rawJson);
-    const cats = parsed.categories ?? parsed;
-    if (!Array.isArray(cats)) return [];
-    return cats as FeedbackCategory[];
-  } catch { return []; }
+function extractComplexity(categories: FeedbackCategory[]): { time: string | null; space: string | null } {
+  const efficiency = categories.find((c) => c.name === 'efficiency');
+  if (!efficiency) return { time: null, space: null };
+  const bigOPattern = /O\([^)]+\)/g;
+  const matches = efficiency.comment.match(bigOPattern);
+  if (matches && matches.length >= 2) return { time: matches[0], space: matches[1] };
+  if (matches && matches.length === 1) return { time: matches[0], space: null };
+  return { time: null, space: null };
 }
 
-/** 총점 추출 (feedback JSON 내 totalScore) */
-function parseTotalScore(feedback: string | null): number | null {
+function parseFeedback(feedback: string | null, score: number | null, optimizedCode: string | null): ParsedFeedback | null {
   if (!feedback) return null;
   try {
-    const parsed = JSON.parse(feedback);
-    return parsed.totalScore ?? null;
-  } catch { return null; }
+    let cleaned = feedback.trim();
+    if (cleaned.startsWith('```')) {
+      cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
+    }
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch {
+      const start = cleaned.indexOf('{');
+      if (start === -1) throw new Error('No JSON found');
+      let depth = 0, end = -1;
+      for (let i = start; i < cleaned.length; i++) {
+        if (cleaned[i] === '{') depth++;
+        else if (cleaned[i] === '}') { depth--; if (depth === 0) { end = i; break; } }
+      }
+      if (end === -1) throw new Error('No matching brace');
+      parsed = JSON.parse(cleaned.substring(start, end + 1));
+    }
+    const rawCategories = parsed.categories as Record<string, unknown>[] | undefined;
+    const categories: FeedbackCategory[] = (rawCategories ?? []).map((c) => ({
+      name: (c.name as string) ?? '',
+      score: (c.score as number) ?? 0,
+      comment: (c.comment as string) ?? '',
+      highlights: (c.highlights as { startLine: number; endLine: number }[]) ?? [],
+    }));
+    const complexity = extractComplexity(categories);
+    const resolvedOptimizedCode = (parsed.optimizedCode as string | null) ?? optimizedCode ?? null;
+    return {
+      totalScore: (parsed.totalScore as number | null) ?? score ?? 0,
+      summary: (parsed.summary as string) ?? '',
+      categories,
+      optimizedCode: resolvedOptimizedCode,
+      timeComplexity: (parsed.timeComplexity as string | null) ?? complexity.time,
+      spaceComplexity: (parsed.spaceComplexity as string | null) ?? complexity.space,
+    };
+  } catch {
+    return {
+      totalScore: score ?? 0,
+      summary: feedback,
+      categories: [],
+      optimizedCode: optimizedCode ?? null,
+      timeComplexity: null,
+      spaceComplexity: null,
+    };
+  }
 }
+
+function barColor(score: number): string {
+  if (score >= 80) return 'var(--success)';
+  if (score >= 60) return 'var(--warning)';
+  return 'var(--error)';
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  efficiency: '효율성',
+  readability: '가독성',
+  correctness: '정확성',
+  structure: '코드 구조',
+  bestPractice: '모범 사례',
+  style: '코드 스타일',
+  maintainability: '유지보수성',
+};
 
 /* ───────────────── 페이지 진입점 ───────────────── */
 
@@ -121,10 +175,14 @@ function SharedStudyContent(): ReactNode {
     });
   }, [token, loading, error]);
 
-  /* 문제별 제출 필터 */
+  /* 문제별 제출 필터 — 유저당 최신 1건만 (스터디룸 동일 로직) */
   const filteredSubmissions = useMemo(() => {
     if (!selectedProblem) return [];
-    return allSubmissions.filter((s) => s.problemId === selectedProblem.id);
+    const byProblem = allSubmissions.filter((s) => s.problemId === selectedProblem.id);
+    // allSubmissions는 createdAt DESC → 첫 등장이 최신 (유저당 1건)
+    return byProblem.filter((sub, idx, arr) =>
+      arr.findIndex((s) => (s.userId ?? '') === (sub.userId ?? '')) === idx,
+    );
   }, [allSubmissions, selectedProblem]);
 
   /* 주차별 그룹핑 */
@@ -139,11 +197,17 @@ function SharedStudyContent(): ReactNode {
     return groups;
   }, [problems]);
 
-  /* 문제별 제출 수 맵 */
+  /* 문제별 제출 인원 수 맵 (유저당 1건 — 중복 제거) */
   const submissionCountMap = useMemo(() => {
-    const map = new Map<string, number>();
+    const userSets = new Map<string, Set<string>>();
     for (const s of allSubmissions) {
-      map.set(s.problemId, (map.get(s.problemId) ?? 0) + 1);
+      const uid = s.userId ?? 'unknown';
+      if (!userSets.has(s.problemId)) userSets.set(s.problemId, new Set());
+      userSets.get(s.problemId)!.add(uid);
+    }
+    const map = new Map<string, number>();
+    for (const [pid, users] of userSets) {
+      map.set(pid, users.size);
     }
     return map;
   }, [allSubmissions]);
@@ -382,27 +446,27 @@ function SubmissionListView({ problem, submissions, onSelect, onBack, createdByU
 
       {/* 스탯 */}
       <div className="grid grid-cols-3 gap-2 text-center">
-        <div>
+        <Card className="p-3">
           <div className="flex items-center justify-center gap-1.5">
             <Users className="h-4 w-4" style={{ color: 'var(--text-3)' }} />
             <span className="text-lg font-bold" style={{ color: 'var(--text)' }}>{memberCount}</span>
           </div>
           <p className="text-[11px]" style={{ color: 'var(--text-3)' }}>전체 멤버</p>
-        </div>
-        <div>
+        </Card>
+        <Card className="p-3">
           <div className="flex items-center justify-center gap-1.5">
             <CheckCircle2 className="h-4 w-4" style={{ color: 'var(--success)' }} />
             <span className="text-lg font-bold" style={{ color: 'var(--text)' }}>{uniqueSubmitters}</span>
           </div>
           <p className="text-[11px]" style={{ color: 'var(--text-3)' }}>제출</p>
-        </div>
-        <div>
+        </Card>
+        <Card className="p-3">
           <div className="flex items-center justify-center gap-1.5">
             <Brain className="h-4 w-4" style={{ color: 'var(--primary)' }} />
             <span className="text-lg font-bold" style={{ color: 'var(--text)' }}>{analyzedCount}</span>
           </div>
           <p className="text-[11px]" style={{ color: 'var(--text-3)' }}>분석 완료</p>
-        </div>
+        </Card>
       </div>
 
       {/* 제출 카드 그리드 */}
@@ -460,17 +524,7 @@ function SubmissionListView({ problem, submissions, onSelect, onBack, createdByU
   );
 }
 
-/* ───────────────── 분석 뷰 ───────────────── */
-
-/** 카테고리 이름별 색상 매핑 */
-const CAT_COLORS: Record<string, string> = {
-  correctness: 'var(--success)',
-  efficiency: 'var(--info)',
-  readability: 'var(--primary)',
-  structure: 'var(--warning)',
-  bestPractice: '#9f7aea',
-  bestpractice: '#9f7aea',
-};
+/* ───────────────── 분석 뷰 (기존 분석 페이지 동일) ───────────────── */
 
 function AnalysisView({ submission, analysis, loading: analysisLoading, onBack, createdByUserId, token, members }: {
   readonly submission: Submission;
@@ -482,158 +536,247 @@ function AnalysisView({ submission, analysis, loading: analysisLoading, onBack, 
   readonly members: Array<{ userId: string; nickname: string; role: string }>;
 }): ReactNode {
   const memberName = getMemberDisplayName(submission.userId, createdByUserId, token, members);
-  const categories: FeedbackCategory[] = analysis?.feedback ? parseFeedback(analysis.feedback) : [];
-  const totalScore = analysis?.score ?? parseTotalScore(analysis?.feedback ?? null);
   const code = submission.code || (analysis as AnalysisResult & { code?: string } | null)?.code;
+  const parsed = analysis ? parseFeedback(analysis.feedback, analysis.score, analysis.optimizedCode) : null;
   const [copied, setCopied] = useState(false);
+  const [showOptimized, setShowOptimized] = useState(false);
   const [barsAnimated, setBarsAnimated] = useState(false);
 
   useEffect(() => {
-    if (categories.length === 0) return;
-    const timer = setTimeout(() => setBarsAnimated(true), 100);
+    if (!parsed || parsed.categories.length === 0) return;
+    const timer = setTimeout(() => setBarsAnimated(true), 400);
     return () => clearTimeout(timer);
-  }, [categories.length]);
+  }, [parsed?.categories.length]);
 
-  const handleCopy = useCallback(async () => {
-    if (!code) return;
-    await navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }, [code]);
+  const handleCopy = useCallback(async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* 복사 실패 무시 */ }
+  }, []);
 
   return (
-    <div className="space-y-5">
-      {/* 뒤로 가기 */}
-      <button
-        type="button"
-        onClick={onBack}
-        className="flex h-9 w-9 items-center justify-center rounded-full transition-colors"
-        style={{ color: 'var(--text-3)' }}
-      >
-        <ArrowLeft size={20} />
-      </button>
-
-      {/* 헤더 */}
-      <div className="flex items-center gap-3">
-        <img src={getAvatarSrc('default')} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />
-        <div>
-          <h2 className="text-lg font-bold" style={{ color: 'var(--text)' }}>{memberName}</h2>
-          <div className="flex items-center gap-2">
-            <span className="rounded-full px-2 py-0.5 text-[11px] font-medium uppercase" style={{ backgroundColor: 'var(--bg-alt)', color: 'var(--text-2)' }}>
-              {submission.language}
-            </span>
-            <span className="text-[11px]" style={{ color: 'var(--text-3)' }}>
-              {new Date(submission.createdAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
-            </span>
-          </div>
+    <div className="space-y-4">
+      {/* ─── HEADER ─────────────────────────── */}
+      <div className="space-y-3">
+        {/* 뒤로 + 제목 */}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onBack}
+            className="flex h-9 w-9 items-center justify-center shrink-0 rounded-full transition-colors hover:bg-bg-alt"
+          >
+            <ArrowLeft className="h-5 w-5" style={{ color: 'var(--text)' }} />
+          </button>
+          <h1 className="text-lg sm:text-xl font-bold tracking-tight truncate" style={{ color: 'var(--text)' }}>
+            {memberName}
+          </h1>
         </div>
+
+        {/* 뱃지 행 */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* 언어 뱃지 */}
+          <span
+            className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase"
+            style={{ backgroundColor: 'var(--primary-soft)', color: 'var(--primary)' }}
+          >
+            {submission.language}
+          </span>
+          {/* 상태 뱃지 */}
+          {analysis?.analysisStatus === 'completed' && (
+            <span
+              className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium"
+              style={{ backgroundColor: 'var(--success-soft)', color: 'var(--success)' }}
+            >
+              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--success)' }} aria-hidden />
+              분석 완료
+            </span>
+          )}
+          {/* 점수 뱃지 */}
+          {parsed && (
+            <span
+              className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold"
+              style={{ backgroundColor: 'var(--success-soft)', color: 'var(--success)' }}
+            >
+              {parsed.totalScore}점
+            </span>
+          )}
+        </div>
+
+        {/* 시간 */}
+        <span className="text-[11px] sm:text-[12px]" style={{ color: 'var(--text-3)' }}>
+          {new Date(submission.createdAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })}{' '}
+          {new Date(submission.createdAt).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit', hour12: true })}
+        </span>
       </div>
 
+      {/* ─── LOADING / STATUS ───────────────── */}
       {analysisLoading || !analysis ? (
         <LoadingView />
       ) : analysis.analysisStatus !== 'completed' ? (
         <Card className="p-8 text-center" style={{ color: 'var(--text-3)' }}>
           분석이 아직 완료되지 않았습니다. (상태: {analysis.analysisStatus})
         </Card>
-      ) : (
-        <div className="flex flex-col gap-4 lg:flex-row">
-          {/* 좌측: 코드 */}
-          {code && (
-            <div className="flex w-full flex-col lg:w-1/2">
-              <Card className="flex-1 overflow-hidden p-0">
-                <div className="flex h-12 items-center justify-between border-b px-5" style={{ borderColor: 'var(--border)' }}>
-                  <div className="flex items-center gap-2">
-                    <Code2 size={14} style={{ color: 'var(--text-3)' }} />
-                    <span className="text-[13px] font-semibold" style={{ color: 'var(--text)' }}>제출 코드</span>
-                    <span className="rounded-full px-2 py-0.5 text-[11px] font-medium uppercase" style={{ backgroundColor: 'var(--bg-alt)', color: 'var(--text-2)' }}>
-                      {submission.language}
-                    </span>
-                  </div>
-                  <button type="button" onClick={() => void handleCopy()} className="flex items-center gap-1 rounded-full px-2 py-1 text-[11px] transition-colors" style={{ color: copied ? 'var(--success)' : 'var(--text-3)' }}>
-                    {copied ? <Check size={14} /> : <Copy size={14} />}
+      ) : parsed && (
+        /* ─── COMPLETED: 2-Column Layout ────── */
+        <div className="flex flex-col lg:flex-row gap-4 items-stretch">
+
+          {/* ── LEFT: Code Viewer ──────────── */}
+          <div className="w-full lg:w-1/2 min-w-0 flex flex-col">
+            <Card className="p-0 overflow-hidden flex-1 flex flex-col">
+              {/* 코드 헤더 */}
+              <div
+                className="flex items-center justify-between px-5 h-12 shrink-0 border-b"
+                style={{ borderColor: 'var(--border)' }}
+              >
+                <span className="text-[13px] font-semibold flex items-center gap-1.5" style={{ color: 'var(--text)' }}>
+                  <span style={{ color: 'var(--primary)' }}>&lt;/&gt;</span>
+                  {submission.language}
+                </span>
+                {code && (
+                  <button
+                    onClick={() => void handleCopy(code)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-badge text-[11px] font-medium transition-colors hover:bg-bg-alt"
+                    style={{ color: 'var(--text-3)' }}
+                  >
+                    {copied ? <Check className="h-3 w-3" style={{ color: 'var(--success)' }} /> : <Copy className="h-3 w-3" />}
                     {copied ? '복사됨' : '복사'}
                   </button>
-                </div>
-                <pre className="overflow-x-auto p-5 text-[13px] leading-relaxed" style={{ color: 'var(--text)', backgroundColor: 'var(--bg-alt)' }}>
-                  <code>{code}</code>
-                </pre>
-              </Card>
-            </div>
-          )}
+                )}
+              </div>
 
-          {/* 우측: 분석 결과 */}
-          <div className={`flex w-full flex-col gap-4 ${code ? 'lg:w-1/2' : ''}`}>
-            {/* 점수 */}
-            {totalScore != null && (
-              <Card className="p-5">
-                <div className="flex items-center gap-3">
-                  <Sparkles size={20} style={{ color: 'var(--primary)' }} />
-                  <div>
-                    <p className="text-[11px] font-medium" style={{ color: 'var(--text-3)' }}>AI 종합 점수</p>
-                    <p className="text-3xl font-bold" style={{ color: 'var(--primary)' }}>
-                      {totalScore}<span className="text-base font-normal" style={{ color: 'var(--text-3)' }}>/100</span>
-                    </p>
+              {/* 코드 블록 */}
+              <div className="overflow-auto">
+                {code ? (
+                  <CodeBlock
+                    code={code}
+                    language={submission.language ?? 'text'}
+                  />
+                ) : (
+                  <div className="p-4 text-xs" style={{ color: 'var(--text-3)', backgroundColor: 'var(--code-bg)' }}>
+                    제출한 코드를 불러올 수 없습니다.
                   </div>
+                )}
+              </div>
+            </Card>
+          </div>
+
+          {/* ── RIGHT: AI 분석 결과 사이드바 ── */}
+          <div className="w-full lg:w-1/2 flex flex-col">
+            <Card className="p-0 overflow-hidden flex-1 flex flex-col">
+              {/* 카드 헤더 */}
+              <div className="flex items-center justify-between px-5 h-12 shrink-0 border-b" style={{ borderColor: 'var(--border)' }}>
+                <span className="flex items-center gap-2 text-[13px] font-semibold" style={{ color: 'var(--text)' }}>
+                  <Brain className="h-4 w-4" style={{ color: 'var(--primary)' }} aria-hidden />
+                  AI 분석 결과
+                </span>
+              </div>
+
+              <div className="px-3 sm:px-5 py-4 sm:py-5 space-y-5">
+                {/* 원형 점수 게이지 */}
+                <div className="flex justify-center">
+                  <ScoreGauge score={parsed.totalScore} size={160} label="/ 100" />
                 </div>
-              </Card>
-            )}
 
-            {/* 카테고리별 점수 바 */}
-            {categories.length > 0 && (
-              <Card className="space-y-1 p-5">
-                <p className="mb-3 text-[13px] font-semibold" style={{ color: 'var(--text)' }}>카테고리별 분석</p>
-                {categories.map((cat, i) => {
-                  const catKey = (cat.name ?? cat.category ?? '').toLowerCase();
-                  const barColor = CAT_COLORS[catKey] ?? 'var(--primary)';
-                  const catScore = cat.score ?? 0;
+                {/* 복잡도 뱃지 */}
+                {(parsed.timeComplexity || parsed.spaceComplexity) && (
+                  <div className="flex items-center justify-center gap-3">
+                    {parsed.timeComplexity && (
+                      <span
+                        className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium"
+                        style={{ backgroundColor: 'var(--info-soft)', color: 'var(--info)' }}
+                      >
+                        <Clock className="h-3.5 w-3.5" aria-hidden />
+                        시간 {parsed.timeComplexity}
+                      </span>
+                    )}
+                    {parsed.spaceComplexity && (
+                      <span
+                        className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium"
+                        style={{ backgroundColor: 'var(--primary-soft)', color: 'var(--primary)' }}
+                      >
+                        <Zap className="h-3.5 w-3.5" aria-hidden />
+                        공간 {parsed.spaceComplexity}
+                      </span>
+                    )}
+                  </div>
+                )}
 
-                  return (
-                    <div key={i} className="py-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[12px] font-medium" style={{ color: 'var(--text-2)' }}>{cat.name ?? cat.category}</span>
-                        {cat.score != null && (
-                          <span className="text-[13px] font-bold" style={{ color: barColor }}>{cat.score}</span>
-                        )}
-                      </div>
-                      {cat.score != null && (
-                        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full" style={{ backgroundColor: 'var(--border)' }}>
-                          <div
-                            className="h-full rounded-full transition-all duration-700 ease-out"
-                            style={{ width: barsAnimated ? `${catScore}%` : '0%', backgroundColor: barColor }}
-                          />
+                {/* AI 총평 텍스트 */}
+                {parsed.summary && (
+                  <div
+                    className="rounded-card px-4 py-3 text-[12px] leading-relaxed"
+                    style={{
+                      backgroundColor: 'var(--primary-soft)',
+                      borderLeft: '3px solid var(--primary)',
+                      color: 'var(--text-2)',
+                    }}
+                  >
+                    {parsed.summary}
+                  </div>
+                )}
+
+                {/* 항목별 평가 */}
+                {parsed.categories.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="flex items-center gap-1.5 text-[13px] font-medium pb-1" style={{ color: 'var(--text)', borderBottom: '1px solid var(--border)' }}>
+                      <BarChart3 className="h-3.5 w-3.5" style={{ color: 'var(--primary)' }} aria-hidden />
+                      항목별 평가
+                    </p>
+                    {parsed.categories.map((cat) => {
+                      const color = barColor(cat.score);
+                      const label = CATEGORY_LABELS[cat.name] ?? cat.name;
+                      return (
+                        <div key={cat.name} className="py-2.5">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[13px] font-semibold" style={{ color: 'var(--text)' }}>{label}</span>
+                            <span className="text-[13px] font-bold" style={{ color }}>{cat.score}</span>
+                          </div>
+                          <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--border)' }}>
+                            <div
+                              className="h-full rounded-full transition-all duration-700 ease-out"
+                              style={{ width: barsAnimated ? `${cat.score}%` : '0%', backgroundColor: color }}
+                            />
+                          </div>
+                          <p className="mt-1.5 text-[11px] leading-relaxed" style={{ color: 'var(--text-3)' }}>{cat.comment}</p>
                         </div>
-                      )}
-                      {cat.comment && (
-                        <p className="mt-1.5 text-[11px] leading-relaxed" style={{ color: 'var(--text-3)' }}>{cat.comment}</p>
-                      )}
-                      {cat.highlights && cat.highlights.length > 0 && (
-                        <ul className="mt-1.5 space-y-1">
-                          {cat.highlights.map((h, j) => (
-                            <li key={j} className="flex items-start gap-1.5 text-[11px] leading-relaxed" style={{ color: 'var(--text-3)' }}>
-                              <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full" style={{ backgroundColor: barColor }} />
-                              {typeof h === 'string' ? h : (h.message ?? `Line ${h.startLine ?? '?'}–${h.endLine ?? '?'}`)}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  );
-                })}
-              </Card>
-            )}
+                      );
+                    })}
+                  </div>
+                )}
 
-            {/* 최적화 코드 */}
-            {analysis.optimizedCode && (
-              <Card className="overflow-hidden p-0">
-                <div className="flex h-10 items-center gap-2 border-b px-4" style={{ borderColor: 'var(--border)' }}>
-                  <Brain size={14} style={{ color: 'var(--primary)' }} />
-                  <span className="text-[12px] font-semibold" style={{ color: 'var(--text)' }}>최적화 코드</span>
-                </div>
-                <pre className="overflow-x-auto p-4 text-[12px] leading-relaxed" style={{ color: 'var(--text)', backgroundColor: 'var(--bg-alt)' }}>
-                  <code>{analysis.optimizedCode}</code>
-                </pre>
-              </Card>
-            )}
+                {/* AI 개선 코드 아코디언 */}
+                {parsed.optimizedCode && (
+                  <div style={{ borderTop: '1px solid var(--border)' }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowOptimized(!showOptimized)}
+                      className="flex items-center justify-between w-full px-0 py-2.5 text-[13px] font-medium transition-colors hover:text-primary"
+                      style={{ color: 'var(--text)' }}
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <Sparkles className="h-3.5 w-3.5" style={{ color: 'var(--primary)' }} aria-hidden />
+                        AI 개선 코드
+                      </span>
+                      <ChevronDown
+                        className="h-4 w-4 transition-transform"
+                        style={{ color: 'var(--text-3)', transform: showOptimized ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                        aria-hidden
+                      />
+                    </button>
+                    {showOptimized && (
+                      <div className="rounded-card overflow-hidden mb-1" style={{ border: '1px solid var(--border)' }}>
+                        <CodeBlock
+                          code={parsed.optimizedCode}
+                          language={submission.language ?? 'text'}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </Card>
           </div>
         </div>
       )}
