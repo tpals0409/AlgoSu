@@ -757,9 +757,10 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
               <button type="button" onClick={() => setShowDeleteConfirm(false)}
                 className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt"
                 style={{ color: 'var(--text-2)' }}>취소</button>
-              <button type="button" onClick={() => { void handleDeleteStudy(); setShowDeleteConfirm(false); }}
-                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity"
-                style={{ backgroundColor: 'var(--error)' }}>삭제</button>
+              <button type="button" onClick={() => { void handleDeleteStudy(); }}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity disabled:opacity-50"
+                style={{ backgroundColor: 'var(--error)' }}>{isDeleting ? '삭제 중...' : '삭제'}</button>
             </div>
           </div>
         </div>
