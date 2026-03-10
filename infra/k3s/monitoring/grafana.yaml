@@ -42,11 +42,15 @@ spec:
               value: "%(protocol)s://%(domain)s/"
             - name: GF_SERVER_SERVE_FROM_SUB_PATH
               value: "false"
+            - name: GF_SECURITY_ADMIN_USER
+              value: "Leo.Kim"
             - name: GF_SECURITY_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: monitoring-secrets
                   key: GRAFANA_ADMIN_PASSWORD
+            - name: GF_SECURITY_ADMIN_EMAIL
+              value: "tpals0409dev@gmail.com"
           resources:
             requests:
               memory: "128Mi"
