@@ -95,12 +95,7 @@ describe('AppLayout', () => {
     expect(screen.getByText('content')).toBeInTheDocument();
   });
 
-  it('does not show session expired overlay by default', () => {
-    render(<AppLayout>content</AppLayout>);
-    expect(screen.queryByText('세션이 만료되었습니다')).not.toBeInTheDocument();
-  });
-
-  it('shows session expired overlay and logout button when expired', async () => {
+  it('does not show session expired overlay (moved to login page)', () => {
     mockUseAuth.mockReturnValue({
       isAuthenticated: true,
       user: { email: 'test@example.com', avatarPreset: 'default' },
@@ -109,10 +104,6 @@ describe('AppLayout', () => {
     });
 
     render(<AppLayout>content</AppLayout>);
-    expect(screen.getByText('세션이 만료되었습니다')).toBeInTheDocument();
-    expect(screen.getByText('다시 로그인')).toBeInTheDocument();
-
-    await userEvent.click(screen.getByText('다시 로그인'));
-    expect(mockLogout).toHaveBeenCalled();
+    expect(screen.queryByText('세션이 만료되었습니다')).not.toBeInTheDocument();
   });
 });
