@@ -204,6 +204,17 @@ export class SubmissionService {
    * 그룹 분석용: 해당 스터디의 해당 문제 모든 제출
    * 성능: code/aiFeedback/aiOptimizedCode 대용량 텍스트 제외
    */
+  /**
+   * 스터디 전체 제출 목록 (code 제외) — 게스트 공유용
+   */
+  async findAllByStudy(studyId: string): Promise<Submission[]> {
+    return this.submissionRepo.find({
+      where: { studyId },
+      order: { createdAt: 'DESC' },
+      select: SUBMISSION_LIST_FIELDS,
+    });
+  }
+
   async findByProblemForStudy(studyId: string, problemId: string): Promise<Submission[]> {
     return this.submissionRepo.find({
       where: { studyId, problemId },

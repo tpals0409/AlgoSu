@@ -82,6 +82,18 @@ export class SubmissionInternalController {
   }
 
   /**
+   * GET /internal/study-all/:studyId — 스터디 전체 제출 (code 제외)
+   * 게스트 공유 프록시용: Gateway PublicShareController에서 호출
+   */
+  @Get('study-all/:studyId')
+  async findAllByStudy(
+    @Param('studyId', ParseUUIDPipe) studyId: string,
+  ) {
+    const submissions = await this.submissionService.findAllByStudy(studyId);
+    return { data: submissions };
+  }
+
+  /**
    * GET /internal/by-problem/:problemId — 문제별 전체 제출 (스터디 스코핑)
    * 그룹 분석용: AI Analysis Service에서 호출
    */

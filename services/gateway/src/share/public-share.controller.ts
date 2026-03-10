@@ -33,9 +33,6 @@ export class PublicShareController {
   private readonly problemServiceKey: string;
   private readonly submissionServiceUrl: string;
   private readonly submissionServiceKey: string;
-  private readonly aiAnalysisServiceUrl: string;
-  private readonly aiAnalysisServiceKey: string;
-
   constructor(
     private readonly configService: ConfigService,
     @InjectRepository(Study)
@@ -51,8 +48,6 @@ export class PublicShareController {
     this.problemServiceKey = this.configService.get<string>('INTERNAL_KEY_PROBLEM', '');
     this.submissionServiceUrl = this.configService.get<string>('SUBMISSION_SERVICE_URL', 'http://localhost:3003');
     this.submissionServiceKey = this.configService.get<string>('INTERNAL_KEY_SUBMISSION', '');
-    this.aiAnalysisServiceUrl = this.configService.get<string>('AI_ANALYSIS_SERVICE_URL', 'http://localhost:8000');
-    this.aiAnalysisServiceKey = this.configService.get<string>('INTERNAL_KEY_AI_ANALYSIS', '');
   }
 
   /** 공유 링크 메타 — 스터디 정보 반환 */
@@ -94,12 +89,14 @@ export class PublicShareController {
   @UseGuards(ShareLinkGuard)
   async getSharedProblems(@Req() req: Request) {
     const studyId = req.headers['x-share-study-id'] as string;
+    const createdBy = req.headers['x-share-created-by'] as string;
 
-    const response = await fetch(`${this.problemServiceUrl}/problems?studyId=${studyId}`, {
+    const response = await fetch(`${this.problemServiceUrl}/all`, {
       method: 'GET',
       headers: {
         'X-Internal-Key': this.problemServiceKey,
         'X-Study-ID': studyId,
+        'X-User-ID': createdBy,
         'Content-Type': 'application/json',
       },
     });
@@ -119,11 +116,10 @@ export class PublicShareController {
   async getSharedSubmissions(@Req() req: Request) {
     const studyId = req.headers['x-share-study-id'] as string;
 
-    const response = await fetch(`${this.submissionServiceUrl}/submissions?studyId=${studyId}`, {
+    const response = await fetch(`${this.submissionServiceUrl}/internal/study-all/${studyId}`, {
       method: 'GET',
       headers: {
         'X-Internal-Key': this.submissionServiceKey,
-        'X-Study-ID': studyId,
         'Content-Type': 'application/json',
       },
     });
@@ -142,27 +138,42 @@ export class PublicShareController {
   @UseGuards(ShareLinkGuard)
   async getSharedAnalysis(
     @Param('submissionId', ParseUUIDPipe) submissionId: string,
-    @Req() req: Request,
   ) {
-    const studyId = req.headers['x-share-study-id'] as string;
-
     const response = await fetch(
-      `${this.aiAnalysisServiceUrl}/analysis/${submissionId}?studyId=${studyId}`,
+      `${this.submissionServiceUrl}/internal/${submissionId}`,
       {
         method: 'GET',
         headers: {
-          'X-Internal-Key': this.aiAnalysisServiceKey,
-          'X-Study-ID': studyId,
+          'X-Internal-Key': this.submissionServiceKey,
           'Content-Type': 'application/json',
         },
       },
     );
 
     if (!response.ok) {
-      this.logger.warn(`AI Analysis Service 프록시 실패: status=${response.status}`);
+      this.logger.warn(`Submission Service 분석 프록시 실패: status=${response.status}`);
       throw new NotFoundException('분석 결과를 조회할 수 없습니다.');
     }
 
-    return response.json();
+    const result = (await response.json()) as {
+      data: {
+        aiFeedback?: string;
+        aiScore?: number;
+        aiOptimizedCode?: string;
+        aiAnalysisStatus?: string;
+        code?: string;
+      };
+    };
+    const sub = result.data;
+
+    return {
+      data: {
+        feedback: sub.aiFeedback ?? null,
+        score: sub.aiScore ?? null,
+        optimizedCode: sub.aiOptimizedCode ?? null,
+        analysisStatus: sub.aiAnalysisStatus ?? null,
+        code: sub.code ?? null,
+      },
+    };
   }
 }
