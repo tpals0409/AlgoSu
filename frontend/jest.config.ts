@@ -84,7 +84,6 @@ const config: Config = {
     '!src/components/ui/MarkdownViewer.tsx',
     '!src/components/ui/NotificationBell.tsx',
     '!src/components/ui/ImageWithFallback.tsx',
-    '!src/components/profile/ShareLinkManager.tsx',
     '!src/hooks/useSessionKeepAlive.ts',
   ],
 };
