@@ -141,7 +141,22 @@ function barColor(score: number): string {
 function parseFeedbackCategories(feedback: string | null): { name: string; score: number; comment: string }[] {
   if (!feedback) return [];
   try {
-    const parsed = JSON.parse(feedback);
+    let rawJson = feedback;
+    try {
+      JSON.parse(rawJson);
+    } catch {
+      // JSON 뒤에 추가 텍스트가 있을 수 있음 — 첫 번째 유효 JSON 객체 추출
+      const start = rawJson.indexOf('{');
+      if (start === -1) return [];
+      let depth = 0, end = -1;
+      for (let i = start; i < rawJson.length; i++) {
+        if (rawJson[i] === '{') depth++;
+        else if (rawJson[i] === '}') { depth--; if (depth === 0) { end = i; break; } }
+      }
+      if (end === -1) return [];
+      rawJson = rawJson.substring(start, end + 1);
+    }
+    const parsed = JSON.parse(rawJson);
     const cats = parsed.categories ?? parsed;
     if (!Array.isArray(cats)) return [];
     return cats.map((c: Record<string, unknown>) => ({

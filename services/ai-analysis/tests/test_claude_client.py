@@ -224,6 +224,40 @@ class TestParseResponseMarkdown:
         assert result["score"] == 90
         assert result["optimized_code"] == "optimized"
 
+    def test_parse_json_with_trailing_text(self):
+        """JSON 뒤에 마크다운 텍스트가 추가된 경우 첫 번째 JSON 객체만 추출"""
+        from src.claude_client import ClaudeClient
+        with patch("src.claude_client.anthropic"), \
+             patch("src.claude_client.circuit_breaker"), \
+             patch("src.claude_client.settings") as mock_settings:
+            mock_settings.anthropic_api_key = "test-key"
+            c = ClaudeClient()
+
+        import json
+        payload = json.dumps({
+            "totalScore": 85,
+            "summary": "trailing text test",
+            "categories": [{"name": "logic", "score": 85, "comment": "good"}],
+            "optimizedCode": None,
+        })
+        raw = payload + "\n\n위 분석 결과를 참고하여 코드를 개선해 보세요."
+        result = c._parse_response(raw)
+        assert result["status"] == "completed"
+        assert result["score"] == 85
+
+    def test_parse_json_with_no_braces(self):
+        """중괄호가 없는 텍스트 — fallback"""
+        from src.claude_client import ClaudeClient
+        with patch("src.claude_client.anthropic"), \
+             patch("src.claude_client.circuit_breaker"), \
+             patch("src.claude_client.settings") as mock_settings:
+            mock_settings.anthropic_api_key = "test-key"
+            c = ClaudeClient()
+
+        result = c._parse_response("no json here at all")
+        assert result["status"] == "completed"
+        assert result["score"] == 0
+
     @pytest.mark.asyncio
     async def test_empty_content_returns_completed(self, client, mock_anthropic, mock_circuit_breaker):
         """빈 content 처리 -- raw_text='' 로 파싱 시 completed 반환"""

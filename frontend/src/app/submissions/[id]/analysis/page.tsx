@@ -74,7 +74,21 @@ function parseFeedback(feedback: string | null, score: number | null, optimizedC
     if (cleaned.startsWith('```')) {
       cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
     }
-    const parsed = JSON.parse(cleaned);
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch {
+      // JSON 뒤에 추가 텍스트가 있을 수 있음 — 첫 번째 유효 JSON 객체 추출
+      const start = cleaned.indexOf('{');
+      if (start === -1) throw new Error('No JSON found');
+      let depth = 0, end = -1;
+      for (let i = start; i < cleaned.length; i++) {
+        if (cleaned[i] === '{') depth++;
+        else if (cleaned[i] === '}') { depth--; if (depth === 0) { end = i; break; } }
+      }
+      if (end === -1) throw new Error('No matching brace');
+      parsed = JSON.parse(cleaned.substring(start, end + 1));
+    }
     const categories: FeedbackCategory[] = (parsed.categories ?? []).map((c: Record<string, unknown>) => ({
       name: c.name as string ?? '',
       score: c.score as number ?? 0,

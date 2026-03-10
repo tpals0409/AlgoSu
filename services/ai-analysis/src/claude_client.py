@@ -135,7 +135,26 @@ class ClaudeClient:
                         break
                 cleaned = cleaned[first_newline + 1 : end_idx].strip()
 
-            parsed = json.loads(cleaned)
+            try:
+                parsed = json.loads(cleaned)
+            except json.JSONDecodeError:
+                # JSON 뒤에 추가 텍스트가 있을 수 있음 — 첫 번째 유효 JSON 객체 추출
+                start = cleaned.find("{")
+                if start == -1:
+                    raise
+                depth = 0
+                end = -1
+                for i, ch in enumerate(cleaned[start:], start):
+                    if ch == "{":
+                        depth += 1
+                    elif ch == "}":
+                        depth -= 1
+                        if depth == 0:
+                            end = i
+                            break
+                if end == -1:
+                    raise
+                parsed = json.loads(cleaned[start : end + 1])
 
             # 필수 필드 검증
             total_score = parsed.get("totalScore", 0)
