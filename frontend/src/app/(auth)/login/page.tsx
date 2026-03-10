@@ -65,6 +65,7 @@ function LoginContent(): ReactNode {
   const [error, setError] = useState<string | null>(null);
   const [loadingProvider, setLoadingProvider] = useState<OAuthProvider | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [showExpiredModal, setShowExpiredModal] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setMounted(true), 50);
@@ -89,11 +90,16 @@ function LoginContent(): ReactNode {
     }
   }, [authLoading, isAuthenticated, router]);
 
-  // URL 에러 파라미터 처리
+  // URL 파라미터 처리
   useEffect(() => {
     const errorParam = searchParams.get('error');
     if (errorParam) {
       setError('인증에 실패했습니다. 다시 시도해주세요.');
+    }
+    const expiredParam = searchParams.get('expired');
+    if (expiredParam === 'true') {
+      setShowExpiredModal(true);
+      window.history.replaceState({}, '', '/login');
     }
   }, [searchParams]);
 
@@ -211,6 +217,27 @@ function LoginContent(): ReactNode {
           </div>
         </div>
       </main>
+
+      {/* 세션 만료 모달 */}
+      {showExpiredModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowExpiredModal(false)} />
+          <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
+            <p className="text-[14px] font-semibold text-text">세션이 종료되었습니다</p>
+            <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>보안을 위해 자동으로 로그아웃되었습니다. 다시 로그인해주세요.</p>
+            <div className="flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setShowExpiredModal(false)}
+                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity"
+                style={{ backgroundColor: 'var(--primary)' }}
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* FOOTER */}
       <footer className="py-5 text-center">

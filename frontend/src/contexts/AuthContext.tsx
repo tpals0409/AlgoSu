@@ -158,9 +158,21 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
     setUser((prev) => prev ? { ...prev, avatarPreset: presetKey } : prev);
   }, []);
 
-  // 세션 유지 — 활동 감지 + heartbeat + 만료 팝업
+  // 세션 유지 — 활동 감지 + heartbeat + 만료 시 로그인 페이지 리다이렉트
   const handleSessionExpired = useCallback(() => {
-    setSessionExpired(true);
+    setUser(null);
+    setGithubConnected(false);
+    setSessionExpired(false);
+    removeToken();
+    removeRefreshToken();
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('algosu:current-study-id');
+    }
+    setCurrentStudyIdForApi(null);
+    fetch('/auth/logout', { method: 'POST', credentials: 'include' })
+      .finally(() => {
+        window.location.href = '/login?expired=true';
+      });
   }, []);
 
   useSessionKeepAlive({

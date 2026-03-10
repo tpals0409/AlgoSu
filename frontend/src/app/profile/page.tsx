@@ -67,6 +67,9 @@ export default function ProfilePage(): ReactNode {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  // 로그아웃 확인
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
   // ─── ANIMATION ─────────────────────────
 
   const [mounted, setMounted] = useState(false);
@@ -437,7 +440,7 @@ export default function ProfilePage(): ReactNode {
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                 <button
                   type="button"
-                  onClick={handleLogout}
+                  onClick={() => setShowLogoutConfirm(true)}
                   className="flex items-center justify-center gap-2 rounded-btn px-4 py-2 text-[13px] font-medium text-text-2 transition-colors hover:bg-bg-alt"
                   style={{ border: '1px solid var(--border)' }}
                 >
@@ -457,21 +460,49 @@ export default function ProfilePage(): ReactNode {
           </div>
         </div>
 
-        {/* 계정 삭제 확인 다이얼로그 */}
+        {/* 로그아웃 확인 모달 */}
+        {showLogoutConfirm && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setShowLogoutConfirm(false)} />
+            <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
+              <p className="text-[14px] font-semibold text-text">로그아웃 하시겠습니까?</p>
+              <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>현재 세션이 종료되고 로그인 페이지로 이동합니다.</p>
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt"
+                  style={{ color: 'var(--text-2)' }}
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity"
+                  style={{ backgroundColor: 'var(--primary)' }}
+                >
+                  로그아웃
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 계정 삭제 확인 모달 */}
         {showDeleteConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm">
-            <div className="mx-4 w-full max-w-sm rounded-card border border-border bg-bg-card p-5 sm:p-6 shadow-modal">
-              <h3 className="text-[15px] font-bold text-error mb-2">정말 계정을 삭제하시겠습니까?</h3>
-              <p className="text-[12px] text-text-3 mb-5">
-                이 작업은 되돌릴 수 없습니다. 모든 데이터(제출, 스터디, 프로필)가 영구 삭제됩니다.
-              </p>
-              <div className="flex justify-end gap-2">
+          <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setShowDeleteConfirm(false)} />
+            <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
+              <p className="text-[14px] font-semibold text-text">계정을 삭제하시겠습니까?</p>
+              <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>이 작업은 되돌릴 수 없습니다. 모든 데이터가 영구 삭제됩니다.</p>
+              <div className="flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setShowDeleteConfirm(false)}
                   disabled={deleteLoading}
-                  className="rounded-btn px-4 py-2 text-[13px] font-medium text-text-2 transition-colors hover:bg-bg-alt"
-                  style={{ border: '1px solid var(--border)' }}
+                  className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt"
+                  style={{ color: 'var(--text-2)' }}
                 >
                   취소
                 </button>
@@ -479,11 +510,10 @@ export default function ProfilePage(): ReactNode {
                   type="button"
                   onClick={() => void handleDeleteAccount()}
                   disabled={deleteLoading}
-                  className="flex items-center gap-1.5 rounded-btn px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-90"
-                  style={{ background: 'var(--error)' }}
+                  className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity disabled:opacity-50"
+                  style={{ backgroundColor: 'var(--error)' }}
                 >
-                  {deleteLoading && <InlineSpinner />}
-                  {deleteLoading ? '삭제 중...' : '삭제 확인'}
+                  {deleteLoading ? '삭제 중...' : '삭제'}
                 </button>
               </div>
             </div>

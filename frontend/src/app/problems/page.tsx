@@ -362,7 +362,7 @@ export default function ProblemsPage(): ReactNode {
           <button
             type="button"
             onClick={() => setShowAddModal(true)}
-            className="fixed bottom-6 right-6 inline-flex items-center gap-2 px-5 py-3 rounded-full text-white text-[14px] font-semibold shadow-lg transition-transform hover:scale-105 z-50"
+            className="fixed bottom-20 md:bottom-6 right-6 inline-flex items-center gap-2 px-5 py-3 rounded-full text-white text-[14px] font-semibold shadow-lg transition-transform hover:scale-105 z-50"
             style={{ backgroundColor: 'var(--primary)' }}
           >
             <Plus className="h-4 w-4" />

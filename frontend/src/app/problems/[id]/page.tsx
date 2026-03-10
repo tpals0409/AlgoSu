@@ -228,30 +228,32 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
           )}
         </div>
 
-        {/* 삭제 확인 */}
+        {/* 삭제 확인 모달 */}
         {showDeleteConfirm && (
-          <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: 'var(--error)', backgroundColor: 'var(--error-soft)' }}>
-            <p className="text-[13px] font-medium" style={{ color: 'var(--error)' }}>
-              이 문제를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
-            </p>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className="px-3 py-1.5 rounded-lg text-[13px] font-medium text-white transition-opacity disabled:opacity-50"
-                style={{ backgroundColor: 'var(--error)' }}
-              >
-                {isDeleting ? '삭제 중...' : '삭제'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(false)}
-                className="px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt"
-                style={{ color: 'var(--text-2)' }}
-              >
-                취소
-              </button>
+          <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setShowDeleteConfirm(false)} />
+            <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
+              <p className="text-[14px] font-semibold text-text">문제를 삭제하시겠습니까?</p>
+              <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>이 작업은 되돌릴 수 없습니다. 관련 제출 데이터도 함께 삭제됩니다.</p>
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt"
+                  style={{ color: 'var(--text-2)' }}
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity disabled:opacity-50"
+                  style={{ backgroundColor: 'var(--error)' }}
+                >
+                  {isDeleting ? '삭제 중...' : '삭제'}
+                </button>
+              </div>
             </div>
           </div>
         )}

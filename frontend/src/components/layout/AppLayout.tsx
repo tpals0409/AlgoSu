@@ -30,7 +30,6 @@ import {
   ChevronDown,
   Check,
   Plus,
-  Clock,
   LogOut,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
@@ -40,7 +39,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useStudy } from '@/contexts/StudyContext';
 import { NotificationBell } from '@/components/layout/NotificationBell';
 import { Logo } from '@/components/ui/Logo';
-import { Btn } from '@/components/ui/AlgosuUI';
 import { getAvatarSrc } from '@/lib/avatars';
 
 // ─── CONSTANTS ───────────────────────────────
@@ -223,7 +221,7 @@ interface AppLayoutProps {
 
 export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
   const pathname = usePathname();
-  const { user, isAuthenticated, sessionExpired, logout } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
   const { currentStudyId } = useStudy();
   const { theme, setTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -436,35 +434,6 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
               </button>
             </div>
           </header>
-        )}
-
-        {/* ── Session expired overlay ────────────────────── */}
-        {sessionExpired && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-bg/80 backdrop-blur-sm animate-fade-in">
-            <div className="mx-4 flex w-full max-w-xs flex-col items-center gap-5 rounded-card border border-border bg-bg-card p-8 shadow-modal text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-soft">
-                <Clock className="h-7 w-7 text-primary" />
-              </div>
-              <div>
-                <h2 className="text-sm font-semibold text-text">
-                  세션이 만료되었습니다
-                </h2>
-                <p className="mt-1.5 text-[12px] text-text-2 leading-relaxed">
-                  보안을 위해 자동으로 로그아웃됩니다.
-                  <br />
-                  다시 로그인해주세요.
-                </p>
-              </div>
-              <Btn
-                variant="primary"
-                size="md"
-                onClick={logout}
-                className="w-full"
-              >
-                다시 로그인
-              </Btn>
-            </div>
-          </div>
         )}
 
         {/* ── Main content ───────────────────────────────── */}

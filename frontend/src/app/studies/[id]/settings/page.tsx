@@ -32,16 +32,6 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Alert } from '@/components/ui/Alert';
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogCancel,
-  AlertDialogAction,
-} from '@/components/ui/alert-dialog';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import {
   studyApi,
@@ -103,12 +93,20 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
   const [codeActive, setCodeActive] = useState(false);
   const [isRefreshingCode, setIsRefreshingCode] = useState(false);
 
-  // 멤버 강퇴 확인 다이얼로그
+  // 멤버 강퇴 확인 모달
   const [removeMember, setRemoveMember] = useState<SettingsMember | null>(null);
+
+  // 멤버 등급 변경 확인 모달
+  const [pendingRoleChange, setPendingRoleChange] = useState<{ member: SettingsMember; newRole: 'ADMIN' | 'MEMBER' } | null>(null);
+
+  // 스터디 정보 저장 확인 모달
+  const [showSaveInfoConfirm, setShowSaveInfoConfirm] = useState(false);
+
+  // 그라운드 룰 저장 확인 모달
+  const [showSaveRulesConfirm, setShowSaveRulesConfirm] = useState(false);
 
   // 삭제
   const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteConfirmName, setDeleteConfirmName] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // mount animation — 로딩 완료 후 트리거
@@ -236,7 +234,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
     }
   };
 
-  /** 멤버 내보내기 (AlertDialog 확인 후 실행) */
+  /** 멤버 내보내기 (확인 모달 후 실행) */
   const handleRemoveMemberConfirm = async (): Promise<void> => {
     if (!removeMember) return;
     const member = removeMember;
@@ -294,10 +292,6 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
 
   /** 스터디 삭제 */
   const handleDeleteStudy = async (): Promise<void> => {
-    if (deleteConfirmName !== study?.name) {
-      setError('스터디 이름이 일치하지 않습니다.');
-      return;
-    }
     setIsDeleting(true);
     setError(null);
     try {
@@ -485,7 +479,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
               <div className="flex justify-end">
                 <Button
                   size="sm"
-                  onClick={() => void handleSaveInfo()}
+                  onClick={() => setShowSaveInfoConfirm(true)}
                   disabled={isSavingInfo}
                 >
                   {isSavingInfo ? '저장 중...' : '저장'}
@@ -553,7 +547,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                 </span>
                 <Button
                   size="sm"
-                  onClick={() => void handleSaveRules()}
+                  onClick={() => setShowSaveRulesConfirm(true)}
                   disabled={isSavingRules}
                 >
                   {isSavingRules ? '저장 중...' : '저장'}
@@ -608,7 +602,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                           type="button"
                           className="flex h-7 items-center gap-1 rounded-lg px-2 text-[11px] font-medium text-text-3 transition-colors hover:bg-bg-alt hover:text-text-2"
                           aria-label={`${member.name} 멤버로 변경`}
-                          onClick={() => void handleChangeRole(member, 'MEMBER')}
+                          onClick={() => setPendingRoleChange({ member, newRole: 'MEMBER' })}
                         >
                           멤버로 변경
                         </button>
@@ -620,7 +614,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                         type="button"
                         className="flex h-7 items-center gap-1 rounded-lg px-2 text-[11px] font-medium text-text-3 transition-colors hover:bg-primary/10 hover:text-primary"
                         aria-label={`${member.name} 관리자로 변경`}
-                        onClick={() => void handleChangeRole(member, 'ADMIN')}
+                        onClick={() => setPendingRoleChange({ member, newRole: 'ADMIN' })}
                       >
                         <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
                         관리자
@@ -715,38 +709,6 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                 <p className="text-[12px] font-medium" style={{ color: 'var(--error)' }}>
                   관리자가 2명 이상이므로 삭제할 수 없습니다. 다른 관리자의 권한을 해제한 후 다시 시도하세요.
                 </p>
-              ) : showDeleteConfirm ? (
-                <div className="space-y-3">
-                  <p className="text-[12px] font-medium" style={{ color: 'var(--error)' }}>
-                    삭제를 확인하려면 스터디 이름 &quot;{study?.name}&quot;을 입력하세요.
-                  </p>
-                  <Input
-                    value={deleteConfirmName}
-                    onChange={(e) => setDeleteConfirmName(e.target.value)}
-                    placeholder={study?.name ?? ''}
-                    className="w-full sm:max-w-xs"
-                  />
-                  <div className="flex items-center gap-2">
-                    <Button
-                      className="bg-error text-white hover:bg-error/90"
-                      size="sm"
-                      onClick={() => void handleDeleteStudy()}
-                      disabled={isDeleting || deleteConfirmName !== study?.name}
-                    >
-                      {isDeleting ? '삭제 중...' : '삭제 확인'}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setShowDeleteConfirm(false);
-                        setDeleteConfirmName('');
-                      }}
-                    >
-                      취소
-                    </Button>
-                  </div>
-                </div>
               ) : (
                 <Button
                   className="bg-error text-white hover:bg-error/90"
@@ -761,27 +723,110 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
         </section>
       </div>
 
-      {/* ── 멤버 강퇴 확인 다이얼로그 ── */}
-      <AlertDialog open={removeMember !== null} onOpenChange={(open) => { if (!open) setRemoveMember(null); }}>
-        <AlertDialogContent className="bg-bg-card border-border">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-text">멤버 내보내기</AlertDialogTitle>
-            <AlertDialogDescription className="text-text-2">
-              &quot;{removeMember?.name}&quot; 님을 스터디에서 내보내시겠습니까?
-              <br />이 작업은 되돌릴 수 없습니다.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="border-border text-text hover:bg-bg-alt">취소</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-error text-white hover:bg-error/90"
-              onClick={() => void handleRemoveMemberConfirm()}
-            >
-              내보내기
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* ── 1. 멤버 등급 변경 확인 모달 ── */}
+      {pendingRoleChange && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setPendingRoleChange(null)} />
+          <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
+            <p className="text-[14px] font-semibold text-text">역할을 변경하시겠습니까?</p>
+            <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>
+              {pendingRoleChange.member.name} 님의 역할을 {pendingRoleChange.newRole === 'ADMIN' ? '관리자' : '멤버'}(으)로 변경합니다.
+            </p>
+            <div className="flex items-center justify-end gap-2">
+              <button type="button" onClick={() => setPendingRoleChange(null)}
+                className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt"
+                style={{ color: 'var(--text-2)' }}>취소</button>
+              <button type="button" onClick={() => { void handleChangeRole(pendingRoleChange.member, pendingRoleChange.newRole); setPendingRoleChange(null); }}
+                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity"
+                style={{ backgroundColor: 'var(--primary)' }}>변경</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 2. 스터디 삭제 확인 모달 ── */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowDeleteConfirm(false)} />
+          <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
+            <p className="text-[14px] font-semibold text-text">스터디를 삭제하시겠습니까?</p>
+            <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>
+              이 작업은 되돌릴 수 없습니다. 모든 스터디 데이터가 삭제됩니다.
+            </p>
+            <div className="flex items-center justify-end gap-2">
+              <button type="button" onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt"
+                style={{ color: 'var(--text-2)' }}>취소</button>
+              <button type="button" onClick={() => { void handleDeleteStudy(); setShowDeleteConfirm(false); }}
+                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity"
+                style={{ backgroundColor: 'var(--error)' }}>삭제</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 3. 스터디 정보 저장 확인 모달 ── */}
+      {showSaveInfoConfirm && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowSaveInfoConfirm(false)} />
+          <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
+            <p className="text-[14px] font-semibold text-text">스터디 정보를 저장하시겠습니까?</p>
+            <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>
+              변경된 스터디 이름과 소개가 저장됩니다.
+            </p>
+            <div className="flex items-center justify-end gap-2">
+              <button type="button" onClick={() => setShowSaveInfoConfirm(false)}
+                className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt"
+                style={{ color: 'var(--text-2)' }}>취소</button>
+              <button type="button" onClick={() => { void handleSaveInfo(); setShowSaveInfoConfirm(false); }}
+                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity"
+                style={{ backgroundColor: 'var(--primary)' }}>저장</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 4. 그라운드 룰 저장 확인 모달 ── */}
+      {showSaveRulesConfirm && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowSaveRulesConfirm(false)} />
+          <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
+            <p className="text-[14px] font-semibold text-text">그라운드 룰을 저장하시겠습니까?</p>
+            <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>
+              변경된 그라운드 룰이 모든 멤버에게 적용됩니다.
+            </p>
+            <div className="flex items-center justify-end gap-2">
+              <button type="button" onClick={() => setShowSaveRulesConfirm(false)}
+                className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt"
+                style={{ color: 'var(--text-2)' }}>취소</button>
+              <button type="button" onClick={() => { void handleSaveRules(); setShowSaveRulesConfirm(false); }}
+                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity"
+                style={{ backgroundColor: 'var(--primary)' }}>저장</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 5. 멤버 추방 확인 모달 ── */}
+      {removeMember && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setRemoveMember(null)} />
+          <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
+            <p className="text-[14px] font-semibold text-text">멤버를 내보내시겠습니까?</p>
+            <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>
+              {removeMember.name} 님을 스터디에서 내보냅니다. 이 작업은 되돌릴 수 없습니다.
+            </p>
+            <div className="flex items-center justify-end gap-2">
+              <button type="button" onClick={() => setRemoveMember(null)}
+                className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt"
+                style={{ color: 'var(--text-2)' }}>취소</button>
+              <button type="button" onClick={() => void handleRemoveMemberConfirm()}
+                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity"
+                style={{ backgroundColor: 'var(--error)' }}>내보내기</button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }
