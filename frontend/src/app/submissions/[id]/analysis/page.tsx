@@ -89,22 +89,23 @@ function parseFeedback(feedback: string | null, score: number | null, optimizedC
       if (end === -1) throw new Error('No matching brace');
       parsed = JSON.parse(cleaned.substring(start, end + 1));
     }
-    const categories: FeedbackCategory[] = (parsed.categories ?? []).map((c: Record<string, unknown>) => ({
-      name: c.name as string ?? '',
-      score: c.score as number ?? 0,
-      comment: c.comment as string ?? '',
+    const rawCategories = parsed.categories as Record<string, unknown>[] | undefined;
+    const categories: FeedbackCategory[] = (rawCategories ?? []).map((c) => ({
+      name: (c.name as string) ?? '',
+      score: (c.score as number) ?? 0,
+      comment: (c.comment as string) ?? '',
       highlights: (c.highlights as { startLine: number; endLine: number }[]) ?? [],
     }));
     const complexity = extractComplexity(categories);
-    const resolvedOptimizedCode = parsed.optimizedCode ?? optimizedCode ?? null;
+    const resolvedOptimizedCode = (parsed.optimizedCode as string | null) ?? optimizedCode ?? null;
     return {
-      totalScore: parsed.totalScore ?? score ?? 0,
-      summary: parsed.summary ?? '',
+      totalScore: (parsed.totalScore as number | null) ?? score ?? 0,
+      summary: (parsed.summary as string) ?? '',
       categories,
       optimizedCode: resolvedOptimizedCode,
-      timeComplexity: parsed.timeComplexity ?? complexity.time,
-      spaceComplexity: parsed.spaceComplexity ?? complexity.space,
-      codeLines: parsed.codeLines ?? countCodeLines(resolvedOptimizedCode),
+      timeComplexity: (parsed.timeComplexity as string | null) ?? complexity.time,
+      spaceComplexity: (parsed.spaceComplexity as string | null) ?? complexity.space,
+      codeLines: (parsed.codeLines as number | null) ?? countCodeLines(resolvedOptimizedCode),
     };
   } catch {
     return {
