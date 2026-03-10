@@ -50,6 +50,7 @@ const makeLink = (overrides: Partial<ShareLinkData> = {}): ShareLinkData => ({
   study_id: 'study-1',
   created_by: 'user-1',
   expires_at: null,
+  is_active: true,
   created_at: '2026-03-01T00:00:00.000Z',
   ...overrides,
 });
