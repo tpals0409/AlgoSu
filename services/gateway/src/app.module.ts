@@ -29,6 +29,8 @@ import { User } from './auth/oauth/user.entity';
 import { Study, StudyMember, StudyInvite } from './study/study.entity';
 import { NotificationModule } from './notification/notification.module';
 import { Notification } from './notification/notification.entity';
+import { ShareLink } from './share/share-link.entity';
+import { ShareLinkModule } from './share/share-link.module';
 import { AvatarModule } from './avatar/avatar.module';
 import { ReviewProxyModule } from './review/review.module';
 import { StudyNoteProxyModule } from './study-note/study-note.module';
@@ -50,7 +52,7 @@ import { HealthController } from './health.controller';
         username: configService.get<string>('IDENTITY_DB_USER', 'algosu'),
         password: configService.get<string>('IDENTITY_DB_PASSWORD', ''),
         database: configService.get<string>('IDENTITY_DB_NAME', 'identity_db'),
-        entities: [User, Study, StudyMember, StudyInvite, Notification],
+        entities: [User, Study, StudyMember, StudyInvite, Notification, ShareLink],
         synchronize: false, // 마이그레이션으로 관리
         maxQueryExecutionTime: 200, // 200ms 초과 쿼리 경고 로그 (monitoring-log-rules.md §8-1)
       }),
@@ -72,6 +74,7 @@ import { HealthController } from './health.controller';
     OAuthModule,
     InternalModule,
     StudyModule,
+    ShareLinkModule,
     NotificationModule,
     AvatarModule,
     ReviewProxyModule,
@@ -125,6 +128,7 @@ export class AppModule implements NestModule {
         { path: 'internal/(.*)', method: RequestMethod.ALL },
         { path: 'sse/submissions/:id', method: RequestMethod.GET },
         { path: 'sse/notifications', method: RequestMethod.GET },
+        { path: 'api/public/(.*)', method: RequestMethod.GET },
       )
       .forRoutes({ path: '*', method: RequestMethod.ALL });
   }

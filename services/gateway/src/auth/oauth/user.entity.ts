@@ -48,6 +48,13 @@ export class User {
   @Column({ type: 'uuid', unique: true })
   publicId!: string;
 
+  @Index('IDX_users_profile_slug', { unique: true })
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  profile_slug!: string | null;
+
+  @Column({ type: 'boolean', default: false })
+  is_profile_public!: boolean;
+
   @Column({ type: 'timestamp', nullable: true, default: null })
   deleted_at!: Date | null;
 
