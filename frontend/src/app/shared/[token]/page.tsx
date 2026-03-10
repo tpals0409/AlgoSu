@@ -22,13 +22,16 @@ import { publicApi, type Problem, type Submission, type AnalysisResult } from '@
 import { getAnonymousName, shouldShowRealName } from '@/lib/anonymize';
 import { Card } from '@/components/ui/Card';
 
+/** 피드백 하이라이트 — 문자열 또는 코드 어노테이션 객체 */
+type FeedbackHighlight = string | { startLine?: number; endLine?: number; type?: string; message?: string };
+
 /** 피드백 카테고리 타입 */
 interface FeedbackCategory {
   name?: string;
   category?: string;
   score?: number;
   comment?: string;
-  highlights?: string[];
+  highlights?: FeedbackHighlight[];
 }
 
 /** 피드백 JSON 파싱 */
@@ -318,7 +321,11 @@ function AnalysisView({ submission, analysis, onBack, createdByUserId, token, me
                   <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>{cat.name ?? cat.category}</p>
                   {cat.highlights && cat.highlights.length > 0 && (
                     <ul className="mt-1 list-inside list-disc text-xs" style={{ color: 'var(--text-3)' }}>
-                      {cat.highlights.map((h, j) => <li key={j}>{h}</li>)}
+                      {cat.highlights.map((h, j) => (
+                        <li key={j}>
+                          {typeof h === 'string' ? h : (h.message ?? `Line ${h.startLine ?? '?'}–${h.endLine ?? '?'}`)}
+                        </li>
+                      ))}
                     </ul>
                   )}
                 </div>
@@ -326,11 +333,11 @@ function AnalysisView({ submission, analysis, onBack, createdByUserId, token, me
             </Card>
           )}
 
-          {submission.code && (
+          {(submission.code || (analysis as AnalysisResult & { code?: string })?.code) && (
             <Card className="p-4">
               <p className="mb-2 text-sm font-medium" style={{ color: 'var(--text-2)' }}>제출 코드</p>
               <pre className="overflow-x-auto rounded-card p-3 text-xs" style={{ backgroundColor: 'var(--bg-alt)', color: 'var(--text)' }}>
-                <code>{submission.code}</code>
+                <code>{submission.code || (analysis as AnalysisResult & { code?: string })?.code}</code>
               </pre>
             </Card>
           )}
