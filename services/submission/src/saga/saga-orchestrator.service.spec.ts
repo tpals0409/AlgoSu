@@ -65,6 +65,15 @@ describe('SagaOrchestratorService', () => {
               };
               return map[key] ?? defaultValue ?? '';
             }),
+            getOrThrow: jest.fn((key: string) => {
+              const map: Record<string, string> = {
+                AI_ANALYSIS_SERVICE_URL: 'http://ai-analysis:8000',
+                INTERNAL_KEY_AI_ANALYSIS: 'test-ai-key',
+              };
+              const value = map[key];
+              if (value === undefined) throw new Error(`Missing config: ${key}`);
+              return value;
+            }),
           },
         },
       ],

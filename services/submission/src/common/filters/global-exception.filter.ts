@@ -21,10 +21,7 @@ import { StructuredLoggerService } from '../logger/structured-logger.service';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
-  private readonly logger: StructuredLoggerService;
-
-  constructor() {
-    this.logger = new StructuredLoggerService();
+  constructor(private readonly logger: StructuredLoggerService) {
     this.logger.setContext(GlobalExceptionFilter.name);
   }
 

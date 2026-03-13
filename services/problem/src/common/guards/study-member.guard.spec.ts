@@ -37,13 +37,18 @@ describe('StudyMemberGuard', () => {
       set: jest.fn(),
     };
 
+    const configMap: Record<string, string> = {
+      GATEWAY_INTERNAL_URL: 'http://gateway:3000',
+      INTERNAL_KEY_GATEWAY: 'test-key',
+    };
     configService = {
       get: jest.fn((key: string, defaultVal?: string) => {
-        const map: Record<string, string> = {
-          GATEWAY_INTERNAL_URL: 'http://gateway:3000',
-          INTERNAL_KEY_GATEWAY: 'test-key',
-        };
-        return map[key] ?? defaultVal;
+        return configMap[key] ?? defaultVal;
+      }),
+      getOrThrow: jest.fn((key: string) => {
+        const value = configMap[key];
+        if (value === undefined) throw new Error(`Missing config: ${key}`);
+        return value;
       }),
     };
 

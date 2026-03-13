@@ -19,12 +19,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Request } from 'express';
 import { ShareLink } from '../../share/share-link.entity';
+import { SHARE_LINK_TOKEN_REGEX } from '../../share/share-link.constants';
 import { StructuredLoggerService } from '../logger/structured-logger.service';
 
 @Injectable()
 export class ShareLinkGuard implements CanActivate {
-  private static readonly TOKEN_REGEX = /^[a-f0-9]{64}$/;
-
   constructor(
     @InjectRepository(ShareLink)
     private readonly shareLinkRepository: Repository<ShareLink>,
@@ -38,7 +37,7 @@ export class ShareLinkGuard implements CanActivate {
     const token = req.params['token'];
 
     /* 1단계: 토큰 형식 검증 */
-    if (!token || !ShareLinkGuard.TOKEN_REGEX.test(token)) {
+    if (!token || !SHARE_LINK_TOKEN_REGEX.test(token)) {
       throw new NotFoundException('공유 링크를 찾을 수 없습니다.');
     }
 

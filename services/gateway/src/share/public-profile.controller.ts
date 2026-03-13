@@ -17,7 +17,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, MoreThanOrEqual, Or } from 'typeorm';
+import { Repository, In, IsNull, MoreThanOrEqual, Or } from 'typeorm';
 import { User } from '../auth/oauth/user.entity';
 import { StudyMember } from '../study/study.entity';
 import { ShareLink } from './share-link.entity';
@@ -41,7 +41,7 @@ export class PublicProfileController {
   ) {
     this.logger.setContext(PublicProfileController.name);
     this.submissionServiceUrl = this.configService.get<string>('SUBMISSION_SERVICE_URL', 'http://localhost:3003');
-    this.submissionServiceKey = this.configService.get<string>('INTERNAL_KEY_SUBMISSION', '');
+    this.submissionServiceKey = this.configService.getOrThrow<string>('INTERNAL_KEY_SUBMISSION');
   }
 
   @ApiOperation({ summary: '퍼블릭 프로필 조회 (slug 기반)' })
@@ -68,36 +68,70 @@ export class PublicProfileController {
       relations: ['study'],
     });
 
-    /* 스터디별 통계 + 공유 링크 */
-    const studies = await Promise.all(
-      memberships.map(async (m) => {
-        const memberCount = await this.memberRepository.count({
-          where: { study_id: m.study_id },
-        });
+    /* 스터디별 통계 + 공유 링크 (배치 쿼리 최적화) */
+    const studyIds = memberships.map((m) => m.study_id);
 
-        /* 유저가 생성한 활성 공유 링크 1개 */
-        const shareLink = await this.shareLinkRepository.findOne({
-          where: {
-            study_id: m.study_id,
-            created_by: user.id,
-            is_active: true,
-            expires_at: Or(IsNull(), MoreThanOrEqual(new Date())),
-          },
-          order: { created_at: 'DESC' },
-        });
+    /* 빈 memberships 조기 반환 */
+    if (studyIds.length === 0) {
+      return {
+        data: {
+          name: user.name,
+          avatarUrl: user.avatar_url,
+          studies: [],
+          totalSubmissions: 0,
+          averageAiScore: null,
+        },
+      };
+    }
 
-        /* Submission Service에서 통계 조회 */
-        const stats = await this.fetchUserStudyStats(user.id, m.study_id);
+    /* 배치 1: 스터디별 멤버 수 — 1회 쿼리 */
+    const memberCountRows: { study_id: string; cnt: string }[] =
+      await this.memberRepository
+        .createQueryBuilder('sm')
+        .select('sm.study_id', 'study_id')
+        .addSelect('COUNT(*)', 'cnt')
+        .where('sm.study_id IN (:...studyIds)', { studyIds })
+        .groupBy('sm.study_id')
+        .getRawMany();
 
-        return {
-          studyName: m.study?.name ?? '알 수 없는 스터디',
-          memberCount,
-          shareLink: shareLink ? `/shared/${shareLink.token}` : null,
-          totalSubmissions: stats.totalSubmissions,
-          averageAiScore: stats.averageAiScore,
-        };
-      }),
+    const memberCountMap = new Map<string, number>(
+      memberCountRows.map((r) => [r.study_id, Number(r.cnt)]),
     );
+
+    /* 배치 2: 유저의 활성 공유 링크 — 1회 쿼리 */
+    const shareLinks = await this.shareLinkRepository.find({
+      where: {
+        study_id: In(studyIds),
+        created_by: user.id,
+        is_active: true,
+        expires_at: Or(IsNull(), MoreThanOrEqual(new Date())),
+      },
+      order: { created_at: 'DESC' },
+    });
+
+    /* study_id → 최신 shareLink (find는 created_at DESC 정렬이므로 첫 매칭이 최신) */
+    const shareLinkMap = new Map<string, ShareLink>();
+    for (const sl of shareLinks) {
+      if (!shareLinkMap.has(sl.study_id)) {
+        shareLinkMap.set(sl.study_id, sl);
+      }
+    }
+
+    /* 배치 3: Submission Service 통계 — Promise.all (외부 서비스) */
+    const statsResults = await Promise.all(
+      memberships.map((m) => this.fetchUserStudyStats(user.id, m.study_id)),
+    );
+
+    const studies = memberships.map((m, i) => {
+      const shareLink = shareLinkMap.get(m.study_id);
+      return {
+        studyName: m.study?.name ?? '알 수 없는 스터디',
+        memberCount: memberCountMap.get(m.study_id) ?? 0,
+        shareLink: shareLink ? `/shared/${shareLink.token}` : null,
+        totalSubmissions: statsResults[i].totalSubmissions,
+        averageAiScore: statsResults[i].averageAiScore,
+      };
+    });
 
     /* 전체 통계 집계 */
     const totalSubmissions = studies.reduce((sum, s) => sum + s.totalSubmissions, 0);

@@ -8,11 +8,14 @@ const mockSubscribe = jest.fn().mockResolvedValue(undefined);
 const mockUnsubscribe = jest.fn().mockResolvedValue(undefined);
 const mockRedisOn = jest.fn().mockReturnThis();
 
+const mockQuit = jest.fn().mockResolvedValue('OK');
+
 jest.mock('ioredis', () => {
   return jest.fn().mockImplementation(() => ({
     on: mockRedisOn,
     subscribe: mockSubscribe,
     unsubscribe: mockUnsubscribe,
+    quit: mockQuit,
   }));
 });
 

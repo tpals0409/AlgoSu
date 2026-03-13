@@ -23,6 +23,7 @@ import {
   ParseUUIDPipe,
   UnauthorizedException,
   ForbiddenException,
+  OnModuleDestroy,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
@@ -35,7 +36,7 @@ import { StructuredLoggerService } from '../common/logger/structured-logger.serv
 
 @ApiTags('SSE')
 @Controller('sse')
-export class SseController {
+export class SseController implements OnModuleDestroy {
   private readonly jwtSecret: string;
 
   // M13: 공유 Redis subscriber (연결마다 새 인스턴스 생성 방지)
@@ -76,6 +77,10 @@ export class SseController {
         }
       }
     });
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    await this.subscriber.quit();
   }
 
   /**

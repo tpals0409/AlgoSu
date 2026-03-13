@@ -5,13 +5,13 @@
  * @guard invite-code-lock
  * @related StudyService.joinByInviteCode
  */
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 @Injectable()
-export class InviteThrottleService {
+export class InviteThrottleService implements OnModuleDestroy {
   private readonly redis: Redis;
   private readonly maxFailures: number;
   private readonly lockSeconds: number;
@@ -28,6 +28,10 @@ export class InviteThrottleService {
     this.redis.on('error', (err: Error) => {
       this.logger.error(`Redis 연결 오류: ${err.message}`);
     });
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    await this.redis.quit();
   }
 
   /**

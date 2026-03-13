@@ -71,12 +71,12 @@ spec:
         - protocol: TCP
           port: 3004
 
-# -- 3. submission-ingress: gateway에서만 submission 접근 허용 --
+# -- 3. submission-policy: Ingress(gateway) + Egress(postgres, redis, rabbitmq, problem, ai-analysis, DNS) --
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: submission-ingress
+  name: submission-policy
   namespace: algosu
   labels:
     app.kubernetes.io/part-of: algosu
@@ -87,6 +87,7 @@ spec:
       app: submission-service
   policyTypes:
     - Ingress
+    - Egress
   ingress:
     # gateway에서의 트래픽 허용
     - from:
@@ -104,13 +105,64 @@ spec:
       ports:
         - protocol: TCP
           port: 3003
+  egress:
+    # PostgreSQL 접근 (submission_db)
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Redis 접근 (캐시/세션)
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    # RabbitMQ AMQP 접근 (Saga 오케스트레이션)
+    - to:
+        - podSelector:
+            matchLabels:
+              app: rabbitmq
+      ports:
+        - protocol: TCP
+          port: 5672
+    # problem-service 내부 호출
+    - to:
+        - podSelector:
+            matchLabels:
+              app: problem-service
+      ports:
+        - protocol: TCP
+          port: 3002
+    # ai-analysis-service 내부 호출
+    - to:
+        - podSelector:
+            matchLabels:
+              app: ai-analysis-service
+      ports:
+        - protocol: TCP
+          port: 8000
+    # DNS 조회 허용 (kube-system CoreDNS)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
 
-# -- 4. problem-ingress: gateway에서만 problem 접근 허용 --
+# -- 4. problem-policy: Ingress(gateway, submission) + Egress(postgres, redis, DNS) --
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: problem-ingress
+  name: problem-policy
   namespace: algosu
   labels:
     app.kubernetes.io/part-of: algosu
@@ -121,12 +173,21 @@ spec:
       app: problem-service
   policyTypes:
     - Ingress
+    - Egress
   ingress:
     # gateway에서의 트래픽 허용
     - from:
         - podSelector:
             matchLabels:
               app: gateway
+      ports:
+        - protocol: TCP
+          port: 3002
+    # submission-service에서의 내부 호출 허용
+    - from:
+        - podSelector:
+            matchLabels:
+              app: submission-service
       ports:
         - protocol: TCP
           port: 3002
@@ -138,6 +199,33 @@ spec:
       ports:
         - protocol: TCP
           port: 3002
+  egress:
+    # PostgreSQL 접근 (problem_db)
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgres-problem
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Redis 접근 (캐시)
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    # DNS 조회 허용 (kube-system CoreDNS)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
 
 # -- 5. rabbitmq-ingress: submission, github-worker, ai-analysis에서만 접근 허용 --
 ---

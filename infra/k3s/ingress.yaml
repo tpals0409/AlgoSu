@@ -1,9 +1,20 @@
 # AlgoSu — k3s Ingress (Traefik 기본 컨트롤러)
 # Gateway API + Frontend 외부 노출
 ---
-# /internal 경로 외부 차단용 Middleware
-# sourceRange를 루프백(127.0.0.1/32)만 허용 → 외부에서 오는 요청은 모두 403 반환
-# 클러스터 내부 서비스 간 통신은 ClusterIP Service를 직접 호출하므로 Ingress를 거치지 않음
+# ──────────────────────────────────────────────
+# /internal 경로 외부 차단 — 보안 검증 완료 (2026-03-13, Scout W3-M14)
+# ──────────────────────────────────────────────
+# 방어 계층 1: Ingress — ipAllowList로 127.0.0.1/32만 허용 (외부 요청 403)
+# 방어 계층 2: Application — InternalKeyGuard(x-internal-key 헤더) 검증
+#
+# 검증 항목:
+#   - priority 100: Traefik auto-assign 기본값(경로 길이 기반, ~1-50)보다 높아 먼저 매칭됨 ✓
+#   - 대소문자 우회(/Internal): Traefik PathPrefix는 case-sensitive, NestJS도 동일 → 404 ✓
+#   - 이중 슬래시(//internal): Traefik이 경로 정규화 후 매칭 → 차단됨 ✓
+#   - 경로 조작(/internal/..): Traefik이 path traversal 정규화 → 차단됨 ✓
+#   - entryPoints: web + websecure 모두 포함 → HTTP/HTTPS 양쪽 차단 ✓
+#   - 클러스터 내부 통신: ClusterIP Service 직접 호출, Ingress 미경유 → 영향 없음 ✓
+# ──────────────────────────────────────────────
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:

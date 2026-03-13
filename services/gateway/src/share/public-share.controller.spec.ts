@@ -48,15 +48,20 @@ describe('PublicShareController', () => {
     memberRepo = { find: jest.fn() };
     userRepo = { findOne: jest.fn() };
 
+    const configMap: Record<string, string> = {
+      PROBLEM_SERVICE_URL: 'http://problem:3001',
+      INTERNAL_KEY_PROBLEM: 'pk',
+      SUBMISSION_SERVICE_URL: 'http://submission:3003',
+      INTERNAL_KEY_SUBMISSION: 'sk',
+    };
     const mockConfigService = {
       get: jest.fn().mockImplementation((key: string, defaultVal: string) => {
-        const map: Record<string, string> = {
-          PROBLEM_SERVICE_URL: 'http://problem:3001',
-          INTERNAL_KEY_PROBLEM: 'pk',
-          SUBMISSION_SERVICE_URL: 'http://submission:3003',
-          INTERNAL_KEY_SUBMISSION: 'sk',
-        };
-        return map[key] ?? defaultVal;
+        return configMap[key] ?? defaultVal;
+      }),
+      getOrThrow: jest.fn().mockImplementation((key: string) => {
+        const value = configMap[key];
+        if (value === undefined) throw new Error(`Missing config: ${key}`);
+        return value;
       }),
     };
 
@@ -217,6 +222,80 @@ describe('PublicShareController', () => {
       mockFetch.mockResolvedValue({ ok: false, status: 404 });
 
       await expect(controller.getSharedAnalysis(SUBMISSION_ID)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  /* ───────── 보안: 쓰기 엔드포인트 없음 (GET only) ───────── */
+  describe('보안 — 쓰기 엔드포인트 없음', () => {
+    it('컨트롤러에 POST/PUT/DELETE/PATCH 메서드가 없음 — GET only', () => {
+      const prototype = Object.getPrototypeOf(controller);
+      const methodNames = Object.getOwnPropertyNames(prototype).filter(
+        (name) => name !== 'constructor' && typeof prototype[name] === 'function',
+      );
+
+      // 모든 메서드가 GET 엔드포인트임을 메타데이터로 확인
+      // NestJS에서 @Get 데코레이터는 Reflect.getMetadata('method', ...)로 확인 가능
+      for (const method of methodNames) {
+        const httpMethod = Reflect.getMetadata('method', prototype[method]);
+        // RequestMethod.GET = 0 in NestJS
+        if (httpMethod !== undefined) {
+          expect(httpMethod).toBe(0); // RequestMethod.GET
+        }
+      }
+    });
+
+    it('컨트롤러에 쓰기 가능한 public 메서드가 없음', () => {
+      const prototype = Object.getPrototypeOf(controller);
+      const publicMethods = Object.getOwnPropertyNames(prototype).filter(
+        (name) => name !== 'constructor' && typeof prototype[name] === 'function',
+      );
+
+      // 모든 메서드 이름에 create/update/delete/remove/patch 포함 여부 확인
+      const writeMethodPatterns = ['create', 'update', 'delete', 'remove', 'patch', 'post', 'put'];
+      for (const method of publicMethods) {
+        const lowerName = method.toLowerCase();
+        const isWriteMethod = writeMethodPatterns.some((p) => lowerName.includes(p));
+        expect(isWriteMethod).toBe(false);
+      }
+    });
+  });
+
+  /* ───────── 보안: 다른 스터디 데이터 접근 불가 ───────── */
+  describe('보안 — 다른 스터디 데이터 접근 불가', () => {
+    it('프록시 요청 시 헤더의 study_id만 사용 (다른 스터디 접근 불가)', async () => {
+      const mockJson = { data: [{ id: 'p1' }] };
+      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockJson) });
+
+      const req = createMockReq({
+        headers: {
+          'x-share-study-id': STUDY_ID,
+          'x-share-created-by': CREATED_BY,
+        },
+      });
+
+      await controller.getSharedProblems(req);
+
+      // fetch 호출 시 x-share-study-id 헤더 값(STUDY_ID)만 사용되어야 함 (OTHER_STUDY_ID가 아닌)
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-Study-ID': STUDY_ID,
+          }),
+        }),
+      );
+    });
+
+    it('Submissions 프록시 — 헤더의 study_id로만 URL 구성', async () => {
+      const mockJson = { data: [] };
+      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockJson) });
+
+      await controller.getSharedSubmissions(createMockReq());
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        `http://submission:3003/internal/study-all/${STUDY_ID}`,
+        expect.any(Object),
+      );
     });
   });
 });
