@@ -6,6 +6,7 @@ import { SubmissionModule } from './submission/submission.module';
 import { ReviewModule } from './review/review.module';
 import { StudyNoteModule } from './study-note/study-note.module';
 import { MetricsModule } from './common/metrics/metrics.module';
+import { LoggerModule } from './common/logger/logger.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -32,6 +33,7 @@ import { HealthController } from './health.controller';
       }),
     }),
     ScheduleModule.forRoot(),
+    LoggerModule,
     MetricsModule,
     ReviewModule,
     StudyNoteModule,

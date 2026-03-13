@@ -57,9 +57,8 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
       'AI_ANALYSIS_SERVICE_URL',
       'http://ai-analysis-service:8000',
     );
-    this.aiAnalysisInternalKey = this.configService.get<string>(
+    this.aiAnalysisInternalKey = this.configService.getOrThrow<string>(
       'INTERNAL_KEY_AI_ANALYSIS',
-      '',
     );
   }
 

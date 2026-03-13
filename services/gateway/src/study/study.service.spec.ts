@@ -14,6 +14,7 @@ const mockRedis = {
   get: jest.fn().mockResolvedValue(null),
   del: jest.fn().mockResolvedValue(1),
   keys: jest.fn().mockResolvedValue([]),
+  quit: jest.fn().mockResolvedValue('OK'),
   on: jest.fn().mockReturnThis(),
 };
 

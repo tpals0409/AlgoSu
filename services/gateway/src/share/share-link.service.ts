@@ -19,6 +19,7 @@ import { User } from '../auth/oauth/user.entity';
 import { StudyMember, StudyMemberRole } from '../study/study.entity';
 import { CreateShareLinkDto } from './dto/create-share-link.dto';
 import { UpdateProfileSettingsDto } from './dto/update-profile-settings.dto';
+import { SHARE_LINK_TOKEN_REGEX } from './share-link.constants';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 /** slug 예약어 — Next.js 라우트 + 시스템 경로 */
@@ -116,7 +117,7 @@ export class ShareLinkService {
 
   /** 토큰으로 공유 링크 검증 — 유효하면 ShareLink 반환, 아니면 null */
   async verifyToken(token: string): Promise<ShareLink | null> {
-    if (!/^[a-f0-9]{64}$/.test(token)) {
+    if (!SHARE_LINK_TOKEN_REGEX.test(token)) {
       return null;
     }
 

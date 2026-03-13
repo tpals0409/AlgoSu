@@ -10,6 +10,7 @@ import {
   ForbiddenException,
   ConflictException,
   BadRequestException,
+  OnModuleDestroy,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
@@ -27,7 +28,7 @@ import { StructuredLoggerService } from '../common/logger/structured-logger.serv
 const MAX_MEMBERS = 50;
 
 @Injectable()
-export class StudyService {
+export class StudyService implements OnModuleDestroy {
   private readonly redis: Redis;
 
   constructor(
@@ -52,6 +53,10 @@ export class StudyService {
       // M11: Redis 연결 에러 핸들링 — 프로세스 크래시 방지
       this.logger.error(`Redis 연결 오류: ${err.message}`);
     });
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    await this.redis.quit();
   }
 
   // ─── CRUD ──────────────────────────────────

@@ -45,9 +45,9 @@ export class PublicShareController {
   ) {
     this.logger.setContext(PublicShareController.name);
     this.problemServiceUrl = this.configService.get<string>('PROBLEM_SERVICE_URL', 'http://localhost:3001');
-    this.problemServiceKey = this.configService.get<string>('INTERNAL_KEY_PROBLEM', '');
+    this.problemServiceKey = this.configService.getOrThrow<string>('INTERNAL_KEY_PROBLEM');
     this.submissionServiceUrl = this.configService.get<string>('SUBMISSION_SERVICE_URL', 'http://localhost:3003');
-    this.submissionServiceKey = this.configService.get<string>('INTERNAL_KEY_SUBMISSION', '');
+    this.submissionServiceKey = this.configService.getOrThrow<string>('INTERNAL_KEY_SUBMISSION');
   }
 
   /** 공유 링크 메타 — 스터디 정보 반환 */

@@ -22,6 +22,7 @@ import { TokenRefreshInterceptor } from './auth/token-refresh.interceptor';
 import { RedisThrottlerStorage } from './rate-limit/redis-throttler.storage';
 import { RateLimitMiddleware } from './rate-limit/rate-limit.middleware';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
+import { SecurityHeadersMiddleware } from './common/middleware/security-headers.middleware';
 import { LoggerModule } from './common/logger/logger.module';
 import { StructuredLoggerService } from './common/logger/structured-logger.service';
 import { MetricsModule } from './common/metrics/metrics.module';
@@ -102,6 +103,11 @@ export class AppModule implements NestModule {
     // Request ID — 모든 요청에 X-Request-Id, X-Trace-Id 부여 (가장 먼저 실행)
     consumer
       .apply(RequestIdMiddleware)
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
+
+    // Security Headers — 모든 응답에 보안 헤더 5종 추가
+    consumer
+      .apply(SecurityHeadersMiddleware)
       .forRoutes({ path: '*', method: RequestMethod.ALL });
 
     // Rate Limit — JWT 검증 전 실행 (인증 불필요)

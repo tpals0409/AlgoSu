@@ -15,7 +15,17 @@ import {
 import { Link2, Copy, Trash2, Plus, Check } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { useStudy } from '@/contexts/StudyContext';
-import { shareLinkApi, type ShareLinkData } from '@/lib/api';
+import { shareLinkApi, ApiError, type ShareLinkData } from '@/lib/api';
+
+/** 에러 타입별 사용자 메시지 분류 */
+function getErrorMessage(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.status === 401 || err.status === 403) return '권한이 없습니다.';
+    return '오류가 발생했습니다. 다시 시도해주세요.';
+  }
+  if (err instanceof TypeError) return '네트워크 연결을 확인해주세요.';
+  return '오류가 발생했습니다. 다시 시도해주세요.';
+}
 
 export function ShareLinkManager(): ReactNode {
   const { currentStudyId, studies } = useStudy();
@@ -26,15 +36,18 @@ export function ShareLinkManager(): ReactNode {
   const [expiresOption, setExpiresOption] = useState<string>('never');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   /* 링크 목록 로드 */
   const loadLinks = useCallback(async () => {
-    if (!selectedStudyId) { setLinks([]); setLoading(false); return; }
+    if (!selectedStudyId) { setLinks([]); setLoading(false); setError(null); return; }
     try {
+      setError(null);
       const data = await shareLinkApi.list(selectedStudyId);
       setLinks(data);
-    } catch {
+    } catch (err) {
       setLinks([]);
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -50,6 +63,7 @@ export function ShareLinkManager(): ReactNode {
     if (!selectedStudyId) return;
     setCreating(true);
     setMessage(null);
+    setError(null);
 
     let expiresAt: string | undefined;
     if (expiresOption !== 'never') {
@@ -65,8 +79,9 @@ export function ShareLinkManager(): ReactNode {
       const url = `${window.location.origin}/shared/${link.token}`;
       await navigator.clipboard.writeText(url);
       setMessage('링크가 생성되어 클립보드에 복사되었습니다.');
-    } catch {
-      setMessage('링크 생성에 실패했습니다.');
+    } catch (err) {
+      setMessage(null);
+      setError(getErrorMessage(err));
     } finally {
       setCreating(false);
     }
@@ -84,12 +99,14 @@ export function ShareLinkManager(): ReactNode {
   const handleDeactivate = useCallback(async (linkId: string) => {
     if (!selectedStudyId) return;
     if (!window.confirm('이 공유 링크를 비활성화하시겠습니까?')) return;
+    setError(null);
     try {
       await shareLinkApi.deactivate(selectedStudyId, linkId);
       setLinks((prev) => prev.filter((l) => l.id !== linkId));
       setMessage('링크가 비활성화되었습니다.');
-    } catch {
-      setMessage('비활성화에 실패했습니다.');
+    } catch (err) {
+      setMessage(null);
+      setError(getErrorMessage(err));
     }
   }, [selectedStudyId]);
 
@@ -144,8 +161,14 @@ export function ShareLinkManager(): ReactNode {
       </div>
 
       {message && (
-        <p className="text-xs" style={{ color: message.includes('실패') ? 'var(--danger)' : 'var(--success)' }}>
+        <p className="text-xs" style={{ color: 'var(--success)' }}>
           {message}
+        </p>
+      )}
+
+      {error && (
+        <p className="text-xs" role="alert" style={{ color: 'var(--danger)' }}>
+          {error}
         </p>
       )}
 

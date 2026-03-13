@@ -5,7 +5,7 @@
  * @related NotificationService, ProblemService (Internal API)
  */
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -31,7 +31,7 @@ interface SubmissionCheckResult {
 }
 
 @Injectable()
-export class DeadlineReminderService {
+export class DeadlineReminderService implements OnModuleDestroy {
   private readonly redis: Redis;
 
   constructor(
@@ -49,6 +49,10 @@ export class DeadlineReminderService {
     this.redis.on('error', (err: Error) => {
       this.logger.error(`Redis 연결 오류: ${err.message}`);
     });
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    await this.redis.quit();
   }
 
   // ─── CRON ─────────────────────────────────

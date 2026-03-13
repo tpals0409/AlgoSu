@@ -1,7 +1,7 @@
 import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ShareLinkManager } from '../ShareLinkManager';
-import type { ShareLinkData } from '@/lib/api';
+import { ApiError, type ShareLinkData } from '@/lib/api';
 
 /* ── mocks ── */
 
@@ -23,13 +23,17 @@ const mockList = jest.fn<Promise<ShareLinkData[]>, [string]>();
 const mockCreate = jest.fn<Promise<ShareLinkData>, [string, { expiresAt?: string } | undefined]>();
 const mockDeactivate = jest.fn<Promise<{ message: string }>, [string, string]>();
 
-jest.mock('@/lib/api', () => ({
-  shareLinkApi: {
-    list: (...args: unknown[]) => mockList(...(args as [string])),
-    create: (...args: unknown[]) => mockCreate(...(args as [string, { expiresAt?: string } | undefined])),
-    deactivate: (...args: unknown[]) => mockDeactivate(...(args as [string, string])),
-  },
-}));
+jest.mock('@/lib/api', () => {
+  const actual = jest.requireActual('@/lib/api');
+  return {
+    ...actual,
+    shareLinkApi: {
+      list: (...args: unknown[]) => mockList(...(args as [string])),
+      create: (...args: unknown[]) => mockCreate(...(args as [string, { expiresAt?: string } | undefined])),
+      deactivate: (...args: unknown[]) => mockDeactivate(...(args as [string, string])),
+    },
+  };
+});
 
 jest.mock('lucide-react', () => {
   const Icon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />;
@@ -182,12 +186,31 @@ describe('ShareLinkManager', () => {
       });
     });
 
-    it('shows empty list on API error', async () => {
+    it('shows empty list and error message on API error', async () => {
       mockList.mockRejectedValue(new Error('network error'));
 
       render(<ShareLinkManager />);
       await waitFor(() => {
         expect(screen.getByText('공유 링크가 없습니다.')).toBeInTheDocument();
+        expect(screen.getByRole('alert')).toHaveTextContent('오류가 발생했습니다. 다시 시도해주세요.');
+      });
+    });
+
+    it('shows network error message on TypeError', async () => {
+      mockList.mockRejectedValue(new TypeError('Failed to fetch'));
+
+      render(<ShareLinkManager />);
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent('네트워크 연결을 확인해주세요.');
+      });
+    });
+
+    it('shows permission error on 403 ApiError', async () => {
+      mockList.mockRejectedValue(new ApiError('Forbidden', 403));
+
+      render(<ShareLinkManager />);
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent('권한이 없습니다.');
       });
     });
   });
@@ -250,7 +273,35 @@ describe('ShareLinkManager', () => {
       await user.click(screen.getByRole('button', { name: /링크 생성/ }));
 
       await waitFor(() => {
-        expect(screen.getByText('링크 생성에 실패했습니다.')).toBeInTheDocument();
+        expect(screen.getByRole('alert')).toHaveTextContent('오류가 발생했습니다. 다시 시도해주세요.');
+      });
+    });
+
+    it('shows network error on create TypeError', async () => {
+      const { user } = setupUser();
+      mockCreate.mockRejectedValue(new TypeError('Failed to fetch'));
+
+      render(<ShareLinkManager />);
+      await waitFor(() => expect(mockList).toHaveBeenCalled());
+
+      await user.click(screen.getByRole('button', { name: /링크 생성/ }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent('네트워크 연결을 확인해주세요.');
+      });
+    });
+
+    it('shows permission error on create 401 ApiError', async () => {
+      const { user } = setupUser();
+      mockCreate.mockRejectedValue(new ApiError('Unauthorized', 401));
+
+      render(<ShareLinkManager />);
+      await waitFor(() => expect(mockList).toHaveBeenCalled());
+
+      await user.click(screen.getByRole('button', { name: /링크 생성/ }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent('권한이 없습니다.');
       });
     });
 
@@ -367,7 +418,22 @@ describe('ShareLinkManager', () => {
       await user.click(screen.getByRole('button', { name: '링크 비활성화' }));
 
       await waitFor(() => {
-        expect(screen.getByText('비활성화에 실패했습니다.')).toBeInTheDocument();
+        expect(screen.getByRole('alert')).toHaveTextContent('오류가 발생했습니다. 다시 시도해주세요.');
+      });
+    });
+
+    it('shows permission error on deactivation 403 ApiError', async () => {
+      const { user } = setupUser();
+      mockDeactivate.mockRejectedValue(new ApiError('Forbidden', 403));
+      mockList.mockResolvedValue([makeLink()]);
+
+      render(<ShareLinkManager />);
+      await waitFor(() => expect(screen.getByRole('button', { name: '링크 비활성화' })).toBeInTheDocument());
+
+      await user.click(screen.getByRole('button', { name: '링크 비활성화' }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent('권한이 없습니다.');
       });
     });
 
@@ -440,7 +506,7 @@ describe('ShareLinkManager', () => {
       await user.click(screen.getByRole('button', { name: /링크 생성/ }));
 
       await waitFor(() => {
-        const msg = screen.getByText('링크 생성에 실패했습니다.');
+        const msg = screen.getByRole('alert');
         expect(msg).toHaveStyle({ color: 'var(--danger)' });
       });
     });

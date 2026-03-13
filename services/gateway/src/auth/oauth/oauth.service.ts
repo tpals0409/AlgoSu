@@ -9,6 +9,7 @@ import {
   BadRequestException,
   UnauthorizedException,
   NotFoundException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -370,8 +371,13 @@ export class OAuthService {
     }
 
     // GitHub access token 암호화 저장 (repo push에 필요)
+    // 보안: 암호화 키 없이 평문 저장 절대 금지 — fail-closed
     const encryptionKey = this.configService.get<string>('GITHUB_TOKEN_ENCRYPTION_KEY');
-    const encryptedToken = encryptionKey ? encryptToken(accessToken, encryptionKey) : null;
+    if (!encryptionKey) {
+      process.stdout.write(JSON.stringify({ level: 'error', context: 'OAuthService', message: 'GITHUB_TOKEN_ENCRYPTION_KEY 미설정 — GitHub 토큰 암호화 불가' }) + '\n');
+      throw new InternalServerErrorException('GitHub 연동에 필요한 서버 설정이 누락되었습니다. 관리자에게 문의하세요.');
+    }
+    const encryptedToken = encryptToken(accessToken, encryptionKey);
 
     await this.connectGitHub(userId, String(githubUser.id), githubUser.login, encryptedToken);
 

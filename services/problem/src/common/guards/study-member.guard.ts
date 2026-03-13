@@ -61,7 +61,7 @@ export class StudyMemberGuard implements CanActivate {
     // 2. 캐시 miss → Gateway Internal API 호출
     if (!role) {
       const gatewayUrl = this.configService.get<string>('GATEWAY_INTERNAL_URL', 'http://localhost:3000');
-      const internalKey = this.configService.get<string>('INTERNAL_KEY_GATEWAY', '');
+      const internalKey = this.configService.getOrThrow<string>('INTERNAL_KEY_GATEWAY');
       const url = `${gatewayUrl}/internal/studies/${studyId}/members/${userId}`;
 
       try {

@@ -33,16 +33,24 @@ describe('PublicProfileController', () => {
     jest.clearAllMocks();
 
     userRepo = { findOne: jest.fn() };
-    memberRepo = { find: jest.fn(), count: jest.fn() };
-    shareLinkRepo = { findOne: jest.fn() };
+    memberRepo = {
+      find: jest.fn(),
+      createQueryBuilder: jest.fn(),
+    };
+    shareLinkRepo = { find: jest.fn() };
 
+    const configMap: Record<string, string> = {
+      SUBMISSION_SERVICE_URL: 'http://submission:3003',
+      INTERNAL_KEY_SUBMISSION: 'sk',
+    };
     const mockConfigService = {
       get: jest.fn().mockImplementation((key: string, defaultVal: string) => {
-        const map: Record<string, string> = {
-          SUBMISSION_SERVICE_URL: 'http://submission:3003',
-          INTERNAL_KEY_SUBMISSION: 'sk',
-        };
-        return map[key] ?? defaultVal;
+        return configMap[key] ?? defaultVal;
+      }),
+      getOrThrow: jest.fn().mockImplementation((key: string) => {
+        const value = configMap[key];
+        if (value === undefined) throw new Error(`Missing config: ${key}`);
+        return value;
       }),
     };
 
@@ -59,6 +67,19 @@ describe('PublicProfileController', () => {
 
     controller = module.get<PublicProfileController>(PublicProfileController);
   });
+
+  /** createQueryBuilder 체인 모킹 헬퍼 */
+  function mockMemberCountQuery(rows: { study_id: string; cnt: string }[]) {
+    const qb = {
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue(rows),
+    };
+    memberRepo.createQueryBuilder.mockReturnValue(qb);
+    return qb;
+  }
 
   /* ───────── slug 형식 검증 ───────── */
   describe('getPublicProfile — slug 검증', () => {
@@ -88,6 +109,20 @@ describe('PublicProfileController', () => {
     it('공개 유저 없음 — NotFoundException', async () => {
       userRepo.findOne.mockResolvedValue(null);
       await expect(controller.getPublicProfile('valid-slug')).rejects.toThrow(NotFoundException);
+    });
+
+    it('비공개 프로필(is_profile_public=false) — NotFoundException', async () => {
+      // is_profile_public: true 조건으로 조회하므로 비공개 유저는 null 반환
+      userRepo.findOne.mockResolvedValue(null);
+      await expect(controller.getPublicProfile('private-user')).rejects.toThrow(NotFoundException);
+      expect(userRepo.findOne).toHaveBeenCalledWith({
+        where: { profile_slug: 'private-user', is_profile_public: true },
+      });
+    });
+
+    it('존재하지 않는 slug — NotFoundException', async () => {
+      userRepo.findOne.mockResolvedValue(null);
+      await expect(controller.getPublicProfile('nonexistent1')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -120,8 +155,8 @@ describe('PublicProfileController', () => {
       memberRepo.find.mockResolvedValue([
         { user_id: USER_ID, study_id: STUDY_ID, study: { name: '알고스터디' } },
       ]);
-      memberRepo.count.mockResolvedValue(3);
-      shareLinkRepo.findOne.mockResolvedValue({ token: 'a'.repeat(64) });
+      mockMemberCountQuery([{ study_id: STUDY_ID, cnt: '3' }]);
+      shareLinkRepo.find.mockResolvedValue([{ study_id: STUDY_ID, token: 'a'.repeat(64) }]);
       mockFetch.mockResolvedValue({
         ok: true,
         json: () =>
@@ -146,8 +181,8 @@ describe('PublicProfileController', () => {
       memberRepo.find.mockResolvedValue([
         { user_id: USER_ID, study_id: STUDY_ID, study: { name: '스터디' } },
       ]);
-      memberRepo.count.mockResolvedValue(1);
-      shareLinkRepo.findOne.mockResolvedValue(null);
+      mockMemberCountQuery([{ study_id: STUDY_ID, cnt: '1' }]);
+      shareLinkRepo.find.mockResolvedValue([]);
       mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ data: { totalSubmissions: 0, averageScore: null } }),
@@ -162,8 +197,8 @@ describe('PublicProfileController', () => {
       memberRepo.find.mockResolvedValue([
         { user_id: USER_ID, study_id: STUDY_ID, study: { name: '스터디' } },
       ]);
-      memberRepo.count.mockResolvedValue(2);
-      shareLinkRepo.findOne.mockResolvedValue(null);
+      mockMemberCountQuery([{ study_id: STUDY_ID, cnt: '2' }]);
+      shareLinkRepo.find.mockResolvedValue([]);
       mockFetch.mockResolvedValue({ ok: false, status: 500 });
 
       const result = await controller.getPublicProfile('valid-slug');
@@ -176,8 +211,8 @@ describe('PublicProfileController', () => {
       memberRepo.find.mockResolvedValue([
         { user_id: USER_ID, study_id: STUDY_ID, study: { name: '스터디' } },
       ]);
-      memberRepo.count.mockResolvedValue(2);
-      shareLinkRepo.findOne.mockResolvedValue(null);
+      mockMemberCountQuery([{ study_id: STUDY_ID, cnt: '2' }]);
+      shareLinkRepo.find.mockResolvedValue([]);
       mockFetch.mockRejectedValue(new Error('network error'));
 
       const result = await controller.getPublicProfile('valid-slug');
@@ -192,8 +227,12 @@ describe('PublicProfileController', () => {
         { user_id: USER_ID, study_id: 'study-2', study: { name: 'S2' } },
         { user_id: USER_ID, study_id: 'study-3', study: { name: 'S3' } },
       ]);
-      memberRepo.count.mockResolvedValue(1);
-      shareLinkRepo.findOne.mockResolvedValue(null);
+      mockMemberCountQuery([
+        { study_id: 'study-1', cnt: '1' },
+        { study_id: 'study-2', cnt: '1' },
+        { study_id: 'study-3', cnt: '1' },
+      ]);
+      shareLinkRepo.find.mockResolvedValue([]);
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
@@ -219,8 +258,8 @@ describe('PublicProfileController', () => {
       memberRepo.find.mockResolvedValue([
         { user_id: USER_ID, study_id: 'study-1', study: { name: 'S1' } },
       ]);
-      memberRepo.count.mockResolvedValue(1);
-      shareLinkRepo.findOne.mockResolvedValue(null);
+      mockMemberCountQuery([{ study_id: 'study-1', cnt: '1' }]);
+      shareLinkRepo.find.mockResolvedValue([]);
       mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ data: { totalSubmissions: 0, averageScore: null } }),
@@ -235,8 +274,8 @@ describe('PublicProfileController', () => {
       memberRepo.find.mockResolvedValue([
         { user_id: USER_ID, study_id: STUDY_ID, study: null },
       ]);
-      memberRepo.count.mockResolvedValue(1);
-      shareLinkRepo.findOne.mockResolvedValue(null);
+      mockMemberCountQuery([{ study_id: STUDY_ID, cnt: '1' }]);
+      shareLinkRepo.find.mockResolvedValue([]);
       mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ data: { totalSubmissions: 0, averageScore: null } }),
@@ -251,8 +290,8 @@ describe('PublicProfileController', () => {
       memberRepo.find.mockResolvedValue([
         { user_id: USER_ID, study_id: STUDY_ID, study: { name: 'S' } },
       ]);
-      memberRepo.count.mockResolvedValue(1);
-      shareLinkRepo.findOne.mockResolvedValue(null);
+      mockMemberCountQuery([{ study_id: STUDY_ID, cnt: '1' }]);
+      shareLinkRepo.find.mockResolvedValue([]);
       mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({}),
@@ -262,6 +301,42 @@ describe('PublicProfileController', () => {
 
       expect(result.data.studies[0].totalSubmissions).toBe(0);
       expect(result.data.studies[0].averageAiScore).toBeNull();
+    });
+  });
+
+  /* ───────── 보안: 민감 정보 미반환 ───────── */
+  describe('보안 — 민감 정보 미반환', () => {
+    it('응답에 email, github_token, oauth_provider 등 민감 필드 미포함', async () => {
+      const mockUserWithSensitive = {
+        id: USER_ID,
+        name: '테스트유저',
+        email: 'test@example.com',
+        avatar_url: 'http://avatar',
+        profile_slug: 'valid-slug',
+        is_profile_public: true,
+        github_token: 'ghp_secrettoken123',
+        oauth_provider: 'google',
+        github_username: 'testuser',
+      };
+      userRepo.findOne.mockResolvedValue(mockUserWithSensitive);
+      memberRepo.find.mockResolvedValue([]);
+
+      const result = await controller.getPublicProfile('valid-slug');
+
+      // 반환 데이터에 민감 정보가 포함되지 않아야 함
+      const responseStr = JSON.stringify(result);
+      expect(responseStr).not.toContain('test@example.com');
+      expect(responseStr).not.toContain('ghp_secrettoken123');
+      expect(responseStr).not.toContain('oauth_provider');
+      expect(responseStr).not.toContain('github_token');
+
+      // 허용된 필드만 존재 확인
+      expect(result.data.name).toBe('테스트유저');
+      expect(result.data.avatarUrl).toBe('http://avatar');
+      expect(result.data).not.toHaveProperty('email');
+      expect(result.data).not.toHaveProperty('github_token');
+      expect(result.data).not.toHaveProperty('oauth_provider');
+      expect(result.data).not.toHaveProperty('github_username');
     });
   });
 });

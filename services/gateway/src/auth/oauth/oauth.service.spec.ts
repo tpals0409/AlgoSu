@@ -278,6 +278,24 @@ describe('OAuthService', () => {
   // ============================
   describe('linkGitHub', () => {
     it('정상 연동 — connectGitHub 호출 + github_username 반환', async () => {
+      // GITHUB_TOKEN_ENCRYPTION_KEY 포함한 설정으로 서비스 재생성
+      const configMapWithKey = {
+        ...configMap,
+        GITHUB_TOKEN_ENCRYPTION_KEY: 'a'.repeat(64),
+      };
+      const linkSvc = new OAuthService(
+        {
+          get: jest.fn((key: string, defaultVal?: string) => (configMapWithKey as Record<string, string>)[key] ?? defaultVal),
+          getOrThrow: jest.fn((key: string) => {
+            const val = (configMapWithKey as Record<string, string>)[key];
+            if (!val) throw new Error(`Missing config: ${key}`);
+            return val;
+          }),
+        } as unknown as typeof configService as any,
+        userRepository as any,
+        mockDataSource as unknown as DataSource,
+      );
+
       mockAxios.post.mockResolvedValueOnce({
         data: { access_token: 'github-access-token' },
       });
@@ -285,7 +303,7 @@ describe('OAuthService', () => {
         data: { id: '12345', login: 'octocat' },
       });
 
-      const result = await service.linkGitHub('user-id-1', 'github-code');
+      const result = await linkSvc.linkGitHub('user-id-1', 'github-code');
 
       expect(result.github_username).toBe('octocat');
       expect(userRepository.update).toHaveBeenCalledWith(
@@ -825,7 +843,7 @@ describe('OAuthService', () => {
       );
     });
 
-    it('GITHUB_TOKEN_ENCRYPTION_KEY 없으면 encryptedToken=null로 저장 (line 374 false 분기)', async () => {
+    it('GITHUB_TOKEN_ENCRYPTION_KEY 없으면 InternalServerErrorException (평문 저장 차단)', async () => {
       // configMap에 GITHUB_TOKEN_ENCRYPTION_KEY가 없는 경우 (기본값)
       // service는 beforeEach에서 configMap에 GITHUB_TOKEN_ENCRYPTION_KEY 없이 생성됨
       mockAxios.post.mockResolvedValueOnce({
@@ -835,13 +853,11 @@ describe('OAuthService', () => {
         data: { id: '99', login: 'noencrypt-user' },
       });
 
-      const result = await service.linkGitHub('user-id-1', 'code');
-
-      expect(result.github_username).toBe('noencrypt-user');
-      expect(userRepository.update).toHaveBeenCalledWith(
-        { id: 'user-id-1' },
-        expect.objectContaining({ github_token: null }),
+      await expect(service.linkGitHub('user-id-1', 'code')).rejects.toThrow(
+        'GitHub 연동에 필요한 서버 설정이 누락되었습니다. 관리자에게 문의하세요.',
       );
+      // DB에 평문 토큰이 저장되지 않아야 함
+      expect(userRepository.update).not.toHaveBeenCalled();
     });
 
     it('GITHUB_TOKEN_ENCRYPTION_KEY 있으면 encryptToken 호출 (line 374 true 분기)', async () => {
@@ -887,6 +903,24 @@ describe('OAuthService', () => {
   // ============================
   describe('relinkGitHub', () => {
     it('linkGitHub 위임 — 결과 반환', async () => {
+      // GITHUB_TOKEN_ENCRYPTION_KEY 포함한 설정으로 서비스 재생성
+      const configMapWithKey = {
+        ...configMap,
+        GITHUB_TOKEN_ENCRYPTION_KEY: 'a'.repeat(64),
+      };
+      const relinkSvc = new OAuthService(
+        {
+          get: jest.fn((key: string, defaultVal?: string) => (configMapWithKey as Record<string, string>)[key] ?? defaultVal),
+          getOrThrow: jest.fn((key: string) => {
+            const val = (configMapWithKey as Record<string, string>)[key];
+            if (!val) throw new Error(`Missing config: ${key}`);
+            return val;
+          }),
+        } as unknown as typeof configService as any,
+        userRepository as any,
+        mockDataSource as unknown as DataSource,
+      );
+
       mockAxios.post.mockResolvedValueOnce({
         data: { access_token: 'github-access-token' },
       });
@@ -894,7 +928,7 @@ describe('OAuthService', () => {
         data: { id: '42', login: 'relink-user' },
       });
 
-      const result = await service.relinkGitHub('user-id-1', 'relink-code');
+      const result = await relinkSvc.relinkGitHub('user-id-1', 'relink-code');
 
       expect(result.github_username).toBe('relink-user');
     });

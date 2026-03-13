@@ -1,5 +1,6 @@
 import { ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
 import { GlobalExceptionFilter } from './global-exception.filter';
+import { StructuredLoggerService } from '../logger/structured-logger.service';
 
 describe('GlobalExceptionFilter', () => {
   let filter: GlobalExceptionFilter;
@@ -13,7 +14,8 @@ describe('GlobalExceptionFilter', () => {
     // stdout.write mock (로그 억제)
     jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
 
-    filter = new GlobalExceptionFilter();
+    const logger = new StructuredLoggerService();
+    filter = new GlobalExceptionFilter(logger);
     mockJson = jest.fn();
     mockStatus = jest.fn().mockReturnValue({ json: mockJson });
     mockGetRequest = jest.fn().mockReturnValue({ url: '/test-path' });

@@ -6,6 +6,7 @@ import { NotificationType } from './notification.entity';
 const mockRedis = {
   set: jest.fn().mockResolvedValue('OK'),
   get: jest.fn().mockResolvedValue(null),
+  quit: jest.fn().mockResolvedValue('OK'),
   on: jest.fn().mockReturnThis(),
 };
 

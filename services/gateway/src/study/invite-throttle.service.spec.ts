@@ -8,6 +8,7 @@ const mockRedis = {
   expire: jest.fn().mockResolvedValue(1),
   get: jest.fn(),
   del: jest.fn().mockResolvedValue(1),
+  quit: jest.fn().mockResolvedValue('OK'),
   on: jest.fn().mockReturnThis(),
 };
 
