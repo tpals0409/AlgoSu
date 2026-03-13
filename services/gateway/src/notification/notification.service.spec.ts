@@ -265,4 +265,18 @@ describe('NotificationService', () => {
       await expect(service.cleanupOldNotifications()).resolves.toBeUndefined();
     });
   });
+
+  // ============================
+  // 7. Redis error callback (line 30-32)
+  // ============================
+  describe('Redis error callback', () => {
+    it('Redis on error 핸들러가 등록되어 에러를 로깅한다', () => {
+      const errorCall = (mockRedis.on as jest.Mock).mock.calls.find(
+        (call: [string, ...unknown[]]) => call[0] === 'error',
+      );
+      expect(errorCall).toBeDefined();
+      const handler = errorCall![1] as (err: Error) => void;
+      expect(() => handler(new Error('Redis connection refused'))).not.toThrow();
+    });
+  });
 });

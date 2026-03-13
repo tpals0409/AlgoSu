@@ -128,4 +128,29 @@ describe('InviteThrottleService', () => {
       expect(mockRedis.del).toHaveBeenCalledWith(`invite_fail:${IP}:${CODE}`);
     });
   });
+
+  // ============================
+  // onModuleDestroy
+  // ============================
+  describe('onModuleDestroy', () => {
+    it('Redis 연결을 정상 종료한다', async () => {
+      await service.onModuleDestroy();
+
+      expect(mockRedis.quit).toHaveBeenCalled();
+    });
+  });
+
+  // ============================
+  // Redis error callback (lines 29-34)
+  // ============================
+  describe('Redis error callback', () => {
+    it('Redis on error 핸들러가 등록되어 에러를 로깅한다', () => {
+      const errorCall = (mockRedis.on as jest.Mock).mock.calls.find(
+        (call: [string, ...unknown[]]) => call[0] === 'error',
+      );
+      expect(errorCall).toBeDefined();
+      const handler = errorCall![1] as (err: Error) => void;
+      expect(() => handler(new Error('connection lost'))).not.toThrow();
+    });
+  });
 });

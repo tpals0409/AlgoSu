@@ -189,5 +189,26 @@ describe('SolvedacService', () => {
       const result = await service.fetchProblem(PROBLEM_ID);
       expect(result.tags).toEqual(['greedy']);
     });
+
+    it('displayNames 비어있는 태그 — filter에서 제외', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          ...mockApiResponse,
+          tags: [
+            { displayNames: [] },
+            {
+              displayNames: [
+                { language: 'ko', name: '수학' },
+              ],
+            },
+          ],
+        }),
+      });
+
+      const result = await service.fetchProblem(PROBLEM_ID);
+      expect(result.tags).toEqual(['수학']);
+    });
   });
 });

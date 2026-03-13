@@ -898,4 +898,15 @@ describe('SseController', () => {
       expect(res.setHeader).toHaveBeenCalledWith('X-Accel-Buffering', 'no');
     });
   });
+
+  // ============================
+  // onModuleDestroy
+  // ============================
+  describe('onModuleDestroy', () => {
+    it('Redis subscriber 연결을 정상 종료한다', async () => {
+      await controller.onModuleDestroy();
+
+      expect(mockQuit).toHaveBeenCalled();
+    });
+  });
 });

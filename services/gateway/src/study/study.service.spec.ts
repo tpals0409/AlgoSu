@@ -1331,4 +1331,15 @@ describe('StudyService', () => {
       expect(mockRedis.keys).toHaveBeenCalled();
     });
   });
+
+  // ============================
+  // onModuleDestroy
+  // ============================
+  describe('onModuleDestroy', () => {
+    it('Redis 연결을 정상 종료한다', async () => {
+      await service.onModuleDestroy();
+
+      expect(mockRedis.quit).toHaveBeenCalled();
+    });
+  });
 });

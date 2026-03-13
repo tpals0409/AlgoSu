@@ -64,4 +64,34 @@ describe('config', () => {
     expect(config.githubAppId).toBe('');
     expect(config.githubAppPrivateKeyBase64).toBe('');
   });
+
+  it('getRequiredInProd — NODE_ENV=test일 때 빈 문자열 허용', () => {
+    process.env['NODE_ENV'] = 'test';
+    // INTERNAL_KEY_GATEWAY 등 미설정 상태
+    const { config } = require('./config');
+
+    expect(config.internalKeyGateway).toBe('');
+    expect(config.submissionServiceKey).toBe('');
+    expect(config.problemServiceKey).toBe('');
+  });
+
+  it('getRequiredInProd — NODE_ENV=production일 때 빈 값이면 에러', () => {
+    process.env['NODE_ENV'] = 'production';
+    // INTERNAL_KEY_GATEWAY 미설정 → throw
+    expect(() => require('./config')).toThrow(
+      '필수 환경변수 누락: INTERNAL_KEY_GATEWAY (프로덕션에서 빈 문자열 허용 불가)',
+    );
+  });
+
+  it('getRequiredInProd — 값이 설정되면 해당 값 반환', () => {
+    process.env['INTERNAL_KEY_GATEWAY'] = 'gw-secret';
+    process.env['SUBMISSION_SERVICE_KEY'] = 'sub-secret';
+    process.env['PROBLEM_SERVICE_KEY'] = 'prob-secret';
+
+    const { config } = require('./config');
+
+    expect(config.internalKeyGateway).toBe('gw-secret');
+    expect(config.submissionServiceKey).toBe('sub-secret');
+    expect(config.problemServiceKey).toBe('prob-secret');
+  });
 });
