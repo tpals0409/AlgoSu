@@ -22,8 +22,9 @@ import Image from 'next/image';
 import {
   Brain, Users, AlertCircle, ArrowLeft,
   ChevronRight, FileText, CheckCircle2, Sparkles, Copy, Check,
-  Clock, Zap, ChevronDown, BarChart3,
+  Clock, Zap, ChevronDown, BarChart3, Sun, Moon,
 } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { GuestProvider, useGuest } from '@/contexts/GuestContext';
 import { publicApi, type Problem, type Submission, type AnalysisResult } from '@/lib/api';
 import { getAnonymousName, shouldShowRealName } from '@/lib/anonymize';
@@ -820,15 +821,29 @@ function StatCard({ icon, value, label, bg, fg }: {
 }
 
 function GuestShell({ children }: { readonly children: ReactNode }): ReactNode {
+  const { theme, setTheme } = useTheme();
+  const isDark = theme === 'dark';
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)' }}>
       <header className="border-b px-4 py-3" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-card)' }}>
-        <div className="mx-auto flex max-w-4xl items-center gap-2">
-          <Image src="/avatars/default.svg" alt="AlgoSu" width={28} height={28} />
-          <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>AlgoSu</span>
-          <span className="rounded-badge px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: 'var(--bg-alt)', color: 'var(--text-3)' }}>
-            게스트
-          </span>
+        <div className="mx-auto flex max-w-4xl items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Image src="/avatars/default.svg" alt="AlgoSu" width={28} height={28} />
+            <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>AlgoSu</span>
+            <span className="rounded-badge px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: 'var(--bg-alt)', color: 'var(--text-3)' }}>
+              게스트
+            </span>
+          </div>
+          <button
+            type="button"
+            aria-label="테마 전환"
+            onClick={() => setTheme(isDark ? 'light' : 'dark')}
+            className="flex items-center justify-center rounded-btn p-2 transition-all duration-150 hover:bg-bg-alt"
+            style={{ color: 'var(--text-3)' }}
+          >
+            {isDark ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+          </button>
         </div>
       </header>
       <main className="mx-auto max-w-4xl px-4 py-6">

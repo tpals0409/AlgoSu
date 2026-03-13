@@ -46,6 +46,7 @@
 
   /* ── Soft tints (10 % opacity fills) ── */
   --primary-soft:  rgba(124, 106, 174, 0.10);
+  --primary-glow:  rgba(124, 106, 174, 0.45);
   --success-soft:  rgba(61, 170, 109, 0.10);
   --warning-soft:  rgba(232, 168, 48,  0.10);
   --error-soft:    rgba(224, 84,  72,  0.10);
@@ -170,6 +171,7 @@
 
   /* ── Soft tints ── */
   --primary-soft:  rgba(160, 140, 214, 0.12);
+  --primary-glow:  rgba(160, 140, 214, 0.5);
   --success-soft:  rgba(78,  200, 122, 0.12);
   --warning-soft:  rgba(240, 184,  64, 0.12);
   --error-soft:    rgba(240, 100,  88, 0.12);
@@ -394,8 +396,8 @@ code, pre, .font-mono {
 }
 
 @keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 6px 2px var(--primary-soft); }
-  50% { box-shadow: 0 0 18px 6px var(--primary-soft); }
+  0%, 100% { box-shadow: 0 0 8px 3px var(--primary-glow); }
+  50% { box-shadow: 0 0 20px 8px var(--primary-glow); }
 }
 
 /* ────────────────────────────────────────────
