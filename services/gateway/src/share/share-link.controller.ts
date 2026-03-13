@@ -43,14 +43,16 @@ export class ShareLinkController {
     return this.shareLinkService.createShareLink(studyId, userId, dto);
   }
 
-  @ApiOperation({ summary: '스터디별 공유 링크 목록 조회' })
-  @ApiResponse({ status: 200, description: '활성 공유 링크 목록' })
+  @ApiOperation({ summary: '내가 생성한 공유 링크 목록 조회' })
+  @ApiResponse({ status: 200, description: '내 활성 공유 링크 목록' })
   @Get('studies/:studyId/share-links')
   @UseGuards(StudyMemberGuard)
   async getShareLinks(
     @Param('studyId', ParseUUIDPipe) studyId: string,
+    @Req() req: Request,
   ) {
-    return this.shareLinkService.getShareLinks(studyId);
+    const userId = req.headers['x-user-id'] as string;
+    return this.shareLinkService.getShareLinks(studyId, userId);
   }
 
   @ApiOperation({ summary: '공유 링크 비활성화' })

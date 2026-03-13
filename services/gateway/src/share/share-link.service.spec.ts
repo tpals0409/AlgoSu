@@ -97,11 +97,11 @@ describe('ShareLinkService', () => {
       const links = [{ id: LINK_ID, token: 'abc' }];
       shareLinkRepo.find.mockResolvedValue(links);
 
-      const result = await service.getShareLinks(STUDY_ID);
+      const result = await service.getShareLinks(STUDY_ID, USER_ID);
 
       expect(shareLinkRepo.find).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ study_id: STUDY_ID, is_active: true }),
+          where: expect.objectContaining({ study_id: STUDY_ID, created_by: USER_ID, is_active: true }),
           order: { created_at: 'DESC' },
         }),
       );

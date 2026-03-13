@@ -137,18 +137,13 @@ export default function AnalyticsPage(): ReactNode {
 
   const activeProblemIds = useMemo(() => new Set(allProblems.map((p) => p.id)), [allProblems]);
 
-  // 내 제출 중 활성 문제만, 같은 문제는 1회만 집계
+  // 내 제출 통계 — 백엔드 byMember 집계 사용 (recentSubmissions limit 무관)
   const myStats = useMemo(() => {
     if (!stats || !myId) return { count: 0, doneCount: 0 };
-    const submitted = new Set<string>();
-    const done = new Set<string>();
-    for (const s of stats.recentSubmissions ?? []) {
-      if (s.userId !== myId || !activeProblemIds.has(s.problemId)) continue;
-      submitted.add(s.problemId);
-      if (s.sagaStep === 'DONE') done.add(s.problemId);
-    }
-    return { count: submitted.size, doneCount: done.size };
-  }, [stats, myId, activeProblemIds]);
+    const me = stats.byMember.find((m) => m.userId === myId);
+    if (!me) return { count: 0, doneCount: 0 };
+    return { count: me.uniqueProblemCount, doneCount: me.uniqueDoneCount };
+  }, [stats, myId]);
 
   // 내가 완료(DONE)한 고유 문제 수 — 활성 문제만
   const myDoneProblemIds = useMemo(() => {

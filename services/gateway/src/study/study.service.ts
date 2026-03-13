@@ -520,19 +520,21 @@ export class StudyService implements OnModuleDestroy {
       uniqueAnalyzed: number;
       byWeek: { week: string; count: number }[];
       byWeekPerUser: { userId: string; week: string; count: number }[];
-      byMember: { userId: string; count: number; doneCount: number }[];
+      byMember: { userId: string; count: number; doneCount: number; uniqueProblemCount: number; uniqueDoneCount: number }[];
       byMemberWeek: { userId: string; count: number }[] | null;
       recentSubmissions: unknown[];
       solvedProblemIds: string[] | null;
       submitterCountByProblem: { problemId: string; count: number; analyzedCount: number }[];
     };
 
-    const mapMemberInfo = (m: { userId: string; count: number; doneCount: number }) => ({
+    const mapMemberInfo = (m: { userId: string; count: number; doneCount: number; uniqueProblemCount: number; uniqueDoneCount: number }) => ({
       userId: m.userId,
       isMember: memberMap.has(m.userId),
       nickname: memberMap.get(m.userId)?.nickname ?? null,
       count: m.count,
       doneCount: m.doneCount,
+      uniqueProblemCount: m.uniqueProblemCount,
+      uniqueDoneCount: m.uniqueDoneCount,
     });
 
     return {

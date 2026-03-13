@@ -612,7 +612,7 @@ describe('SubmissionService', () => {
         .mockResolvedValueOnce([{ cnt: 25 }])     // uniqueAnalyzed
         .mockResolvedValueOnce([{ week: '3월1주차', count: 10 }])  // byWeek
         .mockResolvedValueOnce([{ userId: 'u1', week: '3월1주차', count: 3 }]) // byWeekPerUser
-        .mockResolvedValueOnce([{ userId: 'u1', count: 10, doneCount: 8 }])  // byMember
+        .mockResolvedValueOnce([{ userId: 'u1', count: 10, doneCount: 8, uniqueProblemCount: 5, uniqueDoneCount: 4 }])  // byMember
         .mockResolvedValueOnce([{ problemid: 'p1', cnt: 2, donecnt: 1 }, { problemid: 'p2', cnt: 1, donecnt: 0 }]); // submitterCountByProblem
       repo.find.mockResolvedValue([createMockSubmission()]); // recentSubmissions
 
@@ -623,7 +623,7 @@ describe('SubmissionService', () => {
       expect(result.uniqueAnalyzed).toBe(25);
       expect(result.byWeek).toEqual([{ week: '3월1주차', count: 10 }]);
       expect(result.byWeekPerUser).toEqual([{ userId: 'u1', week: '3월1주차', count: 3 }]);
-      expect(result.byMember).toEqual([{ userId: 'u1', count: 10, doneCount: 8 }]);
+      expect(result.byMember).toEqual([{ userId: 'u1', count: 10, doneCount: 8, uniqueProblemCount: 5, uniqueDoneCount: 4 }]);
       expect(result.byMemberWeek).toBeNull();
       expect(result.solvedProblemIds).toBeNull();
       expect(result.recentSubmissions).toHaveLength(1);

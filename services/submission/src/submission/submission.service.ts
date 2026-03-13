@@ -281,7 +281,7 @@ export class SubmissionService {
     uniqueAnalyzed: number;
     byWeek: { week: string; count: number }[];
     byWeekPerUser: { userId: string; week: string; count: number }[];
-    byMember: { userId: string; count: number; doneCount: number }[];
+    byMember: { userId: string; count: number; doneCount: number; uniqueProblemCount: number; uniqueDoneCount: number }[];
     byMemberWeek: { userId: string; count: number }[] | null;
     recentSubmissions: { id: string; userId: string; problemId: string; language: string; sagaStep: string; aiScore: number | null; createdAt: Date }[];
     solvedProblemIds: string[] | null;
@@ -377,15 +377,19 @@ export class SubmissionService {
       .select('s.user_id', 'userId')
       .addSelect('COUNT(*)::int', 'count')
       .addSelect(`SUM(CASE WHEN s.saga_step = 'DONE' THEN 1 ELSE 0 END)::int`, 'doneCount')
+      .addSelect('COUNT(DISTINCT s.problem_id)::int', 'uniqueProblemCount')
+      .addSelect(`COUNT(DISTINCT CASE WHEN s.saga_step = 'DONE' THEN s.problem_id END)::int`, 'uniqueDoneCount')
       .where('s.study_id = :studyId', { studyId });
     applyProblemFilter(byMemberQb);
     byMemberQb.groupBy('s.user_id');
-    const byMemberRaw = await byMemberQb.getRawMany<{ userId: string; count: number; doneCount: number }>();
+    const byMemberRaw = await byMemberQb.getRawMany<{ userId: string; count: number; doneCount: number; uniqueProblemCount: number; uniqueDoneCount: number }>();
 
     const byMember = byMemberRaw.map((r) => ({
       userId: r.userId,
       count: Number(r.count),
       doneCount: Number(r.doneCount),
+      uniqueProblemCount: Number(r.uniqueProblemCount),
+      uniqueDoneCount: Number(r.uniqueDoneCount),
     }));
 
     // 최근 제출 10건 (표시용)

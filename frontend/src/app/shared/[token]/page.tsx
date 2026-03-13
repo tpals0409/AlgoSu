@@ -213,6 +213,15 @@ function SharedStudyContent(): ReactNode {
     return map;
   }, [allSubmissions]);
 
+  /* 전체 고유 제출 수 (problemId+userId 기준 dedup) */
+  const uniqueSubmissionCount = useMemo(() => {
+    const seen = new Set<string>();
+    for (const s of allSubmissions) {
+      seen.add(`${s.problemId}:${s.userId ?? 'unknown'}`);
+    }
+    return seen.size;
+  }, [allSubmissions]);
+
   const handleSelectProblem = useCallback((problem: Problem) => {
     setSelectedProblem(problem);
     setSelectedSubmission(null);
@@ -303,7 +312,7 @@ function SharedStudyContent(): ReactNode {
         <div className="grid grid-cols-3 gap-3" style={fade(0.1)}>
           <StatCard icon={<Users size={18} />} value={studyData.memberCount} label="멤버" bg="var(--primary-soft)" fg="var(--primary)" />
           <StatCard icon={<FileText size={18} />} value={problems.length} label="문제" bg="var(--info-soft)" fg="var(--info)" />
-          <StatCard icon={<CheckCircle2 size={18} />} value={allSubmissions.length} label="제출" bg="var(--success-soft)" fg="var(--success)" />
+          <StatCard icon={<CheckCircle2 size={18} />} value={uniqueSubmissionCount} label="제출" bg="var(--success-soft)" fg="var(--success)" />
         </div>
 
         {/* 주차별 문제 목록 */}

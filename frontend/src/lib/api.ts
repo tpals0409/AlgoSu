@@ -291,6 +291,8 @@ export interface MemberStat {
   isMember: boolean;
   count: number;
   doneCount: number;
+  uniqueProblemCount: number;
+  uniqueDoneCount: number;
 }
 
 export interface MemberWeekStat {

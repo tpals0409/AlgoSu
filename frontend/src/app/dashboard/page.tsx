@@ -295,29 +295,19 @@ export default function DashboardPage(): ReactNode {
 
 
 
-  // 내 제출 중 활성 문제만, 같은 문제는 1회만 집계
+  // 내 제출 통계 — 백엔드 byMember 집계 사용 (recentSubmissions limit 무관)
   const myStats = useMemo(() => {
     if (!stats || !myUserId) return { count: 0, doneCount: 0 };
-    const submitted = new Set<string>();
-    const done = new Set<string>();
-    for (const s of stats.recentSubmissions ?? []) {
-      if (s.userId !== myUserId || !activeProblemIds.has(s.problemId)) continue;
-      submitted.add(s.problemId);
-      if (s.sagaStep === 'DONE') done.add(s.problemId);
-    }
-    return { count: submitted.size, doneCount: done.size };
-  }, [stats, myUserId, activeProblemIds]);
+    const me = stats.byMember.find((m) => m.userId === myUserId);
+    if (!me) return { count: 0, doneCount: 0 };
+    return { count: me.uniqueProblemCount, doneCount: me.uniqueDoneCount };
+  }, [stats, myUserId]);
 
   const myUniqueProblemCount = useMemo(() => {
     if (!stats || !myUserId) return 0;
-    // recentSubmissions에서 DONE + 활성 문제의 고유 문제 수
-    const doneIds = new Set(
-      (stats.recentSubmissions ?? [])
-        .filter((s) => s.userId === myUserId && s.sagaStep === 'DONE' && activeProblemIds.has(s.problemId))
-        .map((s) => s.problemId),
-    );
-    return doneIds.size;
-  }, [stats, myUserId, activeProblemIds]);
+    const me = stats.byMember.find((m) => m.userId === myUserId);
+    return me?.uniqueDoneCount ?? 0;
+  }, [stats, myUserId]);
 
   // AI 코드분석 평균 점수 (활성 문제별 최고 점수 기준, 같은 문제 1회)
   const myAvgAIScore = useMemo(() => {

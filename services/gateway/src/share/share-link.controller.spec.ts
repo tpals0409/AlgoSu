@@ -58,9 +58,9 @@ describe('ShareLinkController', () => {
       const expected = [{ id: LINK_ID }];
       service.getShareLinks.mockResolvedValue(expected);
 
-      const result = await controller.getShareLinks(STUDY_ID);
+      const result = await controller.getShareLinks(STUDY_ID, createMockReq());
 
-      expect(service.getShareLinks).toHaveBeenCalledWith(STUDY_ID);
+      expect(service.getShareLinks).toHaveBeenCalledWith(STUDY_ID, USER_ID);
       expect(result).toEqual(expected);
     });
   });

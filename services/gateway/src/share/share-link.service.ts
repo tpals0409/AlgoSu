@@ -74,11 +74,12 @@ export class ShareLinkService {
     return saved;
   }
 
-  /** 스터디별 활성 공유 링크 목록 조회 */
-  async getShareLinks(studyId: string): Promise<ShareLink[]> {
+  /** 본인이 생성한 활성 공유 링크 목록 조회 */
+  async getShareLinks(studyId: string, userId: string): Promise<ShareLink[]> {
     return this.shareLinkRepository.find({
       where: {
         study_id: studyId,
+        created_by: userId,
         is_active: true,
         expires_at: Or(IsNull(), MoreThanOrEqual(new Date())),
       },
