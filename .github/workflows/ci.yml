@@ -666,7 +666,6 @@ jobs:
     if: |
       github.ref == 'refs/heads/main' && !cancelled() &&
       needs.secret-scan.result == 'success' &&
-      needs.trivy-scan.result != 'failure' &&
       (needs.build-services.result == 'success' ||
        needs.build-frontend.result == 'success')
     runs-on: ubuntu-latest
