@@ -680,12 +680,12 @@ jobs:
           git config user.name "algosu-ci"
           git config user.email "ci@algosu.dev"
 
-      - name: Login to GHCR (for image verification)
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install crane (container registry tool)
+        run: |
+          CRANE_VERSION="0.20.2"
+          curl -sSfL "https://github.com/google/go-containerregistry/releases/download/v${CRANE_VERSION}/go-containerregistry_Linux_x86_64.tar.gz" \
+            | tar xz -C /usr/local/bin crane
+          echo "${{ secrets.GITHUB_TOKEN }}" | crane auth login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Update image tags (per-service image verification)
         run: |
@@ -700,7 +700,7 @@ jobs:
           SERVICES="gateway identity submission problem github-worker ai-analysis frontend"
           for SVC in $SERVICES; do
             IMAGE="${{ env.IMAGE_PREFIX }}-${SVC}:main-${SHA}"
-            if docker manifest inspect "${IMAGE}" > /dev/null 2>&1; then
+            if crane manifest "${IMAGE}" > /dev/null 2>&1; then
               UPDATED="${UPDATED} ${SVC}"
             else
               SKIPPED="${SKIPPED} ${SVC}"
