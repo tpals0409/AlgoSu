@@ -40,8 +40,9 @@ export class SubmissionInternalController {
   constructor(
     private readonly submissionService: SubmissionService,
     private readonly sagaOrchestrator: SagaOrchestratorService,
+    logger: StructuredLoggerService,
   ) {
-    this.logger = new StructuredLoggerService();
+    this.logger = logger;
     this.logger.setContext(SubmissionInternalController.name);
   }
 

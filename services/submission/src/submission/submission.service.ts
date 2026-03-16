@@ -37,8 +37,9 @@ export class SubmissionService {
     private readonly sagaOrchestrator: SagaOrchestratorService,
     private readonly configService: ConfigService,
     private readonly dataSource: DataSource,
+    logger: StructuredLoggerService,
   ) {
-    this.logger = new StructuredLoggerService();
+    this.logger = logger;
     this.logger.setContext(SubmissionService.name);
   }
 

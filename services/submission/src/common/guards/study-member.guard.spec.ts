@@ -15,15 +15,15 @@ jest.mock('ioredis', () => {
 });
 
 // --- StructuredLoggerService 모킹 ---
-jest.mock('../logger/structured-logger.service', () => ({
-  StructuredLoggerService: jest.fn().mockImplementation(() => ({
-    setContext: jest.fn(),
-    log: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-  })),
-}));
+import { StructuredLoggerService } from '../logger/structured-logger.service';
+
+const mockLogger = {
+  setContext: jest.fn(),
+  log: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  debug: jest.fn(),
+} as unknown as StructuredLoggerService;
 
 // --- global.fetch 모킹 ---
 const mockFetch = jest.fn() as jest.Mock;
@@ -68,7 +68,7 @@ describe('StudyMemberGuard', () => {
       }),
     } as unknown as ConfigService;
 
-    guard = new StudyMemberGuard(configService);
+    guard = new StudyMemberGuard(configService, mockLogger);
   });
 
   // ──────────────────────────────────────────────

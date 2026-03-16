@@ -54,6 +54,7 @@ describe('OAuthController', () => {
       revokeRefreshToken: jest.fn().mockResolvedValue(undefined),
       softDeleteAccount: jest.fn().mockResolvedValue(undefined),
       issueAccessToken: jest.fn().mockReturnValue('new-jwt-token'),
+      getJwtExpiresIn: jest.fn().mockReturnValue('1h'),
     };
 
     mockConfigService = {

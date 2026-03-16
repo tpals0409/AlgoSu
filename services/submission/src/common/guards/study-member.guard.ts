@@ -41,8 +41,11 @@ export class StudyMemberGuard implements CanActivate {
   private readonly redis: Redis;
   private static readonly CACHE_TTL_SECONDS = 300; // 5분 — 통일 규격
 
-  constructor(private readonly configService: ConfigService) {
-    this.logger = new StructuredLoggerService();
+  constructor(
+    private readonly configService: ConfigService,
+    logger: StructuredLoggerService,
+  ) {
+    this.logger = logger;
     this.logger.setContext(StudyMemberGuard.name);
     const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
     this.redis = new Redis(redisUrl);

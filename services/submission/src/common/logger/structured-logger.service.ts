@@ -4,7 +4,7 @@
  * JSON 구조화 로그 출력 (Loki/Promtail 호환)
  * 규칙 근거: /docs/monitoring-log-rules.md §1
  */
-import { Injectable, LoggerService, LogLevel } from '@nestjs/common';
+import { Injectable, LoggerService, LogLevel, Scope } from '@nestjs/common';
 
 const SERVICE_NAME = 'submission' as const;
 const VERSION = process.env['SERVICE_VERSION'] ?? '1.0.0';
@@ -36,7 +36,7 @@ function sanitize(value: string, maxLen = 500): string {
   return value.replace(CONTROL_CHAR_RE, '').slice(0, maxLen);
 }
 
-@Injectable()
+@Injectable({ scope: Scope.TRANSIENT })
 export class StructuredLoggerService implements LoggerService {
   private context = '';
 

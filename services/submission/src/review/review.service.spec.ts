@@ -6,6 +6,7 @@ import { ReviewService } from './review.service';
 import { ReviewComment } from './review-comment.entity';
 import { ReviewReply } from './review-reply.entity';
 import { Submission } from '../submission/submission.entity';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 // ─── Mock 팩토리 ────────────────────────────────────────────────
 const mockCommentRepo = () => ({
@@ -71,6 +72,7 @@ describe('ReviewService', () => {
         { provide: getRepositoryToken(ReviewComment), useFactory: mockCommentRepo },
         { provide: getRepositoryToken(ReviewReply), useFactory: mockReplyRepo },
         { provide: getRepositoryToken(Submission), useFactory: mockSubmissionRepo },
+        { provide: StructuredLoggerService, useValue: { setContext: jest.fn(), log: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() } },
       ],
     }).compile();
 

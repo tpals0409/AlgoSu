@@ -20,8 +20,9 @@ export class StudyNoteService {
   constructor(
     @InjectRepository(StudyNote)
     private readonly noteRepo: Repository<StudyNote>,
+    logger: StructuredLoggerService,
   ) {
-    this.logger = new StructuredLoggerService();
+    this.logger = logger;
     this.logger.setContext(StudyNoteService.name);
   }
 

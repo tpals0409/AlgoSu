@@ -142,11 +142,15 @@ describe('PublicShareController', () => {
       expect(result).toEqual(mockJson);
     });
 
-    it('Problem Service 실패 — NotFoundException', async () => {
-      mockFetch.mockResolvedValue({ ok: false, status: 500 });
+    it('Problem Service 실패 — NotFoundException + 상세 로깅', async () => {
+      mockFetch.mockResolvedValue({ ok: false, status: 500, text: () => Promise.resolve('Internal Server Error') });
 
       await expect(controller.getSharedProblems(createMockReq())).rejects.toThrow(
         NotFoundException,
+      );
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'Problem Service 프록시 실패',
+        expect.objectContaining({ status: 500, url: expect.any(String), durationMs: expect.any(Number) }),
       );
     });
   });
@@ -169,11 +173,15 @@ describe('PublicShareController', () => {
       expect(result).toEqual(mockJson);
     });
 
-    it('Submission Service 실패 — NotFoundException', async () => {
-      mockFetch.mockResolvedValue({ ok: false, status: 500 });
+    it('Submission Service 실패 — NotFoundException + 상세 로깅', async () => {
+      mockFetch.mockResolvedValue({ ok: false, status: 500, text: () => Promise.resolve('error body') });
 
       await expect(controller.getSharedSubmissions(createMockReq())).rejects.toThrow(
         NotFoundException,
+      );
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'Submission Service 프록시 실패',
+        expect.objectContaining({ status: 500, url: expect.any(String), durationMs: expect.any(Number) }),
       );
     });
   });
@@ -218,10 +226,14 @@ describe('PublicShareController', () => {
       });
     });
 
-    it('Submission Service 분석 실패 — NotFoundException', async () => {
-      mockFetch.mockResolvedValue({ ok: false, status: 404 });
+    it('Submission Service 분석 실패 — NotFoundException + 상세 로깅', async () => {
+      mockFetch.mockResolvedValue({ ok: false, status: 404, text: () => Promise.resolve('Not Found') });
 
       await expect(controller.getSharedAnalysis(SUBMISSION_ID)).rejects.toThrow(NotFoundException);
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'Submission Service 분석 프록시 실패',
+        expect.objectContaining({ status: 404, url: expect.any(String), durationMs: expect.any(Number) }),
+      );
     });
   });
 

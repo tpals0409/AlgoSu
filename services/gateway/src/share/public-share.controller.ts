@@ -91,7 +91,9 @@ export class PublicShareController {
     const studyId = req.headers['x-share-study-id'] as string;
     const createdBy = req.headers['x-share-created-by'] as string;
 
-    const response = await fetch(`${this.problemServiceUrl}/all`, {
+    const url = `${this.problemServiceUrl}/all`;
+    const startTime = Date.now();
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'X-Internal-Key': this.problemServiceKey,
@@ -100,13 +102,24 @@ export class PublicShareController {
         'Content-Type': 'application/json',
       },
     });
+    const durationMs = Date.now() - startTime;
 
     if (!response.ok) {
-      this.logger.warn(`Problem Service 프록시 실패: status=${response.status}`);
+      const body = await response.text().catch(() => '');
+      this.logger.warn('Problem Service 프록시 실패', {
+        url,
+        status: response.status,
+        body: body.slice(0, 200),
+        durationMs,
+      });
       throw new NotFoundException('문제 목록을 조회할 수 없습니다.');
     }
 
-    return response.json();
+    /** 명시적 { data } envelope 보장 — downstream 포맷 변경에 대한 방어 */
+    const body = await response.json();
+    return body !== null && typeof body === 'object' && 'data' in body
+      ? body
+      : { data: body };
   }
 
   /** 공유 스터디 제출 목록 — Submission Service 프록시 */
@@ -116,20 +129,33 @@ export class PublicShareController {
   async getSharedSubmissions(@Req() req: Request) {
     const studyId = req.headers['x-share-study-id'] as string;
 
-    const response = await fetch(`${this.submissionServiceUrl}/internal/study-all/${studyId}`, {
+    const url = `${this.submissionServiceUrl}/internal/study-all/${studyId}`;
+    const startTime = Date.now();
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'X-Internal-Key': this.submissionServiceKey,
         'Content-Type': 'application/json',
       },
     });
+    const durationMs = Date.now() - startTime;
 
     if (!response.ok) {
-      this.logger.warn(`Submission Service 프록시 실패: status=${response.status}`);
+      const body = await response.text().catch(() => '');
+      this.logger.warn('Submission Service 프록시 실패', {
+        url,
+        status: response.status,
+        body: body.slice(0, 200),
+        durationMs,
+      });
       throw new NotFoundException('제출 목록을 조회할 수 없습니다.');
     }
 
-    return response.json();
+    /** 명시적 { data } envelope 보장 — downstream 포맷 변경에 대한 방어 */
+    const body = await response.json();
+    return body !== null && typeof body === 'object' && 'data' in body
+      ? body
+      : { data: body };
   }
 
   /** 공유 AI 분석 결과 — AI Analysis Service 프록시 */
@@ -139,19 +165,25 @@ export class PublicShareController {
   async getSharedAnalysis(
     @Param('submissionId', ParseUUIDPipe) submissionId: string,
   ) {
-    const response = await fetch(
-      `${this.submissionServiceUrl}/internal/${submissionId}`,
-      {
-        method: 'GET',
-        headers: {
-          'X-Internal-Key': this.submissionServiceKey,
-          'Content-Type': 'application/json',
-        },
+    const url = `${this.submissionServiceUrl}/internal/${submissionId}`;
+    const startTime = Date.now();
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'X-Internal-Key': this.submissionServiceKey,
+        'Content-Type': 'application/json',
       },
-    );
+    });
+    const durationMs = Date.now() - startTime;
 
     if (!response.ok) {
-      this.logger.warn(`Submission Service 분석 프록시 실패: status=${response.status}`);
+      const body = await response.text().catch(() => '');
+      this.logger.warn('Submission Service 분석 프록시 실패', {
+        url,
+        status: response.status,
+        body: body.slice(0, 200),
+        durationMs,
+      });
       throw new NotFoundException('분석 결과를 조회할 수 없습니다.');
     }
 

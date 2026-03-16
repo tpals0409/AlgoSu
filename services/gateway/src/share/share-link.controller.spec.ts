@@ -109,19 +109,19 @@ describe('ShareLinkController', () => {
     it('createShareLink에 StudyMemberGuard 데코레이터 적용됨', () => {
       const guards = Reflect.getMetadata('__guards__', ShareLinkController.prototype.createShareLink);
       expect(guards).toBeDefined();
-      expect(guards.some((g: any) => g === StudyMemberGuard || g.name === 'StudyMemberGuard')).toBe(true);
+      expect(guards.some((g: Function) => g === StudyMemberGuard || g.name === 'StudyMemberGuard')).toBe(true);
     });
 
     it('getShareLinks에 StudyMemberGuard 데코레이터 적용됨', () => {
       const guards = Reflect.getMetadata('__guards__', ShareLinkController.prototype.getShareLinks);
       expect(guards).toBeDefined();
-      expect(guards.some((g: any) => g === StudyMemberGuard || g.name === 'StudyMemberGuard')).toBe(true);
+      expect(guards.some((g: Function) => g === StudyMemberGuard || g.name === 'StudyMemberGuard')).toBe(true);
     });
 
     it('deactivateShareLink에 StudyMemberGuard 데코레이터 적용됨', () => {
       const guards = Reflect.getMetadata('__guards__', ShareLinkController.prototype.deactivateShareLink);
       expect(guards).toBeDefined();
-      expect(guards.some((g: any) => g === StudyMemberGuard || g.name === 'StudyMemberGuard')).toBe(true);
+      expect(guards.some((g: Function) => g === StudyMemberGuard || g.name === 'StudyMemberGuard')).toBe(true);
     });
   });
 });

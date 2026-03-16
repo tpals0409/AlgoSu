@@ -18,6 +18,7 @@ import { Repository } from 'typeorm';
 import { StudyMember } from '../../study/study.entity';
 import { Request } from 'express';
 import { StructuredLoggerService } from '../logger/structured-logger.service';
+import { MetricsService } from '../metrics/metrics.service';
 
 @Injectable()
 export class StudyMemberGuard implements CanActivate {
@@ -29,6 +30,7 @@ export class StudyMemberGuard implements CanActivate {
     @InjectRepository(StudyMember)
     private readonly memberRepo: Repository<StudyMember>,
     private readonly logger: StructuredLoggerService,
+    private readonly metricsService: MetricsService,
   ) {
     this.logger.setContext(StudyMemberGuard.name);
     const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
@@ -57,6 +59,7 @@ export class StudyMemberGuard implements CanActivate {
     } catch (err) {
       if (err instanceof ForbiddenException) throw err;
       this.logger.warn(`Redis 캐시 조회 실패 — DB 폴백: ${(err as Error).message}`);
+      this.metricsService.guardRedisFallbackTotal.inc({ guard: 'StudyMemberGuard' });
     }
 
     // 2. DB 폴백 (fail-close: 확인 불가하면 거부)

@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { MqPublisherService } from './mq-publisher.service';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 // ─── amqplib Mock (호이스팅 대응) ─────────────────────────────
 const mockChannel = {
@@ -54,6 +55,7 @@ describe('MqPublisherService', () => {
       providers: [
         MqPublisherService,
         { provide: ConfigService, useFactory: mockConfigService },
+        { provide: StructuredLoggerService, useValue: { setContext: jest.fn(), log: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() } },
       ],
     }).compile();
 

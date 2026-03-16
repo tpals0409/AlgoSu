@@ -29,6 +29,10 @@ describe('StudyMemberGuard', () => {
     debug: jest.fn(),
   };
 
+  const mockMetricsService = {
+    guardRedisFallbackTotal: { inc: jest.fn() },
+  };
+
   function createMockContext(
     overrides: { userId?: string | null; studyId?: string | null } = {},
   ): ExecutionContext {
@@ -64,6 +68,7 @@ describe('StudyMemberGuard', () => {
       configService as unknown as ConfigService,
       memberRepo as unknown as Repository<StudyMember>,
       mockLogger as any,
+      mockMetricsService as any,
     );
   });
 
@@ -169,7 +174,7 @@ describe('StudyMemberGuard', () => {
   // Redis 장애 시 DB 폴백
   // ──────────────────────────────────────────────
   describe('Redis 장애', () => {
-    it('Redis get 실패 — DB 폴백으로 진행', async () => {
+    it('Redis get 실패 — DB 폴백으로 진행 + 메트릭 증가', async () => {
       mockRedis.get.mockRejectedValue(new Error('Redis timeout'));
       memberRepo.findOne.mockResolvedValue({ id: 'member-1', study_id: STUDY_ID, user_id: USER_ID });
       mockRedis.set.mockResolvedValue('OK');
@@ -179,6 +184,7 @@ describe('StudyMemberGuard', () => {
 
       expect(result).toBe(true);
       expect(memberRepo.findOne).toHaveBeenCalled();
+      expect(mockMetricsService.guardRedisFallbackTotal.inc).toHaveBeenCalledWith({ guard: 'StudyMemberGuard' });
     });
 
     it('Redis set 실패해도 정상 동작 (캐시 저장 실패 무시)', async () => {

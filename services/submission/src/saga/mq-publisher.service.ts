@@ -44,8 +44,11 @@ export class MqPublisherService implements OnModuleInit, OnModuleDestroy {
   private readonly GITHUB_ROUTING_KEY = 'github.push';
   private readonly AI_ROUTING_KEY = 'ai.analysis';
 
-  constructor(private readonly configService: ConfigService) {
-    this.logger = new StructuredLoggerService();
+  constructor(
+    private readonly configService: ConfigService,
+    logger: StructuredLoggerService,
+  ) {
+    this.logger = logger;
     this.logger.setContext(MqPublisherService.name);
   }
 

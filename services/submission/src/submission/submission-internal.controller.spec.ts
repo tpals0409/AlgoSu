@@ -4,6 +4,7 @@ import { SubmissionService } from './submission.service';
 import { SagaOrchestratorService } from '../saga/saga-orchestrator.service';
 import { GitHubSyncStatus } from './submission.entity';
 import { InternalKeyGuard } from '../common/guards/internal-key.guard';
+import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 describe('SubmissionInternalController', () => {
   let controller: SubmissionInternalController;
@@ -33,6 +34,7 @@ describe('SubmissionInternalController', () => {
             compensateGitHubFailed: jest.fn(),
           },
         },
+        { provide: StructuredLoggerService, useValue: { setContext: jest.fn(), log: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() } },
       ],
     })
       .overrideGuard(InternalKeyGuard).useValue({ canActivate: () => true })

@@ -50,8 +50,9 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
     private readonly submissionRepo: Repository<Submission>,
     private readonly mqPublisher: MqPublisherService,
     private readonly configService: ConfigService,
+    logger: StructuredLoggerService,
   ) {
-    this.logger = new StructuredLoggerService();
+    this.logger = logger;
     this.logger.setContext(SagaOrchestratorService.name);
     this.aiAnalysisServiceUrl = this.configService.get<string>(
       'AI_ANALYSIS_SERVICE_URL',
