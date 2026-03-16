@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException, ConflictException } from '@nestjs/common';
-import { DataSource, In, Not } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { ProblemService } from './problem.service';
 import { Problem, ProblemStatus, Difficulty } from './problem.entity';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
@@ -18,12 +18,6 @@ const createMockQueryRunner = () => ({
   manager: {
     findOne: jest.fn(),
     save: jest.fn(),
-    createQueryBuilder: jest.fn().mockReturnValue({
-      update: jest.fn().mockReturnThis(),
-      set: jest.fn().mockReturnThis(),
-      whereInIds: jest.fn().mockReturnThis(),
-      execute: jest.fn().mockResolvedValue({ affected: 0 }),
-    }),
   },
 });
 
@@ -215,7 +209,7 @@ describe('ProblemService', () => {
       const result = await service.findById(STUDY_ID, PROBLEM_ID);
 
       expect(dualWrite.findOne).toHaveBeenCalledWith({
-        where: { id: PROBLEM_ID, studyId: STUDY_ID, status: Not(ProblemStatus.DELETED) },
+        where: { id: PROBLEM_ID, studyId: STUDY_ID },
       });
       expect(result).toEqual(mockProblem);
     });
@@ -241,7 +235,7 @@ describe('ProblemService', () => {
 
       // studyId가 OTHER_STUDY_ID로 조회되었는지 확인
       expect(dualWrite.findOne).toHaveBeenCalledWith({
-        where: { id: PROBLEM_ID, studyId: OTHER_STUDY_ID, status: Not(ProblemStatus.DELETED) },
+        where: { id: PROBLEM_ID, studyId: OTHER_STUDY_ID },
       });
     });
   });
@@ -266,17 +260,17 @@ describe('ProblemService', () => {
       expect(deadlineCache.setWeekProblems).not.toHaveBeenCalled();
     });
 
-    it('캐시 미스: DRAFT 제외하고 조회 (ACTIVE + CLOSED 포함)', async () => {
+    it('캐시 미스: ACTIVE 상태만 조회 (CLOSED 필터링)', async () => {
       deadlineCache.getWeekProblems.mockResolvedValue(null);
       dualWrite.find.mockResolvedValue([mockProblem]);
       deadlineCache.setWeekProblems.mockResolvedValue(undefined);
 
       await service.findByWeekAndStudy(STUDY_ID, '3월1주차');
 
-      // DRAFT 제외 필터 확인
+      // ACTIVE 필터 포함 확인
       expect(dualWrite.find).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ status: Not(In([ProblemStatus.DRAFT, ProblemStatus.DELETED])) }),
+          where: expect.objectContaining({ status: ProblemStatus.ACTIVE }),
         }),
       );
     });
@@ -292,9 +286,9 @@ describe('ProblemService', () => {
       // 캐시 미스 확인
       expect(deadlineCache.getWeekProblems).toHaveBeenCalledWith(STUDY_ID, '3월1주차');
 
-      // DB 조회 — studyId 스코핑, DRAFT 제외 필터, createdAt ASC 정렬
+      // DB 조회 — studyId 스코핑, ACTIVE 필터, createdAt ASC 정렬
       expect(dualWrite.find).toHaveBeenCalledWith({
-        where: { weekNumber: '3월1주차', studyId: STUDY_ID, status: Not(In([ProblemStatus.DRAFT, ProblemStatus.DELETED])) },
+        where: { weekNumber: '3월1주차', studyId: STUDY_ID, status: ProblemStatus.ACTIVE },
         order: { createdAt: 'ASC' },
       });
 
@@ -338,7 +332,7 @@ describe('ProblemService', () => {
       // 캐시 미스 → DB 조회
       expect(deadlineCache.getDeadline).toHaveBeenCalledWith(STUDY_ID, PROBLEM_ID);
       expect(dualWrite.findOne).toHaveBeenCalledWith({
-        where: { id: PROBLEM_ID, studyId: STUDY_ID, status: Not(ProblemStatus.DELETED) },
+        where: { id: PROBLEM_ID, studyId: STUDY_ID },
       });
 
       // 캐시 재설정
@@ -573,17 +567,17 @@ describe('ProblemService', () => {
   // 11. delete() — soft delete
   // ──────────────────────────────────────────────
   describe('delete()', () => {
-    it('문제 soft delete: DELETED 상태 + 캐시 무효화', async () => {
+    it('문제 soft delete: CLOSED 상태 + 캐시 무효화', async () => {
       const problem = { ...mockProblem };
       dualWrite.findOne.mockResolvedValue(problem);
-      dualWrite.saveExisting.mockResolvedValue({ ...problem, status: ProblemStatus.DELETED });
+      dualWrite.saveExisting.mockResolvedValue({ ...problem, status: ProblemStatus.CLOSED });
       deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
       deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
 
       await service.delete(STUDY_ID, PROBLEM_ID);
 
       expect(dualWrite.saveExisting).toHaveBeenCalledWith(
-        expect.objectContaining({ status: ProblemStatus.DELETED }),
+        expect.objectContaining({ status: ProblemStatus.CLOSED }),
       );
       expect(deadlineCache.invalidateDeadline).toHaveBeenCalledWith(STUDY_ID, PROBLEM_ID);
       expect(deadlineCache.invalidateWeekProblems).toHaveBeenCalledWith(STUDY_ID, mockProblem.weekNumber);
@@ -618,146 +612,18 @@ describe('ProblemService', () => {
   // 13. findAllByStudy()
   // ──────────────────────────────────────────────
   describe('findAllByStudy()', () => {
-    it('DRAFT 제외하여 반환 (ACTIVE + CLOSED 포함)', async () => {
-      const problems = [mockProblem];
-      dualWrite.find.mockResolvedValue(problems);
+    it('ACTIVE 문제만 반환 (CLOSED 제외)', async () => {
+      const activeProblems = [mockProblem];
+      dualWrite.find.mockResolvedValue(activeProblems);
 
       const result = await service.findAllByStudy(STUDY_ID);
 
       expect(dualWrite.find).toHaveBeenCalledWith({
-        where: { studyId: STUDY_ID, status: Not(In([ProblemStatus.DRAFT, ProblemStatus.DELETED])) },
+        where: { studyId: STUDY_ID, status: ProblemStatus.ACTIVE },
         order: { weekNumber: 'ASC', createdAt: 'ASC' },
       });
-      expect(result).toEqual(problems);
+      expect(result).toEqual(activeProblems);
       expect(result).toHaveLength(1);
-    });
-  });
-
-  // ──────────────────────────────────────────────
-  // 14. closeExpiredProblems()
-  // ──────────────────────────────────────────────
-  describe('closeExpiredProblems()', () => {
-    it('만료된 ACTIVE 문제가 있으면 CLOSED로 전환 + 캐시 무효화', async () => {
-      const expiredProblems = [
-        { id: 'prob-001', studyId: STUDY_ID, weekNumber: '3월1주차' },
-      ] as Problem[];
-
-      dualWrite.find.mockResolvedValue(expiredProblems);
-      dualWrite.isActive = false;
-
-      const mockQr = createMockQueryRunner();
-      dataSource.createQueryRunner.mockReturnValue(mockQr);
-      deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
-      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
-
-      const result = await service.closeExpiredProblems();
-
-      // 트랜잭션 흐름 확인
-      expect(mockQr.connect).toHaveBeenCalled();
-      expect(mockQr.startTransaction).toHaveBeenCalled();
-      expect(mockQr.manager.createQueryBuilder).toHaveBeenCalled();
-      expect(mockQr.commitTransaction).toHaveBeenCalled();
-      expect(mockQr.release).toHaveBeenCalled();
-
-      // 캐시 무효화 확인
-      expect(deadlineCache.invalidateDeadline).toHaveBeenCalledWith(STUDY_ID, 'prob-001');
-      expect(deadlineCache.invalidateWeekProblems).toHaveBeenCalledWith(STUDY_ID, '3월1주차');
-
-      // 반환값 확인
-      expect(result).toEqual({
-        count: 1,
-        affected: [{ studyId: STUDY_ID, id: 'prob-001', weekNumber: '3월1주차' }],
-      });
-    });
-
-    it('만료된 문제 없으면 count: 0 반환 + 트랜잭션/캐시 호출 없음', async () => {
-      dualWrite.find.mockResolvedValue([]);
-
-      const result = await service.closeExpiredProblems();
-
-      expect(result).toEqual({ count: 0, affected: [] });
-
-      // 트랜잭션 생성 안 됨
-      expect(dataSource.createQueryRunner).not.toHaveBeenCalled();
-
-      // 캐시 무효화 안 됨
-      expect(deadlineCache.invalidateDeadline).not.toHaveBeenCalled();
-      expect(deadlineCache.invalidateWeekProblems).not.toHaveBeenCalled();
-    });
-
-    it('트랜잭션 에러 시 rollback 확인', async () => {
-      const expiredProblems = [
-        { id: 'prob-001', studyId: STUDY_ID, weekNumber: '3월1주차' },
-      ] as Problem[];
-
-      dualWrite.find.mockResolvedValue(expiredProblems);
-
-      const mockQr = createMockQueryRunner();
-      const dbError = new Error('DB write failed');
-      mockQr.manager.createQueryBuilder.mockReturnValue({
-        update: jest.fn().mockReturnThis(),
-        set: jest.fn().mockReturnThis(),
-        whereInIds: jest.fn().mockReturnThis(),
-        execute: jest.fn().mockRejectedValue(dbError),
-      });
-      dataSource.createQueryRunner.mockReturnValue(mockQr);
-
-      await expect(service.closeExpiredProblems()).rejects.toThrow('DB write failed');
-
-      expect(mockQr.rollbackTransaction).toHaveBeenCalled();
-      expect(mockQr.release).toHaveBeenCalled();
-      // 커밋 안 됨
-      expect(mockQr.commitTransaction).not.toHaveBeenCalled();
-    });
-
-    it('중복 weekNumber dedup 확인 (동일 studyId+weekNumber인 문제 2개 → invalidateWeekProblems 1번만 호출)', async () => {
-      const expiredProblems = [
-        { id: 'prob-001', studyId: STUDY_ID, weekNumber: '3월1주차' },
-        { id: 'prob-002', studyId: STUDY_ID, weekNumber: '3월1주차' },
-      ] as Problem[];
-
-      dualWrite.find.mockResolvedValue(expiredProblems);
-      dualWrite.isActive = false;
-
-      const mockQr = createMockQueryRunner();
-      dataSource.createQueryRunner.mockReturnValue(mockQr);
-      deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
-      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
-
-      const result = await service.closeExpiredProblems();
-
-      // invalidateDeadline은 문제 수만큼 호출 (각각)
-      expect(deadlineCache.invalidateDeadline).toHaveBeenCalledTimes(2);
-      expect(deadlineCache.invalidateDeadline).toHaveBeenCalledWith(STUDY_ID, 'prob-001');
-      expect(deadlineCache.invalidateDeadline).toHaveBeenCalledWith(STUDY_ID, 'prob-002');
-
-      // invalidateWeekProblems는 dedup으로 1번만 호출
-      expect(deadlineCache.invalidateWeekProblems).toHaveBeenCalledTimes(1);
-      expect(deadlineCache.invalidateWeekProblems).toHaveBeenCalledWith(STUDY_ID, '3월1주차');
-
-      expect(result.count).toBe(2);
-    });
-
-    it('dualWrite.isActive 시 비동기 동기화 호출', async () => {
-      const expiredProblems = [
-        { id: 'prob-001', studyId: STUDY_ID, weekNumber: '3월1주차' },
-      ] as Problem[];
-
-      dualWrite.find.mockResolvedValue(expiredProblems);
-      dualWrite.isActive = true;
-      dualWrite.findOne.mockResolvedValue({ id: 'prob-001', status: ProblemStatus.CLOSED });
-      dualWrite.saveExisting.mockResolvedValue(undefined);
-
-      const mockQr = createMockQueryRunner();
-      dataSource.createQueryRunner.mockReturnValue(mockQr);
-      deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
-      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
-
-      await service.closeExpiredProblems();
-
-      // Dual Write 동기화: findOne → saveExisting
-      expect(dualWrite.findOne).toHaveBeenCalledWith({ where: { id: 'prob-001' } });
-      expect(dualWrite.saveExisting).toHaveBeenCalled();
     });
   });
 });

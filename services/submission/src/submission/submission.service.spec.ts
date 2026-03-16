@@ -9,7 +9,6 @@ import { SagaOrchestratorService } from '../saga/saga-orchestrator.service';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { UpdateAiResultDto } from './dto/update-ai-result.dto';
 import { PaginationQueryDto } from './dto/pagination-query.dto';
-import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 // ─── Mock QueryBuilder ──────────────────────────────────────────
 const createMockQueryBuilder = () => ({
@@ -114,7 +113,6 @@ describe('SubmissionService', () => {
         { provide: SagaOrchestratorService, useFactory: mockSagaOrchestrator },
         { provide: ConfigService, useFactory: mockConfigService },
         { provide: DataSource, useFactory: mockDataSource },
-        { provide: StructuredLoggerService, useValue: { setContext: jest.fn(), log: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() } },
       ],
     }).compile();
 

@@ -98,7 +98,7 @@ export default function ProblemsPage(): ReactNode {
     setError(null);
     try {
       const [data, stats] = await Promise.all([
-        problemApi.findAllProblems(),
+        problemApi.findAll(),
         currentStudyId ? studyApi.getStats(currentStudyId) : null,
       ]);
       setProblems(data);

@@ -2,7 +2,6 @@ import { ExecutionContext, NotFoundException } from '@nestjs/common';
 import { ShareLinkGuard } from './share-link.guard';
 import { Repository } from 'typeorm';
 import { ShareLink } from '../../share/share-link.entity';
-import { StructuredLoggerService } from '../logger/structured-logger.service';
 
 describe('ShareLinkGuard', () => {
   let guard: ShareLinkGuard;
@@ -22,7 +21,7 @@ describe('ShareLinkGuard', () => {
 
   function createMockContext(
     token?: string | undefined,
-  ): { ctx: ExecutionContext; req: { params: Record<string, string>; headers: Record<string, string> } } {
+  ): { ctx: ExecutionContext; req: Record<string, any> } {
     const params: Record<string, string> = {};
     if (token !== undefined) params['token'] = token;
 
@@ -45,7 +44,7 @@ describe('ShareLinkGuard', () => {
 
     guard = new ShareLinkGuard(
       shareLinkRepo as unknown as Repository<ShareLink>,
-      mockLogger as unknown as StructuredLoggerService,
+      mockLogger as any,
     );
   });
 
@@ -130,9 +129,9 @@ describe('ShareLinkGuard', () => {
       // 1) 존재하지 않는 토큰
       shareLinkRepo.findOne.mockResolvedValue(null);
       const { ctx: ctx1 } = createMockContext(VALID_TOKEN);
-      try { await guard.canActivate(ctx1); } catch (e: unknown) {
+      try { await guard.canActivate(ctx1); } catch (e: any) {
         expect(e).toBeInstanceOf(NotFoundException);
-        expect((e as NotFoundException).message).toBe('공유 링크를 찾을 수 없습니다.');
+        expect(e.message).toBe('공유 링크를 찾을 수 없습니다.');
       }
 
       // 2) 만료된 토큰
@@ -144,9 +143,9 @@ describe('ShareLinkGuard', () => {
         expires_at: new Date(Date.now() - 1000),
       });
       const { ctx: ctx2 } = createMockContext(VALID_TOKEN);
-      try { await guard.canActivate(ctx2); } catch (e: unknown) {
+      try { await guard.canActivate(ctx2); } catch (e: any) {
         expect(e).toBeInstanceOf(NotFoundException);
-        expect((e as NotFoundException).message).toBe('공유 링크를 찾을 수 없습니다.');
+        expect(e.message).toBe('공유 링크를 찾을 수 없습니다.');
       }
     });
   });

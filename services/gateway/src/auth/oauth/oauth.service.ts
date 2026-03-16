@@ -65,11 +65,6 @@ export class OAuthService {
     this.callbackBaseUrl = this.configService.getOrThrow<string>('OAUTH_CALLBACK_URL');
   }
 
-  /** JWT expiresIn 값 (SSoT) — 쿠키 maxAge 파생에 사용 */
-  getJwtExpiresIn(): string {
-    return this.jwtExpiresIn;
-  }
-
   // --- OAuth State (CSRF 방지) ---
 
   async generateState(): Promise<string> {

@@ -41,9 +41,8 @@ export class SubmissionController {
   constructor(
     private readonly submissionService: SubmissionService,
     private readonly draftService: DraftService,
-    logger: StructuredLoggerService,
   ) {
-    this.logger = logger;
+    this.logger = new StructuredLoggerService();
     this.logger.setContext(SubmissionController.name);
   }
 

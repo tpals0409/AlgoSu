@@ -355,8 +355,12 @@ function ProblemsTab({
 }: {
   readonly problems: Problem[];
 }): ReactNode {
+  // deadline이 지난 ACTIVE 문제는 종료로 간주
+  const isExpired = (p: Problem) =>
+    p.status === 'ACTIVE' && new Date(p.deadline) < new Date();
+
   const activeProblems = problems
-    .filter((p) => p.status === 'ACTIVE')
+    .filter((p) => p.status === 'ACTIVE' && !isExpired(p))
     .map((p, idx) => ({
       id: p.id,
       number: idx + 1,
@@ -369,7 +373,7 @@ function ProblemsTab({
     }));
 
   const endedProblems = problems
-    .filter((p) => p.status === 'CLOSED')
+    .filter((p) => p.status === 'CLOSED' || isExpired(p))
     .map((p, idx) => ({
       id: p.id,
       number: idx + 1,

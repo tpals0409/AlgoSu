@@ -5,7 +5,6 @@ import { SubmissionService } from './submission.service';
 import { DraftService } from '../draft/draft.service';
 import { InternalKeyGuard } from '../common/guards/internal-key.guard';
 import { StudyMemberGuard } from '../common/guards/study-member.guard';
-import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 describe('SubmissionController', () => {
   let controller: SubmissionController;
@@ -35,7 +34,6 @@ describe('SubmissionController', () => {
             findByProblem: jest.fn(),
           },
         },
-        { provide: StructuredLoggerService, useValue: { setContext: jest.fn(), log: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() } },
       ],
     })
       .overrideGuard(InternalKeyGuard).useValue({ canActivate: () => true })

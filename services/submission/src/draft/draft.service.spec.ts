@@ -4,7 +4,6 @@ import { Repository } from 'typeorm';
 import { DraftService } from './draft.service';
 import { Draft } from './draft.entity';
 import { UpsertDraftDto } from '../submission/dto/create-submission.dto';
-import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 // ─── Mock 팩토리 ────────────────────────────────────────────────
 const mockDraftRepo = () => ({
@@ -37,7 +36,6 @@ describe('DraftService', () => {
       providers: [
         DraftService,
         { provide: getRepositoryToken(Draft), useFactory: mockDraftRepo },
-        { provide: StructuredLoggerService, useValue: { setContext: jest.fn(), log: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() } },
       ],
     }).compile();
 

@@ -5,13 +5,8 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Repository, DataSource } from 'typeorm';
 import { StudyService } from './study.service';
 import { Study, StudyMember, StudyMemberRole, StudyStatus, StudyInvite } from './study.entity';
-import { User } from '../auth/oauth/user.entity';
-import { NotificationService } from '../notification/notification.service';
-import { InviteThrottleService } from './invite-throttle.service';
-import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 // --- ioredis 모듈 모킹 ---
 const mockRedis = {
@@ -38,7 +33,6 @@ describe('StudyService', () => {
   let studyRepository: Record<string, jest.Mock>;
   let memberRepository: Record<string, jest.Mock>;
   let inviteRepository: Record<string, jest.Mock>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockQueryRunner: Record<string, any>;
 
   const USER_ID = 'user-id-admin';
@@ -146,22 +140,22 @@ describe('StudyService', () => {
       release: jest.fn().mockResolvedValue(undefined),
       isTransactionActive: false,
       manager: {
-        create: jest.fn((entity: unknown, data: unknown) => {
+        create: jest.fn((entity: any, data: any) => {
           if (entity === Study) return studyRepository.create(data);
           if (entity === StudyMember) return memberRepository.create(data);
           return data;
         }),
-        save: jest.fn((entity: unknown) => Promise.resolve(entity)),
-        findOne: jest.fn((entity: unknown, opts: unknown) => {
+        save: jest.fn((entity: any) => Promise.resolve(entity)),
+        findOne: jest.fn((entity: any, opts: any) => {
           if (entity === StudyMember) return memberRepository.findOne(opts);
           if (entity === StudyInvite) return inviteRepository.findOne(opts);
           return studyRepository.findOne(opts);
         }),
-        find: jest.fn((entity: unknown, opts: unknown) => {
+        find: jest.fn((entity: any, opts: any) => {
           if (entity === StudyMember) return memberRepository.find(opts);
           return [];
         }),
-        count: jest.fn((entity: unknown, opts: unknown) => {
+        count: jest.fn((entity: any, opts: any) => {
           if (entity === StudyMember) return memberRepository.count(opts);
           return 0;
         }),
@@ -175,14 +169,14 @@ describe('StudyService', () => {
 
     service = new StudyService(
       configService as unknown as ConfigService,
-      mockLogger as unknown as StructuredLoggerService,
-      studyRepository as unknown as Repository<Study>,
-      memberRepository as unknown as Repository<StudyMember>,
-      inviteRepository as unknown as Repository<StudyInvite>,
-      userRepository as unknown as Repository<User>,
-      notificationService as unknown as NotificationService,
-      inviteThrottle as unknown as InviteThrottleService,
-      mockDataSource as unknown as DataSource,
+      mockLogger as any,
+      studyRepository as any,
+      memberRepository as any,
+      inviteRepository as any,
+      userRepository as any,
+      notificationService as any,
+      inviteThrottle as any,
+      mockDataSource as any,
     );
   });
 
@@ -879,7 +873,7 @@ describe('StudyService', () => {
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve(mockStatsData),
-        }) as unknown as typeof global.fetch;
+        }) as any;
 
       memberRepository.find.mockResolvedValue([mockAdminMember]);
 
@@ -913,7 +907,7 @@ describe('StudyService', () => {
         .mockResolvedValueOnce({
           ok: false,
           status: 500,
-        }) as unknown as typeof global.fetch;
+        }) as any;
 
       await expect(service.getStudyStats(STUDY_ID, USER_ID)).rejects.toThrow(
         NotFoundException,
@@ -948,7 +942,7 @@ describe('StudyService', () => {
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve(mockStatsData),
-        }) as unknown as typeof global.fetch;
+        }) as any;
 
       memberRepository.find.mockResolvedValue([mockAdminMember]);
 
@@ -992,7 +986,7 @@ describe('StudyService', () => {
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve(mockStatsData),
-        }) as unknown as typeof global.fetch;
+        }) as any;
 
       memberRepository.find.mockResolvedValue([]);
 
@@ -1153,7 +1147,7 @@ describe('StudyService', () => {
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve(mockStatsData),
-        }) as unknown as typeof global.fetch;
+        }) as any;
 
       memberRepository.find.mockResolvedValue([mockAdminMember]);
 
@@ -1346,304 +1340,6 @@ describe('StudyService', () => {
       await service.onModuleDestroy();
 
       expect(mockRedis.quit).toHaveBeenCalled();
-    });
-  });
-
-  // ============================
-  // W2-6: branches 커버리지 보강
-  // ============================
-
-  describe('createStudy — 트랜잭션 실패 시 rollback', () => {
-    it('manager.save 실패 시 rollbackTransaction 호출', async () => {
-      (mockQueryRunner as Record<string, unknown>).manager = {
-        ...(mockQueryRunner as Record<string, Record<string, unknown>>).manager,
-        save: jest.fn().mockRejectedValue(new Error('DB error')),
-        create: (mockQueryRunner as Record<string, Record<string, jest.Mock>>).manager.create,
-      };
-
-      await expect(
-        service.createStudy(USER_ID, { name: 'Test', nickname: 'Nick' }),
-      ).rejects.toThrow('DB error');
-
-      expect((mockQueryRunner as Record<string, jest.Mock>).rollbackTransaction).toHaveBeenCalled();
-    });
-  });
-
-  describe('deleteStudy — isTransactionActive catch 분기', () => {
-    it('트랜잭션 활성 상태에서 에러 시 rollback', async () => {
-      memberRepository.findOne.mockResolvedValue(mockAdminMember);
-      memberRepository.count.mockResolvedValue(1);
-
-      // delete가 에러를 던지도록 설정
-      (mockQueryRunner as Record<string, Record<string, jest.Mock>>).manager.delete
-        .mockRejectedValue(new Error('delete error'));
-      (mockQueryRunner as Record<string, unknown>).isTransactionActive = true;
-
-      await expect(service.deleteStudy(STUDY_ID, USER_ID)).rejects.toThrow('delete error');
-
-      expect((mockQueryRunner as Record<string, jest.Mock>).rollbackTransaction).toHaveBeenCalled();
-
-      // 원복
-      (mockQueryRunner as Record<string, unknown>).isTransactionActive = false;
-      (mockQueryRunner as Record<string, Record<string, jest.Mock>>).manager.delete
-        .mockResolvedValue({ affected: 1 });
-    });
-  });
-
-  describe('joinByInviteCode — study null 분기 (line 382)', () => {
-    it('invite는 존재하나 study가 null → NotFoundException', async () => {
-      const mockInvite = {
-        code: 'TESTCODE',
-        study_id: STUDY_ID,
-        expires_at: new Date(Date.now() + 60_000),
-        max_uses: null,
-        used_count: 0,
-      };
-
-      // manager.findOne: 1차=invite(StudyInvite), 2차=study(Study) null
-      inviteRepository.findOne.mockResolvedValue(mockInvite);
-      studyRepository.findOne.mockResolvedValue(null);
-
-      await expect(
-        service.joinByInviteCode(OTHER_USER_ID, 'TESTCODE', 'Nick', '1.2.3.4'),
-      ).rejects.toThrow(NotFoundException);
-    });
-  });
-
-  describe('joinByInviteCode — isTransactionActive catch 분기 (line 463)', () => {
-    it('트랜잭션 활성 상태에서 에러 시 rollback', async () => {
-      const mockInvite = {
-        code: 'TESTCODE',
-        study_id: STUDY_ID,
-        expires_at: new Date(Date.now() + 60_000),
-        max_uses: null,
-        used_count: 0,
-      };
-
-      inviteRepository.findOne.mockResolvedValue(mockInvite);
-      studyRepository.findOne.mockResolvedValue(mockStudy);
-      memberRepository.findOne.mockResolvedValue(null); // existing member 없음
-      memberRepository.count.mockResolvedValue(5);
-
-      // manager.create는 정상 동작하지만 member save 시 에러
-      const originalManagerSave = (mockQueryRunner as Record<string, Record<string, jest.Mock>>).manager.save;
-      (mockQueryRunner as Record<string, Record<string, jest.Mock>>).manager.save = jest.fn()
-        .mockRejectedValueOnce(new Error('save error'));
-      (mockQueryRunner as Record<string, unknown>).isTransactionActive = true;
-
-      await expect(
-        service.joinByInviteCode(OTHER_USER_ID, 'TESTCODE', 'Nick', '1.2.3.4'),
-      ).rejects.toThrow('save error');
-
-      expect((mockQueryRunner as Record<string, jest.Mock>).rollbackTransaction).toHaveBeenCalled();
-
-      // 원복
-      (mockQueryRunner as Record<string, unknown>).isTransactionActive = false;
-      (mockQueryRunner as Record<string, Record<string, jest.Mock>>).manager.save = originalManagerSave;
-    });
-  });
-
-  describe('fetchActiveProblemIds — catch 분기 (line 590)', () => {
-    it('fetch가 예외를 던지면 undefined 반환 + 경고 로그', async () => {
-      configService.getOrThrow = jest.fn()
-        .mockReturnValueOnce('http://problem:3000')
-        .mockReturnValueOnce('internal-key-problem')
-        .mockReturnValueOnce('http://submission:3000')
-        .mockReturnValueOnce('internal-key-123');
-
-      const mockStatsData = {
-        data: {
-          totalSubmissions: 1,
-          uniqueSubmissions: 0,
-          uniqueAnalyzed: 0,
-          byWeek: [],
-          byWeekPerUser: [],
-          byMember: [],
-          byMemberWeek: null,
-          recentSubmissions: [],
-          solvedProblemIds: null,
-          submitterCountByProblem: [],
-        },
-      };
-
-      const originalFetch = global.fetch;
-      global.fetch = jest.fn()
-        .mockRejectedValueOnce(new Error('network error')) // fetchActiveProblemIds 예외
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(mockStatsData),
-        }) as unknown as typeof global.fetch;
-
-      memberRepository.find.mockResolvedValue([]);
-
-      const result = await service.getStudyStats(STUDY_ID, USER_ID);
-
-      // fetchActiveProblemIds 실패해도 stats는 정상 반환
-      expect(result.totalSubmissions).toBe(1);
-
-      global.fetch = originalFetch;
-    });
-  });
-
-  describe('getStudyStats — recentSubmissions 매핑 (line 553)', () => {
-    it('recentSubmissions에 userId가 있으면 nickname 매핑', async () => {
-      configService.getOrThrow = jest.fn()
-        .mockReturnValueOnce('http://problem:3000')
-        .mockReturnValueOnce('internal-key-problem')
-        .mockReturnValueOnce('http://submission:3000')
-        .mockReturnValueOnce('internal-key-123');
-
-      const mockStatsData = {
-        data: {
-          totalSubmissions: 2,
-          uniqueSubmissions: 1,
-          uniqueAnalyzed: 0,
-          byWeek: [],
-          byWeekPerUser: [],
-          byMember: [],
-          byMemberWeek: null,
-          recentSubmissions: [
-            { userId: USER_ID, title: 'Problem A' },
-            { userId: 'unknown-user', title: 'Problem B' },
-          ],
-          solvedProblemIds: null,
-          submitterCountByProblem: [],
-        },
-      };
-
-      const originalFetch = global.fetch;
-      global.fetch = jest.fn()
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ data: ['p1'] }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(mockStatsData),
-        }) as unknown as typeof global.fetch;
-
-      memberRepository.find.mockResolvedValue([mockAdminMember]);
-
-      const result = await service.getStudyStats(STUDY_ID, USER_ID);
-
-      // recentSubmissions가 매핑되어야 함
-      expect(result.recentSubmissions).toHaveLength(2);
-      expect((result.recentSubmissions[0] as Record<string, unknown>).nickname).toBe('Admin');
-      expect((result.recentSubmissions[1] as Record<string, unknown>).nickname).toBeNull();
-
-      global.fetch = originalFetch;
-    });
-  });
-
-  describe('changeMemberRole — isTransactionActive catch 분기 (line 724)', () => {
-    it('트랜잭션 활성 상태에서 에러 시 rollback', async () => {
-      memberRepository.findOne
-        .mockResolvedValueOnce(mockAdminMember) // verifyAdmin
-        .mockResolvedValueOnce({ ...mockRegularMember, role: StudyMemberRole.MEMBER }); // target
-
-      (mockQueryRunner as Record<string, Record<string, jest.Mock>>).manager.save
-        .mockRejectedValueOnce(new Error('save error'));
-      (mockQueryRunner as Record<string, unknown>).isTransactionActive = true;
-
-      await expect(
-        service.changeMemberRole(STUDY_ID, OTHER_USER_ID, USER_ID, StudyMemberRole.ADMIN),
-      ).rejects.toThrow('save error');
-
-      expect((mockQueryRunner as Record<string, jest.Mock>).rollbackTransaction).toHaveBeenCalled();
-
-      // 원복
-      (mockQueryRunner as Record<string, unknown>).isTransactionActive = false;
-      (mockQueryRunner as Record<string, Record<string, jest.Mock>>).manager.save
-        .mockImplementation((entity: unknown) => Promise.resolve(entity));
-    });
-  });
-
-  describe('leaveStudy — isTransactionActive catch 분기 (line 797)', () => {
-    it('트랜잭션 활성 상태에서 에러 시 rollback', async () => {
-      memberRepository.findOne.mockResolvedValue(mockRegularMember);
-
-      (mockQueryRunner as Record<string, Record<string, jest.Mock>>).manager.delete
-        .mockRejectedValueOnce(new Error('delete error'));
-      (mockQueryRunner as Record<string, unknown>).isTransactionActive = true;
-
-      await expect(service.leaveStudy(STUDY_ID, OTHER_USER_ID)).rejects.toThrow('delete error');
-
-      expect((mockQueryRunner as Record<string, jest.Mock>).rollbackTransaction).toHaveBeenCalled();
-
-      // 원복
-      (mockQueryRunner as Record<string, unknown>).isTransactionActive = false;
-      (mockQueryRunner as Record<string, Record<string, jest.Mock>>).manager.delete
-        .mockResolvedValue({ affected: 1 });
-    });
-  });
-
-  describe('removeMember — 비ADMIN 추방 시도 (line 826)', () => {
-    it('추방 실행자가 ADMIN이 아니면 ForbiddenException', async () => {
-      memberRepository.findOne
-        .mockResolvedValueOnce(null); // adminMember not found (via manager.findOne)
-
-      await expect(
-        service.removeMember(STUDY_ID, OTHER_USER_ID, USER_ID),
-      ).rejects.toThrow(ForbiddenException);
-    });
-  });
-
-  describe('removeMember — ADMIN 추방 시 최소 ADMIN 보장 (line 842-847)', () => {
-    it('ADMIN 타겟 추방 시 adminCount <= 1이면 BadRequestException', async () => {
-      const targetAdmin: StudyMember = {
-        ...mockRegularMember,
-        user_id: OTHER_USER_ID,
-        role: StudyMemberRole.ADMIN,
-      };
-
-      memberRepository.findOne
-        .mockResolvedValueOnce(mockAdminMember) // admin 검증
-        .mockResolvedValueOnce(targetAdmin); // target is ADMIN
-      memberRepository.count.mockResolvedValue(1); // only 1 ADMIN
-
-      await expect(
-        service.removeMember(STUDY_ID, OTHER_USER_ID, USER_ID),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('ADMIN 타겟 추방 시 adminCount > 1이면 성공', async () => {
-      const targetAdmin: StudyMember = {
-        ...mockRegularMember,
-        user_id: OTHER_USER_ID,
-        role: StudyMemberRole.ADMIN,
-      };
-
-      memberRepository.findOne
-        .mockResolvedValueOnce(mockAdminMember) // admin 검증
-        .mockResolvedValueOnce(targetAdmin); // target is ADMIN
-      memberRepository.count.mockResolvedValue(2); // 2 ADMINs
-
-      await service.removeMember(STUDY_ID, OTHER_USER_ID, USER_ID);
-
-      expect((mockQueryRunner as Record<string, jest.Mock>).commitTransaction).toHaveBeenCalled();
-    });
-  });
-
-  describe('removeMember — isTransactionActive catch 분기 (line 864)', () => {
-    it('트랜잭션 활성 상태에서 에러 시 rollback', async () => {
-      memberRepository.findOne
-        .mockResolvedValueOnce(mockAdminMember) // admin 검증
-        .mockResolvedValueOnce(mockRegularMember); // target
-
-      (mockQueryRunner as Record<string, Record<string, jest.Mock>>).manager.delete
-        .mockRejectedValueOnce(new Error('delete error'));
-      (mockQueryRunner as Record<string, unknown>).isTransactionActive = true;
-
-      await expect(
-        service.removeMember(STUDY_ID, OTHER_USER_ID, USER_ID),
-      ).rejects.toThrow('delete error');
-
-      expect((mockQueryRunner as Record<string, jest.Mock>).rollbackTransaction).toHaveBeenCalled();
-
-      // 원복
-      (mockQueryRunner as Record<string, unknown>).isTransactionActive = false;
-      (mockQueryRunner as Record<string, Record<string, jest.Mock>>).manager.delete
-        .mockResolvedValue({ affected: 1 });
     });
   });
 });

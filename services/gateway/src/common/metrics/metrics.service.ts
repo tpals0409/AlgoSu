@@ -40,7 +40,6 @@ export class MetricsService implements OnModuleInit {
   readonly httpRequestsTotal: Counter<string>;
   readonly httpActiveRequests: Gauge<string>;
   readonly httpErrorsTotal: Counter<string>;
-  readonly guardRedisFallbackTotal: Counter<string>;
 
   constructor() {
     this.registry = new Registry();
@@ -73,13 +72,6 @@ export class MetricsService implements OnModuleInit {
       name: `${prefix}_http_errors_total`,
       help: 'Total number of HTTP errors (4xx + 5xx)',
       labelNames: ['method', 'path', 'status_code'] as const,
-      registers: [this.registry],
-    });
-
-    this.guardRedisFallbackTotal = new Counter({
-      name: `${prefix}_guard_redis_fallback_total`,
-      help: 'Total number of Redis cache failures triggering DB fallback in guards',
-      labelNames: ['guard'] as const,
       registers: [this.registry],
     });
   }

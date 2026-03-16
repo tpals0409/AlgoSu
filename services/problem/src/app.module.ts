@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ProblemModule } from './problem/problem.module';
 import { CacheModule } from './cache/cache.module';
@@ -32,7 +31,6 @@ import { StructuredLoggerService } from './common/logger/structured-logger.servi
         maxQueryExecutionTime: 200,
       }),
     }),
-    ScheduleModule.forRoot(),
     DualWriteModule,
     MetricsModule,
     ProblemModule,

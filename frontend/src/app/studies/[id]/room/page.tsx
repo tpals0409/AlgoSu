@@ -106,7 +106,7 @@ function groupProblemsByWeek(problems: Problem[]): WeekGroup[] {
   for (const [label, probs] of groupMap) {
     groups.push({
       label,
-      active: probs.some((p) => p.status === 'ACTIVE'),
+      active: probs.some((p) => p.status === 'ACTIVE' && new Date(p.deadline) >= new Date()),
       problems: probs,
     });
   }
@@ -571,7 +571,7 @@ function ProblemTimelineCard({ problem, barsAnimated, submittedCount, totalMembe
   readonly onSelect: (p: Problem) => void;
 }): ReactNode {
   const tier = toTier(problem.difficulty);
-  const isActive = problem.status === 'ACTIVE';
+  const isActive = problem.status === 'ACTIVE' && new Date(problem.deadline) >= new Date();
   const tags = problem.tags ?? [];
   const pct = totalMembers > 0 ? (submittedCount / totalMembers) * 100 : 0;
 

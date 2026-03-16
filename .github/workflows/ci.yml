@@ -666,6 +666,7 @@ jobs:
     if: |
       github.ref == 'refs/heads/main' && !cancelled() &&
       needs.secret-scan.result == 'success' &&
+      needs.trivy-scan.result != 'failure' &&
       (needs.build-services.result == 'success' ||
        needs.build-frontend.result == 'success')
     runs-on: ubuntu-latest
@@ -686,19 +687,19 @@ jobs:
           SHA="${{ github.sha }}"
           UPDATED=""
 
-          # 변경 감지된 서비스의 태그를 업데이트
-          # build-services matrix에서 일부만 실패해도, 성공한 서비스는 ghcr에 push됨
-          # 실패한 서비스의 태그를 업데이트해도 ArgoCD가 pull 실패 → 기존 Pod 유지 (rollingUpdate)
-          # 따라서 detect-changes 결과만으로 판단해도 안전함
-          [ "${{ needs.detect-changes.outputs.gateway }}" = "true" ] && UPDATED="${UPDATED} gateway"
-          [ "${{ needs.detect-changes.outputs.identity }}" = "true" ] && UPDATED="${UPDATED} identity"
-          [ "${{ needs.detect-changes.outputs.submission }}" = "true" ] && UPDATED="${UPDATED} submission"
-          [ "${{ needs.detect-changes.outputs.problem }}" = "true" ] && UPDATED="${UPDATED} problem"
-          [ "${{ needs.detect-changes.outputs.github-worker }}" = "true" ] && UPDATED="${UPDATED} github-worker"
-          [ "${{ needs.detect-changes.outputs.ai-analysis }}" = "true" ] && UPDATED="${UPDATED} ai-analysis"
-          [ "${{ needs.detect-changes.outputs.frontend }}" = "true" ] && UPDATED="${UPDATED} frontend"
+          # build-services는 matrix이므로 개별 결과를 알 수 없음
+          # detect-changes로 변경 감지된 서비스 중 build-services가 성공한 경우만
+          if [ "${{ needs.build-services.result }}" = "success" ]; then
+            [ "${{ needs.detect-changes.outputs.gateway }}" = "true" ] && UPDATED="${UPDATED} gateway"
+            [ "${{ needs.detect-changes.outputs.identity }}" = "true" ] && UPDATED="${UPDATED} identity"
+            [ "${{ needs.detect-changes.outputs.submission }}" = "true" ] && UPDATED="${UPDATED} submission"
+            [ "${{ needs.detect-changes.outputs.problem }}" = "true" ] && UPDATED="${UPDATED} problem"
+            [ "${{ needs.detect-changes.outputs.github-worker }}" = "true" ] && UPDATED="${UPDATED} github-worker"
+            [ "${{ needs.detect-changes.outputs.ai-analysis }}" = "true" ] && UPDATED="${UPDATED} ai-analysis"
+          fi
+          [ "${{ needs.build-frontend.result }}" = "success" ] && UPDATED="${UPDATED} frontend"
 
-          # 이미지가 존재하는 서비스만 태그 업데이트 (python3 + PyYAML)
+          # 변경된 서비스만 이미지 태그 업데이트 (python3 + PyYAML)
           for SVC in $UPDATED; do
             python3 -c "
           import yaml
@@ -713,7 +714,6 @@ jobs:
             echo "  ✓ algosu-${SVC} → main-${SHA}"
           done
 
-          [ -n "$SKIPPED" ] && echo "  ⊘ Skipped (no image):${SKIPPED}"
           echo "Updated services:${UPDATED}"
           cat kustomization.yaml
 

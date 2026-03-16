@@ -88,9 +88,9 @@ export class TokenRefreshInterceptor implements NestInterceptor {
       const newToken = this.oauthService.issueAccessToken(user);
       const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
 
-      // 응답이 이미 전송되지 않았으면 쿠키 설정 — jwtExpiresIn SSoT
+      // 응답이 이미 전송되지 않았으면 쿠키 설정
       if (!res.headersSent) {
-        setTokenCookie(res, newToken, nodeEnv, this.oauthService.getJwtExpiresIn());
+        setTokenCookie(res, newToken, nodeEnv);
         this.logger.log(`토큰 자동 갱신: userId=${userId}`);
       }
     } catch (err) {

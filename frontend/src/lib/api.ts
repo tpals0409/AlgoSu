@@ -32,7 +32,7 @@ export interface Problem {
   title: string;
   difficulty: 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND' | 'RUBY';
   level?: number | null;
-  status: 'ACTIVE' | 'CLOSED' | 'DRAFT' | 'DELETED';
+  status: 'ACTIVE' | 'CLOSED' | 'DRAFT';
   deadline: string; // ISO 날짜
   description: string;
   weekNumber: string;
@@ -384,7 +384,7 @@ export const problemApi = {
   findAll: (): Promise<Problem[]> =>
     fetchApi('/api/problems/active'),
 
-  /** 전체 문제 목록 (DRAFT, DELETED 제외) — 대시보드·스터디룸 통계용 */
+  /** 전체 문제 목록 (ACTIVE만) — 대시보드·스터디룸 통계용 */
   findAllProblems: (): Promise<Problem[]> =>
     fetchApi('/api/problems/all'),
 

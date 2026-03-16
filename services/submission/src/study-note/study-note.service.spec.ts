@@ -3,7 +3,6 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { StudyNoteService } from './study-note.service';
 import { StudyNote } from './study-note.entity';
-import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 // ─── Mock 팩토리 ────────────────────────────────────────────────
 const mockNoteRepo = () => ({
@@ -34,7 +33,6 @@ describe('StudyNoteService', () => {
       providers: [
         StudyNoteService,
         { provide: getRepositoryToken(StudyNote), useFactory: mockNoteRepo },
-        { provide: StructuredLoggerService, useValue: { setContext: jest.fn(), log: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() } },
       ],
     }).compile();
 

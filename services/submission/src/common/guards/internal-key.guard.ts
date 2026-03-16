@@ -19,11 +19,8 @@ import { StructuredLoggerService } from '../logger/structured-logger.service';
 export class InternalKeyGuard implements CanActivate {
   private readonly logger: StructuredLoggerService;
 
-  constructor(
-    private readonly configService: ConfigService,
-    logger: StructuredLoggerService,
-  ) {
-    this.logger = logger;
+  constructor(private readonly configService: ConfigService) {
+    this.logger = new StructuredLoggerService();
     this.logger.setContext(InternalKeyGuard.name);
   }
 

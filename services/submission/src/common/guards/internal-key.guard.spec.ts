@@ -1,7 +1,6 @@
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InternalKeyGuard } from './internal-key.guard';
-import { StructuredLoggerService } from '../logger/structured-logger.service';
 
 describe('InternalKeyGuard', () => {
   let guard: InternalKeyGuard;
@@ -14,8 +13,7 @@ describe('InternalKeyGuard', () => {
       getOrThrow: jest.fn().mockReturnValue('valid-internal-key'),
     } as unknown as jest.Mocked<ConfigService>;
 
-    const mockLogger = { setContext: jest.fn(), log: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() } as unknown as StructuredLoggerService;
-    guard = new InternalKeyGuard(configService, mockLogger);
+    guard = new InternalKeyGuard(configService);
   });
 
   afterEach(() => {

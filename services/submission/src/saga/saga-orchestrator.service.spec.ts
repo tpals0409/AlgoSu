@@ -5,7 +5,6 @@ import { Repository } from 'typeorm';
 import { SagaOrchestratorService } from './saga-orchestrator.service';
 import { Submission, SagaStep, GitHubSyncStatus } from '../submission/submission.entity';
 import { MqPublisherService } from './mq-publisher.service';
-import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 // ─── Mock 팩토리 ────────────────────────────────────────────────
 const mockSubmissionRepo = () => ({
@@ -77,7 +76,6 @@ describe('SagaOrchestratorService', () => {
             }),
           },
         },
-        { provide: StructuredLoggerService, useValue: { setContext: jest.fn(), log: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() } },
       ],
     }).compile();
 

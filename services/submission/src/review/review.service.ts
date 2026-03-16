@@ -31,9 +31,8 @@ export class ReviewService {
     private readonly replyRepo: Repository<ReviewReply>,
     @InjectRepository(Submission)
     private readonly submissionRepo: Repository<Submission>,
-    logger: StructuredLoggerService,
   ) {
-    this.logger = logger;
+    this.logger = new StructuredLoggerService();
     this.logger.setContext(ReviewService.name);
   }
 

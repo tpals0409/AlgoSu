@@ -23,17 +23,6 @@ patches:
         path: /spec/replicas
         value: 2
 
-  # Prod: CORS origin — 프로덕션 도메인
-  - target:
-      kind: Deployment
-      name: gateway
-    patch: |
-      - op: add
-        path: /spec/template/spec/containers/0/env
-        value:
-          - name: ALLOWED_ORIGINS
-            value: "https://algosu.app"
-
   # Prod: HPA minReplicas 2로 상향 (고가용성)
   - target:
       kind: HorizontalPodAutoscaler

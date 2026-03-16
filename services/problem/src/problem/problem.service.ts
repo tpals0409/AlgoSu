@@ -5,7 +5,7 @@
  * @related problem.controller.ts, problem.entity.ts, deadline-cache.service.ts
  */
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { DataSource, In, LessThan, Not } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { Problem, ProblemStatus } from './problem.entity';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
 import { DeadlineCacheService } from '../cache/deadline-cache.service';
@@ -66,9 +66,7 @@ export class ProblemService {
    * 문제 단건 조회 — studyId 스코핑으로 cross-study 접근 차단
    */
   async findById(studyId: string, id: string): Promise<Problem> {
-    const problem = await this.dualWrite.findOne({
-      where: { id, studyId, status: Not(ProblemStatus.DELETED) },
-    });
+    const problem = await this.dualWrite.findOne({ where: { id, studyId } });
     if (!problem) {
       throw new NotFoundException(`문제를 찾을 수 없습니다: id=${id}`);
     }
@@ -86,7 +84,7 @@ export class ProblemService {
     }
 
     const problems = await this.dualWrite.find({
-      where: { weekNumber, studyId, status: Not(In([ProblemStatus.DRAFT, ProblemStatus.DELETED])) },
+      where: { weekNumber, studyId, status: ProblemStatus.ACTIVE },
       order: { createdAt: 'ASC' },
     });
 
@@ -194,11 +192,11 @@ export class ProblemService {
 
   /**
    * M6: 문제 삭제 (soft delete) — ADMIN 권한 필수
-   * status를 DELETED로 변경. Submission 참조 무결성 유지.
+   * status를 CLOSED로 변경. Submission 참조 무결성 유지.
    */
   async delete(studyId: string, id: string): Promise<void> {
     const problem = await this.findById(studyId, id);
-    problem.status = ProblemStatus.DELETED;
+    problem.status = ProblemStatus.CLOSED;
     await this.dualWrite.saveExisting(problem);
 
     await this.deadlineCache.invalidateDeadline(studyId, id);
@@ -219,96 +217,13 @@ export class ProblemService {
   }
 
   /**
-   * 전체 문제 목록 (DRAFT, DELETED 제외) — studyId 스코핑
+   * 전체 문제 목록 (ACTIVE만) — studyId 스코핑
    */
   async findAllByStudy(studyId: string): Promise<Problem[]> {
     const problems = await this.dualWrite.find({
-      where: { studyId, status: Not(In([ProblemStatus.DRAFT, ProblemStatus.DELETED])) },
+      where: { studyId, status: ProblemStatus.ACTIVE },
       order: { weekNumber: 'ASC', createdAt: 'ASC' },
     });
     return problems;
-  }
-
-  /**
-   * 만료된 ACTIVE 문제를 CLOSED로 일괄 전환 (스케줄러 호출용)
-   *
-   * 로직:
-   * 1. deadline < NOW() && status=ACTIVE 인 문제 조회
-   * 2. 대상 0건이면 즉시 반환
-   * 3. 트랜잭션으로 status=CLOSED, updated_at=NOW() 일괄 업데이트
-   * 4. 캐시 무효화 (deadline + weekProblems, weekNumber dedup)
-   *
-   * @returns 변경 건수 및 영향받은 문제 목록
-   */
-  async closeExpiredProblems(): Promise<{
-    count: number;
-    affected: Array<{ studyId: string; id: string; weekNumber: string }>;
-  }> {
-    // 1. 만료된 ACTIVE 문제 조회
-    const expired = await this.dualWrite.find({
-      where: {
-        status: ProblemStatus.ACTIVE,
-        deadline: LessThan(new Date()),
-      },
-      select: ['id', 'studyId', 'weekNumber'],
-    });
-
-    // 2. 대상 없으면 즉시 반환
-    if (expired.length === 0) {
-      return { count: 0, affected: [] };
-    }
-
-    // 3. 트랜잭션으로 일괄 CLOSED 전환
-    const qr = this.dataSource.createQueryRunner();
-    await qr.connect();
-    await qr.startTransaction();
-
-    try {
-      const ids = expired.map((p) => p.id);
-      await qr.manager
-        .createQueryBuilder()
-        .update(Problem)
-        .set({ status: ProblemStatus.CLOSED })
-        .whereInIds(ids)
-        .execute();
-
-      await qr.commitTransaction();
-    } catch (err) {
-      await qr.rollbackTransaction();
-      throw err;
-    } finally {
-      await qr.release();
-    }
-
-    // 4. 캐시 무효화 — weekNumber dedup with Set
-    const invalidatedWeeks = new Set<string>();
-
-    for (const p of expired) {
-      await this.deadlineCache.invalidateDeadline(p.studyId, p.id);
-
-      const weekKey = `${p.studyId}:${p.weekNumber}`;
-      if (!invalidatedWeeks.has(weekKey)) {
-        invalidatedWeeks.add(weekKey);
-        await this.deadlineCache.invalidateWeekProblems(p.studyId, p.weekNumber);
-      }
-    }
-
-    // Dual Write — 비동기 동기화
-    if (this.dualWrite.isActive) {
-      for (const p of expired) {
-        const updated = await this.dualWrite.findOne({ where: { id: p.id } });
-        if (updated) {
-          void this.dualWrite.saveExisting(updated);
-        }
-      }
-    }
-
-    const affected = expired.map((p) => ({
-      studyId: p.studyId,
-      id: p.id,
-      weekNumber: p.weekNumber,
-    }));
-
-    return { count: expired.length, affected };
   }
 }

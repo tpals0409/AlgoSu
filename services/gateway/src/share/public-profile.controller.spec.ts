@@ -10,7 +10,7 @@ import { StructuredLoggerService } from '../common/logger/structured-logger.serv
 
 /* global fetch 모킹 */
 const mockFetch = jest.fn();
-global.fetch = mockFetch as unknown as typeof global.fetch;
+global.fetch = mockFetch as any;
 
 describe('PublicProfileController', () => {
   let controller: PublicProfileController;

@@ -27,9 +27,8 @@ export class DraftService {
   constructor(
     @InjectRepository(Draft)
     private readonly draftRepo: Repository<Draft>,
-    logger: StructuredLoggerService,
   ) {
-    this.logger = logger;
+    this.logger = new StructuredLoggerService();
     this.logger.setContext(DraftService.name);
   }
 

@@ -21,17 +21,6 @@ patches:
         path: /spec/replicas
         value: 1
 
-  # Staging: CORS origin — 스테이징 도메인
-  - target:
-      kind: Deployment
-      name: gateway
-    patch: |
-      - op: add
-        path: /spec/template/spec/containers/0/env
-        value:
-          - name: ALLOWED_ORIGINS
-            value: "https://staging.algosu.app"
-
   # Staging: Gateway 리소스 약간 상향
   - target:
       kind: Deployment

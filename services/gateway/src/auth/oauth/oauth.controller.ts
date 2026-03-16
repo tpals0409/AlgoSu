@@ -91,9 +91,9 @@ export class OAuthController {
 
       this.logger.log(`OAuth 로그인 성공: provider=${provider}, userId=${result.user.id}`);
 
-      // httpOnly Cookie로 JWT 발급 — jwtExpiresIn SSoT로 쿠키 maxAge 파생
+      // httpOnly Cookie로 JWT 발급
       const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
-      setTokenCookie(res, result.accessToken, nodeEnv, this.oauthService.getJwtExpiresIn());
+      setTokenCookie(res, result.accessToken, nodeEnv);
 
       // 프론트엔드 리다이렉트 — github_connected만 fragment로 전달 (민감 정보 아님)
       const params = new URLSearchParams({
@@ -309,7 +309,7 @@ export class OAuthController {
     const accessToken = this.oauthService.issueAccessToken(user);
 
     const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
-    setTokenCookie(res, accessToken, nodeEnv, this.oauthService.getJwtExpiresIn());
+    setTokenCookie(res, accessToken, nodeEnv);
 
     return { message: 'Token refreshed' };
   }

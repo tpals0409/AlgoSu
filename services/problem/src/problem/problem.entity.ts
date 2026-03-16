@@ -21,7 +21,6 @@ export enum ProblemStatus {
   ACTIVE = 'ACTIVE',
   CLOSED = 'CLOSED',
   DRAFT = 'DRAFT',
-  DELETED = 'DELETED',
 }
 
 @Entity('problems')

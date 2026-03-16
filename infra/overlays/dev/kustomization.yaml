@@ -43,17 +43,6 @@ patches:
         path: /spec/replicas
         value: 1
 
-  # Dev: CORS origin — 로컬 개발 (http://localhost:3001)
-  - target:
-      kind: Deployment
-      name: gateway
-    patch: |
-      - op: add
-        path: /spec/template/spec/containers/0/env
-        value:
-          - name: ALLOWED_ORIGINS
-            value: "http://localhost:3001"
-
   # Dev: Grafana 익명 접근 허용 (로컬 개발 편의)
   - target:
       kind: Deployment

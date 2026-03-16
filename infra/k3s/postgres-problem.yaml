@@ -2,8 +2,6 @@
 # AlgoSu — Problem 전용 PostgreSQL (Phase 3 DB 분리)
 # 물리적으로 독립된 PostgreSQL 인스턴스
 # H11: statement_timeout 200ms (슬로우 쿼리 차단)
-# ⚠ 마이그레이션 시: statement_timeout=200 으로 인해 장시간 DDL 실패 가능
-#   → docs/runbook-db-migration.md 참조하여 임시 해제 후 실행
 # ============================================================
 apiVersion: apps/v1
 kind: Deployment
