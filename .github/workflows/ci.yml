@@ -681,25 +681,34 @@ jobs:
           git config user.name "algosu-ci"
           git config user.email "ci@algosu.dev"
 
-      - name: Update image tags for changed services
+      - name: Login to GHCR (for image verification)
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update image tags (per-service image verification)
         run: |
           cd aether-gitops/algosu/overlays/prod
           SHA="${{ github.sha }}"
           UPDATED=""
+          SKIPPED=""
 
-          # build-services는 matrix이므로 개별 결과를 알 수 없음
-          # detect-changes로 변경 감지된 서비스 중 build-services가 성공한 경우만
-          if [ "${{ needs.build-services.result }}" = "success" ]; then
-            [ "${{ needs.detect-changes.outputs.gateway }}" = "true" ] && UPDATED="${UPDATED} gateway"
-            [ "${{ needs.detect-changes.outputs.identity }}" = "true" ] && UPDATED="${UPDATED} identity"
-            [ "${{ needs.detect-changes.outputs.submission }}" = "true" ] && UPDATED="${UPDATED} submission"
-            [ "${{ needs.detect-changes.outputs.problem }}" = "true" ] && UPDATED="${UPDATED} problem"
-            [ "${{ needs.detect-changes.outputs.github-worker }}" = "true" ] && UPDATED="${UPDATED} github-worker"
-            [ "${{ needs.detect-changes.outputs.ai-analysis }}" = "true" ] && UPDATED="${UPDATED} ai-analysis"
-          fi
-          [ "${{ needs.build-frontend.result }}" = "success" ] && UPDATED="${UPDATED} frontend"
+          # 각 서비스별로 ghcr에 현재 SHA 이미지가 존재하는지 개별 확인
+          # 핵심: matrix job은 개별 결과를 노출하지 않으므로, 이미지 존재 = 빌드 성공
+          # 이전 CI run에서 빌드 성공했지만 다른 서비스 실패로 deploy 누락된 케이스도 복구
+          SERVICES="gateway identity submission problem github-worker ai-analysis frontend"
+          for SVC in $SERVICES; do
+            IMAGE="${{ env.IMAGE_PREFIX }}-${SVC}:main-${SHA}"
+            if docker manifest inspect "${IMAGE}" > /dev/null 2>&1; then
+              UPDATED="${UPDATED} ${SVC}"
+            else
+              SKIPPED="${SKIPPED} ${SVC}"
+            fi
+          done
 
-          # 변경된 서비스만 이미지 태그 업데이트 (python3 + PyYAML)
+          # 이미지가 존재하는 서비스만 태그 업데이트 (python3 + PyYAML)
           for SVC in $UPDATED; do
             python3 -c "
           import yaml
@@ -714,6 +723,7 @@ jobs:
             echo "  ✓ algosu-${SVC} → main-${SHA}"
           done
 
+          [ -n "$SKIPPED" ] && echo "  ⊘ Skipped (no image):${SKIPPED}"
           echo "Updated services:${UPDATED}"
           cat kustomization.yaml
 
