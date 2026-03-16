@@ -167,7 +167,6 @@ export default function DashboardPage(): ReactNode {
   const [stats, setStats] = useState<StudyStats | null>(null);
   const [members, setMembers] = useState<StudyMember[]>([]);
   const [recentSubmissions, setRecentSubmissions] = useState<Submission[]>([]);
-  const [activeProblems, setActiveProblems] = useState<Problem[]>([]);
   const [allProblems, setAllProblems] = useState<Problem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -203,7 +202,6 @@ export default function DashboardPage(): ReactNode {
       const results = await Promise.allSettled([
         currentStudyId ? studyApi.getStats(currentStudyId, getCurrentWeekLabel()) : Promise.resolve(null),
         submissionApi.list({ page: 1, limit: 5 }),
-        problemApi.findAll(),
         currentStudyId ? studyApi.getMembers(currentStudyId) : Promise.resolve([]),
         problemApi.findAllProblems(),
       ]);
@@ -224,21 +222,15 @@ export default function DashboardPage(): ReactNode {
       }
 
       if (results[2].status === 'fulfilled') {
-        setActiveProblems((results[2].value as Problem[]) ?? []);
-      } else {
-        errors.problems = '문제 목록을 불러올 수 없습니다.';
-      }
-
-      if (results[3].status === 'fulfilled') {
-        setMembers((results[3].value as StudyMember[]) ?? []);
-      } else if (results[3].status === 'rejected') {
+        setMembers((results[2].value as StudyMember[]) ?? []);
+      } else if (results[2].status === 'rejected') {
         errors.members = '멤버 목록을 불러올 수 없습니다.';
       }
 
-      if (results[4].status === 'fulfilled') {
-        setAllProblems((results[4].value as Problem[]) ?? []);
+      if (results[3].status === 'fulfilled') {
+        setAllProblems((results[3].value as Problem[]) ?? []);
       } else {
-        errors.problems = errors.problems ?? '문제 목록을 불러올 수 없습니다.';
+        errors.problems = '문제 목록을 불러올 수 없습니다.';
       }
 
       setSectionErrors(errors);
@@ -283,14 +275,14 @@ export default function DashboardPage(): ReactNode {
 
   const currentWeekProblems = useMemo(() => {
     const currentWeek = getCurrentWeekLabel();
-    const weekProblems = activeProblems.filter((p) => p.weekNumber === currentWeek);
+    const weekProblems = allProblems.filter((p) => p.weekNumber === currentWeek);
     // 미제출 문제를 상단에, 제출 완료 문제를 하단에
     return weekProblems.sort((a, b) => {
       const aSubmitted = submittedProblemIds.has(a.id) ? 1 : 0;
       const bSubmitted = submittedProblemIds.has(b.id) ? 1 : 0;
       return aSubmitted - bSubmitted;
     });
-  }, [activeProblems, submittedProblemIds]);
+  }, [allProblems, submittedProblemIds]);
 
 
 
