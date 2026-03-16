@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException, ConflictException } from '@nestjs/common';
-import { DataSource, Not } from 'typeorm';
+import { DataSource, In, Not } from 'typeorm';
 import { ProblemService } from './problem.service';
 import { Problem, ProblemStatus, Difficulty } from './problem.entity';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
@@ -215,7 +215,7 @@ describe('ProblemService', () => {
       const result = await service.findById(STUDY_ID, PROBLEM_ID);
 
       expect(dualWrite.findOne).toHaveBeenCalledWith({
-        where: { id: PROBLEM_ID, studyId: STUDY_ID },
+        where: { id: PROBLEM_ID, studyId: STUDY_ID, status: Not(ProblemStatus.DELETED) },
       });
       expect(result).toEqual(mockProblem);
     });
@@ -241,7 +241,7 @@ describe('ProblemService', () => {
 
       // studyId가 OTHER_STUDY_ID로 조회되었는지 확인
       expect(dualWrite.findOne).toHaveBeenCalledWith({
-        where: { id: PROBLEM_ID, studyId: OTHER_STUDY_ID },
+        where: { id: PROBLEM_ID, studyId: OTHER_STUDY_ID, status: Not(ProblemStatus.DELETED) },
       });
     });
   });
@@ -276,7 +276,7 @@ describe('ProblemService', () => {
       // DRAFT 제외 필터 확인
       expect(dualWrite.find).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ status: Not(ProblemStatus.DRAFT) }),
+          where: expect.objectContaining({ status: Not(In([ProblemStatus.DRAFT, ProblemStatus.DELETED])) }),
         }),
       );
     });
@@ -294,7 +294,7 @@ describe('ProblemService', () => {
 
       // DB 조회 — studyId 스코핑, DRAFT 제외 필터, createdAt ASC 정렬
       expect(dualWrite.find).toHaveBeenCalledWith({
-        where: { weekNumber: '3월1주차', studyId: STUDY_ID, status: Not(ProblemStatus.DRAFT) },
+        where: { weekNumber: '3월1주차', studyId: STUDY_ID, status: Not(In([ProblemStatus.DRAFT, ProblemStatus.DELETED])) },
         order: { createdAt: 'ASC' },
       });
 
@@ -338,7 +338,7 @@ describe('ProblemService', () => {
       // 캐시 미스 → DB 조회
       expect(deadlineCache.getDeadline).toHaveBeenCalledWith(STUDY_ID, PROBLEM_ID);
       expect(dualWrite.findOne).toHaveBeenCalledWith({
-        where: { id: PROBLEM_ID, studyId: STUDY_ID },
+        where: { id: PROBLEM_ID, studyId: STUDY_ID, status: Not(ProblemStatus.DELETED) },
       });
 
       // 캐시 재설정
@@ -573,17 +573,17 @@ describe('ProblemService', () => {
   // 11. delete() — soft delete
   // ──────────────────────────────────────────────
   describe('delete()', () => {
-    it('문제 soft delete: CLOSED 상태 + 캐시 무효화', async () => {
+    it('문제 soft delete: DELETED 상태 + 캐시 무효화', async () => {
       const problem = { ...mockProblem };
       dualWrite.findOne.mockResolvedValue(problem);
-      dualWrite.saveExisting.mockResolvedValue({ ...problem, status: ProblemStatus.CLOSED });
+      dualWrite.saveExisting.mockResolvedValue({ ...problem, status: ProblemStatus.DELETED });
       deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
       deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
 
       await service.delete(STUDY_ID, PROBLEM_ID);
 
       expect(dualWrite.saveExisting).toHaveBeenCalledWith(
-        expect.objectContaining({ status: ProblemStatus.CLOSED }),
+        expect.objectContaining({ status: ProblemStatus.DELETED }),
       );
       expect(deadlineCache.invalidateDeadline).toHaveBeenCalledWith(STUDY_ID, PROBLEM_ID);
       expect(deadlineCache.invalidateWeekProblems).toHaveBeenCalledWith(STUDY_ID, mockProblem.weekNumber);
@@ -625,7 +625,7 @@ describe('ProblemService', () => {
       const result = await service.findAllByStudy(STUDY_ID);
 
       expect(dualWrite.find).toHaveBeenCalledWith({
-        where: { studyId: STUDY_ID, status: Not(ProblemStatus.DRAFT) },
+        where: { studyId: STUDY_ID, status: Not(In([ProblemStatus.DRAFT, ProblemStatus.DELETED])) },
         order: { weekNumber: 'ASC', createdAt: 'ASC' },
       });
       expect(result).toEqual(problems);

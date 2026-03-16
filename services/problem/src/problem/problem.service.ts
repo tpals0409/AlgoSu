@@ -5,7 +5,7 @@
  * @related problem.controller.ts, problem.entity.ts, deadline-cache.service.ts
  */
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { DataSource, LessThan, Not } from 'typeorm';
+import { DataSource, In, LessThan, Not } from 'typeorm';
 import { Problem, ProblemStatus } from './problem.entity';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
 import { DeadlineCacheService } from '../cache/deadline-cache.service';
@@ -66,7 +66,9 @@ export class ProblemService {
    * 문제 단건 조회 — studyId 스코핑으로 cross-study 접근 차단
    */
   async findById(studyId: string, id: string): Promise<Problem> {
-    const problem = await this.dualWrite.findOne({ where: { id, studyId } });
+    const problem = await this.dualWrite.findOne({
+      where: { id, studyId, status: Not(ProblemStatus.DELETED) },
+    });
     if (!problem) {
       throw new NotFoundException(`문제를 찾을 수 없습니다: id=${id}`);
     }
@@ -84,7 +86,7 @@ export class ProblemService {
     }
 
     const problems = await this.dualWrite.find({
-      where: { weekNumber, studyId, status: Not(ProblemStatus.DRAFT) },
+      where: { weekNumber, studyId, status: Not(In([ProblemStatus.DRAFT, ProblemStatus.DELETED])) },
       order: { createdAt: 'ASC' },
     });
 
@@ -192,11 +194,11 @@ export class ProblemService {
 
   /**
    * M6: 문제 삭제 (soft delete) — ADMIN 권한 필수
-   * status를 CLOSED로 변경. Submission 참조 무결성 유지.
+   * status를 DELETED로 변경. Submission 참조 무결성 유지.
    */
   async delete(studyId: string, id: string): Promise<void> {
     const problem = await this.findById(studyId, id);
-    problem.status = ProblemStatus.CLOSED;
+    problem.status = ProblemStatus.DELETED;
     await this.dualWrite.saveExisting(problem);
 
     await this.deadlineCache.invalidateDeadline(studyId, id);
@@ -217,11 +219,11 @@ export class ProblemService {
   }
 
   /**
-   * 전체 문제 목록 (DRAFT 제외) — studyId 스코핑
+   * 전체 문제 목록 (DRAFT, DELETED 제외) — studyId 스코핑
    */
   async findAllByStudy(studyId: string): Promise<Problem[]> {
     const problems = await this.dualWrite.find({
-      where: { studyId, status: Not(ProblemStatus.DRAFT) },
+      where: { studyId, status: Not(In([ProblemStatus.DRAFT, ProblemStatus.DELETED])) },
       order: { weekNumber: 'ASC', createdAt: 'ASC' },
     });
     return problems;
