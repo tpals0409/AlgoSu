@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException, ConflictException } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { DataSource, Not } from 'typeorm';
 import { ProblemService } from './problem.service';
 import { Problem, ProblemStatus, Difficulty } from './problem.entity';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
@@ -266,17 +266,17 @@ describe('ProblemService', () => {
       expect(deadlineCache.setWeekProblems).not.toHaveBeenCalled();
     });
 
-    it('캐시 미스: ACTIVE 상태만 조회 (CLOSED 필터링)', async () => {
+    it('캐시 미스: DRAFT 제외하고 조회 (ACTIVE + CLOSED 포함)', async () => {
       deadlineCache.getWeekProblems.mockResolvedValue(null);
       dualWrite.find.mockResolvedValue([mockProblem]);
       deadlineCache.setWeekProblems.mockResolvedValue(undefined);
 
       await service.findByWeekAndStudy(STUDY_ID, '3월1주차');
 
-      // ACTIVE 필터 포함 확인
+      // DRAFT 제외 필터 확인
       expect(dualWrite.find).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ status: ProblemStatus.ACTIVE }),
+          where: expect.objectContaining({ status: Not(ProblemStatus.DRAFT) }),
         }),
       );
     });
@@ -292,9 +292,9 @@ describe('ProblemService', () => {
       // 캐시 미스 확인
       expect(deadlineCache.getWeekProblems).toHaveBeenCalledWith(STUDY_ID, '3월1주차');
 
-      // DB 조회 — studyId 스코핑, ACTIVE 필터, createdAt ASC 정렬
+      // DB 조회 — studyId 스코핑, DRAFT 제외 필터, createdAt ASC 정렬
       expect(dualWrite.find).toHaveBeenCalledWith({
-        where: { weekNumber: '3월1주차', studyId: STUDY_ID, status: ProblemStatus.ACTIVE },
+        where: { weekNumber: '3월1주차', studyId: STUDY_ID, status: Not(ProblemStatus.DRAFT) },
         order: { createdAt: 'ASC' },
       });
 
@@ -618,17 +618,17 @@ describe('ProblemService', () => {
   // 13. findAllByStudy()
   // ──────────────────────────────────────────────
   describe('findAllByStudy()', () => {
-    it('ACTIVE 문제만 반환 (CLOSED 제외)', async () => {
-      const activeProblems = [mockProblem];
-      dualWrite.find.mockResolvedValue(activeProblems);
+    it('DRAFT 제외하여 반환 (ACTIVE + CLOSED 포함)', async () => {
+      const problems = [mockProblem];
+      dualWrite.find.mockResolvedValue(problems);
 
       const result = await service.findAllByStudy(STUDY_ID);
 
       expect(dualWrite.find).toHaveBeenCalledWith({
-        where: { studyId: STUDY_ID, status: ProblemStatus.ACTIVE },
+        where: { studyId: STUDY_ID, status: Not(ProblemStatus.DRAFT) },
         order: { weekNumber: 'ASC', createdAt: 'ASC' },
       });
-      expect(result).toEqual(activeProblems);
+      expect(result).toEqual(problems);
       expect(result).toHaveLength(1);
     });
   });

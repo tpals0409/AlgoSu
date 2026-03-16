@@ -384,7 +384,7 @@ export const problemApi = {
   findAll: (): Promise<Problem[]> =>
     fetchApi('/api/problems/active'),
 
-  /** 전체 문제 목록 (ACTIVE만) — 대시보드·스터디룸 통계용 */
+  /** 전체 문제 목록 (DRAFT 제외) — 대시보드·스터디룸 통계용 */
   findAllProblems: (): Promise<Problem[]> =>
     fetchApi('/api/problems/all'),
 
