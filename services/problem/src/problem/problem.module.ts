@@ -6,11 +6,12 @@ import { DeadlineCacheService } from '../cache/deadline-cache.service';
 import { StudyMemberGuard } from '../common/guards/study-member.guard';
 import { DualWriteModule } from '../database/dual-write.module';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
+import { DeadlineSchedulerService } from './deadline-scheduler.service';
 
 @Module({
   imports: [DualWriteModule],
   controllers: [ProblemController, InternalProblemController],
-  providers: [ProblemService, DeadlineCacheService, StudyMemberGuard, StructuredLoggerService],
+  providers: [ProblemService, DeadlineCacheService, DeadlineSchedulerService, StudyMemberGuard, StructuredLoggerService],
   exports: [ProblemService, DeadlineCacheService],
 })
 export class ProblemModule {}

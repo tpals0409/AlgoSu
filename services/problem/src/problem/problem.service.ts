@@ -5,7 +5,7 @@
  * @related problem.controller.ts, problem.entity.ts, deadline-cache.service.ts
  */
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { DataSource, LessThan } from 'typeorm';
 import { Problem, ProblemStatus } from './problem.entity';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
 import { DeadlineCacheService } from '../cache/deadline-cache.service';
@@ -225,5 +225,88 @@ export class ProblemService {
       order: { weekNumber: 'ASC', createdAt: 'ASC' },
     });
     return problems;
+  }
+
+  /**
+   * 만료된 ACTIVE 문제를 CLOSED로 일괄 전환 (스케줄러 호출용)
+   *
+   * 로직:
+   * 1. deadline < NOW() && status=ACTIVE 인 문제 조회
+   * 2. 대상 0건이면 즉시 반환
+   * 3. 트랜잭션으로 status=CLOSED, updated_at=NOW() 일괄 업데이트
+   * 4. 캐시 무효화 (deadline + weekProblems, weekNumber dedup)
+   *
+   * @returns 변경 건수 및 영향받은 문제 목록
+   */
+  async closeExpiredProblems(): Promise<{
+    count: number;
+    affected: Array<{ studyId: string; id: string; weekNumber: string }>;
+  }> {
+    // 1. 만료된 ACTIVE 문제 조회
+    const expired = await this.dualWrite.find({
+      where: {
+        status: ProblemStatus.ACTIVE,
+        deadline: LessThan(new Date()),
+      },
+      select: ['id', 'studyId', 'weekNumber'],
+    });
+
+    // 2. 대상 없으면 즉시 반환
+    if (expired.length === 0) {
+      return { count: 0, affected: [] };
+    }
+
+    // 3. 트랜잭션으로 일괄 CLOSED 전환
+    const qr = this.dataSource.createQueryRunner();
+    await qr.connect();
+    await qr.startTransaction();
+
+    try {
+      const ids = expired.map((p) => p.id);
+      await qr.manager
+        .createQueryBuilder()
+        .update(Problem)
+        .set({ status: ProblemStatus.CLOSED })
+        .whereInIds(ids)
+        .execute();
+
+      await qr.commitTransaction();
+    } catch (err) {
+      await qr.rollbackTransaction();
+      throw err;
+    } finally {
+      await qr.release();
+    }
+
+    // 4. 캐시 무효화 — weekNumber dedup with Set
+    const invalidatedWeeks = new Set<string>();
+
+    for (const p of expired) {
+      await this.deadlineCache.invalidateDeadline(p.studyId, p.id);
+
+      const weekKey = `${p.studyId}:${p.weekNumber}`;
+      if (!invalidatedWeeks.has(weekKey)) {
+        invalidatedWeeks.add(weekKey);
+        await this.deadlineCache.invalidateWeekProblems(p.studyId, p.weekNumber);
+      }
+    }
+
+    // Dual Write — 비동기 동기화
+    if (this.dualWrite.isActive) {
+      for (const p of expired) {
+        const updated = await this.dualWrite.findOne({ where: { id: p.id } });
+        if (updated) {
+          void this.dualWrite.saveExisting(updated);
+        }
+      }
+    }
+
+    const affected = expired.map((p) => ({
+      studyId: p.studyId,
+      id: p.id,
+      weekNumber: p.weekNumber,
+    }));
+
+    return { count: expired.length, affected };
   }
 }

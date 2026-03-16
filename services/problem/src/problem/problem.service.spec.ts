@@ -18,6 +18,12 @@ const createMockQueryRunner = () => ({
   manager: {
     findOne: jest.fn(),
     save: jest.fn(),
+    createQueryBuilder: jest.fn().mockReturnValue({
+      update: jest.fn().mockReturnThis(),
+      set: jest.fn().mockReturnThis(),
+      whereInIds: jest.fn().mockReturnThis(),
+      execute: jest.fn().mockResolvedValue({ affected: 0 }),
+    }),
   },
 });
 
@@ -624,6 +630,134 @@ describe('ProblemService', () => {
       });
       expect(result).toEqual(activeProblems);
       expect(result).toHaveLength(1);
+    });
+  });
+
+  // ──────────────────────────────────────────────
+  // 14. closeExpiredProblems()
+  // ──────────────────────────────────────────────
+  describe('closeExpiredProblems()', () => {
+    it('만료된 ACTIVE 문제가 있으면 CLOSED로 전환 + 캐시 무효화', async () => {
+      const expiredProblems = [
+        { id: 'prob-001', studyId: STUDY_ID, weekNumber: '3월1주차' },
+      ] as Problem[];
+
+      dualWrite.find.mockResolvedValue(expiredProblems);
+      dualWrite.isActive = false;
+
+      const mockQr = createMockQueryRunner();
+      dataSource.createQueryRunner.mockReturnValue(mockQr);
+      deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
+      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
+
+      const result = await service.closeExpiredProblems();
+
+      // 트랜잭션 흐름 확인
+      expect(mockQr.connect).toHaveBeenCalled();
+      expect(mockQr.startTransaction).toHaveBeenCalled();
+      expect(mockQr.manager.createQueryBuilder).toHaveBeenCalled();
+      expect(mockQr.commitTransaction).toHaveBeenCalled();
+      expect(mockQr.release).toHaveBeenCalled();
+
+      // 캐시 무효화 확인
+      expect(deadlineCache.invalidateDeadline).toHaveBeenCalledWith(STUDY_ID, 'prob-001');
+      expect(deadlineCache.invalidateWeekProblems).toHaveBeenCalledWith(STUDY_ID, '3월1주차');
+
+      // 반환값 확인
+      expect(result).toEqual({
+        count: 1,
+        affected: [{ studyId: STUDY_ID, id: 'prob-001', weekNumber: '3월1주차' }],
+      });
+    });
+
+    it('만료된 문제 없으면 count: 0 반환 + 트랜잭션/캐시 호출 없음', async () => {
+      dualWrite.find.mockResolvedValue([]);
+
+      const result = await service.closeExpiredProblems();
+
+      expect(result).toEqual({ count: 0, affected: [] });
+
+      // 트랜잭션 생성 안 됨
+      expect(dataSource.createQueryRunner).not.toHaveBeenCalled();
+
+      // 캐시 무효화 안 됨
+      expect(deadlineCache.invalidateDeadline).not.toHaveBeenCalled();
+      expect(deadlineCache.invalidateWeekProblems).not.toHaveBeenCalled();
+    });
+
+    it('트랜잭션 에러 시 rollback 확인', async () => {
+      const expiredProblems = [
+        { id: 'prob-001', studyId: STUDY_ID, weekNumber: '3월1주차' },
+      ] as Problem[];
+
+      dualWrite.find.mockResolvedValue(expiredProblems);
+
+      const mockQr = createMockQueryRunner();
+      const dbError = new Error('DB write failed');
+      mockQr.manager.createQueryBuilder.mockReturnValue({
+        update: jest.fn().mockReturnThis(),
+        set: jest.fn().mockReturnThis(),
+        whereInIds: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockRejectedValue(dbError),
+      });
+      dataSource.createQueryRunner.mockReturnValue(mockQr);
+
+      await expect(service.closeExpiredProblems()).rejects.toThrow('DB write failed');
+
+      expect(mockQr.rollbackTransaction).toHaveBeenCalled();
+      expect(mockQr.release).toHaveBeenCalled();
+      // 커밋 안 됨
+      expect(mockQr.commitTransaction).not.toHaveBeenCalled();
+    });
+
+    it('중복 weekNumber dedup 확인 (동일 studyId+weekNumber인 문제 2개 → invalidateWeekProblems 1번만 호출)', async () => {
+      const expiredProblems = [
+        { id: 'prob-001', studyId: STUDY_ID, weekNumber: '3월1주차' },
+        { id: 'prob-002', studyId: STUDY_ID, weekNumber: '3월1주차' },
+      ] as Problem[];
+
+      dualWrite.find.mockResolvedValue(expiredProblems);
+      dualWrite.isActive = false;
+
+      const mockQr = createMockQueryRunner();
+      dataSource.createQueryRunner.mockReturnValue(mockQr);
+      deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
+      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
+
+      const result = await service.closeExpiredProblems();
+
+      // invalidateDeadline은 문제 수만큼 호출 (각각)
+      expect(deadlineCache.invalidateDeadline).toHaveBeenCalledTimes(2);
+      expect(deadlineCache.invalidateDeadline).toHaveBeenCalledWith(STUDY_ID, 'prob-001');
+      expect(deadlineCache.invalidateDeadline).toHaveBeenCalledWith(STUDY_ID, 'prob-002');
+
+      // invalidateWeekProblems는 dedup으로 1번만 호출
+      expect(deadlineCache.invalidateWeekProblems).toHaveBeenCalledTimes(1);
+      expect(deadlineCache.invalidateWeekProblems).toHaveBeenCalledWith(STUDY_ID, '3월1주차');
+
+      expect(result.count).toBe(2);
+    });
+
+    it('dualWrite.isActive 시 비동기 동기화 호출', async () => {
+      const expiredProblems = [
+        { id: 'prob-001', studyId: STUDY_ID, weekNumber: '3월1주차' },
+      ] as Problem[];
+
+      dualWrite.find.mockResolvedValue(expiredProblems);
+      dualWrite.isActive = true;
+      dualWrite.findOne.mockResolvedValue({ id: 'prob-001', status: ProblemStatus.CLOSED });
+      dualWrite.saveExisting.mockResolvedValue(undefined);
+
+      const mockQr = createMockQueryRunner();
+      dataSource.createQueryRunner.mockReturnValue(mockQr);
+      deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
+      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
+
+      await service.closeExpiredProblems();
+
+      // Dual Write 동기화: findOne → saveExisting
+      expect(dualWrite.findOne).toHaveBeenCalledWith({ where: { id: 'prob-001' } });
+      expect(dualWrite.saveExisting).toHaveBeenCalled();
     });
   });
 });
