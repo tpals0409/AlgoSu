@@ -680,32 +680,23 @@ jobs:
           git config user.name "algosu-ci"
           git config user.email "ci@algosu.dev"
 
-      - name: Install crane (container registry tool)
-        run: |
-          CRANE_VERSION="0.20.2"
-          curl -sSfL "https://github.com/google/go-containerregistry/releases/download/v${CRANE_VERSION}/go-containerregistry_Linux_x86_64.tar.gz" \
-            | tar xz -C /usr/local/bin crane
-          echo "${{ secrets.GITHUB_TOKEN }}" | crane auth login ghcr.io -u ${{ github.actor }} --password-stdin
-
-      - name: Update image tags (per-service image verification)
+      - name: Update image tags for changed services
         run: |
           cd aether-gitops/algosu/overlays/prod
           SHA="${{ github.sha }}"
           UPDATED=""
-          SKIPPED=""
 
-          # 각 서비스별로 ghcr에 현재 SHA 이미지가 존재하는지 개별 확인
-          # 핵심: matrix job은 개별 결과를 노출하지 않으므로, 이미지 존재 = 빌드 성공
-          # 이전 CI run에서 빌드 성공했지만 다른 서비스 실패로 deploy 누락된 케이스도 복구
-          SERVICES="gateway identity submission problem github-worker ai-analysis frontend"
-          for SVC in $SERVICES; do
-            IMAGE="${{ env.IMAGE_PREFIX }}-${SVC}:main-${SHA}"
-            if crane manifest "${IMAGE}" > /dev/null 2>&1; then
-              UPDATED="${UPDATED} ${SVC}"
-            else
-              SKIPPED="${SKIPPED} ${SVC}"
-            fi
-          done
+          # 변경 감지된 서비스의 태그를 업데이트
+          # build-services matrix에서 일부만 실패해도, 성공한 서비스는 ghcr에 push됨
+          # 실패한 서비스의 태그를 업데이트해도 ArgoCD가 pull 실패 → 기존 Pod 유지 (rollingUpdate)
+          # 따라서 detect-changes 결과만으로 판단해도 안전함
+          [ "${{ needs.detect-changes.outputs.gateway }}" = "true" ] && UPDATED="${UPDATED} gateway"
+          [ "${{ needs.detect-changes.outputs.identity }}" = "true" ] && UPDATED="${UPDATED} identity"
+          [ "${{ needs.detect-changes.outputs.submission }}" = "true" ] && UPDATED="${UPDATED} submission"
+          [ "${{ needs.detect-changes.outputs.problem }}" = "true" ] && UPDATED="${UPDATED} problem"
+          [ "${{ needs.detect-changes.outputs.github-worker }}" = "true" ] && UPDATED="${UPDATED} github-worker"
+          [ "${{ needs.detect-changes.outputs.ai-analysis }}" = "true" ] && UPDATED="${UPDATED} ai-analysis"
+          [ "${{ needs.detect-changes.outputs.frontend }}" = "true" ] && UPDATED="${UPDATED} frontend"
 
           # 이미지가 존재하는 서비스만 태그 업데이트 (python3 + PyYAML)
           for SVC in $UPDATED; do
