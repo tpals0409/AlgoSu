@@ -139,48 +139,60 @@ class ClaudeClient:
             try:
                 parsed = json.loads(cleaned)
             except json.JSONDecodeError:
-                # optimizedCode 내 이스케이프 깨짐 대응:
-                # optimizedCode 필드를 제거한 뒤 재파싱 시도
-                stripped = re.sub(
-                    r'"optimizedCode"\s*:\s*"(?:[^"\\]|\\.)*"',
-                    '"optimizedCode": null',
-                    cleaned,
-                    flags=re.DOTALL,
+                # Fallback 1: 숫자 뒤 불필요한 따옴표 제거
+                # Claude hallucination 대응 — 예: "endLine": 70" → "endLine": 70
+                sanitized = re.sub(
+                    r":\s*(\d+)\"(\s*[,}\]])", r": \1\2", cleaned
                 )
                 try:
-                    parsed = json.loads(stripped)
-                    logger.info("optimizedCode 필드 제거 후 JSON 재파싱 성공")
+                    parsed = json.loads(sanitized)
+                    logger.info(
+                        "숫자 뒤 불필요한 따옴표 제거 후 JSON 파싱 성공"
+                    )
                 except json.JSONDecodeError:
-                    # 최후 수단: 첫 번째 유효 JSON 객체 추출 (문자열 내부 무시)
-                    start = cleaned.find("{")
-                    if start == -1:
-                        raise
-                    depth = 0
-                    end = -1
-                    in_string = False
-                    escape = False
-                    for i, ch in enumerate(cleaned[start:], start):
-                        if escape:
-                            escape = False
-                            continue
-                        if ch == "\\":
-                            escape = True
-                            continue
-                        if ch == '"':
-                            in_string = not in_string
-                            continue
-                        if in_string:
-                            continue
-                        if ch == "{":
-                            depth += 1
-                        elif ch == "}":
-                            depth -= 1
-                            if depth == 0:
-                                end = i
-                                break
-                    if end == -1:
-                        raise
-                    parsed = json.loads(cleaned[start : end + 1])
+                    # Fallback 2: optimizedCode 내 이스케이프 깨짐 대응
+                    stripped = re.sub(
+                        r'"optimizedCode"\s*:\s*"(?:[^"\\]|\\.)*"',
+                        '"optimizedCode": null',
+                        sanitized,
+                        flags=re.DOTALL,
+                    )
+                    try:
+                        parsed = json.loads(stripped)
+                        logger.info(
+                            "optimizedCode 필드 제거 후 JSON 재파싱 성공"
+                        )
+                    except json.JSONDecodeError:
+                        # Fallback 3: 첫 번째 유효 JSON 객체 추출
+                        start = sanitized.find("{")
+                        if start == -1:
+                            raise
+                        depth = 0
+                        end = -1
+                        in_string = False
+                        escape = False
+                        for i, ch in enumerate(sanitized[start:], start):
+                            if escape:
+                                escape = False
+                                continue
+                            if ch == "\\":
+                                escape = True
+                                continue
+                            if ch == '"':
+                                in_string = not in_string
+                                continue
+                            if in_string:
+                                continue
+                            if ch == "{":
+                                depth += 1
+                            elif ch == "}":
+                                depth -= 1
+                                if depth == 0:
+                                    end = i
+                                    break
+                        if end == -1:
+                            raise
+                        parsed = json.loads(sanitized[start : end + 1])
 
             # 필수 필드 검증
             total_score = parsed.get("totalScore", 0)

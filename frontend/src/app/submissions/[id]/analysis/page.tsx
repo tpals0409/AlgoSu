@@ -74,6 +74,9 @@ function parseFeedback(feedback: string | null, score: number | null, optimizedC
     if (cleaned.startsWith('```')) {
       cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
     }
+    // Claude hallucination 대응: 숫자 뒤 불필요한 따옴표 제거
+    // 예: "endLine": 70" → "endLine": 70
+    cleaned = cleaned.replace(/:\s*(\d+)"(\s*[,}\]])/g, ': $1$2');
     let parsed: Record<string, unknown>;
     try {
       parsed = JSON.parse(cleaned);

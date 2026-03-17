@@ -141,7 +141,8 @@ function barColor(score: number): string {
 function parseFeedbackCategories(feedback: string | null): { name: string; score: number; comment: string }[] {
   if (!feedback) return [];
   try {
-    let rawJson = feedback;
+    // Claude hallucination 대응: 숫자 뒤 불필요한 따옴표 제거
+    let rawJson = feedback.replace(/:\s*(\d+)"(\s*[,}\]])/g, ': $1$2');
     try {
       JSON.parse(rawJson);
     } catch {

@@ -123,7 +123,8 @@ function scoreToGrade(score: number): string {
 function parseFeedback(feedbackStr: string | null): FeedbackCategory[] {
   if (!feedbackStr) return [];
   try {
-    let rawJson = feedbackStr;
+    // Claude hallucination 대응: 숫자 뒤 불필요한 따옴표 제거
+    let rawJson = feedbackStr.replace(/:\s*(\d+)"(\s*[,}\]])/g, ': $1$2');
     try {
       JSON.parse(rawJson);
     } catch {
