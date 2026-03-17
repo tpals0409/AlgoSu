@@ -141,14 +141,10 @@ class ClaudeClient:
             except json.JSONDecodeError:
                 # Fallback 1: 숫자 뒤 불필요한 따옴표 제거
                 # Claude hallucination 대응 — 예: "endLine": 70" → "endLine": 70
-                sanitized = re.sub(
-                    r":\s*(\d+)\"(\s*[,}\]])", r": \1\2", cleaned
-                )
+                sanitized = re.sub(r":\s*(\d+)\"(\s*[,}\]])", r": \1\2", cleaned)
                 try:
                     parsed = json.loads(sanitized)
-                    logger.info(
-                        "숫자 뒤 불필요한 따옴표 제거 후 JSON 파싱 성공"
-                    )
+                    logger.info("숫자 뒤 불필요한 따옴표 제거 후 JSON 파싱 성공")
                 except json.JSONDecodeError:
                     # Fallback 2: optimizedCode 내 이스케이프 깨짐 대응
                     stripped = re.sub(
@@ -159,9 +155,7 @@ class ClaudeClient:
                     )
                     try:
                         parsed = json.loads(stripped)
-                        logger.info(
-                            "optimizedCode 필드 제거 후 JSON 재파싱 성공"
-                        )
+                        logger.info("optimizedCode 필드 제거 후 JSON 재파싱 성공")
                     except json.JSONDecodeError:
                         # Fallback 3: 첫 번째 유효 JSON 객체 추출
                         start = sanitized.find("{")
