@@ -324,19 +324,24 @@ export default function ProblemsPage(): ReactNode {
                           </span>
                         );
                       })()}
-                      <span
-                        className="inline-flex items-center gap-1 rounded-badge px-2 py-0.5 text-[11px] font-medium"
-                        style={
-                          problem.status === 'ACTIVE'
-                            ? { backgroundColor: 'var(--success-soft)', color: 'var(--success)' }
-                            : { backgroundColor: 'var(--bg-alt)', color: 'var(--text-3)' }
-                        }
-                      >
-                        {problem.status === 'ACTIVE' && (
-                          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--success)' }} aria-hidden />
-                        )}
-                        {problem.status === 'ACTIVE' ? '진행 중' : '종료'}
-                      </span>
+                      {(() => {
+                        const isActive = problem.status === 'ACTIVE' && (!problem.deadline || new Date(problem.deadline) > new Date());
+                        return (
+                          <span
+                            className="inline-flex items-center gap-1 rounded-badge px-2 py-0.5 text-[11px] font-medium"
+                            style={
+                              isActive
+                                ? { backgroundColor: 'var(--success-soft)', color: 'var(--success)' }
+                                : { backgroundColor: 'var(--bg-alt)', color: 'var(--text-3)' }
+                            }
+                          >
+                            {isActive && (
+                              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--success)' }} aria-hidden />
+                            )}
+                            {isActive ? '진행 중' : '종료'}
+                          </span>
+                        );
+                      })()}
                       <span className="text-[11px] font-medium" style={{ color: 'var(--text-3)' }}>
                         {problem.weekNumber}
                       </span>
