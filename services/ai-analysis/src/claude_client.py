@@ -149,9 +149,7 @@ class ClaudeClient:
                 )
                 try:
                     parsed = json.loads(stripped)
-                    logger.info(
-                        "optimizedCode 필드 제거 후 JSON 재파싱 성공"
-                    )
+                    logger.info("optimizedCode 필드 제거 후 JSON 재파싱 성공")
                 except json.JSONDecodeError:
                     # 최후 수단: 첫 번째 유효 JSON 객체 추출 (문자열 내부 무시)
                     start = cleaned.find("{")
@@ -239,9 +237,7 @@ class ClaudeClient:
             score_match = re.search(r'"totalScore"\s*:\s*(\d+)', raw_text)
             if score_match:
                 score = int(score_match.group(1))
-                logger.info(
-                    f"파싱 실패 fallback -- totalScore 정규식 추출: {score}"
-                )
+                logger.info(f"파싱 실패 fallback -- totalScore 정규식 추출: {score}")
 
             return {
                 "feedback": fallback[:50000],
