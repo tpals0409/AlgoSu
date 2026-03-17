@@ -199,7 +199,7 @@ class TestParseResponseMarkdown:
             c = ClaudeClient()
 
         result = c._parse_response("not valid json {{{")
-        assert result["status"] == "completed"
+        assert result["status"] == "failed"
         assert result["score"] == 0
         assert result["feedback"] == "not valid json {{{"
 
@@ -255,7 +255,7 @@ class TestParseResponseMarkdown:
             c = ClaudeClient()
 
         result = c._parse_response("no json here at all")
-        assert result["status"] == "completed"
+        assert result["status"] == "failed"
         assert result["score"] == 0
 
     @pytest.mark.asyncio
@@ -267,8 +267,67 @@ class TestParseResponseMarkdown:
         mock_client.messages.create.return_value = mock_message
 
         result = await client.analyze_code(code="x=1", language="python")
-        # empty content => raw_text="" => json decode fails => fallback to raw
+        # empty content => raw_text="" => json decode fails => fallback to failed
+        assert result["status"] == "failed"
+
+
+    def test_parse_broken_optimized_code_recovers(self):
+        """optimizedCode 내 이스케이프 깨짐 시 필드 제거 후 재파싱"""
+        from src.claude_client import ClaudeClient
+        with patch("src.claude_client.anthropic"), \
+             patch("src.claude_client.circuit_breaker"), \
+             patch("src.claude_client.settings") as mock_settings:
+            mock_settings.anthropic_api_key = "test-key"
+            c = ClaudeClient()
+
+        # optimizedCode 내부에 이스케이프된 문자가 있지만 뒤에 깨진 부분이 있는 경우
+        # regex가 optimizedCode 값을 정상적으로 매칭하여 null로 치환
+        raw = '{"totalScore": 80, "summary": "good", "categories": [], "optimizedCode": "int x = 1;\\nint y = 2;"}\nextra text'
+        result = c._parse_response(raw)
         assert result["status"] == "completed"
+        assert result["score"] == 80
+
+    def test_parse_fallback_extracts_total_score_via_regex(self):
+        """파싱 완전 실패 시 정규식으로 totalScore 추출"""
+        from src.claude_client import ClaudeClient
+        with patch("src.claude_client.anthropic"), \
+             patch("src.claude_client.circuit_breaker"), \
+             patch("src.claude_client.settings") as mock_settings:
+            mock_settings.anthropic_api_key = "test-key"
+            c = ClaudeClient()
+
+        # 마크다운 블록 안에 깨진 JSON (totalScore는 존재)
+        raw = '```json\n{"totalScore": 76, broken json +++\n```'
+        result = c._parse_response(raw)
+        assert result["status"] == "failed"
+        assert result["score"] == 76
+
+    def test_parse_total_score_zero_with_categories_recalculates(self):
+        """totalScore=0이지만 카테고리 점수 존재 시 가중 평균 재계산"""
+        import json as _json
+        from src.claude_client import ClaudeClient
+        with patch("src.claude_client.anthropic"), \
+             patch("src.claude_client.circuit_breaker"), \
+             patch("src.claude_client.settings") as mock_settings:
+            mock_settings.anthropic_api_key = "test-key"
+            c = ClaudeClient()
+
+        payload = _json.dumps({
+            "totalScore": 0,
+            "summary": "test",
+            "categories": [
+                {"name": "correctness", "score": 80, "comment": "ok"},
+                {"name": "efficiency", "score": 70, "comment": "ok"},
+                {"name": "readability", "score": 60, "comment": "ok"},
+                {"name": "structure", "score": 60, "comment": "ok"},
+                {"name": "bestPractice", "score": 60, "comment": "ok"},
+            ],
+            "optimizedCode": None,
+        })
+        result = c._parse_response(payload)
+        assert result["status"] == "completed"
+        # 80*0.3 + 70*0.25 + 60*0.15 + 60*0.15 + 60*0.15 = 24+17.5+9+9+9 = 68.5 → 68
+        assert result["score"] == 68
 
 
 class TestSecurityCodeLogLimit:

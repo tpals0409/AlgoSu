@@ -9,6 +9,7 @@ Claude Sonnet API 클라이언트
 
 import json
 import logging
+import re
 import anthropic
 from .config import settings
 from .circuit_breaker import circuit_breaker
@@ -138,23 +139,50 @@ class ClaudeClient:
             try:
                 parsed = json.loads(cleaned)
             except json.JSONDecodeError:
-                # JSON 뒤에 추가 텍스트가 있을 수 있음 — 첫 번째 유효 JSON 객체 추출
-                start = cleaned.find("{")
-                if start == -1:
-                    raise
-                depth = 0
-                end = -1
-                for i, ch in enumerate(cleaned[start:], start):
-                    if ch == "{":
-                        depth += 1
-                    elif ch == "}":
-                        depth -= 1
-                        if depth == 0:
-                            end = i
-                            break
-                if end == -1:
-                    raise
-                parsed = json.loads(cleaned[start : end + 1])
+                # optimizedCode 내 이스케이프 깨짐 대응:
+                # optimizedCode 필드를 제거한 뒤 재파싱 시도
+                stripped = re.sub(
+                    r'"optimizedCode"\s*:\s*"(?:[^"\\]|\\.)*"',
+                    '"optimizedCode": null',
+                    cleaned,
+                    flags=re.DOTALL,
+                )
+                try:
+                    parsed = json.loads(stripped)
+                    logger.info(
+                        "optimizedCode 필드 제거 후 JSON 재파싱 성공"
+                    )
+                except json.JSONDecodeError:
+                    # 최후 수단: 첫 번째 유효 JSON 객체 추출 (문자열 내부 무시)
+                    start = cleaned.find("{")
+                    if start == -1:
+                        raise
+                    depth = 0
+                    end = -1
+                    in_string = False
+                    escape = False
+                    for i, ch in enumerate(cleaned[start:], start):
+                        if escape:
+                            escape = False
+                            continue
+                        if ch == "\\":
+                            escape = True
+                            continue
+                        if ch == '"':
+                            in_string = not in_string
+                            continue
+                        if in_string:
+                            continue
+                        if ch == "{":
+                            depth += 1
+                        elif ch == "}":
+                            depth -= 1
+                            if depth == 0:
+                                end = i
+                                break
+                    if end == -1:
+                        raise
+                    parsed = json.loads(cleaned[start : end + 1])
 
             # 필수 필드 검증
             total_score = parsed.get("totalScore", 0)
@@ -170,10 +198,29 @@ class ClaudeClient:
                 comment = cat.get("comment", "")
                 feedback_parts.append(f"[{name}: {score}점] {comment}")
 
+            score = int(total_score)
+            if score == 0 and categories:
+                logger.warning(
+                    "totalScore=0이지만 카테고리 존재 -- 가중 평균으로 재계산"
+                )
+                weights = {
+                    "correctness": 0.30,
+                    "efficiency": 0.25,
+                    "readability": 0.15,
+                    "structure": 0.15,
+                    "bestPractice": 0.15,
+                }
+                weighted_sum = sum(
+                    cat.get("score", 0) * weights.get(cat.get("name", ""), 0)
+                    for cat in categories
+                )
+                if weighted_sum > 0:
+                    score = round(weighted_sum)
+
             return {
                 "feedback": json.dumps(parsed, ensure_ascii=False),
                 "optimized_code": optimized_code,
-                "score": int(total_score),
+                "score": score,
                 "status": "completed",
                 "categories": categories,
             }
@@ -186,11 +233,21 @@ class ClaudeClient:
                 fallback = fallback.split("\n", 1)[-1]  # 첫 줄 제거
                 if fallback.rstrip().endswith("```"):
                     fallback = fallback.rstrip()[:-3].rstrip()
+
+            # 원본 텍스트에서 totalScore 추출 시도 (정규식 fallback)
+            score = 0
+            score_match = re.search(r'"totalScore"\s*:\s*(\d+)', raw_text)
+            if score_match:
+                score = int(score_match.group(1))
+                logger.info(
+                    f"파싱 실패 fallback -- totalScore 정규식 추출: {score}"
+                )
+
             return {
                 "feedback": fallback[:50000],
                 "optimized_code": None,
-                "score": 0,
-                "status": "completed",
+                "score": score,
+                "status": "failed",
                 "categories": [],
             }
 
