@@ -113,7 +113,6 @@ AlgoSu/
 │   ├── k3s/                   # K8s 매니페스트 (HPA, PDB, NetworkPolicy)
 │   ├── overlays/              # Kustomize (dev / staging / prod)
 │   └── sealed-secrets/        # SealedSecret 암호화
-├── agents/                    # Agent 페르소나 (12 Agents)
 ├── scripts/                   # 배포 · 검증 스크립트
 ├── .github/workflows/         # CI 파이프라인 (15 jobs)
 └── docs/                      # ADR · 런북 · 규칙 문서
