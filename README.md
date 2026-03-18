@@ -57,6 +57,23 @@
 ## 아키텍처
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#7C6AAE',
+  'primaryTextColor': '#FAFAF8',
+  'primaryBorderColor': '#C4A6FF',
+  'lineColor': '#A08CD6',
+  'secondaryColor': '#1C1C22',
+  'tertiaryColor': '#0F0F12',
+  'mainBkg': '#1C1C22',
+  'nodeBorder': '#C4A6FF',
+  'clusterBkg': '#16161C',
+  'clusterBorder': '#7C6AAE',
+  'titleColor': '#FAFAF8',
+  'edgeLabelBackground': '#0F0F12',
+  'textColor': '#FAFAF8',
+  'fontSize': '13px',
+  'fontFamily': 'Sora, sans-serif'
+}}}%%
 flowchart LR
     subgraph CLIENT["🖥️ Client"]
         Next["Next.js 15\nApp Router\nTailwind · shadcn/ui"]
