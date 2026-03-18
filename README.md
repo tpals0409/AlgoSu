@@ -53,62 +53,46 @@
 ## 아키텍처
 
 ```mermaid
-graph TB
-    Client([브라우저])
-
-    subgraph Frontend
-        Next[Next.js 15<br/>App Router]
+flowchart LR
+    subgraph CLIENT["🖥️ Client"]
+        Next["Next.js 15\nApp Router\nTailwind · shadcn/ui"]
     end
 
-    subgraph API Gateway
-        GW[Gateway<br/>NestJS]
-        OAuth[OAuth 2.0<br/>Google·Naver·Kakao]
-        JWT[JWT Auth<br/>httpOnly Cookie]
-        SSE[SSE<br/>실시간 알림]
+    subgraph GATEWAY["🔐 API Gateway"]
+        GW["Gateway\nOAuth · JWT · SSE\nRate Limit · Proxy"]
     end
 
-    subgraph Microservices
-        ID[Identity<br/>사용자·스터디]
-        SUB[Submission<br/>Saga Orchestrator]
-        PROB[Problem<br/>문제·마감]
+    subgraph SERVICES["⚙️ Microservices"]
+        direction TB
+        ID["Identity\n사용자 · 스터디"]
+        SUB["Submission\nSaga Orchestrator"]
+        PROB["Problem\n문제 · 마감"]
     end
 
-    subgraph Async Workers
-        GH[GitHub Worker<br/>Octokit]
-        AI[AI Analysis<br/>FastAPI]
+    subgraph ASYNC["📨 Async Workers"]
+        direction TB
+        GH["GitHub Worker\nOctokit · Push"]
+        AI["AI Analysis\nFastAPI · Claude"]
     end
 
-    subgraph Infrastructure
-        PG[(PostgreSQL 16)]
-        RMQ[[RabbitMQ]]
-        RD[(Redis)]
-        MIO[(MinIO)]
+    subgraph INFRA["🗄️ Infrastructure"]
+        direction TB
+        PG[("PostgreSQL 16")]
+        RMQ[["RabbitMQ"]]
+        RD[("Redis")]
+        MIO[("MinIO")]
     end
 
-    subgraph External
-        GitHub[GitHub API]
-        Claude[Claude API]
-    end
-
-    Client --> Next
-    Next --> GW
-    GW --> OAuth
-    GW --> JWT
-    GW --> SSE
-    GW --> ID
-    GW --> SUB
-    GW --> PROB
+    Next -->|HTTP| GW
+    GW --> ID & SUB & PROB
     SUB -->|publish| RMQ
-    RMQ -->|consume| GH
-    RMQ -->|consume| AI
-    GH --> GitHub
-    AI --> Claude
-    ID --> PG
-    SUB --> PG
-    PROB --> PG
-    GW --> RD
-    SUB --> RD
+    RMQ -->|consume| GH & AI
+    ID & SUB & PROB --> PG
+    GW & SUB --> RD
     GH --> MIO
+
+    GH -..->|push| EXT_GH(("GitHub"))
+    AI -..->|analyze| EXT_CL(("Claude API"))
 ```
 
 ---
