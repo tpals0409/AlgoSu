@@ -1,5 +1,5 @@
 /**
- * @file Identity Service 부트스트랩
+ * @file Identity Service 부트스트랩 — Sprint 51: 비즈니스 API 34개 엔드포인트 제공
  * @domain identity
  * @layer config
  */
