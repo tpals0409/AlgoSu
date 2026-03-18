@@ -1,8 +1,8 @@
 /**
  * @file 알림 엔티티 — NotificationType 9종 ENUM + Notification 테이블 정의
- * @domain notification
+ * @domain identity
  * @layer entity
- * @related NotificationService, NotificationController, DeadlineReminderService
+ * @related notification.service.ts, notification.controller.ts
  */
 
 import {

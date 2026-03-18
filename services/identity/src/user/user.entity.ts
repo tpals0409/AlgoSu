@@ -11,7 +11,9 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   Index,
+  BeforeInsert,
 } from 'typeorm';
+import { v4 as uuid } from 'uuid';
 
 export enum OAuthProvider {
   GOOGLE = 'google',
@@ -46,6 +48,12 @@ export class User {
   @Column({ type: 'varchar', length: 100, nullable: true })
   github_username!: string | null;
 
+  @Column({ type: 'text', nullable: true })
+  github_token!: string | null;
+
+  @Column({ type: 'uuid', unique: true })
+  publicId!: string;
+
   @Index('IDX_users_profile_slug', { unique: true })
   @Column({ type: 'varchar', length: 20, nullable: true })
   profile_slug!: string | null;
@@ -61,4 +69,9 @@ export class User {
 
   @UpdateDateColumn()
   updated_at!: Date;
+
+  @BeforeInsert()
+  generatePublicId() {
+    this.publicId = this.publicId || uuid();
+  }
 }

@@ -2,7 +2,11 @@
  * @file 스터디 서비스 — CRUD, 멤버 관리, 초대, 통계, 정책
  * @domain study
  * @layer service
- * @related StudyController, Study, StudyMember, InviteThrottleService
+ * @related StudyController, IdentityClientService, InviteThrottleService
+ *
+ * Gateway 오케스트레이션 레이어:
+ * - DB 접근은 IdentityClientService를 통해 Identity 서비스에 위임
+ * - 알림, Redis 캐시, brute-force 방어 등 Gateway 고유 로직만 유지
  */
 import {
   Injectable,
@@ -12,20 +16,53 @@ import {
   BadRequestException,
   OnModuleDestroy,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
 import Redis from 'ioredis';
 import { ConfigService } from '@nestjs/config';
-import { v4 as uuidv4 } from 'uuid';
-import { Study, StudyMember, StudyMemberRole, StudyInvite, StudyStatus } from './study.entity';
-import { User } from '../auth/oauth/user.entity';
+import { IdentityClientService } from '../identity-client/identity-client.service';
+import type { IdentityStudy as Study, IdentityStudyMember as StudyMember } from '../common/types/identity.types';
+import { StudyMemberRole, NotificationType } from '../common/types/identity.types';
 import { NotificationService } from '../notification/notification.service';
-import { NotificationType } from '../notification/notification.entity';
 import { InviteThrottleService } from './invite-throttle.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 // ─── CONSTANTS ────────────────────────────
 const MAX_MEMBERS = 50;
+
+// ─── 내부 인터페이스 (Identity API 응답 매핑) ─────────────────
+interface StudyData {
+  id: string;
+  name: string;
+  description: string | null;
+  github_repo: string | null;
+  groundRules: string | null;
+  status: string;
+  created_by: string;
+  [key: string]: unknown;
+}
+
+interface MemberData {
+  id: string;
+  study_id: string;
+  user_id: string;
+  role: string;
+  nickname: string;
+  username?: string;
+  email?: string;
+  avatar_url?: string | null;
+  [key: string]: unknown;
+}
+
+interface InviteData {
+  id: string;
+  study_id: string;
+  code: string;
+  created_by: string;
+  expires_at: string;
+  max_uses: number | null;
+  used_count: number;
+  study?: StudyData;
+  [key: string]: unknown;
+}
 
 @Injectable()
 export class StudyService implements OnModuleDestroy {
@@ -34,17 +71,9 @@ export class StudyService implements OnModuleDestroy {
   constructor(
     private readonly configService: ConfigService,
     private readonly logger: StructuredLoggerService,
-    @InjectRepository(Study)
-    private readonly studyRepository: Repository<Study>,
-    @InjectRepository(StudyMember)
-    private readonly memberRepository: Repository<StudyMember>,
-    @InjectRepository(StudyInvite)
-    private readonly inviteRepository: Repository<StudyInvite>,
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
+    private readonly identityClient: IdentityClientService,
     private readonly notificationService: NotificationService,
     private readonly inviteThrottle: InviteThrottleService,
-    private readonly dataSource: DataSource,
   ) {
     this.logger.setContext(StudyService.name);
     const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
@@ -71,43 +100,19 @@ export class StudyService implements OnModuleDestroy {
     userId: string,
     data: { name: string; description?: string; nickname: string; githubRepo?: string },
   ): Promise<Study> {
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
+    const savedStudy = await this.identityClient.createStudy({
+      name: data.name,
+      description: data.description,
+      created_by: userId,
+      nickname: data.nickname,
+      github_repo: data.githubRepo,
+    }) as StudyData;
 
-    try {
-      const study = queryRunner.manager.create(Study, {
-        name: data.name,
-        description: data.description ?? null,
-        github_repo: data.githubRepo ?? null,
-        created_by: userId,
-        status: StudyStatus.ACTIVE,
-      });
+    // 캐시 무효화는 커밋 후 실행
+    await this.invalidateMembershipCache(savedStudy.id, userId);
 
-      const savedStudy = await queryRunner.manager.save(study);
-
-      // 생성자를 ADMIN으로 자동 등록 (닉네임 포함)
-      const member = queryRunner.manager.create(StudyMember, {
-        study_id: savedStudy.id,
-        user_id: userId,
-        role: StudyMemberRole.ADMIN,
-        nickname: data.nickname,
-      });
-      await queryRunner.manager.save(member);
-
-      await queryRunner.commitTransaction();
-
-      // 캐시 무효화는 커밋 후 실행
-      await this.invalidateMembershipCache(savedStudy.id, userId);
-
-      this.logger.log(`스터디 생성: studyId=${savedStudy.id}, creator=${userId}`);
-      return savedStudy;
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      await queryRunner.release();
-    }
+    this.logger.log(`스터디 생성: studyId=${savedStudy.id}, creator=${userId}`);
+    return savedStudy as unknown as Study;
   }
 
   /**
@@ -116,16 +121,8 @@ export class StudyService implements OnModuleDestroy {
    * @param userId - 사용자 ID
    */
   async getMyStudies(userId: string): Promise<(Study & { role: StudyMemberRole })[]> {
-    const memberships = await this.memberRepository.find({
-      where: { user_id: userId },
-      relations: ['study'],
-    });
-
-    return memberships.map((m) => ({
-      ...m.study,
-      role: m.role,
-      generatePublicId: m.study.generatePublicId.bind(m.study),
-    }));
+    const studies = await this.identityClient.findStudiesByUserId(userId);
+    return studies as unknown as (Study & { role: StudyMemberRole })[];
   }
 
   /**
@@ -135,11 +132,8 @@ export class StudyService implements OnModuleDestroy {
    * @guard study-member
    */
   async getStudyById(studyId: string, _userId: string): Promise<Study> {
-    const study = await this.studyRepository.findOne({ where: { id: studyId } });
-    if (!study) {
-      throw new NotFoundException('스터디를 찾을 수 없습니다.');
-    }
-    return study;
+    const study = await this.identityClient.findStudyById(studyId) as StudyData;
+    return study as unknown as Study;
   }
 
   /**
@@ -154,15 +148,8 @@ export class StudyService implements OnModuleDestroy {
   ): Promise<Study> {
     await this.verifyAdmin(studyId, userId);
 
-    const study = await this.studyRepository.findOne({ where: { id: studyId } });
-    if (!study) {
-      throw new NotFoundException('스터디를 찾을 수 없습니다.');
-    }
-
-    if (data.name !== undefined) study.name = data.name;
-    if (data.description !== undefined) study.description = data.description;
-
-    return this.studyRepository.save(study);
+    const study = await this.identityClient.updateStudy(studyId, data) as StudyData;
+    return study as unknown as Study;
   }
 
   /**
@@ -174,39 +161,16 @@ export class StudyService implements OnModuleDestroy {
   async deleteStudy(studyId: string, userId: string): Promise<void> {
     await this.verifyAdmin(studyId, userId);
 
-    const adminCount = await this.memberRepository.count({
-      where: { study_id: studyId, role: StudyMemberRole.ADMIN },
-    });
+    // ADMIN 수 검증
+    const members = await this.identityClient.getMembers(studyId) as MemberData[];
+    const adminCount = members.filter((m) => m.role === 'ADMIN').length;
     if (adminCount > 1) {
       throw new BadRequestException(
         '관리자가 2명 이상인 스터디는 삭제할 수 없습니다. 다른 관리자의 권한을 해제한 후 다시 시도하세요.',
       );
     }
 
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    try {
-      // FK 제약 순서: invite → member → study
-      await queryRunner.manager.delete(StudyInvite, { study_id: studyId });
-      await queryRunner.manager.delete(StudyMember, { study_id: studyId });
-      const result = await queryRunner.manager.delete(Study, { id: studyId });
-
-      if (result.affected === 0) {
-        await queryRunner.rollbackTransaction();
-        throw new NotFoundException('스터디를 찾을 수 없습니다.');
-      }
-
-      await queryRunner.commitTransaction();
-    } catch (error) {
-      if (queryRunner.isTransactionActive) {
-        await queryRunner.rollbackTransaction();
-      }
-      throw error;
-    } finally {
-      await queryRunner.release();
-    }
+    await this.identityClient.deleteStudy(studyId);
 
     // Redis 캐시 패턴 삭제 (통일 키 규격)
     const keys = await this.redis.keys(`membership:${studyId}:*`);
@@ -228,21 +192,17 @@ export class StudyService implements OnModuleDestroy {
   async closeStudy(studyId: string, adminUserId: string): Promise<void> {
     await this.verifyAdmin(studyId, adminUserId);
 
-    const study = await this.studyRepository.findOne({ where: { id: studyId } });
-    if (!study) {
-      throw new NotFoundException('스터디를 찾을 수 없습니다.');
-    }
+    const study = await this.identityClient.findStudyById(studyId) as StudyData;
 
-    if (study.status === StudyStatus.CLOSED) {
+    if (study.status === 'CLOSED') {
       throw new BadRequestException('이미 종료된 스터디입니다.');
     }
 
     // CLOSED 상태 전환
-    study.status = StudyStatus.CLOSED;
-    await this.studyRepository.save(study);
+    await this.identityClient.updateStudy(studyId, { status: 'CLOSED' });
 
     // 전체 멤버에게 STUDY_CLOSED 알림 (실행자 제외)
-    const members = await this.memberRepository.find({ where: { study_id: studyId } });
+    const members = await this.identityClient.getMembers(studyId) as MemberData[];
     const targets = members.filter((m) => m.user_id !== adminUserId);
 
     await Promise.all(
@@ -272,16 +232,10 @@ export class StudyService implements OnModuleDestroy {
   async updateGroundRules(studyId: string, userId: string, groundRules: string): Promise<Study> {
     await this.verifyAdmin(studyId, userId);
 
-    const study = await this.studyRepository.findOne({ where: { id: studyId } });
-    if (!study) {
-      throw new NotFoundException('스터디를 찾을 수 없습니다.');
-    }
-
-    study.groundRules = groundRules;
-    const saved = await this.studyRepository.save(study);
+    const saved = await this.identityClient.updateStudy(studyId, { groundRules }) as StudyData;
 
     this.logger.log(`그라운드 룰 수정: studyId=${studyId}, by=${userId}`);
-    return saved;
+    return saved as unknown as Study;
   }
 
   // ─── 초대 코드 ────────────────────────────────
@@ -295,22 +249,16 @@ export class StudyService implements OnModuleDestroy {
   async createInvite(studyId: string, userId: string): Promise<{ code: string; expires_at: Date }> {
     await this.verifyAdmin(studyId, userId);
 
-    // varchar(20) 제약 -> 8자리 영숫자 코드
-    const code = uuidv4().replace(/-/g, '').slice(0, 8).toUpperCase();
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + 5); // 5분 유효
 
-    const invite = this.inviteRepository.create({
-      study_id: studyId,
-      code,
+    const invite = await this.identityClient.createInvite(studyId, {
       created_by: userId,
-      expires_at: expiresAt,
-    });
-
-    await this.inviteRepository.save(invite);
+      expires_at: expiresAt.toISOString(),
+    }) as InviteData;
 
     this.logger.log(`초대 코드 발급: studyId=${studyId}, by=${userId}`);
-    return { code, expires_at: expiresAt };
+    return { code: invite.code, expires_at: new Date(invite.expires_at) };
   }
 
   /**
@@ -324,13 +272,17 @@ export class StudyService implements OnModuleDestroy {
   ): Promise<{ valid: boolean; studyName: string }> {
     await this.inviteThrottle.checkLock(ip, code);
 
-    const invite = await this.inviteRepository.findOne({ where: { code }, relations: ['study'] });
-    if (!invite) {
-      await this.inviteThrottle.recordFailure(ip, code);
-      throw new NotFoundException('유효하지 않은 초대 코드입니다.');
+    let invite: InviteData;
+    try {
+      invite = await this.identityClient.findInviteByCode(code) as InviteData;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        await this.inviteThrottle.recordFailure(ip, code);
+      }
+      throw error;
     }
 
-    if (invite.expires_at < new Date()) {
+    if (new Date(invite.expires_at) < new Date()) {
       throw new BadRequestException('만료된 초대 코드입니다.');
     }
 
@@ -338,7 +290,7 @@ export class StudyService implements OnModuleDestroy {
       throw new BadRequestException('초대코드 사용 한도 초과');
     }
 
-    return { valid: true, studyName: invite.study.name };
+    return { valid: true, studyName: invite.study?.name ?? '' };
   }
 
   /**
@@ -354,118 +306,89 @@ export class StudyService implements OnModuleDestroy {
     nickname: string,
     ip: string,
   ): Promise<Study & { role: StudyMemberRole }> {
-    // Brute force 잠금 선제 검사 (트랜잭션 밖에서 수행)
+    // Brute force 잠금 선제 검사
     await this.inviteThrottle.checkLock(ip, code);
 
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
+    // 초대 코드 조회
+    let invite: InviteData;
     try {
-      // FOR UPDATE 비관적 락으로 invite 조회 — race condition 방지
-      // relations와 pessimistic_write를 함께 사용하면 LEFT JOIN + FOR UPDATE 충돌
-      const invite = await queryRunner.manager.findOne(StudyInvite, {
-        where: { code },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!invite) {
-        await queryRunner.rollbackTransaction();
-        await this.inviteThrottle.recordFailure(ip, code);
-        throw new NotFoundException('유효하지 않은 초대 코드입니다.');
-      }
-
-      // study를 별도 조회 (LEFT JOIN + FOR UPDATE 충돌 회피)
-      const study = await queryRunner.manager.findOne(Study, {
-        where: { id: invite.study_id },
-      });
-      if (!study) {
-        await queryRunner.rollbackTransaction();
-        throw new NotFoundException('스터디를 찾을 수 없습니다.');
-      }
-      invite.study = study;
-
-      // 만료 체크
-      if (invite.expires_at < new Date()) {
-        await queryRunner.rollbackTransaction();
-        throw new BadRequestException('만료된 초대 코드입니다.');
-      }
-
-      // S7: max_uses 검증 — 사용 한도 초과 시 차단
-      if (invite.max_uses !== null && invite.used_count >= invite.max_uses) {
-        await queryRunner.rollbackTransaction();
-        throw new BadRequestException('초대코드 사용 한도 초과');
-      }
-
-      // 이미 가입된 멤버 체크
-      const existing = await queryRunner.manager.findOne(StudyMember, {
-        where: { study_id: invite.study_id, user_id: userId },
-      });
-      if (existing) {
-        await queryRunner.rollbackTransaction();
-        throw new ConflictException('이미 가입된 스터디입니다.');
-      }
-
-      // B1: 멤버 50명 제한 (트랜잭션 내에서 정확한 count)
-      const memberCount = await queryRunner.manager.count(StudyMember, {
-        where: { study_id: invite.study_id },
-      });
-      if (memberCount >= MAX_MEMBERS) {
-        await queryRunner.rollbackTransaction();
-        throw new BadRequestException('스터디 멤버 수가 최대 인원(50명)에 도달했습니다.');
-      }
-
-      const member = queryRunner.manager.create(StudyMember, {
-        study_id: invite.study_id,
-        user_id: userId,
-        role: StudyMemberRole.MEMBER,
-        nickname,
-      });
-
-      await queryRunner.manager.save(member);
-
-      // S7: 사용 횟수 증가
-      invite.used_count += 1;
-      await queryRunner.manager.save(invite);
-
-      await queryRunner.commitTransaction();
-
-      // 커밋 후 캐시 무효화 + brute force 카운터 초기화
-      await this.invalidateMembershipCache(invite.study_id, userId);
-      await this.inviteThrottle.clearFailures(ip, code);
-
-      // 가입 알림 발행 — ADMIN에게 MEMBER_JOINED 알림
-      const admins = await this.memberRepository.find({
-        where: { study_id: study.id, role: StudyMemberRole.ADMIN },
-      });
-      await Promise.all(
-        admins
-          .filter((a) => a.user_id !== userId)
-          .map((a) =>
-            this.notificationService.createNotification({
-              userId: a.user_id,
-              studyId: study.id,
-              type: NotificationType.MEMBER_JOINED,
-              title: '새 멤버 가입',
-              message: `"${study.name}"에 새 멤버가 가입했습니다.`,
-              link: `/studies/${study.id}`,
-            }),
-          ),
-      );
-
-      this.logger.log(`스터디 가입: studyId=${invite.study_id}, userId=${userId}`);
-      return {
-        ...study,
-        role: StudyMemberRole.MEMBER,
-        generatePublicId: study.generatePublicId.bind(study),
-      };
+      invite = await this.identityClient.findInviteByCode(code) as InviteData;
     } catch (error) {
-      if (queryRunner.isTransactionActive) {
-        await queryRunner.rollbackTransaction();
+      if (error instanceof NotFoundException) {
+        await this.inviteThrottle.recordFailure(ip, code);
       }
       throw error;
-    } finally {
-      await queryRunner.release();
     }
+
+    const studyId = invite.study_id;
+
+    // 만료 체크
+    if (new Date(invite.expires_at) < new Date()) {
+      throw new BadRequestException('만료된 초대 코드입니다.');
+    }
+
+    // S7: max_uses 검증
+    if (invite.max_uses !== null && invite.used_count >= invite.max_uses) {
+      throw new BadRequestException('초대코드 사용 한도 초과');
+    }
+
+    // 이미 가입된 멤버 체크
+    try {
+      await this.identityClient.getMember(studyId, userId);
+      // getMember가 성공하면 이미 가입된 멤버
+      throw new ConflictException('이미 가입된 스터디입니다.');
+    } catch (error) {
+      if (error instanceof ConflictException) throw error;
+      // NotFoundException이면 미가입 → 정상 진행
+      if (!(error instanceof NotFoundException)) throw error;
+    }
+
+    // B1: 멤버 50명 제한
+    const currentMembers = await this.identityClient.getMembers(studyId) as MemberData[];
+    if (currentMembers.length >= MAX_MEMBERS) {
+      throw new BadRequestException('스터디 멤버 수가 최대 인원(50명)에 도달했습니다.');
+    }
+
+    // 멤버 추가
+    await this.identityClient.addMember(studyId, {
+      userId,
+      nickname,
+      role: 'MEMBER',
+    });
+
+    // S7: 사용 횟수 증가
+    await this.identityClient.consumeInvite(invite.id);
+
+    // 캐시 무효화 + brute force 카운터 초기화
+    await this.invalidateMembershipCache(studyId, userId);
+    await this.inviteThrottle.clearFailures(ip, code);
+
+    // 가입 알림 발행 — ADMIN에게 MEMBER_JOINED 알림
+    const allMembers = await this.identityClient.getMembers(studyId) as MemberData[];
+    const admins = allMembers.filter((a) => a.role === 'ADMIN');
+
+    const study = invite.study ?? await this.identityClient.findStudyById(studyId) as StudyData;
+
+    await Promise.all(
+      admins
+        .filter((a) => a.user_id !== userId)
+        .map((a) =>
+          this.notificationService.createNotification({
+            userId: a.user_id,
+            studyId: studyId,
+            type: NotificationType.MEMBER_JOINED,
+            title: '새 멤버 가입',
+            message: `"${study.name}"에 새 멤버가 가입했습니다.`,
+            link: `/studies/${studyId}`,
+          }),
+        ),
+    );
+
+    this.logger.log(`스터디 가입: studyId=${studyId}, userId=${userId}`);
+    return {
+      ...(study as StudyData),
+      role: StudyMemberRole.MEMBER,
+    } as unknown as Study & { role: StudyMemberRole };
   }
 
   // ─── 통계 ─────────────────────────────────
@@ -509,9 +432,7 @@ export class StudyService implements OnModuleDestroy {
     const result = (await response.json()) as { data: unknown };
 
     // 멤버 이름 매핑: byMember의 userId를 멤버 목록과 매칭
-    const members = await this.memberRepository.find({
-      where: { study_id: studyId },
-    });
+    const members = await this.identityClient.getMembers(studyId) as MemberData[];
     const memberMap = new Map(members.map((m) => [m.user_id, m]));
 
     const data = result.data as {
@@ -604,29 +525,8 @@ export class StudyService implements OnModuleDestroy {
     studyId: string,
     _userId: string,
   ): Promise<(StudyMember & { username?: string; email?: string; avatar_url?: string | null })[]> {
-    const members = await this.memberRepository.find({ where: { study_id: studyId } });
-    const userIds = members.map((m) => m.user_id);
-
-    if (userIds.length === 0) return [];
-
-    const users = await this.userRepository
-      .createQueryBuilder('u')
-      .select(['u.id', 'u.name', 'u.email', 'u.avatar_url'])
-      .where('u.id IN (:...ids)', { ids: userIds })
-      .getMany();
-
-    const userMap = new Map(users.map((u) => [u.id, u]));
-
-    return members.map((m) => {
-      const u = userMap.get(m.user_id);
-      return {
-        ...m,
-        nickname: m.nickname,
-        username: u?.name ?? undefined,
-        email: u?.email ?? undefined,
-        avatar_url: u?.avatar_url ?? null,
-      };
-    });
+    const members = await this.identityClient.getMembers(studyId) as MemberData[];
+    return members as unknown as (StudyMember & { username?: string; email?: string; avatar_url?: string | null })[];
   }
 
   /**
@@ -640,15 +540,18 @@ export class StudyService implements OnModuleDestroy {
     userId: string,
     nickname: string,
   ): Promise<{ nickname: string }> {
-    const member = await this.memberRepository.findOne({
-      where: { study_id: studyId, user_id: userId },
-    });
-    if (!member) {
-      throw new ForbiddenException('스터디 멤버가 아닙니다.');
+    // getMember가 404를 throw하면 ForbiddenException으로 변환
+    try {
+      await this.identityClient.getMember(studyId, userId);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw new ForbiddenException('스터디 멤버가 아닙니다.');
+      }
+      throw error;
     }
-    member.nickname = nickname;
-    await this.memberRepository.save(member);
-    return { nickname: member.nickname };
+
+    await this.identityClient.updateNickname(studyId, userId, { nickname });
+    return { nickname };
   }
 
   /**
@@ -671,62 +574,45 @@ export class StudyService implements OnModuleDestroy {
       throw new BadRequestException('자기 자신의 역할을 변경할 수 없습니다.');
     }
 
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
+    // 대상 멤버 조회
+    let targetMember: MemberData;
     try {
-      // FOR UPDATE 락으로 대상 멤버 조회 — 동시 역할 변경 방지
-      const targetMember = await queryRunner.manager.findOne(StudyMember, {
-        where: { study_id: studyId, user_id: targetUserId },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!targetMember) {
-        await queryRunner.rollbackTransaction();
+      targetMember = await this.identityClient.getMember(studyId, targetUserId) as MemberData;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
         throw new NotFoundException('해당 멤버를 찾을 수 없습니다.');
       }
-
-      // ADMIN -> MEMBER 강등 시 최소 1 ADMIN 보장 (FOR UPDATE로 정확한 count)
-      if (targetMember.role === StudyMemberRole.ADMIN && newRole === StudyMemberRole.MEMBER) {
-        const adminCount = await queryRunner.manager.count(StudyMember, {
-          where: { study_id: studyId, role: StudyMemberRole.ADMIN },
-        });
-        if (adminCount <= 1) {
-          await queryRunner.rollbackTransaction();
-          throw new BadRequestException('최소 1명의 ADMIN이 필요합니다.');
-        }
-      }
-
-      targetMember.role = newRole;
-      await queryRunner.manager.save(targetMember);
-
-      await queryRunner.commitTransaction();
-
-      // 커밋 후 캐시 무효화 + 알림
-      await this.invalidateMembershipCache(studyId, targetUserId);
-
-      const study = await this.studyRepository.findOne({ where: { id: studyId } });
-      const roleLabel = newRole === StudyMemberRole.ADMIN ? '관리자' : '멤버';
-      await this.notificationService.createNotification({
-        userId: targetUserId,
-        studyId,
-        type: NotificationType.ROLE_CHANGED,
-        title: '역할 변경',
-        message: `"${study?.name ?? '스터디'}"에서 역할이 ${roleLabel}(으)로 변경되었습니다.`,
-        link: `/studies/${studyId}`,
-      });
-
-      this.logger.log(
-        `역할 변경: studyId=${studyId}, target=${targetUserId}, newRole=${newRole}, by=${adminUserId}`,
-      );
-    } catch (error) {
-      if (queryRunner.isTransactionActive) {
-        await queryRunner.rollbackTransaction();
-      }
       throw error;
-    } finally {
-      await queryRunner.release();
     }
+
+    // ADMIN -> MEMBER 강등 시 최소 1 ADMIN 보장
+    if (targetMember.role === 'ADMIN' && newRole === 'MEMBER') {
+      const allMembers = await this.identityClient.getMembers(studyId) as MemberData[];
+      const adminCount = allMembers.filter((m) => m.role === 'ADMIN').length;
+      if (adminCount <= 1) {
+        throw new BadRequestException('최소 1명의 ADMIN이 필요합니다.');
+      }
+    }
+
+    await this.identityClient.changeRole(studyId, targetUserId, { role: newRole });
+
+    // 캐시 무효화 + 알림
+    await this.invalidateMembershipCache(studyId, targetUserId);
+
+    const study = await this.identityClient.findStudyById(studyId) as StudyData;
+    const roleLabel = newRole === 'ADMIN' ? '관리자' : '멤버';
+    await this.notificationService.createNotification({
+      userId: targetUserId,
+      studyId,
+      type: NotificationType.ROLE_CHANGED,
+      title: '역할 변경',
+      message: `"${study?.name ?? '스터디'}"에서 역할이 ${roleLabel}(으)로 변경되었습니다.`,
+      link: `/studies/${studyId}`,
+    });
+
+    this.logger.log(
+      `역할 변경: studyId=${studyId}, target=${targetUserId}, newRole=${newRole}, by=${adminUserId}`,
+    );
   }
 
   /**
@@ -738,68 +624,51 @@ export class StudyService implements OnModuleDestroy {
    * @event STUDY_MEMBER_LEFT (publish)
    */
   async leaveStudy(studyId: string, userId: string): Promise<void> {
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
+    // 본인 멤버 조회
+    let member: MemberData;
     try {
-      // FOR UPDATE 락으로 본인 멤버 조회 — 동시 탈퇴 + 역할 변경 방지
-      const member = await queryRunner.manager.findOne(StudyMember, {
-        where: { study_id: studyId, user_id: userId },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!member) {
-        await queryRunner.rollbackTransaction();
+      member = await this.identityClient.getMember(studyId, userId) as MemberData;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
         throw new ForbiddenException('해당 스터디의 멤버가 아닙니다.');
       }
-
-      // A2: ADMIN 위임 필수 — ADMIN이면서 다른 ADMIN이 없으면 탈퇴 차단
-      if (member.role === StudyMemberRole.ADMIN) {
-        const adminCount = await queryRunner.manager.count(StudyMember, {
-          where: { study_id: studyId, role: StudyMemberRole.ADMIN },
-        });
-        if (adminCount <= 1) {
-          await queryRunner.rollbackTransaction();
-          throw new BadRequestException('탈퇴 전 ADMIN 권한을 다른 멤버에게 위임하세요.');
-        }
-      }
-
-      await queryRunner.manager.delete(StudyMember, { study_id: studyId, user_id: userId });
-
-      await queryRunner.commitTransaction();
-
-      // 커밋 후 캐시 무효화 + 알림
-      await this.invalidateMembershipCache(studyId, userId);
-
-      const [study, remainingAdmins] = await Promise.all([
-        this.studyRepository.findOne({ where: { id: studyId } }),
-        this.memberRepository.find({
-          where: { study_id: studyId, role: StudyMemberRole.ADMIN },
-        }),
-      ]);
-
-      await Promise.all(
-        remainingAdmins.map((a) =>
-          this.notificationService.createNotification({
-            userId: a.user_id,
-            studyId,
-            type: NotificationType.MEMBER_LEFT,
-            title: '멤버 탈퇴',
-            message: `"${study?.name ?? '스터디'}"에서 멤버가 탈퇴했습니다.`,
-            link: `/studies/${studyId}`,
-          }),
-        ),
-      );
-
-      this.logger.log(`스터디 탈퇴: studyId=${studyId}, userId=${userId}`);
-    } catch (error) {
-      if (queryRunner.isTransactionActive) {
-        await queryRunner.rollbackTransaction();
-      }
       throw error;
-    } finally {
-      await queryRunner.release();
     }
+
+    // A2: ADMIN 위임 필수 — ADMIN이면서 다른 ADMIN이 없으면 탈퇴 차단
+    if (member.role === 'ADMIN') {
+      const allMembers = await this.identityClient.getMembers(studyId) as MemberData[];
+      const adminCount = allMembers.filter((m) => m.role === 'ADMIN').length;
+      if (adminCount <= 1) {
+        throw new BadRequestException('탈퇴 전 ADMIN 권한을 다른 멤버에게 위임하세요.');
+      }
+    }
+
+    await this.identityClient.removeMember(studyId, userId);
+
+    // 캐시 무효화 + 알림
+    await this.invalidateMembershipCache(studyId, userId);
+
+    const [study, allMembers] = await Promise.all([
+      this.identityClient.findStudyById(studyId) as Promise<StudyData>,
+      this.identityClient.getMembers(studyId) as Promise<MemberData[]>,
+    ]);
+    const remainingAdmins = allMembers.filter((m) => m.role === 'ADMIN');
+
+    await Promise.all(
+      remainingAdmins.map((a) =>
+        this.notificationService.createNotification({
+          userId: a.user_id,
+          studyId,
+          type: NotificationType.MEMBER_LEFT,
+          title: '멤버 탈퇴',
+          message: `"${study?.name ?? '스터디'}"에서 멤버가 탈퇴했습니다.`,
+          link: `/studies/${studyId}`,
+        }),
+      ),
+    );
+
+    this.logger.log(`스터디 탈퇴: studyId=${studyId}, userId=${userId}`);
   }
 
   /**
@@ -812,61 +681,34 @@ export class StudyService implements OnModuleDestroy {
       throw new BadRequestException('자기 자신을 추방할 수 없습니다.');
     }
 
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
+    await this.verifyAdmin(studyId, adminUserId);
 
+    // 대상 멤버 조회
+    let targetMember: MemberData;
     try {
-      // ADMIN 권한 검증 — 트랜잭션 내 FOR UPDATE 락으로 race condition 방지
-      const adminMember = await queryRunner.manager.findOne(StudyMember, {
-        where: { study_id: studyId, user_id: adminUserId, role: StudyMemberRole.ADMIN },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!adminMember) {
-        await queryRunner.rollbackTransaction();
-        throw new ForbiddenException('스터디 관리자만 멤버를 추방할 수 있습니다.');
-      }
-
-      // FOR UPDATE 락으로 대상 멤버 조회 — ADMIN 추방 시 0명 방지
-      const targetMember = await queryRunner.manager.findOne(StudyMember, {
-        where: { study_id: studyId, user_id: targetUserId },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!targetMember) {
-        await queryRunner.rollbackTransaction();
+      targetMember = await this.identityClient.getMember(studyId, targetUserId) as MemberData;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
         throw new NotFoundException('해당 멤버를 찾을 수 없습니다.');
       }
-
-      // ADMIN 추방 시 최소 1 ADMIN 보장
-      if (targetMember.role === StudyMemberRole.ADMIN) {
-        const adminCount = await queryRunner.manager.count(StudyMember, {
-          where: { study_id: studyId, role: StudyMemberRole.ADMIN },
-        });
-        if (adminCount <= 1) {
-          await queryRunner.rollbackTransaction();
-          throw new BadRequestException('최소 1명의 ADMIN이 필요합니다.');
-        }
-      }
-
-      await queryRunner.manager.delete(StudyMember, {
-        study_id: studyId,
-        user_id: targetUserId,
-      });
-
-      await queryRunner.commitTransaction();
-
-      // 커밋 후 캐시 무효화
-      await this.invalidateMembershipCache(studyId, targetUserId);
-
-      this.logger.log(`멤버 추방: studyId=${studyId}, target=${targetUserId}, by=${adminUserId}`);
-    } catch (error) {
-      if (queryRunner.isTransactionActive) {
-        await queryRunner.rollbackTransaction();
-      }
       throw error;
-    } finally {
-      await queryRunner.release();
     }
+
+    // ADMIN 추방 시 최소 1 ADMIN 보장
+    if (targetMember.role === 'ADMIN') {
+      const allMembers = await this.identityClient.getMembers(studyId) as MemberData[];
+      const adminCount = allMembers.filter((m) => m.role === 'ADMIN').length;
+      if (adminCount <= 1) {
+        throw new BadRequestException('최소 1명의 ADMIN이 필요합니다.');
+      }
+    }
+
+    await this.identityClient.removeMember(studyId, targetUserId);
+
+    // 캐시 무효화
+    await this.invalidateMembershipCache(studyId, targetUserId);
+
+    this.logger.log(`멤버 추방: studyId=${studyId}, target=${targetUserId}, by=${adminUserId}`);
   }
 
   // ─── 문제 생성 알림 ───────────────────────────
@@ -886,8 +728,8 @@ export class StudyService implements OnModuleDestroy {
     await this.verifyAdmin(studyId, userId);
 
     const [members, study] = await Promise.all([
-      this.memberRepository.find({ where: { study_id: studyId } }),
-      this.studyRepository.findOne({ where: { id: studyId } }),
+      this.identityClient.getMembers(studyId) as Promise<MemberData[]>,
+      this.identityClient.findStudyById(studyId) as Promise<StudyData>,
     ]);
 
     const studyName = study?.name ?? '스터디';
@@ -917,23 +759,25 @@ export class StudyService implements OnModuleDestroy {
    * 스터디 멤버 여부 검증
    * @guard study-member
    */
-  private async verifyMembership(studyId: string, userId: string): Promise<StudyMember> {
-    const member = await this.memberRepository.findOne({
-      where: { study_id: studyId, user_id: userId },
-    });
-    if (!member) {
-      throw new ForbiddenException('해당 스터디의 멤버가 아닙니다.');
+  private async verifyMembership(studyId: string, userId: string): Promise<MemberData> {
+    try {
+      const member = await this.identityClient.getMember(studyId, userId) as MemberData;
+      return member;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw new ForbiddenException('해당 스터디의 멤버가 아닙니다.');
+      }
+      throw error;
     }
-    return member;
   }
 
   /**
    * ADMIN 권한 검증
    * @guard study-admin
    */
-  private async verifyAdmin(studyId: string, userId: string): Promise<StudyMember> {
+  private async verifyAdmin(studyId: string, userId: string): Promise<MemberData> {
     const member = await this.verifyMembership(studyId, userId);
-    if (member.role !== StudyMemberRole.ADMIN) {
+    if (member.role !== 'ADMIN') {
       throw new ForbiddenException('ADMIN 권한이 필요합니다.');
     }
     return member;

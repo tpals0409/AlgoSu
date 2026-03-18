@@ -13,11 +13,9 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { StudyMember } from '../../study/study.entity';
 import { Request } from 'express';
 import { StructuredLoggerService } from '../logger/structured-logger.service';
+import { IdentityClientService } from '../../identity-client/identity-client.service';
 
 @Injectable()
 export class StudyMemberGuard implements CanActivate {
@@ -26,8 +24,7 @@ export class StudyMemberGuard implements CanActivate {
 
   constructor(
     private readonly configService: ConfigService,
-    @InjectRepository(StudyMember)
-    private readonly memberRepo: Repository<StudyMember>,
+    private readonly identityClient: IdentityClientService,
     private readonly logger: StructuredLoggerService,
   ) {
     this.logger.setContext(StudyMemberGuard.name);
@@ -59,10 +56,13 @@ export class StudyMemberGuard implements CanActivate {
       this.logger.warn(`Redis 캐시 조회 실패 — DB 폴백: ${(err as Error).message}`);
     }
 
-    // 2. DB 폴백 (fail-close: 확인 불가하면 거부)
-    const member = await this.memberRepo.findOne({
-      where: { study_id: studyId, user_id: userId },
-    });
+    // 2. Identity API 폴백 (fail-close: 확인 불가하면 거부)
+    let member: Record<string, unknown> | null = null;
+    try {
+      member = await this.identityClient.getMember(studyId, userId);
+    } catch {
+      member = null;
+    }
 
     if (!member) {
       // 비멤버: denied 키에 캐시 (짧은 TTL 60초)
@@ -73,7 +73,7 @@ export class StudyMemberGuard implements CanActivate {
     }
 
     // 멤버: role 문자열로 캐시 (TTL 300초)
-    try { await this.redis.set(cacheKey, member.role, 'EX', StudyMemberGuard.CACHE_TTL); } catch (err: unknown) {
+    try { await this.redis.set(cacheKey, String(member['role'] ?? 'MEMBER'), 'EX', StudyMemberGuard.CACHE_TTL); } catch (err: unknown) {
       this.logger.warn(`Redis 캐시 저장 실패 (멤버): ${(err as Error).message}`);
     }
 

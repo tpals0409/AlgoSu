@@ -31,7 +31,7 @@ import { Request, Response } from 'express';
 import * as jwt from 'jsonwebtoken';
 import Redis from 'ioredis';
 import { NotificationService } from '../notification/notification.service';
-import { NotificationType } from '../notification/notification.entity';
+import { NotificationType } from '../common/types/identity.types';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 @ApiTags('SSE')

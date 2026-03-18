@@ -5,13 +5,13 @@
  * @related NotificationController, DeadlineReminderService, StudyService
  */
 
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Repository, LessThan } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import Redis from 'ioredis';
-import { Notification, NotificationType } from './notification.entity';
+import type { IdentityNotification as Notification } from '../common/types/identity.types';
+import { NotificationType } from '../common/types/identity.types';
+import { IdentityClientService } from '../identity-client/identity-client.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 @Injectable()
@@ -19,8 +19,7 @@ export class NotificationService {
   private readonly redisPublisher: Redis;
 
   constructor(
-    @InjectRepository(Notification)
-    private readonly notificationRepo: Repository<Notification>,
+    private readonly identityClient: IdentityClientService,
     private readonly configService: ConfigService,
     private readonly logger: StructuredLoggerService,
   ) {
@@ -47,8 +46,8 @@ export class NotificationService {
     title: string;
     message: string;
     link?: string;
-  }): Promise<Notification> {
-    const notification = this.notificationRepo.create({
+  }): Promise<Record<string, unknown>> {
+    const saved = await this.identityClient.createNotification({
       userId: params.userId,
       studyId: params.studyId ?? null,
       type: params.type,
@@ -56,7 +55,6 @@ export class NotificationService {
       message: params.message,
       link: params.link ?? null,
     });
-    const saved = await this.notificationRepo.save(notification);
     this.logger.log(
       `알림 생성: userId=${params.userId}, type=${params.type}, studyId=${params.studyId ?? 'N/A'}`,
     );
@@ -90,11 +88,8 @@ export class NotificationService {
    * @param userId - 현재 사용자 ID
    */
   async getMyNotifications(userId: string): Promise<Notification[]> {
-    return this.notificationRepo.find({
-      where: { userId, read: false },
-      order: { createdAt: 'DESC' },
-      take: 50,
-    });
+    const results = await this.identityClient.findNotificationsByUserId(userId);
+    return results as unknown as Notification[];
   }
 
   /**
@@ -106,21 +101,7 @@ export class NotificationService {
    * @param userId - 현재 사용자 ID
    */
   async markAsRead(notificationId: string, userId: string): Promise<void> {
-    const notification = await this.notificationRepo.findOne({
-      where: { id: notificationId },
-    });
-
-    if (!notification) {
-      throw new NotFoundException('알림을 찾을 수 없습니다.');
-    }
-
-    // IDOR 방지: 본인 알림만 읽음 처리
-    if (notification.userId !== userId) {
-      throw new ForbiddenException('다른 사용자의 알림에 접근할 수 없습니다.');
-    }
-
-    notification.read = true;
-    await this.notificationRepo.save(notification);
+    await this.identityClient.markAsRead(notificationId, userId);
   }
 
   /**
@@ -132,10 +113,7 @@ export class NotificationService {
    * @returns 처리된 알림 건수
    */
   async markAllRead(userId: string): Promise<number> {
-    const result = await this.notificationRepo.update(
-      { userId, read: false },
-      { read: true },
-    );
+    const result = await this.identityClient.markAllRead(userId);
     const affected = result.affected ?? 0;
     if (affected > 0) {
       this.logger.log(`전체 읽음 처리: userId=${userId}, ${affected}건`);
@@ -151,9 +129,8 @@ export class NotificationService {
    * @param userId - 현재 사용자 ID
    */
   async getUnreadCount(userId: string): Promise<number> {
-    return this.notificationRepo.count({
-      where: { userId, read: false },
-    });
+    const result = await this.identityClient.getUnreadCount(userId);
+    return result.count;
   }
 
   // ─── CRON ─────────────────────────────────
@@ -164,14 +141,10 @@ export class NotificationService {
    */
   @Cron(CronExpression.EVERY_DAY_AT_3AM)
   async cleanupOldNotifications(): Promise<void> {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - 30);
+    const result = await this.identityClient.deleteOldNotifications();
+    const affected = result.affected ?? 0;
 
-    const { affected } = await this.notificationRepo.delete({
-      createdAt: LessThan(cutoff),
-    });
-
-    if (affected && affected > 0) {
+    if (affected > 0) {
       this.logger.log(`오래된 알림 ${affected}건 삭제 (30일 경과)`);
     }
   }

@@ -1,13 +1,14 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtMiddleware } from './jwt.middleware';
+import { IdentityClientService } from '../identity-client/identity-client.service';
 import * as jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
 
 describe('JwtMiddleware', () => {
   let middleware: JwtMiddleware;
   let configService: Record<string, jest.Mock>;
-  let userRepository: Record<string, jest.Mock>;
+  let identityClient: Record<string, jest.Mock>;
 
   const JWT_SECRET = 'test-jwt-secret-key';
   const USER_ID = 'user-uuid-1234-5678-abcd-ef0123456789';
@@ -38,8 +39,8 @@ describe('JwtMiddleware', () => {
       getOrThrow: jest.fn().mockReturnValue(JWT_SECRET),
     };
 
-    userRepository = {
-      findOne: jest.fn().mockResolvedValue({ id: USER_ID, deleted_at: null }),
+    identityClient = {
+      findUserById: jest.fn().mockResolvedValue({ id: USER_ID }),
     };
 
     const mockLogger = {
@@ -52,7 +53,7 @@ describe('JwtMiddleware', () => {
 
     middleware = new JwtMiddleware(
       configService as unknown as ConfigService,
-      userRepository as any,
+      identityClient as unknown as IdentityClientService,
       mockLogger as any,
     );
   });
@@ -190,21 +191,18 @@ describe('JwtMiddleware', () => {
   // 3. 탈퇴 계정 검증
   // ============================
   describe('탈퇴 계정 검증', () => {
-    it('탈퇴한 계정 → UnauthorizedException', async () => {
-      userRepository.findOne.mockResolvedValue({
-        id: USER_ID,
-        deleted_at: new Date(),
-      });
+    it('존재하지 않는 사용자 — 401 거부', async () => {
+      identityClient.findUserById.mockResolvedValue(null);
       const token = createValidToken();
       const req = createMockRequest({ cookies: { token } });
 
       await expect(middleware.use(req, mockRes, mockNext)).rejects.toThrow(
-        '탈퇴한 계정입니다.',
+        '존재하지 않는 계정입니다. 다시 로그인해주세요.',
       );
     });
 
-    it('존재하지 않는 사용자 — 401 거부', async () => {
-      userRepository.findOne.mockResolvedValue(null);
+    it('Identity 서비스 에러 — 401 거부', async () => {
+      identityClient.findUserById.mockRejectedValue(new Error('Connection refused'));
       const token = createValidToken();
       const req = createMockRequest({ cookies: { token } });
 

@@ -211,7 +211,7 @@ export class OAuthController {
     oauth_provider: string | null;
     github_connected: boolean;
     github_username: string | null;
-    created_at: Date;
+    created_at: string;
   }> {
     const userId = req.headers['x-user-id'] as string;
     const user = await this.oauthService.findUserById(userId);

@@ -1,6 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { DeadlineReminderService } from './deadline-reminder.service';
-import { NotificationType } from './notification.entity';
+import { NotificationType } from '../common/types/identity.types';
 
 // --- ioredis 모킹 ---
 const mockRedis = {
@@ -21,8 +21,7 @@ global.fetch = mockFetch;
 describe('DeadlineReminderService', () => {
   let service: DeadlineReminderService;
   let notificationService: Record<string, jest.Mock>;
-  let memberRepo: Record<string, jest.Mock>;
-  let studyRepo: Record<string, jest.Mock>;
+  let identityClient: Record<string, jest.Mock>;
   let configService: Record<string, jest.Mock>;
 
   const STUDY_ID = 'study-id-1';
@@ -49,12 +48,9 @@ describe('DeadlineReminderService', () => {
       createNotification: jest.fn().mockResolvedValue(undefined),
     };
 
-    memberRepo = {
-      find: jest.fn().mockResolvedValue([]),
-    };
-
-    studyRepo = {
-      findOne: jest.fn().mockResolvedValue(null),
+    identityClient = {
+      getMembers: jest.fn().mockResolvedValue([]),
+      findStudyById: jest.fn().mockResolvedValue(null),
     };
 
     const mockLogger = {
@@ -69,8 +65,7 @@ describe('DeadlineReminderService', () => {
       configService as unknown as ConfigService,
       notificationService as never,
       mockLogger as any,
-      memberRepo as never,
-      studyRepo as never,
+      identityClient as never,
     );
   });
 
@@ -111,10 +106,10 @@ describe('DeadlineReminderService', () => {
           json: async () => ({ submittedUserIds: [] }),
         });
 
-      memberRepo.find.mockResolvedValue([
+      identityClient.getMembers.mockResolvedValue([
         { user_id: USER_ID, study_id: STUDY_ID },
       ]);
-      studyRepo.findOne.mockResolvedValue({ id: STUDY_ID, name: 'AlgoSu' });
+      identityClient.findStudyById.mockResolvedValue({ id: STUDY_ID, name: 'AlgoSu' });
       mockRedis.get.mockResolvedValue(null);
 
       await service.checkDeadlines();
@@ -149,8 +144,8 @@ describe('DeadlineReminderService', () => {
           json: async () => ({ submittedUserIds: [] }),
         });
 
-      memberRepo.find.mockResolvedValue([{ user_id: USER_ID, study_id: STUDY_ID }]);
-      studyRepo.findOne.mockResolvedValue({ id: STUDY_ID, name: 'Test' });
+      identityClient.getMembers.mockResolvedValue([{ user_id: USER_ID, study_id: STUDY_ID }]);
+      identityClient.findStudyById.mockResolvedValue({ id: STUDY_ID, name: 'Test' });
       mockRedis.get.mockResolvedValue('1'); // 이미 발송
 
       await service.checkDeadlines();
@@ -179,7 +174,7 @@ describe('DeadlineReminderService', () => {
           json: async () => ({ submittedUserIds: [USER_ID] }),
         });
 
-      memberRepo.find.mockResolvedValue([{ user_id: USER_ID, study_id: STUDY_ID }]);
+      identityClient.getMembers.mockResolvedValue([{ user_id: USER_ID, study_id: STUDY_ID }]);
 
       await service.checkDeadlines();
 
@@ -202,8 +197,7 @@ describe('DeadlineReminderService', () => {
         configService as unknown as ConfigService,
         notificationService as never,
         reLogger as any,
-        memberRepo as never,
-        studyRepo as never,
+        identityClient as never,
       );
 
       await service.checkDeadlines();
@@ -240,8 +234,8 @@ describe('DeadlineReminderService', () => {
           json: async () => ({ submittedUserIds: [] }),
         });
 
-      memberRepo.find.mockResolvedValue([{ user_id: USER_ID, study_id: STUDY_ID }]);
-      studyRepo.findOne.mockResolvedValue({ id: STUDY_ID, name: 'AlgoSu' });
+      identityClient.getMembers.mockResolvedValue([{ user_id: USER_ID, study_id: STUDY_ID }]);
+      identityClient.findStudyById.mockResolvedValue({ id: STUDY_ID, name: 'AlgoSu' });
       mockRedis.get.mockResolvedValue(null);
 
       await service.checkDeadlines();
@@ -289,8 +283,7 @@ describe('DeadlineReminderService', () => {
         partialConfig as unknown as ConfigService,
         notificationService as never,
         reLogger as any,
-        memberRepo as never,
-        studyRepo as never,
+        identityClient as never,
       );
 
       mockFetch
@@ -305,7 +298,7 @@ describe('DeadlineReminderService', () => {
           json: async () => ({ data: [] }),
         });
 
-      memberRepo.find.mockResolvedValue([{ user_id: USER_ID, study_id: STUDY_ID }]);
+      identityClient.getMembers.mockResolvedValue([{ user_id: USER_ID, study_id: STUDY_ID }]);
       mockRedis.get.mockResolvedValue(null);
 
       // SUBMISSION_SERVICE_URL 없어도 예외 없이 처리 (미제출자 0명 → 알림 없음)
@@ -338,8 +331,8 @@ describe('DeadlineReminderService', () => {
           json: async () => ({ data: [] }),
         });
 
-      memberRepo.find.mockResolvedValue([{ user_id: USER_ID, study_id: STUDY_ID }]);
-      studyRepo.findOne.mockResolvedValue({ id: STUDY_ID, name: 'AlgoSu' });
+      identityClient.getMembers.mockResolvedValue([{ user_id: USER_ID, study_id: STUDY_ID }]);
+      identityClient.findStudyById.mockResolvedValue({ id: STUDY_ID, name: 'AlgoSu' });
       mockRedis.get.mockResolvedValue(null);
 
       // 제출자 조회 실패 시 제출자 없음으로 처리 → 미제출자 모두에게 알림
@@ -367,8 +360,8 @@ describe('DeadlineReminderService', () => {
           json: async () => ({ data: [] }),
         });
 
-      memberRepo.find.mockResolvedValue([{ user_id: USER_ID, study_id: STUDY_ID }]);
-      studyRepo.findOne.mockResolvedValue({ id: STUDY_ID, name: 'AlgoSu' });
+      identityClient.getMembers.mockResolvedValue([{ user_id: USER_ID, study_id: STUDY_ID }]);
+      identityClient.findStudyById.mockResolvedValue({ id: STUDY_ID, name: 'AlgoSu' });
       mockRedis.get.mockResolvedValue(null);
 
       // 예외 발생해도 계속 처리
@@ -389,9 +382,9 @@ describe('DeadlineReminderService', () => {
         }),
       });
 
-      // memberRepo.find throws → notifyUnsubmittedUsers 내부에서 uncaught throw
+      // identityClient.getMembers throws → notifyUnsubmittedUsers 내부에서 uncaught throw
       // → checkDeadlines의 outer catch block 실행 (line 89)
-      memberRepo.find.mockRejectedValueOnce(new Error('DB connection error'));
+      identityClient.getMembers.mockRejectedValueOnce(new Error('DB connection error'));
 
       await service.checkDeadlines();
 
@@ -434,7 +427,7 @@ describe('DeadlineReminderService', () => {
           json: async () => ({ data: [] }),
         });
 
-      memberRepo.find.mockResolvedValue([]); // 멤버 없음
+      identityClient.getMembers.mockResolvedValue([]); // 멤버 없음
 
       await service.checkDeadlines();
 

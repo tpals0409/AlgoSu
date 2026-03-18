@@ -15,18 +15,15 @@ import {
   ExecutionContext,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { Request } from 'express';
-import { ShareLink } from '../../share/share-link.entity';
 import { SHARE_LINK_TOKEN_REGEX } from '../../share/share-link.constants';
 import { StructuredLoggerService } from '../logger/structured-logger.service';
+import { IdentityClientService } from '../../identity-client/identity-client.service';
 
 @Injectable()
 export class ShareLinkGuard implements CanActivate {
   constructor(
-    @InjectRepository(ShareLink)
-    private readonly shareLinkRepository: Repository<ShareLink>,
+    private readonly identityClient: IdentityClientService,
     private readonly logger: StructuredLoggerService,
   ) {
     this.logger.setContext(ShareLinkGuard.name);
@@ -41,24 +38,28 @@ export class ShareLinkGuard implements CanActivate {
       throw new NotFoundException('공유 링크를 찾을 수 없습니다.');
     }
 
-    /* 2단계: DB 조회 */
-    const link = await this.shareLinkRepository.findOne({
-      where: { token, is_active: true },
-    });
+    /* 2단계: Identity API 조회 */
+    let link: Record<string, unknown> | null = null;
+    try {
+      link = await this.identityClient.verifyShareLinkToken(token);
+    } catch {
+      link = null;
+    }
 
     /* 3단계: 존재/활성/만료 검증 — 모두 404 (열거 방어) */
     if (!link) {
       throw new NotFoundException('공유 링크를 찾을 수 없습니다.');
     }
 
-    if (link.expires_at && link.expires_at < new Date()) {
+    const expiresAt = link['expires_at'] ? new Date(String(link['expires_at'])) : null;
+    if (expiresAt && expiresAt < new Date()) {
       this.logger.warn(`만료된 공유 링크 접근 시도: token=${token.slice(0, 8)}...`);
       throw new NotFoundException('공유 링크를 찾을 수 없습니다.');
     }
 
     /* 4단계: 컨텍스트에 스터디 정보 주입 */
-    req.headers['x-share-study-id'] = link.study_id;
-    req.headers['x-share-created-by'] = link.created_by;
+    req.headers['x-share-study-id'] = String(link['study_id']);
+    req.headers['x-share-created-by'] = String(link['created_by']);
 
     return true;
   }

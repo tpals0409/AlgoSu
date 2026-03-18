@@ -1,11 +1,10 @@
 import { ExecutionContext, NotFoundException } from '@nestjs/common';
 import { ShareLinkGuard } from './share-link.guard';
-import { Repository } from 'typeorm';
-import { ShareLink } from '../../share/share-link.entity';
+import { IdentityClientService } from '../../identity-client/identity-client.service';
 
 describe('ShareLinkGuard', () => {
   let guard: ShareLinkGuard;
-  let shareLinkRepo: Record<string, jest.Mock>;
+  let identityClient: Record<string, jest.Mock>;
 
   const VALID_TOKEN = 'a'.repeat(64);
   const STUDY_ID = 'study-uuid-001';
@@ -38,12 +37,12 @@ describe('ShareLinkGuard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    shareLinkRepo = {
-      findOne: jest.fn(),
+    identityClient = {
+      verifyShareLinkToken: jest.fn(),
     };
 
     guard = new ShareLinkGuard(
-      shareLinkRepo as unknown as Repository<ShareLink>,
+      identityClient as unknown as IdentityClientService,
       mockLogger as any,
     );
   });
@@ -91,26 +90,23 @@ describe('ShareLinkGuard', () => {
   /* ───────── DB 조회 ───────── */
   describe('DB 조회', () => {
     it('DB에 없는 토큰 — NotFoundException', async () => {
-      shareLinkRepo.findOne.mockResolvedValue(null);
+      identityClient.verifyShareLinkToken.mockResolvedValue(null);
       const { ctx } = createMockContext(VALID_TOKEN);
 
       await expect(guard.canActivate(ctx)).rejects.toThrow(NotFoundException);
     });
 
-    it('비활성 토큰 — NotFoundException (is_active=true 조건으로 조회되지 않음)', async () => {
-      // Guard는 where: { token, is_active: true }로 조회하므로
-      // 비활성 토큰은 findOne 결과가 null → NotFoundException
-      shareLinkRepo.findOne.mockResolvedValue(null);
+    it('비활성 토큰 — NotFoundException (Identity API에서 null 반환)', async () => {
+      // Identity API가 비활성/미존재 토큰에 대해 null 반환
+      identityClient.verifyShareLinkToken.mockResolvedValue(null);
       const { ctx } = createMockContext(VALID_TOKEN);
 
       await expect(guard.canActivate(ctx)).rejects.toThrow(NotFoundException);
-      expect(shareLinkRepo.findOne).toHaveBeenCalledWith({
-        where: { token: VALID_TOKEN, is_active: true },
-      });
+      expect(identityClient.verifyShareLinkToken).toHaveBeenCalledWith(VALID_TOKEN);
     });
 
     it('만료된 토큰 — NotFoundException + 경고 로그', async () => {
-      shareLinkRepo.findOne.mockResolvedValue({
+      identityClient.verifyShareLinkToken.mockResolvedValue({
         token: VALID_TOKEN,
         study_id: STUDY_ID,
         created_by: CREATED_BY,
@@ -127,7 +123,7 @@ describe('ShareLinkGuard', () => {
 
     it('정보 누출 방지 — 존재하지 않는/비활성/만료 토큰 모두 동일한 404 메시지', async () => {
       // 1) 존재하지 않는 토큰
-      shareLinkRepo.findOne.mockResolvedValue(null);
+      identityClient.verifyShareLinkToken.mockResolvedValue(null);
       const { ctx: ctx1 } = createMockContext(VALID_TOKEN);
       try { await guard.canActivate(ctx1); } catch (e: any) {
         expect(e).toBeInstanceOf(NotFoundException);
@@ -135,7 +131,7 @@ describe('ShareLinkGuard', () => {
       }
 
       // 2) 만료된 토큰
-      shareLinkRepo.findOne.mockResolvedValue({
+      identityClient.verifyShareLinkToken.mockResolvedValue({
         token: VALID_TOKEN,
         study_id: STUDY_ID,
         created_by: CREATED_BY,
@@ -153,7 +149,7 @@ describe('ShareLinkGuard', () => {
   /* ───────── 유효 토큰 ───────── */
   describe('유효 토큰', () => {
     it('만료 없는 유효 토큰 — true + 헤더 주입', async () => {
-      shareLinkRepo.findOne.mockResolvedValue({
+      identityClient.verifyShareLinkToken.mockResolvedValue({
         token: VALID_TOKEN,
         study_id: STUDY_ID,
         created_by: CREATED_BY,
@@ -170,7 +166,7 @@ describe('ShareLinkGuard', () => {
     });
 
     it('만료 전 유효 토큰 — true + 헤더 주입', async () => {
-      shareLinkRepo.findOne.mockResolvedValue({
+      identityClient.verifyShareLinkToken.mockResolvedValue({
         token: VALID_TOKEN,
         study_id: STUDY_ID,
         created_by: CREATED_BY,

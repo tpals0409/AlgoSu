@@ -1,11 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { PublicShareController } from './public-share.controller';
 import { ShareLinkGuard } from '../common/guards/share-link.guard';
-import { Study, StudyMember } from '../study/study.entity';
-import { User } from '../auth/oauth/user.entity';
+import { IdentityClientService } from '../identity-client/identity-client.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 /* global fetch 모킹 */
@@ -14,9 +12,7 @@ global.fetch = mockFetch as any;
 
 describe('PublicShareController', () => {
   let controller: PublicShareController;
-  let studyRepo: Record<string, jest.Mock>;
-  let memberRepo: Record<string, jest.Mock>;
-  let userRepo: Record<string, jest.Mock>;
+  let identityClient: Record<string, jest.Mock>;
 
   const STUDY_ID = 'study-uuid-001';
   const CREATED_BY = 'user-uuid-001';
@@ -44,9 +40,11 @@ describe('PublicShareController', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
 
-    studyRepo = { findOne: jest.fn() };
-    memberRepo = { find: jest.fn() };
-    userRepo = { findOne: jest.fn() };
+    identityClient = {
+      findStudyById: jest.fn(),
+      getMembers: jest.fn(),
+      findUserById: jest.fn(),
+    };
 
     const configMap: Record<string, string> = {
       PROBLEM_SERVICE_URL: 'http://problem:3001',
@@ -69,9 +67,7 @@ describe('PublicShareController', () => {
       controllers: [PublicShareController],
       providers: [
         { provide: ConfigService, useValue: mockConfigService },
-        { provide: getRepositoryToken(Study), useValue: studyRepo },
-        { provide: getRepositoryToken(StudyMember), useValue: memberRepo },
-        { provide: getRepositoryToken(User), useValue: userRepo },
+        { provide: IdentityClientService, useValue: identityClient },
         { provide: StructuredLoggerService, useValue: mockLogger },
       ],
     })
@@ -85,12 +81,12 @@ describe('PublicShareController', () => {
   /* ───────── getSharedStudyMeta ───────── */
   describe('getSharedStudyMeta', () => {
     it('스터디 메타 정보 반환', async () => {
-      studyRepo.findOne.mockResolvedValue({ id: STUDY_ID, name: '알고스터디' });
-      memberRepo.find.mockResolvedValue([
+      identityClient.findStudyById.mockResolvedValue({ id: STUDY_ID, name: '알고스터디' });
+      identityClient.getMembers.mockResolvedValue([
         { user_id: 'u1', nickname: '닉1', role: 'ADMIN' },
         { user_id: 'u2', nickname: '닉2', role: 'MEMBER' },
       ]);
-      userRepo.findOne.mockResolvedValue({ name: '생성자', avatar_url: 'http://avatar' });
+      identityClient.findUserById.mockResolvedValue({ name: '생성자', avatar_url: 'http://avatar' });
 
       const result = await controller.getSharedStudyMeta(createMockReq());
 
@@ -101,7 +97,7 @@ describe('PublicShareController', () => {
     });
 
     it('스터디 미존재 — NotFoundException', async () => {
-      studyRepo.findOne.mockResolvedValue(null);
+      identityClient.findStudyById.mockRejectedValue(new NotFoundException());
 
       await expect(controller.getSharedStudyMeta(createMockReq())).rejects.toThrow(
         NotFoundException,
@@ -109,9 +105,9 @@ describe('PublicShareController', () => {
     });
 
     it('생성자 미존재 — name/avatarUrl null', async () => {
-      studyRepo.findOne.mockResolvedValue({ id: STUDY_ID, name: '스터디' });
-      memberRepo.find.mockResolvedValue([]);
-      userRepo.findOne.mockResolvedValue(null);
+      identityClient.findStudyById.mockResolvedValue({ id: STUDY_ID, name: '스터디' });
+      identityClient.getMembers.mockResolvedValue([]);
+      identityClient.findUserById.mockRejectedValue(new NotFoundException());
 
       const result = await controller.getSharedStudyMeta(createMockReq());
 
@@ -233,11 +229,8 @@ describe('PublicShareController', () => {
         (name) => name !== 'constructor' && typeof prototype[name] === 'function',
       );
 
-      // 모든 메서드가 GET 엔드포인트임을 메타데이터로 확인
-      // NestJS에서 @Get 데코레이터는 Reflect.getMetadata('method', ...)로 확인 가능
       for (const method of methodNames) {
         const httpMethod = Reflect.getMetadata('method', prototype[method]);
-        // RequestMethod.GET = 0 in NestJS
         if (httpMethod !== undefined) {
           expect(httpMethod).toBe(0); // RequestMethod.GET
         }
@@ -250,7 +243,6 @@ describe('PublicShareController', () => {
         (name) => name !== 'constructor' && typeof prototype[name] === 'function',
       );
 
-      // 모든 메서드 이름에 create/update/delete/remove/patch 포함 여부 확인
       const writeMethodPatterns = ['create', 'update', 'delete', 'remove', 'patch', 'post', 'put'];
       for (const method of publicMethods) {
         const lowerName = method.toLowerCase();
@@ -275,7 +267,6 @@ describe('PublicShareController', () => {
 
       await controller.getSharedProblems(req);
 
-      // fetch 호출 시 x-share-study-id 헤더 값(STUDY_ID)만 사용되어야 함 (OTHER_STUDY_ID가 아닌)
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({

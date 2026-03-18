@@ -2,25 +2,17 @@
  * @file ShareLink 서비스 — 공유 링크 CRUD + 토큰 검증
  * @domain share
  * @layer service
- * @related share-link.controller.ts, share-link.entity.ts
+ * @related share-link.controller.ts, identity-client.service.ts
  */
-import { randomBytes } from 'crypto';
 import {
   Injectable,
   NotFoundException,
-  ForbiddenException,
-  ConflictException,
   BadRequestException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, MoreThanOrEqual, Or } from 'typeorm';
-import { ShareLink } from './share-link.entity';
-import { User } from '../auth/oauth/user.entity';
-import { StudyMember, StudyMemberRole } from '../study/study.entity';
 import { CreateShareLinkDto } from './dto/create-share-link.dto';
 import { UpdateProfileSettingsDto } from './dto/update-profile-settings.dto';
-import { SHARE_LINK_TOKEN_REGEX } from './share-link.constants';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
+import { IdentityClientService } from '../identity-client/identity-client.service';
 
 /** slug 예약어 — Next.js 라우트 + 시스템 경로 */
 const RESERVED_SLUGS = [
@@ -35,12 +27,7 @@ const RESERVED_SLUGS = [
 @Injectable()
 export class ShareLinkService {
   constructor(
-    @InjectRepository(ShareLink)
-    private readonly shareLinkRepository: Repository<ShareLink>,
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
-    @InjectRepository(StudyMember)
-    private readonly memberRepository: Repository<StudyMember>,
+    private readonly identityClient: IdentityClientService,
     private readonly logger: StructuredLoggerService,
   ) {
     this.logger.setContext(ShareLinkService.name);
@@ -48,88 +35,47 @@ export class ShareLinkService {
 
   /* ───────────────── ShareLink CRUD (W1-2) ───────────────── */
 
-  /** 공유 링크 생성 — 토큰 256bit hex */
+  /** 공유 링크 생성 — Identity 서비스 위임 */
   async createShareLink(
     studyId: string,
     userId: string,
     dto: CreateShareLinkDto,
-  ): Promise<ShareLink> {
-    const token = randomBytes(32).toString('hex');
+  ): Promise<Record<string, unknown>> {
     const expiresAt = dto.expiresAt ? new Date(dto.expiresAt) : null;
 
     if (expiresAt && expiresAt <= new Date()) {
       throw new BadRequestException('만료 일시는 현재 시간 이후여야 합니다.');
     }
 
-    const shareLink = this.shareLinkRepository.create({
-      token,
+    const saved = await this.identityClient.createShareLink({
       study_id: studyId,
       created_by: userId,
-      expires_at: expiresAt,
-      is_active: true,
+      expires_at: dto.expiresAt,
     });
 
-    const saved = await this.shareLinkRepository.save(shareLink);
     this.logger.log(`공유 링크 생성: studyId=${studyId}, userId=${userId}`);
     return saved;
   }
 
   /** 본인이 생성한 활성 공유 링크 목록 조회 */
-  async getShareLinks(studyId: string, userId: string): Promise<ShareLink[]> {
-    return this.shareLinkRepository.find({
-      where: {
-        study_id: studyId,
-        created_by: userId,
-        is_active: true,
-        expires_at: Or(IsNull(), MoreThanOrEqual(new Date())),
-      },
-      order: { created_at: 'DESC' },
-    });
+  async getShareLinks(studyId: string, userId: string): Promise<Record<string, unknown>[]> {
+    return this.identityClient.findShareLinksByUserAndStudy(userId, studyId);
   }
 
-  /** 공유 링크 비활성화 (soft delete) — 생성자 본인 또는 ADMIN */
+  /** 공유 링크 비활성화 (soft delete) — Identity 서비스 위임 */
   async deactivateShareLink(
     linkId: string,
-    studyId: string,
+    _studyId: string,
     userId: string,
   ): Promise<{ message: string }> {
-    const link = await this.shareLinkRepository.findOne({
-      where: { id: linkId, study_id: studyId, is_active: true },
-    });
-
-    if (!link) {
-      throw new NotFoundException('공유 링크를 찾을 수 없습니다.');
-    }
-
-    if (link.created_by !== userId) {
-      const member = await this.memberRepository.findOne({
-        where: { study_id: studyId, user_id: userId },
-      });
-      if (!member || member.role !== StudyMemberRole.ADMIN) {
-        throw new ForbiddenException('링크 생성자 또는 ADMIN만 비활성화할 수 있습니다.');
-      }
-    }
-
-    link.is_active = false;
-    await this.shareLinkRepository.save(link);
+    const result = await this.identityClient.deactivateShareLink(linkId, userId);
     this.logger.log(`공유 링크 비활성화: linkId=${linkId}, userId=${userId}`);
-    return { message: '공유 링크가 비활성화되었습니다.' };
+    return result as { message: string };
   }
 
   /** 토큰으로 공유 링크 검증 — 유효하면 ShareLink 반환, 아니면 null */
-  async verifyToken(token: string): Promise<ShareLink | null> {
-    if (!SHARE_LINK_TOKEN_REGEX.test(token)) {
-      return null;
-    }
-
-    const link = await this.shareLinkRepository.findOne({
-      where: { token, is_active: true },
-    });
-
-    if (!link) return null;
-    if (link.expires_at && link.expires_at < new Date()) return null;
-
-    return link;
+  async verifyToken(token: string): Promise<Record<string, unknown> | null> {
+    return this.identityClient.verifyShareLinkToken(token);
   }
 
   /* ───────────────── Profile Settings (W1-5) ───────────────── */
@@ -139,12 +85,12 @@ export class ShareLinkService {
     profileSlug: string | null;
     isProfilePublic: boolean;
   }> {
-    const user = await this.userRepository.findOne({ where: { id: userId } });
+    const user = await this.identityClient.findUserById(userId);
     if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
 
     return {
-      profileSlug: user.profile_slug,
-      isProfilePublic: user.is_profile_public,
+      profileSlug: (user as Record<string, unknown>).profile_slug as string | null,
+      isProfilePublic: (user as Record<string, unknown>).is_profile_public as boolean,
     };
   }
 
@@ -153,39 +99,22 @@ export class ShareLinkService {
     userId: string,
     dto: UpdateProfileSettingsDto,
   ): Promise<{ profileSlug: string | null; isProfilePublic: boolean }> {
-    const user = await this.userRepository.findOne({ where: { id: userId } });
-    if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
-
-    /* slug 업데이트 */
+    /* slug 예약어 검증 (Gateway 레벨 선검증) */
     if (dto.profileSlug !== undefined) {
       this.validateSlug(dto.profileSlug);
-
-      const existing = await this.userRepository.findOne({
-        where: { profile_slug: dto.profileSlug },
-      });
-      if (existing && existing.id !== userId) {
-        throw new ConflictException(`slug "${dto.profileSlug}"는 이미 사용 중입니다.`);
-      }
-
-      user.profile_slug = dto.profileSlug;
     }
 
-    /* 공개 토글 */
-    if (dto.isProfilePublic !== undefined) {
-      if (dto.isProfilePublic && !user.profile_slug && !dto.profileSlug) {
-        throw new BadRequestException(
-          '프로필 공개를 위해서는 먼저 프로필 URL(slug)을 설정해야 합니다.',
-        );
-      }
-      user.is_profile_public = dto.isProfilePublic;
-    }
+    /* Identity 서비스에 위임 — slug 중복/공개 조건 검증 포함 */
+    const result = await this.identityClient.updateProfileSettings(userId, {
+      publicId: dto.profileSlug,
+      is_profile_public: dto.isProfilePublic,
+    });
 
-    await this.userRepository.save(user);
     this.logger.log(`프로필 설정 업데이트: userId=${userId}`);
 
     return {
-      profileSlug: user.profile_slug,
-      isProfilePublic: user.is_profile_public,
+      profileSlug: (result as Record<string, unknown>).profileSlug as string | null,
+      isProfilePublic: (result as Record<string, unknown>).isProfilePublic as boolean,
     };
   }
 

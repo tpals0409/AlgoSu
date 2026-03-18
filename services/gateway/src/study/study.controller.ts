@@ -21,7 +21,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Request } from 'express';
 import { StudyService } from './study.service';
-import { Study, StudyMember } from './study.entity';
+import type { IdentityStudy as Study, IdentityStudyMember as StudyMember } from '../common/types/identity.types';
 import { ChangeRoleDto } from './dto/change-role.dto';
 import { CreateStudyDto } from './dto/create-study.dto';
 import { JoinStudyDto } from './dto/join-study.dto';

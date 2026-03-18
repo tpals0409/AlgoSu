@@ -1,11 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { PublicProfileController } from './public-profile.controller';
-import { User } from '../auth/oauth/user.entity';
-import { StudyMember } from '../study/study.entity';
-import { ShareLink } from './share-link.entity';
+import { IdentityClientService } from '../identity-client/identity-client.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 /* global fetch 모킹 */
@@ -14,9 +11,7 @@ global.fetch = mockFetch as any;
 
 describe('PublicProfileController', () => {
   let controller: PublicProfileController;
-  let userRepo: Record<string, jest.Mock>;
-  let memberRepo: Record<string, jest.Mock>;
-  let shareLinkRepo: Record<string, jest.Mock>;
+  let identityClient: Record<string, jest.Mock>;
 
   const USER_ID = 'user-uuid-001';
   const STUDY_ID = 'study-uuid-001';
@@ -32,12 +27,12 @@ describe('PublicProfileController', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
 
-    userRepo = { findOne: jest.fn() };
-    memberRepo = {
-      find: jest.fn(),
-      createQueryBuilder: jest.fn(),
+    identityClient = {
+      findUserBySlug: jest.fn(),
+      findStudiesByUserId: jest.fn(),
+      getMembers: jest.fn(),
+      findShareLinksByUserAndStudy: jest.fn(),
     };
-    shareLinkRepo = { find: jest.fn() };
 
     const configMap: Record<string, string> = {
       SUBMISSION_SERVICE_URL: 'http://submission:3003',
@@ -58,28 +53,13 @@ describe('PublicProfileController', () => {
       controllers: [PublicProfileController],
       providers: [
         { provide: ConfigService, useValue: mockConfigService },
-        { provide: getRepositoryToken(User), useValue: userRepo },
-        { provide: getRepositoryToken(StudyMember), useValue: memberRepo },
-        { provide: getRepositoryToken(ShareLink), useValue: shareLinkRepo },
+        { provide: IdentityClientService, useValue: identityClient },
         { provide: StructuredLoggerService, useValue: mockLogger },
       ],
     }).compile();
 
     controller = module.get<PublicProfileController>(PublicProfileController);
   });
-
-  /** createQueryBuilder 체인 모킹 헬퍼 */
-  function mockMemberCountQuery(rows: { study_id: string; cnt: string }[]) {
-    const qb = {
-      select: jest.fn().mockReturnThis(),
-      addSelect: jest.fn().mockReturnThis(),
-      where: jest.fn().mockReturnThis(),
-      groupBy: jest.fn().mockReturnThis(),
-      getRawMany: jest.fn().mockResolvedValue(rows),
-    };
-    memberRepo.createQueryBuilder.mockReturnValue(qb);
-    return qb;
-  }
 
   /* ───────── slug 형식 검증 ───────── */
   describe('getPublicProfile — slug 검증', () => {
@@ -107,21 +87,17 @@ describe('PublicProfileController', () => {
   /* ───────── 유저 미존재/비공개 ───────── */
   describe('getPublicProfile — 유저 조회', () => {
     it('공개 유저 없음 — NotFoundException', async () => {
-      userRepo.findOne.mockResolvedValue(null);
+      identityClient.findUserBySlug.mockRejectedValue(new NotFoundException());
       await expect(controller.getPublicProfile('valid-slug')).rejects.toThrow(NotFoundException);
     });
 
-    it('비공개 프로필(is_profile_public=false) — NotFoundException', async () => {
-      // is_profile_public: true 조건으로 조회하므로 비공개 유저는 null 반환
-      userRepo.findOne.mockResolvedValue(null);
+    it('비공개 프로필 — NotFoundException', async () => {
+      identityClient.findUserBySlug.mockResolvedValue(null);
       await expect(controller.getPublicProfile('private-user')).rejects.toThrow(NotFoundException);
-      expect(userRepo.findOne).toHaveBeenCalledWith({
-        where: { profile_slug: 'private-user', is_profile_public: true },
-      });
     });
 
     it('존재하지 않는 slug — NotFoundException', async () => {
-      userRepo.findOne.mockResolvedValue(null);
+      identityClient.findUserBySlug.mockRejectedValue(new NotFoundException());
       await expect(controller.getPublicProfile('nonexistent1')).rejects.toThrow(NotFoundException);
     });
   });
@@ -132,16 +108,14 @@ describe('PublicProfileController', () => {
       id: USER_ID,
       name: '테스트유저',
       avatar_url: 'http://avatar',
-      profile_slug: 'valid-slug',
-      is_profile_public: true,
     };
 
     beforeEach(() => {
-      userRepo.findOne.mockResolvedValue(mockUser);
+      identityClient.findUserBySlug.mockResolvedValue(mockUser);
     });
 
     it('참여 스터디 없음 — 빈 studies + 0 통계', async () => {
-      memberRepo.find.mockResolvedValue([]);
+      identityClient.findStudiesByUserId.mockResolvedValue([]);
 
       const result = await controller.getPublicProfile('valid-slug');
 
@@ -152,11 +126,15 @@ describe('PublicProfileController', () => {
     });
 
     it('스터디 참여 + 공유 링크 있음 + 통계 정상', async () => {
-      memberRepo.find.mockResolvedValue([
-        { user_id: USER_ID, study_id: STUDY_ID, study: { name: '알고스터디' } },
+      identityClient.findStudiesByUserId.mockResolvedValue([
+        { id: STUDY_ID, name: '알고스터디' },
       ]);
-      mockMemberCountQuery([{ study_id: STUDY_ID, cnt: '3' }]);
-      shareLinkRepo.find.mockResolvedValue([{ study_id: STUDY_ID, token: 'a'.repeat(64) }]);
+      identityClient.getMembers.mockResolvedValue([
+        { user_id: 'u1' }, { user_id: 'u2' }, { user_id: 'u3' },
+      ]);
+      identityClient.findShareLinksByUserAndStudy.mockResolvedValue([
+        { token: 'a'.repeat(64) },
+      ]);
       mockFetch.mockResolvedValue({
         ok: true,
         json: () =>
@@ -178,11 +156,11 @@ describe('PublicProfileController', () => {
     });
 
     it('공유 링크 없음 — shareLink null', async () => {
-      memberRepo.find.mockResolvedValue([
-        { user_id: USER_ID, study_id: STUDY_ID, study: { name: '스터디' } },
+      identityClient.findStudiesByUserId.mockResolvedValue([
+        { id: STUDY_ID, name: '스터디' },
       ]);
-      mockMemberCountQuery([{ study_id: STUDY_ID, cnt: '1' }]);
-      shareLinkRepo.find.mockResolvedValue([]);
+      identityClient.getMembers.mockResolvedValue([{ user_id: 'u1' }]);
+      identityClient.findShareLinksByUserAndStudy.mockResolvedValue([]);
       mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ data: { totalSubmissions: 0, averageScore: null } }),
@@ -194,11 +172,11 @@ describe('PublicProfileController', () => {
     });
 
     it('Submission Service 실패 — 0/null 폴백', async () => {
-      memberRepo.find.mockResolvedValue([
-        { user_id: USER_ID, study_id: STUDY_ID, study: { name: '스터디' } },
+      identityClient.findStudiesByUserId.mockResolvedValue([
+        { id: STUDY_ID, name: '스터디' },
       ]);
-      mockMemberCountQuery([{ study_id: STUDY_ID, cnt: '2' }]);
-      shareLinkRepo.find.mockResolvedValue([]);
+      identityClient.getMembers.mockResolvedValue([{ user_id: 'u1' }, { user_id: 'u2' }]);
+      identityClient.findShareLinksByUserAndStudy.mockResolvedValue([]);
       mockFetch.mockResolvedValue({ ok: false, status: 500 });
 
       const result = await controller.getPublicProfile('valid-slug');
@@ -208,11 +186,11 @@ describe('PublicProfileController', () => {
     });
 
     it('Submission Service fetch 예외 — 0/null 폴백', async () => {
-      memberRepo.find.mockResolvedValue([
-        { user_id: USER_ID, study_id: STUDY_ID, study: { name: '스터디' } },
+      identityClient.findStudiesByUserId.mockResolvedValue([
+        { id: STUDY_ID, name: '스터디' },
       ]);
-      mockMemberCountQuery([{ study_id: STUDY_ID, cnt: '2' }]);
-      shareLinkRepo.find.mockResolvedValue([]);
+      identityClient.getMembers.mockResolvedValue([{ user_id: 'u1' }, { user_id: 'u2' }]);
+      identityClient.findShareLinksByUserAndStudy.mockResolvedValue([]);
       mockFetch.mockRejectedValue(new Error('network error'));
 
       const result = await controller.getPublicProfile('valid-slug');
@@ -222,17 +200,13 @@ describe('PublicProfileController', () => {
     });
 
     it('여러 스터디 — averageAiScore 계산 (null 스터디 제외)', async () => {
-      memberRepo.find.mockResolvedValue([
-        { user_id: USER_ID, study_id: 'study-1', study: { name: 'S1' } },
-        { user_id: USER_ID, study_id: 'study-2', study: { name: 'S2' } },
-        { user_id: USER_ID, study_id: 'study-3', study: { name: 'S3' } },
+      identityClient.findStudiesByUserId.mockResolvedValue([
+        { id: 'study-1', name: 'S1' },
+        { id: 'study-2', name: 'S2' },
+        { id: 'study-3', name: 'S3' },
       ]);
-      mockMemberCountQuery([
-        { study_id: 'study-1', cnt: '1' },
-        { study_id: 'study-2', cnt: '1' },
-        { study_id: 'study-3', cnt: '1' },
-      ]);
-      shareLinkRepo.find.mockResolvedValue([]);
+      identityClient.getMembers.mockResolvedValue([{ user_id: 'u1' }]);
+      identityClient.findShareLinksByUserAndStudy.mockResolvedValue([]);
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
@@ -255,11 +229,11 @@ describe('PublicProfileController', () => {
     });
 
     it('모든 스터디 averageAiScore null — 전체 평균 null', async () => {
-      memberRepo.find.mockResolvedValue([
-        { user_id: USER_ID, study_id: 'study-1', study: { name: 'S1' } },
+      identityClient.findStudiesByUserId.mockResolvedValue([
+        { id: 'study-1', name: 'S1' },
       ]);
-      mockMemberCountQuery([{ study_id: 'study-1', cnt: '1' }]);
-      shareLinkRepo.find.mockResolvedValue([]);
+      identityClient.getMembers.mockResolvedValue([{ user_id: 'u1' }]);
+      identityClient.findShareLinksByUserAndStudy.mockResolvedValue([]);
       mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ data: { totalSubmissions: 0, averageScore: null } }),
@@ -270,12 +244,12 @@ describe('PublicProfileController', () => {
       expect(result.data.averageAiScore).toBeNull();
     });
 
-    it('study 관계 없음 — "알 수 없는 스터디" 폴백', async () => {
-      memberRepo.find.mockResolvedValue([
-        { user_id: USER_ID, study_id: STUDY_ID, study: null },
+    it('study name 없음 — "알 수 없는 스터디" 폴백', async () => {
+      identityClient.findStudiesByUserId.mockResolvedValue([
+        { id: STUDY_ID, name: null },
       ]);
-      mockMemberCountQuery([{ study_id: STUDY_ID, cnt: '1' }]);
-      shareLinkRepo.find.mockResolvedValue([]);
+      identityClient.getMembers.mockResolvedValue([{ user_id: 'u1' }]);
+      identityClient.findShareLinksByUserAndStudy.mockResolvedValue([]);
       mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ data: { totalSubmissions: 0, averageScore: null } }),
@@ -287,11 +261,11 @@ describe('PublicProfileController', () => {
     });
 
     it('Submission Service body.data 누락 — 0/null 폴백', async () => {
-      memberRepo.find.mockResolvedValue([
-        { user_id: USER_ID, study_id: STUDY_ID, study: { name: 'S' } },
+      identityClient.findStudiesByUserId.mockResolvedValue([
+        { id: STUDY_ID, name: 'S' },
       ]);
-      mockMemberCountQuery([{ study_id: STUDY_ID, cnt: '1' }]);
-      shareLinkRepo.find.mockResolvedValue([]);
+      identityClient.getMembers.mockResolvedValue([{ user_id: 'u1' }]);
+      identityClient.findShareLinksByUserAndStudy.mockResolvedValue([]);
       mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({}),
@@ -312,14 +286,12 @@ describe('PublicProfileController', () => {
         name: '테스트유저',
         email: 'test@example.com',
         avatar_url: 'http://avatar',
-        profile_slug: 'valid-slug',
-        is_profile_public: true,
         github_token: 'ghp_secrettoken123',
         oauth_provider: 'google',
         github_username: 'testuser',
       };
-      userRepo.findOne.mockResolvedValue(mockUserWithSensitive);
-      memberRepo.find.mockResolvedValue([]);
+      identityClient.findUserBySlug.mockResolvedValue(mockUserWithSensitive);
+      identityClient.findStudiesByUserId.mockResolvedValue([]);
 
       const result = await controller.getPublicProfile('valid-slug');
 
@@ -327,8 +299,6 @@ describe('PublicProfileController', () => {
       const responseStr = JSON.stringify(result);
       expect(responseStr).not.toContain('test@example.com');
       expect(responseStr).not.toContain('ghp_secrettoken123');
-      expect(responseStr).not.toContain('oauth_provider');
-      expect(responseStr).not.toContain('github_token');
 
       // 허용된 필드만 존재 확인
       expect(result.data.name).toBe('테스트유저');

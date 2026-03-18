@@ -2,7 +2,7 @@
  * @file OAuth 인증 서비스 — Google/Naver/Kakao 로그인 + GitHub 연동 + JWT 발급
  * @domain identity
  * @layer service
- * @related oauth.controller.ts, user.entity.ts, token-crypto.util.ts
+ * @related oauth.controller.ts, token-crypto.util.ts, identity-client.service.ts
  */
 import {
   Injectable,
@@ -12,14 +12,13 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, UpdateResult, DataSource } from 'typeorm';
 import axios from 'axios';
 import * as jwt from 'jsonwebtoken';
 import * as crypto from 'crypto';
 import Redis from 'ioredis';
-import { User, OAuthProvider } from './user.entity';
+import { OAuthProvider, IdentityUser } from '../../common/types/identity.types';
 import { encryptToken } from './token-crypto.util';
+import { IdentityClientService } from '../../identity-client/identity-client.service';
 
 interface OAuthTokenResponse {
   access_token: string;
@@ -50,9 +49,7 @@ export class OAuthService {
 
   constructor(
     private readonly configService: ConfigService,
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
-    private readonly dataSource: DataSource,
+    private readonly identityClient: IdentityClientService,
   ) {
     const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
     this.redis = new Redis(redisUrl);
@@ -150,7 +147,7 @@ export class OAuthService {
     provider: string,
     code: string,
     state: string,
-  ): Promise<{ accessToken: string; refreshToken: string; user: User }> {
+  ): Promise<{ accessToken: string; refreshToken: string; user: IdentityUser }> {
     await this.validateAndConsumeState(state);
 
     let profile: OAuthUserProfile;
@@ -312,21 +309,21 @@ export class OAuthService {
     githubUserId: string,
     githubUsername: string,
     encryptedToken: string | null,
-  ): Promise<UpdateResult> {
-    return this.userRepository.update({ id: userId }, {
-      github_connected: true,
-      github_user_id: githubUserId,
-      github_username: githubUsername,
-      github_token: encryptedToken,
+  ): Promise<Record<string, unknown>> {
+    return this.identityClient.updateGitHub(userId, {
+      connected: true,
+      user_id: githubUserId,
+      username: githubUsername,
+      token: encryptedToken,
     });
   }
 
-  async disconnectGitHub(userId: string): Promise<UpdateResult> {
-    return this.userRepository.update({ id: userId }, {
-      github_connected: false,
-      github_user_id: null,
-      github_username: null,
-      github_token: null,
+  async disconnectGitHub(userId: string): Promise<Record<string, unknown>> {
+    return this.identityClient.updateGitHub(userId, {
+      connected: false,
+      user_id: null,
+      username: null,
+      token: null,
     });
   }
 
@@ -393,90 +390,37 @@ export class OAuthService {
   private async upsertUser(
     profile: OAuthUserProfile,
     provider: OAuthProvider,
-  ): Promise<User> {
-    // 1계정 1OAuth 정책: 다른 제공자로 가입된 이메일은 거부
-    const existing = await this.userRepository.findOne({
-      where: { email: profile.email },
+  ): Promise<IdentityUser> {
+    // 1계정 1OAuth 정책 + 탈퇴 복구 + ON CONFLICT upsert 모두 Identity 서비스에서 처리
+    const result = await this.identityClient.upsertUser({
+      email: profile.email,
+      name: profile.name ?? '',
+      avatar_url: profile.avatar_url ?? 'preset:default',
+      oauth_provider: provider,
     });
 
-    if (existing && existing.oauth_provider !== provider) {
-      const providerLabel: Record<string, string> = {
-        google: 'Google',
-        naver: 'Naver',
-        kakao: 'Kakao',
-      };
-      throw new BadRequestException(
-        `이 이메일은 이미 ${providerLabel[existing.oauth_provider] ?? existing.oauth_provider}(으)로 가입되어 있습니다. 기존 계정으로 로그인해주세요.`,
-      );
-    }
-
-    // 탈퇴 유저 계정 복구: deleted_at 초기화 + 프로필 재설정
-    if (existing?.deleted_at) {
-      await this.userRepository.update(
-        { id: existing.id },
-        {
-          deleted_at: null,
-          name: profile.name,
-          avatar_url: 'preset:default',
-          github_connected: false,
-        },
-      );
-      return this.userRepository.findOne({ where: { id: existing.id } }) as Promise<User>;
-    }
-
-    // ON CONFLICT 원자적 upsert — avatar_url은 갱신 대상에서 제외 (기존값 무조건 보호)
-    // createQueryBuilder.insert()는 @BeforeInsert 훅을 우회하므로 publicId를 명시적으로 생성
-    await this.userRepository
-      .createQueryBuilder()
-      .insert()
-      .into(User)
-      .values({
-        email: profile.email,
-        name: profile.name,
-        avatar_url: 'preset:default',
-        oauth_provider: provider,
-        github_connected: false,
-        publicId: crypto.randomUUID(),
-      })
-      .orUpdate(['name'], ['email'])
-      .execute();
-
-    return this.userRepository.findOne({ where: { email: profile.email } }) as Promise<User>;
+    return result as unknown as IdentityUser;
   }
 
-  async findUserById(userId: string): Promise<User | null> {
-    return this.userRepository.findOne({ where: { id: userId } });
+  async findUserById(userId: string): Promise<IdentityUser | null> {
+    try {
+      const result = await this.identityClient.findUserById(userId);
+      return result as unknown as IdentityUser;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        return null;
+      }
+      throw error;
+    }
   }
 
-  async updateAvatar(userId: string, avatarUrl: string): Promise<UpdateResult> {
-    return this.userRepository.update({ id: userId }, { avatar_url: avatarUrl });
+  async updateAvatar(userId: string, avatarUrl: string): Promise<Record<string, unknown>> {
+    return this.identityClient.updateUser(userId, { avatar_url: avatarUrl });
   }
 
   async softDeleteAccount(userId: string): Promise<void> {
-    const user = await this.userRepository.findOne({ where: { id: userId } });
-    if (!user || user.deleted_at) {
-      return; // 멱등성: 이미 탈퇴했거나 존재하지 않는 유저
-    }
-
-    const anonymizedEmail = `deleted_${crypto.randomUUID()}@withdrawn.local`;
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    try {
-      await queryRunner.query(
-        `UPDATE users SET deleted_at = $1, email = $2, name = $3, avatar_url = $4, github_connected = $5, github_user_id = $6, github_username = $7, github_token = $8 WHERE id = $9`,
-        [new Date(), anonymizedEmail, '탈퇴한 사용자', null, false, null, null, null, userId],
-      );
-      await queryRunner.query(`DELETE FROM study_members WHERE user_id = $1`, [userId]);
-      await queryRunner.query(`DELETE FROM notifications WHERE user_id = $1`, [userId]);
-      await queryRunner.commitTransaction();
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      await queryRunner.release();
-    }
+    // 멱등성 + 트랜잭션(user 익명화, study_members/notifications 삭제) 모두 Identity에서 처리
+    await this.identityClient.softDeleteUser(userId);
   }
 
   // --- JWT 발급 ---
@@ -485,7 +429,7 @@ export class OAuthService {
    * 공개 JWT 발급 메서드 — TokenRefreshInterceptor에서 사용
    * @domain identity
    */
-  issueAccessToken(user: User): string {
+  issueAccessToken(user: IdentityUser): string {
     return this.issueJwt(user);
   }
 
@@ -493,15 +437,15 @@ export class OAuthService {
    * userId로 User 조회 — 없으면 NotFoundException
    * @domain identity
    */
-  async findUserByIdOrThrow(userId: string): Promise<User> {
-    const user = await this.userRepository.findOne({ where: { id: userId } });
+  async findUserByIdOrThrow(userId: string): Promise<IdentityUser> {
+    const user = await this.findUserById(userId);
     if (!user) {
       throw new NotFoundException('사용자를 찾을 수 없습니다.');
     }
     return user;
   }
 
-  private issueJwt(user: User): string {
+  private issueJwt(user: IdentityUser): string {
     return jwt.sign(
       {
         sub: user.id,
@@ -577,26 +521,14 @@ export class OAuthService {
   async getGitHubStatus(
     userId: string,
   ): Promise<{ github_connected: boolean; github_username: string | null }> {
-    const user = await this.userRepository.findOne({ where: { id: userId } });
-    if (!user) {
-      throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
-    }
-    return {
-      github_connected: user.github_connected,
-      github_username: user.github_username,
-    };
+    const result = await this.identityClient.getGitHubStatus(userId);
+    return result as unknown as { github_connected: boolean; github_username: string | null };
   }
 
   async getGitHubTokenInfo(
     userId: string,
   ): Promise<{ github_username: string | null; github_token: string | null }> {
-    const user = await this.userRepository.findOne({ where: { id: userId } });
-    if (!user) {
-      throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
-    }
-    return {
-      github_username: user.github_username,
-      github_token: user.github_token,
-    };
+    const result = await this.identityClient.getGitHubTokenInfo(userId);
+    return result as unknown as { github_username: string | null; github_token: string | null };
   }
 }

@@ -1,6 +1,6 @@
 import { IsEnum } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { StudyMemberRole } from '../study.entity';
+import { StudyMemberRole } from '../../common/types/identity.types';
 
 export class ChangeRoleDto {
   @ApiProperty({ description: '변경할 역할', enum: StudyMemberRole })

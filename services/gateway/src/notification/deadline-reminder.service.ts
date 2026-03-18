@@ -8,12 +8,10 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import Redis from 'ioredis';
 import { NotificationService } from './notification.service';
-import { NotificationType } from './notification.entity';
-import { StudyMember, Study } from '../study/study.entity';
+import { NotificationType } from '../common/types/identity.types';
+import { IdentityClientService } from '../identity-client/identity-client.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 // ─── TYPES ────────────────────────────────
@@ -38,10 +36,7 @@ export class DeadlineReminderService implements OnModuleDestroy {
     private readonly configService: ConfigService,
     private readonly notificationService: NotificationService,
     private readonly logger: StructuredLoggerService,
-    @InjectRepository(StudyMember)
-    private readonly memberRepo: Repository<StudyMember>,
-    @InjectRepository(Study)
-    private readonly studyRepo: Repository<Study>,
+    private readonly identityClient: IdentityClientService,
   ) {
     this.logger.setContext(DeadlineReminderService.name);
     const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
@@ -149,10 +144,8 @@ export class DeadlineReminderService implements OnModuleDestroy {
     problem: ProblemDeadlineInfo,
     window: '24h' | '1h',
   ): Promise<void> {
-    // 스터디 멤버 조회
-    const members = await this.memberRepo.find({
-      where: { study_id: problem.studyId },
-    });
+    // 스터디 멤버 조회 (Identity 서비스 경유)
+    const members = await this.identityClient.getMembers(problem.studyId);
 
     if (members.length === 0) return;
 
@@ -163,28 +156,28 @@ export class DeadlineReminderService implements OnModuleDestroy {
     );
     const submittedSet = new Set(submittedUserIds);
 
-    // 스터디명 조회
-    const study = await this.studyRepo.findOne({
-      where: { id: problem.studyId },
-      select: ['id', 'name'],
-    });
-    const studyName = study?.name ?? '스터디';
+    // 스터디명 조회 (Identity 서비스 경유)
+    const study = await this.identityClient.findStudyById(problem.studyId) as Record<string, unknown>;
+    const studyName = (study?.name as string) ?? '스터디';
 
     // 미제출자 필터링
-    const unsubmitted = members.filter((m) => !submittedSet.has(m.user_id));
+    const unsubmitted = members.filter(
+      (m) => !submittedSet.has(m.user_id as string),
+    );
 
     const urgencyLabel = window === '1h' ? '[긴급] ' : '';
     const timeLabel = window === '1h' ? '1시간' : '24시간';
 
     for (const member of unsubmitted) {
-      const redisKey = `deadline_notified:${problem.id}:${member.user_id}:${window}`;
+      const userId = member.user_id as string;
+      const redisKey = `deadline_notified:${problem.id}:${userId}:${window}`;
 
       // 중복 방지: 이미 발송한 알림은 스킵
       const alreadySent = await this.redis.get(redisKey);
       if (alreadySent) continue;
 
       await this.notificationService.createNotification({
-        userId: member.user_id,
+        userId,
         studyId: problem.studyId,
         type: NotificationType.DEADLINE_REMINDER,
         title: `${urgencyLabel}마감 임박`,

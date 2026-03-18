@@ -9,7 +9,6 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { OAuthModule } from './auth/oauth/oauth.module';
 import { InternalModule } from './internal/internal.module';
@@ -26,15 +25,12 @@ import { SecurityHeadersMiddleware } from './common/middleware/security-headers.
 import { LoggerModule } from './common/logger/logger.module';
 import { StructuredLoggerService } from './common/logger/structured-logger.service';
 import { MetricsModule } from './common/metrics/metrics.module';
-import { User } from './auth/oauth/user.entity';
-import { Study, StudyMember, StudyInvite } from './study/study.entity';
 import { NotificationModule } from './notification/notification.module';
-import { Notification } from './notification/notification.entity';
-import { ShareLink } from './share/share-link.entity';
 import { ShareLinkModule } from './share/share-link.module';
 import { AvatarModule } from './avatar/avatar.module';
 import { ReviewProxyModule } from './review/review.module';
 import { StudyNoteProxyModule } from './study-note/study-note.module';
+import { IdentityClientModule } from './identity-client/identity-client.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -42,21 +38,6 @@ import { HealthController } from './health.controller';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
-    }),
-    TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres' as const,
-        host: configService.get<string>('IDENTITY_DB_HOST', 'localhost'),
-        port: configService.get<number>('IDENTITY_DB_PORT', 5432),
-        username: configService.get<string>('IDENTITY_DB_USER', 'algosu'),
-        password: configService.get<string>('IDENTITY_DB_PASSWORD', ''),
-        database: configService.get<string>('IDENTITY_DB_NAME', 'identity_db'),
-        entities: [User, Study, StudyMember, StudyInvite, Notification, ShareLink],
-        synchronize: false, // 마이그레이션으로 관리
-        maxQueryExecutionTime: 200, // 200ms 초과 쿼리 경고 로그 (monitoring-log-rules.md §8-1)
-      }),
     }),
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
@@ -69,7 +50,6 @@ import { HealthController } from './health.controller';
         storage: new RedisThrottlerStorage(configService, new StructuredLoggerService()),
       }),
     }),
-    TypeOrmModule.forFeature([User]),
     ScheduleModule.forRoot(),
     AuthModule,
     OAuthModule,
@@ -84,6 +64,7 @@ import { HealthController } from './health.controller';
     MetricsModule,
     ExternalModule,
     ProxyModule,
+    IdentityClientModule,
     LoggerModule,
   ],
   controllers: [HealthController],

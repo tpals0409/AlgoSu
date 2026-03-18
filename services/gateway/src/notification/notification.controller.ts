@@ -16,7 +16,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Request } from 'express';
 import { NotificationService } from './notification.service';
-import { Notification } from './notification.entity';
+import type { IdentityNotification as Notification } from '../common/types/identity.types';
 
 @ApiTags('Notification')
 @Controller('api/notifications')

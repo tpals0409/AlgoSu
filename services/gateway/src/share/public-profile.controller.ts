@@ -2,7 +2,7 @@
  * @file 퍼블릭 프로필 컨트롤러 — slug 기반 공개 프로필 조회
  * @domain share
  * @layer controller
- * @related share-link.service.ts, user.entity.ts
+ * @related share-link.service.ts, identity-client.service.ts
  *
  * 보안: JWT 미들웨어 제외, 인증 불필요
  * 비공개 프로필: 404 (정보 누출 방지)
@@ -16,11 +16,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, IsNull, MoreThanOrEqual, Or } from 'typeorm';
-import { User } from '../auth/oauth/user.entity';
-import { StudyMember } from '../study/study.entity';
-import { ShareLink } from './share-link.entity';
+import { IdentityClientService } from '../identity-client/identity-client.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 @ApiTags('Public Profile')
@@ -31,12 +27,7 @@ export class PublicProfileController {
 
   constructor(
     private readonly configService: ConfigService,
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
-    @InjectRepository(StudyMember)
-    private readonly memberRepository: Repository<StudyMember>,
-    @InjectRepository(ShareLink)
-    private readonly shareLinkRepository: Repository<ShareLink>,
+    private readonly identityClient: IdentityClientService,
     private readonly logger: StructuredLoggerService,
   ) {
     this.logger.setContext(PublicProfileController.name);
@@ -55,24 +46,28 @@ export class PublicProfileController {
     }
 
     /* 유저 조회 — 비공개/미존재 모두 404 */
-    const user = await this.userRepository.findOne({
-      where: { profile_slug: slug, is_profile_public: true },
-    });
+    let user: Record<string, unknown>;
+    try {
+      user = await this.identityClient.findUserBySlug(slug);
+    } catch {
+      throw new NotFoundException('프로필을 찾을 수 없습니다.');
+    }
     if (!user) {
       throw new NotFoundException('프로필을 찾을 수 없습니다.');
     }
 
-    /* 참여 스터디 목록 */
-    const memberships = await this.memberRepository.find({
-      where: { user_id: user.id },
-      relations: ['study'],
-    });
+    const userId = user.id as string;
 
-    /* 스터디별 통계 + 공유 링크 (배치 쿼리 최적화) */
-    const studyIds = memberships.map((m) => m.study_id);
+    /* 참여 스터디 목록 — Identity 서비스에서 조회 */
+    let studies: Record<string, unknown>[];
+    try {
+      studies = await this.identityClient.findStudiesByUserId(userId);
+    } catch {
+      studies = [];
+    }
 
-    /* 빈 memberships 조기 반환 */
-    if (studyIds.length === 0) {
+    /* 빈 스터디 조기 반환 */
+    if (studies.length === 0) {
       return {
         data: {
           name: user.name,
@@ -84,58 +79,33 @@ export class PublicProfileController {
       };
     }
 
-    /* 배치 1: 스터디별 멤버 수 — 1회 쿼리 */
-    const memberCountRows: { study_id: string; cnt: string }[] =
-      await this.memberRepository
-        .createQueryBuilder('sm')
-        .select('sm.study_id', 'study_id')
-        .addSelect('COUNT(*)', 'cnt')
-        .where('sm.study_id IN (:...studyIds)', { studyIds })
-        .groupBy('sm.study_id')
-        .getRawMany();
+    /* 스터디별 멤버 수 + 공유 링크 (병렬 조회) */
+    const studyResults = await Promise.all(
+      studies.map(async (study) => {
+        const studyId = study.id as string;
+        const [members, shareLinks, stats] = await Promise.all([
+          this.identityClient.getMembers(studyId).catch(() => []),
+          this.identityClient.findShareLinksByUserAndStudy(userId, studyId).catch(() => []),
+          this.fetchUserStudyStats(userId, studyId),
+        ]);
 
-    const memberCountMap = new Map<string, number>(
-      memberCountRows.map((r) => [r.study_id, Number(r.cnt)]),
+        const latestShareLink = (shareLinks as Record<string, unknown>[]).length > 0
+          ? shareLinks[0] as Record<string, unknown>
+          : null;
+
+        return {
+          studyName: (study.name as string) ?? '알 수 없는 스터디',
+          memberCount: (members as Record<string, unknown>[]).length,
+          shareLink: latestShareLink ? `/shared/${latestShareLink.token as string}` : null,
+          totalSubmissions: stats.totalSubmissions,
+          averageAiScore: stats.averageAiScore,
+        };
+      }),
     );
-
-    /* 배치 2: 유저의 활성 공유 링크 — 1회 쿼리 */
-    const shareLinks = await this.shareLinkRepository.find({
-      where: {
-        study_id: In(studyIds),
-        created_by: user.id,
-        is_active: true,
-        expires_at: Or(IsNull(), MoreThanOrEqual(new Date())),
-      },
-      order: { created_at: 'DESC' },
-    });
-
-    /* study_id → 최신 shareLink (find는 created_at DESC 정렬이므로 첫 매칭이 최신) */
-    const shareLinkMap = new Map<string, ShareLink>();
-    for (const sl of shareLinks) {
-      if (!shareLinkMap.has(sl.study_id)) {
-        shareLinkMap.set(sl.study_id, sl);
-      }
-    }
-
-    /* 배치 3: Submission Service 통계 — Promise.all (외부 서비스) */
-    const statsResults = await Promise.all(
-      memberships.map((m) => this.fetchUserStudyStats(user.id, m.study_id)),
-    );
-
-    const studies = memberships.map((m, i) => {
-      const shareLink = shareLinkMap.get(m.study_id);
-      return {
-        studyName: m.study?.name ?? '알 수 없는 스터디',
-        memberCount: memberCountMap.get(m.study_id) ?? 0,
-        shareLink: shareLink ? `/shared/${shareLink.token}` : null,
-        totalSubmissions: statsResults[i].totalSubmissions,
-        averageAiScore: statsResults[i].averageAiScore,
-      };
-    });
 
     /* 전체 통계 집계 */
-    const totalSubmissions = studies.reduce((sum, s) => sum + s.totalSubmissions, 0);
-    const scoresWithValues = studies.filter((s) => s.averageAiScore !== null);
+    const totalSubmissions = studyResults.reduce((sum, s) => sum + s.totalSubmissions, 0);
+    const scoresWithValues = studyResults.filter((s) => s.averageAiScore !== null);
     const averageAiScore =
       scoresWithValues.length > 0
         ? Math.round(
@@ -149,7 +119,7 @@ export class PublicProfileController {
       data: {
         name: user.name,
         avatarUrl: user.avatar_url,
-        studies,
+        studies: studyResults,
         totalSubmissions,
         averageAiScore,
       },

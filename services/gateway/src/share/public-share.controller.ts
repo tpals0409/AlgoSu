@@ -18,12 +18,9 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { Request } from 'express';
 import { ShareLinkGuard } from '../common/guards/share-link.guard';
-import { Study, StudyMember } from '../study/study.entity';
-import { User } from '../auth/oauth/user.entity';
+import { IdentityClientService } from '../identity-client/identity-client.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 @ApiTags('Public Share')
@@ -35,12 +32,7 @@ export class PublicShareController {
   private readonly submissionServiceKey: string;
   constructor(
     private readonly configService: ConfigService,
-    @InjectRepository(Study)
-    private readonly studyRepository: Repository<Study>,
-    @InjectRepository(StudyMember)
-    private readonly memberRepository: Repository<StudyMember>,
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
+    private readonly identityClient: IdentityClientService,
     private readonly logger: StructuredLoggerService,
   ) {
     this.logger.setContext(PublicShareController.name);
@@ -59,22 +51,32 @@ export class PublicShareController {
     const studyId = req.headers['x-share-study-id'] as string;
     const createdBy = req.headers['x-share-created-by'] as string;
 
-    const study = await this.studyRepository.findOne({ where: { id: studyId } });
+    let study: Record<string, unknown>;
+    try {
+      study = await this.identityClient.findStudyById(studyId);
+    } catch {
+      throw new NotFoundException('스터디를 찾을 수 없습니다.');
+    }
     if (!study) throw new NotFoundException('스터디를 찾을 수 없습니다.');
 
-    const members = await this.memberRepository.find({ where: { study_id: studyId } });
-    const creator = await this.userRepository.findOne({ where: { id: createdBy } });
+    const [members, creator] = await Promise.all([
+      this.identityClient.getMembers(studyId).catch(() => []),
+      this.identityClient.findUserById(createdBy).catch(() => null),
+    ]);
+
+    const memberList = members as Record<string, unknown>[];
+    const creatorData = creator as Record<string, unknown> | null;
 
     return {
       data: {
         studyName: study.name,
-        memberCount: members.length,
+        memberCount: memberList.length,
         createdBy: {
           id: createdBy,
-          name: creator?.name ?? null,
-          avatarUrl: creator?.avatar_url ?? null,
+          name: creatorData?.name ?? null,
+          avatarUrl: creatorData?.avatar_url ?? null,
         },
-        members: members.map((m) => ({
+        members: memberList.map((m) => ({
           userId: m.user_id,
           nickname: m.nickname,
           role: m.role,

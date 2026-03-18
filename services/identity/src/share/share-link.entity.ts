@@ -1,6 +1,6 @@
 /**
  * @file ShareLink 엔티티 — 공유 링크 토큰 기반 게스트 접근
- * @domain share
+ * @domain identity
  * @layer entity
  * @related share-link.service.ts, public-share.controller.ts
  */
@@ -15,7 +15,7 @@ import {
   Index,
 } from 'typeorm';
 import { Study } from '../study/study.entity';
-import { User } from '../auth/oauth/user.entity';
+import { User } from '../user/user.entity';
 
 @Entity('share_links')
 export class ShareLink {

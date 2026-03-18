@@ -14,21 +14,14 @@ import {
 } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
 import { InternalKeyGuard } from '../common/guards/internal-key.guard';
-import { OAuthService } from '../auth/oauth/oauth.service';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { StudyMember, Study } from '../study/study.entity';
+import { IdentityClientService } from '../identity-client/identity-client.service';
 
 @ApiExcludeController()
 @Controller('internal')
 @UseGuards(InternalKeyGuard)
 export class InternalController {
   constructor(
-    private readonly oauthService: OAuthService,
-    @InjectRepository(StudyMember)
-    private readonly memberRepository: Repository<StudyMember>,
-    @InjectRepository(Study)
-    private readonly studyRepository: Repository<Study>,
+    private readonly identityClient: IdentityClientService,
   ) {}
 
   /**
@@ -39,7 +32,7 @@ export class InternalController {
   async getGitHubStatus(
     @Param('user_id', ParseUUIDPipe) userId: string,
   ): Promise<{ github_connected: boolean; github_username: string | null }> {
-    return this.oauthService.getGitHubStatus(userId);
+    return this.identityClient.getGitHubStatus(userId) as Promise<{ github_connected: boolean; github_username: string | null }>;
   }
 
   /**
@@ -50,7 +43,7 @@ export class InternalController {
   async getGitHubToken(
     @Param('user_id', ParseUUIDPipe) userId: string,
   ): Promise<{ github_username: string | null; github_token: string | null }> {
-    return this.oauthService.getGitHubTokenInfo(userId);
+    return this.identityClient.getGitHubTokenInfo(userId) as Promise<{ github_username: string | null; github_token: string | null }>;
   }
 
   /**
@@ -63,15 +56,18 @@ export class InternalController {
     @Param('study_id', ParseUUIDPipe) studyId: string,
     @Param('user_id', ParseUUIDPipe) userId: string,
   ): Promise<{ role: string }> {
-    const member = await this.memberRepository.findOne({
-      where: { study_id: studyId, user_id: userId },
-    });
+    let member: Record<string, unknown> | null = null;
+    try {
+      member = await this.identityClient.getMember(studyId, userId);
+    } catch {
+      member = null;
+    }
 
     if (!member) {
       throw new NotFoundException('스터디 멤버가 아닙니다.');
     }
 
-    return { role: member.role };
+    return { role: String(member['role'] ?? 'MEMBER') };
   }
 
   /**
@@ -82,15 +78,17 @@ export class InternalController {
   async getStudyGithubRepo(
     @Param('studyId', ParseUUIDPipe) studyId: string,
   ): Promise<{ data: { github_repo: string | null } }> {
-    const study = await this.studyRepository.findOne({
-      where: { id: studyId },
-      select: ['id', 'github_repo'],
-    });
+    let study: Record<string, unknown> | null = null;
+    try {
+      study = await this.identityClient.findStudyById(studyId);
+    } catch {
+      study = null;
+    }
 
     if (!study) {
       throw new NotFoundException('스터디를 찾을 수 없습니다.');
     }
 
-    return { data: { github_repo: study.github_repo } };
+    return { data: { github_repo: (study['github_repo'] as string | null) ?? null } };
   }
 }

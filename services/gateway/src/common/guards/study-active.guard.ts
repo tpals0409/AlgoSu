@@ -11,11 +11,9 @@ import {
   Injectable,
   ForbiddenException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Study, StudyStatus } from '../../study/study.entity';
 import { Request } from 'express';
 import { StructuredLoggerService } from '../logger/structured-logger.service';
+import { IdentityClientService } from '../../identity-client/identity-client.service';
 
 /**
  * CUD 엔드포인트에 적용: study.status === 'CLOSED' -> ForbiddenException
@@ -25,8 +23,7 @@ import { StructuredLoggerService } from '../logger/structured-logger.service';
 @Injectable()
 export class StudyActiveGuard implements CanActivate {
   constructor(
-    @InjectRepository(Study)
-    private readonly studyRepository: Repository<Study>,
+    private readonly identityClient: IdentityClientService,
     private readonly logger: StructuredLoggerService,
   ) {
     this.logger.setContext(StudyActiveGuard.name);
@@ -41,12 +38,17 @@ export class StudyActiveGuard implements CanActivate {
       return true;
     }
 
-    const study = await this.studyRepository.findOne({ where: { id: studyId } });
+    let study: Record<string, unknown> | null = null;
+    try {
+      study = await this.identityClient.findStudyById(studyId);
+    } catch {
+      study = null;
+    }
     if (!study) {
       return true; // 존재하지 않으면 서비스 레이어에서 404 처리
     }
 
-    if (study.status === StudyStatus.CLOSED) {
+    if (study['status'] === 'CLOSED') {
       this.logger.warn(`CLOSED 스터디 쓰기 시도 차단: studyId=${studyId}`);
       throw new ForbiddenException('종료된 스터디입니다.');
     }

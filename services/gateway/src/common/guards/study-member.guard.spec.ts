@@ -1,8 +1,7 @@
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { StudyMemberGuard } from './study-member.guard';
-import { Repository } from 'typeorm';
-import { StudyMember } from '../../study/study.entity';
+import { IdentityClientService } from '../../identity-client/identity-client.service';
 
 // --- ioredis 모듈 모킹 ---
 const mockRedis = {
@@ -16,7 +15,7 @@ jest.mock('ioredis', () => {
 
 describe('StudyMemberGuard', () => {
   let guard: StudyMemberGuard;
-  let memberRepo: Record<string, jest.Mock>;
+  let identityClient: Record<string, jest.Mock>;
 
   const USER_ID = 'user-uuid-001';
   const STUDY_ID = 'study-uuid-001';
@@ -52,8 +51,8 @@ describe('StudyMemberGuard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    memberRepo = {
-      findOne: jest.fn(),
+    identityClient = {
+      getMember: jest.fn(),
     };
 
     const configService = {
@@ -62,7 +61,7 @@ describe('StudyMemberGuard', () => {
 
     guard = new StudyMemberGuard(
       configService as unknown as ConfigService,
-      memberRepo as unknown as Repository<StudyMember>,
+      identityClient as unknown as IdentityClientService,
       mockLogger as any,
     );
   });
@@ -96,7 +95,7 @@ describe('StudyMemberGuard', () => {
 
       expect(result).toBe(true);
       expect(mockRedis.get).toHaveBeenCalledWith(`membership:${STUDY_ID}:${USER_ID}`);
-      expect(memberRepo.findOne).not.toHaveBeenCalled();
+      expect(identityClient.getMember).not.toHaveBeenCalled();
     });
 
     it('캐시 값 "MEMBER" — true 반환', async () => {
@@ -106,7 +105,7 @@ describe('StudyMemberGuard', () => {
       const result = await guard.canActivate(ctx);
 
       expect(result).toBe(true);
-      expect(memberRepo.findOne).not.toHaveBeenCalled();
+      expect(identityClient.getMember).not.toHaveBeenCalled();
     });
 
     it('denied 키 존재 — ForbiddenException (비멤버 캐시)', async () => {
@@ -119,7 +118,7 @@ describe('StudyMemberGuard', () => {
 
       await expect(guard.canActivate(ctx)).rejects.toThrow(ForbiddenException);
       await expect(guard.canActivate(ctx)).rejects.toThrow('해당 스터디의 멤버가 아닙니다.');
-      expect(memberRepo.findOne).not.toHaveBeenCalled();
+      expect(identityClient.getMember).not.toHaveBeenCalled();
     });
   });
 
@@ -132,16 +131,14 @@ describe('StudyMemberGuard', () => {
     });
 
     it('DB에 멤버 존재 — true 반환 + Redis에 role 캐싱', async () => {
-      memberRepo.findOne.mockResolvedValue({ id: 'member-1', study_id: STUDY_ID, user_id: USER_ID, role: 'MEMBER' });
+      identityClient.getMember.mockResolvedValue({ id: 'member-1', study_id: STUDY_ID, user_id: USER_ID, role: 'MEMBER' });
       mockRedis.set.mockResolvedValue('OK');
       const ctx = createMockContext();
 
       const result = await guard.canActivate(ctx);
 
       expect(result).toBe(true);
-      expect(memberRepo.findOne).toHaveBeenCalledWith({
-        where: { study_id: STUDY_ID, user_id: USER_ID },
-      });
+      expect(identityClient.getMember).toHaveBeenCalledWith(STUDY_ID, USER_ID);
       expect(mockRedis.set).toHaveBeenCalledWith(
         `membership:${STUDY_ID}:${USER_ID}`,
         'MEMBER',
@@ -151,7 +148,7 @@ describe('StudyMemberGuard', () => {
     });
 
     it('DB에 멤버 없음 — ForbiddenException + denied 키 캐싱 (60초 TTL)', async () => {
-      memberRepo.findOne.mockResolvedValue(null);
+      identityClient.getMember.mockResolvedValue(null);
       mockRedis.set.mockResolvedValue('OK');
       const ctx = createMockContext();
 
@@ -171,19 +168,19 @@ describe('StudyMemberGuard', () => {
   describe('Redis 장애', () => {
     it('Redis get 실패 — DB 폴백으로 진행', async () => {
       mockRedis.get.mockRejectedValue(new Error('Redis timeout'));
-      memberRepo.findOne.mockResolvedValue({ id: 'member-1', study_id: STUDY_ID, user_id: USER_ID });
+      identityClient.getMember.mockResolvedValue({ id: 'member-1', study_id: STUDY_ID, user_id: USER_ID });
       mockRedis.set.mockResolvedValue('OK');
       const ctx = createMockContext();
 
       const result = await guard.canActivate(ctx);
 
       expect(result).toBe(true);
-      expect(memberRepo.findOne).toHaveBeenCalled();
+      expect(identityClient.getMember).toHaveBeenCalled();
     });
 
     it('Redis set 실패해도 정상 동작 (캐시 저장 실패 무시)', async () => {
       mockRedis.get.mockResolvedValue(null);
-      memberRepo.findOne.mockResolvedValue({ id: 'member-1', study_id: STUDY_ID, user_id: USER_ID });
+      identityClient.getMember.mockResolvedValue({ id: 'member-1', study_id: STUDY_ID, user_id: USER_ID });
       mockRedis.set.mockRejectedValue(new Error('Redis down'));
       const ctx = createMockContext();
 

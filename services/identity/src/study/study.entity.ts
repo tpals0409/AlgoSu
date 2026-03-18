@@ -1,3 +1,9 @@
+/**
+ * @file Study/StudyMember/StudyInvite 엔티티 — 스터디 그룹 + 멤버 + 초대 관리
+ * @domain identity
+ * @layer entity
+ * @related study.service.ts, study.controller.ts
+ */
 import {
   Entity,
   PrimaryGeneratedColumn,
