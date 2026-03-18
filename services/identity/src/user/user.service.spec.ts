@@ -106,6 +106,27 @@ describe('UserService', () => {
     });
   });
 
+  // ─── findByEmail ─────────────────────────────────────
+  describe('findByEmail', () => {
+    it('이메일로 사용자를 조회한다', async () => {
+      const user = mockUser();
+      userRepo.findOne.mockResolvedValue(user);
+
+      const result = await service.findByEmail('test@example.com');
+
+      expect(result).toBe(user);
+      expect(userRepo.findOne).toHaveBeenCalledWith({ where: { email: 'test@example.com' } });
+    });
+
+    it('존재하지 않으면 null을 반환한다', async () => {
+      userRepo.findOne.mockResolvedValue(null);
+
+      const result = await service.findByEmail('none@example.com');
+
+      expect(result).toBeNull();
+    });
+  });
+
   // ─── upsertUser ────────────────────────────────────
   describe('upsertUser', () => {
     const dto = {
@@ -146,6 +167,29 @@ describe('UserService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
+    it('알 수 없는 provider일 때 provider 이름 그대로 표시', async () => {
+      const existing = mockUser({ oauth_provider: 'unknown' as OAuthProvider });
+      userRepo.findOne.mockResolvedValue(existing);
+
+      await expect(
+        service.upsertUser({ ...dto, oauth_provider: OAuthProvider.GOOGLE }),
+      ).rejects.toThrow(/unknown/);
+    });
+
+    it('name 미전달 시 null로 생성한다', async () => {
+      const created = mockUser({ email: 'noname@example.com' });
+      userRepo.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(created);
+
+      const result = await service.upsertUser({
+        email: 'noname@example.com',
+        oauth_provider: OAuthProvider.GOOGLE,
+      } as any);
+
+      expect(result).toBe(created);
+    });
+
     it('탈퇴 유저를 복구한다', async () => {
       const deleted = mockUser({ deleted_at: new Date() });
       const restored = mockUser({ deleted_at: null });
@@ -160,6 +204,26 @@ describe('UserService', () => {
       expect(userRepo.update).toHaveBeenCalledWith(
         deleted.id,
         expect.objectContaining({ deleted_at: null, github_connected: false }),
+      );
+    });
+
+    it('탈퇴 유저 복구 시 name 없으면 null로 복구한다', async () => {
+      const deleted = mockUser({ deleted_at: new Date() });
+      const restored = mockUser({ deleted_at: null, name: null as any });
+      userRepo.findOne
+        .mockResolvedValueOnce(deleted)
+        .mockResolvedValueOnce(restored);
+      userRepo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+
+      const result = await service.upsertUser({
+        email: 'new@example.com',
+        oauth_provider: OAuthProvider.GOOGLE,
+      } as any);
+
+      expect(result).toBe(restored);
+      expect(userRepo.update).toHaveBeenCalledWith(
+        deleted.id,
+        expect.objectContaining({ name: null }),
       );
     });
   });
@@ -229,6 +293,16 @@ describe('UserService', () => {
 
       expect(mockQueryRunner.startTransaction).not.toHaveBeenCalled();
     });
+
+    it('트랜잭션 실패 시 롤백하고 에러를 전파한다', async () => {
+      userRepo.findOne.mockResolvedValue(mockUser());
+      mockQueryRunner.query.mockRejectedValueOnce(new Error('DB error'));
+
+      await expect(service.softDeleteUser('user-1')).rejects.toThrow('DB error');
+
+      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
+      expect(mockQueryRunner.release).toHaveBeenCalled();
+    });
   });
 
   // ─── updateGitHub ──────────────────────────────────
@@ -265,6 +339,34 @@ describe('UserService', () => {
         github_token: null,
       });
     });
+
+    it('connected=false로 해제한다', async () => {
+      userRepo.findOne.mockResolvedValue(mockUser());
+      userRepo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+
+      await service.updateGitHub('user-1', { connected: false });
+
+      expect(userRepo.update).toHaveBeenCalledWith('user-1', {
+        github_connected: false,
+        github_user_id: null,
+        github_username: null,
+        github_token: null,
+      });
+    });
+
+    it('optional 필드 미전달 시 null로 저장한다', async () => {
+      userRepo.findOne.mockResolvedValue(mockUser());
+      userRepo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+
+      await service.updateGitHub('user-1', { connected: true });
+
+      expect(userRepo.update).toHaveBeenCalledWith('user-1', {
+        github_connected: true,
+        github_user_id: null,
+        github_username: null,
+        github_token: null,
+      });
+    });
   });
 
   // ─── getGitHubStatus ──────────────────────────────
@@ -289,6 +391,45 @@ describe('UserService', () => {
     });
   });
 
+  // ─── getGitHubTokenInfo ────────────────────────────
+  describe('getGitHubTokenInfo', () => {
+    it('토큰 정보를 반환한다', async () => {
+      userRepo.findOne.mockResolvedValue(
+        mockUser({ github_username: 'ghuser', github_token: 'enc-tok' }),
+      );
+
+      const result = await service.getGitHubTokenInfo('user-1');
+
+      expect(result).toEqual({ github_username: 'ghuser', github_token: 'enc-tok' });
+    });
+
+    it('유저 미존재 시 NotFoundException', async () => {
+      userRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.getGitHubTokenInfo('x')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ─── findBySlug ─────────────────────────────────────
+  describe('findBySlug', () => {
+    it('slug로 공개 프로필을 조회한다', async () => {
+      const user = mockUser({ profile_slug: 'my-slug', is_profile_public: true });
+      userRepo.findOne.mockResolvedValue(user);
+
+      const result = await service.findBySlug('my-slug');
+
+      expect(result).toBe(user);
+    });
+
+    it('비공개이거나 미존재 시 null을 반환한다', async () => {
+      userRepo.findOne.mockResolvedValue(null);
+
+      const result = await service.findBySlug('none');
+
+      expect(result).toBeNull();
+    });
+  });
+
   // ─── updateProfileSettings ─────────────────────────
   describe('updateProfileSettings', () => {
     it('slug 중복 시 ConflictException', async () => {
@@ -309,6 +450,23 @@ describe('UserService', () => {
       await expect(
         service.updateProfileSettings('user-1', { profileSlug: 'admin' }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('slug 없이 공개 토글 시도 시 BadRequestException', async () => {
+      const user = mockUser({ profile_slug: null, is_profile_public: false });
+      userRepo.findOne.mockResolvedValueOnce(user);
+
+      await expect(
+        service.updateProfileSettings('user-1', { isProfilePublic: true }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('유저 미존재 시 NotFoundException', async () => {
+      userRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.updateProfileSettings('x', { profileSlug: 'test' }),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('정상 업데이트 — slug + 공개 토글', async () => {

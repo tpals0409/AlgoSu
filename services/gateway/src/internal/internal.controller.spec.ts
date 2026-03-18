@@ -71,6 +71,28 @@ describe('InternalController', () => {
 
       await expect(controller.checkMembership(STUDY_ID, USER_ID)).rejects.toThrow(NotFoundException);
     });
+
+    it('getMember가 null 반환 시 NotFoundException', async () => {
+      identityClient.getMember.mockResolvedValue(null);
+
+      await expect(controller.checkMembership(STUDY_ID, USER_ID)).rejects.toThrow(NotFoundException);
+    });
+
+    it('role이 없는 멤버 → 기본값 MEMBER 반환', async () => {
+      identityClient.getMember.mockResolvedValue({ study_id: STUDY_ID, user_id: USER_ID });
+
+      const result = await controller.checkMembership(STUDY_ID, USER_ID);
+
+      expect(result).toEqual({ role: 'MEMBER' });
+    });
+
+    it('role이 null인 멤버 → 기본값 MEMBER 반환', async () => {
+      identityClient.getMember.mockResolvedValue({ study_id: STUDY_ID, user_id: USER_ID, role: null });
+
+      const result = await controller.checkMembership(STUDY_ID, USER_ID);
+
+      expect(result).toEqual({ role: 'MEMBER' });
+    });
   });
 
   describe('getStudyGithubRepo', () => {
@@ -87,6 +109,28 @@ describe('InternalController', () => {
       identityClient.findStudyById.mockRejectedValue(new NotFoundException());
 
       await expect(controller.getStudyGithubRepo(STUDY_ID)).rejects.toThrow(NotFoundException);
+    });
+
+    it('findStudyById가 null 반환 시 NotFoundException', async () => {
+      identityClient.findStudyById.mockResolvedValue(null);
+
+      await expect(controller.getStudyGithubRepo(STUDY_ID)).rejects.toThrow(NotFoundException);
+    });
+
+    it('github_repo가 null인 스터디 → null 반환', async () => {
+      identityClient.findStudyById.mockResolvedValue({ id: STUDY_ID, github_repo: null });
+
+      const result = await controller.getStudyGithubRepo(STUDY_ID);
+
+      expect(result).toEqual({ data: { github_repo: null } });
+    });
+
+    it('github_repo 필드 없는 스터디 → null 반환', async () => {
+      identityClient.findStudyById.mockResolvedValue({ id: STUDY_ID });
+
+      const result = await controller.getStudyGithubRepo(STUDY_ID);
+
+      expect(result).toEqual({ data: { github_repo: null } });
     });
   });
 });

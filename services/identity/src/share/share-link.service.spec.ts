@@ -100,6 +100,36 @@ describe('ShareLinkService', () => {
     });
   });
 
+  // ─── findByUserAndStudy ──────────────────────────────
+  describe('findByUserAndStudy', () => {
+    it('활성 공유 링크 목록을 반환한다', async () => {
+      const links = [mockShareLink()];
+      linkRepo.find.mockResolvedValue(links);
+
+      const result = await service.findByUserAndStudy('user-1', 'study-1');
+
+      expect(result).toEqual(links);
+      expect(linkRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            study_id: 'study-1',
+            created_by: 'user-1',
+            is_active: true,
+          }),
+          order: { created_at: 'DESC' },
+        }),
+      );
+    });
+
+    it('결과 없으면 빈 배열을 반환한다', async () => {
+      linkRepo.find.mockResolvedValue([]);
+
+      const result = await service.findByUserAndStudy('user-1', 'study-2');
+
+      expect(result).toEqual([]);
+    });
+  });
+
   // ─── deactivate ────────────────────────────────────
   describe('deactivate', () => {
     it('소유자가 비활성화한다', async () => {

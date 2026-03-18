@@ -100,6 +100,28 @@ describe('NotificationService', () => {
     });
   });
 
+  // ─── getUnreadCount ──────────────────────────────────
+  describe('getUnreadCount', () => {
+    it('미읽음 알림 수를 반환한다', async () => {
+      notiRepo.count.mockResolvedValue(3);
+
+      const result = await service.getUnreadCount('user-1');
+
+      expect(result).toBe(3);
+      expect(notiRepo.count).toHaveBeenCalledWith({
+        where: { userId: 'user-1', read: false },
+      });
+    });
+
+    it('미읽음 알림이 없으면 0을 반환한다', async () => {
+      notiRepo.count.mockResolvedValue(0);
+
+      const result = await service.getUnreadCount('user-1');
+
+      expect(result).toBe(0);
+    });
+  });
+
   // ─── markAsRead ────────────────────────────────────
   describe('markAsRead', () => {
     it('본인 알림을 읽음 처리한다', async () => {
@@ -153,6 +175,14 @@ describe('NotificationService', () => {
 
       expect(result).toBe(0);
     });
+
+    it('affected가 undefined이면 0을 반환한다', async () => {
+      notiRepo.update.mockResolvedValue({ affected: undefined, raw: [], generatedMaps: [] } as any);
+
+      const result = await service.markAllRead('user-1');
+
+      expect(result).toBe(0);
+    });
   });
 
   // ─── deleteOld ─────────────────────────────────────
@@ -172,6 +202,42 @@ describe('NotificationService', () => {
       notiRepo.delete.mockResolvedValue({ affected: 0, raw: [] });
 
       const result = await service.deleteOld();
+
+      expect(result).toBe(0);
+    });
+
+    it('affected가 undefined이면 0을 반환한다', async () => {
+      notiRepo.delete.mockResolvedValue({ affected: undefined, raw: [] } as any);
+
+      const result = await service.deleteOld();
+
+      expect(result).toBe(0);
+    });
+  });
+
+  // ─── deleteByUserId ─────────────────────────────────
+  describe('deleteByUserId', () => {
+    it('사용자 알림을 전체 삭제하고 건수를 반환한다', async () => {
+      notiRepo.delete.mockResolvedValue({ affected: 7, raw: [] });
+
+      const result = await service.deleteByUserId('user-1');
+
+      expect(result).toBe(7);
+      expect(notiRepo.delete).toHaveBeenCalledWith({ userId: 'user-1' });
+    });
+
+    it('삭제 대상이 없으면 0을 반환한다', async () => {
+      notiRepo.delete.mockResolvedValue({ affected: 0, raw: [] });
+
+      const result = await service.deleteByUserId('user-1');
+
+      expect(result).toBe(0);
+    });
+
+    it('affected가 undefined이면 0을 반환한다', async () => {
+      notiRepo.delete.mockResolvedValue({ affected: undefined, raw: [] } as any);
+
+      const result = await service.deleteByUserId('user-1');
 
       expect(result).toBe(0);
     });

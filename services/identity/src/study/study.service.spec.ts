@@ -198,6 +198,77 @@ describe('StudyService', () => {
     });
   });
 
+  // ─── findByUserId ────────────────────────────────────
+  describe('findByUserId', () => {
+    it('사용자 참여 스터디 목록을 반환한다', async () => {
+      const study = mockStudy();
+      const membership = mockMember({ study: study } as any);
+      memberRepo.find.mockResolvedValue([membership]);
+
+      const result = await service.findByUserId('user-1');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].role).toBe(StudyMemberRole.ADMIN);
+      expect(memberRepo.find).toHaveBeenCalledWith({
+        where: { user_id: 'user-1' },
+        relations: ['study'],
+      });
+    });
+
+    it('참여 스터디가 없으면 빈 배열을 반환한다', async () => {
+      memberRepo.find.mockResolvedValue([]);
+
+      const result = await service.findByUserId('user-2');
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  // ─── updateStudy ────────────────────────────────────
+  describe('updateStudy', () => {
+    it('스터디를 수정하고 결과를 반환한다', async () => {
+      const study = mockStudy();
+      const updated = mockStudy({ name: '변경됨', description: '설명', github_repo: 'repo', groundRules: '규칙' });
+      studyRepo.findOne.mockResolvedValue(study);
+      studyRepo.save.mockResolvedValue(updated);
+
+      const result = await service.updateStudy('study-1', {
+        name: '변경됨',
+        description: '설명',
+        github_repo: 'repo',
+        groundRules: '규칙',
+        status: StudyStatus.ACTIVE,
+      });
+
+      expect(result).toBe(updated);
+    });
+
+    it('없는 스터디면 NotFoundException', async () => {
+      studyRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.updateStudy('x', { name: '변경' }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ─── deleteStudy 트랜잭션 에러 ─────────────────────
+  describe('deleteStudy — 트랜잭션 에러', () => {
+    it('트랜잭션 활성 상태에서 에러 시 롤백한다', async () => {
+      mockQueryRunner.isTransactionActive = true;
+      mockManager.delete
+        .mockResolvedValueOnce({ affected: 0 })
+        .mockResolvedValueOnce({ affected: 0 })
+        .mockRejectedValueOnce(new Error('DB error'));
+
+      await expect(service.deleteStudy('x')).rejects.toThrow('DB error');
+
+      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
+      expect(mockQueryRunner.release).toHaveBeenCalled();
+      mockQueryRunner.isTransactionActive = false;
+    });
+  });
+
   // ─── addMember ─────────────────────────────────────
   describe('addMember', () => {
     it('멤버를 정상 추가한다', async () => {
@@ -222,6 +293,130 @@ describe('StudyService', () => {
       await expect(
         service.addMember('study-1', 'user-1', '중복'),
       ).rejects.toThrow('duplicate key');
+    });
+  });
+
+  // ─── removeMember ────────────────────────────────────
+  describe('removeMember', () => {
+    it('멤버를 정상 제거한다', async () => {
+      memberRepo.delete.mockResolvedValue({ affected: 1, raw: [] });
+
+      await service.removeMember('study-1', 'user-1');
+
+      expect(memberRepo.delete).toHaveBeenCalledWith({
+        study_id: 'study-1',
+        user_id: 'user-1',
+      });
+    });
+
+    it('멤버 미존재 시 NotFoundException', async () => {
+      memberRepo.delete.mockResolvedValue({ affected: 0, raw: [] });
+
+      await expect(
+        service.removeMember('study-1', 'non'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ─── getMember ──────────────────────────────────────
+  describe('getMember', () => {
+    it('멤버를 반환한다', async () => {
+      const member = mockMember();
+      memberRepo.findOne.mockResolvedValue(member);
+
+      const result = await service.getMember('study-1', 'user-1');
+
+      expect(result).toBe(member);
+      expect(memberRepo.findOne).toHaveBeenCalledWith({
+        where: { study_id: 'study-1', user_id: 'user-1' },
+      });
+    });
+
+    it('멤버 미존재 시 NotFoundException', async () => {
+      memberRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.getMember('study-1', 'non'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ─── getMembers ─────────────────────────────────────
+  describe('getMembers', () => {
+    it('전체 멤버 목록을 반환한다', async () => {
+      const members = [mockMember(), mockMember({ id: 'member-2', user_id: 'user-2' })];
+      memberRepo.find.mockResolvedValue(members);
+
+      const result = await service.getMembers('study-1');
+
+      expect(result).toEqual(members);
+      expect(memberRepo.find).toHaveBeenCalledWith({ where: { study_id: 'study-1' } });
+    });
+  });
+
+  // ─── changeRole ─────────────────────────────────────
+  describe('changeRole', () => {
+    it('멤버 역할을 변경한다', async () => {
+      const member = mockMember();
+      const updated = mockMember({ role: StudyMemberRole.MEMBER });
+      memberRepo.findOne.mockResolvedValue(member);
+      memberRepo.save.mockResolvedValue(updated);
+
+      const result = await service.changeRole('study-1', 'user-1', StudyMemberRole.MEMBER);
+
+      expect(result.role).toBe(StudyMemberRole.MEMBER);
+    });
+
+    it('멤버 미존재 시 NotFoundException', async () => {
+      memberRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.changeRole('study-1', 'non', StudyMemberRole.MEMBER),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ─── updateNickname ─────────────────────────────────
+  describe('updateNickname', () => {
+    it('멤버 닉네임을 변경한다', async () => {
+      const member = mockMember();
+      const updated = mockMember({ nickname: '새닉네임' });
+      memberRepo.findOne.mockResolvedValue(member);
+      memberRepo.save.mockResolvedValue(updated);
+
+      const result = await service.updateNickname('study-1', 'user-1', '새닉네임');
+
+      expect(result.nickname).toBe('새닉네임');
+    });
+
+    it('멤버 미존재 시 NotFoundException', async () => {
+      memberRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.updateNickname('study-1', 'non', '닉'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ─── findInviteByCode ───────────────────────────────
+  describe('findInviteByCode', () => {
+    it('코드로 초대를 조회한다', async () => {
+      const invite = mockInvite();
+      inviteRepo.findOne.mockResolvedValue(invite);
+
+      const result = await service.findInviteByCode('ABCD1234');
+
+      expect(result).toBe(invite);
+      expect(inviteRepo.findOne).toHaveBeenCalledWith({
+        where: { code: 'ABCD1234' },
+        relations: ['study'],
+      });
+    });
+
+    it('초대 미존재 시 NotFoundException', async () => {
+      inviteRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.findInviteByCode('XXXX')).rejects.toThrow(NotFoundException);
     });
   });
 
