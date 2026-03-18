@@ -7,6 +7,8 @@
   ![Tests](https://img.shields.io/badge/tests-2%2C257%20passed-brightgreen)
   ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
   ![Coverage](https://img.shields.io/badge/Gateway%20branches-97.79%25-brightgreen)
+
+  🔗 [**algo-su.com**](https://algo-su.com)
 </div>
 
 ---
