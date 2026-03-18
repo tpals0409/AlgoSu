@@ -526,7 +526,25 @@ export class StudyService implements OnModuleDestroy {
     _userId: string,
   ): Promise<(StudyMember & { username?: string; email?: string; avatar_url?: string | null })[]> {
     const members = await this.identityClient.getMembers(studyId) as MemberData[];
-    return members as unknown as (StudyMember & { username?: string; email?: string; avatar_url?: string | null })[];
+
+    // 각 멤버의 User 정보를 병렬 조회하여 email, avatar_url 등 보강
+    const enriched = await Promise.all(
+      members.map(async (m) => {
+        try {
+          const user = await this.identityClient.findUserById(m.user_id) as Record<string, unknown> | null;
+          return {
+            ...m,
+            username: (user?.name as string) ?? null,
+            email: (user?.email as string) ?? null,
+            avatar_url: (user?.avatar_url as string | null) ?? null,
+          };
+        } catch {
+          return { ...m, username: null, email: null, avatar_url: null };
+        }
+      }),
+    );
+
+    return enriched as unknown as (StudyMember & { username?: string; email?: string; avatar_url?: string | null })[];
   }
 
   /**
