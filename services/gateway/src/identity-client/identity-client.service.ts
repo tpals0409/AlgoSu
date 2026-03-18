@@ -109,8 +109,8 @@ export class IdentityClientService {
     private readonly logger: StructuredLoggerService,
   ) {
     this.internalKey = this.configService.get<string>(
-      'INTERNAL_API_KEY',
-      '',
+      'INTERNAL_KEY_IDENTITY',
+      this.configService.get<string>('INTERNAL_API_KEY', ''),
     );
   }
 
