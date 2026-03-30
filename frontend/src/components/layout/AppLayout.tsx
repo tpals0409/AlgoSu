@@ -39,7 +39,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useStudy } from '@/contexts/StudyContext';
 import { NotificationBell } from '@/components/layout/NotificationBell';
 import { Logo } from '@/components/ui/Logo';
-import { getAvatarSrc } from '@/lib/avatars';
+import { getAvatarSrc, getAvatarPresetKey } from '@/lib/avatars';
 
 // ─── CONSTANTS ───────────────────────────────
 
@@ -116,12 +116,22 @@ function SidebarStudySelector({
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center gap-2 rounded-btn px-2 py-1.5 text-left transition-colors hover:bg-bg-alt"
       >
-        <div
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[5px] text-[10px] font-bold text-white"
-          style={{ background: 'var(--primary)' }}
-        >
-          {displayName.charAt(0)}
-        </div>
+        {currentStudy?.avatar_url ? (
+          <Image
+            src={getAvatarSrc(getAvatarPresetKey(currentStudy.avatar_url))}
+            alt=""
+            width={24}
+            height={24}
+            className="h-6 w-6 shrink-0 rounded-[5px]"
+          />
+        ) : (
+          <div
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[5px] text-[10px] font-bold text-white"
+            style={{ background: 'var(--primary)' }}
+          >
+            {displayName.charAt(0)}
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           <p
             className="truncate text-[12px] font-semibold"
@@ -175,16 +185,26 @@ function SidebarStudySelector({
                       : 'transparent',
                   }}
                 >
-                  <div
-                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] text-[9px] font-bold text-white"
-                    style={{
-                      background: isSelected
-                        ? 'var(--primary)'
-                        : 'var(--text-3)',
-                    }}
-                  >
-                    {study.name.charAt(0)}
-                  </div>
+                  {study.avatar_url ? (
+                    <Image
+                      src={getAvatarSrc(getAvatarPresetKey(study.avatar_url))}
+                      alt=""
+                      width={20}
+                      height={20}
+                      className="h-5 w-5 shrink-0 rounded-[4px]"
+                    />
+                  ) : (
+                    <div
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] text-[9px] font-bold text-white"
+                      style={{
+                        background: isSelected
+                          ? 'var(--primary)'
+                          : 'var(--text-3)',
+                      }}
+                    >
+                      {study.name.charAt(0)}
+                    </div>
+                  )}
                   <div className="min-w-0 flex-1">
                     <p
                       className="truncate text-[12px] font-semibold"
