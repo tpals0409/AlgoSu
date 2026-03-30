@@ -99,6 +99,7 @@ interface CodeEditorProps {
   deadline?: string | null;
   /** Monaco 에디터 높이 (기본 "520px") */
   editorHeight?: string;
+  isLate?: boolean;
 }
 
 export function CodeEditor({
@@ -110,6 +111,7 @@ export function CodeEditor({
   isSubmitting,
   deadline,
   editorHeight = '520px',
+  isLate,
 }: CodeEditorProps): ReactNode {
   const { resolvedTheme } = useTheme();
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
@@ -213,12 +215,8 @@ export function CodeEditor({
       setError('코드는 100KB를 초과할 수 없습니다.');
       return;
     }
-    if (deadline && new Date(deadline) < new Date()) {
-      setError('마감 시간이 지났습니다.');
-      return;
-    }
     setShowSubmitConfirm(true);
-  }, [code, deadline]);
+  }, [code]);
 
   const confirmSubmit = useCallback(async (): Promise<void> => {
     setShowSubmitConfirm(false);
@@ -273,8 +271,8 @@ export function CodeEditor({
         <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowSubmitConfirm(false)} />
           <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
-            <p className="text-[14px] font-semibold text-text">코드를 제출하시겠습니까?</p>
-            <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>제출 후에는 수정할 수 없습니다.</p>
+            <p className="text-[14px] font-semibold text-text">{isLate ? '지각 제출하시겠습니까?' : '코드를 제출하시겠습니까?'}</p>
+            <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>{isLate ? '마감 시간이 지났습니다. 지각으로 기록됩니다.' : '제출 후에는 수정할 수 없습니다.'}</p>
             <div className="flex items-center justify-end gap-2">
               <button
                 type="button"
@@ -288,9 +286,9 @@ export function CodeEditor({
                 type="button"
                 onClick={() => void confirmSubmit()}
                 className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity"
-                style={{ backgroundColor: 'var(--primary)' }}
+                style={{ backgroundColor: isLate ? 'var(--warning)' : 'var(--primary)' }}
               >
-                제출
+                {isLate ? '지각 제출' : '제출'}
               </button>
             </div>
           </div>
@@ -469,8 +467,8 @@ export function CodeEditor({
               ) : (
                 <>
                   <Send className="h-3.5 w-3.5" aria-hidden />
-                  <span className="hidden sm:inline">제출하기</span>
-                  <span className="sm:hidden">제출</span>
+                  <span className="hidden sm:inline">{isLate ? '지각 제출' : '제출하기'}</span>
+                  <span className="sm:hidden">{isLate ? '지각' : '제출'}</span>
                 </>
               )}
             </Button>

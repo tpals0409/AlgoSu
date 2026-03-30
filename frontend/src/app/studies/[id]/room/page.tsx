@@ -728,6 +728,14 @@ function SubmissionView({ problem, submissions, loading, notSubmitted, accessDen
                       <div className="flex items-center gap-2">
                         <span className="text-[13px] font-semibold text-text">{name}</span>
                         <span className="rounded-full px-2 py-0.5 text-[11px] font-medium uppercase" style={{ backgroundColor: 'var(--bg-alt)', color: 'var(--text-2)' }}>{sub.language}</span>
+                        {sub.isLate && (
+                          <span
+                            className="inline-flex items-center rounded-badge px-1.5 py-0.5 text-[10px] font-semibold"
+                            style={{ backgroundColor: 'var(--warning-soft)', color: 'var(--warning)' }}
+                          >
+                            지각
+                          </span>
+                        )}
                       </div>
                       <p className="text-[11px] text-text-3">
                         {new Date(sub.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}

@@ -188,7 +188,10 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
     );
   }
 
-  const isActive = problem.status === 'ACTIVE' && (!problem.deadline || new Date(problem.deadline) > new Date());
+  const canSubmit = problem.status === 'ACTIVE' || problem.status === 'CLOSED';
+  const isPastDeadline = !!problem.deadline && new Date(problem.deadline) <= new Date();
+  const isLateWindow = canSubmit && isPastDeadline;
+  const isOngoing = problem.status === 'ACTIVE' && !isPastDeadline;
   const diffKey = problem.difficulty ? (problem.difficulty as string).toLowerCase() : '';
   const diffLabel = problem.difficulty
     ? `${DIFFICULTY_LABELS[problem.difficulty as Difficulty] ?? problem.difficulty}${toTierLevel(problem.level) ? ` ${toTierLevel(problem.level)}` : ''}`
@@ -277,13 +280,15 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
                 <span
                   className="inline-flex items-center gap-1 rounded-badge px-2 py-0.5 text-[11px] font-medium"
                   style={
-                    isActive
+                    isOngoing
                       ? { backgroundColor: 'var(--success-soft)', color: 'var(--success)' }
-                      : { backgroundColor: 'var(--bg-alt)', color: 'var(--text-3)' }
+                      : isLateWindow
+                        ? { backgroundColor: 'var(--warning-soft)', color: 'var(--warning)' }
+                        : { backgroundColor: 'var(--bg-alt)', color: 'var(--text-3)' }
                   }
                 >
-                  {isActive && <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--success)' }} aria-hidden />}
-                  {isActive ? '진행 중' : '종료'}
+                  {isOngoing && <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--success)' }} aria-hidden />}
+                  {isOngoing ? '진행 중' : isLateWindow ? '지각 제출' : '종료'}
                 </span>
                 {problem.tags?.map((tag) => (
                   <span
@@ -322,8 +327,15 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
             </div>
 
             {/* 코드 제출 (Monaco 에디터) */}
-            {isActive && (
+            {canSubmit && (
               <div className="space-y-3">
+                {/* 지각 제출 경고 */}
+                {isLateWindow && (
+                  <Alert variant="warning" title="지각 제출">
+                    마감 시간이 지났습니다. 지금 제출하면 지각으로 기록됩니다.
+                  </Alert>
+                )}
+
                 {/* 제출 에러 */}
                 {submitError && (
                   <Alert variant="error" onClose={() => setSubmitError(null)}>
@@ -355,12 +367,13 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
                   isSubmitting={isSubmitting}
                   deadline={problem.deadline}
                   editorHeight="420px"
+                  isLate={isLateWindow}
                 />
               </div>
             )}
 
             {/* 마감 안내 */}
-            {!isActive && (
+            {!canSubmit && (
               <Alert variant="warning" title="제출 마감">
                 이 문제는 마감되었습니다. 더 이상 제출할 수 없습니다.
               </Alert>
@@ -426,6 +439,14 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
                             <span className="text-[10px] font-medium uppercase" style={{ color: 'var(--text-3)' }}>
                               {s.language}
                             </span>
+                            {s.isLate && (
+                              <span
+                                className="inline-flex items-center rounded-badge px-1.5 py-0.5 text-[10px] font-semibold"
+                                style={{ backgroundColor: 'var(--warning-soft)', color: 'var(--warning)' }}
+                              >
+                                지각
+                              </span>
+                            )}
                           </div>
                           <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-3)' }}>{timeStr}</p>
                         </div>

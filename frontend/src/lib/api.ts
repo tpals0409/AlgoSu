@@ -76,6 +76,7 @@ export interface Submission {
   code?: string;
   sagaStep: 'DB_SAVED' | 'GITHUB_QUEUED' | 'AI_QUEUED' | 'DONE' | 'FAILED';
   aiScore?: number | null;
+  isLate?: boolean;
   createdAt: string;
 }
 
