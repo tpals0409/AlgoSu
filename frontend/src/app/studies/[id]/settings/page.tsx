@@ -10,7 +10,6 @@ import {
   useState,
   useEffect,
   useCallback,
-  useRef,
   use,
   type ReactNode,
   type CSSProperties,
@@ -18,7 +17,6 @@ import {
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
-  Camera,
   Crown,
   ShieldCheck,
   Trash2,
@@ -41,8 +39,9 @@ import {
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useAuth } from '@/contexts/AuthContext';
 import { MarkdownViewer } from '@/components/ui/MarkdownViewer';
-import { getAvatarPresetKey, getAvatarSrc } from '@/lib/avatars';
+import { getAvatarPresetKey, getAvatarSrc, toAvatarUrl, STUDY_AVATAR_PRESETS } from '@/lib/avatars';
 import Image from 'next/image';
+import { cn } from '@/lib/utils';
 
 // ─── TYPES ───────────────────────────────
 
@@ -86,8 +85,8 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
   const [isSavingRules, setIsSavingRules] = useState(false);
 
   // 아바타
-  const avatarInputRef = useRef<HTMLInputElement>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [selectedStudyAvatarKey, setSelectedStudyAvatarKey] = useState('study-default');
+  const [isSavingAvatar, setIsSavingAvatar] = useState(false);
 
   // 초대 코드
   const [inviteCode, setInviteCode] = useState('');
@@ -167,6 +166,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
       setStudy(studyData);
       setStudyName(studyData.name);
       setStudyDesc(studyData.description ?? '');
+      setSelectedStudyAvatarKey(getAvatarPresetKey(studyData.avatar_url));
       setMembers(memberData);
       document.title = `${studyData.name} 설정 | AlgoSu`;
     } catch (err: unknown) {
@@ -186,20 +186,6 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
   }, [isAuthenticated, loadStudyData]);
 
   // ─── HANDLERS ──────────────────────────
-
-  /** 아바타 미리보기 */
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    setAvatarPreview(url);
-  };
-
-  /** 아바타 미리보기 제거 */
-  const handleAvatarRemove = (): void => {
-    setAvatarPreview(null);
-    if (avatarInputRef.current) avatarInputRef.current.value = '';
-  };
 
   /** 기본 정보 저장 (스터디 이름 + 소개) */
   const handleSaveInfo = async (): Promise<void> => {
@@ -380,75 +366,75 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
           </Alert>
         )}
 
-        {/* ── 스터디 이미지 ── */}
+        {/* ── 스터디 아바타 ── */}
         <section className="space-y-3" style={fade(0.04)}>
-          <h2 className="text-sm font-semibold text-text-3">스터디 이미지</h2>
+          <h2 className="text-sm font-semibold text-text-3">스터디 아바타</h2>
           <Card>
-            <CardContent className="py-5">
-              <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-5">
-                {/* 아바타 미리보기 */}
-                <div className="relative shrink-0">
-                  {avatarPreview ? (
-                    <img
-                      src={avatarPreview}
-                      alt="스터디 이미지"
-                      className="h-20 w-20 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div
-                      className="flex h-20 w-20 items-center justify-center rounded-full text-2xl font-bold text-white"
-                      style={{ backgroundColor: 'var(--primary)' }}
-                    >
-                      {study?.name?.charAt(0) ?? ''}
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-bg-card text-white transition-colors hover:opacity-90"
-                    style={{ backgroundColor: 'var(--primary)' }}
-                    onClick={() => avatarInputRef.current?.click()}
-                    aria-label="아바타 변경"
-                  >
-                    <Camera className="h-3.5 w-3.5" aria-hidden />
-                  </button>
-                </div>
-
-                {/* 설명 + 버튼 */}
-                <div className="space-y-2">
+            <CardContent className="py-5 space-y-4">
+              <div className="flex items-center gap-4">
+                <Image
+                  src={getAvatarSrc(selectedStudyAvatarKey)}
+                  alt="스터디 아바타"
+                  width={64}
+                  height={64}
+                  className="h-16 w-16 rounded-xl"
+                />
+                <div className="space-y-1">
                   <p className="text-[13px] text-text-2">
-                    스터디를 대표하는 이미지를 설정하세요.
+                    스터디를 대표하는 아바타를 선택하세요.
                   </p>
                   <p className="text-[11px] text-text-3">
-                    JPG, PNG 형식 · 최대 2MB · 정사각형 권장
+                    {STUDY_AVATAR_PRESETS.find((p) => p.key === selectedStudyAvatarKey)?.label ?? '기본'}
                   </p>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => avatarInputRef.current?.click()}
-                    >
-                      이미지 변경
-                    </Button>
-                    {avatarPreview && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleAvatarRemove}
-                        className="text-error hover:text-error"
-                      >
-                        삭제
-                      </Button>
-                    )}
-                  </div>
                 </div>
               </div>
-
-              <input
-                ref={avatarInputRef}
-                type="file"
-                accept="image/jpeg,image/png"
-                className="hidden"
-                onChange={handleAvatarChange}
-              />
+              <div className="grid grid-cols-6 gap-2">
+                {STUDY_AVATAR_PRESETS.map((preset) => (
+                  <button
+                    key={preset.key}
+                    type="button"
+                    onClick={() => setSelectedStudyAvatarKey(preset.key)}
+                    className={cn(
+                      'flex flex-col items-center gap-1 rounded-lg border-2 p-2 transition-colors',
+                      selectedStudyAvatarKey === preset.key
+                        ? 'border-primary bg-primary-soft'
+                        : 'border-transparent hover:border-border',
+                    )}
+                  >
+                    <Image
+                      src={getAvatarSrc(preset.key)}
+                      alt={preset.label}
+                      width={36}
+                      height={36}
+                      className="h-9 w-9 rounded-md"
+                    />
+                    <span className="text-[10px] text-text-3">{preset.label}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  disabled={isSavingAvatar}
+                  onClick={async () => {
+                    setIsSavingAvatar(true);
+                    setError(null);
+                    try {
+                      const updated = await studyApi.update(studyId, {
+                        avatarUrl: toAvatarUrl(selectedStudyAvatarKey),
+                      });
+                      setStudy(updated);
+                      setSuccessMsg('스터디 아바타가 저장되었습니다.');
+                    } catch (err: unknown) {
+                      setError((err as Error).message ?? '아바타 저장에 실패했습니다.');
+                    } finally {
+                      setIsSavingAvatar(false);
+                    }
+                  }}
+                >
+                  {isSavingAvatar ? '저장 중...' : '아바타 저장'}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </section>

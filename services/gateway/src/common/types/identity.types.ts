@@ -59,6 +59,7 @@ export interface IdentityStudy {
   github_repo: string | null;
   status: StudyStatus;
   groundRules: string | null;
+  avatar_url: string;
   publicId: string;
   created_at: string;
   updated_at: string;

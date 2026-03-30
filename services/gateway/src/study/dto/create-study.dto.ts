@@ -4,7 +4,7 @@
  * @layer dto
  * @related StudyService.createStudy, StudyController.create
  */
-import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, MaxLength, Matches } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateStudyDto {
@@ -30,4 +30,11 @@ export class CreateStudyDto {
   @IsString()
   @MaxLength(50)
   nickname!: string;
+
+  @ApiPropertyOptional({ description: '스터디 아바타 프리셋', maxLength: 50, example: 'preset:study-default' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  @Matches(/^preset:.+$/, { message: 'avatarUrl은 preset: 접두사가 필수입니다.' })
+  avatarUrl?: string;
 }

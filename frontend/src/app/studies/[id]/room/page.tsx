@@ -57,6 +57,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Skeleton, SkeletonCard } from '@/components/ui/Skeleton';
 import { StudyNoteEditor } from '@/components/review/StudyNoteEditor';
 import { getAvatarPresetKey, getAvatarSrc } from '@/lib/avatars';
+import Image from 'next/image';
 
 // ─── TYPES ────────────────────────────────
 
@@ -177,7 +178,10 @@ export default function StudyRoomPage(): ReactElement {
   void useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const { currentStudyId, setCurrentStudy } = useStudy();
+  const { currentStudyId, setCurrentStudy, studies: contextStudies } = useStudy();
+  const currentStudyData = currentStudyId
+    ? contextStudies.find((s) => s.id === currentStudyId)
+    : null;
 
   // ─── STATE ──────────────────────────────
   const [problems, setProblems] = useState<Problem[]>([]);
@@ -461,9 +465,20 @@ export default function StudyRoomPage(): ReactElement {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div style={fade(0)}>
-          <h1 className="text-[22px] font-bold tracking-tight text-text">스터디룸</h1>
-          <p className="mt-0.5 text-sm text-text-2">문제를 선택해 멤버별 제출 코드를 확인하세요.</p>
+        <div className="flex items-center gap-3" style={fade(0)}>
+          {currentStudyData?.avatar_url && (
+            <Image
+              src={getAvatarSrc(getAvatarPresetKey(currentStudyData.avatar_url))}
+              alt={currentStudyData.name ?? ''}
+              width={40}
+              height={40}
+              className="h-10 w-10 shrink-0 rounded-xl"
+            />
+          )}
+          <div>
+            <h1 className="text-[22px] font-bold tracking-tight text-text">스터디룸</h1>
+            <p className="mt-0.5 text-sm text-text-2">문제를 선택해 멤버별 제출 코드를 확인하세요.</p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3" style={fade(0.06)}>

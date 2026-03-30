@@ -50,6 +50,9 @@ export class Study {
   @Column({ type: 'text', nullable: true })
   groundRules!: string | null;
 
+  @Column({ type: 'varchar', length: 500, default: 'preset:study-default' })
+  avatar_url!: string;
+
   @Column({ type: 'uuid', unique: true })
   publicId!: string;
 

@@ -26,6 +26,8 @@ import { studyApi, ApiError } from '@/lib/api';
 import { studyCreateSchema, type StudyCreateFormData } from '@/lib/schemas/study';
 import { cn } from '@/lib/utils';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { getAvatarPresetKey, getAvatarSrc, toAvatarUrl, STUDY_AVATAR_PRESETS } from '@/lib/avatars';
+import Image from 'next/image';
 
 // ─── HELPERS ─────────────────────────────
 
@@ -81,6 +83,7 @@ export default function StudiesPage(): ReactNode {
   // 스터디 생성 모달
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createApiError, setCreateApiError] = useState<string | null>(null);
+  const [selectedAvatarKey, setSelectedAvatarKey] = useState('study-default');
   const createForm = useForm<StudyCreateFormData>({
     resolver: zodResolver(studyCreateSchema),
     defaultValues: { name: '', description: '', nickname: '' },
@@ -194,6 +197,7 @@ export default function StudiesPage(): ReactNode {
         name: data.name.trim(),
         description: data.description?.trim() || undefined,
         nickname: data.nickname.trim(),
+        avatarUrl: toAvatarUrl(selectedAvatarKey),
       });
       const withRole = { ...created, role: 'ADMIN' as const };
       const updated = [...studies, withRole];
@@ -211,6 +215,7 @@ export default function StudiesPage(): ReactNode {
   const openCreateModal = useCallback(() => {
     createForm.reset();
     setCreateApiError(null);
+    setSelectedAvatarKey('study-default');
     setShowCreateModal(true);
   }, [createForm]);
 
@@ -289,12 +294,22 @@ export default function StudiesPage(): ReactNode {
                     <CardContent className="flex flex-1 flex-col gap-3 p-5 pb-0">
                       {/* 상단: 아바타 + 이름/뱃지/멤버수 + 설정 */}
                       <div className="flex items-start gap-3">
-                        <div
-                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white"
-                          style={{ backgroundColor: 'var(--primary)' }}
-                        >
-                          {getInitial(study.name)}
-                        </div>
+                        {study.avatar_url ? (
+                          <Image
+                            src={getAvatarSrc(getAvatarPresetKey(study.avatar_url))}
+                            alt={study.name}
+                            width={40}
+                            height={40}
+                            className="h-10 w-10 shrink-0 rounded-xl"
+                          />
+                        ) : (
+                          <div
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white"
+                            style={{ backgroundColor: 'var(--primary)' }}
+                          >
+                            {getInitial(study.name)}
+                          </div>
+                        )}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <p className="truncate font-semibold text-text">
@@ -459,6 +474,38 @@ export default function StudiesPage(): ReactNode {
                     {...createForm.register('description')}
                     disabled={createForm.formState.isSubmitting}
                   />
+
+                  {/* 스터디 아바타 선택 */}
+                  <div className="space-y-1.5">
+                    <label className="text-[13px] font-medium text-text">
+                      스터디 아바타
+                    </label>
+                    <div className="grid grid-cols-6 gap-2">
+                      {STUDY_AVATAR_PRESETS.map((preset) => (
+                        <button
+                          key={preset.key}
+                          type="button"
+                          onClick={() => setSelectedAvatarKey(preset.key)}
+                          className={cn(
+                            'flex flex-col items-center gap-1 rounded-lg border-2 p-2 transition-colors',
+                            selectedAvatarKey === preset.key
+                              ? 'border-primary bg-primary-soft'
+                              : 'border-transparent hover:border-border',
+                          )}
+                          disabled={createForm.formState.isSubmitting}
+                        >
+                          <Image
+                            src={getAvatarSrc(preset.key)}
+                            alt={preset.label}
+                            width={32}
+                            height={32}
+                            className="h-8 w-8 rounded-md"
+                          />
+                          <span className="text-[10px] text-text-3">{preset.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
                   <div className="flex gap-3">
                     <Button

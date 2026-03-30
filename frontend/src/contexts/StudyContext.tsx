@@ -26,6 +26,7 @@ export interface Study {
   githubRepo?: string;
   role: 'ADMIN' | 'MEMBER';
   memberCount?: number;
+  avatar_url?: string;
 }
 
 interface StudyContextValue {

@@ -35,6 +35,7 @@ interface StudyData {
   description: string | null;
   github_repo: string | null;
   groundRules: string | null;
+  avatar_url: string;
   status: string;
   created_by: string;
   [key: string]: unknown;
@@ -98,7 +99,7 @@ export class StudyService implements OnModuleDestroy {
    */
   async createStudy(
     userId: string,
-    data: { name: string; description?: string; nickname: string; githubRepo?: string },
+    data: { name: string; description?: string; nickname: string; githubRepo?: string; avatarUrl?: string },
   ): Promise<Study> {
     const savedStudy = await this.identityClient.createStudy({
       name: data.name,
@@ -106,6 +107,7 @@ export class StudyService implements OnModuleDestroy {
       created_by: userId,
       nickname: data.nickname,
       github_repo: data.githubRepo,
+      avatar_url: data.avatarUrl,
     }) as StudyData;
 
     // 캐시 무효화는 커밋 후 실행
@@ -144,11 +146,16 @@ export class StudyService implements OnModuleDestroy {
   async updateStudy(
     studyId: string,
     userId: string,
-    data: { name?: string; description?: string },
+    data: { name?: string; description?: string; avatarUrl?: string },
   ): Promise<Study> {
     await this.verifyAdmin(studyId, userId);
 
-    const study = await this.identityClient.updateStudy(studyId, data) as StudyData;
+    const updateData: { name?: string; description?: string; avatar_url?: string } = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.avatarUrl !== undefined) updateData.avatar_url = data.avatarUrl;
+
+    const study = await this.identityClient.updateStudy(studyId, updateData) as StudyData;
     return study as unknown as Study;
   }
 

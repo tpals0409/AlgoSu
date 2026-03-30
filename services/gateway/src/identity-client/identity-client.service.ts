@@ -54,6 +54,7 @@ export interface CreateStudyData {
   created_by: string;
   nickname: string;
   github_repo?: string;
+  avatar_url?: string;
 }
 
 export interface UpdateStudyData {
@@ -61,6 +62,7 @@ export interface UpdateStudyData {
   description?: string;
   groundRules?: string;
   status?: string;
+  avatar_url?: string;
 }
 
 export interface AddMemberData {

@@ -187,12 +187,22 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
             >
               <ArrowLeft className="h-5 w-5" style={{ color: 'var(--text)' }} />
             </button>
-            <div
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white"
-              style={{ backgroundColor: 'var(--primary)' }}
-            >
-              {study?.name?.charAt(0) ?? ''}
-            </div>
+            {study?.avatar_url ? (
+              <Image
+                src={getAvatarSrc(getAvatarPresetKey(study.avatar_url))}
+                alt={study.name ?? ''}
+                width={40}
+                height={40}
+                className="h-10 w-10 shrink-0 rounded-xl"
+              />
+            ) : (
+              <div
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white"
+                style={{ backgroundColor: 'var(--primary)' }}
+              >
+                {study?.name?.charAt(0) ?? ''}
+              </div>
+            )}
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h1 className="text-lg sm:text-[22px] font-bold tracking-tight text-text truncate">

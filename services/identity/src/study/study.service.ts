@@ -43,6 +43,7 @@ export class StudyService {
     github_repo?: string;
     groundRules?: string;
     nickname: string;
+    avatar_url?: string;
   }): Promise<Study> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -54,6 +55,7 @@ export class StudyService {
         description: data.description ?? null,
         github_repo: data.github_repo ?? null,
         groundRules: data.groundRules ?? null,
+        avatar_url: data.avatar_url ?? 'preset:study-default',
         created_by: data.created_by,
         status: StudyStatus.ACTIVE,
       });
@@ -120,6 +122,7 @@ export class StudyService {
       github_repo: string;
       groundRules: string;
       status: StudyStatus;
+      avatar_url: string;
     }>,
   ): Promise<Study> {
     const study = await this.findById(id);
@@ -129,6 +132,7 @@ export class StudyService {
     if (data.github_repo !== undefined) study.github_repo = data.github_repo;
     if (data.groundRules !== undefined) study.groundRules = data.groundRules;
     if (data.status !== undefined) study.status = data.status;
+    if (data.avatar_url !== undefined) study.avatar_url = data.avatar_url;
 
     return this.studyRepo.save(study);
   }

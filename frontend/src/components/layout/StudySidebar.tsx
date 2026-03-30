@@ -28,6 +28,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStudy } from '@/contexts/StudyContext';
+import { getAvatarPresetKey, getAvatarSrc } from '@/lib/avatars';
+import Image from 'next/image';
 
 // ─── SIDEBAR NAV ITEMS ──────────────────────
 
@@ -58,6 +60,10 @@ export function StudySidebar(): ReactNode {
     studies,
     setCurrentStudy,
   } = useStudy();
+
+  const currentStudy = currentStudyId
+    ? studies.find((s) => s.id === currentStudyId)
+    : null;
 
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -113,12 +119,22 @@ export function StudySidebar(): ReactNode {
                 onClick={() => setStudyDropdownOpen((prev) => !prev)}
                 className="flex w-full items-center gap-1.5 rounded-badge bg-primary-soft px-2.5 py-1.5 text-[12px] font-semibold text-text transition-colors hover:bg-primary-soft2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
-                <div
-                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] text-[9px] font-bold text-white"
-                  style={{ background: 'var(--primary)' }}
-                >
-                  {currentStudyName?.charAt(0) ?? ''}
-                </div>
+                {currentStudy?.avatar_url ? (
+                  <Image
+                    src={getAvatarSrc(getAvatarPresetKey(currentStudy.avatar_url))}
+                    alt={currentStudyName ?? ''}
+                    width={20}
+                    height={20}
+                    className="h-5 w-5 shrink-0 rounded-[4px]"
+                  />
+                ) : (
+                  <div
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] text-[9px] font-bold text-white"
+                    style={{ background: 'var(--primary)' }}
+                  >
+                    {currentStudyName?.charAt(0) ?? ''}
+                  </div>
+                )}
                 <span className="truncate">{currentStudyName ?? '스터디'}</span>
                 <ChevronDown className="h-3 w-3 shrink-0 text-text-3" aria-hidden />
               </button>
@@ -147,16 +163,26 @@ export function StudySidebar(): ReactNode {
                         router.push(`/studies/${study.id}`);
                       }}
                     >
-                      <div
-                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] text-[9px] font-bold text-white"
-                        style={{
-                          background: study.id === currentStudyId
-                            ? 'var(--primary)'
-                            : 'var(--text-3)',
-                        }}
-                      >
-                        {study.name.charAt(0)}
-                      </div>
+                      {study.avatar_url ? (
+                        <Image
+                          src={getAvatarSrc(getAvatarPresetKey(study.avatar_url))}
+                          alt={study.name}
+                          width={20}
+                          height={20}
+                          className="h-5 w-5 shrink-0 rounded-[4px]"
+                        />
+                      ) : (
+                        <div
+                          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] text-[9px] font-bold text-white"
+                          style={{
+                            background: study.id === currentStudyId
+                              ? 'var(--primary)'
+                              : 'var(--text-3)',
+                          }}
+                        >
+                          {study.name.charAt(0)}
+                        </div>
+                      )}
                       <span className="truncate">{study.name}</span>
                     </button>
                   ))}

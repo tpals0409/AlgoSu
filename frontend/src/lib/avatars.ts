@@ -21,6 +21,20 @@ export const AVATAR_PRESETS: AvatarPreset[] = [
   { key: 'dp', label: '격자 패턴' },
   { key: 'recursion', label: '나선형' },
   { key: 'binary', label: '01 패턴' },
+  { key: 'greedy', label: '그리디' },
+  { key: 'bfs', label: 'BFS' },
+  { key: 'dfs', label: 'DFS' },
+  { key: 'twopointer', label: '투 포인터' },
+  { key: 'string', label: '문자열' },
+];
+
+export const STUDY_AVATAR_PRESETS: AvatarPreset[] = [
+  { key: 'study-default', label: '기본' },
+  { key: 'study-code', label: '코드' },
+  { key: 'study-review', label: '리뷰' },
+  { key: 'study-challenge', label: '챌린지' },
+  { key: 'study-pair', label: '페어' },
+  { key: 'study-trophy', label: '트로피' },
 ];
 
 const PRESET_PREFIX = 'preset:';

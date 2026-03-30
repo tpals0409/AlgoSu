@@ -3,7 +3,7 @@
  * @domain identity
  * @layer dto
  */
-import { IsString, IsOptional, IsUUID, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsUUID, MaxLength, Matches } from 'class-validator';
 
 export class CreateStudyDto {
   @IsString()
@@ -30,4 +30,10 @@ export class CreateStudyDto {
   @IsString()
   @MaxLength(50)
   nickname!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  @Matches(/^preset:.+$/, { message: 'avatar_url은 preset: 접두사가 필수입니다.' })
+  avatar_url?: string;
 }

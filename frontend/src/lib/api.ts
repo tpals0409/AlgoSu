@@ -127,6 +127,7 @@ export interface Study {
   role: 'ADMIN' | 'MEMBER';
   memberCount?: number;
   groundRules?: string | null;
+  avatar_url?: string;
 }
 
 export interface StudyMember {
@@ -319,7 +320,7 @@ export const studyApi = {
   list: (): Promise<Study[]> =>
     fetchApi('/api/studies'),
 
-  create: (data: { name: string; description?: string; githubRepo?: string; nickname?: string }): Promise<Study> =>
+  create: (data: { name: string; description?: string; githubRepo?: string; nickname?: string; avatarUrl?: string }): Promise<Study> =>
     fetchApi('/api/studies', { method: 'POST', body: JSON.stringify(data) }),
 
   verifyInvite: (code: string): Promise<{ valid: boolean; studyName: string }> =>
@@ -336,7 +337,7 @@ export const studyApi = {
   getById: (studyId: string): Promise<Study> =>
     fetchApi(`/api/studies/${studyId}`),
 
-  update: (studyId: string, data: { name?: string; description?: string }): Promise<Study> =>
+  update: (studyId: string, data: { name?: string; description?: string; avatarUrl?: string }): Promise<Study> =>
     fetchApi(`/api/studies/${studyId}`, { method: 'PUT', body: JSON.stringify(data) }),
 
   getMembers: (studyId: string): Promise<StudyMember[]> =>
