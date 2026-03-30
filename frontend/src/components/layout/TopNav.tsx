@@ -28,7 +28,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useStudy } from '@/contexts/StudyContext';
 import { NotificationBell } from '@/components/layout/NotificationBell';
 import { Logo } from '@/components/ui/Logo';
-import { getAvatarSrc } from '@/lib/avatars';
+import { getAvatarSrc, getAvatarPresetKey } from '@/lib/avatars';
 
 // ─── CONSTANTS ───────────────────────────────
 
@@ -80,12 +80,22 @@ function StudySelector(): ReactNode {
         onClick={() => setOpen((prev) => !prev)}
         className="inline-flex items-center gap-1.5 rounded-badge bg-primary-soft px-3 py-1.5 text-[11px] font-medium text-text-2 border border-border transition-colors hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
-        <div
-          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] text-[9px] font-bold text-white"
-          style={{ background: 'var(--primary)' }}
-        >
-          {currentStudy?.name?.charAt(0) ?? ''}
-        </div>
+        {currentStudy?.avatar_url ? (
+          <Image
+            src={getAvatarSrc(getAvatarPresetKey(currentStudy.avatar_url))}
+            alt=""
+            width={20}
+            height={20}
+            className="h-5 w-5 shrink-0 rounded-[4px]"
+          />
+        ) : (
+          <div
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] text-[9px] font-bold text-white"
+            style={{ background: 'var(--primary)' }}
+          >
+            {currentStudy?.name?.charAt(0) ?? ''}
+          </div>
+        )}
         <span className="max-w-[48px] truncate sm:max-w-[80px]">
           {currentStudy?.name ?? '스터디 선택'}
         </span>
@@ -115,16 +125,26 @@ function StudySelector(): ReactNode {
                 setOpen(false);
               }}
             >
-              <div
-                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] text-[9px] font-bold text-white"
-                style={{
-                  background: study.id === currentStudyId
-                    ? 'var(--primary)'
-                    : 'var(--text-3)',
-                }}
-              >
-                {study.name.charAt(0)}
-              </div>
+              {study.avatar_url ? (
+                <Image
+                  src={getAvatarSrc(getAvatarPresetKey(study.avatar_url))}
+                  alt=""
+                  width={20}
+                  height={20}
+                  className="h-5 w-5 shrink-0 rounded-[4px]"
+                />
+              ) : (
+                <div
+                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] text-[9px] font-bold text-white"
+                  style={{
+                    background: study.id === currentStudyId
+                      ? 'var(--primary)'
+                      : 'var(--text-3)',
+                  }}
+                >
+                  {study.name.charAt(0)}
+                </div>
+              )}
               <span className="truncate">{study.name}</span>
             </button>
           ))}
