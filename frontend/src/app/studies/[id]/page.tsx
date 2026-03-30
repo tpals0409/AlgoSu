@@ -284,7 +284,6 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
               studyId={studyId}
               stats={stats}
               totalProblems={problems.length}
-              activeProblemIds={problems.map((p) => p.id)}
               onNicknameUpdated={loadStudyData}
             />
           )}
@@ -501,7 +500,6 @@ function MembersTab({
   studyId,
   stats,
   totalProblems,
-  activeProblemIds,
   onNicknameUpdated,
 }: {
   readonly members: StudyMember[];
@@ -509,7 +507,6 @@ function MembersTab({
   readonly studyId: string;
   readonly stats: StudyStats | null;
   readonly totalProblems: number;
-  readonly activeProblemIds: string[];
   readonly onNicknameUpdated: () => Promise<void>;
 }): ReactNode {
   // 닉네임 수정 상태
@@ -536,18 +533,10 @@ function MembersTab({
     }
   }, [studyId, nicknameValue, onNicknameUpdated]);
 
-  /** 멤버별 고유 문제 제출 수 — recentSubmissions에서 도출 (삭제된 문제 제외) */
-  const activeSet = new Set(activeProblemIds);
-  const memberUniqueProblemMap = new Map<string, number>();
-  const perUserProblems = new Map<string, Set<string>>();
-  for (const s of stats?.recentSubmissions ?? []) {
-    if (s.sagaStep !== 'DONE') continue;
-    if (!activeSet.has(s.problemId)) continue;
-    if (!perUserProblems.has(s.userId ?? '')) perUserProblems.set(s.userId ?? '', new Set());
-    perUserProblems.get(s.userId ?? '')!.add(s.problemId);
-  }
-  for (const [uid, pids] of perUserProblems) {
-    memberUniqueProblemMap.set(uid, pids.size);
+  /** 멤버별 고유 문제 완료 수 — stats.byMember에서 서버 집계 사용 */
+  const memberUniqueDoneMap = new Map<string, number>();
+  for (const m of stats?.byMember ?? []) {
+    memberUniqueDoneMap.set(m.userId, m.uniqueDoneCount);
   }
 
   // 본인을 맨 위로 정렬
@@ -568,8 +557,7 @@ function MembersTab({
     const role = member.role;
     const email = member.email ?? '';
     const color = 'var(--primary)';
-    const submissions = memberUniqueProblemMap.get(member.user_id) ?? 0;
-    const done = submissions;
+    const done = memberUniqueDoneMap.get(member.user_id) ?? 0;
     const total = totalProblems;
     const pct = total > 0 ? (done / total) * 100 : 0;
     const initial = name.charAt(0);
@@ -668,7 +656,7 @@ function MembersTab({
           </div>
 
           <div className="shrink-0 text-right">
-            <p className="text-sm font-semibold text-text">{submissions}제출</p>
+            <p className="text-sm font-semibold text-text">{done}제출</p>
             <p className="text-[11px] text-text-3">{done}/{total} 완료</p>
           </div>
         </div>
