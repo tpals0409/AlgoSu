@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException, ConflictException } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { DataSource, In } from 'typeorm';
 import { ProblemService } from './problem.service';
 import { Problem, ProblemStatus, Difficulty } from './problem.entity';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
@@ -612,17 +612,17 @@ describe('ProblemService', () => {
   // 13. findAllByStudy()
   // ──────────────────────────────────────────────
   describe('findAllByStudy()', () => {
-    it('ACTIVE 문제만 반환 (CLOSED 제외)', async () => {
-      const activeProblems = [mockProblem];
-      dualWrite.find.mockResolvedValue(activeProblems);
+    it('ACTIVE + CLOSED 문제 반환 (DRAFT, DELETED 제외)', async () => {
+      const problems = [mockProblem];
+      dualWrite.find.mockResolvedValue(problems);
 
       const result = await service.findAllByStudy(STUDY_ID);
 
       expect(dualWrite.find).toHaveBeenCalledWith({
-        where: { studyId: STUDY_ID, status: ProblemStatus.ACTIVE },
+        where: { studyId: STUDY_ID, status: In([ProblemStatus.ACTIVE, ProblemStatus.CLOSED]) },
         order: { weekNumber: 'ASC', createdAt: 'ASC' },
       });
-      expect(result).toEqual(activeProblems);
+      expect(result).toEqual(problems);
       expect(result).toHaveLength(1);
     });
   });

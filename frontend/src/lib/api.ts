@@ -383,7 +383,7 @@ export const studyApi = {
 
 export const problemApi = {
   findAll: (): Promise<Problem[]> =>
-    fetchApi('/api/problems/active'),
+    fetchApi('/api/problems/all'),
 
   /** 전체 문제 목록 (ACTIVE만) — 대시보드·스터디룸 통계용 */
   findAllProblems: (): Promise<Problem[]> =>

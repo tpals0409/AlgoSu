@@ -5,7 +5,7 @@
  * @related problem.controller.ts, problem.entity.ts, deadline-cache.service.ts
  */
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { DataSource, In } from 'typeorm';
 import { Problem, ProblemStatus } from './problem.entity';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
 import { DeadlineCacheService } from '../cache/deadline-cache.service';
@@ -217,11 +217,11 @@ export class ProblemService {
   }
 
   /**
-   * 전체 문제 목록 (ACTIVE만) — studyId 스코핑
+   * 전체 문제 목록 (ACTIVE + CLOSED) — studyId 스코핑
    */
   async findAllByStudy(studyId: string): Promise<Problem[]> {
     const problems = await this.dualWrite.find({
-      where: { studyId, status: ProblemStatus.ACTIVE },
+      where: { studyId, status: In([ProblemStatus.ACTIVE, ProblemStatus.CLOSED]) },
       order: { weekNumber: 'ASC', createdAt: 'ASC' },
     });
     return problems;
