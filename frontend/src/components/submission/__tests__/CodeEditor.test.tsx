@@ -229,7 +229,7 @@ describe('CodeEditor', () => {
     }
   });
 
-  it('마감 시간이 지났으면 제출 시 에러를 표시한다', async () => {
+  it('마감 시간이 지났어도 제출 확인 팝업이 표시된다 (지각 제출 허용)', async () => {
     const pastDeadline = new Date(Date.now() - 10000).toISOString();
     render(<CodeEditor {...defaultProps} deadline={pastDeadline} />);
     await act(async () => {
@@ -240,9 +240,8 @@ describe('CodeEditor', () => {
       }
     });
     await waitFor(() => {
-      expect(screen.getByTestId('alert')).toBeInTheDocument();
+      expect(screen.getByText('코드를 제출하시겠습니까?')).toBeInTheDocument();
     });
-    expect(screen.getByText('마감 시간이 지났습니다.')).toBeInTheDocument();
   });
 
   // ── 언어 변경 확인 팝업 ──
