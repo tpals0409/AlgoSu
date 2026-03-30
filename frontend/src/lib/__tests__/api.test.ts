@@ -508,10 +508,10 @@ describe('studyApi 추가 분기', () => {
 // ── problemApi 추가 분기 ──
 
 describe('problemApi 추가 분기', () => {
-  it('findAll은 GET /api/problems/active로 요청한다', async () => {
+  it('findAll은 GET /api/problems/all로 요청한다', async () => {
     mockFetch.mockReturnValue(jsonResponse([]));
     await problemApi.findAll();
-    expect(mockFetch.mock.calls[0][0]).toContain('/api/problems/active');
+    expect(mockFetch.mock.calls[0][0]).toContain('/api/problems/all');
   });
 
   it('findAllProblems는 GET /api/problems/all로 요청한다', async () => {
