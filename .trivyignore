@@ -8,3 +8,11 @@ CVE-2026-3520
 
 # zlib CVE-2026-22184: Alpine base image 취약점 — 상위 패치 대기 (2026-03-07)
 CVE-2026-22184
+
+# path-to-regexp CVE-2026-4867, CVE-2026-4926: NestJS @nestjs/core 간접 의존 (v3.3.0 = v3 최신, 패치 없음)
+# NestJS 메이저 업그레이드 시 해소 예정 (2026-03-31)
+CVE-2026-4867
+CVE-2026-4926
+
+# picomatch CVE-2026-33671: override로 4.0.4 적용 (gateway)
+CVE-2026-33671
