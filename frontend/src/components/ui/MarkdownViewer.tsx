@@ -1,6 +1,5 @@
 /**
  * MarkdownViewer — react-markdown 기반 스타일드 마크다운 렌더러
- * AlgoSu 디자인 토큰 기반
  * @file MarkdownViewer.tsx
  * @domain ui
  * @layer component
