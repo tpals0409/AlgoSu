@@ -1,13 +1,62 @@
 /**
  * MarkdownViewer — react-markdown 기반 스타일드 마크다운 렌더러
  * AlgoSu 디자인 토큰 기반
+ * @file MarkdownViewer.tsx
+ * @domain ui
+ * @layer component
  */
+'use client';
+
+import { createContext, useContext, type ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 
 interface MarkdownViewerProps {
   content: string;
   className?: string;
+}
+
+/** ul/ol 구분을 위한 리스트 타입 Context */
+const ListTypeCtx = createContext<'ul' | 'ol'>('ul');
+
+function UlWrapper({ children }: { readonly children?: ReactNode }) {
+  return (
+    <ListTypeCtx.Provider value="ul">
+      <ul className="mb-3 space-y-1.5 pl-0 list-none">{children}</ul>
+    </ListTypeCtx.Provider>
+  );
+}
+
+function OlWrapper({ children }: { readonly children?: ReactNode }) {
+  return (
+    <ListTypeCtx.Provider value="ol">
+      <ol className="mb-3 space-y-1.5 pl-6 list-decimal marker:font-semibold" style={{ color: 'var(--text-2)' }}>
+        {children}
+      </ol>
+    </ListTypeCtx.Provider>
+  );
+}
+
+function LiItem({ children }: { readonly children?: ReactNode }) {
+  const listType = useContext(ListTypeCtx);
+
+  if (listType === 'ol') {
+    return (
+      <li className="text-[13px] leading-relaxed pl-1" style={{ color: 'var(--text-2)' }}>
+        {children}
+      </li>
+    );
+  }
+
+  return (
+    <li className="flex items-start gap-2 text-[13px]" style={{ color: 'var(--text-2)' }}>
+      <span
+        className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full"
+        style={{ background: 'var(--accent)' }}
+      />
+      <span className="flex-1 leading-relaxed">{children}</span>
+    </li>
+  );
 }
 
 const components: Components = {
@@ -47,25 +96,9 @@ const components: Components = {
       {children}
     </p>
   ),
-  ul: ({ children }) => (
-    <ul className="mb-3 space-y-1.5 pl-0 list-none">
-      {children}
-    </ul>
-  ),
-  ol: ({ children }) => (
-    <ol className="mb-3 space-y-1.5 pl-0 list-none counter-reset-[item]">
-      {children}
-    </ol>
-  ),
-  li: ({ children }) => (
-    <li className="flex items-start gap-2 text-[13px]" style={{ color: 'var(--text-2)' }}>
-      <span
-        className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full"
-        style={{ background: 'var(--accent)' }}
-      />
-      <span className="flex-1 leading-relaxed">{children}</span>
-    </li>
-  ),
+  ul: UlWrapper as Components['ul'],
+  ol: OlWrapper as Components['ol'],
+  li: LiItem as Components['li'],
   strong: ({ children }) => (
     <strong className="font-semibold" style={{ color: 'var(--text)' }}>
       {children}
@@ -77,7 +110,6 @@ const components: Components = {
     </em>
   ),
   code: ({ children, className }) => {
-    // inline code
     if (!className) {
       return (
         <code

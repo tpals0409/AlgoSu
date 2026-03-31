@@ -23,7 +23,7 @@ export class UpdateStudyDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(500)
+  @MaxLength(5000)
   groundRules?: string;
 
   @IsOptional()

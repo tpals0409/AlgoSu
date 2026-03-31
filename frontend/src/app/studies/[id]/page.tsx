@@ -33,6 +33,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Alert } from '@/components/ui/Alert';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
+import { MarkdownViewer } from '@/components/ui/MarkdownViewer';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   studyApi,
@@ -320,9 +321,7 @@ function RulesTab({
 
           {/* 그라운드룰 콘텐츠 */}
           {groundRules ? (
-            <div className="prose prose-sm max-w-none text-text whitespace-pre-wrap text-sm leading-relaxed">
-              {groundRules}
-            </div>
+            <MarkdownViewer content={groundRules} />
           ) : (
             <p className="text-sm text-text-3">
               아직 그라운드룰이 등록되지 않았습니다.

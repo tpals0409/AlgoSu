@@ -2,6 +2,10 @@ import { render, screen, act } from '@testing-library/react';
 import { Suspense } from 'react';
 import StudyDetailPage from '../page';
 
+jest.mock('@/components/ui/MarkdownViewer', () => ({
+  MarkdownViewer: ({ content }: { content: string }) => <div data-testid="markdown-viewer">{content}</div>,
+}));
+
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
   usePathname: () => '/studies/study-1',

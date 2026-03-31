@@ -166,6 +166,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
       setStudy(studyData);
       setStudyName(studyData.name);
       setStudyDesc(studyData.description ?? '');
+      setRulesText(studyData.groundRules ?? '');
       setSelectedStudyAvatarKey(getAvatarPresetKey(studyData.avatar_url));
       setMembers(memberData);
       document.title = `${studyData.name} 설정 | AlgoSu`;
