@@ -6,6 +6,11 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
+
+# Google AdSense — NEXT_PUBLIC_* 는 빌드 타임에 번들 인라인 필수
+ENV NEXT_PUBLIC_ADSENSE_ENABLED=true
+ENV NEXT_PUBLIC_ADSENSE_CLIENT_ID=ca-pub-4088760185957474
+
 RUN npm run build
 
 FROM node:22-alpine AS runner
