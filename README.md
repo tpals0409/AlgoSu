@@ -1,3 +1,5 @@
+# 알고리즘 스터디 관리 플랫폼 | 코드 제출부터 AI 분석까지
+
 <div align="center">
   <img src="docs/assets/logo.png" alt="AlgoSu Logo" width="120" />
   <h1>AlgoSu</h1>
