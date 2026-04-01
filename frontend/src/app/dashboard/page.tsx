@@ -40,6 +40,8 @@ import {
   type Problem,
 } from '@/lib/api';
 import { cn, getCurrentWeekLabel } from '@/lib/utils';
+import { AdBanner } from '@/components/ad/AdBanner';
+import { AD_SLOTS } from '@/lib/constants/adSlots';
 
 // ─── DYNAMIC IMPORTS (번들 최적화) ────────
 
@@ -606,6 +608,9 @@ export default function DashboardPage(): ReactNode {
           isLoading={isLoading}
           fadeStyle={fade(0.24)}
         />
+
+        {/* ── AD ── */}
+        <AdBanner slot={AD_SLOTS.DASHBOARD_BOTTOM} />
       </div>
     </AppLayout>
   );

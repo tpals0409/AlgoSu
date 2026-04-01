@@ -24,6 +24,8 @@ import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
 import { useStudy } from '@/contexts/StudyContext';
 import { DIFF_DOT_STYLE, DIFF_BADGE_STYLE, toTierLevel } from '@/lib/constants';
+import { AdBanner } from '@/components/ad/AdBanner';
+import { AD_SLOTS } from '@/lib/constants/adSlots';
 
 // ─── TYPES ────────────────────────────────
 
@@ -663,6 +665,8 @@ export default function AnalysisPage(): ReactNode {
             </div>
           </div>
         )}
+        {/* ── AD ── */}
+        <AdBanner slot={AD_SLOTS.ANALYSIS_BOTTOM} />
       </div>
     </AppLayout>
   );

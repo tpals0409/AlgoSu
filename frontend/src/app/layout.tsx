@@ -1,10 +1,14 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import Script from 'next/script';
 import '@/app/globals.css';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import { WebVitalsReporter } from '@/components/providers/WebVitalsReporter';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { StudyProvider } from '@/contexts/StudyContext';
+
+const adsenseEnabled = process.env.NEXT_PUBLIC_ADSENSE_ENABLED === 'true';
+const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID ?? '';
 
 export const metadata: Metadata = {
   title: {
@@ -29,6 +33,13 @@ export default function RootLayout({ children }: RootLayoutProps): ReactNode {
   return (
     <html lang="ko" suppressHydrationWarning>
       <body className="font-sans">
+        {adsenseEnabled && adsenseClientId && (
+          <Script
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClientId}`}
+            strategy="afterInteractive"
+            crossOrigin="anonymous"
+          />
+        )}
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
