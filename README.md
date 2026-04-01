@@ -4,13 +4,15 @@
   <img src="docs/assets/logo.png" alt="AlgoSu Logo" width="120" />
   <h1>AlgoSu</h1>
   <p><strong>알고리즘 스터디 관리 플랫폼</strong> — 코드 제출부터 AI 분석까지 자동화된 워크플로우</p>
-
-  [![CI](https://github.com/tpals0409/AlgoSu/actions/workflows/ci.yml/badge.svg)](https://github.com/tpals0409/AlgoSu/actions/workflows/ci.yml)
-  ![Tests](https://img.shields.io/badge/tests-2%2C257%20passed-brightgreen)
-  ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
-  ![Coverage](https://img.shields.io/badge/Gateway%20branches-97.79%25-brightgreen)
-
-  🔗 [**algo-su.com**](https://algo-su.com)
+  <p>
+    <a href="https://github.com/tpals0409/AlgoSu/actions/workflows/ci.yml">
+      <img src="https://github.com/tpals0409/AlgoSu/actions/workflows/ci.yml/badge.svg" alt="CI" />
+    </a>
+    <img src="https://img.shields.io/badge/tests-2%2C257%20passed-brightgreen" alt="Tests" />
+    <img src="https://img.shields.io/badge/TypeScript-strict-blue" alt="TypeScript" />
+    <img src="https://img.shields.io/badge/Gateway%20branches-97.79%25-brightgreen" alt="Coverage" />
+  </p>
+  <p>🔗 <a href="https://algo-su.com"><strong>algo-su.com</strong></a></p>
 </div>
 
 ---
