@@ -287,6 +287,12 @@ describe('SagaOrchestratorService', () => {
         { id: 'sub-uuid-1', sagaStep: SagaStep.GITHUB_QUEUED },
         { githubSyncStatus: GitHubSyncStatus.TOKEN_INVALID },
       );
+      // Assert: DONE + AI skipped 처리
+      expect(repo.update).toHaveBeenCalledWith('sub-uuid-1', {
+        sagaStep: SagaStep.DONE,
+        aiAnalysisStatus: 'skipped',
+        aiSkipped: true,
+      });
       // AI 분석 호출 없음
       expect(mqPublisher.publishAiAnalysis).not.toHaveBeenCalled();
     });

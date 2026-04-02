@@ -325,8 +325,11 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
       await this.advanceToAiQueued(submissionId, preserveGithubStatus);
     } else {
       // TOKEN_INVALID: sagaStep을 DONE으로 전환하여 타임아웃 재발행 루프 방지
+      // ai_analysis_status도 skipped 처리하여 프론트엔드 무한 로딩 방지
       await this.submissionRepo.update(submissionId, {
         sagaStep: SagaStep.DONE,
+        aiAnalysisStatus: 'skipped',
+        aiSkipped: true,
       });
       this.logger.warn(
         `GitHub TOKEN_INVALID -- AI 분석 스킵, DONE 처리: submissionId=${submissionId}`,
