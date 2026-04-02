@@ -21,7 +21,8 @@ function SkeletonBlock({ className, style }: { className?: string; style?: React
       className={cn(
         'relative overflow-hidden rounded-md bg-bg-alt',
         'before:absolute before:inset-0',
-        'before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent',
+        'before:bg-gradient-to-r before:from-transparent before:via-black/[0.06] before:to-transparent',
+        'dark:before:via-white/15',
         'before:bg-[length:200%_100%] skeleton-shimmer',
         'motion-reduce:before:animate-none',
         className,
