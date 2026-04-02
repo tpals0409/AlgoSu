@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 # ─── CONSTANTS ────────────────────────────────
 
 MODEL_ID = "claude-haiku-4-5-20251001"
-MAX_TOKENS = 4096
+MAX_TOKENS = 8192
 
 
 class CircuitBreakerOpenError(Exception):
@@ -245,11 +245,16 @@ class ClaudeClient:
                 score = int(score_match.group(1))
                 logger.info(f"파싱 실패 fallback -- totalScore 정규식 추출: {score}")
 
+            # score가 추출되면 분석 자체는 성공 — JSON 파싱만 실패한 것
+            status = "completed" if score > 0 else "failed"
+            if status == "completed":
+                logger.info(f"파싱 실패하였으나 score 추출 성공 → completed 처리: score={score}")
+
             return {
                 "feedback": fallback[:50000],
                 "optimized_code": None,
                 "score": score,
-                "status": "failed",
+                "status": status,
                 "categories": [],
             }
 

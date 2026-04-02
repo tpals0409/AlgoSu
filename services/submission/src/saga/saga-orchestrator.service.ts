@@ -80,24 +80,23 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
 
     if (incompleteSubmissions.length === 0) {
       this.logger.log('미완료 Saga 없음 -- 정상 시작');
-      return;
-    }
+    } else {
+      this.logger.warn(`미완료 Saga ${incompleteSubmissions.length}건 발견 -- 재개 시작`);
 
-    this.logger.warn(`미완료 Saga ${incompleteSubmissions.length}건 발견 -- 재개 시작`);
-
-    for (const submission of incompleteSubmissions) {
-      try {
-        await this.resumeSaga(submission);
-      } catch (error: unknown) {
-        this.logger.error(
-          `Saga 재개 실패: submissionId=${submission.id}, step=${submission.sagaStep}, error=${(error as Error).message}`,
-        );
+      for (const submission of incompleteSubmissions) {
+        try {
+          await this.resumeSaga(submission);
+        } catch (error: unknown) {
+          this.logger.error(
+            `Saga 재개 실패: submissionId=${submission.id}, step=${submission.sagaStep}, error=${(error as Error).message}`,
+          );
+        }
       }
+
+      this.logger.log('미완료 Saga 재개 완료');
     }
 
-    this.logger.log('미완료 Saga 재개 완료');
-
-    // M3: 주기적 타임아웃 체크 시작
+    // M3: 주기적 타임아웃 체크 시작 (미완료 Saga 유무와 관계없이 항상 등록)
     this.timeoutTimer = setInterval(() => {
       void this.checkSagaTimeouts();
     }, SagaOrchestratorService.TIMEOUT_CHECK_INTERVAL);

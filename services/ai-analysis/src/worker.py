@@ -26,6 +26,8 @@ logger = logging.getLogger(__name__)
 # ─── CONSTANTS ────────────────────────────────
 
 QUEUE = "submission.ai_analysis"
+EXCHANGE = "submission.events"
+ROUTING_KEY = "ai.analysis"
 MAX_RETRIES = 3
 BACKOFF_BASE = 2  # 지수 백오프 기본값 (초)
 MAX_REQUEUE = 3  # Circuit Breaker requeue 최대 횟수
@@ -130,6 +132,14 @@ class AIAnalysisWorker:
                 "x-dead-letter-exchange": "submission.events.dlx",
                 "x-dead-letter-routing-key": "ai.analysis.dead",
             },
+        )
+
+        # Exchange → Queue 바인딩 보장 (submission 서비스보다 먼저 시작될 경우 대비)
+        self.channel.exchange_declare(
+            exchange=EXCHANGE, exchange_type="topic", durable=True
+        )
+        self.channel.queue_bind(
+            queue=QUEUE, exchange=EXCHANGE, routing_key=ROUTING_KEY
         )
 
         logger.info(f"AI Analysis Worker 시작: 큐={QUEUE}, prefetch=2")

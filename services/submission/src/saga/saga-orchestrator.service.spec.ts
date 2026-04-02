@@ -375,6 +375,19 @@ describe('SagaOrchestratorService', () => {
       expect(mqPublisher.publishGitHubPush).not.toHaveBeenCalled();
       expect(mqPublisher.publishAiAnalysis).not.toHaveBeenCalled();
     });
+
+    it('미완료 Saga가 없어도 타임아웃 체크 타이머를 설정한다', async () => {
+      jest.useFakeTimers();
+
+      repo.find.mockResolvedValue([]);
+
+      await service.onModuleInit();
+
+      // 타이머가 설정되었으므로 onModuleDestroy에서 정리됨 (에러 없이 완료)
+      await service.onModuleDestroy();
+
+      jest.useRealTimers();
+    });
   });
 
   // ─── 10. resumeSaga (DB_SAVED) — onModuleInit 통해 간접 테스트 ─
@@ -663,7 +676,7 @@ describe('SagaOrchestratorService', () => {
 
       // 첫 번째 find는 onModuleInit에서 호출 (미완료 없음)
       repo.find
-        .mockResolvedValueOnce([]) // onModuleInit - 미완료 없음 (타이머 미설정)
+        .mockResolvedValueOnce([]) // onModuleInit - 미완료 없음
         .mockResolvedValueOnce([  // checkSagaTimeouts - DB_SAVED 타임아웃
           createMockSubmission({
             id: 'sub-timeout-db',
@@ -676,7 +689,7 @@ describe('SagaOrchestratorService', () => {
       repo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
       mqPublisher.publishGitHubPush.mockResolvedValue(undefined);
 
-      // onModuleInit — 미완료 없음이므로 타이머 미설정
+      // onModuleInit — 미완료 없음이지만 타이머는 항상 설정됨
       await service.onModuleInit();
 
       // checkSagaTimeouts를 직접 호출하기 위해 private 메서드 접근
@@ -696,7 +709,7 @@ describe('SagaOrchestratorService', () => {
 
     it('타임아웃 재개 실패 시 에러 로그 후 계속 진행한다', async () => {
       repo.find
-        .mockResolvedValueOnce([]) // onModuleInit - 미완료 없음
+        .mockResolvedValueOnce([]) // onModuleInit - 미완료 없음 (타이머는 항상 설정)
         .mockResolvedValueOnce([  // checkSagaTimeouts - DB_SAVED 타임아웃
           createMockSubmission({
             id: 'sub-timeout-fail',

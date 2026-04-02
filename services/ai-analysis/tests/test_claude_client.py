@@ -299,7 +299,8 @@ class TestParseResponseMarkdown:
         # 마크다운 블록 안에 깨진 JSON (totalScore는 존재)
         raw = '```json\n{"totalScore": 76, broken json +++\n```'
         result = c._parse_response(raw)
-        assert result["status"] == "failed"
+        # score 추출 성공 시 completed 처리 (JSON 파싱만 실패)
+        assert result["status"] == "completed"
         assert result["score"] == 76
 
     def test_parse_total_score_zero_with_categories_recalculates(self):
