@@ -138,9 +138,7 @@ class AIAnalysisWorker:
         self.channel.exchange_declare(
             exchange=EXCHANGE, exchange_type="topic", durable=True
         )
-        self.channel.queue_bind(
-            queue=QUEUE, exchange=EXCHANGE, routing_key=ROUTING_KEY
-        )
+        self.channel.queue_bind(queue=QUEUE, exchange=EXCHANGE, routing_key=ROUTING_KEY)
 
         logger.info(f"AI Analysis Worker 시작: 큐={QUEUE}, prefetch=2")
 

@@ -248,7 +248,9 @@ class ClaudeClient:
             # score가 추출되면 분석 자체는 성공 — JSON 파싱만 실패한 것
             status = "completed" if score > 0 else "failed"
             if status == "completed":
-                logger.info(f"파싱 실패하였으나 score 추출 성공 → completed 처리: score={score}")
+                logger.info(
+                    f"파싱 실패하였으나 score 추출 성공 → completed 처리: score={score}"
+                )
 
             return {
                 "feedback": fallback[:50000],
