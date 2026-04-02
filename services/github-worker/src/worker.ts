@@ -304,24 +304,42 @@ export class GitHubWorker {
     // 유저 GitHub 정보 조회
     const githubInfo = await this.getUserGitHubInfo(submission.userId);
 
-    // GitHub 토큰 없음 → SKIPPED 처리 후 ACK
-    if (!githubInfo.github_username || !githubInfo.github_token) {
-      logger.info('SKIPPED: GitHub 미연동 또는 토큰 없음', { tag: 'GITHUB_SKIP', traceId: event.submissionId });
+    // GitHub 미연동 → SKIPPED 처리 후 ACK
+    if (!githubInfo.github_username) {
+      logger.info('SKIPPED: GitHub 미연동', { tag: 'GITHUB_SKIP', traceId: event.submissionId });
       await this.statusReporter.reportSkipped(event.submissionId);
       mqMessagesProcessedTotal.inc({ result: 'skipped' });
       return;
     }
 
-    // 토큰 복호화
+    // 토큰 복호화 시도 → 실패 시 GitHub App 설치 토큰 fallback
     let decryptedToken: string;
-    try {
-      decryptedToken = this.tokenManager.decryptUserToken(githubInfo.github_token);
-    } catch {
-      logger.warn('토큰 복호화 실패', { tag: 'GITHUB_SKIP', traceId: event.submissionId, code: 'GHW_BIZ_005' });
-      await this.statusReporter.reportTokenInvalid(event.submissionId);
-      await this.statusReporter.publishStatusChange(event.submissionId, 'github_token_invalid');
-      mqMessagesProcessedTotal.inc({ result: 'skipped' });
-      return;
+    if (githubInfo.github_token) {
+      try {
+        decryptedToken = this.tokenManager.decryptUserToken(githubInfo.github_token);
+      } catch {
+        logger.warn('유저 토큰 복호화 실패 → App 토큰 fallback', { tag: 'GITHUB_APP_FALLBACK', traceId: event.submissionId, code: 'GHW_BIZ_005' });
+        try {
+          decryptedToken = await this.tokenManager.getTokenForRepo(githubInfo.github_username, 'algosu-submissions');
+        } catch (appTokenErr) {
+          logger.warn('App 토큰 fallback도 실패', { tag: 'GITHUB_SKIP', traceId: event.submissionId, err: appTokenErr as Error });
+          await this.statusReporter.reportTokenInvalid(event.submissionId);
+          await this.statusReporter.publishStatusChange(event.submissionId, 'github_token_invalid');
+          mqMessagesProcessedTotal.inc({ result: 'skipped' });
+          return;
+        }
+      }
+    } else {
+      // 토큰 없음 → GitHub App 설치 토큰으로 push 시도
+      try {
+        decryptedToken = await this.tokenManager.getTokenForRepo(githubInfo.github_username, 'algosu-submissions');
+        logger.info('유저 토큰 없음 → App 토큰 사용', { tag: 'GITHUB_APP_FALLBACK', traceId: event.submissionId });
+      } catch {
+        logger.info('SKIPPED: 유저 토큰 없음 + App 토큰 불가', { tag: 'GITHUB_SKIP', traceId: event.submissionId });
+        await this.statusReporter.reportSkipped(event.submissionId);
+        mqMessagesProcessedTotal.inc({ result: 'skipped' });
+        return;
+      }
     }
 
     let lastError: Error | null = null;
