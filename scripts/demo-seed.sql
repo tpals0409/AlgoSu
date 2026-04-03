@@ -45,12 +45,12 @@ DELETE FROM users WHERE id IN (
 
 INSERT INTO users (id, email, name, avatar_url, oauth_provider, github_connected, github_user_id, github_username, github_token, "publicId", profile_slug, is_profile_public, created_at, updated_at, deleted_at)
 VALUES
-  ('00000000-0000-4000-a000-000000000001', 'demo@algosu.kr',  '김알고', 'preset:avatar-1', 'GOOGLE', false, NULL, NULL, NULL, '00000000-0000-4000-b000-000000000001', 'kim-algo',   true,  '2026-03-01 09:00:00+09', '2026-03-15 18:00:00+09', NULL),
-  ('00000000-0000-4000-a000-000000000002', 'demo2@algosu.kr', '이코딩', 'preset:avatar-2', 'NAVER',  false, NULL, NULL, NULL, '00000000-0000-4000-b000-000000000002', 'lee-coding',  true,  '2026-03-01 09:05:00+09', '2026-03-15 17:00:00+09', NULL),
-  ('00000000-0000-4000-a000-000000000003', 'demo3@algosu.kr', '박수학', 'preset:avatar-3', 'KAKAO',  false, NULL, NULL, NULL, '00000000-0000-4000-b000-000000000003', 'park-suhak', true,  '2026-03-01 09:10:00+09', '2026-03-14 20:00:00+09', NULL);
+  ('00000000-0000-4000-a000-000000000001', 'demo@algosu.kr',  '김알고', 'preset:avatar-1', 'google', false, NULL, NULL, NULL, '00000000-0000-4000-b000-000000000001', 'kim-algo',   true,  '2026-03-01 09:00:00+09', '2026-03-15 18:00:00+09', NULL),
+  ('00000000-0000-4000-a000-000000000002', 'demo2@algosu.kr', '이코딩', 'preset:avatar-2', 'naver',  false, NULL, NULL, NULL, '00000000-0000-4000-b000-000000000002', 'lee-coding',  true,  '2026-03-01 09:05:00+09', '2026-03-15 17:00:00+09', NULL),
+  ('00000000-0000-4000-a000-000000000003', 'demo3@algosu.kr', '박수학', 'preset:avatar-3', 'kakao',  false, NULL, NULL, NULL, '00000000-0000-4000-b000-000000000003', 'park-suhak', true,  '2026-03-01 09:10:00+09', '2026-03-14 20:00:00+09', NULL);
 
 -- ---------- studies ----------
-INSERT INTO studies (id, name, description, created_by, github_repo, status, ground_rules, avatar_url, "publicId", created_at, updated_at)
+INSERT INTO studies (id, name, description, created_by, github_repo, status, "groundRules", avatar_url, "publicId", created_at, updated_at)
 VALUES (
   '00000000-0000-4000-a000-000000000010',
   '알고리즘 마스터즈',
@@ -90,7 +90,7 @@ DELETE FROM problems WHERE id IN (
   '00000000-0000-4000-a000-000000000106'
 );
 
-INSERT INTO problems (id, title, description, week_number, difficulty, level, source_url, source_platform, status, deadline, allowed_languages, tags, study_id, created_by, public_id, created_at, updated_at)
+INSERT INTO problems (id, title, description, week_number, difficulty, level, source_url, source_platform, status, deadline, allowed_languages, tags, study_id, created_by, "publicId", created_at, updated_at)
 VALUES
   (
     '00000000-0000-4000-a000-000000000101',
@@ -187,8 +187,8 @@ COMMIT;
 BEGIN;
 
 -- 먼저 연관 데이터 삭제
-DELETE FROM study_notes WHERE study_id = '00000000-0000-4000-a000-000000000010';
-DELETE FROM review_comments WHERE study_id = '00000000-0000-4000-a000-000000000010';
+DELETE FROM study_notes WHERE "studyId" = '00000000-0000-4000-a000-000000000010';
+DELETE FROM review_comments WHERE "studyId" = '00000000-0000-4000-a000-000000000010';
 DELETE FROM submissions WHERE id IN (
   '00000000-0000-4000-a000-000000000201',
   '00000000-0000-4000-a000-000000000202',
@@ -213,7 +213,7 @@ DELETE FROM submissions WHERE id IN (
 -- 박수학 (user 3): 5 submissions
 
 -- #1: 김알고 - Two Sum (Python, score 85)
-INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, public_id, created_at, updated_at)
+INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, "publicId", created_at, updated_at)
 VALUES (
   '00000000-0000-4000-a000-000000000201',
   '00000000-0000-4000-a000-000000000010',
@@ -230,7 +230,7 @@ VALUES (
 );
 
 -- #2: 김알고 - 유효한 괄호 (JavaScript, score 88)
-INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, public_id, created_at, updated_at)
+INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, "publicId", created_at, updated_at)
 VALUES (
   '00000000-0000-4000-a000-000000000202',
   '00000000-0000-4000-a000-000000000010',
@@ -247,7 +247,7 @@ VALUES (
 );
 
 -- #3: 김알고 - 이진 탐색 (Python, score 82)
-INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, public_id, created_at, updated_at)
+INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, "publicId", created_at, updated_at)
 VALUES (
   '00000000-0000-4000-a000-000000000203',
   '00000000-0000-4000-a000-000000000010',
@@ -264,7 +264,7 @@ VALUES (
 );
 
 -- #4: 김알고 - 최장 증가 부분 수열 (Java, score 90)
-INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, public_id, created_at, updated_at)
+INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, "publicId", created_at, updated_at)
 VALUES (
   '00000000-0000-4000-a000-000000000204',
   '00000000-0000-4000-a000-000000000010',
@@ -281,7 +281,7 @@ VALUES (
 );
 
 -- #5: 김알고 - 다익스트라 (Python, score 92)
-INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, public_id, created_at, updated_at)
+INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, "publicId", created_at, updated_at)
 VALUES (
   '00000000-0000-4000-a000-000000000205',
   '00000000-0000-4000-a000-000000000010',
@@ -298,7 +298,7 @@ VALUES (
 );
 
 -- #6: 이코딩 - Two Sum (JavaScript, score 78)
-INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, public_id, created_at, updated_at)
+INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, "publicId", created_at, updated_at)
 VALUES (
   '00000000-0000-4000-a000-000000000206',
   '00000000-0000-4000-a000-000000000010',
@@ -315,7 +315,7 @@ VALUES (
 );
 
 -- #7: 이코딩 - 유효한 괄호 (Python, score 72)
-INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, public_id, created_at, updated_at)
+INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, "publicId", created_at, updated_at)
 VALUES (
   '00000000-0000-4000-a000-000000000207',
   '00000000-0000-4000-a000-000000000010',
@@ -332,7 +332,7 @@ VALUES (
 );
 
 -- #8: 이코딩 - 이진 탐색 (Java, score 75)
-INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, public_id, created_at, updated_at)
+INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, "publicId", created_at, updated_at)
 VALUES (
   '00000000-0000-4000-a000-000000000208',
   '00000000-0000-4000-a000-000000000010',
@@ -349,7 +349,7 @@ VALUES (
 );
 
 -- #9: 이코딩 - 최장 증가 부분 수열 (JavaScript, score 80)
-INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, public_id, created_at, updated_at)
+INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, "publicId", created_at, updated_at)
 VALUES (
   '00000000-0000-4000-a000-000000000209',
   '00000000-0000-4000-a000-000000000010',
@@ -366,7 +366,7 @@ VALUES (
 );
 
 -- #10: 이코딩 - 문자열 압축 (Python, score 70)
-INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, public_id, created_at, updated_at)
+INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, "publicId", created_at, updated_at)
 VALUES (
   '00000000-0000-4000-a000-00000000020a',
   '00000000-0000-4000-a000-000000000010',
@@ -383,7 +383,7 @@ VALUES (
 );
 
 -- #11: 박수학 - Two Sum (Java, score 65)
-INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, public_id, created_at, updated_at)
+INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, "publicId", created_at, updated_at)
 VALUES (
   '00000000-0000-4000-a000-00000000020b',
   '00000000-0000-4000-a000-000000000010',
@@ -400,7 +400,7 @@ VALUES (
 );
 
 -- #12: 박수학 - 이진 탐색 (JavaScript, score 95)
-INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, public_id, created_at, updated_at)
+INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, "publicId", created_at, updated_at)
 VALUES (
   '00000000-0000-4000-a000-00000000020c',
   '00000000-0000-4000-a000-000000000010',
@@ -417,7 +417,7 @@ VALUES (
 );
 
 -- #13: 박수학 - 최장 증가 부분 수열 (Python, score 83)
-INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, public_id, created_at, updated_at)
+INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, "publicId", created_at, updated_at)
 VALUES (
   '00000000-0000-4000-a000-00000000020d',
   '00000000-0000-4000-a000-000000000010',
@@ -434,7 +434,7 @@ VALUES (
 );
 
 -- #14: 박수학 - 다익스트라 (Java, score 77)
-INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, public_id, created_at, updated_at)
+INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, "publicId", created_at, updated_at)
 VALUES (
   '00000000-0000-4000-a000-00000000020e',
   '00000000-0000-4000-a000-000000000010',
@@ -451,7 +451,7 @@ VALUES (
 );
 
 -- #15: 박수학 - 문자열 압축 (JavaScript, score 86)
-INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, public_id, created_at, updated_at)
+INSERT INTO submissions (id, study_id, user_id, problem_id, language, code, saga_step, github_sync_status, github_file_path, week_number, idempotency_key, ai_analysis_status, ai_skipped, ai_feedback, ai_score, ai_optimized_code, is_late, "publicId", created_at, updated_at)
 VALUES (
   '00000000-0000-4000-a000-00000000020f',
   '00000000-0000-4000-a000-000000000010',
@@ -470,7 +470,7 @@ VALUES (
 -- ---------- review_comments (8개) ----------
 
 -- 김알고가 이코딩의 Two Sum에 남긴 라인별 코멘트
-INSERT INTO review_comments (submission_id, author_id, study_id, line_number, content, deleted_at, public_id, created_at, updated_at)
+INSERT INTO review_comments ("submissionId", "authorId", "studyId", "lineNumber", content, "deletedAt", "publicId", "createdAt", "updatedAt")
 VALUES (
   '00000000-0000-4000-a000-000000000206',
   '00000000-0000-4000-a000-000000000001',
@@ -483,7 +483,7 @@ VALUES (
 );
 
 -- 박수학이 이코딩의 유효한 괄호에 남긴 전체 코멘트
-INSERT INTO review_comments (submission_id, author_id, study_id, line_number, content, deleted_at, public_id, created_at, updated_at)
+INSERT INTO review_comments ("submissionId", "authorId", "studyId", "lineNumber", content, "deletedAt", "publicId", "createdAt", "updatedAt")
 VALUES (
   '00000000-0000-4000-a000-000000000207',
   '00000000-0000-4000-a000-000000000003',
@@ -496,7 +496,7 @@ VALUES (
 );
 
 -- 이코딩이 김알고의 이진 탐색에 남긴 라인별 코멘트
-INSERT INTO review_comments (submission_id, author_id, study_id, line_number, content, deleted_at, public_id, created_at, updated_at)
+INSERT INTO review_comments ("submissionId", "authorId", "studyId", "lineNumber", content, "deletedAt", "publicId", "createdAt", "updatedAt")
 VALUES (
   '00000000-0000-4000-a000-000000000203',
   '00000000-0000-4000-a000-000000000002',
@@ -509,7 +509,7 @@ VALUES (
 );
 
 -- 김알고가 박수학의 Two Sum에 남긴 전체 코멘트
-INSERT INTO review_comments (submission_id, author_id, study_id, line_number, content, deleted_at, public_id, created_at, updated_at)
+INSERT INTO review_comments ("submissionId", "authorId", "studyId", "lineNumber", content, "deletedAt", "publicId", "createdAt", "updatedAt")
 VALUES (
   '00000000-0000-4000-a000-00000000020b',
   '00000000-0000-4000-a000-000000000001',
@@ -522,7 +522,7 @@ VALUES (
 );
 
 -- 이코딩이 김알고의 다익스트라에 남긴 라인별 코멘트
-INSERT INTO review_comments (submission_id, author_id, study_id, line_number, content, deleted_at, public_id, created_at, updated_at)
+INSERT INTO review_comments ("submissionId", "authorId", "studyId", "lineNumber", content, "deletedAt", "publicId", "createdAt", "updatedAt")
 VALUES (
   '00000000-0000-4000-a000-000000000205',
   '00000000-0000-4000-a000-000000000002',
@@ -535,7 +535,7 @@ VALUES (
 );
 
 -- 박수학이 김알고의 LIS에 남긴 전체 코멘트
-INSERT INTO review_comments (submission_id, author_id, study_id, line_number, content, deleted_at, public_id, created_at, updated_at)
+INSERT INTO review_comments ("submissionId", "authorId", "studyId", "lineNumber", content, "deletedAt", "publicId", "createdAt", "updatedAt")
 VALUES (
   '00000000-0000-4000-a000-000000000204',
   '00000000-0000-4000-a000-000000000003',
@@ -548,7 +548,7 @@ VALUES (
 );
 
 -- 김알고가 박수학의 이진 탐색에 남긴 라인별 코멘트
-INSERT INTO review_comments (submission_id, author_id, study_id, line_number, content, deleted_at, public_id, created_at, updated_at)
+INSERT INTO review_comments ("submissionId", "authorId", "studyId", "lineNumber", content, "deletedAt", "publicId", "createdAt", "updatedAt")
 VALUES (
   '00000000-0000-4000-a000-00000000020c',
   '00000000-0000-4000-a000-000000000001',
@@ -561,7 +561,7 @@ VALUES (
 );
 
 -- 이코딩이 박수학의 문자열 압축에 남긴 전체 코멘트
-INSERT INTO review_comments (submission_id, author_id, study_id, line_number, content, deleted_at, public_id, created_at, updated_at)
+INSERT INTO review_comments ("submissionId", "authorId", "studyId", "lineNumber", content, "deletedAt", "publicId", "createdAt", "updatedAt")
 VALUES (
   '00000000-0000-4000-a000-00000000020f',
   '00000000-0000-4000-a000-000000000002',
@@ -576,7 +576,7 @@ VALUES (
 -- ---------- study_notes (2개) ----------
 
 -- Week 1 스터디 노트 (문제 1: Two Sum)
-INSERT INTO study_notes (problem_id, study_id, content, public_id, created_at, updated_at)
+INSERT INTO study_notes ("problemId", "studyId", content, "publicId", "createdAt", "updatedAt")
 VALUES (
   '00000000-0000-4000-a000-000000000101',
   '00000000-0000-4000-a000-000000000010',
@@ -586,7 +586,7 @@ VALUES (
 );
 
 -- Week 2 스터디 노트 (문제 3: 이진 탐색)
-INSERT INTO study_notes (problem_id, study_id, content, public_id, created_at, updated_at)
+INSERT INTO study_notes ("problemId", "studyId", content, "publicId", "createdAt", "updatedAt")
 VALUES (
   '00000000-0000-4000-a000-000000000103',
   '00000000-0000-4000-a000-000000000010',
