@@ -457,6 +457,28 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
           </header>
         )}
 
+        {/* ── Demo banner ─────────────────────────────── */}
+        {user?.email === 'demo@algosu.kr' && (
+          <div
+            className={cn(
+              'fixed left-0 right-0 z-20 flex items-center justify-center gap-2 border-b py-1.5 text-[12px] font-medium',
+              hasStudy ? 'md:ml-[220px]' : '',
+            )}
+            style={{
+              top: hasStudy ? '0' : '56px',
+              background: 'var(--warning-bg, #fef3c7)',
+              borderColor: 'var(--warning-border, #fde68a)',
+              color: 'var(--warning-text, #92400e)',
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <circle cx="12" cy="12" r="10" />
+              <polygon points="10 8 16 12 10 16 10 8" />
+            </svg>
+            데모 모드 · 읽기 전용
+          </div>
+        )}
+
         {/* ── Main content ───────────────────────────────── */}
         <main className={hasStudy ? 'md:ml-[220px]' : ''}>
           <div

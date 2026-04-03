@@ -1,0 +1,91 @@
+##
+# @file 데모 데이터 리셋 CronJob — 6시간마다 demo-seed.sql 실행
+# @domain infra
+# @layer cronjob
+# @related scripts/demo-seed.sql
+##
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-seed-sql
+  namespace: algosu
+data:
+  demo-seed.sql: |
+    -- 이 파일은 scripts/demo-seed.sql에서 복사합니다.
+    -- ConfigMap 업데이트: kubectl create configmap demo-seed-sql --from-file=demo-seed.sql=scripts/demo-seed.sql -n algosu --dry-run=client -o yaml | kubectl apply -f -
+    SELECT 1;
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: demo-reset
+  namespace: algosu
+  labels:
+    app: demo-reset
+spec:
+  schedule: "0 */6 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 120
+      template:
+        metadata:
+          labels:
+            app: demo-reset
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+          containers:
+            - name: seed
+              image: postgres:16-alpine
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  # identity_db
+                  PGPASSWORD=$DB_PASSWORD psql -h postgres.algosu.svc.cluster.local -U $DB_USER -d identity_db -f /sql/identity-seed.sql
+                  # problem_db
+                  PGPASSWORD=$PROBLEM_DB_PASSWORD psql -h postgres-problem.algosu.svc.cluster.local -U $PROBLEM_DB_USER -d problem_db -f /sql/problem-seed.sql
+                  # submission_db
+                  PGPASSWORD=$DB_PASSWORD psql -h postgres.algosu.svc.cluster.local -U $DB_USER -d submission_db -f /sql/submission-seed.sql
+              env:
+                - name: DB_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-credentials
+                      key: username
+                - name: DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-credentials
+                      key: password
+                - name: PROBLEM_DB_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-problem-credentials
+                      key: username
+                - name: PROBLEM_DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-problem-credentials
+                      key: password
+              volumeMounts:
+                - name: seed-sql
+                  mountPath: /sql
+                  readOnly: true
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 32Mi
+                limits:
+                  cpu: 200m
+                  memory: 64Mi
+          volumes:
+            - name: seed-sql
+              configMap:
+                name: demo-seed-sql

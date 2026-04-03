@@ -229,6 +229,11 @@ async function fetchApi<T>(
   if (!res.ok) {
     const body = await res.json().catch(() => ({})) as { message?: string };
 
+    // 403 데모 모드 쓰기 차단 — 에러 메시지 그대로 전달
+    if (res.status === 403 && body.message?.includes('데모 모드')) {
+      throw new ApiError(body.message, res.status);
+    }
+
     // 401 세션 만료 시 로그인 페이지로 리다이렉트
     if (res.status === 401 && typeof window !== 'undefined') {
       const currentPath = window.location.pathname;
@@ -252,6 +257,10 @@ async function fetchApi<T>(
 
 export const authApi = {
   // C1: email/password register/login 제거 (소셜로그인 전용 정책)
+
+  /** 데모 로그인 — 데모 계정으로 JWT 발급 */
+  demoLogin: (): Promise<{ redirect: string }> =>
+    fetchApi('/auth/demo', { method: 'POST' }),
 
   /** OAuth 로그인 URL 조회 — provider: google | naver | kakao */
   getOAuthUrl: (provider: 'google' | 'naver' | 'kakao'): Promise<OAuthUrlResponse> =>

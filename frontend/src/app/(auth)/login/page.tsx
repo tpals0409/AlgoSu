@@ -60,10 +60,11 @@ const PROVIDERS: {
 function LoginContent(): ReactNode {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, loginFromCookie } = useAuth();
   const { theme, setTheme } = useTheme();
   const [error, setError] = useState<string | null>(null);
   const [loadingProvider, setLoadingProvider] = useState<OAuthProvider | null>(null);
+  const [demoLoading, setDemoLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [showExpiredModal, setShowExpiredModal] = useState(false);
 
@@ -102,6 +103,21 @@ function LoginContent(): ReactNode {
       window.history.replaceState({}, '', '/login');
     }
   }, [searchParams]);
+
+  /** 데모 로그인 핸들러 */
+  const handleDemoLogin = useCallback(async () => {
+    setError(null);
+    setDemoLoading(true);
+    try {
+      const { redirect } = await authApi.demoLogin();
+      // 쿠키가 설정되었으므로 loginFromCookie로 상태 동기화 후 리다이렉트
+      loginFromCookie();
+      router.push(redirect);
+    } catch {
+      setError('데모 로그인에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      setDemoLoading(false);
+    }
+  }, [router, loginFromCookie]);
 
   /** OAuth 로그인 핸들러 */
   const handleOAuth = useCallback(async (provider: OAuthProvider) => {
@@ -205,6 +221,29 @@ function LoginContent(): ReactNode {
               })}
             </div>
 
+            {/* 데모 체험 버튼 */}
+            {process.env.NEXT_PUBLIC_DEMO_ENABLED === 'true' && (
+              <div style={fade(0.5)}>
+                <div className="my-5 flex items-center gap-3">
+                  <div className="h-px flex-1 bg-border" />
+                  <span className="text-[11px] text-text-3">또는</span>
+                  <div className="h-px flex-1 bg-border" />
+                </div>
+                <button
+                  type="button"
+                  disabled={demoLoading || loadingProvider !== null}
+                  onClick={() => void handleDemoLogin()}
+                  className="flex h-12 w-full items-center justify-center gap-2.5 rounded-btn border border-dashed border-primary/40 bg-primary/5 text-sm font-medium text-primary transition-all hover:bg-primary/10 disabled:opacity-50"
+                >
+                  {demoLoading ? <InlineSpinner /> : <DemoIcon />}
+                  {demoLoading ? '접속 중...' : '데모 체험하기'}
+                </button>
+                <p className="mt-2 text-center text-[11px] text-text-3">
+                  로그인 없이 전체 기능을 둘러볼 수 있습니다 (읽기 전용)
+                </p>
+              </div>
+            )}
+
             {/* 약관 */}
             <p
               className="mt-7 text-center text-[11px] leading-relaxed text-text-3"
@@ -285,6 +324,15 @@ function NaverIcon(): ReactNode {
   return (
     <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden>
       <path d="M13.56 10.7L6.17 1H1v18h5.44V9.3L13.83 19H19V1h-5.44v9.7z" fill="currentColor" />
+    </svg>
+  );
+}
+
+function DemoIcon(): ReactNode {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="12" r="10" />
+      <polygon points="10 8 16 12 10 16 10 8" />
     </svg>
   );
 }

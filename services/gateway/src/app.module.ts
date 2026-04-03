@@ -5,7 +5,7 @@
  */
 
 import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
-import { APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -31,6 +31,7 @@ import { AvatarModule } from './avatar/avatar.module';
 import { ReviewProxyModule } from './review/review.module';
 import { StudyNoteProxyModule } from './study-note/study-note.module';
 import { IdentityClientModule } from './identity-client/identity-client.module';
+import { DemoWriteGuard } from './common/guards/demo-write.guard';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -72,6 +73,11 @@ import { HealthController } from './health.controller';
     JwtMiddleware,
     RedisThrottlerStorage,
     RateLimitMiddleware,
+    // 데모 유저 쓰기 차단 가드 — x-demo-user: true 시 CUD 요청 차단
+    {
+      provide: APP_GUARD,
+      useClass: DemoWriteGuard,
+    },
     // T1: 토큰 자동 갱신 인터셉터 — 만료 5분 이내 시 새 쿠키 발급
     {
       provide: APP_INTERCEPTOR,
@@ -110,6 +116,7 @@ export class AppModule implements NestModule {
         { path: 'metrics', method: RequestMethod.GET },
         { path: 'auth/oauth/(.*)', method: RequestMethod.GET },
         { path: 'auth/github/link/callback', method: RequestMethod.GET },
+        { path: 'auth/demo', method: RequestMethod.POST },
         { path: 'auth/refresh', method: RequestMethod.POST },
         { path: 'auth/logout', method: RequestMethod.POST },
         { path: 'internal/(.*)', method: RequestMethod.ALL },

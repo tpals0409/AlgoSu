@@ -434,6 +434,14 @@ export class OAuthService {
   }
 
   /**
+   * 데모 전용 JWT 발급 — isDemo: true 클레임 포함, 만료 2시간
+   * @domain identity
+   */
+  issueDemoToken(user: IdentityUser): string {
+    return this.issueJwt(user, { isDemo: true });
+  }
+
+  /**
    * userId로 User 조회 — 없으면 NotFoundException
    * @domain identity
    */
@@ -445,17 +453,21 @@ export class OAuthService {
     return user;
   }
 
-  private issueJwt(user: IdentityUser): string {
+  private issueJwt(
+    user: IdentityUser,
+    options?: { isDemo?: boolean },
+  ): string {
     return jwt.sign(
       {
         sub: user.id,
         email: user.email,
         oauth_provider: user.oauth_provider,
+        ...(options?.isDemo && { isDemo: true }),
       },
       this.jwtSecret,
       {
         algorithm: 'HS256',
-        expiresIn: this.jwtExpiresIn as jwt.SignOptions['expiresIn'],
+        expiresIn: (options?.isDemo ? '2h' : this.jwtExpiresIn) as jwt.SignOptions['expiresIn'],
       },
     );
   }

@@ -103,6 +103,11 @@ export class JwtMiddleware implements NestMiddleware {
     // 검증 성공 — 내부 서비스 전달용 헤더 주입
     req.headers['x-user-id'] = userId;
 
+    // 데모 유저 마킹 — DemoWriteGuard에서 참조
+    if (payload['isDemo'] === true) {
+      req.headers['x-demo-user'] = 'true';
+    }
+
     // X-Study-ID: 클라이언트 헤더에서 읽기 → UUID 형식 검증 → 내부 전달
     const studyId = req.headers['x-study-id'];
     if (studyId && typeof studyId === 'string') {

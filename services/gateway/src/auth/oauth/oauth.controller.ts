@@ -43,6 +43,38 @@ export class OAuthController {
   }
 
   /**
+   * 데모 로그인 — 데모 유저 전용 JWT 발급 (DEMO_MODE_ENABLED=true 시에만 활성화)
+   * @api POST /auth/demo
+   */
+  @ApiOperation({ summary: '데모 로그인 — 데모 유저 JWT 발급' })
+  @ApiResponse({ status: 200, description: '데모 로그인 성공' })
+  @ApiResponse({ status: 404, description: '데모 모드 비활성화' })
+  @Post('demo')
+  async demoLogin(
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{ redirect: string }> {
+    const demoEnabled = this.configService.get<string>('DEMO_MODE_ENABLED', 'false');
+    if (demoEnabled !== 'true') {
+      throw new NotFoundException();
+    }
+
+    const demoUserId = this.configService.get<string>('DEMO_USER_ID');
+    if (!demoUserId) {
+      this.logger.error('DEMO_USER_ID 환경변수 미설정');
+      throw new NotFoundException();
+    }
+
+    const user = await this.oauthService.findUserByIdOrThrow(demoUserId);
+    const token = this.oauthService.issueDemoToken(user);
+
+    const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
+    setTokenCookie(res, token, nodeEnv);
+
+    this.logger.log(`데모 로그인: userId=${user.id}`);
+    return { redirect: '/dashboard' };
+  }
+
+  /**
    * OAuth 인증 시작 — 프로바이더 인증 URL 반환
    * @api GET /auth/oauth/:provider
    */
