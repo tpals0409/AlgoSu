@@ -1105,7 +1105,32 @@ describe('OAuthService', () => {
   });
 
   // ============================
-  // 35. sse controller line 339 coverage — removeChannelListener when channel not found
+  // 35. issueDemoToken — isDemo: true 클레임 + 2h 만료
+  // ============================
+  describe('issueDemoToken', () => {
+    it('isDemo: true 클레임과 2시간 만료 JWT 반환', () => {
+      const user = {
+        id: 'demo-user-1',
+        email: 'demo@algosu.kr',
+        oauth_provider: OAuthProvider.GOOGLE,
+        github_connected: false,
+      } as IdentityUser;
+
+      const token = service.issueDemoToken(user);
+
+      expect(token).toBeDefined();
+      const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as jwt.JwtPayload;
+      expect(decoded.sub).toBe('demo-user-1');
+      expect(decoded.isDemo).toBe(true);
+      // 2시간 만료 확인 (7200초 ± 5초 오차)
+      const ttl = decoded.exp! - decoded.iat!;
+      expect(ttl).toBeGreaterThanOrEqual(7195);
+      expect(ttl).toBeLessThanOrEqual(7205);
+    });
+  });
+
+  // ============================
+  // 36. sse controller line 339 coverage — removeChannelListener when channel not found
   // (이 테스트는 SseController spec에 속하지만 참조용)
   // ============================
 

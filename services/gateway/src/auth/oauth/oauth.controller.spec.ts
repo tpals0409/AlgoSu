@@ -369,6 +369,46 @@ describe('OAuthController', () => {
   // ============================
   // 7. 회원탈퇴
   // ============================
+  describe('demoLogin', () => {
+    it('DEMO_MODE_ENABLED=true — 데모 JWT 발급 + redirect 반환', async () => {
+      mockConfigService.get.mockImplementation((key: string, defaultVal?: string) => {
+        const map: Record<string, string> = {
+          DEMO_MODE_ENABLED: 'true',
+          DEMO_USER_ID: USER_ID,
+          NODE_ENV: 'development',
+        };
+        return map[key] ?? defaultVal;
+      });
+      mockOAuthService.issueDemoToken = jest.fn().mockReturnValue('demo-jwt-token');
+      const res = createMockRes();
+
+      const result = await controller.demoLogin(res as any);
+
+      expect(mockOAuthService.findUserByIdOrThrow).toHaveBeenCalledWith(USER_ID);
+      expect(mockOAuthService.issueDemoToken).toHaveBeenCalled();
+      expect(res.cookie).toHaveBeenCalled();
+      expect(result.redirect).toBe('/dashboard');
+    });
+
+    it('DEMO_MODE_ENABLED=false — NotFoundException', async () => {
+      mockConfigService.get.mockImplementation((key: string, defaultVal?: string) => {
+        const map: Record<string, string> = { DEMO_MODE_ENABLED: 'false' };
+        return map[key] ?? defaultVal;
+      });
+
+      await expect(controller.demoLogin({} as any)).rejects.toThrow(NotFoundException);
+    });
+
+    it('DEMO_USER_ID 미설정 — NotFoundException', async () => {
+      mockConfigService.get.mockImplementation((key: string, defaultVal?: string) => {
+        const map: Record<string, string> = { DEMO_MODE_ENABLED: 'true' };
+        return map[key] ?? defaultVal;
+      });
+
+      await expect(controller.demoLogin({} as any)).rejects.toThrow(NotFoundException);
+    });
+  });
+
   describe('deleteAccount', () => {
     it('계정 소프트 딜리트 + 쿠키 삭제', async () => {
       const req = createMockReq();
