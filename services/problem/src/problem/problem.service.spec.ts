@@ -424,7 +424,7 @@ describe('ProblemService', () => {
       const dto: UpdateProblemDto = {
         title: '수정된 제목',
         difficulty: Difficulty.GOLD,
-        status: 'CLOSED',
+        status: ProblemStatus.CLOSED,
       };
 
       const updatedProblem = {
@@ -567,17 +567,17 @@ describe('ProblemService', () => {
   // 11. delete() — soft delete
   // ──────────────────────────────────────────────
   describe('delete()', () => {
-    it('문제 soft delete: CLOSED 상태 + 캐시 무효화', async () => {
+    it('문제 soft delete: DELETED 상태 + 캐시 무효화', async () => {
       const problem = { ...mockProblem };
       dualWrite.findOne.mockResolvedValue(problem);
-      dualWrite.saveExisting.mockResolvedValue({ ...problem, status: ProblemStatus.CLOSED });
+      dualWrite.saveExisting.mockResolvedValue({ ...problem, status: ProblemStatus.DELETED });
       deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
       deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
 
       await service.delete(STUDY_ID, PROBLEM_ID);
 
       expect(dualWrite.saveExisting).toHaveBeenCalledWith(
-        expect.objectContaining({ status: ProblemStatus.CLOSED }),
+        expect.objectContaining({ status: ProblemStatus.DELETED }),
       );
       expect(deadlineCache.invalidateDeadline).toHaveBeenCalledWith(STUDY_ID, PROBLEM_ID);
       expect(deadlineCache.invalidateWeekProblems).toHaveBeenCalledWith(STUDY_ID, mockProblem.weekNumber);

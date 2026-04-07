@@ -13,12 +13,12 @@ export type Difficulty = 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND' |
 export type SagaStep = 'DONE' | 'AI_QUEUED' | 'GITHUB_QUEUED' | 'FAILED' | 'PENDING';
 
 export const DIFFICULTY_CONFIG: Record<Difficulty, { label: string; color: string; bg: string }> = {
-  BRONZE:   { label: 'Bronze',   color: '#AD5600', bg: 'rgba(173,86,0,0.10)' },
-  SILVER:   { label: 'Silver',   color: '#435F7A', bg: 'rgba(67,95,122,0.10)' },
-  GOLD:     { label: 'Gold',     color: '#EC9003', bg: 'rgba(236,144,3,0.10)' },
-  PLATINUM: { label: 'Platinum', color: '#27E2A4', bg: 'rgba(39,226,164,0.10)' },
-  DIAMOND:  { label: 'Diamond',  color: '#00B4FC', bg: 'rgba(0,180,252,0.10)' },
-  RUBY:     { label: 'Ruby',     color: '#FF0062', bg: 'rgba(255,0,98,0.10)' },
+  BRONZE:   { label: 'Bronze',   color: 'var(--diff-bronze-color)',   bg: 'var(--diff-bronze-bg)' },
+  SILVER:   { label: 'Silver',   color: 'var(--diff-silver-color)',   bg: 'var(--diff-silver-bg)' },
+  GOLD:     { label: 'Gold',     color: 'var(--diff-gold-color)',     bg: 'var(--diff-gold-bg)' },
+  PLATINUM: { label: 'Platinum', color: 'var(--diff-platinum-color)', bg: 'var(--diff-platinum-bg)' },
+  DIAMOND:  { label: 'Diamond',  color: 'var(--diff-diamond-color)',  bg: 'var(--diff-diamond-bg)' },
+  RUBY:     { label: 'Ruby',     color: 'var(--diff-ruby-color)',     bg: 'var(--diff-ruby-bg)' },
 };
 
 export const SAGA_CONFIG: Record<SagaStep, { label: string; color: string; bg: string }> = {
@@ -263,19 +263,19 @@ export function StatCard({
         {/* 아이콘 */}
         <div
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-          style={{ background: 'rgba(255,255,255,0.18)' }}
+          style={{ background: 'var(--on-primary-soft)' }}
         >
-          <Icon className="h-5 w-5" style={{ color: '#fff' }} aria-hidden />
+          <Icon className="h-5 w-5" style={{ color: 'var(--on-primary)' }} aria-hidden />
         </div>
 
         {/* 텍스트 */}
         <div className="flex-1 text-left">
-          <p className="text-[15px] font-bold leading-tight" style={{ color: '#fff' }}>{label}</p>
-          <p className="mt-0.5 text-[11px]" style={{ color: 'rgba(255,255,255,0.65)' }}>입장하기</p>
+          <p className="text-[15px] font-bold leading-tight" style={{ color: 'var(--on-primary)' }}>{label}</p>
+          <p className="mt-0.5 text-[11px]" style={{ color: 'var(--on-primary-muted)' }}>입장하기</p>
         </div>
 
         {/* 화살표 */}
-        <ChevronRight className="h-4 w-4 shrink-0" style={{ color: 'rgba(255,255,255,0.6)' }} aria-hidden />
+        <ChevronRight className="h-4 w-4 shrink-0" style={{ color: 'var(--on-primary-icon)' }} aria-hidden />
       </El>
     );
   }
@@ -442,15 +442,15 @@ export function Spinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
 // ── LangBadge ────────────────────────────────────────────────────────────────
 
 const LANG_COLORS: Record<string, { color: string; bg: string }> = {
-  python: { color: '#3572A5', bg: 'rgba(53,114,165,0.12)' },
-  java:   { color: '#b07219', bg: 'rgba(176,114,25,0.12)' },
-  cpp:    { color: '#f34b7d', bg: 'rgba(243,75,125,0.12)' },
-  c:      { color: '#555555', bg: 'rgba(85,85,85,0.12)' },
-  js:     { color: '#f1e05a', bg: 'rgba(241,224,90,0.12)' },
-  ts:     { color: '#2b7489', bg: 'rgba(43,116,137,0.12)' },
-  kotlin: { color: '#A97BFF', bg: 'rgba(169,123,255,0.12)' },
-  go:     { color: '#00ADD8', bg: 'rgba(0,173,216,0.12)' },
-  rust:   { color: '#dea584', bg: 'rgba(222,165,132,0.12)' },
+  python: { color: 'var(--lang-python-color)', bg: 'var(--lang-python-bg)' },
+  java:   { color: 'var(--lang-java-color)',   bg: 'var(--lang-java-bg)' },
+  cpp:    { color: 'var(--lang-cpp-color)',     bg: 'var(--lang-cpp-bg)' },
+  c:      { color: 'var(--lang-c-color)',       bg: 'var(--lang-c-bg)' },
+  js:     { color: 'var(--lang-js-color)',      bg: 'var(--lang-js-bg)' },
+  ts:     { color: 'var(--lang-ts-color)',      bg: 'var(--lang-ts-bg)' },
+  kotlin: { color: 'var(--lang-kotlin-color)',  bg: 'var(--lang-kotlin-bg)' },
+  go:     { color: 'var(--lang-go-color)',      bg: 'var(--lang-go-bg)' },
+  rust:   { color: 'var(--lang-rust-color)',    bg: 'var(--lang-rust-bg)' },
 };
 
 export function LangBadge({ language }: { language: string }) {

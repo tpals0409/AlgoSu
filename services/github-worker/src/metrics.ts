@@ -45,6 +45,26 @@ export const mqMessagesProcessedTotal = new Counter({
   registers: [registry],
 });
 
+// ─── GitHub API Rate Limit 메트릭 ─────────────
+
+/**
+ * GitHub API Rate Limit 경고 카운터 — remaining < threshold 시 증가
+ */
+export const githubRateLimitWarningsTotal = new Counter({
+  name: `${PREFIX}_github_rate_limit_warnings_total`,
+  help: 'Total GitHub API rate limit warnings (remaining below threshold)',
+  registers: [registry],
+});
+
+/**
+ * GitHub API 429 (Rate Limited) 카운터
+ */
+export const githubRateLimitedTotal = new Counter({
+  name: `${PREFIX}_github_rate_limited_total`,
+  help: 'Total GitHub API 429 rate-limited responses',
+  registers: [registry],
+});
+
 // ─── /metrics HTTP 서버 ─────────────────────
 
 const METRICS_PORT = parseInt(process.env['METRICS_PORT'] ?? '9100', 10);

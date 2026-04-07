@@ -1,4 +1,17 @@
-import { GitHubPushService } from './github-push.service';
+import { GitHubPushService, GitHubRateLimitError } from './github-push.service';
+
+// metrics 모킹
+jest.mock('./metrics', () => ({
+  githubRateLimitWarningsTotal: { inc: jest.fn() },
+  githubRateLimitedTotal: { inc: jest.fn() },
+}));
+
+// config 모킹
+jest.mock('./config', () => ({
+  config: {
+    rateLimitWarnThreshold: 10,
+  },
+}));
 
 // Octokit 모킹
 const mockGetContent = jest.fn();
@@ -29,18 +42,26 @@ describe('GitHubPushService', () => {
     githubToken: 'ghs_mock_token',
   };
 
+  /** OctokitResponse 형태로 래핑 */
+  const octokitResp = (data: unknown, headers: Record<string, string> = {}) => ({
+    status: 200,
+    url: '',
+    headers: { 'x-ratelimit-remaining': '100', 'x-ratelimit-limit': '5000', 'x-ratelimit-reset': '9999999999', ...headers },
+    data,
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
 
     service = new GitHubPushService();
 
     // 기본: 레포 존재
-    mockReposGet.mockResolvedValue({ data: {} });
+    mockReposGet.mockResolvedValue(octokitResp({}));
     // 기본: 파일 없음 (404)
     mockGetContent.mockRejectedValue(new Error('Not Found'));
-    mockCreateOrUpdateFileContents.mockResolvedValue({
-      data: { content: { sha: 'abc123sha' } },
-    });
+    mockCreateOrUpdateFileContents.mockResolvedValue(
+      octokitResp({ content: { sha: 'abc123sha' } }),
+    );
   });
 
   // 1. 새 파일 생성
@@ -67,9 +88,9 @@ describe('GitHubPushService', () => {
   // 2. 기존 파일 업데이트
   it('push() -- 기존 파일 업데이트: sha 전달', async () => {
     // getContent가 기존 파일을 반환
-    mockGetContent.mockResolvedValue({
-      data: { type: 'file', sha: 'existing-sha-456' },
-    });
+    mockGetContent.mockResolvedValue(
+      octokitResp({ type: 'file', sha: 'existing-sha-456' }),
+    );
 
     await service.push(basePushInput);
 
@@ -101,11 +122,11 @@ describe('GitHubPushService', () => {
     expect(pyResult.filePath).toMatch(/\.py$/);
 
     jest.clearAllMocks();
-    mockReposGet.mockResolvedValue({ data: {} });
+    mockReposGet.mockResolvedValue(octokitResp({}));
     mockGetContent.mockRejectedValue(new Error('Not Found'));
-    mockCreateOrUpdateFileContents.mockResolvedValue({
-      data: { content: { sha: 'sha-java' } },
-    });
+    mockCreateOrUpdateFileContents.mockResolvedValue(
+      octokitResp({ content: { sha: 'sha-java' } }),
+    );
 
     // java -> java
     const javaResult = await service.push({ ...basePushInput, language: 'java' });
@@ -126,6 +147,7 @@ describe('GitHubPushService', () => {
   // 6. 레포 자동 생성
   it('push() -- 레포 없으면 자동 생성', async () => {
     mockReposGet.mockRejectedValue({ status: 404 });
+    mockCreateForAuthenticatedUser.mockResolvedValue(octokitResp({}));
 
     await service.push(basePushInput);
 
@@ -150,9 +172,9 @@ describe('GitHubPushService', () => {
 
   // 8. getContent가 배열 반환 (디렉토리) -- sha undefined
   it('push() -- getContent가 배열 반환: sha undefined(새 파일로 처리)', async () => {
-    mockGetContent.mockResolvedValue({
-      data: [{ type: 'file', sha: 'some-sha' }],
-    });
+    mockGetContent.mockResolvedValue(
+      octokitResp([{ type: 'file', sha: 'some-sha' }]),
+    );
 
     await service.push(basePushInput);
 
@@ -165,12 +187,119 @@ describe('GitHubPushService', () => {
 
   // 9. result.content가 null인 경우 sha는 빈 문자열
   it('push() -- result.content가 null: sha 빈 문자열 반환', async () => {
-    mockCreateOrUpdateFileContents.mockResolvedValue({
-      data: { content: null },
-    });
+    mockCreateOrUpdateFileContents.mockResolvedValue(
+      octokitResp({ content: null }),
+    );
 
     const result = await service.push(basePushInput);
 
     expect(result.sha).toBe('');
+  });
+
+  // ─── Rate Limit 테스트 ───────────────────────
+
+  // 10. remaining < threshold 시 경고 로그 + 메트릭
+  it('inspectRateLimit() -- remaining < threshold: 경고 메트릭 증가', () => {
+    const { githubRateLimitWarningsTotal } = require('./metrics');
+
+    const response = octokitResp({}, { 'x-ratelimit-remaining': '5', 'x-ratelimit-limit': '5000', 'x-ratelimit-reset': '9999999999' });
+    service.inspectRateLimit(response as any);
+
+    expect(githubRateLimitWarningsTotal.inc).toHaveBeenCalled();
+  });
+
+  // 11. remaining >= threshold 시 경고 없음
+  it('inspectRateLimit() -- remaining >= threshold: 경고 없음', () => {
+    const { githubRateLimitWarningsTotal } = require('./metrics');
+
+    const response = octokitResp({}, { 'x-ratelimit-remaining': '100' });
+    service.inspectRateLimit(response as any);
+
+    expect(githubRateLimitWarningsTotal.inc).not.toHaveBeenCalled();
+  });
+
+  // 12. 429 응답 시 GitHubRateLimitError throw
+  it('inspectRateLimit() -- 429 응답: GitHubRateLimitError throw', () => {
+    const { githubRateLimitedTotal } = require('./metrics');
+
+    const response = {
+      status: 429,
+      url: '',
+      headers: { 'retry-after': '30' },
+      data: {},
+    };
+
+    expect(() => service.inspectRateLimit(response as any)).toThrow(GitHubRateLimitError);
+    expect(githubRateLimitedTotal.inc).toHaveBeenCalled();
+  });
+
+  // 13. 429 시 Retry-After 없으면 기본 60초
+  it('inspectRateLimit() -- 429 + Retry-After 누락: 기본 60초', () => {
+    const response = {
+      status: 429,
+      url: '',
+      headers: {},
+      data: {},
+    };
+
+    try {
+      service.inspectRateLimit(response as any);
+      fail('should have thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(GitHubRateLimitError);
+      expect((err as GitHubRateLimitError).retryAfterMs).toBe(60_000);
+    }
+  });
+
+  // 14. remaining 헤더 없을 때 경고 없음 (NaN 처리)
+  it('inspectRateLimit() -- remaining 헤더 없음: 경고 없음', () => {
+    const { githubRateLimitWarningsTotal } = require('./metrics');
+
+    const response = octokitResp({}, {});
+    // 기본 헤더 제거
+    delete (response as any).headers['x-ratelimit-remaining'];
+    service.inspectRateLimit(response as any);
+
+    expect(githubRateLimitWarningsTotal.inc).not.toHaveBeenCalled();
+  });
+
+  // 15. push() — createOrUpdate 429 시 재시도 성공
+  it('push() -- createOrUpdate 429: 재시도 후 성공', async () => {
+    // 첫 createOrUpdate 호출 → 429
+    mockCreateOrUpdateFileContents
+      .mockResolvedValueOnce({
+        status: 429,
+        url: '',
+        headers: { 'retry-after': '0' },
+        data: { content: { sha: 'rate-limited' } },
+      })
+      // 재시도 → 성공
+      .mockResolvedValueOnce(
+        octokitResp({ content: { sha: 'retry-sha' } }),
+      );
+
+    const result = await service.push(basePushInput);
+    expect(result.sha).toBe('retry-sha');
+  });
+
+  // 16. push() — getContent 429 시 재시도 성공 (기존 파일 조회)
+  it('push() -- getContent 429: 재시도 후 기존 파일 sha 획득', async () => {
+    mockGetContent
+      .mockResolvedValueOnce({
+        status: 429,
+        url: '',
+        headers: { 'retry-after': '0' },
+        data: {},
+      })
+      .mockResolvedValueOnce(
+        octokitResp({ type: 'file', sha: 'existing-sha-after-retry' }),
+      );
+
+    const result = await service.push(basePushInput);
+
+    expect(mockCreateOrUpdateFileContents).toHaveBeenCalledWith(
+      expect.objectContaining({ sha: 'existing-sha-after-retry' }),
+    );
+    expect(result.sha).toBe('abc123sha');
   });
 });

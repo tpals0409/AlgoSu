@@ -3,9 +3,20 @@
  * @domain github
  * @layer service
  * @related worker.ts, token-manager.ts
+ *
+ * Rate Limit 정책:
+ * - 모든 GitHub API 응답에서 X-RateLimit-* 헤더 감시
+ * - remaining < threshold(기본 10) 시 WARN 로그 + 메트릭 증가
+ * - 429 응답 시 Retry-After 기반 대기 후 1회 재시도
  */
 import { Octokit } from '@octokit/rest';
+import { OctokitResponse } from '@octokit/types';
 import { logger } from './logger';
+import { config } from './config';
+import {
+  githubRateLimitWarningsTotal,
+  githubRateLimitedTotal,
+} from './metrics';
 
 /**
  * GitHub Push 서비스 — 유저 토큰 기반 개인 레포 push
@@ -55,6 +66,19 @@ const LANGUAGE_EXT: Record<string, string> = {
 
 const REPO_NAME = 'algosu-submissions';
 
+/**
+ * GitHub API Rate Limit 초과 에러
+ * Retry-After 기반 대기를 위해 retryAfterMs 필드 포함
+ */
+export class GitHubRateLimitError extends Error {
+  readonly retryAfterMs: number;
+  constructor(retryAfterMs: number) {
+    super(`GitHub API rate limited — retry after ${retryAfterMs}ms`);
+    this.name = 'GitHubRateLimitError';
+    this.retryAfterMs = retryAfterMs;
+  }
+}
+
 export class GitHubPushService {
   constructor() {}
 
@@ -76,21 +100,67 @@ export class GitHubPushService {
     let existingSha: string | undefined;
 
     try {
-      const { data } = await octokit.repos.getContent({
+      const resp = await octokit.repos.getContent({
         owner: input.githubUsername,
         repo: REPO_NAME,
         path: filePath,
       });
 
-      if (!Array.isArray(data) && data.type === 'file') {
-        existingSha = data.sha;
+      this.inspectRateLimit(resp);
+
+      if (!Array.isArray(resp.data) && resp.data.type === 'file') {
+        existingSha = resp.data.sha;
       }
-    } catch {
-      // 파일 없음 → 새로 생성
+    } catch (err) {
+      // Rate Limit 429 → 대기 후 1회 재시도
+      if (err instanceof GitHubRateLimitError) {
+        await this.waitAndLog(err.retryAfterMs);
+        // 재시도 — 여전히 실패 시 상위로 throw
+        const retryResp = await octokit.repos.getContent({
+          owner: input.githubUsername,
+          repo: REPO_NAME,
+          path: filePath,
+        });
+        this.inspectRateLimit(retryResp);
+        if (!Array.isArray(retryResp.data) && retryResp.data.type === 'file') {
+          existingSha = retryResp.data.sha;
+        }
+      }
+      // 파일 없음(404 등) → 무시, 새로 생성
     }
 
-    // 파일 생성/업데이트
-    const { data: result } = await octokit.repos.createOrUpdateFileContents({
+    // 파일 생성/업데이트 — Rate Limit 429 시 1회 재시도
+    let createResp;
+    try {
+      createResp = await this.createOrUpdate(octokit, input, filePath, title, existingSha);
+    } catch (err) {
+      if (err instanceof GitHubRateLimitError) {
+        await this.waitAndLog(err.retryAfterMs);
+        createResp = await this.createOrUpdate(octokit, input, filePath, title, existingSha);
+      } else {
+        throw err;
+      }
+    }
+
+    logger.info('GitHub Push 완료', { action: 'PUSH_DONE' });
+
+    return {
+      filePath,
+      sha: createResp.content?.sha ?? '',
+    };
+  }
+
+  /**
+   * 파일 생성/업데이트 호출 (Rate Limit 검사 포함)
+   */
+  private async createOrUpdate(
+    octokit: Octokit,
+    input: PushInput,
+    filePath: string,
+    title: string,
+    existingSha: string | undefined,
+  ) {
+    const resp = await octokit.repos.createOrUpdateFileContents({
       owner: input.githubUsername,
       repo: REPO_NAME,
       path: filePath,
@@ -99,12 +169,75 @@ export class GitHubPushService {
       sha: existingSha,
     });
 
-    logger.info('GitHub Push 완료', { action: 'PUSH_DONE' });
+    this.inspectRateLimit(resp);
 
-    return {
-      filePath,
-      sha: result.content?.sha ?? '',
-    };
+    return resp.data;
+  }
+
+  /**
+   * GitHub API 응답에서 Rate Limit 헤더 검사
+   *
+   * - remaining < threshold → WARN 로그 + 메트릭
+   * - status 429 → GitHubRateLimitError throw (Retry-After 포함)
+   *
+   * @throws {GitHubRateLimitError} 429 응답 시
+   */
+  inspectRateLimit(response: OctokitResponse<unknown>): void {
+    const headers = response.headers;
+    const status = response.status;
+
+    // 429 Rate Limited 처리
+    if (status === 429) {
+      const retryAfter = parseInt(String(headers['retry-after'] ?? '60'), 10);
+      const retryAfterMs = retryAfter * 1000;
+      githubRateLimitedTotal.inc();
+      logger.error('GitHub API Rate Limited (429)', {
+        tag: 'GITHUB_RATE_LIMIT',
+        code: 'GHW_RATE_001',
+      });
+      throw new GitHubRateLimitError(retryAfterMs);
+    }
+
+    // Rate Limit 잔여량 감시
+    const remaining = parseInt(String(headers['x-ratelimit-remaining'] ?? ''), 10);
+    const limit = parseInt(String(headers['x-ratelimit-limit'] ?? ''), 10);
+    const resetEpoch = parseInt(String(headers['x-ratelimit-reset'] ?? ''), 10);
+
+    if (!isNaN(remaining) && remaining < config.rateLimitWarnThreshold) {
+      const resetAt = !isNaN(resetEpoch)
+        ? new Date(resetEpoch * 1000).toISOString()
+        : 'unknown';
+
+      githubRateLimitWarningsTotal.inc();
+      logger.warn('GitHub API Rate Limit 임박', {
+        tag: 'GITHUB_RATE_LIMIT',
+        code: 'GHW_RATE_002',
+      });
+
+      logger.debug('Rate Limit 상세', {
+        tag: 'GITHUB_RATE_LIMIT',
+      });
+
+      // 별도 debug 로그로 수치 기록 (production에서는 출력 안 됨)
+      logger.debug(`remaining=${remaining} limit=${limit} resetAt=${resetAt}`, {
+        tag: 'GITHUB_RATE_LIMIT',
+      });
+    }
+  }
+
+  /**
+   * Rate Limit 재시도 전 대기 + 로깅
+   */
+  private async waitAndLog(ms: number): Promise<void> {
+    logger.warn(`Rate Limit 재시도 대기 ${ms}ms`, {
+      tag: 'GITHUB_RATE_LIMIT',
+      code: 'GHW_RATE_003',
+    });
+    await this.delay(ms);
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**

@@ -21,9 +21,16 @@ spec:
         app: rabbitmq
         component: messaging
     spec:
+      securityContext:
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        runAsNonRoot: true
       containers:
         - name: rabbitmq
           image: rabbitmq:3.13-alpine
+          securityContext:
+            allowPrivilegeEscalation: false
           ports:
             - containerPort: 5672
               name: amqp

@@ -44,25 +44,18 @@ interface CodeBlockProps {
   readonly highlightColor?: 'success' | 'warning' | 'error';
 }
 
-// ─── HIGHLIGHT COLORS ────────────────────
+// ─── HIGHLIGHT COLORS (CSS variable references) ────────────────────
 
-const HL_BG: Record<string, Record<string, string>> = {
-  light: {
-    success: 'rgba(34, 197, 94, 0.12)',
-    warning: 'rgba(234, 179, 8, 0.12)',
-    error: 'rgba(239, 68, 68, 0.12)',
-  },
-  dark: {
-    success: 'rgba(34, 197, 94, 0.15)',
-    warning: 'rgba(234, 179, 8, 0.15)',
-    error: 'rgba(239, 68, 68, 0.15)',
-  },
+const HL_BG: Record<string, string> = {
+  success: 'var(--hl-success-bg)',
+  warning: 'var(--hl-warning-bg)',
+  error: 'var(--hl-error-bg)',
 };
 
 const HL_BORDER: Record<string, string> = {
-  success: 'rgb(34, 197, 94)',
-  warning: 'rgb(234, 179, 8)',
-  error: 'rgb(239, 68, 68)',
+  success: 'var(--hl-success-border)',
+  warning: 'var(--hl-warning-border)',
+  error: 'var(--hl-error-border)',
 };
 
 // ─── RENDER ──────────────────────────────
@@ -94,11 +87,10 @@ export function CodeBlock({
       }}
       lineProps={(lineNumber: number) => {
         const isHL = highlightLines?.has(lineNumber);
-        const themeKey = isDark ? 'dark' : 'light';
         return {
           style: {
             display: 'block',
-            backgroundColor: isHL ? HL_BG[themeKey][highlightColor] : undefined,
+            backgroundColor: isHL ? HL_BG[highlightColor] : undefined,
             borderLeft: isHL ? `3px solid ${HL_BORDER[highlightColor]}` : '3px solid transparent',
             paddingLeft: isHL ? '4px' : '7px',
           },
@@ -110,7 +102,7 @@ export function CodeBlock({
         fontSize: '13px',
         lineHeight: '22px',
         borderRadius: 0,
-        background: isDark ? '#14141A' : '#FFFFFF',
+        background: 'var(--code-block-bg)',
       }}
     >
       {code}

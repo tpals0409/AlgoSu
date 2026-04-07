@@ -22,9 +22,16 @@ spec:
         app: postgres
         component: database
     spec:
+      securityContext:
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        runAsNonRoot: true
       containers:
         - name: postgres
           image: postgres:16.3-alpine
+          securityContext:
+            allowPrivilegeEscalation: false
           ports:
             - containerPort: 5432
           args:

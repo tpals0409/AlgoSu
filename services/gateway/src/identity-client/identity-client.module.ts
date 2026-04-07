@@ -20,7 +20,10 @@ import { IdentityClientService } from './identity-client.service';
           'IDENTITY_SERVICE_URL',
           'http://identity-service:3004',
         ),
-        timeout: 5000,
+        timeout: configService.get<number>(
+          'IDENTITY_SERVICE_TIMEOUT',
+          5000,
+        ),
       }),
     }),
   ],

@@ -21,9 +21,16 @@ spec:
         app: redis
         component: cache
     spec:
+      securityContext:
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        runAsNonRoot: true
       containers:
         - name: redis
           image: redis:7.2-alpine
+          securityContext:
+            allowPrivilegeEscalation: false
           ports:
             - containerPort: 6379
           command:

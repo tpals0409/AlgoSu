@@ -223,8 +223,10 @@ class AIAnalysisWorker:
             try:
                 event_data = json.loads(body)
                 sid = event_data.get("submissionId", "unknown")
+                uid = event_data.get("userId", "")
             except Exception:
                 sid = "unknown"
+                uid = ""
 
             if delivery_count < MAX_REQUEUE:
                 logger.warning(
@@ -238,6 +240,9 @@ class AIAnalysisWorker:
                     f"Circuit Breaker OPEN -- requeue 한도 초과, DLQ 전송: "
                     f"submissionId={sid}, delivery={delivery_count + 1}"
                 )
+                # requeue 한도 초과 — AI 분석 미수행이므로 quota 차감 보상
+                if uid:
+                    self._decrement_quota(uid)
                 # 한도 초과 시 delayed 상태를 DB에 저장하여 사용자에게 알림
                 try:
                     self._report_result(

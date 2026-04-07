@@ -55,4 +55,7 @@ export const config = {
 
   githubTokenTtl: parseInt(getOptional('GITHUB_TOKEN_TTL', '3600'), 10),
   githubTokenRefreshInterval: parseInt(getOptional('GITHUB_TOKEN_REFRESH_INTERVAL', String(50 * 60 * 1000)), 10),
+
+  /** Rate Limit remaining 이 이 값 미만이면 경고 로그 출력 */
+  rateLimitWarnThreshold: parseInt(getOptional('RATE_LIMIT_WARN_THRESHOLD', '10'), 10),
 };

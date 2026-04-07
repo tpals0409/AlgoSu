@@ -192,11 +192,11 @@ export class ProblemService {
 
   /**
    * M6: 문제 삭제 (soft delete) — ADMIN 권한 필수
-   * status를 CLOSED로 변경. Submission 참조 무결성 유지.
+   * status를 DELETED로 변경. Submission 참조 무결성 유지.
    */
   async delete(studyId: string, id: string): Promise<void> {
     const problem = await this.findById(studyId, id);
-    problem.status = ProblemStatus.CLOSED;
+    problem.status = ProblemStatus.DELETED;
     await this.dualWrite.saveExisting(problem);
 
     await this.deadlineCache.invalidateDeadline(studyId, id);

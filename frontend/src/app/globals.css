@@ -76,6 +76,42 @@
   --diff-diamond-bg:  rgba(0,   180, 252,  0.10);
   --diff-ruby-bg:     rgba(255,   0,  98,  0.10);
 
+  /* ── Language colors ── */
+  --lang-python-color: #3572A5;
+  --lang-java-color:   #b07219;
+  --lang-cpp-color:    #f34b7d;
+  --lang-c-color:      #555555;
+  --lang-js-color:     #f1e05a;
+  --lang-ts-color:     #2b7489;
+  --lang-kotlin-color: #A97BFF;
+  --lang-go-color:     #00ADD8;
+  --lang-rust-color:   #dea584;
+
+  --lang-python-bg: rgba(53,  114, 165, 0.12);
+  --lang-java-bg:   rgba(176, 114,  25, 0.12);
+  --lang-cpp-bg:    rgba(243,  75, 125, 0.12);
+  --lang-c-bg:      rgba(85,   85,  85, 0.12);
+  --lang-js-bg:     rgba(241, 224,  90, 0.12);
+  --lang-ts-bg:     rgba(43,  116, 137, 0.12);
+  --lang-kotlin-bg: rgba(169, 123, 255, 0.12);
+  --lang-go-bg:     rgba(0,   173, 216, 0.12);
+  --lang-rust-bg:   rgba(222, 165, 132, 0.12);
+
+  /* ── Code highlight colors ── */
+  --hl-success-bg:     rgba(34,  197,  94, 0.12);
+  --hl-warning-bg:     rgba(234, 179,   8, 0.12);
+  --hl-error-bg:       rgba(239,  68,  68, 0.12);
+  --hl-success-border: rgb(34,  197,  94);
+  --hl-warning-border: rgb(234, 179,   8);
+  --hl-error-border:   rgb(239,  68,  68);
+  --code-block-bg:     #FFFFFF;
+
+  /* ── Primary-on (white-on-brand) ── */
+  --on-primary:       #FFFFFF;
+  --on-primary-muted: rgba(255, 255, 255, 0.65);
+  --on-primary-icon:  rgba(255, 255, 255, 0.60);
+  --on-primary-soft:  rgba(255, 255, 255, 0.18);
+
   /* ── Shadows ── */
   --shadow-card:  0 1px 3px rgba(124, 106, 174, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-hover: 0 4px 12px rgba(124, 106, 174, 0.16), 0 2px 4px rgba(0, 0, 0, 0.06);
@@ -179,6 +215,42 @@
 
   /* ── Input ── */
   --input-bg:  #22212B;
+
+  /* ── Language colors (dark — same hues, slightly brighter) ── */
+  --lang-python-color: #5A9FD4;
+  --lang-java-color:   #D4952E;
+  --lang-cpp-color:    #F77DA0;
+  --lang-c-color:      #8A8A8A;
+  --lang-js-color:     #F1E05A;
+  --lang-ts-color:     #47A0B8;
+  --lang-kotlin-color: #BFA0FF;
+  --lang-go-color:     #29C8ED;
+  --lang-rust-color:   #E8BFA0;
+
+  --lang-python-bg: rgba(90,  159, 212, 0.14);
+  --lang-java-bg:   rgba(212, 149,  46, 0.14);
+  --lang-cpp-bg:    rgba(247, 125, 160, 0.14);
+  --lang-c-bg:      rgba(138, 138, 138, 0.14);
+  --lang-js-bg:     rgba(241, 224,  90, 0.14);
+  --lang-ts-bg:     rgba(71,  160, 184, 0.14);
+  --lang-kotlin-bg: rgba(191, 160, 255, 0.14);
+  --lang-go-bg:     rgba(41,  200, 237, 0.14);
+  --lang-rust-bg:   rgba(232, 191, 160, 0.14);
+
+  /* ── Code highlight colors (dark) ── */
+  --hl-success-bg:     rgba(34,  197,  94, 0.15);
+  --hl-warning-bg:     rgba(234, 179,   8, 0.15);
+  --hl-error-bg:       rgba(239,  68,  68, 0.15);
+  --hl-success-border: rgb(34,  197,  94);
+  --hl-warning-border: rgb(234, 179,   8);
+  --hl-error-border:   rgb(239,  68,  68);
+  --code-block-bg:     #14141A;
+
+  /* ── Primary-on (dark) ── */
+  --on-primary:       #FFFFFF;
+  --on-primary-muted: rgba(255, 255, 255, 0.65);
+  --on-primary-icon:  rgba(255, 255, 255, 0.60);
+  --on-primary-soft:  rgba(255, 255, 255, 0.22);
 
   /* ── Shadows ── */
   --shadow-card:  0 1px 4px rgba(0, 0, 0, 0.30), 0 1px 2px rgba(0, 0, 0, 0.20);

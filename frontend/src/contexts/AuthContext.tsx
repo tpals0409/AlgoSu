@@ -70,12 +70,13 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
    * 초기 마운트 시 서버에 프로필 조회하여 인증 상태 확인.
    * httpOnly Cookie가 있으면 서버가 자동 인증, 없으면 401.
    *
-   * ⚡ DEV MOCK: NEXT_PUBLIC_DEV_MOCK=true 시 실제 API 호출 없이 mock 유저 반환
+   * ⚡ DEV MOCK: NEXT_PUBLIC_DEV_MOCK=true && NODE_ENV !== 'production' 시 mock 유저 반환
    */
   useEffect(() => {
     const initAuth = async (): Promise<void> => {
       // ── DEV MOCK ──────────────────────────────────────────────
-      if (process.env.NEXT_PUBLIC_DEV_MOCK === 'true') {
+      // 프로덕션 빌드에서는 NEXT_PUBLIC_DEV_MOCK이 설정되어 있어도 무시
+      if (process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_DEV_MOCK === 'true') {
         setUser({ id: 'dev-user-001', email: 'dev@algosu.kr', avatarPreset: 'default' });
         setGithubConnected(true);
         setIsLoading(false);

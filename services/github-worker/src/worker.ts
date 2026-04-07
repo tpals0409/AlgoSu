@@ -6,7 +6,7 @@
  */
 import * as amqplib from 'amqplib';
 import Redis from 'ioredis';
-import { GitHubPushService } from './github-push.service';
+import { GitHubPushService, GitHubRateLimitError } from './github-push.service';
 import { TokenManager } from './token-manager';
 import { StatusReporter } from './status-reporter';
 import { logger } from './logger';
@@ -387,8 +387,13 @@ export class GitHubWorker {
         }
 
         if (attempt < MAX_RETRIES) {
+          // Rate Limit 429 → Retry-After 기반 대기
+          const delayMs =
+            lastError instanceof GitHubRateLimitError
+              ? lastError.retryAfterMs
+              : RETRY_DELAY_MS * attempt;
           logger.warn('재시도', { retryCount: attempt, err: lastError });
-          await this.delay(RETRY_DELAY_MS * attempt);
+          await this.delay(delayMs);
         }
       }
     }

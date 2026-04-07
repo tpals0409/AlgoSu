@@ -539,7 +539,7 @@ class TestOnMessageCircuitBreakerOpen:
         mock_ch.basic_ack.assert_not_called()
 
     def test_circuit_breaker_open_dlq_on_max_requeue(self, worker, mock_dependencies, pika_mocks):
-        """Circuit Breaker requeue 한도 초과 시 DLQ 전송 + delayed 보고"""
+        """Circuit Breaker requeue 한도 초과 시 DLQ 전송 + delayed 보고 + quota 차감"""
         from src.claude_client import CircuitBreakerOpenError
 
         mock_ch, mock_method, mock_properties = pika_mocks
@@ -564,7 +564,10 @@ class TestOnMessageCircuitBreakerOpen:
         # delivery_count = 3 (MAX_REQUEUE 초과)
         mock_properties.headers = {"x-delivery-count": 3}
 
-        body = json.dumps({"submissionId": "sub-cb-max"}).encode()
+        # quota 차감 확인용
+        deps["redis_client"].get.return_value = b"3"
+
+        body = json.dumps({"submissionId": "sub-cb-max", "userId": "user-cb-dlq"}).encode()
 
         worker._on_message(mock_ch, mock_method, mock_properties, body)
 
@@ -579,6 +582,43 @@ class TestOnMessageCircuitBreakerOpen:
         call_kwargs = deps["http_client"].patch.call_args
         payload = call_kwargs[1]["json"]
         assert payload["analysisStatus"] == "delayed"
+
+        # quota 차감 확인 (AI 분석 미수행이므로 보상 차감)
+        deps["redis_client"].decr.assert_called_once()
+
+    def test_circuit_breaker_open_dlq_no_userId_no_decrement(self, worker, mock_dependencies, pika_mocks):
+        """Circuit Breaker requeue 한도 초과 시 userId 없으면 quota 차감 안 함"""
+        from src.claude_client import CircuitBreakerOpenError
+
+        mock_ch, mock_method, mock_properties = pika_mocks
+        deps = mock_dependencies
+
+        # _get_submission 모킹
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"data": {"code": "x", "language": "python"}}
+        mock_resp.raise_for_status = MagicMock()
+        deps["http_client"].get.return_value = mock_resp
+
+        # _report_result 모킹
+        mock_patch_resp = MagicMock()
+        mock_patch_resp.raise_for_status = MagicMock()
+        deps["http_client"].patch.return_value = mock_patch_resp
+
+        deps["claude"].analyze_code = AsyncMock(
+            side_effect=CircuitBreakerOpenError("CB OPEN")
+        )
+
+        mock_properties.headers = {"x-delivery-count": 3}
+
+        # userId 없는 메시지
+        body = json.dumps({"submissionId": "sub-cb-no-user"}).encode()
+
+        worker._on_message(mock_ch, mock_method, mock_properties, body)
+
+        # NACK with requeue=False (DLQ)
+        mock_ch.basic_nack.assert_called_once_with(delivery_tag=42, requeue=False)
+        # quota 차감 미호출
+        deps["redis_client"].decr.assert_not_called()
 
     def test_circuit_breaker_requeue_with_delivery_count_header(self, worker, mock_dependencies, pika_mocks):
         """x-delivery-count 헤더로 requeue 횟수 판단"""

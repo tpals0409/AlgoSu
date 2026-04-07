@@ -10,7 +10,7 @@ import {
   Max,
   MaxLength,
 } from 'class-validator';
-import { Difficulty } from '../problem.entity';
+import { Difficulty, ProblemStatus } from '../problem.entity';
 
 /**
  * 문제 생성 DTO
@@ -108,6 +108,6 @@ export class UpdateProblemDto {
   tags?: string[];
 
   @IsOptional()
-  @IsString()
-  status?: 'ACTIVE' | 'CLOSED' | 'DRAFT';
+  @IsEnum(ProblemStatus)
+  status?: ProblemStatus;
 }
