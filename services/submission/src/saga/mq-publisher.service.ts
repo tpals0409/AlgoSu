@@ -144,20 +144,71 @@ export class MqPublisherService implements OnModuleInit, OnModuleDestroy {
     await this.publish(this.AI_ROUTING_KEY, event);
   }
 
+  private static readonly PUBLISH_MAX_RETRIES = 3;
+  private static readonly PUBLISH_BASE_DELAY_MS = 100;
+  private static readonly PUBLISH_MAX_DELAY_MS = 3000;
+
+  /**
+   * 메시지 발행 — 최대 3회 재시도 (지수 백오프: 100ms → 200ms → 400ms, cap 3000ms)
+   * channel.publish() 반환값 false(buffer full) 도 실패로 처리
+   */
   private async publish(routingKey: string, event: SubmissionEvent): Promise<void> {
     if (!this.channel) {
       throw new Error('RabbitMQ 채널이 초기화되지 않았습니다.');
     }
 
     const message = Buffer.from(JSON.stringify(event));
-    this.channel.publish(this.EXCHANGE, routingKey, message, {
+    const publishOptions = {
       persistent: true,
       contentType: 'application/json',
       timestamp: Date.now(),
       headers: { 'x-trace-id': event.submissionId },
-    });
+    };
 
-    this.logger.log(`MQ 발행: routingKey=${routingKey}, submissionId=${event.submissionId}`);
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt < MqPublisherService.PUBLISH_MAX_RETRIES; attempt++) {
+      try {
+        const result = this.channel.publish(this.EXCHANGE, routingKey, message, publishOptions);
+
+        if (result === false) {
+          lastError = new Error('RabbitMQ 버퍼 초과 (buffer full)');
+          this.logger.warn(
+            `MQ 발행 실패 (buffer full): routingKey=${routingKey}, submissionId=${event.submissionId}, attempt=${attempt + 1}/${MqPublisherService.PUBLISH_MAX_RETRIES}`,
+          );
+        } else {
+          this.logger.log(
+            `MQ 발행: routingKey=${routingKey}, submissionId=${event.submissionId}`,
+          );
+          return;
+        }
+      } catch (error: unknown) {
+        lastError = error as Error;
+        this.logger.warn(
+          `MQ 발행 실패: routingKey=${routingKey}, submissionId=${event.submissionId}, attempt=${attempt + 1}/${MqPublisherService.PUBLISH_MAX_RETRIES}, error=${(error as Error).message}`,
+        );
+      }
+
+      // 마지막 시도가 아닌 경우에만 대기
+      if (attempt < MqPublisherService.PUBLISH_MAX_RETRIES - 1) {
+        const delayMs = Math.min(
+          MqPublisherService.PUBLISH_BASE_DELAY_MS * Math.pow(2, attempt),
+          MqPublisherService.PUBLISH_MAX_DELAY_MS,
+        );
+        await this.delay(delayMs);
+      }
+    }
+
+    throw new Error(
+      `MQ 발행 최종 실패: routingKey=${routingKey}, submissionId=${event.submissionId}, error=${lastError?.message}`,
+    );
+  }
+
+  /**
+   * 지정 시간(ms) 동안 대기하는 헬퍼
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   async onModuleDestroy(): Promise<void> {

@@ -247,7 +247,71 @@ describe('MqPublisherService', () => {
     });
   });
 
-  // ─── 11. scheduleReconnect — 재연결 재시도 실패 시 재스케줄 ───
+  // ─── 11. publish 재시도 — 1회 실패 후 2회째 성공 ─────────────
+  describe('publish() — 1회 실패 후 재시도 성공', () => {
+    it('첫 publish 실패 후 두 번째 시도에서 성공한다', async () => {
+      await service.onModuleInit();
+
+      mockChannel.publish
+        .mockImplementationOnce(() => { throw new Error('channel closed'); })
+        .mockReturnValueOnce(true);
+
+      const promise = service.publishGitHubPush(createEvent());
+      await jest.advanceTimersByTimeAsync(500);
+      await expect(promise).resolves.not.toThrow();
+
+      expect(mockChannel.publish).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  // ─── 12. publish 재시도 — 3회 모두 실패 시 Error throw ────────
+  describe('publish() — 3회 모두 실패', () => {
+    it('3회 모두 실패하면 최종 에러를 던진다', async () => {
+      await service.onModuleInit();
+
+      mockChannel.publish.mockImplementation(() => { throw new Error('channel broken'); });
+
+      const promise = service.publishGitHubPush(createEvent());
+      // 재시도 delay를 해소하기 위해 타이머 전진 (reject 전에 catch 등록)
+      const assertion = expect(promise).rejects.toThrow('MQ 발행 최종 실패');
+      await jest.advanceTimersByTimeAsync(1000);
+      await assertion;
+
+      expect(mockChannel.publish).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  // ─── 13. publish 재시도 — buffer full (false 반환) 시 재시도 ──
+  describe('publish() — buffer full 재시도', () => {
+    it('publish가 false를 반환하면 재시도하고, 이후 성공하면 정상 반환한다', async () => {
+      await service.onModuleInit();
+
+      mockChannel.publish
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true);
+
+      const promise = service.publishAiAnalysis(createEvent());
+      await jest.advanceTimersByTimeAsync(500);
+      await expect(promise).resolves.not.toThrow();
+
+      expect(mockChannel.publish).toHaveBeenCalledTimes(2);
+    });
+
+    it('publish가 계속 false를 반환하면 최종 에러를 던진다', async () => {
+      await service.onModuleInit();
+
+      mockChannel.publish.mockReturnValue(false);
+
+      const promise = service.publishAiAnalysis(createEvent());
+      const assertion = expect(promise).rejects.toThrow('MQ 발행 최종 실패');
+      await jest.advanceTimersByTimeAsync(1000);
+      await assertion;
+
+      expect(mockChannel.publish).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  // ─── 14. scheduleReconnect — 재연결 재시도 실패 시 재스케줄 ───
   describe('scheduleReconnect() — 재연결 재시도 실패 시 재스케줄', () => {
     it('재연결 시도도 실패하면 scheduleReconnect를 재귀 호출한다', async () => {
       // 첫 연결 실패
