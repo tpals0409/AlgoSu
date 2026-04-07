@@ -493,7 +493,7 @@ describe('TopNav — ProfileDropdown user null 케이스', () => {
     mockUser = { email: 'test@example.com', avatarPreset: undefined };
     render(<TopNav />);
     // 렌더링 오류 없이 아바타 이미지가 표시된다
-    const img = screen.getByAltText('아바타');
+    const img = screen.getByAltText('test@example.com 아바타');
     expect(img).toBeInTheDocument();
   });
 
@@ -544,7 +544,7 @@ describe('TopNav — ProfileDropdown user null 케이스', () => {
     // user?.email이 undefined → '' 표시
     expect(profileBtn).toHaveAttribute('aria-label', ' 프로필 메뉴');
     // user?.avatarPreset이 undefined → 'default' 사용
-    expect(screen.getByAltText('아바타')).toBeInTheDocument();
+    expect(screen.getByAltText('사용자 아바타')).toBeInTheDocument();
     // 드롭다운 열기
     fireEvent.click(profileBtn);
     expect(screen.getByRole('menu', { name: '프로필 메뉴' })).toBeInTheDocument();
