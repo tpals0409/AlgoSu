@@ -167,7 +167,7 @@ export function ShareLinkManager(): ReactNode {
       )}
 
       {error && (
-        <p className="text-xs" role="alert" style={{ color: 'var(--danger)' }}>
+        <p className="text-xs" role="alert" style={{ color: 'var(--error)' }}>
           {error}
         </p>
       )}
@@ -213,7 +213,7 @@ export function ShareLinkManager(): ReactNode {
                       type="button"
                       onClick={() => void handleDeactivate(link.id)}
                       className="rounded-btn p-1.5 transition-colors"
-                      style={{ color: 'var(--danger)' }}
+                      style={{ color: 'var(--error)' }}
                       aria-label="링크 비활성화"
                     >
                       <Trash2 size={14} />

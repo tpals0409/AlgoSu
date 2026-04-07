@@ -10,6 +10,7 @@ AlgoSu AI Analysis Service -- FastAPI 메인
 import hmac
 import logging
 import threading
+from contextlib import asynccontextmanager
 from datetime import date
 
 import httpx
@@ -36,15 +37,6 @@ logger = logging.getLogger("ai-analysis")
 
 # ─── APP ──────────────────────────────────────
 
-app = FastAPI(
-    title="AlgoSu AI Analysis Service",
-    description="Claude 기반 코드 분석 + Circuit Breaker + AI Quota",
-    version="2.0.0",
-)
-
-app.add_middleware(PrometheusMiddleware)
-app.get("/metrics")(metrics_endpoint)
-
 worker_instance: AIAnalysisWorker | None = None
 worker_thread: threading.Thread | None = None
 redis_client: redis.Redis | None = None
@@ -53,7 +45,6 @@ redis_client: redis.Redis | None = None
 # ─── LIFECYCLE ────────────────────────────────
 
 
-@app.on_event("startup")
 async def startup_event():
     """서비스 시작 시 RabbitMQ Worker를 백그라운드 스레드로 실행"""
     global worker_instance, worker_thread, redis_client
@@ -69,7 +60,6 @@ async def startup_event():
     logger.info("AI Analysis Worker 백그라운드 시작")
 
 
-@app.on_event("shutdown")
 async def shutdown_event():
     """Graceful Shutdown"""
     global worker_instance, redis_client
@@ -78,6 +68,25 @@ async def shutdown_event():
     if redis_client:
         redis_client.close()
     logger.info("AI Analysis Service 종료")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """FastAPI lifespan context manager — startup/shutdown 통합"""
+    await startup_event()
+    yield
+    await shutdown_event()
+
+
+app = FastAPI(
+    title="AlgoSu AI Analysis Service",
+    description="Claude 기반 코드 분석 + Circuit Breaker + AI Quota",
+    version="2.0.0",
+    lifespan=lifespan,
+)
+
+app.add_middleware(PrometheusMiddleware)
+app.get("/metrics")(metrics_endpoint)
 
 
 # ─── HEALTH ───────────────────────────────────

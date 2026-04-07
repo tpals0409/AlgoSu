@@ -1,6 +1,9 @@
 # ============================================================
+# @file infra/k3s/monitoring/alertmanager.yaml
 # AlgoSu — Alertmanager
 # Discord webhook 기반 알림 전송
+# [56-W1-1] alertmanager-discord 사이드카 미구성 확인 →
+#   DISCORD_WEBHOOK_URL 환경변수 참조 구조로 변경 + TODO 명시
 # ============================================================
 apiVersion: v1
 kind: ConfigMap
@@ -22,9 +25,11 @@ data:
     receivers:
       - name: 'discord-webhook'
         webhook_configs:
-          # TODO: placeholder — Discord webhook adapter (e.g. alertmanager-discord sidecar on :9095) 미구성.
-          #       실제 알림 수신 시 sidecar 컨테이너 추가 또는 외부 webhook URL로 교체 필요.
-          - url: 'http://localhost:9095'
+          # TODO: Discord webhook URL 또는 alertmanager-discord 사이드카 설정 필요
+          #   옵션 A) 사이드카 컨테이너 추가 후 url: 'http://localhost:9095'
+          #   옵션 B) Discord webhook URL 직접 지정 (SealedSecret 권장)
+          #   현재: 사이드카 미구성 상태이므로 DISCORD_WEBHOOK_URL 환경변수로 전환
+          - url: '$DISCORD_WEBHOOK_URL'
             send_resolved: true
 ---
 apiVersion: apps/v1
@@ -82,6 +87,15 @@ spec:
             limits:
               memory: "128Mi"
               cpu: "100m"
+          env:
+            # TODO: Secret 'alertmanager-discord-secret' 생성 필요
+            #   kubectl create secret generic alertmanager-discord-secret \
+            #     --from-literal=webhook-url='https://discord.com/api/webhooks/...' -n algosu
+            - name: DISCORD_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: alertmanager-discord-secret
+                  key: webhook-url
           volumeMounts:
             - name: alertmanager-config
               mountPath: /etc/alertmanager

@@ -21,7 +21,7 @@ import { HealthController } from './health.controller';
       useFactory: (configService: ConfigService) => ({
         type: 'postgres' as const,
         host: configService.getOrThrow<string>('DATABASE_HOST'),
-        port: configService.get<number>('DATABASE_PORT', 6432),
+        port: configService.get<number>('DATABASE_PORT', 5432),
         database: configService.getOrThrow<string>('DATABASE_NAME'),
         username: configService.getOrThrow<string>('DATABASE_USER'),
         password: configService.getOrThrow<string>('DATABASE_PASSWORD'),

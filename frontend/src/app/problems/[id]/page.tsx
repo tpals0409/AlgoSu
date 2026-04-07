@@ -73,6 +73,16 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
     return () => clearTimeout(timer);
   }, []);
 
+  // ESC 키로 삭제 확인 모달 닫기
+  useEffect(() => {
+    if (!showDeleteConfirm) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowDeleteConfirm(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showDeleteConfirm]);
+
   const fade = (delay = 0): React.CSSProperties => ({
     opacity: mounted ? 1 : 0,
     transform: mounted ? 'translateY(0)' : 'translateY(16px)',
@@ -239,7 +249,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
         {/* 삭제 확인 모달 */}
         {showDeleteConfirm && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
-            <div className="absolute inset-0 bg-black/40" onClick={() => setShowDeleteConfirm(false)} />
+            <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setShowDeleteConfirm(false)} />
             <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
               <p className="text-[14px] font-semibold text-text">문제를 삭제하시겠습니까?</p>
               <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>이 작업은 되돌릴 수 없습니다. 관련 제출 데이터도 함께 삭제됩니다.</p>

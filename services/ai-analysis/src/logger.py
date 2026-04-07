@@ -180,7 +180,7 @@ class JsonFormatter(logging.Formatter):
         ms = int((t % 1) * 1000)
         import datetime
 
-        dt = datetime.datetime.utcfromtimestamp(t)
+        dt = datetime.datetime.fromtimestamp(t, tz=datetime.UTC)
         return dt.strftime(f"%Y-%m-%dT%H:%M:%S.{ms:03d}Z")
 
 

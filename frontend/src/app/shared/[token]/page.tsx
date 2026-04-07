@@ -875,7 +875,7 @@ function LoadingView(): ReactNode {
 function ErrorView({ message }: { readonly message: string }): ReactNode {
   return (
     <div className="flex flex-col items-center gap-3 py-12">
-      <AlertCircle size={32} style={{ color: 'var(--danger)' }} />
+      <AlertCircle size={32} style={{ color: 'var(--error)' }} />
       <p className="text-sm" style={{ color: 'var(--text-3)' }}>{message}</p>
     </div>
   );

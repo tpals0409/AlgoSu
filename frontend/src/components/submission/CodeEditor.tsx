@@ -127,17 +127,20 @@ export function CodeEditor({
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [pendingLanguage, setPendingLanguage] = useState<string | null>(null);
 
-  // ─── Escape로 풀스크린 해제 ──────────
+  // ─── Escape로 모달/풀스크린 해제 ──────────
   useEffect(() => {
-    if (!fullscreen) return;
+    if (!fullscreen && !showSubmitConfirm && !pendingLanguage) return;
     const handleKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
       if (e.defaultPrevented) return;
+      // 모달이 열려있으면 모달을 먼저 닫음
+      if (showSubmitConfirm) { setShowSubmitConfirm(false); return; }
+      if (pendingLanguage) { setPendingLanguage(null); return; }
       setFullscreen(false);
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [fullscreen]);
+  }, [fullscreen, showSubmitConfirm, pendingLanguage]);
 
   // ─── 마감 임박 경고 타이머 ────────────
   useEffect(() => {
@@ -269,7 +272,7 @@ export function CodeEditor({
       {/* 제출 확인 모달 */}
       {showSubmitConfirm && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setShowSubmitConfirm(false)} />
+          <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setShowSubmitConfirm(false)} />
           <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
             <p className="text-[14px] font-semibold text-text">{isLate ? '지각 제출하시겠습니까?' : '코드를 제출하시겠습니까?'}</p>
             <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>{isLate ? '마감 시간이 지났습니다. 지각으로 기록됩니다.' : '제출 후에는 수정할 수 없습니다.'}</p>
@@ -298,7 +301,7 @@ export function CodeEditor({
       {/* 언어 변경 확인 모달 */}
       {pendingLanguage && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setPendingLanguage(null)} />
+          <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setPendingLanguage(null)} />
           <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
             <p className="text-[14px] font-semibold text-text">언어를 변경하시겠습니까?</p>
             <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>작성 중인 코드가 삭제됩니다.</p>

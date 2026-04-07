@@ -91,6 +91,16 @@ function LoginContent(): ReactNode {
     }
   }, [authLoading, isAuthenticated, router]);
 
+  // ESC 키로 세션 만료 모달 닫기
+  useEffect(() => {
+    if (!showExpiredModal) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowExpiredModal(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showExpiredModal]);
+
   // URL 파라미터 처리
   useEffect(() => {
     const errorParam = searchParams.get('error');
@@ -260,7 +270,7 @@ function LoginContent(): ReactNode {
       {/* 세션 만료 모달 */}
       {showExpiredModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setShowExpiredModal(false)} />
+          <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setShowExpiredModal(false)} />
           <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
             <p className="text-[14px] font-semibold text-text">세션이 종료되었습니다</p>
             <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>보안을 위해 자동으로 로그아웃되었습니다. 다시 로그인해주세요.</p>

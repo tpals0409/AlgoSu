@@ -507,7 +507,7 @@ describe('ShareLinkManager', () => {
 
       await waitFor(() => {
         const msg = screen.getByRole('alert');
-        expect(msg).toHaveStyle({ color: 'var(--danger)' });
+        expect(msg).toHaveStyle({ color: 'var(--error)' });
       });
     });
   });

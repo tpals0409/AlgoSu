@@ -79,6 +79,19 @@ export default function ProfilePage(): ReactNode {
     return () => clearTimeout(t);
   }, []);
 
+  // ESC 키로 로그아웃/계정삭제 확인 모달 닫기
+  useEffect(() => {
+    if (!showLogoutConfirm && !showDeleteConfirm) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowLogoutConfirm(false);
+        setShowDeleteConfirm(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showLogoutConfirm, showDeleteConfirm]);
+
   const fade = (delay = 0): CSSProperties => ({
     opacity: mounted ? 1 : 0,
     transform: mounted ? 'translateY(0)' : 'translateY(16px)',
@@ -464,7 +477,7 @@ export default function ProfilePage(): ReactNode {
         {/* 로그아웃 확인 모달 */}
         {showLogoutConfirm && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
-            <div className="absolute inset-0 bg-black/40" onClick={() => setShowLogoutConfirm(false)} />
+            <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setShowLogoutConfirm(false)} />
             <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
               <p className="text-[14px] font-semibold text-text">로그아웃 하시겠습니까?</p>
               <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>현재 세션이 종료되고 로그인 페이지로 이동합니다.</p>
@@ -493,7 +506,7 @@ export default function ProfilePage(): ReactNode {
         {/* 계정 삭제 확인 모달 */}
         {showDeleteConfirm && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
-            <div className="absolute inset-0 bg-black/40" onClick={() => setShowDeleteConfirm(false)} />
+            <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setShowDeleteConfirm(false)} />
             <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
               <p className="text-[14px] font-semibold text-text">계정을 삭제하시겠습니까?</p>
               <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>이 작업은 되돌릴 수 없습니다. 모든 데이터가 영구 삭제됩니다.</p>

@@ -1,7 +1,9 @@
 # ============================================================
+# @file infra/k3s/postgres.yaml
 # AlgoSu — PostgreSQL k3s 매니페스트
 # 모든 Pod에 Resource Limit 필수 (Oracle 보안 지시)
 # H11: statement_timeout 200ms (슬로우 쿼리 차단)
+# [56-W1-2] exec probe에서 $(ENV_VAR) 치환 안 됨 → sh -c 래퍼로 변경
 # ============================================================
 apiVersion: apps/v1
 kind: Deployment
@@ -70,13 +72,13 @@ spec:
               cpu: "500m"
           livenessProbe:
             exec:
-              command: ["pg_isready", "-U", "$(POSTGRES_USER)"]
+              command: ["sh", "-c", "pg_isready -U $POSTGRES_USER"]
             initialDelaySeconds: 30
             periodSeconds: 10
             failureThreshold: 3
           readinessProbe:
             exec:
-              command: ["pg_isready", "-U", "$(POSTGRES_USER)"]
+              command: ["sh", "-c", "pg_isready -U $POSTGRES_USER"]
             initialDelaySeconds: 5
             periodSeconds: 5
       volumes:

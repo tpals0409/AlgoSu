@@ -156,14 +156,14 @@ export default function SettingsPage(): ReactNode {
                 maxLength={20}
                 className="flex-1 rounded-btn border px-3 py-1.5 text-sm outline-none transition-colors"
                 style={{
-                  borderColor: slugError ? 'var(--danger)' : 'var(--border)',
+                  borderColor: slugError ? 'var(--error)' : 'var(--border)',
                   backgroundColor: 'var(--bg)',
                   color: 'var(--text)',
                 }}
               />
             </div>
             {slugError && (
-              <p className="mt-1 text-xs" style={{ color: 'var(--danger)' }}>
+              <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
                 <AlertCircle size={12} className="mr-0.5 inline" />{slugError}
               </p>
             )}
@@ -186,7 +186,7 @@ export default function SettingsPage(): ReactNode {
               {saving ? '저장 중...' : '저장'}
             </button>
             {saveMessage && (
-              <span className="flex items-center gap-1 text-xs" style={{ color: saveMessage.includes('저장') ? 'var(--success)' : 'var(--danger)' }}>
+              <span className="flex items-center gap-1 text-xs" style={{ color: saveMessage.includes('저장') ? 'var(--success)' : 'var(--error)' }}>
                 {saveMessage.includes('저장') && <Check size={14} />}
                 {saveMessage}
               </span>

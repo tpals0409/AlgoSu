@@ -120,6 +120,23 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
     return () => clearTimeout(t);
   }, [isLoading]);
 
+  // ESC 키로 모달 닫기
+  useEffect(() => {
+    const anyModalOpen = !!pendingRoleChange || showDeleteConfirm || showSaveInfoConfirm || showSaveRulesConfirm || !!removeMember;
+    if (!anyModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setPendingRoleChange(null);
+        setShowDeleteConfirm(false);
+        setShowSaveInfoConfirm(false);
+        setShowSaveRulesConfirm(false);
+        setRemoveMember(null);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [pendingRoleChange, showDeleteConfirm, showSaveInfoConfirm, showSaveRulesConfirm, removeMember]);
+
   // 초대코드 타이머
   useEffect(() => {
     if (!codeActive) return;
@@ -727,7 +744,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
       {/* ── 1. 멤버 등급 변경 확인 모달 ── */}
       {pendingRoleChange && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setPendingRoleChange(null)} />
+          <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setPendingRoleChange(null)} />
           <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
             <p className="text-[14px] font-semibold text-text">역할을 변경하시겠습니까?</p>
             <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>
@@ -748,7 +765,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
       {/* ── 2. 스터디 삭제 확인 모달 ── */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setShowDeleteConfirm(false)} />
+          <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setShowDeleteConfirm(false)} />
           <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
             <p className="text-[14px] font-semibold text-text">스터디를 삭제하시겠습니까?</p>
             <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>
@@ -770,7 +787,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
       {/* ── 3. 스터디 정보 저장 확인 모달 ── */}
       {showSaveInfoConfirm && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setShowSaveInfoConfirm(false)} />
+          <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setShowSaveInfoConfirm(false)} />
           <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
             <p className="text-[14px] font-semibold text-text">스터디 정보를 저장하시겠습니까?</p>
             <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>
@@ -791,7 +808,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
       {/* ── 4. 그라운드 룰 저장 확인 모달 ── */}
       {showSaveRulesConfirm && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setShowSaveRulesConfirm(false)} />
+          <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setShowSaveRulesConfirm(false)} />
           <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
             <p className="text-[14px] font-semibold text-text">그라운드 룰을 저장하시겠습니까?</p>
             <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>
@@ -812,7 +829,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
       {/* ── 5. 멤버 추방 확인 모달 ── */}
       {removeMember && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setRemoveMember(null)} />
+          <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setRemoveMember(null)} />
           <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
             <p className="text-[14px] font-semibold text-text">멤버를 내보내시겠습니까?</p>
             <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>

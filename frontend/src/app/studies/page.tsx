@@ -434,12 +434,12 @@ export default function StudiesPage(): ReactNode {
 
         {/* 스터디 생성 모달 */}
         {showCreateModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="create-study-title">
             <Card className="mx-4 w-full max-w-sm">
               <form onSubmit={(e) => void createForm.handleSubmit(handleCreate)(e)} noValidate>
                 <CardContent className="space-y-4 py-5">
                   <div>
-                    <p className="text-sm font-semibold text-text">새 스터디 만들기</p>
+                    <p id="create-study-title" className="text-sm font-semibold text-text">새 스터디 만들기</p>
                     <p className="mt-1 text-xs text-text-2">
                       팀원들과 함께 알고리즘 문제를 풀어보세요
                     </p>
@@ -543,11 +543,11 @@ export default function StudiesPage(): ReactNode {
 
         {/* 닉네임 입력 팝업 */}
         {showNicknameModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="join-study-title">
             <Card className="mx-4 w-full max-w-sm">
               <CardContent className="space-y-4 py-5">
                 <div>
-                  <p className="text-sm font-semibold text-text">스터디 가입</p>
+                  <p id="join-study-title" className="text-sm font-semibold text-text">스터디 가입</p>
                   <p className="mt-1 text-xs text-text-2">
                     <span className="font-medium text-primary">{verifiedStudyName}</span>에서 사용할 닉네임을 입력해주세요.
                   </p>
