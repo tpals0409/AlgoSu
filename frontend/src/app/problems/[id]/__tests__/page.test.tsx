@@ -65,10 +65,6 @@ jest.mock('@/components/ui/DifficultyBadge', () => ({
   DifficultyBadge: () => <span data-testid="difficulty-badge" />,
 }));
 
-jest.mock('@/components/ui/TimerBadge', () => ({
-  TimerBadge: () => <span data-testid="timer-badge" />,
-}));
-
 jest.mock('@/components/ui/LangBadge', () => ({
   LangBadge: () => <span data-testid="lang-badge" />,
 }));

@@ -74,10 +74,6 @@ jest.mock('@/components/ui/DifficultyBadge', () => ({
   DifficultyBadge: () => <span data-testid="difficulty-badge" />,
 }));
 
-jest.mock('@/components/ui/TimerBadge', () => ({
-  TimerBadge: () => <span data-testid="timer-badge" />,
-}));
-
 jest.mock('@/components/ui/Alert', () => ({
   Alert: ({ children }: { children: React.ReactNode }) => <div data-testid="alert">{children}</div>,
 }));
