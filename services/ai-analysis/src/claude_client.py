@@ -13,7 +13,12 @@ import re
 import anthropic
 from .config import settings
 from .circuit_breaker import circuit_breaker
-from .prompt import SYSTEM_PROMPT, GROUP_SYSTEM_PROMPT, build_user_prompt, build_group_user_prompt
+from .prompt import (
+    SYSTEM_PROMPT,
+    GROUP_SYSTEM_PROMPT,
+    build_user_prompt,
+    build_group_user_prompt,
+)
 
 logger = logging.getLogger(__name__)
 
