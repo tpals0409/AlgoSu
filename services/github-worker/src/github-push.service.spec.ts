@@ -282,6 +282,74 @@ describe('GitHubPushService', () => {
     expect(result.sha).toBe('retry-sha');
   });
 
+  // 15-b. push() — createOrUpdate에서 non-RateLimit 에러 시 throw
+  it('push() -- createOrUpdate에서 non-RateLimit 에러: 그대로 throw', async () => {
+    mockCreateOrUpdateFileContents.mockRejectedValueOnce(new Error('Server Error 500'));
+
+    await expect(service.push(basePushInput)).rejects.toThrow('Server Error 500');
+  });
+
+  // 15-c. push() — getContent 429 재시도 후 배열 반환 (sha undefined)
+  it('push() -- getContent 429 재시도 후 배열 반환: sha undefined', async () => {
+    mockGetContent
+      .mockResolvedValueOnce({
+        status: 429,
+        url: '',
+        headers: { 'retry-after': '0' },
+        data: {},
+      })
+      .mockResolvedValueOnce(
+        octokitResp([{ type: 'file', sha: 'array-sha' }]),
+      );
+
+    const result = await service.push(basePushInput);
+
+    expect(mockCreateOrUpdateFileContents).toHaveBeenCalledWith(
+      expect.objectContaining({ sha: undefined }),
+    );
+    expect(result.sha).toBe('abc123sha');
+  });
+
+  // 15-d. inspectRateLimit() — remaining < threshold + reset 헤더 없음 (resetAt = 'unknown')
+  it('inspectRateLimit() -- remaining < threshold + reset 헤더 없음: resetAt unknown', () => {
+    const { githubRateLimitWarningsTotal } = require('./metrics');
+
+    const response = {
+      status: 200,
+      url: '',
+      headers: { 'x-ratelimit-remaining': '3', 'x-ratelimit-limit': '5000' },
+      data: {},
+    };
+    service.inspectRateLimit(response as any);
+
+    expect(githubRateLimitWarningsTotal.inc).toHaveBeenCalled();
+  });
+
+  // 15-e. push() — weekNumber, problemTitle, sourcePlatform, sourceUrl 지정
+  it('push() -- 모든 옵션 필드 지정: 올바른 파일 경로 생성', async () => {
+    const result = await service.push({
+      ...basePushInput,
+      problemTitle: '두 수의 합',
+      weekNumber: '3월1주차',
+      sourcePlatform: 'baekjoon',
+      sourceUrl: 'https://www.acmicpc.net/problem/1001',
+    });
+
+    expect(result.filePath).toBe('3월1주차/BOJ_1001_두 수의 합.py');
+  });
+
+  // 15-f. push() — sourceUrl 빈 문자열일 때 extractProblemNumber 빈 문자열
+  it('push() -- sourceUrl 빈 문자열: 문제 번호 없이 파일명 생성', async () => {
+    const result = await service.push({
+      ...basePushInput,
+      problemTitle: 'Test',
+      sourceUrl: '',
+      sourcePlatform: '',
+    });
+
+    expect(result.filePath).toBe('etc/Test.py');
+  });
+
   // 16. push() — getContent 429 시 재시도 성공 (기존 파일 조회)
   it('push() -- getContent 429: 재시도 후 기존 파일 sha 획득', async () => {
     mockGetContent

@@ -626,4 +626,93 @@ describe('ProblemService', () => {
       expect(result).toHaveLength(1);
     });
   });
+
+  // ──────────────────────────────────────────────
+  // 14. closeExpiredProblems()
+  // ──────────────────────────────────────────────
+  describe('closeExpiredProblems()', () => {
+    it('만료된 ACTIVE 문제가 있을 때 → CLOSED 전환 + 캐시 무효화', async () => {
+      const expiredProblem1 = {
+        ...mockProblem,
+        id: 'prob-expired-001',
+        studyId: STUDY_ID,
+        weekNumber: '3월1주차',
+        deadline: new Date('2026-01-01T00:00:00.000Z'),
+        status: ProblemStatus.ACTIVE,
+      } as Problem;
+      const expiredProblem2 = {
+        ...mockProblem,
+        id: 'prob-expired-002',
+        studyId: 'study-uuid-002',
+        weekNumber: '3월2주차',
+        deadline: new Date('2026-02-01T00:00:00.000Z'),
+        status: ProblemStatus.ACTIVE,
+      } as Problem;
+
+      dualWrite.find.mockResolvedValue([expiredProblem1, expiredProblem2]);
+      dualWrite.saveExisting.mockResolvedValue(undefined);
+      deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
+      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
+
+      const result = await service.closeExpiredProblems();
+
+      // 2건 전환
+      expect(result.count).toBe(2);
+      expect(result.affected).toHaveLength(2);
+      expect(result.affected[0]).toEqual({
+        id: 'prob-expired-001',
+        studyId: STUDY_ID,
+        weekNumber: '3월1주차',
+      });
+      expect(result.affected[1]).toEqual({
+        id: 'prob-expired-002',
+        studyId: 'study-uuid-002',
+        weekNumber: '3월2주차',
+      });
+
+      // 각 문제에 대해 CLOSED 상태로 saveExisting 호출
+      expect(dualWrite.saveExisting).toHaveBeenCalledTimes(2);
+      expect(dualWrite.saveExisting).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'prob-expired-001', status: ProblemStatus.CLOSED }),
+      );
+      expect(dualWrite.saveExisting).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'prob-expired-002', status: ProblemStatus.CLOSED }),
+      );
+
+      // 각 문제에 대해 캐시 무효화
+      expect(deadlineCache.invalidateDeadline).toHaveBeenCalledTimes(2);
+      expect(deadlineCache.invalidateWeekProblems).toHaveBeenCalledTimes(2);
+      expect(deadlineCache.invalidateDeadline).toHaveBeenCalledWith(STUDY_ID, 'prob-expired-001');
+      expect(deadlineCache.invalidateDeadline).toHaveBeenCalledWith('study-uuid-002', 'prob-expired-002');
+      expect(deadlineCache.invalidateWeekProblems).toHaveBeenCalledWith(STUDY_ID, '3월1주차');
+      expect(deadlineCache.invalidateWeekProblems).toHaveBeenCalledWith('study-uuid-002', '3월2주차');
+    });
+
+    it('만료된 문제가 없을 때 → count: 0 반환, saveExisting 미호출', async () => {
+      dualWrite.find.mockResolvedValue([]);
+
+      const result = await service.closeExpiredProblems();
+
+      expect(result).toEqual({ count: 0, affected: [] });
+      expect(dualWrite.saveExisting).not.toHaveBeenCalled();
+      expect(deadlineCache.invalidateDeadline).not.toHaveBeenCalled();
+      expect(deadlineCache.invalidateWeekProblems).not.toHaveBeenCalled();
+    });
+
+    it('LessThanOrEqual 조건으로 ACTIVE + deadline <= now 조회', async () => {
+      dualWrite.find.mockResolvedValue([]);
+
+      await service.closeExpiredProblems();
+
+      // dualWrite.find 호출 인자 확인 — status: ACTIVE, deadline: LessThanOrEqual(now)
+      expect(dualWrite.find).toHaveBeenCalledWith({
+        where: {
+          status: ProblemStatus.ACTIVE,
+          deadline: expect.objectContaining({
+            _type: 'lessThanOrEqual',
+          }),
+        },
+      });
+    });
+  });
 });

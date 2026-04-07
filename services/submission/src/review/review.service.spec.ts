@@ -1,18 +1,31 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { Repository } from 'typeorm';
+import { Repository, IsNull } from 'typeorm';
 import { ReviewService } from './review.service';
 import { ReviewComment } from './review-comment.entity';
 import { ReviewReply } from './review-reply.entity';
 import { Submission } from '../submission/submission.entity';
 
 // ─── Mock 팩토리 ────────────────────────────────────────────────
+const createMockQueryBuilder = (result: any[] = []) => {
+  const qb = {
+    leftJoinAndSelect: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    addOrderBy: jest.fn().mockReturnThis(),
+    getMany: jest.fn().mockResolvedValue(result),
+  };
+  return qb;
+};
+
 const mockCommentRepo = () => ({
   find: jest.fn(),
   findOne: jest.fn(),
   save: jest.fn(),
   softDelete: jest.fn(),
+  createQueryBuilder: jest.fn(),
 });
 
 const mockReplyRepo = () => ({
@@ -128,17 +141,30 @@ describe('ReviewService', () => {
   });
 
   describe('findCommentsBySubmission() — 제출별 댓글 목록', () => {
-    it('제출 ID와 스터디 ID로 댓글 목록을 조회한다', async () => {
+    it('제출 ID와 스터디 ID로 댓글 목록을 조회한다 (QueryBuilder)', async () => {
       const comments = [createMockComment(), createMockComment({ id: 2, publicId: 'comment-pub-2' })];
-      commentRepo.find.mockResolvedValue(comments);
+      const qb = createMockQueryBuilder(comments);
+      (commentRepo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
 
       const result = await service.findCommentsBySubmission('sub-uuid-1', 'study-uuid-1');
 
-      expect(commentRepo.find).toHaveBeenCalledWith({
-        where: { submissionId: 'sub-uuid-1', studyId: 'study-uuid-1' },
-        relations: ['replies'],
-        order: { createdAt: 'ASC' },
-      });
+      expect(commentRepo.createQueryBuilder).toHaveBeenCalledWith('comment');
+      expect(qb.leftJoinAndSelect).toHaveBeenCalledWith(
+        'comment.replies',
+        'reply',
+        'reply.deletedAt IS NULL',
+      );
+      expect(qb.where).toHaveBeenCalledWith(
+        'comment.submissionId = :submissionId',
+        { submissionId: 'sub-uuid-1' },
+      );
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'comment.studyId = :studyId',
+        { studyId: 'study-uuid-1' },
+      );
+      expect(qb.orderBy).toHaveBeenCalledWith('comment.createdAt', 'ASC');
+      expect(qb.addOrderBy).toHaveBeenCalledWith('reply.createdAt', 'ASC');
+      expect(qb.getMany).toHaveBeenCalled();
       expect(result).toEqual(comments);
     });
   });
@@ -259,7 +285,7 @@ describe('ReviewService', () => {
       const result = await service.findRepliesByCommentPublicId('comment-pub-1');
 
       expect(replyRepo.find).toHaveBeenCalledWith({
-        where: { commentId: 1 },
+        where: { commentId: 1, deletedAt: IsNull() },
         order: { createdAt: 'ASC' },
       });
       expect(result).toEqual(replies);

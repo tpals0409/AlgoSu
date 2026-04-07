@@ -709,6 +709,250 @@ describe('GitHubWorker', () => {
       expect(mockNack).toHaveBeenCalledWith(msg, false, false);
     });
 
+    it('getProblemInfo 실패(res.ok=false) -- 기본값 사용 후 정상 처리', async () => {
+      // getSubmission
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            userId: 'user-1',
+            problemId: 'prob-1',
+            studyId: 'study-1',
+            language: 'python',
+            code: 'code',
+          },
+        }),
+      });
+
+      // getProblemInfo -- 실패 (res.ok = false)
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        json: async () => ({}),
+      });
+
+      // getUserGitHubInfo -- 미연동
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          github_username: null,
+          github_token: null,
+        }),
+      });
+
+      // reportSkipped
+      mockFetch.mockResolvedValueOnce({ ok: true });
+
+      const msg = makeMsg({
+        submissionId: 'sub-problem-fail',
+        studyId: 'study-1',
+        timestamp: new Date().toISOString(),
+      });
+
+      await consumeCallback!(msg);
+
+      expect(mockAck).toHaveBeenCalledWith(msg);
+    });
+
+    it('getProblemInfo 예외 throw -- 기본값 사용 후 정상 처리', async () => {
+      // getSubmission
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            userId: 'user-1',
+            problemId: 'prob-1',
+            studyId: 'study-1',
+            language: 'python',
+            code: 'code',
+          },
+        }),
+      });
+
+      // getProblemInfo -- 네트워크 예외
+      mockFetch.mockRejectedValueOnce(new Error('DNS resolution failed'));
+
+      // getUserGitHubInfo -- 미연동
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          github_username: null,
+          github_token: null,
+        }),
+      });
+
+      // reportSkipped
+      mockFetch.mockResolvedValueOnce({ ok: true });
+
+      const msg = makeMsg({
+        submissionId: 'sub-problem-exception',
+        studyId: 'study-1',
+        timestamp: new Date().toISOString(),
+      });
+
+      await consumeCallback!(msg);
+
+      expect(mockAck).toHaveBeenCalledWith(msg);
+    });
+
+    it('토큰 없음 + App 토큰 성공 -- push 진행', async () => {
+      // getSubmission
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            userId: 'user-1',
+            problemId: 'prob-1',
+            studyId: 'study-1',
+            language: 'python',
+            code: 'code',
+          },
+        }),
+      });
+
+      // getProblemInfo
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: { title: '문제', weekNumber: '1주차', sourcePlatform: '', sourceUrl: '' },
+        }),
+      });
+
+      // getUserGitHubInfo -- username 있음, 토큰 없음
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          github_username: 'test-user',
+          github_token: null,
+        }),
+      });
+
+      // TokenManager.getTokenForRepo 성공 mock
+      (worker as any).tokenManager.getTokenForRepo = jest.fn().mockResolvedValue('app-installation-token');
+
+      // push 성공 mock
+      (worker as any).pushService.push = jest.fn().mockResolvedValue({ filePath: 'test/path.py', sha: 'abc' });
+
+      // reportSuccess
+      mockFetch.mockResolvedValueOnce({ ok: true });
+
+      const msg = makeMsg({
+        submissionId: 'sub-app-token-ok',
+        studyId: 'study-1',
+        timestamp: new Date().toISOString(),
+      });
+
+      await consumeCallback!(msg);
+
+      expect(mockAck).toHaveBeenCalledWith(msg);
+      expect((worker as any).tokenManager.getTokenForRepo).toHaveBeenCalledWith('test-user', 'algosu-submissions');
+    });
+
+    it('토큰 없음 + App 토큰 실패 -- SKIPPED', async () => {
+      // getSubmission
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            userId: 'user-1',
+            problemId: 'prob-1',
+            studyId: 'study-1',
+            language: 'python',
+            code: 'code',
+          },
+        }),
+      });
+
+      // getProblemInfo
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: { title: '문제', weekNumber: '1주차', sourcePlatform: '', sourceUrl: '' },
+        }),
+      });
+
+      // getUserGitHubInfo -- username 있음, 토큰 없음
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          github_username: 'test-user',
+          github_token: null,
+        }),
+      });
+
+      // TokenManager.getTokenForRepo 실패 mock
+      (worker as any).tokenManager.getTokenForRepo = jest.fn().mockRejectedValue(new Error('No installation'));
+
+      // reportSkipped
+      mockFetch.mockResolvedValueOnce({ ok: true });
+
+      const msg = makeMsg({
+        submissionId: 'sub-app-token-fail',
+        studyId: 'study-1',
+        timestamp: new Date().toISOString(),
+      });
+
+      await consumeCallback!(msg);
+
+      expect(mockAck).toHaveBeenCalledWith(msg);
+    });
+
+    it('GitHubRateLimitError 시 retryAfterMs 기반 대기', async () => {
+      const encryptedToken = encryptToken('ghs_test_token');
+
+      // getSubmission
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            userId: 'user-1',
+            problemId: 'prob-1',
+            studyId: 'study-1',
+            language: 'python',
+            code: 'code',
+          },
+        }),
+      });
+
+      // getProblemInfo
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: { title: '문제', weekNumber: '1주차', sourcePlatform: '', sourceUrl: '' },
+        }),
+      });
+
+      // getUserGitHubInfo
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          github_username: 'test-user',
+          github_token: encryptedToken,
+        }),
+      });
+
+      // push: 첫 시도 RateLimit, 두 번째 시도 성공
+      const { GitHubRateLimitError } = require('./github-push.service');
+      const pushMock = jest.fn()
+        .mockRejectedValueOnce(new GitHubRateLimitError(100))
+        .mockResolvedValueOnce({ filePath: 'test/path.py', sha: 'abc' });
+      (worker as any).pushService.push = pushMock;
+
+      // reportSuccess
+      mockFetch.mockResolvedValueOnce({ ok: true });
+
+      const msg = makeMsg({
+        submissionId: 'sub-rate-limit',
+        studyId: 'study-1',
+        timestamp: new Date().toISOString(),
+      });
+
+      await consumeCallback!(msg);
+
+      expect(mockAck).toHaveBeenCalledWith(msg);
+      expect(pushMock).toHaveBeenCalledTimes(2);
+    });
+
     it('getUserGitHubInfo 실패 -- nack(DLQ)', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
