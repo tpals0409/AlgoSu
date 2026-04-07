@@ -19,6 +19,7 @@ import {
   HttpStatus,
   ForbiddenException,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { SubmissionService } from './submission.service';
 import { DraftService } from '../draft/draft.service';
 import { CreateSubmissionDto, UpsertDraftDto } from './dto/create-submission.dto';
@@ -33,6 +34,7 @@ import { StructuredLoggerService } from '../common/logger/structured-logger.serv
  * 모든 엔드포인트는 InternalKeyGuard + StudyMemberGuard로 보호
  * X-User-ID + X-Study-ID 기반 IDOR 방지: 스터디 멤버 본인 데이터만 접근
  */
+@ApiTags('Submissions')
 @Controller()
 @UseGuards(InternalKeyGuard, StudyMemberGuard)
 export class SubmissionController {
@@ -49,6 +51,9 @@ export class SubmissionController {
   /**
    * POST / — 코드 제출 (Saga 시작)
    */
+  @ApiOperation({ summary: '코드 제출 (Saga 시작)' })
+  @ApiResponse({ status: 201, description: '생성된 제출 정보' })
+  @ApiResponse({ status: 400, description: '잘못된 요청' })
   @Post()
   async create(
     @Body() dto: CreateSubmissionDto,
@@ -66,6 +71,8 @@ export class SubmissionController {
   /**
    * GET / — 스터디+사용자 본인 제출 목록 (페이지네이션)
    */
+  @ApiOperation({ summary: '본인 제출 목록 조회 (페이지네이션)' })
+  @ApiResponse({ status: 200, description: '제출 목록' })
   @Get()
   async findByStudyAndUser(
     @Query() query: PaginationQueryDto,
@@ -81,6 +88,9 @@ export class SubmissionController {
    * 본인이 해당 문제에 제출한 경우에만 스터디 전체 제출 목록 반환.
    * SUBMISSION_LIST_FIELDS만 반환 (code 제외).
    */
+  @ApiOperation({ summary: '스터디 전체 제출 목록 (문제별)' })
+  @ApiResponse({ status: 200, description: '스터디 전체 제출 목록' })
+  @ApiResponse({ status: 403, description: '본인 제출 후 열람 가능' })
   @Get('study-submissions/:problemId')
   async findByProblemForStudy(
     @Param('problemId', ParseUUIDPipe) problemId: string,
@@ -104,6 +114,10 @@ export class SubmissionController {
   /**
    * GET /:id — 제출 단건 조회
    */
+  @ApiOperation({ summary: '제출 단건 조회' })
+  @ApiResponse({ status: 200, description: '제출 정보' })
+  @ApiResponse({ status: 403, description: '접근 권한 없음' })
+  @ApiResponse({ status: 404, description: '제출 없음' })
   @Get(':id')
   async findById(
     @Param('id', ParseUUIDPipe) id: string,
@@ -139,6 +153,9 @@ export class SubmissionController {
    * GET /:id/analysis — AI 분석 결과 조회
    * IDOR 방지: userId + studyId 검증
    */
+  @ApiOperation({ summary: 'AI 분석 결과 조회' })
+  @ApiResponse({ status: 200, description: 'AI 분석 결과' })
+  @ApiResponse({ status: 403, description: '접근 권한 없음' })
   @Get(':id/analysis')
   async getAnalysis(
     @Param('id', ParseUUIDPipe) id: string,
@@ -180,6 +197,8 @@ export class SubmissionController {
   /**
    * GET /problem/:problemId — 문제별 제출 목록 (스터디+본인)
    */
+  @ApiOperation({ summary: '문제별 본인 제출 목록 조회' })
+  @ApiResponse({ status: 200, description: '제출 목록' })
   @Get('problem/:problemId')
   async findByProblem(
     @Param('problemId', ParseUUIDPipe) problemId: string,
@@ -195,6 +214,8 @@ export class SubmissionController {
   /**
    * POST /drafts — Draft UPSERT (Auto-save)
    */
+  @ApiOperation({ summary: 'Draft 저장 (UPSERT)' })
+  @ApiResponse({ status: 200, description: '저장된 Draft' })
   @Post('drafts')
   async upsertDraft(
     @Body() dto: UpsertDraftDto,
@@ -208,6 +229,8 @@ export class SubmissionController {
   /**
    * GET /drafts/:problemId — Draft 조회
    */
+  @ApiOperation({ summary: 'Draft 조회' })
+  @ApiResponse({ status: 200, description: 'Draft 정보' })
   @Get('drafts/:problemId')
   async findDraft(
     @Param('problemId', ParseUUIDPipe) problemId: string,
@@ -221,6 +244,8 @@ export class SubmissionController {
   /**
    * DELETE /drafts/:problemId — Draft 삭제 (명시적)
    */
+  @ApiOperation({ summary: 'Draft 삭제' })
+  @ApiResponse({ status: 204, description: '삭제 완료' })
   @Delete('drafts/:problemId')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteDraft(

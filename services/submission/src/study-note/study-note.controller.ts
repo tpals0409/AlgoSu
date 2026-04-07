@@ -14,11 +14,13 @@ import {
   UseGuards,
   ParseUUIDPipe,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { StudyNoteService } from './study-note.service';
 import { UpsertStudyNoteDto } from './dto/upsert-study-note.dto';
 import { InternalKeyGuard } from '../common/guards/internal-key.guard';
 import { StudyMemberGuard } from '../common/guards/study-member.guard';
 
+@ApiTags('Study Notes')
 @Controller('study-notes')
 @UseGuards(InternalKeyGuard, StudyMemberGuard)
 export class StudyNoteController {
@@ -29,6 +31,8 @@ export class StudyNoteController {
    * @api PUT /study-notes
    * @guard study-member
    */
+  @ApiOperation({ summary: '스터디 노트 생성/수정 (UPSERT)' })
+  @ApiResponse({ status: 200, description: '저장된 노트' })
   @Put()
   async upsert(
     @Body() dto: UpsertStudyNoteDto,
@@ -44,6 +48,8 @@ export class StudyNoteController {
    * @api GET /study-notes
    * @guard study-member
    */
+  @ApiOperation({ summary: '스터디 노트 조회' })
+  @ApiResponse({ status: 200, description: '노트 정보' })
   @Get()
   async find(
     @Query('problemId', ParseUUIDPipe) problemId: string,

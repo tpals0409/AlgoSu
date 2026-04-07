@@ -19,6 +19,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ReviewService } from './review.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
@@ -27,6 +28,7 @@ import { UpdateReplyDto } from './dto/update-reply.dto';
 import { InternalKeyGuard } from '../common/guards/internal-key.guard';
 import { StudyMemberGuard } from '../common/guards/study-member.guard';
 
+@ApiTags('Reviews')
 @Controller('review')
 @UseGuards(InternalKeyGuard, StudyMemberGuard)
 export class ReviewController {
@@ -39,6 +41,8 @@ export class ReviewController {
    * @api POST /review/comments
    * @guard study-member
    */
+  @ApiOperation({ summary: '댓글 작성' })
+  @ApiResponse({ status: 201, description: '생성된 댓글' })
   @Post('comments')
   async createComment(
     @Body() dto: CreateCommentDto,
@@ -54,6 +58,8 @@ export class ReviewController {
    * @api GET /review/comments
    * @guard study-member
    */
+  @ApiOperation({ summary: '제출별 댓글 목록 조회' })
+  @ApiResponse({ status: 200, description: '댓글 목록' })
   @Get('comments')
   async findComments(
     @Query('submissionId', ParseUUIDPipe) submissionId: string,
@@ -71,6 +77,8 @@ export class ReviewController {
    * @api PATCH /review/comments/:id
    * @guard study-member, submission-owner
    */
+  @ApiOperation({ summary: '댓글 수정 (본인만)' })
+  @ApiResponse({ status: 200, description: '수정된 댓글' })
   @Patch('comments/:publicId')
   async updateComment(
     @Param('publicId', ParseUUIDPipe) publicId: string,
@@ -86,6 +94,8 @@ export class ReviewController {
    * @api DELETE /review/comments/:id
    * @guard study-member, submission-owner
    */
+  @ApiOperation({ summary: '댓글 삭제 (본인만)' })
+  @ApiResponse({ status: 204, description: '삭제 완료' })
   @Delete('comments/:publicId')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteComment(
@@ -102,6 +112,8 @@ export class ReviewController {
    * @api POST /review/replies
    * @guard study-member
    */
+  @ApiOperation({ summary: '대댓글 작성' })
+  @ApiResponse({ status: 201, description: '생성된 대댓글' })
   @Post('replies')
   async createReply(
     @Body() dto: CreateReplyDto,
@@ -117,6 +129,8 @@ export class ReviewController {
    * @api GET /review/replies
    * @guard study-member
    */
+  @ApiOperation({ summary: '댓글별 대댓글 목록 조회' })
+  @ApiResponse({ status: 200, description: '대댓글 목록' })
   @Get('replies')
   async findReplies(
     @Query('commentPublicId', ParseUUIDPipe) commentPublicId: string,
@@ -130,6 +144,8 @@ export class ReviewController {
    * @api PATCH /review/replies/:publicId
    * @guard study-member, submission-owner
    */
+  @ApiOperation({ summary: '대댓글 수정 (본인만)' })
+  @ApiResponse({ status: 200, description: '수정된 대댓글' })
   @Patch('replies/:publicId')
   async updateReply(
     @Param('publicId', ParseUUIDPipe) publicId: string,
@@ -145,6 +161,8 @@ export class ReviewController {
    * @api DELETE /review/replies/:publicId
    * @guard study-member, submission-owner
    */
+  @ApiOperation({ summary: '대댓글 삭제 (본인만)' })
+  @ApiResponse({ status: 204, description: '삭제 완료' })
   @Delete('replies/:publicId')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteReply(

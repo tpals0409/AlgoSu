@@ -20,6 +20,7 @@ import {
   HttpStatus,
   Request,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ProblemService } from './problem.service';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
 import { InternalKeyGuard } from '../common/guards/internal-key.guard';
@@ -36,6 +37,7 @@ import { StructuredLoggerService } from '../common/logger/structured-logger.serv
  *
  * cross-study 접근: 모든 DB 쿼리에 studyId 조건 필수 (서비스 레이어에서 보장)
  */
+@ApiTags('Problems')
 @Controller()
 @UseGuards(InternalKeyGuard, StudyMemberGuard)
 export class ProblemController {
@@ -49,6 +51,9 @@ export class ProblemController {
   /**
    * POST / — 문제 생성 (ADMIN 전용)
    */
+  @ApiOperation({ summary: '문제 생성 (ADMIN 전용)' })
+  @ApiResponse({ status: 201, description: '생성된 문제 정보' })
+  @ApiResponse({ status: 403, description: 'ADMIN 권한 필요' })
   @Post()
   async create(
     @Body() dto: CreateProblemDto,
@@ -68,6 +73,8 @@ export class ProblemController {
   /**
    * GET /week/:weekNumber — 스터디별 주차별 문제 목록
    */
+  @ApiOperation({ summary: '주차별 문제 목록 조회' })
+  @ApiResponse({ status: 200, description: '문제 목록' })
   @Get('week/:weekNumber')
   async findByWeek(
     @Param('weekNumber') weekNumber: string,
@@ -80,6 +87,8 @@ export class ProblemController {
   /**
    * GET /all — 스터디별 전체 문제 목록 (ACTIVE만)
    */
+  @ApiOperation({ summary: '전체 문제 목록 조회 (ACTIVE)' })
+  @ApiResponse({ status: 200, description: '문제 목록' })
   @Get('all')
   async findAll(@Headers('x-study-id') studyId: string) {
     const problems = await this.problemService.findAllByStudy(studyId);
@@ -89,6 +98,8 @@ export class ProblemController {
   /**
    * GET /active — 스터디별 활성 문제 전체 목록
    */
+  @ApiOperation({ summary: '활성 문제 전체 목록 조회' })
+  @ApiResponse({ status: 200, description: '활성 문제 목록' })
   @Get('active')
   async findActive(@Headers('x-study-id') studyId: string) {
     const problems = await this.problemService.findActiveByStudy(studyId);
@@ -98,6 +109,9 @@ export class ProblemController {
   /**
    * GET /:id — 문제 단건 조회 (studyId 스코핑)
    */
+  @ApiOperation({ summary: '문제 단건 조회' })
+  @ApiResponse({ status: 200, description: '문제 정보' })
+  @ApiResponse({ status: 404, description: '문제 없음' })
   @Get(':id')
   async findById(
     @Param('id', ParseUUIDPipe) id: string,
@@ -110,6 +124,9 @@ export class ProblemController {
   /**
    * DELETE /:id — 문제 삭제 soft delete (ADMIN 전용)
    */
+  @ApiOperation({ summary: '문제 삭제 (ADMIN 전용)' })
+  @ApiResponse({ status: 204, description: '삭제 완료' })
+  @ApiResponse({ status: 403, description: 'ADMIN 권한 필요' })
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(
@@ -129,6 +146,9 @@ export class ProblemController {
   /**
    * PATCH /:id — 문제 수정 (ADMIN 전용)
    */
+  @ApiOperation({ summary: '문제 수정 (ADMIN 전용)' })
+  @ApiResponse({ status: 200, description: '수정된 문제 정보' })
+  @ApiResponse({ status: 403, description: 'ADMIN 권한 필요' })
   @Patch(':id')
   async update(
     @Param('id', ParseUUIDPipe) id: string,

@@ -15,11 +15,13 @@ import {
   UseGuards,
   ParseUUIDPipe,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { NotificationService } from './notification.service';
 import { InternalKeyGuard } from '../common/guards/internal-key.guard';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { MarkAsReadDto } from './dto/mark-as-read.dto';
 
+@ApiTags('Notifications')
 @Controller('api/notifications')
 @UseGuards(InternalKeyGuard)
 export class NotificationController {
@@ -29,6 +31,8 @@ export class NotificationController {
    * 알림 생성
    * @route POST /api/notifications
    */
+  @ApiOperation({ summary: '알림 생성' })
+  @ApiResponse({ status: 201, description: '생성된 알림' })
   @Post()
   async create(@Body() dto: CreateNotificationDto) {
     return this.notificationService.create(dto);
@@ -38,6 +42,8 @@ export class NotificationController {
    * 미읽음 알림 목록 조회 (최근 50개, 최신순)
    * @route GET /api/notifications/by-user/:userId
    */
+  @ApiOperation({ summary: '미읽음 알림 목록 조회' })
+  @ApiResponse({ status: 200, description: '알림 목록' })
   @Get('by-user/:userId')
   async findByUserId(@Param('userId', ParseUUIDPipe) userId: string) {
     return this.notificationService.findByUserId(userId);
@@ -47,6 +53,8 @@ export class NotificationController {
    * 미읽음 알림 수 조회
    * @route GET /api/notifications/by-user/:userId/unread-count
    */
+  @ApiOperation({ summary: '미읽음 알림 수 조회' })
+  @ApiResponse({ status: 200, description: '미읽음 수' })
   @Get('by-user/:userId/unread-count')
   async getUnreadCount(@Param('userId', ParseUUIDPipe) userId: string) {
     return { count: await this.notificationService.getUnreadCount(userId) };
@@ -56,6 +64,8 @@ export class NotificationController {
    * 단건 읽음 처리 — body에 userId 포함 (IDOR 방지)
    * @route PATCH /api/notifications/:id/read
    */
+  @ApiOperation({ summary: '알림 단건 읽음 처리' })
+  @ApiResponse({ status: 200, description: '읽음 처리 완료' })
   @Patch(':id/read')
   async markAsRead(
     @Param('id', ParseUUIDPipe) id: string,
@@ -69,6 +79,8 @@ export class NotificationController {
    * 전체 읽음 처리
    * @route PATCH /api/notifications/by-user/:userId/read-all
    */
+  @ApiOperation({ summary: '알림 전체 읽음 처리' })
+  @ApiResponse({ status: 200, description: '읽음 처리된 건수' })
   @Patch('by-user/:userId/read-all')
   async markAllRead(@Param('userId', ParseUUIDPipe) userId: string) {
     const affected = await this.notificationService.markAllRead(userId);
@@ -79,6 +91,8 @@ export class NotificationController {
    * 30일 이상 경과 알림 삭제
    * @route DELETE /api/notifications/old
    */
+  @ApiOperation({ summary: '30일 이상 경과 알림 삭제' })
+  @ApiResponse({ status: 200, description: '삭제된 건수' })
   @Delete('old')
   async deleteOld() {
     const affected = await this.notificationService.deleteOld();
@@ -89,6 +103,8 @@ export class NotificationController {
    * 사용자 알림 전체 삭제 (회원탈퇴 시)
    * @route DELETE /api/notifications/by-user/:userId
    */
+  @ApiOperation({ summary: '사용자 알림 전체 삭제' })
+  @ApiResponse({ status: 200, description: '삭제된 건수' })
   @Delete('by-user/:userId')
   async deleteByUserId(@Param('userId', ParseUUIDPipe) userId: string) {
     const affected = await this.notificationService.deleteByUserId(userId);

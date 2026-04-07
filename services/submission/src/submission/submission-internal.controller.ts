@@ -18,6 +18,7 @@ import {
   HttpStatus,
   BadRequestException,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { SubmissionService } from './submission.service';
 import { SagaOrchestratorService } from '../saga/saga-orchestrator.service';
 import { InternalKeyGuard } from '../common/guards/internal-key.guard';
@@ -32,6 +33,7 @@ import { StructuredLoggerService } from '../common/logger/structured-logger.serv
  *
  * 보안: InternalKeyGuard만 적용 (StudyMemberGuard 불필요 — 서비스 간 통신)
  */
+@ApiTags('Submissions (Internal)')
 @Controller('internal')
 @UseGuards(InternalKeyGuard)
 export class SubmissionInternalController {
@@ -49,6 +51,8 @@ export class SubmissionInternalController {
    * GET /internal/:id — 내부 서비스용 제출 데이터 조회
    * AI Analysis Worker에서 코드+언어 정보 조회 시 사용
    */
+  @ApiOperation({ summary: '내부 서비스용 제출 데이터 조회' })
+  @ApiResponse({ status: 200, description: '제출 정보' })
   @Get(':id')
   async findByIdInternal(@Param('id', ParseUUIDPipe) id: string) {
     const submission = await this.submissionService.findById(id);
@@ -59,6 +63,8 @@ export class SubmissionInternalController {
    * PATCH /internal/:id/ai-result — AI 분석 결과 저장
    * AI Analysis Service worker에서 분석 완료 후 콜백
    */
+  @ApiOperation({ summary: 'AI 분석 결과 저장' })
+  @ApiResponse({ status: 200, description: '저장된 분석 결과' })
   @Patch(':id/ai-result')
   async updateAiResult(
     @Param('id', ParseUUIDPipe) id: string,
@@ -75,6 +81,8 @@ export class SubmissionInternalController {
    * GET /internal/submissions/:id/owner — 제출 소유자 조회 (SSE S6 소유권 검증)
    * @guard submission-owner
    */
+  @ApiOperation({ summary: '제출 소유자 조회' })
+  @ApiResponse({ status: 200, description: '소유자 userId' })
   @Get('submissions/:id/owner')
   async getSubmissionOwner(@Param('id', ParseUUIDPipe) id: string) {
     const submission = await this.submissionService.findById(id);
@@ -85,6 +93,8 @@ export class SubmissionInternalController {
    * GET /internal/study-all/:studyId — 스터디 전체 제출 (code 제외)
    * 게스트 공유 프록시용: Gateway PublicShareController에서 호출
    */
+  @ApiOperation({ summary: '스터디 전체 제출 목록 (code 제외)' })
+  @ApiResponse({ status: 200, description: '제출 목록' })
   @Get('study-all/:studyId')
   async findAllByStudy(
     @Param('studyId', ParseUUIDPipe) studyId: string,
@@ -97,6 +107,9 @@ export class SubmissionInternalController {
    * GET /internal/by-problem/:problemId — 문제별 전체 제출 (스터디 스코핑)
    * 그룹 분석용: AI Analysis Service에서 호출
    */
+  @ApiOperation({ summary: '문제별 전체 제출 (스터디 스코핑)' })
+  @ApiResponse({ status: 200, description: '제출 목록' })
+  @ApiResponse({ status: 400, description: 'studyId 누락' })
   @Get('by-problem/:problemId')
   async findByProblemForStudy(
     @Param('problemId', ParseUUIDPipe) problemId: string,
@@ -113,6 +126,8 @@ export class SubmissionInternalController {
    * GET /internal/stats/:studyId — 스터디 통계 조회
    * Gateway StudyService에서 호출
    */
+  @ApiOperation({ summary: '스터디 통계 조회' })
+  @ApiResponse({ status: 200, description: '통계 데이터' })
   @Get('stats/:studyId')
   async getStudyStats(
     @Param('studyId', ParseUUIDPipe) studyId: string,
@@ -129,6 +144,8 @@ export class SubmissionInternalController {
    * POST /internal/:id/github-success
    * GitHub Push 성공 콜백 — Saga를 AI_QUEUED 단계로 진행
    */
+  @ApiOperation({ summary: 'GitHub Push 성공 콜백' })
+  @ApiResponse({ status: 200, description: '처리 완료' })
   @Post(':id/github-success')
   @HttpCode(HttpStatus.OK)
   async githubSuccess(
@@ -145,6 +162,8 @@ export class SubmissionInternalController {
    * POST /internal/:id/github-failed
    * GitHub Push 실패 콜백 — 보상 트랜잭션 (AI 분석은 계속 진행)
    */
+  @ApiOperation({ summary: 'GitHub Push 실패 콜백' })
+  @ApiResponse({ status: 200, description: '처리 완료' })
   @Post(':id/github-failed')
   @HttpCode(HttpStatus.OK)
   async githubFailed(@Param('id', ParseUUIDPipe) id: string) {
@@ -157,6 +176,8 @@ export class SubmissionInternalController {
    * POST /internal/:id/github-token-invalid
    * GitHub Token 무효 콜백 — AI 분석도 스킵
    */
+  @ApiOperation({ summary: 'GitHub Token 무효 콜백' })
+  @ApiResponse({ status: 200, description: '처리 완료' })
   @Post(':id/github-token-invalid')
   @HttpCode(HttpStatus.OK)
   async githubTokenInvalid(@Param('id', ParseUUIDPipe) id: string) {
@@ -169,6 +190,8 @@ export class SubmissionInternalController {
    * POST /internal/:id/github-skipped
    * GitHub 레포 미연결 — SKIPPED 처리 후 AI 분석은 계속 진행
    */
+  @ApiOperation({ summary: 'GitHub SKIPPED 콜백' })
+  @ApiResponse({ status: 200, description: '처리 완료' })
   @Post(':id/github-skipped')
   @HttpCode(HttpStatus.OK)
   async githubSkipped(@Param('id', ParseUUIDPipe) id: string) {

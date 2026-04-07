@@ -16,6 +16,7 @@ import {
   UseGuards,
   ParseUUIDPipe,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ProblemService } from './problem.service';
 import { InternalKeyGuard } from '../common/guards/internal-key.guard';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
@@ -28,6 +29,7 @@ import { StructuredLoggerService } from '../common/logger/structured-logger.serv
  * - StudyMemberGuard 미적용 — 내부 서비스 전용
  * - studyId는 x-study-id 헤더로 수신하여 DB 쿼리 스코핑
  */
+@ApiTags('Problems (Internal)')
 @Controller('internal')
 @UseGuards(InternalKeyGuard)
 export class InternalProblemController {
@@ -42,6 +44,8 @@ export class InternalProblemController {
    * GET /internal/active-ids/:studyId — ACTIVE 문제 ID 목록 조회
    * Gateway stats 집계 시 삭제(CLOSED) 문제 필터링용
    */
+  @ApiOperation({ summary: 'ACTIVE 문제 ID 목록 조회' })
+  @ApiResponse({ status: 200, description: '문제 ID 배열' })
   @Get('active-ids/:studyId')
   async getActiveProblemIds(
     @Param('studyId', ParseUUIDPipe) studyId: string,
@@ -55,6 +59,8 @@ export class InternalProblemController {
    * GET /internal/deadline/:id — 마감 시간 조회 (Submission Service 내부 연동용)
    * studyId 컨텍스트 포함 — 캐시 우선 → DB fallback
    */
+  @ApiOperation({ summary: '문제 마감 시간 조회' })
+  @ApiResponse({ status: 200, description: '마감 시간 정보' })
   @Get('deadline/:id')
   async getDeadline(
     @Param('id', ParseUUIDPipe) id: string,
@@ -68,6 +74,8 @@ export class InternalProblemController {
    * GET /internal/:id — 내부 서비스 전용 문제 단건 조회
    * StudyMemberGuard 없이 InternalKeyGuard만으로 접근 허용
    */
+  @ApiOperation({ summary: '내부 서비스 전용 문제 단건 조회' })
+  @ApiResponse({ status: 200, description: '문제 정보' })
   @Get(':id')
   async findById(
     @Param('id', ParseUUIDPipe) id: string,
