@@ -494,7 +494,7 @@ describe('SagaOrchestratorService', () => {
 
   // ─── 13. advanceToAiQueued() — AI 한도 초과 ───────────────────
   describe('advanceToAiQueued() — AI 한도 초과', () => {
-    it('한도 초과 시 AI_SKIPPED으로 처리하고 DONE 상태로 전환한다', async () => {
+    it('AI 한도 초과 시 DONE으로 직행하고 aiSkipped=true로 표시한다', async () => {
       const submission = createMockSubmission({ sagaStep: SagaStep.GITHUB_QUEUED });
       repo.findOne.mockResolvedValue(submission);
       repo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
@@ -508,7 +508,7 @@ describe('SagaOrchestratorService', () => {
 
       await service.advanceToAiQueued('sub-uuid-1');
 
-      // AI_SKIPPED → DONE (낙관적 락 WHERE 조건 포함)
+      // 한도 초과 → DONE 직행 (낙관적 락 WHERE 조건 포함)
       expect(repo.update).toHaveBeenCalledWith(
         { id: 'sub-uuid-1', sagaStep: SagaStep.GITHUB_QUEUED },
         expect.objectContaining({

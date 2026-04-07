@@ -12,6 +12,7 @@ export enum SagaStep {
   DB_SAVED = 'DB_SAVED',
   GITHUB_QUEUED = 'GITHUB_QUEUED',
   AI_QUEUED = 'AI_QUEUED',
+  /** @deprecated DB 호환용. 실제 상태 전이에서 사용하지 않음 — aiSkipped boolean으로 대체 */
   AI_SKIPPED = 'AI_SKIPPED',
   DONE = 'DONE',
   FAILED = 'FAILED',

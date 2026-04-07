@@ -17,7 +17,7 @@ import { StructuredLoggerService } from '../common/logger/structured-logger.serv
 /**
  * Saga Orchestrator -- 제출 플로우 상태 관리
  *
- * 플로우: DB_SAVED -> GITHUB_QUEUED -> (quota check) -> AI_QUEUED | AI_SKIPPED -> DONE
+ * 플로우: DB_SAVED -> GITHUB_QUEUED -> (quota check) -> AI_QUEUED -> DONE (한도 초과 시 DONE 직행, aiSkipped=true)
  *
  * 멱등성 보장 순서 (필수):
  * 1. DB 업데이트 (saga_step 갱신) -- 먼저
@@ -35,6 +35,7 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
     [SagaStep.DB_SAVED]: 5 * 60 * 1000,       // 5분
     [SagaStep.GITHUB_QUEUED]: 15 * 60 * 1000,  // 15분
     [SagaStep.AI_QUEUED]: 30 * 60 * 1000,      // 30분
+    /** @deprecated DB 호환용. 실제 상태 전이에서 사용하지 않음 */
     [SagaStep.AI_SKIPPED]: 0,
     [SagaStep.DONE]: 0,
     [SagaStep.FAILED]: 0,
@@ -72,7 +73,7 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
     const incompleteSubmissions = await this.submissionRepo.find({
       where: {
-        sagaStep: Not(In([SagaStep.DONE, SagaStep.FAILED, SagaStep.AI_SKIPPED])),
+        sagaStep: Not(In([SagaStep.DONE, SagaStep.FAILED])),
         createdAt: MoreThan(oneHourAgo),
       },
       order: { createdAt: 'ASC' },
@@ -146,7 +147,7 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Step 2 완료: GitHub Push 성공 -> AI 한도 체크 -> AI_QUEUED 또는 AI_SKIPPED
+   * Step 2 완료: GitHub Push 성공 -> AI 한도 체크 -> AI_QUEUED 또는 DONE(aiSkipped)
    *
    * @guard ai-quota
    * @param submissionId 제출 ID
@@ -171,7 +172,7 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
       : { githubSyncStatus: GitHubSyncStatus.SYNCED };
 
     if (!quotaAllowed) {
-      // 한도 초과 -> AI_SKIPPED (DONE으로 직행)
+      // 한도 초과 -> DONE 직행 (aiSkipped=true)
       // 낙관적 락: WHERE sagaStep = GITHUB_QUEUED
       const skipResult = await this.submissionRepo.update(
         { id: submissionId, sagaStep: SagaStep.GITHUB_QUEUED },
@@ -185,13 +186,13 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
 
       if (skipResult.affected === 0) {
         this.logger.warn(
-          `Saga 상태 전이 스킵 (낙관적 락): submissionId=${submissionId}, expected=GITHUB_QUEUED (AI_SKIPPED 경로)`,
+          `Saga 상태 전이 스킵 (낙관적 락): submissionId=${submissionId}, expected=GITHUB_QUEUED (aiSkipped 경로)`,
         );
         return;
       }
 
       this.logger.log(
-        `AI 한도 초과 -> AI_SKIPPED: submissionId=${submissionId}, userId=${submission.userId}`,
+        `AI 한도 초과 -> DONE(aiSkipped): submissionId=${submissionId}, userId=${submission.userId}`,
       );
       return;
     }
@@ -263,8 +264,8 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
    * @param queryRunner 외부 트랜잭션 참여 시 전달 (updateAiResult 원자성 보장)
    */
   async advanceToDone(submissionId: string, queryRunner?: QueryRunner): Promise<void> {
-    // 낙관적 락: WHERE sagaStep IN (AI_QUEUED, AI_SKIPPED)
-    const expectedSteps = In([SagaStep.AI_QUEUED, SagaStep.AI_SKIPPED]);
+    // 낙관적 락: WHERE sagaStep = AI_QUEUED
+    const expectedSteps = In([SagaStep.AI_QUEUED]);
 
     if (queryRunner) {
       const result = await queryRunner.manager.update(
@@ -275,7 +276,7 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
 
       if (result.affected === 0) {
         this.logger.warn(
-          `Saga 상태 전이 스킵 (낙관적 락): submissionId=${submissionId}, expected=AI_QUEUED|AI_SKIPPED (QR 경로)`,
+          `Saga 상태 전이 스킵 (낙관적 락): submissionId=${submissionId}, expected=AI_QUEUED (QR 경로)`,
         );
         return;
       }
@@ -287,7 +288,7 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
 
       if (result.affected === 0) {
         this.logger.warn(
-          `Saga 상태 전이 스킵 (낙관적 락): submissionId=${submissionId}, expected=AI_QUEUED|AI_SKIPPED`,
+          `Saga 상태 전이 스킵 (낙관적 락): submissionId=${submissionId}, expected=AI_QUEUED`,
         );
         return;
       }
