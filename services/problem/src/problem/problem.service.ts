@@ -152,6 +152,7 @@ export class ProblemService {
       if (dto.description !== undefined) problem.description = dto.description;
       if (dto.weekNumber !== undefined) problem.weekNumber = dto.weekNumber;
       if (dto.difficulty !== undefined) problem.difficulty = dto.difficulty;
+      if (dto.level !== undefined) problem.level = dto.level;
       if (dto.sourceUrl !== undefined) problem.sourceUrl = dto.sourceUrl;
       if (dto.sourcePlatform !== undefined) problem.sourcePlatform = dto.sourcePlatform;
       if (dto.deadline !== undefined) problem.deadline = dto.deadline ? new Date(dto.deadline) : null;

@@ -33,6 +33,12 @@ export default function RootLayout({ children }: RootLayoutProps): ReactNode {
   return (
     <html lang="ko" suppressHydrationWarning>
       <body className="font-sans">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-white focus:text-black"
+        >
+          콘텐츠로 건너뛰기
+        </a>
         {adsenseEnabled && adsenseClientId && (
           <Script
             src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClientId}`}

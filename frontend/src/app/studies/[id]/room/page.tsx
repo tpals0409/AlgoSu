@@ -759,7 +759,7 @@ function SubmissionView({ problem, submissions, loading, notSubmitted, accessDen
                   <div className="flex items-center gap-3">
                     <img
                       src={avatarUrl ? getAvatarSrc(getAvatarPresetKey(avatarUrl)) : getAvatarSrc('default')}
-                      alt="" className="h-10 w-10 shrink-0 rounded-full object-cover"
+                      alt={`${name} 아바타`} className="h-10 w-10 shrink-0 rounded-full object-cover"
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
@@ -873,7 +873,7 @@ function AnalysisView({ problem, submission, analysis, loading, nicknameMap, ava
           <button type="button" onClick={onBack} className="flex items-center justify-center shrink-0 h-9 w-9 rounded-full transition-colors hover:bg-bg-alt">
             <ArrowLeft className="h-5 w-5" style={{ color: 'var(--text)' }} />
           </button>
-          <img src={avatarUrl ? getAvatarSrc(getAvatarPresetKey(avatarUrl)) : getAvatarSrc('default')} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />
+          <img src={avatarUrl ? getAvatarSrc(getAvatarPresetKey(avatarUrl)) : getAvatarSrc('default')} alt={`${name} 아바타`} className="h-10 w-10 shrink-0 rounded-full object-cover" />
           <div>
             <h1 className="text-xl font-bold tracking-tight text-text">{name}</h1>
             <p className="text-sm text-text-3">{problem.title}</p>

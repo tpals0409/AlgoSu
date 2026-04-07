@@ -295,18 +295,14 @@ class AIAnalysisWorker:
         @returns: 분석 결과 dict
         @raises CircuitBreakerOpenError: Circuit Breaker OPEN 시
         """
-        import asyncio
-
         last_result = None
         for attempt in range(1, MAX_RETRIES + 1):
             # CircuitBreakerOpenError는 전파 (상위 _on_message에서 처리)
-            result = asyncio.run(
-                self.claude.analyze_code(
-                    code=submission["code"],
-                    language=submission["language"],
-                    problem_title=submission.get("problemTitle", ""),
-                    problem_description=submission.get("problemDescription", ""),
-                )
+            result = self.claude.analyze_code(
+                code=submission["code"],
+                language=submission["language"],
+                problem_title=submission.get("problemTitle", ""),
+                problem_description=submission.get("problemDescription", ""),
             )
 
             if result["status"] == "completed":

@@ -502,7 +502,7 @@ function SubmissionListView({ problem, submissions, onSelect, onBack, createdByU
                   {/* 아바타 */}
                   <img
                     src={getAvatarSrc('default')}
-                    alt=""
+                    alt={`${memberName} 아바타`}
                     className="h-10 w-10 shrink-0 rounded-full object-cover"
                   />
                   <div className="min-w-0 flex-1">

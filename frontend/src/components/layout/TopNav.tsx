@@ -188,7 +188,7 @@ function ProfileDropdown(): ReactNode {
       >
         <Image
           src={getAvatarSrc(user?.avatarPreset ?? 'default')}
-          alt="아바타"
+          alt={`${user?.email ?? '사용자'} 아바타`}
           width={32}
           height={32}
           className="h-full w-full"

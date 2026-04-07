@@ -386,7 +386,7 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
                   {user ? (
                     <Image
                       src={getAvatarSrc(user.avatarPreset ?? 'default')}
-                      alt="아바타"
+                      alt={`${user.email} 아바타`}
                       width={16}
                       height={16}
                       className="h-4 w-4 shrink-0 rounded-full"
@@ -480,7 +480,7 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
         )}
 
         {/* ── Main content ───────────────────────────────── */}
-        <main className={hasStudy ? 'md:ml-[220px]' : ''}>
+        <main id="main-content" className={hasStudy ? 'md:ml-[220px]' : ''}>
           <div
             className={cn(
               hasStudy

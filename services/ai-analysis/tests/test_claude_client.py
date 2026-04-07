@@ -42,8 +42,7 @@ def client(mock_anthropic, mock_circuit_breaker):
 class TestAnalyzeCodeSuccess:
     """1. analyze_code() -- 정상: feedback + status='completed'"""
 
-    @pytest.mark.asyncio
-    async def test_normal_analysis_returns_completed(
+    def test_normal_analysis_returns_completed(
         self, client, mock_anthropic, mock_circuit_breaker
     ):
         _, mock_client = mock_anthropic
@@ -69,7 +68,7 @@ class TestAnalyzeCodeSuccess:
         mock_message.content = [mock_content]
         mock_client.messages.create.return_value = mock_message
 
-        result = await client.analyze_code(
+        result = client.analyze_code(
             code="def solution(n): return n * 2",
             language="python",
             problem_title="두 배 반환",
@@ -83,8 +82,7 @@ class TestAnalyzeCodeSuccess:
 class TestAnalyzeCodeCircuitBreakerOpen:
     """2. analyze_code() -- Circuit Breaker OPEN: CircuitBreakerOpenError raise"""
 
-    @pytest.mark.asyncio
-    async def test_circuit_breaker_open_raises_error(
+    def test_circuit_breaker_open_raises_error(
         self, client, mock_anthropic, mock_circuit_breaker
     ):
         from src.claude_client import CircuitBreakerOpenError
@@ -92,7 +90,7 @@ class TestAnalyzeCodeCircuitBreakerOpen:
         mock_circuit_breaker.can_execute.return_value = False
 
         with pytest.raises(CircuitBreakerOpenError):
-            await client.analyze_code(
+            client.analyze_code(
                 code='print("hello")',
                 language="python",
             )
@@ -105,14 +103,13 @@ class TestAnalyzeCodeCircuitBreakerOpen:
 class TestAnalyzeCodeApiError:
     """3. analyze_code() -- Claude API 오류: status='failed', record_failure 호출"""
 
-    @pytest.mark.asyncio
-    async def test_api_error_returns_failed(
+    def test_api_error_returns_failed(
         self, client, mock_anthropic, mock_circuit_breaker
     ):
         _, mock_client = mock_anthropic
         mock_client.messages.create.side_effect = Exception("API rate limit exceeded")
 
-        result = await client.analyze_code(
+        result = client.analyze_code(
             code='print("hello")',
             language="python",
         )
@@ -156,8 +153,7 @@ class TestBuildPrompt:
 class TestAnalyzeCodeRateLimitError:
     """6. analyze_code() -- RateLimitError: fallback 반환 + record_failure"""
 
-    @pytest.mark.asyncio
-    async def test_rate_limit_error_returns_delayed(
+    def test_rate_limit_error_returns_delayed(
         self, client, mock_anthropic, mock_circuit_breaker
     ):
         mock_anthropic_mod, mock_client = mock_anthropic
@@ -166,7 +162,7 @@ class TestAnalyzeCodeRateLimitError:
             "Rate limit exceeded"
         )
 
-        result = await client.analyze_code(
+        result = client.analyze_code(
             code='print("hello")',
             language="python",
         )
@@ -291,8 +287,7 @@ class TestParseResponseMarkdown:
         assert result["status"] == "failed"
         assert result["score"] == 0
 
-    @pytest.mark.asyncio
-    async def test_empty_content_returns_completed(
+    def test_empty_content_returns_completed(
         self, client, mock_anthropic, mock_circuit_breaker
     ):
         """빈 content 처리 -- raw_text='' 로 파싱 시 completed 반환"""
@@ -301,7 +296,7 @@ class TestParseResponseMarkdown:
         mock_message.content = []
         mock_client.messages.create.return_value = mock_message
 
-        result = await client.analyze_code(code="x=1", language="python")
+        result = client.analyze_code(code="x=1", language="python")
         # empty content => raw_text="" => json decode fails => fallback to failed
         assert result["status"] == "failed"
 
@@ -380,8 +375,7 @@ class TestParseResponseMarkdown:
 class TestSecurityCodeLogLimit:
     """5. 보안: 코드 로그 50자 제한"""
 
-    @pytest.mark.asyncio
-    async def test_long_code_logged_with_50_char_limit(
+    def test_long_code_logged_with_50_char_limit(
         self, client, mock_anthropic, mock_circuit_breaker
     ):
         _, mock_client = mock_anthropic
@@ -402,7 +396,7 @@ class TestSecurityCodeLogLimit:
         long_code = "x" * 100  # 100자 코드
 
         with patch("src.claude_client.logger") as mock_logger:
-            result = await client.analyze_code(
+            result = client.analyze_code(
                 code=long_code,
                 language="python",
             )
@@ -541,8 +535,7 @@ class TestParseGroupResponse:
 class TestGroupAnalyze:
     """group_analyze() -- 그룹 분석 전체 흐름"""
 
-    @pytest.mark.asyncio
-    async def test_group_analyze_success(
+    def test_group_analyze_success(
         self, client, mock_anthropic, mock_circuit_breaker
     ):
         """정상 그룹 분석 호출"""
@@ -561,7 +554,7 @@ class TestGroupAnalyze:
         mock_message.content = [mock_content]
         mock_client.messages.create.return_value = mock_message
 
-        result = await client.group_analyze(
+        result = client.group_analyze(
             [
                 {
                     "language": "python",
@@ -583,8 +576,7 @@ class TestGroupAnalyze:
         assert result["learningPoints"] == ["핵심 포인트"]
         mock_circuit_breaker.record_success.assert_called_once()
 
-    @pytest.mark.asyncio
-    async def test_group_analyze_circuit_breaker_open(
+    def test_group_analyze_circuit_breaker_open(
         self, client, mock_anthropic, mock_circuit_breaker
     ):
         """Circuit Breaker OPEN 시 예외 발생"""
@@ -593,21 +585,20 @@ class TestGroupAnalyze:
         mock_circuit_breaker.can_execute.return_value = False
 
         with pytest.raises(CircuitBreakerOpenError):
-            await client.group_analyze(
+            client.group_analyze(
                 [
                     {"language": "python", "userId": "user-1234", "code": "x = 1"},
                 ]
             )
 
-    @pytest.mark.asyncio
-    async def test_group_analyze_api_error(
+    def test_group_analyze_api_error(
         self, client, mock_anthropic, mock_circuit_breaker
     ):
         """API 오류 시 fallback 반환"""
         _, mock_client = mock_anthropic
         mock_client.messages.create.side_effect = Exception("API error")
 
-        result = await client.group_analyze(
+        result = client.group_analyze(
             [
                 {"language": "python", "userId": "user-1234", "code": "x = 1"},
             ]

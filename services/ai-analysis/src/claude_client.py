@@ -54,7 +54,7 @@ class ClaudeClient:
     def __init__(self):
         self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
-    async def analyze_code(
+    def analyze_code(
         self,
         code: str,
         language: str,
@@ -229,7 +229,7 @@ class ClaudeClient:
                 "categories": [],
             }
 
-    async def group_analyze(self, code_snippets: list[dict]) -> dict:
+    def group_analyze(self, code_snippets: list[dict]) -> dict:
         """
         그룹 분석 요청 -- 여러 제출 코드를 비교 분석
 

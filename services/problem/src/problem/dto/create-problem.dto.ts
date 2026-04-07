@@ -84,6 +84,12 @@ export class UpdateProblemDto {
   difficulty?: Difficulty;
 
   @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(30)
+  level?: number;
+
+  @IsOptional()
   @IsUrl()
   @MaxLength(500)
   sourceUrl?: string;

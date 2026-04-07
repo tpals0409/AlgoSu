@@ -4,7 +4,7 @@ Mock: ClaudeClient, redis, httpx, pika
 """
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -20,7 +20,7 @@ def mock_dependencies():
     ):
         # ClaudeClient 모킹
         mock_claude = MagicMock()
-        mock_claude.analyze_code = AsyncMock(
+        mock_claude.analyze_code = MagicMock(
             return_value={
                 "feedback": "좋은 코드입니다.",
                 "optimized_code": None,
@@ -281,7 +281,7 @@ class TestAnalyzeWithRetry:
 
     def test_retry_on_failure_then_success(self, worker, mock_dependencies):
         """실패 후 재시도에서 성공"""
-        mock_dependencies["claude"].analyze_code = AsyncMock(
+        mock_dependencies["claude"].analyze_code = MagicMock(
             side_effect=[
                 {
                     "status": "failed",
@@ -312,7 +312,7 @@ class TestAnalyzeWithRetry:
             "score": 0,
             "optimized_code": None,
         }
-        mock_dependencies["claude"].analyze_code = AsyncMock(return_value=fail_result)
+        mock_dependencies["claude"].analyze_code = MagicMock(return_value=fail_result)
 
         with patch("src.worker.time.sleep"):
             submission = {"code": "x", "language": "python"}
@@ -324,7 +324,7 @@ class TestAnalyzeWithRetry:
         """CircuitBreakerOpenError는 상위로 전파"""
         from src.claude_client import CircuitBreakerOpenError
 
-        mock_dependencies["claude"].analyze_code = AsyncMock(
+        mock_dependencies["claude"].analyze_code = MagicMock(
             side_effect=CircuitBreakerOpenError("Circuit Breaker OPEN")
         )
 
@@ -505,7 +505,7 @@ class TestOnMessageWithUserId:
         deps["http_client"].patch.return_value = mock_patch_resp
 
         # 분석 실패 반환
-        deps["claude"].analyze_code = AsyncMock(
+        deps["claude"].analyze_code = MagicMock(
             return_value={
                 "feedback": "fail",
                 "optimized_code": None,
@@ -560,7 +560,7 @@ class TestOnMessageCircuitBreakerOpen:
         deps["http_client"].get.return_value = mock_resp
 
         # CircuitBreakerOpenError 발생
-        deps["claude"].analyze_code = AsyncMock(
+        deps["claude"].analyze_code = MagicMock(
             side_effect=CircuitBreakerOpenError("CB OPEN")
         )
 
@@ -596,7 +596,7 @@ class TestOnMessageCircuitBreakerOpen:
         deps["http_client"].patch.return_value = mock_patch_resp
 
         # CircuitBreakerOpenError 발생
-        deps["claude"].analyze_code = AsyncMock(
+        deps["claude"].analyze_code = MagicMock(
             side_effect=CircuitBreakerOpenError("CB OPEN")
         )
 
@@ -645,7 +645,7 @@ class TestOnMessageCircuitBreakerOpen:
         mock_patch_resp.raise_for_status = MagicMock()
         deps["http_client"].patch.return_value = mock_patch_resp
 
-        deps["claude"].analyze_code = AsyncMock(
+        deps["claude"].analyze_code = MagicMock(
             side_effect=CircuitBreakerOpenError("CB OPEN")
         )
 
@@ -676,7 +676,7 @@ class TestOnMessageCircuitBreakerOpen:
         mock_resp.raise_for_status = MagicMock()
         deps["http_client"].get.return_value = mock_resp
 
-        deps["claude"].analyze_code = AsyncMock(
+        deps["claude"].analyze_code = MagicMock(
             side_effect=CircuitBreakerOpenError("CB OPEN")
         )
 
@@ -909,7 +909,7 @@ class TestPublishStatusWithRetry:
 
         # 분석 결과를 progress (비최종 상태)로 설정
         deps["redis_client"].publish.side_effect = Exception("Redis down")
-        mock_dependencies["claude"].analyze_code = AsyncMock(
+        mock_dependencies["claude"].analyze_code = MagicMock(
             return_value={
                 "feedback": "분석 중",
                 "optimized_code": None,
