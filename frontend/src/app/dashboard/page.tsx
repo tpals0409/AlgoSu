@@ -41,6 +41,7 @@ import {
   type Problem,
 } from '@/lib/api';
 import { cn, getCurrentWeekLabel } from '@/lib/utils';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { AdBanner } from '@/components/ad/AdBanner';
 import { AD_SLOTS } from '@/lib/constants/adSlots';
 
@@ -465,6 +466,20 @@ export default function DashboardPage(): ReactNode {
               다시 시도
             </Button>
           </Alert>
+        )}
+
+        {/* ── NO STUDY GUIDE ── */}
+        {!currentStudyId && !isLoading && (
+          <EmptyState
+            icon={Users}
+            title="스터디에 가입하거나 새 스터디를 만들어보세요"
+            description="스터디에 참여하면 대시보드에서 제출 현황, 통계, 문제 목록을 확인할 수 있습니다."
+            action={{
+              label: '스터디 둘러보기',
+              onClick: () => router.push('/studies'),
+              variant: 'primary',
+            }}
+          />
         )}
 
         {/* ── GITHUB ONBOARDING BANNER ── */}

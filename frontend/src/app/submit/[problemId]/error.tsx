@@ -25,7 +25,7 @@ export default function SubmitErrorPage({ reset }: ErrorPageProps): ReactNode {
         </button>
         <Link
           href="/problems"
-          className="rounded-btn border border-border px-4 py-2 text-sm font-medium text-text transition-colors hover:bg-bg-2"
+          className="rounded-btn border border-border px-4 py-2 text-sm font-medium text-text transition-colors hover:bg-bg-alt"
         >
           문제 목록으로
         </Link>

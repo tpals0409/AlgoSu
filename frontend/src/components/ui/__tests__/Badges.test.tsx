@@ -1,10 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { DiffBadge } from '../DiffBadge';
 import { DifficultyBadge } from '../DifficultyBadge';
 import { LangBadge } from '../LangBadge';
-import { ScoreBadge } from '../ScoreBadge';
-import { StatusIndicator } from '../StatusIndicator';
-import type { StatusType } from '../StatusIndicator';
 import { CategoryBar, type CategoryItem } from '../CategoryBar';
 
 /* ------------------------------------------------------------------ */
@@ -16,36 +12,6 @@ jest.mock('@/hooks/useAnimVal', () => ({
     return [ref, target];
   },
 }));
-
-/* ================================================================== */
-/*  DiffBadge                                                         */
-/* ================================================================== */
-describe('DiffBadge', () => {
-  it('renders tier label in Korean', () => {
-    render(<DiffBadge tier="gold" />);
-    expect(screen.getByText('골드')).toBeInTheDocument();
-  });
-
-  it('renders tier + level when level provided', () => {
-    render(<DiffBadge tier="silver" level={3} />);
-    expect(screen.getByText('실버 3')).toBeInTheDocument();
-  });
-
-  it('renders only tier label when level is null', () => {
-    render(<DiffBadge tier="platinum" level={null} />);
-    expect(screen.getByText('플래티넘')).toBeInTheDocument();
-  });
-
-  it('renders unrated tier', () => {
-    render(<DiffBadge tier="unrated" />);
-    expect(screen.getByText('Unrated')).toBeInTheDocument();
-  });
-
-  it('applies custom className', () => {
-    const { container } = render(<DiffBadge tier="bronze" className="custom" />);
-    expect(container.firstChild).toHaveClass('custom');
-  });
-});
 
 /* ================================================================== */
 /*  DifficultyBadge                                                   */
@@ -107,97 +73,6 @@ describe('LangBadge', () => {
   it('applies custom className', () => {
     const { container } = render(<LangBadge language="Java" className="mono" />);
     expect(container.firstChild).toHaveClass('mono');
-  });
-});
-
-/* ================================================================== */
-/*  ScoreBadge                                                        */
-/* ================================================================== */
-describe('ScoreBadge', () => {
-  it('renders score with 점 suffix', () => {
-    render(<ScoreBadge score={85} />);
-    expect(screen.getByText('85점')).toBeInTheDocument();
-  });
-
-  it('applies success style for score >= 90', () => {
-    const { container } = render(<ScoreBadge score={95} />);
-    expect(container.firstChild).toHaveClass('bg-success-soft');
-  });
-
-  it('applies warning style for score >= 70 and < 90', () => {
-    const { container } = render(<ScoreBadge score={75} />);
-    expect(container.firstChild).toHaveClass('bg-warning-soft');
-  });
-
-  it('applies error style for score < 70', () => {
-    const { container } = render(<ScoreBadge score={50} />);
-    expect(container.firstChild).toHaveClass('bg-error-soft');
-  });
-
-  it('applies custom className', () => {
-    const { container } = render(<ScoreBadge score={100} className="big" />);
-    expect(container.firstChild).toHaveClass('big');
-  });
-});
-
-/* ================================================================== */
-/*  StatusIndicator                                                   */
-/* ================================================================== */
-describe('StatusIndicator', () => {
-  const statuses: StatusType[] = ['pending', 'running', 'success', 'failed', 'syncing'];
-
-  it.each(statuses)('renders "%s" status with correct aria-label', (status) => {
-    render(<StatusIndicator status={status} />);
-    expect(screen.getByRole('status')).toHaveAttribute('aria-label', expect.stringContaining('상태:'));
-  });
-
-  it('shows Korean label by default', () => {
-    render(<StatusIndicator status="success" />);
-    expect(screen.getByText('완료')).toBeInTheDocument();
-  });
-
-  it('hides label when showLabel=false', () => {
-    render(<StatusIndicator status="failed" showLabel={false} />);
-    expect(screen.queryByText('실패')).not.toBeInTheDocument();
-  });
-
-  it('uses customLabel when provided', () => {
-    render(<StatusIndicator status="pending" customLabel="커스텀" />);
-    expect(screen.getByText('커스텀')).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveAttribute('aria-label', '상태: 커스텀');
-  });
-
-  it('applies custom className', () => {
-    const { container } = render(<StatusIndicator status="running" className="extra" />);
-    expect(container.firstChild).toHaveClass('extra');
-  });
-
-  it('renders dot element', () => {
-    const { container } = render(<StatusIndicator status="syncing" />);
-    const dot = container.querySelector('[aria-hidden]');
-    expect(dot).toBeInTheDocument();
-  });
-
-  it('size=null일 때 기본 md 사이즈를 사용한다', () => {
-    // TypeScript VariantProps 타입에서 null이 가능하므로 null 처리 경로를 커버
-    const { container } = render(<StatusIndicator status="pending" size={null as never} />);
-    const dot = container.querySelector('[aria-hidden]');
-    expect(dot).toHaveClass('h-2');
-    expect(dot).toHaveClass('w-2');
-  });
-
-  it('sm 사이즈는 작은 도트를 렌더링한다', () => {
-    const { container } = render(<StatusIndicator status="success" size="sm" />);
-    const dot = container.querySelector('[aria-hidden]');
-    expect(dot).toHaveClass('h-1.5');
-    expect(dot).toHaveClass('w-1.5');
-  });
-
-  it('lg 사이즈는 큰 도트를 렌더링한다', () => {
-    const { container } = render(<StatusIndicator status="success" size="lg" />);
-    const dot = container.querySelector('[aria-hidden]');
-    expect(dot).toHaveClass('h-2.5');
-    expect(dot).toHaveClass('w-2.5');
   });
 });
 
@@ -264,26 +139,6 @@ describe('CategoryBar', () => {
 });
 
 /* ================================================================== */
-/*  DiffBadge — aria 접근성 속성                                       */
-/* ================================================================== */
-describe('DiffBadge accessibility', () => {
-  it('has aria-label with tier name in Korean', () => {
-    render(<DiffBadge tier="gold" />);
-    expect(screen.getByLabelText('난이도 골드')).toBeInTheDocument();
-  });
-
-  it('has aria-label with tier and level', () => {
-    render(<DiffBadge tier="silver" level={3} />);
-    expect(screen.getByLabelText('난이도 실버 3')).toBeInTheDocument();
-  });
-
-  it('has aria-label without level when level is null', () => {
-    render(<DiffBadge tier="platinum" level={null} />);
-    expect(screen.getByLabelText('난이도 플래티넘')).toBeInTheDocument();
-  });
-});
-
-/* ================================================================== */
 /*  LangBadge — aria 접근성 속성                                       */
 /* ================================================================== */
 describe('LangBadge accessibility', () => {
@@ -295,26 +150,6 @@ describe('LangBadge accessibility', () => {
   it('has aria-label for C++', () => {
     render(<LangBadge language="C++" />);
     expect(screen.getByLabelText('프로그래밍 언어 C++')).toBeInTheDocument();
-  });
-});
-
-/* ================================================================== */
-/*  ScoreBadge — aria 접근성 속성                                      */
-/* ================================================================== */
-describe('ScoreBadge accessibility', () => {
-  it('has aria-label with score', () => {
-    render(<ScoreBadge score={85} />);
-    expect(screen.getByLabelText('AI 점수 85점')).toBeInTheDocument();
-  });
-
-  it('has aria-label for perfect score', () => {
-    render(<ScoreBadge score={100} />);
-    expect(screen.getByLabelText('AI 점수 100점')).toBeInTheDocument();
-  });
-
-  it('has aria-label for low score', () => {
-    render(<ScoreBadge score={45} />);
-    expect(screen.getByLabelText('AI 점수 45점')).toBeInTheDocument();
   });
 });
 

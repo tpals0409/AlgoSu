@@ -357,7 +357,9 @@ export default function ProfilePage(): ReactNode {
                 <h3 className="text-[14px] font-semibold text-text">기본 정보</h3>
                 <button
                   type="button"
-                  className="flex items-center gap-1 text-[12px] text-text-3 transition-colors hover:text-text"
+                  disabled
+                  title="준비 중"
+                  className="flex items-center gap-1 text-[12px] text-text-3 opacity-50 cursor-not-allowed"
                 >
                   <Pencil className="h-3.5 w-3.5" aria-hidden />
                   수정

@@ -8,15 +8,12 @@ interface ErrorPageProps {
   readonly reset: () => void;
 }
 
-export default function ReviewDetailErrorPage({ error, reset }: ErrorPageProps): ReactNode {
+export default function ProfileSlugErrorPage({ reset }: ErrorPageProps): ReactNode {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-bg px-4">
-      <h1 className="text-4xl font-bold text-text">리뷰 오류</h1>
+      <h1 className="text-4xl font-bold text-text">프로필 오류</h1>
       <p className="mt-4 text-sm text-text-3">
-        코드 리뷰를 불러올 수 없습니다.
-      </p>
-      <p className="mt-2 max-w-md break-all rounded bg-bg-alt px-3 py-2 font-mono text-xs text-error">
-        {error.message}
+        프로필 정보를 불러올 수 없습니다.
       </p>
       <div className="mt-6 flex gap-3">
         <button
@@ -27,10 +24,10 @@ export default function ReviewDetailErrorPage({ error, reset }: ErrorPageProps):
           다시 시도
         </button>
         <Link
-          href="/studies"
+          href="/"
           className="rounded-btn border border-border px-4 py-2 text-sm font-medium text-text transition-colors hover:bg-bg-alt"
         >
-          스터디 목록으로
+          홈으로 돌아가기
         </Link>
       </div>
     </div>

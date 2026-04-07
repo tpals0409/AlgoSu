@@ -22,6 +22,7 @@ import {
   FileText,
   MessagesSquare,
   BarChart3,
+  Settings,
   User,
   Sun,
   Moon,
@@ -395,6 +396,21 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
                     <User className="h-4 w-4 shrink-0" aria-hidden />
                   )}
                   프로필
+                </Link>
+
+                {/* 설정 */}
+                <Link
+                  href="/settings"
+                  onClick={closeSidebar}
+                  className={cn(
+                    'flex items-center gap-2.5 rounded-btn px-3 py-2 text-[13px] font-medium transition-all duration-150',
+                    pathname === '/settings'
+                      ? 'bg-primary-soft text-primary'
+                      : 'text-text-3 hover:bg-bg-alt hover:text-text-2',
+                  )}
+                >
+                  <Settings className="h-4 w-4 shrink-0" aria-hidden />
+                  설정
                 </Link>
 
               </div>

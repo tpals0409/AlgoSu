@@ -25,7 +25,7 @@ export default function SubmissionStatusErrorPage({ reset }: ErrorPageProps): Re
         </button>
         <Link
           href="/submissions"
-          className="rounded-btn border border-border px-4 py-2 text-sm font-medium text-text transition-colors hover:bg-bg-2"
+          className="rounded-btn border border-border px-4 py-2 text-sm font-medium text-text transition-colors hover:bg-bg-alt"
         >
           제출 목록으로
         </Link>

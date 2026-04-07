@@ -339,10 +339,19 @@ jobs:
         if: steps.check.outputs.skip == 'false'
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - name: Install dependencies
+      - name: Cache node_modules
         if: steps.check.outputs.skip == 'false'
+        id: cache-node
+        uses: actions/cache@v4
+        with:
+          path: ${{ matrix.work_dir }}/node_modules
+          key: node-${{ matrix.service }}-${{ hashFiles(format('{0}/package-lock.json', matrix.work_dir)) }}
+          restore-keys: |
+            node-${{ matrix.service }}-
+      - name: Install dependencies
+        if: steps.check.outputs.skip == 'false' && steps.cache-node.outputs.cache-hit != 'true'
         working-directory: ${{ matrix.work_dir }}
-        run: npm ci
+        run: npm ci --ignore-scripts
       - name: npm audit (high/critical)
         if: steps.check.outputs.skip == 'false'
         working-directory: ${{ matrix.work_dir }}

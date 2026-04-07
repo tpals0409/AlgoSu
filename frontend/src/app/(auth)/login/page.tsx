@@ -260,8 +260,8 @@ function LoginContent(): ReactNode {
               style={fade(0.45)}
             >
               로그인 시{' '}
-              <span className="cursor-pointer text-primary">서비스 이용약관</span> 및{' '}
-              <span className="cursor-pointer text-primary">개인정보처리방침</span>에 동의하는 것으로 간주됩니다.
+              <span className="text-text-3">서비스 이용약관</span> 및{' '}
+              <span className="text-text-3">개인정보처리방침</span>에 동의하는 것으로 간주됩니다.
             </p>
           </div>
         </div>

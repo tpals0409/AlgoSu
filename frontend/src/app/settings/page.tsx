@@ -95,7 +95,7 @@ export default function SettingsPage(): ReactNode {
     return (
       <AppLayout>
         <div className="flex items-center justify-center py-16">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent" style={{ color: 'var(--primary)' }} />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent text-primary" />
         </div>
       </AppLayout>
     );
@@ -105,22 +105,22 @@ export default function SettingsPage(): ReactNode {
     <AppLayout>
       <div className="mx-auto max-w-xl space-y-6">
         <div className="flex items-center gap-2">
-          <Settings size={20} style={{ color: 'var(--text)' }} />
-          <h1 className="text-lg font-semibold" style={{ color: 'var(--text)' }}>설정</h1>
+          <Settings size={20} className="text-text" />
+          <h1 className="text-lg font-semibold text-text">설정</h1>
         </div>
 
         {/* 퍼블릭 프로필 설정 */}
         <Card className="space-y-5 p-5">
           <div className="flex items-center gap-2">
-            <Globe size={16} style={{ color: 'var(--primary)' }} />
-            <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>퍼블릭 프로필</h2>
+            <Globe size={16} className="text-primary" />
+            <h2 className="text-sm font-semibold text-text">퍼블릭 프로필</h2>
           </div>
 
           {/* 공개 토글 */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>프로필 공개</p>
-              <p className="text-xs" style={{ color: 'var(--text-3)' }}>
+              <p className="text-sm font-medium text-text">프로필 공개</p>
+              <p className="text-xs text-text-3">
                 활성화하면 누구나 프로필을 볼 수 있습니다
               </p>
             </div>
@@ -128,25 +128,23 @@ export default function SettingsPage(): ReactNode {
               type="button"
               role="switch"
               aria-checked={isPublic}
-              className="relative h-6 w-11 rounded-full transition-colors"
-              style={{ backgroundColor: isPublic ? 'var(--primary)' : 'var(--bg-alt)' }}
+              className={`relative h-6 w-11 rounded-full transition-colors ${isPublic ? 'bg-primary' : 'bg-bg-alt'}`}
               onClick={() => { setIsPublic(!isPublic); setSaveMessage(null); }}
             >
               <span
-                className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform"
-                style={{ transform: isPublic ? 'translateX(20px)' : 'translateX(0)' }}
+                className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${isPublic ? 'translate-x-5' : 'translate-x-0'}`}
               />
             </button>
           </div>
 
           {/* slug 입력 */}
           <div>
-            <label htmlFor="profile-slug" className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>
+            <label htmlFor="profile-slug" className="mb-1 block text-sm font-medium text-text">
               <LinkIcon size={14} className="mr-1 inline" />
               프로필 URL
             </label>
             <div className="flex items-center gap-2">
-              <span className="text-xs" style={{ color: 'var(--text-3)' }}>algosu.com/profile/</span>
+              <span className="text-xs text-text-3">algosu.com/profile/</span>
               <input
                 id="profile-slug"
                 type="text"
@@ -154,21 +152,16 @@ export default function SettingsPage(): ReactNode {
                 onChange={(e) => handleSlugChange(e.target.value)}
                 placeholder="my-profile"
                 maxLength={20}
-                className="flex-1 rounded-btn border px-3 py-1.5 text-sm outline-none transition-colors"
-                style={{
-                  borderColor: slugError ? 'var(--error)' : 'var(--border)',
-                  backgroundColor: 'var(--bg)',
-                  color: 'var(--text)',
-                }}
+                className={`flex-1 rounded-btn border px-3 py-1.5 text-sm outline-none transition-colors bg-bg text-text ${slugError ? 'border-error' : 'border-border'}`}
               />
             </div>
             {slugError && (
-              <p className="mt-1 text-xs" style={{ color: 'var(--error)' }}>
+              <p className="mt-1 text-xs text-error">
                 <AlertCircle size={12} className="mr-0.5 inline" />{slugError}
               </p>
             )}
             {slug && !slugError && (
-              <p className="mt-1 text-xs" style={{ color: 'var(--text-3)' }}>
+              <p className="mt-1 text-xs text-text-3">
                 미리보기: algosu.com/profile/{slug}
               </p>
             )}
@@ -180,13 +173,12 @@ export default function SettingsPage(): ReactNode {
               type="button"
               onClick={() => void handleSave()}
               disabled={saving || !!slugError}
-              className="rounded-btn px-4 py-2 text-sm font-medium text-white transition-opacity disabled:opacity-50"
-              style={{ backgroundColor: 'var(--primary)' }}
+              className="rounded-btn px-4 py-2 text-sm font-medium text-white transition-opacity disabled:opacity-50 bg-primary"
             >
               {saving ? '저장 중...' : '저장'}
             </button>
             {saveMessage && (
-              <span className="flex items-center gap-1 text-xs" style={{ color: saveMessage.includes('저장') ? 'var(--success)' : 'var(--error)' }}>
+              <span className={`flex items-center gap-1 text-xs ${saveMessage.includes('저장') ? 'text-success' : 'text-error'}`}>
                 {saveMessage.includes('저장') && <Check size={14} />}
                 {saveMessage}
               </span>
@@ -195,14 +187,13 @@ export default function SettingsPage(): ReactNode {
 
           {/* 프로필 링크 */}
           {settings?.profileSlug && settings.isProfilePublic && (
-            <div className="rounded-card border p-3" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-alt)' }}>
-              <p className="text-xs" style={{ color: 'var(--text-3)' }}>내 프로필 링크:</p>
+            <div className="rounded-card border border-border bg-bg-alt p-3">
+              <p className="text-xs text-text-3">내 프로필 링크:</p>
               <a
                 href={`/profile/${settings.profileSlug}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm font-medium underline"
-                style={{ color: 'var(--primary)' }}
+                className="text-sm font-medium underline text-primary"
               >
                 algosu.com/profile/{settings.profileSlug}
               </a>
