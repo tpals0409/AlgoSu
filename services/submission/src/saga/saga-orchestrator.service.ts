@@ -316,12 +316,11 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    // GitHub 실패해도 AI 분석은 진행 (GitHub 동기화와 독립)
+    // GitHub 실패/스킵해도 AI 분석은 진행 (GitHub 동기화와 독립)
     // TOKEN_INVALID인 경우만 AI 분석도 스킵
-    // SKIPPED인 경우 githubSyncStatus를 SYNCED로 덮어쓰지 않음
+    // FAILED/SKIPPED인 경우 githubSyncStatus를 SYNCED로 덮어쓰지 않음
     if (syncStatus !== GitHubSyncStatus.TOKEN_INVALID) {
-      const preserveGithubStatus = syncStatus === GitHubSyncStatus.SKIPPED;
-      await this.advanceToAiQueued(submissionId, preserveGithubStatus);
+      await this.advanceToAiQueued(submissionId, true);
     } else {
       // TOKEN_INVALID: sagaStep을 DONE으로 전환하여 타임아웃 재발행 루프 방지
       // ai_analysis_status도 skipped 처리하여 프론트엔드 무한 로딩 방지

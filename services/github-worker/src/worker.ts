@@ -398,13 +398,14 @@ export class GitHubWorker {
       }
     }
 
-    // 모든 재시도 실패
-    logger.error('최종 실패', { tag: 'MQ_CONSUME_DONE', result: 'NACK_DLQ', err: lastError });
+    // 모든 재시도 실패 → Saga 콜백으로 AI 분석 진행 (GitHub 실패해도 AI 분석은 독립)
+    logger.error('GitHub Push 최종 실패 — Saga 보상 트랜잭션 실행', {
+      tag: 'GITHUB_PUSH_FAILED',
+      traceId: event.submissionId,
+      err: lastError,
+    });
     await this.statusReporter.reportFailed(event.submissionId);
     await this.statusReporter.publishStatusChange(event.submissionId, 'github_failed');
-
-    // istanbul ignore next -- lastError는 catch 블록에서 항상 할당됨 (방어적 fallback)
-    throw lastError ?? new Error('GitHub Push 최종 실패');
   }
 
   private delay(ms: number): Promise<void> {

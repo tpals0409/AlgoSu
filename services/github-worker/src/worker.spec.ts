@@ -380,7 +380,7 @@ describe('GitHubWorker', () => {
       expect(mockAck).toHaveBeenCalledWith(msg);
     });
 
-    it('모든 재시도 실패 -- nack(DLQ)', async () => {
+    it('모든 재시도 실패 -- Saga 보상 후 ack (AI 분석 진행)', async () => {
       const encryptedToken = encryptToken('ghs_test_token');
 
       // getSubmission
@@ -417,10 +417,7 @@ describe('GitHubWorker', () => {
       // push 항상 실패 (일반 에러 -- 재시도 대상)
       (worker as any).pushService.push = jest.fn().mockRejectedValue(new Error('Network timeout'));
 
-      // reportFailed (processWithRetry 내부)
-      mockFetch.mockResolvedValueOnce({ ok: true });
-
-      // H-6: reportFailed (catch 블록 best-effort)
+      // reportFailed (processWithRetry 내부 — Saga 보상 트랜잭션)
       mockFetch.mockResolvedValueOnce({ ok: true });
 
       const msg = makeMsg({
@@ -431,8 +428,9 @@ describe('GitHubWorker', () => {
 
       await consumeCallback!(msg);
 
-      // 모든 재시도 실패 시 nack
-      expect(mockNack).toHaveBeenCalledWith(msg, false, false);
+      // GitHub 실패해도 Saga 보상 후 정상 ACK (AI 분석은 Saga가 진행)
+      expect(mockAck).toHaveBeenCalledWith(msg);
+      expect(mockNack).not.toHaveBeenCalled();
     });
   });
 

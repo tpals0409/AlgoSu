@@ -239,11 +239,17 @@ describe('SagaOrchestratorService', () => {
 
   // ─── 5. compensateGitHubFailed() — 일반 실패: AI 분석 진행 ───
   describe('compensateGitHubFailed() — 일반 실패', () => {
-    it('GitHub FAILED 시 githubSyncStatus 업데이트 후 AI 분석 진행', async () => {
+    it('GitHub FAILED 시 githubSyncStatus 업데이트 후 AI 분석 진행 (githubSyncStatus 보존)', async () => {
       const submission = createMockSubmission();
       repo.findOne.mockResolvedValue(submission);
       repo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
       mqPublisher.publishAiAnalysis.mockResolvedValue(undefined);
+
+      // quota 허용
+      (global as any).fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: { allowed: true, used: 1, limit: 10 } }),
+      });
 
       // Act
       await service.compensateGitHubFailed('sub-uuid-1', GitHubSyncStatus.FAILED);
@@ -253,13 +259,10 @@ describe('SagaOrchestratorService', () => {
         { id: 'sub-uuid-1', sagaStep: SagaStep.GITHUB_QUEUED },
         { githubSyncStatus: GitHubSyncStatus.FAILED },
       );
-      // AI 분석 진행 (advanceToAiQueued 호출됨 — GITHUB_QUEUED에서 변경됨)
+      // AI 분석 진행 — githubSyncStatus를 SYNCED로 덮어쓰지 않음 (preserveGithubStatus=true)
       expect(repo.update).toHaveBeenCalledWith(
         { id: 'sub-uuid-1', sagaStep: SagaStep.GITHUB_QUEUED },
-        {
-          sagaStep: SagaStep.AI_QUEUED,
-          githubSyncStatus: GitHubSyncStatus.SYNCED,
-        },
+        { sagaStep: SagaStep.AI_QUEUED },
       );
       expect(mqPublisher.publishAiAnalysis).toHaveBeenCalled();
     });

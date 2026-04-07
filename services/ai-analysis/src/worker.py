@@ -13,12 +13,12 @@ import json
 import logging
 import time
 
+import httpx
 import pika
 import redis
-import httpx
 
+from .claude_client import CircuitBreakerOpenError, ClaudeClient
 from .config import settings
-from .claude_client import ClaudeClient, CircuitBreakerOpenError
 from .metrics import dlq_messages_total, mq_messages_processed_total
 
 logger = logging.getLogger(__name__)
@@ -31,6 +31,11 @@ ROUTING_KEY = "ai.analysis"
 MAX_RETRIES = 3
 BACKOFF_BASE = 2  # 지수 백오프 기본값 (초)
 MAX_REQUEUE = 3  # Circuit Breaker requeue 최대 횟수
+PUBLISH_MAX_RETRIES = 3  # Redis publish 재시도 횟수
+PUBLISH_BACKOFF_BASE = 0.5  # Redis publish 재시도 백오프 기본값 (초)
+
+# 최종 상태 (재시도 필수)
+TERMINAL_STATUSES = {"completed", "failed"}
 
 # RabbitMQ 재연결 상수
 RECONNECT_INITIAL_DELAY = 1  # 최초 재연결 대기 (초)
@@ -200,14 +205,19 @@ class AIAnalysisWorker:
             # 1) 분석 결과 저장 (Submission Service 콜백 — 필수, 실패 시 NACK)
             self._report_result(submission_id, result)
 
-            # 2) Redis Pub/Sub 브로드캐스트 (best-effort — 실패해도 ACK 진행)
-            try:
-                self._publish_status(submission_id, result["status"])
-            except Exception as pub_err:
-                logger.warning(
-                    f"Redis publish 실패 (best-effort): submissionId={submission_id}, "
-                    f"error={str(pub_err)[:200]}"
-                )
+            # 2) Redis Pub/Sub 브로드캐스트
+            #    최종 상태(completed/failed): 재시도 3회 후 경고 로그
+            #    비최종 상태(progress 등): best-effort (현재와 동일)
+            if result["status"] in TERMINAL_STATUSES:
+                self._publish_status_with_retry(submission_id, result["status"])
+            else:
+                try:
+                    self._publish_status(submission_id, result["status"])
+                except Exception as pub_err:
+                    logger.warning(
+                        f"Redis publish 실패 (best-effort): submissionId={submission_id}, "
+                        f"error={str(pub_err)[:200]}"
+                    )
 
             # 3) 모든 필수 작업 성공 후 ACK
             ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -378,6 +388,41 @@ class AIAnalysisWorker:
             }
         )
         self.redis_client.publish(channel, payload)
+
+    def _publish_status_with_retry(self, submission_id: str, status: str):
+        """
+        Redis Pub/Sub 최종 상태 브로드캐스트 -- 재시도 포함
+
+        최종 상태(completed/failed)는 클라이언트 SSE 수신에 필수이므로
+        최대 PUBLISH_MAX_RETRIES회 재시도 (exponential backoff).
+        모든 재시도 실패 시 경고 로그 기록 후 진행 (ACK는 허용).
+
+        @domain ai
+        @param submission_id: 제출 UUID
+        @param status: 분석 상태 (completed/failed)
+        """
+        last_error = None
+        for attempt in range(1, PUBLISH_MAX_RETRIES + 1):
+            try:
+                self._publish_status(submission_id, status)
+                return
+            except Exception as e:
+                last_error = e
+                if attempt < PUBLISH_MAX_RETRIES:
+                    wait_sec = PUBLISH_BACKOFF_BASE * (2 ** (attempt - 1))
+                    logger.warning(
+                        f"Redis publish 재시도: submissionId={submission_id}, "
+                        f"attempt={attempt}/{PUBLISH_MAX_RETRIES}, "
+                        f"wait={wait_sec}s, error={str(e)[:200]}"
+                    )
+                    time.sleep(wait_sec)
+
+        logger.error(
+            f"Redis publish 최종 실패: submissionId={submission_id}, "
+            f"status={status}, attempts={PUBLISH_MAX_RETRIES}, "
+            f"error={str(last_error)[:200]}. "
+            f"클라이언트 SSE가 이 상태를 수신하지 못할 수 있음"
+        )
 
     def _decrement_quota(self, user_id: str):
         """

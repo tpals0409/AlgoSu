@@ -4,7 +4,7 @@ Mock: ClaudeClient, redis, httpx, pika
 """
 
 import json
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -20,12 +20,14 @@ def mock_dependencies():
     ):
         # ClaudeClient 모킹
         mock_claude = MagicMock()
-        mock_claude.analyze_code = AsyncMock(return_value={
-            "feedback": "좋은 코드입니다.",
-            "optimized_code": None,
-            "score": 85,
-            "status": "completed",
-        })
+        mock_claude.analyze_code = AsyncMock(
+            return_value={
+                "feedback": "좋은 코드입니다.",
+                "optimized_code": None,
+                "score": 85,
+                "status": "completed",
+            }
+        )
         mock_claude_cls.return_value = mock_claude
 
         # Redis 모킹
@@ -55,6 +57,7 @@ def mock_dependencies():
 def worker(mock_dependencies):
     """AIAnalysisWorker 인스턴스"""
     from src.worker import AIAnalysisWorker
+
     return AIAnalysisWorker()
 
 
@@ -122,8 +125,10 @@ class TestOnMessageSuccess:
 class TestOnMessagePublishFailureBestEffort:
     """_on_message() -- Redis publish 실패해도 ACK (best-effort)"""
 
-    def test_publish_failure_still_acks(self, worker, mock_dependencies, pika_mocks):
-        """_publish_status 실패 시에도 _report_result 성공이면 ACK"""
+    def test_terminal_publish_failure_retries_then_acks(
+        self, worker, mock_dependencies, pika_mocks
+    ):
+        """최종 상태(completed) publish 실패 시 3회 재시도 후 ACK"""
         mock_ch, mock_method, mock_properties = pika_mocks
         deps = mock_dependencies
 
@@ -140,17 +145,21 @@ class TestOnMessagePublishFailureBestEffort:
         mock_patch_resp.raise_for_status = MagicMock()
         deps["http_client"].patch.return_value = mock_patch_resp
 
-        # Redis publish 실패
+        # Redis publish 실패 (3회 모두)
         deps["redis_client"].publish.side_effect = Exception("Redis connection lost")
 
         body = json.dumps({"submissionId": "sub-pub-fail"}).encode()
 
-        worker._on_message(mock_ch, mock_method, mock_properties, body)
+        with patch("src.worker.time.sleep"):
+            worker._on_message(mock_ch, mock_method, mock_properties, body)
 
         # _report_result 호출 확인
         deps["http_client"].patch.assert_called_once()
 
-        # ACK 확인 (publish 실패에도 불구하고)
+        # Redis publish 3회 재시도 확인
+        assert deps["redis_client"].publish.call_count == 3
+
+        # ACK 확인 (publish 최종 실패에도 불구하고)
         mock_ch.basic_ack.assert_called_once_with(delivery_tag=42)
         mock_ch.basic_nack.assert_not_called()
 
@@ -169,7 +178,9 @@ class TestOnMessagePublishFailureBestEffort:
 
         # _report_result 실패 (PATCH raises)
         mock_patch_resp = MagicMock()
-        mock_patch_resp.raise_for_status.side_effect = Exception("Submission service down")
+        mock_patch_resp.raise_for_status.side_effect = Exception(
+            "Submission service down"
+        )
         deps["http_client"].patch.return_value = mock_patch_resp
 
         body = json.dumps({"submissionId": "sub-report-fail"}).encode()
@@ -196,9 +207,7 @@ class TestOnMessageFailure:
         worker._on_message(mock_ch, mock_method, mock_properties, body)
 
         # NACK with requeue=False
-        mock_ch.basic_nack.assert_called_once_with(
-            delivery_tag=42, requeue=False
-        )
+        mock_ch.basic_nack.assert_called_once_with(delivery_tag=42, requeue=False)
         mock_ch.basic_ack.assert_not_called()
 
 
@@ -224,7 +233,11 @@ class TestGetSubmissionInternalKey:
         assert url == "http://submission-service:3003/internal/sub-789"
 
         # X-Internal-Key 헤더 확인
-        headers = call_kwargs[1]["headers"] if len(call_kwargs) > 1 and "headers" in call_kwargs[1] else call_kwargs.kwargs.get("headers", {})
+        headers = (
+            call_kwargs[1]["headers"]
+            if len(call_kwargs) > 1 and "headers" in call_kwargs[1]
+            else call_kwargs.kwargs.get("headers", {})
+        )
         assert headers.get("X-Internal-Key") == "test-internal-key-secret"
 
 
@@ -268,10 +281,22 @@ class TestAnalyzeWithRetry:
 
     def test_retry_on_failure_then_success(self, worker, mock_dependencies):
         """실패 후 재시도에서 성공"""
-        mock_dependencies["claude"].analyze_code = AsyncMock(side_effect=[
-            {"status": "failed", "feedback": "err", "score": 0, "optimized_code": None},
-            {"status": "completed", "feedback": "ok", "score": 90, "optimized_code": None},
-        ])
+        mock_dependencies["claude"].analyze_code = AsyncMock(
+            side_effect=[
+                {
+                    "status": "failed",
+                    "feedback": "err",
+                    "score": 0,
+                    "optimized_code": None,
+                },
+                {
+                    "status": "completed",
+                    "feedback": "ok",
+                    "score": 90,
+                    "optimized_code": None,
+                },
+            ]
+        )
 
         with patch("src.worker.time.sleep"):
             submission = {"code": "x", "language": "python"}
@@ -281,7 +306,12 @@ class TestAnalyzeWithRetry:
 
     def test_all_retries_fail(self, worker, mock_dependencies):
         """3회 모두 실패 시 마지막 결과 반환"""
-        fail_result = {"status": "failed", "feedback": "err", "score": 0, "optimized_code": None}
+        fail_result = {
+            "status": "failed",
+            "feedback": "err",
+            "score": 0,
+            "optimized_code": None,
+        }
         mock_dependencies["claude"].analyze_code = AsyncMock(return_value=fail_result)
 
         with patch("src.worker.time.sleep"):
@@ -456,7 +486,9 @@ class TestReportResult:
 class TestOnMessageWithUserId:
     """_on_message() -- userId 포함 메시지 처리"""
 
-    def test_failed_result_decrements_quota(self, worker, mock_dependencies, pika_mocks):
+    def test_failed_result_decrements_quota(
+        self, worker, mock_dependencies, pika_mocks
+    ):
         """분석 실패 시 quota 차감"""
         mock_ch, mock_method, mock_properties = pika_mocks
         deps = mock_dependencies
@@ -473,9 +505,14 @@ class TestOnMessageWithUserId:
         deps["http_client"].patch.return_value = mock_patch_resp
 
         # 분석 실패 반환
-        deps["claude"].analyze_code = AsyncMock(return_value={
-            "feedback": "fail", "optimized_code": None, "score": 0, "status": "failed",
-        })
+        deps["claude"].analyze_code = AsyncMock(
+            return_value={
+                "feedback": "fail",
+                "optimized_code": None,
+                "score": 0,
+                "status": "failed",
+            }
+        )
 
         # quota 차감 확인용
         deps["redis_client"].get.return_value = b"3"
@@ -488,7 +525,9 @@ class TestOnMessageWithUserId:
         # ACK 확인 (처리 자체는 성공)
         mock_ch.basic_ack.assert_called_once()
 
-    def test_exception_with_userId_decrements_quota(self, worker, mock_dependencies, pika_mocks):
+    def test_exception_with_userId_decrements_quota(
+        self, worker, mock_dependencies, pika_mocks
+    ):
         """처리 중 예외 발생 시 userId가 있으면 quota 차감 시도"""
         mock_ch, mock_method, mock_properties = pika_mocks
         deps = mock_dependencies
@@ -533,12 +572,12 @@ class TestOnMessageCircuitBreakerOpen:
         worker._on_message(mock_ch, mock_method, mock_properties, body)
 
         # NACK with requeue=True
-        mock_ch.basic_nack.assert_called_once_with(
-            delivery_tag=42, requeue=True
-        )
+        mock_ch.basic_nack.assert_called_once_with(delivery_tag=42, requeue=True)
         mock_ch.basic_ack.assert_not_called()
 
-    def test_circuit_breaker_open_dlq_on_max_requeue(self, worker, mock_dependencies, pika_mocks):
+    def test_circuit_breaker_open_dlq_on_max_requeue(
+        self, worker, mock_dependencies, pika_mocks
+    ):
         """Circuit Breaker requeue 한도 초과 시 DLQ 전송 + delayed 보고 + quota 차감"""
         from src.claude_client import CircuitBreakerOpenError
 
@@ -567,14 +606,14 @@ class TestOnMessageCircuitBreakerOpen:
         # quota 차감 확인용
         deps["redis_client"].get.return_value = b"3"
 
-        body = json.dumps({"submissionId": "sub-cb-max", "userId": "user-cb-dlq"}).encode()
+        body = json.dumps(
+            {"submissionId": "sub-cb-max", "userId": "user-cb-dlq"}
+        ).encode()
 
         worker._on_message(mock_ch, mock_method, mock_properties, body)
 
         # NACK with requeue=False (DLQ)
-        mock_ch.basic_nack.assert_called_once_with(
-            delivery_tag=42, requeue=False
-        )
+        mock_ch.basic_nack.assert_called_once_with(delivery_tag=42, requeue=False)
         mock_ch.basic_ack.assert_not_called()
 
         # delayed 상태 보고 확인
@@ -586,7 +625,9 @@ class TestOnMessageCircuitBreakerOpen:
         # quota 차감 확인 (AI 분석 미수행이므로 보상 차감)
         deps["redis_client"].decr.assert_called_once()
 
-    def test_circuit_breaker_open_dlq_no_userId_no_decrement(self, worker, mock_dependencies, pika_mocks):
+    def test_circuit_breaker_open_dlq_no_userId_no_decrement(
+        self, worker, mock_dependencies, pika_mocks
+    ):
         """Circuit Breaker requeue 한도 초과 시 userId 없으면 quota 차감 안 함"""
         from src.claude_client import CircuitBreakerOpenError
 
@@ -620,7 +661,9 @@ class TestOnMessageCircuitBreakerOpen:
         # quota 차감 미호출
         deps["redis_client"].decr.assert_not_called()
 
-    def test_circuit_breaker_requeue_with_delivery_count_header(self, worker, mock_dependencies, pika_mocks):
+    def test_circuit_breaker_requeue_with_delivery_count_header(
+        self, worker, mock_dependencies, pika_mocks
+    ):
         """x-delivery-count 헤더로 requeue 횟수 판단"""
         from src.claude_client import CircuitBreakerOpenError
 
@@ -645,9 +688,7 @@ class TestOnMessageCircuitBreakerOpen:
         worker._on_message(mock_ch, mock_method, mock_properties, body)
 
         # requeue=True (아직 MAX_REQUEUE 미만)
-        mock_ch.basic_nack.assert_called_once_with(
-            delivery_tag=42, requeue=True
-        )
+        mock_ch.basic_nack.assert_called_once_with(delivery_tag=42, requeue=True)
 
 
 class TestGetDeliveryCount:
@@ -709,7 +750,10 @@ class TestStartMethod:
     def test_start_calls_connect_with_retry(self, worker, mock_dependencies):
         """start() 호출 시 _connect_with_retry 실행"""
         # _connect_with_retry를 모킹하여 무한루프 방지
-        worker._connect_and_consume = MagicMock(side_effect=lambda: setattr(worker, "_stopping", True) or (_ for _ in ()).throw(Exception("done")))
+        worker._connect_and_consume = MagicMock(
+            side_effect=lambda: setattr(worker, "_stopping", True)
+            or (_ for _ in ()).throw(Exception("done"))
+        )
 
         with patch("src.worker.time.sleep"):
             worker.start()
@@ -762,7 +806,9 @@ class TestConnectAndConsume:
 class TestOnMessageExceptionNoUserId:
     """_on_message() -- 예외 발생 시 userId 없으면 quota 차감 안 함"""
 
-    def test_exception_without_userId_no_quota_decrement(self, worker, mock_dependencies, pika_mocks):
+    def test_exception_without_userId_no_quota_decrement(
+        self, worker, mock_dependencies, pika_mocks
+    ):
         """처리 중 예외 발생 시 userId 없으면 quota 차감 안 함"""
         mock_ch, mock_method, mock_properties = pika_mocks
         deps = mock_dependencies
@@ -781,7 +827,7 @@ class TestOnMessageExceptionNoUserId:
     def test_exception_inner_parse_failure(self, worker, mock_dependencies, pika_mocks):
         """내부 예외 처리 중 json 파싱도 실패하는 경우"""
         mock_ch, mock_method, mock_properties = pika_mocks
-        deps = mock_dependencies
+        _ = mock_dependencies
 
         # 잘못된 JSON body
         body = b"not json at all"
@@ -790,3 +836,92 @@ class TestOnMessageExceptionNoUserId:
 
         # NACK 확인
         mock_ch.basic_nack.assert_called_once_with(delivery_tag=42, requeue=False)
+
+
+class TestPublishStatusWithRetry:
+    """_publish_status_with_retry() -- Redis publish 재시도 로직"""
+
+    def test_success_on_first_attempt(self, worker, mock_dependencies):
+        """첫 시도 성공 시 재시도 없음"""
+        deps = mock_dependencies
+        worker._publish_status_with_retry("sub-001", "completed")
+
+        deps["redis_client"].publish.assert_called_once()
+
+    def test_success_on_second_attempt(self, worker, mock_dependencies):
+        """첫 실패 후 두 번째 시도에서 성공"""
+        deps = mock_dependencies
+        deps["redis_client"].publish.side_effect = [
+            Exception("Redis timeout"),
+            None,  # 성공
+        ]
+
+        with patch("src.worker.time.sleep") as mock_sleep:
+            worker._publish_status_with_retry("sub-002", "failed")
+
+        assert deps["redis_client"].publish.call_count == 2
+        mock_sleep.assert_called_once_with(0.5)  # PUBLISH_BACKOFF_BASE * 2^0
+
+    def test_all_retries_fail_logs_error(self, worker, mock_dependencies):
+        """3회 모두 실패 시 에러 로그 (예외 미발생)"""
+        deps = mock_dependencies
+        deps["redis_client"].publish.side_effect = Exception("Redis down")
+
+        with patch("src.worker.time.sleep") as mock_sleep:
+            # 예외가 발생하지 않아야 함
+            worker._publish_status_with_retry("sub-003", "completed")
+
+        assert deps["redis_client"].publish.call_count == 3
+        # sleep 2회 (1→2, 2→3 사이)
+        assert mock_sleep.call_count == 2
+
+    def test_exponential_backoff_timing(self, worker, mock_dependencies):
+        """지수 백오프 대기 시간 확인"""
+        deps = mock_dependencies
+        deps["redis_client"].publish.side_effect = Exception("Redis down")
+
+        with patch("src.worker.time.sleep") as mock_sleep:
+            worker._publish_status_with_retry("sub-004", "failed")
+
+        # 1차 실패 후 0.5초, 2차 실패 후 1.0초
+        assert mock_sleep.call_args_list[0][0][0] == 0.5
+        assert mock_sleep.call_args_list[1][0][0] == 1.0
+
+    def test_non_terminal_status_best_effort(
+        self, worker, mock_dependencies, pika_mocks
+    ):
+        """비최종 상태는 best-effort (재시도 없음)"""
+        mock_ch, mock_method, mock_properties = pika_mocks
+        deps = mock_dependencies
+
+        # _get_submission 모킹
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {
+            "data": {"code": "x", "language": "python"},
+        }
+        mock_resp.raise_for_status = MagicMock()
+        deps["http_client"].get.return_value = mock_resp
+
+        # _report_result 모킹
+        mock_patch_resp = MagicMock()
+        mock_patch_resp.raise_for_status = MagicMock()
+        deps["http_client"].patch.return_value = mock_patch_resp
+
+        # 분석 결과를 progress (비최종 상태)로 설정
+        deps["redis_client"].publish.side_effect = Exception("Redis down")
+        mock_dependencies["claude"].analyze_code = AsyncMock(
+            return_value={
+                "feedback": "분석 중",
+                "optimized_code": None,
+                "score": 0,
+                "status": "progress",
+            }
+        )
+
+        body = json.dumps({"submissionId": "sub-progress"}).encode()
+        worker._on_message(mock_ch, mock_method, mock_properties, body)
+
+        # 비최종 상태이므로 재시도 없이 1회만 호출
+        deps["redis_client"].publish.assert_called_once()
+        # ACK는 정상 진행
+        mock_ch.basic_ack.assert_called_once()
