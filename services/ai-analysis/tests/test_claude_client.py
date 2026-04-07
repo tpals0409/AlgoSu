@@ -370,3 +370,198 @@ class TestSecurityCodeLogLimit:
             assert long_code not in log_message
             # 50자 프리뷰가 포함되어야 함
             assert "x" * 50 in log_message
+
+
+# ─── GROUP ANALYSIS RESPONSE PARSING ────────────
+
+
+def _make_client():
+    """테스트용 ClaudeClient 인스턴스 생성 (모든 의존성 모킹)"""
+    with patch("src.claude_client.anthropic"), \
+         patch("src.claude_client.circuit_breaker"), \
+         patch("src.claude_client.settings") as mock_settings:
+        mock_settings.anthropic_api_key = "test-key"
+        from src.claude_client import ClaudeClient
+        return ClaudeClient()
+
+
+class TestParseGroupResponse:
+    """_parse_group_response() -- 그룹 분석 전용 파싱"""
+
+    def test_parse_valid_group_response(self):
+        """정상 그룹 분석 JSON 파싱"""
+        c = _make_client()
+
+        payload = json.dumps({
+            "comparison": "풀이 1은 BFS, 풀이 2는 DFS를 사용했습니다.",
+            "bestApproach": "풀이 1의 BFS가 최적입니다.",
+            "optimizedCode": "def solution(): pass",
+            "learningPoints": ["BFS vs DFS 선택 기준", "시간복잡도 분석"],
+        })
+        result = c._parse_group_response(payload)
+        assert result["status"] == "completed"
+        assert "BFS" in result["comparison"]
+        assert result["bestApproach"] == "풀이 1의 BFS가 최적입니다."
+        assert result["optimizedCode"] == "def solution(): pass"
+        assert len(result["learningPoints"]) == 2
+
+    def test_parse_group_response_markdown_block(self):
+        """마크다운 코드 블록 감싸진 그룹 응답 파싱"""
+        c = _make_client()
+
+        payload = json.dumps({
+            "comparison": "비교 분석 내용",
+            "bestApproach": "최적 풀이",
+            "optimizedCode": None,
+            "learningPoints": ["포인트 1"],
+        })
+        raw = f"```json\n{payload}\n```"
+        result = c._parse_group_response(raw)
+        assert result["status"] == "completed"
+        assert result["comparison"] == "비교 분석 내용"
+
+    def test_parse_group_response_missing_fields(self):
+        """필수 필드 누락 시 기본값 반환"""
+        c = _make_client()
+
+        # comparison만 있는 응답
+        payload = json.dumps({"comparison": "간단한 비교"})
+        result = c._parse_group_response(payload)
+        assert result["status"] == "completed"
+        assert result["comparison"] == "간단한 비교"
+        assert result["bestApproach"] == ""
+        assert result["optimizedCode"] is None
+        assert result["learningPoints"] == []
+
+    def test_parse_group_response_invalid_json(self):
+        """잘못된 JSON 시 fallback 반환"""
+        c = _make_client()
+
+        result = c._parse_group_response("not valid json at all")
+        assert result["status"] == "failed"
+        assert result["comparison"] == "not valid json at all"
+        assert result["learningPoints"] == []
+
+    def test_parse_group_response_learning_points_not_list(self):
+        """learningPoints가 문자열인 경우 리스트로 보정"""
+        c = _make_client()
+
+        payload = json.dumps({
+            "comparison": "비교",
+            "bestApproach": "최적",
+            "optimizedCode": None,
+            "learningPoints": "단일 포인트",
+        })
+        result = c._parse_group_response(payload)
+        assert result["status"] == "completed"
+        assert result["learningPoints"] == ["단일 포인트"]
+
+    def test_parse_group_response_with_trailing_text(self):
+        """JSON 뒤에 추가 텍스트가 있는 경우 첫 번째 JSON 추출"""
+        c = _make_client()
+
+        payload = json.dumps({
+            "comparison": "비교 분석",
+            "bestApproach": "최적",
+            "optimizedCode": "code",
+            "learningPoints": [],
+        })
+        raw = payload + "\n\n추가 설명 텍스트입니다."
+        result = c._parse_group_response(raw)
+        assert result["status"] == "completed"
+        assert result["comparison"] == "비교 분석"
+
+    def test_parse_group_response_empty_string(self):
+        """빈 문자열 입력 시 fallback"""
+        c = _make_client()
+
+        result = c._parse_group_response("")
+        assert result["status"] == "failed"
+
+
+class TestGroupAnalyze:
+    """group_analyze() -- 그룹 분석 전체 흐름"""
+
+    @pytest.mark.asyncio
+    async def test_group_analyze_success(
+        self, client, mock_anthropic, mock_circuit_breaker
+    ):
+        """정상 그룹 분석 호출"""
+        _, mock_client = mock_anthropic
+
+        mock_content = MagicMock()
+        mock_content.text = json.dumps({
+            "comparison": "풀이 비교 결과",
+            "bestApproach": "풀이 1이 최적",
+            "optimizedCode": "def best(): pass",
+            "learningPoints": ["핵심 포인트"],
+        })
+        mock_message = MagicMock()
+        mock_message.content = [mock_content]
+        mock_client.messages.create.return_value = mock_message
+
+        result = await client.group_analyze([
+            {"language": "python", "userId": "user-1234-5678", "code": "def a(): pass"},
+            {"language": "python", "userId": "user-8765-4321", "code": "def b(): pass"},
+        ])
+
+        assert result["status"] == "completed"
+        assert result["comparison"] == "풀이 비교 결과"
+        assert result["bestApproach"] == "풀이 1이 최적"
+        assert result["optimizedCode"] == "def best(): pass"
+        assert result["learningPoints"] == ["핵심 포인트"]
+        mock_circuit_breaker.record_success.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_group_analyze_circuit_breaker_open(
+        self, client, mock_anthropic, mock_circuit_breaker
+    ):
+        """Circuit Breaker OPEN 시 예외 발생"""
+        from src.claude_client import CircuitBreakerOpenError
+
+        mock_circuit_breaker.can_execute.return_value = False
+
+        with pytest.raises(CircuitBreakerOpenError):
+            await client.group_analyze([
+                {"language": "python", "userId": "user-1234", "code": "x = 1"},
+            ])
+
+    @pytest.mark.asyncio
+    async def test_group_analyze_api_error(
+        self, client, mock_anthropic, mock_circuit_breaker
+    ):
+        """API 오류 시 fallback 반환"""
+        _, mock_client = mock_anthropic
+        mock_client.messages.create.side_effect = Exception("API error")
+
+        result = await client.group_analyze([
+            {"language": "python", "userId": "user-1234", "code": "x = 1"},
+        ])
+
+        assert result["status"] == "failed"
+        assert "오류" in result["comparison"]
+        mock_circuit_breaker.record_failure.assert_called_once()
+
+
+class TestSharedHelpers:
+    """_strip_markdown_block() / _extract_first_json_object() 공유 헬퍼"""
+
+    def test_strip_markdown_block_no_backticks(self):
+        c = _make_client()
+        assert c._strip_markdown_block('{"key": "val"}') == '{"key": "val"}'
+
+    def test_strip_markdown_block_with_backticks(self):
+        c = _make_client()
+        raw = '```json\n{"key": "val"}\n```'
+        assert c._strip_markdown_block(raw) == '{"key": "val"}'
+
+    def test_extract_first_json_object(self):
+        c = _make_client()
+        text = 'some text {"a": 1} trailing'
+        result = c._extract_first_json_object(text)
+        assert result == {"a": 1}
+
+    def test_extract_first_json_object_no_brace(self):
+        c = _make_client()
+        with pytest.raises(json.JSONDecodeError):
+            c._extract_first_json_object("no json here")

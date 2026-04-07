@@ -1,7 +1,7 @@
 # ADR-001: Gateway → Identity DB 분리
 
 ## 상태
-승인 (Accepted) — 2026-03-18
+구현 완료 (Implemented) — 2026-03-18 승인, 2026-03-20 Sprint 51 구현 완료
 
 ## 맥락
 Gateway 서비스가 identity_db에 직접 접근하여 6개 엔티티(User, Study, StudyMember, StudyInvite, Notification, ShareLink)를 19개 파일에서 CRUD 수행 중. Identity 서비스는 마이그레이션 러너 + 헬스체크만 존재하며 비즈니스 API 0개. 이는 DB per Service 원칙 위반.
@@ -45,6 +45,14 @@ Other services ──HTTP──▶ Gateway /internal/* ──HTTP──▶ Ident
 - Identity 서비스 장애 시 Gateway 전체 영향 (Circuit Breaker 검토)
 - 테스트 대량 수정 (Gateway 597건 중 identity 관련)
 
+## 구현 결과 (Sprint 51)
+- Identity 서비스 API 34개 엔드포인트 신규 구축
+- Gateway identity_db 직접 접근 19파일 → IdentityClient HTTP 호출로 전환
+- Entity 파일 4개 삭제, Enum/타입 → `common/types/identity.types.ts` 분리
+- Gateway branches 커버리지 97.79% 유지
+
 ## 후속
 - 타 서비스 → Identity 직접 호출 전환 (Gateway 프록시 제거) — 별도 스프린트
 - Identity 서비스 HPA/PDB 설정
+- L-14 보안 헤더 Traefik 이전 (이월)
+- L-15 Rate limit 모니터링 (이월)

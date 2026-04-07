@@ -34,6 +34,7 @@ import {
   BarChart3,
   ExternalLink,
   ShieldAlert,
+  RefreshCw,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -193,6 +194,7 @@ export default function StudyRoomPage(): ReactElement {
   const [loadingSubmissions, setLoadingSubmissions] = useState(false);
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [notSubmitted, setNotSubmitted] = useState(false);
   const [accessDenied, setAccessDenied] = useState(false);
   const [nicknameMap, setNicknameMap] = useState<Record<string, string>>({});
@@ -295,6 +297,7 @@ export default function StudyRoomPage(): ReactElement {
     setLoadingSubmissions(true);
     setNotSubmitted(false);
     setAccessDenied(false);
+    setSubmissionError(null);
     try {
       const data = await submissionApi.listByProblemForStudy(problem.id);
       if (signal?.aborted) return;
@@ -314,7 +317,7 @@ export default function StudyRoomPage(): ReactElement {
         }
         setSubmissions([]);
       } else {
-        setError('제출 목록을 불러오지 못했습니다.');
+        setSubmissionError('제출 목록을 불러오지 못했습니다.');
         setSubmissions([]);
       }
     } finally {
@@ -450,12 +453,13 @@ export default function StudyRoomPage(): ReactElement {
           accessDenied={accessDenied}
           nicknameMap={nicknameMap}
           avatarMap={avatarMap}
-          error={error}
+          error={submissionError}
           totalMembers={totalMembers}
           submittedCount={submittedCount}
           analyzedCount={analyzedCount}
           onBack={handleBack}
           onSelectSubmission={handleSelectSubmission}
+          onRetry={() => void loadSubmissions(selectedProblem)}
         />
       </AppLayout>
     );
@@ -489,8 +493,16 @@ export default function StudyRoomPage(): ReactElement {
 
         {error && (
           <div className="flex items-center gap-2 rounded-card border border-error bg-error-soft px-4 py-3">
-            <AlertCircle className="h-4 w-4 text-error" />
-            <span className="text-xs text-error">{error}</span>
+            <AlertCircle className="h-4 w-4 shrink-0 text-error" />
+            <span className="flex-1 text-xs text-error">{error}</span>
+            <button
+              type="button"
+              onClick={() => { setError(null); setLoadingProblems(true); problemApi.findAllProblems().then(setProblems).catch(() => setError('문제 목록을 불러오지 못했습니다.')).finally(() => setLoadingProblems(false)); }}
+              className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-error transition-colors hover:bg-error/10"
+            >
+              <RefreshCw className="h-3 w-3" aria-hidden />
+              다시 시도
+            </button>
           </div>
         )}
 
@@ -629,12 +641,13 @@ function ProblemTimelineCard({ problem, barsAnimated, submittedCount, totalMembe
 
 // ─── SUBMISSION VIEW (2단계) ─────────────
 
-function SubmissionView({ problem, submissions, loading, notSubmitted, accessDenied, nicknameMap, avatarMap, error, totalMembers, submittedCount, analyzedCount, onBack, onSelectSubmission }: {
+function SubmissionView({ problem, submissions, loading, notSubmitted, accessDenied, nicknameMap, avatarMap, error, totalMembers, submittedCount, analyzedCount, onBack, onSelectSubmission, onRetry }: {
   readonly problem: Problem; readonly submissions: Submission[]; readonly loading: boolean;
   readonly notSubmitted: boolean; readonly accessDenied: boolean; readonly nicknameMap: Record<string, string>;
   readonly avatarMap: Record<string, string | null>; readonly error: string | null;
   readonly totalMembers: number; readonly submittedCount: number; readonly analyzedCount: number;
   readonly onBack: () => void; readonly onSelectSubmission: (sub: Submission) => void;
+  readonly onRetry: () => void;
 }): ReactNode {
   const [viewMounted, setViewMounted] = useState(false);
   useEffect(() => { const t = setTimeout(() => setViewMounted(true), 50); return () => clearTimeout(t); }, []);
@@ -650,7 +663,16 @@ function SubmissionView({ problem, submissions, loading, notSubmitted, accessDen
     <div className="space-y-5">
       {error && (
         <div className="mb-4 flex items-center gap-2 rounded-card border border-error bg-error-soft px-4 py-3">
-          <AlertCircle className="h-4 w-4 text-error" /><span className="text-xs text-error">{error}</span>
+          <AlertCircle className="h-4 w-4 shrink-0 text-error" />
+          <span className="flex-1 text-xs text-error">{error}</span>
+          <button
+            type="button"
+            onClick={onRetry}
+            className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-error transition-colors hover:bg-error/10"
+          >
+            <RefreshCw className="h-3 w-3" aria-hidden />
+            다시 시도
+          </button>
         </div>
       )}
 

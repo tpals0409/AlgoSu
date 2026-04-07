@@ -33,7 +33,7 @@ export class Submission {
   @Column({ type: 'uuid', name: 'study_id' })
   studyId!: string;
 
-  @Column({ type: 'varchar', length: 255, name: 'user_id' })
+  @Column({ type: 'uuid', name: 'user_id' })
   userId!: string;
 
   @Column({ type: 'uuid', name: 'problem_id' })

@@ -819,6 +819,184 @@ describe('SubmissionService', () => {
       expect(result.totalSubmissions).toBe(42);
       expect(repo.count).toHaveBeenCalled();
     });
+
+    it('activeProblemIds 제공 시 recentSubmissions도 In 필터 적용', async () => {
+      mockQb.getCount = jest.fn().mockResolvedValue(3);
+      mockQb.getRawMany
+        .mockResolvedValueOnce([{ cnt: 2 }])
+        .mockResolvedValueOnce([{ cnt: 1 }])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+      const recent = [createMockSubmission({ id: 'sub-recent' })];
+      repo.find.mockResolvedValue(recent);
+
+      const result = await service.getStudyStats('study-uuid-1', undefined, undefined, ['p1']);
+
+      expect(result.recentSubmissions).toEqual(recent);
+      expect(repo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { studyId: 'study-uuid-1', problemId: expect.anything() },
+        }),
+      );
+    });
+  });
+
+  // ─── 13-extra2. getStudyStats() — 추가 시나리오 ────────────────
+  describe('getStudyStats() — 추가 시나리오', () => {
+    let mockQb: ReturnType<typeof createMockQueryBuilder>;
+
+    beforeEach(() => {
+      mockQb = createMockQueryBuilder();
+      repo.createQueryBuilder.mockReturnValue(mockQb as any);
+    });
+
+    it('빈 데이터 — 제출이 하나도 없으면 모든 카운트가 0', async () => {
+      repo.count.mockResolvedValue(0);
+      mockQb.getRawMany
+        .mockResolvedValueOnce([{ cnt: 0 }])
+        .mockResolvedValueOnce([{ cnt: 0 }])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+      repo.find.mockResolvedValue([]);
+
+      const result = await service.getStudyStats('study-uuid-1');
+
+      expect(result.totalSubmissions).toBe(0);
+      expect(result.uniqueSubmissions).toBe(0);
+      expect(result.uniqueAnalyzed).toBe(0);
+      expect(result.byWeek).toEqual([]);
+      expect(result.byWeekPerUser).toEqual([]);
+      expect(result.byMember).toEqual([]);
+      expect(result.recentSubmissions).toEqual([]);
+      expect(result.submitterCountByProblem).toEqual([]);
+    });
+
+    it('여러 주차 데이터 — 다중 주차 올바르게 정렬', async () => {
+      repo.count.mockResolvedValue(30);
+      mockQb.getRawMany
+        .mockResolvedValueOnce([{ cnt: 15 }])
+        .mockResolvedValueOnce([{ cnt: 10 }])
+        .mockResolvedValueOnce([
+          { week: '4월2주차', count: 8 },
+          { week: '3월4주차', count: 12 },
+          { week: '4월1주차', count: 10 },
+        ])
+        .mockResolvedValueOnce([
+          { userId: 'u1', week: '4월2주차', count: 4 },
+          { userId: 'u1', week: '3월4주차', count: 6 },
+          { userId: 'u2', week: '4월1주차', count: 5 },
+        ])
+        .mockResolvedValueOnce([
+          { userId: 'u1', count: 16, doneCount: 12, uniqueProblemCount: 8, uniqueDoneCount: 6 },
+          { userId: 'u2', count: 14, doneCount: 10, uniqueProblemCount: 7, uniqueDoneCount: 5 },
+        ])
+        .mockResolvedValueOnce([
+          { problemid: 'p1', cnt: 2, donecnt: 2 },
+          { problemid: 'p2', cnt: 3, donecnt: 1 },
+        ]);
+      repo.find.mockResolvedValue([]);
+
+      const result = await service.getStudyStats('study-uuid-1');
+
+      expect(result.byWeek.map(w => w.week)).toEqual(['3월4주차', '4월1주차', '4월2주차']);
+      expect(result.byWeekPerUser.map(w => w.week)).toEqual(['3월4주차', '4월1주차', '4월2주차']);
+      expect(result.byMember).toHaveLength(2);
+      expect(result.byMember[0].count).toBe(16);
+      expect(result.byMember[1].count).toBe(14);
+    });
+
+    it('sagaStep별 카운트 — byMember의 doneCount/uniqueDoneCount 정확성', async () => {
+      repo.count.mockResolvedValue(20);
+      mockQb.getRawMany
+        .mockResolvedValueOnce([{ cnt: 10 }])
+        .mockResolvedValueOnce([{ cnt: 7 }])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          { userId: 'u1', count: 12, doneCount: 8, uniqueProblemCount: 6, uniqueDoneCount: 5 },
+          { userId: 'u2', count: 8, doneCount: 3, uniqueProblemCount: 4, uniqueDoneCount: 2 },
+        ])
+        .mockResolvedValueOnce([
+          { problemid: 'p1', cnt: 2, donecnt: 2 },
+          { problemid: 'p2', cnt: 2, donecnt: 0 },
+          { problemid: 'p3', cnt: 1, donecnt: 1 },
+        ]);
+      repo.find.mockResolvedValue([]);
+
+      const result = await service.getStudyStats('study-uuid-1');
+
+      // byMember의 sagaStep 관련 카운트 검증
+      expect(result.byMember[0]).toEqual({
+        userId: 'u1', count: 12, doneCount: 8, uniqueProblemCount: 6, uniqueDoneCount: 5,
+      });
+      expect(result.byMember[1]).toEqual({
+        userId: 'u2', count: 8, doneCount: 3, uniqueProblemCount: 4, uniqueDoneCount: 2,
+      });
+      // submitterCountByProblem의 analyzedCount 검증
+      expect(result.submitterCountByProblem).toEqual([
+        { problemId: 'p1', count: 2, analyzedCount: 2 },
+        { problemId: 'p2', count: 2, analyzedCount: 0 },
+        { problemId: 'p3', count: 1, analyzedCount: 1 },
+      ]);
+    });
+
+    it('사용자별 통계 — 여러 멤버의 개별 제출 수 및 고유 문제 수', async () => {
+      repo.count.mockResolvedValue(50);
+      mockQb.getRawMany
+        .mockResolvedValueOnce([{ cnt: 25 }])
+        .mockResolvedValueOnce([{ cnt: 20 }])
+        .mockResolvedValueOnce([{ week: '3월1주차', count: 50 }])
+        .mockResolvedValueOnce([
+          { userId: 'u1', week: '3월1주차', count: 5 },
+          { userId: 'u2', week: '3월1주차', count: 4 },
+          { userId: 'u3', week: '3월1주차', count: 3 },
+        ])
+        .mockResolvedValueOnce([
+          { userId: 'u1', count: 20, doneCount: 15, uniqueProblemCount: 10, uniqueDoneCount: 8 },
+          { userId: 'u2', count: 18, doneCount: 12, uniqueProblemCount: 9, uniqueDoneCount: 7 },
+          { userId: 'u3', count: 12, doneCount: 8, uniqueProblemCount: 6, uniqueDoneCount: 4 },
+        ])
+        .mockResolvedValueOnce([]);
+      repo.find.mockResolvedValue([]);
+
+      const result = await service.getStudyStats('study-uuid-1');
+
+      expect(result.byMember).toHaveLength(3);
+      expect(result.byMember.map(m => m.userId)).toEqual(['u1', 'u2', 'u3']);
+      // byWeekPerUser도 3명 전부 반환
+      expect(result.byWeekPerUser).toHaveLength(3);
+      // uniqueSubmissions/uniqueAnalyzed 숫자형 변환 확인
+      expect(typeof result.uniqueSubmissions).toBe('number');
+      expect(typeof result.uniqueAnalyzed).toBe('number');
+    });
+
+    it('정상 통계 — activeProblemIds 필터링으로 ACTIVE 문제만 집계', async () => {
+      mockQb.getCount = jest.fn().mockResolvedValue(15);
+      mockQb.getRawMany
+        .mockResolvedValueOnce([{ cnt: 10 }])
+        .mockResolvedValueOnce([{ cnt: 8 }])
+        .mockResolvedValueOnce([{ week: '3월1주차', count: 15 }])
+        .mockResolvedValueOnce([{ userId: 'u1', week: '3월1주차', count: 5 }])
+        .mockResolvedValueOnce([{ userId: 'u1', count: 15, doneCount: 8, uniqueProblemCount: 3, uniqueDoneCount: 2 }])
+        .mockResolvedValueOnce([{ problemid: 'p1', cnt: 1, donecnt: 1 }]);
+      const recentSubs = [createMockSubmission({ id: 'sub-recent-1' })];
+      repo.find.mockResolvedValue(recentSubs);
+
+      const result = await service.getStudyStats('study-uuid-1', undefined, undefined, ['p1', 'p2', 'p3']);
+
+      expect(result.totalSubmissions).toBe(15);
+      expect(result.uniqueSubmissions).toBe(10);
+      expect(result.uniqueAnalyzed).toBe(8);
+      expect(result.byWeek).toEqual([{ week: '3월1주차', count: 15 }]);
+      expect(result.byMember[0].uniqueProblemCount).toBe(3);
+      expect(result.recentSubmissions).toHaveLength(1);
+      // repo.count는 사용되지 않아야 함 (activeProblemIds가 있으므로 createQueryBuilder+getCount 사용)
+      expect(repo.count).not.toHaveBeenCalled();
+    });
   });
 
   // ─── 14. create() — 지각 제출 (checkLateSubmission) ───────────
@@ -970,6 +1148,48 @@ describe('SubmissionService', () => {
       const result = await service.findByStudyAndUser('study-uuid-1', 'user-1');
 
       expect(result).toEqual([]);
+    });
+  });
+
+  // ─── 18. findAllByStudy() — 스터디 전체 제출 ────────────────────
+  describe('findAllByStudy()', () => {
+    it('스터디 전체 제출 목록을 반환한다', async () => {
+      const submissions = [
+        createMockSubmission({ id: 'sub-1', userId: 'user-1' }),
+        createMockSubmission({ id: 'sub-2', userId: 'user-2' }),
+      ];
+      repo.find.mockResolvedValue(submissions);
+
+      const result = await service.findAllByStudy('study-uuid-1');
+
+      expect(result).toEqual(submissions);
+      expect(repo.find).toHaveBeenCalledWith({
+        where: { studyId: 'study-uuid-1' },
+        order: { createdAt: 'DESC' },
+        select: expect.any(Array),
+      });
+    });
+
+    it('제출이 없으면 빈 배열 반환', async () => {
+      repo.find.mockResolvedValue([]);
+
+      const result = await service.findAllByStudy('study-uuid-1');
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  // ─── 19. findByStudyAndUserPaginated() — problemId 필터 ──────
+  describe('findByStudyAndUserPaginated() — problemId 필터', () => {
+    it('problemId 필터가 적용된다', async () => {
+      const mockQb = createMockQueryBuilder();
+      repo.createQueryBuilder.mockReturnValue(mockQb as any);
+      mockQb.getManyAndCount.mockResolvedValue([[], 0]);
+
+      const query: PaginationQueryDto = { problemId: 'problem-uuid-1' };
+      await service.findByStudyAndUserPaginated('study-uuid-1', 'user-1', query);
+
+      expect(mockQb.andWhere).toHaveBeenCalledWith('s.problemId = :problemId', { problemId: 'problem-uuid-1' });
     });
   });
 

@@ -18,6 +18,7 @@ import {
   Github,
   MessageCircle,
   X,
+  RefreshCw,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card } from '@/components/ui/Card';
@@ -465,6 +466,10 @@ export default function DashboardPage(): ReactNode {
         {error && (
           <Alert variant="error" onClose={() => setError(null)}>
             {error}
+            <Button variant="ghost" size="sm" className="ml-2 h-auto px-2 py-0.5 text-inherit" onClick={() => void loadDashboard()}>
+              <RefreshCw className="mr-1 h-3 w-3" aria-hidden />
+              다시 시도
+            </Button>
           </Alert>
         )}
 
@@ -503,6 +508,10 @@ export default function DashboardPage(): ReactNode {
         {(sectionErrors.stats || sectionErrors.members) && (
           <Alert variant="error" style={fade(0.07)}>
             {[sectionErrors.stats, sectionErrors.members].filter(Boolean).join(' ')}
+            <Button variant="ghost" size="sm" className="ml-2 h-auto px-2 py-0.5 text-inherit" onClick={() => void loadDashboard()}>
+              <RefreshCw className="mr-1 h-3 w-3" aria-hidden />
+              다시 시도
+            </Button>
           </Alert>
         )}
 
@@ -556,6 +565,10 @@ export default function DashboardPage(): ReactNode {
         {sectionErrors.problems && (
           <Alert variant="error" style={fade(0.14)}>
             {sectionErrors.problems}
+            <Button variant="ghost" size="sm" className="ml-2 h-auto px-2 py-0.5 text-inherit" onClick={() => void loadDashboard()}>
+              <RefreshCw className="mr-1 h-3 w-3" aria-hidden />
+              다시 시도
+            </Button>
           </Alert>
         )}
 
@@ -595,6 +608,10 @@ export default function DashboardPage(): ReactNode {
         {sectionErrors.submissions && (
           <Alert variant="error" style={fade(0.22)}>
             {sectionErrors.submissions}
+            <Button variant="ghost" size="sm" className="ml-2 h-auto px-2 py-0.5 text-inherit" onClick={() => void loadDashboard()}>
+              <RefreshCw className="mr-1 h-3 w-3" aria-hidden />
+              다시 시도
+            </Button>
           </Alert>
         )}
 

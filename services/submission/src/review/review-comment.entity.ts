@@ -31,7 +31,7 @@ export class ReviewComment {
   @Column({ type: 'uuid' })
   submissionId!: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'uuid' })
   authorId!: string;
 
   @Column({ type: 'uuid' })

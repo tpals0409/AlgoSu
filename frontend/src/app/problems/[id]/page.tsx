@@ -9,6 +9,7 @@
 
 import React, { useState, useEffect, useCallback, use, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import {
   ArrowLeft,
   ExternalLink,
@@ -140,6 +141,10 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
         code,
       });
 
+      toast.success('제출되었습니다', {
+        description: 'AI 분석이 시작됩니다. 잠시만 기다려주세요.',
+        duration: 3000,
+      });
       router.push(`/submissions/${submission.id}/status`);
     } catch (err: unknown) {
       setSubmitError((err as Error).message ?? '제출 중 오류가 발생했습니다.');

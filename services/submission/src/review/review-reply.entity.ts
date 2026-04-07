@@ -29,7 +29,7 @@ export class ReviewReply {
   @Column({ type: 'int' })
   commentId!: number;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'uuid' })
   authorId!: string;
 
   @Column({ type: 'text' })

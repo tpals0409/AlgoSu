@@ -25,8 +25,14 @@ export class PaginationQueryDto {
 
   @IsOptional()
   @IsString()
-  @IsIn(['createdAt_ASC', 'createdAt_DESC'], {
-    message: 'sort는 createdAt_ASC 또는 createdAt_DESC만 허용됩니다.',
+  @IsIn([
+    'createdAt_ASC', 'createdAt_DESC',
+    'language_ASC', 'language_DESC',
+    'sagaStep_ASC', 'sagaStep_DESC',
+    'weekNumber_ASC', 'weekNumber_DESC',
+    'updatedAt_ASC', 'updatedAt_DESC',
+  ], {
+    message: 'sort는 createdAt|language|sagaStep|weekNumber|updatedAt × ASC|DESC 조합만 허용됩니다.',
   })
   sort?: string = 'createdAt_DESC';
 

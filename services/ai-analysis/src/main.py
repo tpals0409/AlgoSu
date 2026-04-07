@@ -354,7 +354,7 @@ async def group_analysis(
         )
 
         raw_text = message.content[0].text if message.content else ""
-        result = claude._parse_response(raw_text)
+        result = claude._parse_group_response(raw_text)
         circuit_breaker.record_success()
 
     except Exception as e:
@@ -373,9 +373,10 @@ async def group_analysis(
             "problemId": req.problem_id,
             "studyId": req.study_id,
             "submissionCount": len(submissions),
-            "feedback": result.get("feedback", ""),
-            "optimizedCode": result.get("optimized_code"),
-            "score": result.get("score", 0),
+            "comparison": result.get("comparison", ""),
+            "bestApproach": result.get("bestApproach"),
+            "optimizedCode": result.get("optimizedCode"),
+            "learningPoints": result.get("learningPoints", []),
             "status": result.get("status", "failed"),
         }
     }
