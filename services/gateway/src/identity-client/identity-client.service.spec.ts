@@ -77,6 +77,8 @@ describe('IdentityClientService', () => {
       configService as any,
       logger as any,
     );
+    // delay를 즉시 resolve로 대체하여 재시도 대기 시간 제거
+    (service as any).delay = jest.fn().mockResolvedValue(undefined);
   });
 
   // ─── 공통 헬퍼 ──────────────────────────────────────────
@@ -470,6 +472,157 @@ describe('IdentityClientService', () => {
         expect(result).toEqual(link);
         expectRequestCall('GET', '/api/share-links/by-token/my-token');
       });
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════
+  // GET 재시도 로직
+  // ═══════════════════════════════════════════════════════
+
+  describe('GET 재시도', () => {
+    it('GET 네트워크 에러 시 최대 2회 재시도 후 성공', async () => {
+      const mockUser = { id: 'u1', name: 'Test' };
+      httpService.request
+        .mockReturnValueOnce(networkError())
+        .mockReturnValueOnce(networkError())
+        .mockReturnValueOnce(okResponse(mockUser));
+
+      const result = await service.findUserById('u1');
+      expect(result).toEqual(mockUser);
+      expect(httpService.request).toHaveBeenCalledTimes(3);
+      expect(logger.warn).toHaveBeenCalledTimes(2);
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Identity 요청 재시도 (1/2)'),
+        'IdentityClientService',
+      );
+    });
+
+    it('GET ECONNRESET AxiosError 시 재시도', async () => {
+      const mockUser = { id: 'u1' };
+      const connResetErr = new AxiosError();
+      (connResetErr as any).code = 'ECONNRESET';
+      httpService.request
+        .mockReturnValueOnce(throwError(() => connResetErr))
+        .mockReturnValueOnce(okResponse(mockUser));
+
+      const result = await service.findUserById('u1');
+      expect(result).toEqual(mockUser);
+      expect(httpService.request).toHaveBeenCalledTimes(2);
+    });
+
+    it('GET ECONNREFUSED AxiosError 시 재시도', async () => {
+      const mockUser = { id: 'u1' };
+      const connRefusedErr = new AxiosError();
+      (connRefusedErr as any).code = 'ECONNREFUSED';
+      httpService.request
+        .mockReturnValueOnce(throwError(() => connRefusedErr))
+        .mockReturnValueOnce(okResponse(mockUser));
+
+      const result = await service.findUserById('u1');
+      expect(result).toEqual(mockUser);
+      expect(httpService.request).toHaveBeenCalledTimes(2);
+    });
+
+    it('GET ETIMEDOUT AxiosError 시 재시도', async () => {
+      const mockUser = { id: 'u1' };
+      const timeoutErr = new AxiosError();
+      (timeoutErr as any).code = 'ETIMEDOUT';
+      httpService.request
+        .mockReturnValueOnce(throwError(() => timeoutErr))
+        .mockReturnValueOnce(okResponse(mockUser));
+
+      const result = await service.findUserById('u1');
+      expect(result).toEqual(mockUser);
+      expect(httpService.request).toHaveBeenCalledTimes(2);
+    });
+
+    it('GET HTTP 503 시 재시도', async () => {
+      const mockUser = { id: 'u1' };
+      httpService.request
+        .mockReturnValueOnce(errorResponse(503, 'Service Unavailable'))
+        .mockReturnValueOnce(okResponse(mockUser));
+
+      const result = await service.findUserById('u1');
+      expect(result).toEqual(mockUser);
+      expect(httpService.request).toHaveBeenCalledTimes(2);
+    });
+
+    it('GET HTTP 502 시 재시도', async () => {
+      const mockUser = { id: 'u1' };
+      httpService.request
+        .mockReturnValueOnce(errorResponse(502, 'Bad Gateway'))
+        .mockReturnValueOnce(okResponse(mockUser));
+
+      const result = await service.findUserById('u1');
+      expect(result).toEqual(mockUser);
+      expect(httpService.request).toHaveBeenCalledTimes(2);
+    });
+
+    it('GET HTTP 500 시 재시도', async () => {
+      const mockUser = { id: 'u1' };
+      httpService.request
+        .mockReturnValueOnce(errorResponse(500, 'Internal Server Error'))
+        .mockReturnValueOnce(okResponse(mockUser));
+
+      const result = await service.findUserById('u1');
+      expect(result).toEqual(mockUser);
+      expect(httpService.request).toHaveBeenCalledTimes(2);
+    });
+
+    it('GET 3회 모두 실패 시 최종 에러 throw', async () => {
+      httpService.request
+        .mockReturnValue(networkError());
+
+      await expect(service.findUserById('u1')).rejects.toThrow(
+        InternalServerErrorException,
+      );
+      expect(httpService.request).toHaveBeenCalledTimes(3);
+      expect(logger.warn).toHaveBeenCalledTimes(2); // 재시도 로그 2회
+    });
+
+    it('GET HTTP 404 에러는 재시도하지 않음', async () => {
+      httpService.request.mockReturnValue(errorResponse(404, 'Not found'));
+      await expect(service.findUserById('u1')).rejects.toThrow(NotFoundException);
+      expect(httpService.request).toHaveBeenCalledTimes(1);
+    });
+
+    it('GET HTTP 400 에러는 재시도하지 않음', async () => {
+      httpService.request.mockReturnValue(errorResponse(400, 'Bad request'));
+      await expect(service.findUserById('u1')).rejects.toThrow(BadRequestException);
+      expect(httpService.request).toHaveBeenCalledTimes(1);
+    });
+
+    it('POST 요청은 재시도하지 않음 (멱등성 미보장)', async () => {
+      httpService.request.mockReturnValue(networkError());
+      await expect(service.upsertUser({} as any)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+      expect(httpService.request).toHaveBeenCalledTimes(1);
+    });
+
+    it('PATCH 요청은 재시도하지 않음', async () => {
+      httpService.request.mockReturnValue(networkError());
+      await expect(service.updateUser('u1', { name: 'x' })).rejects.toThrow(
+        InternalServerErrorException,
+      );
+      expect(httpService.request).toHaveBeenCalledTimes(1);
+    });
+
+    it('DELETE 요청은 재시도하지 않음', async () => {
+      httpService.request.mockReturnValue(networkError());
+      await expect(service.softDeleteUser('u1')).rejects.toThrow(
+        InternalServerErrorException,
+      );
+      expect(httpService.request).toHaveBeenCalledTimes(1);
+    });
+
+    it('재시도 시 지수 백오프 적용 (500ms, 1000ms)', async () => {
+      httpService.request.mockReturnValue(networkError());
+      await expect(service.findUserById('u1')).rejects.toThrow();
+      const delaySpy = (service as any).delay as jest.Mock;
+      expect(delaySpy).toHaveBeenCalledTimes(2);
+      expect(delaySpy).toHaveBeenNthCalledWith(1, 500);  // 500 * 2^0
+      expect(delaySpy).toHaveBeenNthCalledWith(2, 1000); // 500 * 2^1
     });
   });
 

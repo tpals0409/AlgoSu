@@ -22,6 +22,8 @@ data:
     receivers:
       - name: 'discord-webhook'
         webhook_configs:
+          # TODO: placeholder — Discord webhook adapter (e.g. alertmanager-discord sidecar on :9095) 미구성.
+          #       실제 알림 수신 시 sidecar 컨테이너 추가 또는 외부 webhook URL로 교체 필요.
           - url: 'http://localhost:9095'
             send_resolved: true
 ---
@@ -56,9 +58,11 @@ spec:
             - --config.file=/etc/alertmanager/alertmanager.yml
             - --storage.path=/alertmanager
           securityContext:
+            allowPrivilegeEscalation: false
             capabilities:
               drop:
                 - ALL
+            readOnlyRootFilesystem: true
           readinessProbe:
             httpGet:
               path: /-/ready

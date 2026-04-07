@@ -67,6 +67,8 @@ spec:
         component: monitoring
     spec:
       serviceAccountName: promtail
+      securityContext:
+        runAsUser: 0
       containers:
         - name: promtail
           image: grafana/promtail:2.9.8
@@ -74,6 +76,12 @@ spec:
             - -config.file=/etc/promtail/promtail.yaml
           ports:
             - containerPort: 9080
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
           volumeMounts:
             - name: promtail-config
               mountPath: /etc/promtail
@@ -83,6 +91,8 @@ spec:
             - name: pods
               mountPath: /var/log/pods
               readOnly: true
+            - name: tmp
+              mountPath: /tmp
           resources:
             requests:
               memory: "64Mi"
@@ -100,6 +110,8 @@ spec:
         - name: pods
           hostPath:
             path: /var/log/pods
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: ServiceAccount

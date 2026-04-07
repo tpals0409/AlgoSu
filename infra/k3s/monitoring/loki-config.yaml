@@ -70,6 +70,10 @@ spec:
         app: loki
         component: monitoring
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        fsGroup: 10001
       containers:
         - name: loki
           image: grafana/loki:3.3.2
@@ -77,6 +81,12 @@ spec:
             - containerPort: 3100
           args:
             - -config.file=/etc/loki/loki.yaml
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
           volumeMounts:
             - name: loki-config
               mountPath: /etc/loki

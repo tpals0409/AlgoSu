@@ -101,6 +101,22 @@ export interface CreateShareLinkData {
   expires_at?: string;
 }
 
+/** GET 재시도 설정 상수 */
+const RETRY_MAX_ATTEMPTS = 2; // 최대 재시도 횟수 (총 3회 시도)
+const RETRY_BASE_DELAY_MS = 500; // 기본 백오프 (ms)
+
+/** 재시도 대상 네트워크 에러 코드 */
+const RETRYABLE_NETWORK_CODES = new Set([
+  'ECONNRESET',
+  'ECONNREFUSED',
+  'ETIMEDOUT',
+  'ENOTFOUND',
+  'EAI_AGAIN',
+]);
+
+/** 재시도 대상 HTTP 상태 코드 */
+const RETRYABLE_HTTP_STATUSES = new Set([500, 502, 503]);
+
 @Injectable()
 export class IdentityClientService {
   private readonly internalKey: string;
@@ -378,27 +394,67 @@ export class IdentityClientService {
    * - { data: ... } wrapper 자동 unwrap
    * - X-Internal-Key 헤더 자동 첨부
    * - HTTP 에러 → NestJS 예외 변환
+   * - GET 요청: 일시적 오류 시 최대 2회 재시도 (총 3회)
    */
-  private async request<T = any>(
+  private async request<T = unknown>(
     method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     url: string,
     body?: unknown,
   ): Promise<T> {
-    try {
-      const headers = { 'X-Internal-Key': this.internalKey };
-      const response = await firstValueFrom(
-        this.httpService.request({
-          method,
-          url,
-          data: body,
-          headers,
-        }),
-      );
+    const maxRetries = method === 'GET' ? RETRY_MAX_ATTEMPTS : 0;
 
-      return this.unwrapResponse<T>(response.data);
-    } catch (error) {
-      throw this.handleError(error, method, url);
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const headers = { 'X-Internal-Key': this.internalKey };
+        const response = await firstValueFrom(
+          this.httpService.request({
+            method,
+            url,
+            data: body,
+            headers,
+          }),
+        );
+
+        return this.unwrapResponse<T>(response.data);
+      } catch (error) {
+        if (attempt < maxRetries && this.isRetryable(error)) {
+          const delayMs = RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
+          this.logger.warn(
+            `Identity 요청 재시도 (${attempt + 1}/${maxRetries}): ${method} ${url} — ${delayMs}ms 후`,
+            'IdentityClientService',
+          );
+          await this.delay(delayMs);
+          continue;
+        }
+        throw this.handleError(error, method, url);
+      }
     }
+  }
+
+  /** 재시도 가능한 에러인지 판별 */
+  private isRetryable(error: unknown): boolean {
+    if (error instanceof AxiosError) {
+      // 네트워크 에러 (ECONNRESET, ECONNREFUSED 등)
+      if (error.code && RETRYABLE_NETWORK_CODES.has(error.code)) {
+        return true;
+      }
+      // HTTP 500/502/503
+      if (error.response && RETRYABLE_HTTP_STATUSES.has(error.response.status)) {
+        return true;
+      }
+      return false;
+    }
+    // AxiosError가 아닌 네트워크 에러 (e.g. Node.js 소켓 에러)
+    if (error instanceof Error) {
+      const msg = error.message ?? '';
+      return [...RETRYABLE_NETWORK_CODES].some((code) => msg.includes(code));
+    }
+    return false;
+  }
+
+  /** 재시도 대기 (테스트에서 오버라이드 가능) */
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /** { data: ... } wrapper 제거 — Identity API 응답 규격 대응 */

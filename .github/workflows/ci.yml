@@ -504,11 +504,13 @@ jobs:
 
   build-services:
     name: Build ${{ matrix.name }}
-    needs: [detect-changes, test-node, test-ai-analysis]
+    needs: [detect-changes, test-node, test-ai-analysis, audit-npm, secret-scan]
     if: |
       !cancelled() &&
       (needs.test-node.result == 'success' || needs.test-node.result == 'skipped') &&
-      (needs.test-ai-analysis.result == 'success' || needs.test-ai-analysis.result == 'skipped')
+      (needs.test-ai-analysis.result == 'success' || needs.test-ai-analysis.result == 'skipped') &&
+      (needs.audit-npm.result == 'success' || needs.audit-npm.result == 'skipped') &&
+      needs.secret-scan.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -576,8 +578,13 @@ jobs:
 
   build-frontend:
     name: Build Frontend (Next.js)
-    needs: [detect-changes, test-frontend]
-    if: needs.detect-changes.outputs.frontend == 'true'
+    needs: [detect-changes, test-frontend, audit-npm, secret-scan]
+    if: |
+      !cancelled() &&
+      needs.detect-changes.outputs.frontend == 'true' &&
+      needs.test-frontend.result == 'success' &&
+      (needs.audit-npm.result == 'success' || needs.audit-npm.result == 'skipped') &&
+      needs.secret-scan.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
