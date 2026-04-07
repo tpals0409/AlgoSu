@@ -37,6 +37,7 @@ const createMockSubmission = (overrides: Partial<Submission> = {}): Submission =
   idempotencyKey: null,
   aiSkipped: false,
   isLate: false,
+  sagaRetryCount: 0,
   publicId: 'pub-uuid-1',
   createdAt: new Date('2026-02-28T00:00:00Z'),
   updatedAt: new Date('2026-02-28T00:00:00Z'),
@@ -395,7 +396,7 @@ describe('SagaOrchestratorService', () => {
 
   // ─── 10. resumeSaga (DB_SAVED) — onModuleInit 통해 간접 테스트 ─
   describe('resumeSaga (DB_SAVED)', () => {
-    it('DB_SAVED 상태에서 advanceToGitHubQueued를 호출한다', async () => {
+    it('DB_SAVED 상태에서 retryCount 갱신 후 advanceToGitHubQueued를 호출한다', async () => {
       const dbSavedSubmission = createMockSubmission({
         id: 'sub-db-saved',
         sagaStep: SagaStep.DB_SAVED,
@@ -410,6 +411,8 @@ describe('SagaOrchestratorService', () => {
       // Act (onModuleInit -> resumeSaga 간접 호출)
       await service.onModuleInit();
 
+      // Assert: retryCount 갱신 (updatedAt 자동 갱신)
+      expect(repo.update).toHaveBeenCalledWith('sub-db-saved', { sagaRetryCount: 1 });
       // Assert: advanceToGitHubQueued 경로 — DB 업데이트 + MQ 발행 (낙관적 락)
       expect(repo.update).toHaveBeenCalledWith(
         { id: 'sub-db-saved', sagaStep: SagaStep.DB_SAVED },
@@ -424,9 +427,9 @@ describe('SagaOrchestratorService', () => {
     });
   });
 
-  // ─── 11. resumeSaga (GITHUB_QUEUED/AI_QUEUED) — MQ 재발행 ────
+  // ─── 11. resumeSaga (GITHUB_QUEUED/AI_QUEUED) — updatedAt 갱신 + MQ 재발행 ────
   describe('resumeSaga (GITHUB_QUEUED / AI_QUEUED)', () => {
-    it('GITHUB_QUEUED 상태에서 MQ GitHub Push를 재발행한다', async () => {
+    it('GITHUB_QUEUED 상태에서 retryCount 갱신 후 MQ GitHub Push를 재발행한다', async () => {
       const ghQueuedSubmission = createMockSubmission({
         id: 'sub-gh-queued',
         sagaStep: SagaStep.GITHUB_QUEUED,
@@ -435,13 +438,14 @@ describe('SagaOrchestratorService', () => {
       });
 
       repo.find.mockResolvedValue([ghQueuedSubmission]);
+      repo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
       mqPublisher.publishGitHubPush.mockResolvedValue(undefined);
 
       // Act
       await service.onModuleInit();
 
-      // Assert: DB update 없이 MQ 재발행만
-      expect(repo.update).not.toHaveBeenCalled();
+      // Assert: retryCount 갱신 (updatedAt 자동 갱신으로 다음 주기에 재감지 방지)
+      expect(repo.update).toHaveBeenCalledWith('sub-gh-queued', { sagaRetryCount: 1 });
       expect(mqPublisher.publishGitHubPush).toHaveBeenCalledWith(
         expect.objectContaining({
           submissionId: 'sub-gh-queued',
@@ -450,7 +454,7 @@ describe('SagaOrchestratorService', () => {
       );
     });
 
-    it('AI_QUEUED 상태에서 MQ AI Analysis를 재발행한다', async () => {
+    it('AI_QUEUED 상태에서 retryCount 갱신 후 MQ AI Analysis를 재발행한다', async () => {
       const aiQueuedSubmission = createMockSubmission({
         id: 'sub-ai-queued',
         sagaStep: SagaStep.AI_QUEUED,
@@ -459,13 +463,14 @@ describe('SagaOrchestratorService', () => {
       });
 
       repo.find.mockResolvedValue([aiQueuedSubmission]);
+      repo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
       mqPublisher.publishAiAnalysis.mockResolvedValue(undefined);
 
       // Act
       await service.onModuleInit();
 
-      // Assert: DB update 없이 MQ 재발행만
-      expect(repo.update).not.toHaveBeenCalled();
+      // Assert: retryCount 갱신 (updatedAt 자동 갱신으로 다음 주기에 재감지 방지)
+      expect(repo.update).toHaveBeenCalledWith('sub-ai-queued', { sagaRetryCount: 1 });
       expect(mqPublisher.publishAiAnalysis).toHaveBeenCalledWith(
         expect.objectContaining({
           submissionId: 'sub-ai-queued',
@@ -699,6 +704,8 @@ describe('SagaOrchestratorService', () => {
       await (service as any).checkSagaTimeouts();
 
       expect(repo.find).toHaveBeenCalledTimes(4); // onModuleInit 1 + checkSagaTimeouts 3 steps
+      // retryCount 갱신 (updatedAt 자동 갱신)
+      expect(repo.update).toHaveBeenCalledWith('sub-timeout-db', { sagaRetryCount: 1 });
       expect(repo.update).toHaveBeenCalledWith(
         { id: 'sub-timeout-db', sagaStep: SagaStep.DB_SAVED },
         { sagaStep: SagaStep.GITHUB_QUEUED },
@@ -729,7 +736,60 @@ describe('SagaOrchestratorService', () => {
     });
   });
 
-  // ─── 21. resumeSaga — default 분기 (DONE/FAILED/AI_SKIPPED) ───
+  // ─── 21. resumeSaga — 최대 재시도 초과 시 FAILED ───────────────
+  describe('resumeSaga() — 최대 재시도 초과', () => {
+    it('retryCount가 3을 초과하면 FAILED로 전이한다', async () => {
+      const maxRetriedSubmission = createMockSubmission({
+        id: 'sub-max-retry',
+        sagaStep: SagaStep.GITHUB_QUEUED,
+        sagaRetryCount: 3, // 이미 3회 시도 -> 다음은 4회 -> 초과
+        createdAt: new Date(),
+      });
+
+      repo.find.mockResolvedValue([maxRetriedSubmission]);
+      repo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+
+      // Act (onModuleInit -> resumeSaga 간접 호출)
+      await service.onModuleInit();
+
+      // Assert: FAILED 전이 + retryCount 기록
+      expect(repo.update).toHaveBeenCalledWith('sub-max-retry', {
+        sagaStep: SagaStep.FAILED,
+        sagaRetryCount: 4,
+      });
+      // MQ 재발행 없음
+      expect(mqPublisher.publishGitHubPush).not.toHaveBeenCalled();
+      expect(mqPublisher.publishAiAnalysis).not.toHaveBeenCalled();
+    });
+
+    it('retryCount가 정확히 3이면 아직 재시도한다', async () => {
+      const retrySubmission = createMockSubmission({
+        id: 'sub-retry-3',
+        sagaStep: SagaStep.GITHUB_QUEUED,
+        sagaRetryCount: 2, // 이미 2회 시도 -> 다음은 3회 -> 허용
+        studyId: 'study-retry',
+        createdAt: new Date(),
+      });
+
+      repo.find.mockResolvedValue([retrySubmission]);
+      repo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+      mqPublisher.publishGitHubPush.mockResolvedValue(undefined);
+
+      // Act
+      await service.onModuleInit();
+
+      // Assert: retryCount 갱신 후 MQ 재발행
+      expect(repo.update).toHaveBeenCalledWith('sub-retry-3', { sagaRetryCount: 3 });
+      expect(mqPublisher.publishGitHubPush).toHaveBeenCalledWith(
+        expect.objectContaining({
+          submissionId: 'sub-retry-3',
+          studyId: 'study-retry',
+        }),
+      );
+    });
+  });
+
+  // ─── 22. resumeSaga — default 분기 (DONE/FAILED/AI_SKIPPED) ───
   describe('resumeSaga() — default 분기', () => {
     it('DONE 상태의 Submission은 아무것도 하지 않는다', async () => {
       const doneSubmission = createMockSubmission({

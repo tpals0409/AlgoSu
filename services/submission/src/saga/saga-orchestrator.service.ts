@@ -390,20 +390,41 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /** 최대 재시도 횟수 -- 초과 시 FAILED 전이 */
+  private static readonly MAX_SAGA_RETRIES = 3;
+
   /**
    * 미완료 Saga 재개 -- 현재 step에 따라 다음 단계 실행
+   * retryCount를 추적하여 MAX_SAGA_RETRIES 초과 시 FAILED로 전이
    */
   private async resumeSaga(submission: Submission): Promise<void> {
+    const retryCount = (submission.sagaRetryCount ?? 0) + 1;
+
     this.logger.log(
-      `Saga 재개: submissionId=${submission.id}, currentStep=${submission.sagaStep}`,
+      `Saga 재개: submissionId=${submission.id}, currentStep=${submission.sagaStep}, retryCount=${retryCount}/${SagaOrchestratorService.MAX_SAGA_RETRIES}`,
     );
+
+    // 최대 재시도 초과 -> FAILED 전이
+    if (retryCount > SagaOrchestratorService.MAX_SAGA_RETRIES) {
+      this.logger.error(
+        `Saga 최대 재시도 초과 -> FAILED: submissionId=${submission.id}, step=${submission.sagaStep}, retryCount=${retryCount}`,
+      );
+      await this.submissionRepo.update(submission.id, {
+        sagaStep: SagaStep.FAILED,
+        sagaRetryCount: retryCount,
+      });
+      return;
+    }
 
     switch (submission.sagaStep) {
       case SagaStep.DB_SAVED:
+        // advanceToGitHubQueued 내부에서 DB 업데이트 + MQ 발행 수행
+        await this.submissionRepo.update(submission.id, { sagaRetryCount: retryCount });
         await this.advanceToGitHubQueued(submission.id, submission.studyId);
         break;
       case SagaStep.GITHUB_QUEUED:
-        // GitHub Push 재시도는 Worker가 처리 -- 여기서는 재발행만
+        // updatedAt 갱신 + retryCount 증가 -> 다음 주기에 다시 잡히지 않음
+        await this.submissionRepo.update(submission.id, { sagaRetryCount: retryCount });
         await this.mqPublisher.publishGitHubPush({
           submissionId: submission.id,
           studyId: submission.studyId,
@@ -411,7 +432,8 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
         });
         break;
       case SagaStep.AI_QUEUED:
-        // AI 분석 재시도
+        // updatedAt 갱신 + retryCount 증가
+        await this.submissionRepo.update(submission.id, { sagaRetryCount: retryCount });
         await this.mqPublisher.publishAiAnalysis({
           submissionId: submission.id,
           studyId: submission.studyId,

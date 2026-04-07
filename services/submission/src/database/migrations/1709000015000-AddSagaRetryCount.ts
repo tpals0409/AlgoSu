@@ -1,0 +1,17 @@
+import { MigrationInterface, QueryRunner } from 'typeorm';
+
+export class AddSagaRetryCount1709000015000 implements MigrationInterface {
+  name = 'AddSagaRetryCount1709000015000';
+
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      `ALTER TABLE "submissions" ADD COLUMN "saga_retry_count" integer NOT NULL DEFAULT 0`,
+    );
+  }
+
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      `ALTER TABLE "submissions" DROP COLUMN "saga_retry_count"`,
+    );
+  }
+}

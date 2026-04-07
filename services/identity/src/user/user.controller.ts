@@ -39,6 +39,17 @@ export class UserController {
     return { data: user };
   }
 
+  /** slug 기반 공개 프로필 조회 */
+  @ApiOperation({ summary: 'slug 기반 공개 프로필 조회' })
+  @ApiResponse({ status: 200, description: '공개 프로필 정보' })
+  @ApiResponse({ status: 404, description: '프로필 없음' })
+  @Get('by-slug/:slug')
+  async findBySlug(@Param('slug') slug: string) {
+    const user = await this.userService.findBySlug(slug);
+    if (!user) throw new NotFoundException('프로필을 찾을 수 없습니다.');
+    return { data: user };
+  }
+
   /** ID로 사용자 조회 */
   @ApiOperation({ summary: 'ID로 사용자 조회' })
   @ApiResponse({ status: 200, description: '사용자 정보' })
@@ -99,17 +110,6 @@ export class UserController {
   async getGitHubTokenInfo(@Param('id', ParseUUIDPipe) id: string) {
     const info = await this.userService.getGitHubTokenInfo(id);
     return { data: info };
-  }
-
-  /** slug 기반 공개 프로필 조회 */
-  @ApiOperation({ summary: 'slug 기반 공개 프로필 조회' })
-  @ApiResponse({ status: 200, description: '공개 프로필 정보' })
-  @ApiResponse({ status: 404, description: '프로필 없음' })
-  @Get('by-slug/:slug')
-  async findBySlug(@Param('slug') slug: string) {
-    const user = await this.userService.findBySlug(slug);
-    if (!user) throw new NotFoundException('프로필을 찾을 수 없습니다.');
-    return { data: user };
   }
 
   /** 프로필 설정 업데이트 — slug + 공개 토글 */

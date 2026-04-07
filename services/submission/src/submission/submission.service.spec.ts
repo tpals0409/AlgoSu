@@ -88,6 +88,7 @@ const createMockSubmission = (overrides: Partial<Submission> = {}): Submission =
   idempotencyKey: null,
   aiSkipped: false,
   isLate: false,
+  sagaRetryCount: 0,
   publicId: 'pub-uuid-1',
   createdAt: new Date('2026-02-28T00:00:00Z'),
   updatedAt: new Date('2026-02-28T00:00:00Z'),

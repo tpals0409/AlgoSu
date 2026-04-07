@@ -83,6 +83,9 @@ export class Submission {
   @Column({ type: 'boolean', default: false, name: 'is_late' })
   isLate!: boolean;
 
+  @Column({ type: 'int', default: 0, name: 'saga_retry_count' })
+  sagaRetryCount!: number;
+
   @Column({ type: 'uuid', unique: true })
   publicId!: string;
 
