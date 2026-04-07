@@ -239,6 +239,7 @@ export class GitHubWorker {
           'X-Internal-Key': this.internalKeyGateway,
           'Content-Type': 'application/json',
         },
+        signal: AbortSignal.timeout(10_000),
       },
     );
 
@@ -267,6 +268,7 @@ export class GitHubWorker {
             'x-user-id': userId,
             'Content-Type': 'application/json',
           },
+          signal: AbortSignal.timeout(10_000),
         },
       );
 

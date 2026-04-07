@@ -110,7 +110,7 @@ jest.mock('@/lib/api', () => ({
     list: jest.fn().mockResolvedValue({ data: [], meta: { total: 0, totalPages: 1 } }),
   },
   problemApi: {
-    findAllProblems: jest.fn().mockResolvedValue([]),
+    findAll: jest.fn().mockResolvedValue([]),
   },
 }));
 

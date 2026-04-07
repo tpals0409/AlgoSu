@@ -19,11 +19,12 @@ from fastapi import FastAPI, Header, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from .circuit_breaker import circuit_breaker
-from .claude_client import ClaudeClient
+from .claude_client import MAX_TOKENS, MODEL_ID, ClaudeClient
 from .config import settings
 from .logger import setup_logging
 from .metrics import (
     PrometheusMiddleware,
+    ai_quota_checks_total,
     metrics_endpoint,
     update_circuit_breaker_gauge,
 )
@@ -40,6 +41,64 @@ logger = logging.getLogger("ai-analysis")
 worker_instance: AIAnalysisWorker | None = None
 worker_thread: threading.Thread | None = None
 redis_client: redis.Redis | None = None
+
+
+# ─── QUOTA HELPER ────────────────────────────
+
+
+def _check_and_increment_quota(user_id: str, limit: int) -> dict:
+    """
+    AI 일일 한도 체크 + INCR -- Redis INCR/TTL 원자적 패턴
+
+    @domain ai
+    @guard ai-quota
+    @param user_id: 사용자 ID
+    @param limit: 일일 한도
+    @returns: { allowed: bool, used: int, limit: int }
+    @raises HTTPException: Redis 미연결 시 503
+    """
+    if not redis_client:
+        raise HTTPException(status_code=503, detail="Redis 미연결")
+
+    today = date.today().isoformat()
+    key = f"ai_limit:{user_id}:{today}"
+
+    pipe = redis_client.pipeline()
+    pipe.incr(key)
+    pipe.ttl(key)
+    results = pipe.execute()
+    current = int(results[0])
+    ttl = int(results[1])
+
+    # 첫 사용 시 TTL 설정 (24시간)
+    if ttl == -1:
+        redis_client.expire(key, 86400)
+
+    if current > limit:
+        # 한도 초과 시 DECR로 원복
+        redis_client.decr(key)
+        ai_quota_checks_total.labels(result="denied").inc()
+        return {
+            "allowed": False,
+            "used": current - 1,
+            "limit": limit,
+        }
+
+    ai_quota_checks_total.labels(result="allowed").inc()
+    return {
+        "allowed": True,
+        "used": current,
+        "limit": limit,
+    }
+
+
+def _rollback_quota(user_id: str) -> None:
+    """Quota INCR 롤백 (에러 시 DECR)"""
+    if not redis_client:
+        return
+    today = date.today().isoformat()
+    key = f"ai_limit:{user_id}:{today}"
+    redis_client.decr(key)
 
 
 # ─── LIFECYCLE ────────────────────────────────
@@ -217,43 +276,10 @@ async def check_and_increment_quota(
     if not user_id:
         raise HTTPException(status_code=400, detail="userId 필수")
 
-    today = date.today().isoformat()
-    key = f"ai_limit:{user_id}:{today}"
     limit = settings.ai_daily_limit
+    result = _check_and_increment_quota(user_id, limit)
 
-    if not redis_client:
-        raise HTTPException(status_code=503, detail="Redis 미연결")
-
-    # INCR + TTL 패턴 (원자적)
-    pipe = redis_client.pipeline()
-    pipe.incr(key)
-    pipe.ttl(key)
-    results = pipe.execute()
-    current = int(results[0])
-    ttl = int(results[1])
-
-    # 첫 사용 시 TTL 설정 (24시간)
-    if ttl == -1:
-        redis_client.expire(key, 86400)
-
-    if current > limit:
-        # 한도 초과 시 DECR로 원복
-        redis_client.decr(key)
-        return {
-            "data": {
-                "allowed": False,
-                "used": current - 1,
-                "limit": limit,
-            }
-        }
-
-    return {
-        "data": {
-            "allowed": True,
-            "used": current,
-            "limit": limit,
-        }
-    }
+    return {"data": result}
 
 
 # ─── GROUP ANALYSIS ──────────────────────────
@@ -294,28 +320,13 @@ async def group_analysis(
         )
 
     # AI 일일 한도 체크 + 증가
-    if not redis_client:
-        raise HTTPException(status_code=503, detail="Redis 미연결")
-
-    today = date.today().isoformat()
-    quota_key = f"ai_limit:{req.user_id}:{today}"
     limit = settings.ai_daily_limit
+    quota_result = _check_and_increment_quota(req.user_id, limit)
 
-    pipe = redis_client.pipeline()
-    pipe.incr(quota_key)
-    pipe.ttl(quota_key)
-    results = pipe.execute()
-    current_usage = int(results[0])
-    ttl = int(results[1])
-
-    if ttl == -1:
-        redis_client.expire(quota_key, 86400)
-
-    if current_usage > limit:
-        redis_client.decr(quota_key)
+    if not quota_result["allowed"]:
         logger.warning(
             f"그룹 분석 Quota 초과: userId={req.user_id[:8]}***, "
-            f"used={current_usage - 1}, limit={limit}"
+            f"used={quota_result['used']}, limit={limit}"
         )
         raise HTTPException(
             status_code=429,
@@ -333,12 +344,12 @@ async def group_analysis(
             resp.raise_for_status()
             submissions = resp.json()["data"]
     except Exception as e:
-        redis_client.decr(quota_key)
+        _rollback_quota(req.user_id)
         logger.error(f"그룹 분석 제출 조회 실패: {str(e)[:200]}")
         raise HTTPException(status_code=502, detail="제출 데이터 조회 실패")
 
     if not submissions:
-        redis_client.decr(quota_key)
+        _rollback_quota(req.user_id)
         raise HTTPException(status_code=404, detail="해당 문제에 대한 제출이 없습니다.")
 
     # Claude API로 그룹 분석
@@ -356,8 +367,8 @@ async def group_analysis(
 
     try:
         message = claude.client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=8192,
+            model=MODEL_ID,
+            max_tokens=MAX_TOKENS,
             system=GROUP_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_prompt}],
         )
@@ -368,7 +379,7 @@ async def group_analysis(
 
     except Exception as e:
         circuit_breaker.record_failure()
-        redis_client.decr(quota_key)
+        _rollback_quota(req.user_id)
         logger.error(f"그룹 분석 Claude 호출 실패: {str(e)[:200]}")
         raise HTTPException(status_code=502, detail="AI 분석 실패")
 

@@ -81,7 +81,7 @@ jest.mock('next/dynamic', () => () => {
 
 jest.mock('@/lib/api', () => ({
   studyApi: { getStats: jest.fn().mockResolvedValue({ totalSubmissions: 0, byMember: [], byWeek: [], byWeekPerUser: [], solvedProblemIds: [] }), getMembers: jest.fn().mockResolvedValue([]) },
-  problemApi: { findAllProblems: jest.fn().mockResolvedValue([]) },
+  problemApi: { findAll: jest.fn().mockResolvedValue([]) },
 }));
 
 jest.mock('@/lib/utils', () => ({

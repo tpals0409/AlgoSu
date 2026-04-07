@@ -22,29 +22,12 @@ import { CodeBlock } from '@/components/ui/CodeBlock';
 import { submissionApi, problemApi, type AnalysisResult, type Submission } from '@/lib/api';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
+import { parseFeedback } from '@/lib/feedback';
+import { relativeTime } from '@/lib/date';
 import { useStudy } from '@/contexts/StudyContext';
 import { DIFF_DOT_STYLE, DIFF_BADGE_STYLE, toTierLevel } from '@/lib/constants';
 import { AdBanner } from '@/components/ad/AdBanner';
 import { AD_SLOTS } from '@/lib/constants/adSlots';
-
-// ─── TYPES ────────────────────────────────
-
-interface ParsedFeedback {
-  totalScore: number;
-  summary: string;
-  categories: FeedbackCategory[];
-  optimizedCode: string | null;
-  timeComplexity: string | null;
-  spaceComplexity: string | null;
-  codeLines: number | null;
-}
-
-interface FeedbackCategory {
-  name: string;
-  score: number;
-  comment: string;
-  highlights: { startLine: number; endLine: number }[];
-}
 
 const DIFFICULTY_LABELS: Record<string, string> = {
   BRONZE: 'Bronze', SILVER: 'Silver', GOLD: 'Gold',
@@ -52,90 +35,6 @@ const DIFFICULTY_LABELS: Record<string, string> = {
 };
 
 // ─── HELPERS ──────────────────────────────
-
-function extractComplexity(categories: FeedbackCategory[]): { time: string | null; space: string | null } {
-  const efficiency = categories.find((c) => c.name === 'efficiency');
-  if (!efficiency) return { time: null, space: null };
-  const bigOPattern = /O\([^)]+\)/g;
-  const matches = efficiency.comment.match(bigOPattern);
-  if (matches && matches.length >= 2) return { time: matches[0], space: matches[1] };
-  if (matches && matches.length === 1) return { time: matches[0], space: null };
-  return { time: null, space: null };
-}
-
-function countCodeLines(code: string | null): number | null {
-  if (!code) return null;
-  return code.split('\n').filter((l) => l.trim().length > 0).length;
-}
-
-function parseFeedback(feedback: string | null, score: number | null, optimizedCode: string | null): ParsedFeedback | null {
-  if (!feedback) return null;
-  try {
-    // 마크다운 코드 블록 제거 (```json ... ```)
-    let cleaned = feedback.trim();
-    if (cleaned.startsWith('```')) {
-      cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
-    }
-    // Claude hallucination 대응: 숫자 뒤 불필요한 따옴표 제거
-    // 예: "endLine": 70" → "endLine": 70
-    cleaned = cleaned.replace(/:\s*(\d+)"(\s*[,}\]])/g, ': $1$2');
-    let parsed: Record<string, unknown>;
-    try {
-      parsed = JSON.parse(cleaned);
-    } catch {
-      // JSON 뒤에 추가 텍스트가 있을 수 있음 — 첫 번째 유효 JSON 객체 추출
-      const start = cleaned.indexOf('{');
-      if (start === -1) throw new Error('No JSON found');
-      let depth = 0, end = -1;
-      for (let i = start; i < cleaned.length; i++) {
-        if (cleaned[i] === '{') depth++;
-        else if (cleaned[i] === '}') { depth--; if (depth === 0) { end = i; break; } }
-      }
-      if (end === -1) throw new Error('No matching brace');
-      parsed = JSON.parse(cleaned.substring(start, end + 1));
-    }
-    const rawCategories = parsed.categories as Record<string, unknown>[] | undefined;
-    const categories: FeedbackCategory[] = (rawCategories ?? []).map((c) => ({
-      name: (c.name as string) ?? '',
-      score: (c.score as number) ?? 0,
-      comment: (c.comment as string) ?? '',
-      highlights: (c.highlights as { startLine: number; endLine: number }[]) ?? [],
-    }));
-    const complexity = extractComplexity(categories);
-    const resolvedOptimizedCode = (parsed.optimizedCode as string | null) ?? optimizedCode ?? null;
-    return {
-      totalScore: (parsed.totalScore as number | null) ?? score ?? 0,
-      summary: (parsed.summary as string) ?? '',
-      categories,
-      optimizedCode: resolvedOptimizedCode,
-      timeComplexity: (parsed.timeComplexity as string | null) ?? complexity.time,
-      spaceComplexity: (parsed.spaceComplexity as string | null) ?? complexity.space,
-      codeLines: (parsed.codeLines as number | null) ?? countCodeLines(resolvedOptimizedCode),
-    };
-  } catch {
-    return {
-      totalScore: score ?? 0,
-      summary: feedback,
-      categories: [],
-      optimizedCode: optimizedCode ?? null,
-      timeComplexity: null,
-      spaceComplexity: null,
-      codeLines: null,
-    };
-  }
-}
-
-function relativeTime(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return '방금 전';
-  if (minutes < 60) return `${minutes}분 전`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}시간 전`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}일 전`;
-  return `${Math.floor(days / 30)}개월 전`;
-}
 
 function barColor(score: number): string {
   if (score >= 80) return 'var(--success)';

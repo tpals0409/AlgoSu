@@ -48,6 +48,7 @@ export class StatusReporter {
         'X-Internal-Key': this.submissionKey,
         'Content-Type': 'application/json',
       },
+      signal: AbortSignal.timeout(10_000),
     });
 
     if (!res.ok) {
@@ -69,6 +70,7 @@ export class StatusReporter {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ filePath }),
+      signal: AbortSignal.timeout(10_000),
     });
 
     if (!resp.ok) {
@@ -86,6 +88,7 @@ export class StatusReporter {
         'X-Internal-Key': this.submissionKey,
         'Content-Type': 'application/json',
       },
+      signal: AbortSignal.timeout(10_000),
     });
 
     if (!resp.ok) {
@@ -103,6 +106,7 @@ export class StatusReporter {
         'X-Internal-Key': this.submissionKey,
         'Content-Type': 'application/json',
       },
+      signal: AbortSignal.timeout(10_000),
     });
 
     if (!resp.ok) {
@@ -121,6 +125,7 @@ export class StatusReporter {
         'X-Internal-Key': this.submissionKey,
         'Content-Type': 'application/json',
       },
+      signal: AbortSignal.timeout(10_000),
     });
 
     if (!resp.ok) {

@@ -514,12 +514,6 @@ describe('problemApi 추가 분기', () => {
     expect(mockFetch.mock.calls[0][0]).toContain('/api/problems/all');
   });
 
-  it('findAllProblems는 GET /api/problems/all로 요청한다', async () => {
-    mockFetch.mockReturnValue(jsonResponse([]));
-    await problemApi.findAllProblems();
-    expect(mockFetch.mock.calls[0][0]).toContain('/api/problems/all');
-  });
-
   it('findById는 GET /api/problems/{id}로 요청한다', async () => {
     mockFetch.mockReturnValue(jsonResponse({ id: 'p1', title: 'Test' }));
     await problemApi.findById('p1');

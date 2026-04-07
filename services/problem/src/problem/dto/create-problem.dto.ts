@@ -35,7 +35,7 @@ export class CreateProblemDto {
 
   @IsOptional()
   @IsInt()
-  @Min(0)
+  @Min(1)
   @Max(30)
   level?: number;
 
@@ -85,7 +85,7 @@ export class UpdateProblemDto {
 
   @IsOptional()
   @IsInt()
-  @Min(0)
+  @Min(1)
   @Max(30)
   level?: number;
 

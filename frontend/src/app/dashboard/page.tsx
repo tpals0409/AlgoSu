@@ -162,8 +162,7 @@ export default function DashboardPage(): ReactNode {
   const router = useRouter();
   const { isReady } = useRequireAuth();
   const { isStudyReady } = useRequireStudy();
-  const { isAuthenticated, githubConnected } = useAuth();
-  const { user } = useAuth();
+  const { isAuthenticated, githubConnected, user } = useAuth();
   const { currentStudyId, currentStudyName, studiesLoaded } = useStudy();
 
 
@@ -208,7 +207,6 @@ export default function DashboardPage(): ReactNode {
         submissionApi.list({ page: 1, limit: 5 }),
         problemApi.findAll(),
         currentStudyId ? studyApi.getMembers(currentStudyId) : Promise.resolve([]),
-        problemApi.findAllProblems(),
       ]);
 
       const errors = { stats: null as string | null, submissions: null as string | null, problems: null as string | null, members: null as string | null };
@@ -227,7 +225,9 @@ export default function DashboardPage(): ReactNode {
       }
 
       if (results[2].status === 'fulfilled') {
-        setActiveProblems((results[2].value as Problem[]) ?? []);
+        const problems = (results[2].value as Problem[]) ?? [];
+        setActiveProblems(problems);
+        setAllProblems(problems);
       } else {
         errors.problems = '문제 목록을 불러올 수 없습니다.';
       }
@@ -236,12 +236,6 @@ export default function DashboardPage(): ReactNode {
         setMembers((results[3].value as StudyMember[]) ?? []);
       } else if (results[3].status === 'rejected') {
         errors.members = '멤버 목록을 불러올 수 없습니다.';
-      }
-
-      if (results[4].status === 'fulfilled') {
-        setAllProblems((results[4].value as Problem[]) ?? []);
-      } else {
-        errors.problems = errors.problems ?? '문제 목록을 불러올 수 없습니다.';
       }
 
       setSectionErrors(errors);

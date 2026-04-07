@@ -101,7 +101,7 @@ export default function AnalyticsPage(): ReactNode {
     try {
       const results = await Promise.allSettled([
         studyApi.getStats(currentStudyId),
-        problemApi.findAllProblems(),
+        problemApi.findAll(),
         studyApi.getMembers(currentStudyId),
       ]);
       if (results[0].status === 'fulfilled') {

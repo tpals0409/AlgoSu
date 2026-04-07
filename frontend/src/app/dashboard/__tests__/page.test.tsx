@@ -81,7 +81,7 @@ jest.mock('@/components/ui/LoadingSpinner', () => ({
 jest.mock('@/lib/api', () => ({
   studyApi: { getStats: jest.fn().mockResolvedValue(null), getMembers: jest.fn().mockResolvedValue([]) },
   submissionApi: { list: jest.fn().mockResolvedValue({ data: [], meta: {} }) },
-  problemApi: { findAll: jest.fn().mockResolvedValue([]), findAllProblems: jest.fn().mockResolvedValue([]) },
+  problemApi: { findAll: jest.fn().mockResolvedValue([]) },
 }));
 
 jest.mock('@/lib/utils', () => ({

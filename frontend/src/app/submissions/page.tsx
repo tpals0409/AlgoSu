@@ -23,6 +23,7 @@ import { useStudy } from '@/contexts/StudyContext';
 import { DIFFICULTIES, DIFFICULTY_LABELS, DIFF_DOT_STYLE, DIFF_BADGE_STYLE, toTierLevel, type Difficulty } from '@/lib/constants';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
+import { relativeTime } from '@/lib/date';
 
 // ─── CONSTANTS ────────────────────────────
 
@@ -50,19 +51,6 @@ const LANG_AVATAR: Record<string, { label: string; bg: string; color: string }> 
 };
 
 // ─── HELPERS ─────────────────────────────
-
-/** 상대 시간 표시 (Figma: "6시간 전", "1일 전") */
-function relativeTime(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return '방금 전';
-  if (minutes < 60) return `${minutes}분 전`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}시간 전`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}일 전`;
-  return `${Math.floor(days / 30)}개월 전`;
-}
 
 /** 상태를 라벨로 변환 */
 function getStatusDisplay(sagaStep: string): { label: string; bg: string; color: string; dot: boolean } {
@@ -127,7 +115,7 @@ export default function SubmissionsPage(): ReactNode {
     try {
       const [result, problems] = await Promise.all([
         submissionApi.list({ page: 1, limit: 100 }),
-        problemApi.findAllProblems().catch(() => []),
+        problemApi.findAll().catch(() => []),
       ]);
       setSubmissions(result.data);
       setProblemMap(new Map(problems.map((p) => [p.id, { title: p.title, difficulty: p.difficulty ?? undefined, level: p.level ?? undefined, weekNumber: p.weekNumber ?? undefined }])));

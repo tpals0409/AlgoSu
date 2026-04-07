@@ -231,16 +231,51 @@ export class ProblemService {
   /**
    * M6: 문제 삭제 (soft delete) — ADMIN 권한 필수
    * status를 DELETED로 변경. Submission 참조 무결성 유지.
+   * QueryRunner 트랜잭션 + FOR UPDATE 비관적 락으로 동시 삭제/수정 충돌 방지
    */
   async delete(studyId: string, id: string): Promise<void> {
-    const problem = await this.findByIdInternal(studyId, id);
-    problem.status = ProblemStatus.DELETED;
-    await this.dualWrite.saveExisting(problem);
+    const qr = this.dataSource.createQueryRunner();
+    await qr.connect();
+    await qr.startTransaction();
 
-    await this.deadlineCache.invalidateDeadline(studyId, id);
-    await this.deadlineCache.invalidateWeekProblems(studyId, problem.weekNumber);
+    try {
+      // FOR UPDATE 비관적 락으로 동시 수정 방지
+      const problem = await qr.manager.findOne(Problem, {
+        where: { id, studyId },
+        lock: { mode: 'pessimistic_write' },
+      });
 
-    this.logger.log(`문제 soft delete: id=${id}, studyId=${studyId}`);
+      if (!problem) {
+        throw new NotFoundException(`문제를 찾을 수 없습니다: id=${id}`);
+      }
+
+      const allowed = ALLOWED_STATUS_TRANSITIONS[problem.status];
+      if (!allowed || !allowed.includes(ProblemStatus.DELETED)) {
+        throw new BadRequestException(
+          `상태 전이 불가: ${problem.status} → ${ProblemStatus.DELETED}`,
+        );
+      }
+
+      problem.status = ProblemStatus.DELETED;
+      await qr.manager.save(Problem, problem);
+      await qr.commitTransaction();
+
+      // 캐시 무효화 — 트랜잭션 커밋 후 실행
+      await this.deadlineCache.invalidateDeadline(studyId, id);
+      await this.deadlineCache.invalidateWeekProblems(studyId, problem.weekNumber);
+
+      // Dual Write — 트랜잭션 커밋 후 비동기 쓰기
+      if (this.dualWrite.isActive) {
+        void this.dualWrite.saveExisting(problem);
+      }
+
+      this.logger.log(`문제 soft delete: id=${id}, studyId=${studyId}`);
+    } catch (err) {
+      await qr.rollbackTransaction();
+      throw err;
+    } finally {
+      await qr.release();
+    }
   }
 
   /**

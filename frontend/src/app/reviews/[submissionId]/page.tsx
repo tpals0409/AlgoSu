@@ -41,6 +41,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { Button } from '@/components/ui/Button';
 import type { CodeHighlight } from '@/components/review/CodePanel';
 import type { CategoryItem } from '@/components/ui/CategoryBar';
+import { parseReviewFeedback, type ReviewFeedbackCategory } from '@/lib/feedback';
 
 // ─── DYNAMIC IMPORTS (무거운 리뷰 컴포넌트 lazy load) ──
 
@@ -90,95 +91,11 @@ const CategoryBar = dynamic(
   },
 );
 
-// ─── TYPES ────────────────────────────────
-
-interface FeedbackCategory {
-  category: string;
-  score: number;
-  grade: string;
-  color: 'success' | 'warning' | 'error';
-  comment: string;
-  lines: number[];
-}
-
 // ─── HELPERS ──────────────────────────────
-
-/** score → color 변환 */
-function scoreToColor(score: number): 'success' | 'warning' | 'error' {
-  if (score >= 80) return 'success';
-  if (score >= 60) return 'warning';
-  return 'error';
-}
-
-/** score → grade 변환 */
-function scoreToGrade(score: number): string {
-  if (score >= 90) return 'A';
-  if (score >= 80) return 'B';
-  if (score >= 70) return 'C';
-  if (score >= 60) return 'D';
-  return 'F';
-}
-
-/** feedback JSON 파싱 -> 카테고리 + 하이라이트 추출 */
-function parseFeedback(feedbackStr: string | null): FeedbackCategory[] {
-  if (!feedbackStr) return [];
-  try {
-    // Claude hallucination 대응: 숫자 뒤 불필요한 따옴표 제거
-    let rawJson = feedbackStr.replace(/:\s*(\d+)"(\s*[,}\]])/g, ': $1$2');
-    try {
-      JSON.parse(rawJson);
-    } catch {
-      // JSON 뒤에 추가 텍스트가 있을 수 있음 — 첫 번째 유효 JSON 객체 추출
-      const start = rawJson.indexOf('{');
-      if (start === -1) return [];
-      let depth = 0, end = -1;
-      for (let i = start; i < rawJson.length; i++) {
-        if (rawJson[i] === '{') depth++;
-        else if (rawJson[i] === '}') { depth--; if (depth === 0) { end = i; break; } }
-      }
-      if (end === -1) return [];
-      rawJson = rawJson.substring(start, end + 1);
-    }
-    const parsed = JSON.parse(rawJson) as {
-      categories?: Array<{
-        name?: string;
-        category?: string;
-        score: number;
-        grade?: string;
-        color?: string;
-        comment: string;
-        lines?: number[];
-        highlights?: Array<{ startLine: number; endLine: number }>;
-      }>;
-    };
-    if (!parsed.categories) return [];
-    return parsed.categories.map((cat) => {
-      const lines = cat.lines ?? (cat.highlights
-        ? cat.highlights.flatMap((h) => {
-            const result: number[] = [];
-            for (let l = h.startLine; l <= h.endLine; l++) result.push(l);
-            return result;
-          })
-        : []);
-      return {
-        category: cat.category ?? cat.name ?? '',
-        score: cat.score,
-        grade: cat.grade ?? scoreToGrade(cat.score),
-        color: (cat.color === 'success' || cat.color === 'warning' || cat.color === 'error')
-          ? cat.color
-          : scoreToColor(cat.score),
-        comment: cat.comment,
-        lines,
-      };
-    });
-  } catch {
-    return [];
-  }
-}
 
 /** 카테고리 -> CodeHighlight 변환 */
 function categoriesToHighlights(
-  categories: FeedbackCategory[],
+  categories: ReviewFeedbackCategory[],
   selectedIndex: number | null,
 ): CodeHighlight[] {
   if (selectedIndex === null) return [];
@@ -216,7 +133,7 @@ function categoriesToHighlights(
 }
 
 /** CategoryItem 변환 */
-function toCategoryItem(cat: FeedbackCategory): CategoryItem {
+function toCategoryItem(cat: ReviewFeedbackCategory): CategoryItem {
   return {
     category: cat.category,
     score: cat.score,
@@ -254,7 +171,7 @@ export default function CodeReviewPage(): ReactElement {
 
   const submissionId = params.submissionId;
   const currentUserId = user?.id ?? '';
-  const categories = parseFeedback(analysis?.feedback ?? null);
+  const categories = parseReviewFeedback(analysis?.feedback ?? null);
   const highlights = categoriesToHighlights(categories, selectedCategory);
   const commentLines = [...new Set(comments.filter((c) => c.lineNumber).map((c) => c.lineNumber as number))];
   const totalScore = categories.length > 0

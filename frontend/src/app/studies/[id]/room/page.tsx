@@ -249,7 +249,7 @@ export default function StudyRoomPage(): ReactElement {
     setLoadingProblems(true);
     setError(null);
 
-    problemApi.findAllProblems()
+    problemApi.findAll()
       .then((data) => {
         if (cancelled) return;
         setProblems(data);
@@ -497,7 +497,7 @@ export default function StudyRoomPage(): ReactElement {
             <span className="flex-1 text-xs text-error">{error}</span>
             <button
               type="button"
-              onClick={() => { setError(null); setLoadingProblems(true); problemApi.findAllProblems().then(setProblems).catch(() => setError('문제 목록을 불러오지 못했습니다.')).finally(() => setLoadingProblems(false)); }}
+              onClick={() => { setError(null); setLoadingProblems(true); problemApi.findAll().then(setProblems).catch(() => setError('문제 목록을 불러오지 못했습니다.')).finally(() => setLoadingProblems(false)); }}
               className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-error transition-colors hover:bg-error/10"
             >
               <RefreshCw className="h-3 w-3" aria-hidden />

@@ -407,7 +407,12 @@ class TestSecurityCodeLogLimit:
             info_calls = mock_logger.info.call_args_list
             assert len(info_calls) > 0
 
-            log_message = info_calls[0][0][0]
+            # info_calls[0] = 토큰 사용량 로그, info_calls[1] = 분석 완료 로그
+            assert len(info_calls) >= 2
+            token_log = info_calls[0][0][0]
+            assert "토큰 사용량" in token_log
+
+            log_message = info_calls[1][0][0]
             # 원본 100자 코드가 그대로 로그에 노출되면 안 됨
             assert long_code not in log_message
             # 50자 프리뷰가 포함되어야 함

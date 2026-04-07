@@ -15,6 +15,7 @@ import anthropic
 
 from .circuit_breaker import circuit_breaker
 from .config import settings
+from .metrics import claude_requests_total
 from .prompt import (
     GROUP_SYSTEM_PROMPT,
     SYSTEM_PROMPT,
@@ -92,6 +93,15 @@ class ClaudeClient:
             )
 
             circuit_breaker.record_success()
+            claude_requests_total.labels(status="success").inc()
+
+            # 토큰 사용량 로깅
+            input_tokens = message.usage.input_tokens
+            output_tokens = message.usage.output_tokens
+            logger.info(
+                f"Claude 토큰 사용량: input={input_tokens}, output={output_tokens}, "
+                f"total={input_tokens + output_tokens}"
+            )
 
             raw_text = message.content[0].text if message.content else ""
             result = self._parse_response(raw_text)
@@ -106,11 +116,13 @@ class ClaudeClient:
 
         except anthropic.RateLimitError:
             circuit_breaker.record_failure()
+            claude_requests_total.labels(status="rate_limit").inc()
             logger.warning("Claude API Rate Limit 초과")
             return self._fallback_result()
 
         except Exception as e:
             circuit_breaker.record_failure()
+            claude_requests_total.labels(status="error").inc()
             safe_error = str(e)[:100]
             logger.error(f"Claude API 오류: {safe_error}")
             return {
@@ -252,6 +264,15 @@ class ClaudeClient:
             )
 
             circuit_breaker.record_success()
+            claude_requests_total.labels(status="success").inc()
+
+            # 토큰 사용량 로깅
+            input_tokens = message.usage.input_tokens
+            output_tokens = message.usage.output_tokens
+            logger.info(
+                f"그룹 분석 토큰 사용량: input={input_tokens}, output={output_tokens}, "
+                f"total={input_tokens + output_tokens}"
+            )
 
             raw_text = message.content[0].text if message.content else ""
             result = self._parse_group_response(raw_text)
@@ -268,6 +289,7 @@ class ClaudeClient:
 
         except Exception as e:
             circuit_breaker.record_failure()
+            claude_requests_total.labels(status="error").inc()
             safe_error = str(e)[:100]
             logger.error(f"그룹 분석 Claude API 오류: {safe_error}")
             return {

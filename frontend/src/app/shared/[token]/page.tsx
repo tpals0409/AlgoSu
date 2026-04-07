@@ -27,6 +27,7 @@ import {
 import { useTheme } from 'next-themes';
 import { GuestProvider, useGuest } from '@/contexts/GuestContext';
 import { publicApi, type Problem, type Submission, type AnalysisResult } from '@/lib/api';
+import { parseFeedback } from '@/lib/feedback';
 import { getAnonymousName, shouldShowRealName } from '@/lib/anonymize';
 import { getAvatarSrc } from '@/lib/avatars';
 import { Card } from '@/components/ui/Card';
@@ -39,85 +40,7 @@ import {
   type Difficulty,
 } from '@/lib/constants';
 
-/* ───────────────── 피드백 파싱 (분석 페이지 동일) ───────────────── */
-
-interface ParsedFeedback {
-  totalScore: number;
-  summary: string;
-  categories: FeedbackCategory[];
-  optimizedCode: string | null;
-  timeComplexity: string | null;
-  spaceComplexity: string | null;
-}
-
-interface FeedbackCategory {
-  name: string;
-  score: number;
-  comment: string;
-  highlights: { startLine: number; endLine: number }[];
-}
-
-function extractComplexity(categories: FeedbackCategory[]): { time: string | null; space: string | null } {
-  const efficiency = categories.find((c) => c.name === 'efficiency');
-  if (!efficiency) return { time: null, space: null };
-  const bigOPattern = /O\([^)]+\)/g;
-  const matches = efficiency.comment.match(bigOPattern);
-  if (matches && matches.length >= 2) return { time: matches[0], space: matches[1] };
-  if (matches && matches.length === 1) return { time: matches[0], space: null };
-  return { time: null, space: null };
-}
-
-function parseFeedback(feedback: string | null, score: number | null, optimizedCode: string | null): ParsedFeedback | null {
-  if (!feedback) return null;
-  try {
-    let cleaned = feedback.trim();
-    if (cleaned.startsWith('```')) {
-      cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
-    }
-    // Claude hallucination 대응: 숫자 뒤 불필요한 따옴표 제거
-    cleaned = cleaned.replace(/:\s*(\d+)"(\s*[,}\]])/g, ': $1$2');
-    let parsed: Record<string, unknown>;
-    try {
-      parsed = JSON.parse(cleaned);
-    } catch {
-      const start = cleaned.indexOf('{');
-      if (start === -1) throw new Error('No JSON found');
-      let depth = 0, end = -1;
-      for (let i = start; i < cleaned.length; i++) {
-        if (cleaned[i] === '{') depth++;
-        else if (cleaned[i] === '}') { depth--; if (depth === 0) { end = i; break; } }
-      }
-      if (end === -1) throw new Error('No matching brace');
-      parsed = JSON.parse(cleaned.substring(start, end + 1));
-    }
-    const rawCategories = parsed.categories as Record<string, unknown>[] | undefined;
-    const categories: FeedbackCategory[] = (rawCategories ?? []).map((c) => ({
-      name: (c.name as string) ?? '',
-      score: (c.score as number) ?? 0,
-      comment: (c.comment as string) ?? '',
-      highlights: (c.highlights as { startLine: number; endLine: number }[]) ?? [],
-    }));
-    const complexity = extractComplexity(categories);
-    const resolvedOptimizedCode = (parsed.optimizedCode as string | null) ?? optimizedCode ?? null;
-    return {
-      totalScore: (parsed.totalScore as number | null) ?? score ?? 0,
-      summary: (parsed.summary as string) ?? '',
-      categories,
-      optimizedCode: resolvedOptimizedCode,
-      timeComplexity: (parsed.timeComplexity as string | null) ?? complexity.time,
-      spaceComplexity: (parsed.spaceComplexity as string | null) ?? complexity.space,
-    };
-  } catch {
-    return {
-      totalScore: score ?? 0,
-      summary: feedback,
-      categories: [],
-      optimizedCode: optimizedCode ?? null,
-      timeComplexity: null,
-      spaceComplexity: null,
-    };
-  }
-}
+/* ───────────────── 피드백 파싱 (공통 모듈에서 import) ───────────────── */
 
 function barColor(score: number): string {
   if (score >= 80) return 'var(--success)';
