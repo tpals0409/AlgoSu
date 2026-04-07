@@ -98,21 +98,74 @@ describe('RedisThrottlerStorage', () => {
       expect(result.totalHits).toBe(0);
     });
 
-    it('Redis 장애 시 — fail-open (totalHits 0 반환)', async () => {
+    it('Redis 장애 시 — 인메모리 fallback 카운팅', async () => {
       mockPipeline.exec.mockRejectedValue(new Error('Redis connection refused'));
 
-      const result = await storage.increment('test-key', 60000);
+      const result1 = await storage.increment('test-key', 60000);
+      expect(result1.totalHits).toBe(1);
+      expect(result1.timeToExpire).toBe(60000);
 
-      expect(result.totalHits).toBe(0);
-      expect(result.timeToExpire).toBe(60000);
+      const result2 = await storage.increment('test-key', 60000);
+      expect(result2.totalHits).toBe(2);
+    });
+
+    it('Redis 장애 시 — 서로 다른 키는 독립 카운팅', async () => {
+      mockPipeline.exec.mockRejectedValue(new Error('Redis connection refused'));
+
+      const resultA = await storage.increment('key-a', 60000);
+      const resultB = await storage.increment('key-b', 60000);
+
+      expect(resultA.totalHits).toBe(1);
+      expect(resultB.totalHits).toBe(1);
+    });
+
+    it('Redis 복구 시 — Redis로 자동 복귀', async () => {
+      // 먼저 Redis 장애
+      mockPipeline.exec.mockRejectedValue(new Error('Redis connection refused'));
+      const fallbackResult = await storage.increment('test-key', 60000);
+      expect(fallbackResult.totalHits).toBe(1);
+
+      // Redis 복구
+      mockPipeline.exec.mockResolvedValue([
+        [null, 0],
+        [null, 1],
+        [null, 3],
+        [null, 1],
+      ]);
+      const redisResult = await storage.increment('test-key', 60000);
+      expect(redisResult.totalHits).toBe(3);
     });
   });
 
   // ============================
-  // 2. onModuleDestroy — Redis 연결 종료
+  // 2. 인메모리 fallback 만료 처리
+  // ============================
+  describe('인메모리 fallback 만료 처리', () => {
+    it('TTL 경과한 히트는 카운트에서 제외', async () => {
+      mockPipeline.exec.mockRejectedValue(new Error('Redis connection refused'));
+
+      // TTL 100ms로 설정
+      await storage.increment('expire-key', 100);
+      expect((await storage.increment('expire-key', 100)).totalHits).toBe(2);
+
+      // TTL 경과 시뮬레이션
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      const result = await storage.increment('expire-key', 100);
+      // 이전 히트는 만료되어 1만 남아야 함
+      expect(result.totalHits).toBe(1);
+    });
+  });
+
+  // ============================
+  // 3. onModuleDestroy — Redis 연결 종료
   // ============================
   describe('onModuleDestroy', () => {
-    it('Redis 연결 종료', async () => {
+    it('Redis 연결 종료 + 인메모리 정리', async () => {
+      // 인메모리에 데이터 추가
+      mockPipeline.exec.mockRejectedValue(new Error('Redis connection refused'));
+      await storage.increment('cleanup-key', 60000);
+
       await storage.onModuleDestroy();
 
       expect(mockRedis.quit).toHaveBeenCalled();
@@ -120,7 +173,7 @@ describe('RedisThrottlerStorage', () => {
   });
 
   // ============================
-  // 3. Redis 생성자 옵션 분기 (retryStrategy, error callback)
+  // 4. Redis 생성자 옵션 분기 (retryStrategy, error callback)
   // ============================
   describe('Redis 연결 옵션 분기', () => {
     it('Redis on error 이벤트 핸들러가 등록되고 에러를 로깅', () => {

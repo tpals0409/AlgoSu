@@ -36,6 +36,7 @@ export class InviteThrottleService implements OnModuleDestroy {
 
   /**
    * 초대코드 실패 시 카운터 증가 + 잠금 체크
+   * Redis 장애 시 fail-open (가용성 우선)
    * @domain study
    * @guard invite-code-lock
    * @param ip - 요청자 IP
@@ -44,20 +45,29 @@ export class InviteThrottleService implements OnModuleDestroy {
    */
   async recordFailure(ip: string, code: string): Promise<void> {
     const key = `invite_fail:${ip}:${code}`;
-    const count = await this.redis.incr(key);
 
-    if (count === 1) {
-      await this.redis.expire(key, this.lockSeconds);
-    }
+    try {
+      const count = await this.redis.incr(key);
 
-    if (count >= this.maxFailures) {
-      this.logger.warn(`초대코드 brute force 감지: ip=${ip}, code=***`);
-      throw new BadRequestException('초대코드 입력 횟수를 초과했습니다. 15분 후 다시 시도해주세요.');
+      if (count === 1) {
+        await this.redis.expire(key, this.lockSeconds);
+      }
+
+      if (count >= this.maxFailures) {
+        this.logger.warn(`초대코드 brute force 감지: ip=${ip}, code=***`);
+        throw new BadRequestException('초대코드 입력 횟수를 초과했습니다. 15분 후 다시 시도해주세요.');
+      }
+    } catch (error: unknown) {
+      if (error instanceof BadRequestException) throw error;
+      this.logger.warn(
+        `Redis 장애 — recordFailure fail-open 적용: ${(error as Error).message}`,
+      );
     }
   }
 
   /**
    * 잠금 상태 확인 (입력 전 선제 검사)
+   * Redis 장애 시 fail-open (잠금 없음으로 처리)
    * @domain study
    * @guard invite-code-lock
    * @param ip - 요청자 IP
@@ -66,21 +76,37 @@ export class InviteThrottleService implements OnModuleDestroy {
    */
   async checkLock(ip: string, code: string): Promise<void> {
     const key = `invite_fail:${ip}:${code}`;
-    const count = await this.redis.get(key);
 
-    if (count && Number(count) >= this.maxFailures) {
-      throw new BadRequestException('초대코드 입력 횟수를 초과했습니다. 15분 후 다시 시도해주세요.');
+    try {
+      const count = await this.redis.get(key);
+
+      if (count && Number(count) >= this.maxFailures) {
+        throw new BadRequestException('초대코드 입력 횟수를 초과했습니다. 15분 후 다시 시도해주세요.');
+      }
+    } catch (error: unknown) {
+      if (error instanceof BadRequestException) throw error;
+      this.logger.warn(
+        `Redis 장애 — checkLock fail-open 적용: ${(error as Error).message}`,
+      );
     }
   }
 
   /**
    * 성공 시 카운터 초기화
+   * Redis 장애 시 fail-open (무시)
    * @domain study
    * @param ip - 요청자 IP
    * @param code - 성공한 초대코드
    */
   async clearFailures(ip: string, code: string): Promise<void> {
     const key = `invite_fail:${ip}:${code}`;
-    await this.redis.del(key);
+
+    try {
+      await this.redis.del(key);
+    } catch (error: unknown) {
+      this.logger.warn(
+        `Redis 장애 — clearFailures fail-open 적용: ${(error as Error).message}`,
+      );
+    }
   }
 }

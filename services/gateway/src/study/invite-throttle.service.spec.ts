@@ -141,7 +141,7 @@ describe('InviteThrottleService', () => {
   });
 
   // ============================
-  // Redis error callback (lines 29-34)
+  // Redis error callback
   // ============================
   describe('Redis error callback', () => {
     it('Redis on error 핸들러가 등록되어 에러를 로깅한다', () => {
@@ -151,6 +151,41 @@ describe('InviteThrottleService', () => {
       expect(errorCall).toBeDefined();
       const handler = errorCall![1] as (err: Error) => void;
       expect(() => handler(new Error('connection lost'))).not.toThrow();
+    });
+  });
+
+  // ============================
+  // Redis 장애 시 fail-open
+  // ============================
+  describe('Redis 장애 시 fail-open', () => {
+    it('recordFailure — Redis 장애 시 fail-open (통과)', async () => {
+      mockRedis.incr.mockRejectedValue(new Error('Redis connection refused'));
+
+      await expect(service.recordFailure(IP, CODE)).resolves.toBeUndefined();
+    });
+
+    it('recordFailure — BadRequestException은 재throw', async () => {
+      mockRedis.incr.mockResolvedValue(5);
+
+      await expect(service.recordFailure(IP, CODE)).rejects.toThrow(BadRequestException);
+    });
+
+    it('checkLock — Redis 장애 시 fail-open (잠금 없음)', async () => {
+      mockRedis.get.mockRejectedValue(new Error('Redis connection refused'));
+
+      await expect(service.checkLock(IP, CODE)).resolves.toBeUndefined();
+    });
+
+    it('checkLock — BadRequestException은 재throw', async () => {
+      mockRedis.get.mockResolvedValue('5');
+
+      await expect(service.checkLock(IP, CODE)).rejects.toThrow(BadRequestException);
+    });
+
+    it('clearFailures — Redis 장애 시 fail-open (무시)', async () => {
+      mockRedis.del.mockRejectedValue(new Error('Redis connection refused'));
+
+      await expect(service.clearFailures(IP, CODE)).resolves.toBeUndefined();
     });
   });
 });
