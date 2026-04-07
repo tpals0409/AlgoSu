@@ -4,17 +4,15 @@ _normalize_path, update_circuit_breaker_gauge, PrometheusMiddleware
 """
 
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from src.metrics import (
-    _normalize_path,
-    update_circuit_breaker_gauge,
-    circuit_breaker_state,
     CIRCUIT_STATE_VALUES,
     PrometheusMiddleware,
+    _normalize_path,
     metrics_endpoint,
+    update_circuit_breaker_gauge,
 )
 
 
@@ -65,7 +63,9 @@ class TestCircuitStateValues:
 class TestPrometheusMiddleware:
     """PrometheusMiddleware -- HTTP 메트릭 수집"""
 
-    def _make_app_with_route(self, route_path: str, status: int = 200, raise_exc: bool = False):
+    def _make_app_with_route(
+        self, route_path: str, status: int = 200, raise_exc: bool = False
+    ):
         """테스트용 FastAPI 앱 생성"""
         app = FastAPI()
         app.add_middleware(PrometheusMiddleware)
@@ -88,6 +88,7 @@ class TestPrometheusMiddleware:
     def test_metrics_path_excluded(self):
         """메트릭 경로는 메트릭 수집 제외"""
         from fastapi.testclient import TestClient as TC
+
         app = FastAPI()
         app.add_middleware(PrometheusMiddleware)
         app.get("/metrics")(metrics_endpoint)
@@ -107,6 +108,7 @@ class TestPrometheusMiddleware:
     def test_uuid_path_normalized(self):
         """UUID 경로 정규화"""
         from fastapi.testclient import TestClient as TC
+
         app = FastAPI()
         app.add_middleware(PrometheusMiddleware)
 

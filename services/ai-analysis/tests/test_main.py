@@ -4,8 +4,7 @@ Mock: redis, worker, circuit_breaker
 httpx.AsyncClient(TestClient) 사용
 """
 
-import json
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -46,6 +45,7 @@ def mock_app_deps():
 def client(mock_app_deps):
     """TestClient 생성"""
     from src.main import app
+
     return TestClient(app, raise_server_exceptions=False)
 
 
@@ -101,6 +101,7 @@ class TestGetQuota:
 
         # redis_client를 main 모듈에 주입
         import src.main as main_mod
+
         main_mod.redis_client = deps["redis_client"]
 
         resp = client.get(
@@ -129,6 +130,7 @@ class TestCheckAndIncrementQuota:
         deps["redis_client"].pipeline.return_value = pipe_mock
 
         import src.main as main_mod
+
         main_mod.redis_client = deps["redis_client"]
 
         resp = client.post(
@@ -148,6 +150,7 @@ class TestCheckAndIncrementQuota:
         deps["redis_client"].pipeline.return_value = pipe_mock
 
         import src.main as main_mod
+
         main_mod.redis_client = deps["redis_client"]
 
         resp = client.post(
@@ -167,6 +170,7 @@ class TestCheckAndIncrementQuota:
         deps["redis_client"].pipeline.return_value = pipe_mock
 
         import src.main as main_mod
+
         main_mod.redis_client = deps["redis_client"]
 
         resp = client.post(
@@ -179,6 +183,7 @@ class TestCheckAndIncrementQuota:
 
     def test_quota_check_no_redis(self, client, mock_app_deps):
         import src.main as main_mod
+
         main_mod.redis_client = None
 
         resp = client.post(
@@ -205,6 +210,7 @@ class TestHealthReady:
     def test_ready_no_worker_thread(self, client, mock_app_deps):
         """Worker 스레드가 없으면 503"""
         import src.main as main_mod
+
         main_mod.worker_thread = None
         main_mod.redis_client = mock_app_deps["redis_client"]
 
@@ -215,6 +221,7 @@ class TestHealthReady:
     def test_ready_worker_dead(self, client, mock_app_deps):
         """Worker 스레드가 죽어 있으면 503"""
         import src.main as main_mod
+
         mock_thread = MagicMock()
         mock_thread.is_alive.return_value = False
         main_mod.worker_thread = mock_thread
@@ -226,6 +233,7 @@ class TestHealthReady:
     def test_ready_redis_not_initialized(self, client, mock_app_deps):
         """Redis가 초기화되지 않으면 503"""
         import src.main as main_mod
+
         mock_thread = MagicMock()
         mock_thread.is_alive.return_value = True
         main_mod.worker_thread = mock_thread
@@ -238,6 +246,7 @@ class TestHealthReady:
     def test_ready_redis_ping_fails(self, client, mock_app_deps):
         """Redis ping 실패 시 503"""
         import src.main as main_mod
+
         mock_thread = MagicMock()
         mock_thread.is_alive.return_value = True
         main_mod.worker_thread = mock_thread
@@ -253,6 +262,7 @@ class TestHealthReady:
     def test_ready_all_ok(self, client, mock_app_deps):
         """모든 조건 충족 시 200"""
         import src.main as main_mod
+
         mock_thread = MagicMock()
         mock_thread.is_alive.return_value = True
         main_mod.worker_thread = mock_thread
@@ -288,6 +298,7 @@ class TestGroupAnalysis:
     def test_group_analysis_no_redis(self, client, mock_app_deps):
         """Redis 미연결 시 503"""
         import src.main as main_mod
+
         main_mod.redis_client = None
 
         resp = client.post(
@@ -300,6 +311,7 @@ class TestGroupAnalysis:
     def test_group_analysis_quota_exceeded(self, client, mock_app_deps):
         """Quota 초과 시 429"""
         import src.main as main_mod
+
         deps = mock_app_deps
         pipe_mock = MagicMock()
         pipe_mock.execute.return_value = [6, 86000]  # limit=5, current=6
@@ -315,9 +327,12 @@ class TestGroupAnalysis:
         deps["redis_client"].decr.assert_called()
 
     @patch("src.main.httpx")
-    def test_group_analysis_submission_fetch_error(self, mock_httpx, client, mock_app_deps):
+    def test_group_analysis_submission_fetch_error(
+        self, mock_httpx, client, mock_app_deps
+    ):
         """제출 조회 실패 시 502"""
         import src.main as main_mod
+
         deps = mock_app_deps
         pipe_mock = MagicMock()
         pipe_mock.execute.return_value = [1, 86000]
@@ -340,9 +355,12 @@ class TestGroupAnalysis:
 
     @patch("src.main.ClaudeClient")
     @patch("src.main.httpx")
-    def test_group_analysis_no_submissions(self, mock_httpx, mock_claude_cls, client, mock_app_deps):
+    def test_group_analysis_no_submissions(
+        self, mock_httpx, mock_claude_cls, client, mock_app_deps
+    ):
         """제출이 없으면 404"""
         import src.main as main_mod
+
         deps = mock_app_deps
         pipe_mock = MagicMock()
         pipe_mock.execute.return_value = [1, 86000]
@@ -369,9 +387,12 @@ class TestGroupAnalysis:
 
     @patch("src.main.ClaudeClient")
     @patch("src.main.httpx")
-    def test_group_analysis_success(self, mock_httpx, mock_claude_cls, client, mock_app_deps):
+    def test_group_analysis_success(
+        self, mock_httpx, mock_claude_cls, client, mock_app_deps
+    ):
         """정상 그룹 분석"""
         import src.main as main_mod
+
         deps = mock_app_deps
         pipe_mock = MagicMock()
         pipe_mock.execute.return_value = [1, 86000]
@@ -396,7 +417,9 @@ class TestGroupAnalysis:
         # Claude 모킹
         mock_claude = MagicMock()
         mock_message = MagicMock()
-        mock_message.content = [MagicMock(text='{"totalScore": 80, "summary": "Good", "categories": []}')]
+        mock_message.content = [
+            MagicMock(text='{"totalScore": 80, "summary": "Good", "categories": []}')
+        ]
         mock_claude.client.messages.create.return_value = mock_message
         mock_claude._parse_response.return_value = {
             "feedback": "Good",
@@ -418,9 +441,12 @@ class TestGroupAnalysis:
 
     @patch("src.main.ClaudeClient")
     @patch("src.main.httpx")
-    def test_group_analysis_claude_error(self, mock_httpx, mock_claude_cls, client, mock_app_deps):
+    def test_group_analysis_claude_error(
+        self, mock_httpx, mock_claude_cls, client, mock_app_deps
+    ):
         """Claude API 실패 시 502"""
         import src.main as main_mod
+
         deps = mock_app_deps
         pipe_mock = MagicMock()
         pipe_mock.execute.return_value = [1, 86000]
@@ -457,6 +483,7 @@ class TestGroupAnalysis:
     def test_group_analysis_first_use_sets_ttl(self, client, mock_app_deps):
         """첫 사용 시 TTL 설정"""
         import src.main as main_mod
+
         deps = mock_app_deps
         pipe_mock = MagicMock()
         pipe_mock.execute.return_value = [1, -1]  # ttl=-1, first use
@@ -473,7 +500,7 @@ class TestGroupAnalysis:
             mock_async_client.__aexit__ = AsyncMock(return_value=False)
             mock_httpx.AsyncClient.return_value = mock_async_client
 
-            resp = client.post(
+            client.post(
                 "/group-analysis",
                 json={"problem_id": "p1", "study_id": "s1", "user_id": "u1"},
                 headers={"X-Internal-Key": "test-key"},
@@ -488,7 +515,8 @@ class TestStartupShutdownEvents:
     def test_startup_initializes_worker_and_redis(self, mock_app_deps):
         """startup_event: Worker 및 Redis 초기화"""
         import src.main as main_mod
-        deps = mock_app_deps
+
+        _ = mock_app_deps
 
         # worker_thread/instance 초기값 확인을 위해 TestClient 생성
         # TestClient는 lifespan/on_event를 트리거하지 않으므로 직접 호출
@@ -508,8 +536,9 @@ class TestStartupShutdownEvents:
 
     def test_shutdown_stops_worker_and_redis(self, mock_app_deps):
         """shutdown_event: Worker 중지 및 Redis 정리"""
-        import src.main as main_mod
         import asyncio
+
+        import src.main as main_mod
 
         mock_worker = MagicMock()
         mock_redis = MagicMock()
@@ -523,8 +552,9 @@ class TestStartupShutdownEvents:
 
     def test_shutdown_with_no_worker(self, mock_app_deps):
         """shutdown_event: Worker 없을 때도 정상"""
-        import src.main as main_mod
         import asyncio
+
+        import src.main as main_mod
 
         main_mod.worker_instance = None
         mock_redis = MagicMock()
@@ -535,8 +565,9 @@ class TestStartupShutdownEvents:
 
     def test_shutdown_with_no_redis(self, mock_app_deps):
         """shutdown_event: Redis 없을 때도 정상"""
-        import src.main as main_mod
         import asyncio
+
+        import src.main as main_mod
 
         mock_worker = MagicMock()
         main_mod.worker_instance = mock_worker
@@ -555,6 +586,7 @@ class TestGetQuotaXUserIdFallback:
         deps["redis_client"].get.return_value = b"1"
 
         import src.main as main_mod
+
         main_mod.redis_client = deps["redis_client"]
 
         resp = client.get(
@@ -571,6 +603,7 @@ class TestGetQuotaXUserIdFallback:
         deps["redis_client"].get.return_value = None
 
         import src.main as main_mod
+
         main_mod.redis_client = deps["redis_client"]
 
         resp = client.get(

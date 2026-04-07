@@ -5,8 +5,9 @@ unittest.mock.patch로 anthropic 모킹.
 """
 
 import json
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
 
 
 @pytest.fixture
@@ -16,7 +17,7 @@ def mock_anthropic():
         mock_client = MagicMock()
         mock.Anthropic.return_value = mock_client
         # RateLimitError를 실제 Exception 서브클래스로 설정
-        mock.RateLimitError = type('RateLimitError', (Exception,), {})
+        mock.RateLimitError = type("RateLimitError", (Exception,), {})
         yield mock, mock_client
 
 
@@ -34,6 +35,7 @@ def client(mock_anthropic, mock_circuit_breaker):
     with patch("src.claude_client.settings") as mock_settings:
         mock_settings.anthropic_api_key = "test-api-key"
         from src.claude_client import ClaudeClient
+
         return ClaudeClient()
 
 
@@ -48,22 +50,29 @@ class TestAnalyzeCodeSuccess:
 
         # messages.create 응답 모킹
         mock_content = MagicMock()
-        mock_content.text = json.dumps({
-            "totalScore": 85,
-            "summary": "좋은 코드입니다. 시간복잡도는 O(n)입니다.",
-            "categories": [
-                {"name": "correctness", "score": 90, "comment": "정확함", "highlights": []},
-            ],
-            "optimizedCode": "def solution(n): return n * 2",
-        })
+        mock_content.text = json.dumps(
+            {
+                "totalScore": 85,
+                "summary": "좋은 코드입니다. 시간복잡도는 O(n)입니다.",
+                "categories": [
+                    {
+                        "name": "correctness",
+                        "score": 90,
+                        "comment": "정확함",
+                        "highlights": [],
+                    },
+                ],
+                "optimizedCode": "def solution(n): return n * 2",
+            }
+        )
         mock_message = MagicMock()
         mock_message.content = [mock_content]
         mock_client.messages.create.return_value = mock_message
 
         result = await client.analyze_code(
-            code='def solution(n): return n * 2',
-            language='python',
-            problem_title='두 배 반환',
+            code="def solution(n): return n * 2",
+            language="python",
+            problem_title="두 배 반환",
         )
 
         assert result["status"] == "completed"
@@ -85,7 +94,7 @@ class TestAnalyzeCodeCircuitBreakerOpen:
         with pytest.raises(CircuitBreakerOpenError):
             await client.analyze_code(
                 code='print("hello")',
-                language='python',
+                language="python",
             )
 
         # Claude API가 호출되지 않아야 함
@@ -105,7 +114,7 @@ class TestAnalyzeCodeApiError:
 
         result = await client.analyze_code(
             code='print("hello")',
-            language='python',
+            language="python",
         )
 
         assert result["status"] == "failed"
@@ -119,27 +128,27 @@ class TestBuildPrompt:
     def test_prompt_contains_language_code_context(self):
         from src.prompt import build_user_prompt
 
-        code = 'def two_sum(nums, target): pass'
-        language = 'python'
+        code = "def two_sum(nums, target): pass"
+        language = "python"
 
         prompt = build_user_prompt(
             code=code,
             language=language,
-            problem_title='Two Sum 문제',
-            problem_description='두 수의 합',
+            problem_title="Two Sum 문제",
+            problem_description="두 수의 합",
         )
 
         assert language in prompt
         assert code in prompt
-        assert 'Two Sum 문제' in prompt
+        assert "Two Sum 문제" in prompt
 
     def test_prompt_without_context(self):
         from src.prompt import build_user_prompt
 
-        prompt = build_user_prompt(code='x = 1', language='python')
+        prompt = build_user_prompt(code="x = 1", language="python")
 
-        assert 'x = 1' in prompt
-        assert 'python' in prompt
+        assert "x = 1" in prompt
+        assert "python" in prompt
         # 빈 컨텍스트일 때 "문제 정보:" 가 포함되지 않아야 함
         assert "문제 정보:" not in prompt
 
@@ -159,7 +168,7 @@ class TestAnalyzeCodeRateLimitError:
 
         result = await client.analyze_code(
             code='print("hello")',
-            language='python',
+            language="python",
         )
 
         assert result["status"] == "delayed"
@@ -172,19 +181,25 @@ class TestParseResponseMarkdown:
 
     def test_parse_markdown_code_block(self):
         from src.claude_client import ClaudeClient
-        with patch("src.claude_client.anthropic"), \
-             patch("src.claude_client.circuit_breaker"), \
-             patch("src.claude_client.settings") as mock_settings:
+
+        with (
+            patch("src.claude_client.anthropic"),
+            patch("src.claude_client.circuit_breaker"),
+            patch("src.claude_client.settings") as mock_settings,
+        ):
             mock_settings.anthropic_api_key = "test-key"
             c = ClaudeClient()
 
         import json
-        payload = json.dumps({
-            "totalScore": 75,
-            "summary": "마크다운 블록 테스트",
-            "categories": [{"name": "style", "score": 75, "comment": "ok"}],
-            "optimizedCode": None,
-        })
+
+        payload = json.dumps(
+            {
+                "totalScore": 75,
+                "summary": "마크다운 블록 테스트",
+                "categories": [{"name": "style", "score": 75, "comment": "ok"}],
+                "optimizedCode": None,
+            }
+        )
         raw = f"```json\n{payload}\n```"
         result = c._parse_response(raw)
         assert result["status"] == "completed"
@@ -192,9 +207,12 @@ class TestParseResponseMarkdown:
 
     def test_parse_invalid_json_returns_raw(self):
         from src.claude_client import ClaudeClient
-        with patch("src.claude_client.anthropic"), \
-             patch("src.claude_client.circuit_breaker"), \
-             patch("src.claude_client.settings") as mock_settings:
+
+        with (
+            patch("src.claude_client.anthropic"),
+            patch("src.claude_client.circuit_breaker"),
+            patch("src.claude_client.settings") as mock_settings,
+        ):
             mock_settings.anthropic_api_key = "test-key"
             c = ClaudeClient()
 
@@ -206,19 +224,25 @@ class TestParseResponseMarkdown:
     def test_parse_plain_json_no_backticks(self):
         """마크다운 없이 순수 JSON 파싱"""
         from src.claude_client import ClaudeClient
-        with patch("src.claude_client.anthropic"), \
-             patch("src.claude_client.circuit_breaker"), \
-             patch("src.claude_client.settings") as mock_settings:
+
+        with (
+            patch("src.claude_client.anthropic"),
+            patch("src.claude_client.circuit_breaker"),
+            patch("src.claude_client.settings") as mock_settings,
+        ):
             mock_settings.anthropic_api_key = "test-key"
             c = ClaudeClient()
 
         import json
-        payload = json.dumps({
-            "totalScore": 90,
-            "summary": "plain json",
-            "categories": [],
-            "optimizedCode": "optimized",
-        })
+
+        payload = json.dumps(
+            {
+                "totalScore": 90,
+                "summary": "plain json",
+                "categories": [],
+                "optimizedCode": "optimized",
+            }
+        )
         result = c._parse_response(payload)
         assert result["status"] == "completed"
         assert result["score"] == 90
@@ -227,19 +251,25 @@ class TestParseResponseMarkdown:
     def test_parse_json_with_trailing_text(self):
         """JSON 뒤에 마크다운 텍스트가 추가된 경우 첫 번째 JSON 객체만 추출"""
         from src.claude_client import ClaudeClient
-        with patch("src.claude_client.anthropic"), \
-             patch("src.claude_client.circuit_breaker"), \
-             patch("src.claude_client.settings") as mock_settings:
+
+        with (
+            patch("src.claude_client.anthropic"),
+            patch("src.claude_client.circuit_breaker"),
+            patch("src.claude_client.settings") as mock_settings,
+        ):
             mock_settings.anthropic_api_key = "test-key"
             c = ClaudeClient()
 
         import json
-        payload = json.dumps({
-            "totalScore": 85,
-            "summary": "trailing text test",
-            "categories": [{"name": "logic", "score": 85, "comment": "good"}],
-            "optimizedCode": None,
-        })
+
+        payload = json.dumps(
+            {
+                "totalScore": 85,
+                "summary": "trailing text test",
+                "categories": [{"name": "logic", "score": 85, "comment": "good"}],
+                "optimizedCode": None,
+            }
+        )
         raw = payload + "\n\n위 분석 결과를 참고하여 코드를 개선해 보세요."
         result = c._parse_response(raw)
         assert result["status"] == "completed"
@@ -248,9 +278,12 @@ class TestParseResponseMarkdown:
     def test_parse_json_with_no_braces(self):
         """중괄호가 없는 텍스트 — fallback"""
         from src.claude_client import ClaudeClient
-        with patch("src.claude_client.anthropic"), \
-             patch("src.claude_client.circuit_breaker"), \
-             patch("src.claude_client.settings") as mock_settings:
+
+        with (
+            patch("src.claude_client.anthropic"),
+            patch("src.claude_client.circuit_breaker"),
+            patch("src.claude_client.settings") as mock_settings,
+        ):
             mock_settings.anthropic_api_key = "test-key"
             c = ClaudeClient()
 
@@ -259,7 +292,9 @@ class TestParseResponseMarkdown:
         assert result["score"] == 0
 
     @pytest.mark.asyncio
-    async def test_empty_content_returns_completed(self, client, mock_anthropic, mock_circuit_breaker):
+    async def test_empty_content_returns_completed(
+        self, client, mock_anthropic, mock_circuit_breaker
+    ):
         """빈 content 처리 -- raw_text='' 로 파싱 시 completed 반환"""
         _, mock_client = mock_anthropic
         mock_message = MagicMock()
@@ -270,13 +305,15 @@ class TestParseResponseMarkdown:
         # empty content => raw_text="" => json decode fails => fallback to failed
         assert result["status"] == "failed"
 
-
     def test_parse_broken_optimized_code_recovers(self):
         """optimizedCode 내 이스케이프 깨짐 시 필드 제거 후 재파싱"""
         from src.claude_client import ClaudeClient
-        with patch("src.claude_client.anthropic"), \
-             patch("src.claude_client.circuit_breaker"), \
-             patch("src.claude_client.settings") as mock_settings:
+
+        with (
+            patch("src.claude_client.anthropic"),
+            patch("src.claude_client.circuit_breaker"),
+            patch("src.claude_client.settings") as mock_settings,
+        ):
             mock_settings.anthropic_api_key = "test-key"
             c = ClaudeClient()
 
@@ -290,9 +327,12 @@ class TestParseResponseMarkdown:
     def test_parse_fallback_extracts_total_score_via_regex(self):
         """파싱 완전 실패 시 정규식으로 totalScore 추출"""
         from src.claude_client import ClaudeClient
-        with patch("src.claude_client.anthropic"), \
-             patch("src.claude_client.circuit_breaker"), \
-             patch("src.claude_client.settings") as mock_settings:
+
+        with (
+            patch("src.claude_client.anthropic"),
+            patch("src.claude_client.circuit_breaker"),
+            patch("src.claude_client.settings") as mock_settings,
+        ):
             mock_settings.anthropic_api_key = "test-key"
             c = ClaudeClient()
 
@@ -306,25 +346,31 @@ class TestParseResponseMarkdown:
     def test_parse_total_score_zero_with_categories_recalculates(self):
         """totalScore=0이지만 카테고리 점수 존재 시 가중 평균 재계산"""
         import json as _json
+
         from src.claude_client import ClaudeClient
-        with patch("src.claude_client.anthropic"), \
-             patch("src.claude_client.circuit_breaker"), \
-             patch("src.claude_client.settings") as mock_settings:
+
+        with (
+            patch("src.claude_client.anthropic"),
+            patch("src.claude_client.circuit_breaker"),
+            patch("src.claude_client.settings") as mock_settings,
+        ):
             mock_settings.anthropic_api_key = "test-key"
             c = ClaudeClient()
 
-        payload = _json.dumps({
-            "totalScore": 0,
-            "summary": "test",
-            "categories": [
-                {"name": "correctness", "score": 80, "comment": "ok"},
-                {"name": "efficiency", "score": 70, "comment": "ok"},
-                {"name": "readability", "score": 60, "comment": "ok"},
-                {"name": "structure", "score": 60, "comment": "ok"},
-                {"name": "bestPractice", "score": 60, "comment": "ok"},
-            ],
-            "optimizedCode": None,
-        })
+        payload = _json.dumps(
+            {
+                "totalScore": 0,
+                "summary": "test",
+                "categories": [
+                    {"name": "correctness", "score": 80, "comment": "ok"},
+                    {"name": "efficiency", "score": 70, "comment": "ok"},
+                    {"name": "readability", "score": 60, "comment": "ok"},
+                    {"name": "structure", "score": 60, "comment": "ok"},
+                    {"name": "bestPractice", "score": 60, "comment": "ok"},
+                ],
+                "optimizedCode": None,
+            }
+        )
         result = c._parse_response(payload)
         assert result["status"] == "completed"
         # 80*0.3 + 70*0.25 + 60*0.15 + 60*0.15 + 60*0.15 = 24+17.5+9+9+9 = 68.5 → 68
@@ -341,12 +387,14 @@ class TestSecurityCodeLogLimit:
         _, mock_client = mock_anthropic
 
         mock_content = MagicMock()
-        mock_content.text = json.dumps({
-            "totalScore": 70,
-            "summary": "분석 결과",
-            "categories": [],
-            "optimizedCode": None,
-        })
+        mock_content.text = json.dumps(
+            {
+                "totalScore": 70,
+                "summary": "분석 결과",
+                "categories": [],
+                "optimizedCode": None,
+            }
+        )
         mock_message = MagicMock()
         mock_message.content = [mock_content]
         mock_client.messages.create.return_value = mock_message
@@ -356,7 +404,7 @@ class TestSecurityCodeLogLimit:
         with patch("src.claude_client.logger") as mock_logger:
             result = await client.analyze_code(
                 code=long_code,
-                language='python',
+                language="python",
             )
 
             assert result["status"] == "completed"
@@ -377,11 +425,14 @@ class TestSecurityCodeLogLimit:
 
 def _make_client():
     """테스트용 ClaudeClient 인스턴스 생성 (모든 의존성 모킹)"""
-    with patch("src.claude_client.anthropic"), \
-         patch("src.claude_client.circuit_breaker"), \
-         patch("src.claude_client.settings") as mock_settings:
+    with (
+        patch("src.claude_client.anthropic"),
+        patch("src.claude_client.circuit_breaker"),
+        patch("src.claude_client.settings") as mock_settings,
+    ):
         mock_settings.anthropic_api_key = "test-key"
         from src.claude_client import ClaudeClient
+
         return ClaudeClient()
 
 
@@ -392,12 +443,14 @@ class TestParseGroupResponse:
         """정상 그룹 분석 JSON 파싱"""
         c = _make_client()
 
-        payload = json.dumps({
-            "comparison": "풀이 1은 BFS, 풀이 2는 DFS를 사용했습니다.",
-            "bestApproach": "풀이 1의 BFS가 최적입니다.",
-            "optimizedCode": "def solution(): pass",
-            "learningPoints": ["BFS vs DFS 선택 기준", "시간복잡도 분석"],
-        })
+        payload = json.dumps(
+            {
+                "comparison": "풀이 1은 BFS, 풀이 2는 DFS를 사용했습니다.",
+                "bestApproach": "풀이 1의 BFS가 최적입니다.",
+                "optimizedCode": "def solution(): pass",
+                "learningPoints": ["BFS vs DFS 선택 기준", "시간복잡도 분석"],
+            }
+        )
         result = c._parse_group_response(payload)
         assert result["status"] == "completed"
         assert "BFS" in result["comparison"]
@@ -409,12 +462,14 @@ class TestParseGroupResponse:
         """마크다운 코드 블록 감싸진 그룹 응답 파싱"""
         c = _make_client()
 
-        payload = json.dumps({
-            "comparison": "비교 분석 내용",
-            "bestApproach": "최적 풀이",
-            "optimizedCode": None,
-            "learningPoints": ["포인트 1"],
-        })
+        payload = json.dumps(
+            {
+                "comparison": "비교 분석 내용",
+                "bestApproach": "최적 풀이",
+                "optimizedCode": None,
+                "learningPoints": ["포인트 1"],
+            }
+        )
         raw = f"```json\n{payload}\n```"
         result = c._parse_group_response(raw)
         assert result["status"] == "completed"
@@ -446,12 +501,14 @@ class TestParseGroupResponse:
         """learningPoints가 문자열인 경우 리스트로 보정"""
         c = _make_client()
 
-        payload = json.dumps({
-            "comparison": "비교",
-            "bestApproach": "최적",
-            "optimizedCode": None,
-            "learningPoints": "단일 포인트",
-        })
+        payload = json.dumps(
+            {
+                "comparison": "비교",
+                "bestApproach": "최적",
+                "optimizedCode": None,
+                "learningPoints": "단일 포인트",
+            }
+        )
         result = c._parse_group_response(payload)
         assert result["status"] == "completed"
         assert result["learningPoints"] == ["단일 포인트"]
@@ -460,12 +517,14 @@ class TestParseGroupResponse:
         """JSON 뒤에 추가 텍스트가 있는 경우 첫 번째 JSON 추출"""
         c = _make_client()
 
-        payload = json.dumps({
-            "comparison": "비교 분석",
-            "bestApproach": "최적",
-            "optimizedCode": "code",
-            "learningPoints": [],
-        })
+        payload = json.dumps(
+            {
+                "comparison": "비교 분석",
+                "bestApproach": "최적",
+                "optimizedCode": "code",
+                "learningPoints": [],
+            }
+        )
         raw = payload + "\n\n추가 설명 텍스트입니다."
         result = c._parse_group_response(raw)
         assert result["status"] == "completed"
@@ -490,20 +549,32 @@ class TestGroupAnalyze:
         _, mock_client = mock_anthropic
 
         mock_content = MagicMock()
-        mock_content.text = json.dumps({
-            "comparison": "풀이 비교 결과",
-            "bestApproach": "풀이 1이 최적",
-            "optimizedCode": "def best(): pass",
-            "learningPoints": ["핵심 포인트"],
-        })
+        mock_content.text = json.dumps(
+            {
+                "comparison": "풀이 비교 결과",
+                "bestApproach": "풀이 1이 최적",
+                "optimizedCode": "def best(): pass",
+                "learningPoints": ["핵심 포인트"],
+            }
+        )
         mock_message = MagicMock()
         mock_message.content = [mock_content]
         mock_client.messages.create.return_value = mock_message
 
-        result = await client.group_analyze([
-            {"language": "python", "userId": "user-1234-5678", "code": "def a(): pass"},
-            {"language": "python", "userId": "user-8765-4321", "code": "def b(): pass"},
-        ])
+        result = await client.group_analyze(
+            [
+                {
+                    "language": "python",
+                    "userId": "user-1234-5678",
+                    "code": "def a(): pass",
+                },
+                {
+                    "language": "python",
+                    "userId": "user-8765-4321",
+                    "code": "def b(): pass",
+                },
+            ]
+        )
 
         assert result["status"] == "completed"
         assert result["comparison"] == "풀이 비교 결과"
@@ -522,9 +593,11 @@ class TestGroupAnalyze:
         mock_circuit_breaker.can_execute.return_value = False
 
         with pytest.raises(CircuitBreakerOpenError):
-            await client.group_analyze([
-                {"language": "python", "userId": "user-1234", "code": "x = 1"},
-            ])
+            await client.group_analyze(
+                [
+                    {"language": "python", "userId": "user-1234", "code": "x = 1"},
+                ]
+            )
 
     @pytest.mark.asyncio
     async def test_group_analyze_api_error(
@@ -534,9 +607,11 @@ class TestGroupAnalyze:
         _, mock_client = mock_anthropic
         mock_client.messages.create.side_effect = Exception("API error")
 
-        result = await client.group_analyze([
-            {"language": "python", "userId": "user-1234", "code": "x = 1"},
-        ])
+        result = await client.group_analyze(
+            [
+                {"language": "python", "userId": "user-1234", "code": "x = 1"},
+            ]
+        )
 
         assert result["status"] == "failed"
         assert "오류" in result["comparison"]

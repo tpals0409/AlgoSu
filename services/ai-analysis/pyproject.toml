@@ -1,0 +1,35 @@
+[project]
+name = "algosu-ai-analysis"
+version = "1.0.0"
+description = "AlgoSu AI Analysis Service — Claude API 기반 코드 분석"
+requires-python = ">=3.13"
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]  # line length is handled by ruff format
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "--cov=src --cov-fail-under=98"
+minversion = "8.0"
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["src/__init__.py"]
+
+[tool.coverage.report]
+fail_under = 98
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.",
+    "if TYPE_CHECKING:",
+]

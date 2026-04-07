@@ -4,7 +4,6 @@ CircuitBreaker 클래스만 직접 import하여 테스트.
 모듈 레벨 싱글턴(circuit_breaker)은 테스트 대상 아님.
 """
 
-import time
 from unittest.mock import patch
 
 import pytest

@@ -8,13 +8,13 @@ import logging
 from unittest.mock import patch
 
 from src.logger import (
-    sanitize_str,
-    mask_ip,
-    mask_email,
-    sanitize_headers,
     JsonFormatter,
-    setup_logging,
     log_http,
+    mask_email,
+    mask_ip,
+    sanitize_headers,
+    sanitize_str,
+    setup_logging,
 )
 
 
@@ -99,6 +99,7 @@ class TestJsonFormatter:
             raise ValueError("test error")
         except ValueError:
             import sys
+
             exc_info = sys.exc_info()
 
         record = logging.LogRecord(
@@ -188,6 +189,7 @@ class TestJsonFormatterProductionNoStack:
             raise RuntimeError("prod error")
         except RuntimeError:
             import sys
+
             exc_info = sys.exc_info()
 
         record = logging.LogRecord(
@@ -215,6 +217,7 @@ class TestJsonFormatterProductionNoStack:
             raise ValueError("dev error")
         except ValueError:
             import sys
+
             exc_info = sys.exc_info()
 
         record = logging.LogRecord(
@@ -242,6 +245,7 @@ class TestJsonFormatterProductionNoStack:
             raise RuntimeError("coded error")
         except RuntimeError:
             import sys
+
             exc_info = sys.exc_info()
 
         record = logging.LogRecord(

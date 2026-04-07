@@ -4,9 +4,8 @@ build_user_prompt, build_group_user_prompt, 상수 검증
 """
 
 from src.prompt import (
-    SYSTEM_PROMPT,
     GROUP_SYSTEM_PROMPT,
-    build_user_prompt,
+    SYSTEM_PROMPT,
     build_group_user_prompt,
 )
 
@@ -26,6 +25,10 @@ class TestSystemPrompt:
         assert "categories" in SYSTEM_PROMPT
         assert "optimizedCode" in SYSTEM_PROMPT
 
+    def test_system_prompt_contains_complexity_fields(self):
+        assert "timeComplexity" in SYSTEM_PROMPT
+        assert "spaceComplexity" in SYSTEM_PROMPT
+
 
 class TestGroupSystemPrompt:
     """GROUP_SYSTEM_PROMPT 상수 검증"""
@@ -41,9 +44,7 @@ class TestBuildGroupUserPrompt:
     """build_group_user_prompt() 테스트"""
 
     def test_single_snippet(self):
-        snippets = [
-            {"language": "python", "userId": "user-1234-5678", "code": "x = 1"}
-        ]
+        snippets = [{"language": "python", "userId": "user-1234-5678", "code": "x = 1"}]
         result = build_group_user_prompt(snippets)
         assert "풀이 1" in result
         assert "python" in result

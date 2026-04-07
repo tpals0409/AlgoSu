@@ -14,13 +14,12 @@ from datetime import date
 
 import httpx
 import redis
-from fastapi import FastAPI, HTTPException, Header, Query, Request
+from fastapi import FastAPI, Header, HTTPException, Query, Request
 from pydantic import BaseModel
 
-from .config import settings
-from .worker import AIAnalysisWorker
-from .claude_client import ClaudeClient
 from .circuit_breaker import circuit_breaker
+from .claude_client import ClaudeClient
+from .config import settings
 from .logger import setup_logging
 from .metrics import (
     PrometheusMiddleware,
@@ -28,6 +27,7 @@ from .metrics import (
     update_circuit_breaker_gauge,
 )
 from .prompt import GROUP_SYSTEM_PROMPT, build_group_user_prompt
+from .worker import AIAnalysisWorker
 
 # ─── LOGGING ──────────────────────────────────
 

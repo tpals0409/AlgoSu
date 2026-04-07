@@ -5,8 +5,8 @@
 @related worker.py, claude_client.py, metrics.py
 """
 
-import time
 import logging
+import time
 from enum import Enum
 from typing import TypeVar
 
