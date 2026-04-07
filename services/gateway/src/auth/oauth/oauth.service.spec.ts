@@ -1,4 +1,4 @@
-import { BadRequestException, UnauthorizedException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
 import { OAuthService } from './oauth.service';

@@ -7,7 +7,6 @@
 import {
   Injectable,
   BadRequestException,
-  UnauthorizedException,
   NotFoundException,
   InternalServerErrorException,
 } from '@nestjs/common';

@@ -380,7 +380,9 @@ class AIAnalysisWorker:
             {
                 "submissionId": submission_id,
                 "status": f"ai_{status}",
-                "timestamp": __import__("datetime").datetime.now(__import__("datetime").UTC).isoformat(),
+                "timestamp": __import__("datetime")
+                .datetime.now(__import__("datetime").UTC)
+                .isoformat(),
             }
         )
         self.redis_client.publish(channel, payload)
