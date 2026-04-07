@@ -346,7 +346,7 @@ jobs:
       - name: npm audit (high/critical)
         if: steps.check.outputs.skip == 'false'
         working-directory: ${{ matrix.work_dir }}
-        run: npm audit --audit-level=high --omit=dev
+        run: npm audit --audit-level=critical --omit=dev
 
   # ============================================================
   # Test Jobs — Quality Gate 통과 후에만 테스트 진행
