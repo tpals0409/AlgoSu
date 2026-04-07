@@ -8,6 +8,7 @@
 import logging
 import time
 from enum import Enum
+from threading import Lock
 from typing import TypeVar
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,7 @@ class CircuitBreaker:
         self.recovery_timeout = recovery_timeout
         self.half_open_requests = half_open_requests
 
+        self._lock = Lock()
         self.state = CircuitState.CLOSED
         self.failure_count = 0
         self.success_count = 0
@@ -61,42 +63,59 @@ class CircuitBreaker:
 
     @property
     def is_open(self) -> bool:
-        if self.state == CircuitState.OPEN:
-            # recovery_timeout 경과 시 HALF_OPEN 전환
-            if time.time() - self.last_failure_time >= self.recovery_timeout:
-                logger.info("Circuit Breaker: OPEN → HALF_OPEN (복구 시도)")
-                self.state = CircuitState.HALF_OPEN
-                self.half_open_successes = 0
-                self._notify_state_change()
+        notify = False
+        with self._lock:
+            if self.state == CircuitState.OPEN:
+                # recovery_timeout 경과 시 HALF_OPEN 전환
+                if time.time() - self.last_failure_time >= self.recovery_timeout:
+                    logger.info("Circuit Breaker: OPEN → HALF_OPEN (복구 시도)")
+                    self.state = CircuitState.HALF_OPEN
+                    self.half_open_successes = 0
+                    notify = True
+                else:
+                    return True
+            else:
                 return False
-            return True
+        # Lock 밖에서 콜백 호출 (deadlock 방지)
+        if notify:
+            self._notify_state_change()
         return False
 
     def record_success(self) -> None:
-        if self.state == CircuitState.HALF_OPEN:
-            self.half_open_successes += 1
-            if self.half_open_successes >= self.half_open_requests:
-                logger.info("Circuit Breaker: HALF_OPEN → CLOSED (정상화)")
-                self.state = CircuitState.CLOSED
+        notify = False
+        with self._lock:
+            if self.state == CircuitState.HALF_OPEN:
+                self.half_open_successes += 1
+                if self.half_open_successes >= self.half_open_requests:
+                    logger.info("Circuit Breaker: HALF_OPEN → CLOSED (정상화)")
+                    self.state = CircuitState.CLOSED
+                    self.failure_count = 0
+                    self.half_open_successes = 0
+                    notify = True
+            else:
                 self.failure_count = 0
-                self.half_open_successes = 0
-                self._notify_state_change()
-        else:
-            self.failure_count = 0
+        # Lock 밖에서 콜백 호출 (deadlock 방지)
+        if notify:
+            self._notify_state_change()
 
     def record_failure(self) -> None:
-        self.failure_count += 1
-        self.last_failure_time = time.time()
+        notify = False
+        with self._lock:
+            self.failure_count += 1
+            self.last_failure_time = time.time()
 
-        if self.state == CircuitState.HALF_OPEN:
-            logger.warning("Circuit Breaker: HALF_OPEN → OPEN (복구 실패)")
-            self.state = CircuitState.OPEN
-            self._notify_state_change()
-        elif self.failure_count >= self.failure_threshold:
-            logger.warning(
-                f"Circuit Breaker: CLOSED → OPEN (연속 {self.failure_count}회 실패)"
-            )
-            self.state = CircuitState.OPEN
+            if self.state == CircuitState.HALF_OPEN:
+                logger.warning("Circuit Breaker: HALF_OPEN → OPEN (복구 실패)")
+                self.state = CircuitState.OPEN
+                notify = True
+            elif self.failure_count >= self.failure_threshold:
+                logger.warning(
+                    f"Circuit Breaker: CLOSED → OPEN (연속 {self.failure_count}회 실패)"
+                )
+                self.state = CircuitState.OPEN
+                notify = True
+        # Lock 밖에서 콜백 호출 (deadlock 방지)
+        if notify:
             self._notify_state_change()
 
     def can_execute(self) -> bool:

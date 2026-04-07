@@ -1,9 +1,10 @@
-"""CircuitBreaker 단위 테스트 (10개)
+"""CircuitBreaker 단위 테스트 (14개)
 
 CircuitBreaker 클래스만 직접 import하여 테스트.
 모듈 레벨 싱글턴(circuit_breaker)은 테스트 대상 아님.
 """
 
+import threading
 from unittest.mock import patch
 
 import pytest
@@ -192,3 +193,96 @@ class TestSetStateChangeCallback:
         cb.record_failure()
 
         assert "OPEN" in state_changes
+
+
+class TestThreadSafety:
+    """Thread safety 검증 — Lock 적용 후 동시 접근 안정성"""
+
+    def test_has_lock_attribute(self, cb: CircuitBreaker):
+        """_lock 속성이 threading.Lock 인스턴스인지 확인"""
+        assert hasattr(cb, "_lock")
+        # Lock은 _thread.lock 타입이므로 acquire/release 메서드로 확인
+        assert callable(getattr(cb._lock, "acquire", None))
+        assert callable(getattr(cb._lock, "release", None))
+
+    def test_concurrent_record_failure_no_race(self):
+        """다중 스레드에서 record_failure() 동시 호출 — failure_count 정합성"""
+        cb = CircuitBreaker(failure_threshold=1000, recovery_timeout=30)
+        num_threads = 10
+        calls_per_thread = 100
+        barrier = threading.Barrier(num_threads)
+
+        def worker():
+            barrier.wait()
+            for _ in range(calls_per_thread):
+                cb.record_failure()
+
+        threads = [threading.Thread(target=worker) for _ in range(num_threads)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert cb.failure_count == num_threads * calls_per_thread
+
+    def test_concurrent_record_success_and_failure(self):
+        """record_success()와 record_failure() 동시 호출 — 예외 없이 완료"""
+        cb = CircuitBreaker(failure_threshold=1000, recovery_timeout=30)
+        num_threads = 10
+        calls_per_thread = 100
+        barrier = threading.Barrier(num_threads * 2)
+        errors: list = []
+
+        def success_worker():
+            barrier.wait()
+            try:
+                for _ in range(calls_per_thread):
+                    cb.record_success()
+            except Exception as e:
+                errors.append(e)
+
+        def failure_worker():
+            barrier.wait()
+            try:
+                for _ in range(calls_per_thread):
+                    cb.record_failure()
+            except Exception as e:
+                errors.append(e)
+
+        threads = []
+        for _ in range(num_threads):
+            threads.append(threading.Thread(target=success_worker))
+            threads.append(threading.Thread(target=failure_worker))
+
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert len(errors) == 0
+        # 상태는 CLOSED 또는 OPEN 중 하나 (HALF_OPEN은 아닌 상태)
+        assert cb.state in (CircuitState.CLOSED, CircuitState.OPEN)
+
+    def test_concurrent_can_execute_no_crash(self):
+        """다중 스레드에서 can_execute() 동시 호출 — 예외 없이 완료"""
+        cb = CircuitBreaker(failure_threshold=5, recovery_timeout=30)
+        num_threads = 20
+        calls_per_thread = 100
+        barrier = threading.Barrier(num_threads)
+        errors: list = []
+
+        def worker():
+            barrier.wait()
+            try:
+                for _ in range(calls_per_thread):
+                    cb.can_execute()
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=worker) for _ in range(num_threads)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert len(errors) == 0
