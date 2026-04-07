@@ -30,6 +30,16 @@ import { HealthController } from './health.controller';
         synchronize: false, // 프로덕션 절대 금지
         logging: ['error', 'warn'],
         maxQueryExecutionTime: 200, // 200ms 초과 쿼리 경고 로그 (monitoring-log-rules.md §8-1)
+        ssl:
+          configService.get<string>('DATABASE_SSL') === 'true'
+            ? { rejectUnauthorized: false }
+            : false,
+        extra: {
+          max: parseInt(configService.get<string>('DATABASE_POOL_MAX', '20'), 10),
+          min: parseInt(configService.get<string>('DATABASE_POOL_MIN', '5'), 10),
+          connectionTimeoutMillis: 3000,
+          idleTimeoutMillis: 30000,
+        },
       }),
     }),
     ScheduleModule.forRoot(),

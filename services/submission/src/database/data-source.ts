@@ -11,4 +11,14 @@ export default new DataSource({
   migrations: [__dirname + '/migrations/*{.ts,.js}'],
   synchronize: false,
   logging: ['error', 'warn', 'migration'],
+  ssl:
+    process.env.DATABASE_SSL === 'true'
+      ? { rejectUnauthorized: false }
+      : false,
+  extra: {
+    max: parseInt(process.env.DATABASE_POOL_MAX ?? '20', 10),
+    min: parseInt(process.env.DATABASE_POOL_MIN ?? '5', 10),
+    connectionTimeoutMillis: 3000,
+    idleTimeoutMillis: 30000,
+  },
 });

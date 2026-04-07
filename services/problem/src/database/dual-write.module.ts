@@ -38,6 +38,16 @@ import { StructuredLoggerService } from '../common/logger/structured-logger.serv
             entities: [Problem],
             synchronize: false,
             logging: false,
+            ssl:
+              configService.get<string>('DATABASE_SSL') === 'true'
+                ? { rejectUnauthorized: false }
+                : false,
+            extra: {
+              max: parseInt(configService.get<string>('DATABASE_POOL_MAX', '20'), 10),
+              min: parseInt(configService.get<string>('DATABASE_POOL_MIN', '5'), 10),
+              connectionTimeoutMillis: 3000,
+              idleTimeoutMillis: 30000,
+            },
           };
         }
 
@@ -51,6 +61,16 @@ import { StructuredLoggerService } from '../common/logger/structured-logger.serv
           entities: [Problem],
           synchronize: false,
           logging: ['error', 'warn'],
+          ssl:
+            configService.get<string>('NEW_DATABASE_SSL', configService.get<string>('DATABASE_SSL', 'false')) === 'true'
+              ? { rejectUnauthorized: false }
+              : false,
+          extra: {
+            max: parseInt(configService.get<string>('DATABASE_POOL_MAX', '20'), 10),
+            min: parseInt(configService.get<string>('DATABASE_POOL_MIN', '5'), 10),
+            connectionTimeoutMillis: 3000,
+            idleTimeoutMillis: 30000,
+          },
         };
       },
     }),

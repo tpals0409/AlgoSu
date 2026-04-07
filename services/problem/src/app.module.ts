@@ -29,6 +29,16 @@ import { StructuredLoggerService } from './common/logger/structured-logger.servi
         synchronize: false,
         logging: ['error', 'warn'],
         maxQueryExecutionTime: 200,
+        ssl:
+          configService.get<string>('DATABASE_SSL') === 'true'
+            ? { rejectUnauthorized: false }
+            : false,
+        extra: {
+          max: parseInt(configService.get<string>('DATABASE_POOL_MAX', '20'), 10),
+          min: parseInt(configService.get<string>('DATABASE_POOL_MIN', '5'), 10),
+          connectionTimeoutMillis: 3000,
+          idleTimeoutMillis: 30000,
+        },
       }),
     }),
     DualWriteModule,

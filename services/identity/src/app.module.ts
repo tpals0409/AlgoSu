@@ -33,6 +33,16 @@ import { ShareLinkModule } from './share/share-link.module';
         synchronize: false, // 마이그레이션으로 관리
         logging: ['error', 'warn'],
         maxQueryExecutionTime: 200, // 200ms 초과 쿼리 경고 로그 (monitoring-log-rules.md §8-1)
+        ssl:
+          config.get<string>('DATABASE_SSL') === 'true'
+            ? { rejectUnauthorized: false }
+            : false,
+        extra: {
+          max: parseInt(config.get<string>('DATABASE_POOL_MAX', '20'), 10),
+          min: parseInt(config.get<string>('DATABASE_POOL_MIN', '5'), 10),
+          connectionTimeoutMillis: 3000,
+          idleTimeoutMillis: 30000,
+        },
       }),
     }),
     MetricsModule,

@@ -5,7 +5,7 @@
  * @related problem.controller.ts, problem.entity.ts, deadline-cache.service.ts
  */
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { DataSource, In } from 'typeorm';
+import { DataSource, In, LessThanOrEqual } from 'typeorm';
 import { Problem, ProblemStatus } from './problem.entity';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
 import { DeadlineCacheService } from '../cache/deadline-cache.service';
@@ -225,5 +225,53 @@ export class ProblemService {
       order: { weekNumber: 'ASC', createdAt: 'ASC' },
     });
     return problems;
+  }
+
+  /**
+   * 만료된 ACTIVE 문제를 CLOSED로 일괄 전환 — DeadlineSchedulerService에서 호출
+   * 조건: status=ACTIVE AND deadline IS NOT NULL AND deadline <= NOW()
+   * 캐시 무효화: 각 문제의 deadline + weekProblems 캐시 무효화
+   * @returns 전환 건수 + 영향받은 문제 정보 (로깅/모니터링용)
+   */
+  async closeExpiredProblems(): Promise<{
+    count: number;
+    affected: Array<{ id: string; studyId: string; weekNumber: string }>;
+  }> {
+    const now = new Date();
+
+    const expiredProblems = await this.dualWrite.find({
+      where: {
+        status: ProblemStatus.ACTIVE,
+        deadline: LessThanOrEqual(now),
+      },
+    });
+
+    if (expiredProblems.length === 0) {
+      return { count: 0, affected: [] };
+    }
+
+    const affected: Array<{ id: string; studyId: string; weekNumber: string }> = [];
+
+    for (const problem of expiredProblems) {
+      problem.status = ProblemStatus.CLOSED;
+      await this.dualWrite.saveExisting(problem);
+
+      // 캐시 무효화 — deadline 캐시 + 주차별 목록 캐시
+      await this.deadlineCache.invalidateDeadline(problem.studyId, problem.id);
+      await this.deadlineCache.invalidateWeekProblems(problem.studyId, problem.weekNumber);
+
+      affected.push({
+        id: problem.id,
+        studyId: problem.studyId,
+        weekNumber: problem.weekNumber,
+      });
+    }
+
+    this.logger.log(
+      `만료 문제 일괄 종료 완료: ${affected.length}건`,
+      { affected },
+    );
+
+    return { count: affected.length, affected };
   }
 }

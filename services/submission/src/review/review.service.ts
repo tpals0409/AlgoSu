@@ -10,7 +10,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull } from 'typeorm';
 import { ReviewComment } from './review-comment.entity';
 import { ReviewReply } from './review-reply.entity';
 import { Submission } from '../submission/submission.entity';
@@ -82,11 +82,24 @@ export class ReviewService {
     submissionId: string,
     studyId: string,
   ): Promise<ReviewComment[]> {
-    return this.commentRepo.find({
-      where: { submissionId, studyId },
-      relations: ['replies'],
-      order: { createdAt: 'ASC' },
-    });
+    /* TypeORM @DeleteDateColumn 자동 필터는 메인 엔티티에만 적용되고
+       relations 로 로드되는 replies 에는 적용되지 않으므로
+       QueryBuilder 로 replies.deletedAt IS NULL 조건을 명시한다. */
+    const comments = await this.commentRepo
+      .createQueryBuilder('comment')
+      .leftJoinAndSelect(
+        'comment.replies',
+        'reply',
+        'reply.deletedAt IS NULL',
+      )
+      .where('comment.submissionId = :submissionId', { submissionId })
+      .andWhere('comment.studyId = :studyId', { studyId })
+      .andWhere('comment.deletedAt IS NULL')
+      .orderBy('comment.createdAt', 'ASC')
+      .addOrderBy('reply.createdAt', 'ASC')
+      .getMany();
+
+    return comments;
   }
 
   /**
@@ -186,7 +199,7 @@ export class ReviewService {
       throw new NotFoundException('댓글을 찾을 수 없습니다.');
     }
     return this.replyRepo.find({
-      where: { commentId: comment.id },
+      where: { commentId: comment.id, deletedAt: IsNull() },
       order: { createdAt: 'ASC' },
     });
   }
