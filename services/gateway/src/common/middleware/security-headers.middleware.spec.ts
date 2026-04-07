@@ -22,6 +22,7 @@ describe('SecurityHeadersMiddleware', () => {
         headers[key] = value;
         return mockRes as Response;
       }),
+      hasHeader: jest.fn((_key: string) => false),
     };
     mockNext = jest.fn();
   });
@@ -65,8 +66,43 @@ describe('SecurityHeadersMiddleware', () => {
     expect(mockNext).toHaveBeenCalledTimes(1);
   });
 
-  it('should set exactly 5 security headers', () => {
+  it('should set exactly 7 security headers', () => {
     middleware.use(mockReq as Request, mockRes as Response, mockNext);
+    expect(mockRes.setHeader).toHaveBeenCalledTimes(7);
+  });
+
+  it('should set Content-Security-Policy when not already present', () => {
+    middleware.use(mockReq as Request, mockRes as Response, mockNext);
+    expect(mockRes.setHeader).toHaveBeenCalledWith(
+      'Content-Security-Policy',
+      expect.stringContaining("default-src 'self'"),
+    );
+  });
+
+  it('should set Strict-Transport-Security when not already present', () => {
+    middleware.use(mockReq as Request, mockRes as Response, mockNext);
+    expect(mockRes.setHeader).toHaveBeenCalledWith(
+      'Strict-Transport-Security',
+      'max-age=31536000; includeSubDomains',
+    );
+  });
+
+  it('should skip CSP/HSTS when Traefik already set them', () => {
+    (mockRes.hasHeader as jest.Mock).mockImplementation(
+      (key: string) =>
+        key === 'Content-Security-Policy' ||
+        key === 'Strict-Transport-Security',
+    );
+    middleware.use(mockReq as Request, mockRes as Response, mockNext);
+    expect(mockRes.setHeader).not.toHaveBeenCalledWith(
+      'Content-Security-Policy',
+      expect.anything(),
+    );
+    expect(mockRes.setHeader).not.toHaveBeenCalledWith(
+      'Strict-Transport-Security',
+      expect.anything(),
+    );
+    // 나머지 5개 헤더는 여전히 설정됨
     expect(mockRes.setHeader).toHaveBeenCalledTimes(5);
   });
 });

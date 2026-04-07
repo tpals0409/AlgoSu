@@ -39,6 +39,9 @@ export class JwtMiddleware implements NestMiddleware {
   }
 
   async use(req: Request, _res: Response, next: NextFunction): Promise<void> {
+    // 클라이언트가 임의로 주입한 x-demo-user 헤더 제거 (JWT 검증 후 재설정)
+    delete req.headers['x-demo-user'];
+
     const token = this.extractToken(req);
 
     if (!token) {

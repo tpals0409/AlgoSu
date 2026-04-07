@@ -252,7 +252,36 @@ describe('JwtMiddleware', () => {
   });
 
   // ============================
-  // 5. Authorization 헤더 제거
+  // 5. x-demo-user 헤더 strip
+  // ============================
+  describe('x-demo-user 헤더 strip', () => {
+    it('클라이언트가 주입한 x-demo-user 헤더 제거 (isDemo 없는 토큰)', async () => {
+      const token = createValidToken();
+      const req = createMockRequest({
+        cookies: { token },
+        headers: { 'x-demo-user': 'true' },
+      });
+
+      await middleware.use(req, mockRes, mockNext);
+
+      expect(req.headers['x-demo-user']).toBeUndefined();
+    });
+
+    it('isDemo=true 토큰이면 x-demo-user 재설정', async () => {
+      const token = createValidToken({ isDemo: true });
+      const req = createMockRequest({
+        cookies: { token },
+        headers: { 'x-demo-user': 'true' },
+      });
+
+      await middleware.use(req, mockRes, mockNext);
+
+      expect(req.headers['x-demo-user']).toBe('true');
+    });
+  });
+
+  // ============================
+  // 6. Authorization 헤더 제거
   // ============================
   describe('Authorization 헤더 제거', () => {
     it('검증 후 Authorization 헤더 제거 (내부 서비스 전달 차단)', async () => {

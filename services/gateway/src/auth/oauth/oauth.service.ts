@@ -515,7 +515,7 @@ export class OAuthService {
     }
 
     const storedToken = await this.redis.get(`refresh:${userId}`);
-    if (!storedToken || storedToken !== refreshToken) {
+    if (!storedToken || !this.timingSafeEqual(storedToken, refreshToken)) {
       throw new UnauthorizedException('Refresh Token이 만료되었거나 무효화되었습니다.');
     }
 
@@ -542,5 +542,15 @@ export class OAuthService {
   ): Promise<{ github_username: string | null; github_token: string | null }> {
     const result = await this.identityClient.getGitHubTokenInfo(userId);
     return result as unknown as { github_username: string | null; github_token: string | null };
+  }
+
+  /**
+   * 타이밍 사이드채널 방지를 위한 상수 시간 문자열 비교
+   */
+  private timingSafeEqual(a: string, b: string): boolean {
+    const bufA = Buffer.from(a);
+    const bufB = Buffer.from(b);
+    if (bufA.length !== bufB.length) return false;
+    return crypto.timingSafeEqual(bufA, bufB);
   }
 }

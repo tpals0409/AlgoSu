@@ -25,6 +25,20 @@ import { Request, Response, NextFunction } from 'express';
 export class SecurityHeadersMiddleware implements NestMiddleware {
   use(_req: Request, res: Response, next: NextFunction): void {
     // 내부 직접 호출 방어 계층 — Traefik 경유 시 Traefik 헤더가 우선
+    // CSP — Traefik security-headers Middleware와 동일 값
+    if (!res.hasHeader('Content-Security-Policy')) {
+      res.setHeader(
+        'Content-Security-Policy',
+        "default-src 'self'; script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://api.algo-su.com; frame-ancestors 'none'",
+      );
+    }
+    // HSTS — stsSeconds: 31536000, stsIncludeSubdomains: true
+    if (!res.hasHeader('Strict-Transport-Security')) {
+      res.setHeader(
+        'Strict-Transport-Security',
+        'max-age=31536000; includeSubDomains',
+      );
+    }
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('X-XSS-Protection', '0');
