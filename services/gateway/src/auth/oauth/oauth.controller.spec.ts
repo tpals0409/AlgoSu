@@ -51,7 +51,6 @@ describe('OAuthController', () => {
       findUserById: jest.fn().mockResolvedValue(mockUser),
       findUserByIdOrThrow: jest.fn().mockResolvedValue(mockUser),
       updateAvatar: jest.fn().mockResolvedValue(undefined),
-      revokeRefreshToken: jest.fn().mockResolvedValue(undefined),
       softDeleteAccount: jest.fn().mockResolvedValue(undefined),
       issueAccessToken: jest.fn().mockReturnValue('new-jwt-token'),
     };
@@ -315,14 +314,13 @@ describe('OAuthController', () => {
   // 6. 로그아웃
   // ============================
   describe('logout', () => {
-    it('정상 로그아웃 -- 쿠키 삭제 + refresh token 무효화', async () => {
+    it('정상 로그아웃 -- 쿠키 삭제', async () => {
       const token = jwt.sign({ sub: USER_ID }, JWT_SECRET);
       const req = createMockReq({ cookies: { token } });
       const res = createMockRes();
 
       const result = await controller.logout(req as any, res as any);
 
-      expect(mockOAuthService.revokeRefreshToken).toHaveBeenCalledWith(USER_ID);
       expect(res.clearCookie).toHaveBeenCalledWith('token', expect.objectContaining({ httpOnly: true }));
       expect(result.message).toContain('로그아웃');
     });
@@ -333,7 +331,6 @@ describe('OAuthController', () => {
 
       const result = await controller.logout(req as any, res as any);
 
-      expect(mockOAuthService.revokeRefreshToken).not.toHaveBeenCalled();
       expect(res.clearCookie).toHaveBeenCalled();
       expect(result.message).toContain('로그아웃');
     });
@@ -345,22 +342,6 @@ describe('OAuthController', () => {
 
       const result = await controller.logout(req as any, res as any);
 
-      // sub도 userId도 없으므로 revokeRefreshToken 호출 안 됨
-      expect(mockOAuthService.revokeRefreshToken).not.toHaveBeenCalled();
-      expect(res.clearCookie).toHaveBeenCalled();
-      expect(result.message).toContain('로그아웃');
-    });
-
-    it('revokeRefreshToken 실패 시 catch 블록 진입 (line 327)', async () => {
-      // 유효한 토큰으로 userId 추출 성공 → revokeRefreshToken에서 예외 → catch 블록 커버
-      mockOAuthService.revokeRefreshToken.mockRejectedValueOnce(new Error('revoke failed'));
-      const token = jwt.sign({ sub: USER_ID }, JWT_SECRET);
-      const req = createMockReq({ cookies: { token } });
-      const res = createMockRes();
-
-      const result = await controller.logout(req as any, res as any);
-
-      expect(mockOAuthService.revokeRefreshToken).toHaveBeenCalledWith(USER_ID);
       expect(res.clearCookie).toHaveBeenCalled();
       expect(result.message).toContain('로그아웃');
     });
@@ -417,7 +398,6 @@ describe('OAuthController', () => {
       const result = await controller.deleteAccount(req as any, res as any);
 
       expect(mockOAuthService.softDeleteAccount).toHaveBeenCalledWith(USER_ID);
-      expect(mockOAuthService.revokeRefreshToken).toHaveBeenCalledWith(USER_ID);
       expect(res.clearCookie).toHaveBeenCalled();
       expect(result.message).toContain('삭제');
     });

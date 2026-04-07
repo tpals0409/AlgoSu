@@ -326,3 +326,189 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
+
+# -- 7. postgres-ingress: gateway, identity, submission에서만 인바운드 허용 --
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-ingress
+  namespace: algosu
+  labels:
+    app.kubernetes.io/part-of: algosu
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    # gateway에서 PostgreSQL 접근 (gateway_db)
+    - from:
+        - podSelector:
+            matchLabels:
+              app: gateway
+      ports:
+        - protocol: TCP
+          port: 5432
+    # identity-service에서 PostgreSQL 접근 (identity_db)
+    - from:
+        - podSelector:
+            matchLabels:
+              app: identity-service
+      ports:
+        - protocol: TCP
+          port: 5432
+    # submission-service에서 PostgreSQL 접근 (submission_db)
+    - from:
+        - podSelector:
+            matchLabels:
+              app: submission-service
+      ports:
+        - protocol: TCP
+          port: 5432
+
+# -- 8. postgres-problem-ingress: problem에서만 인바운드 허용 --
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-problem-ingress
+  namespace: algosu
+  labels:
+    app.kubernetes.io/part-of: algosu
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: postgres-problem
+  policyTypes:
+    - Ingress
+  ingress:
+    # problem-service에서 PostgreSQL 접근 (problem_db)
+    - from:
+        - podSelector:
+            matchLabels:
+              app: problem-service
+      ports:
+        - protocol: TCP
+          port: 5432
+
+# -- 9. redis-ingress: gateway, submission, github-worker에서만 인바운드 허용 --
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis-ingress
+  namespace: algosu
+  labels:
+    app.kubernetes.io/part-of: algosu
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+  policyTypes:
+    - Ingress
+  ingress:
+    # gateway에서 Redis 접근 (세션/캐시)
+    - from:
+        - podSelector:
+            matchLabels:
+              app: gateway
+      ports:
+        - protocol: TCP
+          port: 6379
+    # submission-service에서 Redis 접근
+    - from:
+        - podSelector:
+            matchLabels:
+              app: submission-service
+      ports:
+        - protocol: TCP
+          port: 6379
+    # github-worker에서 Redis 접근
+    - from:
+        - podSelector:
+            matchLabels:
+              app: github-worker
+      ports:
+        - protocol: TCP
+          port: 6379
+    # problem-service에서 Redis 접근 (캐시)
+    - from:
+        - podSelector:
+            matchLabels:
+              app: problem-service
+      ports:
+        - protocol: TCP
+          port: 6379
+    # Prometheus exporter scrape 허용
+    - from:
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 6379
+
+# -- 10. minio-ingress: gateway에서만 인바운드 허용 (아바타 업로드) --
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: minio-ingress
+  namespace: algosu
+  labels:
+    app.kubernetes.io/part-of: algosu
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: minio
+  policyTypes:
+    - Ingress
+  ingress:
+    # gateway에서 MinIO API 접근 (아바타 업로드)
+    - from:
+        - podSelector:
+            matchLabels:
+              app: gateway
+      ports:
+        - protocol: TCP
+          port: 9000
+    # minio-init Job에서 초기 설정
+    - from:
+        - podSelector:
+            matchLabels:
+              app: minio-init
+      ports:
+        - protocol: TCP
+          port: 9000
+
+# -- 11. frontend-ingress: Traefik에서만 인바운드 허용 --
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: frontend-ingress
+  namespace: algosu
+  labels:
+    app.kubernetes.io/part-of: algosu
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: frontend
+  policyTypes:
+    - Ingress
+  ingress:
+    # Traefik Ingress Controller (kube-system namespace)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 3001

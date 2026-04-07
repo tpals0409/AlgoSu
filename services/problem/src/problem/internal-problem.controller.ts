@@ -82,7 +82,7 @@ export class InternalProblemController {
     @Headers('x-study-id') studyId: string,
   ) {
     this.logger.log(`내부 문제 조회: id=${id}, studyId=${studyId}`);
-    const problem = await this.problemService.findById(studyId, id);
+    const problem = await this.problemService.findByIdInternal(studyId, id);
     return { data: problem };
   }
 }

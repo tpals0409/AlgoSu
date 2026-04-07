@@ -101,6 +101,12 @@ class ProxyDispatchMiddleware implements NestMiddleware {
 
           const serviceKey = configService.get<string>(route.keyEnvKey);
           if (!serviceKey) {
+            if (configService.get<string>('NODE_ENV') === 'production') {
+              logger.error(
+                `환경변수 ${route.keyEnvKey} 미설정 — 프로덕션에서 ${route.prefix} 라우팅 차단`,
+              );
+              continue;
+            }
             logger.warn(
               `환경변수 ${route.keyEnvKey} 미설정 — ${route.prefix} 내부 인증 없이 라우팅`,
             );

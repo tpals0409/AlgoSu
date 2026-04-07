@@ -210,7 +210,6 @@ describe('OAuthService', () => {
 
       expect(result.user.email).toBe('user@google.com');
       expect(result.accessToken).toBeDefined();
-      expect(result.refreshToken).toBeDefined();
 
       // JWT 검증 (HS256)
       const decoded = jwt.verify(result.accessToken, JWT_SECRET, {
@@ -349,68 +348,6 @@ describe('OAuthService', () => {
           username: null,
           token: null,
         },
-      );
-    });
-  });
-
-  // ============================
-  // 15-17. refreshAccessToken
-  // ============================
-  describe('refreshAccessToken', () => {
-    it('정상 갱신 — 유효 refreshToken + Redis 일치 → 새 accessToken', async () => {
-      const validRefresh = jwt.sign(
-        { sub: 'user-id-1', type: 'refresh' },
-        JWT_SECRET,
-        { algorithm: 'HS256', expiresIn: '7d' },
-      );
-
-      mockRedis.get.mockResolvedValue(validRefresh);
-      identityClient.findUserById.mockResolvedValue({
-        id: 'user-id-1',
-        publicId: 'pub-uuid-1',
-        email: 'test@test.com',
-        name: 'Test User',
-        oauth_provider: OAuthProvider.GOOGLE,
-      } as IdentityUser);
-
-      const result = await service.refreshAccessToken(validRefresh);
-
-      expect(result.accessToken).toBeDefined();
-
-      const decoded = jwt.verify(result.accessToken, JWT_SECRET, {
-        algorithms: ['HS256'],
-      }) as jwt.JwtPayload;
-      expect(decoded.sub).toBe('user-id-1');
-    });
-
-    it('만료된 refreshToken → UnauthorizedException', async () => {
-      // 이미 만료된 토큰 (exp = 과거)
-      const expiredToken = jwt.sign(
-        { sub: 'user-id-1', type: 'refresh', exp: Math.floor(Date.now() / 1000) - 3600 },
-        JWT_SECRET,
-        { algorithm: 'HS256' },
-      );
-
-      await expect(service.refreshAccessToken(expiredToken)).rejects.toThrow(
-        UnauthorizedException,
-      );
-    });
-
-    it('Redis 저장값 불일치 → UnauthorizedException', async () => {
-      const validRefresh = jwt.sign(
-        { sub: 'user-id-1', type: 'refresh' },
-        JWT_SECRET,
-        { algorithm: 'HS256', expiresIn: '7d' },
-      );
-
-      // Redis에 다른 토큰이 저장되어 있는 경우
-      mockRedis.get.mockResolvedValue('different-stored-token');
-
-      await expect(service.refreshAccessToken(validRefresh)).rejects.toThrow(
-        UnauthorizedException,
-      );
-      await expect(service.refreshAccessToken(validRefresh)).rejects.toThrow(
-        'Refresh Token이 만료되었거나 무효화되었습니다.',
       );
     });
   });
@@ -931,83 +868,6 @@ describe('OAuthService', () => {
 
       await expect(service.findUserByIdOrThrow('nonexistent')).rejects.toThrow(
         '사용자를 찾을 수 없습니다.',
-      );
-    });
-  });
-
-  // ============================
-  // 29. revokeRefreshToken (line 513-515)
-  // ============================
-  describe('revokeRefreshToken', () => {
-    it('Redis에서 refresh token 삭제 (line 514)', async () => {
-      mockRedis.del.mockResolvedValue(1);
-
-      await service.revokeRefreshToken('user-id-1');
-
-      expect(mockRedis.del).toHaveBeenCalledWith('refresh:user-id-1');
-    });
-  });
-
-  // ============================
-  // 30. refreshAccessToken — 추가 분기 (lines 525-547)
-  // ============================
-  describe('refreshAccessToken — 추가 분기', () => {
-    it('Redis에 토큰 없음 (null) → UnauthorizedException (line 541)', async () => {
-      const validRefresh = jwt.sign(
-        { sub: 'user-id-1', type: 'refresh' },
-        JWT_SECRET,
-        { algorithm: 'HS256', expiresIn: '7d' },
-      );
-
-      // Redis에 저장된 값 없음
-      mockRedis.get.mockResolvedValue(null);
-
-      await expect(service.refreshAccessToken(validRefresh)).rejects.toThrow(
-        'Refresh Token이 만료되었거나 무효화되었습니다.',
-      );
-    });
-
-    it('유효 토큰이지만 user 없음 → UnauthorizedException (line 545-547)', async () => {
-      const validRefresh = jwt.sign(
-        { sub: 'user-id-1', type: 'refresh' },
-        JWT_SECRET,
-        { algorithm: 'HS256', expiresIn: '7d' },
-      );
-
-      mockRedis.get.mockResolvedValue(validRefresh);
-      identityClient.findUserById.mockRejectedValue(
-        new NotFoundException('사용자를 찾을 수 없습니다.'),
-      );
-
-      await expect(service.refreshAccessToken(validRefresh)).rejects.toThrow(
-        '사용자를 찾을 수 없습니다.',
-      );
-    });
-
-    it('JWT에 sub 없으면 UnauthorizedException (line 535-537)', async () => {
-      // sub 없는 JWT (payload만 있고 sub claim 없음)
-      const noSubToken = jwt.sign(
-        { type: 'refresh' }, // sub 없음
-        JWT_SECRET,
-        { algorithm: 'HS256', expiresIn: '7d' },
-      );
-
-      await expect(service.refreshAccessToken(noSubToken)).rejects.toThrow(
-        UnauthorizedException,
-      );
-    });
-
-    it('JWT payload가 string이면 UnauthorizedException (line 525-526)', async () => {
-      // jwt.sign에 string을 직접 전달하면 jwt.verify가 string을 반환함
-      const stringPayloadToken = jwt.sign('string-payload', JWT_SECRET, {
-        algorithm: 'HS256',
-      });
-
-      // jwt.verify(stringPayloadToken, secret) → 'string-payload' (string) 반환
-      // → typeof decoded === 'string' → true → UnauthorizedException (line 525-526)
-      // 하지만 이 throw는 try 블록 안에서 발생하여 catch가 잡아 다시 UnauthorizedException으로 던짐
-      await expect(service.refreshAccessToken(stringPayloadToken)).rejects.toThrow(
-        UnauthorizedException,
       );
     });
   });

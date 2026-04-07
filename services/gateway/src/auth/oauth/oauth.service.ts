@@ -147,7 +147,7 @@ export class OAuthService {
     provider: string,
     code: string,
     state: string,
-  ): Promise<{ accessToken: string; refreshToken: string; user: IdentityUser }> {
+  ): Promise<{ accessToken: string; user: IdentityUser }> {
     await this.validateAndConsumeState(state);
 
     let profile: OAuthUserProfile;
@@ -172,11 +172,8 @@ export class OAuthService {
 
     const user = await this.upsertUser(profile, oauthProvider);
     const accessToken = this.issueJwt(user);
-    const refreshToken = this.issueRefreshToken(user.id);
 
-    await this.storeRefreshToken(user.id, refreshToken);
-
-    return { accessToken, refreshToken, user };
+    return { accessToken, user };
   }
 
   private async exchangeGoogleToken(code: string): Promise<OAuthUserProfile> {
@@ -472,61 +469,6 @@ export class OAuthService {
     );
   }
 
-  private issueRefreshToken(userId: string): string {
-    return jwt.sign({ sub: userId, type: 'refresh' }, this.jwtSecret, {
-      algorithm: 'HS256',
-      expiresIn: '7d',
-    });
-  }
-
-  private async storeRefreshToken(userId: string, token: string): Promise<void> {
-    const TTL = 7 * 24 * 60 * 60; // 7일
-    await this.redis.set(`refresh:${userId}`, token, 'EX', TTL);
-  }
-
-  /**
-   * Refresh Token 무효화 — 로그아웃/회원탈퇴 시 Redis에서 삭제
-   * @domain identity
-   */
-  async revokeRefreshToken(userId: string): Promise<void> {
-    await this.redis.del(`refresh:${userId}`);
-  }
-
-  async refreshAccessToken(refreshToken: string): Promise<{ accessToken: string }> {
-    let payload: jwt.JwtPayload;
-
-    try {
-      const decoded = jwt.verify(refreshToken, this.jwtSecret, {
-        algorithms: ['HS256'],
-      });
-
-      if (typeof decoded === 'string' || !decoded) {
-        throw new UnauthorizedException('유효하지 않은 Refresh Token입니다.');
-      }
-
-      payload = decoded as jwt.JwtPayload;
-    } catch {
-      throw new UnauthorizedException('유효하지 않은 Refresh Token입니다.');
-    }
-
-    const userId = payload['sub'];
-    if (!userId || typeof userId !== 'string') {
-      throw new UnauthorizedException('유효하지 않은 Refresh Token입니다.');
-    }
-
-    const storedToken = await this.redis.get(`refresh:${userId}`);
-    if (!storedToken || !this.timingSafeEqual(storedToken, refreshToken)) {
-      throw new UnauthorizedException('Refresh Token이 만료되었거나 무효화되었습니다.');
-    }
-
-    const user = await this.findUserById(userId);
-    if (!user) {
-      throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
-    }
-
-    const accessToken = this.issueJwt(user);
-    return { accessToken };
-  }
 
   // --- GitHub Status (Internal API용) ---
 
@@ -544,13 +486,4 @@ export class OAuthService {
     return result as unknown as { github_username: string | null; github_token: string | null };
   }
 
-  /**
-   * 타이밍 사이드채널 방지를 위한 상수 시간 문자열 비교
-   */
-  private timingSafeEqual(a: string, b: string): boolean {
-    const bufA = Buffer.from(a);
-    const bufB = Buffer.from(b);
-    if (bufA.length !== bufB.length) return false;
-    return crypto.timingSafeEqual(bufA, bufB);
-  }
 }

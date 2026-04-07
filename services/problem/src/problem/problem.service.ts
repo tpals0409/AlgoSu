@@ -4,13 +4,27 @@
  * @layer service
  * @related problem.controller.ts, problem.entity.ts, deadline-cache.service.ts
  */
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { DataSource, In, LessThanOrEqual } from 'typeorm';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { DataSource, In, LessThanOrEqual, Not } from 'typeorm';
 import { Problem, ProblemStatus } from './problem.entity';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
 import { DeadlineCacheService } from '../cache/deadline-cache.service';
 import { DualWriteService } from '../database/dual-write.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
+
+/**
+ * 허용된 상태 전이 맵 — 현재 상태 → 전이 가능한 상태 목록
+ * DRAFT → ACTIVE
+ * ACTIVE → CLOSED, DELETED
+ * CLOSED → ACTIVE (재개), DELETED
+ * DELETED → (전이 불가)
+ */
+const ALLOWED_STATUS_TRANSITIONS: Record<ProblemStatus, ProblemStatus[]> = {
+  [ProblemStatus.DRAFT]: [ProblemStatus.ACTIVE],
+  [ProblemStatus.ACTIVE]: [ProblemStatus.CLOSED, ProblemStatus.DELETED],
+  [ProblemStatus.CLOSED]: [ProblemStatus.ACTIVE, ProblemStatus.DELETED],
+  [ProblemStatus.DELETED]: [],
+};
 
 @Injectable()
 export class ProblemService {
@@ -63,9 +77,23 @@ export class ProblemService {
   }
 
   /**
-   * 문제 단건 조회 — studyId 스코핑으로 cross-study 접근 차단
+   * 문제 단건 조회 (외부 API용) — DELETED 상태 제외, studyId 스코핑
    */
   async findById(studyId: string, id: string): Promise<Problem> {
+    const problem = await this.dualWrite.findOne({
+      where: { id, studyId, status: Not(ProblemStatus.DELETED) },
+    });
+    if (!problem) {
+      throw new NotFoundException(`문제를 찾을 수 없습니다: id=${id}`);
+    }
+    return problem;
+  }
+
+  /**
+   * 문제 단건 조회 (내부용) — DELETED 포함 전체 상태 조회, studyId 스코핑
+   * Submission 연동, 마감 시간 조회 등 내부 서비스에서 사용
+   */
+  async findByIdInternal(studyId: string, id: string): Promise<Problem> {
     const problem = await this.dualWrite.findOne({ where: { id, studyId } });
     if (!problem) {
       throw new NotFoundException(`문제를 찾을 수 없습니다: id=${id}`);
@@ -104,8 +132,8 @@ export class ProblemService {
     // 캐시 우선 — weekNumber는 캐시에 없으므로 DB fallback 필요
     const cached = await this.deadlineCache.getDeadline(studyId, problemId);
     if (cached !== null) {
-      // weekNumber 조회를 위해 DB에서 problem을 가져옴
-      const problem = await this.findById(studyId, problemId);
+      // weekNumber 조회를 위해 DB에서 problem을 가져옴 (내부용 — DELETED 포함)
+      const problem = await this.findByIdInternal(studyId, problemId);
       return {
         deadline: cached === 'null' ? null : cached,
         weekNumber: problem.weekNumber ?? null,
@@ -113,8 +141,8 @@ export class ProblemService {
       };
     }
 
-    // DB fallback — studyId 스코핑으로 cross-study 접근 차단
-    const problem = await this.findById(studyId, problemId);
+    // DB fallback — studyId 스코핑으로 cross-study 접근 차단 (내부용 — DELETED 포함)
+    const problem = await this.findByIdInternal(studyId, problemId);
     await this.deadlineCache.setDeadline(studyId, problem.id, problem.deadline);
 
     return {
@@ -162,7 +190,16 @@ export class ProblemService {
       if (dto.tags !== undefined) {
         problem.tags = dto.tags ?? null;
       }
-      if (dto.status !== undefined) problem.status = dto.status as ProblemStatus;
+      if (dto.status !== undefined) {
+        const newStatus = dto.status as ProblemStatus;
+        const allowed = ALLOWED_STATUS_TRANSITIONS[problem.status];
+        if (!allowed || !allowed.includes(newStatus)) {
+          throw new BadRequestException(
+            `상태 전이 불가: ${problem.status} → ${newStatus}`,
+          );
+        }
+        problem.status = newStatus;
+      }
 
       const saved = await qr.manager.save(Problem, problem);
       await qr.commitTransaction();
@@ -196,7 +233,7 @@ export class ProblemService {
    * status를 DELETED로 변경. Submission 참조 무결성 유지.
    */
   async delete(studyId: string, id: string): Promise<void> {
-    const problem = await this.findById(studyId, id);
+    const problem = await this.findByIdInternal(studyId, id);
     problem.status = ProblemStatus.DELETED;
     await this.dualWrite.saveExisting(problem);
 

@@ -156,7 +156,7 @@ export class UserService {
   /** slug 기반 공개 프로필 조회 (is_profile_public=true) */
   async findBySlug(slug: string): Promise<User | null> {
     return this.userRepository.findOne({
-      where: { profile_slug: slug, is_profile_public: true },
+      where: { profile_slug: slug, is_profile_public: true, deleted_at: IsNull() },
     });
   }
 

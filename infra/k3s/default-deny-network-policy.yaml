@@ -1,0 +1,17 @@
+# ============================================================
+# AlgoSu — Default-Deny NetworkPolicy
+# namespace: algosu 내 모든 Pod에 대해 인바운드 트래픽을 기본 차단
+# 허용이 필요한 트래픽은 서비스별 NetworkPolicy에서 명시적으로 열어야 함
+# ============================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: algosu
+  labels:
+    app.kubernetes.io/part-of: algosu
+    component: network-policy
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress

@@ -203,6 +203,12 @@ export class SseController implements OnModuleDestroy {
       }
 
       const payload = decoded as jwt.JwtPayload;
+
+      // exp 클레임 존재 여부 검증 (만료 기한 없는 토큰 거부 — JwtMiddleware 동일 정책)
+      if (!payload['exp']) {
+        throw new UnauthorizedException('토큰에 만료 시간(exp)이 없습니다.');
+      }
+
       const userId = payload['sub'];
 
       if (!userId || typeof userId !== 'string') {

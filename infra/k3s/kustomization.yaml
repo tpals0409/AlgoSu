@@ -34,6 +34,7 @@ resources:
   - pdb.yaml
 
   # 네트워크 정책
+  - default-deny-network-policy.yaml
   - metrics-network-policy.yaml
   - service-network-policies.yaml
 

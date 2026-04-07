@@ -125,7 +125,7 @@ describe('SseController', () => {
 
   describe('streamStatus — 소유권 검증', () => {
     it('소유자가 아닌 경우 ForbiddenException', async () => {
-      mockVerify.mockReturnValue({ sub: USER_ID });
+      mockVerify.mockReturnValue({ sub: USER_ID, exp: Math.floor(Date.now() / 1000) + 3600 });
       mockFetch.mockResolvedValue({
         ok: true,
         json: async () => ({ userId: 'different-user' }),
@@ -140,7 +140,7 @@ describe('SseController', () => {
     });
 
     it('소유권 검증 API 실패 시 ForbiddenException', async () => {
-      mockVerify.mockReturnValue({ sub: USER_ID });
+      mockVerify.mockReturnValue({ sub: USER_ID, exp: Math.floor(Date.now() / 1000) + 3600 });
       mockFetch.mockResolvedValue({ ok: false, status: 500 });
 
       const req = createMockReq('valid-token');
@@ -156,7 +156,7 @@ describe('SseController', () => {
 
   describe('streamStatus — SSE 연결', () => {
     beforeEach(() => {
-      mockVerify.mockReturnValue({ sub: USER_ID });
+      mockVerify.mockReturnValue({ sub: USER_ID, exp: Math.floor(Date.now() / 1000) + 3600 });
       mockFetch.mockResolvedValue({
         ok: true,
         json: async () => ({ userId: USER_ID }),
@@ -205,7 +205,7 @@ describe('SseController', () => {
     });
 
     it('인증 성공 시 SSE 헤더 설정 + 알림 채널 구독', async () => {
-      mockVerify.mockReturnValue({ sub: USER_ID });
+      mockVerify.mockReturnValue({ sub: USER_ID, exp: Math.floor(Date.now() / 1000) + 3600 });
 
       const req = createMockReq('valid-token');
       const res = createMockRes();
@@ -217,7 +217,7 @@ describe('SseController', () => {
     });
 
     it('알림 메시지 수신 시 SSE 이벤트 전송', async () => {
-      mockVerify.mockReturnValue({ sub: USER_ID });
+      mockVerify.mockReturnValue({ sub: USER_ID, exp: Math.floor(Date.now() / 1000) + 3600 });
 
       const req = createMockReq('valid-token');
       const res = createMockRes();
@@ -239,7 +239,7 @@ describe('SseController', () => {
     });
 
     it('writableEnded 상태에서 메시지 전송 안 함', async () => {
-      mockVerify.mockReturnValue({ sub: USER_ID });
+      mockVerify.mockReturnValue({ sub: USER_ID, exp: Math.floor(Date.now() / 1000) + 3600 });
 
       const req = createMockReq('valid-token');
       const res = createMockRes();
@@ -262,7 +262,7 @@ describe('SseController', () => {
     });
 
     it('클라이언트 close 이벤트 시 cleanup 실행', async () => {
-      mockVerify.mockReturnValue({ sub: USER_ID });
+      mockVerify.mockReturnValue({ sub: USER_ID, exp: Math.floor(Date.now() / 1000) + 3600 });
 
       const req = createMockReq('valid-token');
       const res = createMockRes();
@@ -279,7 +279,7 @@ describe('SseController', () => {
     });
 
     it('H16: 5분 타임아웃 시 timeout 이벤트 전송 후 cleanup', async () => {
-      mockVerify.mockReturnValue({ sub: USER_ID });
+      mockVerify.mockReturnValue({ sub: USER_ID, exp: Math.floor(Date.now() / 1000) + 3600 });
 
       const req = createMockReq('valid-token');
       const res = createMockRes();
@@ -311,8 +311,19 @@ describe('SseController', () => {
       ).rejects.toThrow(UnauthorizedException);
     });
 
+    it('토큰에 exp 클레임이 없으면 UnauthorizedException', async () => {
+      mockVerify.mockReturnValue({ sub: USER_ID }); // exp 없음
+
+      const req = createMockReq('no-exp-token');
+      const res = createMockRes();
+
+      await expect(
+        controller.streamStatus(SUBMISSION_ID, req as never, res as never),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
     it('토큰에 sub 필드가 없으면 UnauthorizedException', async () => {
-      mockVerify.mockReturnValue({ iat: 123456 }); // sub 없음
+      mockVerify.mockReturnValue({ iat: 123456, exp: Math.floor(Date.now() / 1000) + 3600 }); // sub 없음
 
       const req = createMockReq('no-sub-token');
       const res = createMockRes();
@@ -323,7 +334,7 @@ describe('SseController', () => {
     });
 
     it('토큰의 sub가 문자열이 아니면 UnauthorizedException', async () => {
-      mockVerify.mockReturnValue({ sub: 12345 }); // number
+      mockVerify.mockReturnValue({ sub: 12345, exp: Math.floor(Date.now() / 1000) + 3600 }); // number
 
       const req = createMockReq('numeric-sub-token');
       const res = createMockRes();
@@ -351,7 +362,7 @@ describe('SseController', () => {
 
   describe('streamStatus — 소유권 검증 네트워크 오류', () => {
     it('fetch 네트워크 오류 시 ForbiddenException', async () => {
-      mockVerify.mockReturnValue({ sub: USER_ID });
+      mockVerify.mockReturnValue({ sub: USER_ID, exp: Math.floor(Date.now() / 1000) + 3600 });
       mockFetch.mockRejectedValue(new Error('ECONNREFUSED'));
 
       const req = createMockReq('valid-token');
@@ -369,7 +380,7 @@ describe('SseController', () => {
     let redisMessageHandler: (channel: string, message: string) => void;
 
     beforeEach(() => {
-      mockVerify.mockReturnValue({ sub: USER_ID });
+      mockVerify.mockReturnValue({ sub: USER_ID, exp: Math.floor(Date.now() / 1000) + 3600 });
       mockFetch.mockResolvedValue({
         ok: true,
         json: async () => ({ userId: USER_ID }),
@@ -532,7 +543,7 @@ describe('SseController', () => {
 
   describe('streamStatus — H16 타임아웃', () => {
     beforeEach(() => {
-      mockVerify.mockReturnValue({ sub: USER_ID });
+      mockVerify.mockReturnValue({ sub: USER_ID, exp: Math.floor(Date.now() / 1000) + 3600 });
       mockFetch.mockResolvedValue({
         ok: true,
         json: async () => ({ userId: USER_ID }),
@@ -583,7 +594,7 @@ describe('SseController', () => {
 
   describe('streamStatus — 이중 cleanup 방지', () => {
     beforeEach(() => {
-      mockVerify.mockReturnValue({ sub: USER_ID });
+      mockVerify.mockReturnValue({ sub: USER_ID, exp: Math.floor(Date.now() / 1000) + 3600 });
       mockFetch.mockResolvedValue({
         ok: true,
         json: async () => ({ userId: USER_ID }),
@@ -611,7 +622,7 @@ describe('SseController', () => {
 
   describe('streamStatus — heartbeat', () => {
     beforeEach(() => {
-      mockVerify.mockReturnValue({ sub: USER_ID });
+      mockVerify.mockReturnValue({ sub: USER_ID, exp: Math.floor(Date.now() / 1000) + 3600 });
       mockFetch.mockResolvedValue({
         ok: true,
         json: async () => ({ userId: USER_ID }),
@@ -654,7 +665,7 @@ describe('SseController', () => {
 
   describe('streamNotifications — heartbeat + 이중 cleanup', () => {
     beforeEach(() => {
-      mockVerify.mockReturnValue({ sub: USER_ID });
+      mockVerify.mockReturnValue({ sub: USER_ID, exp: Math.floor(Date.now() / 1000) + 3600 });
     });
 
     it('30초마다 heartbeat 전송', async () => {
@@ -718,7 +729,7 @@ describe('SseController', () => {
 
   describe('채널 리스너 관리 (addChannelListener / removeChannelListener)', () => {
     beforeEach(() => {
-      mockVerify.mockReturnValue({ sub: USER_ID });
+      mockVerify.mockReturnValue({ sub: USER_ID, exp: Math.floor(Date.now() / 1000) + 3600 });
       mockFetch.mockResolvedValue({
         ok: true,
         json: async () => ({ userId: USER_ID }),
@@ -795,7 +806,7 @@ describe('SseController', () => {
 
   describe('removeChannelListener — channel 없을 때 early return (line 339)', () => {
     beforeEach(() => {
-      mockVerify.mockReturnValue({ sub: USER_ID });
+      mockVerify.mockReturnValue({ sub: USER_ID, exp: Math.floor(Date.now() / 1000) + 3600 });
       mockFetch.mockResolvedValue({
         ok: true,
         json: async () => ({ userId: USER_ID }),
@@ -841,7 +852,7 @@ describe('SseController', () => {
 
   describe('streamNotifications — messageHandler 오류 처리 (line 297)', () => {
     it('res.write가 예외를 던지면 에러 로깅 후 스트림 유지', async () => {
-      mockVerify.mockReturnValue({ sub: USER_ID });
+      mockVerify.mockReturnValue({ sub: USER_ID, exp: Math.floor(Date.now() / 1000) + 3600 });
 
       const req = createMockReq('valid-token');
       const res = createMockRes();
@@ -873,7 +884,7 @@ describe('SseController', () => {
 
   describe('X-Accel-Buffering 헤더', () => {
     it('streamStatus — X-Accel-Buffering: no 설정', async () => {
-      mockVerify.mockReturnValue({ sub: USER_ID });
+      mockVerify.mockReturnValue({ sub: USER_ID, exp: Math.floor(Date.now() / 1000) + 3600 });
       mockFetch.mockResolvedValue({
         ok: true,
         json: async () => ({ userId: USER_ID }),
@@ -888,7 +899,7 @@ describe('SseController', () => {
     });
 
     it('streamNotifications — X-Accel-Buffering: no 설정', async () => {
-      mockVerify.mockReturnValue({ sub: USER_ID });
+      mockVerify.mockReturnValue({ sub: USER_ID, exp: Math.floor(Date.now() / 1000) + 3600 });
 
       const req = createMockReq('valid-token');
       const res = createMockRes();

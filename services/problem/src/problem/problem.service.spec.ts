@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException, ConflictException } from '@nestjs/common';
-import { DataSource, In } from 'typeorm';
+import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { DataSource, In, Not } from 'typeorm';
 import { ProblemService } from './problem.service';
 import { Problem, ProblemStatus, Difficulty } from './problem.entity';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
@@ -203,13 +203,13 @@ describe('ProblemService', () => {
   // 2-4. findById()
   // ──────────────────────────────────────────────
   describe('findById()', () => {
-    it('정상 조회: studyId 스코핑으로 문제 반환', async () => {
+    it('정상 조회: DELETED 제외 + studyId 스코핑으로 문제 반환', async () => {
       dualWrite.findOne.mockResolvedValue(mockProblem);
 
       const result = await service.findById(STUDY_ID, PROBLEM_ID);
 
       expect(dualWrite.findOne).toHaveBeenCalledWith({
-        where: { id: PROBLEM_ID, studyId: STUDY_ID },
+        where: { id: PROBLEM_ID, studyId: STUDY_ID, status: Not(ProblemStatus.DELETED) },
       });
       expect(result).toEqual(mockProblem);
     });
@@ -226,17 +226,40 @@ describe('ProblemService', () => {
     });
 
     it('다른 studyId: cross-study 접근 차단 (NotFoundException)', async () => {
-      // 다른 studyId로 조회 시 findOne이 null 반환 → NotFoundException
       dualWrite.findOne.mockResolvedValue(null);
 
       await expect(service.findById(OTHER_STUDY_ID, PROBLEM_ID)).rejects.toThrow(
         NotFoundException,
       );
 
-      // studyId가 OTHER_STUDY_ID로 조회되었는지 확인
       expect(dualWrite.findOne).toHaveBeenCalledWith({
-        where: { id: PROBLEM_ID, studyId: OTHER_STUDY_ID },
+        where: { id: PROBLEM_ID, studyId: OTHER_STUDY_ID, status: Not(ProblemStatus.DELETED) },
       });
+    });
+  });
+
+  // ──────────────────────────────────────────────
+  // 2-4b. findByIdInternal()
+  // ──────────────────────────────────────────────
+  describe('findByIdInternal()', () => {
+    it('DELETED 포함 전체 상태 조회', async () => {
+      const deletedProblem = { ...mockProblem, status: ProblemStatus.DELETED } as Problem;
+      dualWrite.findOne.mockResolvedValue(deletedProblem);
+
+      const result = await service.findByIdInternal(STUDY_ID, PROBLEM_ID);
+
+      expect(dualWrite.findOne).toHaveBeenCalledWith({
+        where: { id: PROBLEM_ID, studyId: STUDY_ID },
+      });
+      expect(result.status).toBe(ProblemStatus.DELETED);
+    });
+
+    it('미존재: NotFoundException 발생', async () => {
+      dualWrite.findOne.mockResolvedValue(null);
+
+      await expect(service.findByIdInternal(STUDY_ID, 'non-existent-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -459,6 +482,51 @@ describe('ProblemService', () => {
       );
 
       expect(result).toEqual(updatedProblem);
+    });
+
+    it('비허용 상태 전이: DELETED→ACTIVE BadRequestException + 롤백', async () => {
+      const dto: UpdateProblemDto = { status: ProblemStatus.ACTIVE };
+      const deletedProblem = { ...mockProblem, status: ProblemStatus.DELETED } as Problem;
+
+      const mockQr = createMockQueryRunner();
+      mockQr.manager.findOne.mockResolvedValue(deletedProblem);
+      dataSource.createQueryRunner.mockReturnValue(mockQr);
+
+      await expect(service.update(STUDY_ID, PROBLEM_ID, dto)).rejects.toThrow(BadRequestException);
+      await expect(service.update(STUDY_ID, PROBLEM_ID, dto)).rejects.toThrow(
+        '상태 전이 불가: DELETED → ACTIVE',
+      );
+      expect(mockQr.rollbackTransaction).toHaveBeenCalled();
+      expect(mockQr.release).toHaveBeenCalled();
+    });
+
+    it('허용된 상태 전이: ACTIVE→CLOSED 성공', async () => {
+      const dto: UpdateProblemDto = { status: ProblemStatus.CLOSED };
+      const updatedProblem = { ...mockProblem, status: ProblemStatus.CLOSED } as Problem;
+
+      const mockQr = createMockQueryRunner();
+      mockQr.manager.findOne.mockResolvedValue({ ...mockProblem });
+      mockQr.manager.save.mockResolvedValue(updatedProblem);
+      dataSource.createQueryRunner.mockReturnValue(mockQr);
+      deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
+      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
+
+      const result = await service.update(STUDY_ID, PROBLEM_ID, dto);
+
+      expect(result.status).toBe(ProblemStatus.CLOSED);
+      expect(mockQr.commitTransaction).toHaveBeenCalled();
+    });
+
+    it('비허용 상태 전이: CLOSED→DRAFT BadRequestException', async () => {
+      const dto: UpdateProblemDto = { status: ProblemStatus.DRAFT };
+      const closedProblem = { ...mockProblem, status: ProblemStatus.CLOSED } as Problem;
+
+      const mockQr = createMockQueryRunner();
+      mockQr.manager.findOne.mockResolvedValue(closedProblem);
+      dataSource.createQueryRunner.mockReturnValue(mockQr);
+
+      await expect(service.update(STUDY_ID, PROBLEM_ID, dto)).rejects.toThrow(BadRequestException);
+      expect(mockQr.rollbackTransaction).toHaveBeenCalled();
     });
 
     it('존재하지 않는 문제 수정 시 NotFoundException + 롤백', async () => {

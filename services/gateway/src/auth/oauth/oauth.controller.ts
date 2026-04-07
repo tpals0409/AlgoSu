@@ -347,12 +347,12 @@ export class OAuthController {
   }
 
   /**
-   * 로그아웃 — httpOnly Cookie 삭제 + Refresh Token 무효화
+   * 로그아웃 — httpOnly Cookie 삭제
    * JWT 미들웨어 제외 경로이므로 쿠키에서 직접 토큰을 디코딩하여 userId 추출
    * clearCookie 옵션은 setCookie 옵션(cookie.util.ts)과 반드시 일치해야 브라우저가 쿠키를 제거함
    * @api POST /auth/logout
    */
-  @ApiOperation({ summary: '로그아웃 — Cookie 삭제 + Refresh Token 무효화' })
+  @ApiOperation({ summary: '로그아웃 — Cookie 삭제' })
   @ApiResponse({ status: 200, description: '로그아웃 성공' })
   @Post('logout')
   async logout(
@@ -368,8 +368,7 @@ export class OAuthController {
         const decoded = jwt.decode(token) as jwt.JwtPayload | null;
         const userId = decoded?.['sub'] ?? decoded?.['userId'];
         if (userId && typeof userId === 'string') {
-          await this.oauthService.revokeRefreshToken(userId);
-          this.logger.log(`로그아웃 Refresh Token 무효화 완료: userId=${userId}`);
+          this.logger.log(`로그아웃 처리: userId=${userId}`);
         }
       } catch {
         // 디코딩 실패 시에도 쿠키 삭제는 진행 — 로그아웃 자체를 차단하지 않음
@@ -400,7 +399,6 @@ export class OAuthController {
   ): Promise<{ message: string }> {
     const userId = req.headers['x-user-id'] as string;
     await this.oauthService.softDeleteAccount(userId);
-    await this.oauthService.revokeRefreshToken(userId);
     const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
     res.clearCookie('token', {
       httpOnly: true,
@@ -408,7 +406,7 @@ export class OAuthController {
       sameSite: 'lax',
       path: '/',
     });
-    this.logger.log(`계정 소프트 딜리트 + Refresh Token 무효화: userId=${userId}`);
+    this.logger.log(`계정 소프트 딜리트 완료: userId=${userId}`);
     return { message: '계정이 삭제되었습니다.' };
   }
 }
