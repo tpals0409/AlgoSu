@@ -1,5 +1,5 @@
 /**
- * @file Submission Controller — 코드 제출 + Draft CRUD
+ * @file Submission Controller — 코드 제출 + Draft CRUD + AI 만족도
  * @domain submission
  * @layer controller
  * @related SubmissionService, DraftService, InternalKeyGuard, StudyMemberGuard

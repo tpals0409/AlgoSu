@@ -1,5 +1,5 @@
 /**
- * @file 피드백 컨트롤러 — 피드백 생성/조회 + 관리자 상태 변경
+ * @file 피드백 컨트롤러 — 피드백 생성/조회 + 관리자 상태 변경 + 상세 조회
  * @domain feedback
  * @layer controller
  * @related IdentityClientService
