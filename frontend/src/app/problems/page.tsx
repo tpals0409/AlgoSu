@@ -140,7 +140,7 @@ export default function ProblemsPage(): ReactNode {
   // ─── FILTERING ──────────────────────────
 
   const filteredProblems = useMemo(() => {
-    return problems.filter((p) => {
+    const filtered = problems.filter((p) => {
       if (filters.search) {
         const q = filters.search.toLowerCase();
         const matchTitle = p.title.toLowerCase().includes(q);
@@ -155,6 +155,11 @@ export default function ProblemsPage(): ReactNode {
         return false;
       }
       return true;
+    });
+    return filtered.sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
     });
   }, [problems, filters]);
 
@@ -215,7 +220,7 @@ export default function ProblemsPage(): ReactNode {
               <button
                 key={d}
                 type="button"
-                onClick={() => handleFilterChange('difficulty', d)}
+                onClick={() => handleFilterChange('difficulty', isActive ? '' : d)}
                 className="inline-flex items-center gap-1 shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-[12px] font-medium transition-all hover:shadow-sm hover:brightness-95 hover:scale-105"
                 style={
                   isActive
@@ -285,7 +290,7 @@ export default function ProblemsPage(): ReactNode {
                   type="button"
                   onClick={() => handleProblemClick(problem.id)}
                   aria-label={`${problem.title} 문제 보기`}
-                  className="group flex items-center gap-3 sm:gap-4 w-full px-3 sm:px-5 py-3 sm:py-4 rounded-xl border border-border transition-colors text-left bg-bg-card hover:bg-bg-alt"
+                  className="group flex items-center gap-3 sm:gap-4 w-full px-3 sm:px-5 py-3 sm:py-4 rounded-xl border border-border transition-all text-left bg-bg-card hover:-translate-y-0.5 hover:shadow-hover"
                 >
                   {/* BOJ 아이콘 */}
                   <div

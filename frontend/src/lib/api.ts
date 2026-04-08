@@ -40,6 +40,7 @@ export interface Problem {
   sourcePlatform?: string;
   allowedLanguages: string[];
   tags?: string[] | null;
+  createdAt?: string;
 }
 
 export interface CreateProblemData {

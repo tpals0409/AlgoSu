@@ -289,7 +289,7 @@ export default function SubmissionsPage(): ReactNode {
                   type="button"
                   onClick={() => router.push(isDone ? `/submissions/${s.id}/analysis` : `/submissions/${s.id}/status`)}
                   aria-label={`${title} 제출 보기`}
-                  className="group flex items-center gap-3 sm:gap-4 w-full px-3 sm:px-5 py-3 sm:py-4 rounded-xl border border-border transition-colors text-left bg-bg-card hover:bg-bg-alt"
+                  className="group flex items-center gap-3 sm:gap-4 w-full px-3 sm:px-5 py-3 sm:py-4 rounded-xl border border-border transition-all text-left bg-bg-card hover:-translate-y-0.5 hover:shadow-hover"
                 >
                   {/* 언어 아바타 (라운드 스퀘어, 난이도 색상) */}
                   <div
