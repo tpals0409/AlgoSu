@@ -307,18 +307,18 @@ export default function DashboardPage(): ReactNode {
     return me?.uniqueDoneCount ?? 0;
   }, [stats, myUserId]);
 
-  // AI 코드분석 평균 점수 (활성 문제별 최고 점수 기준, 같은 문제 1회)
+  // AI 코드분석 평균 점수 (유저 전체 제출에서 문제별 최고 점수 기준, 같은 문제 1회)
   const myAvgAIScore = useMemo(() => {
-    if (!stats || !myUserId) return 0;
+    if (!stats) return 0;
     const bestByProblem = new Map<string, number>();
-    for (const s of stats.recentSubmissions ?? []) {
-      if (s.userId !== myUserId || s.aiScore == null || !activeProblemIds.has(s.problemId)) continue;
+    for (const s of stats.userSubmissions ?? []) {
+      if (s.aiScore == null) continue;
       const prev = bestByProblem.get(s.problemId) ?? 0;
       if (s.aiScore > prev) bestByProblem.set(s.problemId, s.aiScore);
     }
     const scores = Array.from(bestByProblem.values());
     return scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
-  }, [stats, myUserId, activeProblemIds]);
+  }, [stats]);
 
   const myCompletionPct = allProblems.length > 0
     ? Math.round((myUniqueProblemCount / allProblems.length) * 100)
@@ -366,7 +366,7 @@ export default function DashboardPage(): ReactNode {
     const problemWeekMap = new Map<string, string>();
     for (const p of allProblems) problemWeekMap.set(p.id, p.weekNumber);
 
-    // byWeekPerUser가 있으면 사용, 없으면 recentSubmissions에서 도출
+    // byWeekPerUser가 있으면 사용, 없으면 userSubmissions에서 도출
     let result: { week: string; count: number }[];
 
     if (stats.byWeekPerUser.length > 0) {
@@ -382,10 +382,9 @@ export default function DashboardPage(): ReactNode {
           .map((r) => ({ week: r.week, count: r.count }));
       }
     } else {
-      // recentSubmissions → 주차별 고유 문제 수 (활성 문제만)
+      // userSubmissions → 주차별 고유 문제 수 (활성 문제만, fallback)
       const weekProblemMap = new Map<string, Set<string>>();
-      for (const s of stats.recentSubmissions ?? []) {
-        if (weekViewUserId !== null && s.userId !== weekViewUserId) continue;
+      for (const s of stats.userSubmissions ?? []) {
         if (!activeProblemIds.has(s.problemId)) continue;
         const week = problemWeekMap.get(s.problemId);
         if (!week) continue;

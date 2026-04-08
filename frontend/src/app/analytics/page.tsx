@@ -145,15 +145,11 @@ export default function AnalyticsPage(): ReactNode {
     return { count: me.uniqueProblemCount, doneCount: me.uniqueDoneCount };
   }, [stats, myId]);
 
-  // 내가 완료(DONE)한 고유 문제 수 — 활성 문제만
+  // 내가 완료(DONE)한 고유 문제 ID — 백엔드 solvedProblemIds 집계 사용
   const myDoneProblemIds = useMemo(() => {
-    if (!stats || !myId) return new Set<string>();
-    return new Set(
-      (stats.recentSubmissions ?? [])
-        .filter((s) => s.userId === myId && s.sagaStep === 'DONE' && activeProblemIds.has(s.problemId))
-        .map((s) => s.problemId),
-    );
-  }, [stats, myId, activeProblemIds]);
+    if (!stats) return new Set<string>();
+    return new Set(stats.solvedProblemIds ?? []);
+  }, [stats]);
 
   const myUniqueProblemCount = myDoneProblemIds.size;
 
@@ -168,17 +164,17 @@ export default function AnalyticsPage(): ReactNode {
     const problemWeekMap = new Map<string, string>();
     for (const p of allProblems) problemWeekMap.set(p.id, p.weekNumber);
 
-    // byWeekPerUser가 있으면 사용, 없으면 recentSubmissions에서 도출
+    // byWeekPerUser가 있으면 사용, 없으면 userSubmissions에서 도출
     const myWeekMap = new Map<string, number>();
     if (stats.byWeekPerUser.length > 0) {
       for (const r of stats.byWeekPerUser) {
         if (r.userId === myId) myWeekMap.set(r.week, r.count);
       }
     } else {
-      // 활성 문제만, 같은 문제는 주차당 1회만 집계
+      // 유저 전체 제출에서 주차별 고유 문제 수 집계
       const weekProblemSeen = new Map<string, Set<string>>();
-      for (const sub of stats.recentSubmissions ?? []) {
-        if (sub.userId !== myId || !activeProblemIds.has(sub.problemId)) continue;
+      for (const sub of stats.userSubmissions ?? []) {
+        if (!activeProblemIds.has(sub.problemId)) continue;
         const week = problemWeekMap.get(sub.problemId);
         if (!week) continue;
         if (!weekProblemSeen.has(week)) weekProblemSeen.set(week, new Set());
@@ -300,10 +296,10 @@ export default function AnalyticsPage(): ReactNode {
             solvedProblems={myUniqueProblemCount}
             completionPct={myCompletionPct}
             avgAIScore={(() => {
-              // 활성 문제별 최고 점수만 반영 (같은 문제 1회)
+              // 유저 전체 제출에서 문제별 최고 점수만 반영 (같은 문제 1회)
               const bestByProblem = new Map<string, number>();
-              for (const s of stats.recentSubmissions ?? []) {
-                if (s.userId !== myId || s.aiScore == null || !activeProblemIds.has(s.problemId)) continue;
+              for (const s of stats.userSubmissions ?? []) {
+                if (s.aiScore == null) continue;
                 const prev = bestByProblem.get(s.problemId) ?? 0;
                 if (s.aiScore > prev) bestByProblem.set(s.problemId, s.aiScore);
               }
@@ -323,16 +319,16 @@ export default function AnalyticsPage(): ReactNode {
             streakRank={`최근 ${myWeeklyData.length}주 중`}
             weeklyData={myWeeklyData}
             aiScoreData={(() => {
-              // 활성 문제별 최고 점수만 추이에 반영 (같은 문제 1회)
+              // 유저 전체 제출에서 문제별 최고 점수만 추이에 반영 (같은 문제 1회)
               const bestByProblem = new Map<string, { score: number; createdAt: string; title: string }>();
-              for (const s of stats.recentSubmissions ?? []) {
-                if (s.userId !== myId || s.aiScore == null || !activeProblemIds.has(s.problemId)) continue;
+              for (const s of stats.userSubmissions ?? []) {
+                if (s.aiScore == null) continue;
                 const prev = bestByProblem.get(s.problemId);
                 if (!prev || s.aiScore > prev.score) {
                   bestByProblem.set(s.problemId, {
                     score: s.aiScore,
                     createdAt: s.createdAt,
-                    title: s.problemTitle ?? s.problemId.slice(0, 8),
+                    title: s.problemId.slice(0, 8),
                   });
                 }
               }

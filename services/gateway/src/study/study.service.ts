@@ -452,6 +452,7 @@ export class StudyService implements OnModuleDestroy {
       byMemberWeek: { userId: string; count: number }[] | null;
       recentSubmissions: unknown[];
       solvedProblemIds: string[] | null;
+      userSubmissions: { problemId: string; aiScore: number | null; createdAt: string }[] | null;
       submitterCountByProblem: { problemId: string; count: number; analyzedCount: number }[];
     };
 
@@ -483,6 +484,7 @@ export class StudyService implements OnModuleDestroy {
         nickname: memberMap.get(s.userId)?.nickname ?? null,
       })),
       solvedProblemIds: data.solvedProblemIds ?? [],
+      userSubmissions: data.userSubmissions ?? [],
       submitterCountByProblem: data.submitterCountByProblem ?? [],
     };
   }

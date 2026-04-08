@@ -285,6 +285,7 @@ export class SubmissionService {
     byMemberWeek: { userId: string; count: number }[] | null;
     recentSubmissions: { id: string; userId: string; problemId: string; language: string; sagaStep: string; aiScore: number | null; createdAt: Date }[];
     solvedProblemIds: string[] | null;
+    userSubmissions: { problemId: string; aiScore: number | null; createdAt: Date }[] | null;
     submitterCountByProblem: { problemId: string; count: number; analyzedCount: number }[];
   }> {
     // activeProblemIds가 빈 배열이면 ACTIVE 문제가 없으므로 즉시 빈 결과 반환
@@ -299,6 +300,7 @@ export class SubmissionService {
         byMemberWeek: weekNumber ? [] : null,
         recentSubmissions: [],
         solvedProblemIds: userId ? [] : null,
+        userSubmissions: userId ? [] : null,
         submitterCountByProblem: [],
       };
     }
@@ -443,20 +445,33 @@ export class SubmissionService {
       }));
     }
 
-    // 특정 유저의 풀이 문제 ID 목록 (analytics 태그 분포용)
+    // 특정 유저의 완료(DONE) 문제 ID 목록 (analytics 태그/난이도 분포용)
     let solvedProblemIds: string[] | null = null;
+    let userSubmissions: { problemId: string; aiScore: number | null; createdAt: Date }[] | null = null;
     if (userId) {
       const solvedQb = this.submissionRepo
         .createQueryBuilder('s')
         .select('DISTINCT s.problem_id', 'problemId')
         .where('s.study_id = :studyId', { studyId })
-        .andWhere('s.user_id = :userId', { userId });
+        .andWhere('s.user_id = :userId', { userId })
+        .andWhere("s.saga_step = 'DONE'");
       applyProblemFilter(solvedQb);
       const rows = await solvedQb.getRawMany<{ problemId: string }>();
       solvedProblemIds = rows.map((r) => r.problemId);
+
+      // 유저 전체 제출 내역 (AI 점수 계산용) — recentSubmissions(10건)과 별도
+      const userSubQuery: Record<string, unknown> = { studyId, userId };
+      const userSubWhere = activeProblemIds
+        ? { studyId, userId, problemId: In(activeProblemIds) }
+        : userSubQuery;
+      userSubmissions = await this.submissionRepo.find({
+        where: userSubWhere as Record<string, unknown>,
+        order: { createdAt: 'DESC' },
+        select: ['problemId', 'aiScore', 'createdAt'],
+      });
     }
 
-    return { totalSubmissions, uniqueSubmissions: Number(uniqueSubmissions), uniqueAnalyzed: Number(uniqueAnalyzed), byWeek, byWeekPerUser, byMember, byMemberWeek, recentSubmissions, solvedProblemIds, submitterCountByProblem };
+    return { totalSubmissions, uniqueSubmissions: Number(uniqueSubmissions), uniqueAnalyzed: Number(uniqueAnalyzed), byWeek, byWeekPerUser, byMember, byMemberWeek, recentSubmissions, solvedProblemIds, userSubmissions, submitterCountByProblem };
   }
 
   /**

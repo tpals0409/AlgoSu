@@ -322,6 +322,7 @@ export interface StudyStats {
   byMemberWeek: MemberWeekStat[] | null;
   recentSubmissions: Submission[];
   solvedProblemIds: string[];
+  userSubmissions: { problemId: string; aiScore: number | null; createdAt: string }[];
   submitterCountByProblem: { problemId: string; count: number; analyzedCount: number }[];
 }
 
