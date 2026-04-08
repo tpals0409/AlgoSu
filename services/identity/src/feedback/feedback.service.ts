@@ -82,11 +82,6 @@ export class FeedbackService {
 
     const qb = this.feedbackRepo
       .createQueryBuilder('f')
-      .leftJoin('users', 'u', 'u.id = f.user_id')
-      .leftJoin('studies', 's', 's.id = f.study_id')
-      .addSelect('u.name', 'userName')
-      .addSelect('u.email', 'userEmail')
-      .addSelect('s.name', 'studyName')
       .orderBy('f.created_at', 'DESC')
       .take(take)
       .skip(skip);
@@ -103,16 +98,44 @@ export class FeedbackService {
       qb.andWhere('f.content ILIKE :search', { search: `%${search}%` });
     }
 
-    const { entities, raw } = await qb.getRawAndEntities();
-    const total = await qb.getCount();
+    const [feedbacks, total] = await qb.getManyAndCount();
 
-    const items = entities.map((fb, i) => {
+    // 사용자/스터디 정보 배치 조회
+    let userMap = new Map<string, { name: string | null; email: string }>();
+    let studyMap = new Map<string, string>();
+
+    if (feedbacks.length > 0) {
+      const userIds = [...new Set(feedbacks.map((f) => f.userId))];
+      const userRows: Array<{ id: string; name: string | null; email: string }> =
+        await this.feedbackRepo.manager.query(
+          `SELECT id, name, email FROM users WHERE id = ANY($1)`,
+          [userIds],
+        );
+      for (const u of userRows) {
+        userMap.set(u.id, { name: u.name, email: u.email });
+      }
+
+      const studyIds = [...new Set(feedbacks.map((f) => f.studyId).filter(Boolean))] as string[];
+      if (studyIds.length > 0) {
+        const studyRows: Array<{ id: string; name: string }> =
+          await this.feedbackRepo.manager.query(
+            `SELECT id, name FROM studies WHERE id = ANY($1)`,
+            [studyIds],
+          );
+        for (const s of studyRows) {
+          studyMap.set(s.id, s.name);
+        }
+      }
+    }
+
+    const items = feedbacks.map((fb) => {
       const json = fb.toJSON();
+      const user = userMap.get(fb.userId);
       return {
         ...json,
-        userName: raw[i]?.userName ?? null,
-        userEmail: raw[i]?.userEmail ?? null,
-        studyName: raw[i]?.studyName ?? null,
+        userName: user?.name ?? null,
+        userEmail: user?.email ?? null,
+        studyName: fb.studyId ? (studyMap.get(fb.studyId) ?? null) : null,
       };
     });
 

@@ -51,14 +51,13 @@ describe('FeedbackService', () => {
     skip: jest.fn().mockReturnThis(),
     select: jest.fn().mockReturnThis(),
     addSelect: jest.fn().mockReturnThis(),
-    leftJoin: jest.fn().mockReturnThis(),
     groupBy: jest.fn().mockReturnThis(),
     getRawMany: jest.fn().mockResolvedValue([]),
-    getRawAndEntities: jest.fn().mockResolvedValue({ entities: [], raw: [] }),
-    getCount: jest.fn().mockResolvedValue(0),
     execute: jest.fn(),
     getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
   };
+
+  const mockManagerQuery = jest.fn().mockResolvedValue([]);
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -74,6 +73,7 @@ describe('FeedbackService', () => {
             findAndCount: jest.fn(),
             update: jest.fn(),
             createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
+            manager: { query: mockManagerQuery },
           },
         },
         {
@@ -197,12 +197,9 @@ describe('FeedbackService', () => {
   describe('findAll', () => {
     it('기본값 page=1, limit=20으로 페이지네이션 조회한다', async () => {
       const fb = mockFeedback();
-      mockQueryBuilder.getRawAndEntities.mockResolvedValue({
-        entities: [fb],
-        raw: [{ userName: 'test', userEmail: 'test@test.com', studyName: null }],
-      });
-      mockQueryBuilder.getCount.mockResolvedValue(1);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[fb], 1]);
       mockQueryBuilder.getRawMany.mockResolvedValue([]);
+      mockManagerQuery.mockResolvedValue([]);
 
       const result = await service.findAll();
 
@@ -215,8 +212,7 @@ describe('FeedbackService', () => {
     });
 
     it('page=2, limit=10이면 skip=10으로 조회한다', async () => {
-      mockQueryBuilder.getRawAndEntities.mockResolvedValue({ entities: [], raw: [] });
-      mockQueryBuilder.getCount.mockResolvedValue(0);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
 
       await service.findAll(2, 10);
 
@@ -225,8 +221,7 @@ describe('FeedbackService', () => {
     });
 
     it('limit이 100을 초과하면 100으로 제한한다', async () => {
-      mockQueryBuilder.getRawAndEntities.mockResolvedValue({ entities: [], raw: [] });
-      mockQueryBuilder.getCount.mockResolvedValue(0);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
 
       await service.findAll(1, 200);
 
@@ -234,8 +229,7 @@ describe('FeedbackService', () => {
     });
 
     it('page가 0 이하이면 1로 보정한다', async () => {
-      mockQueryBuilder.getRawAndEntities.mockResolvedValue({ entities: [], raw: [] });
-      mockQueryBuilder.getCount.mockResolvedValue(0);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
 
       await service.findAll(0, 20);
 
@@ -243,8 +237,7 @@ describe('FeedbackService', () => {
     });
 
     it('category 필터를 적용한다', async () => {
-      mockQueryBuilder.getRawAndEntities.mockResolvedValue({ entities: [], raw: [] });
-      mockQueryBuilder.getCount.mockResolvedValue(0);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
 
       await service.findAll(1, 20, 'BUG');
 
@@ -255,8 +248,7 @@ describe('FeedbackService', () => {
     });
 
     it('search 키워드를 ILIKE으로 검색한다', async () => {
-      mockQueryBuilder.getRawAndEntities.mockResolvedValue({ entities: [], raw: [] });
-      mockQueryBuilder.getCount.mockResolvedValue(0);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
 
       await service.findAll(1, 20, undefined, '버그');
 
@@ -267,8 +259,7 @@ describe('FeedbackService', () => {
     });
 
     it('status 필터를 적용한다', async () => {
-      mockQueryBuilder.getRawAndEntities.mockResolvedValue({ entities: [], raw: [] });
-      mockQueryBuilder.getCount.mockResolvedValue(0);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
 
       await service.findAll(1, 20, undefined, undefined, 'OPEN');
 
@@ -279,8 +270,7 @@ describe('FeedbackService', () => {
     });
 
     it('counts에 상태별/카테고리별 통계를 반환한다', async () => {
-      mockQueryBuilder.getRawAndEntities.mockResolvedValue({ entities: [], raw: [] });
-      mockQueryBuilder.getCount.mockResolvedValue(0);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
       mockQueryBuilder.getRawMany
         .mockResolvedValueOnce([{ status: 'OPEN', cnt: '3' }, { status: 'RESOLVED', cnt: '1' }])
         .mockResolvedValueOnce([{ category: 'BUG', cnt: '2' }, { category: 'GENERAL', cnt: '2' }]);
