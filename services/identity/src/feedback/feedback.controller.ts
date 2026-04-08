@@ -61,12 +61,14 @@ export class FeedbackController {
     @Query('limit') limit?: string,
     @Query('category') category?: string,
     @Query('search') search?: string,
+    @Query('status') status?: string,
   ) {
     return this.feedbackService.findAll(
       page ? parseInt(page, 10) : undefined,
       limit ? parseInt(limit, 10) : undefined,
       category,
       search,
+      status,
     );
   }
 

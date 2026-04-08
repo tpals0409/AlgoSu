@@ -72,6 +72,7 @@ const PAGE_SIZE = 20;
 export default function AdminFeedbacksPage() {
   const [feedbacks, setFeedbacks] = useState<AdminFeedback[]>([]);
   const [total, setTotal] = useState(0);
+  const [counts, setCounts] = useState<Record<string, number>>({});
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('ALL');
@@ -88,15 +89,17 @@ export default function AdminFeedbacksPage() {
         PAGE_SIZE,
         categoryFilter !== 'ALL' ? categoryFilter : undefined,
         searchQuery || undefined,
+        statusFilter !== 'ALL' ? statusFilter : undefined,
       );
       setFeedbacks(res.items);
       setTotal(res.total);
+      if (res.counts) setCounts(res.counts);
     } catch {
       toast.error('피드백 목록을 불러오지 못했습니다.');
     } finally {
       setLoading(false);
     }
-  }, [page, categoryFilter, searchQuery]);
+  }, [page, statusFilter, categoryFilter, searchQuery]);
 
   useEffect(() => {
     void fetchFeedbacks();
@@ -124,15 +127,12 @@ export default function AdminFeedbacksPage() {
     setSearchQuery(searchInput);
   };
 
-  // 프론트엔드 상태 필터 (서버 필터는 category만, status는 클라이언트)
-  const filtered =
-    statusFilter === 'ALL'
-      ? feedbacks
-      : feedbacks.filter((f) => f.status === statusFilter);
-
-  // 통계
-  const openCount = feedbacks.filter((f) => f.status === 'OPEN').length;
-  const bugCount = feedbacks.filter((f) => f.category === 'BUG').length;
+  // 통계 (서버 제공 전체 기준 counts — status: OPEN/..., cat:BUG/...)
+  const totalCount =
+    (counts['OPEN'] ?? 0) + (counts['IN_PROGRESS'] ?? 0) +
+    (counts['RESOLVED'] ?? 0) + (counts['CLOSED'] ?? 0);
+  const openCount = counts['OPEN'] ?? 0;
+  const bugCount = counts['cat:BUG'] ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
@@ -152,7 +152,7 @@ export default function AdminFeedbacksPage() {
 
       {/* 통계 카드 */}
       <div className="grid grid-cols-3 gap-4">
-        <StatCard label="전체" value={total} />
+        <StatCard label="전체" value={totalCount} />
         <StatCard label="미해결" value={openCount} accent="var(--warning)" />
         <StatCard label="버그" value={bugCount} accent="var(--error)" />
       </div>
@@ -275,7 +275,7 @@ export default function AdminFeedbacksPage() {
           </div>
         )}
 
-        {!loading && filtered.length === 0 && (
+        {!loading && feedbacks.length === 0 && (
           <div
             className="px-4 py-8 text-center text-[13px]"
             style={{ color: 'var(--text-3)' }}
@@ -285,7 +285,7 @@ export default function AdminFeedbacksPage() {
         )}
 
         {!loading &&
-          filtered.map((fb) => (
+          feedbacks.map((fb) => (
             <div
               key={fb.publicId}
               className="grid cursor-pointer grid-cols-[1fr_100px_100px_140px] gap-4 px-4 py-3 transition-colors hover:bg-bg-alt"

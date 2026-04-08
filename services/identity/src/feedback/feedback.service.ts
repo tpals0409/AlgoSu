@@ -75,7 +75,8 @@ export class FeedbackService {
     limit = 20,
     category?: string,
     search?: string,
-  ): Promise<{ items: Feedback[]; total: number }> {
+    status?: string,
+  ): Promise<{ items: Feedback[]; total: number; counts: Record<string, number> }> {
     const take = Math.min(limit, 100);
     const skip = (Math.max(page, 1) - 1) * take;
 
@@ -89,13 +90,41 @@ export class FeedbackService {
       qb.andWhere('f.category = :category', { category });
     }
 
+    if (status) {
+      qb.andWhere('f.status = :status', { status });
+    }
+
     if (search) {
       qb.andWhere('f.content ILIKE :search', { search: `%${search}%` });
     }
 
     const [items, total] = await qb.getManyAndCount();
 
-    return { items, total };
+    // 상태별 + 카테고리별 통계 (필터 무관 전체 기준)
+    const [statusCountsRaw, categoryCountsRaw] = await Promise.all([
+      this.feedbackRepo
+        .createQueryBuilder('f')
+        .select('f.status', 'status')
+        .addSelect('COUNT(*)::int', 'cnt')
+        .groupBy('f.status')
+        .getRawMany<{ status: string; cnt: string }>(),
+      this.feedbackRepo
+        .createQueryBuilder('f')
+        .select('f.category', 'category')
+        .addSelect('COUNT(*)::int', 'cnt')
+        .groupBy('f.category')
+        .getRawMany<{ category: string; cnt: string }>(),
+    ]);
+
+    const counts: Record<string, number> = {};
+    for (const row of statusCountsRaw) {
+      counts[row.status] = Number(row.cnt);
+    }
+    for (const row of categoryCountsRaw) {
+      counts[`cat:${row.category}`] = Number(row.cnt);
+    }
+
+    return { items, total, counts };
   }
 
   /**

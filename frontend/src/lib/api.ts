@@ -769,12 +769,14 @@ export const adminApi = {
     limit?: number,
     category?: string,
     search?: string,
-  ): Promise<{ items: AdminFeedback[]; total: number }> => {
+    status?: string,
+  ): Promise<{ items: AdminFeedback[]; total: number; counts: Record<string, number> }> => {
     const params = new URLSearchParams();
     if (page) params.set('page', String(page));
     if (limit) params.set('limit', String(limit));
     if (category) params.set('category', category);
     if (search) params.set('search', search);
+    if (status) params.set('status', status);
     const qs = params.toString();
     return fetchApi(`/api/feedbacks${qs ? `?${qs}` : ''}`);
   },

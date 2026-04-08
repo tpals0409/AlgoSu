@@ -32,7 +32,7 @@ async function resizeImage(file: File, maxWidth = 800): Promise<string> {
         return;
       }
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+      const dataUrl = canvas.toDataURL('image/webp', 0.65);
       URL.revokeObjectURL(img.src);
       if (dataUrl.length > 700_000) {
         reject(new Error('이미지가 너무 큽니다. 더 작은 이미지를 사용해주세요.'));

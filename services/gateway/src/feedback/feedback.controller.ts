@@ -103,6 +103,7 @@ export class FeedbackController {
     @Query('limit') limit?: string,
     @Query('category') category?: string,
     @Query('search') search?: string,
+    @Query('status') status?: string,
   ): Promise<Record<string, unknown>> {
     await this.verifyAdmin(req);
     return this.identityClient.findAllFeedbacks(
@@ -110,6 +111,7 @@ export class FeedbackController {
       limit ? parseInt(limit, 10) : undefined,
       category,
       search,
+      status,
     );
   }
 

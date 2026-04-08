@@ -69,20 +69,21 @@ describe('FeedbackController (Identity)', () => {
 
   describe('findAll', () => {
     it('페이지네이션 파라미터를 파싱하여 서비스에 전달한다', async () => {
-      service.findAll.mockResolvedValue({ items: [], total: 0 } as never);
+      service.findAll.mockResolvedValue({ items: [], total: 0, counts: {} } as never);
 
-      const result = await controller.findAll('2', '10', 'BUG', '검색어');
+      const result = await controller.findAll('2', '10', 'BUG', '검색어', 'OPEN');
 
-      expect(service.findAll).toHaveBeenCalledWith(2, 10, 'BUG', '검색어');
-      expect(result).toEqual({ items: [], total: 0 });
+      expect(service.findAll).toHaveBeenCalledWith(2, 10, 'BUG', '검색어', 'OPEN');
+      expect(result).toEqual({ items: [], total: 0, counts: {} });
     });
 
     it('파라미터 없으면 undefined로 전달한다', async () => {
-      service.findAll.mockResolvedValue({ items: [], total: 0 } as never);
+      service.findAll.mockResolvedValue({ items: [], total: 0, counts: {} } as never);
 
       await controller.findAll();
 
       expect(service.findAll).toHaveBeenCalledWith(
+        undefined,
         undefined,
         undefined,
         undefined,

@@ -387,12 +387,14 @@ export class IdentityClientService {
     limit?: number,
     category?: string,
     search?: string,
+    status?: string,
   ): Promise<Record<string, unknown>> {
     const params = new URLSearchParams();
     if (page) params.set('page', String(page));
     if (limit) params.set('limit', String(limit));
     if (category) params.set('category', category);
     if (search) params.set('search', search);
+    if (status) params.set('status', status);
     const query = params.toString();
     return this.request('GET', `/api/feedbacks${query ? `?${query}` : ''}`);
   }

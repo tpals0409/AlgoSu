@@ -42,6 +42,10 @@ describe('FeedbackService', () => {
     orderBy: jest.fn().mockReturnThis(),
     take: jest.fn().mockReturnThis(),
     skip: jest.fn().mockReturnThis(),
+    select: jest.fn().mockReturnThis(),
+    addSelect: jest.fn().mockReturnThis(),
+    groupBy: jest.fn().mockReturnThis(),
+    getRawMany: jest.fn().mockResolvedValue([]),
     execute: jest.fn(),
     getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
   };
@@ -181,10 +185,11 @@ describe('FeedbackService', () => {
     it('기본값 page=1, limit=20으로 페이지네이션 조회한다', async () => {
       const items = [mockFeedback()];
       mockQueryBuilder.getManyAndCount.mockResolvedValue([items, 1]);
+      mockQueryBuilder.getRawMany.mockResolvedValue([]);
 
       const result = await service.findAll();
 
-      expect(result).toEqual({ items, total: 1 });
+      expect(result).toEqual({ items, total: 1, counts: {} });
       expect(feedbackRepo.createQueryBuilder).toHaveBeenCalledWith('f');
       expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith('f.created_at', 'DESC');
       expect(mockQueryBuilder.take).toHaveBeenCalledWith(20);
@@ -236,6 +241,33 @@ describe('FeedbackService', () => {
         'f.content ILIKE :search',
         { search: '%버그%' },
       );
+    });
+
+    it('status 필터를 적용한다', async () => {
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
+
+      await service.findAll(1, 20, undefined, undefined, 'OPEN');
+
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'f.status = :status',
+        { status: 'OPEN' },
+      );
+    });
+
+    it('counts에 상태별/카테고리별 통계를 반환한다', async () => {
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
+      mockQueryBuilder.getRawMany
+        .mockResolvedValueOnce([{ status: 'OPEN', cnt: '3' }, { status: 'CLOSED', cnt: '1' }])
+        .mockResolvedValueOnce([{ category: 'BUG', cnt: '2' }, { category: 'GENERAL', cnt: '2' }]);
+
+      const result = await service.findAll();
+
+      expect(result.counts).toEqual({
+        OPEN: 3,
+        CLOSED: 1,
+        'cat:BUG': 2,
+        'cat:GENERAL': 2,
+      });
     });
   });
 
