@@ -66,11 +66,11 @@ import { HealthController } from './health.controller';
     SseModule,
     MetricsModule,
     ExternalModule,
-    ProxyModule,
     IdentityClientModule,
     EventLogModule,
     FeedbackModule,
     LoggerModule,
+    ProxyModule, // CatchAllController(@All('*')) 포함 — 반드시 마지막 import
   ],
   controllers: [HealthController],
   providers: [
