@@ -284,6 +284,26 @@ describe('FeedbackService', () => {
         'cat:GENERAL': 2,
       });
     });
+
+    it('피드백이 있을 때 사용자/스터디 정보를 배치 조회한다', async () => {
+      const fb = mockFeedback({ studyId: 'study-1' });
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[fb], 1]);
+      mockQueryBuilder.getRawMany.mockResolvedValue([]);
+      mockManagerQuery
+        .mockResolvedValueOnce([{ id: 'user-1', name: 'Test User', email: 'test@test.com' }])
+        .mockResolvedValueOnce([{ id: 'study-1', name: 'Test Study' }]);
+
+      const result = await service.findAll();
+
+      expect(result.items[0]).toEqual(
+        expect.objectContaining({
+          userName: 'Test User',
+          userEmail: 'test@test.com',
+          studyName: 'Test Study',
+        }),
+      );
+      expect(mockManagerQuery).toHaveBeenCalledTimes(2);
+    });
   });
 
   // ─── updateStatus ──────────────────────────────────
