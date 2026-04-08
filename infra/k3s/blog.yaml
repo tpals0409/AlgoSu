@@ -1,0 +1,64 @@
+# AlgoSu Tech Blog — 정적 사이트 (nginx)
+# 리소스 최소화: 순수 정적 HTML/CSS/JS 서빙
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blog
+  namespace: algosu
+  labels:
+    app: blog
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: blog
+  template:
+    metadata:
+      labels:
+        app: blog
+    spec:
+      containers:
+        - name: blog
+          image: ghcr.io/tpals0409/algosu-blog:local
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 50m
+              memory: 64Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          securityContext:
+            readOnlyRootFilesystem: false
+            runAsNonRoot: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: blog
+  namespace: algosu
+  labels:
+    app: blog
+spec:
+  type: ClusterIP
+  selector:
+    app: blog
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP

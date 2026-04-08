@@ -25,9 +25,11 @@ resources:
   - ai-analysis-service.yaml
   - github-worker.yaml
   - frontend.yaml
+  - blog.yaml
 
   # 라우팅
   - ingress.yaml
+  - cloudflared.yaml
 
   # 오토스케일링 & 가용성
   - hpa.yaml

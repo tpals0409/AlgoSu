@@ -100,6 +100,7 @@ jobs:
       github-worker: ${{ steps.result.outputs.github-worker }}
       ai-analysis:   ${{ steps.result.outputs.ai-analysis }}
       frontend:      ${{ steps.result.outputs.frontend }}
+      blog:          ${{ steps.result.outputs.blog }}
     steps:
       - uses: actions/checkout@v4
       - name: Detect path changes
@@ -121,6 +122,9 @@ jobs:
               - 'services/ai-analysis/**'
             frontend:
               - 'frontend/**'
+            blog:
+              - 'blog/**'
+              - 'docs/adr/**'
       - name: Apply rebuild_all override
         id: result
         run: |
@@ -132,6 +136,7 @@ jobs:
             echo "github-worker=true" >> $GITHUB_OUTPUT
             echo "ai-analysis=true" >> $GITHUB_OUTPUT
             echo "frontend=true" >> $GITHUB_OUTPUT
+            echo "blog=true" >> $GITHUB_OUTPUT
           else
             echo "gateway=${{ steps.filter.outputs.gateway }}" >> $GITHUB_OUTPUT
             echo "identity=${{ steps.filter.outputs.identity }}" >> $GITHUB_OUTPUT
@@ -140,6 +145,7 @@ jobs:
             echo "github-worker=${{ steps.filter.outputs.github-worker }}" >> $GITHUB_OUTPUT
             echo "ai-analysis=${{ steps.filter.outputs.ai-analysis }}" >> $GITHUB_OUTPUT
             echo "frontend=${{ steps.filter.outputs.frontend }}" >> $GITHUB_OUTPUT
+            echo "blog=${{ steps.filter.outputs.blog }}" >> $GITHUB_OUTPUT
           fi
 
   # ============================================================
@@ -626,6 +632,41 @@ jobs:
           cache-to: type=gha,mode=max,scope=frontend
 
   # ============================================================
+  # Build Blog — 기술 블로그 정적 사이트 (Next.js SSG + nginx)
+  # ============================================================
+
+  build-blog:
+    name: Build Blog (SSG)
+    needs: [detect-changes, secret-scan]
+    if: |
+      !cancelled() &&
+      needs.detect-changes.outputs.blog == 'true' &&
+      needs.secret-scan.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/arm64
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./blog
+          platforms: linux/arm64
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: ${{ env.IMAGE_PREFIX }}-blog:main-${{ github.sha }}
+          cache-from: type=gha,scope=blog
+          cache-to: type=gha,mode=max,scope=blog
+
+  # ============================================================
   # Trivy — 이미지 취약점 스캔 (main push 후, deploy 전)
   # ============================================================
 
@@ -635,6 +676,7 @@ jobs:
       - detect-changes
       - build-services
       - build-frontend
+      - build-blog
     if: github.ref == 'refs/heads/main' && !cancelled()
     runs-on: ubuntu-latest
     permissions:
@@ -652,6 +694,7 @@ jobs:
           - service: github-worker
           - service: ai-analysis
           - service: frontend
+          - service: blog
     steps:
       - name: Check if service was built
         id: check
@@ -660,9 +703,16 @@ jobs:
           CHANGED="${{ needs.detect-changes.outputs[matrix.service] }}"
           BUILD_SVC="${{ needs.build-services.result }}"
           BUILD_FE="${{ needs.build-frontend.result }}"
+          BUILD_BLOG="${{ needs.build-blog.result }}"
 
           if [ "${{ matrix.service }}" = "frontend" ]; then
             if [ "$BUILD_FE" != "success" ]; then
+              echo "skip=true" >> $GITHUB_OUTPUT
+            else
+              echo "skip=false" >> $GITHUB_OUTPUT
+            fi
+          elif [ "${{ matrix.service }}" = "blog" ]; then
+            if [ "$BUILD_BLOG" != "success" ]; then
               echo "skip=true" >> $GITHUB_OUTPUT
             else
               echo "skip=false" >> $GITHUB_OUTPUT
@@ -734,13 +784,15 @@ jobs:
       - trivy-scan
       - build-services
       - build-frontend
+      - build-blog
     # main 브랜치 + 하나 이상의 서비스 빌드 성공 시에만 실행
     if: |
       github.ref == 'refs/heads/main' && !cancelled() &&
       needs.secret-scan.result == 'success' &&
       needs.trivy-scan.result != 'failure' &&
       (needs.build-services.result == 'success' ||
-       needs.build-frontend.result == 'success')
+       needs.build-frontend.result == 'success' ||
+       needs.build-blog.result == 'success')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -770,6 +822,7 @@ jobs:
             [ "${{ needs.detect-changes.outputs.ai-analysis }}" = "true" ] && UPDATED="${UPDATED} ai-analysis"
           fi
           [ "${{ needs.build-frontend.result }}" = "success" ] && UPDATED="${UPDATED} frontend"
+          [ "${{ needs.build-blog.result }}" = "success" ] && UPDATED="${UPDATED} blog"
 
           # 변경된 서비스만 이미지 태그 업데이트 (python3 + PyYAML)
           for SVC in $UPDATED; do

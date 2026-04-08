@@ -1,0 +1,37 @@
+---
+title: "Redis/RabbitMQ ACL 분리 설계: 보안 격리의 청사진"
+date: "2026-03-16"
+excerpt: "모든 서비스가 동일 자격증명으로 접속하는 공유 인프라의 보안 격리 설계 — 멀티테넌시 전까지 보류"
+tags: ["redis", "rabbitmq", "security", "infrastructure"]
+source: "docs/adr/ADR-003-redis-rabbitmq-acl.md"
+---
+
+## 배경
+
+현재 모든 서비스가 동일한 Redis/RabbitMQ 자격증명으로 접속합니다. 서비스 간 격리가 없어, 한 서비스의 버그나 보안 침해가 다른 서비스의 데이터에 영향을 줄 수 있습니다.
+
+| 서비스 | Redis 사용 | RabbitMQ 사용 |
+|--------|-----------|--------------|
+| Gateway | rate-limit, session | - |
+| Submission | saga 상태, 캐시 | publish (분석/푸시 요청) |
+| Problem | 캐시 | - |
+| GitHub-Worker | 상태 보고 | consume (푸시 요청) |
+
+## 설계안
+
+- **Redis**: 서비스별 keyPrefix 적용 + ACL 사용자 분리
+- **RabbitMQ**: 서비스별 사용자 + vhost 또는 Topic 권한 분리
+- **Phase 1/2/3** 단계적 마이그레이션 계획 수립
+
+## 결정: 보류
+
+설계는 승인하되, 구현은 아래 트리거까지 보류합니다.
+
+**근거:**
+- 현재 단일 팀 운영으로 격리 필요성 낮음
+- OCI ARM 리소스 제약 (ACL 오버헤드 최소화)
+
+**재검토 트리거:**
+- 멀티테넌시 도입
+- 외부 개발자 합류
+- 보안 감사 요구
