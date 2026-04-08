@@ -49,8 +49,14 @@ afterEach(() => {
  * 모듈 레벨 싱글톤이므로 매 테스트마다 격리하여 import
  */
 function loadTracker() {
-  let tracker: { eventTracker: { track: Function; destroy: Function } | null };
+  let tracker: {
+    eventTracker: {
+      track: (type: string, data?: Record<string, unknown>) => void;
+      destroy: () => void;
+    } | null;
+  };
   jest.isolateModules(() => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     tracker = require('../event-tracker');
   });
   return tracker!.eventTracker!;

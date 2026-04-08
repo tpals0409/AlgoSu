@@ -5,6 +5,7 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Repository, DataSource } from 'typeorm';
 import { SubmissionService } from './submission.service';
 import { Submission, SagaStep, GitHubSyncStatus } from './submission.entity';
+import { AiSatisfaction } from './ai-satisfaction.entity';
 import { SagaOrchestratorService } from '../saga/saga-orchestrator.service';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { UpdateAiResultDto } from './dto/update-ai-result.dto';
@@ -35,6 +36,14 @@ const mockSubmissionRepo = () => ({
   update: jest.fn(),
   count: jest.fn(),
   createQueryBuilder: jest.fn(),
+});
+
+const mockSatisfactionRepo = () => ({
+  findOne: jest.fn(),
+  find: jest.fn(),
+  create: jest.fn(),
+  save: jest.fn(),
+  delete: jest.fn(),
 });
 
 const mockSagaOrchestrator = () => ({
@@ -111,6 +120,7 @@ describe('SubmissionService', () => {
       providers: [
         SubmissionService,
         { provide: getRepositoryToken(Submission), useFactory: mockSubmissionRepo },
+        { provide: getRepositoryToken(AiSatisfaction), useFactory: mockSatisfactionRepo },
         { provide: SagaOrchestratorService, useFactory: mockSagaOrchestrator },
         { provide: ConfigService, useFactory: mockConfigService },
         { provide: DataSource, useFactory: mockDataSource },
