@@ -23,6 +23,8 @@ jest.mock('lucide-react', () => {
     MessagesSquare: Icon,
     BarChart3: Icon,
     LogOut: Icon,
+    Settings: Icon,
+    Shield: Icon,
   };
 });
 
@@ -30,6 +32,14 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
   usePathname: () => '/',
 }));
+
+jest.mock('next/link', () => {
+  const MockLink = ({ children, ...props }: { children: React.ReactNode; href: string }) => (
+    <a {...props}>{children}</a>
+  );
+  MockLink.displayName = 'MockLink';
+  return MockLink;
+});
 
 jest.mock('next/image', () => ({
   __esModule: true,
@@ -63,6 +73,15 @@ jest.mock('@/components/layout/NotificationBell', () => ({
 
 jest.mock('@/lib/avatars', () => ({
   getAvatarSrc: () => '/avatar.png',
+  getAvatarPresetKey: (v: string) => v ?? 'default',
+}));
+
+jest.mock('@/lib/utils', () => ({
+  cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
+}));
+
+jest.mock('@/components/feedback/FeedbackWidget', () => ({
+  FeedbackWidget: () => <div data-testid="feedback-widget" />,
 }));
 
 jest.mock('@/components/ui/Logo', () => ({

@@ -212,6 +212,10 @@ export class MqPublisherService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy(): Promise<void> {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     if (this.channel) await this.channel.close();
     if (this.connection) await this.connection.close();
     this.logger.log('RabbitMQ 연결 종료');

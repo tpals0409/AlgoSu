@@ -6,6 +6,10 @@ jest.mock('next/web-vitals', () => ({
   useReportWebVitals: jest.fn(),
 }));
 
+jest.mock('@/lib/event-tracker', () => ({
+  eventTracker: { track: jest.fn() },
+}));
+
 const mockUseReportWebVitals = webVitals.useReportWebVitals as jest.Mock;
 
 const makeMockMetric = (overrides = {}) => ({

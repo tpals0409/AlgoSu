@@ -85,7 +85,8 @@ describe('SagaOrchestratorService', () => {
     mqPublisher = module.get(MqPublisherService);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await service.onModuleDestroy();
     jest.restoreAllMocks();
   });
 

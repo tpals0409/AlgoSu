@@ -60,7 +60,8 @@ describe('MqPublisherService', () => {
     service = module.get<MqPublisherService>(MqPublisherService);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await service.onModuleDestroy();
     jest.useRealTimers();
   });
 

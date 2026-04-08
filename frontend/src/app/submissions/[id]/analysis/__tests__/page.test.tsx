@@ -107,6 +107,41 @@ jest.mock('@/components/ui/LoadingSpinner', () => ({
   LoadingSpinner: () => <div data-testid="loading-spinner" />,
 }));
 
+jest.mock('@/components/ad/AdBanner', () => ({
+  AdBanner: () => <div data-testid="ad-banner" />,
+}));
+
+jest.mock('@/lib/constants/adSlots', () => ({
+  AD_SLOTS: { ANALYSIS_BOTTOM: 'analysis-bottom' },
+}));
+
+jest.mock('@/components/submission/AiSatisfactionButton', () => ({
+  AiSatisfactionButton: () => <div data-testid="ai-satisfaction" />,
+}));
+
+jest.mock('@/lib/feedback', () => ({
+  parseFeedback: (feedback: string | null, score: number | null, optimizedCode: string | null) => {
+    if (!feedback) return null;
+    try {
+      const parsed = JSON.parse(feedback);
+      return {
+        totalScore: parsed.totalScore ?? score ?? 0,
+        summary: parsed.summary ?? '',
+        categories: parsed.categories ?? [],
+        optimizedCode: parsed.optimizedCode ?? optimizedCode ?? null,
+        timeComplexity: parsed.timeComplexity ?? null,
+        spaceComplexity: parsed.spaceComplexity ?? null,
+      };
+    } catch {
+      return null;
+    }
+  },
+}));
+
+jest.mock('@/lib/date', () => ({
+  relativeTime: () => '방금 전',
+}));
+
 jest.mock('@/lib/constants', () => ({
   DIFF_DOT_STYLE: {},
   DIFF_BADGE_STYLE: {},

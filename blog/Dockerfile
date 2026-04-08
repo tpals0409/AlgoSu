@@ -9,6 +9,7 @@ COPY . .
 RUN npm run build
 
 FROM nginx:1.28-alpine3.21 AS runner
+RUN apk update && apk upgrade --no-cache libcrypto3 libssl3 libpng libxml2 libexpat && rm -rf /var/cache/apk/*
 COPY --from=builder /app/out /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
