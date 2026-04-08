@@ -46,7 +46,11 @@ export class UserService {
     });
   }
 
-  /** 이메일로 사용자 조회 */
+  /**
+   * 이메일로 사용자 조회 — deleted_at 필터링 제외 (의도적)
+   * @warning 일반 조회에 부적합. upsertUser 내부에서만 사용 — 탈퇴 계정 복구 전용
+   * @see upsertUser
+   */
   async findByEmail(email: string): Promise<User | null> {
     return this.userRepository.findOne({ where: { email } });
   }
