@@ -1,5 +1,5 @@
 'use client';
-
+// Sprint 62 — 피드백 관리 대시보드 (상세모달/카테고리필터/검색/isAdmin)
 import { useEffect, useState, useCallback, type ReactNode } from 'react';
 import {
   MessageSquare,
