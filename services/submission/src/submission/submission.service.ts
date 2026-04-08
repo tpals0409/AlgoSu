@@ -13,8 +13,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, In } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Submission, SagaStep } from './submission.entity';
+import { AiSatisfaction } from './ai-satisfaction.entity';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { UpdateAiResultDto } from './dto/update-ai-result.dto';
+import { CreateAiSatisfactionDto } from './dto/create-ai-satisfaction.dto';
 import { PaginationQueryDto, PaginatedResult } from './dto/pagination-query.dto';
 import { SagaOrchestratorService } from '../saga/saga-orchestrator.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
@@ -34,6 +36,8 @@ export class SubmissionService {
   constructor(
     @InjectRepository(Submission)
     private readonly submissionRepo: Repository<Submission>,
+    @InjectRepository(AiSatisfaction)
+    private readonly satisfactionRepo: Repository<AiSatisfaction>,
     private readonly sagaOrchestrator: SagaOrchestratorService,
     private readonly configService: ConfigService,
     private readonly dataSource: DataSource,
@@ -565,5 +569,78 @@ export class SubmissionService {
       this.logger.error(`GitHub 연동 상태 확인 실패: ${(error as Error).message}`);
       throw new ForbiddenException('GitHub 연동 상태 확인에 실패했습니다.');
     }
+  }
+
+  // ── AI 만족도 ──────────────────────────────────────────
+
+  /**
+   * AI 만족도 등록/수정 (UPSERT)
+   * 동일 submissionId+userId 조합이 이미 있으면 rating/comment 업데이트
+   */
+  async rateSatisfaction(
+    submissionId: string,
+    userId: string,
+    dto: CreateAiSatisfactionDto,
+  ): Promise<AiSatisfaction> {
+    // 제출 존재 여부 확인
+    await this.findById(submissionId);
+
+    await this.satisfactionRepo.upsert(
+      {
+        submissionId,
+        userId,
+        rating: dto.rating,
+        comment: dto.comment ?? null,
+      },
+      {
+        conflictPaths: ['submissionId', 'userId'],
+      },
+    );
+
+    const saved = await this.satisfactionRepo.findOneOrFail({
+      where: { submissionId, userId },
+    });
+
+    this.logger.log(
+      `AI 만족도 등록: submissionId=${submissionId}, userId=${userId}, rating=${dto.rating}`,
+    );
+
+    return saved;
+  }
+
+  /**
+   * 내 AI 만족도 조회
+   */
+  async getSatisfaction(
+    submissionId: string,
+    userId: string,
+  ): Promise<AiSatisfaction | null> {
+    return this.satisfactionRepo.findOne({
+      where: { submissionId, userId },
+    });
+  }
+
+  /**
+   * AI 만족도 통계 (제출별 up/down 집계)
+   */
+  async getSatisfactionStats(
+    submissionId: string,
+  ): Promise<{ up: number; down: number }> {
+    const rows = await this.satisfactionRepo
+      .createQueryBuilder('s')
+      .select('s.rating', 'rating')
+      .addSelect('COUNT(*)::int', 'cnt')
+      .where('s.submission_id = :submissionId', { submissionId })
+      .groupBy('s.rating')
+      .getRawMany<{ rating: number; cnt: number }>();
+
+    let up = 0;
+    let down = 0;
+    for (const row of rows) {
+      if (Number(row.rating) === 1) up = Number(row.cnt);
+      if (Number(row.rating) === -1) down = Number(row.cnt);
+    }
+
+    return { up, down };
   }
 }

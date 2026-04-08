@@ -28,6 +28,7 @@ import { useStudy } from '@/contexts/StudyContext';
 import { DIFF_DOT_STYLE, DIFF_BADGE_STYLE, toTierLevel } from '@/lib/constants';
 import { AdBanner } from '@/components/ad/AdBanner';
 import { AD_SLOTS } from '@/lib/constants/adSlots';
+import { AiSatisfactionButton } from '@/components/submission/AiSatisfactionButton';
 
 const DIFFICULTY_LABELS: Record<string, string> = {
   BRONZE: 'Bronze', SILVER: 'Silver', GOLD: 'Gold',
@@ -560,6 +561,8 @@ export default function AnalysisPage(): ReactNode {
                     </div>
                   )}
                 </div>
+              {/* AI 만족도 */}
+              {submission && <AiSatisfactionButton submissionId={submission.id} />}
               </Card>
             </div>
           </div>

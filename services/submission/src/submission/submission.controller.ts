@@ -23,6 +23,7 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { SubmissionService } from './submission.service';
 import { DraftService } from '../draft/draft.service';
 import { CreateSubmissionDto, UpsertDraftDto } from './dto/create-submission.dto';
+import { CreateAiSatisfactionDto } from './dto/create-ai-satisfaction.dto';
 import { PaginationQueryDto } from './dto/pagination-query.dto';
 import { InternalKeyGuard } from '../common/guards/internal-key.guard';
 import { StudyMemberGuard } from '../common/guards/study-member.guard';
@@ -254,5 +255,34 @@ export class SubmissionController {
     @Headers('x-study-id') studyId: string,
   ): Promise<void> {
     await this.draftService.deleteByProblem(studyId, userId, problemId);
+  }
+
+  // ── AI 만족도 API ──────────────────────────────────────
+
+  /**
+   * POST /satisfaction/:submissionId — AI 만족도 등록/수정
+   */
+  @ApiOperation({ summary: 'AI 분석 만족도 등록/수정' })
+  @Post('satisfaction/:submissionId')
+  async rateSatisfaction(
+    @Param('submissionId', ParseUUIDPipe) submissionId: string,
+    @Headers('x-user-id') userId: string,
+    @Body() dto: CreateAiSatisfactionDto,
+  ) {
+    const satisfaction = await this.submissionService.rateSatisfaction(submissionId, userId, dto);
+    return { data: satisfaction };
+  }
+
+  /**
+   * GET /satisfaction/:submissionId — 내 AI 만족도 조회
+   */
+  @ApiOperation({ summary: '내 AI 만족도 조회' })
+  @Get('satisfaction/:submissionId')
+  async getSatisfaction(
+    @Param('submissionId', ParseUUIDPipe) submissionId: string,
+    @Headers('x-user-id') userId: string,
+  ) {
+    const satisfaction = await this.submissionService.getSatisfaction(submissionId, userId);
+    return { data: satisfaction };
   }
 }

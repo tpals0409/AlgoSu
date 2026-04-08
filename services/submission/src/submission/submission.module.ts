@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Submission } from './submission.entity';
+import { AiSatisfaction } from './ai-satisfaction.entity';
 import { Draft } from '../draft/draft.entity';
 import { SubmissionController } from './submission.controller';
 import { SubmissionInternalController } from './submission-internal.controller';
@@ -10,7 +11,7 @@ import { SagaOrchestratorService } from '../saga/saga-orchestrator.service';
 import { MqPublisherService } from '../saga/mq-publisher.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Submission, Draft])],
+  imports: [TypeOrmModule.forFeature([Submission, AiSatisfaction, Draft])],
   controllers: [SubmissionController, SubmissionInternalController],
   providers: [
     SubmissionService,

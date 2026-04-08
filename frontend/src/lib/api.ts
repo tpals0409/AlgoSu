@@ -436,6 +436,15 @@ export const submissionApi = {
 
   getAnalysis: (submissionId: string): Promise<AnalysisResult> =>
     fetchApi(`/api/submissions/${submissionId}/analysis`),
+
+  getSatisfaction: (submissionId: string): Promise<{ rating: 1 | -1 } | null> =>
+    fetchApi(`/api/submissions/satisfaction/${submissionId}`),
+
+  rateSatisfaction: (submissionId: string, data: { rating: 1 | -1 }): Promise<void> =>
+    fetchApi(`/api/submissions/satisfaction/${submissionId}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };
 
 // ── AI Quota API ──
@@ -710,5 +719,58 @@ export const settingsApi = {
     fetchApi('/api/users/me/settings/profile', {
       method: 'PUT',
       body: JSON.stringify(data),
+    }),
+};
+
+// ── Feedback API ──
+
+export const feedbackApi = {
+  create: (data: {
+    category: string;
+    content: string;
+    pageUrl?: string;
+    browserInfo?: string;
+    screenshot?: string;
+  }): Promise<{ publicId: string }> =>
+    fetchApi('/api/feedbacks', { method: 'POST', body: JSON.stringify(data) }),
+
+  mine: (): Promise<
+    Array<{
+      publicId: string;
+      category: string;
+      content: string;
+      status: string;
+      createdAt: string;
+    }>
+  > => fetchApi('/api/feedbacks/mine'),
+};
+
+// ── Admin API ──
+
+export interface AdminFeedback {
+  publicId: string;
+  userId: string;
+  category: string;
+  content: string;
+  pageUrl: string | null;
+  browserInfo: string | null;
+  status: string;
+  createdAt: string;
+  resolvedAt: string | null;
+}
+
+export const adminApi = {
+  feedbacks: (page?: number, limit?: number): Promise<{ items: AdminFeedback[]; total: number }> => {
+    const params = new URLSearchParams();
+    if (page) params.set('page', String(page));
+    if (limit) params.set('limit', String(limit));
+    const qs = params.toString();
+    return fetchApi(`/api/feedbacks${qs ? `?${qs}` : ''}`);
+  },
+
+  updateFeedbackStatus: (publicId: string, status: string): Promise<AdminFeedback> =>
+    fetchApi(`/api/feedbacks/${publicId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
     }),
 };

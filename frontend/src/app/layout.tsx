@@ -4,6 +4,7 @@ import Script from 'next/script';
 import '@/app/globals.css';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import { WebVitalsReporter } from '@/components/providers/WebVitalsReporter';
+import { EventTrackerProvider } from '@/components/providers/EventTracker';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { StudyProvider } from '@/contexts/StudyContext';
 
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: RootLayoutProps): ReactNode {
           disableTransitionOnChange
         >
           <WebVitalsReporter />
+          <EventTrackerProvider />
           <AuthProvider>
             <StudyProvider>
               {children}

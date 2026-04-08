@@ -101,6 +101,21 @@ export interface CreateShareLinkData {
   expires_at?: string;
 }
 
+// ─── Feedback API ────────────────────────────────────
+
+export interface CreateFeedbackData {
+  userId: string;
+  category: string;
+  content: string;
+  pageUrl?: string;
+  browserInfo?: string;
+  screenshot?: string;
+}
+
+export interface UpdateFeedbackStatusData {
+  status: string;
+}
+
 /** GET 재시도 설정 상수 */
 const RETRY_MAX_ATTEMPTS = 2; // 최대 재시도 횟수 (총 3회 시도)
 const RETRY_BASE_DELAY_MS = 500; // 기본 백오프 (ms)
@@ -348,6 +363,42 @@ export class IdentityClientService {
     userId: string,
   ): Promise<{ affected: number }> {
     return this.request('DELETE', `/api/notifications/by-user/${userId}`);
+  }
+
+  // ─── Feedback API ────────────────────────────────────
+
+  /** 피드백 생성 */
+  async createFeedback(
+    data: CreateFeedbackData,
+  ): Promise<Record<string, unknown>> {
+    return this.request('POST', '/api/feedbacks', data);
+  }
+
+  /** 사용자별 피드백 목록 */
+  async findFeedbacksByUserId(
+    userId: string,
+  ): Promise<Record<string, unknown>[]> {
+    return this.request('GET', `/api/feedbacks/by-user/${userId}`);
+  }
+
+  /** 전체 피드백 목록 (admin) */
+  async findAllFeedbacks(
+    page?: number,
+    limit?: number,
+  ): Promise<Record<string, unknown>> {
+    const params = new URLSearchParams();
+    if (page) params.set('page', String(page));
+    if (limit) params.set('limit', String(limit));
+    const query = params.toString();
+    return this.request('GET', `/api/feedbacks${query ? `?${query}` : ''}`);
+  }
+
+  /** 피드백 상태 변경 (admin) */
+  async updateFeedbackStatus(
+    publicId: string,
+    data: UpdateFeedbackStatusData,
+  ): Promise<Record<string, unknown>> {
+    return this.request('PATCH', `/api/feedbacks/${publicId}/status`, data);
   }
 
   // ─── ShareLink API ────────────────────────────────────

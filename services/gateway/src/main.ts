@@ -5,6 +5,18 @@
  * @related AppModule, GlobalExceptionFilter
  */
 
+import * as Sentry from '@sentry/node';
+
+// Sentry 초기화 — 다른 모듈 로드 전 최상단에서 실행
+const sentryDsn = process.env.SENTRY_DSN;
+if (sentryDsn) {
+  Sentry.init({
+    dsn: sentryDsn,
+    tracesSampleRate: 0.1,
+    environment: process.env.NODE_ENV ?? 'production',
+  });
+}
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -65,6 +77,14 @@ async function bootstrap(): Promise<void> {
     const document = SwaggerModule.createDocument(app, swaggerConfig);
     SwaggerModule.setup('api-docs', app, document);
   }
+
+  // Sentry — 미처리 예외/프로미스 거부 캡처
+  process.on('uncaughtException', (err) => {
+    Sentry.captureException(err);
+  });
+  process.on('unhandledRejection', (err) => {
+    Sentry.captureException(err);
+  });
 
   const port = configService.get<number>('PORT', 3000);
   await app.listen(port);

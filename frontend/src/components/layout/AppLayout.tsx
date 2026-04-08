@@ -32,6 +32,7 @@ import {
   Check,
   Plus,
   LogOut,
+  Shield,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Toaster } from 'sonner';
@@ -39,6 +40,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudy } from '@/contexts/StudyContext';
 import { NotificationBell } from '@/components/layout/NotificationBell';
+import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 import { Logo } from '@/components/ui/Logo';
 import { getAvatarSrc, getAvatarPresetKey } from '@/lib/avatars';
 
@@ -413,6 +415,28 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
                   설정
                 </Link>
 
+                {/* 관리자 */}
+                {(() => {
+                  const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? '').split(',').map(e => e.trim()).filter(Boolean);
+                  const isAdmin = user?.email ? adminEmails.includes(user.email) : false;
+                  if (!isAdmin) return null;
+                  return (
+                    <Link
+                      href="/admin"
+                      onClick={closeSidebar}
+                      className={cn(
+                        'flex items-center gap-2.5 rounded-btn px-3 py-2 text-[13px] font-medium transition-all duration-150',
+                        pathname.startsWith('/admin')
+                          ? 'bg-primary-soft text-primary'
+                          : 'text-text-3 hover:bg-bg-alt hover:text-text-2',
+                      )}
+                    >
+                      <Shield className="h-4 w-4 shrink-0" aria-hidden />
+                      관리자
+                    </Link>
+                  );
+                })()}
+
               </div>
             </aside>
           </>
@@ -512,6 +536,7 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
         </main>
       </div>
 
+      {isAuthenticated && <FeedbackWidget />}
       <Toaster
         theme={isDark ? 'dark' : 'light'}
         position="bottom-right"

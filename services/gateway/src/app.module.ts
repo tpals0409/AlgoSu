@@ -31,6 +31,8 @@ import { AvatarModule } from './avatar/avatar.module';
 import { ReviewProxyModule } from './review/review.module';
 import { StudyNoteProxyModule } from './study-note/study-note.module';
 import { IdentityClientModule } from './identity-client/identity-client.module';
+import { EventLogModule } from './event-log/event-log.module';
+import { FeedbackModule } from './feedback/feedback.module';
 import { DemoWriteGuard } from './common/guards/demo-write.guard';
 import { HealthController } from './health.controller';
 
@@ -66,6 +68,8 @@ import { HealthController } from './health.controller';
     ExternalModule,
     ProxyModule,
     IdentityClientModule,
+    EventLogModule,
+    FeedbackModule,
     LoggerModule,
   ],
   controllers: [HealthController],
@@ -123,6 +127,7 @@ export class AppModule implements NestModule {
         { path: 'sse/submissions/:id', method: RequestMethod.GET },
         { path: 'sse/notifications', method: RequestMethod.GET },
         { path: 'api/public/(.*)', method: RequestMethod.GET },
+        { path: 'api/events', method: RequestMethod.POST },
       )
       .forRoutes({ path: '*', method: RequestMethod.ALL });
   }

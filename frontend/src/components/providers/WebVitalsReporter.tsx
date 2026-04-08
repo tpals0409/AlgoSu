@@ -11,6 +11,7 @@
 
 import { useReportWebVitals } from 'next/web-vitals';
 import type { ReactNode } from 'react';
+import { eventTracker } from '@/lib/event-tracker';
 
 function sendToAnalytics(metric: {
   id: string;
@@ -28,8 +29,15 @@ function sendToAnalytics(metric: {
     );
   }
 
-  // TODO: 향후 서버 엔드포인트로 전송
-  // fetch('/api/vitals', { method: 'POST', body: JSON.stringify(metric) });
+  // 이벤트 트래커로 전송
+  eventTracker?.track('WEB_VITAL', {
+    meta: {
+      name: metric.name,
+      value: Math.round(metric.value),
+      rating: metric.rating,
+      delta: Math.round(metric.delta),
+    },
+  });
 }
 
 export function WebVitalsReporter(): ReactNode {
