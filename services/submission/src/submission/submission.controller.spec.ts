@@ -24,6 +24,9 @@ describe('SubmissionController', () => {
             findByStudyAndUserPaginated: jest.fn(),
             findById: jest.fn(),
             findByProblem: jest.fn(),
+            findByProblemForStudy: jest.fn(),
+            rateSatisfaction: jest.fn(),
+            getSatisfaction: jest.fn(),
           },
         },
         {
@@ -175,6 +178,62 @@ describe('SubmissionController', () => {
       await controller.deleteDraft('prob-1', 'user-1', 'study-1');
 
       expect(draftService.deleteByProblem).toHaveBeenCalledWith('study-1', 'user-1', 'prob-1');
+    });
+  });
+
+  describe('findByProblemForStudy()', () => {
+    it('본인 제출이 있으면 스터디 전체 제출 목록을 반환한다', async () => {
+      const mySubmissions = [{ id: 'sub-1' }];
+      const allSubmissions = [{ id: 'sub-1' }, { id: 'sub-2' }];
+      submissionService.findByProblem.mockResolvedValue(mySubmissions as any);
+      submissionService.findByProblemForStudy.mockResolvedValue(allSubmissions as any);
+
+      const result = await controller.findByProblemForStudy('prob-1', 'user-1', 'study-1');
+
+      expect(result).toEqual({ data: allSubmissions });
+      expect(submissionService.findByProblem).toHaveBeenCalledWith('study-1', 'user-1', 'prob-1');
+      expect(submissionService.findByProblemForStudy).toHaveBeenCalledWith('study-1', 'prob-1');
+    });
+
+    it('본인 제출이 없으면 ForbiddenException을 던진다', async () => {
+      submissionService.findByProblem.mockResolvedValue([]);
+
+      await expect(
+        controller.findByProblemForStudy('prob-1', 'user-1', 'study-1'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('rateSatisfaction()', () => {
+    it('AI 만족도를 등록하고 반환한다', async () => {
+      const dto = { rating: 1 } as any;
+      const mockSatisfaction = { submissionId: 'sub-1', userId: 'user-1', rating: 1 };
+      submissionService.rateSatisfaction.mockResolvedValue(mockSatisfaction as any);
+
+      const result = await controller.rateSatisfaction('sub-1', 'user-1', dto);
+
+      expect(result).toEqual({ data: mockSatisfaction });
+      expect(submissionService.rateSatisfaction).toHaveBeenCalledWith('sub-1', 'user-1', dto);
+    });
+  });
+
+  describe('getSatisfaction()', () => {
+    it('내 AI 만족도를 반환한다', async () => {
+      const mockSatisfaction = { submissionId: 'sub-1', userId: 'user-1', rating: 1 };
+      submissionService.getSatisfaction.mockResolvedValue(mockSatisfaction as any);
+
+      const result = await controller.getSatisfaction('sub-1', 'user-1');
+
+      expect(result).toEqual({ data: mockSatisfaction });
+      expect(submissionService.getSatisfaction).toHaveBeenCalledWith('sub-1', 'user-1');
+    });
+
+    it('만족도가 없으면 null을 반환한다', async () => {
+      submissionService.getSatisfaction.mockResolvedValue(null);
+
+      const result = await controller.getSatisfaction('sub-1', 'user-1');
+
+      expect(result).toEqual({ data: null });
     });
   });
 });
