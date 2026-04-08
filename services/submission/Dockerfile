@@ -1,4 +1,5 @@
 # AlgoSu Submission Service — 멀티스테이지 빌드 (ARM aarch64 호환)
+# Sprint 62: GET /satisfaction/:id/stats 엔드포인트 추가
 # 이미지 태그: main-{git-sha} (latest 사용 금지)
 
 FROM --platform=$BUILDPLATFORM node:22-alpine AS builder
