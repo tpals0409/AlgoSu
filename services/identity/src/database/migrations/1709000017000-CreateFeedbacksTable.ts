@@ -19,17 +19,17 @@ export class CreateFeedbacksTable1709000017000 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
-      CREATE INDEX CONCURRENTLY idx_feedbacks_user_id
+      CREATE INDEX idx_feedbacks_user_id
       ON feedbacks (user_id)
     `);
 
     await queryRunner.query(`
-      CREATE INDEX CONCURRENTLY idx_feedbacks_status
+      CREATE INDEX idx_feedbacks_status
       ON feedbacks (status)
     `);
 
     await queryRunner.query(`
-      CREATE INDEX CONCURRENTLY idx_feedbacks_category
+      CREATE INDEX idx_feedbacks_category
       ON feedbacks (category)
     `);
   }
