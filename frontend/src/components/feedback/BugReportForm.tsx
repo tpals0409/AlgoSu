@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { Bug, ImagePlus, X } from 'lucide-react';
 import { feedbackSchema, type FeedbackFormData } from '@/lib/schemas/feedback';
 import { feedbackApi } from '@/lib/api';
+import { eventTracker } from '@/lib/event-tracker';
 
 // ── Image resize utility ──
 
@@ -54,6 +55,7 @@ interface BugReportFormProps {
 export function BugReportForm({ onSuccess }: BugReportFormProps) {
   const [submitting, setSubmitting] = useState(false);
   const [screenshot, setScreenshot] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -124,6 +126,9 @@ export function BugReportForm({ onSuccess }: BugReportFormProps) {
         browserInfo: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
         screenshot: screenshot ?? undefined,
       });
+      eventTracker?.track('bug_report:submit', {
+        meta: { hasScreenshot: !!screenshot },
+      });
       toast.success('버그 리포트를 보내주셔서 감사합니다!');
       reset();
       setScreenshot(null);
@@ -185,8 +190,10 @@ export function BugReportForm({ onSuccess }: BugReportFormProps) {
             <img
               src={screenshot}
               alt="스크린샷 미리보기"
-              className="max-h-[160px] rounded-card border object-contain"
+              className="max-h-[200px] cursor-pointer rounded-card border object-contain transition-opacity hover:opacity-80"
               style={{ borderColor: 'var(--border)' }}
+              onClick={() => setPreviewOpen(true)}
+              title="클릭하여 전체 보기"
             />
             <button
               type="button"
@@ -233,6 +240,32 @@ export function BugReportForm({ onSuccess }: BugReportFormProps) {
         <Bug className="h-3.5 w-3.5" aria-hidden />
         {submitting ? '전송 중...' : '버그 리포트 보내기'}
       </button>
+
+      {/* 스크린샷 전체보기 모달 */}
+      {previewOpen && screenshot && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+          onClick={() => setPreviewOpen(false)}
+        >
+          <div className="relative mx-4 max-h-[80vh] max-w-[90vw]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={screenshot}
+              alt="스크린샷 전체보기"
+              className="max-h-[80vh] rounded-card object-contain"
+            />
+            <button
+              type="button"
+              onClick={() => setPreviewOpen(false)}
+              className="absolute -right-2 -top-2 rounded-full p-1"
+              style={{ background: 'var(--error)', color: 'white' }}
+              aria-label="닫기"
+            >
+              <X className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

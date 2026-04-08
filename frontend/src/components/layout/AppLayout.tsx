@@ -244,7 +244,7 @@ interface AppLayoutProps {
 
 export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
   const pathname = usePathname();
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, isAdmin, logout } = useAuth();
   const { currentStudyId } = useStudy();
   const { theme, setTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -416,26 +416,21 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
                 </Link>
 
                 {/* 관리자 */}
-                {(() => {
-                  const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? '').split(',').map(e => e.trim()).filter(Boolean);
-                  const isAdmin = user?.email ? adminEmails.includes(user.email) : false;
-                  if (!isAdmin) return null;
-                  return (
-                    <Link
-                      href="/admin"
-                      onClick={closeSidebar}
-                      className={cn(
-                        'flex items-center gap-2.5 rounded-btn px-3 py-2 text-[13px] font-medium transition-all duration-150',
-                        pathname.startsWith('/admin')
-                          ? 'bg-primary-soft text-primary'
-                          : 'text-text-3 hover:bg-bg-alt hover:text-text-2',
-                      )}
-                    >
-                      <Shield className="h-4 w-4 shrink-0" aria-hidden />
-                      관리자
-                    </Link>
-                  );
-                })()}
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    onClick={closeSidebar}
+                    className={cn(
+                      'flex items-center gap-2.5 rounded-btn px-3 py-2 text-[13px] font-medium transition-all duration-150',
+                      pathname.startsWith('/admin')
+                        ? 'bg-primary-soft text-primary'
+                        : 'text-text-3 hover:bg-bg-alt hover:text-text-2',
+                    )}
+                  >
+                    <Shield className="h-4 w-4 shrink-0" aria-hidden />
+                    관리자
+                  </Link>
+                )}
 
               </div>
             </aside>

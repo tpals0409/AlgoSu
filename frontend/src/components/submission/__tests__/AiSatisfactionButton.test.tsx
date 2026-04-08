@@ -11,11 +11,13 @@ import { AiSatisfactionButton } from '../AiSatisfactionButton';
 /* ---------- mocks ---------- */
 const mockGetSatisfaction = jest.fn();
 const mockRateSatisfaction = jest.fn();
+const mockGetSatisfactionStats = jest.fn();
 
 jest.mock('@/lib/api', () => ({
   submissionApi: {
     getSatisfaction: (...args: unknown[]) => mockGetSatisfaction(...args),
     rateSatisfaction: (...args: unknown[]) => mockRateSatisfaction(...args),
+    getSatisfactionStats: (...args: unknown[]) => mockGetSatisfactionStats(...args),
   },
 }));
 
@@ -37,10 +39,12 @@ const SUBMISSION_ID = 'sub-001';
 beforeEach(() => {
   mockGetSatisfaction.mockReset();
   mockRateSatisfaction.mockReset();
+  mockGetSatisfactionStats.mockReset();
   (toast as unknown as jest.Mock).mockClear();
   (toast.error as jest.Mock).mockClear();
   mockGetSatisfaction.mockResolvedValue(null);
   mockRateSatisfaction.mockResolvedValue({ ok: true });
+  mockGetSatisfactionStats.mockResolvedValue({ up: 0, down: 0 });
 });
 
 describe('AiSatisfactionButton', () => {

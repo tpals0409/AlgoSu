@@ -284,7 +284,7 @@ export const authApi = {
     fetchApi('/auth/refresh', { method: 'POST' }),
 
   /** 프로필 조회 */
-  getProfile: (): Promise<{ id: string; email: string; name: string | null; avatar_url: string | null; oauth_provider: string | null; github_connected: boolean; github_username: string | null; created_at: string }> =>
+  getProfile: (): Promise<{ id: string; email: string; name: string | null; avatar_url: string | null; oauth_provider: string | null; github_connected: boolean; github_username: string | null; created_at: string; isAdmin: boolean }> =>
     fetchApi('/auth/profile'),
 
   /** 프로필 수정 (아바타) */
@@ -445,6 +445,9 @@ export const submissionApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  getSatisfactionStats: (submissionId: string): Promise<{ up: number; down: number }> =>
+    fetchApi(`/api/submissions/satisfaction/${submissionId}/stats`),
 };
 
 // ── AI Quota API ──
@@ -754,19 +757,30 @@ export interface AdminFeedback {
   content: string;
   pageUrl: string | null;
   browserInfo: string | null;
+  screenshot: string | null;
   status: string;
   createdAt: string;
   resolvedAt: string | null;
 }
 
 export const adminApi = {
-  feedbacks: (page?: number, limit?: number): Promise<{ items: AdminFeedback[]; total: number }> => {
+  feedbacks: (
+    page?: number,
+    limit?: number,
+    category?: string,
+    search?: string,
+  ): Promise<{ items: AdminFeedback[]; total: number }> => {
     const params = new URLSearchParams();
     if (page) params.set('page', String(page));
     if (limit) params.set('limit', String(limit));
+    if (category) params.set('category', category);
+    if (search) params.set('search', search);
     const qs = params.toString();
     return fetchApi(`/api/feedbacks${qs ? `?${qs}` : ''}`);
   },
+
+  feedbackDetail: (publicId: string): Promise<AdminFeedback> =>
+    fetchApi(`/api/feedbacks/${publicId}/detail`),
 
   updateFeedbackStatus: (publicId: string, status: string): Promise<AdminFeedback> =>
     fetchApi(`/api/feedbacks/${publicId}/status`, {

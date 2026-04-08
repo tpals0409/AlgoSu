@@ -28,6 +28,7 @@ import {
 } from '@/lib/auth';
 import { authApi, setCurrentStudyIdForApi } from '@/lib/api';
 import { getAvatarPresetKey } from '@/lib/avatars';
+import * as Sentry from '@sentry/nextjs';
 
 // ── TYPES ────────────────────────────────
 
@@ -35,12 +36,14 @@ interface AuthUser {
   id: string;
   email: string;
   avatarPreset: string;
+  isAdmin: boolean;
 }
 
 interface AuthContextValue {
   user: AuthUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isAdmin: boolean;
   githubConnected: boolean;
   sessionExpired: boolean;
   /** OAuth 콜백 후 호출 — Cookie에 토큰이 이미 설정된 상태에서 프로필 로드 */
@@ -77,7 +80,7 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
       // ── DEV MOCK ──────────────────────────────────────────────
       // 프로덕션 빌드에서는 NEXT_PUBLIC_DEV_MOCK이 설정되어 있어도 무시
       if (process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_DEV_MOCK === 'true') {
-        setUser({ id: 'dev-user-001', email: 'dev@algosu.kr', avatarPreset: 'default' });
+        setUser({ id: 'dev-user-001', email: 'dev@algosu.kr', avatarPreset: 'default', isAdmin: true });
         setGithubConnected(true);
         setIsLoading(false);
         return;
@@ -89,12 +92,15 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
           id: profile.id,
           email: profile.email,
           avatarPreset: getAvatarPresetKey(profile.avatar_url),
+          isAdmin: profile.isAdmin ?? false,
         });
+        Sentry.setUser({ id: profile.id, email: profile.email });
         setGithubConnected(profile.github_connected ?? false);
         setGitHubConnectedStorage(profile.github_connected ?? false);
       } catch {
         // 401 또는 네트워크 에러 → 미인증 상태
         setUser(null);
+        Sentry.setUser(null);
       } finally {
         setIsLoading(false);
       }
@@ -112,12 +118,13 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
         id: profile.id,
         email: profile.email,
         avatarPreset: getAvatarPresetKey(profile.avatar_url),
+        isAdmin: profile.isAdmin ?? false,
       });
       setGithubConnected(profile.github_connected ?? false);
       setGitHubConnectedStorage(profile.github_connected ?? false);
     }).catch(() => {
       // 프로필 로드 실패 — 일단 기본 상태로 진행 (쿠키가 있으니 페이지 이동 후 재시도)
-      setUser({ id: '', email: '', avatarPreset: 'default' });
+      setUser({ id: '', email: '', avatarPreset: 'default', isAdmin: false });
     });
   }, []);
 
@@ -185,6 +192,7 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
     user,
     isLoading,
     isAuthenticated: user !== null,
+    isAdmin: user?.isAdmin ?? false,
     githubConnected,
     sessionExpired,
     loginFromCookie,

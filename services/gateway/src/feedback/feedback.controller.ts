@@ -101,12 +101,32 @@ export class FeedbackController {
     @Req() req: Request,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('category') category?: string,
+    @Query('search') search?: string,
   ): Promise<Record<string, unknown>> {
     await this.verifyAdmin(req);
     return this.identityClient.findAllFeedbacks(
       page ? parseInt(page, 10) : undefined,
       limit ? parseInt(limit, 10) : undefined,
+      category,
+      search,
     );
+  }
+
+  /**
+   * 피드백 상세 조회 (admin only, screenshot 포함)
+   * @api GET /api/feedbacks/:publicId/detail
+   * @guard jwt-auth, admin
+   */
+  @ApiOperation({ summary: '피드백 상세 조회 (관리자)' })
+  @ApiResponse({ status: 200, description: '피드백 상세 정보 (screenshot 포함)' })
+  @Get(':publicId/detail')
+  async findDetail(
+    @Req() req: Request,
+    @Param('publicId', ParseUUIDPipe) publicId: string,
+  ): Promise<Record<string, unknown>> {
+    await this.verifyAdmin(req);
+    return this.identityClient.findFeedbackDetail(publicId);
   }
 
   /**
@@ -138,7 +158,7 @@ export class FeedbackController {
       .get<string>('ADMIN_EMAILS', '')
       .split(',')
       .map((e) => e.trim());
-    if (!adminEmails.includes(user.email as string)) {
+    if (!adminEmails.map((e) => e.toLowerCase()).includes((user.email as string).toLowerCase())) {
       throw new ForbiddenException('관리자만 접근할 수 있습니다.');
     }
   }

@@ -11,6 +11,7 @@ import { ThumbsUp, ThumbsDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { submissionApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { eventTracker } from '@/lib/event-tracker';
 
 interface AiSatisfactionButtonProps {
   submissionId: string;
@@ -19,6 +20,7 @@ interface AiSatisfactionButtonProps {
 export function AiSatisfactionButton({ submissionId }: AiSatisfactionButtonProps) {
   const [rating, setRating] = useState<1 | -1 | null>(null);
   const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState<{ up: number; down: number } | null>(null);
 
   useEffect(() => {
     submissionApi
@@ -29,6 +31,12 @@ export function AiSatisfactionButton({ submissionId }: AiSatisfactionButtonProps
       .catch(() => {
         /* silent — 평가 미존재 시 무시 */
       });
+    submissionApi
+      .getSatisfactionStats(submissionId)
+      .then(setStats)
+      .catch(() => {
+        /* silent */
+      });
   }, [submissionId]);
 
   const handleRate = useCallback(
@@ -37,6 +45,9 @@ export function AiSatisfactionButton({ submissionId }: AiSatisfactionButtonProps
       try {
         await submissionApi.rateSatisfaction(submissionId, { rating: value });
         setRating(value);
+        eventTracker?.track('satisfaction:rate', { meta: { rating: value } });
+        // 통계 갱신
+        submissionApi.getSatisfactionStats(submissionId).then(setStats).catch(() => {});
         toast('의견 감사합니다!');
       } catch {
         toast.error('평가 저장에 실패했습니다.');
@@ -66,6 +77,9 @@ export function AiSatisfactionButton({ submissionId }: AiSatisfactionButtonProps
       >
         <ThumbsUp className="h-3.5 w-3.5" />
         좋아요
+        {stats && stats.up > 0 && (
+          <span className="ml-0.5 text-[11px] opacity-70">{stats.up}</span>
+        )}
       </button>
       <button
         type="button"
@@ -80,6 +94,9 @@ export function AiSatisfactionButton({ submissionId }: AiSatisfactionButtonProps
       >
         <ThumbsDown className="h-3.5 w-3.5" />
         아쉬워요
+        {stats && stats.down > 0 && (
+          <span className="ml-0.5 text-[11px] opacity-70">{stats.down}</span>
+        )}
       </button>
     </div>
   );

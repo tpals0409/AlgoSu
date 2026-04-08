@@ -285,4 +285,17 @@ export class SubmissionController {
     const satisfaction = await this.submissionService.getSatisfaction(submissionId, userId);
     return { data: satisfaction };
   }
+
+  /**
+   * GET /satisfaction/:submissionId/stats — AI 만족도 통계 (up/down 집계)
+   */
+  @ApiOperation({ summary: 'AI 만족도 통계 조회' })
+  @ApiResponse({ status: 200, description: 'up/down 카운트' })
+  @Get('satisfaction/:submissionId/stats')
+  async getSatisfactionStats(
+    @Param('submissionId', ParseUUIDPipe) submissionId: string,
+  ) {
+    const stats = await this.submissionService.getSatisfactionStats(submissionId);
+    return { data: stats };
+  }
 }

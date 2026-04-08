@@ -7,7 +7,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { FeedbackService } from './feedback.service';
 import { Feedback, FeedbackCategory, FeedbackStatus } from './feedback.entity';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
@@ -39,7 +39,11 @@ describe('FeedbackService', () => {
     set: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    take: jest.fn().mockReturnThis(),
+    skip: jest.fn().mockReturnThis(),
     execute: jest.fn(),
+    getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
   };
 
   beforeEach(async () => {
@@ -176,52 +180,62 @@ describe('FeedbackService', () => {
   describe('findAll', () => {
     it('기본값 page=1, limit=20으로 페이지네이션 조회한다', async () => {
       const items = [mockFeedback()];
-      feedbackRepo.findAndCount.mockResolvedValue([items, 1]);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([items, 1]);
 
       const result = await service.findAll();
 
       expect(result).toEqual({ items, total: 1 });
-      expect(feedbackRepo.findAndCount).toHaveBeenCalledWith({
-        order: { createdAt: 'DESC' },
-        take: 20,
-        skip: 0,
-      });
+      expect(feedbackRepo.createQueryBuilder).toHaveBeenCalledWith('f');
+      expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith('f.created_at', 'DESC');
+      expect(mockQueryBuilder.take).toHaveBeenCalledWith(20);
+      expect(mockQueryBuilder.skip).toHaveBeenCalledWith(0);
     });
 
     it('page=2, limit=10이면 skip=10으로 조회한다', async () => {
-      feedbackRepo.findAndCount.mockResolvedValue([[], 0]);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
 
       await service.findAll(2, 10);
 
-      expect(feedbackRepo.findAndCount).toHaveBeenCalledWith({
-        order: { createdAt: 'DESC' },
-        take: 10,
-        skip: 10,
-      });
+      expect(mockQueryBuilder.take).toHaveBeenCalledWith(10);
+      expect(mockQueryBuilder.skip).toHaveBeenCalledWith(10);
     });
 
     it('limit이 100을 초과하면 100으로 제한한다', async () => {
-      feedbackRepo.findAndCount.mockResolvedValue([[], 0]);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
 
       await service.findAll(1, 200);
 
-      expect(feedbackRepo.findAndCount).toHaveBeenCalledWith({
-        order: { createdAt: 'DESC' },
-        take: 100,
-        skip: 0,
-      });
+      expect(mockQueryBuilder.take).toHaveBeenCalledWith(100);
     });
 
     it('page가 0 이하이면 1로 보정한다', async () => {
-      feedbackRepo.findAndCount.mockResolvedValue([[], 0]);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
 
       await service.findAll(0, 20);
 
-      expect(feedbackRepo.findAndCount).toHaveBeenCalledWith({
-        order: { createdAt: 'DESC' },
-        take: 20,
-        skip: 0,
-      });
+      expect(mockQueryBuilder.skip).toHaveBeenCalledWith(0);
+    });
+
+    it('category 필터를 적용한다', async () => {
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
+
+      await service.findAll(1, 20, 'BUG');
+
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'f.category = :category',
+        { category: 'BUG' },
+      );
+    });
+
+    it('search 키워드를 ILIKE으로 검색한다', async () => {
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
+
+      await service.findAll(1, 20, undefined, '버그');
+
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'f.content ILIKE :search',
+        { search: '%버그%' },
+      );
     });
   });
 
@@ -277,6 +291,45 @@ describe('FeedbackService', () => {
       await service.updateStatus('pub-fb-1', FeedbackStatus.IN_PROGRESS);
 
       expect(fb.resolvedAt).toBeNull();
+    });
+
+    it('CLOSED → OPEN 역전이를 차단한다', async () => {
+      const fb = mockFeedback({ status: FeedbackStatus.CLOSED });
+      feedbackRepo.findOne.mockResolvedValue(fb);
+
+      await expect(
+        service.updateStatus('pub-fb-1', FeedbackStatus.OPEN),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('RESOLVED → OPEN 역전이를 차단한다', async () => {
+      const fb = mockFeedback({ status: FeedbackStatus.RESOLVED });
+      feedbackRepo.findOne.mockResolvedValue(fb);
+
+      await expect(
+        service.updateStatus('pub-fb-1', FeedbackStatus.OPEN),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  // ─── findByPublicId ────────────────────────────────
+  describe('findByPublicId', () => {
+    it('피드백 상세 정보를 screenshot 포함하여 반환한다', async () => {
+      const fb = mockFeedback({ screenshot: 'data:image/png;base64,abc' });
+      feedbackRepo.findOne.mockResolvedValue(fb);
+
+      const result = await service.findByPublicId('pub-fb-1');
+
+      expect(result).toHaveProperty('screenshot', 'data:image/png;base64,abc');
+      expect(result).not.toHaveProperty('id');
+    });
+
+    it('존재하지 않는 publicId이면 NotFoundException을 던진다', async () => {
+      feedbackRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.findByPublicId('nonexistent'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

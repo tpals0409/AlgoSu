@@ -1,7 +1,15 @@
 'use client';
 
 import { useEffect, useState, useCallback, type ReactNode } from 'react';
-import { MessageSquare, Bug, Lightbulb, Palette, Filter } from 'lucide-react';
+import {
+  MessageSquare,
+  Bug,
+  Lightbulb,
+  Palette,
+  Filter,
+  Search,
+  X,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { adminApi, type AdminFeedback } from '@/lib/api';
@@ -10,6 +18,9 @@ import { adminApi, type AdminFeedback } from '@/lib/api';
 
 const STATUSES = ['ALL', 'OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'] as const;
 type StatusFilter = (typeof STATUSES)[number];
+
+const CATEGORIES = ['ALL', 'GENERAL', 'BUG', 'FEATURE', 'UX'] as const;
+type CategoryFilter = (typeof CATEGORIES)[number];
 
 const STATUS_LABEL: Record<string, string> = {
   OPEN: '열림',
@@ -46,7 +57,13 @@ const CATEGORY_STYLE: Record<string, string> = {
   UX: 'bg-warning/10 text-warning',
 };
 
-const STATUS_TRANSITIONS: string[] = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
+/** 상태 전이 규칙 — 백엔드 ALLOWED_TRANSITIONS과 동기화 */
+const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+  OPEN: ['OPEN', 'IN_PROGRESS', 'CLOSED'],
+  IN_PROGRESS: ['IN_PROGRESS', 'RESOLVED', 'OPEN', 'CLOSED'],
+  RESOLVED: ['RESOLVED', 'CLOSED'],
+  CLOSED: ['CLOSED'],
+};
 
 const PAGE_SIZE = 20;
 
@@ -57,12 +74,21 @@ export default function AdminFeedbacksPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useState('');
   const [loading, setLoading] = useState(true);
+  const [selectedFeedback, setSelectedFeedback] = useState<AdminFeedback | null>(null);
 
   const fetchFeedbacks = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await adminApi.feedbacks(page, PAGE_SIZE);
+      const res = await adminApi.feedbacks(
+        page,
+        PAGE_SIZE,
+        categoryFilter !== 'ALL' ? categoryFilter : undefined,
+        searchQuery || undefined,
+      );
       setFeedbacks(res.items);
       setTotal(res.total);
     } catch {
@@ -70,11 +96,16 @@ export default function AdminFeedbacksPage() {
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, categoryFilter, searchQuery]);
 
   useEffect(() => {
     void fetchFeedbacks();
   }, [fetchFeedbacks]);
+
+  // 필터 변경 시 페이지 리셋
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, categoryFilter, searchQuery]);
 
   const handleStatusChange = async (publicId: string, newStatus: string) => {
     try {
@@ -88,7 +119,12 @@ export default function AdminFeedbacksPage() {
     }
   };
 
-  // 필터 적용
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSearchQuery(searchInput);
+  };
+
+  // 프론트엔드 상태 필터 (서버 필터는 category만, status는 클라이언트)
   const filtered =
     statusFilter === 'ALL'
       ? feedbacks
@@ -121,28 +157,91 @@ export default function AdminFeedbacksPage() {
         <StatCard label="버그" value={bugCount} accent="var(--error)" />
       </div>
 
+      {/* 검색 */}
+      <form onSubmit={handleSearch} className="flex items-center gap-2">
+        <div
+          className="flex flex-1 items-center gap-2 rounded-btn border px-3 py-1.5"
+          style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
+        >
+          <Search className="h-4 w-4 shrink-0" style={{ color: 'var(--text-3)' }} />
+          <input
+            type="text"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="내용 검색..."
+            className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-text-3"
+            style={{ color: 'var(--text)' }}
+          />
+          {searchInput && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchInput('');
+                setSearchQuery('');
+              }}
+              className="text-text-3 hover:text-text-2"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+        <button
+          type="submit"
+          className="rounded-btn bg-primary-soft px-3 py-1.5 text-[12px] font-medium text-primary transition-colors hover:bg-primary/20"
+        >
+          검색
+        </button>
+      </form>
+
       {/* 필터 */}
-      <div className="flex items-center gap-2">
-        <Filter
-          className="h-4 w-4 shrink-0"
-          style={{ color: 'var(--text-3)' }}
-          aria-hidden
-        />
-        {STATUSES.map((s) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => setStatusFilter(s)}
-            className={cn(
-              'rounded-btn px-3 py-1.5 text-[12px] font-medium transition-colors',
-              statusFilter === s
-                ? 'bg-primary-soft text-primary'
-                : 'text-text-3 hover:bg-bg-alt hover:text-text-2',
-            )}
-          >
-            {s === 'ALL' ? '전체' : STATUS_LABEL[s]}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center gap-4">
+        {/* 상태 필터 */}
+        <div className="flex items-center gap-2">
+          <Filter
+            className="h-4 w-4 shrink-0"
+            style={{ color: 'var(--text-3)' }}
+            aria-hidden
+          />
+          {STATUSES.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setStatusFilter(s)}
+              className={cn(
+                'rounded-btn px-3 py-1.5 text-[12px] font-medium transition-colors',
+                statusFilter === s
+                  ? 'bg-primary-soft text-primary'
+                  : 'text-text-3 hover:bg-bg-alt hover:text-text-2',
+              )}
+            >
+              {s === 'ALL' ? '전체' : STATUS_LABEL[s]}
+            </button>
+          ))}
+        </div>
+
+        {/* 카테고리 필터 */}
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-medium" style={{ color: 'var(--text-3)' }}>
+            카테고리:
+          </span>
+          {CATEGORIES.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setCategoryFilter(c)}
+              className={cn(
+                'rounded-btn px-2.5 py-1 text-[11px] font-medium transition-colors',
+                categoryFilter === c
+                  ? c === 'ALL'
+                    ? 'bg-primary-soft text-primary'
+                    : CATEGORY_STYLE[c]
+                  : 'text-text-3 hover:bg-bg-alt hover:text-text-2',
+              )}
+            >
+              {c === 'ALL' ? '전체' : CATEGORY_LABEL[c]}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* 테이블 */}
@@ -189,8 +288,13 @@ export default function AdminFeedbacksPage() {
           filtered.map((fb) => (
             <div
               key={fb.publicId}
-              className="grid grid-cols-[1fr_100px_100px_140px] gap-4 px-4 py-3 transition-colors hover:bg-bg-alt"
+              className="grid cursor-pointer grid-cols-[1fr_100px_100px_140px] gap-4 px-4 py-3 transition-colors hover:bg-bg-alt"
               style={{ borderBottom: '1px solid var(--border)' }}
+              onClick={() => {
+                adminApi.feedbackDetail(fb.publicId)
+                  .then((detail) => setSelectedFeedback(detail))
+                  .catch(() => setSelectedFeedback(fb));
+              }}
             >
               {/* 내용 */}
               <div className="min-w-0">
@@ -226,7 +330,7 @@ export default function AdminFeedbacksPage() {
               </div>
 
               {/* 상태 드롭다운 */}
-              <div className="flex items-center">
+              <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
                 <select
                   value={fb.status}
                   onChange={(e) =>
@@ -238,7 +342,7 @@ export default function AdminFeedbacksPage() {
                   )}
                   style={{ background: 'transparent' }}
                 >
-                  {STATUS_TRANSITIONS.map((st) => (
+                  {(ALLOWED_TRANSITIONS[fb.status] ?? [fb.status]).map((st) => (
                     <option key={st} value={st}>
                       {STATUS_LABEL[st]}
                     </option>
@@ -290,6 +394,18 @@ export default function AdminFeedbacksPage() {
           </button>
         </div>
       )}
+
+      {/* 상세 모달 */}
+      {selectedFeedback && (
+        <FeedbackDetailModal
+          feedback={selectedFeedback}
+          onClose={() => setSelectedFeedback(null)}
+          onStatusChange={(publicId, status) => {
+            void handleStatusChange(publicId, status);
+            setSelectedFeedback(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -322,6 +438,159 @@ function StatCard({
       >
         {value}
       </p>
+    </div>
+  );
+}
+
+// ── 상세 모달 컴포넌트 ──
+
+function FeedbackDetailModal({
+  feedback,
+  onClose,
+  onStatusChange,
+}: {
+  feedback: AdminFeedback;
+  onClose: () => void;
+  onStatusChange: (publicId: string, status: string) => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      onClick={onClose}
+    >
+      <div
+        className="mx-4 w-full max-w-lg rounded-card border p-6"
+        style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* 헤더 */}
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                'inline-flex items-center gap-1 rounded-btn px-2 py-0.5 text-[11px] font-medium',
+                CATEGORY_STYLE[feedback.category] ?? CATEGORY_STYLE.GENERAL,
+              )}
+            >
+              {CATEGORY_ICON[feedback.category] ?? CATEGORY_ICON.GENERAL}
+              {CATEGORY_LABEL[feedback.category] ?? feedback.category}
+            </span>
+            <span
+              className={cn(
+                'rounded-btn px-2 py-0.5 text-[11px] font-medium',
+                STATUS_STYLE[feedback.status] ?? STATUS_STYLE.OPEN,
+              )}
+            >
+              {STATUS_LABEL[feedback.status] ?? feedback.status}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-btn p-1 text-text-3 transition-colors hover:bg-bg-alt hover:text-text-2"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* 내용 */}
+        <div className="mt-4 space-y-3">
+          <div>
+            <p className="text-[11px] font-medium" style={{ color: 'var(--text-3)' }}>
+              내용
+            </p>
+            <p
+              className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed"
+              style={{ color: 'var(--text)' }}
+            >
+              {feedback.content}
+            </p>
+          </div>
+
+          {feedback.pageUrl && (
+            <div>
+              <p className="text-[11px] font-medium" style={{ color: 'var(--text-3)' }}>
+                페이지 URL
+              </p>
+              <p className="mt-1 text-[12px] break-all" style={{ color: 'var(--text-2)' }}>
+                {feedback.pageUrl}
+              </p>
+            </div>
+          )}
+
+          {feedback.browserInfo && (
+            <div>
+              <p className="text-[11px] font-medium" style={{ color: 'var(--text-3)' }}>
+                브라우저 정보
+              </p>
+              <p className="mt-1 text-[12px]" style={{ color: 'var(--text-2)' }}>
+                {feedback.browserInfo}
+              </p>
+            </div>
+          )}
+
+          {feedback.screenshot && (
+            <div>
+              <p className="text-[11px] font-medium" style={{ color: 'var(--text-3)' }}>
+                스크린샷
+              </p>
+              <img
+                src={feedback.screenshot}
+                alt="피드백 스크린샷"
+                className="mt-1 max-h-[300px] rounded-card border object-contain"
+                style={{ borderColor: 'var(--border)' }}
+              />
+            </div>
+          )}
+
+          <div className="flex items-center gap-4 text-[12px]" style={{ color: 'var(--text-3)' }}>
+            <span>
+              등록일:{' '}
+              {new Date(feedback.createdAt).toLocaleDateString('ko-KR', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </span>
+            {feedback.resolvedAt && (
+              <span>
+                해결일:{' '}
+                {new Date(feedback.resolvedAt).toLocaleDateString('ko-KR', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* 상태 변경 버튼 */}
+        <div className="mt-4 flex items-center gap-2 border-t pt-4" style={{ borderColor: 'var(--border)' }}>
+          <span className="text-[11px] font-medium" style={{ color: 'var(--text-3)' }}>
+            상태 변경:
+          </span>
+          {(ALLOWED_TRANSITIONS[feedback.status] ?? [])
+            .filter((s) => s !== feedback.status)
+            .map((st) => (
+              <button
+                key={st}
+                type="button"
+                onClick={() => onStatusChange(feedback.publicId, st)}
+                className={cn(
+                  'rounded-btn px-3 py-1 text-[11px] font-medium transition-colors',
+                  STATUS_STYLE[st] ?? STATUS_STYLE.OPEN,
+                )}
+              >
+                {STATUS_LABEL[st]}
+              </button>
+            ))}
+        </div>
+      </div>
     </div>
   );
 }

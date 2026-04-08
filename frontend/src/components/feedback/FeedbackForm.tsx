@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { Send } from 'lucide-react';
 import { feedbackSchema, type FeedbackFormData, type FeedbackCategory } from '@/lib/schemas/feedback';
 import { feedbackApi } from '@/lib/api';
+import { eventTracker } from '@/lib/event-tracker';
 
 const CATEGORY_OPTIONS: { value: FeedbackCategory; label: string }[] = [
   { value: 'GENERAL', label: '일반' },
@@ -52,6 +53,7 @@ export function FeedbackForm({ onSuccess }: FeedbackFormProps) {
         ...data,
         pageUrl: typeof window !== 'undefined' ? window.location.href : undefined,
       });
+      eventTracker?.track('feedback:submit', { meta: { category: data.category } });
       toast.success('피드백을 보내주셔서 감사합니다!');
       reset();
       onSuccess?.();

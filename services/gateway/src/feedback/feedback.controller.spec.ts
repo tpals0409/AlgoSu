@@ -97,10 +97,10 @@ describe('FeedbackController', () => {
       const expected = { items: [], total: 0 };
       identityClient.findAllFeedbacks.mockResolvedValue(expected);
 
-      const result = await controller.findAll(createMockReq(), '1', '10');
+      const result = await controller.findAll(createMockReq(), '1', '10', undefined, undefined);
 
       expect(identityClient.findUserById).toHaveBeenCalledWith(USER_ID);
-      expect(identityClient.findAllFeedbacks).toHaveBeenCalledWith(1, 10);
+      expect(identityClient.findAllFeedbacks).toHaveBeenCalledWith(1, 10, undefined, undefined);
       expect(result).toEqual(expected);
     });
 

@@ -2,6 +2,7 @@ import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/c
 import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ScheduleModule } from '@nestjs/schedule';
 import { MetricsModule } from './common/metrics/metrics.module';
 import { UserModule } from './user/user.module';
 import { StructuredLoggerService } from './common/logger/structured-logger.service';
@@ -47,6 +48,7 @@ import { FeedbackModule } from './feedback/feedback.module';
         },
       }),
     }),
+    ScheduleModule.forRoot(),
     MetricsModule,
     UserModule,
     NotificationModule,

@@ -59,11 +59,26 @@ export class FeedbackController {
   async findAll(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('category') category?: string,
+    @Query('search') search?: string,
   ) {
     return this.feedbackService.findAll(
       page ? parseInt(page, 10) : undefined,
       limit ? parseInt(limit, 10) : undefined,
+      category,
+      search,
     );
+  }
+
+  /**
+   * 피드백 단건 조회 (screenshot 포함)
+   * @route GET /api/feedbacks/:publicId/detail
+   */
+  @ApiOperation({ summary: '피드백 단건 상세 조회 (screenshot 포함)' })
+  @ApiResponse({ status: 200, description: '피드백 상세 정보' })
+  @Get(':publicId/detail')
+  async findByPublicId(@Param('publicId', ParseUUIDPipe) publicId: string) {
+    return this.feedbackService.findByPublicId(publicId);
   }
 
   /**

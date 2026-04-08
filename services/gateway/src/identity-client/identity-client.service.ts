@@ -385,12 +385,21 @@ export class IdentityClientService {
   async findAllFeedbacks(
     page?: number,
     limit?: number,
+    category?: string,
+    search?: string,
   ): Promise<Record<string, unknown>> {
     const params = new URLSearchParams();
     if (page) params.set('page', String(page));
     if (limit) params.set('limit', String(limit));
+    if (category) params.set('category', category);
+    if (search) params.set('search', search);
     const query = params.toString();
     return this.request('GET', `/api/feedbacks${query ? `?${query}` : ''}`);
+  }
+
+  /** 피드백 상세 조회 (admin, screenshot 포함) */
+  async findFeedbackDetail(publicId: string): Promise<Record<string, unknown>> {
+    return this.request('GET', `/api/feedbacks/${publicId}/detail`);
   }
 
   /** 피드백 상태 변경 (admin) */

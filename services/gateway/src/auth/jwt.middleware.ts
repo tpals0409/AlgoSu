@@ -21,6 +21,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Request, Response, NextFunction } from 'express';
 import * as jwt from 'jsonwebtoken';
+import * as Sentry from '@sentry/node';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 import { IdentityClientService } from '../identity-client/identity-client.service';
 
@@ -105,6 +106,7 @@ export class JwtMiddleware implements NestMiddleware {
 
     // 검증 성공 — 내부 서비스 전달용 헤더 주입
     req.headers['x-user-id'] = userId;
+    Sentry.setUser({ id: userId });
 
     // 데모 유저 마킹 — DemoWriteGuard에서 참조
     if (payload['isDemo'] === true) {

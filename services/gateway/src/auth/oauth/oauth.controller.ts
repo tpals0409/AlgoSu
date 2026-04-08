@@ -244,12 +244,18 @@ export class OAuthController {
     github_connected: boolean;
     github_username: string | null;
     created_at: string;
+    isAdmin: boolean;
   }> {
     const userId = req.headers['x-user-id'] as string;
     const user = await this.oauthService.findUserById(userId);
     if (!user) {
       throw new NotFoundException('사용자를 찾을 수 없습니다.');
     }
+    const adminEmails = this.configService
+      .get<string>('ADMIN_EMAILS', '')
+      .split(',')
+      .map((e) => e.trim().toLowerCase());
+    const isAdmin = adminEmails.includes((user.email ?? '').toLowerCase());
     return {
       id: user.id,
       email: user.email,
@@ -259,6 +265,7 @@ export class OAuthController {
       github_connected: user.github_connected,
       github_username: user.github_username,
       created_at: user.created_at,
+      isAdmin,
     };
   }
 
