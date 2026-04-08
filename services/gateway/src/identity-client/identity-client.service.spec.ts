@@ -743,4 +743,52 @@ describe('IdentityClientService', () => {
       expect(result).toBeNull();
     });
   });
+
+  // ─── Feedback API ──────────────────────────────────
+  describe('Feedback API', () => {
+    it('createFeedback — POST /api/feedbacks', async () => {
+      httpService.request.mockReturnValue(okResponse({ publicId: 'pub-1' }));
+      const result = await service.createFeedback({ userId: 'u1', category: 'BUG', content: 'test' });
+      expect(result).toEqual({ publicId: 'pub-1' });
+      expect(httpService.request).toHaveBeenCalledWith(
+        expect.objectContaining({ method: 'POST', url: expect.stringContaining('/api/feedbacks') }),
+      );
+    });
+
+    it('findFeedbacksByUserId — GET /api/feedbacks/by-user/:userId', async () => {
+      httpService.request.mockReturnValue(okResponse([]));
+      const result = await service.findFeedbacksByUserId('u1');
+      expect(result).toEqual([]);
+    });
+
+    it('findAllFeedbacks — category/search 파라미터 전달', async () => {
+      httpService.request.mockReturnValue(okResponse({ items: [], total: 0 }));
+      await service.findAllFeedbacks(1, 20, 'BUG', '검색어');
+      const url = httpService.request.mock.calls[0][0].url as string;
+      expect(url).toContain('category=BUG');
+      expect(url).toContain('search=');
+    });
+
+    it('findFeedbackDetail — GET /api/feedbacks/:publicId/detail', async () => {
+      httpService.request.mockReturnValue(okResponse({ publicId: 'pub-1', screenshot: 'data:...' }));
+      const result = await service.findFeedbackDetail('pub-1');
+      expect(result).toEqual({ publicId: 'pub-1', screenshot: 'data:...' });
+    });
+
+    it('updateFeedbackStatus — PATCH /api/feedbacks/:publicId/status', async () => {
+      httpService.request.mockReturnValue(okResponse({ publicId: 'pub-1', status: 'RESOLVED' }));
+      const result = await service.updateFeedbackStatus('pub-1', { status: 'RESOLVED' });
+      expect(result).toEqual({ publicId: 'pub-1', status: 'RESOLVED' });
+    });
+  });
+
+  // ─── delay (private) ───────────────────────────────
+  describe('delay', () => {
+    it('delay 메서드가 존재하고 Promise를 반환한다', async () => {
+      // private 메서드 직접 호출
+      const result = (service as any).delay(1);
+      expect(result).toBeInstanceOf(Promise);
+      await result;
+    });
+  });
 });

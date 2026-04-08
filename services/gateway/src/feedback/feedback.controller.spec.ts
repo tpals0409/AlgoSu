@@ -29,6 +29,7 @@ describe('FeedbackController', () => {
       createFeedback: jest.fn(),
       findFeedbacksByUserId: jest.fn(),
       findAllFeedbacks: jest.fn(),
+      findFeedbackDetail: jest.fn(),
       updateFeedbackStatus: jest.fn(),
       findUserById: jest.fn(),
     };
@@ -115,7 +116,32 @@ describe('FeedbackController', () => {
   });
 
   // ============================
-  // 4. updateStatus — 관리자 상태 변경
+  // 4. findDetail — 관리자 상세 조회
+  // ============================
+  describe('findDetail', () => {
+    it('admin 검증 통과 시 identityClient.findFeedbackDetail 호출', async () => {
+      identityClient.findUserById.mockResolvedValue({ email: ADMIN_EMAIL });
+      const expected = { publicId: PUBLIC_ID, screenshot: 'data:image/png;base64,abc' };
+      identityClient.findFeedbackDetail.mockResolvedValue(expected);
+
+      const result = await controller.findDetail(createMockReq(), PUBLIC_ID);
+
+      expect(identityClient.findFeedbackDetail).toHaveBeenCalledWith(PUBLIC_ID);
+      expect(result).toEqual(expected);
+    });
+
+    it('admin이 아닌 경우 ForbiddenException 발생', async () => {
+      identityClient.findUserById.mockResolvedValue({ email: 'user@test.com' });
+
+      await expect(controller.findDetail(createMockReq(), PUBLIC_ID)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(identityClient.findFeedbackDetail).not.toHaveBeenCalled();
+    });
+  });
+
+  // ============================
+  // 5. updateStatus — 관리자 상태 변경
   // ============================
   describe('updateStatus', () => {
     it('admin 검증 통과 후 identityClient.updateFeedbackStatus 호출', async () => {
