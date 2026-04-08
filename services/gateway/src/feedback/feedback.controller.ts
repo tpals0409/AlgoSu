@@ -33,6 +33,10 @@ class CreateFeedbackBodyDto {
 
   @IsOptional()
   @IsString()
+  studyId?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(500)
   pageUrl?: string;
 

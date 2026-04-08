@@ -16,7 +16,7 @@ import { adminApi, type AdminFeedback } from '@/lib/api';
 
 // ── 상수 ──
 
-const STATUSES = ['ALL', 'OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'] as const;
+const STATUSES = ['ALL', 'OPEN', 'IN_PROGRESS', 'RESOLVED'] as const;
 type StatusFilter = (typeof STATUSES)[number];
 
 const CATEGORIES = ['ALL', 'GENERAL', 'BUG', 'FEATURE', 'UX'] as const;
@@ -26,14 +26,12 @@ const STATUS_LABEL: Record<string, string> = {
   OPEN: '열림',
   IN_PROGRESS: '진행 중',
   RESOLVED: '해결됨',
-  CLOSED: '닫힘',
 };
 
 const STATUS_STYLE: Record<string, string> = {
   OPEN: 'bg-bg-alt text-text-2',
   IN_PROGRESS: 'bg-primary-soft text-primary',
   RESOLVED: 'bg-success/10 text-success',
-  CLOSED: 'text-text-3 bg-bg-alt/60',
 };
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -57,12 +55,11 @@ const CATEGORY_STYLE: Record<string, string> = {
   UX: 'bg-warning/10 text-warning',
 };
 
-/** 상태 전이 규칙 — 백엔드 ALLOWED_TRANSITIONS과 동기화 */
+/** 상태 전이 규칙 — 백엔드 ALLOWED_TRANSITIONS과 동기화 (3상태 자유 전이) */
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
-  OPEN: ['OPEN', 'IN_PROGRESS', 'CLOSED'],
-  IN_PROGRESS: ['IN_PROGRESS', 'RESOLVED', 'OPEN', 'CLOSED'],
-  RESOLVED: ['RESOLVED', 'CLOSED'],
-  CLOSED: ['CLOSED'],
+  OPEN: ['OPEN', 'IN_PROGRESS', 'RESOLVED'],
+  IN_PROGRESS: ['IN_PROGRESS', 'OPEN', 'RESOLVED'],
+  RESOLVED: ['RESOLVED', 'OPEN', 'IN_PROGRESS'],
 };
 
 const PAGE_SIZE = 20;
@@ -130,7 +127,7 @@ export default function AdminFeedbacksPage() {
   // 통계 (서버 제공 전체 기준 counts — status: OPEN/..., cat:BUG/...)
   const totalCount =
     (counts['OPEN'] ?? 0) + (counts['IN_PROGRESS'] ?? 0) +
-    (counts['RESOLVED'] ?? 0) + (counts['CLOSED'] ?? 0);
+    (counts['RESOLVED'] ?? 0);
   const openCount = counts['OPEN'] ?? 0;
   const bugCount = counts['cat:BUG'] ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -254,13 +251,14 @@ export default function AdminFeedbacksPage() {
       >
         {/* 헤더 행 */}
         <div
-          className="grid grid-cols-[1fr_100px_100px_140px] gap-4 px-4 py-3 text-[12px] font-semibold"
+          className="grid grid-cols-[1fr_120px_100px_100px_140px] gap-4 px-4 py-3 text-[12px] font-semibold"
           style={{
             color: 'var(--text-3)',
             borderBottom: '1px solid var(--border)',
           }}
         >
           <span>내용</span>
+          <span>작성자</span>
           <span>카테고리</span>
           <span>상태</span>
           <span>등록일</span>
@@ -288,7 +286,7 @@ export default function AdminFeedbacksPage() {
           feedbacks.map((fb) => (
             <div
               key={fb.publicId}
-              className="grid cursor-pointer grid-cols-[1fr_100px_100px_140px] gap-4 px-4 py-3 transition-colors hover:bg-bg-alt"
+              className="grid cursor-pointer grid-cols-[1fr_120px_100px_100px_140px] gap-4 px-4 py-3 transition-colors hover:bg-bg-alt"
               style={{ borderBottom: '1px solid var(--border)' }}
               onClick={() => {
                 adminApi.feedbackDetail(fb.publicId)
@@ -312,6 +310,26 @@ export default function AdminFeedbacksPage() {
                     title={fb.pageUrl}
                   >
                     {fb.pageUrl}
+                  </p>
+                )}
+              </div>
+
+              {/* 작성자 */}
+              <div className="flex flex-col justify-center min-w-0">
+                <p
+                  className="truncate text-[12px] font-medium"
+                  style={{ color: 'var(--text)' }}
+                  title={fb.userEmail ?? undefined}
+                >
+                  {fb.userName ?? fb.userEmail ?? '-'}
+                </p>
+                {fb.studyName && (
+                  <p
+                    className="truncate text-[10px]"
+                    style={{ color: 'var(--text-3)' }}
+                    title={fb.studyName}
+                  >
+                    {fb.studyName}
                   </p>
                 )}
               </div>
@@ -491,6 +509,16 @@ function FeedbackDetailModal({
           >
             <X className="h-4 w-4" />
           </button>
+        </div>
+
+        {/* 작성자/스터디 */}
+        <div className="mt-3 flex items-center gap-4 text-[12px]" style={{ color: 'var(--text-2)' }}>
+          <span>{feedback.userName ?? feedback.userEmail ?? '알 수 없음'}</span>
+          {feedback.studyName && (
+            <span className="rounded-btn bg-bg-alt px-2 py-0.5 text-[11px]" style={{ color: 'var(--text-3)' }}>
+              {feedback.studyName}
+            </span>
+          )}
         </div>
 
         {/* 내용 */}

@@ -45,7 +45,7 @@ export function FeedbackWidget() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="피드백 보내기"
-        className="fixed bottom-20 right-4 z-40 rounded-full p-3 shadow-lg transition-transform hover:scale-105"
+        className="fixed bottom-36 right-4 z-40 rounded-full p-3 shadow-lg transition-transform hover:scale-105 md:bottom-20"
         style={{ background: 'var(--primary)', color: 'white' }}
       >
         <MessageSquarePlus className="h-5 w-5" aria-hidden />

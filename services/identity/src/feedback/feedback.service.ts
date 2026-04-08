@@ -12,12 +12,11 @@ import { Feedback, FeedbackStatus } from './feedback.entity';
 import { CreateFeedbackDto } from './dto/create-feedback.dto';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
-/** 허용된 상태 전이 맵 — 역전이 차단 */
+/** 허용된 상태 전이 맵 — 3상태 자유 전이 (해결 후에도 재오픈 가능) */
 const ALLOWED_TRANSITIONS: Record<FeedbackStatus, FeedbackStatus[]> = {
-  [FeedbackStatus.OPEN]: [FeedbackStatus.IN_PROGRESS, FeedbackStatus.CLOSED],
-  [FeedbackStatus.IN_PROGRESS]: [FeedbackStatus.RESOLVED, FeedbackStatus.OPEN, FeedbackStatus.CLOSED],
-  [FeedbackStatus.RESOLVED]: [FeedbackStatus.CLOSED],
-  [FeedbackStatus.CLOSED]: [],
+  [FeedbackStatus.OPEN]: [FeedbackStatus.IN_PROGRESS, FeedbackStatus.RESOLVED],
+  [FeedbackStatus.IN_PROGRESS]: [FeedbackStatus.OPEN, FeedbackStatus.RESOLVED],
+  [FeedbackStatus.RESOLVED]: [FeedbackStatus.OPEN, FeedbackStatus.IN_PROGRESS],
 };
 
 @Injectable()
@@ -38,6 +37,7 @@ export class FeedbackService {
   async create(dto: CreateFeedbackDto): Promise<Feedback> {
     const feedback = this.feedbackRepo.create({
       userId: dto.userId,
+      studyId: dto.studyId ?? null,
       category: dto.category,
       content: dto.content,
       pageUrl: dto.pageUrl ?? null,
@@ -76,12 +76,17 @@ export class FeedbackService {
     category?: string,
     search?: string,
     status?: string,
-  ): Promise<{ items: Feedback[]; total: number; counts: Record<string, number> }> {
+  ): Promise<{ items: Record<string, unknown>[]; total: number; counts: Record<string, number> }> {
     const take = Math.min(limit, 100);
     const skip = (Math.max(page, 1) - 1) * take;
 
     const qb = this.feedbackRepo
       .createQueryBuilder('f')
+      .leftJoin('users', 'u', 'u.id = f.user_id')
+      .leftJoin('studies', 's', 's.id = f.study_id')
+      .addSelect('u.name', 'userName')
+      .addSelect('u.email', 'userEmail')
+      .addSelect('s.name', 'studyName')
       .orderBy('f.created_at', 'DESC')
       .take(take)
       .skip(skip);
@@ -98,7 +103,18 @@ export class FeedbackService {
       qb.andWhere('f.content ILIKE :search', { search: `%${search}%` });
     }
 
-    const [items, total] = await qb.getManyAndCount();
+    const { entities, raw } = await qb.getRawAndEntities();
+    const total = await qb.getCount();
+
+    const items = entities.map((fb, i) => {
+      const json = fb.toJSON();
+      return {
+        ...json,
+        userName: raw[i]?.userName ?? null,
+        userEmail: raw[i]?.userEmail ?? null,
+        studyName: raw[i]?.studyName ?? null,
+      };
+    });
 
     // 상태별 + 카테고리별 통계 (필터 무관 전체 기준)
     const [statusCountsRaw, categoryCountsRaw] = await Promise.all([

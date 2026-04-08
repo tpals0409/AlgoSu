@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { Bug, ImagePlus, X } from 'lucide-react';
 import { feedbackSchema, type FeedbackFormData } from '@/lib/schemas/feedback';
 import { feedbackApi } from '@/lib/api';
+import { useStudy } from '@/contexts/StudyContext';
 import { eventTracker } from '@/lib/event-tracker';
 
 // ── Image resize utility ──
@@ -53,6 +54,7 @@ interface BugReportFormProps {
 }
 
 export function BugReportForm({ onSuccess }: BugReportFormProps) {
+  const { currentStudyId } = useStudy();
   const [submitting, setSubmitting] = useState(false);
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -122,6 +124,7 @@ export function BugReportForm({ onSuccess }: BugReportFormProps) {
       await feedbackApi.create({
         ...data,
         category: 'BUG',
+        studyId: currentStudyId ?? undefined,
         pageUrl: typeof window !== 'undefined' ? window.location.href : undefined,
         browserInfo: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
         screenshot: screenshot ?? undefined,

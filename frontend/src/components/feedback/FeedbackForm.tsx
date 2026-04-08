@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { Send } from 'lucide-react';
 import { feedbackSchema, type FeedbackFormData, type FeedbackCategory } from '@/lib/schemas/feedback';
 import { feedbackApi } from '@/lib/api';
+import { useStudy } from '@/contexts/StudyContext';
 import { eventTracker } from '@/lib/event-tracker';
 
 const CATEGORY_OPTIONS: { value: FeedbackCategory; label: string }[] = [
@@ -27,6 +28,7 @@ interface FeedbackFormProps {
 }
 
 export function FeedbackForm({ onSuccess }: FeedbackFormProps) {
+  const { currentStudyId } = useStudy();
   const [submitting, setSubmitting] = useState(false);
 
   const {
@@ -51,6 +53,7 @@ export function FeedbackForm({ onSuccess }: FeedbackFormProps) {
     try {
       await feedbackApi.create({
         ...data,
+        studyId: currentStudyId ?? undefined,
         pageUrl: typeof window !== 'undefined' ? window.location.href : undefined,
       });
       eventTracker?.track('feedback:submit', { meta: { category: data.category } });

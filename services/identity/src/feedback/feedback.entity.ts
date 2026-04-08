@@ -34,7 +34,6 @@ export enum FeedbackStatus {
   OPEN = 'OPEN',
   IN_PROGRESS = 'IN_PROGRESS',
   RESOLVED = 'RESOLVED',
-  CLOSED = 'CLOSED',
 }
 
 @Entity('feedbacks')
@@ -50,6 +49,9 @@ export class Feedback {
 
   @Column({ type: 'uuid', name: 'user_id' })
   userId!: string;
+
+  @Column({ type: 'uuid', name: 'study_id', nullable: true })
+  studyId!: string | null;
 
   @Column({ type: 'varchar', length: 30 })
   category!: FeedbackCategory;

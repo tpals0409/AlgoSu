@@ -731,6 +731,7 @@ export const feedbackApi = {
   create: (data: {
     category: string;
     content: string;
+    studyId?: string;
     pageUrl?: string;
     browserInfo?: string;
     screenshot?: string;
@@ -753,6 +754,10 @@ export const feedbackApi = {
 export interface AdminFeedback {
   publicId: string;
   userId: string;
+  userName: string | null;
+  userEmail: string | null;
+  studyId: string | null;
+  studyName: string | null;
   category: string;
   content: string;
   pageUrl: string | null;

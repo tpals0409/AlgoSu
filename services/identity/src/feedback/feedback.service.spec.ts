@@ -13,11 +13,12 @@ import { Feedback, FeedbackCategory, FeedbackStatus } from './feedback.entity';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 // ─── Mock 헬퍼 ───────────────────────────────────────
-const mockFeedback = (overrides: Partial<Feedback> = {}): Feedback =>
-  ({
+const mockFeedback = (overrides: Partial<Feedback> = {}): Feedback => {
+  const fb = {
     id: 1,
     publicId: 'pub-fb-1',
     userId: 'user-1',
+    studyId: null,
     category: FeedbackCategory.GENERAL,
     content: '테스트 피드백입니다.',
     pageUrl: null,
@@ -28,7 +29,13 @@ const mockFeedback = (overrides: Partial<Feedback> = {}): Feedback =>
     resolvedAt: null,
     generatePublicId: jest.fn(),
     ...overrides,
-  }) as Feedback;
+  };
+  (fb as Record<string, unknown>).toJSON = function () {
+    const { id, screenshot, ...rest } = this as Record<string, unknown>;
+    return rest;
+  };
+  return fb as Feedback;
+};
 
 describe('FeedbackService', () => {
   let service: FeedbackService;
@@ -44,8 +51,11 @@ describe('FeedbackService', () => {
     skip: jest.fn().mockReturnThis(),
     select: jest.fn().mockReturnThis(),
     addSelect: jest.fn().mockReturnThis(),
+    leftJoin: jest.fn().mockReturnThis(),
     groupBy: jest.fn().mockReturnThis(),
     getRawMany: jest.fn().mockResolvedValue([]),
+    getRawAndEntities: jest.fn().mockResolvedValue({ entities: [], raw: [] }),
+    getCount: jest.fn().mockResolvedValue(0),
     execute: jest.fn(),
     getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
   };
@@ -95,6 +105,7 @@ describe('FeedbackService', () => {
       expect(result).toBe(fb);
       expect(feedbackRepo.create).toHaveBeenCalledWith({
         userId: 'user-1',
+        studyId: null,
         category: FeedbackCategory.GENERAL,
         content: '테스트 피드백입니다.',
         pageUrl: null,
@@ -126,6 +137,7 @@ describe('FeedbackService', () => {
       expect(result).toBe(fb);
       expect(feedbackRepo.create).toHaveBeenCalledWith({
         userId: 'user-1',
+        studyId: null,
         category: FeedbackCategory.BUG,
         content: '테스트 피드백입니다.',
         pageUrl: '/problems',
@@ -147,6 +159,7 @@ describe('FeedbackService', () => {
 
       expect(feedbackRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
+          studyId: null,
           pageUrl: null,
           browserInfo: null,
           screenshot: null,
@@ -183,13 +196,18 @@ describe('FeedbackService', () => {
   // ─── findAll ───────────────────────────────────────
   describe('findAll', () => {
     it('기본값 page=1, limit=20으로 페이지네이션 조회한다', async () => {
-      const items = [mockFeedback()];
-      mockQueryBuilder.getManyAndCount.mockResolvedValue([items, 1]);
+      const fb = mockFeedback();
+      mockQueryBuilder.getRawAndEntities.mockResolvedValue({
+        entities: [fb],
+        raw: [{ userName: 'test', userEmail: 'test@test.com', studyName: null }],
+      });
+      mockQueryBuilder.getCount.mockResolvedValue(1);
       mockQueryBuilder.getRawMany.mockResolvedValue([]);
 
       const result = await service.findAll();
 
-      expect(result).toEqual({ items, total: 1, counts: {} });
+      expect(result.total).toBe(1);
+      expect(result.items).toHaveLength(1);
       expect(feedbackRepo.createQueryBuilder).toHaveBeenCalledWith('f');
       expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith('f.created_at', 'DESC');
       expect(mockQueryBuilder.take).toHaveBeenCalledWith(20);
@@ -197,7 +215,8 @@ describe('FeedbackService', () => {
     });
 
     it('page=2, limit=10이면 skip=10으로 조회한다', async () => {
-      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
+      mockQueryBuilder.getRawAndEntities.mockResolvedValue({ entities: [], raw: [] });
+      mockQueryBuilder.getCount.mockResolvedValue(0);
 
       await service.findAll(2, 10);
 
@@ -206,7 +225,8 @@ describe('FeedbackService', () => {
     });
 
     it('limit이 100을 초과하면 100으로 제한한다', async () => {
-      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
+      mockQueryBuilder.getRawAndEntities.mockResolvedValue({ entities: [], raw: [] });
+      mockQueryBuilder.getCount.mockResolvedValue(0);
 
       await service.findAll(1, 200);
 
@@ -214,7 +234,8 @@ describe('FeedbackService', () => {
     });
 
     it('page가 0 이하이면 1로 보정한다', async () => {
-      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
+      mockQueryBuilder.getRawAndEntities.mockResolvedValue({ entities: [], raw: [] });
+      mockQueryBuilder.getCount.mockResolvedValue(0);
 
       await service.findAll(0, 20);
 
@@ -222,7 +243,8 @@ describe('FeedbackService', () => {
     });
 
     it('category 필터를 적용한다', async () => {
-      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
+      mockQueryBuilder.getRawAndEntities.mockResolvedValue({ entities: [], raw: [] });
+      mockQueryBuilder.getCount.mockResolvedValue(0);
 
       await service.findAll(1, 20, 'BUG');
 
@@ -233,7 +255,8 @@ describe('FeedbackService', () => {
     });
 
     it('search 키워드를 ILIKE으로 검색한다', async () => {
-      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
+      mockQueryBuilder.getRawAndEntities.mockResolvedValue({ entities: [], raw: [] });
+      mockQueryBuilder.getCount.mockResolvedValue(0);
 
       await service.findAll(1, 20, undefined, '버그');
 
@@ -244,7 +267,8 @@ describe('FeedbackService', () => {
     });
 
     it('status 필터를 적용한다', async () => {
-      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
+      mockQueryBuilder.getRawAndEntities.mockResolvedValue({ entities: [], raw: [] });
+      mockQueryBuilder.getCount.mockResolvedValue(0);
 
       await service.findAll(1, 20, undefined, undefined, 'OPEN');
 
@@ -255,16 +279,17 @@ describe('FeedbackService', () => {
     });
 
     it('counts에 상태별/카테고리별 통계를 반환한다', async () => {
-      mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
+      mockQueryBuilder.getRawAndEntities.mockResolvedValue({ entities: [], raw: [] });
+      mockQueryBuilder.getCount.mockResolvedValue(0);
       mockQueryBuilder.getRawMany
-        .mockResolvedValueOnce([{ status: 'OPEN', cnt: '3' }, { status: 'CLOSED', cnt: '1' }])
+        .mockResolvedValueOnce([{ status: 'OPEN', cnt: '3' }, { status: 'RESOLVED', cnt: '1' }])
         .mockResolvedValueOnce([{ category: 'BUG', cnt: '2' }, { category: 'GENERAL', cnt: '2' }]);
 
       const result = await service.findAll();
 
       expect(result.counts).toEqual({
         OPEN: 3,
-        CLOSED: 1,
+        RESOLVED: 1,
         'cat:BUG': 2,
         'cat:GENERAL': 2,
       });
@@ -325,17 +350,19 @@ describe('FeedbackService', () => {
       expect(fb.resolvedAt).toBeNull();
     });
 
-    it('CLOSED → OPEN 역전이를 차단한다', async () => {
-      const fb = mockFeedback({ status: FeedbackStatus.CLOSED });
+    it('RESOLVED → OPEN 재오픈이 가능하다', async () => {
+      const fb = mockFeedback({ status: FeedbackStatus.RESOLVED });
+      const updated = { ...fb, status: FeedbackStatus.OPEN } as Feedback;
       feedbackRepo.findOne.mockResolvedValue(fb);
+      feedbackRepo.save.mockResolvedValue(updated);
 
-      await expect(
-        service.updateStatus('pub-fb-1', FeedbackStatus.OPEN),
-      ).rejects.toThrow(BadRequestException);
+      const result = await service.updateStatus('pub-fb-1', FeedbackStatus.OPEN);
+
+      expect(result.status).toBe(FeedbackStatus.OPEN);
     });
 
-    it('RESOLVED → OPEN 역전이를 차단한다', async () => {
-      const fb = mockFeedback({ status: FeedbackStatus.RESOLVED });
+    it('동일 상태 전이를 차단한다', async () => {
+      const fb = mockFeedback({ status: FeedbackStatus.OPEN });
       feedbackRepo.findOne.mockResolvedValue(fb);
 
       await expect(

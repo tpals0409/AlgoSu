@@ -26,6 +26,10 @@ jest.mock('sonner', () => ({
   },
 }));
 
+jest.mock('@/contexts/StudyContext', () => ({
+  useStudy: () => ({ currentStudyId: null }),
+}));
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { toast: mockToast } = require('sonner');
 

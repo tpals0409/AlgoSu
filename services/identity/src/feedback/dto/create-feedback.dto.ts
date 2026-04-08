@@ -25,6 +25,10 @@ export class CreateFeedbackDto {
   content!: string;
 
   @IsOptional()
+  @IsUUID('4', { message: '유효한 UUID여야 합니다.' })
+  studyId?: string;
+
+  @IsOptional()
   @IsString()
   @MaxLength(500)
   pageUrl?: string;
