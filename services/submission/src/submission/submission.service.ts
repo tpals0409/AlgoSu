@@ -321,7 +321,7 @@ export class SubmissionService {
     // 고유 제출 수 (problemId+userId 기준 dedup) — 인원별 중복 제출은 1건으로 처리
     const uniqueSubmissionsQb = this.submissionRepo
       .createQueryBuilder('s')
-      .select('COUNT(DISTINCT s.problem_id || s.user_id)::int', 'cnt')
+      .select('COUNT(DISTINCT (s.problem_id, s.user_id))::int', 'cnt')
       .where('s.study_id = :studyId', { studyId });
     applyProblemFilter(uniqueSubmissionsQb);
     const [{ cnt: uniqueSubmissions }] = await uniqueSubmissionsQb.getRawMany<{ cnt: number }>();
@@ -329,7 +329,7 @@ export class SubmissionService {
     // 고유 분석 완료 수 (problemId+userId 기준 dedup, sagaStep=DONE)
     const uniqueAnalyzedQb = this.submissionRepo
       .createQueryBuilder('s')
-      .select('COUNT(DISTINCT s.problem_id || s.user_id)::int', 'cnt')
+      .select('COUNT(DISTINCT (s.problem_id, s.user_id))::int', 'cnt')
       .where('s.study_id = :studyId', { studyId })
       .andWhere("s.saga_step = 'DONE'");
     applyProblemFilter(uniqueAnalyzedQb);
