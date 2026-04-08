@@ -101,8 +101,8 @@ export class FeedbackService {
     const [feedbacks, total] = await qb.getManyAndCount();
 
     // 사용자/스터디 정보 배치 조회
-    let userMap = new Map<string, { name: string | null; email: string }>();
-    let studyMap = new Map<string, string>();
+    const userMap = new Map<string, { name: string | null; email: string }>();
+    const studyMap = new Map<string, string>();
 
     if (feedbacks.length > 0) {
       const userIds = [...new Set(feedbacks.map((f) => f.userId))];
