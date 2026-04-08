@@ -1,4 +1,4 @@
-import { ApiError, StudyRequiredError, setCurrentStudyIdForApi, authApi, studyApi, problemApi, submissionApi, draftApi, aiQuotaApi, notificationApi, reviewApi, studyNoteApi, solvedacApi } from '@/lib/api';
+import { ApiError, StudyRequiredError, setCurrentStudyIdForApi, authApi, studyApi, problemApi, submissionApi, draftApi, aiQuotaApi, notificationApi, reviewApi, studyNoteApi, solvedacApi, adminApi } from '@/lib/api';
 
 // ── fetch mock ──
 const mockFetch = jest.fn();
@@ -690,5 +690,41 @@ describe('reviewApi 추가 분기', () => {
     mockFetch.mockReturnValue(jsonResponse([]));
     await reviewApi.listReplies('c1');
     expect(mockFetch.mock.calls[0][0]).toContain('commentPublicId=c1');
+  });
+});
+
+// ── submissionApi.getSatisfactionStats ──
+describe('submissionApi.getSatisfactionStats', () => {
+  it('GET /api/submissions/satisfaction/:submissionId/stats를 호출한다', async () => {
+    mockFetch.mockReturnValue(jsonResponse({ up: 3, down: 1 }));
+    const result = await submissionApi.getSatisfactionStats('sub-1');
+    expect(mockFetch.mock.calls[0][0]).toContain('/api/submissions/satisfaction/sub-1/stats');
+    expect(result).toEqual({ up: 3, down: 1 });
+  });
+});
+
+// ── adminApi ──
+describe('adminApi', () => {
+  it('feedbacks는 category/search 쿼리를 포함한다', async () => {
+    mockFetch.mockReturnValue(jsonResponse({ items: [], total: 0 }));
+    await adminApi.feedbacks(1, 20, 'BUG', '검색어');
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain('category=BUG');
+    expect(url).toContain('search=');
+  });
+
+  it('feedbackDetail은 GET /api/feedbacks/:publicId/detail을 호출한다', async () => {
+    mockFetch.mockReturnValue(jsonResponse({ publicId: 'pub-1', screenshot: 'data:...' }));
+    const result = await adminApi.feedbackDetail('pub-1');
+    expect(mockFetch.mock.calls[0][0]).toContain('/api/feedbacks/pub-1/detail');
+    expect(result).toHaveProperty('screenshot');
+  });
+
+  it('updateFeedbackStatus는 PATCH 요청을 보낸다', async () => {
+    mockFetch.mockReturnValue(jsonResponse({ publicId: 'pub-1', status: 'RESOLVED' }));
+    await adminApi.updateFeedbackStatus('pub-1', 'RESOLVED');
+    const [url, opts] = mockFetch.mock.calls[0];
+    expect(url).toContain('/api/feedbacks/pub-1/status');
+    expect(opts.method).toBe('PATCH');
   });
 });
