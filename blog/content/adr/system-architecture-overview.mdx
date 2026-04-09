@@ -20,28 +20,81 @@ order: 2
 
 먼저 전체 그림부터 보겠습니다.
 
-<Mermaid
-  caption="AlgoSu 6 마이크로서비스 + 1 프론트엔드의 통신 토폴로지"
-  chart={`
-flowchart TD
-    FE[Frontend<br/>Next.js 15<br/>:3001]
-    GW[Gateway<br/>NestJS<br/>:3000]
-    ID[Identity<br/>NestJS<br/>:3004]
-    SUB[Submission<br/>NestJS · Saga<br/>:3003]
-    PROB[Problem<br/>NestJS<br/>:3002]
-    GHW[GitHub Worker<br/>Node]
-    AI[AI Analysis<br/>FastAPI<br/>:8000]
-    CLAUDE([Claude API])
-
-    FE -- httpOnly Cookie --> GW
-    GW -- X-Internal-Key --> ID
-    GW -- X-Internal-Key --> SUB
-    GW -- X-Internal-Key --> PROB
-    SUB -- RabbitMQ --> GHW
-    SUB -- RabbitMQ --> AI
-    AI --> CLAUDE
-`}
-/>
+<ArchitectureMap title="k3s on OCI ARM (24GB · 4 OCPU)" subtitle="Cloudflare Tunnel → 7 services">
+  <ArchLayer label="브라우저 진입점" tone="edge">
+    <ArchService
+      name="Frontend"
+      tech="Next.js 15 · App Router"
+      port="3001"
+      icon="Globe"
+      accent={1}
+      note="Tailwind, shadcn/ui, SSE 구독"
+    />
+  </ArchLayer>
+  <ArchLayer label="API 게이트웨이 (외부 진입의 유일한 경로)" tone="gateway">
+    <ArchService
+      name="Gateway"
+      tech="NestJS"
+      port="3000"
+      icon="Shield"
+      accent={2}
+      note="OAuth + JWT, X-Internal-Key 발급, Rate Limit, SSE"
+    />
+  </ArchLayer>
+  <ArchLayer label="백엔드 서비스 (Database per Service)" tone="backend">
+    <ArchService
+      name="Identity"
+      tech="NestJS · identity_db"
+      port="3004"
+      icon="Users"
+      accent={3}
+      note="사용자/스터디/알림/공유 링크"
+    />
+    <ArchService
+      name="Submission"
+      tech="NestJS · submission_db"
+      port="3003"
+      icon="Workflow"
+      accent={4}
+      note="Saga Orchestrator · 코드리뷰"
+    />
+    <ArchService
+      name="Problem"
+      tech="NestJS · problem_db"
+      port="3002"
+      icon="Database"
+      accent={5}
+      note="문제 CRUD · 마감 관리"
+    />
+  </ArchLayer>
+  <ArchLayer label="비동기 워커 (RabbitMQ 큐 컨슈머)" tone="worker">
+    <ArchService
+      name="GitHub Worker"
+      tech="Node.js · prefetch=2"
+      port="9100"
+      icon="GitBranch"
+      accent={6}
+      note="submission.github_push 큐 → GitHub Push"
+    />
+    <ArchService
+      name="AI Analysis"
+      tech="FastAPI · Circuit Breaker"
+      port="8000"
+      icon="Sparkles"
+      accent={1}
+      note="submission.ai_analysis 큐 → Claude API"
+    />
+  </ArchLayer>
+  <ArchLayer label="외부 의존성" tone="external">
+    <ArchService
+      name="Claude API"
+      tech="claude-haiku-4-5-20251001"
+      icon="Cloud"
+      accent={2}
+      note="MAX_TOKENS=8192, JSON 4-step fallback 파싱"
+    />
+  </ArchLayer>
+</ArchitectureMap>
 
 ## 각 서비스의 역할
 
