@@ -20,53 +20,49 @@ order: 2
 
 먼저 전체 그림부터 보겠습니다.
 
-```
-                        ┌──────────────────┐
-                        │   Frontend       │
-                        │   (Next.js 15)   │
-                        │   :3001          │
-                        └────────┬─────────┘
-                                 │ httpOnly Cookie
-                        ┌────────▼─────────┐
-                        │    Gateway        │
-                        │    (NestJS)       │
-                        │    :3000          │
-                        └──┬─────┬─────┬───┘
-              X-Internal-Key│     │     │X-Internal-Key
-           ┌───────────────┘     │     └───────────────┐
-           │                     │                     │
-   ┌───────▼───────┐    ┌───────▼───────┐     ┌───────▼───────┐
-   │   Identity    │    │  Submission   │     │   Problem     │
-   │   (NestJS)    │    │  (NestJS)     │     │   (NestJS)    │
-   │   :3004       │    │  :3003        │     │   :3002       │
-   │               │    │  Saga Orch.   │     │               │
-   └───────────────┘    └───┬───────┬───┘     └───────────────┘
-                            │       │
-                       RabbitMQ     RabbitMQ
-                            │       │
-                 ┌──────────▼┐  ┌───▼──────────┐
-                 │  GitHub   │  │ AI Analysis  │
-                 │  Worker   │  │ (FastAPI)    │
-                 │  (Node)   │  │ :8000        │
-                 └───────────┘  └──────────────┘
-                                      │
-                                Claude API
-                           (claude-haiku-4-5-20251001)
-```
+<Mermaid
+  caption="AlgoSu 6 마이크로서비스 + 1 프론트엔드의 통신 토폴로지"
+  chart={`
+flowchart TD
+    FE[Frontend<br/>Next.js 15<br/>:3001]
+    GW[Gateway<br/>NestJS<br/>:3000]
+    ID[Identity<br/>NestJS<br/>:3004]
+    SUB[Submission<br/>NestJS · Saga<br/>:3003]
+    PROB[Problem<br/>NestJS<br/>:3002]
+    GHW[GitHub Worker<br/>Node]
+    AI[AI Analysis<br/>FastAPI<br/>:8000]
+    CLAUDE([Claude API])
+
+    FE -- httpOnly Cookie --> GW
+    GW -- X-Internal-Key --> ID
+    GW -- X-Internal-Key --> SUB
+    GW -- X-Internal-Key --> PROB
+    SUB -- RabbitMQ --> GHW
+    SUB -- RabbitMQ --> AI
+    AI --> CLAUDE
+`}
+/>
 
 ## 각 서비스의 역할
 
 하나씩 뜯어보겠습니다.
 
-| 서비스 | 프레임워크 | 포트 | 핵심 역할 |
-|--------|-----------|------|----------|
-| **Gateway** | NestJS | 3000 | API 라우팅, OAuth 인증, JWT 발급/검증, SSE, Rate Limit |
-| **Identity** | NestJS | 3004 | 사용자/스터디/알림/공유 링크 관리, Discord 피드백 webhook |
-| **Submission** | NestJS | 3003 | 코드 제출 CRUD, Saga Orchestrator, 코드리뷰/스터디 노트 |
-| **Problem** | NestJS | 3002 | 문제 CRUD, 마감 관리 |
-| **GitHub Worker** | Node.js | 9100(metrics) | RabbitMQ 소비자, GitHub Push, prefetch=2 |
-| **AI Analysis** | FastAPI | 8000 | Claude API 호출, Circuit Breaker, 코드 분석/그룹 분석 |
-| **Frontend** | Next.js 15 | 3001 | App Router, Tailwind, shadcn/ui |
+<ServiceGrid cols={3}>
+  <ServiceCard name="Gateway" tech="NestJS" port="3000" accent={1}
+    role="API 라우팅, OAuth 인증, JWT 발급/검증, SSE, Rate Limit" />
+  <ServiceCard name="Identity" tech="NestJS" port="3004" accent={2}
+    role="사용자/스터디/알림/공유 링크 관리, Discord 피드백 webhook" />
+  <ServiceCard name="Submission" tech="NestJS" port="3003" accent={3}
+    role="코드 제출 CRUD, Saga Orchestrator, 코드리뷰/스터디 노트" />
+  <ServiceCard name="Problem" tech="NestJS" port="3002" accent={4}
+    role="문제 CRUD, 마감 관리" />
+  <ServiceCard name="GitHub Worker" tech="Node.js" port="9100 metrics" accent={5}
+    role="RabbitMQ 소비자, GitHub Push, prefetch=2" />
+  <ServiceCard name="AI Analysis" tech="FastAPI" port="8000" accent={6}
+    role="Claude API 호출, Circuit Breaker, 코드 분석/그룹 분석" />
+  <ServiceCard name="Frontend" tech="Next.js 15" port="3001" accent={1}
+    role="App Router, Tailwind, shadcn/ui" />
+</ServiceGrid>
 
 Gateway가 유일한 외부 진입점이고, 나머지 서비스는 클러스터 내부에서만 통신합니다. Gateway를 제외한 서비스는 Swagger UI도 프로덕션에서 비활성화됩니다.
 
@@ -74,20 +70,22 @@ Gateway가 유일한 외부 진입점이고, 나머지 서비스는 클러스터
 
 사용자가 코드를 제출하면 Submission Service의 Saga Orchestrator가 전체 플로우를 관장합니다. 실제 코드에서 정의된 상태 전이는 이렇습니다.
 
-```
-┌──────────┐     ┌───────────────┐     ┌────────────┐     ┌──────┐
-│ DB_SAVED │────▶│ GITHUB_QUEUED │────▶│ AI_QUEUED  │────▶│ DONE │
-└──────────┘     └───────┬───────┘     └─────┬──────┘     └──────┘
-                         │                   │
-                         │ GitHub 실패       │ AI 실패
-                         ▼                   ▼
-                   AI_QUEUED로 진행      DONE (분석만 DELAYED)
-                  (GitHub와 독립)
-                         │
-                   TOKEN_INVALID면
-                         ▼
-                   DONE (aiSkipped)
-```
+<Mermaid
+  caption="Saga 상태 전이 — 실패 시 분기 포함"
+  chart={`
+flowchart LR
+    A[DB_SAVED]:::ok --> B[GITHUB_QUEUED]:::ok
+    B --> C[AI_QUEUED]:::ok
+    C --> D([DONE]):::done
+    B -. GitHub 실패 .-> C
+    C -. AI 실패 .-> E([DONE<br/>aiDelayed]):::warn
+    B -. TOKEN_INVALID .-> F([DONE<br/>aiSkipped]):::warn
+
+    classDef ok fill:#eef2ff,stroke:#6366f1,color:#312e81
+    classDef done fill:#ecfdf5,stroke:#10b981,color:#065f46
+    classDef warn fill:#fffbeb,stroke:#f59e0b,color:#92400e
+`}
+/>
 
 핵심 설계 원칙이 세 가지 있습니다.
 
@@ -101,15 +99,13 @@ Gateway가 유일한 외부 진입점이고, 나머지 서비스는 클러스터
 
 **3. 타임아웃 + 자동 재개**
 
-```
-단계별 타임아웃:
-  DB_SAVED      →  5분
-  GITHUB_QUEUED → 15분
-  AI_QUEUED     → 30분
-
-체크 주기: 2분마다
-최대 재시도: 3회 (초과 시 FAILED)
-```
+<MetricGrid cols={3}>
+  <MetricCard label="DB_SAVED" value="5분" hint="단계 타임아웃" accent={1} />
+  <MetricCard label="GITHUB_QUEUED" value="15분" hint="단계 타임아웃" accent={2} />
+  <MetricCard label="AI_QUEUED" value="30분" hint="단계 타임아웃" accent={3} />
+  <MetricCard label="체크 주기" value="2분" hint="스케줄러 간격" accent={4} />
+  <MetricCard label="최대 재시도" value="3회" hint="초과 시 FAILED" accent={5} />
+</MetricGrid>
 
 서비스가 재시작되면 `onModuleInit`에서 1시간 이내 미완료 Saga를 찾아 자동으로 재개합니다. 메시지가 유실돼도 복구됩니다.
 
@@ -117,26 +113,12 @@ Gateway가 유일한 외부 진입점이고, 나머지 서비스는 클러스터
 
 마이크로서비스의 교과서적인 원칙을 따랐습니다. 서비스마다 DB를 분리합니다.
 
-```
-┌─────────────────────────────────────────────────────┐
-│              PostgreSQL 인스턴스 #1                   │
-│  ┌──────────────┐  ┌──────────────────┐              │
-│  │ identity_db  │  │ submission_db    │              │
-│  │ (users,      │  │ (submissions,   │              │
-│  │  studies,    │  │  code_reviews,  │              │
-│  │  알림, 공유) │  │  스터디 노트)   │              │
-│  └──────────────┘  └──────────────────┘              │
-└─────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────┐
-│              PostgreSQL 인스턴스 #2 (별도)            │
-│  ┌──────────────┐                                    │
-│  │ problem_db   │                                    │
-│  │ (problems,   │                                    │
-│  │  deadlines)  │                                    │
-│  └──────────────┘                                    │
-└─────────────────────────────────────────────────────┘
-```
+<ServiceGrid cols={2}>
+  <ServiceCard name="PostgreSQL #1 (공용)" tech="identity_db + submission_db" accent={1}
+    role="users, studies, 알림, 공유 / submissions, code_reviews, 스터디 노트" />
+  <ServiceCard name="PostgreSQL #2 (별도)" tech="problem_db" accent={4}
+    role="problems, deadlines — 물리적으로 분리된 인스턴스" />
+</ServiceGrid>
 
 `identity_db`와 `submission_db`는 같은 PostgreSQL 인스턴스에서 논리적으로 분리되어 있고, `problem_db`는 아예 별도 PostgreSQL 인스턴스(`postgres-problem`)로 물리적으로 분리했습니다. OCI ARM 프리티어의 제한된 리소스에서 인스턴스 3개는 무리여서, 2개로 타협한 결과입니다.
 
@@ -186,13 +168,11 @@ export class InternalKeyGuard implements CanActivate {
 
 제출 후 GitHub Push와 AI 분석은 시간이 오래 걸리는 작업입니다. 사용자를 기다리게 할 수 없으니 RabbitMQ로 비동기 처리합니다.
 
-```
-Submission Service
-    │
-    ├── publish ──▶ submission.github_push 큐 ──▶ GitHub Worker
-    │                                               (prefetch=2)
-    └── publish ──▶ submission.ai_analysis 큐 ──▶ AI Analysis Worker
-```
+<Pipeline>
+  <PipelineStage label="Submission" detail="publish 2 queues" accent={3} />
+  <PipelineStage label="submission.github_push" detail="GitHub Worker · prefetch=2" accent={5} />
+  <PipelineStage label="submission.ai_analysis" detail="AI Analysis Worker" accent={6} />
+</Pipeline>
 
 GitHub Worker의 `prefetch=2`는 의도적인 설정입니다. GitHub API의 Rate Limit과 OCI Free Tier의 제한된 리소스를 고려한 동시 처리량 제한입니다. 실패 시에는 Retry 후 DLQ(Dead Letter Queue)로 이동합니다.
 
@@ -204,10 +184,12 @@ GitHub Worker의 `prefetch=2`는 의도적인 설정입니다. GitHub API의 Rat
 
 Gateway의 SSE Controller가 Redis Pub/Sub을 구독하고, 브라우저에 `text/event-stream`으로 상태를 전달합니다.
 
-```
-Browser ◀── SSE ── Gateway ◀── Redis Pub/Sub ◀── Submission Service
-                    (공유 subscriber)
-```
+<Pipeline>
+  <PipelineStage label="Submission" detail="status 변경" accent={3} />
+  <PipelineStage label="Redis Pub/Sub" detail="submission:status:{id}" accent={2} />
+  <PipelineStage label="Gateway SSE" detail="공유 subscriber" accent={1} />
+  <PipelineStage label="Browser" detail="text/event-stream" accent={4} />
+</Pipeline>
 
 SSE 연결에는 몇 가지 안전장치를 걸어뒀습니다.
 
@@ -220,35 +202,27 @@ SSE 연결에는 몇 가지 안전장치를 걸어뒀습니다.
 
 인증 플로우를 한눈에 보면 이렇습니다.
 
-```
-┌────────┐     ┌────────┐     ┌──────────────┐     ┌──────────┐
-│Browser │     │Gateway │     │OAuth Provider│     │Identity  │
-│        │     │ :3000  │     │(Google/Naver │     │ :3004    │
-│        │     │        │     │ /Kakao)      │     │          │
-└───┬────┘     └───┬────┘     └──────┬───────┘     └────┬─────┘
-    │              │                 │                   │
-    │ 로그인 클릭   │                 │                   │
-    │─────────────▶│                 │                   │
-    │              │ redirect        │                   │
-    │              │────────────────▶│                   │
-    │              │                 │                   │
-    │              │◀── code ────────│                   │
-    │              │                 │                   │
-    │              │ code → token 교환                   │
-    │              │────────────────▶│                   │
-    │              │◀── access_token │                   │
-    │              │                 │                   │
-    │              │ 사용자 조회/생성                      │
-    │              │────────────────────────────────────▶│
-    │              │◀─── user info ─────────────────────│
-    │              │                                     │
-    │              │ JWT 발급 (HS256, 1시간)              │
-    │◀─ Set-Cookie │                                     │
-    │  (httpOnly,  │                                     │
-    │   Secure,    │                                     │
-    │   SameSite)  │                                     │
-    └──────────────┘                                     │
-```
+<Mermaid
+  caption="OAuth + JWT + httpOnly Cookie 인증 시퀀스"
+  chart={`
+sequenceDiagram
+    autonumber
+    participant B as Browser
+    participant G as Gateway :3000
+    participant O as OAuth Provider<br/>(Google/Naver/Kakao)
+    participant I as Identity :3004
+
+    B->>G: 로그인 클릭
+    G->>O: redirect (authorize)
+    O-->>G: code
+    G->>O: code → token 교환
+    O-->>G: access_token
+    G->>I: 사용자 조회/생성
+    I-->>G: user info
+    G->>G: JWT 발급 (HS256, 1h)
+    G-->>B: Set-Cookie (httpOnly, Secure, SameSite)
+`}
+/>
 
 몇 가지 설계 결정을 공유합니다.
 
@@ -264,21 +238,13 @@ OCI ARM 프리티어(24GB RAM, 4 OCPU)에서 k3s를 운영합니다.
 
 ### 배포 파이프라인
 
-```
-┌──────────┐     ┌──────────────┐     ┌───────────────┐
-│ git push │────▶│ GitHub       │────▶│ GHCR          │
-│ (main)   │     │ Actions CI   │     │ (ARM 이미지)   │
-│          │     │ 15 jobs      │     │               │
-└──────────┘     └──────┬───────┘     └───────┬───────┘
-                        │                     │
-                 tag 업데이트              이미지 pull
-                        │                     │
-                 ┌──────▼───────┐     ┌───────▼───────┐
-                 │ aether-gitops│     │ k3s Cluster   │
-                 │ (GitOps 레포)│────▶│ (OCI ARM)     │
-                 │              │     │ ArgoCD v3.3.2 │
-                 └──────────────┘     └───────────────┘
-```
+<Pipeline>
+  <PipelineStage label="git push" detail="main 브랜치" accent={1} />
+  <PipelineStage label="GitHub Actions" detail="15 jobs (path filter)" accent={2} />
+  <PipelineStage label="GHCR" detail="ARM aarch64 이미지" accent={3} />
+  <PipelineStage label="aether-gitops" detail="태그 갱신 commit" accent={4} />
+  <PipelineStage label="k3s + ArgoCD v3.3.2" detail="OCI ARM 자동 동기화" accent={5} />
+</Pipeline>
 
 CI는 15개 job으로 구성되어 있습니다. path filter로 변경된 서비스만 테스트하고 빌드합니다. ARM aarch64 이미지를 빌드하고, GHCR에 `main-{git-sha}` 태그로 push합니다. `latest` 태그는 절대 사용하지 않습니다.
 
@@ -355,13 +321,12 @@ API가 연속으로 실패하면 Circuit Breaker가 OPEN 상태로 전환되고,
 
 Claude의 응답 파싱도 방어적으로 구현했습니다. LLM이 항상 완벽한 JSON을 돌려주지는 않거든요.
 
-```
-파싱 전략 (4단계 fallback):
-1. 마크다운 코드 블록 제거 → JSON.parse
-2. 숫자 뒤 불필요한 따옴표 제거 (Claude 환각 대응)
-3. optimizedCode 필드 제거 후 재파싱
-4. 첫 번째 유효 JSON 객체 추출 (depth 기반)
-```
+<Pipeline>
+  <PipelineStage label="① 코드블록 제거" detail="마크다운 펜스 strip → JSON.parse" accent={1} />
+  <PipelineStage label="② 따옴표 정정" detail="숫자 뒤 환각 따옴표 제거" accent={2} />
+  <PipelineStage label="③ optimizedCode 제거" detail="문제 필드 제거 후 재파싱" accent={3} />
+  <PipelineStage label="④ JSON 추출" detail="첫 유효 객체 depth 기반 추출" accent={4} />
+</Pipeline>
 
 이 4단계 fallback 덕분에 파싱 실패율이 거의 0에 가깝습니다.
 
