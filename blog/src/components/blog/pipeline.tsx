@@ -8,6 +8,7 @@
  * 모바일에선 위→아래로 전환되고, sm 이상에서 가로 흐름.
  */
 import type { ReactNode } from 'react';
+import { getIcon, type IconName } from './icons';
 
 interface PipelineProps {
   children: ReactNode;
@@ -17,6 +18,7 @@ interface PipelineStageProps {
   label: string;
   detail?: ReactNode;
   accent?: 1 | 2 | 3 | 4 | 5 | 6;
+  icon?: IconName | string;
 }
 
 const ACCENT_BG: Record<number, string> = {
@@ -38,7 +40,8 @@ export function Pipeline({ children }: PipelineProps) {
   );
 }
 
-export function PipelineStage({ label, detail, accent = 1 }: PipelineStageProps) {
+export function PipelineStage({ label, detail, accent = 1, icon }: PipelineStageProps) {
+  const Icon = getIcon(icon);
   return (
     <li className="relative flex-1">
       <div
@@ -46,10 +49,19 @@ export function PipelineStage({ label, detail, accent = 1 }: PipelineStageProps)
         style={{ borderColor: 'var(--border)' }}
       >
         <div className="flex items-center gap-2">
-          <span
-            aria-hidden
-            className={`h-2 w-2 shrink-0 rounded-full ${ACCENT_BG[accent]}`}
-          />
+          {Icon ? (
+            <span
+              aria-hidden
+              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-white ${ACCENT_BG[accent]}`}
+            >
+              <Icon size={14} strokeWidth={2.5} />
+            </span>
+          ) : (
+            <span
+              aria-hidden
+              className={`h-2 w-2 shrink-0 rounded-full ${ACCENT_BG[accent]}`}
+            />
+          )}
           <span className="text-sm font-semibold text-text">{label}</span>
         </div>
         {detail && (

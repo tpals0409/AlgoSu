@@ -7,6 +7,9 @@
  * MDX → React 컴포넌트 매핑.
  * - 마크다운 기본 요소(`a`, `pre`, `table`, ...)에 토큰 스타일 적용
  * - blog 전용 컴포넌트(`Callout`, `MetricGrid`, ...)를 MDX 안에서 직접 사용 가능하게 노출
+ *
+ * 아이콘은 string-based로 사용 (예: `<HierarchyNode icon="Crown" .../>`).
+ * 컴포넌트 내부에서 `getIcon()`으로 lookup. (`@/components/blog/icons.ts`)
  */
 import type { MDXComponents } from 'mdx/types';
 import { Callout } from '@/components/blog/callout';
@@ -16,6 +19,18 @@ import { Pipeline, PipelineStage } from '@/components/blog/pipeline';
 import { TierStack, TierRow } from '@/components/blog/tier-stack';
 import { KV } from '@/components/blog/kv';
 import { Mermaid } from '@/components/blog/mermaid';
+import {
+  ArchitectureMap,
+  ArchLayer,
+  ArchService,
+} from '@/components/blog/architecture-map';
+import {
+  TierMatrix,
+  TierMatrixRow,
+  TierMatrixCell,
+} from '@/components/blog/tier-matrix';
+import { HierarchyTree, HierarchyNode } from '@/components/blog/hierarchy-tree';
+import { PhaseTimeline, PhaseMilestone } from '@/components/blog/phase-timeline';
 
 export const mdxComponents: MDXComponents = {
   // 외부 링크 — 새 탭, 안전 속성
@@ -53,4 +68,15 @@ export const mdxComponents: MDXComponents = {
   TierRow,
   KV,
   Mermaid,
+  // 신규 (70-6)
+  ArchitectureMap,
+  ArchLayer,
+  ArchService,
+  TierMatrix,
+  TierMatrixRow,
+  TierMatrixCell,
+  HierarchyTree,
+  HierarchyNode,
+  PhaseTimeline,
+  PhaseMilestone,
 };
