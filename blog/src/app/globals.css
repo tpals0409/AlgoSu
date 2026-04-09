@@ -2,8 +2,162 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * AlgoSu Tech Blog — Design Tokens
+ *
+ * 색상은 CSS variable로 중앙화하고, .dark 오버라이드로 다크모드를 지원합니다.
+ * Tailwind 클래스(`bg-surface`, `text-callout-info-fg` 등)는 tailwind.config.ts의
+ * colors 매핑을 통해 이 변수를 참조합니다.
+ *
+ * @layer  blog
+ * @related  tailwind.config.ts, src/components/blog/*
+ */
 @layer base {
+  :root {
+    /* 표면(surface) 계층 — 배경/카드/다이어그램 */
+    --surface: #ffffff;
+    --surface-muted: #f8fafc;        /* slate-50 */
+    --surface-elevated: #ffffff;
+    --diagram-bg: #f8fafc;           /* slate-50 — 다이어그램 캔버스 */
+    --diagram-grid: #e2e8f0;         /* slate-200 */
+
+    /* 보더 */
+    --border: #e2e8f0;               /* slate-200 */
+    --border-strong: #cbd5e1;        /* slate-300 */
+
+    /* 텍스트 */
+    --text: #0f172a;                 /* slate-900 */
+    --text-muted: #475569;           /* slate-600 */
+    --text-subtle: #94a3b8;          /* slate-400 */
+
+    /* 브랜드 */
+    --brand: #6366f1;                /* indigo-500 */
+    --brand-strong: #4338ca;         /* indigo-700 */
+    --brand-soft: #eef2ff;           /* indigo-50 */
+
+    /* Callout — info */
+    --callout-info-bg: #eff6ff;      /* blue-50 */
+    --callout-info-border: #93c5fd;  /* blue-300 */
+    --callout-info-fg: #1e40af;      /* blue-800 */
+
+    /* Callout — warn */
+    --callout-warn-bg: #fffbeb;      /* amber-50 */
+    --callout-warn-border: #fcd34d;  /* amber-300 */
+    --callout-warn-fg: #92400e;      /* amber-800 */
+
+    /* Callout — success */
+    --callout-success-bg: #ecfdf5;   /* emerald-50 */
+    --callout-success-border: #6ee7b7;/* emerald-300 */
+    --callout-success-fg: #065f46;   /* emerald-800 */
+
+    /* Callout — danger */
+    --callout-danger-bg: #fef2f2;    /* red-50 */
+    --callout-danger-border: #fca5a5;/* red-300 */
+    --callout-danger-fg: #991b1b;    /* red-800 */
+
+    /* 서비스 카드 액센트 (Pipeline/ServiceGrid 등) */
+    --accent-1: #6366f1;             /* indigo */
+    --accent-2: #06b6d4;             /* cyan */
+    --accent-3: #10b981;             /* emerald */
+    --accent-4: #f59e0b;             /* amber */
+    --accent-5: #ec4899;             /* pink */
+    --accent-6: #8b5cf6;             /* violet */
+  }
+
+  .dark {
+    /* L11~12 수준의 다크 배경 — 검정 회피 */
+    --surface: #0b1220;
+    --surface-muted: #111827;        /* gray-900 */
+    --surface-elevated: #1f2937;     /* gray-800 */
+    --diagram-bg: #111827;           /* gray-900 */
+    --diagram-grid: #374151;         /* gray-700 */
+
+    --border: #1f2937;               /* gray-800 */
+    --border-strong: #374151;        /* gray-700 */
+
+    --text: #f1f5f9;                 /* slate-100 */
+    --text-muted: #94a3b8;           /* slate-400 */
+    --text-subtle: #64748b;          /* slate-500 */
+
+    --brand: #818cf8;                /* indigo-400 */
+    --brand-strong: #a5b4fc;         /* indigo-300 */
+    --brand-soft: #1e1b4b;           /* indigo-950 */
+
+    --callout-info-bg: #172554;      /* blue-950 */
+    --callout-info-border: #1e40af;  /* blue-800 */
+    --callout-info-fg: #93c5fd;      /* blue-300 */
+
+    --callout-warn-bg: #451a03;      /* amber-950 */
+    --callout-warn-border: #92400e;  /* amber-800 */
+    --callout-warn-fg: #fcd34d;      /* amber-300 */
+
+    --callout-success-bg: #022c22;   /* emerald-950 */
+    --callout-success-border: #065f46;/* emerald-800 */
+    --callout-success-fg: #6ee7b7;   /* emerald-300 */
+
+    --callout-danger-bg: #450a0a;    /* red-950 */
+    --callout-danger-border: #991b1b;/* red-800 */
+    --callout-danger-fg: #fca5a5;    /* red-300 */
+
+    --accent-1: #818cf8;
+    --accent-2: #22d3ee;
+    --accent-3: #34d399;
+    --accent-4: #fbbf24;
+    --accent-5: #f472b6;
+    --accent-6: #a78bfa;
+  }
+
   body {
-    @apply bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100;
+    background-color: var(--surface);
+    color: var(--text);
+  }
+}
+
+/*
+ * 마크다운 본문(prose) 요소의 최소 보정.
+ * @tailwindcss/typography 의 prose-* modifier로 부족한 부분만 보강합니다.
+ */
+@layer components {
+  /* 표 — prose 기본보다 더 카드형으로 */
+  .prose table {
+    @apply overflow-hidden rounded-lg border;
+    border-color: var(--border);
+  }
+  .prose thead {
+    background-color: var(--surface-muted);
+  }
+  .prose th,
+  .prose td {
+    border-color: var(--border);
+  }
+
+  /* 인라인 코드 */
+  .prose :not(pre) > code {
+    background-color: var(--surface-muted);
+    color: var(--brand-strong);
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-weight: 500;
+  }
+  .prose :not(pre) > code::before,
+  .prose :not(pre) > code::after {
+    content: '';
+  }
+
+  /* 코드 블록(prose pre)도 토큰으로 */
+  .prose pre {
+    background-color: var(--surface-muted);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  /* 블록 인용문 */
+  .prose blockquote {
+    border-left-color: var(--brand);
+    color: var(--text-muted);
+    background-color: var(--surface-muted);
+    padding: 0.75rem 1rem;
+    border-radius: 0 0.5rem 0.5rem 0;
+    font-style: normal;
   }
 }
