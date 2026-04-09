@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { Repository, DataSource } from 'typeorm';
 import { SubmissionService } from './submission.service';
 import { Submission, SagaStep, GitHubSyncStatus } from './submission.entity';
@@ -141,13 +141,7 @@ describe('SubmissionService', () => {
 
   // ─── 1. create() — 정상 제출 ─────────────────────────────────
   describe('create() — 정상 제출', () => {
-    it('GitHub 연동 검증 성공 -> DB 저장 -> Saga 진행', async () => {
-      // Arrange: fetch로 GitHub 연동 상태 확인 성공
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ github_connected: true, github_username: 'test-user' }),
-      });
-
+    it('DB 저장 -> Saga 진행', async () => {
       const dto: CreateSubmissionDto = {
         problemId: 'problem-uuid-1',
         language: 'python',
@@ -164,15 +158,6 @@ describe('SubmissionService', () => {
       const result = await service.create(dto, 'user-1', 'study-uuid-1');
 
       // Assert
-      expect(global.fetch).toHaveBeenCalledWith(
-        'http://gateway:3000/internal/users/user-1/github-status',
-        expect.objectContaining({
-          method: 'GET',
-          headers: expect.objectContaining({
-            'x-internal-key': 'test-internal-key',
-          }),
-        }),
-      );
       expect(repo.create).toHaveBeenCalledWith(
         expect.objectContaining({
           studyId: 'study-uuid-1',
@@ -194,12 +179,6 @@ describe('SubmissionService', () => {
   // ─── 2. create() — 멱등성 (중복 idempotencyKey) ──────────────
   describe('create() — 멱등성', () => {
     it('중복 idempotencyKey일 때 기존 제출을 반환한다', async () => {
-      // Arrange
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ github_connected: true, github_username: 'test-user' }),
-      });
-
       const existing = createMockSubmission({
         idempotencyKey: 'idem-key-1',
         sagaStep: SagaStep.DONE,
@@ -225,57 +204,9 @@ describe('SubmissionService', () => {
     });
   });
 
-  // ─── 3. create() — GitHub 미연동 ─────────────────────────────
-  describe('create() — GitHub 미연동', () => {
-    it('github_connected=false이면 ForbiddenException', async () => {
-      // Arrange
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ github_connected: false, github_username: null }),
-      });
-
-      const dto: CreateSubmissionDto = {
-        problemId: 'problem-uuid-1',
-        language: 'python',
-        code: 'print("hello world")',
-      };
-
-      // Act & Assert
-      await expect(service.create(dto, 'user-1', 'study-uuid-1')).rejects.toThrow(
-        ForbiddenException,
-      );
-      expect(repo.create).not.toHaveBeenCalled();
-    });
-
-    it('fetch 응답이 ok=false이면 ForbiddenException', async () => {
-      // Arrange
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: false,
-        status: 500,
-      });
-
-      const dto: CreateSubmissionDto = {
-        problemId: 'problem-uuid-1',
-        language: 'python',
-        code: 'print("hello world")',
-      };
-
-      // Act & Assert
-      await expect(service.create(dto, 'user-1', 'study-uuid-1')).rejects.toThrow(
-        ForbiddenException,
-      );
-    });
-  });
-
   // ─── 4. create() — Saga 진행 실패 ────────────────────────────
   describe('create() — Saga 진행 실패', () => {
     it('Saga 진행 실패해도 DB 저장은 성공한다 (에러 로그만)', async () => {
-      // Arrange
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ github_connected: true, github_username: 'test-user' }),
-      });
-
       const saved = createMockSubmission();
       repo.findOne.mockResolvedValue(null);
       repo.create.mockReturnValue(saved);
@@ -1013,18 +944,11 @@ describe('SubmissionService', () => {
   // ─── 14. create() — 지각 제출 (checkLateSubmission) ───────────
   describe('create() — 지각 제출', () => {
     it('마감 시간이 지났으면 isLate=true로 저장', async () => {
-      // GitHub 연동 확인 성공
-      const fetchMock = jest.fn()
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ github_connected: true, github_username: 'test-user' }),
-        })
-        // checkLateSubmission — 마감 시간이 과거
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ data: { deadline: '2020-01-01T00:00:00Z', status: 'active' } }),
-        });
-      global.fetch = fetchMock;
+      // checkLateSubmission — 마감 시간이 과거
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: { deadline: '2020-01-01T00:00:00Z', status: 'active' } }),
+      });
 
       const saved = createMockSubmission({ isLate: true });
       repo.findOne.mockResolvedValue(null);
@@ -1046,14 +970,8 @@ describe('SubmissionService', () => {
     });
 
     it('마감 시간 조회 실패 시 isLate=false', async () => {
-      const fetchMock = jest.fn()
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ github_connected: true, github_username: 'test-user' }),
-        })
-        // checkLateSubmission — 조회 실패
-        .mockResolvedValueOnce({ ok: false, status: 500 });
-      global.fetch = fetchMock;
+      // checkLateSubmission — 조회 실패
+      global.fetch = jest.fn().mockResolvedValueOnce({ ok: false, status: 500 });
 
       const saved = createMockSubmission({ isLate: false });
       repo.findOne.mockResolvedValue(null);
@@ -1075,16 +993,10 @@ describe('SubmissionService', () => {
     });
 
     it('마감 시간 미설정(null)이면 isLate=false', async () => {
-      const fetchMock = jest.fn()
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ github_connected: true, github_username: 'test-user' }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ data: { deadline: null, status: 'active' } }),
-        });
-      global.fetch = fetchMock;
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: { deadline: null, status: 'active' } }),
+      });
 
       const saved = createMockSubmission({ isLate: false });
       repo.findOne.mockResolvedValue(null);
@@ -1106,13 +1018,7 @@ describe('SubmissionService', () => {
     });
 
     it('마감 시간 조회 중 네트워크 에러 시 isLate=false', async () => {
-      const fetchMock = jest.fn()
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ github_connected: true, github_username: 'test-user' }),
-        })
-        .mockRejectedValueOnce(new Error('network error'));
-      global.fetch = fetchMock;
+      global.fetch = jest.fn().mockRejectedValueOnce(new Error('network error'));
 
       const saved = createMockSubmission({ isLate: false });
       repo.findOne.mockResolvedValue(null);
@@ -1130,23 +1036,6 @@ describe('SubmissionService', () => {
 
       expect(repo.create).toHaveBeenCalledWith(
         expect.objectContaining({ isLate: false }),
-      );
-    });
-  });
-
-  // ─── 15. create() — verifyGitHubConnected 네트워크 에러 ───────
-  describe('create() — verifyGitHubConnected 네트워크 에러', () => {
-    it('fetch에서 네트워크 에러 발생 시 ForbiddenException', async () => {
-      global.fetch = jest.fn().mockRejectedValue(new Error('ECONNREFUSED'));
-
-      const dto: CreateSubmissionDto = {
-        problemId: 'problem-uuid-1',
-        language: 'python',
-        code: 'print("hello")',
-      };
-
-      await expect(service.create(dto, 'user-1', 'study-uuid-1')).rejects.toThrow(
-        ForbiddenException,
       );
     });
   });
@@ -1209,16 +1098,10 @@ describe('SubmissionService', () => {
     it('마감 시간이 미래이면 isLate=false로 저장', async () => {
       const futureDate = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString(); // 1주일 후
 
-      const fetchMock = jest.fn()
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ github_connected: true, github_username: 'test-user' }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ data: { deadline: futureDate, status: 'active' } }),
-        });
-      global.fetch = fetchMock;
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: { deadline: futureDate, status: 'active' } }),
+      });
 
       const saved = createMockSubmission({ isLate: false });
       repo.findOne.mockResolvedValue(null);

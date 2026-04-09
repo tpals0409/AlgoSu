@@ -488,8 +488,8 @@ export default function DashboardPage(): ReactNode {
               <div className="flex min-w-0 flex-1 items-center gap-3">
                 <Github className="h-5 w-5 shrink-0 text-warning" aria-hidden />
                 <div>
-                  <p className="text-[13px] font-medium text-text">GitHub 연동이 필요합니다</p>
-                  <p className="text-[11px] text-text-3">코드를 제출하려면 GitHub 계정을 먼저 연동해주세요.</p>
+                  <p className="text-[13px] font-medium text-text">GitHub 연동을 추천합니다</p>
+                  <p className="text-[11px] text-text-3">GitHub을 연동하면 제출 코드가 자동으로 GitHub에 동기화됩니다.</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">

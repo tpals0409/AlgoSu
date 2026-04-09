@@ -136,11 +136,6 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
       setSubmitError('코드를 입력해주세요.');
       return;
     }
-    if (!githubConnected) {
-      setSubmitError('GitHub 계정을 먼저 연동해주세요.');
-      return;
-    }
-
     setIsSubmitting(true);
     setSubmitError(null);
 
@@ -161,7 +156,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
     } finally {
       setIsSubmitting(false);
     }
-  }, [problem, language, code, problemId, router, githubConnected]);
+  }, [problem, language, code, problemId, router]);
 
   const handleDelete = useCallback(async (): Promise<void> => {
     setIsDeleting(true);
@@ -358,10 +353,10 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
                   </Alert>
                 )}
 
-                {/* GitHub 미연동 경고 */}
+                {/* GitHub 미연동 안내 */}
                 {!githubConnected && (
-                  <Alert variant="warning" title="GitHub 연동 필요">
-                    코드를 제출하려면 먼저 GitHub 계정을 연동해주세요.{' '}
+                  <Alert variant="info" title="GitHub 미연동">
+                    GitHub을 연동하면 제출 코드가 자동으로 GitHub에 동기화됩니다.{' '}
                     <Button
                       variant="link"
                       size="sm"

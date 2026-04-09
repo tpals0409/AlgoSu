@@ -6,7 +6,6 @@
  */
 import {
   Injectable,
-  ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -54,9 +53,6 @@ export class SubmissionService {
    * 순서: DB 저장(saga_step=DB_SAVED) → Saga 진행(GITHUB_QUEUED)
    */
   async create(dto: CreateSubmissionDto, userId: string, studyId: string): Promise<Submission> {
-    // github_connected 사전 검증 (v1.2)
-    await this.verifyGitHubConnected(userId);
-
     // 멱등성 검사
     if (dto.idempotencyKey) {
       const existing = await this.submissionRepo.findOne({
@@ -530,44 +526,6 @@ export class SubmissionService {
     } catch (error: unknown) {
       this.logger.warn(`마감 시간 조회 에러: problemId=${problemId}, ${(error as Error).message}`);
       return { isLate: false, weekNumber: null };
-    }
-  }
-
-  /**
-   * github_connected 사전 검증 (v1.2)
-   * Gatekeeper Internal API 호출: GET /internal/users/:user_id/github-status
-   */
-  private async verifyGitHubConnected(userId: string): Promise<void> {
-    const gatewayUrl = this.configService.getOrThrow<string>('GATEWAY_INTERNAL_URL');
-    const internalKey = this.configService.getOrThrow<string>('INTERNAL_KEY_GATEWAY');
-
-    try {
-      const response = await fetch(
-        `${gatewayUrl}/internal/users/${userId}/github-status`,
-        {
-          method: 'GET',
-          headers: {
-            'x-internal-key': internalKey,
-            'Content-Type': 'application/json',
-          },
-        },
-      );
-
-      if (!response.ok) {
-        this.logger.error(`GitHub 연동 상태 확인 실패: status=${response.status}`);
-        throw new ForbiddenException('GitHub 연동 상태 확인에 실패했습니다.');
-      }
-
-      const data = (await response.json()) as { github_connected: boolean; github_username: string | null };
-
-      if (!data.github_connected) {
-        throw new ForbiddenException('GitHub 연동이 필요합니다.');
-      }
-    } catch (error: unknown) {
-      if (error instanceof ForbiddenException) throw error;
-
-      this.logger.error(`GitHub 연동 상태 확인 실패: ${(error as Error).message}`);
-      throw new ForbiddenException('GitHub 연동 상태 확인에 실패했습니다.');
     }
   }
 
