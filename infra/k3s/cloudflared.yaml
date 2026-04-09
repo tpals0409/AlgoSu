@@ -23,6 +23,10 @@ spec:
         - name: cloudflared
           image: cloudflare/cloudflared:latest
           args:
+            # --metrics 명시 필수 — liveness probe(:2000/ready)와 포트 일치시키지 않으면
+            # cloudflared가 랜덤 포트를 잡아 probe 실패 → CrashLoopBackOff (Sprint 69 G1 참조)
+            - --metrics
+            - 0.0.0.0:2000
             - tunnel
             - --no-autoupdate
             - run
