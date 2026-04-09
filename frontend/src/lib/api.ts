@@ -235,11 +235,11 @@ async function fetchApi<T>(
       throw new ApiError(body.message, res.status);
     }
 
-    // 401 세션 만료 시 로그인 페이지로 리다이렉트
+    // 401 세션 만료 시 로그인 페이지로 리다이렉트 (세션 만료 모달 표시)
     if (res.status === 401 && typeof window !== 'undefined') {
       const currentPath = window.location.pathname;
       if (!currentPath.startsWith('/login') && !currentPath.startsWith('/callback') && currentPath !== '/') {
-        window.location.href = '/login?error=session_expired';
+        window.location.href = '/login?expired=true';
       }
     }
 

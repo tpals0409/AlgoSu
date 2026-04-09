@@ -90,7 +90,10 @@ jest.mock('@/lib/utils', () => ({
 }));
 
 jest.mock('@/lib/auth', () => ({
-  getCurrentUserId: () => 'user-1',
+  removeToken: jest.fn(),
+  removeRefreshToken: jest.fn(),
+  setGitHubConnected: jest.fn(),
+  setGitHubUsername: jest.fn(),
 }));
 
 jest.mock('@/lib/avatars', () => ({

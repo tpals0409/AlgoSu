@@ -28,8 +28,11 @@ function sanitizeRedirect(redirect: string): string {
 }
 
 export function middleware(request: NextRequest): NextResponse {
-  // ── DEV MOCK: 인증 체크 전체 바이패스 ──────────────────────────
-  if (process.env.NEXT_PUBLIC_DEV_MOCK === 'true') {
+  // ── DEV MOCK: 개발 환경에서만 인증 체크 바이패스 ────────────────
+  if (
+    process.env.NEXT_PUBLIC_DEV_MOCK === 'true' &&
+    process.env.NODE_ENV !== 'production'
+  ) {
     return NextResponse.next();
   }
   // ────────────────────────────────────────────────────────────────

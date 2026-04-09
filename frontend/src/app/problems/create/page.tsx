@@ -20,7 +20,7 @@ import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { BackBtn } from '@/components/ui/BackBtn';
 import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
-import { InlineSpinner } from '@/components/ui/LoadingSpinner';
+import { InlineSpinner, LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useStudy } from '@/contexts/StudyContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
@@ -48,7 +48,7 @@ import { problemCreateSchema, type ProblemCreateFormData } from '@/lib/schemas/p
  */
 export default function ProblemCreatePage(): ReactNode {
   const router = useRouter();
-  useRequireAuth();
+  const { isReady } = useRequireAuth();
   useRequireStudy();
   const { currentStudyId, currentStudyRole } = useStudy();
 
@@ -191,6 +191,16 @@ export default function ProblemCreatePage(): ReactNode {
   };
 
   // ─── GUARDS ─────────────────────────────
+
+  if (!isReady) {
+    return (
+      <AppLayout>
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <LoadingSpinner size="lg" color="primary" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (currentStudyRole !== 'ADMIN') {
     return (
