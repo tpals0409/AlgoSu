@@ -13,13 +13,6 @@ export interface PostMeta {
   source?: string;
 }
 
-export interface SprintMeta {
-  number: number;
-  title: string;
-  date: string;
-  status: string;
-}
-
 function readMdxFiles(dir: string): { slug: string; content: string; data: Record<string, unknown> }[] {
   if (!fs.existsSync(dir)) return [];
   return fs
@@ -54,22 +47,3 @@ export function getPostBySlug(slug: string) {
   return { meta: { slug, ...data } as PostMeta, content };
 }
 
-export function getAllSprints(): SprintMeta[] {
-  const files = readMdxFiles(path.join(CONTENT_DIR, 'sprints'));
-  return files
-    .map(({ data }) => ({
-      number: (data.sprint as number) ?? 0,
-      title: (data.title as string) ?? '',
-      date: (data.date as string) ?? '',
-      status: (data.status as string) ?? '',
-    }))
-    .sort((a, b) => b.number - a.number);
-}
-
-export function getSprintByNumber(num: number) {
-  const filePath = path.join(CONTENT_DIR, 'sprints', `sprint-${num}.mdx`);
-  if (!fs.existsSync(filePath)) return null;
-  const raw = fs.readFileSync(filePath, 'utf-8');
-  const { data, content } = matter(raw);
-  return { meta: { number: num, ...data } as SprintMeta, content };
-}
