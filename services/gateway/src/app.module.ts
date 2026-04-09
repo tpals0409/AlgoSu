@@ -82,7 +82,7 @@ import { HealthController } from './health.controller';
       provide: APP_GUARD,
       useClass: DemoWriteGuard,
     },
-    // T1: 토큰 자동 갱신 인터셉터 — 만료 5분 이내 시 새 쿠키 발급
+    // Sprint 71-1R: 토큰 자동 갱신 인터셉터 — 임계값은 SessionPolicyService(env SESSION_REFRESH_THRESHOLD)
     {
       provide: APP_INTERCEPTOR,
       useClass: TokenRefreshInterceptor,
@@ -111,7 +111,7 @@ export class AppModule implements NestModule {
       .forRoutes({ path: '*', method: RequestMethod.ALL });
 
     // JWT 검증
-    // OAuth 콜백, 로그인 시작, JWT 갱신, Internal API, SSE는 제외
+    // OAuth 콜백, 로그인 시작, JWT 갱신, Internal API, SSE, 세션 정책 공개 조회는 제외
     consumer
       .apply(JwtMiddleware)
       .exclude(
@@ -123,6 +123,8 @@ export class AppModule implements NestModule {
         { path: 'auth/demo', method: RequestMethod.POST },
         { path: 'auth/refresh', method: RequestMethod.POST },
         { path: 'auth/logout', method: RequestMethod.POST },
+        // Sprint 71-1R: SessionPolicy 공개 엔드포인트 — FE 로그인 전/후 무관 조회
+        { path: 'auth/session-policy', method: RequestMethod.GET },
         { path: 'internal/(.*)', method: RequestMethod.ALL },
         { path: 'sse/submissions/:id', method: RequestMethod.GET },
         { path: 'sse/notifications', method: RequestMethod.GET },

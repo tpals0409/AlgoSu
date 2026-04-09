@@ -4,6 +4,7 @@ import * as jwt from 'jsonwebtoken';
 import { OAuthService } from './oauth.service';
 import { OAuthProvider, IdentityUser } from '../../common/types/identity.types';
 import { IdentityClientService } from '../../identity-client/identity-client.service';
+import { SessionPolicyService } from '../session-policy/session-policy.service';
 
 // --- ioredis 모듈 모킹 ---
 const mockRedis = {
@@ -35,6 +36,7 @@ describe('OAuthService', () => {
   let service: OAuthService;
   let configService: Record<string, jest.Mock>;
   let identityClient: Record<string, jest.Mock>;
+  let sessionPolicy: Record<string, jest.Mock>;
 
   const JWT_SECRET = 'test-jwt-secret-hs256';
   const CALLBACK_URL = 'https://algosu.test';
@@ -76,9 +78,18 @@ describe('OAuthService', () => {
       getGitHubTokenInfo: jest.fn(),
     };
 
+    // Sprint 71-1R: SessionPolicyService SSoT 주입
+    sessionPolicy = {
+      getAccessTokenTtl: jest.fn().mockReturnValue('1h'),
+      getAccessTokenTtlMs: jest.fn().mockReturnValue(60 * 60 * 1000),
+      getDemoTokenTtl: jest.fn().mockReturnValue('2h'),
+      getDemoTokenTtlMs: jest.fn().mockReturnValue(2 * 60 * 60 * 1000),
+    };
+
     service = new OAuthService(
       configService as unknown as ConfigService,
       identityClient as unknown as IdentityClientService,
+      sessionPolicy as unknown as SessionPolicyService,
     );
   });
 
@@ -278,6 +289,7 @@ describe('OAuthService', () => {
           }),
         } as unknown as ConfigService,
         identityClient as unknown as IdentityClientService,
+        sessionPolicy as unknown as SessionPolicyService,
       );
 
       mockAxios.post.mockResolvedValueOnce({
@@ -751,6 +763,7 @@ describe('OAuthService', () => {
           }),
         } as unknown as ConfigService,
         identityClient as unknown as IdentityClientService,
+        sessionPolicy as unknown as SessionPolicyService,
       );
 
       mockAxios.post.mockResolvedValueOnce({
@@ -791,6 +804,7 @@ describe('OAuthService', () => {
           }),
         } as unknown as ConfigService,
         identityClient as unknown as IdentityClientService,
+        sessionPolicy as unknown as SessionPolicyService,
       );
 
       mockAxios.post.mockResolvedValueOnce({

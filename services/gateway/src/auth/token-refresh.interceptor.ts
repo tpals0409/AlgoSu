@@ -1,10 +1,11 @@
 /**
- * @file 토큰 자동 갱신 인터셉터 — 만료 5분 이내 시 새 쿠키 발급
+ * @file 토큰 자동 갱신 인터셉터 — 만료 임계값 이내 요청 시 새 쿠키 발급 (sliding session)
  * @domain identity
  * @layer middleware
- * @related JwtMiddleware, OAuthService, cookie.util
+ * @related JwtMiddleware, OAuthService, SessionPolicyService, cookie.util
  *
- * T1: JWT 만료 5분 이내 감지 시 응답에 새 토큰 쿠키를 자동 발급한다.
+ * JWT 만료 임계값 이내 감지 시 응답에 새 토큰 쿠키를 자동 발급한다.
+ * 임계값은 SessionPolicyService에서 주입 — env `SESSION_REFRESH_THRESHOLD` 로 제어.
  * JwtMiddleware 이후 실행되므로 req.headers['x-user-id']가 보장된다.
  */
 
@@ -20,16 +21,15 @@ import { Request, Response } from 'express';
 import * as jwt from 'jsonwebtoken';
 import { setTokenCookie } from './cookie.util';
 import { OAuthService } from './oauth/oauth.service';
+import { SessionPolicyService } from './session-policy/session-policy.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
-
-/** 갱신 임계값: 만료 5분(300초) 이내 */
-const REFRESH_THRESHOLD_SECONDS = 5 * 60;
 
 @Injectable()
 export class TokenRefreshInterceptor implements NestInterceptor {
   constructor(
     private readonly configService: ConfigService,
     private readonly oauthService: OAuthService,
+    private readonly sessionPolicy: SessionPolicyService,
     private readonly logger: StructuredLoggerService,
   ) {
     this.logger.setContext(TokenRefreshInterceptor.name);
@@ -44,8 +44,9 @@ export class TokenRefreshInterceptor implements NestInterceptor {
       return next.handle();
     }
 
-    const remainingSeconds = this.getRemainingSeconds(token);
-    if (remainingSeconds === null || remainingSeconds > REFRESH_THRESHOLD_SECONDS) {
+    const remainingMs = this.getRemainingMs(token);
+    const thresholdMs = this.sessionPolicy.getRefreshThresholdMs();
+    if (remainingMs === null || remainingMs > thresholdMs) {
       return next.handle();
     }
 
@@ -63,14 +64,14 @@ export class TokenRefreshInterceptor implements NestInterceptor {
   }
 
   /**
-   * JWT exp까지 남은 시간(초) 반환. 디코딩 실패 시 null.
+   * JWT exp까지 남은 시간(ms) 반환. 디코딩 실패 또는 exp 부재 시 null.
    */
-  private getRemainingSeconds(token: string): number | null {
+  private getRemainingMs(token: string): number | null {
     try {
       // 서명 검증 없이 payload만 디코딩 (JwtMiddleware에서 이미 검증됨)
       const decoded = jwt.decode(token) as jwt.JwtPayload | null;
       if (!decoded?.exp) return null;
-      return decoded.exp - Math.floor(Date.now() / 1000);
+      return decoded.exp * 1000 - Date.now();
     } catch {
       return null;
     }

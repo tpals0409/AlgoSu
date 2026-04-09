@@ -3,11 +3,13 @@ import { ConfigService } from '@nestjs/config';
 import { of, lastValueFrom } from 'rxjs';
 import * as jwt from 'jsonwebtoken';
 import { TokenRefreshInterceptor } from './token-refresh.interceptor';
+import { SessionPolicyService } from './session-policy/session-policy.service';
 
 describe('TokenRefreshInterceptor', () => {
   let interceptor: TokenRefreshInterceptor;
   let mockOAuthService: Record<string, jest.Mock>;
   let mockConfigService: Record<string, jest.Mock>;
+  let mockSessionPolicy: Record<string, jest.Mock>;
   let mockLogger: Record<string, jest.Mock>;
 
   const JWT_SECRET = 'test-secret';
@@ -43,11 +45,17 @@ describe('TokenRefreshInterceptor', () => {
 
     mockOAuthService = {
       findUserById: jest.fn().mockResolvedValue({ id: USER_ID, email: 'test@test.com' }),
-      issueAccessToken: jest.fn().mockReturnValue('new-token'),
+      // setTokenCookie가 exp claim을 디코딩하므로 실제 JWT를 반환해야 fallback 경로를 타지 않음
+      issueAccessToken: jest.fn().mockReturnValue(createToken(2 * 60 * 60)),
     };
 
     mockConfigService = {
       get: jest.fn().mockReturnValue('development'),
+    };
+
+    // Sprint 71-1R: 임계값은 SessionPolicyService에서 주입 (기본 60분 = 3600000ms)
+    mockSessionPolicy = {
+      getRefreshThresholdMs: jest.fn().mockReturnValue(60 * 60 * 1000),
     };
 
     mockLogger = {
@@ -61,6 +69,7 @@ describe('TokenRefreshInterceptor', () => {
     interceptor = new TokenRefreshInterceptor(
       mockConfigService as unknown as ConfigService,
       mockOAuthService as any,
+      mockSessionPolicy as unknown as SessionPolicyService,
       mockLogger as any,
     );
   });
@@ -75,8 +84,8 @@ describe('TokenRefreshInterceptor', () => {
     expect(mockOAuthService.findUserById).not.toHaveBeenCalled();
   });
 
-  it('만료까지 10분 남은 토큰 -- 갱신 안 함', async () => {
-    const token = createToken(600); // 10분
+  it('만료까지 90분 남은 토큰 -- 갱신 안 함 (임계값 60분 초과)', async () => {
+    const token = createToken(90 * 60); // 90분
     const ctx = createContext({ token }, { 'x-user-id': USER_ID });
 
     const result = await lastValueFrom(
@@ -87,8 +96,8 @@ describe('TokenRefreshInterceptor', () => {
     expect(mockOAuthService.findUserById).not.toHaveBeenCalled();
   });
 
-  it('만료까지 3분 남은 토큰 -- 자동 갱신 트리거', async () => {
-    const token = createToken(180); // 3분 (< 5분 임계값)
+  it('만료까지 30분 남은 토큰 -- 자동 갱신 트리거 (임계값 60분 이내)', async () => {
+    const token = createToken(30 * 60); // 30분 (< 60분 임계값)
     const ctx = createContext({ token }, { 'x-user-id': USER_ID });
 
     const result = await lastValueFrom(

@@ -18,6 +18,7 @@ import Redis from 'ioredis';
 import { OAuthProvider, IdentityUser } from '../../common/types/identity.types';
 import { encryptToken } from './token-crypto.util';
 import { IdentityClientService } from '../../identity-client/identity-client.service';
+import { SessionPolicyService } from '../session-policy/session-policy.service';
 
 interface OAuthTokenResponse {
   access_token: string;
@@ -41,7 +42,6 @@ interface GitHubUserProfile {
 export class OAuthService {
   private readonly redis: Redis;
   private readonly jwtSecret: string;
-  private readonly jwtExpiresIn: string;
   private readonly callbackBaseUrl: string;
 
   private static readonly STATE_TTL_SECONDS = 300; // 5분
@@ -49,6 +49,8 @@ export class OAuthService {
   constructor(
     private readonly configService: ConfigService,
     private readonly identityClient: IdentityClientService,
+    // Sprint 71-1R: JWT TTL 하드코딩 제거 — SessionPolicyService SSoT 경유
+    private readonly sessionPolicy: SessionPolicyService,
   ) {
     const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
     this.redis = new Redis(redisUrl);
@@ -57,7 +59,6 @@ export class OAuthService {
       process.stdout.write(JSON.stringify({ level: 'error', context: 'OAuthService', message: `Redis 연결 오류: ${err.message}` }) + '\n');
     });
     this.jwtSecret = this.configService.getOrThrow<string>('JWT_SECRET');
-    this.jwtExpiresIn = this.configService.get<string>('JWT_EXPIRES_IN', '1h');
     this.callbackBaseUrl = this.configService.getOrThrow<string>('OAUTH_CALLBACK_URL');
   }
 
@@ -430,7 +431,7 @@ export class OAuthService {
   }
 
   /**
-   * 데모 전용 JWT 발급 — isDemo: true 클레임 포함, 만료 2시간
+   * 데모 전용 JWT 발급 — isDemo: true 클레임 포함, 만료는 SessionPolicyService(env JWT_DEMO_EXPIRES_IN) 제어
    * @domain identity
    */
   issueDemoToken(user: IdentityUser): string {
@@ -453,6 +454,11 @@ export class OAuthService {
     user: IdentityUser,
     options?: { isDemo?: boolean },
   ): string {
+    // Sprint 71-1R: 데모/일반 TTL 모두 SessionPolicyService SSoT 경유 — 하드코딩 제거
+    const expiresIn = options?.isDemo
+      ? this.sessionPolicy.getDemoTokenTtl()
+      : this.sessionPolicy.getAccessTokenTtl();
+
     return jwt.sign(
       {
         sub: user.id,
@@ -463,7 +469,7 @@ export class OAuthService {
       this.jwtSecret,
       {
         algorithm: 'HS256',
-        expiresIn: (options?.isDemo ? '2h' : this.jwtExpiresIn) as jwt.SignOptions['expiresIn'],
+        expiresIn: expiresIn as jwt.SignOptions['expiresIn'],
       },
     );
   }
