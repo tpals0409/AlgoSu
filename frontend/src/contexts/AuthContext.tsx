@@ -28,6 +28,11 @@ import {
 } from '@/lib/auth';
 import { authApi, setCurrentStudyIdForApi } from '@/lib/api';
 import { getAvatarPresetKey } from '@/lib/avatars';
+import {
+  DEFAULT_SESSION_POLICY,
+  fetchSessionPolicy,
+  type ClientSessionPolicy,
+} from '@/lib/session-policy';
 import * as Sentry from '@sentry/nextjs';
 
 // ── TYPES ────────────────────────────────
@@ -46,6 +51,8 @@ interface AuthContextValue {
   isAdmin: boolean;
   githubConnected: boolean;
   sessionExpired: boolean;
+  /** 서버에서 로드한 세션 정책 — 로드 전에는 DEFAULT_SESSION_POLICY 노출 */
+  sessionPolicy: ClientSessionPolicy;
   /** OAuth 콜백 후 호출 — Cookie에 토큰이 이미 설정된 상태에서 프로필 로드 */
   loginFromCookie: () => void;
   logout: () => void;
@@ -68,6 +75,22 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [githubConnected, setGithubConnected] = useState<boolean>(false);
   const [sessionExpired, setSessionExpired] = useState<boolean>(false);
+  const [sessionPolicy, setSessionPolicy] = useState<ClientSessionPolicy>(DEFAULT_SESSION_POLICY);
+
+  /**
+   * 앱 부트 시 서버 세션 정책 1회 로드 (Sprint 71-2R).
+   * 실패/비정상 응답 시 fetchSessionPolicy 내부에서 DEFAULT_SESSION_POLICY를
+   * 반환하므로 사용자 가시적 오류는 없다. 공개 엔드포인트라 인증과 독립적.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    void fetchSessionPolicy().then((policy) => {
+      if (!cancelled) setSessionPolicy(policy);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   /**
    * 초기 마운트 시 서버에 프로필 조회하여 인증 상태 확인.
@@ -186,6 +209,7 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
   useSessionKeepAlive({
     enabled: user !== null,
     onSessionExpired: handleSessionExpired,
+    policy: sessionPolicy,
   });
 
   const value: AuthContextValue = {
@@ -195,6 +219,7 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
     isAdmin: user?.isAdmin ?? false,
     githubConnected,
     sessionExpired,
+    sessionPolicy,
     loginFromCookie,
     logout,
     updateGitHubStatus,
