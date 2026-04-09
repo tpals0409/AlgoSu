@@ -227,6 +227,15 @@ describe('DiscordWebhookService', () => {
       expect(body.embeds[0].description).toContain('/problems/123');
     });
 
+    it('알 수 없는 카테고리는 회색 fallback(0x888888)을 사용한다', async () => {
+      await service.sendFeedbackNotification(
+        mockFeedback({ category: 'UNKNOWN' as FeedbackCategory }),
+      );
+
+      const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+      expect(body.embeds[0].color).toBe(0x888888);
+    });
+
     it('pageUrl이 없으면 description에 "-"로 표시한다', async () => {
       await service.sendFeedbackNotification(mockFeedback({ pageUrl: null }));
 
@@ -318,6 +327,18 @@ describe('DiscordWebhookService', () => {
 
       expect(mockLogger.warn).toHaveBeenCalledWith(
         expect.stringContaining('Discord webhook 응답 오류: status=500'),
+      );
+    });
+
+    it('Error가 아닌 값으로 throw 시에도 로그를 남기고 예외를 던지지 않는다', async () => {
+      global.fetch = jest.fn().mockRejectedValue('string error');
+
+      await expect(
+        service.sendFeedbackResolvedNotification(mockFeedback()),
+      ).resolves.toBeUndefined();
+
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Discord webhook 전송 실패: string error'),
       );
     });
   });

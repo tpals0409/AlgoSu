@@ -336,6 +336,21 @@ describe('FeedbackService', () => {
       });
     });
 
+    it('studyId가 있지만 스터디가 조회되지 않으면 studyName은 null이다', async () => {
+      const fb = mockFeedback({ studyId: 'study-orphan' });
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[fb], 1]);
+      mockQueryBuilder.getRawMany.mockResolvedValue([]);
+      mockManagerQuery
+        .mockResolvedValueOnce([{ id: 'user-1', name: 'Test User', email: 'test@test.com' }])
+        .mockResolvedValueOnce([]); // 스터디 조회 결과 없음
+
+      const result = await service.findAll();
+
+      expect(result.items[0]).toEqual(
+        expect.objectContaining({ studyName: null }),
+      );
+    });
+
     it('피드백이 있을 때 사용자/스터디 정보를 배치 조회한다', async () => {
       const fb = mockFeedback({ studyId: 'study-1' });
       mockQueryBuilder.getManyAndCount.mockResolvedValue([[fb], 1]);
@@ -488,6 +503,21 @@ describe('FeedbackService', () => {
       await service.updateStatus('pub-fb-1', FeedbackStatus.IN_PROGRESS);
 
       expect(notificationService.create).not.toHaveBeenCalled();
+    });
+
+    it('RESOLVED 전이 시 50자 초과 내용은 truncation하여 알림 메시지에 포함한다', async () => {
+      const longContent = '가'.repeat(60);
+      const fb = mockFeedback({ status: FeedbackStatus.IN_PROGRESS, content: longContent });
+      feedbackRepo.findOne.mockResolvedValue(fb);
+      feedbackRepo.save.mockResolvedValue(fb);
+
+      await service.updateStatus('pub-fb-1', FeedbackStatus.RESOLVED);
+
+      expect(notificationService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('가'.repeat(50) + '...'),
+        }),
+      );
     });
 
     it('인앱 알림 생성 실패 시에도 상태 변경은 정상 반환된다', async () => {
