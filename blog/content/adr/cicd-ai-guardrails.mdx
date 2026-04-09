@@ -1,0 +1,366 @@
+---
+title: "AI를 통제하자 — CI/CD 15 jobs로 만든 안전망"
+date: "2026-04-09"
+excerpt: "AI가 생성한 코드가 프로덕션에 도달하기까지 15개의 CI job이 어떻게 검증하는지 — 보안 스캔, 테스트 매트릭스, 빌드 게이트, GitOps 락까지의 여정을 기록합니다."
+tags: ["ci-cd", "github-actions", "gitops", "security"]
+---
+
+## AI가 쓴 코드를 바로 배포하면 어떻게 될까?
+
+한번은 AI가 생성한 코드를 커밋하고, git push를 눌렀습니다. 코드 자체는 멀쩡했어요. 테스트도 통과했고, 린트도 깨끗했습니다. 그런데 한 가지 문제가 있었습니다 — `git commit --amend`로 커밋을 수정한 뒤 force-push를 했거든요.
+
+CI가 돌았지만, **아무것도 빌드되지 않았습니다.** 변경된 파일이 분명 있는데, CI는 "변경 없음"으로 판단했습니다. `dorny/paths-filter`가 force-push된 커밋의 diff를 정상적으로 감지하지 못한 거예요. 배포 파이프라인의 첫 번째 관문인 변경 감지가 뚫리면, 그 뒤의 모든 체크는 실행조차 되지 않습니다.
+
+이 사건 이후로 force-push(amend)는 프로젝트 전체에서 금지됐습니다. 그리고 "AI가 빠르게 코드를 만들어주니까 CI도 대충 해도 되겠지"라는 생각이 얼마나 위험한지를 깨달았습니다. AI가 빠르게 코드를 생성할수록, 그 코드를 검증하는 파이프라인은 더 촘촘해야 합니다.
+
+> 이 글은 [AlgoSu 기술 블로그 시리즈](/posts/agent-orchestration-solo-dev) 6편 중 4편입니다.
+> 이전 글: [Oracle이 판단하고, 11개 에이전트가 실행한다](/posts/orchestration-structure) | 다음 글: [에이전트를 만나다](/posts/meet-the-agents)
+
+## CI 15 jobs 전체 맵
+
+AlgoSu의 CI 파이프라인은 15개의 job으로 구성되어 있습니다. 이 job들은 독립적으로 실행되는 게 아니라, 엄격한 의존관계를 가지고 있어요. 하나라도 실패하면 후속 단계가 차단되는 구조입니다.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    push / PR → main                             │
+└──────────────┬──────────────────────┬───────────────────────────┘
+               │                      │
+       ┌───────▼───────┐     ┌────────▼────────┐
+       │  secret-scan  │     │ detect-changes  │
+       │  (gitleaks +  │     │ (dorny/paths-   │
+       │   .env 차단)   │     │  filter)        │
+       └───────┬───────┘     └───┬───┬───┬─────┘
+               │                 │   │   │
+               │     ┌───────────┘   │   └────────────┐
+               │     │               │                 │
+       ┌───────▼─────▼──┐  ┌────────▼─────┐  ┌───────▼────────┐
+       │ quality-nestjs  │  │quality-python │  │quality-frontend│
+       │ (ESLint + tsc)  │  │(ruff lint +  │  │(next lint +    │
+       │ × 5 서비스       │  │ ruff format) │  │ tsc --noEmit)  │
+       └───────┬─────────┘  └────────┬─────┘  └───────┬────────┘
+               │                     │                 │
+       ┌───────▼─────────┐  ┌───────▼──────┐  ┌──────▼────────┐
+       │   test-node     │  │test-ai-      │  │ test-frontend │
+       │ (Jest × 5 svc)  │  │analysis      │  │ (Vitest +     │
+       │ --coverage --ci │  │(pytest +cov) │  │  coverage)    │
+       └───────┬─────────┘  └───────┬──────┘  └──────┬────────┘
+               │                     │                 │
+       ┌───────▼─────────────────────┘                 │
+       │  audit-npm (npm audit × 6)                    │
+       └───────┬───────────────────────────────────────┘
+               │                                       │
+     ┌─────────▼──────────┐                  ┌─────────▼──────────┐
+     │  build-services    │                  │  build-frontend    │
+     │  (Docker ARM64     │                  │  (Docker ARM64     │
+     │   × 6 서비스)       │                  │   Next.js)         │
+     └─────────┬──────────┘                  └─────────┬──────────┘
+               │                                       │
+               │         ┌──────────────┐              │
+               │         │  build-blog  │              │
+               │         │  (SSG+nginx) │              │
+               │         └──────┬───────┘              │
+               │                │                      │
+       ┌───────▼────────────────▼──────────────────────▼──┐
+       │              trivy-scan (× 8 이미지)              │
+       │         CRITICAL/HIGH 취약점 → SARIF 업로드         │
+       └──────────────────────┬───────────────────────────┘
+                              │
+       ┌──────────────────────▼───────────────────────────┐
+       │                   deploy                          │
+       │        aether-gitops 이미지 태그 업데이트             │
+       │              → ArgoCD 자동 sync                   │
+       └──────────────────────┬───────────────────────────┘
+                              │
+       ┌──────────────────────▼───────────────────────────┐
+       │                   notify                          │
+       │           Grafana deployment annotation            │
+       └──────────────────────────────────────────────────┘
+```
+
+이 다이어그램에서 핵심은 **화살표의 방향**입니다. 위에서 아래로만 흐르고, 어떤 job도 자기 위의 job을 건너뛸 수 없습니다. `build-services`는 `test-node`, `audit-npm`, `secret-scan`이 **모두** 성공해야 실행됩니다. 하나라도 실패하면 빌드 자체가 차단돼요.
+
+## 1단계: 보안 체크 — secret-scan
+
+파이프라인의 첫 번째 관문은 보안입니다. 모든 push와 PR에 대해, 코드가 테스트되기도 전에 보안 스캔이 실행됩니다.
+
+### gitleaks — 시크릿 유출 탐지
+
+```yaml
+- name: Run gitleaks secret scan
+  run: |
+    if [ "${{ github.event_name }}" = "pull_request" ]; then
+      gitleaks detect --source . --config .gitleaks.toml \
+        --log-opts "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}" \
+        --verbose
+    else
+      gitleaks detect --source . --config .gitleaks.toml --verbose
+    fi
+```
+
+`gitleaks`는 Git 히스토리 전체를 스캔해서 API 키, 비밀번호, 토큰 같은 시크릿이 커밋에 포함되었는지를 검사합니다. PR인 경우에는 변경된 커밋 범위만 스캔하고, push인 경우에는 전체를 스캔합니다.
+
+AI가 코드를 생성할 때 가장 흔한 실수 중 하나가 예제 코드에 하드코딩된 토큰을 남기는 것입니다. 사람이라면 "아, 이건 예제니까 실제 토큰 넣으면 안 되지"라고 생각하겠지만, AI는 그런 맥락 판단을 놓칠 수 있어요. `gitleaks`가 이런 실수를 잡아줍니다.
+
+### .env 파일 커밋 차단
+
+```yaml
+- name: Reject committed .env files
+  run: |
+    VIOLATIONS=$(git ls-files | grep -E '(^|/)\.env($|\..*)' | grep -v '\.env\.example' || true)
+    if [ -n "$(echo "$VIOLATIONS" | tr -d ' ')" ]; then
+      echo "::error::SECURITY VIOLATION: .env files detected in Git"
+      exit 1
+    fi
+```
+
+`.env` 파일은 `.gitignore`에 들어있어야 하지만, 실수로 `git add -A`를 하거나 `.gitignore`를 수정하면 슬쩍 들어갈 수 있습니다. 이 체크는 Git 인덱스에 `.env` 파일이 존재하는지를 명시적으로 검사합니다. `.env.example`은 허용하고, 나머지는 모두 차단합니다.
+
+왜 이게 `secret-scan`과 별도로 필요할까요? `gitleaks`는 파일 내용의 패턴을 검사하지만, `.env` 파일 자체의 존재 여부는 검사하지 않습니다. 환경변수 파일이 커밋되면 시크릿이 들어있든 없든 위험하기 때문에, 파일 존재 자체를 차단하는 것입니다.
+
+## 2단계: 변경 감지 — detect-changes
+
+AlgoSu는 모노레포입니다. 6개 백엔드 서비스 + 1개 프론트엔드 + 1개 블로그가 한 레포에 있어요. 매번 모든 서비스를 빌드하면 비용이 낭비되니까, `dorny/paths-filter`를 사용해서 실제로 변경된 서비스만 감지합니다.
+
+```yaml
+filters: |
+  gateway:
+    - 'services/gateway/**'
+  identity:
+    - 'services/identity/**'
+  # ... (8개 서비스/모듈에 대해 각각 경로 정의)
+```
+
+이 job의 출력값(`gateway: true/false`, `identity: true/false` 등)이 이후 모든 job의 `if` 조건에 사용됩니다. 변경되지 않은 서비스의 테스트, 린트, 빌드는 전부 스킵됩니다.
+
+여기서 중요한 점 하나 — `workflow_dispatch`로 수동 실행할 때는 `rebuild_all` 옵션을 제공합니다. 모든 서비스를 강제로 빌드해야 하는 상황(인프라 변경, 베이스 이미지 업데이트 등)에 대비한 안전장치입니다.
+
+## 3단계: 품질 게이트 — lint + typecheck
+
+변경이 감지된 서비스에 대해 린트와 타입 체크가 실행됩니다. 세 가지 트랙으로 나뉩니다.
+
+### NestJS 서비스 (5개 — matrix 전략)
+
+`quality-nestjs`는 matrix 전략으로 5개 서비스를 병렬 실행합니다.
+
+- **Gateway, Identity, Submission, Problem**: ESLint + TypeScript `tsc --noEmit`
+- **GitHub Worker**: ESLint (`src/**/*.ts`) + TypeScript `tsc --noEmit`
+
+각 서비스마다 `has_eslint`와 `lint_glob` 옵션이 다를 수 있도록 matrix를 유연하게 설계했습니다.
+
+### Python 서비스 (ai-analysis)
+
+`quality-python`은 `ruff`를 사용합니다. 린트(`ruff check`)와 포맷 검사(`ruff format --check`)를 모두 수행합니다. Python 프로젝트에서 `ruff`는 `flake8` + `black` + `isort`를 하나로 합친 것과 같아서, 도구 관리가 훨씬 깔끔합니다.
+
+### Frontend (Next.js)
+
+`quality-frontend`는 `next lint` + `tsc --noEmit`을 실행합니다. Next.js의 빌트인 린터가 React 관련 규칙까지 포함하고 있어서, 별도의 ESLint 설정 없이도 충분합니다.
+
+## 4단계: 테스트 매트릭스
+
+품질 게이트를 통과해야 테스트가 실행됩니다. `needs: [detect-changes, quality-nestjs]` 같은 의존성이 걸려 있어서, 린트가 실패하면 테스트는 시작조차 하지 않습니다.
+
+### test-node (Jest x 5)
+
+NestJS 5개 서비스가 matrix로 병렬 테스트됩니다. 모든 서비스에 `--coverage --ci` 플래그가 붙어 있고, 커버리지 결과는 아티팩트로 업로드됩니다.
+
+```yaml
+strategy:
+  fail-fast: false
+  matrix:
+    include:
+      - service: gateway
+        test_args: '--coverage --ci'
+      - service: identity
+        test_args: '--coverage --ci --passWithNoTests'
+      - service: submission
+        test_args: '--coverage --ci --forceExit'
+      # ...
+```
+
+`fail-fast: false`가 중요합니다. 하나의 서비스 테스트가 실패해도 나머지 서비스는 계속 테스트합니다. 한 번에 모든 실패를 확인해야 디버깅이 효율적이기 때문이에요.
+
+### test-ai-analysis (pytest)
+
+FastAPI 서비스는 `pytest`로 테스트하고, `--cov=src --cov-report=xml`로 커버리지를 XML 형식으로 출력합니다.
+
+### test-frontend (Vitest)
+
+프론트엔드는 Vitest로 테스트합니다. `--ci --coverage` 플래그로 CI 환경에 최적화된 설정을 적용합니다.
+
+## 5단계: 의존성 보안 감사 — audit-npm
+
+테스트와 병렬로 `audit-npm`이 실행됩니다. 6개 Node.js 프로젝트(백엔드 5 + 프론트엔드 1)에 대해 `npm audit`을 수행합니다.
+
+```yaml
+- name: npm audit (high/critical)
+  run: npm audit --audit-level=critical --omit=dev
+```
+
+`--audit-level=critical`로 critical 수준의 취약점만 차단합니다. `--omit=dev`로 개발 의존성은 제외합니다. 프로덕션에 배포되지 않는 devDependency의 취약점까지 차단하면 CI가 너무 자주 깨지기 때문이에요.
+
+## 6단계: 빌드 게이트 — 이것이 핵심입니다
+
+빌드 job의 조건을 보면 이 파이프라인의 철학이 드러납니다.
+
+```yaml
+build-services:
+  needs: [detect-changes, test-node, test-ai-analysis, audit-npm, secret-scan]
+  if: |
+    !cancelled() &&
+    (needs.test-node.result == 'success' || needs.test-node.result == 'skipped') &&
+    (needs.test-ai-analysis.result == 'success' || needs.test-ai-analysis.result == 'skipped') &&
+    (needs.audit-npm.result == 'success' || needs.audit-npm.result == 'skipped') &&
+    needs.secret-scan.result == 'success'
+```
+
+이 조건이 의미하는 것:
+
+1. **secret-scan은 무조건 성공해야 합니다.** `skipped`도 허용하지 않습니다. 시크릿 스캔은 어떤 상황에서도 건너뛸 수 없습니다.
+2. **test, audit는 성공 또는 스킵이어야 합니다.** 변경되지 않은 서비스의 테스트는 스킵되니까, `skipped`를 허용합니다. 하지만 `failure`는 절대 허용하지 않습니다.
+3. **`!cancelled()`가 맨 앞에 있습니다.** GitHub Actions의 기본 동작은 상위 job이 실패하면 하위 job을 취소하는 것인데, 명시적으로 취소 상태를 체크해서 의도하지 않은 빌드를 방지합니다.
+
+프론트엔드 빌드도 동일한 패턴입니다.
+
+```yaml
+build-frontend:
+  needs: [detect-changes, test-frontend, audit-npm, secret-scan]
+  if: |
+    !cancelled() &&
+    needs.detect-changes.outputs.frontend == 'true' &&
+    needs.test-frontend.result == 'success' &&
+    (needs.audit-npm.result == 'success' || needs.audit-npm.result == 'skipped') &&
+    needs.secret-scan.result == 'success'
+```
+
+프론트엔드는 테스트가 반드시 `success`여야 합니다. `skipped`도 허용하지 않아요. 변경이 감지되었는데 테스트가 스킵되는 것은 비정상 상황이기 때문입니다.
+
+### ARM64 크로스 빌드
+
+빌드된 Docker 이미지는 `linux/arm64` 플랫폼으로 빌드됩니다. 배포 서버가 OCI ARM 인스턴스(VM.Standard.A1.Flex)이기 때문이에요. GitHub Actions는 x86 런너에서 실행되지만, QEMU + buildx로 ARM64 이미지를 크로스 빌드합니다.
+
+이미지 태그는 `main-{git-sha}` 형식입니다. **`latest` 태그는 절대 사용하지 않습니다.** 어떤 커밋의 이미지가 배포되었는지를 항상 추적할 수 있어야 하기 때문이에요.
+
+## 7단계: 이미지 취약점 스캔 — Trivy
+
+빌드된 이미지는 바로 배포되지 않습니다. `trivy-scan`이 8개 이미지(백엔드 6 + 프론트엔드 + 블로그) 전부를 스캔합니다.
+
+```yaml
+trivy image \
+  --platform linux/arm64 \
+  --severity CRITICAL,HIGH \
+  --exit-code 1 \
+  --ignore-unfixed \
+  --format table \
+  "${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:main-${{ github.sha }}"
+```
+
+CRITICAL과 HIGH 수준의 취약점이 발견되면 exit code 1을 반환해서 파이프라인을 차단합니다. `--ignore-unfixed`로 아직 패치가 나오지 않은 취약점은 제외합니다. 결과는 SARIF 형식으로도 생성되어 GitHub Security 탭에 업로드됩니다.
+
+## 8단계: GitOps 락 — aether-gitops
+
+모든 스캔을 통과한 이미지만 배포됩니다. 그런데 AlgoSu에서 "배포"란 이미지를 서버에 직접 올리는 게 아닙니다.
+
+```yaml
+deploy:
+  needs:
+    - secret-scan
+    - detect-changes
+    - trivy-scan
+    - build-services
+    - build-frontend
+    - build-blog
+  if: |
+    github.ref == 'refs/heads/main' && !cancelled() &&
+    needs.secret-scan.result == 'success' &&
+    needs.trivy-scan.result != 'failure' &&
+    (needs.build-services.result == 'success' ||
+     needs.build-frontend.result == 'success' ||
+     needs.build-blog.result == 'success')
+```
+
+`deploy` job이 하는 일은 단 하나 — **aether-gitops 레포의 kustomization.yaml에서 이미지 태그를 업데이트**하는 것입니다. 그러면 ArgoCD가 변경을 감지하고 자동으로 k3s 클러스터에 동기화합니다.
+
+```bash
+# aether-gitops/algosu/overlays/prod/kustomization.yaml
+for SVC in $UPDATED; do
+  python3 -c "
+import yaml
+with open('kustomization.yaml', 'r') as f:
+    data = yaml.safe_load(f)
+for img in data.get('images', []):
+    if 'algosu-${SVC}' in img.get('name', ''):
+        img['newTag'] = 'main-${SHA}'
+with open('kustomization.yaml', 'w') as f:
+    yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+"
+done
+```
+
+이 구조의 장점은 **소스 코드 레포와 배포 레포가 분리**되어 있다는 것입니다. 소스 레포에서 아무리 실수를 해도, aether-gitops 레포를 직접 건드리지 않는 한 프로덕션 배포에는 영향을 주지 않습니다.
+
+### 배포 서버의 순차 롤아웃
+
+ArgoCD가 매니페스트를 동기화하면, k3s 클러스터에서 `deploy.sh`가 Layer 순차 배포를 수행합니다.
+
+```
+Layer 0: 인프라 (PostgreSQL / Redis / RabbitMQ)
+Layer 1: Identity (인증)
+Layer 2: Problem + Submission (비즈니스)
+Layer 3: GitHub Worker + AI Analysis (비동기)
+Layer 4: Gateway (라우팅)
+Layer 5: Frontend + Ingress
+```
+
+각 Layer는 이전 Layer의 롤아웃이 완료되어야 시작됩니다. 서비스가 실패하면 자동 롤백(`kubectl rollout undo`)이 실행됩니다. 인프라(Layer 0)는 롤백이 불가능하기 때문에, 실패 시 수동 개입이 필요하다는 경고를 출력합니다.
+
+## 교훈: 실제로 겪은 사고들
+
+### 1. amend + force-push의 함정
+
+앞서 말한 것처럼, `git commit --amend` 후 force-push를 하면 `dorny/paths-filter`가 변경을 감지하지 못합니다. 이유는 paths-filter가 이전 커밋과 현재 커밋의 diff를 비교하는데, amend된 커밋은 이전 커밋의 SHA가 바뀌기 때문이에요.
+
+**해결**: force-push를 프로젝트 전체에서 금지했습니다. 수정이 필요하면 새 커밋을 만듭니다. "커밋 히스토리가 지저분해지는 게 싫다"는 의견도 있지만, 안전한 CI가 깨끗한 히스토리보다 중요합니다.
+
+### 2. aether-gitops 수동 태그 변경의 위험
+
+한번은 급하게 배포해야 해서 aether-gitops의 kustomization.yaml을 수동으로 편집했습니다. 이미지 태그를 직접 변경했는데, 그 태그에 해당하는 이미지가 GHCR에 존재하지 않았습니다. ArgoCD는 매니페스트를 동기화했지만, k3s가 이미지를 풀링하지 못해서 Pod가 `ImagePullBackOff` 상태에 빠졌습니다.
+
+**해결**: aether-gitops를 수동으로 변경할 때는 반드시 GHCR에 해당 이미지가 존재하는지 먼저 확인합니다.
+
+### 3. 환경변수가 실제로 주입되었는지 확인하기
+
+매니페스트를 변경하고 배포했는데, 서비스가 이상하게 동작했습니다. 확인해보니 소스 레포의 k8s 매니페스트에는 새 환경변수를 추가했지만, aether-gitops에는 반영하지 않은 거예요. ArgoCD가 동기화하는 건 aether-gitops의 매니페스트이니까, 소스 레포만 변경하면 소용이 없습니다.
+
+**해결**: 배포 후에는 항상 `kubectl exec -- printenv`로 환경변수가 실제로 주입되었는지 검증합니다. 그리고 소스 레포의 매니페스트를 변경할 때는 반드시 aether-gitops도 함께 갱신합니다.
+
+### 4. 최소 권한 원칙
+
+CI 파이프라인의 최상위에 이런 설정이 있습니다.
+
+```yaml
+permissions: {}
+```
+
+기본 권한을 **제로**로 설정하고, 각 job에서 필요한 권한만 명시적으로 선언합니다. `secret-scan`은 `contents: read`만, `build-services`는 `contents: read`와 `packages: write`만. 이렇게 하면 특정 job이 탈취되더라도 피해 범위가 제한됩니다.
+
+## AI와 CI의 균형
+
+AlgoSu 프로젝트에서 AI는 코드의 대부분을 생성합니다. 12개의 에이전트가 역할을 나누어 작업하고, Oracle이 전체를 조율합니다. 하지만 아무리 정교한 에이전트 체계를 갖추어도, 최종 검증은 사람이 아닌 **자동화된 파이프라인**이 수행합니다.
+
+15개의 CI job은 AI가 생성한 코드에 대해 이렇게 질문합니다:
+
+1. **시크릿이 유출되었나?** (secret-scan)
+2. **코드 품질이 기준을 충족하나?** (quality-nestjs, quality-python, quality-frontend)
+3. **테스트가 통과하나?** (test-node, test-ai-analysis, test-frontend)
+4. **의존성에 취약점이 있나?** (audit-npm)
+5. **빌드된 이미지에 취약점이 있나?** (trivy-scan)
+6. **배포 경로가 안전한가?** (deploy → aether-gitops → ArgoCD)
+
+이 모든 질문에 "예"라고 답해야 코드가 프로덕션에 도달합니다.
+
+AI가 빠르게 코드를 만들어주는 시대에, 개발자의 역할은 코드를 작성하는 것에서 **코드를 검증하는 시스템을 설계하는 것**으로 바뀌고 있다고 생각합니다. 빠르게 만들수록, 검증은 더 철저해야 합니다. 그리고 그 검증은 사람의 리뷰만으로는 한계가 있기 때문에, 자동화된 파이프라인이 필요합니다.
+
+15 jobs가 많다고 느껴질 수 있지만, 이 중 하나라도 없었다면 프로덕션에서 사고가 났을 겁니다. 안전망은 많을수록 좋습니다 — 그물눈이 촘촘해야 물고기가 빠져나가지 않으니까요.
+
+> 다음 글에서는 AlgoSu의 12개 에이전트를 하나하나 소개합니다.
+> [에이전트를 만나다](/posts/meet-the-agents)
