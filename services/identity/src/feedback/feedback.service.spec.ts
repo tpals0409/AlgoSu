@@ -11,6 +11,7 @@ import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { FeedbackService } from './feedback.service';
 import { Feedback, FeedbackCategory, FeedbackStatus } from './feedback.entity';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
+import { DiscordWebhookService } from '../discord/discord-webhook.service';
 
 // ─── Mock 헬퍼 ───────────────────────────────────────
 const mockFeedback = (overrides: Partial<Feedback> = {}): Feedback => {
@@ -40,6 +41,7 @@ const mockFeedback = (overrides: Partial<Feedback> = {}): Feedback => {
 describe('FeedbackService', () => {
   let service: FeedbackService;
   let feedbackRepo: jest.Mocked<Repository<Feedback>>;
+  let discordWebhook: jest.Mocked<DiscordWebhookService>;
 
   const mockQueryBuilder = {
     update: jest.fn().mockReturnThis(),
@@ -80,11 +82,16 @@ describe('FeedbackService', () => {
           provide: StructuredLoggerService,
           useValue: { setContext: jest.fn(), log: jest.fn(), warn: jest.fn(), error: jest.fn() },
         },
+        {
+          provide: DiscordWebhookService,
+          useValue: { sendFeedbackNotification: jest.fn().mockResolvedValue(undefined) },
+        },
       ],
     }).compile();
 
     service = module.get(FeedbackService);
     feedbackRepo = module.get(getRepositoryToken(Feedback));
+    discordWebhook = module.get(DiscordWebhookService);
   });
 
   afterEach(() => jest.clearAllMocks());
@@ -144,6 +151,37 @@ describe('FeedbackService', () => {
         browserInfo: 'Chrome 130',
         screenshot: 'data:image/png;base64,abc',
       });
+    });
+
+    it('생성 후 Discord 알림을 전송한다', async () => {
+      const fb = mockFeedback();
+      feedbackRepo.create.mockReturnValue(fb);
+      feedbackRepo.save.mockResolvedValue(fb);
+
+      await service.create({
+        userId: 'user-1',
+        category: FeedbackCategory.GENERAL,
+        content: '테스트 피드백입니다.',
+      });
+
+      expect(discordWebhook.sendFeedbackNotification).toHaveBeenCalledWith(fb);
+    });
+
+    it('Discord 알림 실패 시에도 피드백은 정상 반환된다', async () => {
+      const fb = mockFeedback();
+      feedbackRepo.create.mockReturnValue(fb);
+      feedbackRepo.save.mockResolvedValue(fb);
+      discordWebhook.sendFeedbackNotification.mockRejectedValue(
+        new Error('Discord down'),
+      );
+
+      const result = await service.create({
+        userId: 'user-1',
+        category: FeedbackCategory.GENERAL,
+        content: '테스트 피드백입니다.',
+      });
+
+      expect(result).toBe(fb);
     });
 
     it('선택 필드 미전달 시 null로 저장한다', async () => {

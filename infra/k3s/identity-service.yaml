@@ -61,6 +61,15 @@ spec:
           envFrom:
             - secretRef:
                 name: identity-service-secrets
+          env:
+            # Discord 피드백 알림 webhook URL
+            # TODO: kubectl create secret generic identity-discord-secret \
+            #   --from-literal=webhook-url='https://discord.com/api/webhooks/...' -n algosu
+            - name: DISCORD_FEEDBACK_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: identity-discord-secret
+                  key: webhook-url
           resources:
             requests:
               memory: "256Mi"

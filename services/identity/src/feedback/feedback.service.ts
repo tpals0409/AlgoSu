@@ -11,6 +11,7 @@ import { Cron } from '@nestjs/schedule';
 import { Feedback, FeedbackStatus } from './feedback.entity';
 import { CreateFeedbackDto } from './dto/create-feedback.dto';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
+import { DiscordWebhookService } from '../discord/discord-webhook.service';
 
 /** 허용된 상태 전이 맵 — 3상태 자유 전이 (해결 후에도 재오픈 가능) */
 const ALLOWED_TRANSITIONS: Record<FeedbackStatus, FeedbackStatus[]> = {
@@ -25,6 +26,7 @@ export class FeedbackService {
     @InjectRepository(Feedback)
     private readonly feedbackRepo: Repository<Feedback>,
     private readonly logger: StructuredLoggerService,
+    private readonly discordWebhook: DiscordWebhookService,
   ) {
     this.logger.setContext(FeedbackService.name);
   }
@@ -48,6 +50,12 @@ export class FeedbackService {
     this.logger.log(
       `피드백 생성: userId=${dto.userId}, category=${dto.category}, publicId=${saved.publicId}`,
     );
+
+    // fire-and-forget: Discord 알림 실패가 피드백 저장에 영향 없음
+    this.discordWebhook.sendFeedbackNotification(saved).catch((err: Error) => {
+      this.logger.warn(`Discord 알림 전송 실패: ${err.message}`);
+    });
+
     return saved;
   }
 

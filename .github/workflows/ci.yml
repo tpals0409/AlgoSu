@@ -854,7 +854,7 @@ jobs:
           git push
 
   # ============================================================
-  # Notify — 배포 결과 Discord 알림 + Grafana Annotation
+  # Notify — 배포 결과 Grafana Annotation
   # ============================================================
 
   notify:
@@ -865,44 +865,6 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Discord notification
-        env:
-          DEPLOY_RESULT: ${{ needs.deploy.result }}
-          WEBHOOK_DEPLOY: ${{ secrets.DISCORD_WEBHOOK_DEPLOY }}
-          WEBHOOK_EMERGENCY: ${{ secrets.DISCORD_WEBHOOK_EMERGENCY }}
-          SHA: ${{ github.sha }}
-          ACTOR: ${{ github.actor }}
-        run: |
-          if [ "$DEPLOY_RESULT" = "success" ]; then
-            COLOR=3066993
-            STATUS="배포 성공"
-            WEBHOOK="$WEBHOOK_DEPLOY"
-          else
-            COLOR=15158332
-            STATUS="배포 실패"
-            WEBHOOK="$WEBHOOK_EMERGENCY"
-          fi
-
-          if [ -z "$WEBHOOK" ]; then
-            echo "Discord webhook not configured, skipping"
-            exit 0
-          fi
-
-          curl -sf -X POST "$WEBHOOK" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"embeds\": [{
-                \"title\": \"[${STATUS}] AlgoSu GitOps\",
-                \"color\": ${COLOR},
-                \"fields\": [
-                  {\"name\": \"커밋\", \"value\": \"${SHA:0:8}\", \"inline\": true},
-                  {\"name\": \"실행자\", \"value\": \"${ACTOR}\", \"inline\": true},
-                  {\"name\": \"방식\", \"value\": \"aether-gitops → ArgoCD\", \"inline\": true}
-                ],
-                \"footer\": {\"text\": \"AlgoSu CI/CD\"}
-              }]
-            }" || echo "Discord notification failed, continuing"
-
       - name: Grafana deployment annotation
         if: needs.deploy.result == 'success'
         run: |

@@ -10,9 +10,10 @@ import { Feedback } from './feedback.entity';
 import { FeedbackService } from './feedback.service';
 import { FeedbackController } from './feedback.controller';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
+import { DiscordModule } from '../discord/discord.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Feedback])],
+  imports: [TypeOrmModule.forFeature([Feedback]), DiscordModule],
   controllers: [FeedbackController],
   providers: [FeedbackService, StructuredLoggerService],
   exports: [FeedbackService],

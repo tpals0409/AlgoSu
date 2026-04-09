@@ -1,9 +1,8 @@
 # ============================================================
 # @file infra/k3s/monitoring/alertmanager.yaml
 # AlgoSu — Alertmanager
-# Discord webhook 기반 알림 전송
-# [56-W1-1] alertmanager-discord 사이드카 미구성 확인 →
-#   DISCORD_WEBHOOK_URL 환경변수 참조 구조로 변경 + TODO 명시
+# Discord 알림은 Identity 서비스에서 직접 webhook 호출 방식으로 전환됨
+# alertmanager는 알림 수집/라우팅만 담당, 외부 전송 receiver 미설정
 # ============================================================
 apiVersion: v1
 kind: ConfigMap
@@ -20,17 +19,12 @@ data:
       group_wait: 10s
       group_interval: 10s
       repeat_interval: 1h
-      receiver: 'discord-webhook'
+      receiver: 'null'
 
     receivers:
-      - name: 'discord-webhook'
-        webhook_configs:
-          # TODO: Discord webhook URL 또는 alertmanager-discord 사이드카 설정 필요
-          #   옵션 A) 사이드카 컨테이너 추가 후 url: 'http://localhost:9095'
-          #   옵션 B) Discord webhook URL 직접 지정 (SealedSecret 권장)
-          #   현재: 사이드카 미구성 상태이므로 DISCORD_WEBHOOK_URL 환경변수로 전환
-          - url: '$DISCORD_WEBHOOK_URL'
-            send_resolved: true
+      # Discord 알림은 Identity 서비스에서 직접 webhook 호출 방식으로 전환
+      # 추후 외부 receiver 필요 시 여기에 추가
+      - name: 'null'
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -87,15 +81,6 @@ spec:
             limits:
               memory: "128Mi"
               cpu: "100m"
-          env:
-            # TODO: Secret 'alertmanager-discord-secret' 생성 필요
-            #   kubectl create secret generic alertmanager-discord-secret \
-            #     --from-literal=webhook-url='https://discord.com/api/webhooks/...' -n algosu
-            - name: DISCORD_WEBHOOK_URL
-              valueFrom:
-                secretKeyRef:
-                  name: alertmanager-discord-secret
-                  key: webhook-url
           volumeMounts:
             - name: alertmanager-config
               mountPath: /etc/alertmanager
