@@ -29,6 +29,7 @@ export enum NotificationType {
   MEMBER_JOINED = 'MEMBER_JOINED',
   MEMBER_LEFT = 'MEMBER_LEFT',
   STUDY_CLOSED = 'STUDY_CLOSED',
+  FEEDBACK_RESOLVED = 'FEEDBACK_RESOLVED',
 }
 
 @Entity('notifications')

@@ -12,6 +12,8 @@ import { Feedback, FeedbackStatus } from './feedback.entity';
 import { CreateFeedbackDto } from './dto/create-feedback.dto';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 import { DiscordWebhookService } from '../discord/discord-webhook.service';
+import { NotificationService } from '../notification/notification.service';
+import { NotificationType } from '../notification/notification.entity';
 
 /** 허용된 상태 전이 맵 — 3상태 자유 전이 (해결 후에도 재오픈 가능) */
 const ALLOWED_TRANSITIONS: Record<FeedbackStatus, FeedbackStatus[]> = {
@@ -27,6 +29,7 @@ export class FeedbackService {
     private readonly feedbackRepo: Repository<Feedback>,
     private readonly logger: StructuredLoggerService,
     private readonly discordWebhook: DiscordWebhookService,
+    private readonly notificationService: NotificationService,
   ) {
     this.logger.setContext(FeedbackService.name);
   }
@@ -224,12 +227,24 @@ export class FeedbackService {
       `피드백 상태 변경: publicId=${publicId}, status=${status}`,
     );
 
-    // RESOLVED 전이 시 Discord 알림 (fire-and-forget)
+    // RESOLVED 전이 시 Discord + 인앱 알림 (fire-and-forget)
     if (status === FeedbackStatus.RESOLVED) {
       this.discordWebhook
         .sendFeedbackResolvedNotification(saved)
         .catch((err: Error) => {
           this.logger.warn(`Discord 해결 알림 전송 실패: ${err.message}`);
+        });
+
+      this.notificationService
+        .create({
+          userId: saved.userId,
+          type: NotificationType.FEEDBACK_RESOLVED,
+          title: '피드백이 해결되었습니다',
+          message: `보내주신 피드백이 처리 완료되었습니다: ${saved.content.length > 50 ? saved.content.slice(0, 50) + '...' : saved.content}`,
+          link: '/feedbacks',
+        })
+        .catch((err: Error) => {
+          this.logger.warn(`피드백 해결 알림 생성 실패: ${err.message}`);
         });
     }
 

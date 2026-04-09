@@ -12,6 +12,8 @@ import { FeedbackService } from './feedback.service';
 import { Feedback, FeedbackCategory, FeedbackStatus } from './feedback.entity';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 import { DiscordWebhookService } from '../discord/discord-webhook.service';
+import { NotificationService } from '../notification/notification.service';
+import { NotificationType } from '../notification/notification.entity';
 
 // ─── Mock 헬퍼 ───────────────────────────────────────
 const mockFeedback = (overrides: Partial<Feedback> = {}): Feedback => {
@@ -42,6 +44,7 @@ describe('FeedbackService', () => {
   let service: FeedbackService;
   let feedbackRepo: jest.Mocked<Repository<Feedback>>;
   let discordWebhook: jest.Mocked<DiscordWebhookService>;
+  let notificationService: jest.Mocked<NotificationService>;
 
   const mockQueryBuilder = {
     update: jest.fn().mockReturnThis(),
@@ -89,12 +92,19 @@ describe('FeedbackService', () => {
             sendFeedbackResolvedNotification: jest.fn().mockResolvedValue(undefined),
           },
         },
+        {
+          provide: NotificationService,
+          useValue: {
+            create: jest.fn().mockResolvedValue(undefined),
+          },
+        },
       ],
     }).compile();
 
     service = module.get(FeedbackService);
     feedbackRepo = module.get(getRepositoryToken(Feedback));
     discordWebhook = module.get(DiscordWebhookService);
+    notificationService = module.get(NotificationService);
   });
 
   afterEach(() => jest.clearAllMocks());
@@ -448,6 +458,43 @@ describe('FeedbackService', () => {
       discordWebhook.sendFeedbackResolvedNotification.mockRejectedValue(
         new Error('Discord down'),
       );
+
+      const result = await service.updateStatus('pub-fb-1', FeedbackStatus.RESOLVED);
+
+      expect(result).toBe(fb);
+    });
+
+    it('RESOLVED 전이 시 피드백 작성자에게 인앱 알림을 생성한다', async () => {
+      const fb = mockFeedback({ status: FeedbackStatus.IN_PROGRESS, userId: 'user-1' });
+      feedbackRepo.findOne.mockResolvedValue(fb);
+      feedbackRepo.save.mockResolvedValue(fb);
+
+      await service.updateStatus('pub-fb-1', FeedbackStatus.RESOLVED);
+
+      expect(notificationService.create).toHaveBeenCalledWith({
+        userId: 'user-1',
+        type: NotificationType.FEEDBACK_RESOLVED,
+        title: '피드백이 해결되었습니다',
+        message: expect.stringContaining('피드백이 처리 완료되었습니다'),
+        link: '/feedbacks',
+      });
+    });
+
+    it('RESOLVED가 아닌 전이 시 인앱 알림을 생성하지 않는다', async () => {
+      const fb = mockFeedback({ status: FeedbackStatus.OPEN });
+      feedbackRepo.findOne.mockResolvedValue(fb);
+      feedbackRepo.save.mockResolvedValue(fb);
+
+      await service.updateStatus('pub-fb-1', FeedbackStatus.IN_PROGRESS);
+
+      expect(notificationService.create).not.toHaveBeenCalled();
+    });
+
+    it('인앱 알림 생성 실패 시에도 상태 변경은 정상 반환된다', async () => {
+      const fb = mockFeedback({ status: FeedbackStatus.IN_PROGRESS });
+      feedbackRepo.findOne.mockResolvedValue(fb);
+      feedbackRepo.save.mockResolvedValue(fb);
+      notificationService.create.mockRejectedValue(new Error('DB error'));
 
       const result = await service.updateStatus('pub-fb-1', FeedbackStatus.RESOLVED);
 
