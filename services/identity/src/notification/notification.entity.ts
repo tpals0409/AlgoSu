@@ -1,5 +1,5 @@
 /**
- * @file 알림 엔티티 — NotificationType 9종 ENUM + Notification 테이블 정의
+ * @file 알림 엔티티 — NotificationType 10종 ENUM + Notification 테이블 정의
  * @domain identity
  * @layer entity
  * @related notification.service.ts, notification.controller.ts
@@ -16,7 +16,7 @@ import {
 import { v4 as uuid } from 'uuid';
 
 /**
- * 알림 타입 9종 ENUM
+ * 알림 타입 10종 ENUM
  * @domain notification
  */
 export enum NotificationType {

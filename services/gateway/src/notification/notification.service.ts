@@ -122,7 +122,7 @@ export class NotificationService {
   }
 
   /**
-   * 미읽음 수 조회 — 프론트 10초 폴링용
+   * 미읽음 수 조회 — 프론트 60초 폴링용
    * @domain notification
    * @api GET /api/notifications/unread-count
    * @guard jwt-auth

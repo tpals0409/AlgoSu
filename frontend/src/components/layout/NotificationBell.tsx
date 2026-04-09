@@ -4,9 +4,9 @@
  * @layer component
  * @related NotificationToast, notificationApi, NotifPanel
  *
- * 10초 폴링으로 미읽음 수 체크, 증가 시 토스트 자동 표시.
+ * 60초 폴링으로 미읽음 수 체크, 증가 시 토스트 자동 표시.
  * 클릭 시 notification.link로 이동.
- * 9종 알림 타입 완전 대응 + "모두 읽음" 지원.
+ * 10종 알림 타입 완전 대응 + "모두 읽음" 지원.
  */
 
 'use client';
@@ -23,6 +23,7 @@ import {
   UserPlus,
   UserMinus,
   Lock,
+  CheckCircle,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -45,6 +46,7 @@ const TYPE_ROUTE: Record<string, string> = {
   MEMBER_JOINED: '/studies',
   MEMBER_LEFT: '/studies',
   STUDY_CLOSED: '/studies',
+  FEEDBACK_RESOLVED: '/feedbacks',
 };
 
 /** 알림 타입별 아이콘 */
@@ -58,6 +60,7 @@ const TYPE_ICON: Record<string, typeof Bell> = {
   MEMBER_JOINED: UserPlus,
   MEMBER_LEFT: UserMinus,
   STUDY_CLOSED: Lock,
+  FEEDBACK_RESOLVED: CheckCircle,
 };
 
 // ─── HELPERS ─────────────────────────────

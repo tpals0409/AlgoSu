@@ -513,7 +513,8 @@ export interface Notification {
     | 'DEADLINE_REMINDER'
     | 'MEMBER_JOINED'
     | 'MEMBER_LEFT'
-    | 'STUDY_CLOSED';
+    | 'STUDY_CLOSED'
+    | 'FEEDBACK_RESOLVED';
   title: string;
   message: string;
   link: string | null;

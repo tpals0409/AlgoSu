@@ -1,5 +1,5 @@
 /**
- * @file 알림 토스트 포탈 (9종 알림 타입 + 자동 소멸)
+ * @file 알림 토스트 포탈 (10종 알림 타입 + 자동 소멸)
  * @domain notification
  * @layer component
  * @related NotificationBell, Toast, notificationApi
@@ -16,6 +16,11 @@ import {
   AlertTriangle,
   Users,
   BookOpen,
+  Clock,
+  UserPlus,
+  UserMinus,
+  Lock,
+  CheckCircle,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -27,6 +32,11 @@ const TYPE_ICON: Record<string, typeof Bell> = {
   GITHUB_FAILED: AlertTriangle,
   ROLE_CHANGED: Users,
   PROBLEM_CREATED: BookOpen,
+  DEADLINE_REMINDER: Clock,
+  MEMBER_JOINED: UserPlus,
+  MEMBER_LEFT: UserMinus,
+  STUDY_CLOSED: Lock,
+  FEEDBACK_RESOLVED: CheckCircle,
 };
 
 interface ToastItem {
