@@ -21,62 +21,20 @@ CI가 돌았지만, **아무것도 빌드되지 않았습니다.** 변경된 파
 
 AlgoSu의 CI 파이프라인은 15개의 job으로 구성되어 있습니다. 이 job들은 독립적으로 실행되는 게 아니라, 엄격한 의존관계를 가지고 있어요. 하나라도 실패하면 후속 단계가 차단되는 구조입니다.
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    push / PR → main                             │
-└──────────────┬──────────────────────┬───────────────────────────┘
-               │                      │
-       ┌───────▼───────┐     ┌────────▼────────┐
-       │  secret-scan  │     │ detect-changes  │
-       │  (gitleaks +  │     │ (dorny/paths-   │
-       │   .env 차단)   │     │  filter)        │
-       └───────┬───────┘     └───┬───┬───┬─────┘
-               │                 │   │   │
-               │     ┌───────────┘   │   └────────────┐
-               │     │               │                 │
-       ┌───────▼─────▼──┐  ┌────────▼─────┐  ┌───────▼────────┐
-       │ quality-nestjs  │  │quality-python │  │quality-frontend│
-       │ (ESLint + tsc)  │  │(ruff lint +  │  │(next lint +    │
-       │ × 5 서비스       │  │ ruff format) │  │ tsc --noEmit)  │
-       └───────┬─────────┘  └────────┬─────┘  └───────┬────────┘
-               │                     │                 │
-       ┌───────▼─────────┐  ┌───────▼──────┐  ┌──────▼────────┐
-       │   test-node     │  │test-ai-      │  │ test-frontend │
-       │ (Jest × 5 svc)  │  │analysis      │  │ (Vitest +     │
-       │ --coverage --ci │  │(pytest +cov) │  │  coverage)    │
-       └───────┬─────────┘  └───────┬──────┘  └──────┬────────┘
-               │                     │                 │
-       ┌───────▼─────────────────────┘                 │
-       │  audit-npm (npm audit × 6)                    │
-       └───────┬───────────────────────────────────────┘
-               │                                       │
-     ┌─────────▼──────────┐                  ┌─────────▼──────────┐
-     │  build-services    │                  │  build-frontend    │
-     │  (Docker ARM64     │                  │  (Docker ARM64     │
-     │   × 6 서비스)       │                  │   Next.js)         │
-     └─────────┬──────────┘                  └─────────┬──────────┘
-               │                                       │
-               │         ┌──────────────┐              │
-               │         │  build-blog  │              │
-               │         │  (SSG+nginx) │              │
-               │         └──────┬───────┘              │
-               │                │                      │
-       ┌───────▼────────────────▼──────────────────────▼──┐
-       │              trivy-scan (× 8 이미지)              │
-       │         CRITICAL/HIGH 취약점 → SARIF 업로드         │
-       └──────────────────────┬───────────────────────────┘
-                              │
-       ┌──────────────────────▼───────────────────────────┐
-       │                   deploy                          │
-       │        aether-gitops 이미지 태그 업데이트             │
-       │              → ArgoCD 자동 sync                   │
-       └──────────────────────┬───────────────────────────┘
-                              │
-       ┌──────────────────────▼───────────────────────────┐
-       │                   notify                          │
-       │           Grafana deployment annotation            │
-       └──────────────────────────────────────────────────┘
-```
+<Pipeline>
+  <PipelineStage label="Trigger" detail="push / PR → main" icon="GitBranch" accent={1} />
+  <PipelineStage label="Security Gate" detail="gitleaks · paths-filter · .env 차단" icon="Lock" accent={2} />
+  <PipelineStage label="Quality" detail="ESLint+tsc × 5 / ruff / next-lint" icon="Search" accent={3} />
+  <PipelineStage label="Test" detail="Jest × 5 / pytest / Vitest (coverage)" icon="TestTube2" accent={4} />
+  <PipelineStage label="Audit + Build" detail="npm audit × 6 → Docker ARM64 × 8" icon="Hammer" accent={5} />
+  <PipelineStage label="Trivy Scan" detail="CRITICAL/HIGH × 8 이미지 → SARIF" icon="Shield" accent={6} />
+  <PipelineStage label="Deploy" detail="aether-gitops 태그 → ArgoCD sync" icon="Rocket" accent={1} />
+  <PipelineStage label="Notify" detail="Grafana deployment annotation" icon="Bell" accent={2} />
+</Pipeline>
+
+<Callout type="info" title="DAG 의존 규칙">
+이 파이프라인은 단순 선형이 아니라 **DAG**입니다. 위에서 아래로만 흐르고, 어떤 job도 자기 위 단계를 건너뛸 수 없습니다. 예: `build-services`는 `test-node` + `audit-npm` + `secret-scan`이 **모두** 성공해야 실행됩니다. 하나라도 실패하면 빌드 자체가 차단됩니다.
+</Callout>
 
 이 다이어그램에서 핵심은 **화살표의 방향**입니다. 위에서 아래로만 흐르고, 어떤 job도 자기 위의 job을 건너뛸 수 없습니다. `build-services`는 `test-node`, `audit-npm`, `secret-scan`이 **모두** 성공해야 실행됩니다. 하나라도 실패하면 빌드 자체가 차단돼요.
 
@@ -303,14 +261,14 @@ done
 
 ArgoCD가 매니페스트를 동기화하면, k3s 클러스터에서 `deploy.sh`가 Layer 순차 배포를 수행합니다.
 
-```
-Layer 0: 인프라 (PostgreSQL / Redis / RabbitMQ)
-Layer 1: Identity (인증)
-Layer 2: Problem + Submission (비즈니스)
-Layer 3: GitHub Worker + AI Analysis (비동기)
-Layer 4: Gateway (라우팅)
-Layer 5: Frontend + Ingress
-```
+<Pipeline>
+  <PipelineStage label="L0 인프라" detail="PostgreSQL · Redis · RabbitMQ" icon="Database" accent={1} />
+  <PipelineStage label="L1 Identity" detail="인증 (다른 서비스의 의존성)" icon="Shield" accent={2} />
+  <PipelineStage label="L2 비즈니스" detail="Problem + Submission" icon="Workflow" accent={3} />
+  <PipelineStage label="L3 비동기" detail="GitHub Worker + AI Analysis" icon="Send" accent={4} />
+  <PipelineStage label="L4 Gateway" detail="라우팅 + 외부 진입" icon="Server" accent={5} />
+  <PipelineStage label="L5 Frontend" detail="Frontend + Ingress" icon="Globe" accent={6} />
+</Pipeline>
 
 각 Layer는 이전 Layer의 롤아웃이 완료되어야 시작됩니다. 서비스가 실패하면 자동 롤백(`kubectl rollout undo`)이 실행됩니다. 인프라(Layer 0)는 롤백이 불가능하기 때문에, 실패 시 수동 개입이 필요하다는 경고를 출력합니다.
 
