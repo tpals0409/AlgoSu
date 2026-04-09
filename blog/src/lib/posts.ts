@@ -11,6 +11,9 @@ export interface PostMeta {
   excerpt: string;
   tags: string[];
   source?: string;
+  // 동일 date 내에서 표시 순서를 결정하는 보조 필드.
+  // 값이 클수록 최신(상단). 누락 시 0으로 간주.
+  order?: number;
 }
 
 function readMdxFiles(dir: string): { slug: string; content: string; data: Record<string, unknown> }[] {
@@ -35,8 +38,12 @@ export function getAllPosts(): PostMeta[] {
       excerpt: (data.excerpt as string) ?? '',
       tags: (data.tags as string[]) ?? [],
       source: data.source as string | undefined,
+      order: typeof data.order === 'number' ? (data.order as number) : undefined,
     }))
-    .sort((a, b) => (a.date > b.date ? -1 : 1));
+    .sort((a, b) => {
+      if (a.date !== b.date) return a.date > b.date ? -1 : 1;
+      return (b.order ?? 0) - (a.order ?? 0);
+    });
 }
 
 export function getPostBySlug(slug: string) {
