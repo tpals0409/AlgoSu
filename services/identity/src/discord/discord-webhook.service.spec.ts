@@ -142,6 +142,18 @@ describe('DiscordWebhookService', () => {
     );
   });
 
+  it('Error가 아닌 값으로 throw 시에도 로그를 남기고 예외를 던지지 않는다', async () => {
+    global.fetch = jest.fn().mockRejectedValue('string error');
+
+    await expect(
+      service.sendFeedbackNotification(mockFeedback()),
+    ).resolves.toBeUndefined();
+
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Discord webhook 전송 실패: string error'),
+    );
+  });
+
   it('비정상 HTTP 응답 시 경고 로그를 남긴다', async () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 429 } as Response);
 
