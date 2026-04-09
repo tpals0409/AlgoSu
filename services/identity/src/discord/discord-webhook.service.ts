@@ -16,6 +16,9 @@ const CATEGORY_COLORS: Record<FeedbackCategory, number> = {
   [FeedbackCategory.GENERAL]: 0x888888,
 };
 
+/** 해결 완료 Embed 색상 (초록) */
+const RESOLVED_COLOR = 0x2ecc71;
+
 @Injectable()
 export class DiscordWebhookService {
   private readonly webhookUrl: string | undefined;
@@ -60,6 +63,55 @@ export class DiscordWebhookService {
     const embed = {
       title: '새 피드백 접수',
       color: CATEGORY_COLORS[feedback.category] ?? 0x888888,
+      description: `\`\`\`\n${contentPreview}\n\`\`\`\n\n${metaLine1}\n${metaLine2}`,
+      footer: { text: 'AlgoSu Feedback' },
+    };
+
+    const body = JSON.stringify({ embeds: [embed] });
+
+    try {
+      const response = await fetch(this.webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      });
+
+      if (!response.ok) {
+        this.logger.warn(
+          `Discord webhook 응답 오류: status=${response.status}`,
+        );
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Discord webhook 전송 실패: ${message}`);
+    }
+  }
+
+  /**
+   * 피드백 해결 시 Discord 채널로 알림 전송
+   * fire-and-forget: 에러 시 로그만 남기고 예외를 던지지 않음
+   * @param feedback - 해결된 피드백 엔티티
+   */
+  async sendFeedbackResolvedNotification(feedback: Feedback): Promise<void> {
+    if (!this.webhookUrl) {
+      return;
+    }
+
+    const contentPreview =
+      feedback.content.length > 200
+        ? feedback.content.slice(0, 200) + '...'
+        : feedback.content;
+
+    const resolvedAt = new Date(
+      feedback.resolvedAt ?? new Date(),
+    ).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
+
+    const metaLine1 = `**카테고리** · \`${feedback.category}\`  |  **페이지** · \`${feedback.pageUrl ?? '-'}\``;
+    const metaLine2 = `**작성자** · \`${feedback.userId}\`  |  **처리 시간** · \`${resolvedAt}\``;
+
+    const embed = {
+      title: '\u2705 피드백 처리 완료',
+      color: RESOLVED_COLOR,
       description: `\`\`\`\n${contentPreview}\n\`\`\`\n\n${metaLine1}\n${metaLine2}`,
       footer: { text: 'AlgoSu Feedback' },
     };

@@ -223,6 +223,16 @@ export class FeedbackService {
     this.logger.log(
       `피드백 상태 변경: publicId=${publicId}, status=${status}`,
     );
+
+    // RESOLVED 전이 시 Discord 알림 (fire-and-forget)
+    if (status === FeedbackStatus.RESOLVED) {
+      this.discordWebhook
+        .sendFeedbackResolvedNotification(saved)
+        .catch((err: Error) => {
+          this.logger.warn(`Discord 해결 알림 전송 실패: ${err.message}`);
+        });
+    }
+
     return saved;
   }
 

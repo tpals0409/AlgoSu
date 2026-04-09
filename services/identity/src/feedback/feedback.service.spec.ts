@@ -84,7 +84,10 @@ describe('FeedbackService', () => {
         },
         {
           provide: DiscordWebhookService,
-          useValue: { sendFeedbackNotification: jest.fn().mockResolvedValue(undefined) },
+          useValue: {
+            sendFeedbackNotification: jest.fn().mockResolvedValue(undefined),
+            sendFeedbackResolvedNotification: jest.fn().mockResolvedValue(undefined),
+          },
         },
       ],
     }).compile();
@@ -416,6 +419,39 @@ describe('FeedbackService', () => {
       await expect(
         service.updateStatus('pub-fb-1', FeedbackStatus.OPEN),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('RESOLVED 전이 시 Discord 해결 알림을 전송한다', async () => {
+      const fb = mockFeedback({ status: FeedbackStatus.IN_PROGRESS });
+      feedbackRepo.findOne.mockResolvedValue(fb);
+      feedbackRepo.save.mockResolvedValue(fb);
+
+      await service.updateStatus('pub-fb-1', FeedbackStatus.RESOLVED);
+
+      expect(discordWebhook.sendFeedbackResolvedNotification).toHaveBeenCalledWith(fb);
+    });
+
+    it('RESOLVED가 아닌 전이 시 Discord 해결 알림을 전송하지 않는다', async () => {
+      const fb = mockFeedback({ status: FeedbackStatus.OPEN });
+      feedbackRepo.findOne.mockResolvedValue(fb);
+      feedbackRepo.save.mockResolvedValue(fb);
+
+      await service.updateStatus('pub-fb-1', FeedbackStatus.IN_PROGRESS);
+
+      expect(discordWebhook.sendFeedbackResolvedNotification).not.toHaveBeenCalled();
+    });
+
+    it('Discord 해결 알림 실패 시에도 상태 변경은 정상 반환된다', async () => {
+      const fb = mockFeedback({ status: FeedbackStatus.IN_PROGRESS });
+      feedbackRepo.findOne.mockResolvedValue(fb);
+      feedbackRepo.save.mockResolvedValue(fb);
+      discordWebhook.sendFeedbackResolvedNotification.mockRejectedValue(
+        new Error('Discord down'),
+      );
+
+      const result = await service.updateStatus('pub-fb-1', FeedbackStatus.RESOLVED);
+
+      expect(result).toBe(fb);
     });
   });
 

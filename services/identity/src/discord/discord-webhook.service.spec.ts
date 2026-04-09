@@ -241,4 +241,84 @@ describe('DiscordWebhookService', () => {
       expect(body.embeds[0].footer.text).toBe('AlgoSu Feedback');
     });
   });
+
+  // ─── sendFeedbackResolvedNotification ─────────────
+  describe('sendFeedbackResolvedNotification', () => {
+    it('RESOLVED 피드백을 Discord로 정상 전송한다', async () => {
+      global.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200 } as Response);
+
+      const feedback = mockFeedback({
+        status: FeedbackStatus.RESOLVED,
+        resolvedAt: new Date('2026-04-09T03:00:00Z'),
+      });
+      await service.sendFeedbackResolvedNotification(feedback);
+
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+      expect(body.embeds[0].title).toContain('피드백 처리 완료');
+      expect(body.embeds[0].color).toBe(0x2ecc71);
+      expect(body.embeds[0].footer.text).toBe('AlgoSu Feedback');
+    });
+
+    it('webhook URL 미설정 시 fetch를 호출하지 않는다', async () => {
+      delete process.env['DISCORD_FEEDBACK_WEBHOOK_URL'];
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          DiscordWebhookService,
+          { provide: StructuredLoggerService, useValue: mockLogger },
+        ],
+      }).compile();
+      const svcNoUrl = module.get(DiscordWebhookService);
+      global.fetch = jest.fn();
+
+      await svcNoUrl.sendFeedbackResolvedNotification(mockFeedback());
+
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('resolvedAt이 null이면 현재 시간으로 대체한다', async () => {
+      global.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200 } as Response);
+
+      await service.sendFeedbackResolvedNotification(
+        mockFeedback({ resolvedAt: null }),
+      );
+
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+      expect(body.embeds[0].description).toContain('처리 시간');
+    });
+
+    it('내용이 200자 초과 시 truncation한다', async () => {
+      global.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200 } as Response);
+
+      await service.sendFeedbackResolvedNotification(
+        mockFeedback({ content: '가'.repeat(250) }),
+      );
+
+      const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+      expect(body.embeds[0].description).toContain('가'.repeat(200) + '...');
+    });
+
+    it('fetch 실패 시 예외를 던지지 않는다', async () => {
+      global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
+
+      await expect(
+        service.sendFeedbackResolvedNotification(mockFeedback()),
+      ).resolves.toBeUndefined();
+
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Discord webhook 전송 실패'),
+      );
+    });
+
+    it('비정상 HTTP 응답 시 경고 로그를 남긴다', async () => {
+      global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 500 } as Response);
+
+      await service.sendFeedbackResolvedNotification(mockFeedback());
+
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Discord webhook 응답 오류: status=500'),
+      );
+    });
+  });
 });
