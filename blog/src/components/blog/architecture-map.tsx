@@ -128,8 +128,8 @@ export function ArchService({ name, tech, port, icon, accent = 1, note }: ArchSe
         {Icon && <Icon size={18} strokeWidth={2.25} />}
       </span>
       <div className="min-w-0 flex-1">
-        <div className="flex items-baseline justify-between gap-2">
-          <h4 className="truncate text-sm font-bold text-text">{name}</h4>
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <h4 className="text-sm font-bold leading-tight text-text">{name}</h4>
           {port && <span className="font-mono text-[10px] text-text-muted">:{port}</span>}
         </div>
         {tech && <p className="mt-0.5 text-[11px] text-text-subtle">{tech}</p>}

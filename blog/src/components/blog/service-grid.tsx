@@ -47,8 +47,8 @@ export function ServiceCard({ name, tech, port, role, accent = 1 }: ServiceCardP
     <div
       className={`rounded-lg border border-border border-t-4 bg-surface-elevated p-4 shadow-sm ${ACCENT_BORDER[accent]}`}
     >
-      <div className="flex items-baseline justify-between gap-2">
-        <h4 className="text-sm font-bold text-text">{name}</h4>
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+        <h4 className="text-sm font-bold leading-tight text-text">{name}</h4>
         {port && (
           <span className="font-mono text-xs text-text-muted">:{port}</span>
         )}
