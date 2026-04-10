@@ -53,6 +53,11 @@ data:
           - targets: ['github-worker-metrics:9100']
         metrics_path: /metrics
 
+      - job_name: 'kube-state-metrics'
+        static_configs:
+          - targets: ['kube-state-metrics:8080']
+        metrics_path: /metrics
+
       - job_name: 'rabbitmq'
         static_configs:
           - targets: ['rabbitmq:15692']

@@ -1,13 +1,13 @@
 ---
 sprint: 80
-title: "blog 롤링 업데이트 1033 에러 해결"
+title: "monitoring 1033 에러 해결"
 date: "2026-04-10"
-status: in-progress
+status: completed
 agents: [Oracle, Architect, Scout, Scribe]
 related_adrs: ["sprint-69"]
 ---
 
-# Sprint 80: blog 롤링 업데이트 1033 에러 해결
+# Sprint 80: monitoring 1033 에러 해결
 
 ## Decisions
 
@@ -30,7 +30,13 @@ related_adrs: ["sprint-69"]
 - **Root Cause**: 롤링 업데이트 시 kubelet이 구 pod(blog-65869f5699)에 SIGTERM을 전송하면 즉시 readiness probe가 `connection reset by peer`로 실패. kube-proxy가 구 pod을 endpoints에서 제거하지만 새 pod(blog-64998d8b9f)은 아직 Ready가 아닌 상태. 결과적으로 blog Service의 endpoints가 0개가 되어 cloudflared가 upstream 502를 수신하고 Cloudflare가 Error 1033을 반환.
 - **Fix**: `preStop: exec: command: ["sh", "-c", "sleep 5"]`로 구 pod이 SIGTERM 후 5초간 프로세스 종료를 지연. 이 5초 동안 구 pod은 여전히 트래픽을 서빙하고 readiness probe도 통과하므로 새 pod이 Ready가 될 때까지 endpoints 공백이 발생하지 않음.
 
+### D2: monitoring 터널 cloudflared connector 복구
+- **Context**: monitoring.algo-su.com에서 Cloudflare Error 1033 발생. 터널 `05b4b0d6`에 Public Hostname이 등록되어 있으나 해당 터널의 cloudflared connector(pod)가 클러스터에 부재. 기존 cloudflared Deployment는 터널 `47de6ba1`(blog용)만 연결.
+- **Choice**: `cloudflared-monitoring` Deployment를 신규 생성하여 터널 `05b4b0d6`의 connector 복구. 기존 blog 터널과 별도 운영.
+- **Alternatives**: (a) 두 도메인을 단일 터널로 통합 — Cloudflare 대시보드에서 터널 재구성 필요 + DNS CNAME 변경, 운영 중 서비스 중단 위험으로 기각.
+- **Code Paths**: `infra/k3s/cloudflared-monitoring.yaml`
+
 ## Metrics
-- Commits: TBD
-- Files changed: TBD
-- 서비스 영향: blog.algo-su.com — 롤링 업데이트 시 Error 1033 재발 방지
+- Commits: 2건 (46e4525, 6b2063e)
+- Files changed: 3개 (+98/-0)
+- 서비스 영향: blog.algo-su.com — 롤링 업데이트 시 Error 1033 방지, monitoring.algo-su.com — Grafana 접근 복구

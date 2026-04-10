@@ -89,7 +89,7 @@ data:
           "type": "stat",
           "targets": [
             {
-              "expr": "((sum(rate(algosu_gateway_http_errors_total[5m])) or vector(0)) + (sum(rate(algosu_submission_http_requests_total{status_code=~\"5..\"}[5m])) or vector(0)) + (sum(rate(algosu_problem_http_requests_total{status_code=~\"5..\"}[5m])) or vector(0)) + (sum(rate(algosu_ai_analysis_http_requests_total{status_code=~\"5..\"}[5m])) or vector(0))) / clamp_min((sum(rate(algosu_gateway_http_requests_total[5m])) or vector(0)) + (sum(rate(algosu_submission_http_requests_total[5m])) or vector(0)) + (sum(rate(algosu_problem_http_requests_total[5m])) or vector(0)) + (sum(rate(algosu_ai_analysis_http_requests_total[5m])) or vector(0)), 1) * 100",
+              "expr": "((sum(rate(algosu_gateway_http_errors_total[5m])) or vector(0)) + (sum(rate(algosu_identity_http_requests_total{status_code=~\"5..\"}[5m])) or vector(0)) + (sum(rate(algosu_submission_http_requests_total{status_code=~\"5..\"}[5m])) or vector(0)) + (sum(rate(algosu_problem_http_requests_total{status_code=~\"5..\"}[5m])) or vector(0)) + (sum(rate(algosu_ai_analysis_http_requests_total{status_code=~\"5..\"}[5m])) or vector(0))) / clamp_min((sum(rate(algosu_gateway_http_requests_total[5m])) or vector(0)) + (sum(rate(algosu_identity_http_requests_total[5m])) or vector(0)) + (sum(rate(algosu_submission_http_requests_total[5m])) or vector(0)) + (sum(rate(algosu_problem_http_requests_total[5m])) or vector(0)) + (sum(rate(algosu_ai_analysis_http_requests_total[5m])) or vector(0)), 1) * 100",
               "legendFormat": "Error Rate"
             }
           ]
@@ -124,8 +124,8 @@ data:
           "type": "stat",
           "targets": [
             {
-              "expr": "histogram_quantile(0.95, sum(rate(algosu_gateway_http_request_duration_seconds_bucket[5m])) by (le))",
-              "legendFormat": "P95"
+              "expr": "histogram_quantile(0.95, sum(rate({__name__=~\"algosu_.+_http_request_duration_seconds_bucket\", job=~\"gateway|identity-service|submission-service|problem-service|ai-analysis\"}[5m])) by (le))",
+              "legendFormat": "P95 (All Services)"
             }
           ]
         },
@@ -159,8 +159,8 @@ data:
           "type": "stat",
           "targets": [
             {
-              "expr": "histogram_quantile(0.99, sum(rate(algosu_gateway_http_request_duration_seconds_bucket[5m])) by (le))",
-              "legendFormat": "P99"
+              "expr": "histogram_quantile(0.99, sum(rate({__name__=~\"algosu_.+_http_request_duration_seconds_bucket\", job=~\"gateway|identity-service|submission-service|problem-service|ai-analysis\"}[5m])) by (le))",
+              "legendFormat": "P99 (All Services)"
             }
           ]
         },
@@ -256,6 +256,10 @@ data:
               "legendFormat": "Problem"
             },
             {
+              "expr": "(sum(rate(algosu_identity_http_requests_total{status_code=~\"5..\"}[5m])) or vector(0)) / (sum(rate(algosu_identity_http_requests_total[5m])) or vector(1)) * 100",
+              "legendFormat": "Identity"
+            },
+            {
               "expr": "(sum(rate(algosu_ai_analysis_http_requests_total{status_code=~\"5..\"}[5m])) or vector(0)) / (sum(rate(algosu_ai_analysis_http_requests_total[5m])) or vector(1)) * 100",
               "legendFormat": "AI Analysis"
             }
@@ -310,6 +314,10 @@ data:
               "legendFormat": "Problem"
             },
             {
+              "expr": "histogram_quantile(0.95, sum(rate(algosu_identity_http_request_duration_seconds_bucket[5m])) by (le))",
+              "legendFormat": "Identity"
+            },
+            {
               "expr": "histogram_quantile(0.95, sum(rate(algosu_ai_analysis_http_request_duration_seconds_bucket[5m])) by (le))",
               "legendFormat": "AI Analysis"
             }
@@ -347,6 +355,10 @@ data:
             {
               "expr": "histogram_quantile(0.99, sum(rate(algosu_gateway_http_request_duration_seconds_bucket[5m])) by (le))",
               "legendFormat": "Gateway"
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum(rate(algosu_identity_http_request_duration_seconds_bucket[5m])) by (le))",
+              "legendFormat": "Identity"
             },
             {
               "expr": "histogram_quantile(0.99, sum(rate(algosu_submission_http_request_duration_seconds_bucket[5m])) by (le))",
@@ -393,6 +405,7 @@ data:
           "type": "timeseries",
           "targets": [
             { "expr": "sum(rate(algosu_gateway_http_requests_total[5m]))", "legendFormat": "Gateway" },
+            { "expr": "sum(rate(algosu_identity_http_requests_total[5m]))", "legendFormat": "Identity" },
             { "expr": "sum(rate(algosu_submission_http_requests_total[5m]))", "legendFormat": "Submission" },
             { "expr": "sum(rate(algosu_problem_http_requests_total[5m]))", "legendFormat": "Problem" },
             { "expr": "sum(rate(algosu_ai_analysis_http_requests_total[5m]))", "legendFormat": "AI Analysis" }

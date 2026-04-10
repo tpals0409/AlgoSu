@@ -23,68 +23,42 @@ data:
               description: "{{ $labels.job }}이 30초 이상 응답하지 않습니다."
 
       # ================================================================
-      # 2. 에러율
+      # 2-a. Recording Rules — 에러율 / 메모리 사용률
+      # ================================================================
+      - name: algosu.recording
+        rules:
+          # 서비스별 5xx 에러율 (5분 윈도우)
+          - record: algosu:http_error_rate:5m
+            expr: |
+              (
+                sum by (job) (rate({__name__=~"algosu_.+_http_errors_total", status_code=~"5.."}[5m]))
+                / sum by (job) (rate({__name__=~"algosu_.+_http_requests_total"}[5m]))
+              ) * 100
+
+          # 서비스별 Node.js 힙 메모리 사용률
+          - record: algosu:heap_memory_usage_pct
+            expr: |
+              (
+                {__name__=~"algosu_.+_nodejs_heap_size_used_bytes"}
+                / {__name__=~"algosu_.+_nodejs_heap_size_total_bytes"}
+              ) * 100
+
+      # ================================================================
+      # 2-b. 에러율 알림
       # ================================================================
       - name: algosu.error_rate
         rules:
           - alert: HighErrorRate
-            expr: |
-              (
-                sum by (job) (rate(algosu_gateway_http_errors_total{status_code=~"5.."}[5m]))
-                / sum by (job) (rate(algosu_gateway_http_requests_total[5m]))
-              ) * 100 > 5
+            expr: algosu:http_error_rate:5m > 5
             for: 5m
             labels:
               severity: warning
             annotations:
-              summary: "Gateway 5xx 에러율 {{ $value | printf \"%.1f\" }}% (임계: 5%)"
-              description: "5분 윈도우 기준 Gateway 에러율이 SLO 5%를 초과했습니다."
-
-          - alert: HighErrorRate
-            expr: |
-              (
-                sum by (job) (rate(algosu_identity_http_errors_total{status_code=~"5.."}[5m]))
-                / sum by (job) (rate(algosu_identity_http_requests_total[5m]))
-              ) * 100 > 5
-            for: 5m
-            labels:
-              severity: warning
-            annotations:
-              summary: "Identity 5xx 에러율 {{ $value | printf \"%.1f\" }}% (임계: 5%)"
-              description: "5분 윈도우 기준 Identity 에러율이 SLO 5%를 초과했습니다."
-
-          - alert: HighErrorRate
-            expr: |
-              (
-                sum by (job) (rate(algosu_submission_http_errors_total{status_code=~"5.."}[5m]))
-                / sum by (job) (rate(algosu_submission_http_requests_total[5m]))
-              ) * 100 > 5
-            for: 5m
-            labels:
-              severity: warning
-            annotations:
-              summary: "Submission 5xx 에러율 {{ $value | printf \"%.1f\" }}% (임계: 5%)"
-              description: "5분 윈도우 기준 Submission 에러율이 SLO 5%를 초과했습니다."
-
-          - alert: HighErrorRate
-            expr: |
-              (
-                sum by (job) (rate(algosu_problem_http_errors_total{status_code=~"5.."}[5m]))
-                / sum by (job) (rate(algosu_problem_http_requests_total[5m]))
-              ) * 100 > 5
-            for: 5m
-            labels:
-              severity: warning
-            annotations:
-              summary: "Problem 5xx 에러율 {{ $value | printf \"%.1f\" }}% (임계: 5%)"
-              description: "5분 윈도우 기준 Problem 에러율이 SLO 5%를 초과했습니다."
+              summary: "{{ $labels.job }} 5xx 에러율 {{ $value | printf \"%.1f\" }}% (임계: 5%)"
+              description: "5분 윈도우 기준 {{ $labels.job }} 에러율이 SLO 5%를 초과했습니다."
 
           - alert: CriticalErrorRate
-            expr: |
-              (
-                sum(rate(algosu_gateway_http_errors_total{status_code=~"5.."}[5m]))
-                / sum(rate(algosu_gateway_http_requests_total[5m]))
-              ) * 100 > 15
+            expr: algosu:http_error_rate:5m{job="gateway"} > 15
             for: 5m
             labels:
               severity: critical
@@ -100,26 +74,14 @@ data:
           - alert: HighLatencyP95
             expr: |
               histogram_quantile(0.95,
-                sum by (le, job) (rate(algosu_gateway_http_request_duration_seconds_bucket[5m]))
+                sum by (le, job) (rate({__name__=~"algosu_.+_http_request_duration_seconds_bucket"}[5m]))
               ) > 1.0
             for: 3m
             labels:
               severity: warning
             annotations:
-              summary: "Gateway P95 응답시간 {{ $value | printf \"%.3f\" }}s (임계: 1.0s)"
-              description: "Gateway P95 응답시간이 3분간 SLO 1.0초를 초과했습니다."
-
-          - alert: HighLatencyP95
-            expr: |
-              histogram_quantile(0.95,
-                sum by (le, job) (rate(algosu_submission_http_request_duration_seconds_bucket[5m]))
-              ) > 1.0
-            for: 3m
-            labels:
-              severity: warning
-            annotations:
-              summary: "Submission P95 응답시간 {{ $value | printf \"%.3f\" }}s (임계: 1.0s)"
-              description: "Submission P95 응답시간이 3분간 SLO 1.0초를 초과했습니다."
+              summary: "{{ $labels.job }} P95 응답시간 {{ $value | printf \"%.3f\" }}s (임계: 1.0s)"
+              description: "{{ $labels.job }} P95 응답시간이 3분간 SLO 1.0초를 초과했습니다."
 
       # ================================================================
       # 4. 인증/보안
@@ -169,60 +131,13 @@ data:
       - name: algosu.resources
         rules:
           - alert: HighMemoryUsage
-            expr: |
-              (
-                algosu_gateway_nodejs_heap_size_used_bytes
-                / algosu_gateway_nodejs_heap_size_total_bytes
-              ) * 100 > 80
+            expr: algosu:heap_memory_usage_pct > 80
             for: 5m
             labels:
               severity: warning
-              service: gateway
             annotations:
-              summary: "Gateway 힙 메모리 사용률 {{ $value | printf \"%.1f\" }}% (임계: 80%)"
-              description: "Gateway Node.js 힙 메모리가 5분간 80%를 초과했습니다."
-
-          - alert: HighMemoryUsage
-            expr: |
-              (
-                algosu_identity_nodejs_heap_size_used_bytes
-                / algosu_identity_nodejs_heap_size_total_bytes
-              ) * 100 > 80
-            for: 5m
-            labels:
-              severity: warning
-              service: identity
-            annotations:
-              summary: "Identity 힙 메모리 사용률 {{ $value | printf \"%.1f\" }}% (임계: 80%)"
-              description: "Identity Node.js 힙 메모리가 5분간 80%를 초과했습니다."
-
-          - alert: HighMemoryUsage
-            expr: |
-              (
-                algosu_submission_nodejs_heap_size_used_bytes
-                / algosu_submission_nodejs_heap_size_total_bytes
-              ) * 100 > 80
-            for: 5m
-            labels:
-              severity: warning
-              service: submission
-            annotations:
-              summary: "Submission 힙 메모리 사용률 {{ $value | printf \"%.1f\" }}% (임계: 80%)"
-              description: "Submission Node.js 힙 메모리가 5분간 80%를 초과했습니다."
-
-          - alert: HighMemoryUsage
-            expr: |
-              (
-                algosu_problem_nodejs_heap_size_used_bytes
-                / algosu_problem_nodejs_heap_size_total_bytes
-              ) * 100 > 80
-            for: 5m
-            labels:
-              severity: warning
-              service: problem
-            annotations:
-              summary: "Problem 힙 메모리 사용률 {{ $value | printf \"%.1f\" }}% (임계: 80%)"
-              description: "Problem Node.js 힙 메모리가 5분간 80%를 초과했습니다."
+              summary: "{{ $labels.job }} 힙 메모리 사용률 {{ $value | printf \"%.1f\" }}% (임계: 80%)"
+              description: "{{ $labels.job }} Node.js 힙 메모리가 5분간 80%를 초과했습니다."
 
       # ================================================================
       # 7. 메시징 — DLQ (Placeholder)

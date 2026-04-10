@@ -754,8 +754,7 @@ data:
               { "selected": false, "text": "Problem", "value": "problem-service" },
               { "selected": false, "text": "Identity", "value": "identity-service" },
               { "selected": false, "text": "AI Analysis", "value": "ai-analysis" },
-              { "selected": false, "text": "GitHub Worker", "value": "github-worker" },
-              { "selected": false, "text": "Frontend", "value": "frontend" }
+              { "selected": false, "text": "GitHub Worker", "value": "github-worker" }
             ],
             "query": "",
             "skipUrlSync": false,
