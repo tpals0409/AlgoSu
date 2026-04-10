@@ -68,7 +68,7 @@ export class OAuthController {
     const token = this.oauthService.issueDemoToken(user);
 
     const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
-    setTokenCookie(res, token, nodeEnv);
+    setTokenCookie(res, token, nodeEnv, this.logger);
 
     this.logger.log(`데모 로그인: userId=${user.id}`);
     return { redirect: '/dashboard' };
@@ -125,7 +125,7 @@ export class OAuthController {
 
       // httpOnly Cookie로 JWT 발급
       const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
-      setTokenCookie(res, result.accessToken, nodeEnv);
+      setTokenCookie(res, result.accessToken, nodeEnv, this.logger);
 
       // 프론트엔드 리다이렉트 — github_connected만 fragment로 전달 (민감 정보 아님)
       const params = new URLSearchParams({
@@ -348,7 +348,7 @@ export class OAuthController {
     const accessToken = this.oauthService.issueAccessToken(user);
 
     const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
-    setTokenCookie(res, accessToken, nodeEnv);
+    setTokenCookie(res, accessToken, nodeEnv, this.logger);
 
     return { message: 'Token refreshed' };
   }

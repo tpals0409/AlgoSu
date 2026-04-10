@@ -91,7 +91,7 @@ export class TokenRefreshInterceptor implements NestInterceptor {
 
       // 응답이 이미 전송되지 않았으면 쿠키 설정
       if (!res.headersSent) {
-        setTokenCookie(res, newToken, nodeEnv);
+        setTokenCookie(res, newToken, nodeEnv, this.logger);
         this.logger.log(`토큰 자동 갱신: userId=${userId}`);
       }
     } catch (err) {

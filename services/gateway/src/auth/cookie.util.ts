@@ -44,6 +44,7 @@ export function setTokenCookie(
   res: Response,
   token: string,
   nodeEnv: string,
+  logger?: { warn: (message: string, context?: Record<string, unknown>) => void },
 ): void {
   const isProduction = nodeEnv === 'production';
 
@@ -51,17 +52,22 @@ export function setTokenCookie(
   const maxAge = computedMaxAgeMs ?? FALLBACK_MAX_AGE_MS;
 
   if (computedMaxAgeMs === null) {
-    // 토큰 파싱 실패 — DI 없는 util이라 process.stdout에 structured log 직접 기록
-    // (oauth.service.ts Redis 오류 로깅과 동일 패턴)
-    process.stdout.write(
-      JSON.stringify({
-        level: 'warn',
-        event: 'cookie_maxage_fallback',
-        context: 'cookie.util',
-        message: 'JWT exp claim 디코딩 실패 — fallback maxAge 적용',
-        fallbackMs: FALLBACK_MAX_AGE_MS,
-      }) + '\n',
-    );
+    const logData = {
+      event: 'cookie_maxage_fallback',
+      context: 'cookie.util',
+      fallbackMs: FALLBACK_MAX_AGE_MS,
+    };
+    if (logger) {
+      logger.warn('JWT exp claim 디코딩 실패 — fallback maxAge 적용', logData);
+    } else {
+      process.stdout.write(
+        JSON.stringify({
+          level: 'warn',
+          message: 'JWT exp claim 디코딩 실패 — fallback maxAge 적용',
+          ...logData,
+        }) + '\n',
+      );
+    }
   }
 
   res.cookie('token', token, {

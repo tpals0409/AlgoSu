@@ -129,5 +129,30 @@ describe('cookie.util — setTokenCookie', () => {
 
       stdoutSpy.mockRestore();
     });
+
+    it('logger 전달 시 — logger.warn 호출, process.stdout.write 미호출', () => {
+      const res = createMockRes();
+      const stdoutSpy = jest
+        .spyOn(process.stdout, 'write')
+        .mockImplementation(() => true);
+      const mockLogger = { warn: jest.fn() };
+
+      setTokenCookie(
+        res as unknown as Response,
+        'not-a-jwt',
+        'development',
+        mockLogger,
+      );
+
+      const [, , opts] = (res.cookie as jest.Mock).mock.calls[0];
+      expect(opts.maxAge).toBe(60 * 60 * 1000);
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'JWT exp claim 디코딩 실패 — fallback maxAge 적용',
+        expect.objectContaining({ event: 'cookie_maxage_fallback' }),
+      );
+      expect(stdoutSpy).not.toHaveBeenCalled();
+
+      stdoutSpy.mockRestore();
+    });
   });
 });
