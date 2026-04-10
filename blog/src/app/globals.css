@@ -64,49 +64,6 @@
     --accent-6: #8b5cf6;             /* violet */
   }
 
-  .dark {
-    /* L11~12 수준의 다크 배경 — 검정 회피 */
-    --surface: #0b1220;
-    --surface-muted: #111827;        /* gray-900 */
-    --surface-elevated: #1f2937;     /* gray-800 */
-    --diagram-bg: #111827;           /* gray-900 */
-    --diagram-grid: #374151;         /* gray-700 */
-
-    --border: #1f2937;               /* gray-800 */
-    --border-strong: #374151;        /* gray-700 */
-
-    --text: #f1f5f9;                 /* slate-100 */
-    --text-muted: #94a3b8;           /* slate-400 */
-    --text-subtle: #64748b;          /* slate-500 */
-
-    --brand: #818cf8;                /* indigo-400 */
-    --brand-strong: #a5b4fc;         /* indigo-300 */
-    --brand-soft: #1e1b4b;           /* indigo-950 */
-
-    --callout-info-bg: #172554;      /* blue-950 */
-    --callout-info-border: #1e40af;  /* blue-800 */
-    --callout-info-fg: #93c5fd;      /* blue-300 */
-
-    --callout-warn-bg: #451a03;      /* amber-950 */
-    --callout-warn-border: #92400e;  /* amber-800 */
-    --callout-warn-fg: #fcd34d;      /* amber-300 */
-
-    --callout-success-bg: #022c22;   /* emerald-950 */
-    --callout-success-border: #065f46;/* emerald-800 */
-    --callout-success-fg: #6ee7b7;   /* emerald-300 */
-
-    --callout-danger-bg: #450a0a;    /* red-950 */
-    --callout-danger-border: #991b1b;/* red-800 */
-    --callout-danger-fg: #fca5a5;    /* red-300 */
-
-    --accent-1: #818cf8;
-    --accent-2: #22d3ee;
-    --accent-3: #34d399;
-    --accent-4: #fbbf24;
-    --accent-5: #f472b6;
-    --accent-6: #a78bfa;
-  }
-
   body {
     background-color: var(--surface);
     color: var(--text);
