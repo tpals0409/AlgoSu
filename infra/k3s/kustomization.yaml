@@ -29,7 +29,7 @@ resources:
 
   # 라우팅
   - ingress.yaml
-  - cloudflared.yaml
+  # cloudflared.yaml: aether-gitops(algosu/base/cloudflared.yaml)에서 관리. 소스 레포에는 존재하지 않음 (Sprint 73-2)
 
   # 오토스케일링 & 가용성
   - hpa.yaml
