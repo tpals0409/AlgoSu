@@ -21,15 +21,17 @@ export default async function PostPage({ params }: Props) {
 
   return (
     <article>
-      <header className="mb-8">
-        <h1 className="mb-2 text-3xl font-bold">{post.meta.title}</h1>
+      <header className="mb-10 border-b border-border pb-8">
+        <h1 className="mb-4 text-4xl font-bold leading-tight tracking-tight">
+          {post.meta.title}
+        </h1>
         <time className="text-sm text-text-muted">{post.meta.date}</time>
         {post.meta.tags.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="mt-4 flex flex-wrap gap-3">
             {post.meta.tags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-full bg-brand-soft px-3 py-0.5 text-xs text-brand"
+                className="rounded-full bg-brand-soft px-3 py-1 text-xs font-medium text-brand"
               >
                 {tag}
               </span>
