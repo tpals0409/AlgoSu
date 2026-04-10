@@ -111,6 +111,19 @@
     background-color: var(--surface);
     color: var(--text);
   }
+
+  /* 전역 인터랙션 base layer — 링크/버튼 트랜지션 + focus-visible ring */
+  a {
+    transition: color 150ms ease;
+  }
+  a:focus-visible,
+  button:focus-visible {
+    outline: none;
+    border-radius: 0.125rem;
+    box-shadow:
+      0 0 0 2px var(--surface),
+      0 0 0 4px var(--brand);
+  }
 }
 
 /*
