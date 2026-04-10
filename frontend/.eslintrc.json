@@ -1,3 +1,18 @@
 {
-  "extends": ["next/core-web-vitals", "next/typescript"]
+  "extends": ["next/core-web-vitals", "next/typescript"],
+  "plugins": ["react"],
+  "rules": {
+    "react/forbid-dom-props": ["warn", {
+      "forbid": [{
+        "propName": "style",
+        "message": "인라인 style 금지 — Tailwind 토큰 클래스를 사용하세요"
+      }]
+    }],
+    "react/forbid-component-props": ["warn", {
+      "forbid": [{
+        "propName": "style",
+        "message": "인라인 style 금지 — Tailwind 토큰 클래스를 사용하세요"
+      }]
+    }]
+  }
 }
