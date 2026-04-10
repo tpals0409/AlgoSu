@@ -23,13 +23,13 @@ export default async function PostPage({ params }: Props) {
     <article>
       <header className="mb-8">
         <h1 className="mb-2 text-3xl font-bold">{post.meta.title}</h1>
-        <time className="text-sm text-gray-500">{post.meta.date}</time>
+        <time className="text-sm text-text-muted">{post.meta.date}</time>
         {post.meta.tags.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-2">
             {post.meta.tags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-full bg-brand-50 px-3 py-0.5 text-xs text-brand-700"
+                className="rounded-full bg-brand-soft px-3 py-0.5 text-xs text-brand"
               >
                 {tag}
               </span>

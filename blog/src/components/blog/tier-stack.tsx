@@ -34,10 +34,7 @@ export function TierStack({ children }: TierStackProps) {
 
 export function TierRow({ tier, label, members, accent = 1 }: TierRowProps) {
   return (
-    <div
-      className="flex items-stretch overflow-hidden rounded-lg border bg-surface-elevated"
-      style={{ borderColor: 'var(--border)' }}
-    >
+    <div className="flex items-stretch overflow-hidden rounded-lg border border-border bg-surface-elevated">
       <div
         className={`flex w-20 shrink-0 items-center justify-center text-sm font-bold text-white ${ACCENT_BG[accent]}`}
       >

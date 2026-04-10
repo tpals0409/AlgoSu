@@ -44,10 +44,7 @@ export function PipelineStage({ label, detail, accent = 1, icon }: PipelineStage
   const Icon = getIcon(icon);
   return (
     <li className="relative flex-1">
-      <div
-        className="h-full rounded-lg border bg-surface-elevated p-3 sm:rounded-none sm:border-r-0 sm:first:rounded-l-lg sm:last:rounded-r-lg sm:last:border-r"
-        style={{ borderColor: 'var(--border)' }}
-      >
+      <div className="h-full rounded-lg border border-border bg-surface-elevated p-3 sm:rounded-none sm:border-r-0 sm:first:rounded-l-lg sm:last:rounded-r-lg sm:last:border-r">
         <div className="flex items-center gap-2">
           {Icon ? (
             <span

@@ -71,8 +71,7 @@ export function TierMatrixRow({
 }: TierMatrixRowProps) {
   return (
     <div
-      className={`overflow-hidden rounded-xl border border-l-4 bg-surface-elevated ${ACCENT_BORDER_L[accent]}`}
-      style={{ borderColor: 'var(--border)' }}
+      className={`overflow-hidden rounded-xl border border-border border-l-4 bg-surface-elevated ${ACCENT_BORDER_L[accent]}`}
     >
       <div className="flex items-stretch">
         {/* Tier 라벨 컬럼 */}
@@ -104,10 +103,7 @@ export function TierMatrixRow({
 export function TierMatrixCell({ name, role, icon, hint }: TierMatrixCellProps) {
   const Icon = getIcon(icon);
   return (
-    <div
-      className="flex items-start gap-2 rounded-lg border bg-surface p-2.5"
-      style={{ borderColor: 'var(--border)' }}
-    >
+    <div className="flex items-start gap-2 rounded-lg border border-border bg-surface p-2.5">
       <span
         aria-hidden
         className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface-muted text-text-muted"

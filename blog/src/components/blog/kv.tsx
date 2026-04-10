@@ -13,9 +13,7 @@ interface KVProps {
 
 export function KV({ k, v }: KVProps) {
   return (
-    <span className="not-prose inline-flex items-center gap-1.5 rounded-md border bg-surface-muted px-2 py-0.5 text-xs"
-      style={{ borderColor: 'var(--border)' }}
-    >
+    <span className="not-prose inline-flex items-center gap-1.5 rounded-md border border-border bg-surface-muted px-2 py-0.5 text-xs">
       <span className="font-medium text-text-muted">{k}</span>
       <span className="font-mono text-text">{v}</span>
     </span>

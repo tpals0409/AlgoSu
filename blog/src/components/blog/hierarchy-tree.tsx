@@ -51,10 +51,7 @@ const LEVEL_INDENT: Record<number, string> = {
 
 export function HierarchyTree({ children }: HierarchyTreeProps) {
   return (
-    <div
-      className="my-6 rounded-xl border bg-diagram-bg p-4 sm:p-6 not-prose"
-      style={{ borderColor: 'var(--border)' }}
-    >
+    <div className="my-6 rounded-xl border border-border bg-diagram-bg p-4 sm:p-6 not-prose">
       <div className="flex flex-col gap-2">{children}</div>
     </div>
   );
@@ -79,23 +76,16 @@ export function HierarchyNode({
           aria-hidden
           className="pointer-events-none absolute -left-4 top-0 h-full w-4 sm:-left-6 sm:w-6"
         >
-          <span
-            className="absolute left-0 top-0 h-1/2 w-px"
-            style={{ backgroundColor: 'var(--border-strong)' }}
-          />
-          <span
-            className="absolute left-0 top-1/2 h-px w-full"
-            style={{ backgroundColor: 'var(--border-strong)' }}
-          />
+          <span className="absolute left-0 top-0 h-1/2 w-px bg-border-strong" />
+          <span className="absolute left-0 top-1/2 h-px w-full bg-border-strong" />
         </span>
       )}
       <div
-        className={`inline-flex items-center gap-2 border bg-surface-elevated shadow-sm ${
+        className={`inline-flex items-center gap-2 border border-border bg-surface-elevated shadow-sm ${
           isPill
             ? 'rounded-full px-3 py-1.5'
             : `rounded-lg border-l-4 px-3 py-2 ${ACCENT_BORDER_L[accent]}`
         }`}
-        style={{ borderColor: 'var(--border)' }}
       >
         {Icon && (
           <span

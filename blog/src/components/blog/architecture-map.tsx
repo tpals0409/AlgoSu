@@ -68,14 +68,9 @@ const TONE_LABEL: Record<NonNullable<ArchLayerProps['tone']>, string> = {
 export function ArchitectureMap({ title, subtitle, children }: ArchitectureMapProps) {
   return (
     <figure className="my-8 not-prose">
-      <div
-        className="relative overflow-hidden rounded-2xl border-2 border-dashed bg-diagram-bg p-5 sm:p-7"
-        style={{ borderColor: 'var(--border-strong)' }}
-      >
+      <div className="relative overflow-hidden rounded-2xl border-2 border-dashed border-border-strong bg-diagram-bg p-5 sm:p-7">
         {(title || subtitle) && (
-          <header className="mb-5 flex items-baseline justify-between gap-3 border-b pb-3"
-            style={{ borderColor: 'var(--border)' }}
-          >
+          <header className="mb-5 flex items-baseline justify-between gap-3 border-b border-border pb-3">
             {title && (
               <span className="text-xs font-bold uppercase tracking-wider text-text-muted">
                 {title}
@@ -95,10 +90,7 @@ export function ArchitectureMap({ title, subtitle, children }: ArchitectureMapPr
 export function ArchLayer({ label, tone = 'backend', children }: ArchLayerProps) {
   return (
     <div className="group/layer relative">
-      <div
-        className="rounded-xl border bg-surface-elevated p-4"
-        style={{ borderColor: 'var(--border)' }}
-      >
+      <div className="rounded-xl border border-border bg-surface-elevated p-4">
         <div className="mb-3 flex items-center gap-2">
           <span className="rounded-md bg-surface-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-text-muted">
             {TONE_LABEL[tone]}
@@ -127,8 +119,7 @@ export function ArchService({ name, tech, port, icon, accent = 1, note }: ArchSe
   const Icon = getIcon(icon);
   return (
     <div
-      className={`group flex items-start gap-3 rounded-lg border bg-surface p-3 ring-1 ring-inset transition hover:shadow-md ${ACCENT_RING[accent]}`}
-      style={{ borderColor: 'var(--border)' }}
+      className={`group flex items-start gap-3 rounded-lg border border-border bg-surface p-3 ring-1 ring-inset transition hover:shadow-md ${ACCENT_RING[accent]}`}
     >
       <span
         aria-hidden
