@@ -28,19 +28,26 @@ data:
       - name: algosu.recording
         rules:
           # 서비스별 5xx 에러율 (5분 윈도우)
+          # 참고: 서비스들은 별도 errors_total 없이 requests_total{status_code} 로 5xx 구분
           - record: algosu:http_error_rate:5m
             expr: |
               (
-                sum by (job) (rate({__name__=~"algosu_.+_http_errors_total", status_code=~"5.."}[5m]))
+                sum by (job) (rate({__name__=~"algosu_.+_http_requests_total", status_code=~"5.."}[5m]))
                 / sum by (job) (rate({__name__=~"algosu_.+_http_requests_total"}[5m]))
               ) * 100
 
           # 서비스별 RSS 메모리 사용률 (container limits 대비)
+          # 참고: NestJS 서비스는 algosu_{name}_process_resident_memory_bytes 형태로 내보냄
+          # job 이름과 container 이름이 동일(gateway, identity-service 등)하므로 label_replace로 join
           - record: algosu:memory_usage_pct
             expr: |
               (
-                process_resident_memory_bytes{job=~"gateway|identity-service|submission-service|problem-service"}
-                / on(pod) kube_pod_container_resource_limits{namespace="algosu", resource="memory"}
+                {__name__=~"algosu_.+_process_resident_memory_bytes", job=~"gateway|identity-service|submission-service|problem-service"}
+                / on(job) group_left()
+                label_replace(
+                  max by (container) (kube_pod_container_resource_limits{namespace="algosu", resource="memory", container=~"gateway|identity-service|submission-service|problem-service"}),
+                  "job", "$1", "container", "(.*)"
+                )
               ) * 100
 
       # ================================================================

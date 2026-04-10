@@ -89,7 +89,7 @@ data:
           "type": "stat",
           "targets": [
             {
-              "expr": "((sum(rate(algosu_gateway_http_errors_total[5m])) or vector(0)) + (sum(rate(algosu_identity_http_requests_total{status_code=~\"5..\"}[5m])) or vector(0)) + (sum(rate(algosu_submission_http_requests_total{status_code=~\"5..\"}[5m])) or vector(0)) + (sum(rate(algosu_problem_http_requests_total{status_code=~\"5..\"}[5m])) or vector(0)) + (sum(rate(algosu_ai_analysis_http_requests_total{status_code=~\"5..\"}[5m])) or vector(0))) / clamp_min((sum(rate(algosu_gateway_http_requests_total[5m])) or vector(0)) + (sum(rate(algosu_identity_http_requests_total[5m])) or vector(0)) + (sum(rate(algosu_submission_http_requests_total[5m])) or vector(0)) + (sum(rate(algosu_problem_http_requests_total[5m])) or vector(0)) + (sum(rate(algosu_ai_analysis_http_requests_total[5m])) or vector(0)), 1) * 100",
+              "expr": "((sum(rate(algosu_gateway_http_requests_total{status_code=~\"5..\"}[5m])) or vector(0)) + (sum(rate(algosu_identity_http_requests_total{status_code=~\"5..\"}[5m])) or vector(0)) + (sum(rate(algosu_submission_http_requests_total{status_code=~\"5..\"}[5m])) or vector(0)) + (sum(rate(algosu_problem_http_requests_total{status_code=~\"5..\"}[5m])) or vector(0)) + (sum(rate(algosu_ai_analysis_http_requests_total{status_code=~\"5..\"}[5m])) or vector(0))) / clamp_min((sum(rate(algosu_gateway_http_requests_total[5m])) or vector(0)) + (sum(rate(algosu_identity_http_requests_total[5m])) or vector(0)) + (sum(rate(algosu_submission_http_requests_total[5m])) or vector(0)) + (sum(rate(algosu_problem_http_requests_total[5m])) or vector(0)) + (sum(rate(algosu_ai_analysis_http_requests_total[5m])) or vector(0)), 1) * 100",
               "legendFormat": "Error Rate"
             }
           ]
@@ -244,7 +244,7 @@ data:
           "type": "timeseries",
           "targets": [
             {
-              "expr": "(sum(rate(algosu_gateway_http_errors_total{status_code=~\"5..\"}[5m])) or vector(0)) / (sum(rate(algosu_gateway_http_requests_total[5m])) or vector(1)) * 100",
+              "expr": "(sum(rate(algosu_gateway_http_requests_total{status_code=~\"5..\"}[5m])) or vector(0)) / (sum(rate(algosu_gateway_http_requests_total[5m])) or vector(1)) * 100",
               "legendFormat": "Gateway"
             },
             {

@@ -73,6 +73,9 @@ metadata:
     component: monitoring
 spec:
   replicas: 1
+  # PVC(TSDB lock) 사용 시 RollingUpdate는 lock 충돌 발생 → Recreate 필수
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: prometheus
