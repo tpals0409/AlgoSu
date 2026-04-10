@@ -55,7 +55,7 @@ export function Mermaid({ chart, caption }: MermaidProps) {
     <figure className="my-6 not-prose">
       <div
         ref={ref}
-        className="overflow-x-auto rounded-lg border border-border bg-diagram-bg p-4 [&_svg]:mx-auto [&_svg]:h-auto [&_svg]:max-w-full"
+        className="overflow-x-auto rounded-lg border border-border bg-diagram-bg p-4 shadow-sm [&_svg]:mx-auto [&_svg]:h-auto [&_svg]:max-w-full"
       >
         {error && (
           <pre className="text-xs text-callout-danger-fg">{error}</pre>

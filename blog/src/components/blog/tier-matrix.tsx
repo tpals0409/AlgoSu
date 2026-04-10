@@ -71,7 +71,7 @@ export function TierMatrixRow({
 }: TierMatrixRowProps) {
   return (
     <div
-      className={`overflow-hidden rounded-xl border border-border border-l-4 bg-surface-elevated ${ACCENT_BORDER_L[accent]}`}
+      className={`overflow-hidden rounded-xl border border-border border-l-4 bg-surface-elevated shadow-sm ${ACCENT_BORDER_L[accent]}`}
     >
       <div className="flex items-stretch">
         {/* Tier 라벨 컬럼 */}
