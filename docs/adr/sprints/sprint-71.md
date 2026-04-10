@@ -1,8 +1,8 @@
 ---
 sprint: 71
 title: "세션 수명 불일치 버그 수정 + SessionPolicy 모듈화 (피드백 기반)"
-date: "2026-04-09"
-status: in_progress
+date: "2026-04-09 ~ 2026-04-10"
+status: completed
 agents: [Oracle, Gatekeeper, Palette, Herald, Scribe]
 related_adrs: []
 ---
