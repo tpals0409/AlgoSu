@@ -57,6 +57,26 @@ describe('SessionPolicyService', () => {
       expect(service.getAccessTokenTtlMs()).toBe(90 * 60 * 1000);
       expect(service.getRefreshThresholdMs()).toBe(500);
     });
+
+    it('d(일) 단위 지원', () => {
+      const service = new SessionPolicyService(
+        buildConfig({ JWT_EXPIRES_IN: '1d' }),
+      );
+      expect(service.getAccessTokenTtlMs()).toBe(24 * 60 * 60 * 1000);
+    });
+
+    it('숫자형 ConfigService 값을 초 단위로 수용', () => {
+      // configService.get가 문자열이 아닌 number를 돌려주는 엣지 케이스
+      const cfg = {
+        get: jest.fn((key: string, defaultValue?: unknown) => {
+          if (key === 'JWT_EXPIRES_IN') return 120 as unknown as string; // 120s
+          return defaultValue;
+        }),
+      } as unknown as ConfigService;
+
+      const service = new SessionPolicyService(cfg);
+      expect(service.getAccessTokenTtlMs()).toBe(120 * 1000);
+    });
   });
 
   describe('잘못된 포맷 방어', () => {
@@ -89,6 +109,24 @@ describe('SessionPolicyService', () => {
       );
       expect(service.getDemoTokenTtl()).toBe('3h');
       expect(service.getDemoTokenTtlMs()).toBe(3 * 60 * 60 * 1000);
+      warn.mockRestore();
+    });
+
+    it('SESSION_HEARTBEAT_INTERVAL 잘못된 포맷 — 기본값 fallback (10m)', () => {
+      const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const service = new SessionPolicyService(
+        buildConfig({ SESSION_HEARTBEAT_INTERVAL: 'nope' }),
+      );
+      expect(service.getHeartbeatIntervalMs()).toBe(10 * 60 * 1000);
+      warn.mockRestore();
+    });
+
+    it('SESSION_TIMEOUT_BUFFER 잘못된 포맷 — 기본값 fallback (5m)', () => {
+      const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const service = new SessionPolicyService(
+        buildConfig({ SESSION_TIMEOUT_BUFFER: 'bad' }),
+      );
+      expect(service.getSessionTimeoutBufferMs()).toBe(5 * 60 * 1000);
       warn.mockRestore();
     });
   });
