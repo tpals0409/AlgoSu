@@ -43,7 +43,7 @@ export function Callout({ type = 'info', title, children }: CalloutProps) {
   const s = STYLES[type];
   return (
     <aside
-      className={`my-6 rounded-lg border-l-4 border ${s.wrap} px-4 py-3 not-prose`}
+      className={`my-6 rounded-lg border-l-4 border shadow-sm ${s.wrap} px-4 py-3 not-prose`}
       role="note"
     >
       {title && (

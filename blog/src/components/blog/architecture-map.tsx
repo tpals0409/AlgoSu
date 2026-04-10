@@ -119,7 +119,7 @@ export function ArchService({ name, tech, port, icon, accent = 1, note }: ArchSe
   const Icon = getIcon(icon);
   return (
     <div
-      className={`group flex items-start gap-3 rounded-lg border border-border bg-surface p-3 ring-1 ring-inset transition hover:shadow-md ${ACCENT_RING[accent]}`}
+      className={`group flex items-start gap-3 rounded-lg border border-border bg-surface p-3 shadow-sm ring-1 ring-inset transition hover:shadow-md ${ACCENT_RING[accent]}`}
     >
       <span
         aria-hidden

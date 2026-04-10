@@ -44,7 +44,7 @@ export function MetricGrid({ cols = 3, children }: MetricGridProps) {
 export function MetricCard({ label, value, hint, accent = 1 }: MetricCardProps) {
   return (
     <div
-      className={`rounded-lg border border-border border-l-4 bg-surface-muted px-4 py-3 ${ACCENT_BORDER[accent]}`}
+      className={`rounded-lg border border-border border-l-4 bg-surface-muted px-4 py-3 shadow-sm ${ACCENT_BORDER[accent]}`}
     >
       <div className="text-xs font-medium text-text-muted">{label}</div>
       <div className="mt-1 text-2xl font-bold text-text">{value}</div>

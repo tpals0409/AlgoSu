@@ -45,7 +45,7 @@ export function ServiceGrid({ cols = 3, children }: ServiceGridProps) {
 export function ServiceCard({ name, tech, port, role, accent = 1 }: ServiceCardProps) {
   return (
     <div
-      className={`rounded-lg border border-border border-t-4 bg-surface-elevated p-4 ${ACCENT_BORDER[accent]}`}
+      className={`rounded-lg border border-border border-t-4 bg-surface-elevated p-4 shadow-sm ${ACCENT_BORDER[accent]}`}
     >
       <div className="flex items-baseline justify-between gap-2">
         <h4 className="text-sm font-bold text-text">{name}</h4>
