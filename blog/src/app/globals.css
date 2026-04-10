@@ -239,6 +239,12 @@
     color: var(--text);
   }
 
+  /* code-block-wrapper 안의 pre — 상단 바와 연결 */
+  .prose .code-block-wrapper pre {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+
   /* 블록 인용문 — 좌측 bar 두께 ↑, 배경 brand-soft 로 강조 */
   .prose blockquote {
     border-left-width: 6px;

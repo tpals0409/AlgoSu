@@ -12,6 +12,7 @@
  * 컴포넌트 내부에서 `getIcon()`으로 lookup. (`@/components/blog/icons.ts`)
  */
 import type { MDXComponents } from 'mdx/types';
+import { CodeBlock } from '@/components/blog/code-block';
 import { Callout } from '@/components/blog/callout';
 import { MetricGrid, MetricCard } from '@/components/blog/metric-grid';
 import { ServiceGrid, ServiceCard } from '@/components/blog/service-grid';
@@ -55,6 +56,9 @@ export const mdxComponents: MDXComponents = {
       </a>
     );
   },
+
+  // 코드 블록 — 언어 라벨 + 복사 버튼
+  pre: (props) => <CodeBlock {...props} />,
 
   // blog 전용 컴포넌트 노출
   Callout,
