@@ -6,6 +6,14 @@ import { ThemeToggle } from '@/components/theme-toggle';
 export const metadata: Metadata = {
   title: 'AlgoSu Tech Blog',
   description: 'AlgoSu 프로젝트의 아키텍처 결정과 기술 여정을 기록합니다.',
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+    ],
+    apple: '/apple-touch-icon.png',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
