@@ -39,6 +39,9 @@ spec:
           image: ghcr.io/OWNER/algosu-gateway:main-PLACEHOLDER
           ports:
             - containerPort: 3000
+          env:
+            - name: NODE_OPTIONS
+              value: "--max-old-space-size=768"
           envFrom:
             - secretRef:
                 name: gateway-secrets

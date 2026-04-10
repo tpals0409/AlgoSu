@@ -35,12 +35,12 @@ data:
                 / sum by (job) (rate({__name__=~"algosu_.+_http_requests_total"}[5m]))
               ) * 100
 
-          # 서비스별 Node.js 힙 메모리 사용률
-          - record: algosu:heap_memory_usage_pct
+          # 서비스별 RSS 메모리 사용률 (container limits 대비)
+          - record: algosu:memory_usage_pct
             expr: |
               (
-                {__name__=~"algosu_.+_nodejs_heap_size_used_bytes"}
-                / {__name__=~"algosu_.+_nodejs_heap_size_total_bytes"}
+                process_resident_memory_bytes{job=~"gateway|identity-service|submission-service|problem-service"}
+                / on(pod) kube_pod_container_resource_limits{namespace="algosu", resource="memory"}
               ) * 100
 
       # ================================================================
@@ -131,13 +131,13 @@ data:
       - name: algosu.resources
         rules:
           - alert: HighMemoryUsage
-            expr: algosu:heap_memory_usage_pct > 80
+            expr: algosu:memory_usage_pct > 80
             for: 5m
             labels:
               severity: warning
             annotations:
-              summary: "{{ $labels.job }} 힙 메모리 사용률 {{ $value | printf \"%.1f\" }}% (임계: 80%)"
-              description: "{{ $labels.job }} Node.js 힙 메모리가 5분간 80%를 초과했습니다."
+              summary: "{{ $labels.job }} RSS 메모리 사용률 {{ $value | printf \"%.1f\" }}% (임계: 80%)"
+              description: "{{ $labels.job }} RSS 메모리가 container limits 대비 5분간 80%를 초과했습니다."
 
       # ================================================================
       # 7. 메시징 — DLQ (Placeholder)
