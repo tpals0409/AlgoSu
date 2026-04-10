@@ -80,20 +80,26 @@ describe('cookie.util — setTokenCookie', () => {
   describe('Fallback — 토큰 파싱 실패 시 1시간 방어값', () => {
     it('디코딩 불가능한 토큰 — fallback maxAge 1h', () => {
       const res = createMockRes();
-      const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const stdoutSpy = jest
+        .spyOn(process.stdout, 'write')
+        .mockImplementation(() => true);
 
       setTokenCookie(res as unknown as Response, 'not-a-jwt', 'development');
 
       const [, , opts] = (res.cookie as jest.Mock).mock.calls[0];
       expect(opts.maxAge).toBe(60 * 60 * 1000); // 1h
-      expect(warnSpy).toHaveBeenCalled();
+      expect(stdoutSpy).toHaveBeenCalled();
+      const payload = String(stdoutSpy.mock.calls[0][0]);
+      expect(payload).toContain('cookie_maxage_fallback');
 
-      warnSpy.mockRestore();
+      stdoutSpy.mockRestore();
     });
 
     it('exp 없는 JWT — fallback maxAge 1h', () => {
       const res = createMockRes();
-      const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const stdoutSpy = jest
+        .spyOn(process.stdout, 'write')
+        .mockImplementation(() => true);
 
       const tokenNoExp = jwt.sign({ sub: USER_ID }, SECRET, {
         algorithm: 'HS256',
@@ -103,23 +109,25 @@ describe('cookie.util — setTokenCookie', () => {
 
       const [, , opts] = (res.cookie as jest.Mock).mock.calls[0];
       expect(opts.maxAge).toBe(60 * 60 * 1000);
-      expect(warnSpy).toHaveBeenCalled();
+      expect(stdoutSpy).toHaveBeenCalled();
 
-      warnSpy.mockRestore();
+      stdoutSpy.mockRestore();
     });
 
     it('이미 만료된 토큰 — fallback maxAge 1h', () => {
       const res = createMockRes();
-      const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const stdoutSpy = jest
+        .spyOn(process.stdout, 'write')
+        .mockImplementation(() => true);
 
       const expired = createJwtWithExp(-60); // 1분 전 만료
       setTokenCookie(res as unknown as Response, expired, 'development');
 
       const [, , opts] = (res.cookie as jest.Mock).mock.calls[0];
       expect(opts.maxAge).toBe(60 * 60 * 1000);
-      expect(warnSpy).toHaveBeenCalled();
+      expect(stdoutSpy).toHaveBeenCalled();
 
-      warnSpy.mockRestore();
+      stdoutSpy.mockRestore();
     });
   });
 });

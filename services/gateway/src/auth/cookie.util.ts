@@ -51,15 +51,16 @@ export function setTokenCookie(
   const maxAge = computedMaxAgeMs ?? FALLBACK_MAX_AGE_MS;
 
   if (computedMaxAgeMs === null) {
-    // 토큰 파싱 실패 — JSON structured log 태그로 출력 (GlobalExceptionFilter 바깥이라 console 사용)
-    console.warn(
+    // 토큰 파싱 실패 — DI 없는 util이라 process.stdout에 structured log 직접 기록
+    // (oauth.service.ts Redis 오류 로깅과 동일 패턴)
+    process.stdout.write(
       JSON.stringify({
         level: 'warn',
         event: 'cookie_maxage_fallback',
         context: 'cookie.util',
         message: 'JWT exp claim 디코딩 실패 — fallback maxAge 적용',
         fallbackMs: FALLBACK_MAX_AGE_MS,
-      }),
+      }) + '\n',
     );
   }
 
