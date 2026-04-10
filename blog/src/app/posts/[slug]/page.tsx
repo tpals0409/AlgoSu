@@ -66,39 +66,39 @@ export default async function PostPage({ params }: Props) {
           <span>블로그 홈</span>
         </a>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {newerPost ? (
-            <a
-              href={`/posts/${newerPost.slug}`}
-              aria-label="더 최신 포스트"
-              className="group block rounded-lg border border-border bg-surface p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-brand hover:shadow-md focus-visible:outline-none"
-            >
-              <span className="block text-xs font-medium uppercase tracking-wide text-text-subtle">
-                ← 새 글
-              </span>
-              <span className="mt-2 block text-base font-semibold leading-snug text-text transition-colors group-hover:text-brand">
-                {newerPost.title}
-              </span>
-              <time className="mt-2 block text-xs text-text-muted">
-                {newerPost.date}
-              </time>
-            </a>
-          ) : (
-            <div aria-hidden className="hidden sm:block" />
-          )}
           {olderPost ? (
             <a
               href={`/posts/${olderPost.slug}`}
               aria-label="이전 포스트"
-              className="group block rounded-lg border border-border bg-surface p-5 text-right shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-brand hover:shadow-md focus-visible:outline-none"
+              className="group block rounded-lg border border-border bg-surface p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-brand hover:shadow-md focus-visible:outline-none"
             >
               <span className="block text-xs font-medium uppercase tracking-wide text-text-subtle">
-                지난 글 →
+                ← 지난 글
               </span>
               <span className="mt-2 block text-base font-semibold leading-snug text-text transition-colors group-hover:text-brand">
                 {olderPost.title}
               </span>
               <time className="mt-2 block text-xs text-text-muted">
                 {olderPost.date}
+              </time>
+            </a>
+          ) : (
+            <div aria-hidden className="hidden sm:block" />
+          )}
+          {newerPost ? (
+            <a
+              href={`/posts/${newerPost.slug}`}
+              aria-label="더 최신 포스트"
+              className="group block rounded-lg border border-border bg-surface p-5 text-right shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-brand hover:shadow-md focus-visible:outline-none"
+            >
+              <span className="block text-xs font-medium uppercase tracking-wide text-text-subtle">
+                새 글 →
+              </span>
+              <span className="mt-2 block text-base font-semibold leading-snug text-text transition-colors group-hover:text-brand">
+                {newerPost.title}
+              </span>
+              <time className="mt-2 block text-xs text-text-muted">
+                {newerPost.date}
               </time>
             </a>
           ) : (

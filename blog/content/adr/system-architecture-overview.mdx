@@ -221,11 +221,11 @@ export class InternalKeyGuard implements CanActivate {
 
 제출 후 GitHub Push와 AI 분석은 시간이 오래 걸리는 작업입니다. 사용자를 기다리게 할 수 없으니 RabbitMQ로 비동기 처리합니다.
 
-<Pipeline>
-  <PipelineStage label="Submission" detail="publish 2 queues" accent={3} />
-  <PipelineStage label="submission.github_push" detail="GitHub Worker · prefetch=2" accent={5} />
-  <PipelineStage label="submission.ai_analysis" detail="AI Analysis Worker" accent={6} />
-</Pipeline>
+<PhaseTimeline>
+  <PhaseMilestone phase="발행" title="Submission" period="publish 2 queues" status="done" icon="Send" accent={3} />
+  <PhaseMilestone phase="큐 1" title="submission.github_push" period="GitHub Worker · prefetch=2" status="done" icon="GitBranch" accent={5} />
+  <PhaseMilestone phase="큐 2" title="submission.ai_analysis" period="AI Analysis Worker" status="done" icon="Sparkles" accent={6} />
+</PhaseTimeline>
 
 GitHub Worker의 `prefetch=2`는 의도적인 설정입니다. GitHub API의 Rate Limit과 OCI Free Tier의 제한된 리소스를 고려한 동시 처리량 제한입니다. 실패 시에는 Retry 후 DLQ(Dead Letter Queue)로 이동합니다.
 
@@ -237,12 +237,12 @@ GitHub Worker의 `prefetch=2`는 의도적인 설정입니다. GitHub API의 Rat
 
 Gateway의 SSE Controller가 Redis Pub/Sub을 구독하고, 브라우저에 `text/event-stream`으로 상태를 전달합니다.
 
-<Pipeline>
-  <PipelineStage label="Submission" detail="status 변경" accent={3} />
-  <PipelineStage label="Redis Pub/Sub" detail="submission:status:{id}" accent={2} />
-  <PipelineStage label="Gateway SSE" detail="공유 subscriber" accent={1} />
-  <PipelineStage label="Browser" detail="text/event-stream" accent={4} />
-</Pipeline>
+<PhaseTimeline>
+  <PhaseMilestone phase="발생" title="Submission" period="status 변경" status="done" icon="Workflow" accent={3} />
+  <PhaseMilestone phase="전파" title="Redis Pub/Sub" period="submission:status:{id}" status="done" icon="Network" accent={2} />
+  <PhaseMilestone phase="구독" title="Gateway SSE" period="공유 subscriber" status="done" icon="Server" accent={1} />
+  <PhaseMilestone phase="수신" title="Browser" period="text/event-stream" status="done" icon="Globe" accent={4} />
+</PhaseTimeline>
 
 SSE 연결에는 몇 가지 안전장치를 걸어뒀습니다.
 
@@ -291,13 +291,13 @@ OCI ARM 프리티어(24GB RAM, 4 OCPU)에서 k3s를 운영합니다.
 
 ### 배포 파이프라인
 
-<Pipeline>
-  <PipelineStage label="git push" detail="main 브랜치" accent={1} />
-  <PipelineStage label="GitHub Actions" detail="15 jobs (path filter)" accent={2} />
-  <PipelineStage label="GHCR" detail="ARM aarch64 이미지" accent={3} />
-  <PipelineStage label="aether-gitops" detail="태그 갱신 commit" accent={4} />
-  <PipelineStage label="k3s + ArgoCD v3.3.2" detail="OCI ARM 자동 동기화" accent={5} />
-</Pipeline>
+<PhaseTimeline>
+  <PhaseMilestone phase="Step 1" title="git push" period="main 브랜치" status="done" icon="GitBranch" accent={1} />
+  <PhaseMilestone phase="Step 2" title="GitHub Actions" period="15 jobs (path filter)" status="done" icon="Search" accent={2} />
+  <PhaseMilestone phase="Step 3" title="GHCR" period="ARM aarch64 이미지" status="done" icon="Hammer" accent={3} />
+  <PhaseMilestone phase="Step 4" title="aether-gitops" period="태그 갱신 commit" status="done" icon="Rocket" accent={4} />
+  <PhaseMilestone phase="Step 5" title="k3s + ArgoCD v3.3.2" period="OCI ARM 자동 동기화" status="done" icon="Server" accent={5} />
+</PhaseTimeline>
 
 CI는 15개 job으로 구성되어 있습니다. path filter로 변경된 서비스만 테스트하고 빌드합니다. ARM aarch64 이미지를 빌드하고, GHCR에 `main-{git-sha}` 태그로 push합니다. `latest` 태그는 절대 사용하지 않습니다.
 
@@ -374,12 +374,12 @@ API가 연속으로 실패하면 Circuit Breaker가 OPEN 상태로 전환되고,
 
 Claude의 응답 파싱도 방어적으로 구현했습니다. LLM이 항상 완벽한 JSON을 돌려주지는 않거든요.
 
-<Pipeline>
-  <PipelineStage label="① 코드블록 제거" detail="마크다운 펜스 strip → JSON.parse" accent={1} />
-  <PipelineStage label="② 따옴표 정정" detail="숫자 뒤 환각 따옴표 제거" accent={2} />
-  <PipelineStage label="③ optimizedCode 제거" detail="문제 필드 제거 후 재파싱" accent={3} />
-  <PipelineStage label="④ JSON 추출" detail="첫 유효 객체 depth 기반 추출" accent={4} />
-</Pipeline>
+<PhaseTimeline>
+  <PhaseMilestone phase="①" title="코드블록 제거" period="마크다운 펜스 strip → JSON.parse" status="done" icon="Search" accent={1} />
+  <PhaseMilestone phase="②" title="따옴표 정정" period="숫자 뒤 환각 따옴표 제거" status="done" icon="Wrench" accent={2} />
+  <PhaseMilestone phase="③" title="optimizedCode 제거" period="문제 필드 제거 후 재파싱" status="done" icon="Hammer" accent={3} />
+  <PhaseMilestone phase="④" title="JSON 추출" period="첫 유효 객체 depth 기반 추출" status="done" icon="TestTube2" accent={4} />
+</PhaseTimeline>
 
 이 4단계 fallback 덕분에 파싱 실패율이 거의 0에 가깝습니다.
 
