@@ -19,12 +19,6 @@ const DICTIONARY = {
     olderPost: '← 지난 글',
     newerPost: '새 글 →',
     navPostLabel: '포스트 네비게이션',
-    themeSystem: '시스템 추적',
-    themeLight: '라이트 모드',
-    themeDark: '다크 모드',
-    themeTogglePrefix: '현재:',
-    themeToggleSuffix: ', 클릭하면',
-    themeToggleAction: '로 전환',
   },
   en: {
     siteTitle: 'AlgoSu Tech Blog',
@@ -35,12 +29,6 @@ const DICTIONARY = {
     olderPost: '← Older',
     newerPost: 'Newer →',
     navPostLabel: 'Post navigation',
-    themeSystem: 'System',
-    themeLight: 'Light mode',
-    themeDark: 'Dark mode',
-    themeTogglePrefix: 'Current:',
-    themeToggleSuffix: ', click for',
-    themeToggleAction: '',
   },
 } as const;
 
