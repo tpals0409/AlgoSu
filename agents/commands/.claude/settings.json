@@ -1,8 +1,0 @@
-{
-  "enabledPlugins": {
-    "security-guidance@claude-code-plugins": true,
-    "code-review@claude-code-plugins": true,
-    "commit-commands@claude-code-plugins": true,
-    "hookify@claude-code-plugins": true
-  }
-}
