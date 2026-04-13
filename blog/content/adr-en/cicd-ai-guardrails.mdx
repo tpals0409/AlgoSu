@@ -1,0 +1,325 @@
+---
+title: "Keeping AI in Check — A Safety Net Built with 15 CI/CD Jobs"
+date: "2026-04-09"
+excerpt: "How 15 CI jobs verify AI-generated code before it reaches production — from secret scanning and test matrices to build gates and GitOps locks, a complete account of the journey."
+tags: ["ci-cd", "github-actions", "gitops", "security"]
+order: 4
+---
+
+## What Happens If You Deploy AI-Written Code Directly?
+
+Once, I committed AI-generated code and hit git push. The code itself was fine. Tests passed, lint was clean. But there was one problem — I had amended the commit with `git commit --amend` and force-pushed.
+
+CI ran, but **nothing got built.** Files had clearly changed, yet CI determined there were "no changes." `dorny/paths-filter` couldn't properly detect the diff from a force-pushed commit. When the first gate of the deployment pipeline — change detection — is breached, every subsequent check doesn't even execute.
+
+After this incident, force-push (amend) was banned across the entire project. And I learned just how dangerous the mindset of "AI generates code quickly, so CI can be sloppy" really is. The faster AI generates code, the tighter the verification pipeline needs to be.
+
+> This post is part 4 of the [AlgoSu tech blog series](/en/posts/agent-orchestration-solo-dev) (6 parts).
+> Previous: [Oracle Decides, 11 Agents Execute](/en/posts/orchestration-structure) | Next: [Meet the Agents](/en/posts/meet-the-agents)
+
+## The Full CI 15-Job Map
+
+AlgoSu's CI pipeline is composed of 15 jobs. These jobs don't run independently — they have strict dependency relationships. If any single one fails, subsequent stages are blocked.
+
+<PhaseTimeline>
+  <PhaseMilestone phase="Phase 1" title="Trigger" period="push / PR → main" status="done" icon="GitBranch" accent={1} />
+  <PhaseMilestone phase="Phase 2" title="Security Gate" period="gitleaks · paths-filter · .env blocking" status="done" icon="Lock" accent={2} />
+  <PhaseMilestone phase="Phase 3" title="Quality" period="ESLint+tsc × 5 / ruff / next-lint" status="done" icon="Search" accent={3} />
+  <PhaseMilestone phase="Phase 4" title="Test" period="Jest × 5 / pytest / Vitest (coverage)" status="done" icon="TestTube2" accent={4} />
+  <PhaseMilestone phase="Phase 5" title="Audit + Build" period="npm audit × 6 → Docker ARM64 × 8" status="done" icon="Hammer" accent={5} />
+  <PhaseMilestone phase="Phase 6" title="Trivy Scan" period="CRITICAL/HIGH × 8 images → SARIF" status="done" icon="Shield" accent={6} />
+  <PhaseMilestone phase="Phase 7" title="Deploy" period="aether-gitops tag → ArgoCD sync" status="done" icon="Rocket" accent={1} />
+  <PhaseMilestone phase="Phase 8" title="Notify" period="Grafana deployment annotation" status="done" icon="Bell" accent={2} />
+</PhaseTimeline>
+
+<Callout type="info" title="DAG Dependency Rule">
+This pipeline is not a simple linear sequence — it's a **DAG**. It flows only from top to bottom, and no job can skip the stage above it. For example, `build-services` only executes when `test-node` + `audit-npm` + `secret-scan` have **all** succeeded. If any one fails, the build itself is blocked.
+</Callout>
+
+The key in this diagram is the **direction of the arrows**. Flow only goes from top to bottom, and no job can skip the job above it. `build-services` only runs when `test-node`, `audit-npm`, and `secret-scan` have **all** succeeded. If even one fails, the build itself is blocked.
+
+## Phase 1: Security Check — secret-scan
+
+The first gate of the pipeline is security. For every push and PR, a security scan runs before the code is even tested.
+
+### gitleaks — Secret Leak Detection
+
+```yaml
+- name: Run gitleaks secret scan
+  run: |
+    if [ "${{ github.event_name }}" = "pull_request" ]; then
+      gitleaks detect --source . --config .gitleaks.toml \
+        --log-opts "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}" \
+        --verbose
+    else
+      gitleaks detect --source . --config .gitleaks.toml --verbose
+    fi
+```
+
+`gitleaks` scans the entire Git history for API keys, passwords, and tokens embedded in commits. For PRs, it scans only the changed commit range; for pushes, it scans everything.
+
+One of the most common mistakes AI makes when generating code is leaving hardcoded tokens in example code. A human would think, "Oh, this is just an example — I shouldn't use a real token." But AI can miss that contextual judgment. `gitleaks` catches those mistakes.
+
+### .env File Commit Blocking
+
+```yaml
+- name: Reject committed .env files
+  run: |
+    VIOLATIONS=$(git ls-files | grep -E '(^|/)\.env($|\..*)' | grep -v '\.env\.example' || true)
+    if [ -n "$(echo "$VIOLATIONS" | tr -d ' ')" ]; then
+      echo "::error::SECURITY VIOLATION: .env files detected in Git"
+      exit 1
+    fi
+```
+
+`.env` files should be in `.gitignore`, but they can sneak in if someone accidentally runs `git add -A` or modifies `.gitignore`. This check explicitly verifies whether any `.env` file exists in the Git index. `.env.example` is allowed; everything else is blocked.
+
+Why is this needed separately from `secret-scan`? `gitleaks` inspects file content patterns, but it doesn't check for the existence of `.env` files themselves. Since having an environment variable file committed is risky regardless of whether it contains secrets, we block the file's very existence.
+
+## Phase 2: Change Detection — detect-changes
+
+AlgoSu is a monorepo. Six backend services + one frontend + one blog, all in a single repo. Building every service every time would be wasteful, so we use `dorny/paths-filter` to detect only the services that actually changed.
+
+```yaml
+filters: |
+  gateway:
+    - 'services/gateway/**'
+  identity:
+    - 'services/identity/**'
+  # ... (path definitions for each of 8 services/modules)
+```
+
+The outputs of this job (`gateway: true/false`, `identity: true/false`, etc.) are used in the `if` conditions of all subsequent jobs. Tests, linting, and builds for unchanged services are all skipped.
+
+One important point — when manually triggered via `workflow_dispatch`, we provide a `rebuild_all` option. This is a safety mechanism for situations where all services need a forced rebuild (infrastructure changes, base image updates, etc.).
+
+## Phase 3: Quality Gate — lint + typecheck
+
+Linting and type checking run for services where changes were detected. They split into three tracks.
+
+### NestJS Services (5 — matrix strategy)
+
+`quality-nestjs` runs 5 services in parallel using a matrix strategy.
+
+- **Gateway, Identity, Submission, Problem**: ESLint + TypeScript `tsc --noEmit`
+- **GitHub Worker**: ESLint (`src/**/*.ts`) + TypeScript `tsc --noEmit`
+
+The matrix is designed flexibly so each service can have different `has_eslint` and `lint_glob` options.
+
+### Python Service (ai-analysis)
+
+`quality-python` uses `ruff`. It performs both linting (`ruff check`) and format checking (`ruff format --check`). In Python projects, `ruff` is essentially `flake8` + `black` + `isort` combined into one tool, making tooling management much cleaner.
+
+### Frontend (Next.js)
+
+`quality-frontend` runs `next lint` + `tsc --noEmit`. Next.js's built-in linter includes React-specific rules, so it's sufficient without a separate ESLint configuration.
+
+## Phase 4: Test Matrix
+
+Tests only run after passing the quality gate. Dependencies like `needs: [detect-changes, quality-nestjs]` mean that if linting fails, tests don't even start.
+
+### test-node (Jest x 5)
+
+Five NestJS services are tested in parallel via matrix. All services have `--coverage --ci` flags, and coverage results are uploaded as artifacts.
+
+```yaml
+strategy:
+  fail-fast: false
+  matrix:
+    include:
+      - service: gateway
+        test_args: '--coverage --ci'
+      - service: identity
+        test_args: '--coverage --ci --passWithNoTests'
+      - service: submission
+        test_args: '--coverage --ci --forceExit'
+      # ...
+```
+
+`fail-fast: false` is important. Even if one service's tests fail, the rest continue testing. This is because seeing all failures at once makes debugging far more efficient.
+
+### test-ai-analysis (pytest)
+
+The FastAPI service is tested with `pytest`, outputting coverage in XML format via `--cov=src --cov-report=xml`.
+
+### test-frontend (Vitest)
+
+The frontend is tested with Vitest, using `--ci --coverage` flags optimized for CI environments.
+
+## Phase 5: Dependency Security Audit — audit-npm
+
+`audit-npm` runs in parallel with tests. It performs `npm audit` across 6 Node.js projects (5 backend + 1 frontend).
+
+```yaml
+- name: npm audit (high/critical)
+  run: npm audit --audit-level=critical --omit=dev
+```
+
+`--audit-level=critical` blocks only critical-level vulnerabilities. `--omit=dev` excludes development dependencies. Blocking vulnerabilities in devDependencies that never reach production would cause CI to break far too often.
+
+## Phase 6: Build Gate — This Is the Heart of It
+
+The build job's conditions reveal the philosophy of this pipeline.
+
+```yaml
+build-services:
+  needs: [detect-changes, test-node, test-ai-analysis, audit-npm, secret-scan]
+  if: |
+    !cancelled() &&
+    (needs.test-node.result == 'success' || needs.test-node.result == 'skipped') &&
+    (needs.test-ai-analysis.result == 'success' || needs.test-ai-analysis.result == 'skipped') &&
+    (needs.audit-npm.result == 'success' || needs.audit-npm.result == 'skipped') &&
+    needs.secret-scan.result == 'success'
+```
+
+Here's what these conditions mean:
+
+1. **secret-scan must succeed unconditionally.** Not even `skipped` is allowed. The secret scan can never be bypassed under any circumstances.
+2. **test and audit must be either success or skipped.** Since tests for unchanged services are skipped, `skipped` is allowed. But `failure` is never tolerated.
+3. **`!cancelled()` comes first.** GitHub Actions' default behavior is to cancel downstream jobs when upstream jobs fail. By explicitly checking the cancelled state, we prevent unintended builds.
+
+The frontend build follows the same pattern.
+
+```yaml
+build-frontend:
+  needs: [detect-changes, test-frontend, audit-npm, secret-scan]
+  if: |
+    !cancelled() &&
+    needs.detect-changes.outputs.frontend == 'true' &&
+    needs.test-frontend.result == 'success' &&
+    (needs.audit-npm.result == 'success' || needs.audit-npm.result == 'skipped') &&
+    needs.secret-scan.result == 'success'
+```
+
+For the frontend, tests must be `success` — not even `skipped` is allowed. If changes were detected but tests were skipped, that's an abnormal situation.
+
+### ARM64 Cross Build
+
+Docker images are built for the `linux/arm64` platform because the deployment server is an OCI ARM instance (VM.Standard.A1.Flex). GitHub Actions runs on x86 runners, but QEMU + buildx cross-compiles ARM64 images.
+
+Image tags follow the `main-{git-sha}` format. **The `latest` tag is never used.** We must always be able to trace which commit's image was deployed.
+
+## Phase 7: Image Vulnerability Scan — Trivy
+
+Built images are not deployed immediately. `trivy-scan` scans all 8 images (6 backend + frontend + blog).
+
+```yaml
+trivy image \
+  --platform linux/arm64 \
+  --severity CRITICAL,HIGH \
+  --exit-code 1 \
+  --ignore-unfixed \
+  --format table \
+  "${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:main-${{ github.sha }}"
+```
+
+If CRITICAL or HIGH vulnerabilities are found, it returns exit code 1 and blocks the pipeline. `--ignore-unfixed` excludes vulnerabilities that don't yet have a patch. Results are also generated in SARIF format and uploaded to the GitHub Security tab.
+
+## Phase 8: GitOps Lock — aether-gitops
+
+Only images that pass all scans get deployed. But in AlgoSu, "deployment" doesn't mean pushing images directly to a server.
+
+```yaml
+deploy:
+  needs:
+    - secret-scan
+    - detect-changes
+    - trivy-scan
+    - build-services
+    - build-frontend
+    - build-blog
+  if: |
+    github.ref == 'refs/heads/main' && !cancelled() &&
+    needs.secret-scan.result == 'success' &&
+    needs.trivy-scan.result != 'failure' &&
+    (needs.build-services.result == 'success' ||
+     needs.build-frontend.result == 'success' ||
+     needs.build-blog.result == 'success')
+```
+
+The `deploy` job does exactly one thing — **update the image tag in the aether-gitops repo's kustomization.yaml**. Then ArgoCD detects the change and automatically syncs it to the k3s cluster.
+
+```bash
+# aether-gitops/algosu/overlays/prod/kustomization.yaml
+for SVC in $UPDATED; do
+  python3 -c "
+import yaml
+with open('kustomization.yaml', 'r') as f:
+    data = yaml.safe_load(f)
+for img in data.get('images', []):
+    if 'algosu-${SVC}' in img.get('name', ''):
+        img['newTag'] = 'main-${SHA}'
+with open('kustomization.yaml', 'w') as f:
+    yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+"
+done
+```
+
+The advantage of this architecture is that **the source code repo and the deployment repo are separated**. No matter how many mistakes are made in the source repo, production deployments are unaffected unless the aether-gitops repo is directly modified.
+
+### Sequential Rollout on the Deployment Server
+
+When ArgoCD syncs the manifests, `deploy.sh` performs a layer-by-layer sequential deployment on the k3s cluster.
+
+<PhaseTimeline>
+  <PhaseMilestone phase="L0" title="Infrastructure" period="PostgreSQL · Redis · RabbitMQ" status="done" icon="Database" accent={1} />
+  <PhaseMilestone phase="L1" title="Identity" period="Authentication (dependency for other services)" status="done" icon="Shield" accent={2} />
+  <PhaseMilestone phase="L2" title="Business" period="Problem + Submission" status="done" icon="Workflow" accent={3} />
+  <PhaseMilestone phase="L3" title="Async" period="GitHub Worker + AI Analysis" status="done" icon="Send" accent={4} />
+  <PhaseMilestone phase="L4" title="Gateway" period="Routing + external entry" status="done" icon="Server" accent={5} />
+  <PhaseMilestone phase="L5" title="Frontend" period="Frontend + Ingress" status="done" icon="Globe" accent={6} />
+</PhaseTimeline>
+
+Each layer only starts after the previous layer's rollout is complete. If a service fails, automatic rollback (`kubectl rollout undo`) is triggered. Infrastructure (Layer 0) cannot be rolled back, so a warning requiring manual intervention is printed on failure.
+
+## Lessons: Real Incidents We Experienced
+
+### 1. The Amend + Force-Push Trap
+
+As mentioned earlier, `git commit --amend` followed by force-push causes `dorny/paths-filter` to miss changes. The reason is that paths-filter compares the diff between the previous and current commit, but an amended commit changes the previous commit's SHA.
+
+**Resolution**: Force-push was banned across the entire project. If a fix is needed, make a new commit. While some may dislike a "messy commit history," a safe CI pipeline is more important than a clean history.
+
+### 2. The Risk of Manual Tag Changes in aether-gitops
+
+Once, I needed a quick deployment and manually edited kustomization.yaml in aether-gitops. I changed the image tag directly, but the image corresponding to that tag didn't exist in GHCR. ArgoCD synced the manifest, but k3s couldn't pull the image, and the Pod fell into `ImagePullBackOff` state.
+
+**Resolution**: When manually modifying aether-gitops, always verify that the corresponding image exists in GHCR first.
+
+### 3. Verifying That Environment Variables Were Actually Injected
+
+I changed manifests and deployed, but the service behaved strangely. Turns out I had added new environment variables to the source repo's k8s manifests but hadn't reflected them in aether-gitops. Since ArgoCD syncs the aether-gitops manifests, changing only the source repo is useless.
+
+**Resolution**: After deployment, always verify that environment variables were actually injected using `kubectl exec -- printenv`. And when changing source repo manifests, always update aether-gitops as well.
+
+### 4. Principle of Least Privilege
+
+At the top of the CI pipeline, there's this setting:
+
+```yaml
+permissions: {}
+```
+
+Default permissions are set to **zero**, and each job explicitly declares only the permissions it needs. `secret-scan` gets only `contents: read`; `build-services` gets only `contents: read` and `packages: write`. This way, even if a specific job is compromised, the blast radius is limited.
+
+## Balancing AI and CI
+
+In the AlgoSu project, AI generates the bulk of the code. Twelve agents divide the work by role, and Oracle coordinates the whole operation. But no matter how sophisticated the agent system is, final verification is performed not by humans but by an **automated pipeline**.
+
+The 15 CI jobs ask these questions about AI-generated code:
+
+1. **Were any secrets leaked?** (secret-scan)
+2. **Does code quality meet the standard?** (quality-nestjs, quality-python, quality-frontend)
+3. **Do tests pass?** (test-node, test-ai-analysis, test-frontend)
+4. **Are there dependency vulnerabilities?** (audit-npm)
+5. **Are there vulnerabilities in the built images?** (trivy-scan)
+6. **Is the deployment path secure?** (deploy → aether-gitops → ArgoCD)
+
+Code reaches production only when all these questions are answered with "yes."
+
+In an era where AI rapidly generates code, I believe the developer's role is shifting from writing code to **designing systems that verify code**. The faster you build, the more thorough the verification must be. And since human review alone has its limits, automated pipelines are essential.
+
+Fifteen jobs may sound like a lot, but if even one of them had been missing, there would have been a production incident. Safety nets work better when they're dense — the tighter the mesh, the fewer things slip through.
+
+> In the next post, we introduce AlgoSu's 12 agents one by one.
+> [Meet the Agents](/en/posts/meet-the-agents)

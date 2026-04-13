@@ -1,0 +1,400 @@
+---
+title: "How 6 Services Process a Single Submission — AlgoSu Architecture"
+date: "2026-04-09"
+excerpt: "Press the submit button and 6 microservices start a relay. 3 databases, 4 communication patterns, k3s deployment on OCI ARM free tier — a practical design record of solo-dev MSA."
+tags: ["architecture", "msa", "kubernetes", "nestjs"]
+order: 2
+---
+
+## What If Pressing One Button Moves 6 Services?
+
+A user writes their code and hits the "Submit" button. A loading spinner briefly appears on screen, and shortly after, AI analysis results show up. From the user's perspective, that's all there is to it.
+
+But behind the scenes, Gateway validates the JWT, Submission Service saves to the DB, GitHub Worker pushes the code via RabbitMQ, AI Analysis calls the Claude API, and real-time status is delivered via Redis Pub/Sub to SSE. Six services run a relay to complete a single submission.
+
+I designed and operate this architecture entirely on my own. In this post, I'll draw a bird's-eye view of AlgoSu's full architecture and document each service's role, how they communicate, and how they're deployed.
+
+> This post is part 2 of the [AlgoSu tech blog series](/en/posts/agent-orchestration-solo-dev) (6 parts).
+
+## Service Map — The Bird's-Eye View
+
+Let's start with the full picture.
+
+<ArchitectureMap title="k3s on OCI ARM (24GB · 4 OCPU)" subtitle="Cloudflare Tunnel → 7 services">
+  <ArchLayer label="Browser Entry Point" tone="edge">
+    <ArchService
+      name="Frontend"
+      tech="Next.js 15 · App Router"
+      port="3001"
+      icon="Globe"
+      accent={1}
+      note="Tailwind, shadcn/ui, SSE subscription"
+    />
+  </ArchLayer>
+  <ArchLayer label="API Gateway (The only external entry point)" tone="gateway">
+    <ArchService
+      name="Gateway"
+      tech="NestJS"
+      port="3000"
+      icon="Shield"
+      accent={2}
+      note="OAuth + JWT, X-Internal-Key issuance, Rate Limit, SSE"
+    />
+  </ArchLayer>
+  <ArchLayer label="Backend Services (Database per Service)" tone="backend">
+    <ArchService
+      name="Identity"
+      tech="NestJS · identity_db"
+      port="3004"
+      icon="Users"
+      accent={3}
+      note="Users/studies/notifications/share links"
+    />
+    <ArchService
+      name="Submission"
+      tech="NestJS · submission_db"
+      port="3003"
+      icon="Workflow"
+      accent={4}
+      note="Saga Orchestrator · Code reviews"
+    />
+    <ArchService
+      name="Problem"
+      tech="NestJS · problem_db"
+      port="3002"
+      icon="Database"
+      accent={5}
+      note="Problem CRUD · Deadline management"
+    />
+  </ArchLayer>
+  <ArchLayer label="Async Workers (RabbitMQ queue consumers)" tone="worker">
+    <ArchService
+      name="GitHub Worker"
+      tech="Node.js · prefetch=2"
+      port="9100"
+      icon="GitBranch"
+      accent={6}
+      note="submission.github_push queue → GitHub Push"
+    />
+    <ArchService
+      name="AI Analysis"
+      tech="FastAPI · Circuit Breaker"
+      port="8000"
+      icon="Sparkles"
+      accent={1}
+      note="submission.ai_analysis queue → Claude API"
+    />
+  </ArchLayer>
+  <ArchLayer label="External Dependencies" tone="external">
+    <ArchService
+      name="Claude API"
+      tech="claude-haiku-4-5-20251001"
+      icon="Cloud"
+      accent={2}
+      note="MAX_TOKENS=8192, JSON 4-step fallback parsing"
+    />
+  </ArchLayer>
+</ArchitectureMap>
+
+## Each Service's Role
+
+Let's break them down one by one.
+
+<ServiceGrid cols={3}>
+  <ServiceCard name="Gateway" tech="NestJS" port="3000" accent={1}
+    role="API routing, OAuth auth, JWT issuance/validation, SSE, Rate Limit" />
+  <ServiceCard name="Identity" tech="NestJS" port="3004" accent={2}
+    role="User/study/notification/share link management, Discord feedback webhook" />
+  <ServiceCard name="Submission" tech="NestJS" port="3003" accent={3}
+    role="Code submission CRUD, Saga Orchestrator, code reviews/study notes" />
+  <ServiceCard name="Problem" tech="NestJS" port="3002" accent={4}
+    role="Problem CRUD, deadline management" />
+  <ServiceCard name="GitHub Worker" tech="Node.js" port="9100" accent={5}
+    role="RabbitMQ consumer, GitHub Push, prefetch=2 · metrics" />
+  <ServiceCard name="AI Analysis" tech="FastAPI" port="8000" accent={6}
+    role="Claude API calls, Circuit Breaker, code analysis/group analysis" />
+  <ServiceCard name="Frontend" tech="Next.js 15" port="3001" accent={1}
+    role="App Router, Tailwind, shadcn/ui" />
+</ServiceGrid>
+
+Gateway is the sole external entry point; all other services communicate only within the cluster. Swagger UI is disabled in production for all services except Gateway.
+
+## A Single Submission's Journey — Saga Orchestrator
+
+When a user submits code, the Submission Service's Saga Orchestrator governs the entire flow. Here are the state transitions as defined in the actual code:
+
+<Mermaid
+  caption="Saga State Transitions — Including failure branches"
+  chart={`
+flowchart LR
+    A[DB_SAVED]:::ok --> B[GITHUB_QUEUED]:::ok
+    B --> C[AI_QUEUED]:::ok
+    C --> D([DONE]):::done
+    B -. GitHub failure .-> C
+    C -. AI failure .-> E([DONE<br/>aiDelayed]):::warn
+    B -. TOKEN_INVALID .-> F([DONE<br/>aiSkipped]):::warn
+
+    classDef ok fill:#eef2ff,stroke:#6366f1,color:#312e81
+    classDef done fill:#ecfdf5,stroke:#10b981,color:#065f46
+    classDef warn fill:#fffbeb,stroke:#f59e0b,color:#92400e
+`}
+/>
+
+Three core design principles are at work:
+
+**1. Idempotency Order: DB First, MQ Second**
+
+When a service restarts, DB records persist but MQ messages are lost. So we always update DB state first, then publish the RabbitMQ message. Reversing the order would risk duplicate publication.
+
+**2. Optimistic Locking Prevents Backward Progression**
+
+Every state transition includes a `WHERE sagaStep = currentStep` condition. If the submission has already moved to the next step, `affected === 0` prevents duplicate processing.
+
+**3. Timeouts + Automatic Resumption**
+
+<MetricGrid cols={3}>
+  <MetricCard label="DB_SAVED" value="5 min" hint="Step timeout" accent={1} />
+  <MetricCard label="GITHUB_QUEUED" value="15 min" hint="Step timeout" accent={2} />
+  <MetricCard label="AI_QUEUED" value="30 min" hint="Step timeout" accent={3} />
+  <MetricCard label="Check interval" value="2 min" hint="Scheduler interval" accent={4} />
+  <MetricCard label="Max retries" value="3" hint="Exceeding → FAILED" accent={5} />
+</MetricGrid>
+
+When the service restarts, `onModuleInit` finds incomplete Sagas within the last hour and automatically resumes them. Even lost messages get recovered.
+
+## Database per Service — 3 Separate Databases
+
+We followed the textbook microservice principle: each service gets its own database.
+
+<ServiceGrid cols={2}>
+  <ServiceCard name="PostgreSQL #1 (Shared)" tech="identity_db + submission_db" accent={1}
+    role="users, studies, notifications, shares / submissions, code_reviews, study notes" />
+  <ServiceCard name="PostgreSQL #2 (Separate)" tech="problem_db" accent={4}
+    role="problems, deadlines — physically separate instance" />
+</ServiceGrid>
+
+`identity_db` and `submission_db` are logically separated within the same PostgreSQL instance, while `problem_db` is physically separated on an entirely different PostgreSQL instance (`postgres-problem`). Running three instances on OCI ARM free tier's limited resources was impractical, so we compromised with two.
+
+All PostgreSQL instances have `statement_timeout 200ms` configured to block slow queries. This prevents a single runaway query from paralyzing the entire service.
+
+## 4 Communication Patterns
+
+Inter-service communication uses 4 patterns depending on the use case.
+
+### 1. Synchronous HTTP + X-Internal-Key
+
+Calls from Gateway to Identity, Submission, and Problem services use HTTP. For security, all internal calls include the `X-Internal-Key` header.
+
+```typescript
+// services/gateway/src/common/guards/internal-key.guard.ts
+
+@Injectable()
+export class InternalKeyGuard implements CanActivate {
+  canActivate(context: ExecutionContext): boolean {
+    const request = context.switchToHttp().getRequest<Request>();
+    const providedKey = request.headers['x-internal-key'];
+    const expectedKey = this.configService.getOrThrow<string>('INTERNAL_API_KEY');
+
+    if (!providedKey || typeof providedKey !== 'string') {
+      throw new UnauthorizedException('Internal API Key is required.');
+    }
+
+    if (!this.timingSafeEqual(providedKey, expectedKey)) {
+      throw new UnauthorizedException('Invalid Internal API Key.');
+    }
+
+    return true;
+  }
+
+  private timingSafeEqual(a: string, b: string): boolean {
+    const bufA = Buffer.from(a);
+    const bufB = Buffer.from(b);
+    if (bufA.length !== bufB.length) return false;
+    return timingSafeEqual(bufA, bufB);
+  }
+}
+```
+
+`crypto.timingSafeEqual` prevents timing attacks. Keys are managed as k8s Secrets with separate keys per service. Hardcoding is strictly prohibited.
+
+### 2. RabbitMQ Async Messaging
+
+GitHub Push and AI analysis after submission are long-running operations. Since we can't make users wait, they're processed asynchronously via RabbitMQ.
+
+<PhaseTimeline>
+  <PhaseMilestone phase="Publish" title="Submission" period="publish 2 queues" status="done" icon="Send" accent={3} />
+  <PhaseMilestone phase="Queue 1" title="submission.github_push" period="GitHub Worker · prefetch=2" status="done" icon="GitBranch" accent={5} />
+  <PhaseMilestone phase="Queue 2" title="submission.ai_analysis" period="AI Analysis Worker" status="done" icon="Sparkles" accent={6} />
+</PhaseTimeline>
+
+GitHub Worker's `prefetch=2` is intentional — a concurrency limit considering GitHub API's Rate Limit and OCI Free Tier's constrained resources. On failure, messages go through Retry then to the DLQ (Dead Letter Queue).
+
+### 3. Redis Pub/Sub — Real-time Status Propagation
+
+Every time a submission's status changes, a message is published via Redis Pub/Sub. The channel format is `submission:status:{submissionId}`.
+
+### 4. SSE (Server-Sent Events) — Browser Real-time Streaming
+
+Gateway's SSE Controller subscribes to Redis Pub/Sub and delivers status to the browser as `text/event-stream`.
+
+<PhaseTimeline>
+  <PhaseMilestone phase="Origin" title="Submission" period="status change" status="done" icon="Workflow" accent={3} />
+  <PhaseMilestone phase="Propagation" title="Redis Pub/Sub" period="submission:status:{id}" status="done" icon="Network" accent={2} />
+  <PhaseMilestone phase="Subscribe" title="Gateway SSE" period="shared subscriber" status="done" icon="Server" accent={1} />
+  <PhaseMilestone phase="Receive" title="Browser" period="text/event-stream" status="done" icon="Globe" accent={4} />
+</PhaseTimeline>
+
+Several safeguards are in place for SSE connections:
+
+- **5-minute max connection time** — prevents infinite connections; client reconnects on timeout
+- **Shared Redis subscriber** — creating a Redis instance per connection would exhaust the connection pool, so a single subscriber manages channel listeners
+- **30-second heartbeat** — periodically sends `: heartbeat\n\n` to prevent proxies from killing idle connections
+- **Ownership verification** — only the submission's owner can subscribe to its status (IDOR defense)
+
+## OAuth + JWT + httpOnly Cookie Authentication
+
+Here's the authentication flow at a glance:
+
+<Mermaid
+  caption="OAuth + JWT + httpOnly Cookie auth sequence"
+  chart={`
+sequenceDiagram
+    autonumber
+    participant B as Browser
+    participant G as Gateway :3000
+    participant O as OAuth Provider<br/>(Google/Naver/Kakao)
+    participant I as Identity :3004
+
+    B->>G: Login click
+    G->>O: redirect (authorize)
+    O-->>G: code
+    G->>O: code → token exchange
+    O-->>G: access_token
+    G->>I: User lookup/creation
+    I-->>G: user info
+    G->>G: JWT issuance (HS256, 1h)
+    G-->>B: Set-Cookie (httpOnly, Secure, SameSite)
+`}
+/>
+
+A few design decisions worth sharing:
+
+**Why httpOnly Cookie**: Storing JWT in localStorage is vulnerable to XSS attacks. httpOnly Cookies are inaccessible via JavaScript, significantly reducing the risk of token theft.
+
+**Auto-renewal**: TokenRefreshInterceptor checks JWT remaining time on every request. If within 5 minutes (300 seconds) of expiry, it issues a new token and includes it in the response cookie. The user's session is seamlessly extended without a separate refresh request.
+
+**Algorithm pinning**: Only `HS256` is allowed. The `algorithms: ['HS256']` option is explicitly set to prevent algorithm confusion attacks.
+
+## k3s + ArgoCD + GitOps Deployment
+
+We run k3s on OCI ARM free tier (24GB RAM, 4 OCPU).
+
+### Deployment Pipeline
+
+<PhaseTimeline>
+  <PhaseMilestone phase="Step 1" title="git push" period="main branch" status="done" icon="GitBranch" accent={1} />
+  <PhaseMilestone phase="Step 2" title="GitHub Actions" period="15 jobs (path filter)" status="done" icon="Search" accent={2} />
+  <PhaseMilestone phase="Step 3" title="GHCR" period="ARM aarch64 images" status="done" icon="Hammer" accent={3} />
+  <PhaseMilestone phase="Step 4" title="aether-gitops" period="Tag update commit" status="done" icon="Rocket" accent={4} />
+  <PhaseMilestone phase="Step 5" title="k3s + ArgoCD v3.3.2" period="OCI ARM auto-sync" status="done" icon="Server" accent={5} />
+</PhaseTimeline>
+
+CI consists of 15 jobs. Path filters ensure only changed services are tested and built. ARM aarch64 images are built and pushed to GHCR with `main-{git-sha}` tags. The `latest` tag is never used.
+
+The first CI job is always `secret-scan`. It detects secret leaks with gitleaks and blocks `.env` file commits. Only after the security scan passes can the build proceed.
+
+### Zero-Downtime Deployment Strategy
+
+All services use the same RollingUpdate strategy:
+
+```yaml
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 0   # Keep existing Pods
+    maxSurge: 1          # Add 1 new Pod, then switch
+```
+
+With `maxUnavailable: 0`, at least one Pod is always handling requests during deployment. The existing Pod terminates only after the new Pod passes its readinessProbe.
+
+Identity, Submission, and Problem services run DB migrations via initContainer before starting the app:
+
+```yaml
+initContainers:
+  - name: db-migrate
+    command: ["node", "./node_modules/typeorm/cli.js",
+              "migration:run", "-d", "dist/src/database/data-source.js"]
+```
+
+## Resource Allocation — The Reality of Free Tier
+
+Running on OCI ARM free tier means resource allocation matters. Here's each service's memory configuration:
+
+| Service | Request | Limit | Notes |
+|---------|:-------:|:-----:|-------|
+| Gateway | 256Mi | 400Mi | CORS, JWT, SSE, proxy |
+| Identity | 256Mi | 400Mi | Separate DB migration initContainer |
+| Submission | 256Mi | 400Mi | Saga Orchestrator resident |
+| Problem | 256Mi | 400Mi | Problem CRUD |
+| GitHub Worker | 128Mi | 256Mi | Lightweight RabbitMQ consumer |
+| AI Analysis | 512Mi | **2Gi** | Memory needed for Claude API response parsing |
+| Frontend | 128Mi | 256Mi | Next.js standalone |
+| Redis | 64Mi | 256Mi | maxmemory 200MB, LRU policy |
+| RabbitMQ | 128Mi | 512Mi | Prometheus plugin enabled |
+| PostgreSQL x2 | 128Mi x2 | 512Mi x2 | statement_timeout 200ms |
+
+AI Analysis is the only one with a 2Gi limit. Parsing Claude API responses (up to 8,192 tokens) and structuring them as JSON consumes significant memory.
+
+Total memory: approximately 2.2Gi by request, approximately 5.9Gi by limit. Subtracting OS and k3s overhead from 24GB leaves comfortable margin.
+
+## Security Layers — Preventing Default-Configuration Mistakes
+
+A common security configuration is applied to all containers:
+
+```yaml
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+```
+
+No running as root, privilege escalation is blocked, and the filesystem is mounted read-only. Only necessary write paths (`/tmp`, `/var/log`) are mounted as emptyDir.
+
+At the network level, we start with a default-deny policy and only allow required inter-service communication via NetworkPolicy.
+
+## AI Analysis — Circuit Breaker and Safe Parsing
+
+The AI Analysis service calls the Claude API (`claude-haiku-4-5-20251001`, `MAX_TOKENS=8192`). Given the external API dependency, we applied the Circuit Breaker pattern.
+
+When the API fails consecutively, the Circuit Breaker transitions to OPEN state and blocks API calls for a period. During this time, incoming requests trigger a `CircuitBreakerOpenError` and are NACK+requeued in RabbitMQ.
+
+Claude's response parsing is also implemented defensively. LLMs don't always return perfect JSON.
+
+<PhaseTimeline>
+  <PhaseMilestone phase="1" title="Strip code block" period="Remove markdown fences → JSON.parse" status="done" icon="Search" accent={1} />
+  <PhaseMilestone phase="2" title="Fix quotes" period="Remove hallucinated quotes after numbers" status="done" icon="Wrench" accent={2} />
+  <PhaseMilestone phase="3" title="Remove optimizedCode" period="Drop problematic field, re-parse" status="done" icon="Hammer" accent={3} />
+  <PhaseMilestone phase="4" title="Extract JSON" period="Depth-based extraction of first valid object" status="done" icon="TestTube2" accent={4} />
+</PhaseTimeline>
+
+Thanks to this 4-step fallback, the parse failure rate is virtually zero.
+
+## Closing — A Practical MSA for a Small Team
+
+"You're a solo developer — do you really need MSA?" is a question I get occasionally. Honestly, I didn't start with 6 services from day one. They were naturally separated as features grew.
+
+Looking back, there are a few practical lessons:
+
+**Separating DBs early was the right call.** Separating them later leads to migration hell. Following the Database per Service principle from the start keeps inter-service coupling loose.
+
+**Async processing is essential.** If GitHub Push and AI analysis were synchronous, users would wait over 30 seconds. With RabbitMQ + Saga pattern, we respond immediately on submission and deliver progress via SSE in real time.
+
+**Design within free tier constraints.** OCI ARM free tier is generous but not unlimited. GitHub Worker's prefetch=2, AI Analysis's daily limit check, Redis's maxmemory 200MB — all resource-conscious decisions.
+
+In the next post, we'll dig into who builds and maintains these 6 services — the orchestration structure of Oracle and the 11 agents.
+
+> Next post: [Oracle Decides, 11 Agents Execute — The Orchestration Structure](/en/posts/orchestration-structure)
