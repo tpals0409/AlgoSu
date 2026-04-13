@@ -1,0 +1,39 @@
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "Read(*)",
+      "Write(*)",
+      "Edit(*)",
+      "Glob(*)",
+      "Grep(*)"
+    ]
+  },
+  "language": "korean",
+  "spinnerTipsEnabled": true,
+  "spinnerVerbs": {
+    "mode": "append",
+    "verbs": [
+      "생각 중",
+      "작성 중",
+      "분석 중"
+    ]
+  },
+  "prefersReducedMotion": false,
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "filepath=\"$CLAUDE_PROJECT_DIR/$TOOL_INPUT_FILE_PATH\"; if echo \"$filepath\" | grep -qE '\\.(ts|tsx|js|jsx)$' && [ -f \"$filepath\" ]; then cd \"$CLAUDE_PROJECT_DIR\" && npx eslint --fix \"$filepath\" 2>/dev/null; fi; exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}

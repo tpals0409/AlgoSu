@@ -86,7 +86,5 @@ temp/
 *.tmp
 *.bak
 
-# ── Claude Code (로컬 전용, GitHub 제외) ───────────────────
-CLAUDE.md
-.claude/
-agents/
+# ── Claude Code (로컬 개인 설정만 제외) ───────────────────
+.claude/settings.local.json
