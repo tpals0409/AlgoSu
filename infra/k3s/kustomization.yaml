@@ -40,6 +40,9 @@ resources:
   - metrics-network-policy.yaml
   - service-network-policies.yaml
 
+  # 메트릭 수집
+  - kube-state-metrics.yaml
+
   # 모니터링
   - monitoring/alertmanager.yaml
   - monitoring/prometheus-config.yaml

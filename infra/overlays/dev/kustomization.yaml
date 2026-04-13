@@ -58,3 +58,79 @@ patches:
         value:
           name: GF_AUTH_ANONYMOUS_ORG_ROLE
           value: "Viewer"
+
+  # Dev: k3d local-path provisioner는 fsGroup/runAsNonRoot를 제대로 지원하지 않음
+  # Stateful 서비스의 pod securityContext를 제거하여 이미지 기본 uid로 실행
+  - target:
+      kind: Deployment
+      name: postgres
+    patch: |
+      - op: remove
+        path: /spec/template/spec/securityContext
+  - target:
+      kind: Deployment
+      name: postgres-problem
+    patch: |
+      - op: remove
+        path: /spec/template/spec/securityContext
+  - target:
+      kind: Deployment
+      name: minio
+    patch: |
+      - op: remove
+        path: /spec/template/spec/securityContext
+  - target:
+      kind: Deployment
+      name: rabbitmq
+    patch: |
+      - op: remove
+        path: /spec/template/spec/securityContext
+
+  # Dev: 현재 :dev 이미지의 /health/ready 엔드포인트가 미구현(404) 또는 인증 차단(401)
+  # readinessProbe를 /health로 대체하여 파드 Ready 전환 보장
+  - target:
+      kind: Deployment
+      name: gateway
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/readinessProbe/httpGet/path
+        value: /health
+  - target:
+      kind: Deployment
+      name: identity-service
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/readinessProbe/httpGet/path
+        value: /health
+  - target:
+      kind: Deployment
+      name: submission-service
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/readinessProbe/httpGet/path
+        value: /health
+  - target:
+      kind: Deployment
+      name: problem-service
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/readinessProbe/httpGet/path
+        value: /health
+  - target:
+      kind: Deployment
+      name: ai-analysis-service
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/readinessProbe/httpGet/path
+        value: /health
+
+  # Dev: Blog 서비스 비활성화 (이미지 미빌드 + pull secret 부재)
+  - target:
+      kind: Deployment
+      name: blog
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 0
+      - op: remove
+        path: /spec/template/spec/imagePullSecrets
