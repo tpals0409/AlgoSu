@@ -1,0 +1,507 @@
+---
+title: "12 Agents, Each with Their Own Expertise — The AlgoSu Agent Field Guide"
+date: "2026-04-09"
+excerpt: "From Oracle to Scout, meet the 12 AI teammates who built AlgoSu together. Their roles, responsibilities, restrictions, and real collaboration stories."
+tags: ["agent", "team", "orchestration", "claude-code"]
+order: 5
+---
+
+## Meet the 12 Teammates (They're All AI, by the Way)
+
+In the previous post, I described AlgoSu's orchestration structure — the 3-Tier system where Oracle decides and 11 agents execute. But I often get asked, "Why do you need 12?"
+
+The answer is simple. **When responsibilities are lumped together, mistakes are lumped together.**
+
+What happens when you tell a single AI to "write the backend, write the frontend, handle DB migrations, and manage CI"? It works great at first. But as the project grows and context accumulates, rules from different domains start to collide — and the AI quietly ignores them. No error messages. Nothing.
+
+On the other hand, splitting too finely causes coordination costs to explode. With 20 agents, figuring out who should ask whom becomes a problem in itself.
+
+Twelve is the equilibrium I found after 67 sprints. In this post, I'll introduce each of these 12 teammates one by one.
+
+> This post is part 5 of the [AlgoSu tech blog series](/en/posts/agent-orchestration-solo-dev) (6 parts).
+> Previous: [A Safety Net Built with 15 CI/CD Jobs](/en/posts/cicd-ai-guardrails) | Next: [67 Sprints — The Journey](/en/posts/sprint-journey)
+
+## The Full 3-Tier Structure
+
+The 12 agents are divided into three tiers. The higher the tier, the greater the impact on the entire system if that agent fails — and accordingly, a more powerful model (claude-opus-4-6) is assigned.
+
+<TierMatrix>
+  <TierMatrixRow tier={1} label="Mission Critical" description="claude-opus-4-6 · Direct PM communication" accent={4}>
+    <TierMatrixCell name="Oracle" role="Arbiter" icon="Crown" hint="Planning decisions, agent coordination" />
+    <TierMatrixCell name="Conductor" role="Orchestrator" icon="Workflow" hint="Saga orchestration" />
+    <TierMatrixCell name="Gatekeeper" role="Guardian" icon="Shield" hint="Auth, JWT, OAuth, security" />
+    <TierMatrixCell name="Librarian" role="Records Keeper" icon="Database" hint="DB schema, migrations" />
+  </TierMatrixRow>
+  <TierMatrixRow tier={2} label="Core" description="claude-sonnet-4-6 · Core implementation" accent={1}>
+    <TierMatrixCell name="Architect" role="Infrastructure Designer" icon="Server" hint="k8s, CI/CD, monitoring" />
+    <TierMatrixCell name="Postman" role="Delivery Agent" icon="Send" hint="GitHub integration, MQ consumer" />
+    <TierMatrixCell name="Curator" role="Problem Setter" icon="ScrollText" hint="Problem management, deadlines, stats" />
+    <TierMatrixCell name="Scribe" role="Chronicler" icon="PenLine" hint="Docs, memory, prompts" />
+  </TierMatrixRow>
+  <TierMatrixRow tier={3} label="Enhancement" description="claude-sonnet-4-6 · Value enhancement" accent={3}>
+    <TierMatrixCell name="Sensei" role="Analyst" icon="GraduationCap" hint="AI analysis, Claude API" />
+    <TierMatrixCell name="Herald" role="Messenger" icon="Megaphone" hint="Frontend, SSE, UX" />
+    <TierMatrixCell name="Palette" role="Designer" icon="Palette" hint="Design system, accessibility" />
+    <TierMatrixCell name="Scout" role="Recon" icon="Telescope" hint="User-perspective testing" />
+  </TierMatrixRow>
+</TierMatrix>
+
+The format for introducing each agent is standardized: **one-line role**, **key responsibilities**, **tools/rules**, **restrictions**, and a **real-world team analogy**.
+
+---
+
+## Tier 1 — Mission Critical
+
+If these four agents go down, the entire project stops. All use the `claude-opus-4-6` model, occupying positions that demand the highest level of judgment.
+
+---
+
+### Oracle (Arbiter)
+
+> The final decision-maker for planning. Receives escalations from all agents and makes decisions based on ADRs.
+
+**Key Responsibilities**
+
+- Orchestration and task assignment for 11 agents
+- Technical decision record (ADR) management
+- Mediating conflicts between agents
+- Final decision on adopting technologies not specified in the architecture
+- Approval for changes to inter-service interface contracts (API specs, MQ message formats)
+
+**Tools/Rules**
+
+- Definition file: `.claude/commands/algosu-oracle.md`
+- Agent references: `agents/commands/{name}.md` (all)
+- Shared rules: `agents/_shared/persona-base.md`
+
+**Restrictions**
+
+- Writing code directly or dictating implementation approaches
+- Making decisions that undermine core principles (Database per Service, Saga Orchestration)
+- Taking sides with any particular agent
+
+**Real Team Analogy**: CTO and project manager in one. Doesn't write code directly, but is the ultimate authority on all technical decisions. Also the only agent that communicates directly with the PM (me).
+
+**Decision Priority**: `Service Stability > Development Velocity > Feature Completeness`
+
+---
+
+### Conductor (Orchestrator)
+
+> Directs the entire lifecycle of code submissions and is responsible for the flow and compensation handling of distributed transactions.
+
+**Key Responsibilities**
+
+- Code submission CRUD API (submission_db is the Single Source of Truth)
+- Saga Orchestrator: `DB_SAVED → GITHUB_QUEUED → AI_QUEUED → DONE` state transitions
+- Idempotency handling: DB update → RabbitMQ publish order is fixed (reverse order strictly prohibited)
+- 4-step pre-submission validation: membership check → GitHub connection check → deadline → duplicate submission
+- SKIPPED branch: Studies without GitHub connection → proceed directly to AI analysis
+- Draft API (one draft UPSERT per study + problem)
+
+**Tools/Rules**
+
+- Definition file: `agents/commands/conductor.md`
+- Reference tools: `annotate.md`, `monitor.md`, `cicd.md`, `migrate.md`
+- Tech stack: NestJS, PostgreSQL (submission_db), TypeORM, RabbitMQ, Redis
+
+**Restrictions**
+
+- Reversing the idempotency rule (DB first → MQ second)
+- Generating a separate traceId (must reuse submissionId)
+- Independently changing Saga compensation transaction logic (must escalate to Oracle)
+
+**Real Team Analogy**: An orchestra conductor. While a single piece called "submission" is being performed, the conductor ensures each instrument (service) comes in at the right time. If someone plays a wrong note (Saga failure), the conductor calls for a "rewind" — the compensation transaction.
+
+---
+
+### Gatekeeper (Guardian)
+
+> Every external request must pass through you. Unauthorized requests cannot reach internal services.
+
+**Key Responsibilities**
+
+- Custom Auth: Direct Google/Naver/Kakao OAuth integration + self-issued JWT
+- httpOnly Cookie JWT → X-User-ID header conversion middleware
+- Internal API: `InternalKeyGuard` with SHA-256 hash + timingSafeEqual verification
+- GitHub 2-step linking (connect/disconnect/reconnect APIs)
+- Study CRUD + invite code issuance (UUID, 5-minute validity)
+- Notification system (SSE endpoint integration)
+
+**Tools/Rules**
+
+- Definition file: `agents/commands/gatekeeper.md`
+- Reference tools: `annotate.md`, `monitor.md`, `cicd.md`
+- Tech stack: NestJS, Redis, JWT, OAuth 2.0
+
+**Restrictions**
+
+- Exposing sensitive data: raw JWT, X-Internal-Key, OAuth tokens, emails
+- Independently changing Rate Limit thresholds (requires Oracle approval)
+- Using localStorage tokens for SSE authentication (httpOnly Cookie only)
+
+**Real Team Analogy**: A building security guard. Checks ID badges (JWT), manages employee-only entrances (Internal API). Never lets a suspicious visitor through.
+
+**Core Principle**: `Security always takes priority over convenience`
+
+---
+
+### Librarian (Records Keeper)
+
+> Data, once stored incorrectly, is hard to recover. This is the agent that must be the most careful in the entire project.
+
+**Key Responsibilities**
+
+- Managing the 3-DB separation structure: identity_db / problem_db / submission_db
+- Per-service DB user permission isolation (cross-access prohibited)
+- TypeORM migration authoring and management
+- Enforcing the Expand-Contract pattern (column deletion/rename requires 3-phase deployment)
+- Init Container migration (runs before app Pod starts)
+
+**Tools/Rules**
+
+- Definition file: `agents/commands/librarian.md`
+- Required reading: `agents/commands/migrate.md`
+- Reference tools: `annotate.md`, `monitor.md`, `cicd.md`
+- Tech stack: PostgreSQL, TypeORM (NestJS) / SQLAlchemy (FastAPI)
+
+**Restrictions**
+
+- Using `synchronize: true` in production (absolutely prohibited)
+- Writing migrations without `down()`
+- Deleting already-executed migration files
+- Attempting to delete ENUM values (PostgreSQL constraint — only type replacement is possible)
+- Omitting the CONCURRENTLY option when adding indexes
+
+**Real Team Analogy**: A DBA (Database Administrator). When other team members casually ask "Can you just add one column?", this is the person who responds, "Have you considered the situation where old and new versions coexist during a Rolling Update?"
+
+---
+
+## Tier 2 — Core
+
+These four agents implement core functionality. While Tier 1 handles judgment and governance, Tier 2 actually writes code, configures infrastructure, and manages documentation.
+
+---
+
+### Architect (Infrastructure Designer)
+
+> Provides the infrastructure foundation that allows all agents to operate reliably.
+
+**Key Responsibilities**
+
+- k3d (dev) / k3s (prod, OCI ARM) cluster configuration and maintenance
+- GitHub Actions CI pipeline (path filter, ARM aarch64 builds)
+- GHCR image push (`main-{git-sha}` tags)
+- ArgoCD + aether-gitops automated deployment
+- Monitoring: Prometheus (30s) + Grafana + Loki (72h)
+- Sealed Secrets, RabbitMQ, Redis k3s deployment
+
+**Tools/Rules**
+
+- Definition file: `agents/commands/architect.md`
+- Required reading: `agents/commands/cicd.md`
+- Reference tools: `annotate.md`, `monitor.md`
+- Tech stack: k3s/k3d, GitHub Actions, ArgoCD, GHCR, Prometheus/Grafana/Loki
+
+**Restrictions**
+
+- Deploying Pods without Resource Limits (no exceptions)
+- Deploying images with the `latest` tag
+- Using high-cardinality labels (using userId or traceId as labels would blow up Prometheus)
+
+**Real Team Analogy**: A DevOps/SRE engineer. While developers write code, this person builds the stage where that code runs reliably. Defines SLOs (availability 99.5%, P95 < 1s, P99 < 3s) and operates monitoring to maintain those standards.
+
+---
+
+### Postman (Delivery Agent)
+
+> Receives events published by Conductor and actually pushes code to GitHub. Even if delivery fails, the submission itself has already succeeded.
+
+**Key Responsibilities**
+
+- RabbitMQ consumer implementation (throughput controlled with prefetch=2)
+- GitHub App Installation Token renewal cron (every 50 minutes, Redis TTL 3600s)
+- Retry + Dead Letter Queue (DLQ) configuration
+- Error branching: 401/403 → TOKEN_INVALID notification / 5xx → Retry → DLQ
+- Per-study repo push: receives studyId from MQ message → dynamically looks up the target repo
+
+**Tools/Rules**
+
+- Definition file: `agents/commands/postman.md`
+- Reference tools: `annotate.md`, `monitor.md`
+- Tech stack: Node.js, RabbitMQ, GitHub App, Redis
+
+**Restrictions**
+
+- Treating GitHub API outages as service outages (always remember this is an auxiliary service)
+- Retrying pushes for TOKEN_INVALID users (excluded until reconnected)
+- Continuing calls without alerting when approaching Rate Limit (15,000 req/h)
+
+**Real Team Analogy**: A delivery driver. The package (code) is already safely stored in the warehouse (submission_db). Even if delivery (GitHub Push) is delayed or fails, the package itself is safe. But delivery status must be tracked precisely.
+
+---
+
+### Curator (Problem Setter)
+
+> Manages study problems, controls deadlines, and provides study activity statistics.
+
+**Key Responsibilities**
+
+- Weekly problem registration/retrieval/modification API
+- Deadline management (server time only, Redis caching)
+- Responding to Submission Service's internal HTTP deadline queries
+- Dashboard Read Model: CQRS pattern-based event subscription
+- Permission model: ADMIN (create/edit/delete) | MEMBER (read) | Non-member (403)
+
+**Tools/Rules**
+
+- Definition file: `agents/commands/curator.md`
+- Reference tools: `annotate.md`, `monitor.md`, `migrate.md`
+- Tech stack: NestJS, PostgreSQL (problem_db), TypeORM, Redis
+
+**Restrictions**
+
+- Judging deadlines based on client time (only server time is trusted)
+- Aggressively setting Redis cache TTL (must consider deadline change frequency)
+- Independently deciding deadline change policies (escalate to Oracle)
+
+**Real Team Analogy**: An exam proctor. Registers problems, manages deadlines, and provides statistics on who solved how many problems. Only the server clock is ever accepted as authoritative.
+
+---
+
+### Scribe (Chronicler)
+
+> Solely responsible for the accuracy and currency of all project memory, documentation, and prompts.
+
+**Key Responsibilities**
+
+- Maintaining `MEMORY.md` under 200 lines (completed Sprints → moved to topic files)
+- Updating topic memory (`algosu-{topic}.md`) (50KB cap)
+- Aggregating agent work records (10KB cap)
+- Modifying skill/persona prompts (per Oracle's direction)
+- Performing full inspection checklist at Sprint close
+
+**Tools/Rules**
+
+- Definition file: `agents/commands/scribe.md`
+- Reference tools: `agents/commands/annotate.md`
+- Tech stack: Markdown, JSON (memory/task files)
+
+**Restrictions**
+
+- Making planning decisions independently (executes only Oracle's directives)
+- Communicating directly with the PM (must go through Oracle)
+- Writing code (handles only docs/memory/skills)
+- Copy-pasting rule bodies (use path references only)
+
+**Real Team Analogy**: A project manager's assistant. Organizes meeting notes, records decisions, and prunes outdated documents. Doesn't make decisions directly, but without the records, every decision would be on shaky ground. Oracle can focus on planning and coordination because Scribe offloads the record-keeping.
+
+---
+
+## Tier 3 — Enhancement
+
+These four agents elevate the service's value. They work after Tiers 1 and 2 are stable. The service runs without them, but user experience and quality are significantly improved thanks to their contributions.
+
+---
+
+### Sensei (Analyst)
+
+> Analyzes study members' code and generates optimization suggestions. Even if this service goes down, submissions and GitHub sync are already complete.
+
+**Key Responsibilities**
+
+- RabbitMQ consumer: consumes AI analysis events
+- Claude API (Anthropic) integration: personal feedback + group optimized code synthesis
+- Circuit Breaker: failure rate 50% → OPEN / HALF-OPEN after 30 seconds
+- Fallback: `analysis_status = DELAYED` + "analysis delayed" notification
+- AI daily limits: 5 per user, 50 per study
+
+**Tools/Rules**
+
+- Definition file: `agents/commands/sensei.md`
+- Reference tools: `annotate.md`, `monitor.md`
+- Tech stack: Python/FastAPI, RabbitMQ, Claude API, Redis, PostgreSQL
+
+**Restrictions**
+
+- Calling Claude API while Circuit Breaker is OPEN
+- Unnecessary retries or duplicate calls (cost-sensitive)
+- Prioritizing analysis quality over service stability
+
+**Real Team Analogy**: A tutor. Reads code submitted by students (study members) and provides feedback like "You could improve this part like this." But when the tutor is sick (Circuit Breaker OPEN), class is on pause — though the school (submission system) keeps running.
+
+**Core Principle**: `DELAYED is not failure`
+
+---
+
+### Herald (Messenger)
+
+> Delivers every status update in real time from the moment a user submits code until AI analysis is complete.
+
+**Key Responsibilities**
+
+- Code submission UI page implementation (Next.js App Router)
+- Auto-save: debounce 1s → localStorage / every 30s → Draft API
+- SSE authentication: `EventSource(url, { withCredentials: true })` — httpOnly Cookie only
+- OAuth login UI: Google/Naver/Kakao (Custom Auth)
+- Study UI: list/select/switch + X-Study-ID global state management
+- `useRequireStudy` hook: redirects users not in a study
+
+**Tools/Rules**
+
+- Definition file: `agents/commands/herald.md`
+- Reference tools: `agents/commands/ui.md`, `agents/commands/conventions.md`
+- Tech stack: Next.js (App Router), Tailwind CSS, EventSource API
+
+**Restrictions**
+
+- Not using Palette design tokens (`bg-[#...]` inline hardcoding prohibited)
+- Creating new files in `components/ui/` (not allowed without Palette guidance)
+- Writing styles directly (must use Palette component library)
+
+**Real Team Analogy**: A frontend developer. Assembles pages using components created by Palette (the designer). If styles stray from the design system, Palette calls it out. If agreement with Palette can't be reached within 4 hours, it escalates to Oracle.
+
+---
+
+### Palette (Designer)
+
+> Owns the entire frontend design system. While Herald handles page logic, Palette creates the vessel that logic lives in.
+
+**Key Responsibilities**
+
+- Design tokens: colors/typography/spacing/radius/shadows (CSS variables, dark mode support)
+- shadcn/ui component installation and customization
+- Shared layouts: AppLayout, Sidebar, TopNav, PageHeader
+- Loading/Error/Empty State component standardization
+- Responsive design (mobile-first), accessibility (ARIA/keyboard), dark mode (next-themes)
+
+**Tools/Rules**
+
+- Definition file: `agents/commands/palette.md`
+- Reference tools: `agents/commands/ui.md`, `agents/commands/conventions.md`
+- Tech stack: Next.js 15 (App Router), Tailwind CSS v3, shadcn/ui, next-themes
+
+**Restrictions**
+
+- Hardcoding colors (`bg-[#...]` prohibited — CSS variables or Tailwind tokens only)
+- Hardcoding SVG data URIs (centralize in globals.css utility classes)
+- Directly modifying shadcn/ui (extend only via wrappers or variants)
+- Failing to meet WCAG AA contrast ratio of 4.5:1
+
+**Real Team Analogy**: A UI/UX designer. When asked "Can you change this button color?", responds with "I'll register it as a token to maintain system-wide consistency." Never lets you forget about hover/focus/active/disabled — all four states are mandatory.
+
+**Core Principle**: `Dark mode background is L10~12% — dark ≠ black`
+
+---
+
+### Scout (Recon)
+
+> The actual end user of the AlgoSu service. Experiences the service through the eyes of a user, not a developer.
+
+**Key Responsibilities**
+
+- Detecting behavioral errors: bugs, broken UI, abnormal behavior
+- Identifying UX pain points: confusing navigation, unclear copy, slow feedback
+- Suggesting improvements: feature additions, flow change ideas
+- Testing perspectives: first-visit experience, social login, full submission flow, mobile usability
+
+**Tools/Rules**
+
+- Definition file: `agents/commands/scout.md`
+- Reference tools: `agents/commands/ui.md`
+- Tech stack: None (user-perspective testing)
+
+**Restrictions**
+
+- Directly modifying code (discovery and reporting only)
+- Dictating technical implementation methods (user-perspective feedback only)
+
+**Real Team Analogy**: A QA tester and beta user. Asks questions like "A developer would obviously click this button, but where would a first-time user find it?" Never rationalizes inconvenience with technical reasons.
+
+**Core Principle**: `"If you know how, you can use it" is not good UX. It should be usable even if you don't know how.`
+
+**Feedback report format** is also standardized:
+
+```text
+[Category] Title
+- Severity: Critical / Major / Minor / Suggestion
+- Location: Which page, which action
+- Observation: What's wrong (from a user's perspective)
+- Expected behavior: What the user expected
+- Improvement suggestion: How it should change
+```
+
+---
+
+## Shared Rules — What All 12 Follow
+
+Every agent reads `agents/_shared/persona-base.md` before starting work. The rules defined in this file take precedence over individual agent rules.
+
+**Reporting Chain**: Only Oracle communicates directly with the PM. The other 11 receive tasks and report results exclusively through Oracle. Independent resource access is prohibited.
+
+**Escalation Principle**: When judgment exceeds scope or conflicts arise between agents, escalate to Oracle. If a decision can't be made within 4 hours, report to the PM.
+
+**Interface Contracts**: Notify related agents 24 hours before changes. Prioritize backward compatibility; breaking changes require Oracle approval. All inter-service communication must use the X-Internal-Key header.
+
+**Security Rules**: JWT `none` algorithm prohibited, publicId (UUID) for external exposure, Sealed Secrets only, no tokens/PII in logs.
+
+**Code Standards**: Single responsibility per function (20 lines max), SOLID principles, mandatory file header annotations (`@file`, `@domain`, `@layer`, `@related`), JSON structured logging.
+
+---
+
+## Real Collaboration Scenarios
+
+Enough theory. Let's see how these agents actually collaborate through two sprint case studies.
+
+### Case 1: Discord Feedback Notifications (Sprint 63–64)
+
+There was a requirement for users to receive Discord notifications when an admin leaves feedback.
+
+<HierarchyTree>
+  <HierarchyNode label="Oracle" sublabel='"Add Discord notifications, one-way webhook"' icon="Crown" accent={4} level={0} />
+  <HierarchyNode label="Gatekeeper" sublabel="FEEDBACK_RECEIVED type + webhook URL env var" icon="Shield" accent={4} level={1} />
+  <HierarchyNode label="Architect" sublabel="k3s manifest DISCORD_WEBHOOK_URL + aether-gitops sync" icon="Server" accent={1} level={1} />
+  <HierarchyNode label="Herald" sublabel="Frontend toast new type icon" icon="Megaphone" accent={3} level={1} />
+  <HierarchyNode label="Scribe" sublabel="Sprint ADR + MEMORY.md update" icon="PenLine" accent={1} level={1} />
+</HierarchyTree>
+
+Sprint 63 completed the base implementation, but in Sprint 64, a **bug was discovered where notifications weren't actually being sent**. The root cause was that Gatekeeper hadn't propagated the `FEEDBACK_RESOLVED` type. Scout reported "No notification arrives when feedback is resolved," and Oracle directed Gatekeeper to fix it.
+
+This is how implementation (Gatekeeper) → infrastructure reflection (Architect) → UI update (Herald) → verification (Scout) → recording (Scribe) connects into a single flow.
+
+### Case 2: Full Code Submission Flow (Everyday Workflow)
+
+Six agents are involved in processing a single routine code submission.
+
+<HierarchyTree>
+  <HierarchyNode label="User" sublabel="Clicks submit" icon="Users" accent={1} level={0} />
+  <HierarchyNode label="Gatekeeper" sublabel="JWT validation + X-User-ID conversion" icon="Shield" accent={4} level={1} />
+  <HierarchyNode label="Conductor" sublabel="Membership, GitHub, deadline, duplicate check → save to submission_db" icon="Workflow" accent={4} level={1} />
+  <HierarchyNode label="Postman" sublabel="RabbitMQ → GitHub Push (SYNCED/FAILED/TOKEN_INVALID)" icon="Send" accent={1} level={2} />
+  <HierarchyNode label="Sensei" sublabel="RabbitMQ → Claude API analysis (complete/DELAYED)" icon="GraduationCap" accent={3} level={2} />
+  <HierarchyNode label="Herald" sublabel="SSE real-time status → user's screen" icon="Megaphone" accent={3} level={1} />
+</HierarchyTree>
+
+The key in this flow is **Conductor's idempotency principle**. Save to DB first, then publish to MQ. Even if MQ publishing fails, the submission has already succeeded. Even if Postman fails the GitHub Push, the submission has succeeded. Even if Sensei fails the AI analysis, the submission has succeeded. This "it's okay if it fails" architecture comes from the separation of responsibilities across 12 agents.
+
+---
+
+## Why Twelve?
+
+To be honest, it wasn't 12 from the start. We began with 4 or 5 and split whenever we discovered responsibilities getting tangled over the course of sprints.
+
+**Too few**: A single agent ends up "handling DB migrations, managing CI, and monitoring." When contexts mix, rules collide. Librarian's "Expand-Contract 3-phase deployment" and Architect's "mandatory Resource Limits" are too different in nature to be held by the same agent.
+
+**Too many**: Interfaces between agents grow exponentially. Twenty agents communicating with each other would theoretically require 190 interfaces. Oracle can't possibly coordinate all of that.
+
+Twelve was determined by these criteria:
+
+1. **Independent judgment domains**: Each agent must have at least 3 areas where it can make autonomous decisions without escalating to Oracle.
+2. **Clear restrictions**: Each agent must have at least 2 "absolutely never do this" restrictions. If there are no restrictions, it's a signal that the agent could be merged with another.
+3. **Directional collaboration interfaces**: A should deliver unilaterally to B. If A and B depend on each other bidirectionally, they should be one agent.
+
+Over 67 sprints, agents were added but never removed. That says something about each one having its place.
+
+---
+
+The 12 agents introduced in this post are also the protagonists of the next one. We ran 67 sprints with this team. In the final post, we'll look back on that journey.

@@ -1,9 +1,18 @@
+/**
+ * @file       layout.tsx
+ * @domain     blog
+ * @layer      app
+ * @related    src/components/theme-provider.tsx
+ *
+ * 루트 레이아웃 — locale 비의존 셸. ThemeProvider만 감싸고,
+ * Header/main/footer는 하위 route group 레이아웃에서 렌더링한다.
+ */
 import type { Metadata } from 'next';
+import { ThemeProvider } from '@/components/theme-provider';
 import './globals.css';
 
 export const metadata: Metadata = {
   title: 'AlgoSu Tech Blog',
-  description: 'AlgoSu 프로젝트의 아키텍처 결정과 기술 여정을 기록합니다.',
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },
@@ -16,19 +25,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko">
+    <html lang="ko" suppressHydrationWarning>
       <body className="min-h-screen bg-surface text-text antialiased">
-        <header className="border-b border-border">
-          <nav className="mx-auto flex max-w-3xl items-center justify-between px-6 py-6">
-            <a href="/" className="text-xl font-bold text-brand">
-              AlgoSu Tech
-            </a>
-          </nav>
-        </header>
-        <main className="mx-auto max-w-3xl px-6 py-10">{children}</main>
-        <footer className="border-t border-border py-8 text-center text-sm text-text-muted">
-          AlgoSu Team
-        </footer>
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );
