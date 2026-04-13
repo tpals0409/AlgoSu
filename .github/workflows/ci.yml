@@ -663,6 +663,7 @@ jobs:
           platforms: linux/arm64
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ env.IMAGE_PREFIX }}-blog:main-${{ github.sha }}
+          build-args: APK_CACHE_BUST=${{ github.run_id }}
           cache-from: type=gha,scope=blog
           cache-to: type=gha,mode=max,scope=blog
 
