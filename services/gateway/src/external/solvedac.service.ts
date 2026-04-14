@@ -141,8 +141,7 @@ export class SolvedacService {
     try {
       body = JSON.parse(raw) as SolvedacRawProblem;
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.logger.warn(`Solved.ac JSON parse failed: ${message}`);
+      this.logger.warn(`Solved.ac JSON parse failed: ${String(err)}`);
       throw new ServiceUnavailableException('Solved.ac API 응답 오류입니다.');
     }
 
@@ -167,8 +166,7 @@ export class SolvedacService {
     try {
       body = JSON.parse(raw) as { count: number; items: SolvedacRawProblem[] };
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.logger.warn(`Solved.ac search JSON parse failed: ${message}`);
+      this.logger.warn(`Solved.ac search JSON parse failed: ${String(err)}`);
       throw new ServiceUnavailableException('Solved.ac API 응답 오류입니다.');
     }
 
