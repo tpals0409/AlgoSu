@@ -190,6 +190,84 @@ describe('SolvedacService', () => {
       expect(result.tags).toEqual(['greedy']);
     });
 
+    it('searchProblem — 정상 응답 변환', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          count: 1,
+          items: [mockApiResponse],
+        }),
+      });
+
+      const result = await service.searchProblem('A+B', 1);
+
+      expect(result).toEqual({
+        count: 1,
+        items: [
+          {
+            problemId: PROBLEM_ID,
+            titleKo: 'A+B',
+            level: 1,
+            difficulty: 'BRONZE',
+            sourceUrl: `https://www.acmicpc.net/problem/${PROBLEM_ID}`,
+            tags: ['구현', '수학'],
+          },
+        ],
+      });
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('search/problem?query=A%2BB&page=1'),
+        expect.objectContaining({
+          headers: { Accept: 'application/json' },
+        }),
+      );
+    });
+
+    it('searchProblem — 기본 page=1', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ count: 0, items: [] }),
+      });
+
+      await service.searchProblem('hello');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('page=1'),
+        expect.anything(),
+      );
+    });
+
+    it('searchProblem — 404 → NotFoundException', async () => {
+      mockFetch.mockResolvedValue({ ok: false, status: 404 });
+
+      await expect(service.searchProblem('x')).rejects.toThrow(NotFoundException);
+    });
+
+    it('searchProblem — 5xx → ServiceUnavailableException', async () => {
+      mockFetch.mockResolvedValue({ ok: false, status: 500 });
+
+      await expect(service.searchProblem('x')).rejects.toThrow(
+        ServiceUnavailableException,
+      );
+    });
+
+    it('searchProblem — 네트워크 에러 → ServiceUnavailableException', async () => {
+      mockFetch.mockRejectedValue(new Error('ECONNREFUSED'));
+
+      await expect(service.searchProblem('x')).rejects.toThrow(
+        ServiceUnavailableException,
+      );
+    });
+
+    it('searchProblem — 비-Error throw → ServiceUnavailableException', async () => {
+      mockFetch.mockRejectedValue('string-error');
+
+      await expect(service.searchProblem('x')).rejects.toThrow(
+        ServiceUnavailableException,
+      );
+    });
+
     it('displayNames 비어있는 태그 — filter에서 제외', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
