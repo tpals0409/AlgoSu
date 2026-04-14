@@ -17,7 +17,7 @@ import { Callout } from '@/components/blog/callout';
 import { MetricGrid, MetricCard } from '@/components/blog/metric-grid';
 import { ServiceGrid, ServiceCard } from '@/components/blog/service-grid';
 import { Pipeline, PipelineStage } from '@/components/blog/pipeline';
-import { TierStack, TierRow } from '@/components/blog/tier-stack';
+import { EchelonStack, EchelonRow } from '@/components/blog/echelon-stack';
 import { KV } from '@/components/blog/kv';
 import { Mermaid } from '@/components/blog/mermaid';
 import {
@@ -26,10 +26,10 @@ import {
   ArchService,
 } from '@/components/blog/architecture-map';
 import {
-  TierMatrix,
-  TierMatrixRow,
-  TierMatrixCell,
-} from '@/components/blog/tier-matrix';
+  EchelonMatrix,
+  EchelonMatrixRow,
+  EchelonMatrixCell,
+} from '@/components/blog/echelon-matrix';
 import { HierarchyTree, HierarchyNode } from '@/components/blog/hierarchy-tree';
 import { PhaseTimeline, PhaseMilestone } from '@/components/blog/phase-timeline';
 
@@ -68,17 +68,17 @@ export const mdxComponents: MDXComponents = {
   ServiceCard,
   Pipeline,
   PipelineStage,
-  TierStack,
-  TierRow,
+  EchelonStack,
+  EchelonRow,
   KV,
   Mermaid,
   // 신규 (70-6)
   ArchitectureMap,
   ArchLayer,
   ArchService,
-  TierMatrix,
-  TierMatrixRow,
-  TierMatrixCell,
+  EchelonMatrix,
+  EchelonMatrixRow,
+  EchelonMatrixCell,
   HierarchyTree,
   HierarchyNode,
   PhaseTimeline,

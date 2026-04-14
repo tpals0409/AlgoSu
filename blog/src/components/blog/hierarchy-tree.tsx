@@ -6,7 +6,7 @@
  *
  * 위계 트리 (PM → Oracle → Agents). 순수 Tailwind/CSS 커넥터.
  * 데스크톱은 들여쓰기 + 좌측 connector, 모바일은 세로 스택 + left border.
- * groupLabel prop: 같은 level 내 Tier 구분 섹션 라벨을 노드 바로 위에 렌더.
+ * groupLabel prop: 같은 level 내 Echelon 구분 섹션 라벨을 노드 바로 위에 렌더.
  * 커넥터는 상단 연장 rail + hook(세로 + 가로)의 2-피스 구성으로 형제 간 트리 연결감 확보.
  */
 import type { ReactNode } from 'react';
@@ -23,7 +23,7 @@ interface HierarchyNodeProps {
   level?: 0 | 1 | 2 | 3;
   variant?: 'box' | 'pill';
   accent?: 1 | 2 | 3 | 4 | 5 | 6;
-  /** 이 노드 위에 그룹 구분 라벨(예: "Tier 1 — 안정성")을 렌더. 같은 level 내 섹션 분리용 */
+  /** 이 노드 위에 그룹 구분 라벨(예: "Echelon 1 — 안정성")을 렌더. 같은 level 내 섹션 분리용 */
   groupLabel?: string;
   children?: ReactNode;
 }

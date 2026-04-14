@@ -1,19 +1,19 @@
 /**
- * @file       tier-stack.tsx
+ * @file       echelon-stack.tsx
  * @domain     blog
  * @layer      ui
  * @related    src/components/mdx-components.tsx
  *
- * 위→아래 계층 구조 표시. Tier 1/2/3 같은 stack 다이어그램 대체.
+ * 위→아래 계층 구조 표시. Echelon 1/2/3 같은 stack 다이어그램 대체.
  */
 import type { ReactNode } from 'react';
 
-interface TierStackProps {
+interface EchelonStackProps {
   children: ReactNode;
 }
 
-interface TierRowProps {
-  tier: string | number;
+interface EchelonRowProps {
+  echelon: string | number;
   label: string;
   members?: string;
   accent?: 1 | 2 | 3 | 4 | 5 | 6;
@@ -28,17 +28,17 @@ const ACCENT_BG: Record<number, string> = {
   6: 'bg-accent-6',
 };
 
-export function TierStack({ children }: TierStackProps) {
+export function EchelonStack({ children }: EchelonStackProps) {
   return <div className="my-6 flex flex-col gap-2 not-prose">{children}</div>;
 }
 
-export function TierRow({ tier, label, members, accent = 1 }: TierRowProps) {
+export function EchelonRow({ echelon, label, members, accent = 1 }: EchelonRowProps) {
   return (
     <div className="flex items-stretch overflow-hidden rounded-lg border border-border bg-surface-elevated shadow-sm">
       <div
         className={`flex w-20 shrink-0 items-center justify-center text-sm font-bold text-white ${ACCENT_BG[accent]}`}
       >
-        T{tier}
+        E{echelon}
       </div>
       <div className="flex flex-1 flex-col justify-center px-4 py-3">
         <div className="text-sm font-semibold text-text">{label}</div>

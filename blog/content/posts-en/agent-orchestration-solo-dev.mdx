@@ -63,26 +63,26 @@ As the frontend grew, a similar problem emerged. Herald was responsible for both
 
 Finally, **Scout** (Recon). There was no role to verify agents' output from the user's perspective. We needed an agent to catch cases where a feature worked but the UX felt awkward.
 
-<TierMatrix>
-  <TierMatrixRow tier={1} label="Mission Critical" description="If the service breaks, everything stops. Uses the most powerful model (Opus)." accent={4}>
-    <TierMatrixCell name="Oracle" role="Arbiter" icon="Crown" hint="Planning decisions, agent coordination" />
-    <TierMatrixCell name="Conductor" role="Orchestrator" icon="Workflow" hint="Saga orchestration" />
-    <TierMatrixCell name="Gatekeeper" role="Guardian" icon="Shield" hint="Auth, JWT, OAuth, security" />
-    <TierMatrixCell name="Librarian" role="Records Keeper" icon="Database" hint="DB schema, migrations" />
-  </TierMatrixRow>
-  <TierMatrixRow tier={2} label="Core" description="Infrastructure foundation and core business logic" accent={1}>
-    <TierMatrixCell name="Architect" role="Infrastructure Designer" icon="Server" hint="k8s, CI/CD, monitoring" />
-    <TierMatrixCell name="Postman" role="Delivery Agent" icon="Send" hint="GitHub integration, MQ consumer" />
-    <TierMatrixCell name="Curator" role="Problem Setter" icon="ScrollText" hint="Problem management, deadlines, stats" />
-    <TierMatrixCell name="Scribe" role="Chronicler" icon="PenLine" hint="Docs, memory, prompts" />
-  </TierMatrixRow>
-  <TierMatrixRow tier={3} label="Enhancement" description="Roles that enhance service value. Work begins after Tier 1 and 2 are stable" accent={3}>
-    <TierMatrixCell name="Sensei" role="Analyst" icon="GraduationCap" hint="AI analysis, Claude API" />
-    <TierMatrixCell name="Herald" role="Messenger" icon="Megaphone" hint="Frontend, SSE, UX" />
-    <TierMatrixCell name="Palette" role="Designer" icon="Palette" hint="Design system, accessibility" />
-    <TierMatrixCell name="Scout" role="Recon" icon="Telescope" hint="User-perspective testing" />
-  </TierMatrixRow>
-</TierMatrix>
+<EchelonMatrix>
+  <EchelonMatrixRow echelon={1} label="Mission Critical" description="If the service breaks, everything stops. Uses the most powerful model (Opus)." accent={4}>
+    <EchelonMatrixCell name="Oracle" role="Arbiter" icon="Crown" hint="Planning decisions, agent coordination" />
+    <EchelonMatrixCell name="Conductor" role="Orchestrator" icon="Workflow" hint="Saga orchestration" />
+    <EchelonMatrixCell name="Gatekeeper" role="Guardian" icon="Shield" hint="Auth, JWT, OAuth, security" />
+    <EchelonMatrixCell name="Librarian" role="Records Keeper" icon="Database" hint="DB schema, migrations" />
+  </EchelonMatrixRow>
+  <EchelonMatrixRow echelon={2} label="Core" description="Infrastructure foundation and core business logic" accent={1}>
+    <EchelonMatrixCell name="Architect" role="Infrastructure Designer" icon="Server" hint="k8s, CI/CD, monitoring" />
+    <EchelonMatrixCell name="Postman" role="Delivery Agent" icon="Send" hint="GitHub integration, MQ consumer" />
+    <EchelonMatrixCell name="Curator" role="Problem Setter" icon="ScrollText" hint="Problem management, deadlines, stats" />
+    <EchelonMatrixCell name="Scribe" role="Chronicler" icon="PenLine" hint="Docs, memory, prompts" />
+  </EchelonMatrixRow>
+  <EchelonMatrixRow echelon={3} label="Enhancement" description="Roles that enhance service value. Work begins after Echelon 1 and 2 are stable" accent={3}>
+    <EchelonMatrixCell name="Sensei" role="Analyst" icon="GraduationCap" hint="AI analysis, Claude API" />
+    <EchelonMatrixCell name="Herald" role="Messenger" icon="Megaphone" hint="Frontend, SSE, UX" />
+    <EchelonMatrixCell name="Palette" role="Designer" icon="Palette" hint="Design system, accessibility" />
+    <EchelonMatrixCell name="Scout" role="Recon" icon="Telescope" hint="User-perspective testing" />
+  </EchelonMatrixRow>
+</EchelonMatrix>
 
 I (the PM) only talk to Oracle. Oracle analyzes tasks and delegates to the appropriate agent, then consolidates and reports the results. Agents don't communicate directly with each other — when conflicts arise, Oracle mediates.
 
@@ -116,7 +116,7 @@ The scariest thing about developing solo isn't features not working — it's **f
 
 Even with agents, if you get the **calling order wrong**, it's useless. Early on, I called whichever agent I needed on the spot, but as work ordering got tangled, one agent's output would break another agent's assumptions — over and over.
 
-Eventually, I introduced a tier-based execution order. Tier 1 (Conductor, Gatekeeper, Librarian) locks down infrastructure and safety first, Tier 2 (Architect, Postman, Curator, Scribe) implements features, and Tier 3 (Sensei, Herald, Palette, Scout) wraps things up. Following this order significantly reduced dependency conflicts.
+Eventually, I introduced an echelon-based execution order. Echelon 1 (Conductor, Gatekeeper, Librarian) locks down infrastructure and safety first, Echelon 2 (Architect, Postman, Curator, Scribe) implements features, and Echelon 3 (Sensei, Herald, Palette, Scout) wraps things up. Following this order significantly reduced dependency conflicts.
 
 ## The Direction Ahead
 

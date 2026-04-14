@@ -1,7 +1,7 @@
 ---
 title: "How to Control 12 AI Agents"
 date: "2026-04-09"
-excerpt: "As AI agents multiplied, control became the problem. An arbiter, a 3-Tier hierarchy, SSoT rules — a firsthand account of building a governance structure solo."
+excerpt: "As AI agents multiplied, control became the problem. An arbiter, a 3-echelon hierarchy, SSoT rules — a firsthand account of building a governance structure solo."
 tags: ["ai-dev", "agent", "governance"]
 category: journey
 order: 3
@@ -29,17 +29,17 @@ Decision-making followed a priority order: **Service Stability > Development Vel
 
 Oracle had its own prohibitions too. It doesn't write code directly, doesn't make decisions that undermine core principles (own DB as SSoT, Database per Service, Saga Orchestration), and doesn't take sides with any particular agent. It's the arbiter, after all.
 
-## Hierarchical Structure — Like a Corporate Org Chart
+## Echelon — Command-Chain-Based Hierarchy
 
-Keeping all 12 agents equal meant no priorities. I classified them into 3 tiers, like a corporate hierarchy.
+Keeping all 12 agents equal meant no priorities. I borrowed the echelon concept from multi-agent system (MAS) literature and classified them into 3 levels. Echelon is a term that implies delegation and command relationships — it avoids confusion with infrastructure tiers (3-tier architecture) while naturally expressing priority and execution order among agents.
 
-**Tier 1 (Mission Critical)** — Oracle, Conductor, Gatekeeper, Librarian. If these four break, the entire service stops. They use the most powerful model (Opus).
+**Echelon 1 (Mission Critical)** — Oracle, Conductor, Gatekeeper, Librarian. If these four break, the entire service stops. They use the most powerful model (Opus).
 
-**Tier 2 (Core)** — Architect, Postman, Curator, Scribe. They handle infrastructure foundations and core business logic.
+**Echelon 2 (Core)** — Architect, Postman, Curator, Scribe. They handle infrastructure foundations and core business logic.
 
-**Tier 3 (Enhancement)** — Sensei, Herald, Palette, Scout. Roles that enhance service value. They work after Tiers 1 and 2 are stable.
+**Echelon 3 (Enhancement)** — Sensei, Herald, Palette, Scout. Roles that enhance service value. They work after Echelon 1 and 2 are stable.
 
-This classification wasn't just a label — it was also an execution order. Tier 1 set up safety nets first, Tier 2 implemented, and Tier 3 wrapped up. Following this order significantly reduced dependency conflicts.
+This classification wasn't just a label — it was also an execution order. Echelon 1 set up safety nets first, Echelon 2 implemented, and Echelon 3 wrapped up. Following this order significantly reduced dependency conflicts.
 
 ## One File Controls All 12 — SSoT
 
@@ -73,4 +73,4 @@ It gave **safe changes**. Librarian enforced 3-phase DB changes, Gatekeeper veri
 
 Letting AI write code wasn't the hard part. The hard part was making that AI follow the project's rules, avoid conflicts with other domains, and be reversible when mistakes happened.
 
-The arbiter makes judgments, the hierarchy sets priorities, and a single file maintains consistency. It wasn't a perfect system, but it was the structure that made it possible to complete 67 sprints at consistent quality. Uncontrolled AI is dangerous, but controlled AI maintained unwavering consistency.
+The arbiter makes judgments, the echelon sets priorities, and a single file maintains consistency. It wasn't a perfect system, but it was the structure that made it possible to complete 67 sprints at consistent quality. Uncontrolled AI is dangerous, but controlled AI maintained unwavering consistency.

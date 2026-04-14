@@ -2,7 +2,7 @@
  * @file       icons.ts
  * @domain     blog
  * @layer      ui
- * @related    architecture-map.tsx, tier-matrix.tsx, hierarchy-tree.tsx, phase-timeline.tsx, pipeline.tsx
+ * @related    architecture-map.tsx, echelon-matrix.tsx, hierarchy-tree.tsx, phase-timeline.tsx, pipeline.tsx
  *
  * MDX에서 string-based icon name으로 lucide-react 아이콘을 참조할 수 있게 하는 registry.
  * MDX 파일에 `icon={Crown}` 같은 식별자 import 없이 `icon="Crown"`으로 사용 가능.

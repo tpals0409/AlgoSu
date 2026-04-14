@@ -1,28 +1,28 @@
 /**
- * @file       tier-matrix.tsx
+ * @file       echelon-matrix.tsx
  * @domain     blog
  * @layer      ui
  * @related    src/components/mdx-components.tsx
  *
- * 3-Tier 에이전트 매트릭스. Tier 라벨 컬럼 + 카드 영역 grid.
- * orchestration-structure / meet-the-agents / agent-orchestration-solo-dev에서 재사용.
+ * 3-Echelon 에이전트 매트릭스. Echelon 라벨 컬럼 + 카드 영역 grid.
+ * orchestration-structure / agent-orchestration-solo-dev에서 재사용.
  */
 import type { ReactNode } from 'react';
 import { getIcon, type IconName } from './icons';
 
-interface TierMatrixProps {
+interface EchelonMatrixProps {
   children: ReactNode;
 }
 
-interface TierMatrixRowProps {
-  tier: 1 | 2 | 3;
+interface EchelonMatrixRowProps {
+  echelon: 1 | 2 | 3;
   label: string;
   description?: string;
   accent: 1 | 2 | 3 | 4 | 5 | 6;
   children: ReactNode;
 }
 
-interface TierMatrixCellProps {
+interface EchelonMatrixCellProps {
   name: string;
   role: string;
   icon: IconName | string;
@@ -56,32 +56,32 @@ const ACCENT_BORDER_L: Record<number, string> = {
   6: 'border-l-accent-6',
 };
 
-export function TierMatrix({ children }: TierMatrixProps) {
+export function EchelonMatrix({ children }: EchelonMatrixProps) {
   return (
     <div className="my-6 flex flex-col gap-3 not-prose">{children}</div>
   );
 }
 
-export function TierMatrixRow({
-  tier,
+export function EchelonMatrixRow({
+  echelon,
   label,
   description,
   accent,
   children,
-}: TierMatrixRowProps) {
+}: EchelonMatrixRowProps) {
   return (
     <div
       className={`overflow-hidden rounded-xl border border-border border-l-4 bg-surface-elevated shadow-sm ${ACCENT_BORDER_L[accent]}`}
     >
       <div className="flex items-stretch">
-        {/* Tier 라벨 컬럼 */}
+        {/* Echelon 라벨 컬럼 */}
         <div
           className={`flex w-20 shrink-0 flex-col items-center justify-center px-2 py-3 text-white sm:w-24 ${ACCENT_BG[accent]}`}
         >
           <div className="text-[10px] font-bold uppercase tracking-wider opacity-90">
-            Tier
+            Echelon
           </div>
-          <div className="text-2xl font-black leading-none">{tier}</div>
+          <div className="text-2xl font-black leading-none">{echelon}</div>
         </div>
         {/* 헤더 + 카드 영역 */}
         <div className="flex flex-1 flex-col gap-3 px-4 py-3">
@@ -100,7 +100,7 @@ export function TierMatrixRow({
   );
 }
 
-export function TierMatrixCell({ name, role, icon, hint }: TierMatrixCellProps) {
+export function EchelonMatrixCell({ name, role, icon, hint }: EchelonMatrixCellProps) {
   const Icon = getIcon(icon);
   return (
     <div className="flex items-start gap-2 rounded-lg border border-border bg-surface p-2.5">
