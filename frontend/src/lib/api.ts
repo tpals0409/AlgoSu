@@ -502,10 +502,7 @@ export interface SolvedacSearchItem {
   level: number;
   difficulty?: SolvedacProblemInfo['difficulty'];
   sourceUrl?: string;
-  tags: Array<{
-    key: string;
-    displayNames: { language: string; name: string; short: string }[];
-  }>;
+  tags: string[];
   acceptedUserCount?: number;
 }
 

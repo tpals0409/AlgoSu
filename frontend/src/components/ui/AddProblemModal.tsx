@@ -14,17 +14,14 @@ import { problemApi, solvedacApi, studyApi, type CreateProblemData } from '@/lib
 import { useStudy } from '@/contexts/StudyContext';
 
 // ── solved.ac types ──────────────────────────────────────────────────────────
-
-interface SolvedTag {
-  key: string;
-  displayNames: { language: string; name: string; short: string }[];
-}
+// Gateway `/api/external/solvedac/search`가 한국어 태그명으로 평탄화된 `string[]`을 반환한다.
+// 직접 solved.ac 호출 시의 `{ key, displayNames[] }` 구조는 Gateway 레이어가 흡수한다.
 
 export interface SolvedProblem {
   problemId: number;
   titleKo: string;
   level: number; // 0=unrated, 1-5=Bronze, 6-10=Silver, 11-15=Gold, 16-20=Platinum, 21-25=Diamond
-  tags: SolvedTag[];
+  tags: string[];
   acceptedUserCount: number;
 }
 
@@ -157,9 +154,6 @@ function SearchStep({ onSelect }: { onSelect: (p: SolvedProblem) => void }) {
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [query]);
 
-  const tagName = (tag: SolvedTag) =>
-    tag.displayNames.find((d) => d.language === 'ko')?.name ?? tag.key;
-
   return (
     <div className="flex flex-col" style={{ minHeight: 320 }}>
       {/* Search input */}
@@ -253,7 +247,7 @@ function SearchStep({ onSelect }: { onSelect: (p: SolvedProblem) => void }) {
               const { difficulty } = toOurDiff(p.level);
               const cfg = DIFFICULTY_CONFIG[difficulty];
               const tierLabel = TIER_NAMES[p.level] ?? 'Unrated';
-              const tags = p.tags.slice(0, 3).map(tagName);
+              const tags = p.tags.slice(0, 3);
 
               return (
                 <button
@@ -351,9 +345,7 @@ function ConfirmStep({
   const { difficulty } = toOurDiff(problem.level);
   const cfg = DIFFICULTY_CONFIG[difficulty];
   const tierLabel = TIER_NAMES[problem.level] ?? 'Unrated';
-  const tags = problem.tags.slice(0, 5).map(
-    (t) => t.displayNames.find((d) => d.language === 'ko')?.name ?? t.key,
-  );
+  const tags = problem.tags.slice(0, 5);
 
   function validate() {
     const e: typeof errors = {};
@@ -566,9 +558,7 @@ export function AddProblemModal({ open, onClose, onAdd: onAddCallback }: AddProb
     if (!selected || isAdding) return;
 
     const { difficulty, level: diffLevel } = toOurDiff(selected.level);
-    const tagNames = selected.tags
-      .slice(0, 5)
-      .map((t) => t.displayNames.find((d) => d.language === 'ko')?.name ?? t.key);
+    const tagNames = selected.tags.slice(0, 5);
 
     setIsAdding(true);
     setAddError(null);
