@@ -19,6 +19,10 @@ const DICTIONARY = {
     olderPost: '← 지난 글',
     newerPost: '새 글 →',
     navPostLabel: '포스트 네비게이션',
+    /** 카테고리 탭 레이블 */
+    categoryAll: '전체',
+    categoryJourney: '프로젝트 여정',
+    categoryChallenge: '기술 챌린지',
   },
   en: {
     siteTitle: 'AlgoSu Tech Blog',
@@ -29,6 +33,10 @@ const DICTIONARY = {
     olderPost: '← Older',
     newerPost: 'Newer →',
     navPostLabel: 'Post navigation',
+    /** Category tab labels */
+    categoryAll: 'All',
+    categoryJourney: 'Project Journey',
+    categoryChallenge: 'Tech Challenge',
   },
 } as const;
 

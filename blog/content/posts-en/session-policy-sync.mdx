@@ -2,8 +2,9 @@
 title: "Why Does My Session Keep Dropping? — Debugging 4 Layers of Desynchronization"
 date: "2026-04-10"
 excerpt: "JWT TTL is 2 hours, but users get logged out after 1 hour. Cookie maxAge, sliding refresh, frontend timer — 4 layers each had their own clock. Here's how we unified them into a single source of truth."
-tags: ["session", "jwt", "cookie", "debugging", "nestjs"]
-order: 7
+tags: ["session", "jwt", "cookie", "debugging", "nestjs", "challenge"]
+category: challenge
+order: 6
 ---
 
 ## "The Session Is Too Short"
@@ -14,23 +15,20 @@ A user feedback ticket came in:
 
 The designed JWT lifetime was **2 hours**, and a **sliding session** that auto-refreshes during user activity was the intended behavior. Two hours should be plenty — so why does it keep dropping?
 
-We started investigating. Long story short, **4 layers were each running on different clocks.**
-
-> This is post 7 of the [AlgoSu tech blog series](/en/posts/agent-orchestration-solo-dev).
-> Previous: [Sprint 3 to 67 — Growth Record of a Solo-Built Service](/en/posts/sprint-journey)
+We started investigating. Long story short, **4 layers were each running on different clocks.** With 12 AI agents each owning a different layer, this kind of distributed state desync was exactly the type of bug that slips through unless someone looks at the whole picture at once.
 
 ---
 
 ## Four Clocks, Four Truths
 
-Visualizing the problem looks like this:
+Laid out plainly, here's what we found:
 
-<MetricGrid cols={4}>
-  <MetricCard label="JWT TTL" value="7 days" hint="Production env (designed: 2h)" accent={5} />
-  <MetricCard label="Cookie maxAge" value="1 hour" hint="Hardcoded constant" accent={5} />
-  <MetricCard label="Sliding threshold" value="5 min" hint="Only refreshes within 5 min of expiry" accent={5} />
-  <MetricCard label="Frontend timer" value="65 min" hint="Forced logout judgment" accent={5} />
-</MetricGrid>
+| Layer | Value | Note |
+|-------|-------|------|
+| JWT TTL | 7 days | Production env (designed: 2h) |
+| Cookie maxAge | 1 hour | Hardcoded constant |
+| Sliding threshold | 5 min | Only refreshes within 5 min of expiry |
+| Frontend timer | 65 min | Forced logout judgment |
 
 No matter which one you fixed, another layer would kill the session. Let's tear each one apart.
 
@@ -76,9 +74,9 @@ The JWT is 2 hours, but the frontend triggers a forced logout at 65 minutes. The
 
 The problem wasn't individual values — it was **the structure**.
 
-<Mermaid
-  caption="Before — 4 independent clocks"
-  chart={`
+**Before — 4 independent clocks**
+
+```mermaid
 flowchart TB
     E[JWT_EXPIRES_IN<br/>Sealed Secret: 7d]
     C[COOKIE_MAX_AGE<br/>Hardcoded: 1h]
@@ -93,8 +91,7 @@ flowchart TB
     style C fill:#fef2f2,stroke:#ef4444,color:#991b1b
     style R fill:#fef2f2,stroke:#ef4444,color:#991b1b
     style F fill:#fef2f2,stroke:#ef4444,color:#991b1b
-`}
-/>
+```
 
 Four places were independently managing the same semantic value of "session lifetime." Change one env, and the other three don't follow. **That was the seed of the next bug.**
 
@@ -102,7 +99,7 @@ Four places were independently managing the same semantic value of "session life
 
 ## The Fix: Unifying to a Single Clock
 
-The initial plan was to simply replace each hardcoded value with the correct one. But PM feedback came in:
+The initial plan was to simply replace each hardcoded value with the correct one. But Oracle (the AI PM agent) sent feedback:
 
 > "Don't hardcode session values — modularize them."
 
@@ -112,9 +109,9 @@ Fair point. Even if we replaced the constant values, the next time policy change
 
 We designed a structure where changing one server environment variable automatically propagates to both server and client.
 
-<Mermaid
-  caption="After — Server env as the sole SSoT"
-  chart={`
+**After — Server env as the sole SSoT**
+
+```mermaid
 flowchart TB
     ENV["Server env (SSoT)"]
     SPS["SessionPolicyService"]
@@ -133,28 +130,25 @@ flowchart TB
 
     style ENV fill:#ecfdf5,stroke:#10b981,color:#065f46
     style SPS fill:#eef2ff,stroke:#6366f1,color:#312e81
-`}
-/>
+```
 
 The key is that **5 environment variables** determine everything.
 
-<MetricGrid cols={3}>
-  <MetricCard label="JWT_EXPIRES_IN" value="2h" hint="Access Token TTL" accent={1} />
-  <MetricCard label="SESSION_REFRESH_THRESHOLD" value="1h" hint="Sliding refresh threshold" accent={2} />
-  <MetricCard label="SESSION_HEARTBEAT_INTERVAL" value="10m" hint="Frontend heartbeat interval" accent={3} />
-  <MetricCard label="SESSION_TIMEOUT_BUFFER" value="5m" hint="Expiry grace buffer" accent={4} />
-  <MetricCard label="JWT_DEMO_EXPIRES_IN" value="2h" hint="Demo user TTL" accent={5} />
-</MetricGrid>
+| Env Var | Value | Description |
+|---------|-------|-------------|
+| JWT_EXPIRES_IN | 2h | Access Token TTL |
+| SESSION_REFRESH_THRESHOLD | 1h | Sliding refresh threshold |
+| SESSION_HEARTBEAT_INTERVAL | 10m | Frontend heartbeat interval |
+| SESSION_TIMEOUT_BUFFER | 5m | Expiry grace buffer |
+| JWT_DEMO_EXPIRES_IN | 2h | Demo user TTL |
 
 ### Data Flow
 
-<PhaseTimeline>
-  <PhaseMilestone phase="1" title="Server env" period="JWT_EXPIRES_IN=2h and 4 others" status="done" icon="Settings" accent={1} />
-  <PhaseMilestone phase="2" title="SessionPolicyService" period="env → ms parsing + SSoT" status="done" icon="Server" accent={2} />
-  <PhaseMilestone phase="3" title="Server consumer injection" period="JwtModule · Interceptor · OAuthService" status="done" icon="Workflow" accent={3} />
-  <PhaseMilestone phase="4" title="Public API" period="GET /auth/session-policy" status="done" icon="Globe" accent={4} />
-  <PhaseMilestone phase="5" title="Frontend fetch" period="1 call at app boot + DEFAULT fallback" status="done" icon="Monitor" accent={5} />
-</PhaseTimeline>
+1. **Server env** — JWT_EXPIRES_IN=2h and 4 others
+2. **SessionPolicyService** — env → ms parsing + SSoT
+3. **Server consumer injection** — JwtModule · Interceptor · OAuthService
+4. **Public API** — GET /auth/session-policy
+5. **Frontend fetch** — 1 call at app boot + DEFAULT fallback
 
 ---
 
@@ -237,12 +231,12 @@ The DEFAULT fallback is **intentionally shorter** than the server default (2h). 
 
 ## Before / After
 
-<MetricGrid cols={4}>
-  <MetricCard label="JWT TTL" value="2h" hint="7d → 2h" accent={1} />
-  <MetricCard label="Cookie maxAge" value="Dynamic" hint="Fixed 1h → synced with JWT exp" accent={2} />
-  <MetricCard label="Sliding threshold" value="1h" hint="5 min → 1 hour (50% of TTL)" accent={3} />
-  <MetricCard label="Frontend timer" value="Policy fetch" hint="Fixed 65 min → synced with server policy" accent={4} />
-</MetricGrid>
+| Item | Value | Note |
+|------|-------|------|
+| JWT TTL | 2h | 7d → 2h |
+| Cookie maxAge | Dynamic | Fixed 1h → synced with JWT exp |
+| Sliding threshold | 1h | 5 min → 1 hour (50% of TTL) |
+| Frontend timer | Policy fetch | Fixed 65 min → synced with server policy |
 
 | Item | Before | After |
 |------|--------|-------|
@@ -265,22 +259,20 @@ Currently, `ms` exists as a transitive dependency (brought in by another package
 
 Here's a checklist of lessons from this bug.
 
-<Callout type="warn" title="Session Policy Sync Checklist">
-
-**When adding/changing env vars:**
-
-1. Grep for constants with the same semantic meaning scattered across the codebase
-2. Check for constants that are "coincidentally the same value" — if they share the same semantics, they must reference the same SSoT
-3. Verify that changing one env causes **all** related state to follow
-4. Separate non-secret policy values (TTL, threshold, flags) into ConfigMap/Deployment env instead of Sealed Secrets
-
-**Client-server policy sync:**
-
-1. Use runtime API fetch instead of `NEXT_PUBLIC_*` build-time injection
-2. Set DEFAULT fallback shorter than the server default on fetch failure
-3. Apply positive finite number validation to all policy fields
-
-</Callout>
+> **⚠️ Session Policy Sync Checklist**
+>
+> **When adding/changing env vars:**
+>
+> 1. Grep for constants with the same semantic meaning scattered across the codebase
+> 2. Check for constants that are "coincidentally the same value" — if they share the same semantics, they must reference the same SSoT
+> 3. Verify that changing one env causes **all** related state to follow
+> 4. Separate non-secret policy values (TTL, threshold, flags) into ConfigMap/Deployment env instead of Sealed Secrets
+>
+> **Client-server policy sync:**
+>
+> 1. Use runtime API fetch instead of `NEXT_PUBLIC_*` build-time injection
+> 2. Set DEFAULT fallback shorter than the server default on fetch failure
+> 3. Apply positive finite number validation to all policy fields
 
 ---
 

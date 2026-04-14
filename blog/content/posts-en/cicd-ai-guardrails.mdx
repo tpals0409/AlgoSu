@@ -1,8 +1,9 @@
 ---
-title: "Keeping AI in Check — A Safety Net Built with 15 CI/CD Jobs"
+title: "Safety Net for AI Code — Building 15 CI/CD Jobs in Practice"
 date: "2026-04-09"
-excerpt: "How 15 CI jobs verify AI-generated code before it reaches production — from secret scanning and test matrices to build gates and GitOps locks, a complete account of the journey."
-tags: ["ci-cd", "github-actions", "gitops", "security"]
+excerpt: "The faster AI wrote code, the tighter the verification had to be. A hands-on account of building 15 CI jobs — from secret scanning to GitOps locks."
+tags: ["ai-dev", "ci-cd", "github-actions", "gitops"]
+category: journey
 order: 4
 ---
 
@@ -13,9 +14,6 @@ Once, I committed AI-generated code and hit git push. The code itself was fine. 
 CI ran, but **nothing got built.** Files had clearly changed, yet CI determined there were "no changes." `dorny/paths-filter` couldn't properly detect the diff from a force-pushed commit. When the first gate of the deployment pipeline — change detection — is breached, every subsequent check doesn't even execute.
 
 After this incident, force-push (amend) was banned across the entire project. And I learned just how dangerous the mindset of "AI generates code quickly, so CI can be sloppy" really is. The faster AI generates code, the tighter the verification pipeline needs to be.
-
-> This post is part 4 of the [AlgoSu tech blog series](/en/posts/agent-orchestration-solo-dev) (6 parts).
-> Previous: [Oracle Decides, 11 Agents Execute](/en/posts/orchestration-structure) | Next: [Meet the Agents](/en/posts/meet-the-agents)
 
 ## The Full CI 15-Job Map
 
@@ -35,8 +33,6 @@ AlgoSu's CI pipeline is composed of 15 jobs. These jobs don't run independently 
 <Callout type="info" title="DAG Dependency Rule">
 This pipeline is not a simple linear sequence — it's a **DAG**. It flows only from top to bottom, and no job can skip the stage above it. For example, `build-services` only executes when `test-node` + `audit-npm` + `secret-scan` have **all** succeeded. If any one fails, the build itself is blocked.
 </Callout>
-
-The key in this diagram is the **direction of the arrows**. Flow only goes from top to bottom, and no job can skip the job above it. `build-services` only runs when `test-node`, `audit-npm`, and `secret-scan` have **all** succeeded. If even one fails, the build itself is blocked.
 
 ## Phase 1: Security Check — secret-scan
 
@@ -304,9 +300,9 @@ Default permissions are set to **zero**, and each job explicitly declares only t
 
 ## Balancing AI and CI
 
-In the AlgoSu project, AI generates the bulk of the code. Twelve agents divide the work by role, and Oracle coordinates the whole operation. But no matter how sophisticated the agent system is, final verification is performed not by humans but by an **automated pipeline**.
+In the AlgoSu project, AI generated the bulk of the code. Twelve agents divided the work by role, and Oracle coordinated the whole operation. But no matter how sophisticated the agent system became, final verification had to be handled not by humans but by an **automated pipeline**.
 
-The 15 CI jobs ask these questions about AI-generated code:
+The 15 CI jobs asked these questions about AI-generated code:
 
 1. **Were any secrets leaked?** (secret-scan)
 2. **Does code quality meet the standard?** (quality-nestjs, quality-python, quality-frontend)
@@ -315,11 +311,9 @@ The 15 CI jobs ask these questions about AI-generated code:
 5. **Are there vulnerabilities in the built images?** (trivy-scan)
 6. **Is the deployment path secure?** (deploy → aether-gitops → ArgoCD)
 
-Code reaches production only when all these questions are answered with "yes."
+Code could reach production only when all these questions were answered with "yes."
 
-In an era where AI rapidly generates code, I believe the developer's role is shifting from writing code to **designing systems that verify code**. The faster you build, the more thorough the verification must be. And since human review alone has its limits, automated pipelines are essential.
+The faster AI wrote code, the more my role shifted from writing code to **designing systems that verify code**. Speed demanded rigor, and human review alone clearly had its limits — automated pipelines were essential.
 
-Fifteen jobs may sound like a lot, but if even one of them had been missing, there would have been a production incident. Safety nets work better when they're dense — the tighter the mesh, the fewer things slip through.
+Fifteen jobs may sound like a lot, but if even one had been missing, there would have been a production incident. I learned firsthand that safety nets work best when the mesh is tight.
 
-> In the next post, we introduce AlgoSu's 12 agents one by one.
-> [Meet the Agents](/en/posts/meet-the-agents)

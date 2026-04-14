@@ -2,21 +2,39 @@
  * @file       posts.ts
  * @domain     blog
  * @layer      lib
- * @related    src/lib/i18n.ts, content/adr/, content/adr-en/
+ * @related    src/lib/i18n.ts, content/posts/, content/posts-en/
  *
  * MDX 포스트 파일시스템 읽기 — locale별 콘텐츠 디렉토리 분기.
+ * Category union type: 'journey' (성장/여정) | 'challenge' (문제해결/삽질)
  */
 import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
 import type { Locale } from '@/lib/i18n';
 
+/** 포스트 분류 카테고리 — 2분류 체계 */
+export type Category = 'journey' | 'challenge';
+
+/** 유효한 Category 값 집합 — 타입 가드에 활용 */
+const VALID_CATEGORIES: ReadonlySet<string> = new Set<Category>(['journey', 'challenge']);
+
+/**
+ * frontmatter의 category 값을 안전하게 파싱한다.
+ * 유효하지 않은 값은 fallback('journey')으로 치환한다.
+ */
+function parseCategory(raw: unknown): Category {
+  if (typeof raw === 'string' && VALID_CATEGORIES.has(raw)) {
+    return raw as Category;
+  }
+  return 'journey';
+}
+
 const CONTENT_DIR = path.join(process.cwd(), 'content');
 
 /** Locale에 대응하는 콘텐츠 하위 디렉토리. */
 const LOCALE_SUBDIR: Record<Locale, string> = {
-  ko: 'adr',
-  en: 'adr-en',
+  ko: 'posts',
+  en: 'posts-en',
 };
 
 export interface PostMeta {
@@ -25,6 +43,8 @@ export interface PostMeta {
   date: string;
   excerpt: string;
   tags: string[];
+  /** 포스트 카테고리 — 성장 여정(journey) 또는 문제 해결(challenge) */
+  category: Category;
   source?: string;
   // 동일 date 내에서 표시 순서를 결정하는 보조 필드.
   // 값이 클수록 최신(상단). 누락 시 0으로 간주.
@@ -63,6 +83,7 @@ export function getAllPosts(locale: Locale = 'ko'): PostMeta[] {
       date: (data.date as string) ?? '',
       excerpt: (data.excerpt as string) ?? '',
       tags: (data.tags as string[]) ?? [],
+      category: parseCategory(data.category),
       source: data.source as string | undefined,
       order: typeof data.order === 'number' ? (data.order as number) : undefined,
     }))

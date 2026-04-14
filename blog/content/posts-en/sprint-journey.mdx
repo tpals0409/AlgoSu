@@ -1,0 +1,85 @@
+---
+title: "Looking Back on 67 Sprints"
+date: "2026-04-09"
+excerpt: "A project that started from curiosity about multi-agent systems became a full platform over 67 sprints. An honest retrospective of good decisions, deferred ones, and the journey from coder to builder."
+tags: ["retrospective", "solo-dev", "growth"]
+category: journey
+order: 5
+---
+
+## After the 67th Sprint
+
+It started with curiosity about multi-agent systems. "Could I build a whole service solo if multiple AI agents collaborated?" That single question launched a project that, 67 sprints later, became a platform.
+
+- **67** sprints
+- **2,432** test cases, branches coverage **99.51%**
+- **6** microservices + **1** frontend
+- **34** Identity API endpoints
+- **12** AI agents
+
+The numbers look clean on paper, but behind them lies a cycle of decisions, mistakes, and corrections.
+
+---
+
+## What You Only See After Doing It
+
+### Decisions Made Early
+
+**DB separation — decided at Sprint 12, paid off at Sprint 51.**
+With only three services, I split the databases into three (identity_db, problem_db, submission_db). Honestly, it felt excessive. But when Sprint 51 required a massive refactoring to fully separate the Identity DB that Gateway had been accessing directly, having the databases already split made the migration far smoother. An "overengineered" decision from 40 sprints prior ended up saving me.
+
+**httpOnly Cookie — decided at Sprint 8, paid off at Sprint 65.**
+While integrating OAuth, I chose to store JWTs in httpOnly cookies instead of localStorage — a move to reduce the XSS attack surface. It proved its worth in Sprint 65 when I removed 11 localStorage-related functions (+42 lines / -440 lines). A little extra effort upfront meant no debt to clean up later.
+
+**Test obsession — 2,432 tests, 99.51%.**
+The reason I could create 34 new APIs and replace 19 files wholesale in ADR-001 (Sprint 51) was that the test suite served as a safety net. I could refactor boldly without the anxiety of "will this break something over there?"
+
+### Decisions Deferred
+
+**Not building type synchronization automation.**
+In an MSA, adding a single enum meant manually updating at least 5 files: Identity entity → Gateway types → Frontend api.ts → components. In Sprint 64, I added the `FEEDBACK_RESOLVED` enum only to Identity and forgot to propagate the rest, dragging the issue all the way to Sprint 66. A code generator or shared package introduced earlier would have prevented the whole ordeal.
+
+**Connecting monitoring alerts late.**
+Prometheus and alertmanager were set up long ago, but the Discord channel that actually notifies a human wasn't connected until Sprint 63. Having the tool and having the tool actually work are different problems.
+
+---
+
+## Lessons from the Details
+
+**Sprint 62 — why an obvious bug went unnoticed.**
+The admin page's feedback filter was running on the client side. Combined with server-side pagination (20 per page), what happens? Only the current page's 20 items get filtered; data on other pages stays invisible. An obvious bug I didn't catch while building it. I had to switch to server-side filtering and include total counts in the response. Eight commits, 17 files changed.
+
+**Sprint 63–64 — the Discord notification trap.**
+Code was complete, Secrets were created, source repo manifests were written. But notifications never arrived. The cause: the aether-gitops repo's env block hadn't been updated. ArgoCD syncs the GitOps repo's manifests, but I'd only modified the source repo and forgotten about GitOps. While fixing this, an enum propagation miss compounded the issue, forcing a full 3-tier resync (Identity → Gateway → Frontend) in Sprint 66.
+
+Both episodes share the same lesson: each part looks correct in isolation, but something is missing when you see the whole picture.
+
+---
+
+## AlgoSu by the Numbers
+
+| Item | Value |
+|------|-------|
+| Total Sprints | 67 (Sprint 3 – 67) |
+| Total Tests | 2,432 |
+| Identity branches coverage | 99.51% |
+| CI jobs | 15 |
+| Microservices | 6 (Gateway, Identity, Submission, Problem, GitHub-Worker, AI-Analysis) |
+| Frontend | Next.js 15 (App Router) |
+| Databases | 3 (identity_db, problem_db, submission_db) |
+| AI Agents | 12 (Oracle + 11) |
+| Identity API endpoints | 34 (0 → 34 in Sprint 51) |
+| OAuth providers | 3 (Google, Naver, Kakao) |
+| Infrastructure | k3s + ArgoCD (OCI ARM, Ubuntu 24.04) |
+
+---
+
+## From Coder to Builder
+
+Looking back, every sprint was a first encounter with something new. The overwhelm of facing the Saga pattern for the first time, the late nights digging through logs when RabbitMQ messages weren't being consumed, the relief when ArgoCD sync succeeded for the first time. These moments repeated 67 times, and somewhere along the way, I changed without realizing it.
+
+In the beginning, "how do I implement this feature?" was everything. I was a coder — someone who writes code. As sprints accumulated, the questions shifted. "Will this decision still hold up 20 sprints from now?", "If something fails in this architecture, where do I catch it?", "How do I prove this automation actually works?" I wasn't just writing code anymore — I was becoming a builder, someone who creates systems.
+
+There are things you gain only by pouring in tokens and time. The instinct for operating AI agents like teammates, the habit of weaving safety nets with 15 CI jobs, the experiential conviction that "the design that felt excessive turned out to be right." These can't be learned from documentation — they only come from doing.
+
+Sprint 68 is still blank. But the sprints will continue. A project born from curiosity became a platform, and a coder became a builder. I'll feel overwhelmed facing new technology in the next sprint too, but 67 sprints of experience tell me — just do it and you'll figure it out.
