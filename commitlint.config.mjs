@@ -18,8 +18,8 @@ export default {
       'always',
       [
         'gateway', 'identity', 'submission', 'problem',
-        'github-worker', 'ai-analysis', 'frontend',
-        'infra', 'ci', 'docs', 'deps', 'security',
+        'github-worker', 'ai-analysis', 'frontend', 'blog',
+        'infra', 'ci', 'docs', 'deps', 'security', 'adr',
       ],
     ],
     'scope-empty': [1, 'never'],
