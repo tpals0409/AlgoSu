@@ -39,7 +39,7 @@ export async function PostPage({ locale, slug }: PostPageProps) {
         <h1 className="mb-4 text-4xl font-bold leading-tight tracking-tight">
           {post.meta.title}
         </h1>
-        <time className="text-sm text-text-muted">{post.meta.date}</time>
+        <time dateTime={post.meta.date} className="text-sm text-text-muted">{post.meta.date}</time>
         {post.meta.tags.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-3">
             {post.meta.tags.map((tag) => (
@@ -53,7 +53,7 @@ export async function PostPage({ locale, slug }: PostPageProps) {
           </div>
         )}
       </header>
-      <div className="prose prose-gray dark:prose-invert max-w-none">
+      <div className="prose prose-gray max-w-none">
         {content}
       </div>
 
@@ -73,7 +73,7 @@ export async function PostPage({ locale, slug }: PostPageProps) {
             <a
               href={`${basePath}/posts/${olderPost.slug}`}
               aria-label={t(locale, 'olderPost')}
-              className="group block rounded-lg border border-border bg-surface p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-brand hover:shadow-md focus-visible:outline-none"
+              className="group block rounded-lg border border-border bg-surface p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-brand hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
             >
               <span className="block text-xs font-medium uppercase tracking-wide text-text-subtle">
                 {t(locale, 'olderPost')}
@@ -81,7 +81,7 @@ export async function PostPage({ locale, slug }: PostPageProps) {
               <span className="mt-2 block text-base font-semibold leading-snug text-text transition-colors group-hover:text-brand">
                 {olderPost.title}
               </span>
-              <time className="mt-2 block text-xs text-text-muted">
+              <time dateTime={olderPost.date} className="mt-2 block text-xs text-text-muted">
                 {olderPost.date}
               </time>
             </a>
@@ -92,7 +92,7 @@ export async function PostPage({ locale, slug }: PostPageProps) {
             <a
               href={`${basePath}/posts/${newerPost.slug}`}
               aria-label={t(locale, 'newerPost')}
-              className="group block rounded-lg border border-border bg-surface p-5 text-right shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-brand hover:shadow-md focus-visible:outline-none"
+              className="group block rounded-lg border border-border bg-surface p-5 text-right shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-brand hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
             >
               <span className="block text-xs font-medium uppercase tracking-wide text-text-subtle">
                 {t(locale, 'newerPost')}
@@ -100,7 +100,7 @@ export async function PostPage({ locale, slug }: PostPageProps) {
               <span className="mt-2 block text-base font-semibold leading-snug text-text transition-colors group-hover:text-brand">
                 {newerPost.title}
               </span>
-              <time className="mt-2 block text-xs text-text-muted">
+              <time dateTime={newerPost.date} className="mt-2 block text-xs text-text-muted">
                 {newerPost.date}
               </time>
             </a>

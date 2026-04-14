@@ -63,7 +63,7 @@ export function PostCard({
     >
       {/* 날짜 + 카테고리 뱃지 행 */}
       <div className="mb-2 flex items-center gap-2">
-        <time className="block text-xs font-medium uppercase tracking-wide text-text-subtle">
+        <time dateTime={date} className="block text-xs font-medium uppercase tracking-wide text-text-subtle">
           {date}
         </time>
         <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${badgeClass}`}>

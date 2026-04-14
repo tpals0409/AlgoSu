@@ -24,7 +24,7 @@ export function Header({ locale }: HeaderProps) {
 
   return (
     <header className="border-b border-border">
-      <nav className="mx-auto flex max-w-3xl items-center justify-between px-6 py-6">
+      <nav className="mx-auto flex max-w-4xl items-center justify-between px-6 py-6">
         <a href={brandHref} className="text-xl font-bold text-brand">
           AlgoSu Tech
         </a>
