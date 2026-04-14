@@ -1,37 +1,67 @@
 ---
-title: "Building a Service Solo with 12 AI Agents"
+title: "AI Agent Orchestration in Practice"
 date: "2026-04-09"
-excerpt: "How a solo developer designed a 12-agent AI system to ship 6 microservices, 2,432 tests, and 67 sprints — a full account of the journey."
-tags: ["agent", "orchestration", "solo-dev", "claude-code"]
+excerpt: "A hands-on account of building an MSA solo while growing 12 AI agents into teammates"
+tags: ["ai-dev", "agent", "orchestration", "claude-code"]
 category: journey
 order: 1
 ---
 
-## Can You Get Code Reviews When You're Alone?
+## I Wanted to Build It Myself
 
-The first thing that disappears from a team project is code review. If you're a solo developer, it never existed in the first place. You commit code at 2 AM, look at it the next morning, and think, "Why did I write it this way?" Context evaporates, and quality is left to chance.
+Running an algorithm study group, there were recurring frustrations. Problem assignments, submission checks, code review requests — every week, the same tasks done by hand. As the group grew, the management overhead scaled exponentially, and the thought naturally came: "It'd be great if there were a platform to automate all this."
 
-I was building AlgoSu, an algorithm study management platform, entirely on my own. Six microservices, three databases, RabbitMQ, Redis, Kubernetes deployment — the works. As features grew, it became impossible to keep the entire system in one person's head.
+Around that time, I came across the concept of AI agent orchestration. The idea of assigning different roles to multiple AI agents and having them collaborate as a single system. The more I read about it, the more curious I became: "What would happen if I applied this to building an actual service?"
 
-So I recruited 12 AI agents as my "teammates."
+I couldn't just sit around thinking about it. I decided to try it myself. Build an MSA-based study platform solo, while running AI agents like team members.
 
-## Three Walls of Solo Development
+## The Walls You Hit When Building Alone
 
-### 1. No Code Review
+Once development started, the walls appeared quickly. Not because I couldn't write code, but because **it's hard to maintain both productivity and consistency at the same time** when you're alone.
 
-You open a PR, but nobody's there to review it. Giving yourself a "LGTM" isn't a review. When you modify JWT validation logic and accidentally remove the Rate Limit guard, nobody calls it out.
+### The Limits of Productivity
 
-### 2. Context Gets Lost
+Working across 6 microservices means heavy context-switching costs. In the morning, you're designing a Saga pattern; in the afternoon, you switch to frontend SSE integration; in the evening, you're editing k8s manifests. When you come back to the Saga the next day, the reasoning behind yesterday's decisions has already faded. Time spent re-reading code from scratch piles up, and actual progress slows down.
 
-On Tuesday you design a Saga Orchestrator pattern. On Wednesday you integrate frontend SSE. On Thursday you modify k8s manifests. By Friday, when you return to the Saga, you can't remember why you made Tuesday's decisions.
+### The Absence of Consistency
 
-### 3. Quality Standards Waver
+When you develop alone, your standards start to wobble. "Just hardcode it this once," "I'll write tests later." With no one to stop you, it's easy to give in to temptation. Commit conventions, file structure, error handling patterns — they drift a little bit each day. With 6 services, inconsistencies multiply sixfold.
 
-"Let's just hardcode it this once." "I'll write tests later." When you're alone, there's nobody to stop these temptations. Technical debt snowballs.
+These two issues were ultimately pointing at the same problem. **A single person's head can't hold the full system's context and standards at the same time.**
 
-## The Birth of the Oracle-Centered Delegation System
+## First Attempt: 8 Agents
 
-To solve these problems, I created an agent orchestration system built on Claude Code. The core idea is simple: **delegate the role distribution of a real development team to AI agents.**
+I built an agent orchestration system based on Claude Code. I started with 8 agents.
+
+Oracle (Arbiter), Conductor (Orchestrator), Gatekeeper (Guardian), Librarian (Records Keeper), Architect (Infrastructure Designer), Postman (Delivery Agent), Curator (Problem Setter), Herald (Messenger). The structure mapped real development team roles onto AI agents.
+
+At this stage, I gave each agent a **full persona all at once**. Role description, behavioral rules, code conventions, security principles — everything crammed into a single agent's prompt. I expected that giving them an identity like "this is who you are" would make them figure out the rest on their own.
+
+### How to Design the Workflow
+
+Creating the agents was the easy part. The real problem was **in what order and how to make them collaborate**. Initially, I called agents as needed, but the limitations showed up quickly.
+
+The agents couldn't maintain context. Calling the same agent twice meant it didn't remember decisions from the first call. Work ordering between agents also got tangled. If Conductor modified the API before Librarian changed the schema, types wouldn't match.
+
+### From Personas to Rules
+
+The bigger problem was **consistency**. Giving each of the 8 agents a full persona caused shared rules to subtly diverge. Conductor would keep functions under 20 lines while Herald would produce 30-line functions. Commit message formats also varied slightly between agents.
+
+In the end, I extracted the shared rules into a single file. `persona-base.md` — a shared behavioral rules file that every agent must read before starting work. Code conventions, security principles, reporting structure, escalation paths — all consolidated here. Each agent's individual prompt was left with **only domain-specific knowledge**.
+
+There was a context optimization benefit too. With shorter agent prompts, they followed core instructions better. And with shared rules in one place, updates only needed to be made once.
+
+## From 8 to 12
+
+Running the 8-agent system, gaps started to appear.
+
+Documentation was piling up with no agent to manage it. Sprint ADRs, MEMORY.md, prompt change history — Librarian was handling these on the side, but DB schema management and documentation management are fundamentally different tasks. I split out **Scribe** (Chronicler).
+
+Adding the AI analysis feature made **Sensei** (Analyst) necessary. Claude API calls, Circuit Breaker patterns, response parsing — Herald handling both frontend and AI was too broad a scope.
+
+As the frontend grew, a similar problem emerged. Herald was responsible for both page development and the design system, but separating component specs from page logic made more sense. **Palette** (Designer) took over the design system.
+
+Finally, **Scout** (Recon). There was no role to verify agents' output from the user's perspective. We needed an agent to catch cases where a feature worked but the UX felt awkward.
 
 <TierMatrix>
   <TierMatrixRow tier={1} label="Mission Critical" description="If the service breaks, everything stops. Uses the most powerful model (Opus)." accent={4}>
@@ -54,153 +84,54 @@ To solve these problems, I created an agent orchestration system built on Claude
   </TierMatrixRow>
 </TierMatrix>
 
-I (the PM) only talk to Oracle. Oracle analyzes each task and delegates it to the appropriate agent. Agents don't communicate with each other directly — when conflicts arise, Oracle mediates.
+I (the PM) only talk to Oracle. Oracle analyzes tasks and delegates to the appropriate agent, then consolidates and reports the results. Agents don't communicate directly with each other — when conflicts arise, Oracle mediates.
 
-## 12 Agents, Each with Their Own Specialty
+## Moments I Felt It in Practice
 
-When designing the agent system, the part I paid the most attention to was **boundaries of responsibility**. Just as problems arise when a backend developer tinkers with the design system on a real team, an agent must not work outside its own domain. Tiers represent priority: Service Stability (Tier 1) > Development Velocity (Tier 2) > Feature Completeness (Tier 3). When resources are scarce, the order of work is decided automatically.
+### The DB Disaster Librarian Prevented
 
-## Shared Rules: persona-base.md
-
-Having 12 agents act independently would be chaos. A shared rules file called `agents/_shared/persona-base.md` establishes the behavioral standards for every agent. Here are a few key rules.
-
-**The reporting chain is clear.**
-
-> Only Oracle communicates directly with the PM. Agents are strictly prohibited from responding to the PM directly.
-> All work is performed under Oracle's explicit approval. Independent resource access is forbidden.
-
-No agent ever unilaterally decides to change code. Everything goes through Oracle.
-
-**Escalation principles are also defined.**
-
-> When judgment exceeds an agent's scope or conflicts arise between agents, escalate to Oracle.
-
-If Palette (design) and Herald (frontend) disagree on a component spec, Oracle mediates. If it remains unresolved for more than 4 hours, it escalates to the PM (me).
-
-**Code writing rules are the same for all agents.**
-
-Single responsibility per function, 20 lines max, DRY, SOLID principles. File headers must include `@file`, `@domain`, `@layer`, `@related` annotations. Inline hardcoding (`bg-[#...]`) is forbidden. These rules maintain consistent code quality across the board.
-
-## Agent Collaboration: How a Single Submission Gets Processed
-
-Let's see how the agent system actually works by tracing through the code submission workflow.
-
-<HierarchyTree>
-  <HierarchyNode label="User" sublabel='"Please submit my code"' icon="Users" accent={1} level={0} />
-  <HierarchyNode label="PM → Oracle" sublabel='"Fix the submission feature bug"' icon="Crown" accent={4} level={1} />
-  <HierarchyNode label="Conductor" sublabel="Submission API fix — collaborating with Curator (deadlines), Postman (MQ), Sensei (AI)" icon="Workflow" accent={4} level={2} />
-  <HierarchyNode label="Gatekeeper" sublabel="JWT validation + X-Internal-Key injection" icon="Shield" accent={4} level={2} />
-  <HierarchyNode label="Herald" sublabel="Frontend UI fix — using Palette design tokens" icon="Megaphone" accent={3} level={2} />
-  <HierarchyNode label="Librarian" sublabel="Schema migration — collaborating with Architect (initContainer)" icon="Database" accent={4} level={2} />
-  <HierarchyNode label="Oracle aggregates results → Reports to PM" sublabel="Consolidates all agent results into a single report" icon="Crown" accent={4} level={1} />
-</HierarchyTree>
-
-Each agent only touches its own domain. Conductor handles only Saga logic, Gatekeeper handles only authentication, and Herald handles only the UI. This separation has dramatically reduced unexpected side effects from changes in one area affecting another.
-
-## Before and After Adopting Agents
-
-Let's make an honest comparison.
-
-### Before: "Doing Everything Alone"
-
-- Commit messages: `fix stuff`, `wip`, `asdf`
-- Code review: None
-- Tests: "Later"
-- Documentation: Existed only in my head
-- Context loss: Re-reading code from scratch every time
-- DB migration: Winging it with `synchronize: true`
-- Security: "If it works, it's fine"
-
-### After: "Working with 12 Teammates"
-
-- Commit messages: `feat|fix|chore(<scope>): <subject>` convention enforced
-- Code review: Gatekeeper checks security, Scout provides UX feedback
-- Tests: **2,432** (coverage targets met across all services)
-- Documentation: Scribe auto-manages Sprint ADRs + memory
-- Context loss: Every decision recorded in `MEMORY.md` + Sprint ADRs
-- DB migration: Librarian enforces the Expand-Contract pattern; migrations without `down()` are prohibited
-- Security: Gatekeeper enforces JWT `none` algorithm prohibition and mandatory sensitive data masking
-
-## The Output of 67 Sprints
-
-From Sprint 3 to Sprint 67, we ran 65 sprints under this system. Here are the numbers.
-
-| Metric | Value |
-|--------|-------|
-| Total Sprints | 65 (Sprint 3–67) |
-| Microservices | 6 (NestJS 5 + FastAPI 1) |
-| Frontend | Next.js 15 (App Router) |
-| Tests | 2,432 |
-| CI Jobs | 15 (matrix) |
-| Databases | 3 (Database per Service) |
-| Deployment | GitOps (ArgoCD → k3s, OCI ARM) |
-| Project Completion | ~99% |
-
-A few milestones worth noting:
-
-- **Sprint 3–10**: Basic CRUD, OAuth login, DB separation (ADR-001)
-- **Sprint 20s**: Saga Orchestrator, RabbitMQ integration, GitHub sync
-- **Sprint 40s**: AI analysis Circuit Breaker, SSE real-time notifications
-- **Sprint 50s**: Admin pages, feedback system, Discord notification integration
-- **Sprint 60s**: Security hardening, in-app notification enhancements, tech blog
-
-The reason I could maintain consistent quality on a project of this scale by myself is that the agent system turned "let's do it later" into "it has to be done now."
-
-## Moments Where It Actually Made a Difference
-
-### A Database Disaster Prevented by Librarian
-
-I was modifying the schema for the Problem service. I tried to rename a column, but Librarian's rules blocked it.
+I was changing the schema for the Problem service. I tried to rename a column, but Librarian's rules blocked it.
 
 > Expand-Contract pattern enforced. Column deletion/rename must use a 3-phase deployment.
 > Always assume a situation where old and new versions coexist during Rolling Updates.
 
-Instead of a simple rename, we proceeded in three phases: (1) add a new column, (2) copy data + switch application code, (3) drop the old column. The change was completed with zero downtime in production.
+Instead of a simple rename, I proceeded in three phases: (1) add a new column, (2) copy data + switch application code, (3) drop the old column. It felt tedious, but the change was completed with zero downtime in production. If I'd been on my own, I would've just thought "a rename will be fine" and moved on.
 
-### Gatekeeper's Security Principles
+### The Security Remnants Gatekeeper Caught
 
-While refactoring authentication logic, there was leftover code storing tokens in localStorage. Gatekeeper's rules caught it.
+While refactoring authentication logic, there was leftover code storing tokens in localStorage. Even after switching to httpOnly Cookies, remnants of the old approach were hiding throughout the codebase. Gatekeeper's rules caught them.
 
 > SSE authentication: `EventSource(url, { withCredentials: true })` — localStorage tokens cannot be used in an httpOnly Cookie environment.
 > Sensitive data strictly prohibited: raw JWT, X-Internal-Key, OAuth tokens.
 
-In Sprint 65, all localStorage token remnants were cleaned out.
+A human might think "I already fixed that, so it's probably fine" and move on. An agent inspects everything, every time.
 
-### Scribe's Memory
+### Context That Never Disappears
 
 Over 67 sprints, there were countless moments of "Why did we decide this before?" Because every decision was recorded in the `MEMORY.md` and Sprint ADRs that Scribe manages, I could find decisions from three months ago in five seconds.
 
-> Maintain MEMORY.md under 200 lines. Move completed Sprint details to topic files.
-> Delete or archive details older than 2 sprints.
+The scariest thing about developing solo isn't features not working — it's **forgetting why you built things a certain way**. When context disappears, you repeat the same mistakes or agonize over alternatives you've already evaluated. The agent system solved this problem structurally.
 
-Because memory is continuously pruned, only the latest context is ever quickly accessible.
+### Trial and Error in Workflow Design
 
-## Lessons Learned from Building This System
+Even with agents, if you get the **calling order wrong**, it's useless. Early on, I called whichever agent I needed on the spot, but as work ordering got tangled, one agent's output would break another agent's assumptions — over and over.
 
-### 1. Role Boundaries Are Productivity
+Eventually, I introduced a tier-based execution order. Tier 1 (Conductor, Gatekeeper, Librarian) locks down infrastructure and safety first, Tier 2 (Architect, Postman, Curator, Scribe) implements features, and Tier 3 (Sensei, Herald, Palette, Scout) wraps things up. Following this order significantly reduced dependency conflicts.
 
-When you tell an agent "you can do everything," quality drops. When you say "you only handle DB," it makes deep, informed decisions within that domain. You can't ask Palette to "also fix the API." Palette only needs to know the design system.
+## The Direction Ahead
 
-### 2. Shared Rules Must Be Managed as SSoT
+Running the agent system, there's a question I keep coming back to. **How do you maintain quality while controlling AI and boosting productivity?**
 
-All shared rules are gathered in a single `persona-base.md`, and every agent reads this file before starting work. If rules are scattered across agent-specific files, inconsistencies emerge, exceptions pile up, and eventually the rules become meaningless.
+Tighten control, and productivity drops. Reviewing every agent's output manually is no different from doing it all yourself. Loosen the reins, and quality wavers. The moment will come when an agent's independent decision clashes with the overall architecture.
 
-### 3. There Must Be an Escalation Path
+The balance I've found so far is this. **Define clear role boundaries, manage shared rules from a single source, and keep escalation paths open.** Agents make autonomous decisions within their domain, but when they step outside it, they must go through Oracle. Rules are managed as SSoT (Single Source of Truth) to prevent inconsistencies, and decisions that are too difficult get escalated to a human.
 
-There are situations where agents can't make a judgment call. Planning decisions like "Should we change this API spec?" go to Oracle, and if Oracle can't decide either, it escalates to the PM (me). Without this path, agents make incorrect decisions on their own.
+Whether this is the perfect answer, I still don't know. With each sprint, new problems surface, and I keep tweaking the system bit by bit. One thing is certain — this kind of thinking is something I never would have done on my own.
 
-### 4. Tier Classification Prevents Resource Conflicts
+## The Difference Between Doing It and Not
 
-If all agents try to modify the same file simultaneously, conflicts occur. Having Tier 1 (Conductor, Gatekeeper, Librarian) go first, then Tier 2, then Tier 3 reduces dependency conflicts.
+Reading about AI agent orchestration and actually doing it are completely different experiences. On paper, it boils down to "divide roles and create rules." In reality, the system was forged through dozens of incidents — workflows getting tangled, context being lost, rules falling out of sync.
 
-## Closing: Developing Solo, But Never Alone
+If I hadn't tried it, I'd have stayed at the surface-level understanding that "AI writes code for you." Because I did try, I learned things. What to delegate to agents and what to do yourself. Where to draw the line between control and autonomy. How to combine one person's judgment with twelve agents' execution power.
 
-The biggest weakness of solo development is that "nobody calls you out." An AI agent system solves this problem structurally. Agents don't get tired, they don't forget rules, and they never emotionally say "let's just let it slide this once."
-
-Of course, there are limitations. Agents have no intuition about the business domain. "Does the user actually need this feature?" is still a human judgment call. Technical execution goes to the agents; directional decisions stay with the human. This division of labor is the secret that made it possible to sustain 67 sprints.
-
-In the next post, we'll explore the [full system architecture of AlgoSu](/en/posts/system-architecture-overview) that these agents actually manage. We'll take a bird's-eye view of how 6 microservices process a single submission.
-
----
-
-*This post is the first of a 6-part AlgoSu tech blog series.*
+In the end, the important thing was just starting.
