@@ -29,6 +29,9 @@ RUN npm run build
 # ──────────────────────────────────────────────
 FROM node:22-alpine AS production
 
+ARG APK_CACHE_BUST
+RUN apk update && apk upgrade --no-cache libcrypto3 libssl3 && rm -rf /var/cache/apk/*
+
 # 보안: non-root 사용자 생성
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 

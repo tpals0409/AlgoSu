@@ -14,6 +14,8 @@ ENV NEXT_PUBLIC_ADSENSE_CLIENT_ID=ca-pub-4088760185957474
 RUN npm run build
 
 FROM node:22-alpine AS runner
+ARG APK_CACHE_BUST
+RUN apk update && apk upgrade --no-cache libcrypto3 libssl3 && rm -rf /var/cache/apk/*
 RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001 \
     && npm uninstall -g npm \
     && rm -rf /usr/local/lib/node_modules/npm /opt/yarn-* /usr/local/lib/node_modules/corepack

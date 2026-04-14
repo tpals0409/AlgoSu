@@ -588,6 +588,7 @@ jobs:
           platforms: linux/arm64
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:main-${{ github.sha }}
+          build-args: APK_CACHE_BUST=${{ github.run_id }}
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
@@ -628,6 +629,7 @@ jobs:
           platforms: linux/arm64
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ env.IMAGE_PREFIX }}-frontend:main-${{ github.sha }}
+          build-args: APK_CACHE_BUST=${{ github.run_id }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
 
