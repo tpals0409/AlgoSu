@@ -10,7 +10,7 @@ import {
   Search, X, ArrowLeft, Plus, Loader2, ExternalLink, AlertCircle,
 } from 'lucide-react';
 import { Btn, type Difficulty, DIFFICULTY_CONFIG } from './AlgosuUI';
-import { problemApi, studyApi, type CreateProblemData } from '@/lib/api';
+import { problemApi, solvedacApi, studyApi, type CreateProblemData } from '@/lib/api';
 import { useStudy } from '@/contexts/StudyContext';
 
 // ── solved.ac types ──────────────────────────────────────────────────────────
@@ -47,17 +47,22 @@ const TIER_NAMES = [
   'Ruby V', 'Ruby IV', 'Ruby III', 'Ruby II', 'Ruby I',
 ];
 
+/**
+ * Gateway의 `/api/external/solvedac/search` 프록시 호출.
+ * 직접 solved.ac 호출 시 Referer 헤더로 403이 발생해 Gateway 경유 필수.
+ */
 async function searchSolvedAC(query: string): Promise<SolvedProblem[]> {
-  const res = await fetch(
-    `/solved-ac/search/problem?query=${encodeURIComponent(query)}&page=1`,
-    { headers: { Accept: 'application/json' } },
-  );
-  if (!res.ok) throw new Error(`solved.ac API error: ${res.status}`);
-  const data = await res.json();
+  const data = await solvedacApi.searchByQuery(query, 1);
   if (!data || !Array.isArray(data.items)) {
     throw new Error('검색 결과를 불러오지 못했습니다. 다시 시도해주세요.');
   }
-  return data.items as SolvedProblem[];
+  return data.items.map((item) => ({
+    problemId: item.problemId,
+    titleKo: item.titleKo ?? item.title ?? `#${item.problemId}`,
+    level: item.level,
+    tags: item.tags ?? [],
+    acceptedUserCount: item.acceptedUserCount ?? 0,
+  }));
 }
 
 // ── 주차 계산 (단순 7일 구간) ─────────────────────────────────────────────────

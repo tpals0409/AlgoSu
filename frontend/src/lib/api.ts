@@ -494,9 +494,35 @@ export interface SolvedacProblemInfo {
   tags: string[];
 }
 
+/** Gateway 프록시(search) 응답 — solved.ac /search/problem 원본을 얇게 감싼 형태 */
+export interface SolvedacSearchItem {
+  problemId: number;
+  titleKo?: string;
+  title?: string;
+  level: number;
+  difficulty?: SolvedacProblemInfo['difficulty'];
+  sourceUrl?: string;
+  tags: Array<{
+    key: string;
+    displayNames: { language: string; name: string; short: string }[];
+  }>;
+  acceptedUserCount?: number;
+}
+
+export interface SolvedacSearchResult {
+  count: number;
+  items: SolvedacSearchItem[];
+}
+
 export const solvedacApi = {
   search: (problemId: number): Promise<SolvedacProblemInfo> =>
     fetchApi(`/api/external/solvedac/problem/${problemId}`),
+
+  /** 문자열 쿼리(문제 번호·제목) 기반 검색 — Gateway가 solved.ac 프록시 (Referer 우회) */
+  searchByQuery: (query: string, page = 1): Promise<SolvedacSearchResult> =>
+    fetchApi(
+      `/api/external/solvedac/search?query=${encodeURIComponent(query)}&page=${page}`,
+    ),
 };
 
 // ── Notification API ──
