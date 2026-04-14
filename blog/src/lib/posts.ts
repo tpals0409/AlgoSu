@@ -2,7 +2,7 @@
  * @file       posts.ts
  * @domain     blog
  * @layer      lib
- * @related    src/lib/i18n.ts, content/adr/, content/adr-en/
+ * @related    src/lib/i18n.ts, content/posts/, content/posts-en/
  *
  * MDX 포스트 파일시스템 읽기 — locale별 콘텐츠 디렉토리 분기.
  */
@@ -15,8 +15,8 @@ const CONTENT_DIR = path.join(process.cwd(), 'content');
 
 /** Locale에 대응하는 콘텐츠 하위 디렉토리. */
 const LOCALE_SUBDIR: Record<Locale, string> = {
-  ko: 'adr',
-  en: 'adr-en',
+  ko: 'posts',
+  en: 'posts-en',
 };
 
 export interface PostMeta {

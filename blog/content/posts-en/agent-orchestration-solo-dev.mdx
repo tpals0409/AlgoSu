@@ -32,44 +32,32 @@ On Tuesday you design a Saga Orchestrator pattern. On Wednesday you integrate fr
 
 To solve these problems, I created an agent orchestration system built on Claude Code. The core idea is simple: **delegate the role distribution of a real development team to AI agents.**
 
-<HierarchyTree>
-  <HierarchyNode label="PM (Human = Me)" sublabel="The sole communication channel" icon="Users" accent={1} level={0} />
-  <HierarchyNode label="Oracle" sublabel="Arbiter — planning decisions, agent coordination (Tier 1)" icon="Crown" accent={4} level={1} />
-  <HierarchyNode label="Conductor" sublabel="Orchestrator (Tier 1)" icon="Workflow" accent={4} level={2} groupLabel="Tier 1 — Stability (3)" />
-  <HierarchyNode label="Gatekeeper" sublabel="Guardian (Tier 1)" icon="Shield" accent={4} level={2} />
-  <HierarchyNode label="Librarian" sublabel="Records Keeper (Tier 1)" icon="Database" accent={4} level={2} />
-  <HierarchyNode label="Architect" sublabel="Infrastructure Designer (Tier 2)" icon="Server" accent={1} level={2} groupLabel="Tier 2 — Velocity (4)" />
-  <HierarchyNode label="Postman" sublabel="Delivery Agent (Tier 2)" icon="Send" accent={1} level={2} />
-  <HierarchyNode label="Curator" sublabel="Problem Setter (Tier 2)" icon="ScrollText" accent={1} level={2} />
-  <HierarchyNode label="Scribe" sublabel="Chronicler (Tier 2)" icon="PenLine" accent={1} level={2} />
-  <HierarchyNode label="Sensei" sublabel="Analyst (Tier 3)" icon="GraduationCap" accent={3} level={2} groupLabel="Tier 3 — Features (4)" />
-  <HierarchyNode label="Herald" sublabel="Messenger (Tier 3)" icon="Megaphone" accent={3} level={2} />
-  <HierarchyNode label="Palette" sublabel="Designer (Tier 3)" icon="Palette" accent={3} level={2} />
-  <HierarchyNode label="Scout" sublabel="Recon (Tier 3)" icon="Telescope" accent={3} level={2} />
-</HierarchyTree>
+<TierMatrix>
+  <TierMatrixRow tier={1} label="Mission Critical" description="If the service breaks, everything stops. Uses the most powerful model (Opus)." accent={4}>
+    <TierMatrixCell name="Oracle" role="Arbiter" icon="Crown" hint="Planning decisions, agent coordination" />
+    <TierMatrixCell name="Conductor" role="Orchestrator" icon="Workflow" hint="Saga orchestration" />
+    <TierMatrixCell name="Gatekeeper" role="Guardian" icon="Shield" hint="Auth, JWT, OAuth, security" />
+    <TierMatrixCell name="Librarian" role="Records Keeper" icon="Database" hint="DB schema, migrations" />
+  </TierMatrixRow>
+  <TierMatrixRow tier={2} label="Core" description="Infrastructure foundation and core business logic" accent={1}>
+    <TierMatrixCell name="Architect" role="Infrastructure Designer" icon="Server" hint="k8s, CI/CD, monitoring" />
+    <TierMatrixCell name="Postman" role="Delivery Agent" icon="Send" hint="GitHub integration, MQ consumer" />
+    <TierMatrixCell name="Curator" role="Problem Setter" icon="ScrollText" hint="Problem management, deadlines, stats" />
+    <TierMatrixCell name="Scribe" role="Chronicler" icon="PenLine" hint="Docs, memory, prompts" />
+  </TierMatrixRow>
+  <TierMatrixRow tier={3} label="Enhancement" description="Roles that enhance service value. Work begins after Tier 1 and 2 are stable" accent={3}>
+    <TierMatrixCell name="Sensei" role="Analyst" icon="GraduationCap" hint="AI analysis, Claude API" />
+    <TierMatrixCell name="Herald" role="Messenger" icon="Megaphone" hint="Frontend, SSE, UX" />
+    <TierMatrixCell name="Palette" role="Designer" icon="Palette" hint="Design system, accessibility" />
+    <TierMatrixCell name="Scout" role="Recon" icon="Telescope" hint="User-perspective testing" />
+  </TierMatrixRow>
+</TierMatrix>
 
 I (the PM) only talk to Oracle. Oracle analyzes each task and delegates it to the appropriate agent. Agents don't communicate with each other directly — when conflicts arise, Oracle mediates.
 
 ## 12 Agents, Each with Their Own Specialty
 
-When designing the agent system, the part I paid the most attention to was **boundaries of responsibility**. Just as problems arise when a backend developer tinkers with the design system on a real team, an agent must not work outside its own domain.
-
-| Agent | Role | Real Team Analogy | Tier |
-|-------|------|-------------------|------|
-| **Oracle** | Planning decisions, agent coordination, ADR management | PM + Tech Lead | 1 |
-| **Conductor** | Submission lifecycle, Saga orchestration | Backend Lead | 1 |
-| **Gatekeeper** | Authentication, JWT, OAuth, security | Security Engineer | 1 |
-| **Librarian** | DB schema, migrations, data integrity | DBA | 1 |
-| **Architect** | Infrastructure, k8s, CI/CD, monitoring | DevOps | 2 |
-| **Postman** | GitHub integration, MQ consumer | Backend Developer | 2 |
-| **Curator** | Problem management, deadlines, statistics | Backend Developer | 2 |
-| **Scribe** | Documentation, memory, prompt management | Technical Writer | 2 |
-| **Sensei** | AI analysis, Claude API, Circuit Breaker | ML Engineer | 3 |
-| **Herald** | Frontend pages, SSE, UX | Frontend Developer | 3 |
-| **Palette** | Design system, components, accessibility | UI Designer | 3 |
-| **Scout** | User-perspective testing, UX feedback | QA Engineer | 3 |
-
-Tiers represent priority. Service Stability (Tier 1) > Development Velocity (Tier 2) > Feature Completeness (Tier 3). When resources are scarce, the order of work is decided automatically.
+When designing the agent system, the part I paid the most attention to was **boundaries of responsibility**. Just as problems arise when a backend developer tinkers with the design system on a real team, an agent must not work outside its own domain. Tiers represent priority: Service Stability (Tier 1) > Development Velocity (Tier 2) > Feature Completeness (Tier 3). When resources are scarce, the order of work is decided automatically.
 
 ## Shared Rules: persona-base.md
 

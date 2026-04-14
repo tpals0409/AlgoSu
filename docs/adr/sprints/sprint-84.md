@@ -1,68 +1,60 @@
 ---
-sprint: 82
-title: "그라파나 모니터링 데이터 불일치 해결"
-date: "2026-04-10"
+sprint: 84
+title: "블로그 영문 버전 추가 + solved.ac 403 장애 복구"
+date: "2026-04-14"
 status: completed
-agents: [Oracle, Architect, Scout]
-related_adrs: ["sprint-81"]
+agents: [Oracle, Conductor, Palette, Gatekeeper]
+related_adrs: ["sprint-85"]
 ---
 
-# Sprint 82: 그라파나 모니터링 데이터 불일치 해결
+# Sprint 84: 블로그 영문 버전 추가
+
+## Context
+
+기술 블로그(Docusaurus)에 영문 버전을 추가하여 글로벌 접근성 확보. 병행하여 solved.ac Cloudflare 차단 장애가 발생하여 긴급 대응 수행.
 
 ## Decisions
 
-### D1: Recording rule 메트릭명 불일치 수정
-- **Context**: Sprint 81에서 도입한 `algosu:http_error_rate:5m` recording rule이 존재하지 않는 `http_errors_total` 메트릭을 참조하여 항상 빈 결과 반환. 실제 메트릭은 `http_requests_total{status_code=~"5.."}`.
-- **Choice**: `http_errors_total` → `http_requests_total{status_code=~"5.."}` 로 수정. 분자·분모 모두 동일 메트릭 기반으로 통일.
-- **Alternatives**: (a) 별도 `http_errors_total` counter 추가 — 이중 계측, 기각.
-- **Code Paths**: `infra/k3s/monitoring/prometheus-rules.yaml`
+### D1: Docusaurus i18n — /en 경로 locale 라우팅
+- **Context**: 블로그 콘텐츠를 한국어(기본) + 영문으로 제공 필요.
+- **Decision**: Docusaurus built-in i18n 플러그인 사용. `i18n.defaultLocale: 'ko'`, `locales: ['ko', 'en']` 설정. `/en` prefix로 영문 접근.
+- **Alternatives**: (a) 별도 사이트 배포 — 이중 관리 비용, 기각. (b) MDX 내 조건부 렌더링 — 작성 복잡도 높음, 기각.
+- **Code Paths**: `blog/docusaurus.config.ts`, `blog/i18n/en/`
 
-### D2: Memory usage recording rule join 전략 변경 (on(pod) → on(job) + label_replace)
-- **Context**: `algosu:memory_usage_pct` recording rule이 `on(pod)` join을 사용했으나, `process_resident_memory_bytes`와 `kube_pod_container_resource_limits`의 pod label이 매치되지 않아 빈 결과.
-- **Choice**: `label_replace`로 `kube_pod_container_resource_limits`의 `container` label을 `job`으로 변환 후 `on(job)` join. prefixed 메트릭명(`algosu_.+_process_resident_memory_bytes`)으로 매치.
-- **Alternatives**: (a) relabel_config로 pod label 통일 — Prometheus config 복잡도 증가, 기각. (b) 고정값 사용 — limits 동적 참조 불가, 기각.
-- **Code Paths**: `infra/k3s/monitoring/prometheus-rules.yaml`
+### D2: trailingSlash 활성화 — 정적 export 403 해결
+- **Context**: `/en` 경로가 GitHub Pages에서 403 Forbidden 반환. 정적 export 시 `index.html` 미생성으로 디렉토리 접근 실패.
+- **Decision**: `docusaurus.config.ts`에 `trailingSlash: true` 설정. 모든 경로가 `/{path}/index.html`로 생성되어 정적 호스팅 호환.
+- **Code Paths**: `blog/docusaurus.config.ts`
 
-### D3: Prometheus Deployment strategy → Recreate
-- **Context**: RollingUpdate 전략에서 신규 Pod가 기존 Pod의 PVC TSDB lock을 획득하지 못해 CrashLoopBackOff 발생. ConfigMap 변경 시마다 재시작 실패.
-- **Choice**: `strategy.type: Recreate`로 변경. 기존 Pod를 완전 종료 후 신규 Pod 기동하여 TSDB lock 충돌 제거.
-- **Alternatives**: (a) emptyDir 사용 — TSDB 데이터 유실, 기각. (b) StatefulSet 전환 — 단일 인스턴스에 불필요한 복잡도, 기각.
-- **Code Paths**: `infra/k3s/monitoring/prometheus-config.yaml`
+### D3: 다크모드 토글 제거 — 라이트 모드 고정
+- **Context**: 디자인 토큰이 라이트 모드 기준으로만 정의됨. 다크모드 전환 시 일부 컴포넌트에서 대비비 미충족.
+- **Decision**: `colorMode.disableSwitch: true`, `respectPrefersColorScheme: false` 설정. 라이트 모드 단일 테마로 고정.
+- **Code Paths**: `blog/docusaurus.config.ts`
 
-### D4: SLO 대시보드 Gateway 에러율 쿼리 통일
-- **Context**: Grafana SLO 대시보드의 Gateway 에러율 패널 2곳이 존재하지 않는 `http_errors_total` 메트릭을 사용하여 데이터 미표시.
-- **Choice**: `http_requests_total{status_code=~"5.."}` 기반으로 통일. recording rule과 동일한 메트릭 소스 사용.
-- **Code Paths**: `infra/k3s/monitoring/grafana-slo-dashboard.yaml`
+### D4: solved.ac 403 장애 복구 (상세: sprint-85.md)
+- Gateway 프록시 일원화(Referer 제거) + wget subprocess 전환(Cloudflare JA3 우회).
+- 상세 결정 및 교훈은 [Sprint 85 ADR](./sprint-85.md) 참조.
+
+### D5: Trivy HIGH 취약점 병행 패치
+- CVE-2026-28390 (OpenSSL) — APK 캐시 버스트 적용.
+- GHSA-q4gf-8mx6-v5v3 (Next.js DoS) — 15.5.14 → 15.5.15 업그레이드.
 
 ## Patterns
 
-### P1: Prometheus cross-metric join은 label_replace + on(job) 패턴 사용
-- **Where**: `prometheus-rules.yaml` — `algosu:memory_usage_pct` recording rule
-- **When to Reuse**: 서로 다른 exporter의 메트릭을 join할 때. pod label이 매치되지 않는 경우 공통 식별자(job/service명)로 변환 후 join.
-
-### P2: PVC 사용하는 단일 인스턴스 Deployment는 Recreate 전략
-- **Where**: `prometheus-config.yaml` — Prometheus Deployment
-- **When to Reuse**: TSDB, SQLite 등 단일 프로세스 lock이 필요한 스토리지를 PVC로 마운트하는 경우.
+### P1: Docusaurus 정적 export + GitHub Pages는 trailingSlash 필수
+- **Where**: `blog/docusaurus.config.ts`
+- **When to Reuse**: Docusaurus를 GitHub Pages(정적 호스팅)에 배포할 때. 서브 경로가 403이면 이 설정을 먼저 확인.
 
 ## Gotchas
 
-### G1: Recording rule은 실제 존재하는 메트릭명으로 검증 필수
-- **Symptom**: recording rule health는 OK이나 결과가 항상 빈 벡터. Prometheus는 존재하지 않는 메트릭 참조를 에러로 처리하지 않음.
-- **Root Cause**: Sprint 81에서 `http_errors_total`이라는 존재하지 않는 메트릭명을 사용. 실제 5xx 에러는 `http_requests_total{status_code=~"5.."}` label로 구분.
-- **Fix**: rule 작성 후 `prometheus/api/v1/query`로 실제 데이터 반환 여부 검증 필수.
-
-### G2: Prometheus RollingUpdate + PVC = TSDB lock 충돌
-- **Symptom**: ConfigMap 변경 후 Prometheus Pod CrashLoopBackOff. `opening storage failed: lock DB directory: resource temporarily unavailable`.
-- **Root Cause**: RollingUpdate는 신규 Pod를 먼저 기동하는데, PVC(ReadWriteOnce)에 기존 Pod가 lock을 보유 중이므로 신규 Pod가 TSDB를 열지 못함.
-- **Fix**: Recreate 전략으로 전환. 단일 인스턴스이므로 짧은 다운타임은 허용.
-
-### G3: aether-gitops 이미지 태그 PLACEHOLDER 잔류
-- **Symptom**: Gateway Pod `InvalidImageName` 상태 + ArgoCD Health `Degraded`. 정상 Pod 2개는 이전 ReplicaSet에서 Running.
-- **Root Cause**: Sprint 81에서 NODE_OPTIONS 추가 시 aether-gitops gateway.yaml 이미지를 `OWNER/main-PLACEHOLDER`로 남긴 채 커밋.
-- **Fix**: 실제 운영 이미지 태그(`tpals0409/algosu-gateway:main-6f13a80...`)로 수정. gitops 변경 시 이미지 태그가 유효한지 반드시 확인.
+### G1: Docusaurus i18n locale 경로와 정적 호스팅 호환성
+- **Symptom**: `/en` 접근 시 403 Forbidden.
+- **Root Cause**: `trailingSlash: false`(기본값)일 때 정적 export가 `/en.html`을 생성하지만, GitHub Pages는 디렉토리로 해석하여 `index.html`을 찾음.
+- **Fix**: `trailingSlash: true` 설정으로 `/en/index.html` 생성.
 
 ## Metrics
-- Commits: 1건 (e68ea00)
-- Files changed: 3개 (+15/-5)
-- aether-gitops: 2건 (c02c9ca recording rule 동기화, aa4afc4 gateway PLACEHOLDER 수정)
-- 이월 항목: Anonymous access, Loki 재시작, Grafana 업그레이드, Promtail structured_metadata
+- Commits: 11건 (0be3048..641b857)
+- Blog i18n: 3 PR (#86, #87, #88)
+- solved.ac 복구: 5 커밋 (gateway 프록시 + wget 전환 + 스키마 정렬)
+- 보안 패치: 2건 (Trivy + Next.js)
+- 이월 항목: 없음

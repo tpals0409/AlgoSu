@@ -1,0 +1,75 @@
+---
+title: "How to Control 12 AI Agents"
+date: "2026-04-09"
+excerpt: "As AI agents multiplied, control became the problem. An arbiter, a 3-Tier hierarchy, SSoT rules — a firsthand account of building a governance structure solo."
+tags: ["ai-dev", "agent", "governance"]
+order: 3
+---
+
+## Turning 12 Agents into a Team
+
+Calling agents one by one wasn't hard. The problem surfaced when I tried to run 12 of them as a **team**.
+
+Three questions kept coming up. Who verifies whose code? Who mediates when conflicts arise? How do you maintain shared rules?
+
+Without control, each agent churned out code independently — and technical debt piled up faster than any human could create it. When 12 agents wrote code based on their own judgment, style, quality, and direction all diverged. The very advantage of "fast output" was becoming a risk.
+
+## One Communication Channel — Oracle and Unidirectional Flow
+
+Talking to all 12 was impossible. With 3 agents, calling each one directly was manageable. With 12, I couldn't even track who was doing what. I narrowed the communication channel to one.
+
+Oracle became the **only agent** that talks to the PM (me). The remaining 11 are orchestrated by Oracle.
+
+The flow is unidirectional. PM → Oracle → Agent → Oracle → PM. Agents don't communicate with each other directly. Even when Conductor queries Curator for a deadline, that's an inter-service HTTP call, not direct agent-to-agent communication.
+
+Oracle decides "what to do." The "how" belongs to each agent's area of expertise. How to implement Saga logic is Conductor's call; how to write k8s manifests is Architect's decision.
+
+Decision-making followed a priority order: **Service Stability > Development Velocity > Feature Completeness**. When Herald requested "I need a new UI component" while Gatekeeper simultaneously reported "There's a vulnerability in JWT validation" — Oracle didn't hesitate to address the security issue first.
+
+Oracle had its own prohibitions too. It doesn't write code directly, doesn't make decisions that undermine core principles (own DB as SSoT, Database per Service, Saga Orchestration), and doesn't take sides with any particular agent. It's the arbiter, after all.
+
+## Hierarchical Structure — Like a Corporate Org Chart
+
+Keeping all 12 agents equal meant no priorities. I classified them into 3 tiers, like a corporate hierarchy.
+
+**Tier 1 (Mission Critical)** — Oracle, Conductor, Gatekeeper, Librarian. If these four break, the entire service stops. They use the most powerful model (Opus).
+
+**Tier 2 (Core)** — Architect, Postman, Curator, Scribe. They handle infrastructure foundations and core business logic.
+
+**Tier 3 (Enhancement)** — Sensei, Herald, Palette, Scout. Roles that enhance service value. They work after Tiers 1 and 2 are stable.
+
+This classification wasn't just a label — it was also an execution order. Tier 1 set up safety nets first, Tier 2 implemented, and Tier 3 wrapped up. Following this order significantly reduced dependency conflicts.
+
+## One File Controls All 12 — SSoT
+
+For 12 agents to behave consistently, shared rules were necessary. A single file called `persona-base.md` served that role. It was the SSoT (Single Source of Truth).
+
+Every agent was required to read this file before starting work. Each agent file contained the same directive:
+
+> **Shared Rules**: Reference: `agents/_shared/persona-base.md` (mandatory read before starting)
+
+The file contained several key rules.
+
+**Escalation principle** — When judgment exceeded scope or conflicts arose between agents, they escalated to Oracle. If a decision couldn't be made within 4 hours, it was reported to the PM. Agents don't know everything either, and the key was escalating rather than making rough guesses. In practice, when Palette and Herald disagreed on a component spec, Oracle mediated.
+
+**Interface contracts** — When changing API specs, related agents were notified 24 hours in advance. Backward compatibility came first, and breaking changes required Oracle's approval. This prevented one service's changes from breaking another in a microservices environment.
+
+**Code writing rules** — Single responsibility per function, 20 lines max, DRY, SOLID. File header annotations mandatory. Inline hardcoding prohibited. These rules applied identically across all 12 agents. Whether code was written by Conductor or Herald, it followed the same style and the same quality standards.
+
+Modifying `persona-base.md` changed the behavior of all 12 agents at once. That was the core of control.
+
+## What This Structure Gave — and What It Couldn't
+
+I ran 67 sprints under this structure. There were both gains and gaps.
+
+It gave **consistent code quality**. Because `persona-base.md` operated as SSoT, annotation rules, naming conventions, and error handling patterns remained identical from start to finish. But it brought **context window costs**. Every time an agent started work, it consumed context reading shared rules, its agent file, and tool files.
+
+It gave **context retention**. The triple structure of Sprint ADR + MEMORY.md + sprint-window.md preserved context, and decisions from three months ago could be found in five seconds. But it created an **Oracle bottleneck**. Since all work goes through Oracle, tasks can be assigned to multiple agents simultaneously, but final verification was sequential.
+
+It gave **safe changes**. Librarian enforced 3-phase DB changes, Gatekeeper verified security rules, and Architect checked resource limits. But the **lack of domain intuition** remained unsolved. "Does the user actually need this feature?" was a question agents couldn't answer. Technical execution could be delegated to agents, but directional decisions were still a human responsibility.
+
+## Controlled AI Is Useful AI
+
+Letting AI write code wasn't the hard part. The hard part was making that AI follow the project's rules, avoid conflicts with other domains, and be reversible when mistakes happened.
+
+The arbiter makes judgments, the hierarchy sets priorities, and a single file maintains consistency. It wasn't a perfect system, but it was the structure that made it possible to complete 67 sprints at consistent quality. Uncontrolled AI is dangerous, but controlled AI maintained unwavering consistency.
