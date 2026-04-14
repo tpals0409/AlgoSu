@@ -13,7 +13,7 @@ const DICTIONARY = {
   ko: {
     siteTitle: 'AlgoSu Tech Blog',
     siteDescription:
-      'AI 에이전트 12명과 함께 만드는 알고리즘 스터디 플랫폼의 아키텍처 결정과 기술 여정',
+      '코더를 넘어 빌더로 — 멀티 에이전트 하네스 도전기',
     noPosts: '아직 게시물이 없습니다.',
     blogHome: '블로그 홈',
     olderPost: '← 지난 글',
@@ -27,7 +27,7 @@ const DICTIONARY = {
   en: {
     siteTitle: 'AlgoSu Tech Blog',
     siteDescription:
-      'Architecture decisions and engineering journey of an algorithm study platform built with 12 AI agents',
+      'Beyond Coder, Becoming a Builder — A Multi-Agent Harness Chronicle',
     noPosts: 'No posts yet.',
     blogHome: 'Blog Home',
     olderPost: '← Older',
