@@ -98,7 +98,7 @@ export function ArchLayer({ label, tone = 'backend', children }: ArchLayerProps)
           <span className="text-xs font-semibold text-text">{label}</span>
           <span className="ml-auto h-px flex-1 bg-border" />
         </div>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:justify-center">
           {children}
         </div>
       </div>
@@ -119,7 +119,7 @@ export function ArchService({ name, tech, port, icon, accent = 1, note }: ArchSe
   const Icon = getIcon(icon);
   return (
     <div
-      className={`group flex items-start gap-3 rounded-lg border border-border bg-surface p-3 shadow-sm ring-1 ring-inset transition hover:shadow-md ${ACCENT_RING[accent]}`}
+      className={`w-full shrink-0 sm:w-[calc(50%-0.25rem)] lg:w-[calc(33.333%-0.333rem)] group flex items-start gap-3 rounded-lg border border-border bg-surface p-3 shadow-sm ring-1 ring-inset transition hover:shadow-md ${ACCENT_RING[accent]}`}
     >
       <span
         aria-hidden
