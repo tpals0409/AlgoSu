@@ -1,19 +1,19 @@
 ---
 sprint: 87
-title: "블로그 콘텐츠 리프레이밍 완료 — Post 6 + 빌드 검증"
+title: "블로그 카테고리 시스템 + Post 6 리프레이밍 완료"
 date: "2026-04-14"
 status: completed
-agents: [Oracle, Scribe]
+agents: [Oracle, Scribe, Herald, Palette]
 related_adrs: []
 carryover_from: sprint-86
 ---
 
-# Sprint 87: 블로그 콘텐츠 리프레이밍 완료
+# Sprint 87: 블로그 카테고리 시스템 + 콘텐츠 리프레이밍 완료
 
 ## Context
 
-Sprint 86 이월 항목(Post 4/6 리프레이밍, 빌드 검증) + 카테고리 시스템 신규 도입을 목표로 시작.
-결과적으로 Sprint 86의 핵심 이월인 Post 6 리프레이밍과 빌드 검증을 완료하고, Post 4 리프레이밍 및 카테고리 시스템은 Sprint 88로 이월.
+Sprint 86 이월 항목(Post 6 리프레이밍) + 카테고리 시스템 신규 도입을 목표로 시작.
+3-Wave 디스패치(Scribe → Herald/Palette → Scribe)로 병렬 에이전트 오케스트레이션 수행.
 
 ## Decisions
 
@@ -31,48 +31,53 @@ Sprint 86 이월 항목(Post 4/6 리프레이밍, 빌드 검증) + 카테고리 
 | `<PhaseTimeline>/<PhaseMilestone>` | 번호 목록 (phase title — period) |
 | `<Callout type="warn">` | `> **⚠️ 제목**` 블록쿼트 |
 
-- AI 맥락 추가: "에이전트 12명 분산 작업 구조에서 이런 상태 불일치는 전체를 한눈에 보지 않으면 잡기 어려운 버그" 문장 (KR/EN 공통)
-- `tags`에 `"challenge"` 카테고리 추가 → Sprint 88 카테고리 시스템 선제 준비
+- AI 맥락 추가: "에이전트 12명 분산 작업 구조에서 이런 상태 불일치는 전체를 한눈에 보지 않으면 잡기 어려운 버그"
 
-### D2: 빌드 검증 — ✅ 통과
+### D2: 카테고리 데이터 레이어
 
-`cd blog && npm run build` 실행 결과:
+**변경 커밋**: `12c14cd`
 
-```
-✓ Compiled successfully in 2.3s
-✓ Generating static pages (17/17)
-✓ Exporting (2/2)
-```
+- `Category = 'journey' | 'challenge'` union type + `parseCategory()` 함수 (fallback: journey)
+- `PostMeta`에 `category: Category` 필드 추가
+- i18n: `categoryAll`, `categoryJourney`, `categoryChallenge` (ko/en)
+- 12개 MDX frontmatter에 `category` 필드 삽입 (Post 1~5: journey, Post 6: challenge)
 
-| 항목 | 결과 |
-|------|------|
-| TypeScript 컴파일 | ✅ 오류 없음 |
-| Lint 검사 | ✅ 통과 |
-| 정적 페이지 생성 | ✅ 17페이지 (KR 6 + EN 6 + 홈 2 + not-found 1 + 기타) |
-| SSG 내보내기 | ✅ 2개 export 완료 |
+### D3: CategoryTabs 컴포넌트
 
-- Post 4가 `<PhaseTimeline>` MDX 컴포넌트를 여전히 사용 중이나, `mdx-components.tsx`에 등록되어 있어 정상 빌드됨.
-- 카테고리 시스템이 미구현인 상태에서도 기존 빌드 경로는 모두 정상.
+**변경 커밋**: `82abecd`
 
-### D3: 카테고리 시스템 — Sprint 88으로 이월
+- 토스 스타일 수평 탭 Client Component (`category-tabs.tsx`)
+- 활성 탭 하단 2px brand bar 인디케이터
+- 접근성: `role="tablist"`, `role="tab"`, `aria-selected`, roving tabindex
 
-계획된 카테고리 시스템(`category-tabs.tsx`, `post-list-with-filter.tsx`, `PostMeta.category` 확장)은 이번 Sprint에 구현하지 않기로 결정.
-이유: Sprint 86 이월 항목(Post 4) 미완료 상태에서 신규 기능 추가 시 리그레션 위험.
-`sprint-87-plan.md`의 설계 결정은 Sprint 88에 그대로 인계.
+### D4: 카테고리 필터 UI + HomePage 연결
+
+**변경 커밋**: `6464497`
+
+- `PostListWithFilter` Client Component: `useState<Category|'all'>('all')` 필터 상태
+- `PostCard`: 날짜 옆 카테고리 뱃지 (journey → `bg-brand-soft text-brand`, challenge → `bg-amber-50 text-amber-700`)
+- `HomePage`: Server Component 유지, `<ul>` → `<PostListWithFilter>` 교체
+
+### D5: 빌드 검증 — ✅ 통과
+
+`cd blog && npm run build` — 17 static pages, SSG 정상.
 
 ## Outcome
 
-- Post 6 (session-policy-sync) KR/EN 리프레이밍 — 완료 (commit `195c839`)
-- 빌드 검증 통과 — 17 static pages, 오류 없음
-- 총 변경: 2 파일, +100 / -118 줄
+| 항목 | 커밋 | 에이전트 |
+|------|------|---------|
+| Post 6 KR/EN 리프레이밍 | `195c839` | Scribe |
+| 카테고리 데이터 레이어 | `12c14cd` | Herald |
+| CategoryTabs 컴포넌트 | `82abecd` | Palette |
+| 필터 UI + HomePage 연결 | `6464497` | Herald |
+| Sprint 87 ADR | `4467788` → 갱신 | Scribe → Oracle |
 
 ### 이월 항목
 
 - Post 4 (cicd-ai-guardrails) 제목/결론 조정 + MDX→Markdown 전환 (`<PhaseTimeline>` 제거)
-- 카테고리 시스템 구현 (design: `sprint-87-plan.md` 참조)
 
 ## 교훈
 
-- **MDX 컴포넌트 등록이 양날의 검**: 이전 포스트에서 사용 중인 컴포넌트를 `mdx-components.tsx`에서 제거하면 빌드가 깨진다. Post별 순차 전환 후 컴포넌트 등록 해제 순서를 지켜야 한다.
-- **Wave 단위 분할 유효**: Wave 1(Post 6) → Wave 2(빌드검증+ADR) 분할로 각 wave의 책임이 명확했다.
-- **이월 적립**: Sprint 86→87→(88)로 Post 4와 카테고리 시스템이 이월 누적되고 있다. Sprint 88에서 이 두 항목을 반드시 우선 처리 필요.
+- **체인 디스패치에서 동일 에이전트 중복 금지**: `herald,palette,herald` 체인은 jq `select(.name)` 충돌 발생. 동일 에이전트가 여러 단계에 필요하면 개별 task로 분리 필요.
+- **Wave 간 의존성 명시 필요**: Wave 3(ADR)가 Wave 2(카테고리)보다 먼저 실행되어 "이월" 오판. task 간 의존성 선언 메커니즘 필요.
+- **4-에이전트 협업 성공**: Scribe(콘텐츠) → Herald(데이터/통합) → Palette(UI) → Herald(통합) 파이프라인으로 6편 블로그 카테고리 체계 완성.
