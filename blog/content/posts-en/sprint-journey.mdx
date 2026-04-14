@@ -28,8 +28,26 @@ The numbers look clean on paper, but behind them lies a cycle of decisions, mist
 **DB separation — decided at Sprint 12, paid off at Sprint 51.**
 With only three services, I split the databases into three (identity_db, problem_db, submission_db). Honestly, it felt excessive. But when Sprint 51 required a massive refactoring to fully separate the Identity DB that Gateway had been accessing directly, having the databases already split made the migration far smoother. An "overengineered" decision from 40 sprints prior ended up saving me.
 
+<DecisionBridge
+  fromSprint={12}
+  fromLabel="Split into 3 databases"
+  toSprint={51}
+  toLabel="Full Gateway DB separation"
+  insight="40 sprints later, overengineering saved the day"
+  accent={3}
+/>
+
 **httpOnly Cookie — decided at Sprint 8, paid off at Sprint 65.**
 While integrating OAuth, I chose to store JWTs in httpOnly cookies instead of localStorage — a move to reduce the XSS attack surface. It proved its worth in Sprint 65 when I removed 11 localStorage-related functions (+42 lines / -440 lines). A little extra effort upfront meant no debt to clean up later.
+
+<DecisionBridge
+  fromSprint={8}
+  fromLabel="Adopted httpOnly Cookies"
+  toSprint={65}
+  toLabel="Removed 11 localStorage functions"
+  insight="57 sprints later, zero tech debt"
+  accent={1}
+/>
 
 **Test obsession — 2,432 tests, 99.51%.**
 The reason I could create 34 new APIs and replace 19 files wholesale in ADR-001 (Sprint 51) was that the test suite served as a safety net. I could refactor boldly without the anxiety of "will this break something over there?"
@@ -58,19 +76,14 @@ Both episodes share the same lesson: each part looks correct in isolation, but s
 
 ## AlgoSu by the Numbers
 
-| Item | Value |
-|------|-------|
-| Total Sprints | 67 (Sprint 3 – 67) |
-| Total Tests | 2,432 |
-| Identity branches coverage | 99.51% |
-| CI jobs | 15 |
-| Microservices | 6 (Gateway, Identity, Submission, Problem, GitHub-Worker, AI-Analysis) |
-| Frontend | Next.js 15 (App Router) |
-| Databases | 3 (identity_db, problem_db, submission_db) |
-| AI Agents | 12 (Oracle + 11) |
-| Identity API endpoints | 34 (0 → 34 in Sprint 51) |
-| OAuth providers | 3 (Google, Naver, Kakao) |
-| Infrastructure | k3s + ArgoCD (OCI ARM, Ubuntu 24.04) |
+<MetricGrid cols={3}>
+  <MetricCard label="Total Sprints" value="67" hint="Sprint 3 – 67" accent={1} />
+  <MetricCard label="Total Tests" value="2,432" hint="Identity branches 99.51%" accent={2} />
+  <MetricCard label="CI Jobs" value="15" accent={3} />
+  <MetricCard label="Microservices" value="6" hint="Gateway · Identity · Submission · Problem · GitHub-Worker · AI-Analysis" accent={4} />
+  <MetricCard label="AI Agents" value="12" hint="Oracle + 11" accent={5} />
+  <MetricCard label="Identity API" value="34" hint="0 → 34 in Sprint 51" accent={6} />
+</MetricGrid>
 
 ---
 
@@ -80,6 +93,10 @@ Looking back, every sprint was a first encounter with something new. The overwhe
 
 In the beginning, "how do I implement this feature?" was everything. I was a coder — someone who writes code. As sprints accumulated, the questions shifted. "Will this decision still hold up 20 sprints from now?", "If something fails in this architecture, where do I catch it?", "How do I prove this automation actually works?" I wasn't just writing code anymore — I was becoming a builder, someone who creates systems.
 
-There are things you gain only by pouring in tokens and time. The instinct for operating AI agents like teammates, the habit of weaving safety nets with 15 CI jobs, the experiential conviction that "the design that felt excessive turned out to be right." These can't be learned from documentation — they only come from doing.
+<Callout type="success" title="Things you only gain by doing">
+The instinct for operating AI agents like teammates, the habit of weaving safety nets with 15 CI jobs, the experiential conviction that "the design that felt excessive turned out to be right" — these can't be learned from documentation. They only come from doing.
+</Callout>
+
+There are things you gain only by pouring in tokens and time.
 
 Sprint 68 is still blank. But the sprints will continue. A project born from curiosity became a platform, and a coder became a builder. I'll feel overwhelmed facing new technology in the next sprint too, but 67 sprints of experience tell me — just do it and you'll figure it out.

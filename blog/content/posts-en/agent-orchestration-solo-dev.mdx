@@ -97,6 +97,10 @@ I was changing the schema for the Problem service. I tried to rename a column, b
 
 Instead of a simple rename, I proceeded in three phases: (1) add a new column, (2) copy data + switch application code, (3) drop the old column. It felt tedious, but the change was completed with zero downtime in production. If I'd been on my own, I would've just thought "a rename will be fine" and moved on.
 
+<Callout type="success" title="The moment an agent prevented a disaster">
+Librarian's Expand-Contract rule forced a simple rename into a 3-phase deployment. Tedious, but zero downtime in production. Without the agent, I never would have followed this process.
+</Callout>
+
 ### The Security Remnants Gatekeeper Caught
 
 While refactoring authentication logic, there was leftover code storing tokens in localStorage. Even after switching to httpOnly Cookies, remnants of the old approach were hiding throughout the codebase. Gatekeeper's rules caught them.
@@ -117,6 +121,12 @@ The scariest thing about developing solo isn't features not working — it's **f
 Even with agents, if you get the **calling order wrong**, it's useless. Early on, I called whichever agent I needed on the spot, but as work ordering got tangled, one agent's output would break another agent's assumptions — over and over.
 
 Eventually, I introduced an echelon-based execution order. Echelon 1 (Conductor, Gatekeeper, Librarian) locks down infrastructure and safety first, Echelon 2 (Architect, Postman, Curator, Scribe) implements features, and Echelon 3 (Sensei, Herald, Palette, Scout) wraps things up. Following this order significantly reduced dependency conflicts.
+
+<Pipeline>
+  <PipelineStage label="Echelon 1" detail="Infrastructure · safety nets" accent={4} icon="Shield" />
+  <PipelineStage label="Echelon 2" detail="Feature implementation · business logic" accent={1} icon="Workflow" />
+  <PipelineStage label="Echelon 3" detail="UX · analysis · wrap-up" accent={3} icon="Sparkles" />
+</Pipeline>
 
 ## The Direction Ahead
 

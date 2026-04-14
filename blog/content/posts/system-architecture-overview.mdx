@@ -109,6 +109,13 @@ Gateway는 유일한 외부 진입점입니다. 인증, 라우팅, Rate Limit, S
 
 서비스를 나누면 통신 방식을 정해야 합니다. 4가지 패턴을 용도에 따라 골라 썼습니다.
 
+<Pipeline>
+  <PipelineStage label="HTTP 동기" detail="즉시 응답 (Gateway → 서비스)" accent={1} icon="Globe" />
+  <PipelineStage label="RabbitMQ 비동기" detail="장시간 작업 (GitHub Push, AI)" accent={2} icon="Send" />
+  <PipelineStage label="Redis Pub/Sub" detail="실시간 이벤트 전파" accent={5} icon="Workflow" />
+  <PipelineStage label="SSE" detail="브라우저 실시간 스트리밍" accent={6} icon="Sparkles" />
+</Pipeline>
+
 **HTTP 동기 호출**은 즉시 응답이 필요한 경우에 사용합니다. Gateway에서 Identity, Submission, Problem으로의 호출이 여기에 해당합니다. 내부 호출에는 `X-Internal-Key` 헤더를 붙여서 외부 접근을 차단합니다. 이 키 검증 로직은 Gatekeeper가 설계했는데, `crypto.timingSafeEqual`을 써서 타이밍 어택을 방지하는 것까지 에이전트가 스스로 적용했습니다.
 
 **RabbitMQ 비동기 메시징**은 시간이 오래 걸리는 작업에 사용합니다. 코드 제출 후 GitHub Push와 AI 분석을 동기로 처리하면 사용자가 30초 넘게 기다려야 합니다. MQ로 비동기 처리하면 제출 즉시 응답할 수 있습니다. GitHub Worker의 `prefetch=2`는 Architect가 제안한 설정입니다 — GitHub API Rate Limit과 OCI Free Tier 리소스를 고려한 동시 처리량 제한이었죠.

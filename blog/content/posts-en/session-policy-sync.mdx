@@ -23,12 +23,12 @@ We started investigating. Long story short, **4 layers were each running on diff
 
 Laid out plainly, here's what we found:
 
-| Layer | Value | Note |
-|-------|-------|------|
-| JWT TTL | 7 days | Production env (designed: 2h) |
-| Cookie maxAge | 1 hour | Hardcoded constant |
-| Sliding threshold | 5 min | Only refreshes within 5 min of expiry |
-| Frontend timer | 65 min | Forced logout judgment |
+<MetricGrid cols={4}>
+  <MetricCard label="JWT TTL" value="7 days" hint="Production env (designed: 2h)" accent={1} />
+  <MetricCard label="Cookie maxAge" value="1 hour" hint="Hardcoded constant" accent={2} />
+  <MetricCard label="Sliding threshold" value="5 min" hint="Only refreshes within 5 min of expiry" accent={4} />
+  <MetricCard label="Frontend timer" value="65 min" hint="Forced logout judgment" accent={5} />
+</MetricGrid>
 
 No matter which one you fixed, another layer would kill the session. Let's tear each one apart.
 
@@ -259,20 +259,19 @@ Currently, `ms` exists as a transitive dependency (brought in by another package
 
 Here's a checklist of lessons from this bug.
 
-> **⚠️ Session Policy Sync Checklist**
->
-> **When adding/changing env vars:**
->
-> 1. Grep for constants with the same semantic meaning scattered across the codebase
-> 2. Check for constants that are "coincidentally the same value" — if they share the same semantics, they must reference the same SSoT
-> 3. Verify that changing one env causes **all** related state to follow
-> 4. Separate non-secret policy values (TTL, threshold, flags) into ConfigMap/Deployment env instead of Sealed Secrets
->
-> **Client-server policy sync:**
->
-> 1. Use runtime API fetch instead of `NEXT_PUBLIC_*` build-time injection
-> 2. Set DEFAULT fallback shorter than the server default on fetch failure
-> 3. Apply positive finite number validation to all policy fields
+<Callout type="warn" title="Session Policy Sync Checklist">
+
+**When adding/changing env vars:**
+1. Grep for constants with the same semantic meaning scattered across the codebase
+2. Check for constants that are "coincidentally the same value" — if they share the same semantics, they must reference the same SSoT
+3. Verify that changing one env causes **all** related state to follow
+4. Separate non-secret policy values (TTL, threshold, flags) into ConfigMap/Deployment env instead of Sealed Secrets
+
+**Client-server policy sync:**
+1. Use runtime API fetch instead of `NEXT_PUBLIC_*` build-time injection
+2. Set DEFAULT fallback shorter than the server default on fetch failure
+3. Apply positive finite number validation to all policy fields
+</Callout>
 
 ---
 

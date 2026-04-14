@@ -23,12 +23,12 @@ order: 6
 
 문제를 정리하면 이렇습니다.
 
-| 레이어 | 값 | 비고 |
-|--------|-----|------|
-| JWT TTL | 7일 | 운영 env (기획: 2h) |
-| Cookie maxAge | 1시간 | 하드코딩 상수 |
-| Sliding 임계값 | 5분 | 만료 5분 전에만 갱신 |
-| 프론트 타이머 | 65분 | 강제 로그아웃 판정 |
+<MetricGrid cols={4}>
+  <MetricCard label="JWT TTL" value="7일" hint="운영 env (기획: 2h)" accent={1} />
+  <MetricCard label="Cookie maxAge" value="1시간" hint="하드코딩 상수" accent={2} />
+  <MetricCard label="Sliding 임계값" value="5분" hint="만료 5분 전에만 갱신" accent={4} />
+  <MetricCard label="프론트 타이머" value="65분" hint="강제 로그아웃 판정" accent={5} />
+</MetricGrid>
 
 어느 한 곳을 고쳐도 다른 레이어가 세션을 끊는 구조였습니다. 하나씩 뜯어보겠습니다.
 
@@ -259,20 +259,19 @@ DEFAULT fallback은 서버 기본값(2h)보다 **일부러 짧게** 설정했습
 
 이 버그에서 얻은 교훈을 체크리스트로 정리했습니다.
 
-> **⚠️ 세션 정책 동기화 체크리스트**
->
-> **env 추가/변경 시:**
->
-> 1. 같은 의미의 상수가 코드에 흩어져 있지 않은지 grep
-> 2. "우연히 같은 값"인 상수는 없는지 확인 — 같은 시맨틱이면 반드시 동일 SSoT 참조
-> 3. env 하나를 바꿨을 때 연관 상태가 **모두** 따라오는지 검증
-> 4. 비-비밀 정책 값(TTL, threshold, flag)은 Sealed Secret이 아닌 ConfigMap/Deployment env로 분리
->
-> **클라이언트-서버 정책 동기화:**
->
-> 1. `NEXT_PUBLIC_*` 빌드타임 주입 대신 런타임 API fetch 방식 사용
-> 2. fetch 실패 시 DEFAULT fallback은 서버 기본값보다 짧게 설정
-> 3. 모든 정책 필드에 positive finite number 검증 적용
+<Callout type="warn" title="세션 정책 동기화 체크리스트">
+
+**env 추가/변경 시:**
+1. 같은 의미의 상수가 코드에 흩어져 있지 않은지 grep
+2. "우연히 같은 값"인 상수는 없는지 확인 — 같은 시맨틱이면 반드시 동일 SSoT 참조
+3. env 하나를 바꿨을 때 연관 상태가 **모두** 따라오는지 검증
+4. 비-비밀 정책 값(TTL, threshold, flag)은 Sealed Secret이 아닌 ConfigMap/Deployment env로 분리
+
+**클라이언트-서버 정책 동기화:**
+1. `NEXT_PUBLIC_*` 빌드타임 주입 대신 런타임 API fetch 방식 사용
+2. fetch 실패 시 DEFAULT fallback은 서버 기본값보다 짧게 설정
+3. 모든 정책 필드에 positive finite number 검증 적용
+</Callout>
 
 ---
 

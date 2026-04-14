@@ -32,6 +32,7 @@ import {
 } from '@/components/blog/echelon-matrix';
 import { HierarchyTree, HierarchyNode } from '@/components/blog/hierarchy-tree';
 import { PhaseTimeline, PhaseMilestone } from '@/components/blog/phase-timeline';
+import { DecisionBridge } from '@/components/blog/decision-bridge';
 
 export const mdxComponents: MDXComponents = {
   // 외부 링크 — 새 탭, 안전 속성
@@ -83,4 +84,5 @@ export const mdxComponents: MDXComponents = {
   HierarchyNode,
   PhaseTimeline,
   PhaseMilestone,
+  DecisionBridge,
 };

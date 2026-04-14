@@ -23,6 +23,14 @@ Oracle became the **only agent** that talks to the PM (me). The remaining 11 are
 
 The flow is unidirectional. PM → Oracle → Agent → Oracle → PM. Agents don't communicate with each other directly. Even when Conductor queries Curator for a deadline, that's an inter-service HTTP call, not direct agent-to-agent communication.
 
+<Pipeline>
+  <PipelineStage label="PM (Human)" detail="Task request" accent={1} icon="User" />
+  <PipelineStage label="Oracle" detail="Analyze · delegate" accent={6} icon="Crown" />
+  <PipelineStage label="Agent" detail="Domain execution" accent={3} icon="Workflow" />
+  <PipelineStage label="Oracle" detail="Consolidate · verify" accent={6} icon="Crown" />
+  <PipelineStage label="PM (Human)" detail="Final review" accent={1} icon="User" />
+</Pipeline>
+
 Oracle decides "what to do." The "how" belongs to each agent's area of expertise. How to implement Saga logic is Conductor's call; how to write k8s manifests is Architect's decision.
 
 Decision-making followed a priority order: **Service Stability > Development Velocity > Feature Completeness**. When Herald requested "I need a new UI component" while Gatekeeper simultaneously reported "There's a vulnerability in JWT validation" — Oracle didn't hesitate to address the security issue first.
@@ -41,9 +49,34 @@ Keeping all 12 agents equal meant no priorities. I borrowed the echelon concept 
 
 This classification wasn't just a label — it was also an execution order. Echelon 1 set up safety nets first, Echelon 2 implemented, and Echelon 3 wrapped up. Following this order significantly reduced dependency conflicts.
 
+<EchelonMatrix>
+  <EchelonMatrixRow echelon={1} label="Mission Critical" description="If the service breaks, everything stops. Uses Opus." accent={4}>
+    <EchelonMatrixCell name="Oracle" role="Arbiter" icon="Crown" hint="Planning decisions, agent coordination" />
+    <EchelonMatrixCell name="Conductor" role="Orchestrator" icon="Workflow" hint="Saga orchestration" />
+    <EchelonMatrixCell name="Gatekeeper" role="Guardian" icon="Shield" hint="Auth, JWT, OAuth, security" />
+    <EchelonMatrixCell name="Librarian" role="Records Keeper" icon="Database" hint="DB schema, migrations" />
+  </EchelonMatrixRow>
+  <EchelonMatrixRow echelon={2} label="Core" description="Infrastructure foundation and core business logic" accent={1}>
+    <EchelonMatrixCell name="Architect" role="Infrastructure Designer" icon="Server" hint="k8s, CI/CD, monitoring" />
+    <EchelonMatrixCell name="Postman" role="Delivery Agent" icon="Send" hint="GitHub integration, MQ consumer" />
+    <EchelonMatrixCell name="Curator" role="Problem Setter" icon="ScrollText" hint="Problem management, deadlines, stats" />
+    <EchelonMatrixCell name="Scribe" role="Chronicler" icon="PenLine" hint="Docs, memory, prompts" />
+  </EchelonMatrixRow>
+  <EchelonMatrixRow echelon={3} label="Enhancement" description="Roles that enhance service value. Work begins after Echelon 1 and 2 are stable" accent={3}>
+    <EchelonMatrixCell name="Sensei" role="Analyst" icon="GraduationCap" hint="AI analysis, Claude API" />
+    <EchelonMatrixCell name="Herald" role="Messenger" icon="Megaphone" hint="Frontend, SSE, UX" />
+    <EchelonMatrixCell name="Palette" role="Designer" icon="Palette" hint="Design system, accessibility" />
+    <EchelonMatrixCell name="Scout" role="Recon" icon="Telescope" hint="User-perspective testing" />
+  </EchelonMatrixRow>
+</EchelonMatrix>
+
 ## One File Controls All 12 — SSoT
 
 For 12 agents to behave consistently, shared rules were necessary. A single file called `persona-base.md` served that role. It was the SSoT (Single Source of Truth).
+
+<Callout type="info" title="persona-base.md — SSoT for All 12">
+A single file every agent must read before starting work. Code conventions, security principles, escalation paths, and interface contracts are all concentrated here. Modifying this one file changes the behavior of all 12 agents at once.
+</Callout>
 
 Every agent was required to read this file before starting work. Each agent file contained the same directive:
 
@@ -68,6 +101,10 @@ It gave **consistent code quality**. Because `persona-base.md` operated as SSoT,
 It gave **context retention**. The triple structure of Sprint ADR + MEMORY.md + sprint-window.md preserved context, and decisions from three months ago could be found in five seconds. But it created an **Oracle bottleneck**. Since all work goes through Oracle, tasks can be assigned to multiple agents simultaneously, but final verification was sequential.
 
 It gave **safe changes**. Librarian enforced 3-phase DB changes, Gatekeeper verified security rules, and Architect checked resource limits. But the **lack of domain intuition** remained unsolved. "Does the user actually need this feature?" was a question agents couldn't answer. Technical execution could be delegated to agents, but directional decisions were still a human responsibility.
+
+<Callout type="warn" title="What This Structure Couldn't Give">
+Context window costs (consuming rule files on every task), Oracle bottleneck (sequential final verification), lack of domain intuition ("Does the user actually need this?" is a question agents can't answer). Technical execution can be delegated, but directional decisions remain a human responsibility.
+</Callout>
 
 ## Controlled AI Is Useful AI
 

@@ -276,6 +276,10 @@ ArgoCD가 매니페스트를 동기화하면, k3s 클러스터에서 `deploy.sh`
 
 **해결**: force-push를 프로젝트 전체에서 금지했습니다. 수정이 필요하면 새 커밋을 만듭니다. "커밋 히스토리가 지저분해지는 게 싫다"는 의견도 있지만, 안전한 CI가 깨끗한 히스토리보다 중요합니다.
 
+<Callout type="danger" title="force-push 금지 원칙">
+`git commit --amend` + force-push는 `dorny/paths-filter`의 변경 감지를 무력화합니다. 변경 감지가 뚫리면 그 뒤의 모든 체크(테스트, 빌드, 스캔)가 실행조차 되지 않습니다. **안전한 CI가 깨끗한 히스토리보다 항상 중요합니다.**
+</Callout>
+
 ### 2. aether-gitops 수동 태그 변경의 위험
 
 한번은 급하게 배포해야 해서 aether-gitops의 kustomization.yaml을 수동으로 편집했습니다. 이미지 태그를 직접 변경했는데, 그 태그에 해당하는 이미지가 GHCR에 존재하지 않았습니다. ArgoCD는 매니페스트를 동기화했지만, k3s가 이미지를 풀링하지 못해서 Pod가 `ImagePullBackOff` 상태에 빠졌습니다.
@@ -287,6 +291,10 @@ ArgoCD가 매니페스트를 동기화하면, k3s 클러스터에서 `deploy.sh`
 매니페스트를 변경하고 배포했는데, 서비스가 이상하게 동작했습니다. 확인해보니 소스 레포의 k8s 매니페스트에는 새 환경변수를 추가했지만, aether-gitops에는 반영하지 않은 거예요. ArgoCD가 동기화하는 건 aether-gitops의 매니페스트이니까, 소스 레포만 변경하면 소용이 없습니다.
 
 **해결**: 배포 후에는 항상 `kubectl exec -- printenv`로 환경변수가 실제로 주입되었는지 검증합니다. 그리고 소스 레포의 매니페스트를 변경할 때는 반드시 aether-gitops도 함께 갱신합니다.
+
+<Callout type="warn" title="소스레포 ≠ GitOps레포">
+ArgoCD가 동기화하는 건 aether-gitops 레포입니다. 소스 레포의 매니페스트만 변경하면 프로덕션에는 아무런 영향이 없습니다. 매니페스트를 변경할 때는 **반드시 두 레포를 함께** 갱신하세요.
+</Callout>
 
 ### 4. 최소 권한 원칙
 

@@ -109,6 +109,13 @@ In this structure, the division of AI agent responsibilities falls into place na
 
 Once services are split, you need to decide how they talk to each other. We picked from four patterns based on use case.
 
+<Pipeline>
+  <PipelineStage label="Sync HTTP" detail="Immediate response (Gateway → services)" accent={1} icon="Globe" />
+  <PipelineStage label="RabbitMQ Async" detail="Long-running tasks (GitHub Push, AI)" accent={2} icon="Send" />
+  <PipelineStage label="Redis Pub/Sub" detail="Real-time event propagation" accent={5} icon="Workflow" />
+  <PipelineStage label="SSE" detail="Browser real-time streaming" accent={6} icon="Sparkles" />
+</Pipeline>
+
 **Synchronous HTTP** is used when an immediate response is needed. Calls from the Gateway to Identity, Submission, and Problem fall here. Internal calls carry an `X-Internal-Key` header to block external access. The key validation logic was designed by Gatekeeper — it even applied `crypto.timingSafeEqual` on its own to prevent timing attacks.
 
 **RabbitMQ async messaging** is used for long-running tasks. If we processed GitHub pushes and AI analysis synchronously after submission, users would wait over 30 seconds. With MQ-based async processing, we can respond immediately after submission. GitHub Worker's `prefetch=2` was a setting proposed by Architect — a concurrency limit that accounts for GitHub API rate limits and OCI Free Tier resources.

@@ -276,6 +276,10 @@ As mentioned earlier, `git commit --amend` followed by force-push causes `dorny/
 
 **Resolution**: Force-push was banned across the entire project. If a fix is needed, make a new commit. While some may dislike a "messy commit history," a safe CI pipeline is more important than a clean history.
 
+<Callout type="danger" title="Force-push banned">
+`git commit --amend` + force-push disables `dorny/paths-filter` change detection. When change detection is breached, every subsequent check (tests, builds, scans) doesn't even execute. **A safe CI pipeline is always more important than a clean history.**
+</Callout>
+
 ### 2. The Risk of Manual Tag Changes in aether-gitops
 
 Once, I needed a quick deployment and manually edited kustomization.yaml in aether-gitops. I changed the image tag directly, but the image corresponding to that tag didn't exist in GHCR. ArgoCD synced the manifest, but k3s couldn't pull the image, and the Pod fell into `ImagePullBackOff` state.
@@ -287,6 +291,10 @@ Once, I needed a quick deployment and manually edited kustomization.yaml in aeth
 I changed manifests and deployed, but the service behaved strangely. Turns out I had added new environment variables to the source repo's k8s manifests but hadn't reflected them in aether-gitops. Since ArgoCD syncs the aether-gitops manifests, changing only the source repo is useless.
 
 **Resolution**: After deployment, always verify that environment variables were actually injected using `kubectl exec -- printenv`. And when changing source repo manifests, always update aether-gitops as well.
+
+<Callout type="warn" title="Source repo ≠ GitOps repo">
+ArgoCD syncs the aether-gitops repo. Changing only the source repo's manifests has zero effect on production. When changing manifests, **always update both repos together**.
+</Callout>
 
 ### 4. Principle of Least Privilege
 

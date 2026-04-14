@@ -189,6 +189,11 @@
     content: '';
   }
 
+  /* 시각자료 진입 애니메이션 — not-prose 클래스에 자동 적용 */
+  .prose .not-prose {
+    animation: fade-in-up 0.5s ease-out both;
+  }
+
   /* 코드 블록(prose pre)도 토큰으로 */
   .prose pre {
     background-color: var(--surface-muted);
@@ -214,4 +219,20 @@
     margin-top: 1.5rem;
     margin-bottom: 1.5rem;
   }
+}
+
+/* 시각자료 진입 애니메이션 */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* DecisionBridge SVG stroke 애니메이션 */
+@keyframes draw-bridge {
+  from { stroke-dashoffset: 400; }
+  to { stroke-dashoffset: 0; }
+}
+
+.animate-draw-bridge {
+  animation: draw-bridge 1.2s ease-out forwards;
 }
