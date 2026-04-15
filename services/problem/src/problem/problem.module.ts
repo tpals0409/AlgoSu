@@ -1,3 +1,9 @@
+/**
+ * @file problem.module.ts — Problem 도메인 모듈 (Controller·Service·Guard 등록)
+ * @domain problem
+ * @layer module
+ * @related problem.service.ts, problem.controller.ts, internal-problem.controller.ts
+ */
 import { Module } from '@nestjs/common';
 import { ProblemController } from './problem.controller';
 import { InternalProblemController } from './internal-problem.controller';

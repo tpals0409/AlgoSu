@@ -1,3 +1,9 @@
+/**
+ * @file 1700000100000-CreateProblemsTable.ts — problems 테이블 초기 생성 마이그레이션
+ * @domain problem
+ * @layer migration
+ * @related problem.entity.ts
+ */
 import { MigrationInterface, QueryRunner, Table } from 'typeorm';
 
 /**

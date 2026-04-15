@@ -1,3 +1,9 @@
+/**
+ * @file app.module.ts — Problem 서비스 루트 모듈 (TypeORM·Redis·Metrics 통합)
+ * @domain problem
+ * @layer module
+ * @related problem.module.ts, cache.module.ts, dual-write.module.ts
+ */
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';

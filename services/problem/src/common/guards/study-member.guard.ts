@@ -1,3 +1,9 @@
+/**
+ * @file study-member.guard.ts — 스터디 멤버십 검증 가드 (Redis 캐시 + Gateway 폴백)
+ * @domain common
+ * @layer guard
+ * @related cache.module.ts, problem.controller.ts
+ */
 import {
   CanActivate,
   ExecutionContext,

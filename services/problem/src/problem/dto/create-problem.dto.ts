@@ -1,3 +1,9 @@
+/**
+ * @file create-problem.dto.ts — 문제 생성·수정 DTO (class-validator 화이트리스트)
+ * @domain problem
+ * @layer dto
+ * @related problem.service.ts, problem.controller.ts
+ */
 import {
   IsString,
   IsOptional,

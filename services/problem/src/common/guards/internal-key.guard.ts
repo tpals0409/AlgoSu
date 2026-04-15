@@ -1,3 +1,9 @@
+/**
+ * @file internal-key.guard.ts — X-Internal-Key 헤더 검증 (timingSafeEqual)
+ * @domain common
+ * @layer guard
+ * @related internal-problem.controller.ts, structured-logger.service.ts
+ */
 import {
   CanActivate,
   ExecutionContext,

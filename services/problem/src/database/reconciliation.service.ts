@@ -1,3 +1,9 @@
+/**
+ * @file reconciliation.service.ts — 신·구 DB checksum 비교 정합성 검증 (Cron)
+ * @domain problem
+ * @layer service
+ * @related dual-write.service.ts, dual-write.config.ts
+ */
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';

@@ -1,3 +1,9 @@
+/**
+ * @file 1709000012000-AddLevelToProblems.ts — problems 테이블에 level(난이도 숫자) 컬럼 추가
+ * @domain problem
+ * @layer migration
+ * @related problem.entity.ts, 1709000015000-BackfillLevelFromDifficulty.ts
+ */
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddLevelToProblems1709000012000 implements MigrationInterface {

@@ -1,3 +1,9 @@
+/**
+ * @file data-source.ts — TypeORM CLI 전용 DataSource (마이그레이션 실행용)
+ * @domain problem
+ * @layer config
+ * @related dual-write.config.ts, app.module.ts
+ */
 import { DataSource } from 'typeorm';
 
 /**

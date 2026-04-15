@@ -1,3 +1,9 @@
+/**
+ * @file dual-write.module.ts — Dual Write 모듈 (Phase 3 신·구 DB 연결 관리)
+ * @domain problem
+ * @layer module
+ * @related dual-write.service.ts, dual-write.config.ts, reconciliation.service.ts
+ */
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';

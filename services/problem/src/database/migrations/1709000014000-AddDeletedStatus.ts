@@ -1,3 +1,9 @@
+/**
+ * @file 1709000014000-AddDeletedStatus.ts — problem_status_enum에 DELETED 상태 추가
+ * @domain problem
+ * @layer migration
+ * @related problem.entity.ts
+ */
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**

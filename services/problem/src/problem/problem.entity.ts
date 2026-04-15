@@ -1,3 +1,9 @@
+/**
+ * @file problem.entity.ts — Problem 엔티티 (난이도·상태 Enum 포함)
+ * @domain problem
+ * @layer entity
+ * @related problem.service.ts, create-problem.dto.ts
+ */
 import {
   Entity,
   PrimaryGeneratedColumn,

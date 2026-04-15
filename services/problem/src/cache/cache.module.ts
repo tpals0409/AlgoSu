@@ -1,3 +1,9 @@
+/**
+ * @file cache.module.ts — Redis 클라이언트 글로벌 모듈 (마감 캐시·멤버십 캐시)
+ * @domain problem
+ * @layer module
+ * @related deadline-cache.service.ts, study-member.guard.ts
+ */
 import { Module, Global, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';

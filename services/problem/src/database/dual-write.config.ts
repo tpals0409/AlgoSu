@@ -1,4 +1,11 @@
 /**
+ * @file dual-write.config.ts — Dual Write 모드 설정 (off/expand/switch-read)
+ * @domain problem
+ * @layer config
+ * @related dual-write.module.ts, dual-write.service.ts, reconciliation.service.ts
+ */
+
+/**
  * Dual Write 설정 — Phase 3 DB 분리
  *
  * 모드:
