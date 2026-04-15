@@ -12,6 +12,7 @@ AI Analysis Worker -- RabbitMQ 소비자
 import json
 import logging
 import time
+from datetime import UTC, datetime
 
 import httpx
 import pika
@@ -83,14 +84,18 @@ class AIAnalysisWorker:
         while not self._stopping:
             try:
                 attempt += 1
-                logger.info(f"RabbitMQ 연결 시도: attempt={attempt}")
+                logger.info("RabbitMQ 연결 시도", extra={"attempt": attempt})
                 self._connect_and_consume()
             except Exception as e:
                 if self._stopping:
                     break
                 logger.error(
-                    f"RabbitMQ 연결 오류 (attempt={attempt}): {str(e)[:200]}, "
-                    f"{delay}초 후 재시도"
+                    "RabbitMQ 연결 오류",
+                    extra={
+                        "attempt": attempt,
+                        "error": str(e)[:200],
+                        "retryAfterSec": delay,
+                    },
                 )
                 # 재연결 전 이전 채널/연결 정리 (리소스 누수 방지)
                 self._cleanup_connection()
@@ -145,7 +150,7 @@ class AIAnalysisWorker:
         )
         self.channel.queue_bind(queue=QUEUE, exchange=EXCHANGE, routing_key=ROUTING_KEY)
 
-        logger.info(f"AI Analysis Worker 시작: 큐={QUEUE}, prefetch=2")
+        logger.info("AI Analysis Worker 시작", extra={"queue": QUEUE, "prefetch": 2})
 
         self.channel.basic_consume(
             queue=QUEUE,
@@ -189,7 +194,7 @@ class AIAnalysisWorker:
             event = json.loads(body)
             submission_id = event["submissionId"]
             user_id = event.get("userId", "")
-            logger.info(f"AI 분석 메시지 수신: submissionId={submission_id}")
+            logger.info("AI 분석 메시지 수신", extra={"submissionId": submission_id})
 
             # 제출 데이터 조회
             submission = self._get_submission(submission_id)
@@ -215,16 +220,23 @@ class AIAnalysisWorker:
                     self._publish_status(submission_id, result["status"])
                 except Exception as pub_err:
                     logger.warning(
-                        f"Redis publish 실패 (best-effort): submissionId={submission_id}, "
-                        f"error={str(pub_err)[:200]}"
+                        "Redis publish 실패 (best-effort)",
+                        extra={
+                            "submissionId": submission_id,
+                            "error": str(pub_err)[:200],
+                        },
                     )
 
             # 3) 모든 필수 작업 성공 후 ACK
             ch.basic_ack(delivery_tag=method.delivery_tag)
             mq_messages_processed_total.labels(result="ack").inc()
             logger.info(
-                f"AI 분석 완료: submissionId={submission_id}, "
-                f"status={result['status']}, score={result.get('score', 0)}"
+                "AI 분석 완료",
+                extra={
+                    "submissionId": submission_id,
+                    "status": result["status"],
+                    "score": result.get("score", 0),
+                },
             )
 
         except CircuitBreakerOpenError:
@@ -240,15 +252,22 @@ class AIAnalysisWorker:
 
             if delivery_count < MAX_REQUEUE:
                 logger.warning(
-                    f"Circuit Breaker OPEN -- NACK+requeue: "
-                    f"submissionId={sid}, delivery={delivery_count + 1}/{MAX_REQUEUE}"
+                    "Circuit Breaker OPEN -- NACK+requeue",
+                    extra={
+                        "submissionId": sid,
+                        "delivery": delivery_count + 1,
+                        "maxRequeue": MAX_REQUEUE,
+                    },
                 )
                 ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
                 mq_messages_processed_total.labels(result="nack_requeue").inc()
             else:
                 logger.error(
-                    f"Circuit Breaker OPEN -- requeue 한도 초과, DLQ 전송: "
-                    f"submissionId={sid}, delivery={delivery_count + 1}"
+                    "Circuit Breaker OPEN -- requeue 한도 초과, DLQ 전송",
+                    extra={
+                        "submissionId": sid,
+                        "delivery": delivery_count + 1,
+                    },
                 )
                 # requeue 한도 초과 — AI 분석 미수행이므로 quota 차감 보상
                 if uid:
@@ -265,13 +284,16 @@ class AIAnalysisWorker:
                         },
                     )
                 except Exception as report_err:
-                    logger.warning(f"delayed 상태 보고 실패: {str(report_err)[:200]}")
+                    logger.warning(
+                        "delayed 상태 보고 실패",
+                        extra={"error": str(report_err)[:200]},
+                    )
                 ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
                 dlq_messages_total.labels(reason="circuit_breaker_exhausted").inc()
                 mq_messages_processed_total.labels(result="nack_dlq").inc()
 
         except Exception as e:
-            logger.error(f"AI 분석 처리 실패: {str(e)[:200]}")
+            logger.error("AI 분석 처리 실패", extra={"error": str(e)[:200]})
             # 실패 시 카운터 차감 시도
             try:
                 event_data = json.loads(body)
@@ -313,11 +335,16 @@ class AIAnalysisWorker:
             if attempt < MAX_RETRIES:
                 wait_sec = BACKOFF_BASE**attempt
                 logger.warning(
-                    f"AI 분석 재시도: attempt={attempt}/{MAX_RETRIES}, wait={wait_sec}s"
+                    "AI 분석 재시도",
+                    extra={
+                        "attempt": attempt,
+                        "maxRetries": MAX_RETRIES,
+                        "waitSec": wait_sec,
+                    },
                 )
                 time.sleep(wait_sec)
 
-        logger.error(f"AI 분석 {MAX_RETRIES}회 실패")
+        logger.error("AI 분석 최대 재시도 실패", extra={"maxRetries": MAX_RETRIES})
         return last_result or {
             "feedback": "AI 분석이 반복 실패했습니다.",
             "optimized_code": None,
@@ -380,9 +407,7 @@ class AIAnalysisWorker:
             {
                 "submissionId": submission_id,
                 "status": f"ai_{status}",
-                "timestamp": __import__("datetime")
-                .datetime.now(__import__("datetime").UTC)
-                .isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
         )
         self.redis_client.publish(channel, payload)
@@ -409,17 +434,25 @@ class AIAnalysisWorker:
                 if attempt < PUBLISH_MAX_RETRIES:
                     wait_sec = PUBLISH_BACKOFF_BASE * (2 ** (attempt - 1))
                     logger.warning(
-                        f"Redis publish 재시도: submissionId={submission_id}, "
-                        f"attempt={attempt}/{PUBLISH_MAX_RETRIES}, "
-                        f"wait={wait_sec}s, error={str(e)[:200]}"
+                        "Redis publish 재시도",
+                        extra={
+                            "submissionId": submission_id,
+                            "attempt": attempt,
+                            "maxRetries": PUBLISH_MAX_RETRIES,
+                            "waitSec": wait_sec,
+                            "error": str(e)[:200],
+                        },
                     )
                     time.sleep(wait_sec)
 
         logger.error(
-            f"Redis publish 최종 실패: submissionId={submission_id}, "
-            f"status={status}, attempts={PUBLISH_MAX_RETRIES}, "
-            f"error={str(last_error)[:200]}. "
-            f"클라이언트 SSE가 이 상태를 수신하지 못할 수 있음"
+            "Redis publish 최종 실패 -- 클라이언트 SSE가 이 상태를 수신하지 못할 수 있음",
+            extra={
+                "submissionId": submission_id,
+                "status": status,
+                "attempts": PUBLISH_MAX_RETRIES,
+                "error": str(last_error)[:200],
+            },
         )
 
     def _decrement_quota(self, user_id: str):
@@ -439,10 +472,11 @@ class AIAnalysisWorker:
             if current and int(current) > 0:
                 self.redis_client.decr(key)
                 logger.info(
-                    f"AI 한도 차감 (실패 보상): userId={user_id[:8]}***, key={key}"
+                    "AI 한도 차감 (실패 보상)",
+                    extra={"userId": f"{user_id[:8]}***", "key": key},
                 )
         except Exception as e:
-            logger.warning(f"AI 한도 차감 실패: {str(e)[:100]}")
+            logger.warning("AI 한도 차감 실패", extra={"error": str(e)[:100]})
 
     def stop(self):
         """Graceful Shutdown"""

@@ -9,11 +9,8 @@ import logging
 import time
 from enum import Enum
 from threading import Lock
-from typing import TypeVar
 
 logger = logging.getLogger(__name__)
-
-T = TypeVar("T")
 
 
 class CircuitState(str, Enum):
@@ -110,7 +107,8 @@ class CircuitBreaker:
                 notify = True
             elif self.failure_count >= self.failure_threshold:
                 logger.warning(
-                    f"Circuit Breaker: CLOSED → OPEN (연속 {self.failure_count}회 실패)"
+                    "Circuit Breaker: CLOSED → OPEN",
+                    extra={"failureCount": self.failure_count},
                 )
                 self.state = CircuitState.OPEN
                 notify = True

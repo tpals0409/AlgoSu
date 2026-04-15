@@ -311,8 +311,8 @@ async def group_analysis(
     # Circuit Breaker 체크
     if not circuit_breaker.can_execute():
         logger.warning(
-            f"그룹 분석 Circuit Breaker OPEN: problemId={req.problem_id}, "
-            f"studyId={req.study_id}"
+            "그룹 분석 Circuit Breaker OPEN",
+            extra={"problemId": req.problem_id, "studyId": req.study_id},
         )
         raise HTTPException(
             status_code=503,
@@ -325,8 +325,12 @@ async def group_analysis(
 
     if not quota_result["allowed"]:
         logger.warning(
-            f"그룹 분석 Quota 초과: userId={req.user_id[:8]}***, "
-            f"used={quota_result['used']}, limit={limit}"
+            "그룹 분석 Quota 초과",
+            extra={
+                "userId": f"{req.user_id[:8]}***",
+                "used": quota_result["used"],
+                "limit": limit,
+            },
         )
         raise HTTPException(
             status_code=429,
@@ -345,7 +349,7 @@ async def group_analysis(
             submissions = resp.json()["data"]
     except Exception as e:
         _rollback_quota(req.user_id)
-        logger.error(f"그룹 분석 제출 조회 실패: {str(e)[:200]}")
+        logger.error("그룹 분석 제출 조회 실패", extra={"error": str(e)[:200]})
         raise HTTPException(status_code=502, detail="제출 데이터 조회 실패")
 
     if not submissions:
@@ -380,12 +384,16 @@ async def group_analysis(
     except Exception as e:
         circuit_breaker.record_failure()
         _rollback_quota(req.user_id)
-        logger.error(f"그룹 분석 Claude 호출 실패: {str(e)[:200]}")
+        logger.error("그룹 분석 Claude 호출 실패", extra={"error": str(e)[:200]})
         raise HTTPException(status_code=502, detail="AI 분석 실패")
 
     logger.info(
-        f"그룹 분석 완료: problemId={req.problem_id}, "
-        f"studyId={req.study_id}, submissions={len(submissions)}"
+        "그룹 분석 완료",
+        extra={
+            "problemId": req.problem_id,
+            "studyId": req.study_id,
+            "submissions": len(submissions),
+        },
     )
 
     return {

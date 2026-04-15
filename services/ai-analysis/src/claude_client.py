@@ -99,8 +99,12 @@ class ClaudeClient:
             input_tokens = message.usage.input_tokens
             output_tokens = message.usage.output_tokens
             logger.info(
-                f"Claude 토큰 사용량: input={input_tokens}, output={output_tokens}, "
-                f"total={input_tokens + output_tokens}"
+                "Claude 토큰 사용량",
+                extra={
+                    "inputTokens": input_tokens,
+                    "outputTokens": output_tokens,
+                    "totalTokens": input_tokens + output_tokens,
+                },
             )
 
             raw_text = message.content[0].text if message.content else ""
@@ -108,8 +112,12 @@ class ClaudeClient:
 
             code_preview = code[:50] + "..." if len(code) > 50 else code
             logger.info(
-                f"Claude 분석 완료: language={language}, "
-                f"score={result.get('score', 0)}, code_preview={code_preview}"
+                "Claude 분석 완료",
+                extra={
+                    "language": language,
+                    "score": result.get("score", 0),
+                    "codePreview": code_preview,
+                },
             )
 
             return result
@@ -124,7 +132,7 @@ class ClaudeClient:
             circuit_breaker.record_failure()
             claude_requests_total.labels(status="error").inc()
             safe_error = str(e)[:100]
-            logger.error(f"Claude API 오류: {safe_error}")
+            logger.error("Claude API 오류", extra={"error": safe_error})
             return {
                 "feedback": "AI 분석 중 오류가 발생했습니다.",
                 "optimized_code": None,
@@ -211,7 +219,7 @@ class ClaudeClient:
             }
 
         except (json.JSONDecodeError, ValueError, KeyError) as e:
-            logger.warning(f"Claude 응답 파싱 실패: {str(e)[:100]}")
+            logger.warning("Claude 응답 파싱 실패", extra={"error": str(e)[:100]})
             # 파싱 실패 시에도 마크다운 블록 strip 후 저장
             fallback = raw_text.strip()
             if fallback.startswith("```"):
@@ -224,13 +232,17 @@ class ClaudeClient:
             score_match = re.search(r'"totalScore"\s*:\s*(\d+)', raw_text)
             if score_match:
                 score = int(score_match.group(1))
-                logger.info(f"파싱 실패 fallback -- totalScore 정규식 추출: {score}")
+                logger.info(
+                    "파싱 실패 fallback -- totalScore 정규식 추출",
+                    extra={"score": score},
+                )
 
             # score가 추출되면 분석 자체는 성공 — JSON 파싱만 실패한 것
             status = "completed" if score > 0 else "failed"
             if status == "completed":
                 logger.info(
-                    f"파싱 실패하였으나 score 추출 성공 → completed 처리: score={score}"
+                    "파싱 실패하였으나 score 추출 성공 -- completed 처리",
+                    extra={"score": score},
                 )
 
             return {
@@ -270,16 +282,23 @@ class ClaudeClient:
             input_tokens = message.usage.input_tokens
             output_tokens = message.usage.output_tokens
             logger.info(
-                f"그룹 분석 토큰 사용량: input={input_tokens}, output={output_tokens}, "
-                f"total={input_tokens + output_tokens}"
+                "그룹 분석 토큰 사용량",
+                extra={
+                    "inputTokens": input_tokens,
+                    "outputTokens": output_tokens,
+                    "totalTokens": input_tokens + output_tokens,
+                },
             )
 
             raw_text = message.content[0].text if message.content else ""
             result = self._parse_group_response(raw_text)
 
             logger.info(
-                f"그룹 분석 완료: snippets={len(code_snippets)}, "
-                f"status={result.get('status', 'unknown')}"
+                "그룹 분석 완료",
+                extra={
+                    "snippets": len(code_snippets),
+                    "status": result.get("status", "unknown"),
+                },
             )
 
             return result
@@ -291,7 +310,7 @@ class ClaudeClient:
             circuit_breaker.record_failure()
             claude_requests_total.labels(status="error").inc()
             safe_error = str(e)[:100]
-            logger.error(f"그룹 분석 Claude API 오류: {safe_error}")
+            logger.error("그룹 분석 Claude API 오류", extra={"error": safe_error})
             return {
                 "comparison": "AI 분석 중 오류가 발생했습니다.",
                 "bestApproach": None,
@@ -340,7 +359,7 @@ class ClaudeClient:
             }
 
         except (json.JSONDecodeError, ValueError, KeyError) as e:
-            logger.warning(f"그룹 분석 응답 파싱 실패: {str(e)[:100]}")
+            logger.warning("그룹 분석 응답 파싱 실패", extra={"error": str(e)[:100]})
             fallback = raw_text.strip()
             if fallback.startswith("```"):
                 fallback = fallback.split("\n", 1)[-1]
