@@ -105,11 +105,14 @@ export class ReconciliationService implements OnModuleInit {
   private async getChecksums(
     repo: Repository<Problem>,
   ): Promise<Array<{ id: string; checksum: string }>> {
-    return repo.query(`
-      SELECT id, md5(row_to_json(p)::text) AS checksum
-      FROM problems p
-      WHERE updated_at > NOW() - INTERVAL '2 hours'
-      ORDER BY id
-    `);
+    return repo
+      .createQueryBuilder('p')
+      .select('p.id', 'id')
+      .addSelect('md5(row_to_json(p)::text)', 'checksum')
+      .where('p.updated_at > NOW() - INTERVAL :interval', {
+        interval: '2 hours',
+      })
+      .orderBy('p.id', 'ASC')
+      .getRawMany();
   }
 }

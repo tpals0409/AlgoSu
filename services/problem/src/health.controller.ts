@@ -13,6 +13,7 @@ export class HealthController {
   @Get('health/ready')
   async readiness(): Promise<{ status: string; timestamp: string }> {
     try {
+      // raw query 허용: health check 전용 상수 쿼리, 사용자 입력 없음
       await this.dataSource.query('SELECT 1');
       return { status: 'ok', timestamp: new Date().toISOString() };
     } catch {
