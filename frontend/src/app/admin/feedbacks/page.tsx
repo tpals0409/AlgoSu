@@ -136,13 +136,10 @@ export default function AdminFeedbacksPage() {
     <div className="mx-auto max-w-5xl space-y-6">
       {/* 헤더 */}
       <div>
-        <h1
-          className="text-[20px] font-bold tracking-tight"
-          style={{ color: 'var(--text)' }}
-        >
+        <h1 className="text-[20px] font-bold tracking-tight text-[var(--text)]">
           피드백 관리
         </h1>
-        <p className="mt-1 text-[13px]" style={{ color: 'var(--text-3)' }}>
+        <p className="mt-1 text-[13px] text-[var(--text-3)]">
           사용자 피드백을 확인하고 상태를 관리합니다.
         </p>
       </div>
@@ -156,18 +153,14 @@ export default function AdminFeedbacksPage() {
 
       {/* 검색 */}
       <form onSubmit={handleSearch} className="flex items-center gap-2">
-        <div
-          className="flex flex-1 items-center gap-2 rounded-btn border px-3 py-1.5"
-          style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
-        >
-          <Search className="h-4 w-4 shrink-0" style={{ color: 'var(--text-3)' }} />
+        <div className="flex flex-1 items-center gap-2 rounded-btn border border-[var(--border)] bg-[var(--bg-card)] px-3 py-1.5">
+          <Search className="h-4 w-4 shrink-0 text-[var(--text-3)]" />
           <input
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="내용 검색..."
-            className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-text-3"
-            style={{ color: 'var(--text)' }}
+            className="flex-1 bg-transparent text-[13px] text-[var(--text)] outline-none placeholder:text-text-3"
           />
           {searchInput && (
             <button
@@ -195,8 +188,7 @@ export default function AdminFeedbacksPage() {
         {/* 상태 필터 */}
         <div className="flex items-center gap-2">
           <Filter
-            className="h-4 w-4 shrink-0"
-            style={{ color: 'var(--text-3)' }}
+            className="h-4 w-4 shrink-0 text-[var(--text-3)]"
             aria-hidden
           />
           {STATUSES.map((s) => (
@@ -218,7 +210,7 @@ export default function AdminFeedbacksPage() {
 
         {/* 카테고리 필터 */}
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-medium" style={{ color: 'var(--text-3)' }}>
+          <span className="text-[11px] font-medium text-[var(--text-3)]">
             카테고리:
           </span>
           {CATEGORIES.map((c) => (
@@ -242,21 +234,9 @@ export default function AdminFeedbacksPage() {
       </div>
 
       {/* 테이블 */}
-      <div
-        className="overflow-hidden rounded-card border"
-        style={{
-          background: 'var(--bg-card)',
-          borderColor: 'var(--border)',
-        }}
-      >
+      <div className="overflow-hidden rounded-card border border-[var(--border)] bg-[var(--bg-card)]">
         {/* 헤더 행 */}
-        <div
-          className="grid grid-cols-[1fr_120px_100px_100px_140px] gap-4 px-4 py-3 text-[12px] font-semibold"
-          style={{
-            color: 'var(--text-3)',
-            borderBottom: '1px solid var(--border)',
-          }}
-        >
+        <div className="grid grid-cols-[1fr_120px_100px_100px_140px] gap-4 border-b border-[var(--border)] px-4 py-3 text-[12px] font-semibold text-[var(--text-3)]">
           <span>내용</span>
           <span>작성자</span>
           <span>카테고리</span>
@@ -265,19 +245,13 @@ export default function AdminFeedbacksPage() {
         </div>
 
         {loading && (
-          <div
-            className="px-4 py-8 text-center text-[13px]"
-            style={{ color: 'var(--text-3)' }}
-          >
+          <div className="px-4 py-8 text-center text-[13px] text-[var(--text-3)]">
             불러오는 중...
           </div>
         )}
 
         {!loading && feedbacks.length === 0 && (
-          <div
-            className="px-4 py-8 text-center text-[13px]"
-            style={{ color: 'var(--text-3)' }}
-          >
+          <div className="px-4 py-8 text-center text-[13px] text-[var(--text-3)]">
             피드백이 없습니다.
           </div>
         )}
@@ -286,8 +260,7 @@ export default function AdminFeedbacksPage() {
           feedbacks.map((fb) => (
             <div
               key={fb.publicId}
-              className="grid cursor-pointer grid-cols-[1fr_120px_100px_100px_140px] gap-4 px-4 py-3 transition-colors hover:bg-bg-alt"
-              style={{ borderBottom: '1px solid var(--border)' }}
+              className="grid cursor-pointer grid-cols-[1fr_120px_100px_100px_140px] gap-4 border-b border-[var(--border)] px-4 py-3 transition-colors hover:bg-bg-alt"
               onClick={() => {
                 adminApi.feedbackDetail(fb.publicId)
                   .then((detail) => setSelectedFeedback(detail))
@@ -297,16 +270,14 @@ export default function AdminFeedbacksPage() {
               {/* 내용 */}
               <div className="min-w-0">
                 <p
-                  className="truncate text-[13px] font-medium"
-                  style={{ color: 'var(--text)' }}
+                  className="truncate text-[13px] font-medium text-[var(--text)]"
                   title={fb.content}
                 >
                   {fb.content}
                 </p>
                 {fb.pageUrl && (
                   <p
-                    className="mt-0.5 truncate text-[11px]"
-                    style={{ color: 'var(--text-3)' }}
+                    className="mt-0.5 truncate text-[11px] text-[var(--text-3)]"
                     title={fb.pageUrl}
                   >
                     {fb.pageUrl}
@@ -317,16 +288,14 @@ export default function AdminFeedbacksPage() {
               {/* 작성자 */}
               <div className="flex flex-col justify-center min-w-0">
                 <p
-                  className="truncate text-[12px] font-medium"
-                  style={{ color: 'var(--text)' }}
+                  className="truncate text-[12px] font-medium text-[var(--text)]"
                   title={fb.userEmail ?? undefined}
                 >
                   {fb.userName ?? fb.userEmail ?? '-'}
                 </p>
                 {fb.studyName && (
                   <p
-                    className="truncate text-[10px]"
-                    style={{ color: 'var(--text-3)' }}
+                    className="truncate text-[10px] text-[var(--text-3)]"
                     title={fb.studyName}
                   >
                     {fb.studyName}
@@ -355,10 +324,9 @@ export default function AdminFeedbacksPage() {
                     handleStatusChange(fb.publicId, e.target.value)
                   }
                   className={cn(
-                    'cursor-pointer rounded-btn border-none px-2 py-0.5 text-[11px] font-medium outline-none',
+                    'cursor-pointer rounded-btn border-none bg-transparent px-2 py-0.5 text-[11px] font-medium outline-none',
                     STATUS_STYLE[fb.status] ?? STATUS_STYLE.OPEN,
                   )}
-                  style={{ background: 'transparent' }}
                 >
                   {(ALLOWED_TRANSITIONS[fb.status] ?? [fb.status]).map((st) => (
                     <option key={st} value={st}>
@@ -370,10 +338,7 @@ export default function AdminFeedbacksPage() {
 
               {/* 등록일 */}
               <div className="flex items-center">
-                <span
-                  className="text-[12px]"
-                  style={{ color: 'var(--text-3)' }}
-                >
+                <span className="text-[12px] text-[var(--text-3)]">
                   {new Date(fb.createdAt).toLocaleDateString('ko-KR', {
                     year: 'numeric',
                     month: '2-digit',
@@ -396,10 +361,7 @@ export default function AdminFeedbacksPage() {
           >
             이전
           </button>
-          <span
-            className="text-[12px] font-medium"
-            style={{ color: 'var(--text-2)' }}
-          >
+          <span className="text-[12px] font-medium text-[var(--text-2)]">
             {page} / {totalPages}
           </span>
           <button
@@ -440,16 +402,11 @@ function StatCard({
   accent?: string;
 }) {
   return (
-    <div
-      className="rounded-card border px-4 py-3"
-      style={{
-        background: 'var(--bg-card)',
-        borderColor: 'var(--border)',
-      }}
-    >
-      <p className="text-[11px] font-medium" style={{ color: 'var(--text-3)' }}>
+    <div className="rounded-card border border-[var(--border)] bg-[var(--bg-card)] px-4 py-3">
+      <p className="text-[11px] font-medium text-[var(--text-3)]">
         {label}
       </p>
+      {/* accent: props 동적 값, Tailwind 전환 불가 */}
       <p
         className="mt-1 text-[22px] font-bold tracking-tight"
         style={{ color: accent ?? 'var(--text)' }}
@@ -477,8 +434,7 @@ function FeedbackDetailModal({
       onClick={onClose}
     >
       <div
-        className="mx-4 w-full max-w-lg rounded-card border p-6"
-        style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
+        className="mx-4 w-full max-w-lg rounded-card border border-[var(--border)] bg-[var(--bg-card)] p-6"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}
@@ -512,10 +468,10 @@ function FeedbackDetailModal({
         </div>
 
         {/* 작성자/스터디 */}
-        <div className="mt-3 flex items-center gap-4 text-[12px]" style={{ color: 'var(--text-2)' }}>
+        <div className="mt-3 flex items-center gap-4 text-[12px] text-[var(--text-2)]">
           <span>{feedback.userName ?? feedback.userEmail ?? '알 수 없음'}</span>
           {feedback.studyName && (
-            <span className="rounded-btn bg-bg-alt px-2 py-0.5 text-[11px]" style={{ color: 'var(--text-3)' }}>
+            <span className="rounded-btn bg-bg-alt px-2 py-0.5 text-[11px] text-[var(--text-3)]">
               {feedback.studyName}
             </span>
           )}
@@ -524,23 +480,20 @@ function FeedbackDetailModal({
         {/* 내용 */}
         <div className="mt-4 space-y-3">
           <div>
-            <p className="text-[11px] font-medium" style={{ color: 'var(--text-3)' }}>
+            <p className="text-[11px] font-medium text-[var(--text-3)]">
               내용
             </p>
-            <p
-              className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed"
-              style={{ color: 'var(--text)' }}
-            >
+            <p className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed text-[var(--text)]">
               {feedback.content}
             </p>
           </div>
 
           {feedback.pageUrl && (
             <div>
-              <p className="text-[11px] font-medium" style={{ color: 'var(--text-3)' }}>
+              <p className="text-[11px] font-medium text-[var(--text-3)]">
                 페이지 URL
               </p>
-              <p className="mt-1 text-[12px] break-all" style={{ color: 'var(--text-2)' }}>
+              <p className="mt-1 text-[12px] break-all text-[var(--text-2)]">
                 {feedback.pageUrl}
               </p>
             </div>
@@ -548,10 +501,10 @@ function FeedbackDetailModal({
 
           {feedback.browserInfo && (
             <div>
-              <p className="text-[11px] font-medium" style={{ color: 'var(--text-3)' }}>
+              <p className="text-[11px] font-medium text-[var(--text-3)]">
                 브라우저 정보
               </p>
-              <p className="mt-1 text-[12px]" style={{ color: 'var(--text-2)' }}>
+              <p className="mt-1 text-[12px] text-[var(--text-2)]">
                 {feedback.browserInfo}
               </p>
             </div>
@@ -559,19 +512,18 @@ function FeedbackDetailModal({
 
           {feedback.screenshot && (
             <div>
-              <p className="text-[11px] font-medium" style={{ color: 'var(--text-3)' }}>
+              <p className="text-[11px] font-medium text-[var(--text-3)]">
                 스크린샷
               </p>
               <img
                 src={feedback.screenshot}
                 alt="피드백 스크린샷"
-                className="mt-1 max-h-[300px] rounded-card border object-contain"
-                style={{ borderColor: 'var(--border)' }}
+                className="mt-1 max-h-[300px] rounded-card border border-[var(--border)] object-contain"
               />
             </div>
           )}
 
-          <div className="flex items-center gap-4 text-[12px]" style={{ color: 'var(--text-3)' }}>
+          <div className="flex items-center gap-4 text-[12px] text-[var(--text-3)]">
             <span>
               등록일:{' '}
               {new Date(feedback.createdAt).toLocaleDateString('ko-KR', {
@@ -598,8 +550,8 @@ function FeedbackDetailModal({
         </div>
 
         {/* 상태 변경 버튼 */}
-        <div className="mt-4 flex items-center gap-2 border-t pt-4" style={{ borderColor: 'var(--border)' }}>
-          <span className="text-[11px] font-medium" style={{ color: 'var(--text-3)' }}>
+        <div className="mt-4 flex items-center gap-2 border-t border-[var(--border)] pt-4">
+          <span className="text-[11px] font-medium text-[var(--text-3)]">
             상태 변경:
           </span>
           {(ALLOWED_TRANSITIONS[feedback.status] ?? [])

@@ -25,6 +25,7 @@ import {
   Clock, Zap, ChevronDown, BarChart3, Sun, Moon,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { cn } from '@/lib/utils';
 import { GuestProvider, useGuest } from '@/contexts/GuestContext';
 import { publicApi, type Problem, type Submission, type AnalysisResult } from '@/lib/api';
 import { parseFeedback } from '@/lib/feedback';
@@ -223,17 +224,17 @@ function SharedStudyContent(): ReactNode {
   return (
     <GuestShell>
       <div className="space-y-6">
-        {/* 스터디 헤더 */}
+        {/* 스터디 헤더 — fade: 동적 애니메이션, Tailwind 전환 불가 */}
         <div style={fade(0)}>
-          <h1 className="text-[22px] font-bold tracking-tight" style={{ color: 'var(--text)' }}>
+          <h1 className="text-[22px] font-bold tracking-tight text-[var(--text)]">
             {studyData.studyName}
           </h1>
-          <p className="mt-0.5 text-sm" style={{ color: 'var(--text-2)' }}>
+          <p className="mt-0.5 text-sm text-[var(--text-2)]">
             공유된 스터디룸입니다. 문제를 선택해 멤버별 풀이를 확인하세요.
           </p>
         </div>
 
-        {/* 스탯 카드 */}
+        {/* 스탯 카드 — fade: 동적 애니메이션, Tailwind 전환 불가 */}
         <div className="grid grid-cols-3 gap-3" style={fade(0.1)}>
           <StatCard icon={<Users size={18} />} value={studyData.memberCount} label="멤버" bg="var(--primary-soft)" fg="var(--primary)" />
           <StatCard icon={<FileText size={18} />} value={problems.length} label="문제" bg="var(--info-soft)" fg="var(--info)" />
@@ -242,20 +243,20 @@ function SharedStudyContent(): ReactNode {
 
         {/* 주차별 문제 목록 */}
         {problems.length === 0 ? (
-          <Card className="p-8 text-center" style={{ color: 'var(--text-3)' }}>
+          <Card className="p-8 text-center text-[var(--text-3)]">
             등록된 문제가 없습니다.
           </Card>
         ) : (
           Array.from(weekGroups.entries()).map(([week, weekProblems], wi) => (
+            // fade: 동적 애니메이션, Tailwind 전환 불가
             <div key={week} className="space-y-3" style={fade(0.15 + wi * 0.05)}>
               {/* 주차 뱃지 */}
               <div className="flex items-center gap-2">
                 <span
-                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-semibold"
-                  style={{ backgroundColor: 'var(--primary-soft)', color: 'var(--primary)' }}
+                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-semibold bg-[var(--primary-soft)] text-[var(--primary)]"
                 >
                   {week}
-                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--success)' }} />
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--success)]" />
                 </span>
               </div>
 
@@ -270,17 +271,16 @@ function SharedStudyContent(): ReactNode {
                   <button
                     key={p.id}
                     type="button"
-                    className="flex w-full items-stretch overflow-hidden rounded-card border text-left transition-all hover:-translate-y-0.5 hover:shadow-sm"
-                    style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-card)' }}
+                    className="flex w-full items-stretch overflow-hidden rounded-card border border-[var(--border)] bg-[var(--bg-card)] text-left transition-all hover:-translate-y-0.5 hover:shadow-sm"
                     onClick={() => handleSelectProblem(p)}
                   >
-                    {/* 좌측 난이도 색상 스트라이프 */}
+                    {/* 좌측 난이도 색상 스트라이프 — badgeStyle.color: 동적 값, Tailwind 전환 불가 */}
                     <div className="w-1 shrink-0" style={{ backgroundColor: badgeStyle.color }} />
 
                     <div className="flex flex-1 items-center gap-3 p-4">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          {/* 난이도 뱃지 */}
+                          {/* 난이도 뱃지 — badgeStyle: 동적 값, Tailwind 전환 불가 */}
                           <span
                             className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium"
                             style={badgeStyle}
@@ -290,11 +290,12 @@ function SharedStudyContent(): ReactNode {
                           {/* 상태 뱃지 */}
                           {p.status && (
                             <span
-                              className="rounded-full px-2 py-0.5 text-[11px] font-medium"
-                              style={{
-                                color: p.status === 'ACTIVE' ? 'var(--success)' : 'var(--text-3)',
-                                backgroundColor: p.status === 'ACTIVE' ? 'var(--success-soft)' : 'var(--bg-alt)',
-                              }}
+                              className={cn(
+                                'rounded-full px-2 py-0.5 text-[11px] font-medium',
+                                p.status === 'ACTIVE'
+                                  ? 'text-[var(--success)] bg-[var(--success-soft)]'
+                                  : 'text-[var(--text-3)] bg-[var(--bg-alt)]',
+                              )}
                             >
                               {PROBLEM_STATUS_LABELS[p.status as keyof typeof PROBLEM_STATUS_LABELS] ?? p.status}
                             </span>
@@ -302,25 +303,26 @@ function SharedStudyContent(): ReactNode {
                         </div>
 
                         {/* 문제 제목 */}
-                        <p className="mt-1.5 text-[15px] font-bold" style={{ color: 'var(--text)' }}>
+                        <p className="mt-1.5 text-[15px] font-bold text-[var(--text)]">
                           {p.title}
                         </p>
 
                         {/* 진행 바 + 제출 수 */}
                         <div className="mt-2 flex items-center gap-2">
-                          <div className="h-2 flex-1 overflow-hidden rounded-full" style={{ backgroundColor: 'var(--bg-alt)' }}>
+                          <div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--bg-alt)]">
+                            {/* width/backgroundColor: 동적 애니메이션, Tailwind 전환 불가 */}
                             <div
                               className="h-full rounded-full transition-all duration-700 ease-out"
                               style={{ width: mounted ? `${pct}%` : '0%', backgroundColor: badgeStyle.color }}
                             />
                           </div>
-                          <span className="shrink-0 text-[11px] font-medium" style={{ color: 'var(--text-3)' }}>
+                          <span className="shrink-0 text-[11px] font-medium text-[var(--text-3)]">
                             {subCount}명 제출
                           </span>
                         </div>
                       </div>
 
-                      <ChevronRight size={16} style={{ color: 'var(--text-3)' }} />
+                      <ChevronRight size={16} className="text-[var(--text-3)]" />
                     </div>
                   </button>
                 );
@@ -358,55 +360,54 @@ function SubmissionListView({ problem, submissions, onSelect, onBack, createdByU
       <button
         type="button"
         onClick={onBack}
-        className="flex h-9 w-9 items-center justify-center rounded-full transition-colors"
-        style={{ color: 'var(--text-3)' }}
+        className="flex h-9 w-9 items-center justify-center rounded-full transition-colors text-[var(--text-3)]"
       >
         <ArrowLeft size={20} />
       </button>
 
-      {/* 문제 헤더 */}
+      {/* 문제 헤더 — badgeStyle: 동적 값, Tailwind 전환 불가 */}
       <div>
         <div className="flex items-center gap-2">
           <span className="rounded-full px-2 py-0.5 text-[11px] font-medium" style={badgeStyle}>
             {DIFFICULTY_LABELS[problem.difficulty as Difficulty] ?? problem.difficulty}
           </span>
           {problem.weekNumber && (
-            <span className="text-[11px] font-medium" style={{ color: 'var(--text-3)' }}>
+            <span className="text-[11px] font-medium text-[var(--text-3)]">
               {problem.weekNumber}
             </span>
           )}
         </div>
-        <h2 className="mt-1 text-lg font-bold" style={{ color: 'var(--text)' }}>{problem.title}</h2>
+        <h2 className="mt-1 text-lg font-bold text-[var(--text)]">{problem.title}</h2>
       </div>
 
       {/* 스탯 */}
       <div className="grid grid-cols-3 gap-2 text-center">
         <Card className="p-3">
           <div className="flex items-center justify-center gap-1.5">
-            <Users className="h-4 w-4" style={{ color: 'var(--text-3)' }} />
-            <span className="text-lg font-bold" style={{ color: 'var(--text)' }}>{memberCount}</span>
+            <Users className="h-4 w-4 text-[var(--text-3)]" />
+            <span className="text-lg font-bold text-[var(--text)]">{memberCount}</span>
           </div>
-          <p className="text-[11px]" style={{ color: 'var(--text-3)' }}>전체 멤버</p>
+          <p className="text-[11px] text-[var(--text-3)]">전체 멤버</p>
         </Card>
         <Card className="p-3">
           <div className="flex items-center justify-center gap-1.5">
-            <CheckCircle2 className="h-4 w-4" style={{ color: 'var(--success)' }} />
-            <span className="text-lg font-bold" style={{ color: 'var(--text)' }}>{uniqueSubmitters}</span>
+            <CheckCircle2 className="h-4 w-4 text-[var(--success)]" />
+            <span className="text-lg font-bold text-[var(--text)]">{uniqueSubmitters}</span>
           </div>
-          <p className="text-[11px]" style={{ color: 'var(--text-3)' }}>제출</p>
+          <p className="text-[11px] text-[var(--text-3)]">제출</p>
         </Card>
         <Card className="p-3">
           <div className="flex items-center justify-center gap-1.5">
-            <Brain className="h-4 w-4" style={{ color: 'var(--primary)' }} />
-            <span className="text-lg font-bold" style={{ color: 'var(--text)' }}>{analyzedCount}</span>
+            <Brain className="h-4 w-4 text-[var(--primary)]" />
+            <span className="text-lg font-bold text-[var(--text)]">{analyzedCount}</span>
           </div>
-          <p className="text-[11px]" style={{ color: 'var(--text-3)' }}>분석 완료</p>
+          <p className="text-[11px] text-[var(--text-3)]">분석 완료</p>
         </Card>
       </div>
 
       {/* 제출 카드 그리드 */}
       {submissions.length === 0 ? (
-        <Card className="p-8 text-center" style={{ color: 'var(--text-3)' }}>
+        <Card className="p-8 text-center text-[var(--text-3)]">
           아직 제출 기록이 없습니다.
         </Card>
       ) : (
@@ -417,8 +418,12 @@ function SubmissionListView({ problem, submissions, onSelect, onBack, createdByU
             return (
               <Card
                 key={sub.id}
-                className="cursor-pointer p-4 transition-all hover:-translate-y-0.5 hover:shadow-sm"
-                style={isOwner ? { animation: 'glow-pulse 3s ease-in-out infinite', borderColor: 'var(--primary)' } : undefined}
+                className={cn(
+                  'cursor-pointer p-4 transition-all hover:-translate-y-0.5 hover:shadow-sm',
+                  isOwner && 'border-[var(--primary)]',
+                )}
+                /* animation: 동적 값, Tailwind 전환 불가 */
+                style={isOwner ? { animation: 'glow-pulse 3s ease-in-out infinite' } : undefined}
                 onClick={() => onSelect(sub)}
               >
                 <div className="flex items-center gap-3">
@@ -430,35 +435,29 @@ function SubmissionListView({ problem, submissions, onSelect, onBack, createdByU
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-[13px] font-semibold" style={{ color: 'var(--text)' }}>{memberName}</span>
+                      <span className="text-[13px] font-semibold text-[var(--text)]">{memberName}</span>
                       {isOwner && (
-                        <span
-                          className="rounded-full px-2 py-0.5 text-[10px] font-bold"
-                          style={{ backgroundColor: 'var(--primary-soft)', color: 'var(--primary)' }}
-                        >
+                        <span className="rounded-full px-2 py-0.5 text-[10px] font-bold bg-[var(--primary-soft)] text-[var(--primary)]">
                           내 제출
                         </span>
                       )}
-                      <span
-                        className="rounded-full px-2 py-0.5 text-[11px] font-medium uppercase"
-                        style={{ backgroundColor: 'var(--bg-alt)', color: 'var(--text-2)' }}
-                      >
+                      <span className="rounded-full px-2 py-0.5 text-[11px] font-medium uppercase bg-[var(--bg-alt)] text-[var(--text-2)]">
                         {sub.language}
                       </span>
                     </div>
                     <div className="mt-1 flex items-center gap-2">
                       {sub.aiScore != null && (
-                        <span className="flex items-center gap-1 text-[11px] font-medium" style={{ color: 'var(--primary)' }}>
+                        <span className="flex items-center gap-1 text-[11px] font-medium text-[var(--primary)]">
                           <Sparkles size={12} />
                           {sub.aiScore}점
                         </span>
                       )}
-                      <span className="text-[11px]" style={{ color: 'var(--text-3)' }}>
+                      <span className="text-[11px] text-[var(--text-3)]">
                         {new Date(sub.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
                   </div>
-                  <ChevronRight size={16} style={{ color: 'var(--text-3)' }} />
+                  <ChevronRight size={16} className="text-[var(--text-3)]" />
                 </div>
               </Card>
             );
@@ -512,9 +511,9 @@ function AnalysisView({ submission, analysis, loading: analysisLoading, onBack, 
             onClick={onBack}
             className="flex h-9 w-9 items-center justify-center shrink-0 rounded-full transition-colors hover:bg-bg-alt"
           >
-            <ArrowLeft className="h-5 w-5" style={{ color: 'var(--text)' }} />
+            <ArrowLeft className="h-5 w-5 text-[var(--text)]" />
           </button>
-          <h1 className="text-lg sm:text-xl font-bold tracking-tight truncate" style={{ color: 'var(--text)' }}>
+          <h1 className="text-lg sm:text-xl font-bold tracking-tight truncate text-[var(--text)]">
             {memberName}
           </h1>
         </div>
@@ -522,35 +521,26 @@ function AnalysisView({ submission, analysis, loading: analysisLoading, onBack, 
         {/* 뱃지 행 */}
         <div className="flex items-center gap-2 flex-wrap">
           {/* 언어 뱃지 */}
-          <span
-            className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase"
-            style={{ backgroundColor: 'var(--primary-soft)', color: 'var(--primary)' }}
-          >
+          <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase bg-[var(--primary-soft)] text-[var(--primary)]">
             {submission.language}
           </span>
           {/* 상태 뱃지 */}
           {analysis?.analysisStatus === 'completed' && (
-            <span
-              className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium"
-              style={{ backgroundColor: 'var(--success-soft)', color: 'var(--success)' }}
-            >
-              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--success)' }} aria-hidden />
+            <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium bg-[var(--success-soft)] text-[var(--success)]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--success)]" aria-hidden />
               분석 완료
             </span>
           )}
           {/* 점수 뱃지 */}
           {parsed && (
-            <span
-              className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold"
-              style={{ backgroundColor: 'var(--success-soft)', color: 'var(--success)' }}
-            >
+            <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold bg-[var(--success-soft)] text-[var(--success)]">
               {parsed.totalScore}점
             </span>
           )}
         </div>
 
         {/* 시간 */}
-        <span className="text-[11px] sm:text-[12px]" style={{ color: 'var(--text-3)' }}>
+        <span className="text-[11px] sm:text-[12px] text-[var(--text-3)]">
           {new Date(submission.createdAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })}{' '}
           {new Date(submission.createdAt).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit', hour12: true })}
         </span>
@@ -560,7 +550,7 @@ function AnalysisView({ submission, analysis, loading: analysisLoading, onBack, 
       {analysisLoading || !analysis ? (
         <LoadingView />
       ) : analysis.analysisStatus !== 'completed' ? (
-        <Card className="p-8 text-center" style={{ color: 'var(--text-3)' }}>
+        <Card className="p-8 text-center text-[var(--text-3)]">
           분석이 아직 완료되지 않았습니다. (상태: {analysis.analysisStatus})
         </Card>
       ) : parsed && (
@@ -571,21 +561,17 @@ function AnalysisView({ submission, analysis, loading: analysisLoading, onBack, 
           <div className="w-full lg:w-1/2 min-w-0 flex flex-col">
             <Card className="p-0 overflow-hidden flex-1 flex flex-col">
               {/* 코드 헤더 */}
-              <div
-                className="flex items-center justify-between px-5 h-12 shrink-0 border-b"
-                style={{ borderColor: 'var(--border)' }}
-              >
-                <span className="text-[13px] font-semibold flex items-center gap-1.5" style={{ color: 'var(--text)' }}>
-                  <span style={{ color: 'var(--primary)' }}>&lt;/&gt;</span>
+              <div className="flex items-center justify-between px-5 h-12 shrink-0 border-b border-[var(--border)]">
+                <span className="text-[13px] font-semibold flex items-center gap-1.5 text-[var(--text)]">
+                  <span className="text-[var(--primary)]">&lt;/&gt;</span>
                   {submission.language}
                 </span>
                 {code && (
                   <button
                     onClick={() => void handleCopy(code)}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-badge text-[11px] font-medium transition-colors hover:bg-bg-alt"
-                    style={{ color: 'var(--text-3)' }}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-badge text-[11px] font-medium transition-colors hover:bg-bg-alt text-[var(--text-3)]"
                   >
-                    {copied ? <Check className="h-3 w-3" style={{ color: 'var(--success)' }} /> : <Copy className="h-3 w-3" />}
+                    {copied ? <Check className="h-3 w-3 text-[var(--success)]" /> : <Copy className="h-3 w-3" />}
                     {copied ? '복사됨' : '복사'}
                   </button>
                 )}
@@ -599,7 +585,7 @@ function AnalysisView({ submission, analysis, loading: analysisLoading, onBack, 
                     language={submission.language ?? 'text'}
                   />
                 ) : (
-                  <div className="p-4 text-xs" style={{ color: 'var(--text-3)', backgroundColor: 'var(--code-bg)' }}>
+                  <div className="p-4 text-xs text-[var(--text-3)] bg-[var(--code-bg)]">
                     제출한 코드를 불러올 수 없습니다.
                   </div>
                 )}
@@ -611,9 +597,9 @@ function AnalysisView({ submission, analysis, loading: analysisLoading, onBack, 
           <div className="w-full lg:w-1/2 flex flex-col">
             <Card className="p-0 overflow-hidden flex-1 flex flex-col">
               {/* 카드 헤더 */}
-              <div className="flex items-center justify-between px-5 h-12 shrink-0 border-b" style={{ borderColor: 'var(--border)' }}>
-                <span className="flex items-center gap-2 text-[13px] font-semibold" style={{ color: 'var(--text)' }}>
-                  <Brain className="h-4 w-4" style={{ color: 'var(--primary)' }} aria-hidden />
+              <div className="flex items-center justify-between px-5 h-12 shrink-0 border-b border-[var(--border)]">
+                <span className="flex items-center gap-2 text-[13px] font-semibold text-[var(--text)]">
+                  <Brain className="h-4 w-4 text-[var(--primary)]" aria-hidden />
                   AI 분석 결과
                 </span>
               </div>
@@ -628,19 +614,13 @@ function AnalysisView({ submission, analysis, loading: analysisLoading, onBack, 
                 {(parsed.timeComplexity || parsed.spaceComplexity) && (
                   <div className="flex items-center justify-center gap-3">
                     {parsed.timeComplexity && (
-                      <span
-                        className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium"
-                        style={{ backgroundColor: 'var(--info-soft)', color: 'var(--info)' }}
-                      >
+                      <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium bg-[var(--info-soft)] text-[var(--info)]">
                         <Clock className="h-3.5 w-3.5" aria-hidden />
                         시간 {parsed.timeComplexity}
                       </span>
                     )}
                     {parsed.spaceComplexity && (
-                      <span
-                        className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium"
-                        style={{ backgroundColor: 'var(--primary-soft)', color: 'var(--primary)' }}
-                      >
+                      <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium bg-[var(--primary-soft)] text-[var(--primary)]">
                         <Zap className="h-3.5 w-3.5" aria-hidden />
                         공간 {parsed.spaceComplexity}
                       </span>
@@ -650,14 +630,7 @@ function AnalysisView({ submission, analysis, loading: analysisLoading, onBack, 
 
                 {/* AI 총평 텍스트 */}
                 {parsed.summary && (
-                  <div
-                    className="rounded-card px-4 py-3 text-[12px] leading-relaxed"
-                    style={{
-                      backgroundColor: 'var(--primary-soft)',
-                      borderLeft: '3px solid var(--primary)',
-                      color: 'var(--text-2)',
-                    }}
-                  >
+                  <div className="rounded-card px-4 py-3 text-[12px] leading-relaxed bg-[var(--primary-soft)] text-[var(--text-2)] border-l-[3px] border-l-[var(--primary)]">
                     {parsed.summary}
                   </div>
                 )}
@@ -665,8 +638,8 @@ function AnalysisView({ submission, analysis, loading: analysisLoading, onBack, 
                 {/* 항목별 평가 */}
                 {parsed.categories.length > 0 && (
                   <div className="space-y-1">
-                    <p className="flex items-center gap-1.5 text-[13px] font-medium pb-1" style={{ color: 'var(--text)', borderBottom: '1px solid var(--border)' }}>
-                      <BarChart3 className="h-3.5 w-3.5" style={{ color: 'var(--primary)' }} aria-hidden />
+                    <p className="flex items-center gap-1.5 text-[13px] font-medium pb-1 text-[var(--text)] border-b border-b-[var(--border)]">
+                      <BarChart3 className="h-3.5 w-3.5 text-[var(--primary)]" aria-hidden />
                       항목별 평가
                     </p>
                     {parsed.categories.map((cat) => {
@@ -675,16 +648,18 @@ function AnalysisView({ submission, analysis, loading: analysisLoading, onBack, 
                       return (
                         <div key={cat.name} className="py-2.5">
                           <div className="flex items-center justify-between mb-1">
-                            <span className="text-[13px] font-semibold" style={{ color: 'var(--text)' }}>{label}</span>
+                            <span className="text-[13px] font-semibold text-[var(--text)]">{label}</span>
+                            {/* color: 동적 barColor 값, Tailwind 전환 불가 */}
                             <span className="text-[13px] font-bold" style={{ color }}>{cat.score}</span>
                           </div>
-                          <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--border)' }}>
+                          <div className="h-1.5 rounded-full overflow-hidden bg-[var(--border)]">
+                            {/* width/backgroundColor: 동적 애니메이션, Tailwind 전환 불가 */}
                             <div
                               className="h-full rounded-full transition-all duration-700 ease-out"
                               style={{ width: barsAnimated ? `${cat.score}%` : '0%', backgroundColor: color }}
                             />
                           </div>
-                          <p className="mt-1.5 text-[11px] leading-relaxed" style={{ color: 'var(--text-3)' }}>{cat.comment}</p>
+                          <p className="mt-1.5 text-[11px] leading-relaxed text-[var(--text-3)]">{cat.comment}</p>
                         </div>
                       );
                     })}
@@ -693,25 +668,23 @@ function AnalysisView({ submission, analysis, loading: analysisLoading, onBack, 
 
                 {/* AI 개선 코드 아코디언 */}
                 {parsed.optimizedCode && (
-                  <div style={{ borderTop: '1px solid var(--border)' }}>
+                  <div className="border-t border-t-[var(--border)]">
                     <button
                       type="button"
                       onClick={() => setShowOptimized(!showOptimized)}
-                      className="flex items-center justify-between w-full px-0 py-2.5 text-[13px] font-medium transition-colors hover:text-primary"
-                      style={{ color: 'var(--text)' }}
+                      className="flex items-center justify-between w-full px-0 py-2.5 text-[13px] font-medium transition-colors hover:text-primary text-[var(--text)]"
                     >
                       <span className="flex items-center gap-1.5">
-                        <Sparkles className="h-3.5 w-3.5" style={{ color: 'var(--primary)' }} aria-hidden />
+                        <Sparkles className="h-3.5 w-3.5 text-[var(--primary)]" aria-hidden />
                         AI 개선 코드
                       </span>
                       <ChevronDown
-                        className="h-4 w-4 transition-transform"
-                        style={{ color: 'var(--text-3)', transform: showOptimized ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                        className={cn('h-4 w-4 transition-transform text-[var(--text-3)]', showOptimized && 'rotate-180')}
                         aria-hidden
                       />
                     </button>
                     {showOptimized && (
-                      <div className="rounded-card overflow-hidden mb-1" style={{ border: '1px solid var(--border)' }}>
+                      <div className="rounded-card overflow-hidden mb-1 border border-[var(--border)]">
                         <CodeBlock
                           code={parsed.optimizedCode}
                           language={submission.language ?? 'text'}
@@ -740,6 +713,7 @@ function StatCard({ icon, value, label, bg, fg }: {
 }): ReactNode {
   return (
     <Card className="flex items-center gap-3 px-4 py-4">
+      {/* bg/fg: props 동적 값, Tailwind 전환 불가 */}
       <div
         className="flex h-10 w-10 items-center justify-center rounded-xl"
         style={{ backgroundColor: bg, color: fg }}
@@ -747,8 +721,8 @@ function StatCard({ icon, value, label, bg, fg }: {
         {icon}
       </div>
       <div>
-        <p className="text-xl font-bold" style={{ color: 'var(--text)' }}>{value}</p>
-        <p className="text-[11px]" style={{ color: 'var(--text-3)' }}>{label}</p>
+        <p className="text-xl font-bold text-[var(--text)]">{value}</p>
+        <p className="text-[11px] text-[var(--text-3)]">{label}</p>
       </div>
     </Card>
   );
@@ -759,13 +733,13 @@ function GuestShell({ children }: { readonly children: ReactNode }): ReactNode {
   const isDark = theme === 'dark';
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)' }}>
-      <header className="border-b px-4 py-3" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-card)' }}>
+    <div className="min-h-screen bg-[var(--bg)]">
+      <header className="border-b border-[var(--border)] bg-[var(--bg-card)] px-4 py-3">
         <div className="mx-auto flex max-w-4xl items-center justify-between">
           <div className="flex items-center gap-2">
             <Image src="/avatars/default.svg" alt="AlgoSu" width={28} height={28} />
-            <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>AlgoSu</span>
-            <span className="rounded-badge px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: 'var(--bg-alt)', color: 'var(--text-3)' }}>
+            <span className="text-sm font-semibold text-[var(--text)]">AlgoSu</span>
+            <span className="rounded-badge px-2 py-0.5 text-[10px] font-medium bg-[var(--bg-alt)] text-[var(--text-3)]">
               게스트
             </span>
           </div>
@@ -773,8 +747,7 @@ function GuestShell({ children }: { readonly children: ReactNode }): ReactNode {
             type="button"
             aria-label="테마 전환"
             onClick={() => setTheme(isDark ? 'light' : 'dark')}
-            className="flex items-center justify-center rounded-btn p-2 transition-all duration-150 hover:bg-bg-alt"
-            style={{ color: 'var(--text-3)' }}
+            className="flex items-center justify-center rounded-btn p-2 transition-all duration-150 hover:bg-bg-alt text-[var(--text-3)]"
           >
             {isDark ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
           </button>
@@ -790,7 +763,7 @@ function GuestShell({ children }: { readonly children: ReactNode }): ReactNode {
 function LoadingView(): ReactNode {
   return (
     <div className="flex items-center justify-center py-12">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent" style={{ color: 'var(--primary)' }} />
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent text-[var(--primary)]" />
     </div>
   );
 }
@@ -798,8 +771,8 @@ function LoadingView(): ReactNode {
 function ErrorView({ message }: { readonly message: string }): ReactNode {
   return (
     <div className="flex flex-col items-center gap-3 py-12">
-      <AlertCircle size={32} style={{ color: 'var(--error)' }} />
-      <p className="text-sm" style={{ color: 'var(--text-3)' }}>{message}</p>
+      <AlertCircle size={32} className="text-[var(--error)]" />
+      <p className="text-sm text-[var(--text-3)]">{message}</p>
     </div>
   );
 }
