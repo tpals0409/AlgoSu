@@ -637,22 +637,28 @@ describe('ProblemService', () => {
   describe('delete()', () => {
     it('문제 soft delete: DELETED 상태 + 캐시 무효화', async () => {
       const problem = { ...mockProblem };
-      dualWrite.findOne.mockResolvedValue(problem);
-      dualWrite.saveExisting.mockResolvedValue({ ...problem, status: ProblemStatus.DELETED });
+      const mockQr = createMockQueryRunner();
+      mockQr.manager.findOne.mockResolvedValue(problem);
+      mockQr.manager.save.mockResolvedValue({ ...problem, status: ProblemStatus.DELETED });
+      dataSource.createQueryRunner.mockReturnValue(mockQr);
       deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
       deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
 
       await service.delete(STUDY_ID, PROBLEM_ID);
 
-      expect(dualWrite.saveExisting).toHaveBeenCalledWith(
+      expect(mockQr.manager.save).toHaveBeenCalledWith(
+        Problem,
         expect.objectContaining({ status: ProblemStatus.DELETED }),
       );
+      expect(mockQr.commitTransaction).toHaveBeenCalled();
       expect(deadlineCache.invalidateDeadline).toHaveBeenCalledWith(STUDY_ID, PROBLEM_ID);
       expect(deadlineCache.invalidateWeekProblems).toHaveBeenCalledWith(STUDY_ID, mockProblem.weekNumber);
     });
 
     it('존재하지 않는 문제 삭제: NotFoundException', async () => {
-      dualWrite.findOne.mockResolvedValue(null);
+      const mockQr = createMockQueryRunner();
+      mockQr.manager.findOne.mockResolvedValue(null);
+      dataSource.createQueryRunner.mockReturnValue(mockQr);
 
       await expect(service.delete(STUDY_ID, 'non-existent')).rejects.toThrow(NotFoundException);
     });

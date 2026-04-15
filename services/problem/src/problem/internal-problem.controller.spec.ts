@@ -44,6 +44,7 @@ describe('InternalProblemController', () => {
   beforeEach(async () => {
     service = {
       findById: jest.fn(),
+      findByIdInternal: jest.fn(),
       findActiveByStudy: jest.fn(),
       getDeadline: jest.fn(),
     };
@@ -84,24 +85,24 @@ describe('InternalProblemController', () => {
   // ──────────────────────────────────────────────
   describe('findById()', () => {
     it('문제 단건 조회 성공 — { data: problem } 반환', async () => {
-      service.findById.mockResolvedValue(mockProblem);
+      service.findByIdInternal.mockResolvedValue(mockProblem);
 
       const result = await controller.findById(PROBLEM_ID, STUDY_ID);
 
-      expect(service.findById).toHaveBeenCalledWith(STUDY_ID, PROBLEM_ID);
+      expect(service.findByIdInternal).toHaveBeenCalledWith(STUDY_ID, PROBLEM_ID);
       expect(result).toEqual({ data: mockProblem });
     });
 
-    it('ProblemService.findById에 studyId, id 순서로 전달', async () => {
-      service.findById.mockResolvedValue(mockProblem);
+    it('ProblemService.findByIdInternal에 studyId, id 순서로 전달', async () => {
+      service.findByIdInternal.mockResolvedValue(mockProblem);
 
       await controller.findById(PROBLEM_ID, STUDY_ID);
 
-      expect(service.findById).toHaveBeenCalledWith(STUDY_ID, PROBLEM_ID);
+      expect(service.findByIdInternal).toHaveBeenCalledWith(STUDY_ID, PROBLEM_ID);
     });
 
     it('서비스 예외 발생 시 그대로 전파', async () => {
-      service.findById.mockRejectedValue(new Error('DB 연결 실패'));
+      service.findByIdInternal.mockRejectedValue(new Error('DB 연결 실패'));
 
       await expect(controller.findById(PROBLEM_ID, STUDY_ID)).rejects.toThrow('DB 연결 실패');
     });
