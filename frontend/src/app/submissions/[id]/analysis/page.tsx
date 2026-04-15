@@ -242,7 +242,7 @@ export default function AnalysisPage(): ReactNode {
               onClick={() => router.push('/submissions')}
               className="flex items-center justify-center shrink-0 h-9 w-9 rounded-full transition-colors hover:bg-bg-alt"
             >
-              <ArrowLeft className="h-5 w-5" style={{ color: 'var(--text)' }} />
+              <ArrowLeft className="h-5 w-5 text-[var(--text)]" />
             </button>
             <h1 className="text-lg sm:text-xl font-bold tracking-tight text-text truncate">
               {submission?.problemTitle ?? problemMeta?.title ?? `제출 ${submissionId.slice(0, 8)}`}
@@ -264,8 +264,7 @@ export default function AnalysisPage(): ReactNode {
             {/* 언어 뱃지 */}
             {submission && (
               <span
-                className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase"
-                style={{ backgroundColor: 'var(--primary-soft)', color: 'var(--primary)' }}
+                className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase bg-[var(--primary-soft)] text-[var(--primary)]"
               >
                 {submission.language}
               </span>
@@ -273,18 +272,16 @@ export default function AnalysisPage(): ReactNode {
             {/* 상태 뱃지 */}
             {analysis?.analysisStatus === 'completed' && (
               <span
-                className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium"
-                style={{ backgroundColor: 'var(--success-soft)', color: 'var(--success)' }}
+                className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium bg-[var(--success-soft)] text-[var(--success)]"
               >
-                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--success)' }} aria-hidden />
+                <span className="h-1.5 w-1.5 rounded-full bg-[var(--success)]" aria-hidden />
                 분석 완료
               </span>
             )}
             {/* 점수 뱃지 */}
             {parsed && (
               <span
-                className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold"
-                style={{ backgroundColor: 'var(--success-soft)', color: 'var(--success)' }}
+                className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold bg-[var(--success-soft)] text-[var(--success)]"
               >
                 {parsed.totalScore}점
               </span>
@@ -293,8 +290,7 @@ export default function AnalysisPage(): ReactNode {
             {problemMeta?.tags?.map((tag) => (
               <span
                 key={tag}
-                className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium"
-                style={{ backgroundColor: 'var(--bg-alt)', color: 'var(--text-3)' }}
+                className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium bg-[var(--bg-alt)] text-[var(--text-3)]"
               >
                 {tag}
               </span>
@@ -380,8 +376,8 @@ export default function AnalysisPage(): ReactNode {
         {!isLoading && pollTimedOut && (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-16 gap-4">
-              <div className="flex items-center justify-center rounded-full p-4" style={{ backgroundColor: 'var(--warning-soft)' }}>
-                <Clock className="h-8 w-8" style={{ color: 'var(--warning)' }} aria-hidden />
+              <div className="flex items-center justify-center rounded-full p-4 bg-[var(--warning-soft)]">
+                <Clock className="h-8 w-8 text-[var(--warning)]" aria-hidden />
               </div>
               <div className="text-center">
                 <p className="text-sm font-medium text-text">분석이 예상보다 오래 걸리고 있습니다</p>
@@ -414,20 +410,18 @@ export default function AnalysisPage(): ReactNode {
               <Card className="p-0 overflow-hidden flex-1 flex flex-col">
                 {/* 코드 헤더 */}
                 <div
-                  className="flex items-center justify-between px-5 h-12 shrink-0 border-b"
-                  style={{ borderColor: 'var(--border)' }}
+                  className="flex items-center justify-between px-5 h-12 shrink-0 border-b border-[var(--border)]"
                 >
                   <span className="text-[13px] font-semibold text-text flex items-center gap-1.5">
-                    <span style={{ color: 'var(--primary)' }}>&lt;/&gt;</span>
+                    <span className="text-[var(--primary)]">&lt;/&gt;</span>
                     {submission?.language ?? 'text'}
                   </span>
                   {codeStr && (
                     <button
                       onClick={() => void handleCopy(codeStr)}
-                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-badge text-[11px] font-medium transition-colors hover:bg-bg-alt"
-                      style={{ color: 'var(--text-3)' }}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-badge text-[11px] font-medium transition-colors hover:bg-bg-alt text-[var(--text-3)]"
                     >
-                      {copied ? <Check className="h-3 w-3" style={{ color: 'var(--success)' }} /> : <Copy className="h-3 w-3" />}
+                      {copied ? <Check className="h-3 w-3 text-[var(--success)]" /> : <Copy className="h-3 w-3" />}
                       {copied ? '복사됨' : '복사'}
                     </button>
                   )}
@@ -441,7 +435,7 @@ export default function AnalysisPage(): ReactNode {
                       language={submission?.language ?? 'text'}
                     />
                   ) : (
-                    <div className="p-4 text-xs text-text-3" style={{ backgroundColor: 'var(--code-bg)' }}>
+                    <div className="p-4 text-xs text-text-3 bg-[var(--code-bg)]">
                       제출한 코드를 불러올 수 없습니다.
                     </div>
                   )}
@@ -453,9 +447,9 @@ export default function AnalysisPage(): ReactNode {
             <div className="w-full lg:w-1/2 flex flex-col">
               <Card className="p-0 overflow-hidden flex-1 flex flex-col">
                 {/* 카드 헤더 */}
-                <div className="flex items-center justify-between px-5 h-12 shrink-0 border-b" style={{ borderColor: 'var(--border)' }}>
+                <div className="flex items-center justify-between px-5 h-12 shrink-0 border-b border-[var(--border)]">
                   <span className="flex items-center gap-2 text-[13px] font-semibold text-text">
-                    <Brain className="h-4 w-4" style={{ color: 'var(--primary)' }} aria-hidden />
+                    <Brain className="h-4 w-4 text-[var(--primary)]" aria-hidden />
                     AI 분석 결과
                   </span>
                 </div>
@@ -471,8 +465,7 @@ export default function AnalysisPage(): ReactNode {
                     <div className="flex items-center justify-center gap-3">
                       {parsed.timeComplexity && (
                         <span
-                          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium"
-                          style={{ backgroundColor: 'var(--info-soft)', color: 'var(--info)' }}
+                          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium bg-[var(--info-soft)] text-[var(--info)]"
                         >
                           <Clock className="h-3.5 w-3.5" aria-hidden />
                           시간 {parsed.timeComplexity}
@@ -480,8 +473,7 @@ export default function AnalysisPage(): ReactNode {
                       )}
                       {parsed.spaceComplexity && (
                         <span
-                          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium"
-                          style={{ backgroundColor: 'var(--primary-soft)', color: 'var(--primary)' }}
+                          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium bg-[var(--primary-soft)] text-[var(--primary)]"
                         >
                           <Zap className="h-3.5 w-3.5" aria-hidden />
                           공간 {parsed.spaceComplexity}
@@ -493,12 +485,7 @@ export default function AnalysisPage(): ReactNode {
                   {/* AI 총평 텍스트 */}
                   {parsed.summary && (
                     <div
-                      className="rounded-card px-4 py-3 text-[12px] leading-relaxed"
-                      style={{
-                        backgroundColor: 'var(--primary-soft)',
-                        borderLeft: '3px solid var(--primary)',
-                        color: 'var(--text-2)',
-                      }}
+                      className="rounded-card px-4 py-3 text-[12px] leading-relaxed bg-[var(--primary-soft)] border-l-[3px] border-l-[var(--primary)] text-[var(--text-2)]"
                     >
                       {parsed.summary}
                     </div>
@@ -507,8 +494,8 @@ export default function AnalysisPage(): ReactNode {
                   {/* 항목별 평가 */}
                   {parsed.categories.length > 0 && (
                     <div className="space-y-1">
-                      <p className="flex items-center gap-1.5 text-[13px] font-medium text-text pb-1" style={{ borderBottom: '1px solid var(--border)' }}>
-                        <BarChart3 className="h-3.5 w-3.5" style={{ color: 'var(--primary)' }} aria-hidden />
+                      <p className="flex items-center gap-1.5 text-[13px] font-medium text-text pb-1 border-b border-b-[var(--border)]">
+                        <BarChart3 className="h-3.5 w-3.5 text-[var(--primary)]" aria-hidden />
                         항목별 평가
                       </p>
                       {parsed.categories.map((cat) => {
@@ -520,7 +507,7 @@ export default function AnalysisPage(): ReactNode {
                               <span className="text-[13px] font-semibold text-text">{label}</span>
                               <span className="text-[13px] font-bold" style={{ color }}>{cat.score}</span>
                             </div>
-                            <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--border)' }}>
+                            <div className="h-1.5 rounded-full overflow-hidden bg-[var(--border)]">
                               <div
                                 className="h-full rounded-full transition-all duration-700 ease-out"
                                 style={{ width: barsAnimated ? `${cat.score}%` : '0%', backgroundColor: color }}
@@ -534,14 +521,14 @@ export default function AnalysisPage(): ReactNode {
                   )}
                   {/* AI 개선 코드 아코디언 */}
                   {parsed.optimizedCode && (
-                    <div style={{ borderTop: '1px solid var(--border)' }}>
+                    <div className="border-t border-t-[var(--border)]">
                       <button
                         type="button"
                         onClick={() => setShowOptimized(!showOptimized)}
                         className="flex items-center justify-between w-full px-0 py-2.5 text-[13px] font-medium text-text transition-colors hover:text-primary"
                       >
                         <span className="flex items-center gap-1.5">
-                          <Sparkles className="h-3.5 w-3.5" style={{ color: 'var(--primary)' }} aria-hidden />
+                          <Sparkles className="h-3.5 w-3.5 text-[var(--primary)]" aria-hidden />
                           AI 개선 코드
                         </span>
                         <ChevronDown
@@ -551,7 +538,7 @@ export default function AnalysisPage(): ReactNode {
                         />
                       </button>
                       {showOptimized && (
-                        <div className="rounded-card overflow-hidden mb-1" style={{ border: '1px solid var(--border)' }}>
+                        <div className="rounded-card overflow-hidden mb-1 border border-[var(--border)]">
                           <CodeBlock
                             code={parsed.optimizedCode}
                             language={submission?.language ?? 'text'}

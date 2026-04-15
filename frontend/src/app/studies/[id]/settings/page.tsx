@@ -332,7 +332,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
             onClick={() => router.push(`/studies/${studyId}`)}
             className="flex items-center justify-center shrink-0 h-9 w-9 rounded-full transition-colors hover:bg-bg-alt"
           >
-            <ArrowLeft className="h-5 w-5" style={{ color: 'var(--text)' }} />
+            <ArrowLeft className="h-5 w-5 text-[var(--text)]" />
           </button>
           <span className="text-sm text-text-2">돌아가기</span>
         </div>
@@ -361,7 +361,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
               onClick={() => router.push(`/studies/${studyId}`)}
               className="flex items-center justify-center shrink-0 h-9 w-9 rounded-full transition-colors hover:bg-bg-alt"
             >
-              <ArrowLeft className="h-5 w-5" style={{ color: 'var(--text)' }} />
+              <ArrowLeft className="h-5 w-5 text-[var(--text)]" />
             </button>
             <div>
               <h1 className="text-[22px] font-bold tracking-tight text-text">
@@ -542,8 +542,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                 />
               ) : (
                 <div
-                  className="min-h-[200px] rounded-btn border border-border bg-bg p-4"
-                  style={{ lineHeight: '1.7' }}
+                  className="min-h-[200px] rounded-btn border border-border bg-bg p-4 leading-[1.7]"
                 >
                   <MarkdownViewer content={rulesText} />
                 </div>
@@ -610,8 +609,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                     <>
                       <div className="flex h-7 w-7 items-center justify-center">
                         <Crown
-                          className="h-4 w-4"
-                          style={{ color: 'var(--primary)' }}
+                          className="h-4 w-4 text-[var(--primary)]"
                           aria-label="관리자"
                         />
                       </div>
@@ -695,7 +693,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                     {' '}후 만료
                   </p>
                 ) : (
-                  <p className="text-xs" style={{ color: inviteCode ? 'var(--error)' : 'var(--text-3)' }}>
+                  <p className={`text-xs ${inviteCode ? 'text-[var(--error)]' : 'text-[var(--text-3)]'}`}>
                     {inviteCode ? '코드가 만료되었습니다. 새로 생성해주세요.' : '초대 코드를 생성하세요.'}
                   </p>
                 )}
@@ -711,8 +709,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
         <section className="space-y-3" style={fade(0.24)}>
           <h2 className="text-sm font-semibold text-text-3">위험 구역</h2>
           <Card
-            className="border-error/30"
-            style={{ backgroundColor: 'var(--error-soft)' }}
+            className="border-error/30 bg-[var(--error-soft)]"
           >
             <CardContent className="space-y-3 py-5">
               <div className="space-y-1.5 text-[13px] text-text-2">
@@ -724,7 +721,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                 </ul>
               </div>
               {members.filter((m) => m.role === 'ADMIN').length > 1 ? (
-                <p className="text-[12px] font-medium" style={{ color: 'var(--error)' }}>
+                <p className="text-[12px] font-medium text-[var(--error)]">
                   관리자가 2명 이상이므로 삭제할 수 없습니다. 다른 관리자의 권한을 해제한 후 다시 시도하세요.
                 </p>
               ) : (
@@ -747,16 +744,14 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
           <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setPendingRoleChange(null)} />
           <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
             <p className="text-[14px] font-semibold text-text">역할을 변경하시겠습니까?</p>
-            <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>
+            <p className="text-[13px] text-[var(--text-2)]">
               {pendingRoleChange.member.name} 님의 역할을 {pendingRoleChange.newRole === 'ADMIN' ? '관리자' : '멤버'}(으)로 변경합니다.
             </p>
             <div className="flex items-center justify-end gap-2">
               <button type="button" onClick={() => setPendingRoleChange(null)}
-                className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt"
-                style={{ color: 'var(--text-2)' }}>취소</button>
+                className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt text-[var(--text-2)]">취소</button>
               <button type="button" onClick={() => { void handleChangeRole(pendingRoleChange.member, pendingRoleChange.newRole); setPendingRoleChange(null); }}
-                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity"
-                style={{ backgroundColor: 'var(--primary)' }}>변경</button>
+                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity bg-[var(--primary)]">변경</button>
             </div>
           </div>
         </div>
@@ -768,17 +763,15 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
           <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setShowDeleteConfirm(false)} />
           <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
             <p className="text-[14px] font-semibold text-text">스터디를 삭제하시겠습니까?</p>
-            <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>
+            <p className="text-[13px] text-[var(--text-2)]">
               이 작업은 되돌릴 수 없습니다. 모든 스터디 데이터가 삭제됩니다.
             </p>
             <div className="flex items-center justify-end gap-2">
               <button type="button" onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt"
-                style={{ color: 'var(--text-2)' }}>취소</button>
+                className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt text-[var(--text-2)]">취소</button>
               <button type="button" onClick={() => { void handleDeleteStudy(); }}
                 disabled={isDeleting}
-                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity disabled:opacity-50"
-                style={{ backgroundColor: 'var(--error)' }}>{isDeleting ? '삭제 중...' : '삭제'}</button>
+                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity disabled:opacity-50 bg-[var(--error)]">{isDeleting ? '삭제 중...' : '삭제'}</button>
             </div>
           </div>
         </div>
@@ -790,16 +783,14 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
           <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setShowSaveInfoConfirm(false)} />
           <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
             <p className="text-[14px] font-semibold text-text">스터디 정보를 저장하시겠습니까?</p>
-            <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>
+            <p className="text-[13px] text-[var(--text-2)]">
               변경된 스터디 이름과 소개가 저장됩니다.
             </p>
             <div className="flex items-center justify-end gap-2">
               <button type="button" onClick={() => setShowSaveInfoConfirm(false)}
-                className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt"
-                style={{ color: 'var(--text-2)' }}>취소</button>
+                className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt text-[var(--text-2)]">취소</button>
               <button type="button" onClick={() => { void handleSaveInfo(); setShowSaveInfoConfirm(false); }}
-                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity"
-                style={{ backgroundColor: 'var(--primary)' }}>저장</button>
+                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity bg-[var(--primary)]">저장</button>
             </div>
           </div>
         </div>
@@ -811,16 +802,14 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
           <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setShowSaveRulesConfirm(false)} />
           <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
             <p className="text-[14px] font-semibold text-text">그라운드 룰을 저장하시겠습니까?</p>
-            <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>
+            <p className="text-[13px] text-[var(--text-2)]">
               변경된 그라운드 룰이 모든 멤버에게 적용됩니다.
             </p>
             <div className="flex items-center justify-end gap-2">
               <button type="button" onClick={() => setShowSaveRulesConfirm(false)}
-                className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt"
-                style={{ color: 'var(--text-2)' }}>취소</button>
+                className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt text-[var(--text-2)]">취소</button>
               <button type="button" onClick={() => { void handleSaveRules(); setShowSaveRulesConfirm(false); }}
-                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity"
-                style={{ backgroundColor: 'var(--primary)' }}>저장</button>
+                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity bg-[var(--primary)]">저장</button>
             </div>
           </div>
         </div>
@@ -832,16 +821,14 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
           <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setRemoveMember(null)} />
           <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
             <p className="text-[14px] font-semibold text-text">멤버를 내보내시겠습니까?</p>
-            <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>
+            <p className="text-[13px] text-[var(--text-2)]">
               {removeMember.name} 님을 스터디에서 내보냅니다. 이 작업은 되돌릴 수 없습니다.
             </p>
             <div className="flex items-center justify-end gap-2">
               <button type="button" onClick={() => setRemoveMember(null)}
-                className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt"
-                style={{ color: 'var(--text-2)' }}>취소</button>
+                className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt text-[var(--text-2)]">취소</button>
               <button type="button" onClick={() => void handleRemoveMemberConfirm()}
-                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity"
-                style={{ backgroundColor: 'var(--error)' }}>내보내기</button>
+                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity bg-[var(--error)]">내보내기</button>
             </div>
           </div>
         </div>

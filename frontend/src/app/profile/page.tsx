@@ -278,10 +278,9 @@ export default function ProfilePage(): ReactNode {
                   />
                 </button>
                 <div
-                  className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2"
-                  style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
+                  className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 bg-[var(--bg-card)] border-[var(--border)]"
                 >
-                  <Camera className="h-3.5 w-3.5" style={{ color: 'var(--text-3)' }} />
+                  <Camera className="h-3.5 w-3.5 text-[var(--text-3)]" />
                 </div>
               </div>
 
@@ -293,16 +292,14 @@ export default function ProfilePage(): ReactNode {
               <div className="mt-3 flex items-center gap-2">
                 {providerLabel && (
                   <span
-                    className="rounded-full px-3 py-0.5 text-[11px] font-semibold"
-                    style={{ background: 'var(--primary-soft)', color: 'var(--primary)' }}
+                    className="rounded-full px-3 py-0.5 text-[11px] font-semibold bg-[var(--primary-soft)] text-[var(--primary)]"
                   >
                     {providerLabel.toUpperCase()}
                   </span>
                 )}
                 {githubConnected && (
                   <span
-                    className="flex items-center gap-1 rounded-full px-3 py-0.5 text-[11px] font-semibold"
-                    style={{ background: 'var(--success-soft)', color: 'var(--success)' }}
+                    className="flex items-center gap-1 rounded-full px-3 py-0.5 text-[11px] font-semibold bg-[var(--success-soft)] text-[var(--success)]"
                   >
                     <Github className="h-3 w-3" aria-hidden />
                     연결됨
@@ -314,7 +311,7 @@ export default function ProfilePage(): ReactNode {
 
             {/* 아바타 선택 그리드 */}
             {showAvatarPicker && (
-              <div className="mt-5 w-full rounded-card border p-4" style={{ borderColor: 'var(--border)', background: 'var(--bg-alt)' }}>
+              <div className="mt-5 w-full rounded-card border p-4 border-[var(--border)] bg-[var(--bg-alt)]">
                 <p className="mb-3 text-[12px] font-medium text-text">아바타 선택</p>
                 <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
                   {AVATAR_PRESETS.map((preset) => {
@@ -390,8 +387,7 @@ export default function ProfilePage(): ReactNode {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-                    style={{ background: 'var(--bg-alt)' }}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--bg-alt)]"
                   >
                     <Github className="h-5 w-5 text-text" aria-hidden />
                   </div>
@@ -406,10 +402,9 @@ export default function ProfilePage(): ReactNode {
                 </div>
                 {githubConnected ? (
                   <span
-                    className="flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold"
-                    style={{ border: '1px solid var(--success)', color: 'var(--success)' }}
+                    className="flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold border border-[var(--success)] text-[var(--success)]"
                   >
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'var(--success)' }} />
+                    <span className="h-1.5 w-1.5 rounded-full bg-[var(--success)]" />
                     연결됨
                   </span>
                 ) : (
@@ -417,8 +412,7 @@ export default function ProfilePage(): ReactNode {
                     type="button"
                     disabled={githubLoading}
                     onClick={() => void handleLinkGitHub()}
-                    className="flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold transition-colors"
-                    style={{ background: 'var(--primary)', color: 'white' }}
+                    className="flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold transition-colors bg-[var(--primary)] text-white"
                   >
                     {githubLoading ? <InlineSpinner /> : <Link2 className="h-3 w-3" aria-hidden />}
                     연동하기
@@ -442,8 +436,7 @@ export default function ProfilePage(): ReactNode {
                     type="button"
                     disabled={githubLoading}
                     onClick={() => void handleUnlinkGitHub()}
-                    className="flex items-center gap-1 text-[11px] transition-colors hover:opacity-80"
-                    style={{ color: 'var(--error)' }}
+                    className="flex items-center gap-1 text-[11px] transition-colors hover:opacity-80 text-[var(--error)]"
                   >
                     {githubLoading ? <InlineSpinner /> : <Unlink className="h-3 w-3" aria-hidden />}
                     해제
@@ -459,8 +452,7 @@ export default function ProfilePage(): ReactNode {
                 <button
                   type="button"
                   onClick={() => setShowLogoutConfirm(true)}
-                  className="flex items-center justify-center gap-2 rounded-btn px-4 py-2 text-[13px] font-medium text-text-2 transition-colors hover:bg-bg-alt"
-                  style={{ border: '1px solid var(--border)' }}
+                  className="flex items-center justify-center gap-2 rounded-btn px-4 py-2 text-[13px] font-medium text-text-2 transition-colors hover:bg-bg-alt border border-[var(--border)]"
                 >
                   <LogOut className="h-4 w-4" aria-hidden />
                   로그아웃
@@ -468,8 +460,7 @@ export default function ProfilePage(): ReactNode {
                 <button
                   type="button"
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="flex items-center justify-center gap-2 rounded-btn px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-90"
-                  style={{ background: 'var(--error)' }}
+                  className="flex items-center justify-center gap-2 rounded-btn px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-90 bg-[var(--error)]"
                 >
                   계정 탈퇴
                 </button>
@@ -484,21 +475,19 @@ export default function ProfilePage(): ReactNode {
             <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setShowLogoutConfirm(false)} />
             <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
               <p className="text-[14px] font-semibold text-text">로그아웃 하시겠습니까?</p>
-              <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>현재 세션이 종료되고 로그인 페이지로 이동합니다.</p>
+              <p className="text-[13px] text-[var(--text-2)]">현재 세션이 종료되고 로그인 페이지로 이동합니다.</p>
               <div className="flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setShowLogoutConfirm(false)}
-                  className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt"
-                  style={{ color: 'var(--text-2)' }}
+                  className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt text-[var(--text-2)]"
                 >
                   취소
                 </button>
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity"
-                  style={{ backgroundColor: 'var(--primary)' }}
+                  className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity bg-[var(--primary)]"
                 >
                   로그아웃
                 </button>
@@ -513,14 +502,13 @@ export default function ProfilePage(): ReactNode {
             <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setShowDeleteConfirm(false)} />
             <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
               <p className="text-[14px] font-semibold text-text">계정을 삭제하시겠습니까?</p>
-              <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>이 작업은 되돌릴 수 없습니다. 모든 데이터가 영구 삭제됩니다.</p>
+              <p className="text-[13px] text-[var(--text-2)]">이 작업은 되돌릴 수 없습니다. 모든 데이터가 영구 삭제됩니다.</p>
               <div className="flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setShowDeleteConfirm(false)}
                   disabled={deleteLoading}
-                  className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt"
-                  style={{ color: 'var(--text-2)' }}
+                  className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt text-[var(--text-2)]"
                 >
                   취소
                 </button>
@@ -528,8 +516,7 @@ export default function ProfilePage(): ReactNode {
                   type="button"
                   onClick={() => void handleDeleteAccount()}
                   disabled={deleteLoading}
-                  className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity disabled:opacity-50"
-                  style={{ backgroundColor: 'var(--error)' }}
+                  className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity disabled:opacity-50 bg-[var(--error)]"
                 >
                   {deleteLoading ? '삭제 중...' : '삭제'}
                 </button>
