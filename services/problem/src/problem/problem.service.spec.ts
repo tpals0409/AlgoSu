@@ -429,6 +429,7 @@ describe('ProblemService', () => {
       dataSource.createQueryRunner.mockReturnValue(mockQr);
       deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
       deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
+      dualWrite.isActive = true;
 
       const result = await service.update(STUDY_ID, PROBLEM_ID, dto);
 
@@ -440,7 +441,9 @@ describe('ProblemService', () => {
       expect(mockQr.manager.save).toHaveBeenCalled();
       expect(mockQr.commitTransaction).toHaveBeenCalled();
       expect(mockQr.release).toHaveBeenCalled();
+      expect(dualWrite.saveExisting).toHaveBeenCalled();
       expect(result).toEqual(updatedProblem);
+      dualWrite.isActive = false;
     });
 
     it('부분 수정: 트랜잭션 + 캐시 무효화', async () => {
@@ -661,6 +664,22 @@ describe('ProblemService', () => {
       dataSource.createQueryRunner.mockReturnValue(mockQr);
 
       await expect(service.delete(STUDY_ID, 'non-existent')).rejects.toThrow(NotFoundException);
+    });
+
+    it('dualWrite.isActive=true일 때 saveExisting 호출', async () => {
+      const problem = { ...mockProblem };
+      const mockQr = createMockQueryRunner();
+      mockQr.manager.findOne.mockResolvedValue(problem);
+      mockQr.manager.save.mockResolvedValue({ ...problem, status: ProblemStatus.DELETED });
+      dataSource.createQueryRunner.mockReturnValue(mockQr);
+      deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
+      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
+      dualWrite.isActive = true;
+
+      await service.delete(STUDY_ID, PROBLEM_ID);
+
+      expect(dualWrite.saveExisting).toHaveBeenCalled();
+      dualWrite.isActive = false;
     });
 
     it('DELETED 상태 문제 재삭제: BadRequestException', async () => {

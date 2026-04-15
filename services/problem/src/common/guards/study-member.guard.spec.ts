@@ -177,6 +177,19 @@ describe('StudyMemberGuard', () => {
       mockFetch.mockRestore();
     });
 
+    it('Gateway 비정상 응답 (500): ForbiddenException', async () => {
+      const mockFetch = jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: false,
+        status: 500,
+      } as Response);
+
+      const ctx = createMockContext();
+
+      await expect(guard.canActivate(ctx)).rejects.toThrow(ForbiddenException);
+
+      mockFetch.mockRestore();
+    });
+
     it('Gateway 네트워크 오류: ForbiddenException (fail-close)', async () => {
       const mockFetch = jest.spyOn(global, 'fetch').mockRejectedValue(new Error('ECONNREFUSED'));
 
