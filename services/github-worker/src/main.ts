@@ -1,14 +1,13 @@
+/**
+ * @file main.ts — GitHub Worker 엔트리포인트 (RabbitMQ 소비자 기동)
+ * @domain github-worker
+ * @layer config
+ * @related worker.ts, config.ts, logger.ts
+ */
 import { GitHubWorker } from './worker';
 import { logger } from './logger';
 import { startMetricsServer } from './metrics';
 
-/**
- * GitHub Worker Entry Point
- *
- * RabbitMQ 소비자: submission.github_push 큐 구독
- * - prefetch=2 (동시 처리량 제한 — Free Tier 안정성)
- * - 실패 시 Retry → DLQ
- */
 async function main(): Promise<void> {
   logger.info('GitHub Worker 시작');
 
