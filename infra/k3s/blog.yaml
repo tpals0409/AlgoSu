@@ -56,6 +56,7 @@ spec:
                 command: ["sh", "-c", "sleep 5"]
           securityContext:
             readOnlyRootFilesystem: false
+            # TODO: nginx-unprivileged 이미지 전환 후 runAsNonRoot: true 적용
             runAsNonRoot: false
 ---
 apiVersion: v1
