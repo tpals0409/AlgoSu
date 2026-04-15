@@ -12,6 +12,8 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { BarChart3 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { AdBanner } from '@/components/ad/AdBanner';
+import { AD_SLOTS } from '@/lib/constants/adSlots';
 import { Card } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Alert';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -289,7 +291,7 @@ export default function AnalyticsPage(): ReactNode {
           </Card>
         )}
 
-        {/* 차트 영역 */}
+        {/* 차트 영역 + 하단 광고 */}
         {!isLoading && currentStudyId && stats && stats.totalSubmissions > 0 && (
           <AnalyticsCharts
             totalSubmissions={myStats.count}
@@ -356,6 +358,9 @@ export default function AnalyticsPage(): ReactNode {
             userName={userName}
           />
         )}
+
+        {/* 차트 하단 광고 */}
+        <AdBanner slot={AD_SLOTS.ANALYTICS_BOTTOM} className="mt-6" />
       </div>
     </AppLayout>
   );

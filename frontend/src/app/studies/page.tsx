@@ -21,6 +21,8 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { InlineSpinner } from '@/components/ui/LoadingSpinner';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { AdBanner } from '@/components/ad/AdBanner';
+import { AD_SLOTS } from '@/lib/constants/adSlots';
 import { useStudy, type Study } from '@/contexts/StudyContext';
 import { studyApi, ApiError } from '@/lib/api';
 import { studyCreateSchema, type StudyCreateFormData } from '@/lib/schemas/study';
@@ -540,6 +542,9 @@ export default function StudiesPage(): ReactNode {
             </Card>
           </div>
         )}
+
+        {/* 스터디 카드 하단 광고 */}
+        <AdBanner slot={AD_SLOTS.STUDIES_BOTTOM} />
 
         {/* 닉네임 입력 팝업 */}
         {showNicknameModal && (

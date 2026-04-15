@@ -18,6 +18,8 @@ import {
   Camera,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { AdBanner } from '@/components/ad/AdBanner';
+import { AD_SLOTS } from '@/lib/constants/adSlots';
 import { Card } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Alert';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -538,6 +540,9 @@ export default function ProfilePage(): ReactNode {
 
         {/* 공유 링크 관리 (W2-4) */}
         <ShareLinkManager />
+
+        {/* 콘텐츠 하단 광고 */}
+        <AdBanner slot={AD_SLOTS.PROFILE_BOTTOM} className="mt-6" />
       </div>
     </AppLayout>
   );
