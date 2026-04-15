@@ -662,6 +662,16 @@ describe('ProblemService', () => {
 
       await expect(service.delete(STUDY_ID, 'non-existent')).rejects.toThrow(NotFoundException);
     });
+
+    it('DELETED 상태 문제 재삭제: BadRequestException', async () => {
+      const deletedProblem = { ...mockProblem, status: ProblemStatus.DELETED };
+      const mockQr = createMockQueryRunner();
+      mockQr.manager.findOne.mockResolvedValue(deletedProblem);
+      dataSource.createQueryRunner.mockReturnValue(mockQr);
+
+      await expect(service.delete(STUDY_ID, PROBLEM_ID)).rejects.toThrow(BadRequestException);
+      expect(mockQr.rollbackTransaction).toHaveBeenCalled();
+    });
   });
 
   // ──────────────────────────────────────────────
