@@ -39,7 +39,7 @@ const STATUS_TABS = [
 ] as const;
 
 
-// 언어 아바타 색상
+// 언어 아바타 색상 — 동적 언어별 색상, Tailwind 토큰 등록 시 전환 예정
 const LANG_AVATAR: Record<string, { label: string; bg: string; color: string }> = {
   python:     { label: 'PY', bg: '#3572A520', color: '#3572A5' },
   javascript: { label: 'JS', bg: '#f1e05a20', color: '#b8a000' },
@@ -197,10 +197,10 @@ export default function SubmissionsPage(): ReactNode {
           <button
             type="button"
             onClick={() => setFilterDifficulty('')}
-            className="inline-flex items-center gap-1 shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-[12px] font-medium transition-all hover:shadow-sm hover:brightness-95 hover:scale-105"
+            className={`inline-flex items-center gap-1 shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-[12px] font-medium transition-all hover:shadow-sm hover:brightness-95 hover:scale-105${!filterDifficulty ? ' text-white' : ''}`}
             style={
               !filterDifficulty
-                ? { backgroundColor: 'var(--primary)', color: '#fff' }
+                ? { backgroundColor: 'var(--primary)' }
                 : { backgroundColor: 'var(--bg-card)', color: 'var(--text-2)', border: '1px solid var(--border)' }
             }
           >
@@ -214,14 +214,14 @@ export default function SubmissionsPage(): ReactNode {
                 key={d}
                 type="button"
                 onClick={() => setFilterDifficulty(d)}
-                className="inline-flex items-center gap-1 shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-[12px] font-medium transition-all hover:shadow-sm hover:brightness-95 hover:scale-105"
+                className={`inline-flex items-center gap-1 shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-[12px] font-medium transition-all hover:shadow-sm hover:brightness-95 hover:scale-105${isActive ? ' text-white' : ''}`}
                 style={
                   isActive
-                    ? { backgroundColor: 'var(--primary)', color: '#fff' }
+                    ? { backgroundColor: 'var(--primary)' }
                     : DIFF_BADGE_STYLE[diffKey] ?? { backgroundColor: 'var(--bg-card)', color: 'var(--text-2)' }
                 }
               >
-                <span className="h-1.5 w-1.5 rounded-full" style={isActive ? { backgroundColor: '#fff' } : (DIFF_DOT_STYLE[diffKey] ?? {})} aria-hidden />
+                <span className={`h-1.5 w-1.5 rounded-full${isActive ? ' bg-white' : ''}`} style={isActive ? undefined : (DIFF_DOT_STYLE[diffKey] ?? {})} aria-hidden />
                 {DIFFICULTY_LABELS[d]}
               </button>
             );

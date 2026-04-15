@@ -204,10 +204,10 @@ export default function ProblemsPage(): ReactNode {
           <button
             type="button"
             onClick={() => handleFilterChange('difficulty', '')}
-            className="inline-flex items-center gap-1 shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-[12px] font-medium transition-all hover:shadow-sm hover:brightness-95 hover:scale-105"
+            className={`inline-flex items-center gap-1 shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-[12px] font-medium transition-all hover:shadow-sm hover:brightness-95 hover:scale-105${!filters.difficulty ? ' text-white' : ''}`}
             style={
               !filters.difficulty
-                ? { backgroundColor: 'var(--primary)', color: '#fff' }
+                ? { backgroundColor: 'var(--primary)' }
                 : { backgroundColor: 'var(--bg-card)', color: 'var(--text-2)', border: '1px solid var(--border)' }
             }
           >
@@ -221,14 +221,14 @@ export default function ProblemsPage(): ReactNode {
                 key={d}
                 type="button"
                 onClick={() => handleFilterChange('difficulty', isActive ? '' : d)}
-                className="inline-flex items-center gap-1 shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-[12px] font-medium transition-all hover:shadow-sm hover:brightness-95 hover:scale-105"
+                className={`inline-flex items-center gap-1 shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-[12px] font-medium transition-all hover:shadow-sm hover:brightness-95 hover:scale-105${isActive ? ' text-white' : ''}`}
                 style={
                   isActive
-                    ? { backgroundColor: 'var(--primary)', color: '#fff' }
+                    ? { backgroundColor: 'var(--primary)' }
                     : DIFF_BADGE_STYLE[diffKey] ?? { backgroundColor: 'var(--bg-card)', color: 'var(--text-2)' }
                 }
               >
-                <span className="h-1.5 w-1.5 rounded-full" style={isActive ? { backgroundColor: '#fff' } : (DIFF_DOT_STYLE[diffKey] ?? {})} aria-hidden />
+                <span className={`h-1.5 w-1.5 rounded-full${isActive ? ' bg-white' : ''}`} style={isActive ? undefined : (DIFF_DOT_STYLE[diffKey] ?? {})} aria-hidden />
                 {DIFFICULTY_LABELS[d]}
               </button>
             );
