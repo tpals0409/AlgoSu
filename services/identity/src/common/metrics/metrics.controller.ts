@@ -1,7 +1,8 @@
 /**
- * AlgoSu — Prometheus Metrics Controller
- * GET /metrics — Prometheus scraper 전용
- * 인증 없이 접근 가능 (JwtMiddleware에서 제외)
+ * @file metrics.controller.ts — Prometheus /metrics 엔드포인트
+ * @domain common
+ * @layer controller
+ * @related metrics.service.ts, metrics.module.ts
  */
 import { Controller, Get, Res } from '@nestjs/common';
 import { Response } from 'express';

@@ -1,3 +1,9 @@
+/**
+ * @file app.module.ts — Identity 서비스 루트 모듈
+ * @domain identity
+ * @layer module
+ * @related main.ts, user.module.ts, study.module.ts, notification.module.ts
+ */
 import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';

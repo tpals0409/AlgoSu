@@ -1,18 +1,8 @@
 /**
- * AlgoSu — Prometheus Metrics Service
- * ------------------------------------
- * 규칙 근거: /docs/monitoring-log-rules.md §9
- *
- * 역할:
- * - prom-client Registry 관리
- * - collectDefaultMetrics 활성화
- * - HTTP 요청 히스토그램: algosu_{service}_http_request_duration_seconds
- * - 네이밍: algosu_{service}_{metric}_{unit}
- *
- * 보안:
- * - /metrics 인증 없이 접근 가능 (Prometheus scraper)
- * - 고카디널리티 라벨 금지: userId, traceId, requestId
- * - path 동적 세그먼트 정규화: /problems/123 → /problems/:id
+ * @file metrics.service.ts — prom-client 레지스트리 관리 및 HTTP 히스토그램
+ * @domain common
+ * @layer service
+ * @related metrics.controller.ts, metrics.module.ts
  */
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import {

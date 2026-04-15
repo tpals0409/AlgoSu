@@ -1,3 +1,9 @@
+/**
+ * @file 1709000012000-AddGithubTokenColumn.ts — users 테이블 github_token 컬럼 추가
+ * @domain identity
+ * @layer migration
+ * @related user.entity.ts
+ */
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddGithubTokenColumn1709000012000 implements MigrationInterface {

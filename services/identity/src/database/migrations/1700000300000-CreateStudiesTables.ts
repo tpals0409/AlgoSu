@@ -1,3 +1,9 @@
+/**
+ * @file 1700000300000-CreateStudiesTables.ts — studies/study_members/study_invites 테이블 신설
+ * @domain identity
+ * @layer migration
+ * @related study.entity.ts
+ */
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**

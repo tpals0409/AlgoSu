@@ -1,8 +1,8 @@
 /**
- * M16: Identity Service — Request ID Middleware
- *
- * 모든 요청에 X-Request-Id, X-Trace-Id 헤더 부여
- * 규칙 근거: /docs/monitoring-log-rules.md §1-4
+ * @file request-id.middleware.ts — X-Request-Id / X-Trace-Id 헤더 부여 미들웨어
+ * @domain common
+ * @layer middleware
+ * @related structured-logger.service.ts
  */
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';

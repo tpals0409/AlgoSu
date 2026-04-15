@@ -1,11 +1,11 @@
+/**
+ * @file data-source.ts — TypeORM CLI용 DataSource 설정
+ * @domain identity
+ * @layer config
+ * @related migrations/
+ */
 import { DataSource } from 'typeorm';
 
-/**
- * TypeORM CLI용 DataSource 설정
- * migration:run, migration:revert 명령에서 사용
- *
- * synchronize: false — 프로덕션 절대 금지
- */
 export default new DataSource({
   type: 'postgres',
   host: process.env['DATABASE_HOST'] ?? 'localhost',

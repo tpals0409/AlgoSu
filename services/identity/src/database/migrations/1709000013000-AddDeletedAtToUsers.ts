@@ -1,3 +1,9 @@
+/**
+ * @file 1709000013000-AddDeletedAtToUsers.ts — users 테이블 deleted_at 소프트 삭제 컬럼 추가
+ * @domain identity
+ * @layer migration
+ * @related user.entity.ts
+ */
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddDeletedAtToUsers1709000013000 implements MigrationInterface {

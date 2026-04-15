@@ -1,3 +1,9 @@
+/**
+ * @file 1709000010000-AddStatusToStudies.ts — studies 테이블 status 컬럼 추가
+ * @domain identity
+ * @layer migration
+ * @related study.entity.ts
+ */
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddStatusToStudies1709000010000 implements MigrationInterface {

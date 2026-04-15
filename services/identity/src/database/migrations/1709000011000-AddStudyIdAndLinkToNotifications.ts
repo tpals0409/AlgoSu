@@ -1,3 +1,9 @@
+/**
+ * @file 1709000011000-AddStudyIdAndLinkToNotifications.ts — notifications에 study_id/link 컬럼 추가
+ * @domain identity
+ * @layer migration
+ * @related notification.entity.ts
+ */
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddStudyIdAndLinkToNotifications1709000011000 implements MigrationInterface {

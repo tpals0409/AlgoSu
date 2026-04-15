@@ -1,3 +1,9 @@
+/**
+ * @file 1709000017000-CreateFeedbacksTable.ts — feedbacks 테이블 신설 마이그레이션
+ * @domain identity
+ * @layer migration
+ * @related feedback.entity.ts
+ */
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateFeedbacksTable1709000017000 implements MigrationInterface {

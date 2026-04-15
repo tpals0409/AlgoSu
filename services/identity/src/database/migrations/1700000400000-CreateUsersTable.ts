@@ -1,3 +1,9 @@
+/**
+ * @file 1700000400000-CreateUsersTable.ts — users 테이블 신설 마이그레이션
+ * @domain identity
+ * @layer migration
+ * @related user.entity.ts
+ */
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**

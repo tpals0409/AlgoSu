@@ -1,8 +1,8 @@
 /**
- * H10: Identity Service — Structured Logger
- *
- * JSON 구조화 로그 출력 (Loki/Promtail 호환)
- * 규칙 근거: /docs/monitoring-log-rules.md §1
+ * @file structured-logger.service.ts — JSON 구조화 로그 출력 (Loki/Promtail 호환)
+ * @domain common
+ * @layer service
+ * @related logger.module.ts, request-id.middleware.ts
  */
 import { Injectable, LoggerService, LogLevel } from '@nestjs/common';
 
