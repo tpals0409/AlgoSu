@@ -1,3 +1,9 @@
+/**
+ * @file health.controller.ts — 헬스체크 엔드포인트 (/health, /health/ready)
+ * @domain submission
+ * @layer controller
+ * @related app.module.ts
+ */
 import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 

@@ -1,3 +1,9 @@
+/**
+ * @file app.module.ts — Submission 서비스 루트 모듈 (TypeORM·스케줄·메트릭 통합)
+ * @domain submission
+ * @layer module
+ * @related submission.module.ts, review.module.ts, study-note.module.ts
+ */
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';

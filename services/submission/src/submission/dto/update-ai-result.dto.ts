@@ -1,3 +1,9 @@
+/**
+ * @file update-ai-result.dto.ts — AI 분석 결과 업데이트 DTO (내부 콜백용)
+ * @domain submission
+ * @layer dto
+ * @related submission-internal.controller.ts, saga-orchestrator.service.ts
+ */
 import {
   IsString,
   IsInt,

@@ -1,3 +1,9 @@
+/**
+ * @file 20260408120000-SP61-CreateAiSatisfaction.ts — ai_satisfaction 테이블 생성 (좋아요/싫어요)
+ * @domain submission
+ * @layer migration
+ * @related ai-satisfaction.entity.ts, create-ai-satisfaction.dto.ts
+ */
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateAiSatisfaction20260408120000 implements MigrationInterface {

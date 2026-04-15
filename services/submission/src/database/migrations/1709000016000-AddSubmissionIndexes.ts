@@ -1,3 +1,9 @@
+/**
+ * @file 1709000016000-AddSubmissionIndexes.ts — study_id+user_id, study_id+problem_id 복합 인덱스 추가
+ * @domain submission
+ * @layer migration
+ * @related submission.entity.ts
+ */
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddSubmissionIndexes1709000016000 implements MigrationInterface {

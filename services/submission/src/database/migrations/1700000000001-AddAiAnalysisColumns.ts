@@ -1,3 +1,9 @@
+/**
+ * @file 1700000000001-AddAiAnalysisColumns.ts — AI 분석 결과 컬럼 확장 (feedback·score·status)
+ * @domain submission
+ * @layer migration
+ * @related submission.entity.ts
+ */
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**

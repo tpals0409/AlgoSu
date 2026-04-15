@@ -1,4 +1,11 @@
 /**
+ * @file metrics.module.ts — Prometheus 메트릭 글로벌 모듈 + HTTP 인터셉터
+ * @domain common
+ * @layer module
+ * @related metrics.service.ts, metrics.controller.ts
+ */
+
+/**
  * AlgoSu — Prometheus Metrics Module (Global)
  * 규칙 근거: /docs/monitoring-log-rules.md §9
  *

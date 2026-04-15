@@ -1,3 +1,9 @@
+/**
+ * @file submission.entity.ts — Submission 엔티티 (SagaStep·GitHubSyncStatus Enum 포함)
+ * @domain submission
+ * @layer entity
+ * @related submission.service.ts, saga-orchestrator.service.ts
+ */
 import {
   Entity,
   PrimaryGeneratedColumn,

@@ -1,4 +1,11 @@
 /**
+ * @file metrics.service.ts — Prometheus Registry + HTTP 히스토그램·카운터 관리
+ * @domain common
+ * @layer service
+ * @related metrics.module.ts, metrics.controller.ts
+ */
+
+/**
  * AlgoSu — Prometheus Metrics Service
  * ------------------------------------
  * 규칙 근거: /docs/monitoring-log-rules.md §9

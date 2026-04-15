@@ -1,3 +1,9 @@
+/**
+ * @file submission.module.ts — Submission 도메인 모듈 (Controller·Service·Saga 등록)
+ * @domain submission
+ * @layer module
+ * @related submission.service.ts, submission.controller.ts, saga-orchestrator.service.ts
+ */
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Submission } from './submission.entity';

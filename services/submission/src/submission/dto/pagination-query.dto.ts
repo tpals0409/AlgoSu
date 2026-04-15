@@ -1,3 +1,9 @@
+/**
+ * @file pagination-query.dto.ts — 제출 목록 페이지네이션 + 필터 쿼리 DTO
+ * @domain submission
+ * @layer dto
+ * @related submission.controller.ts, submission.service.ts
+ */
 import {
   IsOptional,
   IsInt,

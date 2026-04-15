@@ -1,4 +1,11 @@
 /**
+ * @file structured-logger.service.ts — JSON 구조화 로거 (Loki/Promtail 호환)
+ * @domain common
+ * @layer service
+ * @related logger.module.ts, metrics.service.ts
+ */
+
+/**
  * H10: Submission Service — Structured Logger
  *
  * JSON 구조화 로그 출력 (Loki/Promtail 호환)

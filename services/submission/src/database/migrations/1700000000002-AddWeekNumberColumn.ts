@@ -1,3 +1,9 @@
+/**
+ * @file 1700000000002-AddWeekNumberColumn.ts — submissions에 week_number 컬럼 추가
+ * @domain submission
+ * @layer migration
+ * @related submission.entity.ts
+ */
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**

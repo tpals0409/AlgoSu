@@ -1,3 +1,9 @@
+/**
+ * @file 1700000000003-WeekNumberToVarchar.ts — week_number 컬럼 integer→varchar 변환
+ * @domain submission
+ * @layer migration
+ * @related submission.entity.ts
+ */
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class WeekNumberToVarchar1700000000003 implements MigrationInterface {

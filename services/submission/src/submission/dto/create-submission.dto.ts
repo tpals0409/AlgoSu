@@ -1,3 +1,9 @@
+/**
+ * @file create-submission.dto.ts — 코드 제출 DTO (언어 화이트리스트 + 멱등성 키)
+ * @domain submission
+ * @layer dto
+ * @related submission.service.ts, submission.controller.ts
+ */
 import {
   IsString,
   IsUUID,

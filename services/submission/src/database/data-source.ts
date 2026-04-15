@@ -1,3 +1,9 @@
+/**
+ * @file data-source.ts — TypeORM CLI 전용 DataSource (마이그레이션 실행용)
+ * @domain submission
+ * @layer config
+ * @related app.module.ts
+ */
 import { DataSource } from 'typeorm';
 
 export default new DataSource({

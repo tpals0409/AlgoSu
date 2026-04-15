@@ -1,3 +1,9 @@
+/**
+ * @file draft.entity.ts — 임시 저장(Draft) 엔티티 (user+problem UNIQUE)
+ * @domain submission
+ * @layer entity
+ * @related draft.service.ts, submission.module.ts
+ */
 import {
   Entity,
   PrimaryGeneratedColumn,

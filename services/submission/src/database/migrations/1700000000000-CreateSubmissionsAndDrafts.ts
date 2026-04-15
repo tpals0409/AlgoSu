@@ -1,3 +1,9 @@
+/**
+ * @file 1700000000000-CreateSubmissionsAndDrafts.ts — submissions·drafts 테이블 초기 생성
+ * @domain submission
+ * @layer migration
+ * @related submission.entity.ts, draft.entity.ts
+ */
 import { MigrationInterface, QueryRunner, Table } from 'typeorm';
 
 /**
