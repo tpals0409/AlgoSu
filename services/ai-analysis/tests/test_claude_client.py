@@ -412,11 +412,14 @@ class TestSecurityCodeLogLimit:
             token_log = info_calls[0][0][0]
             assert "토큰 사용량" in token_log
 
-            log_message = info_calls[1][0][0]
-            # 원본 100자 코드가 그대로 로그에 노출되면 안 됨
-            assert long_code not in log_message
-            # 50자 프리뷰가 포함되어야 함
-            assert "x" * 50 in log_message
+            # 구조화 로깅: extra dict의 codePreview에서 확인
+            complete_call = info_calls[1]
+            extra = complete_call[1].get("extra", {})
+            code_preview = extra.get("codePreview", "")
+            # 원본 100자 코드가 그대로 노출되면 안 됨
+            assert long_code != code_preview
+            # 50자 프리뷰 + "..."로 제한되어야 함
+            assert code_preview == "x" * 50 + "..."
 
 
 # ─── GROUP ANALYSIS RESPONSE PARSING ────────────

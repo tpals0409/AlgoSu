@@ -11,7 +11,7 @@ class TestSettingsDefaults:
 
     def test_default_values(self):
         s = Settings()
-        assert s.rabbitmq_url == "amqp://algosu:change_me@localhost:5672"
+        assert s.rabbitmq_url == ""
         assert s.redis_url == "redis://localhost:6379"
         assert s.anthropic_api_key == ""
         assert s.ai_daily_limit == 5
