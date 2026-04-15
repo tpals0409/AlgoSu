@@ -73,7 +73,8 @@ describe('LoginPage', () => {
 
   it('약관 안내 텍스트가 표시된다', () => {
     render(<LoginPage />);
-    expect(screen.getByText(/서비스 이용약관/)).toBeInTheDocument();
-    expect(screen.getByText(/개인정보처리방침/)).toBeInTheDocument();
+    // 약관 영역 + footer에 각각 존재
+    expect(screen.getAllByText(/이용약관/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/개인정보처리방침/).length).toBeGreaterThanOrEqual(1);
   });
 });
