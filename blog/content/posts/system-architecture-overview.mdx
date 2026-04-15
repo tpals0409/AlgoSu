@@ -132,22 +132,7 @@ Gateway는 유일한 외부 진입점입니다. 인증, 라우팅, Rate Limit, S
 
 사용자가 "제출" 버튼을 누르면 Gateway가 JWT를 검증하고, Submission Service의 Saga Orchestrator가 전체 플로우를 관장합니다.
 
-<Mermaid
-  caption="Saga 상태 전이 — 실패 시 분기 포함"
-  chart={`
-flowchart LR
-    A[DB_SAVED]:::ok --> B[GITHUB_QUEUED]:::ok
-    B --> C[AI_QUEUED]:::ok
-    C --> D([DONE]):::done
-    B -. GitHub 실패 .-> C
-    C -. AI 실패 .-> E([DONE<br/>aiDelayed]):::warn
-    B -. TOKEN_INVALID .-> F([DONE<br/>aiSkipped]):::warn
-
-    classDef ok fill:#eef2ff,stroke:#6366f1,color:#312e81
-    classDef done fill:#ecfdf5,stroke:#10b981,color:#065f46
-    classDef warn fill:#fffbeb,stroke:#f59e0b,color:#92400e
-`}
-/>
+<Mermaid name="saga-state-transition" caption="Saga 상태 전이 — 실패 시 분기 포함" />
 
 이 Saga 설계에서 사람이 결정한 것과 AI가 실행한 것이 명확히 나뉩니다.
 

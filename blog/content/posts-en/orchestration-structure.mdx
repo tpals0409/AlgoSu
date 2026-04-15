@@ -23,7 +23,7 @@ Oracle became the **only agent** that talks to the PM (me). The remaining 11 are
 
 The flow is unidirectional. PM → Oracle → Agent → Oracle → PM. Agents don't communicate with each other directly. Even when Conductor queries Curator for a deadline, that's an inter-service HTTP call, not direct agent-to-agent communication.
 
-<Pipeline>
+<Pipeline arrows>
   <PipelineStage label="PM (Human)" detail="Task request" accent={1} icon="User" />
   <PipelineStage label="Oracle" detail="Analyze · delegate" accent={6} icon="Crown" />
   <PipelineStage label="Agent" detail="Domain execution" accent={3} icon="Workflow" />

@@ -132,22 +132,7 @@ Let's trace what actually happens with a single code submission to see this arch
 
 When a user clicks "Submit," the Gateway validates the JWT, and the Submission Service's Saga Orchestrator manages the entire flow.
 
-<Mermaid
-  caption="Saga state transitions — including failure branches"
-  chart={`
-flowchart LR
-    A[DB_SAVED]:::ok --> B[GITHUB_QUEUED]:::ok
-    B --> C[AI_QUEUED]:::ok
-    C --> D([DONE]):::done
-    B -. GitHub failure .-> C
-    C -. AI failure .-> E([DONE<br/>aiDelayed]):::warn
-    B -. TOKEN_INVALID .-> F([DONE<br/>aiSkipped]):::warn
-
-    classDef ok fill:#eef2ff,stroke:#6366f1,color:#312e81
-    classDef done fill:#ecfdf5,stroke:#10b981,color:#065f46
-    classDef warn fill:#fffbeb,stroke:#f59e0b,color:#92400e
-`}
-/>
+<Mermaid name="saga-state-transition-en" caption="Saga state transitions — including failure branches" />
 
 In this Saga design, what humans decided and what AI executed are clearly separated.
 
