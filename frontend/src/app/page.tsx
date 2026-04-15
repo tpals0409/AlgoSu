@@ -194,6 +194,15 @@ export default function LandingPage(): ReactNode {
 
       {/* ── FOOTER ── */}
       <footer className="border-t border-border py-8 text-center">
+        <div className="mb-3 flex items-center justify-center gap-4 text-[12px] font-medium text-text-3">
+          <Link href="/privacy" className="transition-colors hover:text-text">
+            개인정보처리방침
+          </Link>
+          <span aria-hidden>·</span>
+          <Link href="/terms" className="transition-colors hover:text-text">
+            이용약관
+          </Link>
+        </div>
         <p className="text-[11px] text-text-3">
           &copy; {new Date().getFullYear()} AlgoSu. All rights reserved.
         </p>
