@@ -1,3 +1,9 @@
+/**
+ * @file auth.module.ts — JWT/Passport 인증 모듈 구성
+ * @domain auth
+ * @layer module
+ * @related jwt.strategy.ts, jwt.middleware.ts, oauth.module.ts, session-policy.module.ts
+ */
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';

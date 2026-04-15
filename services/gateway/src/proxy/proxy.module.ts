@@ -1,3 +1,9 @@
+/**
+ * @file proxy.module.ts — 백엔드 서비스 프록시 모듈 (submission, problem, ai-feedback)
+ * @domain gateway
+ * @layer module
+ * @related app.module.ts
+ */
 import {
   Module,
   Controller,

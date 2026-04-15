@@ -1,3 +1,9 @@
+/**
+ * @file change-role.dto.ts — 스터디 멤버 역할 변경 요청 DTO
+ * @domain gateway
+ * @layer dto
+ * @related study.controller.ts, identity.types.ts
+ */
 import { IsEnum } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { StudyMemberRole } from '../../common/types/identity.types';
