@@ -64,7 +64,8 @@ class AIAnalysisWorker:
             raise RuntimeError(
                 "RABBITMQ_URL 환경변수가 설정되지 않았거나 유효하지 않습니다: "
                 f"'{settings.rabbitmq_url[:20]}...'"
-                if settings.rabbitmq_url else "''"
+                if settings.rabbitmq_url
+                else "''"
             )
         self.claude = ClaudeClient()
         self.redis_client = redis.from_url(settings.redis_url)
