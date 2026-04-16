@@ -24,6 +24,10 @@ data:
       - job_name: algosu-pods
         kubernetes_sd_configs:
           - role: pod
+            # 현재 노드의 Pod만 수집 — DaemonSet 표준 패턴
+            selectors:
+              - role: pod
+                field: spec.nodeName=${HOSTNAME}
         relabel_configs:
           # algosu 네임스페이스 Pod만 수집
           - source_labels: [__meta_kubernetes_namespace]
@@ -41,15 +45,16 @@ data:
           # container 이름
           - source_labels: [__meta_kubernetes_pod_container_name]
             target_label: container
-          # 로그 경로: /var/log/pods/<namespace>_<pod-name>_<uid>/<container>/*.log
+          # 로그 경로: /var/log/pods/*<uid>/<container>/*.log
+          # kubelet 로그 디렉토리 규칙: namespace_pod-name_uid/container-name/*.log
+          # glob 패턴 * 로 namespace_pod-name_ prefix 매칭
           - source_labels:
-              - __meta_kubernetes_namespace
-              - __meta_kubernetes_pod_name
               - __meta_kubernetes_pod_uid
               - __meta_kubernetes_pod_container_name
             target_label: __path__
             separator: /
-            replacement: /var/log/pods/$1_$2_$3/$4/*.log
+            regex: (.+)/(.+)
+            replacement: /var/log/pods/*$1/$2/*.log
 
         pipeline_stages:
           # CRI 포맷 파싱: <timestamp> <stream> <flags> <message>
@@ -64,9 +69,8 @@ data:
           - labels:
               level:
               tag:
-          # traceId는 structured metadata로 (라벨 카디널리티 방지)
-          - structured_metadata:
-              traceId:
+          # traceId는 로그 본문에 JSON으로 남아있음 (Loki structured_metadata 미사용 —
+          # loki-config.yaml: allow_structured_metadata: false)
 ---
 apiVersion: apps/v1
 kind: DaemonSet
@@ -93,7 +97,14 @@ spec:
         - name: promtail
           image: grafana/promtail:2.9.8
           args:
+            - -config.expand-env=true
             - -config.file=/etc/promtail/promtail.yaml
+          env:
+            # kubernetes_sd_configs의 spec.nodeName 필터에서 사용
+            - name: HOSTNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
           ports:
             - containerPort: 9080
           securityContext:

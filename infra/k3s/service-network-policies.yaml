@@ -538,3 +538,37 @@ spec:
       ports:
         - protocol: TCP
           port: 80
+
+# -- N. loki-ingress: Promtail에서 Loki 접근 허용 --
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: loki-ingress
+  namespace: algosu
+  labels:
+    app.kubernetes.io/part-of: algosu
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: loki
+  policyTypes:
+    - Ingress
+  ingress:
+    # Promtail DaemonSet이 로그를 push하기 위해 Loki 3100 포트에 접근
+    - from:
+        - podSelector:
+            matchLabels:
+              app: promtail
+      ports:
+        - protocol: TCP
+          port: 3100
+    # Grafana가 Loki에서 로그를 조회하기 위해 접근
+    - from:
+        - podSelector:
+            matchLabels:
+              app: grafana
+      ports:
+        - protocol: TCP
+          port: 3100
