@@ -120,6 +120,7 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
         Sentry.setUser({ id: profile.id, email: profile.email });
         setGithubConnected(profile.github_connected ?? false);
         setGitHubConnectedStorage(profile.github_connected ?? false);
+        setGitHubUsernameStorage(profile.github_username ?? null);
       } catch {
         // 401 또는 네트워크 에러 → 미인증 상태
         setUser(null);
@@ -145,6 +146,7 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
       });
       setGithubConnected(profile.github_connected ?? false);
       setGitHubConnectedStorage(profile.github_connected ?? false);
+      setGitHubUsernameStorage(profile.github_username ?? null);
     }).catch(() => {
       // 프로필 로드 실패 — 일단 기본 상태로 진행 (쿠키가 있으니 페이지 이동 후 재시도)
       setUser({ id: '', email: '', avatarPreset: 'default', isAdmin: false });
