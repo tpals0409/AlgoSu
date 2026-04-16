@@ -407,7 +407,7 @@ export class StudyService implements OnModuleDestroy {
    * @guard study-member
    */
   async getStudyStats(studyId: string, userId: string, weekNumber?: string) {
-    // ACTIVE 문제 ID 조회 — 삭제(CLOSED) 문제 제출을 집계에서 제외
+    // 통계 대상 문제 ID 조회 — DELETED 문제만 집계에서 제외
     const activeProblemIds = await this.fetchActiveProblemIds(studyId);
 
     const submissionServiceUrl = this.configService.getOrThrow<string>('SUBMISSION_SERVICE_URL');
@@ -490,7 +490,7 @@ export class StudyService implements OnModuleDestroy {
   }
 
   /**
-   * Problem Service에서 ACTIVE 문제 ID 목록 조회
+   * Problem Service에서 통계 대상 문제 ID 목록 조회 (ACTIVE + CLOSED, DELETED 제외)
    * 실패 시 undefined 반환 (기존 동작 유지 — 전체 집계)
    */
   private async fetchActiveProblemIds(studyId: string): Promise<string[] | undefined> {
@@ -510,14 +510,14 @@ export class StudyService implements OnModuleDestroy {
       );
 
       if (!response.ok) {
-        this.logger.warn(`ACTIVE 문제 ID 조회 실패: studyId=${studyId}, status=${response.status}`);
+        this.logger.warn(`통계 대상 문제 ID 조회 실패: studyId=${studyId}, status=${response.status}`);
         return undefined;
       }
 
       const result = (await response.json()) as { data: string[] };
       return result.data;
     } catch (error: unknown) {
-      this.logger.warn(`ACTIVE 문제 ID 조회 오류: studyId=${studyId}, ${(error as Error).message}`);
+      this.logger.warn(`통계 대상 문제 ID 조회 오류: studyId=${studyId}, ${(error as Error).message}`);
       return undefined;
     }
   }

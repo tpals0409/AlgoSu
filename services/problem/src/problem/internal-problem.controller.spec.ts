@@ -46,6 +46,7 @@ describe('InternalProblemController', () => {
       findById: jest.fn(),
       findByIdInternal: jest.fn(),
       findActiveByStudy: jest.fn(),
+      findAllByStudy: jest.fn(),
       getDeadline: jest.fn(),
     };
 
@@ -109,23 +110,23 @@ describe('InternalProblemController', () => {
   });
 
   // ──────────────────────────────────────────────
-  // GET /internal/active-ids/:studyId — ACTIVE 문제 ID 목록
+  // GET /internal/active-ids/:studyId — 통계 대상 문제 ID 목록 (ACTIVE + CLOSED)
   // ──────────────────────────────────────────────
   describe('getActiveProblemIds()', () => {
-    it('ACTIVE 문제 ID 배열 반환', async () => {
-      service.findActiveByStudy.mockResolvedValue([
+    it('ACTIVE + CLOSED 문제 ID 배열 반환 (DELETED 제외)', async () => {
+      service.findAllByStudy.mockResolvedValue([
         { id: 'p1', title: '문제1' },
         { id: 'p2', title: '문제2' },
       ]);
 
       const result = await controller.getActiveProblemIds(STUDY_ID);
 
-      expect(service.findActiveByStudy).toHaveBeenCalledWith(STUDY_ID);
+      expect(service.findAllByStudy).toHaveBeenCalledWith(STUDY_ID);
       expect(result).toEqual({ data: ['p1', 'p2'] });
     });
 
-    it('ACTIVE 문제가 없으면 빈 배열 반환', async () => {
-      service.findActiveByStudy.mockResolvedValue([]);
+    it('대상 문제가 없으면 빈 배열 반환', async () => {
+      service.findAllByStudy.mockResolvedValue([]);
 
       const result = await controller.getActiveProblemIds(STUDY_ID);
 

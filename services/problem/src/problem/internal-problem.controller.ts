@@ -41,16 +41,16 @@ export class InternalProblemController {
   }
 
   /**
-   * GET /internal/active-ids/:studyId — ACTIVE 문제 ID 목록 조회
-   * Gateway stats 집계 시 삭제(CLOSED) 문제 필터링용
+   * GET /internal/active-ids/:studyId — 통계 대상 문제 ID 목록 조회
+   * ACTIVE + CLOSED 포함, DELETED만 제외 (Gateway stats 집계용)
    */
-  @ApiOperation({ summary: 'ACTIVE 문제 ID 목록 조회' })
+  @ApiOperation({ summary: '통계 대상 문제 ID 목록 조회 (ACTIVE + CLOSED)' })
   @ApiResponse({ status: 200, description: '문제 ID 배열' })
   @Get('active-ids/:studyId')
   async getActiveProblemIds(
     @Param('studyId', ParseUUIDPipe) studyId: string,
   ) {
-    const problems = await this.problemService.findActiveByStudy(studyId);
+    const problems = await this.problemService.findAllByStudy(studyId);
     const ids = problems.map((p) => p.id);
     return { data: ids };
   }
