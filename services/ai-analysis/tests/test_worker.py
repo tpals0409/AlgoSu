@@ -925,3 +925,39 @@ class TestPublishStatusWithRetry:
         deps["redis_client"].publish.assert_called_once()
         # ACK는 정상 진행
         mock_ch.basic_ack.assert_called_once()
+
+
+class TestWorkerInitValidation:
+    """Worker __init__() — RABBITMQ_URL 유효성 검증"""
+
+    def test_empty_rabbitmq_url_raises_runtime_error(self):
+        """빈 RABBITMQ_URL이면 RuntimeError 발생"""
+        with (
+            patch("src.worker.ClaudeClient"),
+            patch("src.worker.redis"),
+            patch("src.worker.httpx"),
+            patch("src.worker.settings") as mock_settings,
+        ):
+            mock_settings.rabbitmq_url = ""
+            mock_settings.redis_url = "redis://localhost:6379"
+
+            from src.worker import AIAnalysisWorker
+
+            with pytest.raises(RuntimeError, match="RABBITMQ_URL"):
+                AIAnalysisWorker()
+
+    def test_invalid_rabbitmq_url_raises_runtime_error(self):
+        """amqp로 시작하지 않는 URL이면 RuntimeError 발생"""
+        with (
+            patch("src.worker.ClaudeClient"),
+            patch("src.worker.redis"),
+            patch("src.worker.httpx"),
+            patch("src.worker.settings") as mock_settings,
+        ):
+            mock_settings.rabbitmq_url = "http://wrong-protocol"
+            mock_settings.redis_url = "redis://localhost:6379"
+
+            from src.worker import AIAnalysisWorker
+
+            with pytest.raises(RuntimeError, match="RABBITMQ_URL"):
+                AIAnalysisWorker()
