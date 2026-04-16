@@ -61,11 +61,11 @@ class AIAnalysisWorker:
 
     def __init__(self):
         if not settings.rabbitmq_url or not settings.rabbitmq_url.startswith("amqp"):
+            url_preview = (
+                f"'{settings.rabbitmq_url[:20]}...'" if settings.rabbitmq_url else "''"
+            )
             raise RuntimeError(
-                "RABBITMQ_URL 환경변수가 설정되지 않았거나 유효하지 않습니다: "
-                f"'{settings.rabbitmq_url[:20]}...'"
-                if settings.rabbitmq_url
-                else "''"
+                f"RABBITMQ_URL 환경변수가 설정되지 않았거나 유효하지 않습니다: {url_preview}"
             )
         self.claude = ClaudeClient()
         self.redis_client = redis.from_url(settings.redis_url)
