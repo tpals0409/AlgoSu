@@ -22,12 +22,34 @@ data:
 
     scrape_configs:
       - job_name: algosu-pods
-        static_configs:
-          - targets:
-              - localhost
-            labels:
-              namespace: algosu
-              __path__: /var/log/pods/algosu_*/*/*.log
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          # algosu 네임스페이스 Pod만 수집
+          - source_labels: [__meta_kubernetes_namespace]
+            action: keep
+            regex: algosu
+          # namespace 레이블
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+          # pod 이름 레이블 (대시보드 쿼리 pod=~"${service}.*"용)
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+          # app 레이블 (Pod의 app 라벨을 그대로 노출)
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            target_label: app
+          # container 이름
+          - source_labels: [__meta_kubernetes_pod_container_name]
+            target_label: container
+          # 로그 경로: /var/log/pods/<namespace>_<pod-name>_<uid>/<container>/*.log
+          - source_labels:
+              - __meta_kubernetes_namespace
+              - __meta_kubernetes_pod_name
+              - __meta_kubernetes_pod_uid
+              - __meta_kubernetes_pod_container_name
+            target_label: __path__
+            separator: /
+            replacement: /var/log/pods/$1_$2_$3/$4/*.log
 
         pipeline_stages:
           # CRI 포맷 파싱: <timestamp> <stream> <flags> <message>
@@ -36,13 +58,11 @@ data:
           - json:
               expressions:
                 level: level
-                service: service
                 traceId: traceId
                 tag: tag
-          # level, service, tag를 Loki 라벨로 승격
+          # level, tag를 Loki 라벨로 승격 (service는 app 레이블로 대체됨)
           - labels:
               level:
-              service:
               tag:
           # traceId는 structured metadata로 (라벨 카디널리티 방지)
           - structured_metadata:
