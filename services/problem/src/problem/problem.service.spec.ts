@@ -153,7 +153,7 @@ describe('ProblemService', () => {
         weekNumber: '3월1주차',
         difficulty: Difficulty.SILVER,
         sourceUrl: 'https://leetcode.com/problems/two-sum',
-        sourcePlatform: 'LeetCode',
+        sourcePlatform: 'PROGRAMMERS',
         deadline: '2026-03-07T23:59:59.000Z',
         allowedLanguages: ['python', 'javascript'],
       };
@@ -411,7 +411,7 @@ describe('ProblemService', () => {
       const dto: UpdateProblemDto = {
         description: '수정된 설명',
         sourceUrl: 'https://codeforces.com/problem/1',
-        sourcePlatform: 'Codeforces',
+        sourcePlatform: 'PROGRAMMERS',
         deadline: '2026-04-01T23:59:59.000Z',
       };
 
@@ -419,7 +419,7 @@ describe('ProblemService', () => {
         ...mockProblem,
         description: '수정된 설명',
         sourceUrl: 'https://codeforces.com/problem/1',
-        sourcePlatform: 'Codeforces',
+        sourcePlatform: 'PROGRAMMERS',
         deadline: new Date('2026-04-01T23:59:59.000Z'),
       } as Problem;
 
