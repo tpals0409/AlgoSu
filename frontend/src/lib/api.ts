@@ -37,7 +37,7 @@ export interface Problem {
   description: string;
   weekNumber: string;
   sourceUrl?: string;
-  sourcePlatform?: string;
+  sourcePlatform?: 'BOJ' | 'PROGRAMMERS';
   allowedLanguages: string[];
   tags?: string[] | null;
   createdAt?: string;
@@ -50,7 +50,7 @@ export interface CreateProblemData {
   difficulty?: Problem['difficulty'];
   level?: number;
   sourceUrl?: string;
-  sourcePlatform?: string;
+  sourcePlatform?: 'BOJ' | 'PROGRAMMERS';
   deadline?: string;
   allowedLanguages?: string[];
   tags?: string[];
@@ -62,7 +62,7 @@ export interface UpdateProblemData {
   weekNumber?: string;
   difficulty?: Problem['difficulty'];
   sourceUrl?: string;
-  sourcePlatform?: string;
+  sourcePlatform?: 'BOJ' | 'PROGRAMMERS';
   deadline?: string;
   allowedLanguages?: string[];
   status?: Problem['status'];
@@ -519,6 +519,43 @@ export const solvedacApi = {
   searchByQuery: (query: string, page = 1): Promise<SolvedacSearchResult> =>
     fetchApi(
       `/api/external/solvedac/search?query=${encodeURIComponent(query)}&page=${page}`,
+    ),
+};
+
+// ── Programmers API ──
+
+export interface ProgrammersProblemInfo {
+  problemId: number;
+  title: string;
+  level: number;
+  difficulty: 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND' | null;
+  tags: string[];
+  sourceUrl: string;
+}
+
+export interface ProgrammersSearchItem {
+  problemId: number;
+  title: string;
+  level: number;
+  difficulty: ProgrammersProblemInfo['difficulty'];
+  sourceUrl: string;
+  tags: string[];
+}
+
+export interface ProgrammersSearchResult {
+  count: number;
+  items: ProgrammersSearchItem[];
+}
+
+export const programmersApi = {
+  /** 프로그래머스 문제 번호로 단일 문제 조회 */
+  search: (problemId: number): Promise<ProgrammersProblemInfo> =>
+    fetchApi(`/api/external/programmers/problem/${problemId}`),
+
+  /** 문자열 쿼리(문제 번호·제목) 기반 프로그래머스 검색 */
+  searchByQuery: (query: string, page = 1): Promise<ProgrammersSearchResult> =>
+    fetchApi(
+      `/api/external/programmers/search?query=${encodeURIComponent(query)}&page=${page}`,
     ),
 };
 
