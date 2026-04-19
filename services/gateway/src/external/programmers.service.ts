@@ -27,6 +27,25 @@ interface ProgrammersRawItem {
   sourceUrl: string;
 }
 
+/**
+ * fetch-programmers-problems.ts 가 생성하는 JSON 파일의 봉투(envelope) 형식.
+ * { version: ISO 날짜, items: ProgrammersRawItem[] }
+ */
+interface ProgrammersDataEnvelope {
+  version: string;
+  items: ProgrammersRawItem[];
+}
+
+/**
+ * 파싱된 JSON이 DataEnvelope인지 판별하는 타입 가드.
+ * 봉투 형식(version + items)과 레거시 플랫 배열 형식 모두 수용한다.
+ */
+function isDataEnvelope(
+  v: ProgrammersDataEnvelope | ProgrammersRawItem[],
+): v is ProgrammersDataEnvelope {
+  return !Array.isArray(v) && 'items' in v && Array.isArray(v.items);
+}
+
 export type ProgrammersDifficulty =
   | 'BRONZE'
   | 'SILVER'
@@ -115,7 +134,11 @@ export class ProgrammersService implements OnApplicationBootstrap {
   loadFromFile(filePath: string): void {
     try {
       const raw = readFileSync(filePath, 'utf-8');
-      const items = JSON.parse(raw) as ProgrammersRawItem[];
+      // 봉투 형식 { version, items } 와 레거시 플랫 배열 모두 지원
+      const parsed = JSON.parse(raw) as ProgrammersDataEnvelope | ProgrammersRawItem[];
+      const items: ProgrammersRawItem[] = isDataEnvelope(parsed)
+        ? parsed.items
+        : parsed;
       this.cache.clear();
       for (const item of items) {
         this.cache.set(item.problemId, {
