@@ -8,6 +8,7 @@ import {
   IsString,
   IsOptional,
   IsEnum,
+  IsIn,
   IsUrl,
   IsDateString,
   IsArray,
@@ -17,6 +18,10 @@ import {
   MaxLength,
 } from 'class-validator';
 import { Difficulty, ProblemStatus } from '../problem.entity';
+
+/** 지원하는 문제 출처 플랫폼 — 신규 플랫폼 추가 시 여기만 수정 */
+export const SOURCE_PLATFORMS = ['BOJ', 'PROGRAMMERS'] as const;
+export type SourcePlatform = (typeof SOURCE_PLATFORMS)[number];
 
 /**
  * 문제 생성 DTO
@@ -50,10 +55,13 @@ export class CreateProblemDto {
   @MaxLength(500)
   sourceUrl?: string;
 
+  /**
+   * 문제 출처 플랫폼.
+   * 허용값: 'BOJ' | 'PROGRAMMERS'
+   */
   @IsOptional()
-  @IsString()
-  @MaxLength(50)
-  sourcePlatform?: string;
+  @IsIn(SOURCE_PLATFORMS)
+  sourcePlatform?: SourcePlatform;
 
   @IsOptional()
   @IsDateString()
@@ -100,10 +108,13 @@ export class UpdateProblemDto {
   @MaxLength(500)
   sourceUrl?: string;
 
+  /**
+   * 문제 출처 플랫폼.
+   * 허용값: 'BOJ' | 'PROGRAMMERS'
+   */
   @IsOptional()
-  @IsString()
-  @MaxLength(50)
-  sourcePlatform?: string;
+  @IsIn(SOURCE_PLATFORMS)
+  sourcePlatform?: SourcePlatform;
 
   @IsOptional()
   @IsDateString()
