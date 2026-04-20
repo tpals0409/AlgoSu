@@ -1,12 +1,14 @@
 """prompt 모듈 단위 테스트
 
 build_user_prompt, build_group_user_prompt, 상수 검증
+플랫폼별 맥락 주입(BOJ/PROGRAMMERS) 및 하위 호환성 포함
 """
 
 from src.prompt import (
     GROUP_SYSTEM_PROMPT,
     SYSTEM_PROMPT,
     build_group_user_prompt,
+    build_user_prompt,
 )
 
 
@@ -38,6 +40,61 @@ class TestGroupSystemPrompt:
         assert "bestApproach" in GROUP_SYSTEM_PROMPT
         assert "optimizedCode" in GROUP_SYSTEM_PROMPT
         assert "learningPoints" in GROUP_SYSTEM_PROMPT
+
+
+class TestBuildUserPromptPlatformContext:
+    """build_user_prompt() 플랫폼 맥락 주입 테스트 (A4)"""
+
+    def test_build_user_prompt_with_boj_platform(self):
+        # Given: BOJ 플랫폼 식별자와 Python 코드
+        # When: build_user_prompt 호출 시
+        result = build_user_prompt(code="x=1", language="python", source_platform="BOJ")
+        # Then: BOJ 플랫폼 맥락 문구가 포함되어야 함
+        assert "백준(BOJ) 플랫폼" in result
+        assert "표준 입출력" in result or "시간복잡도" in result
+
+    def test_build_user_prompt_with_programmers_platform(self):
+        # Given: PROGRAMMERS 플랫폼 식별자와 solution 함수 코드
+        # When: build_user_prompt 호출 시
+        result = build_user_prompt(
+            code="def solution(x): return x",
+            language="python",
+            source_platform="PROGRAMMERS",
+        )
+        # Then: 프로그래머스 플랫폼 맥락 문구와 solution() 언급이 포함되어야 함
+        assert "프로그래머스 플랫폼" in result
+        assert "solution()" in result
+
+    def test_build_user_prompt_without_platform_backward_compat(self):
+        # Given: source_platform 미지정 (None, 기존 호출 방식)
+        # When: build_user_prompt 호출 시
+        result = build_user_prompt(code="x=1", language="python")
+        # Then: 플랫폼 맥락 문구가 포함되지 않아야 함 (기존 동작 유지)
+        assert "백준" not in result
+        assert "프로그래머스" not in result
+        # 기존 프롬프트 구조는 유지 (코드 블록 포함)
+        assert "python" in result
+        assert "x=1" in result
+
+    def test_build_group_user_prompt_with_platform(self):
+        # Given: PROGRAMMERS 플랫폼 + 복수 풀이 스니펫
+        # When: build_group_user_prompt 호출 시
+        snippets = [
+            {
+                "language": "python",
+                "userId": "user-1111-aaaa",
+                "code": "def solution(x): return x",
+            },
+            {
+                "language": "python",
+                "userId": "user-2222-bbbb",
+                "code": "def solution(n): return n * 2",
+            },
+        ]
+        result = build_group_user_prompt(snippets, source_platform="PROGRAMMERS")
+        # Then: 프로그래머스 플랫폼 맥락 문구와 solution() 언급이 포함되어야 함
+        assert "프로그래머스 플랫폼" in result
+        assert "solution()" in result
 
 
 class TestBuildGroupUserPrompt:

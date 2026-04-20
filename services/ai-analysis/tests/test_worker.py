@@ -927,6 +927,62 @@ class TestPublishStatusWithRetry:
         mock_ch.basic_ack.assert_called_once()
 
 
+class TestOnMessageSourcePlatform:
+    """_on_message() -- sourcePlatform 추출 및 _analyze_with_retry 전달 검증 (A4)"""
+
+    def test_on_message_extracts_source_platform(
+        self, worker, mock_dependencies, pika_mocks
+    ):
+        """
+        Given: MQ 메시지에 sourcePlatform='PROGRAMMERS' 포함
+        When: _on_message() 호출 시
+        Then: _analyze_with_retry가 source_platform='PROGRAMMERS' 키워드 인자로 호출됨
+        """
+        mock_ch, mock_method, mock_properties = pika_mocks
+        deps = mock_dependencies
+
+        # _get_submission 모킹
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {
+            "data": {
+                "code": "def solution(x): return x",
+                "language": "python",
+            },
+        }
+        mock_resp.raise_for_status = MagicMock()
+        deps["http_client"].get.return_value = mock_resp
+
+        # _report_result 모킹 (PATCH method)
+        mock_patch_resp = MagicMock()
+        mock_patch_resp.raise_for_status = MagicMock()
+        deps["http_client"].patch.return_value = mock_patch_resp
+
+        # _analyze_with_retry를 MagicMock으로 교체하여 인자 검증
+        mock_analyze = MagicMock(
+            return_value={
+                "feedback": "solution() 함수 구조가 올바릅니다.",
+                "optimized_code": None,
+                "score": 88,
+                "status": "completed",
+            }
+        )
+        worker._analyze_with_retry = mock_analyze
+
+        body = json.dumps(
+            {"submissionId": "sub-1", "userId": "u-1", "sourcePlatform": "PROGRAMMERS"}
+        ).encode()
+
+        worker._on_message(mock_ch, mock_method, mock_properties, body)
+
+        # _analyze_with_retry가 source_platform='PROGRAMMERS' 키워드 인자로 호출되었는지 확인
+        mock_analyze.assert_called_once()
+        assert mock_analyze.call_args.kwargs.get("source_platform") == "PROGRAMMERS"
+
+        # 정상 처리 — ACK 확인
+        mock_ch.basic_ack.assert_called_once_with(delivery_tag=42)
+        mock_ch.basic_nack.assert_not_called()
+
+
 class TestWorkerInitValidation:
     """Worker __init__() — RABBITMQ_URL 유효성 검증"""
 
