@@ -16,8 +16,8 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { problemApi, studyApi, type Problem } from '@/lib/api';
 import { useStudy } from '@/contexts/StudyContext';
-import { DIFFICULTIES, DIFFICULTY_LABELS, DIFF_DOT_STYLE, DIFF_BADGE_STYLE, toTierLevel, PROGRAMMERS_LEVEL_LABELS, PLATFORM_SHORT_LABELS } from '@/lib/constants';
-import type { Difficulty } from '@/lib/constants';
+import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
+import { DIFFICULTIES, DIFFICULTY_LABELS, DIFF_DOT_STYLE, DIFF_BADGE_STYLE, PLATFORM_SHORT_LABELS } from '@/lib/constants';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
 import { AddProblemModal, type NewProblemData } from '@/components/ui/AddProblemModal';
@@ -319,32 +319,11 @@ export default function ProblemsPage(): ReactNode {
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-1">
-                      {(problem.difficulty || problem.sourcePlatform === 'PROGRAMMERS') && (() => {
-                        const isProgrammers = problem.sourcePlatform === 'PROGRAMMERS';
-                        if (isProgrammers) {
-                          const lvLabel = problem.level != null ? (PROGRAMMERS_LEVEL_LABELS[problem.level] ?? 'Lv.0') : 'Lv.0';
-                          const diffKey = problem.difficulty ? (problem.difficulty as string).toLowerCase() : '';
-                          const dotStyle = diffKey ? (DIFF_DOT_STYLE[diffKey] ?? { backgroundColor: 'var(--text-3)' }) : { backgroundColor: 'var(--text-3)' };
-                          const badgeStyle = diffKey ? (DIFF_BADGE_STYLE[diffKey] ?? { backgroundColor: 'var(--bg-alt)', color: 'var(--text-2)' }) : { backgroundColor: 'var(--bg-alt)', color: 'var(--text-2)' };
-                          return (
-                            <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium" style={badgeStyle}>
-                              <span className="h-1.5 w-1.5 rounded-full" style={dotStyle} aria-hidden />
-                              {lvLabel}
-                            </span>
-                          );
-                        }
-                        const diffKey = (problem.difficulty as string).toLowerCase();
-                        const dotStyle = DIFF_DOT_STYLE[diffKey] ?? { backgroundColor: 'var(--text-3)' };
-                        const badgeStyle = DIFF_BADGE_STYLE[diffKey] ?? { backgroundColor: 'var(--bg-alt)', color: 'var(--text-2)' };
-                        const displayLv = toTierLevel(problem.level);
-                        const label = `${DIFFICULTY_LABELS[problem.difficulty as Difficulty] ?? problem.difficulty}${displayLv ? ` ${displayLv}` : ''}`;
-                        return (
-                          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium" style={badgeStyle}>
-                            <span className="h-1.5 w-1.5 rounded-full" style={dotStyle} aria-hidden />
-                            {label}
-                          </span>
-                        );
-                      })()}
+                      <DifficultyBadge
+                        difficulty={problem.difficulty ?? null}
+                        level={problem.level}
+                        sourcePlatform={problem.sourcePlatform}
+                      />
                       {(() => {
                         const isActive = problem.status === 'ACTIVE' && (!problem.deadline || new Date(problem.deadline) > new Date());
                         return (

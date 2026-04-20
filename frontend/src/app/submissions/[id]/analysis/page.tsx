@@ -25,15 +25,11 @@ import { useRequireStudy } from '@/hooks/useRequireStudy';
 import { parseFeedback } from '@/lib/feedback';
 import { relativeTime } from '@/lib/date';
 import { useStudy } from '@/contexts/StudyContext';
-import { DIFF_DOT_STYLE, DIFF_BADGE_STYLE, toTierLevel } from '@/lib/constants';
+import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
+import type { Difficulty } from '@/lib/constants';
 import { AdBanner } from '@/components/ad/AdBanner';
 import { AD_SLOTS } from '@/lib/constants/adSlots';
 import { AiSatisfactionButton } from '@/components/submission/AiSatisfactionButton';
-
-const DIFFICULTY_LABELS: Record<string, string> = {
-  BRONZE: 'Bronze', SILVER: 'Silver', GOLD: 'Gold',
-  PLATINUM: 'Platinum', DIAMOND: 'Diamond', RUBY: 'Ruby',
-};
 
 // ─── HELPERS ──────────────────────────────
 
@@ -77,7 +73,7 @@ export default function AnalysisPage(): ReactNode {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const MAX_POLL_COUNT = 60; // 최대 60회 (10분)
 
-  const [problemMeta, setProblemMeta] = useState<{ title?: string; difficulty?: string; level?: number; tags?: string[] } | null>(null);
+  const [problemMeta, setProblemMeta] = useState<{ title?: string; difficulty?: string; level?: number; tags?: string[]; sourcePlatform?: 'BOJ' | 'PROGRAMMERS' | null } | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -121,6 +117,7 @@ export default function AnalysisPage(): ReactNode {
             difficulty: problem.difficulty,
             level: problem.level ?? undefined,
             tags: problem.tags ?? undefined,
+            sourcePlatform: problem.sourcePlatform ?? null,
           });
         } catch {
           // 문제 메타 로드 실패는 비차단 — 난이도 뱃지만 미표시
@@ -221,12 +218,6 @@ export default function AnalysisPage(): ReactNode {
 
   const parsed = analysis ? parseFeedback(analysis.feedback, analysis.score, analysis.optimizedCode) : null;
 
-  // 난이도 키
-  const diffKey = (problemMeta?.difficulty ?? '').toLowerCase();
-  const diffLabel = problemMeta?.difficulty
-    ? `${DIFFICULTY_LABELS[problemMeta.difficulty] ?? problemMeta.difficulty}${toTierLevel(problemMeta.level) ? ` ${toTierLevel(problemMeta.level)}` : ''}`
-    : '';
-
   // 코드 줄 수
   const codeStr = submission?.code ?? '';
 
@@ -252,14 +243,13 @@ export default function AnalysisPage(): ReactNode {
           {/* 뱃지 행 */}
           <div className="flex items-center gap-2 flex-wrap">
             {/* 난이도 뱃지 */}
-            {diffLabel && (
-              <span
-                className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium"
-                style={DIFF_BADGE_STYLE[diffKey] ?? {}}
-              >
-                <span className="h-1.5 w-1.5 rounded-full" style={DIFF_DOT_STYLE[diffKey] ?? {}} aria-hidden />
-                {diffLabel}
-              </span>
+            {problemMeta && (
+              <DifficultyBadge
+                difficulty={(problemMeta.difficulty as Difficulty | undefined) ?? null}
+                level={problemMeta.level}
+                sourcePlatform={problemMeta.sourcePlatform}
+                className="px-2.5"
+              />
             )}
             {/* 언어 뱃지 */}
             {submission && (
