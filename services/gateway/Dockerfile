@@ -39,6 +39,9 @@ WORKDIR /app
 
 COPY --from=builder /tmp/prod_node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
+# programmers-problems.json 번들: nest build 시 dist/data/ 에 복사되나,
+# 안전망으로 직접 COPY (ADR: docs/adr/sprints/sprint-98.md)
+COPY --from=builder /app/data ./dist/data
 COPY --from=builder /app/package.json ./package.json
 
 # npm 제거 (보안 + 이미지 경량화) — sharp ARM64 바이너리는 Stage 1에서 설치 완료
