@@ -14,7 +14,7 @@ import { useStudy } from '@/contexts/StudyContext';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
 import type { Problem } from '@/lib/api';
-import { DIFF_DOT_STYLE, DIFF_BADGE_STYLE, toTierLevel, type Difficulty } from '@/lib/constants';
+import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
 import { cn } from '@/lib/utils';
 
 // ─── HELPERS ────────────────────────────
@@ -61,12 +61,6 @@ export default function DashboardThisWeek({
     () =>
       currentWeekProblems.map((p) => {
         const isSubmitted = submittedProblemIds.has(p.id);
-        const difficulty = (p.difficulty ?? '') as Difficulty;
-        const diffKey = difficulty.toLowerCase();
-        const dotStyle = DIFF_DOT_STYLE[diffKey] ?? { backgroundColor: 'var(--text-3)' };
-        const badgeStyle = DIFF_BADGE_STYLE[diffKey] ?? { backgroundColor: 'var(--bg-alt)', color: 'var(--text-2)' };
-        const displayLevel = toTierLevel(p.level);
-        const diffLabel = difficulty ? `${difficulty.charAt(0).toUpperCase()}${difficulty.slice(1).toLowerCase()}${displayLevel ? ` ${displayLevel}` : ''}` : '';
 
         return (
           <Link
@@ -85,15 +79,11 @@ export default function DashboardThisWeek({
                 {p.title}
               </p>
               <div className="mt-1 flex items-center gap-2">
-                {diffLabel && (
-                  <span
-                    className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
-                    style={badgeStyle}
-                  >
-                    <span className="h-1.5 w-1.5 rounded-full" style={dotStyle} />
-                    {diffLabel}
-                  </span>
-                )}
+                <DifficultyBadge
+                  difficulty={p.difficulty ?? null}
+                  level={p.level}
+                  sourcePlatform={p.sourcePlatform}
+                />
                 {p.deadline && (
                   <span className="text-[11px] text-text-3">
                     {formatWeekLabel(p.deadline)}

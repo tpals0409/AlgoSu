@@ -49,6 +49,16 @@ jest.mock('@/lib/constants', () => ({
   toTierLevel: (level: number | null | undefined) => level ?? null,
 }));
 
+jest.mock('@/components/ui/DifficultyBadge', () => ({
+  DifficultyBadge: ({ difficulty, level, sourcePlatform }: { difficulty: string | null; level?: number | null; sourcePlatform?: string | null }) => {
+    if (sourcePlatform !== 'PROGRAMMERS' && !difficulty) return null;
+    const label = sourcePlatform === 'PROGRAMMERS'
+      ? `Lv.${level ?? 0}`
+      : `${(difficulty as string).charAt(0).toUpperCase()}${(difficulty as string).slice(1).toLowerCase()}${level != null ? ` ${level}` : ''}`;
+    return <span data-testid="difficulty-badge">{label}</span>;
+  },
+}));
+
 const makeProblem = (overrides: Partial<Problem> = {}): Problem => ({
   id: 'p-1',
   title: '두 수의 합',
