@@ -143,18 +143,46 @@ Dockerfile 수정 후에도 프로그래머스 레벨 0(코딩기초트레이닝
 - `programmers.*.spec.ts`: **44건 PASS** (+1건 신규)
 - `tsc --noEmit`: PASS
 
+### 데이터 재수집 완료 (커밋 `1bc2a0a`)
+`npm run fetch-programmers` 실행 결과:
+
+| 레벨 | 건수 | 비고 |
+|------|------|------|
+| Lv0 (코딩기초트레이닝) | **240** | 신규 |
+| Lv1 | 95 | 기존 |
+| Lv2 | 132 | 기존 |
+| Lv3 | 95 | 기존 |
+| Lv4 | 31 | 기존 |
+| Lv5 | 20 | 기존 |
+| **총계** | **613 (+240)** | 373 → 613 |
+
+- 버전: `2026-04-20T04:35:10.312Z`
+- Zod 검증 PASS
+- 샘플: 120583 "중복된 숫자 개수", 120585 "머쓱이보다 키 큰 사람", 120802 "두 수의 합 구하기"
+- 검증 문제 `42840 모의고사` 존재 확인
+- 소요 시간: 70초 (단일 패스)
+
+## 3차 보강 — Dockerfile 빌드시점 검증 (커밋 `cfb19ec`)
+
+`COPY --from=builder /app/data ./dist/data` 직후 `RUN test -f /app/dist/data/programmers-problems.json` 추가.
+향후 경로 변경/삭제 시 **docker build 자체가 실패**하여 조기 발견. CI에 별도 step 추가 불필요한 inline 방어.
+
 ## 이월 항목
 
 | # | 항목 | 우선순위 |
 |---|------|----------|
-| 1 | **`npm run fetch-programmers` 실제 실행으로 JSON 재수집** (사용자 로컬에서 Playwright 실행) | **높음** |
-| 2 | CI workflow에 `dist/data/` 파일 존재 검증 step 추가 | 보통 |
-| 3 | H5 UX 개선 — 키워드 검색 연동 (프론트 검색창 → Gateway API 호출) | 낮음 |
-| 4 | ESLint pre-existing 경고 6건 정리 (structured-logger, public-profile/share spec) | 낮음 |
+| 1 | 레벨 0 문제 `tags` 보강 — `fetch-programmers-tags.ts` 2차 패스 실행 (240건 태그 빈 배열) | 보통 |
+| 2 | H5 UX 개선 — 키워드 검색 연동 (프론트 검색창 → Gateway `searchByQuery` API 호출) | 낮음 |
+| 3 | ESLint pre-existing 경고 6건 정리 (structured-logger, public-profile/share spec) | 낮음 |
 
 ## 커밋
 
 | SHA | 메시지 |
 |-----|--------|
-| `79b6dbb` | `fix(gateway): Dockerfile에 programmers JSON 데이터 번들 추가` |
-| `266c8c5` | `fix(gateway): 프로그래머스 레벨 0 문제 크롤링 대상 포함` |
+| `79b6dbb` | `fix(gateway)`: Dockerfile에 programmers JSON 데이터 번들 추가 |
+| `bf794a5` | `docs(adr)`: Sprint 98 — 프로그래머스 검색 장애 수정 기록 |
+| `b84c481` | `docs(adr)`: Sprint 98 — Postman 검증 결과 보완 |
+| `266c8c5` | `fix(gateway)`: 프로그래머스 레벨 0 문제 크롤링 대상 포함 |
+| `9e78e19` | `docs(adr)`: 레벨 0 크롤링 누락 2차 증상 기록 |
+| `1bc2a0a` | `chore(data)`: 프로그래머스 문제 레벨 0 포함 재수집 (373 → 613건) |
+| `cfb19ec` | `fix(gateway)`: Dockerfile 빌드시점 data/ 번들 누락 검증 추가 |
