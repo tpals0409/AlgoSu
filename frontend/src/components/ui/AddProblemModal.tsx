@@ -1,7 +1,8 @@
 /**
- * AddProblemModal
- * Step 1: BOJ 문제 검색 (solved.ac API)
- * Step 2: 주차 / 마감일 설정 후 추가
+ * @file 문제 추가 모달 (BOJ / 프로그래머스 플랫폼 토글)
+ * @domain problem
+ * @layer component
+ * @related problemApi, solvedacApi, programmersApi, PROGRAMMERS_LEVEL_LABELS
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -10,7 +11,8 @@ import {
   Search, X, ArrowLeft, Plus, Loader2, ExternalLink, AlertCircle,
 } from 'lucide-react';
 import { Btn, type Difficulty, DIFFICULTY_CONFIG } from './AlgosuUI';
-import { problemApi, solvedacApi, studyApi, type CreateProblemData } from '@/lib/api';
+import { problemApi, solvedacApi, programmersApi, studyApi, type CreateProblemData } from '@/lib/api';
+import { PROGRAMMERS_LEVEL_LABELS } from '@/lib/constants';
 import { useStudy } from '@/contexts/StudyContext';
 
 // ── solved.ac types ──────────────────────────────────────────────────────────
@@ -20,9 +22,13 @@ import { useStudy } from '@/contexts/StudyContext';
 export interface SolvedProblem {
   problemId: number;
   titleKo: string;
-  level: number; // 0=unrated, 1-5=Bronze, 6-10=Silver, 11-15=Gold, 16-20=Platinum, 21-25=Diamond
+  level: number; // BOJ: 0=unrated, 1-5=Bronze ... 21-25=Diamond | PROGRAMMERS: 1~5
   tags: string[];
   acceptedUserCount: number;
+  /** 프로그래머스: Gateway에서 직접 제공되는 난이도 */
+  difficulty?: Difficulty;
+  /** 프로그래머스: Gateway에서 직접 제공되는 문제 URL */
+  sourceUrl?: string;
 }
 
 // solved.ac level(0~30) → our Difficulty + level(원시값 그대로 저장)
@@ -59,6 +65,26 @@ async function searchSolvedAC(query: string): Promise<SolvedProblem[]> {
     level: item.level,
     tags: item.tags ?? [],
     acceptedUserCount: item.acceptedUserCount ?? 0,
+  }));
+}
+
+/**
+ * Gateway의 `/api/external/programmers/search` 프록시 호출.
+ * 프로그래머스 검색 결과를 SolvedProblem 형태로 변환한다.
+ */
+async function searchProgrammers(query: string): Promise<SolvedProblem[]> {
+  const data = await programmersApi.searchByQuery(query, 1);
+  if (!data || !Array.isArray(data.items)) {
+    throw new Error('검색 결과를 불러오지 못했습니다. 다시 시도해주세요.');
+  }
+  return data.items.map((item) => ({
+    problemId: item.problemId,
+    titleKo: item.title,
+    level: item.level,
+    tags: item.tags ?? [],
+    acceptedUserCount: 0,
+    difficulty: (item.difficulty ?? undefined) as Difficulty | undefined,
+    sourceUrl: item.sourceUrl,
   }));
 }
 
@@ -120,7 +146,15 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 
 // ── Step 1: Search ───────────────────────────────────────────────────────────
 
-function SearchStep({ onSelect }: { onSelect: (p: SolvedProblem) => void }) {
+/** SearchStep props — 플랫폼에 따라 검색 함수·UI 텍스트가 분기된다 */
+interface SearchStepProps {
+  onSelect: (p: SolvedProblem) => void;
+  platform: 'BOJ' | 'PROGRAMMERS';
+  searchFn: (query: string) => Promise<SolvedProblem[]>;
+  onPlatformChange: (p: 'BOJ' | 'PROGRAMMERS') => void;
+}
+
+function SearchStep({ onSelect, platform, searchFn, onPlatformChange }: SearchStepProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SolvedProblem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -132,6 +166,13 @@ function SearchStep({ onSelect }: { onSelect: (p: SolvedProblem) => void }) {
     inputRef.current?.focus();
   }, []);
 
+  /* 플랫폼 전환 시 검색 결과 초기화 */
+  useEffect(() => {
+    setQuery('');
+    setResults([]);
+    setError('');
+  }, [platform]);
+
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     if (!query.trim()) { setResults([]); setError(''); return; }
@@ -140,7 +181,7 @@ function SearchStep({ onSelect }: { onSelect: (p: SolvedProblem) => void }) {
       setLoading(true);
       setError('');
       try {
-        const items = await searchSolvedAC(query.trim());
+        const items = await searchFn(query.trim());
         setResults(items.slice(0, 10));
       } catch (err) {
         setError(err instanceof Error && err.message
@@ -152,12 +193,57 @@ function SearchStep({ onSelect }: { onSelect: (p: SolvedProblem) => void }) {
     }, 400);
 
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [query]);
+  }, [query, searchFn]);
+
+  /** 플랫폼별 placeholder 텍스트 */
+  const placeholder = platform === 'BOJ'
+    ? '문제 번호 또는 제목으로 검색…'
+    : '프로그래머스 문제 검색…';
+
+  /** 플랫폼별 보조 안내 문구 */
+  const helperText = platform === 'BOJ'
+    ? 'solved.ac 기반으로 검색됩니다.'
+    : '프로그래머스 문제를 검색합니다.';
 
   return (
     <div className="flex flex-col" style={{ minHeight: 320 }}>
+      {/* Platform toggle */}
+      <div className="px-5 pt-4 pb-1">
+        <div
+          className="inline-flex rounded-btn p-0.5"
+          style={{ backgroundColor: 'var(--bg-alt)' }}
+          role="tablist"
+          aria-label="출처 플랫폼 선택"
+        >
+          {(['PROGRAMMERS', 'BOJ'] as const).map((p) => (
+            <button
+              key={p}
+              type="button"
+              role="tab"
+              aria-selected={platform === p}
+              tabIndex={platform === p ? 0 : -1}
+              onClick={() => { onPlatformChange(p); }}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                  e.preventDefault();
+                  onPlatformChange(platform === 'BOJ' ? 'PROGRAMMERS' : 'BOJ');
+                }
+              }}
+              className="px-3 py-1.5 text-[12px] font-medium rounded-btn transition-all duration-150"
+              style={
+                platform === p
+                  ? { backgroundColor: 'var(--bg-card)', color: 'var(--primary)', boxShadow: '0 1px 2px rgba(0,0,0,0.08)' }
+                  : { color: 'var(--text-3)' }
+              }
+            >
+              {p === 'BOJ' ? '백준' : '프로그래머스'}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Search input */}
-      <div className="px-5 pt-5 pb-3">
+      <div className="px-5 pt-3 pb-3">
         <div className="relative">
           <Search
             className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 pointer-events-none"
@@ -166,7 +252,7 @@ function SearchStep({ onSelect }: { onSelect: (p: SolvedProblem) => void }) {
           <input
             ref={inputRef}
             type="text"
-            placeholder="문제 번호 또는 제목으로 검색…"
+            placeholder={placeholder}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="h-10 w-full rounded-btn border pl-9 pr-10 text-[13px] outline-none"
@@ -193,7 +279,7 @@ function SearchStep({ onSelect }: { onSelect: (p: SolvedProblem) => void }) {
           )}
         </div>
         <p className="mt-2 text-[11px]" style={{ color: 'var(--text-3)' }}>
-          solved.ac 기반으로 검색됩니다.
+          {helperText}
         </p>
       </div>
 
@@ -220,10 +306,12 @@ function SearchStep({ onSelect }: { onSelect: (p: SolvedProblem) => void }) {
               <Search className="h-4 w-4" style={{ color: 'var(--text-3)' }} />
             </div>
             <p className="text-[13px] font-medium" style={{ color: 'var(--text-2)' }}>
-              백준 문제를 검색하세요
+              {platform === 'BOJ' ? '백준 문제를 검색하세요' : '프로그래머스 문제를 검색하세요'}
             </p>
             <p className="mt-1 text-[11px]" style={{ color: 'var(--text-3)' }}>
-              문제 번호(예: 1000) 또는 문제 이름을 입력하세요.
+              {platform === 'BOJ'
+                ? '문제 번호(예: 1000) 또는 문제 이름을 입력하세요.'
+                : '문제 이름(예: 폰켓몬)을 입력하세요.'}
             </p>
           </div>
         )}
@@ -244,9 +332,11 @@ function SearchStep({ onSelect }: { onSelect: (p: SolvedProblem) => void }) {
         {results.length > 0 && (
           <div className="space-y-1.5">
             {results.map((p) => {
-              const { difficulty } = toOurDiff(p.level);
-              const cfg = DIFFICULTY_CONFIG[difficulty];
-              const tierLabel = TIER_NAMES[p.level] ?? 'Unrated';
+              const resolvedDiff = p.difficulty ?? toOurDiff(p.level).difficulty;
+              const cfg = DIFFICULTY_CONFIG[resolvedDiff];
+              const tierLabel = platform === 'BOJ'
+                ? (TIER_NAMES[p.level] ?? 'Unrated')
+                : (PROGRAMMERS_LEVEL_LABELS[p.level] ?? `Lv.${p.level}`);
               const tags = p.tags.slice(0, 3);
 
               return (
@@ -307,12 +397,14 @@ function SearchStep({ onSelect }: { onSelect: (p: SolvedProblem) => void }) {
                     </div>
                   </div>
 
-                  {/* Solved count */}
-                  <div className="shrink-0 text-right">
-                    <p className="text-[10px]" style={{ color: 'var(--text-3)' }}>
-                      {p.acceptedUserCount.toLocaleString()}명 해결
-                    </p>
-                  </div>
+                  {/* Solved count — BOJ만 표시 */}
+                  {platform === 'BOJ' && (
+                    <div className="shrink-0 text-right">
+                      <p className="text-[10px]" style={{ color: 'var(--text-3)' }}>
+                        {p.acceptedUserCount.toLocaleString()}명 해결
+                      </p>
+                    </div>
+                  )}
                 </button>
               );
             })}
@@ -327,12 +419,14 @@ function SearchStep({ onSelect }: { onSelect: (p: SolvedProblem) => void }) {
 
 function ConfirmStep({
   problem,
+  platform,
   onBack,
   onAdd,
   isAdding,
   addError,
 }: {
   problem: SolvedProblem;
+  platform: 'BOJ' | 'PROGRAMMERS';
   onBack: () => void;
   onAdd: (weekNumber: string, deadline: string) => void;
   isAdding?: boolean;
@@ -342,9 +436,11 @@ function ConfirmStep({
   const [deadline, setDeadline] = useState('');
   const [errors, setErrors] = useState<{ weekNumber?: string; deadline?: string }>({});
 
-  const { difficulty } = toOurDiff(problem.level);
-  const cfg = DIFFICULTY_CONFIG[difficulty];
-  const tierLabel = TIER_NAMES[problem.level] ?? 'Unrated';
+  const resolvedDiff = problem.difficulty ?? toOurDiff(problem.level).difficulty;
+  const cfg = DIFFICULTY_CONFIG[resolvedDiff];
+  const tierLabel = platform === 'BOJ'
+    ? (TIER_NAMES[problem.level] ?? 'Unrated')
+    : (PROGRAMMERS_LEVEL_LABELS[problem.level] ?? `Lv.${problem.level}`);
   const tags = problem.tags.slice(0, 5);
 
   function validate() {
@@ -390,7 +486,7 @@ function ConfirmStep({
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-[11px] font-bold"
               style={{ background: cfg.bg, color: cfg.color }}
             >
-              BOJ
+              {platform === 'PROGRAMMERS' ? 'PG' : 'BOJ'}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-[14px] font-semibold" style={{ color: 'var(--text)' }}>
@@ -418,9 +514,11 @@ function ConfirmStep({
                 ))}
               </div>
             </div>
-            {/* BOJ link */}
+            {/* External link */}
             <a
-              href={`https://www.acmicpc.net/problem/${problem.problemId}`}
+              href={problem.sourceUrl ?? (platform === 'PROGRAMMERS'
+                ? `https://school.programmers.co.kr/learn/courses/30/lessons/${problem.problemId}`
+                : `https://www.acmicpc.net/problem/${problem.problemId}`)}
               target="_blank"
               rel="noreferrer"
               onClick={(e) => e.stopPropagation()}
@@ -525,7 +623,7 @@ export interface NewProblemData {
   deadline: string;
   tags: string[];
   sourceUrl: string;
-  sourcePlatform: string;
+  sourcePlatform: 'BOJ' | 'PROGRAMMERS';
   description: string;
 }
 
@@ -538,6 +636,7 @@ interface AddProblemModalProps {
 export function AddProblemModal({ open, onClose, onAdd: onAddCallback }: AddProblemModalProps) {
   const [step, setStep] = useState<Step>('search');
   const [selected, setSelected] = useState<SolvedProblem | null>(null);
+  const [platform, setPlatform] = useState<'BOJ' | 'PROGRAMMERS'>('PROGRAMMERS');
   const [isAdding, setIsAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
   const { currentStudyId } = useStudy();
@@ -557,22 +656,27 @@ export function AddProblemModal({ open, onClose, onAdd: onAddCallback }: AddProb
   async function handleAdd(weekNumber: string, deadline: string) {
     if (!selected || isAdding) return;
 
-    const { difficulty, level: diffLevel } = toOurDiff(selected.level);
+    const resolvedDiff = selected.difficulty ?? toOurDiff(selected.level).difficulty;
+    const diffLevel = selected.difficulty ? selected.level : toOurDiff(selected.level).level;
     const tagNames = selected.tags.slice(0, 5);
 
     setIsAdding(true);
     setAddError(null);
 
     try {
+      const sourceUrl = selected.sourceUrl ?? (platform === 'PROGRAMMERS'
+        ? `https://school.programmers.co.kr/learn/courses/30/lessons/${selected.problemId}`
+        : `https://www.acmicpc.net/problem/${selected.problemId}`);
+
       const data: CreateProblemData = {
         title: selected.titleKo,
         weekNumber,
-        difficulty: difficulty as CreateProblemData['difficulty'],
+        difficulty: resolvedDiff as CreateProblemData['difficulty'],
         level: diffLevel,
         deadline: new Date(deadline).toISOString(),
         tags: tagNames,
-        sourceUrl: `https://www.acmicpc.net/problem/${selected.problemId}`,
-        sourcePlatform: 'BOJ',
+        sourceUrl,
+        sourcePlatform: platform,
       };
 
       const created = await problemApi.create(data);
@@ -595,7 +699,7 @@ export function AddProblemModal({ open, onClose, onAdd: onAddCallback }: AddProb
         deadline: created.deadline,
         tags: created.tags ?? tagNames,
         sourceUrl: created.sourceUrl ?? data.sourceUrl ?? '',
-        sourcePlatform: created.sourcePlatform ?? 'BOJ',
+        sourcePlatform: created.sourcePlatform ?? platform,
         description: created.description ?? '',
       });
       handleClose();
@@ -630,19 +734,21 @@ export function AddProblemModal({ open, onClose, onAdd: onAddCallback }: AddProb
             style={{ borderColor: 'var(--border)' }}
           >
             <div className="flex items-center gap-2.5">
-              {/* BOJ logo-ish icon */}
+              {/* Platform icon */}
               <div
                 className="flex h-7 w-7 items-center justify-center rounded-md text-[9px] font-black"
                 style={{ background: 'var(--primary-soft)', color: 'var(--primary)' }}
               >
-                BOJ
+                {platform === 'PROGRAMMERS' ? 'PG' : 'BOJ'}
               </div>
               <div>
                 <Dialog.Title
                   className="text-[14px] font-semibold"
                   style={{ color: 'var(--text)' }}
                 >
-                  {step === 'search' ? '백준 문제 검색' : '문제 추가'}
+                  {step === 'search'
+                    ? (platform === 'BOJ' ? '백준 문제 검색' : '프로그래머스 문제 검색')
+                    : '문제 추가'}
                 </Dialog.Title>
                 <Dialog.Description className="text-[11px]" style={{ color: 'var(--text-3)' }}>
                   {step === 'search'
@@ -679,10 +785,18 @@ export function AddProblemModal({ open, onClose, onAdd: onAddCallback }: AddProb
           </div>
 
           {/* Body */}
-          {step === 'search' && <SearchStep onSelect={handleSelect} />}
+          {step === 'search' && (
+            <SearchStep
+              onSelect={handleSelect}
+              platform={platform}
+              searchFn={platform === 'BOJ' ? searchSolvedAC : searchProgrammers}
+              onPlatformChange={(p) => { setPlatform(p); }}
+            />
+          )}
           {step === 'confirm' && selected && (
             <ConfirmStep
               problem={selected}
+              platform={platform}
               onBack={() => setStep('search')}
               onAdd={(w, d) => void handleAdd(w, d)}
               isAdding={isAdding}
