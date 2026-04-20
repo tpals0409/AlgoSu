@@ -77,7 +77,11 @@ function ProblemTimelineCard({ problem, barsAnimated, submittedCount, totalMembe
         <div className="w-1 shrink-0" style={{ backgroundColor: `var(--diff-${tier}-color)` }} />
         <div className="flex-1 px-3 py-3 sm:px-5 sm:py-4">
           <div className="flex items-center gap-2 mb-2">
-            <DifficultyBadge difficulty={problem.difficulty} level={problem.level} />
+            <DifficultyBadge
+              difficulty={problem.difficulty ?? null}
+              level={problem.level}
+              sourcePlatform={problem.sourcePlatform}
+            />
             {isActive ? (
               <span className="inline-flex items-center gap-1 rounded-badge px-2 py-0.5 text-[11px] font-medium" style={{ color: 'var(--success)', backgroundColor: 'var(--success-soft)' }}>
                 <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--success)' }} />진행 중

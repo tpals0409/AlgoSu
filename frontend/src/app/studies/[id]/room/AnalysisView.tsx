@@ -113,7 +113,11 @@ export function AnalysisView({ problem, submission, analysis, loading, nicknameM
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <DifficultyBadge difficulty={problem.difficulty} level={problem.level} />
+          <DifficultyBadge
+            difficulty={problem.difficulty ?? null}
+            level={problem.level}
+            sourcePlatform={problem.sourcePlatform}
+          />
           <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase" style={{ backgroundColor: 'var(--bg-alt)', color: 'var(--text-2)' }}>{submission.language}</span>
           <StatusBadge label={saga.label} variant={saga.variant} />
           <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold" style={{ backgroundColor: 'var(--success-soft)', color: 'var(--success)' }}>{totalScore}점</span>
