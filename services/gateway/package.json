@@ -10,7 +10,8 @@
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
     "test": "jest",
     "typecheck": "tsc --noEmit",
-    "fetch-programmers": "ts-node --project tsconfig.json scripts/fetch-programmers-problems.ts"
+    "fetch-programmers": "ts-node --project tsconfig.json scripts/fetch-programmers-problems.ts",
+    "fetch-programmers-tags": "ts-node --project tsconfig.json scripts/fetch-programmers-tags.ts"
   },
   "dependencies": {
     "@nestjs/axios": "^3.0.0",
