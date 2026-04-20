@@ -54,6 +54,14 @@ const FIXTURE_ITEMS = [
     tags: ['동적계획법(Dynamic Programming)'],
     sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/42895',
   },
+  // Sprint 97 tags 보강 회귀용 — 실제 크롤링 결과(해시) 반영
+  {
+    problemId: 1845,
+    title: '폰켓몬',
+    level: 1,
+    tags: ['해시'],
+    sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/1845',
+  },
 ];
 
 const FIXTURE_JSON = JSON.stringify(FIXTURE_ITEMS);
@@ -152,6 +160,13 @@ describe('ProgrammersService', () => {
       expect(() => service.fetchProblem(99999)).toThrow('99999');
     });
 
+    // Sprint 97 tags 보강 회귀 — 실제 크롤링 완료 후 tags 비어있지 않음 보장
+    it('fetchProblem(1845) — tags.length >= 1 (Sprint 97 tags 보강 회귀)', () => {
+      const result = service.fetchProblem(1845);
+      expect(result.tags.length).toBeGreaterThanOrEqual(1);
+      expect(result.tags[0]).toBe('해시');
+    });
+
     // 레벨 → 난이도 매핑 전체 검증
     it.each([
       [42840, 'BRONZE'],   // Lv.1
@@ -197,18 +212,18 @@ describe('ProgrammersService', () => {
     });
 
     it('페이지네이션 — page 2 는 10건 초과분 반환', () => {
-      // fixture 5건이므로 page=2 → 빈 결과
+      // fixture 6건이므로 page=2 → 빈 결과 (Sprint 97: 폰켓몬 항목 추가로 5→6)
       const result = service.searchProblem('', 2);
-      // 빈 query 는 전체 매칭 → 5건, page2 offset=10 → 0건
+      // 빈 query 는 전체 매칭 → 6건, page2 offset=10 → 0건
       expect(result.items).toHaveLength(0);
-      expect(result.count).toBe(5);
+      expect(result.count).toBe(6);
     });
 
     it('page=1 — 전체 10건 이하면 전부 반환', () => {
-      // 빈 query → 전체 5건 매칭
+      // 빈 query → 전체 6건 매칭 (Sprint 97: 폰켓몬 항목 추가로 5→6)
       const result = service.searchProblem('');
-      expect(result.count).toBe(5);
-      expect(result.items).toHaveLength(5);
+      expect(result.count).toBe(6);
+      expect(result.items).toHaveLength(6);
     });
 
     it('반환 항목 구조 검증', () => {
