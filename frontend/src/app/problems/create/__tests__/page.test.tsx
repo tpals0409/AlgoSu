@@ -53,6 +53,21 @@ jest.mock('@/hooks/useBojSearch', () => ({
   }),
 }));
 
+jest.mock('@/hooks/useProgrammersSearch', () => ({
+  useProgrammersSearch: () => ({
+    programmersQuery: '',
+    setProgrammersQuery: jest.fn(),
+    programmersSearching: false,
+    programmersError: null,
+    setProgrammersError: jest.fn(),
+    programmersResult: null,
+    programmersApplied: false,
+    handleProgrammersSearch: jest.fn(),
+    handleProgrammersKeyDown: jest.fn(),
+    handleProgrammersReset: jest.fn(),
+  }),
+}));
+
 jest.mock('@/components/layout/AppLayout', () => ({
   AppLayout: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="app-layout">{children}</div>
@@ -177,9 +192,9 @@ describe('ProblemCreatePage', () => {
     expect(screen.getByTestId('app-layout')).toBeInTheDocument();
   });
 
-  it('백준 문제 검색 섹션이 표시된다', () => {
+  it('프로그래머스 문제 검색 섹션이 기본 표시된다', () => {
     render(<ProblemCreatePage />);
-    expect(screen.getByText('백준 문제 검색')).toBeInTheDocument();
+    expect(screen.getByText('프로그래머스 문제 검색')).toBeInTheDocument();
   });
 
   it('기본 정보 섹션이 표시된다', () => {
