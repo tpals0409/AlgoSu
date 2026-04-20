@@ -1,0 +1,99 @@
+---
+title: "Baekjoon Is Gone?"
+date: "2026-04-20"
+excerpt: "On the day I saw Baekjoon's shutdown notice, migrating AlgoSu's problem source to Programmers taught me something I didn't expect — not a new technology, but an attitude about building services that lean on external platforms."
+tags: ["retrospective", "external-api", "platform-migration"]
+category: challenge
+order: 7
+---
+
+## The Day "Algorithms Means Baekjoon" Broke
+
+The first feeling I had when I saw the notice wasn't shock — it was something closer to awkwardness. "Baekjoon is shutting down?" Anyone who's done algorithm practice has passed through that platform at some point. It had been there for over a decade. I knew, intellectually, that any service can end. I just hadn't actually felt it.
+
+AlgoSu was built on Baekjoon (BOJ). Problem metadata, difficulty badges, the submission pipeline, GitHub sync, AI feedback — BOJ was woven into every flow. After reading the notice, I didn't have to face a code problem. I had to face an assumption I'd been carrying without noticing it.
+
+---
+
+## I Knew About the Dependency
+
+Don't get me wrong. I knew AlgoSu depended on BOJ. I'd known from the start, which is exactly why I'd put a few safety nets into the design early on.
+
+- A `sourcePlatform` column on the problem table, added from day one
+- Problem metadata APIs isolated as an external module behind the Gateway
+- Difficulty enums and UI tokens designed independently of any platform
+
+The abstractions were already there. I did consider that another platform might be added someday.
+
+**But somewhere in the back of my mind, I'd quietly assumed: "No way — not Baekjoon."** I had planned for another platform being *added*. I hadn't planned for BOJ *disappearing*. Addition is proactive extensibility; disappearance is survival. I'd designed for the first and deferred the second.
+
+---
+
+## Nothing Lasts Forever
+
+What Baekjoon's shutdown notice broke wasn't my code. It was that quiet assumption.
+
+- Not "BOJ can't disappear," but "BOJ can disappear."
+- Not "external APIs are always callable," but "external APIs can be cut off at any time."
+- Not "this platform is the exception," but "there are no exceptions."
+
+That was the one-line lesson of this migration. Technically, there wasn't much I didn't already know. If anything, it was a confirmation that the design decisions I'd already made were correct. But **the attitude that had produced those decisions** — design with the assumption that nothing lasts — only sank in this time.
+
+---
+
+## A Migration in Three Sprints
+
+My first instinct was to cram the entire migration into one sprint. Data + backend + frontend + submissions + docs — all at once. I stopped myself while drafting the plan. The regression risk was too high. So I broke it into a three-sprint roadmap.
+
+- **Sprint 95 — Backend Infrastructure.** Bundled 373 Programmers problems as pre-curated JSON and added a Gateway endpoint `/api/external/programmers/*` that mirrored BOJ's shape. The rule was zero user-visible change, zero BOJ regression — infrastructure only.
+- **Sprint 96 — Frontend UX.** `AddProblemModal` platform toggle, `useProgrammersSearch` hook, Programmers promoted to default. This was the first sprint users could actually see.
+- **Sprint 97 — Pipeline Closure.** GitHub Worker `formatPlatform()` extension (`prg_` prefix), `sourcePlatform` injected into AI feedback prompts, tags enrichment, WCAG AA validation, E2E.
+
+Looking back, the decision I'm most grateful for is choosing **pre-curated JSON bundling** over real-time parsing. Programmers has no public API, and Cloudflare's JA3 fingerprint blocking was in the way. I could have built an architecture that scraped on demand — but doing so would have planted yet another external dependency. Pulling the data into our repository and owning it was a move for operational stability, yes, but it was also **the exact lesson I'd just learned, applied right back into the implementation**.
+
+And the existing BOJ data? I didn't delete it. I kept it — zero migration, coexistence strategy. Every problem a user had solved on BOJ remained in their history, even after the shutdown notice. Platforms can disappear, but what users built on top of them should stay alive inside our service.
+
+---
+
+## The Outcome
+
+- **373 Programmers problems** imported (Lv.1~5 → BRONZE~DIAMOND 1:1 mapping, zero lines of design token change)
+- Final validation: **2,445 tests ALL PASS**, WCAG AA 6/6 PASS
+- Existing BOJ user experience: **zero regression**, zero DB migration
+- Gateway endpoints preserved the abstraction layer, mirroring BOJ (Solved.ac) symmetrically
+
+More meaningful than the numbers was the shape of the change: we added a new platform without breaking the existing one. An external shock absorbed entirely inside the internal structure.
+
+---
+
+## What Externally-Dependent Services Must Never Forget
+
+Up to here is the technical story. What follows is the actual conclusion of this sprint.
+
+### Erase "Surely Not" From the Design
+
+Knowing about a dependency and designing for the dependency being cut off are not the same thing. I had done the first and deferred the second. Adding the `sourcePlatform` column was about proactive extensibility — "another platform might be added someday." It wasn't about survival — "BOJ might one day disappear."
+
+The two assumptions look similar but carry different weight. Extensibility is "nice to have." Survival is "can't live without." As long as "surely not this platform" lingers anywhere in the design, the response will lag by one beat when the day actually comes. I had the base abstractions in place, but I hadn't pushed them deep enough — and that showed up in Sprint 99's five rounds of PM QA. Difficulty badges weren't platform-aware. Week calculation logic was pinned to BOJ-specific assumptions. The `sourcePlatform` prop wasn't being propagated through four study-room call sites. All of it was residue from "surely not here, too."
+
+### External APIs Can Be Cut Off At Any Time
+
+Choosing pre-curated bundling over real-time parsing turned out to be lucky this time. Honestly, the initial reason I bundled the Programmers data was that dealing with Cloudflare on every request sounded annoying. But that annoyance-driven choice ended up removing another layer of external dependency.
+
+After this migration, the question order I ask about external APIs has changed. I used to start with "Is this API stable?" Now I start with **"Will the service still work if this API is gone?"** If the answer is no, I either narrow the boundary of logic that touches the API, or I figure out how to bring data ownership back to our side.
+
+### Abstraction Isn't "Nice to Have" — It's a Survival Condition
+
+One `sourcePlatform` column did more work this sprint than I realized when I added it. Without it, I'd have had to handle DB migration, existing record reclassification, and user history preservation all at once. When I added that column years ago, my reasoning was closer to "just in case." That "just in case" came.
+
+A lot of abstraction decisions look like this. They feel excessive in the moment, and adding one more layer is effort. But in systems that lean on external dependencies, that one layer is often the lifeline. The experience of "that overly cautious boundary saved me later" isn't new to me. And it probably won't be the last time either.
+
+---
+
+## Closing
+
+I didn't learn much new technology this sprint. I wrote a Playwright crawler, designed a JSON bundling structure, tightened input boundaries with `@IsIn` on the DTO. All combinations of things I already knew.
+
+What I learned was an attitude. **No platform lasts forever.** If a service as established as Baekjoon can disappear, any external dependency we lean on today can be cut off tomorrow. All we can do is bake that possibility into the design — erase the thought that "this one platform is an exception," and when choosing how deep to depend on something, also sketch out "how do we survive if it's gone." That's how services built on external ground stay standing.
+
+Baekjoon is going. AlgoSu stays. I don't know which platform disappears next. But when it does, I hope the me of that day is a little less surprised.
