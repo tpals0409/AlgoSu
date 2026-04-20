@@ -125,16 +125,36 @@ eslint: 0 errors, 6 warnings (pre-existing, programmers 수정과 무관)
 - **nest-cli.json assets**: `npm run build` 로컬 환경에서도 `dist/data/` 자동 생성
 - **CI 검증 권장 (이월)**: `.github/workflows/` 에 `dist/data/programmers-problems.json` 존재 검증 step 추가
 
+## 2차 증상 — 레벨 0 문제 미크롤링
+
+### 증상
+Dockerfile 수정 후에도 프로그래머스 레벨 0(코딩기초트레이닝) 문제를 검색하면 `404 NotFoundException`.
+
+### 원인
+크롤러 `services/gateway/scripts/fetch-programmers-problems.ts:55` 의 `LEVELS = [1, 2, 3, 4, 5]` 상수가 레벨 0을 명시적으로 제외하여 JSON 스냅샷(373건)에 코딩기초트레이닝 문제가 전혀 포함되지 않음.
+
+### 수정 내용
+1. **크롤러 `LEVELS` 확장** — `[0, 1, 2, 3, 4, 5]` 로 변경 (커밋 `266c8c5`)
+2. **`levelToDifficulty(0)`** — 기존 `?? null` 분기가 이미 레벨 0을 `null` 매핑으로 처리 → 로직 변경 없이 주석만 `0~5` 범위로 갱신
+3. **회귀 테스트** — `programmers.service.spec.ts`에 레벨 0 봉투 형식 로드 + `difficulty=null` 검증 1건 추가 (총 44건 PASS)
+4. **운영 반영** — 코드 수정 후 데이터 재수집 필요: `cd services/gateway && npm run fetch-programmers` (Playwright 네트워크 작업, 수 분 소요)
+
+### 검증 결과
+- `programmers.*.spec.ts`: **44건 PASS** (+1건 신규)
+- `tsc --noEmit`: PASS
+
 ## 이월 항목
 
 | # | 항목 | 우선순위 |
 |---|------|----------|
-| 1 | CI workflow에 `dist/data/` 파일 존재 검증 step 추가 | 보통 |
-| 2 | H5 UX 개선 — 키워드 검색 연동 (프론트 검색창 → Gateway API 호출) | 낮음 |
-| 3 | ESLint pre-existing 경고 6건 정리 (structured-logger, public-profile/share spec) | 낮음 |
+| 1 | **`npm run fetch-programmers` 실제 실행으로 JSON 재수집** (사용자 로컬에서 Playwright 실행) | **높음** |
+| 2 | CI workflow에 `dist/data/` 파일 존재 검증 step 추가 | 보통 |
+| 3 | H5 UX 개선 — 키워드 검색 연동 (프론트 검색창 → Gateway API 호출) | 낮음 |
+| 4 | ESLint pre-existing 경고 6건 정리 (structured-logger, public-profile/share spec) | 낮음 |
 
 ## 커밋
 
 | SHA | 메시지 |
 |-----|--------|
 | `79b6dbb` | `fix(gateway): Dockerfile에 programmers JSON 데이터 번들 추가` |
+| `266c8c5` | `fix(gateway): 프로그래머스 레벨 0 문제 크롤링 대상 포함` |
