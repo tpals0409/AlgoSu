@@ -36,10 +36,9 @@ import { ScoreGauge } from '@/components/ui/ScoreGauge';
 import { CodeBlock } from '@/components/ui/CodeBlock';
 import {
   DIFF_BADGE_STYLE,
-  DIFFICULTY_LABELS,
   PROBLEM_STATUS_LABELS,
-  type Difficulty,
 } from '@/lib/constants';
+import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
 
 /* ───────────────── 피드백 파싱 (공통 모듈에서 import) ───────────────── */
 
@@ -263,7 +262,7 @@ function SharedStudyContent(): ReactNode {
               {/* 문제 카드들 */}
               {weekProblems.map((p) => {
                 const tier = (p.difficulty?.toLowerCase() ?? 'bronze') as string;
-                const badgeStyle = DIFF_BADGE_STYLE[tier] ?? DIFF_BADGE_STYLE.bronze;
+                const stripeColor = p.difficulty ? (DIFF_BADGE_STYLE[tier]?.color ?? 'var(--text-3)') : 'var(--text-3)';
                 const subCount = submissionCountMap.get(p.id) ?? 0;
                 const pct = studyData.memberCount > 0 ? Math.min(100, Math.round((subCount / studyData.memberCount) * 100)) : 0;
 
@@ -274,19 +273,18 @@ function SharedStudyContent(): ReactNode {
                     className="flex w-full items-stretch overflow-hidden rounded-card border border-[var(--border)] bg-[var(--bg-card)] text-left transition-all hover:-translate-y-0.5 hover:shadow-sm"
                     onClick={() => handleSelectProblem(p)}
                   >
-                    {/* 좌측 난이도 색상 스트라이프 — badgeStyle.color: 동적 값, Tailwind 전환 불가 */}
-                    <div className="w-1 shrink-0" style={{ backgroundColor: badgeStyle.color }} />
+                    {/* 좌측 난이도 색상 스트라이프 */}
+                    <div className="w-1 shrink-0" style={{ backgroundColor: stripeColor }} />
 
                     <div className="flex flex-1 items-center gap-3 p-4">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          {/* 난이도 뱃지 — badgeStyle: 동적 값, Tailwind 전환 불가 */}
-                          <span
-                            className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium"
-                            style={badgeStyle}
-                          >
-                            {DIFFICULTY_LABELS[p.difficulty as Difficulty] ?? p.difficulty}
-                          </span>
+                          {/* 난이도 뱃지 (플랫폼 인지) */}
+                          <DifficultyBadge
+                            difficulty={p.difficulty ?? null}
+                            level={p.level}
+                            sourcePlatform={p.sourcePlatform}
+                          />
                           {/* 상태 뱃지 */}
                           {p.status && (
                             <span
@@ -313,7 +311,7 @@ function SharedStudyContent(): ReactNode {
                             {/* width/backgroundColor: 동적 애니메이션, Tailwind 전환 불가 */}
                             <div
                               className="h-full rounded-full transition-all duration-700 ease-out"
-                              style={{ width: mounted ? `${pct}%` : '0%', backgroundColor: badgeStyle.color }}
+                              style={{ width: mounted ? `${pct}%` : '0%', backgroundColor: stripeColor }}
                             />
                           </div>
                           <span className="shrink-0 text-[11px] font-medium text-[var(--text-3)]">
@@ -347,9 +345,6 @@ function SubmissionListView({ problem, submissions, onSelect, onBack, createdByU
   readonly members: Array<{ userId: string; nickname: string; role: string }>;
   readonly memberCount: number;
 }): ReactNode {
-  const tier = (problem.difficulty?.toLowerCase() ?? 'bronze') as string;
-  const badgeStyle = DIFF_BADGE_STYLE[tier] ?? DIFF_BADGE_STYLE.bronze;
-
   /* 고유 유저 수 */
   const uniqueSubmitters = new Set(submissions.map((s) => s.userId)).size;
   const analyzedCount = submissions.filter((s) => s.aiScore != null).length;
@@ -365,12 +360,14 @@ function SubmissionListView({ problem, submissions, onSelect, onBack, createdByU
         <ArrowLeft size={20} />
       </button>
 
-      {/* 문제 헤더 — badgeStyle: 동적 값, Tailwind 전환 불가 */}
+      {/* 문제 헤더 */}
       <div>
         <div className="flex items-center gap-2">
-          <span className="rounded-full px-2 py-0.5 text-[11px] font-medium" style={badgeStyle}>
-            {DIFFICULTY_LABELS[problem.difficulty as Difficulty] ?? problem.difficulty}
-          </span>
+          <DifficultyBadge
+            difficulty={problem.difficulty ?? null}
+            level={problem.level}
+            sourcePlatform={problem.sourcePlatform}
+          />
           {problem.weekNumber && (
             <span className="text-[11px] font-medium text-[var(--text-3)]">
               {problem.weekNumber}
