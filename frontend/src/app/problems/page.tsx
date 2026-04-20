@@ -16,7 +16,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { problemApi, studyApi, type Problem } from '@/lib/api';
 import { useStudy } from '@/contexts/StudyContext';
-import { DIFFICULTIES, DIFFICULTY_LABELS, DIFF_DOT_STYLE, DIFF_BADGE_STYLE, toTierLevel } from '@/lib/constants';
+import { DIFFICULTIES, DIFFICULTY_LABELS, DIFF_DOT_STYLE, DIFF_BADGE_STYLE, toTierLevel, PROGRAMMERS_LEVEL_LABELS, PLATFORM_SHORT_LABELS } from '@/lib/constants';
 import type { Difficulty } from '@/lib/constants';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
@@ -69,7 +69,7 @@ export default function ProblemsPage(): ReactNode {
   const router = useRouter();
   const { isAuthenticated } = useRequireAuth();
   useRequireStudy();
-  const { currentStudyId, currentStudyRole } = useStudy();
+  const { currentStudyId, currentStudyRole, incrementProblemsVersion } = useStudy();
   const isAdmin = currentStudyRole === 'ADMIN';
 
   // ─── STATE ──────────────────────────────
@@ -135,7 +135,8 @@ export default function ProblemsPage(): ReactNode {
 
   const handleAddProblem = useCallback((newProblem: NewProblemData) => {
     setProblems((prev) => [newProblem as unknown as Problem, ...prev]);
-  }, []);
+    incrementProblemsVersion();
+  }, [incrementProblemsVersion]);
 
   // ─── FILTERING ──────────────────────────
 
@@ -292,13 +293,13 @@ export default function ProblemsPage(): ReactNode {
                   aria-label={`${problem.title} 문제 보기`}
                   className="group flex items-center gap-3 sm:gap-4 w-full px-3 sm:px-5 py-3 sm:py-4 rounded-xl border border-border transition-all text-left bg-bg-card hover:-translate-y-0.5 hover:shadow-hover"
                 >
-                  {/* BOJ 아이콘 */}
+                  {/* 플랫폼 아이콘 */}
                   <div
                     className="flex items-center justify-center shrink-0 h-10 w-10 rounded-lg"
                     style={{ backgroundColor: 'var(--bg-alt)' }}
                   >
                     <span className="text-[10px] font-bold" style={{ color: 'var(--text-3)' }}>
-                      {problem.sourcePlatform ?? 'BOJ'}
+                      {PLATFORM_SHORT_LABELS[problem.sourcePlatform ?? 'BOJ'] ?? problem.sourcePlatform ?? 'BOJ'}
                     </span>
                   </div>
 
@@ -318,7 +319,20 @@ export default function ProblemsPage(): ReactNode {
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-1">
-                      {problem.difficulty && (() => {
+                      {(problem.difficulty || problem.sourcePlatform === 'PROGRAMMERS') && (() => {
+                        const isProgrammers = problem.sourcePlatform === 'PROGRAMMERS';
+                        if (isProgrammers) {
+                          const lvLabel = problem.level != null ? (PROGRAMMERS_LEVEL_LABELS[problem.level] ?? 'Lv.0') : 'Lv.0';
+                          const diffKey = problem.difficulty ? (problem.difficulty as string).toLowerCase() : '';
+                          const dotStyle = diffKey ? (DIFF_DOT_STYLE[diffKey] ?? { backgroundColor: 'var(--text-3)' }) : { backgroundColor: 'var(--text-3)' };
+                          const badgeStyle = diffKey ? (DIFF_BADGE_STYLE[diffKey] ?? { backgroundColor: 'var(--bg-alt)', color: 'var(--text-2)' }) : { backgroundColor: 'var(--bg-alt)', color: 'var(--text-2)' };
+                          return (
+                            <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium" style={badgeStyle}>
+                              <span className="h-1.5 w-1.5 rounded-full" style={dotStyle} aria-hidden />
+                              {lvLabel}
+                            </span>
+                          );
+                        }
                         const diffKey = (problem.difficulty as string).toLowerCase();
                         const dotStyle = DIFF_DOT_STYLE[diffKey] ?? { backgroundColor: 'var(--text-3)' };
                         const badgeStyle = DIFF_BADGE_STYLE[diffKey] ?? { backgroundColor: 'var(--bg-alt)', color: 'var(--text-2)' };

@@ -71,7 +71,7 @@ export default function AnalyticsPage(): ReactNode {
   const router = useRouter();
   const { isReady, isAuthenticated } = useRequireAuth();
   useRequireStudy();
-  const { currentStudyId, studiesLoaded } = useStudy();
+  const { currentStudyId, studiesLoaded, problemsVersion } = useStudy();
   const { user } = useAuth();
 
   const [stats, setStats] = useState<StudyStats | null>(null);
@@ -134,6 +134,13 @@ export default function AnalyticsPage(): ReactNode {
       setIsLoading(false);
     }
   }, [isAuthenticated, studiesLoaded, currentStudyId, loadData]);
+
+  // 문제 등록/삭제 시 problemsVersion 변경 → refetch
+  useEffect(() => {
+    if (isAuthenticated && studiesLoaded && currentStudyId && problemsVersion > 0) {
+      void loadData();
+    }
+  }, [problemsVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── API 통계 계산 ────────────────────
 

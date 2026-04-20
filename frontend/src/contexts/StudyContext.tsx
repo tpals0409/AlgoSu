@@ -35,10 +35,12 @@ interface StudyContextValue {
   currentStudyRole: 'ADMIN' | 'MEMBER' | null;
   studies: Study[];
   studiesLoaded: boolean;
+  problemsVersion: number;
   setCurrentStudy: (studyId: string) => void;
   setStudies: (studies: Study[]) => void;
   removeStudy: (studyId: string) => void;
   clearCurrentStudy: () => void;
+  incrementProblemsVersion: () => void;
 }
 
 // ── 스토리지 키 ──
@@ -57,6 +59,7 @@ interface StudyProviderProps {
 
 export function StudyProvider({ children }: StudyProviderProps): ReactNode {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const [problemsVersion, setProblemsVersion] = useState(0);
   const [studies, setStudiesState] = useState<Study[]>([]);
   const [studiesLoaded, setStudiesLoaded] = useState(false);
   const [currentStudyId, setCurrentStudyId] = useState<string | null>(() => {
@@ -178,16 +181,23 @@ export function StudyProvider({ children }: StudyProviderProps): ReactNode {
     setCurrentStudyIdForApi(null);
   }, []);
 
+  /** 문제 생성/삭제 시 호출하여 대시보드·통계 refetch를 트리거한다 */
+  const incrementProblemsVersion = useCallback(() => {
+    setProblemsVersion((v) => v + 1);
+  }, []);
+
   const value: StudyContextValue = {
     currentStudyId,
     currentStudyName,
     currentStudyRole,
     studies,
     studiesLoaded,
+    problemsVersion,
     setCurrentStudy,
     setStudies,
     removeStudy,
     clearCurrentStudy,
+    incrementProblemsVersion,
   };
 
   return <StudyContext.Provider value={value}>{children}</StudyContext.Provider>;

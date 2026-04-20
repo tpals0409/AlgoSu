@@ -51,7 +51,7 @@ export default function ProblemCreatePage(): ReactNode {
   const router = useRouter();
   const { isReady } = useRequireAuth();
   useRequireStudy();
-  const { currentStudyId, currentStudyRole } = useStudy();
+  const { currentStudyId, currentStudyRole, incrementProblemsVersion } = useStudy();
 
   // ─── FORM (React Hook Form + Zod) ──────
 
@@ -210,6 +210,7 @@ export default function ProblemCreatePage(): ReactNode {
         void notifyWithRetry();
       }
 
+      incrementProblemsVersion();
       setCreated(true);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : '문제 생성에 실패했습니다.');
