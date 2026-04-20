@@ -16,7 +16,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { problemApi, studyApi, type Problem } from '@/lib/api';
 import { useStudy } from '@/contexts/StudyContext';
-import { DIFFICULTIES, DIFFICULTY_LABELS, DIFF_DOT_STYLE, DIFF_BADGE_STYLE, toTierLevel, PROGRAMMERS_LEVEL_LABELS } from '@/lib/constants';
+import { DIFFICULTIES, DIFFICULTY_LABELS, DIFF_DOT_STYLE, DIFF_BADGE_STYLE, toTierLevel, PROGRAMMERS_LEVEL_LABELS, PLATFORM_SHORT_LABELS } from '@/lib/constants';
 import type { Difficulty } from '@/lib/constants';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
@@ -292,13 +292,13 @@ export default function ProblemsPage(): ReactNode {
                   aria-label={`${problem.title} 문제 보기`}
                   className="group flex items-center gap-3 sm:gap-4 w-full px-3 sm:px-5 py-3 sm:py-4 rounded-xl border border-border transition-all text-left bg-bg-card hover:-translate-y-0.5 hover:shadow-hover"
                 >
-                  {/* BOJ 아이콘 */}
+                  {/* 플랫폼 아이콘 */}
                   <div
                     className="flex items-center justify-center shrink-0 h-10 w-10 rounded-lg"
                     style={{ backgroundColor: 'var(--bg-alt)' }}
                   >
                     <span className="text-[10px] font-bold" style={{ color: 'var(--text-3)' }}>
-                      {problem.sourcePlatform ?? 'BOJ'}
+                      {PLATFORM_SHORT_LABELS[problem.sourcePlatform ?? 'BOJ'] ?? problem.sourcePlatform ?? 'BOJ'}
                     </span>
                   </div>
 

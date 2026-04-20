@@ -120,6 +120,12 @@ export const SAGA_STEP_CONFIG: Record<SagaStep, SagaStepConfig> = {
 
 export type SourcePlatform = 'BOJ' | 'PROGRAMMERS';
 
+/** 플랫폼 약어 라벨 — UI 뱃지(w-10) 오버플로 방지 */
+export const PLATFORM_SHORT_LABELS: Record<string, string> = {
+  BOJ: 'BOJ',
+  PROGRAMMERS: 'PG',
+};
+
 /** 프로그래머스 레벨(0~5) 라벨 맵 */
 export const PROGRAMMERS_LEVEL_LABELS: Record<number, string> = {
   0: 'Lv.0',
