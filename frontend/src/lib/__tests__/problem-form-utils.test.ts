@@ -29,6 +29,10 @@ describe('getCurrentWeekLabel', () => {
     const result = getCurrentWeekLabel();
     expect(result).toMatch(/^\d+월\d+주차$/);
   });
+
+  it('2026년 4월 20일(월)은 4월4주차를 반환한다 (Sprint 99-5: 달력 기준)', () => {
+    expect(getCurrentWeekLabel(new Date(2026, 3, 20))).toBe('4월4주차');
+  });
 });
 
 describe('getWeekOptions', () => {

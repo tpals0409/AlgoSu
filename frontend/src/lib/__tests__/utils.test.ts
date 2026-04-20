@@ -49,4 +49,19 @@ describe('getCurrentWeekLabel', () => {
   it('6월 15일은 6월3주차를 반환한다', () => {
     expect(getCurrentWeekLabel(new Date(2025, 5, 15))).toBe('6월3주차');
   });
+
+  it('2026년 4월 20일(월)은 4월4주차를 반환한다 (Sprint 99-5: 달력 기준 주차)', () => {
+    // 2026-04-01은 수요일(요일=3)이므로 ceil((20+3)/7)=4 → 4주차
+    expect(getCurrentWeekLabel(new Date(2026, 3, 20))).toBe('4월4주차');
+  });
+
+  it('2026년 4월 1일(수)은 4월1주차를 반환한다', () => {
+    // 1일이 속한 주가 항상 1주차
+    expect(getCurrentWeekLabel(new Date(2026, 3, 1))).toBe('4월1주차');
+  });
+
+  it('2026년 4월 5일(일)은 4월2주차를 반환한다', () => {
+    // 1일(수)~4일(토) = 1주차, 5일(일)부터 2주차
+    expect(getCurrentWeekLabel(new Date(2026, 3, 5))).toBe('4월2주차');
+  });
 });

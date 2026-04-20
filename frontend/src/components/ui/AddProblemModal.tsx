@@ -88,17 +88,25 @@ async function searchProgrammers(query: string): Promise<SolvedProblem[]> {
   }));
 }
 
-// ── 주차 계산 (단순 7일 구간) ─────────────────────────────────────────────────
+// ── 주차 계산 (달력 기준) ────────────────────────────────────────────────────
 
 const DOW_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 
-/** 현재 주차부터 이후 주차만 표시 (현재 월 + 다음달 1주차) */
+/**
+ * 현재 주차부터 이후 주차만 표시 (현재 월 + 다음달 1주차).
+ *
+ * 달력 기준 주차 계산:
+ * - 매월 1일이 속한 주가 1주차이며, 일요일(0)을 주 시작으로 간주합니다.
+ * - currentWeek = ceil((오늘일 + firstDayOfWeek) / 7)
+ * - totalWeeks  = ceil((마지막일 + firstDayOfWeek) / 7)
+ */
 function generateWeekOptions(): string[] {
   const now = new Date();
   const month = now.getMonth() + 1;
-  const currentWeek = Math.ceil(now.getDate() / 7);
+  const firstDayOfWeek = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
+  const currentWeek = Math.ceil((now.getDate() + firstDayOfWeek) / 7);
   const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const totalWeeks = Math.ceil(lastDay / 7);
+  const totalWeeks = Math.ceil((lastDay + firstDayOfWeek) / 7);
   const options: string[] = [];
   for (let w = currentWeek; w <= totalWeeks; w++) {
     options.push(`${month}월${w}주차`);
@@ -108,7 +116,14 @@ function generateWeekOptions(): string[] {
   return options;
 }
 
-/** 주차 문자열 → 해당 주의 날짜 목록 (단순 7일 구간, KST 23:59:59) */
+/**
+ * 주차 문자열 → 해당 주의 날짜 목록 (달력 기준, KST 23:59:59).
+ *
+ * 주의 시작/끝은 1일의 요일 오프셋을 반영하여 계산합니다:
+ * - rawStart = (week - 1) * 7 - firstDayOfWeek + 1
+ * - rawEnd   = week * 7 - firstDayOfWeek
+ * 월 경계(1 ~ daysInMonth)로 clamp 합니다.
+ */
 function getWeekDates(weekStr: string): { label: string; value: string }[] {
   const match = weekStr.match(/(\d+)월(\d+)주차/);
   if (!match) return [];
@@ -117,10 +132,13 @@ function getWeekDates(weekStr: string): { label: string; value: string }[] {
   const now = new Date();
   const year = now.getFullYear();
   const adjustedYear = month < now.getMonth() + 1 && month === 1 ? year + 1 : year;
+  const firstDayOfWeek = new Date(adjustedYear, month - 1, 1).getDay();
   const daysInMonth = new Date(adjustedYear, month, 0).getDate();
 
-  const startDate = (week - 1) * 7 + 1;
-  const endDate = Math.min(week * 7, daysInMonth);
+  const rawStart = (week - 1) * 7 - firstDayOfWeek + 1;
+  const rawEnd = week * 7 - firstDayOfWeek;
+  const startDate = Math.max(1, rawStart);
+  const endDate = Math.min(daysInMonth, rawEnd);
 
   const dates: { label: string; value: string }[] = [];
   for (let d = startDate; d <= endDate; d++) {
