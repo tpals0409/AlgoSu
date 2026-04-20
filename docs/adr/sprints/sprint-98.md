@@ -99,11 +99,24 @@ Tests:       754 passed, 754 total  (programmers 관련 43건 포함)
 - `programmers.service.spec.ts`: 기존 `loadFromFile` → `fetchProblem` 성공 검증으로 충분
 - `cache.size > 0` 검증은 `fetchProblem(42840)` 성공으로 동치 → 신규 테스트 불필요
 
+### E2E 테스트 (programmers-full-flow.spec.ts)
+
+```
+Test Suites: 1 passed, 1 total
+Tests:       13 passed, 13 total
+  [A] GitHub Worker 파일 경로 생성 — 4건 PASS
+  [B] MQ 이벤트 계약 sourcePlatform 검증 — 4건 PASS
+  [C] AI 프롬프트 플랫폼 맥락 주입 — 3건 PASS (Python 3.9.6 로컬: empty-pass, CI Python 3.12에서 완전 실행)
+  [D] 외부 API 격리 검증 — 2건 PASS
+```
+
 ### 타입/린트
 
 ```
 tsc --noEmit: PASS (오류 없음)
-eslint: 기존 pre-existing 경고 6건 (programmers 수정과 무관)
+eslint: 0 errors, 6 warnings (pre-existing, programmers 수정과 무관)
+  - structured-logger.service.ts: _t, _r unused vars
+  - public-profile.controller.spec.ts, public-share.controller.spec.ts: fetch/모킹 unused vars
 ```
 
 ## 회귀 방지
