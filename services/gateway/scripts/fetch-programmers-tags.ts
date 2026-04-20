@@ -20,7 +20,7 @@
 
 import { chromium } from 'playwright';
 import type { Page } from 'playwright';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, copyFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
 
@@ -65,8 +65,14 @@ const DELAY_MAX_MS = 500;
 const MAX_RETRIES_PER_ITEM = 3;
 const BACKOFF_BASE_MS = 1_000;
 
-/** 드라이런 샘플 ID — 모의고사(42840), 폰켓몬(1845), 2016년(12901) */
-const DRY_RUN_SAMPLE_IDS: number[] = [42840, 1845, 12901];
+/**
+ * 드라이런 샘플 ID.
+ * 기본 3건 + Sprint 97 B1-refix 노이즈 검증용 2건
+ *   - 42840 (모의고사), 1845 (폰켓몬), 12901 (2016년)
+ *   - 388351 (유연근무제) — '도움말' 노이즈 케이스 검증
+ *   - 388352 (비밀 코드 해독) — '컴파일 옵션' 노이즈 케이스 검증
+ */
+const DRY_RUN_SAMPLE_IDS: number[] = [42840, 1845, 12901, 388351, 388352];
 
 /**
  * breadcrumb 셀렉터 우선순위 목록.
@@ -83,16 +89,27 @@ const BREADCRUMB_SELECTORS = [
 ] as const;
 
 /**
- * tags에서 제외할 최상위 범주 키워드.
- * 모든 문제에 공통으로 붙는 대분류(사이트 네비게이션)라 유의미한 태그가 아님.
+ * tags에서 제외할 키워드 목록.
+ * - 최상위 네비게이션 범주: 모든 문제에 공통으로 붙는 사이트 대분류
+ * - UI 라벨 노이즈 (Sprint 97 B1-refix): 사이드 메뉴·탭·버튼 라벨이 breadcrumb로 오인 추출됨
+ *
+ * 필터링: normalize(trim + toLowerCase) 후 includes 매칭
  */
-const SKIP_KEYWORDS = [
+const SKIP_KEYWORDS: readonly string[] = [
+  // 최상위 네비게이션
   '코딩테스트 연습',
   '코딩테스트',
-  'Programmers',
+  'programmers',
   '프로그래머스',
-  'Home',
+  'home',
   '홈',
+  // UI 라벨 노이즈 (B1-refix)
+  '도움말',
+  '컴파일 옵션',
+  '컴파일옵션',
+  '전체보기',
+  '로그인',
+  '마이페이지',
 ];
 
 // ═══════════════════════════════════════════════════════════
@@ -132,9 +149,13 @@ function exponentialBackoff(attempt: number): Promise<void> {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
 
-/** 최상위 범주 네비게이션 텍스트 여부 판별 */
+/**
+ * UI 노이즈 또는 최상위 네비게이션 텍스트 여부 판별.
+ * trim + toLowerCase 정규화 후 SKIP_KEYWORDS includes 매칭.
+ */
 function isSkippable(text: string): boolean {
-  return SKIP_KEYWORDS.some((kw) => text.includes(kw));
+  const normalized = text.trim().toLowerCase();
+  return SKIP_KEYWORDS.some((kw) => normalized.includes(kw.toLowerCase()));
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -268,9 +289,16 @@ function loadData(dataPath: string): RawEnvelope {
 
 /**
  * 갱신된 items를 JSON으로 저장한다.
- * version을 현재 ISO 타임스탬프로 갱신.
+ * 저장 전 기존 파일을 .bak으로 백업하고, version을 현재 ISO 타임스탬프로 갱신.
  */
 function saveData(dataPath: string, items: RawItem[]): void {
+  // 기존 파일 백업 (.bak)
+  const bakPath = `${dataPath}.bak`;
+  if (existsSync(dataPath)) {
+    copyFileSync(dataPath, bakPath);
+    sLog('info', '[BACKUP_DONE]', { bak: 'data/programmers-problems.json.bak' });
+  }
+
   const payload: RawEnvelope = {
     version: new Date().toISOString(),
     items,
@@ -306,12 +334,19 @@ function validateAllTags(items: RawItem[]): number[] {
 
 interface CollectResult {
   successCount: number;
+  /** 네트워크 오류·타임아웃으로 수집 자체가 실패한 항목 */
   failedIds: number[];
+  /** 셀렉터 전체 SKIP_KEYWORDS 정제 후 빈 결과 → '미분류' 폴백 적용된 항목 */
+  fallbackIds: number[];
 }
 
 /**
  * 대상 items를 순회하며 각 문제의 tags를 수집한다.
- * allItems를 in-place 갱신하고 성공/실패 통계를 반환한다.
+ * allItems를 in-place 갱신하고 성공/실패/폴백 통계를 반환한다.
+ *
+ * 빈 tags 처리 정책 (B1-refix):
+ *   - SKIP_KEYWORDS 정제 후 빈 결과 → '미분류' 폴백 + stderr 로그
+ *   - 폴백 항목도 저장 대상에 포함 (Zod tags.min(1) 통과)
  */
 async function collectTags(
   page: Page,
@@ -319,6 +354,7 @@ async function collectTags(
   allItems: RawItem[],
 ): Promise<CollectResult> {
   const failedIds: number[] = [];
+  const fallbackIds: number[] = [];
   let successCount = 0;
 
   for (let i = 0; i < targets.length; i++) {
@@ -338,8 +374,14 @@ async function collectTags(
           progress: `${i + 1}/${targets.length}`,
         });
       } else {
-        failedIds.push(target.problemId);
-        sLog('warn', '[NO_TAGS]', {
+        // 모든 셀렉터 SKIP_KEYWORDS 정제 후 빈 결과 → '미분류' 폴백
+        const fallbackTags = ['미분류'];
+        const idx = allItems.findIndex((it) => it.problemId === target.problemId);
+        if (idx !== -1) allItems[idx] = { ...allItems[idx], tags: fallbackTags };
+        fallbackIds.push(target.problemId);
+        successCount++;
+        sErr('[FALLBACK_TAGS]', {
+          message: '셀렉터 전체 정제 후 빈 결과 → 미분류 폴백 적용',
           problemId: target.problemId,
           title: target.title,
           progress: `${i + 1}/${targets.length}`,
@@ -356,7 +398,7 @@ async function collectTags(
     if (i < targets.length - 1) await randomDelay();
   }
 
-  return { successCount, failedIds };
+  return { successCount, failedIds, fallbackIds };
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -394,7 +436,7 @@ async function createBrowserPage(): Promise<{
 
 /**
  * tags 2차 패스 크롤러 진입점.
- * --dry-run 플래그 시 샘플 3건(42840, 1845, 12901)만 처리하고 JSON 저장을 건너뛴다.
+ * --dry-run 플래그 시 샘플 5건(42840, 1845, 12901, 388351, 388352)만 처리하고 JSON 저장을 건너뛴다.
  */
 async function main(): Promise<void> {
   const isDryRun = process.argv.includes('--dry-run');
@@ -437,6 +479,8 @@ async function main(): Promise<void> {
   sLog('info', '[CRAWL_DONE]', {
     success: result.successCount,
     failed: result.failedIds.length,
+    fallback: result.fallbackIds.length,
+    fallbackIds: result.fallbackIds,
     elapsedMs: Date.now() - t0,
     dryRun: isDryRun,
   });
@@ -448,6 +492,7 @@ async function main(): Promise<void> {
       .map((it) => ({ problemId: it.problemId, title: it.title, tags: it.tags }));
     sLog('info', '[DRY_RUN_COMPLETE]', {
       note: 'JSON 저장 건너뜀 (--dry-run 모드)',
+      fallbackIds: result.fallbackIds,
       results: samples,
     });
     return;
