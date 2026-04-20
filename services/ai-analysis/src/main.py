@@ -368,7 +368,9 @@ async def group_analysis(
         for sub in submissions
     ]
 
-    user_prompt = build_group_user_prompt(code_snippets, source_platform=req.source_platform)
+    user_prompt = build_group_user_prompt(
+        code_snippets, source_platform=req.source_platform
+    )
 
     try:
         message = claude.client.messages.create(

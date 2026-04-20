@@ -274,7 +274,9 @@ class ClaudeClient:
             raise CircuitBreakerOpenError("Circuit Breaker OPEN")
 
         try:
-            user_prompt = build_group_user_prompt(code_snippets, source_platform=source_platform)
+            user_prompt = build_group_user_prompt(
+                code_snippets, source_platform=source_platform
+            )
 
             message = self.client.messages.create(
                 model=MODEL_ID,

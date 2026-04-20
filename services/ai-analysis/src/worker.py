@@ -208,7 +208,9 @@ class AIAnalysisWorker:
             submission = self._get_submission(submission_id)
 
             # Claude 분석 -- 재시도 3회
-            result = self._analyze_with_retry(submission, source_platform=source_platform)
+            result = self._analyze_with_retry(
+                submission, source_platform=source_platform
+            )
 
             if result["status"] == "failed":
                 # 실패 시 Redis 카운터 차감 (비용 미차감)
