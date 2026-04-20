@@ -120,8 +120,9 @@ export const SAGA_STEP_CONFIG: Record<SagaStep, SagaStepConfig> = {
 
 export type SourcePlatform = 'BOJ' | 'PROGRAMMERS';
 
-/** 프로그래머스 레벨(1~5) 라벨 맵 */
+/** 프로그래머스 레벨(0~5) 라벨 맵 */
 export const PROGRAMMERS_LEVEL_LABELS: Record<number, string> = {
+  0: 'Lv.0',
   1: 'Lv.1',
   2: 'Lv.2',
   3: 'Lv.3',
