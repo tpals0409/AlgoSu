@@ -4,8 +4,9 @@
  * @layer script
  * @related programmers.service.ts, data/programmers-problems.json
  *
- * Playwright Chromium headless로 코딩테스트 연습 페이지(Lv.1~5)를 순회하여
+ * Playwright Chromium headless로 코딩테스트 연습 페이지(Lv.0~5)를 순회하여
  * 문제 메타데이터를 수집한다.
+ * Lv.0은 코딩기초트레이닝 문제 (challenges?levels=0)로, 동일 URL 구조에 포함된다.
  * 결과는 services/gateway/data/programmers-problems.json에 저장.
  *
  * 사전 준비: npx playwright install chromium
@@ -50,12 +51,14 @@ type ProblemItem = z.infer<typeof itemSchema>;
 const CHALLENGES_BASE = 'https://school.programmers.co.kr/learn/challenges';
 const LESSON_BASE =
   'https://school.programmers.co.kr/learn/courses/30/lessons';
-const LEVELS = [1, 2, 3, 4, 5] as const;
+// Sprint 98: 레벨 0(코딩기초트레이닝) 포함 — challenges?levels=0 동일 URL 구조 사용
+const LEVELS = [0, 1, 2, 3, 4, 5] as const;
 type Level = (typeof LEVELS)[number];
 
 const DELAY_MIN_MS = 300;
 const DELAY_MAX_MS = 500;
 const MAX_PAGES_PER_LEVEL = 100;
+// Lv.0 포함 후 총 예상 건수: 기존 373 + 코딩기초트레이닝(~200건 이상) = 600+ 목표
 const MIN_REQUIRED_COUNT = 600;
 /** 검증용 문제 ID — "모의고사" */
 const VERIFY_PROBLEM_ID = 42840;

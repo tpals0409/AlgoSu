@@ -269,6 +269,41 @@ describe('ProgrammersService', () => {
       expect(result.difficulty).toBeNull();
       expect(result.level).toBe(0);
     });
+
+    // Sprint 98: 레벨 0 크롤링 대상 포함 회귀 방지
+    // fetch-programmers-problems.ts LEVELS=[0,1,2,3,4,5] 확장 대응
+    it('Sprint 98 회귀 — 레벨 0(코딩기초트레이닝) 문제 봉투 형식 로드 + difficulty null', () => {
+      const mockLogger = {
+        setContext: jest.fn(),
+        log: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        debug: jest.fn(),
+      };
+      const svc = new ProgrammersService(mockLogger as never);
+      // 실제 코딩기초트레이닝 문제 ID 예시 (181901 = "문자열 출력하기")
+      const envelope = {
+        version: '2026-04-20T00:00:00.000Z',
+        items: [
+          {
+            problemId: 181901,
+            title: '문자열 출력하기',
+            level: 0,
+            tags: ['구현'],
+            sourceUrl:
+              'https://school.programmers.co.kr/learn/courses/30/lessons/181901',
+          },
+        ],
+      };
+      mockReadFileSync.mockReturnValue(JSON.stringify(envelope));
+      svc.loadFromFile('/lv0-envelope.json');
+
+      const result = svc.fetchProblem(181901);
+      expect(result.level).toBe(0);
+      expect(result.difficulty).toBeNull();
+      expect(result.title).toBe('문자열 출력하기');
+      expect(result.tags).toEqual(['구현']);
+    });
   });
 
   // ── searchProblem ───────────────────────────────────────────────────────────

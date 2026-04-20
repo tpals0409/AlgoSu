@@ -57,7 +57,7 @@ export type ProgrammersDifficulty =
 export interface ProgrammersProblemInfo {
   problemId: number;
   title: string;
-  /** 프로그래머스 레벨 1~5 */
+  /** 프로그래머스 레벨 0~5 (0 = 코딩기초트레이닝) */
   level: number;
   /** 5단계 컬러 토큰 재활용 (Lv.1=BRONZE … Lv.5=DIAMOND) */
   difficulty: ProgrammersDifficulty;
@@ -83,8 +83,8 @@ export interface ProgrammersSearchResult {
 const PAGE_SIZE = 10;
 
 /**
- * 프로그래머스 레벨(1~5)을 AlgoSu 난이도 토큰으로 변환.
- * 레벨 0 또는 미정 → null
+ * 프로그래머스 레벨(0~5)을 AlgoSu 난이도 토큰으로 변환.
+ * 레벨 0(코딩기초트레이닝) 또는 미정 → null (레벨 없음 취급, 기존 정책 유지)
  */
 function levelToDifficulty(level: number): ProgrammersDifficulty {
   const map: Record<number, ProgrammersDifficulty> = {
