@@ -2,8 +2,10 @@
  * @file 문제 생성/수정 폼 공통 유틸리티
  * @domain problem
  * @layer lib
- * @related ProblemCreatePage, ProblemEditPage
+ * @related ProblemCreatePage, ProblemEditPage, utils#getCurrentWeekLabel
  */
+
+import { getCurrentWeekLabel as getCurrentWeekLabelShared } from '@/lib/utils';
 
 // ─── TYPES ────────────────────────────────
 
@@ -44,24 +46,32 @@ export const textareaClass =
 // ─── HELPERS ──────────────────────────────
 
 /**
- * 현재 날짜 기준 "X월Y주차" 문자열 생성
+ * 현재 날짜 기준 "X월Y주차" 문자열 생성 (달력 기준).
+ *
+ * `lib/utils#getCurrentWeekLabel`을 재사용하여 DRY 원칙을 유지합니다.
+ * 매월 1일이 속한 주가 1주차이며, 요일 오프셋을 반영합니다.
+ *
  * @domain problem
  */
 export function getCurrentWeekLabel(date: Date = new Date()): string {
-  const month = date.getMonth() + 1;
-  const week = Math.ceil(date.getDate() / 7);
-  return `${month}월${week}주차`;
+  return getCurrentWeekLabelShared(date);
 }
 
 /**
- * 선택 가능한 주차 목록 생성
+ * 선택 가능한 주차 목록 생성 (달력 기준).
+ *
+ * 현재 월의 1주차부터 마지막 주차까지 + 다음 달 1주차를 포함합니다.
+ * 주차 총 개수는 `ceil((lastDay + firstDayOfWeek) / 7)`로 계산하여
+ * 달력상 실제로 존재하는 주 수를 반영합니다.
+ *
  * @domain problem
  */
 export function getWeekOptions(): string[] {
   const now = new Date();
   const month = now.getMonth() + 1;
+  const firstDayOfWeek = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
   const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const totalWeeks = Math.ceil(lastDay / 7);
+  const totalWeeks = Math.ceil((lastDay + firstDayOfWeek) / 7);
   const options: string[] = [];
   for (let w = 1; w <= totalWeeks; w++) {
     options.push(`${month}월${w}주차`);
@@ -72,7 +82,13 @@ export function getWeekOptions(): string[] {
 }
 
 /**
- * 주차 문자열에서 해당 주의 날짜 목록 반환
+ * 주차 문자열에서 해당 주의 날짜 목록 반환 (달력 기준).
+ *
+ * 달력상 주는 일요일(0)부터 시작하며, 1주차는 해당 월 1일을 포함하는 주입니다.
+ * - rawStart = (week - 1) * 7 - firstDayOfWeek + 1
+ * - rawEnd   = week * 7 - firstDayOfWeek
+ * 월의 경계를 넘지 않도록 1 ~ daysInMonth 범위로 clamp 합니다.
+ *
  * @domain problem
  */
 export function getWeekDates(weekLabel: string): { label: string; value: string }[] {
@@ -84,9 +100,12 @@ export function getWeekDates(weekLabel: string): { label: string; value: string 
   const year = now.getFullYear();
   const adjustedYear = month < now.getMonth() + 1 && month === 1 ? year + 1 : year;
 
-  const startDay = (week - 1) * 7 + 1;
-  const lastDay = new Date(adjustedYear, month, 0).getDate();
-  const endDay = Math.min(week * 7, lastDay);
+  const firstDayOfWeek = new Date(adjustedYear, month - 1, 1).getDay();
+  const daysInMonth = new Date(adjustedYear, month, 0).getDate();
+  const rawStart = (week - 1) * 7 - firstDayOfWeek + 1;
+  const rawEnd = week * 7 - firstDayOfWeek;
+  const startDay = Math.max(1, rawStart);
+  const endDay = Math.min(daysInMonth, rawEnd);
 
   const dates: { label: string; value: string }[] = [];
   for (let d = startDay; d <= endDay; d++) {
