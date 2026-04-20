@@ -45,6 +45,8 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
 
   private readonly aiAnalysisServiceUrl: string;
   private readonly aiAnalysisInternalKey: string;
+  private readonly problemServiceUrl: string;
+  private readonly problemServiceKey: string;
 
   constructor(
     @InjectRepository(Submission)
@@ -61,6 +63,11 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
     this.aiAnalysisInternalKey = this.configService.getOrThrow<string>(
       'INTERNAL_KEY_AI_ANALYSIS',
     );
+    this.problemServiceUrl = this.configService.get<string>(
+      'PROBLEM_SERVICE_URL',
+      'http://problem-service:3002',
+    );
+    this.problemServiceKey = this.configService.get<string>('PROBLEM_SERVICE_KEY', '');
   }
 
   /**
@@ -214,14 +221,67 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
+    const sourcePlatform = await this.fetchSourcePlatform(
+      submission.problemId,
+      submission.studyId,
+      submission.userId,
+    );
+
     await this.mqPublisher.publishAiAnalysis({
       submissionId,
       studyId: submission.studyId,
       userId: submission.userId,
+      sourcePlatform,
       timestamp: new Date().toISOString(),
     });
 
     this.logger.log(`Saga Step 3 진입: submissionId=${submissionId}, step=AI_QUEUED`);
+  }
+
+  /**
+   * Problem Service에서 sourcePlatform 조회
+   *
+   * 조회 실패 시 undefined 반환 (AI 분석은 계속 진행)
+   *
+   * @param problemId 문제 ID
+   * @param studyId 스터디 ID
+   * @param userId 사용자 ID
+   * @returns sourcePlatform 문자열 또는 undefined
+   */
+  private async fetchSourcePlatform(
+    problemId: string,
+    studyId: string,
+    userId: string,
+  ): Promise<string | undefined> {
+    try {
+      const resp = await fetch(
+        `${this.problemServiceUrl}/internal/${problemId}`,
+        {
+          headers: {
+            'x-internal-key': this.problemServiceKey,
+            'x-study-id': studyId,
+            'x-user-id': userId,
+            'Content-Type': 'application/json',
+          },
+          signal: AbortSignal.timeout(5_000),
+        },
+      );
+
+      if (!resp.ok) {
+        this.logger.warn(
+          `sourcePlatform 조회 실패: problemId=${problemId}, status=${resp.status}`,
+        );
+        return undefined;
+      }
+
+      const body = (await resp.json()) as { data: { sourcePlatform?: string } };
+      return body.data.sourcePlatform || undefined;
+    } catch (error: unknown) {
+      this.logger.warn(
+        `sourcePlatform 조회 예외: problemId=${problemId}, error=${(error as Error).message}`,
+      );
+      return undefined;
+    }
   }
 
   /**
@@ -432,16 +492,23 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
           timestamp: new Date().toISOString(),
         });
         break;
-      case SagaStep.AI_QUEUED:
+      case SagaStep.AI_QUEUED: {
         // updatedAt 갱신 + retryCount 증가
         await this.submissionRepo.update(submission.id, { sagaRetryCount: retryCount });
+        const retrySrcPlatform = await this.fetchSourcePlatform(
+          submission.problemId,
+          submission.studyId,
+          submission.userId,
+        );
         await this.mqPublisher.publishAiAnalysis({
           submissionId: submission.id,
           studyId: submission.studyId,
           userId: submission.userId,
+          sourcePlatform: retrySrcPlatform,
           timestamp: new Date().toISOString(),
         });
         break;
+      }
       default:
         break;
     }

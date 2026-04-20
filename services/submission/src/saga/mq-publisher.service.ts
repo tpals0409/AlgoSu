@@ -30,6 +30,8 @@ interface SubmissionEvent {
   studyId: string;
   timestamp: string;
   userId?: string;
+  /** 문제 플랫폼 (예: 'BOJ', 'PROGRAMMERS') — AI 프롬프트 맥락 주입에 사용 */
+  sourcePlatform?: string;
 }
 
 @Injectable()
