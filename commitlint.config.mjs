@@ -20,6 +20,7 @@ export default {
         'gateway', 'identity', 'submission', 'problem',
         'github-worker', 'ai-analysis', 'frontend', 'blog',
         'infra', 'ci', 'docs', 'deps', 'security', 'adr',
+        'e2e', 'runbook',
       ],
     ],
     'scope-empty': [1, 'never'],
