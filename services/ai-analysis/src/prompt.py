@@ -85,11 +85,33 @@ JSON 스키마:
 }"""
 
 
+def _build_platform_context(source_platform: str | None) -> str:
+    """
+    플랫폼 맥락 한 줄 문자열 반환 (BOJ/PROGRAMMERS 외 None)
+
+    @domain ai
+    @param source_platform: 문제 플랫폼 식별자 (예: 'BOJ', 'PROGRAMMERS')
+    @returns: 프롬프트 선두에 prepend할 플랫폼 맥락 문자열
+    """
+    if source_platform == "BOJ":
+        return (
+            "이 문제는 백준(BOJ) 플랫폼 문제이며, "
+            "표준 입출력/시간복잡도 관점을 중심으로 분석하세요.\n"
+        )
+    if source_platform == "PROGRAMMERS":
+        return (
+            "이 문제는 프로그래머스 플랫폼 문제이며, "
+            "solution() 함수 시그니처·반환값·에지 케이스를 중심으로 분석하세요.\n"
+        )
+    return ""
+
+
 def build_user_prompt(
     code: str,
     language: str,
     problem_title: str = "",
     problem_description: str = "",
+    source_platform: str | None = None,
 ) -> str:
     """
     유저 프롬프트 생성
@@ -99,8 +121,11 @@ def build_user_prompt(
     @param language: 프로그래밍 언어
     @param problem_title: 문제 제목 (선택)
     @param problem_description: 문제 설명 (선택)
+    @param source_platform: 문제 플랫폼 (예: 'BOJ', 'PROGRAMMERS') — 맥락 주입용
     @returns: 포맷팅된 유저 프롬프트
     """
+    platform_context = _build_platform_context(source_platform)
+
     problem_section = ""
     if problem_title or problem_description:
         problem_section = f"""
@@ -109,7 +134,7 @@ def build_user_prompt(
 - 설명: {problem_description}
 """
 
-    return f"""다음 {language} 코드를 분석해주세요.
+    return f"""{platform_context}다음 {language} 코드를 분석해주세요.
 {problem_section}
 ```{language}
 {code}
@@ -134,14 +159,20 @@ JSON 스키마:
 }"""
 
 
-def build_group_user_prompt(code_snippets: list[dict]) -> str:
+def build_group_user_prompt(
+    code_snippets: list[dict],
+    source_platform: str | None = None,
+) -> str:
     """
     그룹 분석 유저 프롬프트 생성
 
     @domain ai
     @param code_snippets: [{language, userId, code}] 형태 리스트
+    @param source_platform: 문제 플랫폼 (예: 'BOJ', 'PROGRAMMERS') — 맥락 주입용
     @returns: 포맷팅된 그룹 분석 프롬프트
     """
+    platform_context = _build_platform_context(source_platform)
+
     parts = []
     for i, snippet in enumerate(code_snippets, 1):
         code_preview = snippet["code"][:500]
@@ -151,4 +182,4 @@ def build_group_user_prompt(code_snippets: list[dict]) -> str:
         )
 
     combined = "\n\n---\n\n".join(parts)
-    return f"다음은 같은 문제에 대한 여러 사용자의 제출 코드입니다:\n\n{combined}"
+    return f"{platform_context}다음은 같은 문제에 대한 여러 사용자의 제출 코드입니다:\n\n{combined}"

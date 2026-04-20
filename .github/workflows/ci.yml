@@ -878,6 +878,97 @@ jobs:
           echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
   # ============================================================
+  # E2E: Programmers Full Flow — sourcePlatform 전달 검증 (PR 병렬)
+  #
+  # 범위: GitHub Worker 파일 경로 + MQ 이벤트 계약 + AI 프롬프트 맥락
+  # 외부 의존: GitHub API(Octokit stub), Claude API(호출 없음) — 0건
+  # 실행: PR + push on main (path filter: tests/e2e/** | services/github-worker/** | services/ai-analysis/**)
+  # Python 3.12 사용: str|None 유니언 문법 지원
+  # ============================================================
+
+  e2e-programmers:
+    name: E2E — Programmers Full Flow
+    needs:
+      - detect-changes
+      - secret-scan
+    if: |
+      !cancelled() &&
+      needs.secret-scan.result == 'success' &&
+      (
+        needs.detect-changes.outputs.github-worker == 'true' ||
+        needs.detect-changes.outputs.ai-analysis == 'true' ||
+        github.event_name == 'pull_request'
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      # ── Node.js (GitHub Worker E2E 의존성 설치용) ──
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # ── Python 3.12 (AI 분석 프롬프트 subprocess 검증) ──
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache E2E node_modules
+        uses: actions/cache@v5
+        id: cache-e2e-node
+        with:
+          path: tests/e2e/node_modules
+          key: node-e2e-${{ hashFiles('tests/e2e/package-lock.json') }}
+          restore-keys: node-e2e-
+
+      - name: Cache github-worker node_modules
+        uses: actions/cache@v5
+        id: cache-gw-node
+        with:
+          path: services/github-worker/node_modules
+          key: node-github-worker-${{ hashFiles('services/github-worker/package-lock.json') }}
+          restore-keys: node-github-worker-
+
+      - name: Cache pip (ai-analysis)
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/pip
+          key: pip-e2e-${{ hashFiles('services/ai-analysis/requirements.txt') }}
+          restore-keys: pip-e2e-
+
+      - name: Install E2E dependencies
+        if: steps.cache-e2e-node.outputs.cache-hit != 'true'
+        working-directory: tests/e2e
+        run: npm ci
+
+      - name: Install github-worker dependencies
+        if: steps.cache-gw-node.outputs.cache-hit != 'true'
+        working-directory: services/github-worker
+        run: npm ci
+
+      - name: Install ai-analysis Python dependencies
+        working-directory: services/ai-analysis
+        run: pip install -r requirements.txt
+
+      - name: Run E2E — Programmers Full Flow
+        working-directory: tests/e2e
+        env:
+          NODE_ENV: test
+          PYTHON_BIN: python3
+        run: npm test -- --ci --verbose --no-coverage
+
+      - name: Upload test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-programmers-results
+          path: tests/e2e/
+          retention-days: 7
+
+  # ============================================================
   # E2E Test — 전체 서비스 통합 테스트 (수동 트리거 전용)
   #
   # workflow_dispatch로만 실행 가능.

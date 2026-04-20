@@ -248,18 +248,19 @@ export class GitHubPushService {
   }
 
   /**
-   * 플랫폼명 정규화
-   * 예: "백준" → "BOJ", "프로그래머스" → "Programmers"
+   * 플랫폼명 대문자 풀네임 정규화
+   * 예: "백준" → "BOJ", "프로그래머스" → "PROGRAMMERS"
+   * 파일명 규칙: {weekFolder}/{PLATFORM}_{problemNumber}_{title}.{ext}
    */
   private formatPlatform(platform: string): string {
     const map: Record<string, string> = {
       '백준': 'BOJ',
       'baekjoon': 'BOJ',
       'boj': 'BOJ',
-      '프로그래머스': 'Programmers',
-      'programmers': 'Programmers',
-      'leetcode': 'LeetCode',
-      'softeer': 'Softeer',
+      '프로그래머스': 'PROGRAMMERS',
+      'programmers': 'PROGRAMMERS',
+      'leetcode': 'LEETCODE',
+      'softeer': 'SOFTEER',
       'swea': 'SWEA',
     };
     return map[platform.toLowerCase()] ?? platform;

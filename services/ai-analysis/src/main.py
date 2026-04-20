@@ -289,6 +289,7 @@ class GroupAnalysisRequest(BaseModel):
     problem_id: str
     study_id: str
     user_id: str
+    source_platform: str | None = None
 
 
 @app.post("/group-analysis")
@@ -367,7 +368,9 @@ async def group_analysis(
         for sub in submissions
     ]
 
-    user_prompt = build_group_user_prompt(code_snippets)
+    user_prompt = build_group_user_prompt(
+        code_snippets, source_platform=req.source_platform
+    )
 
     try:
         message = claude.client.messages.create(

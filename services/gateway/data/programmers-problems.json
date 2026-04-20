@@ -1,0 +1,3362 @@
+{
+  "version": "2026-04-20T02:30:30.661Z",
+  "items": [
+    {
+      "problemId": 1845,
+      "title": "폰켓몬",
+      "level": 1,
+      "tags": [
+        "해시"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/1845"
+    },
+    {
+      "problemId": 12901,
+      "title": "2016년",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12901"
+    },
+    {
+      "problemId": 12903,
+      "title": "가운데 글자 가져오기",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12903"
+    },
+    {
+      "problemId": 12906,
+      "title": "같은 숫자는 싫어",
+      "level": 1,
+      "tags": [
+        "스택/큐"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12906"
+    },
+    {
+      "problemId": 12910,
+      "title": "나누어 떨어지는 숫자 배열",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12910"
+    },
+    {
+      "problemId": 12912,
+      "title": "두 정수 사이의 합",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12912"
+    },
+    {
+      "problemId": 12915,
+      "title": "문자열 내 마음대로 정렬하기",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12915"
+    },
+    {
+      "problemId": 12916,
+      "title": "문자열 내 p와 y의 개수",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12916"
+    },
+    {
+      "problemId": 12917,
+      "title": "문자열 내림차순으로 배치하기",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12917"
+    },
+    {
+      "problemId": 12918,
+      "title": "문자열 다루기 기본",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12918"
+    },
+    {
+      "problemId": 12919,
+      "title": "서울에서 김서방 찾기",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12919"
+    },
+    {
+      "problemId": 12921,
+      "title": "소수 찾기",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12921"
+    },
+    {
+      "problemId": 12922,
+      "title": "수박수박수박수박수박수?",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12922"
+    },
+    {
+      "problemId": 12925,
+      "title": "문자열을 정수로 바꾸기",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12925"
+    },
+    {
+      "problemId": 12926,
+      "title": "시저 암호",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12926"
+    },
+    {
+      "problemId": 12928,
+      "title": "약수의 합",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12928"
+    },
+    {
+      "problemId": 12930,
+      "title": "이상한 문자 만들기",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12930"
+    },
+    {
+      "problemId": 12931,
+      "title": "자릿수 더하기",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12931"
+    },
+    {
+      "problemId": 12932,
+      "title": "자연수 뒤집어 배열로 만들기",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12932"
+    },
+    {
+      "problemId": 12933,
+      "title": "정수 내림차순으로 배치하기",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12933"
+    },
+    {
+      "problemId": 12934,
+      "title": "정수 제곱근 판별",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12934"
+    },
+    {
+      "problemId": 12935,
+      "title": "제일 작은 수 제거하기",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12935"
+    },
+    {
+      "problemId": 12937,
+      "title": "짝수와 홀수",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12937"
+    },
+    {
+      "problemId": 12940,
+      "title": "최대공약수와 최소공배수",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12940"
+    },
+    {
+      "problemId": 12943,
+      "title": "콜라츠 추측",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12943"
+    },
+    {
+      "problemId": 12944,
+      "title": "평균 구하기",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12944"
+    },
+    {
+      "problemId": 12947,
+      "title": "하샤드 수",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12947"
+    },
+    {
+      "problemId": 12948,
+      "title": "핸드폰 번호 가리기",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12948"
+    },
+    {
+      "problemId": 12950,
+      "title": "행렬의 덧셈",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12950"
+    },
+    {
+      "problemId": 12954,
+      "title": "x만큼 간격이 있는 n개의 숫자",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12954"
+    },
+    {
+      "problemId": 12969,
+      "title": "직사각형 별찍기",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12969"
+    },
+    {
+      "problemId": 12977,
+      "title": "소수 만들기",
+      "level": 1,
+      "tags": [
+        "Summer/Winter Coding(~2018)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12977"
+    },
+    {
+      "problemId": 12982,
+      "title": "예산",
+      "level": 1,
+      "tags": [
+        "Summer/Winter Coding(~2018)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12982"
+    },
+    {
+      "problemId": 17681,
+      "title": "[1차] 비밀지도",
+      "level": 1,
+      "tags": [
+        "2018 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/17681"
+    },
+    {
+      "problemId": 17682,
+      "title": "[1차] 다트 게임",
+      "level": 1,
+      "tags": [
+        "2018 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/17682"
+    },
+    {
+      "problemId": 42576,
+      "title": "완주하지 못한 선수",
+      "level": 1,
+      "tags": [
+        "해시"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42576"
+    },
+    {
+      "problemId": 42748,
+      "title": "K번째수",
+      "level": 1,
+      "tags": [
+        "정렬"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42748"
+    },
+    {
+      "problemId": 42840,
+      "title": "모의고사",
+      "level": 1,
+      "tags": [
+        "완전탐색"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42840"
+    },
+    {
+      "problemId": 42862,
+      "title": "체육복",
+      "level": 1,
+      "tags": [
+        "탐욕법(Greedy)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42862"
+    },
+    {
+      "problemId": 42889,
+      "title": "실패율",
+      "level": 1,
+      "tags": [
+        "2019 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42889"
+    },
+    {
+      "problemId": 64061,
+      "title": "크레인 인형뽑기 게임",
+      "level": 1,
+      "tags": [
+        "2019 카카오 개발자 겨울 인턴십"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/64061"
+    },
+    {
+      "problemId": 67256,
+      "title": "키패드 누르기",
+      "level": 1,
+      "tags": [
+        "2020 카카오 인턴십"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/67256"
+    },
+    {
+      "problemId": 68644,
+      "title": "두 개 뽑아서 더하기",
+      "level": 1,
+      "tags": [
+        "월간 코드 챌린지 시즌1"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/68644"
+    },
+    {
+      "problemId": 68935,
+      "title": "3진법 뒤집기",
+      "level": 1,
+      "tags": [
+        "월간 코드 챌린지 시즌1"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/68935"
+    },
+    {
+      "problemId": 70128,
+      "title": "내적",
+      "level": 1,
+      "tags": [
+        "월간 코드 챌린지 시즌1"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/70128"
+    },
+    {
+      "problemId": 72410,
+      "title": "신규 아이디 추천",
+      "level": 1,
+      "tags": [
+        "2021 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/72410"
+    },
+    {
+      "problemId": 76501,
+      "title": "음양 더하기",
+      "level": 1,
+      "tags": [
+        "월간 코드 챌린지 시즌2"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/76501"
+    },
+    {
+      "problemId": 77484,
+      "title": "로또의 최고 순위와 최저 순위",
+      "level": 1,
+      "tags": [
+        "2021 Dev-Matching: 웹 백엔드 개발자(상반기)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/77484"
+    },
+    {
+      "problemId": 77884,
+      "title": "약수의 개수와 덧셈",
+      "level": 1,
+      "tags": [
+        "월간 코드 챌린지 시즌2"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/77884"
+    },
+    {
+      "problemId": 81301,
+      "title": "숫자 문자열과 영단어",
+      "level": 1,
+      "tags": [
+        "2021 카카오 채용연계형 인턴십"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/81301"
+    },
+    {
+      "problemId": 82612,
+      "title": "부족한 금액 계산하기",
+      "level": 1,
+      "tags": [
+        "위클리 챌린지"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/82612"
+    },
+    {
+      "problemId": 86051,
+      "title": "없는 숫자 더하기",
+      "level": 1,
+      "tags": [
+        "월간 코드 챌린지 시즌3"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/86051"
+    },
+    {
+      "problemId": 86491,
+      "title": "최소직사각형",
+      "level": 1,
+      "tags": [
+        "완전탐색"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/86491"
+    },
+    {
+      "problemId": 87389,
+      "title": "나머지가 1이 되는 수 찾기",
+      "level": 1,
+      "tags": [
+        "월간 코드 챌린지 시즌3"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/87389"
+    },
+    {
+      "problemId": 92334,
+      "title": "신고 결과 받기",
+      "level": 1,
+      "tags": [
+        "2022 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/92334"
+    },
+    {
+      "problemId": 118666,
+      "title": "성격 유형 검사하기",
+      "level": 1,
+      "tags": [
+        "2022 KAKAO TECH INTERNSHIP"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/118666"
+    },
+    {
+      "problemId": 131128,
+      "title": "숫자 짝꿍",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/131128"
+    },
+    {
+      "problemId": 131705,
+      "title": "삼총사",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/131705"
+    },
+    {
+      "problemId": 132267,
+      "title": "콜라 문제",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/132267"
+    },
+    {
+      "problemId": 133499,
+      "title": "옹알이 (2)",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/133499"
+    },
+    {
+      "problemId": 133502,
+      "title": "햄버거 만들기",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/133502"
+    },
+    {
+      "problemId": 134240,
+      "title": "푸드 파이트 대회",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/134240"
+    },
+    {
+      "problemId": 135808,
+      "title": "과일 장수",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/135808"
+    },
+    {
+      "problemId": 136798,
+      "title": "기사단원의 무기",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/136798"
+    },
+    {
+      "problemId": 138477,
+      "title": "명예의 전당 (1)",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/138477"
+    },
+    {
+      "problemId": 140108,
+      "title": "문자열 나누기",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/140108"
+    },
+    {
+      "problemId": 142086,
+      "title": "가장 가까운 같은 글자",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/142086"
+    },
+    {
+      "problemId": 147355,
+      "title": "크기가 작은 부분 문자열",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/147355"
+    },
+    {
+      "problemId": 150370,
+      "title": "개인정보 수집 유효기간",
+      "level": 1,
+      "tags": [
+        "2023 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/150370"
+    },
+    {
+      "problemId": 155652,
+      "title": "둘만의 암호",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/155652"
+    },
+    {
+      "problemId": 159994,
+      "title": "카드 뭉치",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/159994"
+    },
+    {
+      "problemId": 160586,
+      "title": "대충 만든 자판",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/160586"
+    },
+    {
+      "problemId": 161989,
+      "title": "덧칠하기",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/161989"
+    },
+    {
+      "problemId": 161990,
+      "title": "바탕화면 정리",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/161990"
+    },
+    {
+      "problemId": 172928,
+      "title": "공원 산책",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/172928"
+    },
+    {
+      "problemId": 176963,
+      "title": "추억 점수",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/176963"
+    },
+    {
+      "problemId": 178871,
+      "title": "달리기 경주",
+      "level": 1,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/178871"
+    },
+    {
+      "problemId": 250121,
+      "title": "[PCCE 기출문제] 10번 / 데이터 분석",
+      "level": 1,
+      "tags": [
+        "PCCE 기출문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/250121"
+    },
+    {
+      "problemId": 250125,
+      "title": "[PCCE 기출문제] 9번 / 이웃한 칸",
+      "level": 1,
+      "tags": [
+        "PCCE 기출문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/250125"
+    },
+    {
+      "problemId": 250137,
+      "title": "[PCCP 기출문제] 1번 / 붕대 감기",
+      "level": 1,
+      "tags": [
+        "PCCP 기출문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/250137"
+    },
+    {
+      "problemId": 258712,
+      "title": "가장 많이 받은 선물",
+      "level": 1,
+      "tags": [
+        "2024 KAKAO WINTER INTERNSHIP"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/258712"
+    },
+    {
+      "problemId": 276013,
+      "title": "Python 개발자 찾기",
+      "level": 1,
+      "tags": [
+        "SELECT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/276013"
+    },
+    {
+      "problemId": 293258,
+      "title": "잔챙이 잡은 수 구하기",
+      "level": 1,
+      "tags": [
+        "SELECT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/293258"
+    },
+    {
+      "problemId": 293259,
+      "title": "잡은 물고기의 평균 길이 구하기",
+      "level": 1,
+      "tags": [
+        "IS NULL"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/293259"
+    },
+    {
+      "problemId": 298515,
+      "title": "잡은 물고기 중 가장 큰 물고기의 길이 구하기",
+      "level": 1,
+      "tags": [
+        "SUM, MAX, MIN"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/298515"
+    },
+    {
+      "problemId": 298516,
+      "title": "한 해에 잡은 물고기 수 구하기",
+      "level": 1,
+      "tags": [
+        "String, Date"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/298516"
+    },
+    {
+      "problemId": 298517,
+      "title": "가장 큰 물고기 10마리 구하기",
+      "level": 1,
+      "tags": [
+        "SELECT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/298517"
+    },
+    {
+      "problemId": 301646,
+      "title": "특정 형질을 가지는 대장균 찾기",
+      "level": 1,
+      "tags": [
+        "SELECT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/301646"
+    },
+    {
+      "problemId": 340198,
+      "title": "[PCCE 기출문제] 10번 / 공원",
+      "level": 1,
+      "tags": [
+        "PCCE 기출문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/340198"
+    },
+    {
+      "problemId": 340199,
+      "title": "[PCCE 기출문제] 9번 / 지폐 접기",
+      "level": 1,
+      "tags": [
+        "PCCE 기출문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/340199"
+    },
+    {
+      "problemId": 340213,
+      "title": "[PCCP 기출문제] 1번 / 동영상 재생기",
+      "level": 1,
+      "tags": [
+        "PCCP 기출문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/340213"
+    },
+    {
+      "problemId": 388351,
+      "title": "유연근무제",
+      "level": 1,
+      "tags": [
+        "미분류"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/388351"
+    },
+    {
+      "problemId": 389478,
+      "title": "택배 상자 꺼내기",
+      "level": 1,
+      "tags": [
+        "미분류"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/389478"
+    },
+    {
+      "problemId": 468370,
+      "title": "중요한 단어를 스포 방지",
+      "level": 1,
+      "tags": [
+        "2025 카카오 하반기 1차"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/468370"
+    },
+    {
+      "problemId": 468371,
+      "title": "노란불 신호등",
+      "level": 1,
+      "tags": [
+        "2025 카카오 하반기 1차"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/468371"
+    },
+    {
+      "problemId": 1829,
+      "title": "카카오프렌즈 컬러링북",
+      "level": 2,
+      "tags": [
+        "2017 카카오코드 예선"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/1829"
+    },
+    {
+      "problemId": 1835,
+      "title": "단체사진 찍기",
+      "level": 2,
+      "tags": [
+        "2017 카카오코드 본선"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/1835"
+    },
+    {
+      "problemId": 1844,
+      "title": "게임 맵 최단거리",
+      "level": 2,
+      "tags": [
+        "깊이/너비 우선 탐색(DFS/BFS)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/1844"
+    },
+    {
+      "problemId": 12899,
+      "title": "124 나라의 숫자",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12899"
+    },
+    {
+      "problemId": 12900,
+      "title": "2 x n 타일링",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12900"
+    },
+    {
+      "problemId": 12902,
+      "title": "3 x n 타일링",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12902"
+    },
+    {
+      "problemId": 12905,
+      "title": "가장 큰 정사각형 찾기",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12905"
+    },
+    {
+      "problemId": 12909,
+      "title": "올바른 괄호",
+      "level": 2,
+      "tags": [
+        "스택/큐"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12909"
+    },
+    {
+      "problemId": 12911,
+      "title": "다음 큰 숫자",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12911"
+    },
+    {
+      "problemId": 12913,
+      "title": "땅따먹기",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12913"
+    },
+    {
+      "problemId": 12914,
+      "title": "멀리 뛰기",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12914"
+    },
+    {
+      "problemId": 12923,
+      "title": "숫자 블록",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12923"
+    },
+    {
+      "problemId": 12924,
+      "title": "숫자의 표현",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12924"
+    },
+    {
+      "problemId": 12936,
+      "title": "줄 서는 방법",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12936"
+    },
+    {
+      "problemId": 12939,
+      "title": "최댓값과 최솟값",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12939"
+    },
+    {
+      "problemId": 12941,
+      "title": "최솟값 만들기",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12941"
+    },
+    {
+      "problemId": 12945,
+      "title": "피보나치 수",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12945"
+    },
+    {
+      "problemId": 12946,
+      "title": "하노이의 탑",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12946"
+    },
+    {
+      "problemId": 12949,
+      "title": "행렬의 곱셈",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12949"
+    },
+    {
+      "problemId": 12951,
+      "title": "JadenCase 문자열 만들기",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12951"
+    },
+    {
+      "problemId": 12952,
+      "title": "N-Queen",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12952"
+    },
+    {
+      "problemId": 12953,
+      "title": "N개의 최소공배수",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12953"
+    },
+    {
+      "problemId": 12973,
+      "title": "짝지어 제거하기",
+      "level": 2,
+      "tags": [
+        "2017 팁스타운"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12973"
+    },
+    {
+      "problemId": 12978,
+      "title": "배달",
+      "level": 2,
+      "tags": [
+        "Summer/Winter Coding(~2018)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12978"
+    },
+    {
+      "problemId": 12980,
+      "title": "점프와 순간 이동",
+      "level": 2,
+      "tags": [
+        "Summer/Winter Coding(~2018)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12980"
+    },
+    {
+      "problemId": 12981,
+      "title": "영어 끝말잇기",
+      "level": 2,
+      "tags": [
+        "Summer/Winter Coding(~2018)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12981"
+    },
+    {
+      "problemId": 12985,
+      "title": "예상 대진표",
+      "level": 2,
+      "tags": [
+        "2017 팁스타운"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12985"
+    },
+    {
+      "problemId": 17677,
+      "title": "[1차] 뉴스 클러스터링",
+      "level": 2,
+      "tags": [
+        "2018 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/17677"
+    },
+    {
+      "problemId": 17679,
+      "title": "[1차] 프렌즈4블록",
+      "level": 2,
+      "tags": [
+        "2018 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/17679"
+    },
+    {
+      "problemId": 17680,
+      "title": "[1차] 캐시",
+      "level": 2,
+      "tags": [
+        "2018 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/17680"
+    },
+    {
+      "problemId": 17683,
+      "title": "[3차] 방금그곡",
+      "level": 2,
+      "tags": [
+        "2018 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/17683"
+    },
+    {
+      "problemId": 17684,
+      "title": "[3차] 압축",
+      "level": 2,
+      "tags": [
+        "2018 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/17684"
+    },
+    {
+      "problemId": 17686,
+      "title": "[3차] 파일명 정렬",
+      "level": 2,
+      "tags": [
+        "2018 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/17686"
+    },
+    {
+      "problemId": 17687,
+      "title": "[3차] n진수 게임",
+      "level": 2,
+      "tags": [
+        "2018 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/17687"
+    },
+    {
+      "problemId": 42577,
+      "title": "전화번호 목록",
+      "level": 2,
+      "tags": [
+        "해시"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42577"
+    },
+    {
+      "problemId": 42578,
+      "title": "의상",
+      "level": 2,
+      "tags": [
+        "해시"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42578"
+    },
+    {
+      "problemId": 42583,
+      "title": "다리를 지나는 트럭",
+      "level": 2,
+      "tags": [
+        "스택/큐"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42583"
+    },
+    {
+      "problemId": 42584,
+      "title": "주식가격",
+      "level": 2,
+      "tags": [
+        "스택/큐"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42584"
+    },
+    {
+      "problemId": 42586,
+      "title": "기능개발",
+      "level": 2,
+      "tags": [
+        "스택/큐"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42586"
+    },
+    {
+      "problemId": 42587,
+      "title": "프로세스",
+      "level": 2,
+      "tags": [
+        "스택/큐"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42587"
+    },
+    {
+      "problemId": 42626,
+      "title": "더 맵게",
+      "level": 2,
+      "tags": [
+        "힙(Heap)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42626"
+    },
+    {
+      "problemId": 42746,
+      "title": "가장 큰 수",
+      "level": 2,
+      "tags": [
+        "정렬"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42746"
+    },
+    {
+      "problemId": 42747,
+      "title": "H-Index",
+      "level": 2,
+      "tags": [
+        "정렬"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42747"
+    },
+    {
+      "problemId": 42839,
+      "title": "소수 찾기",
+      "level": 2,
+      "tags": [
+        "완전탐색"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42839"
+    },
+    {
+      "problemId": 42842,
+      "title": "카펫",
+      "level": 2,
+      "tags": [
+        "완전탐색"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42842"
+    },
+    {
+      "problemId": 42860,
+      "title": "조이스틱",
+      "level": 2,
+      "tags": [
+        "탐욕법(Greedy)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42860"
+    },
+    {
+      "problemId": 42883,
+      "title": "큰 수 만들기",
+      "level": 2,
+      "tags": [
+        "탐욕법(Greedy)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42883"
+    },
+    {
+      "problemId": 42885,
+      "title": "구명보트",
+      "level": 2,
+      "tags": [
+        "탐욕법(Greedy)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42885"
+    },
+    {
+      "problemId": 42888,
+      "title": "오픈채팅방",
+      "level": 2,
+      "tags": [
+        "2019 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42888"
+    },
+    {
+      "problemId": 42890,
+      "title": "후보키",
+      "level": 2,
+      "tags": [
+        "2019 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42890"
+    },
+    {
+      "problemId": 43165,
+      "title": "타겟 넘버",
+      "level": 2,
+      "tags": [
+        "깊이/너비 우선 탐색(DFS/BFS)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/43165"
+    },
+    {
+      "problemId": 49993,
+      "title": "스킬트리",
+      "level": 2,
+      "tags": [
+        "Summer/Winter Coding(~2018)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/49993"
+    },
+    {
+      "problemId": 49994,
+      "title": "방문 길이",
+      "level": 2,
+      "tags": [
+        "Summer/Winter Coding(~2018)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/49994"
+    },
+    {
+      "problemId": 60057,
+      "title": "문자열 압축",
+      "level": 2,
+      "tags": [
+        "2020 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/60057"
+    },
+    {
+      "problemId": 60058,
+      "title": "괄호 변환",
+      "level": 2,
+      "tags": [
+        "2020 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/60058"
+    },
+    {
+      "problemId": 62048,
+      "title": "멀쩡한 사각형",
+      "level": 2,
+      "tags": [
+        "Summer/Winter Coding(2019)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/62048"
+    },
+    {
+      "problemId": 64065,
+      "title": "튜플",
+      "level": 2,
+      "tags": [
+        "2019 카카오 개발자 겨울 인턴십"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/64065"
+    },
+    {
+      "problemId": 67257,
+      "title": "수식 최대화",
+      "level": 2,
+      "tags": [
+        "2020 카카오 인턴십"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/67257"
+    },
+    {
+      "problemId": 68645,
+      "title": "삼각 달팽이",
+      "level": 2,
+      "tags": [
+        "월간 코드 챌린지 시즌1"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/68645"
+    },
+    {
+      "problemId": 68936,
+      "title": "쿼드압축 후 개수 세기",
+      "level": 2,
+      "tags": [
+        "월간 코드 챌린지 시즌1"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/68936"
+    },
+    {
+      "problemId": 70129,
+      "title": "이진 변환 반복하기",
+      "level": 2,
+      "tags": [
+        "월간 코드 챌린지 시즌1"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/70129"
+    },
+    {
+      "problemId": 72411,
+      "title": "메뉴 리뉴얼",
+      "level": 2,
+      "tags": [
+        "2021 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/72411"
+    },
+    {
+      "problemId": 72412,
+      "title": "순위 검색",
+      "level": 2,
+      "tags": [
+        "2021 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/72412"
+    },
+    {
+      "problemId": 76502,
+      "title": "괄호 회전하기",
+      "level": 2,
+      "tags": [
+        "월간 코드 챌린지 시즌2"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/76502"
+    },
+    {
+      "problemId": 77485,
+      "title": "행렬 테두리 회전하기",
+      "level": 2,
+      "tags": [
+        "2021 Dev-Matching: 웹 백엔드 개발자(상반기)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/77485"
+    },
+    {
+      "problemId": 77885,
+      "title": "2개 이하로 다른 비트",
+      "level": 2,
+      "tags": [
+        "월간 코드 챌린지 시즌2"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/77885"
+    },
+    {
+      "problemId": 81302,
+      "title": "거리두기 확인하기",
+      "level": 2,
+      "tags": [
+        "2021 카카오 채용연계형 인턴십"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/81302"
+    },
+    {
+      "problemId": 84512,
+      "title": "모음사전",
+      "level": 2,
+      "tags": [
+        "완전탐색"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/84512"
+    },
+    {
+      "problemId": 86052,
+      "title": "빛의 경로 사이클",
+      "level": 2,
+      "tags": [
+        "월간 코드 챌린지 시즌3"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/86052"
+    },
+    {
+      "problemId": 86971,
+      "title": "전력망을 둘로 나누기",
+      "level": 2,
+      "tags": [
+        "완전탐색"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/86971"
+    },
+    {
+      "problemId": 87377,
+      "title": "교점에 별 만들기",
+      "level": 2,
+      "tags": [
+        "위클리 챌린지"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/87377"
+    },
+    {
+      "problemId": 87390,
+      "title": "n^2 배열 자르기",
+      "level": 2,
+      "tags": [
+        "월간 코드 챌린지 시즌3"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/87390"
+    },
+    {
+      "problemId": 87946,
+      "title": "피로도",
+      "level": 2,
+      "tags": [
+        "완전탐색"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/87946"
+    },
+    {
+      "problemId": 92335,
+      "title": "k진수에서 소수 개수 구하기",
+      "level": 2,
+      "tags": [
+        "2022 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/92335"
+    },
+    {
+      "problemId": 92341,
+      "title": "주차 요금 계산",
+      "level": 2,
+      "tags": [
+        "2022 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/92341"
+    },
+    {
+      "problemId": 92342,
+      "title": "양궁대회",
+      "level": 2,
+      "tags": [
+        "2022 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/92342"
+    },
+    {
+      "problemId": 118667,
+      "title": "두 큐 합 같게 만들기",
+      "level": 2,
+      "tags": [
+        "2022 KAKAO TECH INTERNSHIP"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/118667"
+    },
+    {
+      "problemId": 131127,
+      "title": "할인 행사",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/131127"
+    },
+    {
+      "problemId": 131130,
+      "title": "혼자 놀기의 달인",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/131130"
+    },
+    {
+      "problemId": 131701,
+      "title": "연속 부분 수열 합의 개수",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/131701"
+    },
+    {
+      "problemId": 131704,
+      "title": "택배상자",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/131704"
+    },
+    {
+      "problemId": 132265,
+      "title": "롤케이크 자르기",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/132265"
+    },
+    {
+      "problemId": 134239,
+      "title": "우박수열 정적분",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/134239"
+    },
+    {
+      "problemId": 135807,
+      "title": "숫자 카드 나누기",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/135807"
+    },
+    {
+      "problemId": 138476,
+      "title": "귤 고르기",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/138476"
+    },
+    {
+      "problemId": 140107,
+      "title": "점 찍기",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/140107"
+    },
+    {
+      "problemId": 142085,
+      "title": "디펜스 게임",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/142085"
+    },
+    {
+      "problemId": 147354,
+      "title": "테이블 해시 함수",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/147354"
+    },
+    {
+      "problemId": 148652,
+      "title": "유사 칸토어 비트열",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/148652"
+    },
+    {
+      "problemId": 148653,
+      "title": "마법의 엘리베이터",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/148653"
+    },
+    {
+      "problemId": 150368,
+      "title": "이모티콘 할인행사",
+      "level": 2,
+      "tags": [
+        "2023 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/150368"
+    },
+    {
+      "problemId": 150369,
+      "title": "택배 배달과 수거하기",
+      "level": 2,
+      "tags": [
+        "2023 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/150369"
+    },
+    {
+      "problemId": 152996,
+      "title": "시소 짝꿍",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/152996"
+    },
+    {
+      "problemId": 154538,
+      "title": "숫자 변환하기",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/154538"
+    },
+    {
+      "problemId": 154539,
+      "title": "뒤에 있는 큰 수 찾기",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/154539"
+    },
+    {
+      "problemId": 154540,
+      "title": "무인도 여행",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/154540"
+    },
+    {
+      "problemId": 155651,
+      "title": "호텔 대실",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/155651"
+    },
+    {
+      "problemId": 159993,
+      "title": "미로 탈출",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/159993"
+    },
+    {
+      "problemId": 160585,
+      "title": "혼자서 하는 틱택토",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/160585"
+    },
+    {
+      "problemId": 169198,
+      "title": "당구 연습",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/169198"
+    },
+    {
+      "problemId": 169199,
+      "title": "리코쳇 로봇",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/169199"
+    },
+    {
+      "problemId": 172927,
+      "title": "광물 캐기",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/172927"
+    },
+    {
+      "problemId": 176962,
+      "title": "과제 진행하기",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/176962"
+    },
+    {
+      "problemId": 178870,
+      "title": "연속된 부분 수열의 합",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/178870"
+    },
+    {
+      "problemId": 181187,
+      "title": "두 원 사이의 정수 쌍",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/181187"
+    },
+    {
+      "problemId": 181188,
+      "title": "요격 시스템",
+      "level": 2,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/181188"
+    },
+    {
+      "problemId": 250135,
+      "title": "[PCCP 기출문제] 3번 / 아날로그 시계",
+      "level": 2,
+      "tags": [
+        "PCCP 기출문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/250135"
+    },
+    {
+      "problemId": 250136,
+      "title": "[PCCP 기출문제] 2번 / 석유 시추",
+      "level": 2,
+      "tags": [
+        "PCCP 기출문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/250136"
+    },
+    {
+      "problemId": 258711,
+      "title": "도넛과 막대 그래프",
+      "level": 2,
+      "tags": [
+        "2024 KAKAO WINTER INTERNSHIP"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/258711"
+    },
+    {
+      "problemId": 273709,
+      "title": "조건에 맞는 아이템들의 가격의 총합 구하기",
+      "level": 2,
+      "tags": [
+        "SUM, MAX, MIN"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/273709"
+    },
+    {
+      "problemId": 273710,
+      "title": "ROOT 아이템 구하기",
+      "level": 2,
+      "tags": [
+        "IS NULL"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/273710"
+    },
+    {
+      "problemId": 273711,
+      "title": "업그레이드 된 아이템 구하기",
+      "level": 2,
+      "tags": [
+        "SELECT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/273711"
+    },
+    {
+      "problemId": 276034,
+      "title": "조건에 맞는 개발자 찾기",
+      "level": 2,
+      "tags": [
+        "SELECT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/276034"
+    },
+    {
+      "problemId": 284527,
+      "title": "조건에 맞는 사원 정보 조회하기",
+      "level": 2,
+      "tags": [
+        "GROUP BY"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/284527"
+    },
+    {
+      "problemId": 284530,
+      "title": "연도 별 평균 미세먼지 농도 조회하기",
+      "level": 2,
+      "tags": [
+        "String, Date"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/284530"
+    },
+    {
+      "problemId": 284531,
+      "title": "노선별 평균 역 사이 거리 조회하기",
+      "level": 2,
+      "tags": [
+        "GROUP BY"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/284531"
+    },
+    {
+      "problemId": 293257,
+      "title": "물고기 종류 별 잡은 수 구하기",
+      "level": 2,
+      "tags": [
+        "GROUP BY"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/293257"
+    },
+    {
+      "problemId": 293260,
+      "title": "월별 잡은 물고기 수 구하기",
+      "level": 2,
+      "tags": [
+        "GROUP BY"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/293260"
+    },
+    {
+      "problemId": 298518,
+      "title": "특정 물고기를 잡은 총 수 구하기",
+      "level": 2,
+      "tags": [
+        "SELECT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/298518"
+    },
+    {
+      "problemId": 299308,
+      "title": "분기별 분화된 대장균의 개체 수 구하기",
+      "level": 2,
+      "tags": [
+        "String, Date"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/299308"
+    },
+    {
+      "problemId": 299310,
+      "title": "연도별 대장균 크기의 편차 구하기",
+      "level": 2,
+      "tags": [
+        "SUM, MAX, MIN"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/299310"
+    },
+    {
+      "problemId": 301647,
+      "title": "부모의 형질을 모두 가지는 대장균 찾기",
+      "level": 2,
+      "tags": [
+        "SELECT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/301647"
+    },
+    {
+      "problemId": 340211,
+      "title": "[PCCP 기출문제] 3번 / 충돌위험 찾기",
+      "level": 2,
+      "tags": [
+        "PCCP 기출문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/340211"
+    },
+    {
+      "problemId": 340212,
+      "title": "[PCCP 기출문제] 2번 / 퍼즐 게임 챌린지",
+      "level": 2,
+      "tags": [
+        "PCCP 기출문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/340212"
+    },
+    {
+      "problemId": 388352,
+      "title": "비밀 코드 해독",
+      "level": 2,
+      "tags": [
+        "미분류"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/388352"
+    },
+    {
+      "problemId": 388353,
+      "title": "지게차와 크레인",
+      "level": 2,
+      "tags": [
+        "미분류"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/388353"
+    },
+    {
+      "problemId": 389479,
+      "title": "서버 증설 횟수",
+      "level": 2,
+      "tags": [
+        "미분류"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/389479"
+    },
+    {
+      "problemId": 389480,
+      "title": "완전범죄",
+      "level": 2,
+      "tags": [
+        "미분류"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/389480"
+    },
+    {
+      "problemId": 468372,
+      "title": "리프 노드 수 최대화",
+      "level": 2,
+      "tags": [
+        "2025 카카오 하반기 1차"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/468372"
+    },
+    {
+      "problemId": 468373,
+      "title": "바이러스 파이프",
+      "level": 2,
+      "tags": [
+        "2025 카카오 하반기 1차"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/468373"
+    },
+    {
+      "problemId": 468377,
+      "title": "힌트 스테이지",
+      "level": 2,
+      "tags": [
+        "2025 카카오 하반기 2차"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/468377"
+    },
+    {
+      "problemId": 468379,
+      "title": "선인장 숨기기",
+      "level": 2,
+      "tags": [
+        "2025 카카오 하반기 2차"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/468379"
+    },
+    {
+      "problemId": 1830,
+      "title": "브라이언의 고민",
+      "level": 3,
+      "tags": [
+        "2017 카카오코드 예선"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/1830"
+    },
+    {
+      "problemId": 1832,
+      "title": "보행자 천국",
+      "level": 3,
+      "tags": [
+        "2017 카카오코드 예선"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/1832"
+    },
+    {
+      "problemId": 1833,
+      "title": "캠핑",
+      "level": 3,
+      "tags": [
+        "2017 카카오코드 예선"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/1833"
+    },
+    {
+      "problemId": 1836,
+      "title": "리틀 프렌즈 사천성",
+      "level": 3,
+      "tags": [
+        "2017 카카오코드 본선"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/1836"
+    },
+    {
+      "problemId": 1837,
+      "title": "GPS",
+      "level": 3,
+      "tags": [
+        "2017 카카오코드 본선"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/1837"
+    },
+    {
+      "problemId": 1838,
+      "title": "몸짱 트레이너 라이언의 고민",
+      "level": 3,
+      "tags": [
+        "2017 카카오코드 본선"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/1838"
+    },
+    {
+      "problemId": 12904,
+      "title": "가장 긴 팰린드롬",
+      "level": 3,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12904"
+    },
+    {
+      "problemId": 12907,
+      "title": "거스름돈",
+      "level": 3,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12907"
+    },
+    {
+      "problemId": 12920,
+      "title": "선입 선출 스케줄링",
+      "level": 3,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12920"
+    },
+    {
+      "problemId": 12927,
+      "title": "야근 지수",
+      "level": 3,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12927"
+    },
+    {
+      "problemId": 12938,
+      "title": "최고의 집합",
+      "level": 3,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12938"
+    },
+    {
+      "problemId": 12942,
+      "title": "최적의 행렬 곱셈",
+      "level": 3,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12942"
+    },
+    {
+      "problemId": 12971,
+      "title": "스티커 모으기(2)",
+      "level": 3,
+      "tags": [
+        "Summer/Winter Coding(~2018)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12971"
+    },
+    {
+      "problemId": 12979,
+      "title": "기지국 설치",
+      "level": 3,
+      "tags": [
+        "Summer/Winter Coding(~2018)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12979"
+    },
+    {
+      "problemId": 12987,
+      "title": "숫자 게임",
+      "level": 3,
+      "tags": [
+        "Summer/Winter Coding(~2018)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12987"
+    },
+    {
+      "problemId": 17676,
+      "title": "[1차] 추석 트래픽",
+      "level": 3,
+      "tags": [
+        "2018 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/17676"
+    },
+    {
+      "problemId": 17678,
+      "title": "[1차] 셔틀버스",
+      "level": 3,
+      "tags": [
+        "2018 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/17678"
+    },
+    {
+      "problemId": 42579,
+      "title": "베스트앨범",
+      "level": 3,
+      "tags": [
+        "해시"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42579"
+    },
+    {
+      "problemId": 42627,
+      "title": "디스크 컨트롤러",
+      "level": 3,
+      "tags": [
+        "힙(Heap)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42627"
+    },
+    {
+      "problemId": 42628,
+      "title": "이중우선순위큐",
+      "level": 3,
+      "tags": [
+        "힙(Heap)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42628"
+    },
+    {
+      "problemId": 42861,
+      "title": "섬 연결하기",
+      "level": 3,
+      "tags": [
+        "탐욕법(Greedy)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42861"
+    },
+    {
+      "problemId": 42884,
+      "title": "단속카메라",
+      "level": 3,
+      "tags": [
+        "탐욕법(Greedy)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42884"
+    },
+    {
+      "problemId": 42892,
+      "title": "길 찾기 게임",
+      "level": 3,
+      "tags": [
+        "2019 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42892"
+    },
+    {
+      "problemId": 42893,
+      "title": "매칭 점수",
+      "level": 3,
+      "tags": [
+        "2019 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42893"
+    },
+    {
+      "problemId": 42895,
+      "title": "N으로 표현",
+      "level": 3,
+      "tags": [
+        "동적계획법(Dynamic Programming)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42895"
+    },
+    {
+      "problemId": 42898,
+      "title": "등굣길",
+      "level": 3,
+      "tags": [
+        "동적계획법(Dynamic Programming)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42898"
+    },
+    {
+      "problemId": 43105,
+      "title": "정수 삼각형",
+      "level": 3,
+      "tags": [
+        "동적계획법(Dynamic Programming)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/43105"
+    },
+    {
+      "problemId": 43162,
+      "title": "네트워크",
+      "level": 3,
+      "tags": [
+        "깊이/너비 우선 탐색(DFS/BFS)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/43162"
+    },
+    {
+      "problemId": 43163,
+      "title": "단어 변환",
+      "level": 3,
+      "tags": [
+        "깊이/너비 우선 탐색(DFS/BFS)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/43163"
+    },
+    {
+      "problemId": 43164,
+      "title": "여행경로",
+      "level": 3,
+      "tags": [
+        "깊이/너비 우선 탐색(DFS/BFS)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/43164"
+    },
+    {
+      "problemId": 43238,
+      "title": "입국심사",
+      "level": 3,
+      "tags": [
+        "이분탐색"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/43238"
+    },
+    {
+      "problemId": 49189,
+      "title": "가장 먼 노드",
+      "level": 3,
+      "tags": [
+        "그래프"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/49189"
+    },
+    {
+      "problemId": 49191,
+      "title": "순위",
+      "level": 3,
+      "tags": [
+        "그래프"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/49191"
+    },
+    {
+      "problemId": 60059,
+      "title": "자물쇠와 열쇠",
+      "level": 3,
+      "tags": [
+        "2020 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/60059"
+    },
+    {
+      "problemId": 60061,
+      "title": "기둥과 보 설치",
+      "level": 3,
+      "tags": [
+        "2020 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/60061"
+    },
+    {
+      "problemId": 60062,
+      "title": "외벽 점검",
+      "level": 3,
+      "tags": [
+        "2020 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/60062"
+    },
+    {
+      "problemId": 60063,
+      "title": "블록 이동하기",
+      "level": 3,
+      "tags": [
+        "2020 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/60063"
+    },
+    {
+      "problemId": 64062,
+      "title": "징검다리 건너기",
+      "level": 3,
+      "tags": [
+        "2019 카카오 개발자 겨울 인턴십"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/64062"
+    },
+    {
+      "problemId": 64064,
+      "title": "불량 사용자",
+      "level": 3,
+      "tags": [
+        "2019 카카오 개발자 겨울 인턴십"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/64064"
+    },
+    {
+      "problemId": 67258,
+      "title": "보석 쇼핑",
+      "level": 3,
+      "tags": [
+        "2020 카카오 인턴십"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/67258"
+    },
+    {
+      "problemId": 67259,
+      "title": "경주로 건설",
+      "level": 3,
+      "tags": [
+        "2020 카카오 인턴십"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/67259"
+    },
+    {
+      "problemId": 68646,
+      "title": "풍선 터트리기",
+      "level": 3,
+      "tags": [
+        "월간 코드 챌린지 시즌1"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/68646"
+    },
+    {
+      "problemId": 70130,
+      "title": "스타 수열",
+      "level": 3,
+      "tags": [
+        "월간 코드 챌린지 시즌1"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/70130"
+    },
+    {
+      "problemId": 72413,
+      "title": "합승 택시 요금",
+      "level": 3,
+      "tags": [
+        "2021 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/72413"
+    },
+    {
+      "problemId": 72414,
+      "title": "광고 삽입",
+      "level": 3,
+      "tags": [
+        "2021 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/72414"
+    },
+    {
+      "problemId": 72415,
+      "title": "카드 짝 맞추기",
+      "level": 3,
+      "tags": [
+        "2021 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/72415"
+    },
+    {
+      "problemId": 76503,
+      "title": "모두 0으로 만들기",
+      "level": 3,
+      "tags": [
+        "월간 코드 챌린지 시즌2"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/76503"
+    },
+    {
+      "problemId": 77486,
+      "title": "다단계 칫솔 판매",
+      "level": 3,
+      "tags": [
+        "2021 Dev-Matching: 웹 백엔드 개발자(상반기)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/77486"
+    },
+    {
+      "problemId": 77886,
+      "title": "110 옮기기",
+      "level": 3,
+      "tags": [
+        "월간 코드 챌린지 시즌2"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/77886"
+    },
+    {
+      "problemId": 81303,
+      "title": "표 편집",
+      "level": 3,
+      "tags": [
+        "2021 카카오 채용연계형 인턴십"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/81303"
+    },
+    {
+      "problemId": 84021,
+      "title": "퍼즐 조각 채우기",
+      "level": 3,
+      "tags": [
+        "깊이/너비 우선 탐색(DFS/BFS)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/84021"
+    },
+    {
+      "problemId": 86053,
+      "title": "금과 은 운반하기",
+      "level": 3,
+      "tags": [
+        "월간 코드 챌린지 시즌3"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/86053"
+    },
+    {
+      "problemId": 87391,
+      "title": "공 이동 시뮬레이션",
+      "level": 3,
+      "tags": [
+        "월간 코드 챌린지 시즌3"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/87391"
+    },
+    {
+      "problemId": 87694,
+      "title": "아이템 줍기",
+      "level": 3,
+      "tags": [
+        "깊이/너비 우선 탐색(DFS/BFS)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/87694"
+    },
+    {
+      "problemId": 92343,
+      "title": "양과 늑대",
+      "level": 3,
+      "tags": [
+        "2022 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/92343"
+    },
+    {
+      "problemId": 92344,
+      "title": "파괴되지 않은 건물",
+      "level": 3,
+      "tags": [
+        "2022 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/92344"
+    },
+    {
+      "problemId": 92345,
+      "title": "사라지는 발판",
+      "level": 3,
+      "tags": [
+        "2022 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/92345"
+    },
+    {
+      "problemId": 118668,
+      "title": "코딩 테스트 공부",
+      "level": 3,
+      "tags": [
+        "2022 KAKAO TECH INTERNSHIP"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/118668"
+    },
+    {
+      "problemId": 118669,
+      "title": "등산코스 정하기",
+      "level": 3,
+      "tags": [
+        "2022 KAKAO TECH INTERNSHIP"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/118669"
+    },
+    {
+      "problemId": 131129,
+      "title": "카운트 다운",
+      "level": 3,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/131129"
+    },
+    {
+      "problemId": 131702,
+      "title": "고고학 최고의 발견",
+      "level": 3,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/131702"
+    },
+    {
+      "problemId": 131703,
+      "title": "2차원 동전 뒤집기",
+      "level": 3,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/131703"
+    },
+    {
+      "problemId": 132266,
+      "title": "부대복귀",
+      "level": 3,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/132266"
+    },
+    {
+      "problemId": 133500,
+      "title": "등대",
+      "level": 3,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/133500"
+    },
+    {
+      "problemId": 136797,
+      "title": "숫자 타자 대회",
+      "level": 3,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/136797"
+    },
+    {
+      "problemId": 138475,
+      "title": "억억단을 외우자",
+      "level": 3,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/138475"
+    },
+    {
+      "problemId": 150365,
+      "title": "미로 탈출 명령어",
+      "level": 3,
+      "tags": [
+        "2023 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/150365"
+    },
+    {
+      "problemId": 150366,
+      "title": "표 병합",
+      "level": 3,
+      "tags": [
+        "2023 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/150366"
+    },
+    {
+      "problemId": 150367,
+      "title": "표현 가능한 이진트리",
+      "level": 3,
+      "tags": [
+        "2023 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/150367"
+    },
+    {
+      "problemId": 152995,
+      "title": "인사고과",
+      "level": 3,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/152995"
+    },
+    {
+      "problemId": 161988,
+      "title": "연속 펄스 부분 수열의 합",
+      "level": 3,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/161988"
+    },
+    {
+      "problemId": 181186,
+      "title": "아방가르드 타일링",
+      "level": 3,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/181186"
+    },
+    {
+      "problemId": 214288,
+      "title": "상담원 인원",
+      "level": 3,
+      "tags": [
+        "2023 현대모비스 알고리즘 경진대회 예선"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/214288"
+    },
+    {
+      "problemId": 214289,
+      "title": "에어컨",
+      "level": 3,
+      "tags": [
+        "2023 현대모비스 알고리즘 경진대회 예선"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/214289"
+    },
+    {
+      "problemId": 250134,
+      "title": "[PCCP 기출문제] 4번 / 수레 움직이기",
+      "level": 3,
+      "tags": [
+        "PCCP 기출문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/250134"
+    },
+    {
+      "problemId": 258705,
+      "title": "산 모양 타일링",
+      "level": 3,
+      "tags": [
+        "2024 KAKAO WINTER INTERNSHIP"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/258705"
+    },
+    {
+      "problemId": 258707,
+      "title": "n + 1 카드게임",
+      "level": 3,
+      "tags": [
+        "2024 KAKAO WINTER INTERNSHIP"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/258707"
+    },
+    {
+      "problemId": 258709,
+      "title": "주사위 고르기",
+      "level": 3,
+      "tags": [
+        "2024 KAKAO WINTER INTERNSHIP"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/258709"
+    },
+    {
+      "problemId": 273712,
+      "title": "업그레이드 할 수 없는 아이템 구하기",
+      "level": 3,
+      "tags": [
+        "IS NULL"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/273712"
+    },
+    {
+      "problemId": 284529,
+      "title": "부서별 평균 연봉 조회하기",
+      "level": 3,
+      "tags": [
+        "GROUP BY"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/284529"
+    },
+    {
+      "problemId": 293261,
+      "title": "물고기 종류 별 대어 찾기",
+      "level": 3,
+      "tags": [
+        "SUM, MAX, MIN"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/293261"
+    },
+    {
+      "problemId": 298519,
+      "title": "특정 조건을 만족하는 물고기별 수와 최대 길이 구하기",
+      "level": 3,
+      "tags": [
+        "GROUP BY"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/298519"
+    },
+    {
+      "problemId": 299305,
+      "title": "대장균들의 자식의 수 구하기",
+      "level": 3,
+      "tags": [
+        "SELECT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/299305"
+    },
+    {
+      "problemId": 299307,
+      "title": "대장균의 크기에 따라 분류하기 1",
+      "level": 3,
+      "tags": [
+        "SELECT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/299307"
+    },
+    {
+      "problemId": 301649,
+      "title": "대장균의 크기에 따라 분류하기 2",
+      "level": 3,
+      "tags": [
+        "SELECT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/301649"
+    },
+    {
+      "problemId": 340210,
+      "title": "[PCCP 기출문제] 4번 / 수식 복원하기",
+      "level": 3,
+      "tags": [
+        "PCCP 기출문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/340210"
+    },
+    {
+      "problemId": 388354,
+      "title": "홀짝트리",
+      "level": 3,
+      "tags": [
+        "미분류"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/388354"
+    },
+    {
+      "problemId": 389481,
+      "title": "봉인된 주문",
+      "level": 3,
+      "tags": [
+        "미분류"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/389481"
+    },
+    {
+      "problemId": 451808,
+      "title": "숫자 야구",
+      "level": 3,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/451808"
+    },
+    {
+      "problemId": 468374,
+      "title": "카카오 앱 정리하기",
+      "level": 3,
+      "tags": [
+        "2025 카카오 하반기 1차"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/468374"
+    },
+    {
+      "problemId": 468375,
+      "title": "발전소 회로 복구",
+      "level": 3,
+      "tags": [
+        "2025 카카오 하반기 1차"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/468375"
+    },
+    {
+      "problemId": 468376,
+      "title": "최고 속도",
+      "level": 3,
+      "tags": [
+        "2025 카카오 하반기 1차"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/468376"
+    },
+    {
+      "problemId": 468378,
+      "title": "보물 찾기",
+      "level": 3,
+      "tags": [
+        "2025 카카오 하반기 2차"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/468378"
+    },
+    {
+      "problemId": 468380,
+      "title": "제곱 개수 배열",
+      "level": 3,
+      "tags": [
+        "2025 카카오 하반기 2차"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/468380"
+    },
+    {
+      "problemId": 468381,
+      "title": "기차 선로",
+      "level": 3,
+      "tags": [
+        "2025 카카오 하반기 2차"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/468381"
+    },
+    {
+      "problemId": 1831,
+      "title": "4단 고음",
+      "level": 4,
+      "tags": [
+        "2017 카카오코드 예선"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/1831"
+    },
+    {
+      "problemId": 1839,
+      "title": "튜브의 소개팅",
+      "level": 4,
+      "tags": [
+        "2017 카카오코드 본선"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/1839"
+    },
+    {
+      "problemId": 1843,
+      "title": "사칙연산",
+      "level": 4,
+      "tags": [
+        "동적계획법(Dynamic Programming)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/1843"
+    },
+    {
+      "problemId": 12929,
+      "title": "올바른 괄호의 갯수",
+      "level": 4,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12929"
+    },
+    {
+      "problemId": 12983,
+      "title": "단어 퍼즐",
+      "level": 4,
+      "tags": [
+        "2017 팁스타운"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12983"
+    },
+    {
+      "problemId": 12984,
+      "title": "지형 편집",
+      "level": 4,
+      "tags": [
+        "Summer/Winter Coding(~2018)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12984"
+    },
+    {
+      "problemId": 17685,
+      "title": "[3차] 자동완성",
+      "level": 4,
+      "tags": [
+        "2018 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/17685"
+    },
+    {
+      "problemId": 42891,
+      "title": "무지의 먹방 라이브",
+      "level": 4,
+      "tags": [
+        "2019 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42891"
+    },
+    {
+      "problemId": 42894,
+      "title": "블록 게임",
+      "level": 4,
+      "tags": [
+        "2019 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42894"
+    },
+    {
+      "problemId": 42897,
+      "title": "도둑질",
+      "level": 4,
+      "tags": [
+        "동적계획법(Dynamic Programming)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/42897"
+    },
+    {
+      "problemId": 43236,
+      "title": "징검다리",
+      "level": 4,
+      "tags": [
+        "이분탐색"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/43236"
+    },
+    {
+      "problemId": 49995,
+      "title": "쿠키 구입",
+      "level": 4,
+      "tags": [
+        "Summer/Winter Coding(~2018)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/49995"
+    },
+    {
+      "problemId": 60060,
+      "title": "가사 검색",
+      "level": 4,
+      "tags": [
+        "2020 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/60060"
+    },
+    {
+      "problemId": 62050,
+      "title": "지형 이동",
+      "level": 4,
+      "tags": [
+        "Summer/Winter Coding(2019)"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/62050"
+    },
+    {
+      "problemId": 64063,
+      "title": "호텔 방 배정",
+      "level": 4,
+      "tags": [
+        "2019 카카오 개발자 겨울 인턴십"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/64063"
+    },
+    {
+      "problemId": 67260,
+      "title": "동굴 탐험",
+      "level": 4,
+      "tags": [
+        "2020 카카오 인턴십"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/67260"
+    },
+    {
+      "problemId": 68647,
+      "title": "짝수 행 세기",
+      "level": 4,
+      "tags": [
+        "월간 코드 챌린지 시즌1"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/68647"
+    },
+    {
+      "problemId": 68937,
+      "title": "트리 트리오 중간값",
+      "level": 4,
+      "tags": [
+        "월간 코드 챌린지 시즌1"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/68937"
+    },
+    {
+      "problemId": 72416,
+      "title": "매출 하락 최소화",
+      "level": 4,
+      "tags": [
+        "2021 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/72416"
+    },
+    {
+      "problemId": 81304,
+      "title": "미로 탈출",
+      "level": 4,
+      "tags": [
+        "2021 카카오 채용연계형 인턴십"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/81304"
+    },
+    {
+      "problemId": 86054,
+      "title": "안티세포",
+      "level": 4,
+      "tags": [
+        "월간 코드 챌린지 시즌3"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/86054"
+    },
+    {
+      "problemId": 118670,
+      "title": "행렬과 연산",
+      "level": 4,
+      "tags": [
+        "2022 KAKAO TECH INTERNSHIP"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/118670"
+    },
+    {
+      "problemId": 140105,
+      "title": "쌍둥이 빌딩 숲",
+      "level": 4,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/140105"
+    },
+    {
+      "problemId": 150364,
+      "title": "1,2,3 떨어트리기",
+      "level": 4,
+      "tags": [
+        "2023 KAKAO BLIND RECRUITMENT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/150364"
+    },
+    {
+      "problemId": 214290,
+      "title": "경사로의 개수",
+      "level": 4,
+      "tags": [
+        "2023 현대모비스 알고리즘 경진대회 예선"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/214290"
+    },
+    {
+      "problemId": 276035,
+      "title": "FrontEnd 개발자 찾기",
+      "level": 4,
+      "tags": [
+        "JOIN"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/276035"
+    },
+    {
+      "problemId": 276036,
+      "title": "언어별 개발자 분류하기",
+      "level": 4,
+      "tags": [
+        "GROUP BY"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/276036"
+    },
+    {
+      "problemId": 284528,
+      "title": "연간 평가점수에 해당하는 평가 등급 및 성과금 조회하기",
+      "level": 4,
+      "tags": [
+        "GROUP BY"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/284528"
+    },
+    {
+      "problemId": 301650,
+      "title": "특정 세대의 대장균 찾기",
+      "level": 4,
+      "tags": [
+        "SELECT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/301650"
+    },
+    {
+      "problemId": 389629,
+      "title": "가장 큰 삼각형 덩어리",
+      "level": 4,
+      "tags": [
+        "미분류"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/389629"
+    },
+    {
+      "problemId": 389630,
+      "title": "격자 뒤집기 미로",
+      "level": 4,
+      "tags": [
+        "미분류"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/389630"
+    },
+    {
+      "problemId": 1834,
+      "title": "신비로운 유적 탐험",
+      "level": 5,
+      "tags": [
+        "2017 카카오코드 예선"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/1834"
+    },
+    {
+      "problemId": 1840,
+      "title": "스마트한 프로도",
+      "level": 5,
+      "tags": [
+        "2017 카카오코드 본선"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/1840"
+    },
+    {
+      "problemId": 1841,
+      "title": "IU와 콘의 보드게임",
+      "level": 5,
+      "tags": [
+        "2017 카카오코드 본선"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/1841"
+    },
+    {
+      "problemId": 1842,
+      "title": "네오의 귀걸이",
+      "level": 5,
+      "tags": [
+        "2017 카카오코드 본선"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/1842"
+    },
+    {
+      "problemId": 12974,
+      "title": "직사각형의 넓이",
+      "level": 5,
+      "tags": [
+        "연습문제"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/12974"
+    },
+    {
+      "problemId": 49190,
+      "title": "방의 개수",
+      "level": 5,
+      "tags": [
+        "그래프"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/49190"
+    },
+    {
+      "problemId": 68938,
+      "title": "문자열의 아름다움",
+      "level": 5,
+      "tags": [
+        "월간 코드 챌린지 시즌1"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/68938"
+    },
+    {
+      "problemId": 70132,
+      "title": "가짜 해밀토니안",
+      "level": 5,
+      "tags": [
+        "월간 코드 챌린지 시즌1"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/70132"
+    },
+    {
+      "problemId": 76504,
+      "title": "RPG와 쿼리",
+      "level": 5,
+      "tags": [
+        "월간 코드 챌린지 시즌2"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/76504"
+    },
+    {
+      "problemId": 77887,
+      "title": "중력 작용",
+      "level": 5,
+      "tags": [
+        "월간 코드 챌린지 시즌2"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/77887"
+    },
+    {
+      "problemId": 81305,
+      "title": "시험장 나누기",
+      "level": 5,
+      "tags": [
+        "2021 카카오 채용연계형 인턴십"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/81305"
+    },
+    {
+      "problemId": 87394,
+      "title": "쿼리의 모음의 개수",
+      "level": 5,
+      "tags": [
+        "월간 코드 챌린지 시즌3"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/87394"
+    },
+    {
+      "problemId": 214291,
+      "title": "집합과 쿼리",
+      "level": 5,
+      "tags": [
+        "2023 현대모비스 알고리즘 경진대회 예선"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/214291"
+    },
+    {
+      "problemId": 214292,
+      "title": "재밌는 레이싱 경기장 설계하기",
+      "level": 5,
+      "tags": [
+        "2023 현대모비스 알고리즘 경진대회 본선"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/214292"
+    },
+    {
+      "problemId": 214293,
+      "title": "중요한 도로",
+      "level": 5,
+      "tags": [
+        "2023 현대모비스 알고리즘 경진대회 본선"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/214293"
+    },
+    {
+      "problemId": 214294,
+      "title": "빠른 이동",
+      "level": 5,
+      "tags": [
+        "2023 현대모비스 알고리즘 경진대회 본선"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/214294"
+    },
+    {
+      "problemId": 214295,
+      "title": "미로 주행 테스트",
+      "level": 5,
+      "tags": [
+        "2023 현대모비스 알고리즘 경진대회 본선"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/214295"
+    },
+    {
+      "problemId": 301651,
+      "title": "멸종위기의 대장균 찾기",
+      "level": 5,
+      "tags": [
+        "SELECT"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/301651"
+    },
+    {
+      "problemId": 389631,
+      "title": "눈사람 만들기",
+      "level": 5,
+      "tags": [
+        "미분류"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/389631"
+    },
+    {
+      "problemId": 389632,
+      "title": "문자열과 알파벳과 쿼리",
+      "level": 5,
+      "tags": [
+        "미분류"
+      ],
+      "sourceUrl": "https://school.programmers.co.kr/learn/courses/30/lessons/389632"
+    }
+  ]
+}

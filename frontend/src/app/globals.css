@@ -20,7 +20,7 @@
    ──────────────────────────────────────────── */
 :root {
   /* ── Core Brand ── */
-  --primary:        #7C6AAE;
+  --primary:        #715DA8;
   --primary-light:  #9B8BC8;
   --accent:         #C4A6FF;
 
@@ -42,11 +42,11 @@
   --text-3:  #9C9A95;
 
   /* ── Border ── */
-  --border:  rgba(124, 106, 174, 0.15);
+  --border:  rgba(113, 93, 168, 0.15);
 
   /* ── Soft tints (10 % opacity fills) ── */
-  --primary-soft:  rgba(124, 106, 174, 0.10);
-  --primary-glow:  rgba(124, 106, 174, 0.45);
+  --primary-soft:  rgba(113, 93, 168, 0.10);
+  --primary-glow:  rgba(113, 93, 168, 0.45);
   --success-soft:  rgba(61, 170, 109, 0.10);
   --warning-soft:  rgba(232, 168, 48,  0.10);
   --error-soft:    rgba(224, 84,  72,  0.10);
@@ -113,17 +113,17 @@
   --on-primary-soft:  rgba(255, 255, 255, 0.18);
 
   /* ── Shadows ── */
-  --shadow-card:  0 1px 3px rgba(124, 106, 174, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-hover: 0 4px 12px rgba(124, 106, 174, 0.16), 0 2px 4px rgba(0, 0, 0, 0.06);
-  --shadow-modal: 0 8px 32px rgba(124, 106, 174, 0.20), 0 2px 8px rgba(0, 0, 0, 0.08);
-  --shadow-glow:  0 0 24px rgba(124, 106, 174, 0.35);
+  --shadow-card:  0 1px 3px rgba(113, 93, 168, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-hover: 0 4px 12px rgba(113, 93, 168, 0.16), 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-modal: 0 8px 32px rgba(113, 93, 168, 0.20), 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-glow:  0 0 24px rgba(113, 93, 168, 0.35);
 
   /* ── Gradients ── */
-  --gradient-brand: linear-gradient(135deg, #7C6AAE 0%, #9B8BC8 50%, #C4A6FF 100%);
-  --hero-glow: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(124, 106, 174, 0.14) 0%, transparent 70%);
+  --gradient-brand: linear-gradient(135deg, #715DA8 0%, #9B8BC8 50%, #C4A6FF 100%);
+  --hero-glow: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(113, 93, 168, 0.14) 0%, transparent 70%);
 
   /* ── Bar chart fill ── */
-  --bar-fill: linear-gradient(90deg, #7C6AAE, #C4A6FF);
+  --bar-fill: linear-gradient(90deg, #715DA8, #C4A6FF);
 
   /* ── Radius ── */
   --radius-card:   12px;
@@ -153,23 +153,23 @@
   --input:                transparent;
   --input-background:     #F5F4FC;
   --switch-background:    #C4B8E8;
-  --ring:                 rgba(124, 106, 174, 0.40);
+  --ring:                 rgba(113, 93, 168, 0.40);
   --radius:               0.625rem;
   --font-weight-medium:   500;
   --font-weight-normal:   400;
-  --chart-1: #7C6AAE;
+  --chart-1: #715DA8;
   --chart-2: #3DAA6D;
   --chart-3: #E8A830;
   --chart-4: #3B82CE;
   --chart-5: #C4A6FF;
   --sidebar:                    #FFFFFF;
   --sidebar-foreground:         #1A1917;
-  --sidebar-primary:            #7C6AAE;
+  --sidebar-primary:            #715DA8;
   --sidebar-primary-foreground: #FFFFFF;
   --sidebar-accent:             #F0EFF9;
   --sidebar-accent-foreground:  #1A1917;
-  --sidebar-border:             rgba(124, 106, 174, 0.15);
-  --sidebar-ring:               rgba(124, 106, 174, 0.40);
+  --sidebar-border:             rgba(113, 93, 168, 0.15);
+  --sidebar-ring:               rgba(113, 93, 168, 0.40);
 
   /* ── Font (from fonts.css) ── */
   --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;

@@ -338,6 +338,31 @@ describe('GitHubPushService', () => {
     expect(result.filePath).toBe('3월1주차/BOJ_1001_두 수의 합.py');
   });
 
+  // 15-g. push() — 프로그래머스 문제: PROGRAMMERS_ 접두 파일 경로 생성
+  it('push() -- 프로그래머스 문제: PROGRAMMERS_ 접두 파일 경로 생성', async () => {
+    const result = await service.push({
+      ...basePushInput,
+      problemTitle: '폰켓몬',
+      weekNumber: '3월1주차',
+      sourcePlatform: 'programmers',
+      sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/1845',
+    });
+
+    expect(result.filePath).toBe('3월1주차/PROGRAMMERS_1845_폰켓몬.py');
+  });
+
+  // 15-h. push() — 프로그래머스 문제 + 주차 미지정: etc/ 폴더로 생성
+  it('push() -- 프로그래머스 문제 + 주차 미지정: etc/ 폴더로 생성', async () => {
+    const result = await service.push({
+      ...basePushInput,
+      problemTitle: '폰켓몬',
+      sourcePlatform: 'programmers',
+      sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/1845',
+    });
+
+    expect(result.filePath).toBe('etc/PROGRAMMERS_1845_폰켓몬.py');
+  });
+
   // 15-f. push() — sourceUrl 빈 문자열일 때 extractProblemNumber 빈 문자열
   it('push() -- sourceUrl 빈 문자열: 문제 번호 없이 파일명 생성', async () => {
     const result = await service.push({

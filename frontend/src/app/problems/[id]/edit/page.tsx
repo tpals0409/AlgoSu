@@ -1,8 +1,8 @@
 /**
- * @file 문제 수정 페이지 (v2.1 UI 통일 리팩토링)
+ * @file 문제 수정 페이지 (v2.1 UI 통일 리팩토링 + 플랫폼 토글)
  * @domain problem
  * @layer page
- * @related problemApi, solvedacApi, useBojSearch, useLanguageToggle
+ * @related problemApi, solvedacApi, programmersApi, useBojSearch, useProgrammersSearch, useLanguageToggle
  */
 
 'use client';
@@ -24,6 +24,7 @@ import { useStudy } from '@/contexts/StudyContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
 import { useBojSearch } from '@/hooks/useBojSearch';
+import { useProgrammersSearch } from '@/hooks/useProgrammersSearch';
 import { useLanguageToggle } from '@/hooks/useLanguageToggle';
 import { problemApi, type Problem, type UpdateProblemData } from '@/lib/api';
 import { DIFFICULTIES, DIFFICULTY_LABELS, LANGUAGES, LANGUAGE_VALUES, PROBLEM_STATUSES, PROBLEM_STATUS_LABELS } from '@/lib/constants';
@@ -86,6 +87,10 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
   const [isDeleting, setIsDeleting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // ─── PLATFORM STATE ─────────────────────
+
+  const [activePlatform, setActivePlatform] = useState<'BOJ' | 'PROGRAMMERS'>('BOJ');
+
   // ─── HOOKS ──────────────────────────────
 
   const setFormBase = useCallback(
@@ -103,7 +108,27 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
     bojResult, bojApplied, handleBojSearch, handleBojKeyDown, handleBojReset,
   } = useBojSearch(setFormBase, setFieldErrors);
 
+  const {
+    programmersQuery, setProgrammersQuery, programmersSearching, programmersError, setProgrammersError,
+    programmersResult, programmersApplied, handleProgrammersSearch, handleProgrammersKeyDown,
+    handleProgrammersReset,
+  } = useProgrammersSearch(setFormBase, setFieldErrors);
+
   const handleLanguageToggle = useLanguageToggle(setFormBase);
+
+  /** 플랫폼 전환 핸들러 -- 검색 결과가 적용된 상태면 경고 */
+  const handlePlatformChange = useCallback(
+    (newPlatform: 'BOJ' | 'PROGRAMMERS') => {
+      if (newPlatform === activePlatform) return;
+      if (bojApplied || programmersApplied) {
+        if (!window.confirm('플랫폼을 변경하면 검색 결과가 초기화됩니다. 계속하시겠습니까?')) return;
+        handleBojReset();
+        handleProgrammersReset();
+      }
+      setActivePlatform(newPlatform);
+    },
+    [activePlatform, bojApplied, programmersApplied, handleBojReset, handleProgrammersReset],
+  );
 
   // ─── EFFECTS ────────────────────────────
 
@@ -119,6 +144,8 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
         if (cancelled) return;
         setProblem(data);
         const weekNumber = String(data.weekNumber ?? '');
+        const platform = (data.sourcePlatform as 'BOJ' | 'PROGRAMMERS') || 'BOJ';
+        setActivePlatform(platform);
         setForm({
           title: data.title ?? '',
           description: data.description ?? '',
@@ -127,7 +154,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
           deadline: data.deadline ? matchDeadlineToWeekDate(data.deadline, weekNumber) : '',
           allowedLanguages: data.allowedLanguages?.length ? data.allowedLanguages : [...LANGUAGE_VALUES],
           sourceUrl: data.sourceUrl ?? '',
-          sourcePlatform: data.sourcePlatform || 'BOJ',
+          sourcePlatform: platform,
           status: data.status ?? 'ACTIVE',
         });
       } catch (err: unknown) {
@@ -206,7 +233,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
           data.allowedLanguages = form.allowedLanguages;
         }
         if (form.sourceUrl.trim() !== (problem.sourceUrl ?? '')) data.sourceUrl = form.sourceUrl.trim();
-        if (form.sourcePlatform.trim() !== (problem.sourcePlatform ?? '')) data.sourcePlatform = form.sourcePlatform.trim();
+        if (form.sourcePlatform.trim() !== (problem.sourcePlatform ?? '')) data.sourcePlatform = form.sourcePlatform.trim() as UpdateProblemData['sourcePlatform'];
         if (form.status !== problem.status) data.status = form.status as UpdateProblemData['status'];
 
         await problemApi.update(problemId, data);
@@ -286,90 +313,207 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
           <p className="mt-0.5 text-xs text-text-3">문제 정보를 수정하거나 삭제할 수 있습니다</p>
         </div>
 
-        {/* 카드 1: BOJ 검색 */}
+        {/* 카드 1: 문제 검색 */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <div className="flex items-center justify-center w-7 h-7 rounded-md bg-primary-soft text-primary">
                 <Search className="h-3.5 w-3.5" />
               </div>
-              백준 문제 검색
+              {activePlatform === 'BOJ' ? '백준 문제 검색' : '프로그래머스 문제 검색'}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <p className="text-[11px] text-text-3">
-              문제 번호를 입력하면 제목, 난이도, 태그가 자동으로 입력됩니다.
-            </p>
-
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-3 pointer-events-none" aria-hidden />
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="백준 문제번호로 검색"
-                  value={bojQuery}
-                  onChange={(e) => { setBojQuery(e.target.value); setBojError(null); }}
-                  onKeyDown={handleBojKeyDown}
-                  disabled={bojSearching || isSubmitting || bojApplied}
-                  className="w-full h-[40px] pl-8 pr-3 rounded-badge border border-border bg-input-bg text-text text-xs outline-none transition-[border-color] duration-150 placeholder:text-text-3 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
-                />
-              </div>
-              {bojApplied ? (
-                <Button
+            {/* 플랫폼 토글 */}
+            <div
+              className="inline-flex rounded-btn p-0.5 mb-3"
+              style={{ backgroundColor: 'var(--bg-alt)' }}
+              role="tablist"
+              aria-label="출처 플랫폼 선택"
+            >
+              {(['PROGRAMMERS', 'BOJ'] as const).map((p) => (
+                <button
+                  key={p}
                   type="button"
-                  variant="ghost"
-                  size="md"
-                  onClick={handleBojReset}
-                  disabled={isSubmitting}
-                  className="shrink-0"
+                  role="tab"
+                  aria-selected={activePlatform === p}
+                  tabIndex={activePlatform === p ? 0 : -1}
+                  onClick={() => handlePlatformChange(p)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                      e.preventDefault();
+                      handlePlatformChange(activePlatform === 'BOJ' ? 'PROGRAMMERS' : 'BOJ');
+                    }
+                  }}
+                  className="px-3 py-1.5 text-[12px] font-medium rounded-btn transition-all duration-150"
+                  style={
+                    activePlatform === p
+                      ? { backgroundColor: 'var(--bg-card)', color: 'var(--primary)', boxShadow: '0 1px 2px rgba(0,0,0,0.08)' }
+                      : { color: 'var(--text-3)' }
+                  }
                 >
-                  <X className="h-3.5 w-3.5" />
-                  연결 해제
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="md"
-                  disabled={bojSearching || isSubmitting || !bojQuery.trim()}
-                  onClick={() => void handleBojSearch()}
-                  className="shrink-0"
-                >
-                  {bojSearching ? <InlineSpinner /> : '검색'}
-                </Button>
-              )}
+                  {p === 'BOJ' ? '백준' : '프로그래머스'}
+                </button>
+              ))}
             </div>
 
-            {bojError && (
-              <p className="text-[11px] text-error">{bojError}</p>
-            )}
+            <p className="text-[11px] text-text-3">
+              {activePlatform === 'BOJ'
+                ? '문제 번호를 입력하면 제목, 난이도, 태그가 자동으로 입력됩니다.'
+                : '프로그래머스 문제 번호를 입력하면 자동으로 입력됩니다.'}
+            </p>
 
-            {bojResult && (
-              <div className="flex items-center gap-2.5 rounded-badge bg-primary-soft border border-border px-3 py-2.5">
-                <span className="text-xs font-mono text-text-3">#{bojResult.problemId}</span>
-                <span className="text-xs font-medium text-text truncate">{bojResult.title}</span>
-                {bojResult.difficulty && (
-                  <DifficultyBadge difficulty={bojResult.difficulty as Difficulty} level={bojResult.level} />
+            {/* BOJ 검색 UI */}
+            {activePlatform === 'BOJ' && (
+              <>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-3 pointer-events-none" aria-hidden />
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="백준 문제번호로 검색"
+                      value={bojQuery}
+                      onChange={(e) => { setBojQuery(e.target.value); setBojError(null); }}
+                      onKeyDown={handleBojKeyDown}
+                      disabled={bojSearching || isSubmitting || bojApplied}
+                      className="w-full h-[40px] pl-8 pr-3 rounded-badge border border-border bg-input-bg text-text text-xs outline-none transition-[border-color] duration-150 placeholder:text-text-3 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+                    />
+                  </div>
+                  {bojApplied ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="md"
+                      onClick={handleBojReset}
+                      disabled={isSubmitting}
+                      className="shrink-0"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      연결 해제
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="md"
+                      disabled={bojSearching || isSubmitting || !bojQuery.trim()}
+                      onClick={() => void handleBojSearch()}
+                      className="shrink-0"
+                    >
+                      {bojSearching ? <InlineSpinner /> : '검색'}
+                    </Button>
+                  )}
+                </div>
+
+                {bojError && (
+                  <p className="text-[11px] text-error">{bojError}</p>
                 )}
-                <a
-                  href={bojResult.sourceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="ml-auto shrink-0 text-text-3 hover:text-primary transition-colors"
-                  aria-label="백준에서 보기"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                </a>
-              </div>
+
+                {bojResult && (
+                  <div className="flex items-center gap-2.5 rounded-badge bg-primary-soft border border-border px-3 py-2.5">
+                    <span className="text-xs font-mono text-text-3">#{bojResult.problemId}</span>
+                    <span className="text-xs font-medium text-text truncate">{bojResult.title}</span>
+                    {bojResult.difficulty && (
+                      <DifficultyBadge difficulty={bojResult.difficulty as Difficulty} level={bojResult.level} />
+                    )}
+                    <a
+                      href={bojResult.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ml-auto shrink-0 text-text-3 hover:text-primary transition-colors"
+                      aria-label="백준에서 보기"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  </div>
+                )}
+
+                {bojResult && bojResult.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {bojResult.tags.map((tag) => (
+                      <Badge key={tag} variant="muted">{tag}</Badge>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
 
-            {bojResult && bojResult.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {bojResult.tags.map((tag) => (
-                  <Badge key={tag} variant="muted">{tag}</Badge>
-                ))}
-              </div>
+            {/* 프로그래머스 검색 UI */}
+            {activePlatform === 'PROGRAMMERS' && (
+              <>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-3 pointer-events-none" aria-hidden />
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      placeholder="문제 번호 (예: 42839)"
+                      value={programmersQuery}
+                      onChange={(e) => { setProgrammersQuery(e.target.value); setProgrammersError(null); }}
+                      onKeyDown={handleProgrammersKeyDown}
+                      disabled={programmersSearching || isSubmitting || programmersApplied}
+                      className="w-full h-[40px] pl-8 pr-3 rounded-badge border border-border bg-input-bg text-text text-xs outline-none transition-[border-color] duration-150 placeholder:text-text-3 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+                    />
+                  </div>
+                  {programmersApplied ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="md"
+                      onClick={handleProgrammersReset}
+                      disabled={isSubmitting}
+                      className="shrink-0"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      연결 해제
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="md"
+                      disabled={programmersSearching || isSubmitting || !programmersQuery.trim()}
+                      onClick={() => void handleProgrammersSearch()}
+                      className="shrink-0"
+                    >
+                      {programmersSearching ? <InlineSpinner /> : '검색'}
+                    </Button>
+                  )}
+                </div>
+
+                {programmersError && (
+                  <p className="text-[11px] text-error">{programmersError}</p>
+                )}
+
+                {programmersResult && (
+                  <div className="flex items-center gap-2.5 rounded-badge bg-primary-soft border border-border px-3 py-2.5">
+                    <span className="text-xs font-mono text-text-3">#{programmersResult.problemId}</span>
+                    <span className="text-xs font-medium text-text truncate">{programmersResult.title}</span>
+                    {programmersResult.difficulty && (
+                      <DifficultyBadge difficulty={programmersResult.difficulty as Difficulty} level={programmersResult.level} />
+                    )}
+                    <a
+                      href={programmersResult.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ml-auto shrink-0 text-text-3 hover:text-primary transition-colors"
+                      aria-label="프로그래머스에서 보기"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  </div>
+                )}
+
+                {programmersResult && programmersResult.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {programmersResult.tags.map((tag) => (
+                      <Badge key={tag} variant="muted">{tag}</Badge>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
@@ -392,7 +536,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                 value={form.title}
                 onChange={handleChange('title')}
                 error={fieldErrors.title}
-                disabled={isSubmitting || bojApplied}
+                disabled={isSubmitting || bojApplied || programmersApplied}
               />
 
               <div className="flex flex-col">
@@ -414,7 +558,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                     id="edit-difficulty"
                     value={form.difficulty}
                     onChange={handleChange('difficulty')}
-                    disabled={isSubmitting || bojApplied}
+                    disabled={isSubmitting || bojApplied || programmersApplied}
                     className={selectClass}
                   >
                     <option value="">선택 안 함</option>
@@ -526,7 +670,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                 label="출처 URL"
                 value={form.sourceUrl}
                 onChange={handleChange('sourceUrl')}
-                disabled={isSubmitting || bojApplied}
+                disabled={isSubmitting || bojApplied || programmersApplied}
               />
 
               <Input

@@ -15,6 +15,7 @@ export interface ProblemFormState {
   deadline: string;
   allowedLanguages: string[];
   sourceUrl: string;
+  /** 출처 플랫폼 -- 폼 초기값 빈 문자열 허용, 제출 시 'BOJ' | 'PROGRAMMERS'로 좁혀짐 */
   sourcePlatform: string;
 }
 

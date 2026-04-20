@@ -201,13 +201,16 @@ class AIAnalysisWorker:
             event = json.loads(body)
             submission_id = event["submissionId"]
             user_id = event.get("userId", "")
+            source_platform = event.get("sourcePlatform")
             logger.info("AI 분석 메시지 수신", extra={"submissionId": submission_id})
 
             # 제출 데이터 조회
             submission = self._get_submission(submission_id)
 
             # Claude 분석 -- 재시도 3회
-            result = self._analyze_with_retry(submission)
+            result = self._analyze_with_retry(
+                submission, source_platform=source_platform
+            )
 
             if result["status"] == "failed":
                 # 실패 시 Redis 카운터 차감 (비용 미차감)
@@ -313,7 +316,11 @@ class AIAnalysisWorker:
             dlq_messages_total.labels(reason="process_failure").inc()
             mq_messages_processed_total.labels(result="nack_dlq").inc()
 
-    def _analyze_with_retry(self, submission: dict) -> dict:
+    def _analyze_with_retry(
+        self,
+        submission: dict,
+        source_platform: str | None = None,
+    ) -> dict:
         """
         Claude AI 분석 -- 최대 3회 재시도 (exponential backoff)
 
@@ -321,6 +328,7 @@ class AIAnalysisWorker:
 
         @domain ai
         @param submission: 제출 데이터 dict
+        @param source_platform: 문제 플랫폼 (예: 'BOJ', 'PROGRAMMERS') — 프롬프트 맥락 주입
         @returns: 분석 결과 dict
         @raises CircuitBreakerOpenError: Circuit Breaker OPEN 시
         """
@@ -332,6 +340,7 @@ class AIAnalysisWorker:
                 language=submission["language"],
                 problem_title=submission.get("problemTitle", ""),
                 problem_description=submission.get("problemDescription", ""),
+                source_platform=source_platform,
             )
 
             if result["status"] == "completed":

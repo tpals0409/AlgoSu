@@ -10,9 +10,11 @@ export default {
       'always',
       [
         'feat', 'fix', 'perf', 'refactor', 'docs',
-        'test', 'chore', 'ci', 'infra',
+        'test', 'chore', 'ci', 'infra', 'style',
       ],
     ],
+    // 한글 커밋 본문은 100자 초과 빈번 → 완전 비활성화
+    'body-max-line-length': [0, 'always', 100],
     'scope-enum': [
       2,
       'always',
@@ -20,6 +22,7 @@ export default {
         'gateway', 'identity', 'submission', 'problem',
         'github-worker', 'ai-analysis', 'frontend', 'blog',
         'infra', 'ci', 'docs', 'deps', 'security', 'adr',
+        'e2e', 'runbook',
       ],
     ],
     'scope-empty': [1, 'never'],

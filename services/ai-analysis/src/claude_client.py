@@ -61,6 +61,7 @@ class ClaudeClient:
         language: str,
         problem_title: str = "",
         problem_description: str = "",
+        source_platform: str | None = None,
     ) -> dict:
         """
         코드 분석 요청 -- 5개 카테고리 구조화 결과 반환
@@ -70,6 +71,7 @@ class ClaudeClient:
         @param language: 프로그래밍 언어
         @param problem_title: 문제 제목
         @param problem_description: 문제 설명
+        @param source_platform: 문제 플랫폼 (예: 'BOJ', 'PROGRAMMERS') — 프롬프트 맥락 주입
         @returns: 구조화된 분석 결과 dict
         """
         if not circuit_breaker.can_execute():
@@ -82,6 +84,7 @@ class ClaudeClient:
                 language=language,
                 problem_title=problem_title,
                 problem_description=problem_description,
+                source_platform=source_platform,
             )
 
             # 동기 호출 (worker 스레드에서 실행되므로 sync 사용)
@@ -253,12 +256,17 @@ class ClaudeClient:
                 "categories": [],
             }
 
-    def group_analyze(self, code_snippets: list[dict]) -> dict:
+    def group_analyze(
+        self,
+        code_snippets: list[dict],
+        source_platform: str | None = None,
+    ) -> dict:
         """
         그룹 분석 요청 -- 여러 제출 코드를 비교 분석
 
         @domain ai
         @param code_snippets: [{language, userId, code}] 형태 리스트
+        @param source_platform: 문제 플랫폼 (예: 'BOJ', 'PROGRAMMERS') — 프롬프트 맥락 주입
         @returns: 구조화된 그룹 분석 결과 dict
         """
         if not circuit_breaker.can_execute():
@@ -266,7 +274,9 @@ class ClaudeClient:
             raise CircuitBreakerOpenError("Circuit Breaker OPEN")
 
         try:
-            user_prompt = build_group_user_prompt(code_snippets)
+            user_prompt = build_group_user_prompt(
+                code_snippets, source_platform=source_platform
+            )
 
             message = self.client.messages.create(
                 model=MODEL_ID,

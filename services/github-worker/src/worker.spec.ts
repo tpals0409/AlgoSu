@@ -282,6 +282,73 @@ describe('GitHubWorker', () => {
       expect(pushMock).toHaveBeenCalled();
     });
 
+    it('정상 처리 (프로그래머스, GitHub Push 성공) -- PROGRAMMERS_ 파일명', async () => {
+      const encryptedToken = encryptToken('ghs_test_token');
+
+      // getSubmission
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            userId: 'user-1',
+            problemId: 'prob-pgm',
+            studyId: 'study-1',
+            language: 'python',
+            code: 'def solution(nums):\n    return len(set(nums[:len(nums)//2]))',
+          },
+        }),
+      });
+
+      // getProblemInfo 응답 — sourcePlatform: 'programmers'
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            title: '폰켓몬',
+            weekNumber: '3월1주차',
+            sourcePlatform: 'programmers',
+            sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/1845',
+          },
+        }),
+      });
+
+      // getUserGitHubInfo
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          github_username: 'test-user',
+          github_token: encryptedToken,
+        }),
+      });
+
+      // GitHubPushService.push mock — PROGRAMMERS_ 파일명 반환
+      const pushMock = jest.fn().mockResolvedValue({
+        filePath: '3월1주차/PROGRAMMERS_1845_폰켓몬.py',
+        sha: 'pgm-sha',
+      });
+      (worker as any).pushService.push = pushMock;
+
+      // reportSuccess
+      mockFetch.mockResolvedValueOnce({ ok: true });
+
+      const msg = makeMsg({
+        submissionId: 'sub-pgm-001',
+        studyId: 'study-1',
+        timestamp: new Date().toISOString(),
+      });
+
+      await consumeCallback!(msg);
+
+      expect(mockAck).toHaveBeenCalledWith(msg);
+      // sourcePlatform이 push 호출 args에 전파되었는지 확인
+      expect(pushMock).toHaveBeenCalledWith(
+        expect.objectContaining({ sourcePlatform: 'programmers' }),
+      );
+      // 최종 파일명이 PROGRAMMERS_로 시작하는지 확인
+      const pushResult = await pushMock.mock.results[0].value;
+      expect(pushResult.filePath).toMatch(/^3월1주차\/PROGRAMMERS_/);
+    });
+
     it('TOKEN_INVALID -- ack (재시도 없이)', async () => {
       const encryptedToken = encryptToken('ghs_test_token');
 
