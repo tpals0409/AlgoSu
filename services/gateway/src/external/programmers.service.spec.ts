@@ -102,6 +102,28 @@ describe('ProgrammersService', () => {
       expect(result.title).toBe('모의고사');
     });
 
+    it('봉투 형식 { version, items } — isDataEnvelope true 분기 캐시 로드 성공', () => {
+      // isDataEnvelope(parsed) === true 분기 커버
+      const mockLogger = {
+        setContext: jest.fn(),
+        log: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        debug: jest.fn(),
+      };
+      const svc = new ProgrammersService(mockLogger as never);
+      const envelope = { version: '2024-01-01', items: FIXTURE_ITEMS };
+      mockReadFileSync.mockReturnValue(JSON.stringify(envelope));
+
+      svc.loadFromFile('/envelope.json');
+
+      const result = svc.fetchProblem(42840);
+      expect(result.title).toBe('모의고사');
+      expect(mockLogger.log).toHaveBeenCalledWith(
+        expect.stringContaining('로드 완료'),
+      );
+    });
+
     it('파일 읽기 실패 — 경고만 남기고 예외 미전파 (빈 캐시)', () => {
       const mockLogger = {
         setContext: jest.fn(),
@@ -134,6 +156,49 @@ describe('ProgrammersService', () => {
 
       expect(() => svc.loadFromFile('/bad.json')).not.toThrow();
       expect(mockLogger.warn).toHaveBeenCalled();
+    });
+  });
+
+  // ── onApplicationBootstrap ──────────────────────────────────────────────────
+
+  describe('onApplicationBootstrap', () => {
+    it('부트스트랩 시 loadFromFile 호출 — lines 126-127 커버', () => {
+      // onApplicationBootstrap() 미호출로 인한 line 126-127 미커버 해소
+      const mockLogger = {
+        setContext: jest.fn(),
+        log: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        debug: jest.fn(),
+      };
+      const svc = new ProgrammersService(mockLogger as never);
+      // readFileSync 는 이미 전역 mock — fixture JSON 반환
+      mockReadFileSync.mockReturnValue(FIXTURE_JSON);
+
+      expect(() => svc.onApplicationBootstrap()).not.toThrow();
+      // readFileSync 가 __dirname 기반 경로로 호출됐는지 확인
+      expect(mockReadFileSync).toHaveBeenCalled();
+      // 로드 후 캐시에서 조회 가능
+      expect(svc.fetchProblem(42840).title).toBe('모의고사');
+    });
+
+    it('부트스트랩 시 JSON 없음 — 경고 로그 후 빈 캐시로 기동 허용', () => {
+      const mockLogger = {
+        setContext: jest.fn(),
+        log: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        debug: jest.fn(),
+      };
+      const svc = new ProgrammersService(mockLogger as never);
+      mockReadFileSync.mockImplementation(() => {
+        throw new Error('ENOENT: no such file');
+      });
+
+      expect(() => svc.onApplicationBootstrap()).not.toThrow();
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('ENOENT'),
+      );
     });
   });
 
@@ -176,6 +241,33 @@ describe('ProgrammersService', () => {
       [42895, 'DIAMOND'],  // Lv.5
     ])('problemId %i → difficulty %s', (id, expected) => {
       expect(service.fetchProblem(id).difficulty).toBe(expected);
+    });
+
+    it('level=0 문제 — difficulty null 반환 (levelToDifficulty ?? null 분기)', () => {
+      // levelToDifficulty의 `?? null` null 분기 커버 (level 0 = 미분류)
+      const mockLogger = {
+        setContext: jest.fn(),
+        log: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        debug: jest.fn(),
+      };
+      const svc = new ProgrammersService(mockLogger as never);
+      const zeroLevelItems = [
+        {
+          problemId: 99001,
+          title: 'PCCP 미분류',
+          level: 0,
+          tags: ['구현'],
+          sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/99001',
+        },
+      ];
+      mockReadFileSync.mockReturnValue(JSON.stringify(zeroLevelItems));
+      svc.loadFromFile('/zero-level.json');
+
+      const result = svc.fetchProblem(99001);
+      expect(result.difficulty).toBeNull();
+      expect(result.level).toBe(0);
     });
   });
 
