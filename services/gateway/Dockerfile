@@ -44,6 +44,9 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/data ./dist/data
 COPY --from=builder /app/package.json ./package.json
 
+# 빌드 시점 회귀 방지 — data/ 번들 누락 시 이미지 빌드 자체 실패 (Sprint 98)
+RUN test -f /app/dist/data/programmers-problems.json
+
 # npm 제거 (보안 + 이미지 경량화) — sharp ARM64 바이너리는 Stage 1에서 설치 완료
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
