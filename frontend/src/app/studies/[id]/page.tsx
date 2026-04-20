@@ -375,6 +375,7 @@ function ProblemsTab({
       title: p.title,
       difficulty: p.difficulty,
       level: p.level,
+      sourcePlatform: p.sourcePlatform,
       tier: difficultyToTier(p.difficulty),
       tags: p.tags ?? [],
       dDay: calcDDay(p.deadline),
@@ -388,6 +389,7 @@ function ProblemsTab({
       title: p.title,
       difficulty: p.difficulty,
       level: p.level,
+      sourcePlatform: p.sourcePlatform,
       tier: difficultyToTier(p.difficulty),
       tags: p.tags ?? [],
       ended: true as const,
@@ -438,7 +440,7 @@ function ProblemsTab({
  * 문제 카드
  * @domain study
  */
-function ProblemCard({ problem }: { readonly problem: { id: string; number: number; title: string; difficulty: string; level?: number | null; tier: string; tags: string[]; dDay?: string; ended?: boolean } }): ReactNode {
+function ProblemCard({ problem }: { readonly problem: { id: string; number: number; title: string; difficulty: import('@/lib/constants').Difficulty | null; level?: number | null; sourcePlatform?: 'BOJ' | 'PROGRAMMERS' | null; tier: string; tags: string[]; dDay?: string; ended?: boolean } }): ReactNode {
   return (
     <Card className="p-0 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3">
@@ -456,10 +458,12 @@ function ProblemCard({ problem }: { readonly problem: { id: string; number: numb
               <span className="text-sm font-medium text-text truncate">
                 {problem.title}
               </span>
-              {/* 난이도 뱃지 */}
-              {problem.difficulty && (
-                <DifficultyBadge difficulty={problem.difficulty as import('@/lib/constants').Difficulty} level={problem.level} />
-              )}
+              {/* 난이도 뱃지 (플랫폼 인지) */}
+              <DifficultyBadge
+                difficulty={problem.difficulty ?? null}
+                level={problem.level}
+                sourcePlatform={problem.sourcePlatform}
+              />
             </div>
             {/* 태그 */}
             <div className="flex flex-wrap items-center gap-1.5 mt-0.5">

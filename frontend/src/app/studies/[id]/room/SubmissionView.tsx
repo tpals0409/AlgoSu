@@ -94,7 +94,11 @@ export function SubmissionView({ problem, submissions, loading, notSubmitted, ac
         <div className="px-5 py-4">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <div className="flex flex-wrap items-center gap-2">
-              <DifficultyBadge difficulty={problem.difficulty} level={problem.level} />
+              <DifficultyBadge
+                difficulty={problem.difficulty ?? null}
+                level={problem.level}
+                sourcePlatform={problem.sourcePlatform}
+              />
               {(problem.tags ?? []).map((tag) => (
                 <span key={tag} className="rounded-badge px-2 py-0.5 text-[11px]" style={{ backgroundColor: 'var(--bg-alt)', color: 'var(--text-3)' }}>{tag}</span>
               ))}
