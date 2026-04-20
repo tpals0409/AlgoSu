@@ -22,7 +22,8 @@ import {
   type Submission,
 } from '@/lib/api';
 import { useStudy } from '@/contexts/StudyContext';
-import { DIFFICULTIES, DIFFICULTY_LABELS, DIFF_DOT_STYLE, DIFF_BADGE_STYLE, toTierLevel, type Difficulty } from '@/lib/constants';
+import { DIFFICULTIES, DIFFICULTY_LABELS, DIFF_DOT_STYLE, DIFF_BADGE_STYLE, type Difficulty } from '@/lib/constants';
+import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
 import { relativeTime } from '@/lib/date';
@@ -90,7 +91,7 @@ export default function SubmissionsPage(): ReactNode {
   // ─── STATE ──────────────────────────────
 
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [problemMap, setProblemMap] = useState<Map<string, { title: string; difficulty?: string; level?: number; weekNumber?: string }>>(new Map());
+  const [problemMap, setProblemMap] = useState<Map<string, { title: string; difficulty?: Difficulty | null; level?: number | null; weekNumber?: string; sourcePlatform?: 'BOJ' | 'PROGRAMMERS' | null }>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterSearch, setFilterSearch] = useState('');
@@ -120,7 +121,7 @@ export default function SubmissionsPage(): ReactNode {
         problemApi.findAll().catch(() => []),
       ]);
       setSubmissions(result.data);
-      setProblemMap(new Map(problems.map((p) => [p.id, { title: p.title, difficulty: p.difficulty ?? undefined, level: p.level ?? undefined, weekNumber: p.weekNumber ?? undefined }])));
+      setProblemMap(new Map(problems.map((p) => [p.id, { title: p.title, difficulty: (p.difficulty as Difficulty | null | undefined) ?? null, level: p.level ?? null, weekNumber: p.weekNumber ?? undefined, sourcePlatform: p.sourcePlatform ?? null }])));
     } catch (err: unknown) {
       setError((err as Error).message ?? '제출 이력을 불러오는 데 실패했습니다.');
     } finally {
@@ -278,9 +279,6 @@ export default function SubmissionsPage(): ReactNode {
               const pInfo = problemMap.get(s.problemId);
               const title = s.problemTitle ?? pInfo?.title ?? `문제 ${s.problemId}`;
               const diffKey = pInfo?.difficulty ? (pInfo.difficulty as string).toLowerCase() : '';
-              const diffLabel = pInfo?.difficulty
-                ? `${DIFFICULTY_LABELS[pInfo.difficulty as Difficulty] ?? pInfo.difficulty}${toTierLevel(pInfo.level) ? ` ${toTierLevel(pInfo.level)}` : ''}`
-                : '';
               const status = getStatusDisplay(s.sagaStep);
               const lang = LANG_AVATAR[s.language] ?? { label: s.language.slice(0, 2).toUpperCase(), bg: 'var(--bg-alt)', color: 'var(--text-3)' };
               const isDone = s.sagaStep === 'DONE';
@@ -308,11 +306,12 @@ export default function SubmissionsPage(): ReactNode {
                     </p>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       {/* 난이도 뱃지 */}
-                      {diffLabel && (
-                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium" style={DIFF_BADGE_STYLE[diffKey] ?? {}}>
-                          <span className="h-1.5 w-1.5 rounded-full" style={DIFF_DOT_STYLE[diffKey] ?? {}} aria-hidden />
-                          {diffLabel}
-                        </span>
+                      {pInfo && (
+                        <DifficultyBadge
+                          difficulty={pInfo.difficulty ?? null}
+                          level={pInfo.level}
+                          sourcePlatform={pInfo.sourcePlatform}
+                        />
                       )}
                       {/* 언어 뱃지 */}
                       <span

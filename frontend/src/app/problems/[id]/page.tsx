@@ -27,8 +27,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useStudy } from '@/contexts/StudyContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
-import { DIFFICULTY_LABELS, DIFF_DOT_STYLE, DIFF_BADGE_STYLE, SAGA_STEP_CONFIG, toTierLevel } from '@/lib/constants';
-import type { Difficulty, SagaStep } from '@/lib/constants';
+import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
+import { SAGA_STEP_CONFIG } from '@/lib/constants';
+import type { SagaStep } from '@/lib/constants';
 
 
 // ─── TYPES ────────────────────────────────
@@ -204,11 +205,6 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
   const isPastDeadline = !!problem.deadline && new Date(problem.deadline) <= new Date();
   const isLateWindow = canSubmit && isPastDeadline;
   const isOngoing = problem.status === 'ACTIVE' && !isPastDeadline;
-  const diffKey = problem.difficulty ? (problem.difficulty as string).toLowerCase() : '';
-  const diffLabel = problem.difficulty
-    ? `${DIFFICULTY_LABELS[problem.difficulty as Difficulty] ?? problem.difficulty}${toTierLevel(problem.level) ? ` ${toTierLevel(problem.level)}` : ''}`
-    : '';
-
   // 마감일 포맷
   const deadlineFormatted = problem.deadline
     ? (() => {
@@ -283,12 +279,11 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
             <div className="rounded-xl border border-border p-3 sm:p-5 space-y-3 sm:space-y-4 bg-bg-card">
               {/* 뱃지 줄 */}
               <div className="flex flex-wrap items-center gap-2">
-                {diffLabel && (
-                  <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium" style={DIFF_BADGE_STYLE[diffKey] ?? {}}>
-                    <span className="h-1.5 w-1.5 rounded-full" style={DIFF_DOT_STYLE[diffKey] ?? {}} aria-hidden />
-                    {diffLabel}
-                  </span>
-                )}
+                <DifficultyBadge
+                  difficulty={problem.difficulty ?? null}
+                  level={problem.level}
+                  sourcePlatform={problem.sourcePlatform}
+                />
                 <span
                   className="inline-flex items-center gap-1 rounded-badge px-2 py-0.5 text-[11px] font-medium"
                   style={

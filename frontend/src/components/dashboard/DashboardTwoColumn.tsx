@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/Badge';
 import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import type { Submission, Problem } from '@/lib/api';
-import { DIFF_DOT_STYLE, DIFF_BADGE_STYLE, SAGA_STEP_CONFIG, type SagaStep, toTierLevel } from '@/lib/constants';
+import { SAGA_STEP_CONFIG, type SagaStep } from '@/lib/constants';
 import type { Difficulty } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 
@@ -109,17 +109,13 @@ export default function DashboardTwoColumn({
                   <div className="mt-1 flex items-center gap-2">
                     {(() => {
                       const problem = problemMap.get(s.problemId);
-                      if (!problem?.difficulty) return null;
-                      const diffKey = (problem.difficulty as string).toLowerCase();
-                      const dotStyle = DIFF_DOT_STYLE[diffKey] ?? { backgroundColor: 'var(--text-3)' };
-                      const badgeStyle = DIFF_BADGE_STYLE[diffKey] ?? { backgroundColor: 'var(--bg-alt)', color: 'var(--text-2)' };
-                      const tierLevel = toTierLevel(problem.level);
-                      const label = `${(problem.difficulty as string).charAt(0).toUpperCase()}${(problem.difficulty as string).slice(1).toLowerCase()}${tierLevel != null ? ` ${tierLevel}` : ''}`.trim();
+                      if (!problem) return null;
                       return (
-                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium" style={badgeStyle}>
-                          <span className="h-1.5 w-1.5 rounded-full" style={dotStyle} />
-                          {label}
-                        </span>
+                        <DifficultyBadge
+                          difficulty={problem.difficulty ?? null}
+                          level={problem.level}
+                          sourcePlatform={problem.sourcePlatform}
+                        />
                       );
                     })()}
                     <span className="rounded-full bg-bg-alt px-2 py-0.5 text-[11px] font-medium text-text-2">
@@ -189,9 +185,11 @@ export default function DashboardTwoColumn({
                       <span className="font-mono text-[10px] text-text-3">
                         {p.weekNumber}
                       </span>
-                      {p.difficulty && (
-                        <DifficultyBadge difficulty={p.difficulty as Difficulty} level={p.level} />
-                      )}
+                      <DifficultyBadge
+                        difficulty={(p.difficulty as Difficulty | undefined) ?? null}
+                        level={p.level}
+                        sourcePlatform={p.sourcePlatform}
+                      />
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

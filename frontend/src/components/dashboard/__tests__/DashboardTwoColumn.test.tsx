@@ -38,9 +38,11 @@ jest.mock('@/components/ui/Badge', () => ({
 }));
 
 jest.mock('@/components/ui/DifficultyBadge', () => ({
-  DifficultyBadge: ({ difficulty }: { difficulty: string }) => (
-    <span data-testid="difficulty-badge">{difficulty}</span>
-  ),
+  DifficultyBadge: ({ difficulty, sourcePlatform, level }: { difficulty: string | null; sourcePlatform?: string | null; level?: number | null }) => {
+    if (sourcePlatform !== 'PROGRAMMERS' && !difficulty) return null;
+    const label = sourcePlatform === 'PROGRAMMERS' ? `Lv.${level ?? 0}` : difficulty;
+    return <span data-testid="difficulty-badge">{label}</span>;
+  },
 }));
 
 jest.mock('@/components/ui/Skeleton', () => ({
