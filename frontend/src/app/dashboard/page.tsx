@@ -164,7 +164,7 @@ export default function DashboardPage(): ReactNode {
   const { isReady } = useRequireAuth();
   const { isStudyReady } = useRequireStudy();
   const { isAuthenticated, githubConnected, user } = useAuth();
-  const { currentStudyId, currentStudyName, studiesLoaded } = useStudy();
+  const { currentStudyId, currentStudyName, studiesLoaded, problemsVersion } = useStudy();
 
 
   const [stats, setStats] = useState<StudyStats | null>(null);
@@ -258,6 +258,13 @@ export default function DashboardPage(): ReactNode {
       void loadDashboard();
     }
   }, [isAuthenticated, studiesLoaded, currentStudyId, loadDashboard]);
+
+  // 문제 등록/삭제 시 problemsVersion 변경 → refetch
+  useEffect(() => {
+    if (isAuthenticated && studiesLoaded && currentStudyId && problemsVersion > 0) {
+      void loadDashboard();
+    }
+  }, [problemsVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── DERIVED STATE ────────────────────────
 

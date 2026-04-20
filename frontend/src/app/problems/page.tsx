@@ -69,7 +69,7 @@ export default function ProblemsPage(): ReactNode {
   const router = useRouter();
   const { isAuthenticated } = useRequireAuth();
   useRequireStudy();
-  const { currentStudyId, currentStudyRole } = useStudy();
+  const { currentStudyId, currentStudyRole, incrementProblemsVersion } = useStudy();
   const isAdmin = currentStudyRole === 'ADMIN';
 
   // ─── STATE ──────────────────────────────
@@ -135,7 +135,8 @@ export default function ProblemsPage(): ReactNode {
 
   const handleAddProblem = useCallback((newProblem: NewProblemData) => {
     setProblems((prev) => [newProblem as unknown as Problem, ...prev]);
-  }, []);
+    incrementProblemsVersion();
+  }, [incrementProblemsVersion]);
 
   // ─── FILTERING ──────────────────────────
 
