@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * @file Coverage 글로벌 임계치 검증 스크립트
+ * @file Coverage 글로벌+서비스별 임계치 검증 스크립트
  * @domain ci
  * @layer script
  * @related .github/workflows/ci.yml
@@ -16,6 +16,19 @@ import { join, resolve } from 'node:path';
 
 const coverageDir = resolve(process.argv[2] || './coverage');
 const threshold = Number(process.argv[3] || '60');
+
+/**
+ * 서비스별 lines/branches 임계치 맵 (CLAUDE.md 서비스별 threshold 정책 기준).
+ * 여기에 명시되지 않은 서비스는 글로벌 threshold를 적용.
+ */
+const SERVICE_THRESHOLDS = {
+  'frontend':       { lines: 83, branches: 71 },
+  'gateway':        { lines: 92, branches: 70 },
+  'submission':     { lines: 95, branches: 70 },
+  'problem':        { lines: 95, branches: 70 },
+  'github-worker':  { lines: 92, branches: 70 },
+  'ai-analysis':    { lines: 98, branches: 0 },   // branch=true 신규 활성, 실측 전 0
+};
 
 /**
  * GITHUB_OUTPUT에 coverage-body multiline 출력 (PR 코멘트용)
@@ -109,21 +122,38 @@ for (const s of services) {
 }
 process.stdout.write('\n');
 
+// 서비스별 독립 게이트
+let servicesFailed = false;
+for (const s of services) {
+  const svcThreshold = SERVICE_THRESHOLDS[s.name] || { lines: threshold, branches: threshold };
+  const lp = s.linesTotal > 0 ? (s.linesHit / s.linesTotal * 100) : 100;
+  const bp = s.branchesTotal > 0 ? (s.branchesHit / s.branchesTotal * 100) : 100;
+
+  if (lp < svcThreshold.lines || bp < svcThreshold.branches) {
+    process.stderr.write(
+      `Service '${s.name}' below threshold: lines=${lp.toFixed(1)}% (need ${svcThreshold.lines}%), branches=${bp.toFixed(1)}% (need ${svcThreshold.branches}%)\n`
+    );
+    servicesFailed = true;
+  }
+}
+
 // Markdown 테이블 출력 (GITHUB_STEP_SUMMARY + stdout)
 const rows = services.map(s => {
   const lp = s.linesTotal > 0 ? (s.linesHit / s.linesTotal * 100).toFixed(1) : 'N/A';
   const bp = s.branchesTotal > 0 ? (s.branchesHit / s.branchesTotal * 100).toFixed(1) : 'N/A';
-  return `| ${s.name} | ${lp}% | ${bp}% |`;
+  const svcT = SERVICE_THRESHOLDS[s.name];
+  const tStr = svcT ? `${svcT.lines}/${svcT.branches}` : `${threshold}/${threshold}`;
+  return `| ${s.name} | ${lp}% | ${bp}% | ${tStr}% |`;
 }).join('\n');
 
 const summary = `## Coverage Report
 
-| Service | Lines | Branches |
-|---------|-------|----------|
+| Service | Lines | Branches | Threshold (L/B) |
+|---------|-------|----------|------------------|
 ${rows}
-| **Total** | **${linePct.toFixed(1)}%** | **${branchPct.toFixed(1)}%** |
+| **Total** | **${linePct.toFixed(1)}%** | **${branchPct.toFixed(1)}%** | ${threshold}/${threshold}% |
 
-Threshold: ${threshold}%`;
+Global threshold: ${threshold}%`;
 
 process.stdout.write(summary + '\n');
 
@@ -136,7 +166,7 @@ if (process.env.GITHUB_STEP_SUMMARY) {
 writeCoverageBody(summary);
 
 // 임계치 검증
-const pass = linePct >= threshold && branchPct >= threshold;
+const pass = linePct >= threshold && branchPct >= threshold && !servicesFailed;
 if (!pass) {
   process.stderr.write(`\nCoverage below ${threshold}%: lines=${linePct.toFixed(1)}%, branches=${branchPct.toFixed(1)}%\n`);
   process.exit(1);
