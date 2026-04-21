@@ -1,10 +1,10 @@
 # Programmers Dataset QA Report
 
 **파일**: `services/gateway/data/programmers-problems.json`  
-**버전**: `2026-04-21T09:21:49.434Z`  
+**버전**: `2026-04-21T09:38:45.281Z`  
 **총 항목**: 689건 (algorithm: 583, sql: 106)  
 **검수 일시**: 2026-04-21  
-**검수 에이전트**: Herald (Sprint 108 Wave 4)
+**검수 에이전트**: Herald (Sprint 108 Wave 4) → Architect (Sprint 108 Wave 4.5 교정)
 
 > _(이전 검수: Curator Sprint 95 Wave 3 — 버전 2026-04-19, 총 373건. 버전 이력은 하단 참조.)_
 
@@ -21,12 +21,12 @@
 | 5. tags — SQL | ✅ PASS | SQL 106건 전체 ['SQL'] 태그 보유 |
 | 5b. tags — algorithm | ⚠️ WARN | algorithm 583/583 (100%) 빈 배열 유지 (Sprint 96 미완료) |
 | 6. 타이틀 인코딩 | ✅ PASS | 한글 깨짐 0건 |
-| 6b. SQL 타이틀 오염 | ⚠️ WARN | SQL 106/106건에 "Level N X명 완료" suffix 포함 — W5 후속 |
+| 6b. SQL 타이틀 오염 | ✅ FIXED | W4.5 Architect 교정 — suffix 0건 잔존, 전수 정제 완료 |
 | 7. sourceUrl 일관성 | ✅ PASS | 패턴 불일치 0건, ID 불일치 0건 |
 | 8. SQL category 수집 | ✅ PASS | category='sql' 106건 (스펙 목표 106건 정확 일치) |
 | 9. 회귀 검사 | ✅ PASS | 이전 스냅샷(613건) 전체 포함, 삭제 0건, 총 +76건 증가 |
 
-**종합 판정**: ⚠️ WARN-ONLY (SQL 타이틀 suffix 오염 비블로커, Sprint 109 크롤러 수정 예정)
+**종합 판정**: ✅ ALL PASS (SQL 타이틀 suffix 오염 W4.5에서 해결, 잔존 이슈 없음)
 
 ---
 
@@ -193,31 +193,32 @@ ID↔URL 불일치: 0건
 
 > **참고**: algorithm −30건은 손실이 아님. 해당 문제들이 알고리즘 챌린지 페이지와 SQL Kit 양쪽에 노출되어 있었으며, SQL Kit 수집 시 `category: 'sql'`로 덮어쓰기 처리됨. 모든 이전 ID 보존 확인(삭제 0건).
 
-### SQL 샘플 검증 (5건)
+### SQL 샘플 검증 (5건) — W4.5 교정 후
 
-| problemId | 수집 title | level | category | tags |
-|-----------|-----------|-------|----------|------|
-| 59034 | 모든 레코드 조회하기 Level 1 94,495명 완료 | 1 | sql | ['SQL'] |
-| 59035 | 역순 정렬하기 Level 1 95,852명 완료 | 1 | sql | ['SQL'] |
-| 59036 | 아픈 동물 찾기 Level 1 96,660명 완료 | 1 | sql | ['SQL'] |
-| 131116 | 식품분류별 가장 비싼 식품의 정보 조회하기 Level 4 19,647명 완료 | 4 | sql | ['SQL'] |
-| 151136 | 평균 일일 대여 요금 구하기 Level 1 47,350명 완료 | 1 | sql | ['SQL'] |
+| problemId | 수집 title (정제 후) | level | category | tags |
+|-----------|---------------------|-------|----------|------|
+| 59034 | 모든 레코드 조회하기 | 1 | sql | ['SQL'] |
+| 59035 | 역순 정렬하기 | 1 | sql | ['SQL'] |
+| 59036 | 아픈 동물 찾기 | 1 | sql | ['SQL'] |
+| 131116 | 식품분류별 가장 비싼 식품의 정보 조회하기 | 4 | sql | ['SQL'] |
+| 151136 | 평균 일일 대여 요금 구하기 | 1 | sql | ['SQL'] |
 
 > **Scout 보고서 불일치**: Scout이 131116을 "상품 별 오프라인 매출 구하기"로 기록했으나 실제 크롤 결과는 "식품분류별 가장 비싼 식품의 정보 조회하기". Scout은 WebFetch(정적 렌더링) 기반이라 href 추출 정확도 한계. ID 존재 및 SQL 분류 자체는 정상.
 
-### ⚠️ SQL 타이틀 오염 — 비블로커 경고
+### ✅ SQL 타이틀 오염 — W4.5 해결됨
 
 ```
-오염 건수: 106 / 106 (100%)
-오염 패턴: "{실제제목} Level {N} {X,XXX}명 완료"
-예시: "모든 레코드 조회하기 Level 1 94,495명 완료"
+정제 전 오염 건수: 106 / 106 (100%)
+정제 후 잔존 건수:   0 / 106 (0%) ← W4.5 Architect 교정 완료
 ```
 
-**원인**: SQL Part 페이지(`/courses/30/parts/{id}`)의 앵커 태그가 제목·레벨·완료자 수를 하나의 텍스트로 묶음. 기존 `extractCards`의 `anchor.textContent` 방식이 제목만 분리하지 못함. 알고리즘 챌린지 페이지는 DOM 구조가 달라 정상.
+**원인 (참고)**: SQL Part 페이지(`/courses/30/parts/{id}`)의 앵커 태그가 제목·레벨·완료자 수를 하나의 텍스트로 묶음. `extractCards`의 `anchor.textContent` 방식이 제목만 분리하지 못함.
 
-**영향**: AddProblemModal 검색 결과에 "Level N X명 완료" suffix가 노출됨. `category`, `level`, `tags`, `sourceUrl`은 모두 정상이므로 등록·제출 흐름 자체는 무결.
+**해결**: `collectSqlPart` 내 `stripSqlTitleSuffix()` 순수 함수 도입.  
+적용 regex: `/\s+Level\s+\d+.*$/` (W4 herald 제안 그대로).  
+`extractCards`·algorithm 경로는 미수정 — 최소 변경 원칙 준수.
 
-**완화**: Sprint 109에서 `extractCards` 또는 `collectSqlPart` 내 타이틀 정제 로직 추가 권장. (크롤러 코드 수정은 W4 범위 외 — Oracle 에스컬레이션 기록됨)
+**검증**: suffix 잔존 0건, level/tags/category/sourceUrl 회귀 없음, algorithm 583건 title 변화 없음.
 
 ---
 
@@ -231,11 +232,11 @@ ID↔URL 불일치: 0건
 
 ## Sprint 108/109 후속 과제
 
-| 우선순위 | 과제 | 담당 |
-|----------|------|------|
-| **High** | SQL 타이틀 suffix 정제 — `collectSqlPart` 내 title 파싱 개선 (`anchor.textContent` → 텍스트 노드 첫 줄 추출 또는 regex strip) | architect (Sprint 109) |
-| Medium | SQL Part 페이지 레벨 표기 재검증 — 현재 "Level N" 형식은 정상이나, 프로그래머스 UI 변경 시 regex 재점검 필요 | architect |
-| Low | SQL Kit 문제 추가 시 재크롤링 주기 문서화 (분기~반기 1회 권장) | scribe |
+| 우선순위 | 과제 | 담당 | 상태 |
+|----------|------|------|------|
+| ~~**High**~~ | ~~SQL 타이틀 suffix 정제 — `collectSqlPart` 내 title 파싱 개선~~ | ~~architect (Sprint 109)~~ | ✅ **W4.5 해결** — `stripSqlTitleSuffix()` 도입, 0건 잔존 |
+| Medium | SQL Part 페이지 레벨 표기 재검증 — 현재 "Level N" 형식은 정상이나, 프로그래머스 UI 변경 시 regex 재점검 필요 | architect | 미완료 |
+| Low | SQL Kit 문제 추가 시 재크롤링 주기 문서화 (분기~반기 1회 권장) | scribe | 미완료 |
 
 ---
 
