@@ -34,6 +34,8 @@ const itemSchema = z.object({
   level: z.number().int().min(0).max(5),
   tags: z.array(z.string().max(60)).max(10),
   sourceUrl: z.string().url(),
+  /** Sprint 108: SQL Kit 지원 — 'algorithm' | 'sql' (미입력 시 'algorithm' 기본값) */
+  category: z.enum(['algorithm', 'sql']).default('algorithm'),
 });
 
 const dataSchema = z.object({
@@ -51,8 +53,15 @@ type ProblemItem = z.infer<typeof itemSchema>;
 const CHALLENGES_BASE = 'https://school.programmers.co.kr/learn/challenges';
 const LESSON_BASE =
   'https://school.programmers.co.kr/learn/courses/30/lessons';
+const PARTS_BASE =
+  'https://school.programmers.co.kr/learn/courses/30/parts';
 // Sprint 98: 레벨 0(코딩기초트레이닝) 포함 — challenges?levels=0 동일 URL 구조 사용
 const LEVELS = [0, 1, 2, 3, 4, 5] as const;
+/**
+ * Sprint 108: SQL 고득점 Kit Part ID 목록.
+ * SELECT / SUM,MAX,MIN / GROUP BY / IS NULL / JOIN / String,Date
+ */
+const SQL_PART_IDS = [17042, 17043, 17044, 17045, 17046, 17047] as const;
 type Level = (typeof LEVELS)[number];
 
 const DELAY_MIN_MS = 300;
@@ -104,11 +113,12 @@ function randomDelay(): Promise<void> {
 }
 
 /**
- * 레벨 텍스트("Lv. 1", "★★★" 등)에서 정수 레벨 추출.
+ * 레벨 텍스트("Lv. 1", "Level 1", "★★★" 등)에서 정수 레벨 추출.
+ * Sprint 108: SQL Kit의 "Level N" 형식도 파싱하도록 regex 확장.
  * 파싱 실패 시 defaultLevel 반환.
  */
 function parseLevelText(text: string, defaultLevel: Level): number {
-  const lvMatch = text.match(/[Ll]v\.?\s*(\d)/);
+  const lvMatch = text.match(/(?:[Ll]v\.?\s*|[Ll]evel\s*)(\d)/);
   if (lvMatch !== null && lvMatch[1] !== undefined) {
     return parseInt(lvMatch[1], 10);
   }
@@ -301,6 +311,7 @@ async function collectLevel(
         level: lvNum,
         tags: deduped,
         sourceUrl: `${LESSON_BASE}/${card.problemId}`,
+        category: 'algorithm',
       });
     }
 
@@ -315,6 +326,75 @@ async function collectLevel(
     // localSeen 기준 신규 항목이 없으면 페이지 반복 → 종료
     if (pageLocalNew === 0) break;
   }
+
+  return collected;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  크롤러 — SQL Kit Part 수집 (Sprint 108)
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * SQL 고득점 Kit Part 페이지에서 문제를 수집한다.
+ * 페이지네이션 없음 — Part 단위 단일 페이지 구조.
+ * globalSeen을 사용하지 않아 알고리즘 탭과 중복된 ID도 SQL 메타로 덮어쓸 수 있다.
+ *
+ * @param page    Playwright Page 인스턴스
+ * @param partId  SQL Kit Part ID (17042~17047)
+ */
+async function collectSqlPart(
+  page: Page,
+  partId: number,
+): Promise<ProblemItem[]> {
+  const collected: ProblemItem[] = [];
+  const localSeen = new Set<number>();
+  const url = `${PARTS_BASE}/${partId}`;
+
+  sLog('info', '[SQL_PART_START]', { partId });
+
+  try {
+    await page.goto(url, { waitUntil: 'networkidle', timeout: 30_000 });
+  } catch {
+    sLog('warn', '[GOTO_FALLBACK]', { partId, action: 'load_event_fallback' });
+    await page.goto(url, { waitUntil: 'load', timeout: 30_000 });
+  }
+
+  try {
+    await page.waitForSelector('a[href*="/learn/courses/30/lessons/"]', {
+      timeout: 10_000,
+    });
+  } catch {
+    sLog('warn', '[SQL_PART_NO_LESSONS]', { partId });
+    return collected;
+  }
+
+  await randomDelay();
+
+  const cards = await extractCards(page);
+
+  for (const card of cards) {
+    if (localSeen.has(card.problemId)) continue;
+    localSeen.add(card.problemId);
+
+    // SQL Part 페이지는 "Level N" 형식 사용 — 확장된 regex로 파싱
+    const lvNum = parseLevelText(card.levelText, 1 as Level);
+
+    // SQL 태그 강제 주입: 태그가 비어있어도 ['SQL'] 보장
+    const baseTags = [...new Set(card.tagTexts)].slice(0, 4);
+    const hasSqlTag = baseTags.some((t) => t.toUpperCase() === 'SQL');
+    const tags: string[] = hasSqlTag ? baseTags : ['SQL', ...baseTags].slice(0, 5);
+
+    collected.push({
+      problemId: card.problemId,
+      title: card.title,
+      level: lvNum,
+      tags,
+      sourceUrl: `${LESSON_BASE}/${card.problemId}`,
+      category: 'sql',
+    });
+  }
+
+  sLog('info', '[SQL_PART_DONE]', { partId, collected: collected.length });
 
   return collected;
 }
@@ -363,6 +443,7 @@ async function main(): Promise<void> {
   const globalSeen = new Set<number>();
 
   try {
+    // ── Step 1: 알고리즘 챌린지 (levels=0~5) 수집 ──
     for (const ord of ORDERS) {
       for (const lvl of LEVELS) {
         const items = await collectLevel(page, lvl, ord, globalSeen);
@@ -381,6 +462,23 @@ async function main(): Promise<void> {
       sLog('info', '[ORDER_PASS_DONE]', { order: ord, totalSoFar: allItems.size });
       await new Promise<void>((r) => setTimeout(r, 800));
     }
+
+    // ── Step 2: SQL 고득점 Kit Part 수집 (Sprint 108) ──
+    // SQL 메타데이터가 알고리즘 항목보다 우선함 — 동일 ID 시 덮어쓰기
+    sLog('info', '[SQL_KIT_START]', { parts: [...SQL_PART_IDS] });
+    for (const partId of SQL_PART_IDS) {
+      const sqlItems = await collectSqlPart(page, partId);
+      for (const item of sqlItems) {
+        allItems.set(item.problemId, item);
+      }
+      sLog('info', '[SQL_PART_MERGED]', {
+        partId,
+        sqlItems: sqlItems.length,
+        totalSoFar: allItems.size,
+      });
+      await new Promise<void>((r) => setTimeout(r, 400));
+    }
+    sLog('info', '[SQL_KIT_DONE]', { totalSoFar: allItems.size });
   } finally {
     await page.close();
     await context.close();
