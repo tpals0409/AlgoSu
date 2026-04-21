@@ -48,3 +48,4 @@
 
 - [ ] Kustomize overlay 렌더링 확인
 - [ ] Sealed Secrets 적용 확인
+- [ ] CI 인프라 변경 PR인 경우 `workflow_dispatch(rebuild_all=true)` 실행 계획 포함 ([docs/runbook-ci-rebuild-all.md](../docs/runbook-ci-rebuild-all.md) 참조)
