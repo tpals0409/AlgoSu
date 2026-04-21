@@ -18,7 +18,6 @@ from .config import settings
 from .metrics import claude_requests_total
 from .prompt import (
     GROUP_SYSTEM_PROMPT,
-    SYSTEM_PROMPT,
     build_group_user_prompt,
     build_user_prompt,
     get_system_prompt,
