@@ -518,7 +518,7 @@ jobs:
 
       - name: Check coverage threshold
         id: coverage
-        run: node scripts/check-coverage.mjs coverage/ 60
+        run: node scripts/check-coverage.mjs coverage/ 70
 
       - name: Comment PR with coverage
         if: always() && github.event_name == 'pull_request' && steps.coverage.outputs.coverage-body != ''
