@@ -94,6 +94,21 @@ const { services, totals } = parseLcovFiles(lcovFiles);
 const linePct = totals.linesTotal > 0 ? (totals.linesHit / totals.linesTotal * 100) : 0;
 const branchPct = totals.branchesTotal > 0 ? (totals.branchesHit / totals.branchesTotal * 100) : 0;
 
+// 서비스별 개별 수치 콘솔 출력 (디버깅 및 CI 가시성 강화)
+process.stdout.write('\nService-level coverage breakdown:\n');
+for (const s of services) {
+  const lp = s.linesTotal > 0 ? (s.linesHit / s.linesTotal * 100).toFixed(1) : 'N/A';
+  const bp = s.branchesTotal > 0 ? (s.branchesHit / s.branchesTotal * 100).toFixed(1) : 'N/A';
+  const lpOk = s.linesTotal > 0 ? (s.linesHit / s.linesTotal * 100) >= threshold : true;
+  const bpOk = s.branchesTotal > 0 ? (s.branchesHit / s.branchesTotal * 100) >= threshold : true;
+  const lpIcon = lpOk ? '✅' : '❌';
+  const bpIcon = bpOk ? '✅' : '❌';
+  process.stdout.write(
+    `  ${s.name}: lines ${lp}% ${lpIcon} / branches ${bp}% ${bpIcon}\n`,
+  );
+}
+process.stdout.write('\n');
+
 // Markdown 테이블 출력 (GITHUB_STEP_SUMMARY + stdout)
 const rows = services.map(s => {
   const lp = s.linesTotal > 0 ? (s.linesHit / s.linesTotal * 100).toFixed(1) : 'N/A';
