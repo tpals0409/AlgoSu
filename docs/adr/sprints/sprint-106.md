@@ -24,7 +24,7 @@ Sprint 106은 이 세 이월 항목을 3개 병렬 트랙([A]/[B]/[C])으로 일
 | 트랙 | 내용 | 상태 |
 |------|------|------|
 | [A] Coverage Threshold 정렬 + 70% 상향 | Frontend branches 69.55% → 71%+ 달성, 글로벌 게이트 60% → 70% 상향 | ✅ PR 준비 |
-| [B] L2 캐시 레이어 도입 | NestJS `dist/` + Next.js `.next/cache` GHA 캐싱으로 Docker 빌드 40% 단축 목표 | ⏳ TBD |
+| [B] L2 캐시 레이어 도입 | NestJS `dist/` + Next.js `.next/cache` GHA 캐싱으로 Docker 빌드 40% 단축 목표 | ❌ 미도입 결정 (Sensei 선자문 중단 조건 충족) |
 | [C] Frontend 빌드 최적화 | 실측 인프라 + 저복잡도 개선 3개 동시 적용 | ⏳ TBD |
 
 ---
@@ -147,21 +147,93 @@ PR A-1 (#121) → CI green 확인 → PR A-2 (#122) 머지 → PR A-3 (Gatekeepe
 
 ## [B] L2 캐시 레이어 도입
 
-> **상태: TBD (트랙 [A] 완료 후 착수 예정)**
+> **상태: ❌ 미도입 결정 — Sensei 선자문(task-20260421-143704) 중단 조건 충족. 코드 변경 없음.**
 
-### 계획 요약
+### 원안 계획
 
-NestJS `dist/` 5개 서비스(gateway, identity, submission, problem, github-worker 제외) + Next.js `.next/cache` 2개(frontend, blog)를 GHA 아티팩트로 캐싱하여 Docker 빌드 40% 단축 목표.
+NestJS `dist/` 5개 서비스(gateway, identity, submission, problem; github-worker 제외) + Next.js `.next/cache` 2개(frontend, blog)를 GHA 파일시스템 캐시로 캐싱하여 Docker 빌드 3~5분 → **40% 단축** 목표. composite action `.github/actions/cache-build-output/action.yml` 신규 생성, `problem` 서비스 파일럿 → Pre/Post 실측 → 전 서비스 확산.
 
-Sprint 105 운영 원칙 준수:
-- Sensei 선자문 → L2 캐시 샘플링 전략 (Pre n=3 기 측정 활용 가능 여부 + Post N=1 최소화 여부)
-- composite action `.github/actions/cache-build-output/action.yml` 신규 생성
-- 파일럿: `problem` 서비스 1개 → Pre/Post 실측 → 확산
-- 런북 갱신: `docs/runbook-ci-rebuild-all.md`에 L2 캐시 무효화 절차 추가
+### 결정: 미도입 (중단 조건 충족)
 
-담당: Sensei(선자문 + 실측), Architect(composite action), Postman(워크플로우 적용), Scribe(ADR + 런북)
+Sensei 선자문(task-20260421-143704) 결과, 승인 플랜의 명시적 중단 조건("Docker 멀티스테이지 내부 cache와 L2 GHA 캐시 중복 시 이득 0 → 중단")이 충족됨을 확인했다. **트랙 [B] 조기 종결. 코드 변경 없음. 분석 결과 ADR 기록 및 Sprint 107 시드 등록.**
 
-*(섹션은 트랙 [B] 완료 후 ADR 후속 PR에서 상세 채움)*
+### 구조적 발견 4건 (Sensei 선자문 리포트)
+
+#### 발견 1: Docker buildkit `type=gha,mode=max`가 L2 역할 이미 수행
+
+`mode=max`는 빌더 스테이지의 **모든 중간 레이어**를 GHA cache에 저장한다. NestJS `RUN npm run build`(= `dist/` 생성)가 이미 GHA cache 레이어로 저장됨 → 외부 GHA 파일시스템 캐시 추가는 **100% 중복**.
+
+```
+# NestJS 예시 (problem/Dockerfile) — mode=max 캐시 커버 범위
+Layer 1: FROM node:22-alpine AS builder         [캐시]
+Layer 2: COPY package*.json ./                  [package.json 미변경 시 HIT]
+Layer 3: RUN npm ci                             [package.json 미변경 시 HIT]
+Layer 4: COPY . .                               [소스 변경 시 MISS]
+Layer 5: RUN npm run build   ← dist/ 생성       [Layer 4 MISS 시 재실행]
+```
+
+`mode=max`는 Layer 5 결과(dist/)를 **이미** GHA cache에 저장 중 = 사실상 L2 캐시가 Docker 레이어 형태로 이미 존재.
+
+#### 발견 2: Frontend `.next/cache` GHA step 이미 존재하나 비기능 (ci.yml L624~630)
+
+`build-frontend` 잡에 `actions/cache@v5 path: frontend/.next/cache` 단계가 이미 존재한다. 그러나 해당 잡은 host-side `npm run build` 없이 `docker/build-push-action` 전용 → `.next/cache`가 host에 생성되지 않음 → **빈 디렉토리 save/restore 반복**. Docker 전환 이전 host-side 빌드 시대 유산으로 판단.
+
+비기능 메커니즘:
+1. `actions/cache restore` → `frontend/.next/cache` host에 복원 (캐시 존재 시)
+2. `docker/build-push-action context: ./frontend` → Docker context에 포함
+3. `docker/build-push-action` 실행 → 이미지 GHCR push. **컨테이너 내부 `.next/cache`는 host로 반출 안 됨**
+4. `actions/cache save (post)` → 빈 디렉토리 저장. 다음 run도 동일 반복
+
+#### 발견 3: Blog에 `.next/cache` GHA step 추가 시 동일 비기능 재현
+
+`build-blog`에도 host-side `npm run build` 없음 → 동일 구조 → 추가해도 비기능. Blog Dockerfile의 SSG `out/` 빌드도 Docker 내부 전용.
+
+#### 발견 4: 전 빌드 잡이 Docker 내부 전용 → GHA 파일시스템 캐시 활용 경로 자체 없음
+
+전체 파이프라인에서 **host filesystem에서 `npm run build`를 실행하는 잡이 단 하나도 없다**. 모든 TypeScript/Next.js 컴파일은 Docker 컨테이너 내부에서만 발생. GHA 파일시스템 캐시는 host filesystem에만 적용 → 현 Docker 전용 아키텍처에서는 구조적으로 활용 경로 없음.
+
+### 40% 단축 목표 재현실화
+
+| 시나리오 | 현재 소요 | L2 GHA 캐시 추가 후 | 개선율 |
+|----------|----------|-------------------|-------|
+| 소스 미변경 | ~30~60s (Docker HIT) | 동일 | **0%** |
+| 소스 변경 (일반 PR) | 3~5분 (Docker MISS) | 동일 | **0%** |
+| package.json 변경 | npm ci 포함 4~6분 | 동일 | **0%** |
+
+**결론:** 현 Docker 빌드 아키텍처(모든 컴파일이 Docker 내부 전용)에서는 GHA 파일시스템 캐시 추가로 40% 단축 달성 불가. 진정한 L2 효과는 host-side 빌드 전환이 선행되어야 한다.
+
+### 원계획 vs 재조정 요약
+
+| 원계획 항목 | 재조정 결과 | 사유 |
+|------------|-----------|------|
+| composite action `cache-build-output` 생성 | 불필요 | 캐시 대상 없음 |
+| `problem` 서비스 파일럿 | 불필요 | 중단 조건 충족 |
+| NestJS 4개 확산 + Next.js 2개 | 불필요 | 중단 조건 충족 |
+| Pre/Post 실측 | 불필요 | 구현 없음 |
+| 런북 L2 무효화 절차 추가 | 불필요 | 캐시 없음 |
+| Scribe ADR [B] 기록 | ✅ 완료 (본 섹션) | 분석 결과 문서화 |
+| 비기능 단계 정리 (ci.yml L624~630) | 선택적 — Architect 병렬 PR (task-20260421-145147) | P1 정리 권고 |
+
+### 트랙 [B] 교훈
+
+1. **Sprint 105 "Sensei 선자문 → 원안 축소" 패턴이 Sprint 106 [B]에서도 적중 — 실구현 0줄 달성** — Sprint 105 [B-2]에서 선자문으로 runner-minutes 75% 절감했다. Sprint 106 [B]에서는 동일 패턴이 한 단계 더 나아가 구현 자체가 0줄이 됐다(runner-minutes 100% 절감). Sensei 선자문이 단순 최적화 도구가 아닌 "구현 필요성 자체를 검증하는 게이트"로 기능함이 재확인됐다.
+
+2. **플랜 명시적 중단 조건("중복 시 이득 0")은 실제 작동하는 안전장치** — 승인 플랜의 리스크 대응 조항이 선자문 시점에 정확히 발동됐다. "중단 조건을 플랜에 명시하는 것"은 Sensei 선자문 단계에서 판단 기준을 제공하는 구조적 역할을 한다. 중단 조건이 없었다면 선자문 결과를 "일부 적용"으로 모호하게 처리할 위험이 있었다.
+
+3. **"이미 구현된 것처럼 보이는 비기능 코드" 탐지** — `ci.yml L624~630` Frontend `.next/cache` GHA step은 플랜 수립 단계 Explore에서 "이미 구현된 캐시 단계"로 인식될 수 있었으나, Sensei가 Docker 아키텍처 맥락에서 비기능임을 판정했다. 코드의 존재 ≠ 기능 동작. CI 파이프라인 탐색 시 "host-side vs Docker 내부" 경계를 확인하는 것이 필수 선행 분석임이 증명됐다.
+
+### Sprint 107 시드 — "진정한 L2 달성 경로"
+
+현 Docker 전용 아키텍처 내에서 GHA 파일시스템 캐시 효과를 실현하려면 host-side 빌드 전환이 필요하다. 아래 4건을 Sprint 107 후속 검토 항목으로 등록한다.
+
+| 방안 | 설명 | 예상 단축 | 난이도 |
+|------|------|----------|-------|
+| **Blog host-side SSG 빌드** | CI에서 `npm ci + npm run build` on host → `out/` GHA cache → Docker는 `COPY out/` 전용 | MISS 시 40~60% | 중 (Dockerfile + ci.yml) |
+| **Frontend host-side 빌드** | CI에서 `npm ci + npm run build` on host → `.next/standalone` GHA cache → Docker COPY only | MISS 시 40~60% | 중 (Dockerfile + ci.yml) |
+| **`APK_CACHE_BUST` 조건화** | 보안 패치 필요 시만 apk invalidate (현재 매 run 강제 invalidate → 조건부 전환) | 20~30s/서비스 | 낮음 (보안 트레이드오프 결정 필요) |
+| **NestJS tsc incremental** | host-side 빌드 전환 + `tsBuildInfoFile` 활용 | MISS 시 20~40% | 중~고 (Dockerfile 대수정) |
+
+> **선택적 정리:** ci.yml L624~630 (Frontend `.next/cache` 비기능 GHA step 6줄) 제거 PR을 Architect가 병렬 디스패치 중(task-20260421-145147). 해당 PR 머지 시 본 ADR과 순서 독립적으로 머지 가능.
 
 ---
 
@@ -197,7 +269,9 @@ Next.js 빌드 시간 CI 메트릭 수집 인프라 구축 + 저복잡도 개선
 | [A] CI 게이트 상향 + 서비스별 로그 강화 | Architect | ✅ PR 생성 | PR #122 (`feat/sprint-106-ci-coverage-gate-70`) |
 | [A] CLAUDE.md 커버리지 문구 수정 | Gatekeeper | ⏳ 예정 | PR (A-3) |
 | [A] Sprint 106 ADR [A] 섹션 | Scribe | ✅ 완료 | 본 문서 |
-| [B] L2 캐시 레이어 전체 | Sensei·Architect·Postman·Scribe | ⏳ TBD | — |
+| [B] Sensei L2 캐시 선자문 | Sensei | ✅ 완료 (중단 조건 충족) | `~/.claude/oracle/inbox/sensei-task-20260421-143704.md` |
+| [B] Sprint 106 ADR [B] 섹션 | Scribe | ✅ 완료 | 본 문서 |
+| [B] ci.yml L624~630 비기능 정리 (선택) | Architect | ⏳ 병렬 PR (task-20260421-145147) | — |
 | [C] Frontend 빌드 최적화 전체 | Architect·Postman·Sensei·Scribe | ⏳ TBD | — |
 
 ---
@@ -209,23 +283,29 @@ Next.js 빌드 시간 CI 메트릭 수집 인프라 구축 + 저복잡도 개선
 - **submission/problem/identity lcov 로컬 실측 수집** — 현재 threshold 계약값만 있고 실측 margin 미확보. `npm test -- --coverage --ci` 로컬 실행으로 확보 가능
 - **서비스별 독립 게이트 도입 검토** — `check-coverage.mjs`에 per-service threshold 설정으로 글로벌 단일 게이트의 한계(path-filter 오해 구조) 구조적 해소
 
-트랙 [B]/[C] 관련:
+트랙 [B] — Sprint 107 시드 (진정한 L2 달성 경로):
+- **Blog host-side SSG 빌드 전환** — CI에서 `npm ci + npm run build` on host → `out/` GHA cache → Docker는 `COPY out/` 전용. 예상 MISS 시 40~60% 단축
+- **Frontend host-side 빌드 전환** — `.next/standalone` GHA cache → Docker COPY only. 예상 MISS 시 40~60% 단축. ci.yml L624~630 비기능 step 제거(Architect 병렬 PR) 이후 올바른 host-side cache step으로 대체
+- **`APK_CACHE_BUST` 조건화** — 보안 패치 필요 시만 apk invalidate. 예상 20~30s/서비스. 보안 트레이드오프 결정 필요
+- **NestJS tsc incremental** — host-side 빌드 전환 + `tsBuildInfoFile` 활용. 예상 MISS 시 20~40% 단축. Dockerfile 대수정 수반
+
+트랙 [C] 관련:
 - Monaco Editor dynamic import, recharts 조건부 import — 실측 ROI 확보 후 Sprint 107+
-- L2 캐시 확산 후 잔여 서비스 (트랙 [B] 파일럿 결과 기반)
 - 글로벌 coverage threshold 70% 안정화 검증 (Sprint 107 최초 frontend-only PR 통과 확인)
 
 ---
 
 ## 교훈
 
-*(트랙 [B]/[C] 교훈은 각 트랙 완료 시 후속 PR로 추가 예정)*
+*(트랙 [C] 교훈은 트랙 [C] 완료 시 후속 PR로 추가 예정)*
 
 트랙 [A] 교훈 3건은 [A] 섹션 내 "트랙 [A] 교훈" 서브섹션에 기록됨.
+트랙 [B] 교훈 3건은 [B] 섹션 내 "트랙 [B] 교훈" 서브섹션에 기록됨.
 
 공통 운영 원칙 (Sprint 105 계승):
-- **Sensei 선자문 패턴** — N 결정을 실행 전 분리. 본 스프린트에서 N=1 충분 판정이 유효함을 재확인
-- **런북 즉시 리허설** — 트랙 [B] 런북 갱신 후 동일 스프린트 내 첫 L2 캐시 무효화 사례로 리허설 필수
-- **측정 성격별 실용 기준 선택** — 결정론적(coverage): binary pass/fail, 확률론적(timing): ±10% 실용 기준
+- **Sensei 선자문 패턴** — N 결정을 실행 전 분리. [A]에서는 N=1 충분 판정, [B]에서는 중단 조건 충족으로 구현 자체 불필요 확인. 선자문이 "최적화 도구"를 넘어 "구현 필요성 검증 게이트"임을 2회 연속 증명
+- **중단 조건 명시화** — 플랜 리스크 대응에 중단 조건을 명시해 두면 선자문 시점에 판단 기준으로 작동함. [B]에서 실제 발동 확인
+- **측정 성격별 실용 기준 선택** — 결정론적(coverage): binary pass/fail, 확률론적(timing): ±10% 실용 기준. [B]에서는 구현 없음으로 측정 자체 불필요
 
 ---
 
@@ -234,7 +314,8 @@ Next.js 빌드 시간 CI 메트릭 수집 인프라 구축 + 저복잡도 개선
 - Sprint 105 ADR: `docs/adr/sprints/sprint-105.md`
 - Sprint 104 ADR: `docs/adr/sprints/sprint-104.md`
 - 승인된 Sprint 106 실행 계획: `/Users/leokim/.claude/plans/iterative-hugging-reddy.md`
-- Sensei 실측 선자문 보고서: `~/.claude/oracle/inbox/sensei-task-20260421-134249.md`
+- Sensei [A] 실측 선자문 보고서: `~/.claude/oracle/inbox/sensei-task-20260421-134249.md`
+- Sensei [B] L2 캐시 선자문 보고서: `~/.claude/oracle/inbox/sensei-task-20260421-143704.md`
 - Architect 구현 보고서: `~/.claude/oracle/inbox/architect-task-20260421-135617.md`
 - rebuild_all 런북: `docs/runbook-ci-rebuild-all.md`
 - 채널톡 CI 리팩토링: https://channel.io/ko/team/blog/articles/backend-ci-refactoring-73fca77d
