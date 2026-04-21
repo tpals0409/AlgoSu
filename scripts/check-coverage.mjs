@@ -11,11 +11,28 @@
  * 사용법: node scripts/check-coverage.mjs <coverage-dir> [threshold]
  * 예: node scripts/check-coverage.mjs ./coverage 60
  */
-import { readFileSync, readdirSync, statSync, appendFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, appendFileSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 const coverageDir = resolve(process.argv[2] || './coverage');
 const threshold = Number(process.argv[3] || '60');
+
+/**
+ * GITHUB_OUTPUT에 coverage-body multiline 출력 (PR 코멘트용)
+ * @param {string} body - 코멘트 본문
+ */
+function writeCoverageBody(body) {
+  if (process.env.GITHUB_OUTPUT) {
+    appendFileSync(process.env.GITHUB_OUTPUT, `coverage-body<<COVERAGE_EOF\n${body}\nCOVERAGE_EOF\n`);
+  }
+}
+
+if (!existsSync(coverageDir)) {
+  const msg = `Coverage directory not found at ${coverageDir} — no services changed, skipping coverage gate.`;
+  process.stdout.write(msg + '\n');
+  writeCoverageBody(`## Coverage Report\n\n${msg}`);
+  process.exit(0);
+}
 
 /**
  * 디렉토리 내 모든 lcov.info 파일을 재귀 탐색
@@ -67,7 +84,9 @@ function parseLcovFiles(lcovFiles) {
 
 const lcovFiles = findLcovFiles(coverageDir);
 if (lcovFiles.length === 0) {
-  process.stdout.write('No lcov.info files found — skipping coverage gate.\n');
+  const msg = 'No lcov.info files found — skipping coverage gate.';
+  process.stdout.write(msg + '\n');
+  writeCoverageBody(`## Coverage Report\n\n${msg}`);
   process.exit(0);
 }
 
@@ -99,9 +118,7 @@ if (process.env.GITHUB_STEP_SUMMARY) {
 }
 
 // GITHUB_OUTPUT에 PR 코멘트용 body 출력
-if (process.env.GITHUB_OUTPUT) {
-  appendFileSync(process.env.GITHUB_OUTPUT, `coverage-body<<COVERAGE_EOF\n${summary}\nCOVERAGE_EOF\n`);
-}
+writeCoverageBody(summary);
 
 // 임계치 검증
 const pass = linePct >= threshold && branchPct >= threshold;

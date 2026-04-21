@@ -575,7 +575,7 @@ jobs:
         run: node scripts/check-coverage.mjs coverage/ 60
 
       - name: Comment PR with coverage
-        if: github.event_name == 'pull_request' && always()
+        if: always() && github.event_name == 'pull_request' && steps.coverage.outputs.coverage-body != ''
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: coverage-report
