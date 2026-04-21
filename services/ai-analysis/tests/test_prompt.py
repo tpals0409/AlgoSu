@@ -6,12 +6,15 @@ SQL 전용 루브릭 및 get_system_prompt 분기 검증
 """
 
 from src.prompt import (
+    ALGORITHM_WEIGHTS,
     GROUP_SYSTEM_PROMPT,
     SQL_SYSTEM_PROMPT,
+    SQL_WEIGHTS,
     SYSTEM_PROMPT,
     build_group_user_prompt,
     build_user_prompt,
     get_system_prompt,
+    get_weights,
 )
 
 
@@ -198,3 +201,49 @@ class TestGetSystemPrompt:
     def test_java_returns_default_prompt(self):
         """java 입력 시 기본 SYSTEM_PROMPT 반환"""
         assert get_system_prompt("java") is SYSTEM_PROMPT
+
+
+class TestWeights:
+    """가중치 상수 및 get_weights() 테스트"""
+
+    def test_algorithm_weights_sum_to_one(self):
+        assert abs(sum(ALGORITHM_WEIGHTS.values()) - 1.0) < 1e-9
+
+    def test_sql_weights_sum_to_one(self):
+        assert abs(sum(SQL_WEIGHTS.values()) - 1.0) < 1e-9
+
+    def test_algorithm_weights_has_five_categories(self):
+        assert len(ALGORITHM_WEIGHTS) == 5
+        assert set(ALGORITHM_WEIGHTS.keys()) == {
+            "correctness",
+            "efficiency",
+            "readability",
+            "structure",
+            "bestPractice",
+        }
+
+    def test_sql_weights_has_five_categories(self):
+        assert len(SQL_WEIGHTS) == 5
+        assert set(SQL_WEIGHTS.keys()) == {
+            "correctness",
+            "efficiency",
+            "readability",
+            "structure",
+            "bestPractice",
+        }
+
+    def test_get_weights_sql(self):
+        assert get_weights("sql") is SQL_WEIGHTS
+
+    def test_get_weights_sql_case_insensitive(self):
+        assert get_weights("SQL") is SQL_WEIGHTS
+
+    def test_get_weights_python(self):
+        assert get_weights("python") is ALGORITHM_WEIGHTS
+
+    def test_sql_efficiency_differs_from_algorithm(self):
+        """D4: SQL과 알고리즘의 efficiency/bestPractice 가중치가 다른지 확인"""
+        assert SQL_WEIGHTS["efficiency"] == 0.20
+        assert ALGORITHM_WEIGHTS["efficiency"] == 0.25
+        assert SQL_WEIGHTS["bestPractice"] == 0.20
+        assert ALGORITHM_WEIGHTS["bestPractice"] == 0.15

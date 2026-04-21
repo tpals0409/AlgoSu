@@ -159,6 +159,37 @@ JSON 스키마:
   "optimizedCode": "최적화된 전체 SQL 쿼리"
 }"""
 
+# ─── WEIGHTS (SSOT — 프롬프트 본문 가중치와 일치해야 함) ──
+
+ALGORITHM_WEIGHTS: dict[str, float] = {
+    "correctness": 0.30,
+    "efficiency": 0.25,
+    "readability": 0.15,
+    "structure": 0.15,
+    "bestPractice": 0.15,
+}
+
+SQL_WEIGHTS: dict[str, float] = {
+    "correctness": 0.30,
+    "efficiency": 0.20,
+    "readability": 0.15,
+    "structure": 0.15,
+    "bestPractice": 0.20,
+}
+
+
+def get_weights(language: str) -> dict[str, float]:
+    """
+    language에 따라 카테고리별 가중치 반환
+
+    @domain ai
+    @param language: 프로그래밍 언어
+    @returns: SQL이면 SQL_WEIGHTS, 그 외 ALGORITHM_WEIGHTS
+    """
+    if language.lower() == "sql":
+        return SQL_WEIGHTS
+    return ALGORITHM_WEIGHTS
+
 
 def get_system_prompt(language: str) -> str:
     """
