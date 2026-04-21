@@ -22,6 +22,7 @@ import { ScoreGauge } from '@/components/ui/ScoreGauge';
 import { CodeBlock } from '@/components/ui/CodeBlock';
 import { GUEST_SAMPLES, type GuestProblem, type GuestAnalysis } from '@/data/guest-samples';
 import { parseFeedback, type ParsedFeedback, type FeedbackCategory } from '@/lib/feedback';
+import { eventTracker } from '@/lib/event-tracker';
 
 // ─── HELPERS ─────────────────────────────────
 
@@ -221,6 +222,7 @@ function GuestCtaBanner(): ReactNode {
         </p>
         <Link
           href="/login"
+          onClick={() => eventTracker?.track('guest:cta_signup_click', { meta: { from: 'preview_banner' } })}
           className="shrink-0 rounded-btn bg-primary px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
         >
           회원가입 →

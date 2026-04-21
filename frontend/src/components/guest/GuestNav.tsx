@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { Sun, Moon } from 'lucide-react';
 import { Logo } from '@/components/ui/Logo';
+import { eventTracker } from '@/lib/event-tracker';
 
 /** 현재 테마 토글 버튼 */
 function ThemeToggle(): ReactElement {
@@ -66,6 +67,7 @@ export function GuestNav(): ReactElement {
           <ThemeToggle />
           <Link
             href="/login"
+            onClick={() => eventTracker?.track('guest:cta_signup_click', { meta: { from: 'nav' } })}
             className="flex h-9 items-center rounded-btn bg-primary px-4 text-sm font-medium text-white transition-opacity hover:opacity-90"
           >
             회원가입

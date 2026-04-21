@@ -33,6 +33,7 @@ const LANG_MAP: Record<string, string> = {
   swift: 'swift',
   ruby: 'ruby',
   csharp: 'csharp',
+  sql: 'sql',
 };
 
 // ─── PROPS ───────────────────────────────
