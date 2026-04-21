@@ -21,6 +21,7 @@ from .prompt import (
     SYSTEM_PROMPT,
     build_group_user_prompt,
     build_user_prompt,
+    get_system_prompt,
 )
 
 logger = logging.getLogger(__name__)
@@ -91,7 +92,7 @@ class ClaudeClient:
             message = self.client.messages.create(
                 model=MODEL_ID,
                 max_tokens=MAX_TOKENS,
-                system=SYSTEM_PROMPT,
+                system=get_system_prompt(language),
                 messages=[{"role": "user", "content": user_prompt}],
             )
 
