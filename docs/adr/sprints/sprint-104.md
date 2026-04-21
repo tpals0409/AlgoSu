@@ -27,7 +27,7 @@ Sprint 103 "파일럿 후 확산" 결정의 연장선상에서, github-worker에
 | composite action 전 서비스 확산 | Architect | PR #113 (`00650bf`) |
 | ai-analysis coverage-gate 통합 | Architect | PR #113 (`00650bf`) |
 | Oracle runner trap 수정 | Oracle (직접) | `~/.claude/oracle/bin/oracle-spawn.sh` |
-| github-worker 소요 시간 측정 | Sensei | 측정 불가 (Post 표본 0건) |
+| github-worker 소요 시간 측정 | Sensei | ✅ Sprint 105 소급 완료 | `sensei-sprint-105-timing.md` |
 | ADR 반영 | Scribe | 본 문서 + sprint-103.md 소급 |
 
 ## 수정 내용
@@ -53,6 +53,16 @@ Sprint 103 "파일럿 후 확산" 결정의 연장선상에서, github-worker에
 
 ### 4. 측정 시도 (Sensei)
 Sensei가 `gh run list` + jobs API로 Pre/Post 표본 수집을 시도. Pre 4건 평균(Quality 22.2s / Audit 19.8s / Test 19.2s) 확보에 성공했으나, PR #111/#113 둘 다 워크플로 파일만 수정되어 `detect-changes`가 github-worker를 스킵 → **Post 표본 0건**. composite action이 실제 설치·테스트 경로에서 실행된 런이 아직 관측되지 않음. 전문 보고서: `~/.claude/oracle/inbox/sensei-sprint-104-timing.md`
+
+**Sprint 105 [B] 소급 실측 결과** (task-20260421-sp105-b3-finalize):
+
+| 잡 | 변경 전 평균 (n=4) | 변경 후 평균 (n=3)² | 차이 | 실용 판정 |
+|---|---|---|---|---|
+| Quality — github-worker | 22.2s (σ 5.8s) | 22.3s (σ 2.5s) | +0.1s (+0.4%) | ✅ 변동 없음 |
+| Audit — github-worker | 19.8s (σ 3.7s) | 18.0s (σ 3.0s) | -1.8s (-8.9%) | ✅ 변동 없음 |
+| Test GitHub Worker | 19.2s (σ 1.9s) | 20.0s (σ 1.0s) | +0.8s (+3.9%) | ✅ 변동 없음 |
+
+² Post n=3: 자연 2건(run 24702740418·24702828670) + 합성 1건(run 24703075569 rebuild_all). 상세: `~/.claude/oracle/inbox/sensei-sprint-105-timing.md`
 
 ## 주요 교훈 (4건)
 
