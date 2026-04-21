@@ -254,6 +254,17 @@ function LoginContent(): ReactNode {
               </div>
             )}
 
+            {/* 게스트 둘러보기 */}
+            <p className="mt-4 text-center text-[11px] text-text-3" style={fade(0.55)}>
+              회원가입 전에 예시만 빠르게 보고 싶나요?{' '}
+              <Link
+                href="/guest"
+                className="underline transition-colors hover:text-text"
+              >
+                게스트로 둘러보기
+              </Link>
+            </p>
+
             {/* 약관 */}
             <p
               className="mt-7 text-center text-[11px] leading-relaxed text-text-3"
