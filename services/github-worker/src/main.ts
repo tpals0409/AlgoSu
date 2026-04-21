@@ -4,6 +4,7 @@
  * @layer config
  * @related worker.ts, config.ts, logger.ts
  */
+// @ci-measurement: sprint-105-post-baseline (Sprint 105 [B] 실측 앵커, 제거 금지)
 import { GitHubWorker } from './worker';
 import { logger } from './logger';
 import { startMetricsServer } from './metrics';
