@@ -22,8 +22,8 @@ import {
  * - idempotencyKey: 중복 제출 멱등성 보장
  */
 const ALLOWED_LANGUAGES = [
-  'python', 'java', 'cpp', 'c', 'javascript', 'typescript',
-  'go', 'rust', 'kotlin', 'swift', 'ruby', 'csharp',
+  'c', 'cpp', 'csharp', 'go', 'java', 'javascript',
+  'kotlin', 'python', 'ruby', 'rust', 'sql', 'swift', 'typescript',
 ] as const;
 
 export class CreateSubmissionDto {

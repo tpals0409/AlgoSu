@@ -30,8 +30,14 @@ describe('DIFFICULTIES', () => {
 });
 
 describe('LANGUAGES', () => {
-  it('9개 언어를 포함한다', () => {
-    expect(LANGUAGES).toHaveLength(9);
+  it('10개 언어를 포함한다 (Sprint 108: sql 추가)', () => {
+    expect(LANGUAGES).toHaveLength(10);
+  });
+
+  it('sql 언어를 포함한다 (Sprint 108)', () => {
+    expect(LANGUAGES.some((l) => l.value === 'sql')).toBe(true);
+    const sql = LANGUAGES.find((l) => l.value === 'sql');
+    expect(sql?.label).toBe('SQL');
   });
 
   it('LANGUAGE_VALUES와 LANGUAGES가 일치한다', () => {

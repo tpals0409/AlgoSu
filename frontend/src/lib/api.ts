@@ -540,6 +540,8 @@ export interface ProgrammersSearchItem {
   difficulty: ProgrammersProblemInfo['difficulty'];
   sourceUrl: string;
   tags: string[];
+  /** Sprint 108: 문제 카테고리 (algorithm | sql) */
+  category: 'algorithm' | 'sql';
 }
 
 export interface ProgrammersSearchResult {

@@ -25,6 +25,8 @@ interface ProgrammersRawItem {
   level: number;
   tags: string[];
   sourceUrl: string;
+  /** Sprint 108: SQL Kit 지원. 없으면 'algorithm'으로 간주 (legacy 호환) */
+  category?: 'algorithm' | 'sql';
 }
 
 /**
@@ -63,6 +65,8 @@ export interface ProgrammersProblemInfo {
   difficulty: ProgrammersDifficulty;
   tags: string[];
   sourceUrl: string;
+  /** Sprint 108: 'algorithm' | 'sql' (레거시 JSON 없으면 'algorithm') */
+  category: 'algorithm' | 'sql';
 }
 
 export interface ProgrammersSearchItem {
@@ -72,6 +76,8 @@ export interface ProgrammersSearchItem {
   difficulty: ProgrammersDifficulty;
   sourceUrl: string;
   tags: string[];
+  /** Sprint 108: SQL 카테고리 노출 */
+  category: 'algorithm' | 'sql';
 }
 
 export interface ProgrammersSearchResult {
@@ -99,9 +105,12 @@ function levelToDifficulty(level: number): ProgrammersDifficulty {
 
 /**
  * 쿼리 문자열이 문제 제목 또는 태그에 포함되는지 검사 (대소문자 무시).
+ * Sprint 108: query가 'sql'이면 category==='sql' 항목도 매칭.
  */
 function matchesQuery(item: ProgrammersProblemInfo, query: string): boolean {
   const lower = query.toLowerCase();
+  // SQL 토큰 검색: 'sql' 쿼리는 category=sql 항목을 우선 매칭
+  if (lower === 'sql' && item.category === 'sql') return true;
   return (
     item.title.toLowerCase().includes(lower) ||
     item.tags.some((t) => t.toLowerCase().includes(lower))
@@ -148,6 +157,8 @@ export class ProgrammersService implements OnApplicationBootstrap {
           difficulty: levelToDifficulty(item.level),
           tags: item.tags,
           sourceUrl: item.sourceUrl,
+          // Sprint 108: category 미포함 레거시 JSON → 'algorithm' 기본값
+          category: item.category ?? 'algorithm',
         });
       }
       this.logger.log(
@@ -196,6 +207,7 @@ export class ProgrammersService implements OnApplicationBootstrap {
         difficulty: item.difficulty,
         sourceUrl: item.sourceUrl,
         tags: item.tags,
+        category: item.category,
       })),
     };
   }

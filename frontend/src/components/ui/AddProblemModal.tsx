@@ -1,8 +1,8 @@
 /**
- * @file 문제 추가 모달 (BOJ / 프로그래머스 플랫폼 토글)
+ * @file 문제 추가 모달 (BOJ / 프로그래머스 플랫폼 토글, SQL 자동 태깅)
  * @domain problem
  * @layer component
- * @related problemApi, solvedacApi, programmersApi, PROGRAMMERS_LEVEL_LABELS
+ * @related problemApi, solvedacApi, programmersApi, PROGRAMMERS_LEVEL_LABELS, CreateProblemData
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -29,6 +29,8 @@ export interface SolvedProblem {
   difficulty?: Difficulty;
   /** 프로그래머스: Gateway에서 직접 제공되는 문제 URL */
   sourceUrl?: string;
+  /** 프로그래머스: 문제 카테고리 (algorithm | sql) */
+  category?: 'algorithm' | 'sql';
 }
 
 // solved.ac level(0~30) → our Difficulty + level(원시값 그대로 저장)
@@ -37,6 +39,24 @@ function toOurDiff(solvedLevel: number): { difficulty: Difficulty; level: number
   const tiers: Difficulty[] = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND', 'RUBY'];
   const tierIdx = Math.min(Math.floor((solvedLevel - 1) / 5), 5);
   return { difficulty: tiers[tierIdx], level: solvedLevel };
+}
+
+/**
+ * 프로그래머스 SQL 문제 여부 판정.
+ * category 또는 tags 기반 이중 체크.
+ */
+function isSqlProblem(p: SolvedProblem): boolean {
+  if (p.category === 'sql') return true;
+  return (p.tags ?? []).some((t) => t.toUpperCase() === 'SQL');
+}
+
+/**
+ * SQL 태그를 중복 없이 머지 (대소문자 정규화).
+ * 이미 SQL 태그가 있으면 원본 유지.
+ */
+function mergeSqlTag(tags: string[]): string[] {
+  const has = tags.some((t) => t.toUpperCase() === 'SQL');
+  return has ? tags : ['SQL', ...tags];
 }
 
 // Full tier label (e.g. "Gold III")
@@ -85,6 +105,7 @@ async function searchProgrammers(query: string): Promise<SolvedProblem[]> {
     acceptedUserCount: 0,
     difficulty: (item.difficulty ?? undefined) as Difficulty | undefined,
     sourceUrl: item.sourceUrl,
+    category: item.category,
   }));
 }
 
@@ -402,6 +423,15 @@ function SearchStep({ onSelect, platform, searchFn, onPlatformChange }: SearchSt
                         <span className="h-1.5 w-1.5 rounded-full" style={{ background: cfg.color }} />
                         {tierLabel}
                       </span>
+                      {/* SQL badge — 프로그래머스 SQL 카테고리 */}
+                      {platform === 'PROGRAMMERS' && p.category === 'sql' && (
+                        <span
+                          className="rounded-badge px-1.5 py-0.5 text-[10px] font-semibold"
+                          style={{ background: 'var(--primary-soft)', color: 'var(--primary)' }}
+                        >
+                          SQL
+                        </span>
+                      )}
                       {/* Tags */}
                       {tags.map((t) => (
                         <span
@@ -518,6 +548,15 @@ function ConfirmStep({
                   <span className="h-1.5 w-1.5 rounded-full" style={{ background: cfg.color }} />
                   {tierLabel}
                 </span>
+                {/* SQL badge — 확인 단계 */}
+                {platform === 'PROGRAMMERS' && isSqlProblem(problem) && (
+                  <span
+                    className="rounded-badge px-1.5 py-0.5 text-[10px] font-semibold"
+                    style={{ background: 'var(--primary-soft)', color: 'var(--primary)' }}
+                  >
+                    SQL
+                  </span>
+                )}
                 <span className="text-[11px]" style={{ color: 'var(--text-3)' }}>
                   #{problem.problemId}
                 </span>
@@ -676,7 +715,10 @@ export function AddProblemModal({ open, onClose, onAdd: onAddCallback }: AddProb
 
     const resolvedDiff = selected.difficulty ?? toOurDiff(selected.level).difficulty;
     const diffLevel = selected.difficulty ? selected.level : toOurDiff(selected.level).level;
-    const tagNames = selected.tags.slice(0, 5);
+    const sql = isSqlProblem(selected);
+    const tagNames = sql
+      ? mergeSqlTag(selected.tags.slice(0, 5))
+      : selected.tags.slice(0, 5);
 
     setIsAdding(true);
     setAddError(null);
@@ -695,6 +737,7 @@ export function AddProblemModal({ open, onClose, onAdd: onAddCallback }: AddProb
         tags: tagNames,
         sourceUrl,
         sourcePlatform: platform,
+        ...(sql && { allowedLanguages: ['sql'] }),
       };
 
       const created = await problemApi.create(data);

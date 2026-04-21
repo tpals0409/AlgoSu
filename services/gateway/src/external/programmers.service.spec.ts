@@ -62,6 +62,23 @@ const FIXTURE_ITEMS = [
     tags: ['해시'],
     sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/1845',
   },
+  // Sprint 108: SQL Kit 수집 픽스처 (category='sql') — 최소 2건
+  {
+    problemId: 59034,
+    title: '모든 레코드 조회하기',
+    level: 1,
+    category: 'sql' as const,
+    tags: ['SQL'],
+    sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/59034',
+  },
+  {
+    problemId: 131116,
+    title: '오프라인/온라인 판매 데이터 통합하기',
+    level: 4,
+    category: 'sql' as const,
+    tags: ['SQL'],
+    sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/131116',
+  },
 ];
 
 const FIXTURE_JSON = JSON.stringify(FIXTURE_ITEMS);
@@ -214,6 +231,7 @@ describe('ProgrammersService', () => {
         difficulty: 'BRONZE',
         tags: ['완전탐색'],
         sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/42840',
+        category: 'algorithm',
       });
     });
 
@@ -339,18 +357,18 @@ describe('ProgrammersService', () => {
     });
 
     it('페이지네이션 — page 2 는 10건 초과분 반환', () => {
-      // fixture 6건이므로 page=2 → 빈 결과 (Sprint 97: 폰켓몬 항목 추가로 5→6)
+      // fixture 8건이므로 page=2 → 빈 결과 (Sprint 108: SQL 픽스처 2건 추가로 6→8)
       const result = service.searchProblem('', 2);
-      // 빈 query 는 전체 매칭 → 6건, page2 offset=10 → 0건
+      // 빈 query 는 전체 매칭 → 8건, page2 offset=10 → 0건
       expect(result.items).toHaveLength(0);
-      expect(result.count).toBe(6);
+      expect(result.count).toBe(8);
     });
 
     it('page=1 — 전체 10건 이하면 전부 반환', () => {
-      // 빈 query → 전체 6건 매칭 (Sprint 97: 폰켓몬 항목 추가로 5→6)
+      // 빈 query → 전체 8건 매칭 (Sprint 108: SQL 픽스처 2건 추가로 6→8)
       const result = service.searchProblem('');
-      expect(result.count).toBe(6);
-      expect(result.items).toHaveLength(6);
+      expect(result.count).toBe(8);
+      expect(result.items).toHaveLength(8);
     });
 
     it('반환 항목 구조 검증', () => {
@@ -362,6 +380,64 @@ describe('ProgrammersService', () => {
       expect(item).toHaveProperty('difficulty');
       expect(item).toHaveProperty('sourceUrl');
       expect(item).toHaveProperty('tags');
+      expect(item).toHaveProperty('category'); // Sprint 108: category 필드
+    });
+
+    // Sprint 108: SQL 카테고리 테스트 ────────────────────────────────────────
+
+    it('sql 토큰 검색 — SQL 카테고리 문제만 반환', () => {
+      const result = service.searchProblem('sql');
+      expect(result.count).toBe(2);
+      expect(result.items.every((i) => i.category === 'sql')).toBe(true);
+    });
+
+    it('SQL 대문자 토큰 검색 — SQL 카테고리 문제 반환', () => {
+      const result = service.searchProblem('SQL');
+      expect(result.count).toBeGreaterThanOrEqual(2);
+      expect(result.items.some((i) => i.category === 'sql')).toBe(true);
+    });
+
+    it('알고리즘 문제 검색 — category algorithm 반환', () => {
+      const result = service.searchProblem('모의고사');
+      expect(result.count).toBe(1);
+      expect(result.items[0].category).toBe('algorithm');
+    });
+
+    it('SQL 문제 fetchProblem — category sql 반환', () => {
+      const result = service.fetchProblem(59034);
+      expect(result.category).toBe('sql');
+      expect(result.tags).toContain('SQL');
+    });
+  });
+
+  // Sprint 108: 레거시 fixture(category 없음) 로딩 호환 ─────────────────────
+
+  describe('category 레거시 호환', () => {
+    it('category 필드 없는 레거시 JSON — algorithm으로 기본값 처리', () => {
+      const mockLogger = {
+        setContext: jest.fn(),
+        log: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        debug: jest.fn(),
+      };
+      const svc = new ProgrammersService(mockLogger as never);
+      const legacyItems = [
+        {
+          problemId: 88888,
+          title: '레거시 알고리즘 문제',
+          level: 2,
+          tags: ['구현'],
+          sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/88888',
+          // category 필드 없음 — 레거시 JSON 시뮬레이션
+        },
+      ];
+      mockReadFileSync.mockReturnValue(JSON.stringify(legacyItems));
+      svc.loadFromFile('/legacy.json');
+
+      const result = svc.fetchProblem(88888);
+      expect(result.category).toBe('algorithm');
+      expect(result.title).toBe('레거시 알고리즘 문제');
     });
   });
 });
