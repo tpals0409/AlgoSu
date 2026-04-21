@@ -212,12 +212,21 @@ jobs:
           fi
       - uses: actions/checkout@v6
         if: steps.check.outputs.skip == 'false'
+      # --- Composite action (github-worker 파일럿) ---
+      - name: Setup Node service (composite)
+        if: steps.check.outputs.skip == 'false' && matrix.service == 'github-worker'
+        uses: ./.github/actions/setup-node-service
+        with:
+          service-path: services/${{ matrix.service }}
+          node-version: ${{ env.NODE_VERSION }}
+
+      # --- 기존 inline 스텝 (github-worker 외) ---
       - uses: actions/setup-node@v6
-        if: steps.check.outputs.skip == 'false'
+        if: steps.check.outputs.skip == 'false' && matrix.service != 'github-worker'
         with:
           node-version: ${{ env.NODE_VERSION }}
       - name: Cache node_modules
-        if: steps.check.outputs.skip == 'false'
+        if: steps.check.outputs.skip == 'false' && matrix.service != 'github-worker'
         uses: actions/cache@v5
         id: cache-node
         with:
@@ -226,7 +235,7 @@ jobs:
           restore-keys: |
             node-${{ matrix.service }}-
       - name: Install dependencies
-        if: steps.check.outputs.skip == 'false' && steps.cache-node.outputs.cache-hit != 'true'
+        if: steps.check.outputs.skip == 'false' && matrix.service != 'github-worker' && steps.cache-node.outputs.cache-hit != 'true'
         working-directory: services/${{ matrix.service }}
         run: npm ci
       - name: ESLint
@@ -341,12 +350,22 @@ jobs:
           fi
       - uses: actions/checkout@v6
         if: steps.check.outputs.skip == 'false'
+      # --- Composite action (github-worker 파일럿) ---
+      - name: Setup Node service (composite)
+        if: steps.check.outputs.skip == 'false' && matrix.service == 'github-worker'
+        uses: ./.github/actions/setup-node-service
+        with:
+          service-path: ${{ matrix.work_dir }}
+          node-version: ${{ env.NODE_VERSION }}
+          install-command: 'npm ci --ignore-scripts'
+
+      # --- 기존 inline 스텝 (github-worker 외) ---
       - uses: actions/setup-node@v6
-        if: steps.check.outputs.skip == 'false'
+        if: steps.check.outputs.skip == 'false' && matrix.service != 'github-worker'
         with:
           node-version: ${{ env.NODE_VERSION }}
       - name: Cache node_modules
-        if: steps.check.outputs.skip == 'false'
+        if: steps.check.outputs.skip == 'false' && matrix.service != 'github-worker'
         id: cache-node
         uses: actions/cache@v5
         with:
@@ -355,7 +374,7 @@ jobs:
           restore-keys: |
             node-${{ matrix.service }}-
       - name: Install dependencies
-        if: steps.check.outputs.skip == 'false' && steps.cache-node.outputs.cache-hit != 'true'
+        if: steps.check.outputs.skip == 'false' && matrix.service != 'github-worker' && steps.cache-node.outputs.cache-hit != 'true'
         working-directory: ${{ matrix.work_dir }}
         run: npm ci --ignore-scripts
       - name: npm audit (high/critical)
@@ -413,12 +432,21 @@ jobs:
           fi
       - uses: actions/checkout@v6
         if: steps.check.outputs.skip == 'false'
+      # --- Composite action (github-worker 파일럿) ---
+      - name: Setup Node service (composite)
+        if: steps.check.outputs.skip == 'false' && matrix.service == 'github-worker'
+        uses: ./.github/actions/setup-node-service
+        with:
+          service-path: ${{ matrix.work_dir }}
+          node-version: ${{ env.NODE_VERSION }}
+
+      # --- 기존 inline 스텝 (github-worker 외) ---
       - uses: actions/setup-node@v6
-        if: steps.check.outputs.skip == 'false'
+        if: steps.check.outputs.skip == 'false' && matrix.service != 'github-worker'
         with:
           node-version: ${{ env.NODE_VERSION }}
       - name: Cache node_modules
-        if: steps.check.outputs.skip == 'false'
+        if: steps.check.outputs.skip == 'false' && matrix.service != 'github-worker'
         uses: actions/cache@v5
         id: cache-node
         with:
@@ -427,7 +455,7 @@ jobs:
           restore-keys: |
             node-${{ matrix.service }}-
       - name: Install dependencies
-        if: steps.check.outputs.skip == 'false' && steps.cache-node.outputs.cache-hit != 'true'
+        if: steps.check.outputs.skip == 'false' && matrix.service != 'github-worker' && steps.cache-node.outputs.cache-hit != 'true'
         working-directory: ${{ matrix.work_dir }}
         run: npm ci
       - name: Run unit tests
@@ -512,6 +540,46 @@ jobs:
           name: coverage-frontend
           path: frontend/coverage/
           retention-days: 7
+
+  # ============================================================
+  # Coverage Gate — 글로벌 60% 임계치 강제 (Node + Frontend)
+  # ============================================================
+
+  coverage-gate:
+    name: Coverage Gate
+    needs: [test-node, test-frontend]
+    if: >-
+      always() &&
+      !cancelled() &&
+      (needs.test-node.result == 'success' || needs.test-node.result == 'skipped') &&
+      (needs.test-frontend.result == 'success' || needs.test-frontend.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: scripts/check-coverage.mjs
+          sparse-checkout-cone-mode: false
+
+      - name: Download all coverage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-*
+          path: coverage/
+          merge-multiple: false
+
+      - name: Check coverage threshold
+        id: coverage
+        run: node scripts/check-coverage.mjs coverage/ 60
+
+      - name: Comment PR with coverage
+        if: always() && github.event_name == 'pull_request' && steps.coverage.outputs.coverage-body != ''
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: coverage-report
+          message: ${{ steps.coverage.outputs.coverage-body }}
 
   # ============================================================
   # Build Jobs — 테스트 통과 후 Docker 빌드 + GHCR 푸시

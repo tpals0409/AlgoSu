@@ -1,0 +1,43 @@
+# @file Composite Action — Node.js 서비스 공통 셋업
+# @domain ci
+# @layer infrastructure
+# @related .github/workflows/ci.yml
+
+name: 'Setup Node Service'
+description: 'Node.js 서비스 공통 setup-node + cache + install 번들'
+
+inputs:
+  service-path:
+    description: '서비스 디렉토리 경로 (예: services/github-worker)'
+    required: true
+  node-version:
+    description: 'Node.js 버전'
+    required: false
+    default: '20'
+  install-command:
+    description: 'npm install 명령어'
+    required: false
+    default: 'npm ci'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Cache node_modules
+      id: cache-node
+      uses: actions/cache@v5
+      with:
+        path: ${{ inputs.service-path }}/node_modules
+        key: node-${{ hashFiles(format('{0}/package-lock.json', inputs.service-path)) }}
+        restore-keys: |
+          node-
+
+    - name: Install dependencies
+      if: steps.cache-node.outputs.cache-hit != 'true'
+      shell: bash
+      working-directory: ${{ inputs.service-path }}
+      run: ${{ inputs.install-command }}
