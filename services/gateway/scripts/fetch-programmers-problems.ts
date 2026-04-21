@@ -62,7 +62,7 @@ const LEVELS = [0, 1, 2, 3, 4, 5] as const;
  * SELECT / SUM,MAX,MIN / GROUP BY / IS NULL / JOIN / String,Date
  */
 const SQL_PART_IDS = [17042, 17043, 17044, 17045, 17046, 17047] as const;
-type Level = (typeof LEVELS)[number];
+export type Level = (typeof LEVELS)[number];
 
 const DELAY_MIN_MS = 300;
 const DELAY_MAX_MS = 500;
@@ -117,7 +117,7 @@ function randomDelay(): Promise<void> {
  * Sprint 108: SQL Kit의 "Level N" 형식도 파싱하도록 regex 확장.
  * 파싱 실패 시 defaultLevel 반환.
  */
-function parseLevelText(text: string, defaultLevel: Level): number {
+export function parseLevelText(text: string, defaultLevel: Level): number {
   const lvMatch = text.match(/(?:[Ll]v\.?\s*|[Ll]evel\s*)(\d)/);
   if (lvMatch !== null && lvMatch[1] !== undefined) {
     return parseInt(lvMatch[1], 10);

@@ -18,9 +18,10 @@ from .config import settings
 from .metrics import claude_requests_total
 from .prompt import (
     GROUP_SYSTEM_PROMPT,
-    SYSTEM_PROMPT,
     build_group_user_prompt,
     build_user_prompt,
+    get_system_prompt,
+    get_weights,
 )
 
 logger = logging.getLogger(__name__)
@@ -91,7 +92,7 @@ class ClaudeClient:
             message = self.client.messages.create(
                 model=MODEL_ID,
                 max_tokens=MAX_TOKENS,
-                system=SYSTEM_PROMPT,
+                system=get_system_prompt(language),
                 messages=[{"role": "user", "content": user_prompt}],
             )
 
@@ -111,7 +112,7 @@ class ClaudeClient:
             )
 
             raw_text = message.content[0].text if message.content else ""
-            result = self._parse_response(raw_text)
+            result = self._parse_response(raw_text, language=language)
 
             code_preview = code[:50] + "..." if len(code) > 50 else code
             logger.info(
@@ -144,12 +145,13 @@ class ClaudeClient:
                 "categories": [],
             }
 
-    def _parse_response(self, raw_text: str) -> dict:
+    def _parse_response(self, raw_text: str, language: str = "python") -> dict:
         """
         Claude 응답 JSON 파싱 -- 구조화된 결과 추출
 
         @domain ai
         @param raw_text: Claude 원본 응답 텍스트
+        @param language: 프로그래밍 언어 (fallback 가중치 분기용)
         @returns: 파싱된 분석 결과 dict
         """
         try:
@@ -199,13 +201,7 @@ class ClaudeClient:
                 logger.warning(
                     "totalScore=0이지만 카테고리 존재 -- 가중 평균으로 재계산"
                 )
-                weights = {
-                    "correctness": 0.30,
-                    "efficiency": 0.25,
-                    "readability": 0.15,
-                    "structure": 0.15,
-                    "bestPractice": 0.15,
-                }
+                weights = get_weights(language)
                 weighted_sum = sum(
                     cat.get("score", 0) * weights.get(cat.get("name", ""), 0)
                     for cat in categories
