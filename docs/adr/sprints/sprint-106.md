@@ -1,10 +1,10 @@
 ---
 sprint: 106
 title: "이월 3항목 일괄 처리 — Coverage 70% + L2 캐시 + Frontend 최적화"
-period: "2026-04-21 ~ (TBD)"
-status: in-progress
+period: "2026-04-21"
+status: complete
 start_commit: f05c3ba
-end_commit: (TBD)
+end_commit: 672929d
 ---
 
 # Sprint 106 — 이월 3항목 일괄 처리: Coverage 70% + L2 캐시 + Frontend 최적화
@@ -23,9 +23,9 @@ Sprint 106은 이 세 이월 항목을 3개 병렬 트랙([A]/[B]/[C])으로 일
 
 | 트랙 | 내용 | 상태 |
 |------|------|------|
-| [A] Coverage Threshold 정렬 + 70% 상향 | Frontend branches 69.55% → 71%+ 달성, 글로벌 게이트 60% → 70% 상향 | ✅ PR 준비 |
+| [A] Coverage Threshold 정렬 + 70% 상향 | Frontend branches 69.55% → 71%+ 달성, 글로벌 게이트 60% → 70% 상향 | ✅ 완료 (PR #121~#124 머지) |
 | [B] L2 캐시 레이어 도입 | NestJS `dist/` + Next.js `.next/cache` GHA 캐싱으로 Docker 빌드 40% 단축 목표 | ❌ 미도입 결정 (Sensei 선자문 중단 조건 충족) |
-| [C] Frontend 빌드 최적화 | 실측 인프라 + 저복잡도 개선 3개 동시 적용 | ⏳ TBD |
+| [C] Frontend 빌드 최적화 | 실측 인프라 + 저복잡도 개선 3개 동시 적용 | ❌ 미도입 결정 (Sensei 선자문 전부 제외) |
 
 ---
 
@@ -239,24 +239,96 @@ Layer 5: RUN npm run build   ← dist/ 생성       [Layer 4 MISS 시 재실행]
 
 ## [C] Frontend 빌드 최적화
 
-> **상태: TBD (트랙 [B] 완료 후 착수 예정)**
+> **상태: ❌ 미도입 결정 — Sensei 선자문(task-20260421-150311) 전 항목 제외. 코드 변경 없음.**
 
-### 계획 요약
+### 원안 계획
 
-Next.js 빌드 시간 CI 메트릭 수집 인프라 구축 + 저복잡도 개선 3개 동시 적용:
+`.github/workflows/ci.yml`의 `test-frontend`/`build-frontend` 잡에 build step timing 기록 (`::notice` 또는 job summary) + `frontend/next.config.ts` 저복잡도 개선 3개 동시 적용:
 
-1. `.github/workflows/ci.yml` `test-frontend`/`build-frontend` 잡에 build step timing 기록 (`::notice` 또는 job summary)
-2. `frontend/next.config.ts` 수정:
-   - `swcMinify: true` 명시
-   - `experimental: { optimizePackageImports: ['@radix-ui/react-*', 'lucide-react'] }` — Radix-UI + lucide-react tree-shaking
-   - `productionBrowserSourceMaps: false` + Sentry source-map upload만 유지
-3. Pre/Post 실측 → ±10% 실용 기준 적용
+1. `swcMinify: true` 명시 (Next.js 14+ 기본값이나 문서화 목적)
+2. `experimental: { optimizePackageImports: ['@radix-ui/react-*', 'lucide-react'] }` — Radix-UI + lucide-react tree-shaking
+3. `productionBrowserSourceMaps: false` + Sentry source-map upload만 유지
 
-담당: Architect(next.config.ts), Postman(CI 타이밍 수집), Sensei(Pre/Post 분석), Scribe(ADR)
+### 결정: 미도입 (Sensei 선자문 기반)
 
-중복잡도 이월: Monaco Editor dynamic import, recharts 조건부 import, heavy deps audit → 실측 ROI 데이터 확보 후 Sprint 107+에서 판단.
+Sensei 선자문(task-20260421-150311) 결과, 저복잡도 3개 모두 Next.js 15.5.15 실측에서 적용 불가·중복·기본값으로 확인됐다. **트랙 [C] 조기 종결. 코드 변경 없음. Architect 디스패치 불필요.**
 
-*(섹션은 트랙 [C] 완료 후 ADR 후속 PR에서 상세 채움)*
+트랙 [B](Docker buildkit mode=max가 L2 역할 수행)와 동일한 패턴 재현: 선자문 → 전 항목 제외 → 즉시 종결.
+
+### 구조적 발견 4건 (Sensei 선자문 리포트)
+
+#### 발견 1: `swcMinify` — 완전 제거 (HARD BLOCK)
+
+Next.js 15.5.15 `config-schema.js`·`config.js` 전체에서 `swcMinify` 항목이 **완전 제거**됐음을 grep 실측으로 확인:
+
+```
+grep -c "swcMinify" frontend/node_modules/next/dist/esm/server/config-schema.js  → 0
+grep -c "swcMinify" frontend/node_modules/next/dist/esm/server/config.js         → 0
+```
+
+스키마가 `z.strictObject()`로 구성되어 있어 unknown key 포함 시 validation error 발생. `swcMinify` 추가 시:
+- TypeScript 오류: `Object literal may only specify known properties`
+- Runtime: `z.strictObject` 검증 실패 → 빌드 오류
+
+판정: **HARD BLOCK — 문서화 목적으로도 추가 불가.**
+
+#### 발견 2: `optimizePackageImports` — 대상 모두 기본 포함 + 와일드카드 미지원
+
+`config.js L786~870` 직접 확인. 기본 포함 목록에 `lucide-react`·`recharts` 이미 포함. 소스 주석:
+
+> `We don't support wildcard imports for these configs, e.g. react-icons/*`
+
+| 계획 항목 | 실측 결과 | 판정 |
+|---------|---------|------|
+| `@radix-ui/react-*` | 와일드카드 미지원. Radix UI는 개별 패키지 구조(barrel file 없음) | 제외 |
+| `lucide-react` | 기본 포함 목록에 이미 존재 → Set 중복, 효과 없음 | 제외 (중복) |
+
+#### 발견 3: `productionBrowserSourceMaps` — 기본값 false
+
+`config-schema.js L609`: `productionBrowserSourceMaps: z.boolean().optional()`. 기본값 `false`. 현재 미설정 = 이미 `false`.
+
+Sentry 상호작용: `@sentry/nextjs` v10.47.0 webpack plugin이 `productionBrowserSourceMaps`와 **독립적으로** source map 생성 → 업로드 → 삭제. `false` 명시해도 symbolication 정상 동작. 충돌 없음.
+
+판정: **제외 — 이미 기본값. 명시 효과 없음.**
+
+#### 발견 4: CI build timing 직접 측정 불가 (트랙 [B] 발견 재확인)
+
+트랙 [B] Sensei 분석 결론 재확인: `build-frontend` 잡은 완전한 Docker 전용 파이프라인. host-side `npm run build` 없음. `::notice` step을 추가해도 Next.js 빌드 시간을 직접 측정하는 대상이 없음.
+
+| 옵션 | 측정 대상 | 정확도 | 판정 |
+|------|---------|--------|------|
+| A: Docker 잡 총 시간 | QEMU+buildx+push 포함 | 낮음 (희석) | 참고만 |
+| B: Dockerfile RUN timestamp | Docker 내부 | 높음 | Sprint 107 이월 (Dockerfile 수정 필요) |
+| C: host-side `npm run build` | `next build` 직접 | 최고 | Sprint 107 이월 (아키텍처 전환 필요) |
+| **D: 로컬 번들 사이즈 분석** | 번들 사이즈 (타이밍 x) | 번들 정확 | **권고 — host-side 전환 없이 가능** |
+
+### 원안 재조정 표
+
+| 항목 | 원계획 | 판정 | 근거 |
+|------|--------|------|------|
+| `swcMinify: true` | 적용 | **HARD BLOCK** | `config-schema.js` count=0, `z.strictObject` 검증 실패 |
+| `optimizePackageImports ['@radix-ui/react-*', 'lucide-react']` | 적용 | **제외** | 와일드카드 미지원 + 대상 모두 기본 포함 |
+| `productionBrowserSourceMaps: false` | 적용 | **제외** | 이미 기본값 false |
+| CI build timing 측정 (`::notice` step) | 구현 | **옵션 D 권고** | Docker 전용 구조 → host-side 측정 경로 없음 |
+
+### 트랙 [C] 교훈
+
+1. **Sensei 선자문 2회 발동([B], [C] 모두 조기 종결) — Sprint 105 "선자문 N=1 최적" 패턴이 "구현 0줄 결론"까지 진화** — Sprint 105에서 선자문은 Post 샘플 N을 1로 줄이는 최적화 도구였다. Sprint 106 [B]에서는 구현 자체를 불필요화했고, [C]에서는 동일 패턴이 반복됐다. 선자문은 "샘플링 최적화"를 넘어 "구현 필요성 게이트" 역할로 기능 확장을 2회 연속 증명했다.
+
+2. **라이브러리 버전 업 시 기존 최적화 옵션이 기본값 승격되거나 제거되는 경우 다수 — 플랜 수립 단계 Explore만으로는 소스 레벨 실측 없이 정확도 부족** — `swcMinify`는 이전 버전 Next.js(14.x) 플랜 작성 당시에는 유효한 옵션이었으나, 15.5.15에서 config 스키마 자체에서 제거됐다. `optimizePackageImports` 대상도 버전 업마다 기본 포함 목록이 확장된다. 플랜 수립→실행 사이에 버전 업이 발생한 경우, "공식 문서 또는 소스 레벨(`node_modules/`) 직접 실측"이 정확성 보증의 유일한 방법임이 증명됐다.
+
+3. **Docker 전용 구조는 L2 캐시(트랙 [B])뿐 아니라 빌드 타이밍 측정(트랙 [C])도 차단 — host-side 전환 여부 자체가 Sprint 107+ 근본 의사결정** — 트랙 [B]에서 발견된 "전 빌드 잡 Docker 전용" 제약이 트랙 [C] CI timing 측정에서도 동일하게 재확인됐다. 두 이월 항목이 같은 구조적 병목에서 기인한다. 이 제약을 해소하는 host-side 빌드 전환은 단일 최적화 PR이 아닌 아키텍처 의사결정 수준의 Sprint 107+ 작업이다.
+
+### Sprint 107 시드 (트랙 [B] 시드와 통합)
+
+트랙 [B] Sprint 107 시드 4건은 [B] 섹션 이월 항목에 등록돼 있다. 트랙 [C] Sensei 선자문 결과에서 파생된 추가 항목:
+
+| 방안 | 전제 조건 | 설명 |
+|------|---------|------|
+| **Monaco Editor dynamic import 검증** | CSP `unsafe-eval` 현재 허용 중 | runtime 청크 분리, FCP 개선 가능성 |
+| **`motion` (Framer Motion) `optimizePackageImports` 추가** | host-side 빌드 전환 후 | 기본 포함 목록 미포함 → 이득 가능성 |
+| **heavy deps audit (`react-dnd`, `react-slick`)** | — | 대체 경량 라이브러리 평가 및 번들 사이즈 영향 |
+| **번들 사이즈 기반 static 분석 (옵션 D)** | — | `next build` 로컬 실행만으로 가능 — host-side 전환 없이 즉시 착수 가능 |
 
 ---
 
@@ -265,47 +337,81 @@ Next.js 빌드 시간 CI 메트릭 수집 인프라 구축 + 저복잡도 개선
 | 작업 | 담당 | 상태 | 산출물 |
 |---|---|---|---|
 | [A] Sensei 실측 선자문 | Sensei | ✅ 완료 | `~/.claude/oracle/inbox/sensei-task-20260421-134249.md` |
-| [A] 테스트 보강 + jest threshold 상향 | Architect | ✅ PR 생성 | PR #121 (`feat/sprint-106-coverage-frontend-tests`) |
-| [A] CI 게이트 상향 + 서비스별 로그 강화 | Architect | ✅ PR 생성 | PR #122 (`feat/sprint-106-ci-coverage-gate-70`) |
-| [A] CLAUDE.md 커버리지 문구 수정 | Gatekeeper | ⏳ 예정 | PR (A-3) |
-| [A] Sprint 106 ADR [A] 섹션 | Scribe | ✅ 완료 | 본 문서 |
+| [A] 테스트 보강 + jest threshold 상향 | Architect | ✅ 머지 | PR #121 (`feat/sprint-106-coverage-frontend-tests`) |
+| [A] CI 게이트 상향 + 서비스별 로그 강화 | Architect | ✅ 머지 | PR #122 (`feat/sprint-106-ci-coverage-gate-70`) |
+| [A] CLAUDE.md 커버리지 문구 수정 | Gatekeeper | ✅ 머지 | PR #123 (`chore/docs: sprint-106-a3-claude-md`) |
+| [A] Sprint 106 ADR [A] 섹션 | Scribe | ✅ 머지 | PR #124 (`chore/adr: sprint-106-adr-init`) |
 | [B] Sensei L2 캐시 선자문 | Sensei | ✅ 완료 (중단 조건 충족) | `~/.claude/oracle/inbox/sensei-task-20260421-143704.md` |
-| [B] Sprint 106 ADR [B] 섹션 | Scribe | ✅ 완료 | 본 문서 |
-| [B] ci.yml L624~630 비기능 정리 (선택) | Architect | ⏳ 병렬 PR (task-20260421-145147) | — |
-| [C] Frontend 빌드 최적화 전체 | Architect·Postman·Sensei·Scribe | ⏳ TBD | — |
+| [B] Sprint 106 ADR [B] 섹션 | Scribe | ✅ 머지 | PR #125 (`chore/adr: sprint-106-track-b-close`) |
+| [B] ci.yml L624~630 비기능 단계 제거 | Architect | ✅ 머지 | PR #126 (`chore/ci: sprint-106-track-b-cleanup`) |
+| [C] Sensei 빌드 최적화 선자문 | Sensei | ✅ 완료 (조기 종결) | `~/.claude/oracle/inbox/sensei-task-20260421-150311.md` |
+| [C] Sprint 106 ADR [C] 섹션 + Sprint 106 마감 | Scribe | ✅ 완료 | 이 PR (chore/sprint-106-adr-track-c-close) |
+
+---
+
+## 총평
+
+Sprint 102~105 CI 리팩토링 4스프린트 로드맵(composite action 도입 → 확산 → rebuild_all 운영 규약 → commitlint 자동화) 마감 후 이월된 3항목을 Sprint 106에서 일괄 처리했다.
+
+3 트랙 중 **[A]만 실구현**, **[B]/[C]는 Sensei 선자문 기반 미도입 결정**으로 마감했다. Sprint 105 "선자문 → 원안 축소" 교훈의 성숙된 발현이다. 선자문이 단순 샘플링 최적화 도구에서 "구현 필요성 게이트"로 기능 진화를 2회 연속([B], [C]) 증명했다.
+
+결과: **누적 7 PR**, runner-minutes 대폭 절감, 잘못된 방향 진입 사전 차단. CI 빌드 구조(Docker 전용 파이프라인)의 근본 제약이 L2 캐시·빌드 타이밍 측정 두 항목 모두에 걸쳐 재확인됐으며, host-side 빌드 전환이 Sprint 107+ 핵심 의사결정 과제로 명확히 식별됐다.
 
 ---
 
 ## 이월 항목 (Sprint 107+)
 
-트랙 [A] 관련:
+### 트랙 [A] 후속
+
 - **ai-analysis `branch = true` 활성화** — `pyproject.toml`에 `[tool.coverage.run] branch = true` 추가 → branches 축 실측 및 98% 달성 여부 검증 가능
 - **submission/problem/identity lcov 로컬 실측 수집** — 현재 threshold 계약값만 있고 실측 margin 미확보. `npm test -- --coverage --ci` 로컬 실행으로 확보 가능
 - **서비스별 독립 게이트 도입 검토** — `check-coverage.mjs`에 per-service threshold 설정으로 글로벌 단일 게이트의 한계(path-filter 오해 구조) 구조적 해소
+- **글로벌 coverage 70% 안정화 검증** — Sprint 107 최초 frontend-only PR에서 coverage-gate 통과 여부 확인 (Sprint 106 [A] 완성도 검증)
 
-트랙 [B] — Sprint 107 시드 (진정한 L2 달성 경로):
-- **Blog host-side SSG 빌드 전환** — CI에서 `npm ci + npm run build` on host → `out/` GHA cache → Docker는 `COPY out/` 전용. 예상 MISS 시 40~60% 단축
-- **Frontend host-side 빌드 전환** — `.next/standalone` GHA cache → Docker COPY only. 예상 MISS 시 40~60% 단축. ci.yml L624~630 비기능 step 제거(Architect 병렬 PR) 이후 올바른 host-side cache step으로 대체
-- **`APK_CACHE_BUST` 조건화** — 보안 패치 필요 시만 apk invalidate. 예상 20~30s/서비스. 보안 트레이드오프 결정 필요
-- **NestJS tsc incremental** — host-side 빌드 전환 + `tsBuildInfoFile` 활용. 예상 MISS 시 20~40% 단축. Dockerfile 대수정 수반
+### Sprint 107 시드 — 빌드 최적화 달성 경로 ([B]+[C] 통합)
 
-트랙 [C] 관련:
-- Monaco Editor dynamic import, recharts 조건부 import — 실측 ROI 확보 후 Sprint 107+
-- 글로벌 coverage threshold 70% 안정화 검증 (Sprint 107 최초 frontend-only PR 통과 확인)
+host-side 빌드 전환이 L2 캐시(트랙 [B])·빌드 타이밍 측정(트랙 [C]) 두 이월 항목의 공통 전제 조건이다.
+
+**아키텍처 전환 (선행 의사결정 필요):**
+
+| 방안 | 설명 | 예상 효과 | 난이도 |
+|------|------|----------|-------|
+| **Blog host-side SSG 빌드** | CI에서 `npm ci + npm run build` on host → `out/` GHA cache → Docker는 `COPY out/` 전용 | MISS 시 40~60% 단축 | 중 (Dockerfile + ci.yml) |
+| **Frontend host-side 빌드** | CI에서 `npm ci + npm run build` on host → `.next/standalone` GHA cache → Docker COPY only | MISS 시 40~60% 단축 | 중 (Dockerfile + ci.yml) |
+| **`APK_CACHE_BUST` 조건화** | 보안 패치 필요 시만 apk invalidate (현재 매 run 강제 invalidate) | 20~30s/서비스 | 낮음 (보안 트레이드오프 결정 필요) |
+| **NestJS tsc incremental** | host-side 빌드 전환 + `tsBuildInfoFile` 활용 | MISS 시 20~40% 단축 | 중~고 (Dockerfile 대수정) |
+
+**host-side 전환 없이 즉시 착수 가능:**
+
+| 방안 | 설명 |
+|------|------|
+| **번들 사이즈 static 분석 (옵션 D)** | `next build` 로컬 실행으로 번들 사이즈 기반 분석 가능 — CI 타이밍 측정과 독립 |
+| **Monaco Editor dynamic import 검증** | CSP `unsafe-eval` 이미 허용 중 → runtime 청크 분리, FCP 개선 가능성 평가 |
+| **`motion` (Framer Motion) `optimizePackageImports`** | 기본 포함 목록 미포함 → host-side 전환 후 이득 가능성 확인 |
+| **heavy deps audit (`react-dnd`, `react-slick`)** | 대체 경량 라이브러리 평가 및 번들 사이즈 영향 측정 |
+
+### 기존 이월 (Sprint 106 범위 외)
+
+- **SWR/React Query 도입** — 프론트 데이터 페칭 표준화
+- **Redis 통계 캐시** — 대시보드 통계 DB 직접 조회 → 캐시 전환
+- **problem.tags JSON 컬럼 전환 + seed 데이터 확충**
 
 ---
 
 ## 교훈
 
-*(트랙 [C] 교훈은 트랙 [C] 완료 시 후속 PR로 추가 예정)*
+트랙별 교훈은 각 섹션 내 "트랙 [X] 교훈" 서브섹션에 기록됨:
+- 트랙 [A] 교훈 3건: [A] 섹션 내 "트랙 [A] 교훈"
+- 트랙 [B] 교훈 3건: [B] 섹션 내 "트랙 [B] 교훈"
+- 트랙 [C] 교훈 3건: [C] 섹션 내 "트랙 [C] 교훈"
 
-트랙 [A] 교훈 3건은 [A] 섹션 내 "트랙 [A] 교훈" 서브섹션에 기록됨.
-트랙 [B] 교훈 3건은 [B] 섹션 내 "트랙 [B] 교훈" 서브섹션에 기록됨.
+### Sprint 106 공통 교훈
 
-공통 운영 원칙 (Sprint 105 계승):
-- **Sensei 선자문 패턴** — N 결정을 실행 전 분리. [A]에서는 N=1 충분 판정, [B]에서는 중단 조건 충족으로 구현 자체 불필요 확인. 선자문이 "최적화 도구"를 넘어 "구현 필요성 검증 게이트"임을 2회 연속 증명
-- **중단 조건 명시화** — 플랜 리스크 대응에 중단 조건을 명시해 두면 선자문 시점에 판단 기준으로 작동함. [B]에서 실제 발동 확인
-- **측정 성격별 실용 기준 선택** — 결정론적(coverage): binary pass/fail, 확률론적(timing): ±10% 실용 기준. [B]에서는 구현 없음으로 측정 자체 불필요
+1. **선자문의 역할 확장 — "샘플링 최적화"에서 "구현 필요성 게이트"로** — Sprint 105에서 Sensei 선자문은 Post 샘플 N을 줄이는 최적화 도구였다. Sprint 106에서는 [B]·[C] 두 트랙에서 구현 자체를 0줄로 종결했다. 선자문 단계가 "어떻게 구현할까"가 아닌 "구현해야 하는가"를 판별하는 게이트 기능을 수행했다. 플랜 수립 단계에서 명시적 중단 조건과 짝을 이루면 이 기능이 극대화된다.
+
+2. **라이브러리 버전 업 시 기본값 변화 실측의 필수성** — Next.js 14.x 기준 플랜에서 유효했던 `swcMinify`·`optimizePackageImports` 대상이 15.5.15에서 제거·기본 승격됐다. Explore 단계 공식 문서만으로는 버전 업 시 변화를 추적하기 어렵다. 실행 직전 `node_modules/` 소스 레벨 grep 실측이 정확도 보증의 유일한 방법임이 증명됐다.
+
+3. **Docker 전용 아키텍처가 캐시·측정 모두에서 제약 조건 — Sprint 107+ host-side 전환이 핵심 의사결정** — L2 캐시(트랙 [B])와 빌드 타이밍 측정(트랙 [C])이 같은 근본 원인(Docker 전용 파이프라인, host-side 빌드 없음)에서 모두 불가 판정을 받았다. 이 제약의 해소는 단순 최적화 PR이 아니라 빌드 아키텍처 전환이라는 Sprint 107+ 의사결정이다. "왜 두 항목이 동시에 막혔는가"의 구조적 이해가 Sprint 107 방향 설정의 핵심 인풋이다.
 
 ---
 
@@ -316,8 +422,13 @@ Next.js 빌드 시간 CI 메트릭 수집 인프라 구축 + 저복잡도 개선
 - 승인된 Sprint 106 실행 계획: `/Users/leokim/.claude/plans/iterative-hugging-reddy.md`
 - Sensei [A] 실측 선자문 보고서: `~/.claude/oracle/inbox/sensei-task-20260421-134249.md`
 - Sensei [B] L2 캐시 선자문 보고서: `~/.claude/oracle/inbox/sensei-task-20260421-143704.md`
+- Sensei [C] 빌드 최적화 선자문 보고서: `~/.claude/oracle/inbox/sensei-task-20260421-150311.md`
 - Architect 구현 보고서: `~/.claude/oracle/inbox/architect-task-20260421-135617.md`
 - rebuild_all 런북: `docs/runbook-ci-rebuild-all.md`
 - 채널톡 CI 리팩토링: https://channel.io/ko/team/blog/articles/backend-ci-refactoring-73fca77d
-- PR A-1: https://github.com/tpals0409/AlgoSu/pull/121
-- PR A-2: https://github.com/tpals0409/AlgoSu/pull/122
+- PR #121 (A-1 테스트 보강): https://github.com/tpals0409/AlgoSu/pull/121
+- PR #122 (A-2 CI 게이트 70%): https://github.com/tpals0409/AlgoSu/pull/122
+- PR #123 (A-3 CLAUDE.md): https://github.com/tpals0409/AlgoSu/pull/123
+- PR #124 (ADR [A] 섹션): https://github.com/tpals0409/AlgoSu/pull/124
+- PR #125 (ADR [B] 섹션): https://github.com/tpals0409/AlgoSu/pull/125
+- PR #126 ([B] ci.yml 정리): https://github.com/tpals0409/AlgoSu/pull/126
