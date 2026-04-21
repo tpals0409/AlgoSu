@@ -102,13 +102,13 @@ lcov-result-merger는 npm 패키지로 supply chain 리스크가 존재. 각 서
 
 ### CI 소요 시간 비교 — github-worker (Sprint 103 파일럿)
 
-| 잡 | 변경 전 평균 (n=4) | 변경 후 평균 | 차이 | 비고 |
+| 잡 | 변경 전 평균 (n=4) | 변경 후 평균 (n=3)² | 차이 | 비고 |
 |---|---|---|---|---|
-| Quality — github-worker | 22.2s (σ 5.8s) | 측정 불가¹ | — | n=4 (PR 런 기준) |
-| Audit — github-worker | 19.8s (σ 3.7s) | 측정 불가¹ | — | n=4 |
-| Test GitHub Worker | 19.2s (σ 1.9s) | 측정 불가¹ | — | n=4 |
+| Quality — github-worker | 22.2s (σ 5.8s) | 22.3s (σ 2.5s) | +0.1s (+0.4%) | ±10% 내 — 변동 없음 |
+| Audit — github-worker | 19.8s (σ 3.7s) | 18.0s (σ 3.0s) | -1.8s (-8.9%) | ±10% 내 — 변동 없음 |
+| Test GitHub Worker | 19.2s (σ 1.9s) | 20.0s (σ 1.0s) | +0.8s (+3.9%) | ±10% 내 — 변동 없음 |
 
-¹ PR #111/#113 둘 다 `.github/workflows/ci.yml`만 수정되어 `detect-changes`가 github-worker 경로 변경을 감지하지 않았고, 결과적으로 composite action이 실제 설치·테스트 경로에서 실행된 런이 아직 관측되지 않음. **Sprint 104 이후 첫 github-worker 의존성 bump PR 또는 소스 변경 PR 머지 시 재측정 필요**(Sensei 후속 작업 티켓).
+² Sprint 105 [B]에서 확보한 Post n=3 실측 평균. 자연 2건(run 24702740418·24702828670) + 합성 1건(run 24703075569 rebuild_all). 데이터 계보 상세: `~/.claude/oracle/inbox/sensei-sprint-105-timing.md`
 
 **표본 출처** (Pre 기준):
 - `a45878e` (PR #90, feat/gateway-programmers-dataset, 2026-04-20) (run 24646611483)
