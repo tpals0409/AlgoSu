@@ -2,8 +2,9 @@
 sprint: 103
 title: "CI 개선 — Prepare 파일럿 + Coverage 강제 (Sprint 102 이어가기)"
 date: "2026-04-21"
-status: in-progress
-scope: "PR2+PR3 통합 (ci/composite-action-pilot 브랜치)"
+status: completed
+scope: "PR #111 (PR2+PR3 통합 squash merge)"
+end_commit: 5fd8483
 ---
 
 # Sprint 103 — CI 개선: Prepare 파일럿 + Coverage 강제
@@ -22,10 +23,15 @@ Sprint 102는 Dependabot 운영 자동화(PR #102 + #104)와 잔재 정리(PR #1
 3. PR 코멘트로 서비스별 coverage 가시화
 
 ## 작업 요약
-| 커밋 | 담당 | 내용 |
+| 커밋 (squash 전) | 담당 | 내용 |
 |---|---|---|
-| `14f71c1` | Architect | Composite action setup-node-service 신설 + github-worker 파일럿 (Sprint 103-1) |
-| `50fb35e` | Architect | coverage-gate 잡 신설 + 60% 글로벌 임계치 강제 (Sprint 103-1) |
+| `1cef57d` | Architect | Composite action setup-node-service 신설 + github-worker 파일럿 (Sprint 103-1) |
+| `4f72c69` | Architect | coverage-gate 잡 신설 + 60% 글로벌 임계치 강제 (Sprint 103-1) |
+| `3fc6078` | Scribe | Sprint 103 ADR 초안 |
+| `1a7aede` | Scribe | Sprint 102 ADR 누락분 정리 |
+| `ec4d96b` | Architect | coverage-gate 견고화 — 빈 artifact 허용 + PR 코멘트 가드 |
+
+**Squash 결과**: `5fd8483` (PR #111, main 머지)
 
 ## 수정 내용
 
@@ -88,8 +94,9 @@ lcov-result-merger는 npm 패키지로 supply chain 리스크가 존재. 각 서
 | check-coverage.mjs 로직 | ✅ lcov 파싱, 임계치 검증, Markdown 출력 |
 | ESLint no-console | ✅ process.stdout.write/process.stderr.write 사용 |
 | 파일 헤더 어노테이션 | ✅ @file, @domain, @layer, @related |
-| CI 실환경 검증 | ⏳ PR 푸시 후 확인 필요 |
-| Branch Protection 등록 | ⏳ Oracle gh API 호출 필요 |
+| CI 실환경 검증 | ✅ PR #111 CI 2회차 전체 통과 (27 pass / 8 skip, Coverage Gate 포함) |
+| Branch Protection 등록 | ✅ Oracle gh API로 `Coverage Gate` required check 추가 완료 |
+| Commitlint scope | ✅ filter-branch + force-push로 `ci(actions)`→`ci(github-worker)`, `ci(coverage)`→`ci(ci)` 복구 |
 
 ## github-worker 전후 소요 시간 비교
 > ⏳ PR 머지 후 2회차부터 측정 예정. 캐시 적중 상태에서 5회 샘플 수집.
@@ -101,15 +108,33 @@ lcov-result-merger는 npm 패키지로 supply chain 리스크가 존재. 각 서
 | test-node (github-worker) | TBD | TBD | TBD |
 
 ## 주요 교훈
-> 스프린트 종료(`/stop`) 시 채움.
+
+### 1. Commitlint scope-enum 위반은 PR 단계에서 뒤늦게 발견된다
+`ci(actions)`/`ci(coverage)`는 직관적으로 보이지만 `commitlint.config.mjs` scope-enum에 없어 Lint Commit Messages 잡이 실패했다. 로컬 pre-commit 훅이 없으면 scope 오류는 PR CI에서만 잡힌다. **대응**: 커밋 메시지 작성 시 `commitlint.config.mjs` scope-enum 먼저 확인하는 루틴. Sprint 102에서 `ci(deps)`가 사용되었는데 Sprint 103에서 `ci(actions)`를 쓴 이유는 "actions 디렉토리"라는 물리적 이름에 끌린 오판. 앞으로 **기능 도메인**(`github-worker`/`ci`/`infra`) 기준으로 scope 선택.
+
+### 2. 인프라 전용 PR에서 coverage-gate는 artifact 0개 시나리오를 반드시 처리해야 한다
+이 PR은 `.github/workflows/ci.yml` + `scripts/` + `docs/` 만 수정했고 서비스 코드 불변 → detect-changes 모든 서비스 false → test-node matrix 전원 skip → coverage-* artifact 0건 업로드 → `download-artifact@v4`가 `coverage/` 디렉토리를 생성하지 않음 → `readdirSync` ENOENT 에러 → 연쇄로 PR 코멘트 스텝의 빈 message 에러. **대응**: 스크립트에 `existsSync` 가드 + PR 코멘트 스텝에 `coverage-body != ''` 조건 가드를 추가. "검증 환경(인프라 PR)이 실제 동작 환경(서비스 PR)과 다를 수 있음"을 항상 가정.
+
+### 3. Scribe는 코드 작성 금지 — Architect가 CI 전담
+Sprint 103 초기 플랜은 PR3를 Scribe에 배정했으나 `_base.md` 프로토콜상 Scribe는 "문서/메모리/Skill만 담당, 코드 작성 금지". Oracle이 디스패치 전 본업 재검증하여 PR2/PR3 모두 Architect 단독으로 재배정. **교훈**: Sprint 102의 "에이전트 본업 매칭 재검증" 교훈이 103에서도 재발 — 매 스프린트 시작 시 체크리스트화가 필요.
+
+### 4. filter-branch + force-push는 feature 브랜치에서 안전한 복구 경로
+커밋 메시지 오류 수정을 위해 `git rebase -i` 없이 `git filter-branch --msg-filter` + `git push --force-with-lease`로 비대화식 복구. `main` 미관여 feature 브랜치 + `--force-with-lease`로 안전성 확보. PR 본문/코멘트는 유지되고 커밋만 재작성.
+
+### 5. Coverage Gate를 build-services.needs에 미포함한 결정이 유효함을 PR #111에서 검증
+coverage-gate는 build-services와 병렬로 실행되어 전체 CI 소요 시간에 영향 없음. Branch Protection required check로만 PR 머지를 차단하므로 빌드 파이프라인은 지연 없이 진행. Sprint 104 확산 시에도 이 구조 유지.
+
+### 6. github-worker 전후 소요 시간 측정 미수행 — Sprint 104로 이월
+플랜상 "PR 머지 후 2회차부터 5회 샘플" 측정 예정이었으나 이번 스프린트 종료 시점까지 main 기준 실행이 1회뿐이라 의미 있는 비교 불가. Sprint 104 초반에 `gh run list` 5회 샘플 수집 후 본 ADR의 비교표를 소급 채움.
 
 ## 이월 (Sprint 104)
-- 전 Node 서비스 composite action 확산 (matrix.service != 'github-worker' 조건 제거)
-- L2 캐시 레이어 (build output 캐시)
-- Frontend 빌드 최적화
-- ai-analysis coverage 통합 (lcov 리포터 또는 별도 게이트)
-- 글로벌 coverage threshold 70% 상향 검토
-- (선택) Oracle `__AGENT_DONE__` 마커 버그 수정
+- 전 Node 서비스 composite action 확산 (matrix.service != 'github-worker' 조건 제거) — **우선**
+- ai-analysis coverage lcov 통합 (pytest-cov --cov-report=lcov) — **우선**
+- github-worker 전후 소요 시간 5회 샘플 측정 + 본 ADR 비교표 소급 채움 — **우선**
+- Oracle `__AGENT_DONE__` 마커 버그 수정 (oracle-spawn.sh)
+- L2 캐시 레이어 (build output 캐시) — 범위 정의 필요
+- Frontend 빌드 최적화 — 범위 정의 필요
+- 글로벌 coverage threshold 70% 상향 검토 — 실측 데이터 기반 결정
 
 ## 레퍼런스
 - 채널톡 백엔드 CI 리팩토링: https://channel.io/ko/team/blog/articles/backend-ci-refactoring-73fca77d
