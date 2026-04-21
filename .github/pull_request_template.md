@@ -12,6 +12,17 @@
 - [ ] docs: 문서
 - [ ] test: 테스트
 
+## Dependabot Auto-merge 조건 (자동 처리, 수동 변경 금지)
+
+> 이 PR이 Dependabot이 생성한 경우 아래 조건을 모두 만족할 때 자동 merge됩니다.
+
+- [ ] PR 작성자: `dependabot[bot]`
+- [ ] 업데이트 타입: `patch` 또는 `minor` (major 제외)
+- [ ] CI 전체 체크 통과 (ci.yml required checks)
+- [ ] Branch Protection required checks 통과
+
+> ⚠️ major 버전 업데이트는 자동 merge 대상이 아닙니다. 계획된 Sprint에서 수동 검토 후 merge 하세요.
+
 ## 필수 체크리스트
 
 - [ ] 단위 테스트 통과
