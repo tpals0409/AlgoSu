@@ -7,12 +7,14 @@ SQL 전용 루브릭 및 get_system_prompt 분기 검증
 
 from src.prompt import (
     ALGORITHM_WEIGHTS,
+    GROUP_SQL_SYSTEM_PROMPT,
     GROUP_SYSTEM_PROMPT,
     SQL_SYSTEM_PROMPT,
     SQL_WEIGHTS,
     SYSTEM_PROMPT,
     build_group_user_prompt,
     build_user_prompt,
+    get_group_system_prompt,
     get_system_prompt,
     get_weights,
 )
@@ -46,6 +48,36 @@ class TestGroupSystemPrompt:
         assert "bestApproach" in GROUP_SYSTEM_PROMPT
         assert "optimizedCode" in GROUP_SYSTEM_PROMPT
         assert "learningPoints" in GROUP_SYSTEM_PROMPT
+
+
+class TestGroupSqlSystemPrompt:
+    """GROUP_SQL_SYSTEM_PROMPT 상수 검증"""
+
+    def test_contains_comparison_fields(self):
+        assert "comparison" in GROUP_SQL_SYSTEM_PROMPT
+        assert "bestApproach" in GROUP_SQL_SYSTEM_PROMPT
+        assert "optimizedCode" in GROUP_SQL_SYSTEM_PROMPT
+        assert "learningPoints" in GROUP_SQL_SYSTEM_PROMPT
+
+    def test_contains_sql_specific_terms(self):
+        assert "SQL" in GROUP_SQL_SYSTEM_PROMPT
+        assert "쿼리" in GROUP_SQL_SYSTEM_PROMPT
+
+
+class TestGetGroupSystemPrompt:
+    """get_group_system_prompt() 분기 테스트"""
+
+    def test_sql_returns_sql_group_prompt(self):
+        assert get_group_system_prompt("sql") is GROUP_SQL_SYSTEM_PROMPT
+
+    def test_sql_case_insensitive(self):
+        assert get_group_system_prompt("SQL") is GROUP_SQL_SYSTEM_PROMPT
+
+    def test_python_returns_default_group_prompt(self):
+        assert get_group_system_prompt("python") is GROUP_SYSTEM_PROMPT
+
+    def test_javascript_returns_default_group_prompt(self):
+        assert get_group_system_prompt("javascript") is GROUP_SYSTEM_PROMPT
 
 
 class TestBuildUserPromptPlatformContext:

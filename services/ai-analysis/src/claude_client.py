@@ -20,6 +20,7 @@ from .prompt import (
     GROUP_SYSTEM_PROMPT,
     build_group_user_prompt,
     build_user_prompt,
+    get_group_system_prompt,
     get_system_prompt,
     get_weights,
 )
@@ -274,10 +275,13 @@ class ClaudeClient:
                 code_snippets, source_platform=source_platform
             )
 
+            # code_snippets에서 언어 추출 (그룹 분석은 동일 문제 → 첫 번째 스니펫 기준)
+            group_language = code_snippets[0]["language"] if code_snippets else "python"
+
             message = self.client.messages.create(
                 model=MODEL_ID,
                 max_tokens=MAX_TOKENS,
-                system=GROUP_SYSTEM_PROMPT,
+                system=get_group_system_prompt(group_language),
                 messages=[{"role": "user", "content": user_prompt}],
             )
 
