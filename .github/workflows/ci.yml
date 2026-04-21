@@ -542,6 +542,46 @@ jobs:
           retention-days: 7
 
   # ============================================================
+  # Coverage Gate — 글로벌 60% 임계치 강제 (Node + Frontend)
+  # ============================================================
+
+  coverage-gate:
+    name: Coverage Gate
+    needs: [test-node, test-frontend]
+    if: >-
+      always() &&
+      !cancelled() &&
+      (needs.test-node.result == 'success' || needs.test-node.result == 'skipped') &&
+      (needs.test-frontend.result == 'success' || needs.test-frontend.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: scripts/check-coverage.mjs
+          sparse-checkout-cone-mode: false
+
+      - name: Download all coverage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-*
+          path: coverage/
+          merge-multiple: false
+
+      - name: Check coverage threshold
+        id: coverage
+        run: node scripts/check-coverage.mjs coverage/ 60
+
+      - name: Comment PR with coverage
+        if: github.event_name == 'pull_request' && always()
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: coverage-report
+          message: ${{ steps.coverage.outputs.coverage-body }}
+
+  # ============================================================
   # Build Jobs — 테스트 통과 후 Docker 빌드 + GHCR 푸시
   # ============================================================
 
