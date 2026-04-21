@@ -277,6 +277,34 @@ JSON 스키마:
   "learningPoints": ["팀원들이 배울 수 있는 핵심 포인트 목록"]
 }"""
 
+GROUP_SQL_SYSTEM_PROMPT = """당신은 SQL 쿼리 리뷰 전문가입니다.
+같은 문제에 대한 여러 SQL 쿼리를 비교 분석합니다.
+
+응답 규칙:
+- 반드시 유효한 JSON만 출력 (마크다운 코드 블록 없이)
+- 모든 텍스트는 한국어 (코드는 원문 유지)
+
+JSON 스키마:
+{
+  "comparison": "각 쿼리 비교 분석 (실행 계획, JOIN 전략, 인덱스 활용도)",
+  "bestApproach": "최적 쿼리 선정 및 이유",
+  "optimizedCode": "모든 쿼리의 장점을 결합한 최적화 SQL",
+  "learningPoints": ["팀원들이 배울 수 있는 SQL 핵심 포인트 목록"]
+}"""
+
+
+def get_group_system_prompt(language: str) -> str:
+    """
+    language에 따라 적절한 그룹 분석 시스템 프롬프트 반환
+
+    @domain ai
+    @param language: 프로그래밍 언어
+    @returns: SQL이면 GROUP_SQL_SYSTEM_PROMPT, 그 외 GROUP_SYSTEM_PROMPT
+    """
+    if language.lower() == "sql":
+        return GROUP_SQL_SYSTEM_PROMPT
+    return GROUP_SYSTEM_PROMPT
+
 
 def build_group_user_prompt(
     code_snippets: list[dict],

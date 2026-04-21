@@ -9,7 +9,7 @@
 import { notFound } from 'next/navigation';
 import type { Locale } from '@/lib/i18n';
 import { t, getBasePath } from '@/lib/i18n';
-import { getAllPosts, getPostBySlug } from '@/lib/posts';
+import { getAllPosts, getPostBySlug, getSeriesPosts } from '@/lib/posts';
 import { renderMdx } from '@/lib/mdx';
 
 interface PostPageProps {
@@ -32,6 +32,16 @@ export async function PostPage({ locale, slug }: PostPageProps) {
     currentIndex >= 0 && currentIndex < posts.length - 1
       ? posts[currentIndex + 1]
       : null;
+
+  // 시리즈 네비게이션
+  const seriesPosts = post.meta.series
+    ? getSeriesPosts(post.meta.series, locale)
+    : [];
+  const seriesIndex = seriesPosts.findIndex((p) => p.slug === slug);
+  const prevInSeries = seriesIndex > 0 ? seriesPosts[seriesIndex - 1] : null;
+  const nextInSeries = seriesIndex >= 0 && seriesIndex < seriesPosts.length - 1
+    ? seriesPosts[seriesIndex + 1]
+    : null;
 
   return (
     <article>
@@ -56,6 +66,46 @@ export async function PostPage({ locale, slug }: PostPageProps) {
       <div className="prose prose-gray max-w-none">
         {content}
       </div>
+
+      {seriesPosts.length > 1 && (
+        <aside className="mt-12 rounded-lg border border-border bg-surface p-5">
+          <h3 className="text-sm font-semibold text-text-muted uppercase tracking-wide mb-3">
+            {post.meta.series} 시리즈
+          </h3>
+          <ol className="space-y-1.5 text-sm">
+            {seriesPosts.map((sp, i) => (
+              <li key={sp.slug}>
+                {sp.slug === slug ? (
+                  <span className="font-medium text-brand">
+                    {i + 1}. {sp.title}
+                  </span>
+                ) : (
+                  <a
+                    href={`${basePath}/posts/${sp.slug}`}
+                    className="text-text-muted hover:text-brand transition-colors"
+                  >
+                    {i + 1}. {sp.title}
+                  </a>
+                )}
+              </li>
+            ))}
+          </ol>
+          {(prevInSeries || nextInSeries) && (
+            <div className="mt-4 flex justify-between text-xs">
+              {prevInSeries ? (
+                <a href={`${basePath}/posts/${prevInSeries.slug}`} className="text-brand hover:underline">
+                  &larr; {prevInSeries.title}
+                </a>
+              ) : <span />}
+              {nextInSeries ? (
+                <a href={`${basePath}/posts/${nextInSeries.slug}`} className="text-brand hover:underline">
+                  {nextInSeries.title} &rarr;
+                </a>
+              ) : <span />}
+            </div>
+          )}
+        </aside>
+      )}
 
       <nav
         aria-label={t(locale, 'navPostLabel')}

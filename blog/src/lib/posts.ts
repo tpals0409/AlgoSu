@@ -47,8 +47,12 @@ export interface PostMeta {
   category: Category;
   source?: string;
   // 동일 date 내에서 표시 순서를 결정하는 보조 필드.
-  // 값이 클수록 최신(상단). 누락 시 0으로 간주.
+  // 값이 클수록 최신(상단). 누락 시 slug 알파벳순 결정적 정렬.
   order?: number;
+  /** 시리즈 이름 — 같은 시리즈의 포스트를 그룹화 */
+  series?: string;
+  /** 시리즈 내 순서 (1-based) — 누락 시 date 기반 자동 정렬 */
+  seriesOrder?: number;
 }
 
 /**
@@ -71,6 +75,12 @@ function readMdxFiles(
 
 /**
  * 지정 locale의 전체 포스트 목록을 최신순으로 반환한다.
+ *
+ * 정렬 우선순위:
+ * 1. date 내림차순 (최신 먼저)
+ * 2. 동일 date 내 — order 명시 포스트가 상단 (order desc)
+ * 3. order 미명시 포스트끼리는 slug 알파벳순 (결정적 보조 정렬)
+ *
  * @param locale - 대상 언어 (기본값: 'ko')
  */
 export function getAllPosts(locale: Locale = 'ko'): PostMeta[] {
@@ -86,11 +96,27 @@ export function getAllPosts(locale: Locale = 'ko'): PostMeta[] {
       category: parseCategory(data.category),
       source: data.source as string | undefined,
       order: typeof data.order === 'number' ? (data.order as number) : undefined,
+      series: typeof data.series === 'string' ? data.series : undefined,
+      seriesOrder: typeof data.seriesOrder === 'number' ? data.seriesOrder : undefined,
     }))
     .sort((a, b) => {
       if (a.date !== b.date) return a.date > b.date ? -1 : 1;
-      return (b.order ?? 0) - (a.order ?? 0);
+      if (a.order != null && b.order != null) return b.order - a.order;
+      if (a.order != null) return -1;
+      if (b.order != null) return 1;
+      return a.slug.localeCompare(b.slug);
     });
+}
+
+/**
+ * 특정 시리즈에 속한 포스트를 seriesOrder 오름차순으로 반환한다.
+ * @param series - 시리즈 이름
+ * @param locale - 대상 언어
+ */
+export function getSeriesPosts(series: string, locale: Locale = 'ko'): PostMeta[] {
+  return getAllPosts(locale)
+    .filter((p) => p.series === series)
+    .sort((a, b) => (a.seriesOrder ?? 0) - (b.seriesOrder ?? 0));
 }
 
 /**

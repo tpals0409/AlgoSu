@@ -372,6 +372,170 @@ class TestParseResponseMarkdown:
         assert result["score"] == 68
 
 
+class TestParseResponseFallback:
+    """_parse_response() fallback 3단계 + regex fallback 검증"""
+
+    def test_fallback_1_trailing_quote(self):
+        """Fallback 1: 숫자 뒤 불필요 따옴표 제거 후 복구"""
+        c = _make_client()
+
+        raw = (
+            '{"totalScore": 75", "summary": "test", "categories": [],'
+            ' "optimizedCode": null, "timeComplexity": "O(n)",'
+            ' "spaceComplexity": "O(1)"}'
+        )
+        result = c._parse_response(raw)
+        assert result["status"] == "completed"
+        assert result["score"] == 75
+
+    def test_fallback_2_broken_optimized_code(self):
+        """Fallback 2: optimizedCode 내 이스케이프 깨짐 → null 치환 후 복구"""
+        c = _make_client()
+
+        raw = (
+            '{"totalScore": 80, "summary": "test", "categories": [],'
+            ' "timeComplexity": "O(n)", "spaceComplexity": "O(1)",'
+            ' "optimizedCode": "def foo():\n    return "bar""}'
+        )
+        result = c._parse_response(raw)
+        assert result["status"] == "completed"
+        assert result["score"] == 80
+        assert result["optimized_code"] is None
+
+    def test_fallback_3_first_json_object(self):
+        """Fallback 3: 앞뒤 garbage 텍스트에서 첫 JSON 객체 추출"""
+        c = _make_client()
+
+        raw = (
+            "Here is the analysis:\n"
+            '{"totalScore": 60, "summary": "ok", "categories": [],'
+            ' "timeComplexity": "O(1)", "spaceComplexity": "O(1)",'
+            ' "optimizedCode": null}\n'
+            "Thank you!"
+        )
+        result = c._parse_response(raw)
+        assert result["status"] == "completed"
+        assert result["score"] == 60
+
+    def test_fallback_total_failure_regex_score(self):
+        """전체 파싱 실패 → totalScore regex 추출 성공"""
+        c = _make_client()
+
+        raw = 'broken{json "totalScore": 90 more broken'
+        result = c._parse_response(raw)
+        assert result["status"] == "completed"
+        assert result["score"] == 90
+
+    def test_fallback_total_failure_no_score(self):
+        """전체 파싱 실패 + totalScore 없음 → score=0, failed"""
+        c = _make_client()
+
+        raw = "completely broken response"
+        result = c._parse_response(raw)
+        assert result["status"] == "failed"
+        assert result["score"] == 0
+
+    def test_totalScore_zero_with_categories_recalculated(self):
+        """totalScore=0 + categories 존재 → ALGORITHM_WEIGHTS 가중 평균 재계산"""
+        c = _make_client()
+
+        raw = json.dumps(
+            {
+                "totalScore": 0,
+                "summary": "test",
+                "timeComplexity": "O(n)",
+                "spaceComplexity": "O(1)",
+                "categories": [
+                    {
+                        "name": "correctness",
+                        "score": 80,
+                        "comment": "ok",
+                        "highlights": [],
+                    },
+                    {
+                        "name": "efficiency",
+                        "score": 70,
+                        "comment": "ok",
+                        "highlights": [],
+                    },
+                    {
+                        "name": "readability",
+                        "score": 60,
+                        "comment": "ok",
+                        "highlights": [],
+                    },
+                    {
+                        "name": "structure",
+                        "score": 50,
+                        "comment": "ok",
+                        "highlights": [],
+                    },
+                    {
+                        "name": "bestPractice",
+                        "score": 40,
+                        "comment": "ok",
+                        "highlights": [],
+                    },
+                ],
+                "optimizedCode": None,
+            }
+        )
+        result = c._parse_response(raw)
+        assert result["status"] == "completed"
+        # ALGORITHM_WEIGHTS: 80*0.30+70*0.25+60*0.15+50*0.15+40*0.15 = 64
+        assert result["score"] == 64
+
+    def test_totalScore_zero_with_categories_sql_weights(self):
+        """totalScore=0 + language='sql' → SQL_WEIGHTS 적용 가중 평균"""
+        c = _make_client()
+
+        raw = json.dumps(
+            {
+                "totalScore": 0,
+                "summary": "test",
+                "timeComplexity": "O(n)",
+                "spaceComplexity": "O(1)",
+                "categories": [
+                    {
+                        "name": "correctness",
+                        "score": 80,
+                        "comment": "ok",
+                        "highlights": [],
+                    },
+                    {
+                        "name": "efficiency",
+                        "score": 70,
+                        "comment": "ok",
+                        "highlights": [],
+                    },
+                    {
+                        "name": "readability",
+                        "score": 60,
+                        "comment": "ok",
+                        "highlights": [],
+                    },
+                    {
+                        "name": "structure",
+                        "score": 50,
+                        "comment": "ok",
+                        "highlights": [],
+                    },
+                    {
+                        "name": "bestPractice",
+                        "score": 40,
+                        "comment": "ok",
+                        "highlights": [],
+                    },
+                ],
+                "optimizedCode": None,
+            }
+        )
+        result = c._parse_response(raw, language="sql")
+        assert result["status"] == "completed"
+        # SQL_WEIGHTS: 80*0.30+70*0.20+60*0.15+50*0.15+40*0.20 = 62.5 → 62
+        assert result["score"] == 62
+
+
 class TestSecurityCodeLogLimit:
     """5. 보안: 코드 로그 50자 제한"""
 

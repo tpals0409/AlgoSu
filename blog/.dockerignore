@@ -1,0 +1,16 @@
+# CI host-side 빌드 전환 후 Docker context에는 out/ + nginx.conf만 필요
+node_modules/
+.next/
+src/
+content/
+public/
+package*.json
+tsconfig.json
+tsconfig.tsbuildinfo
+next.config.*
+next-env.d.ts
+tailwind.config.*
+postcss.config.*
+*.md
+.gitignore
+.dockerignore

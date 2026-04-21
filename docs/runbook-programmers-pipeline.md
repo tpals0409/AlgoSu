@@ -24,6 +24,40 @@ frontend (문제 검색/등록)
 
 ---
 
+## 문제 목록 크롤러 (fetch-programmers-problems) 실행법
+
+### 파일 위치
+
+`services/gateway/scripts/fetch-programmers-problems.ts`
+
+### 실행 명령
+
+```bash
+# 프로그래머스 SQL 키트 문제 목록 크롤링
+pnpm --filter @algosu/gateway run fetch-programmers
+```
+
+### 재실행 주기
+
+- **권장**: 분기별 1회 (프로그래머스 SQL 고득점 Kit 문제 추가 빈도 낮음)
+- **트리거**: 프로그래머스에서 SQL 고득점 Kit에 신규 문제가 추가되었을 때
+- **갱신 대상**: `services/gateway/data/programmers-problems.json`
+
+### 실행 절차
+
+1. 크롤링 실행 (위 명령)
+2. JSON 번들 갱신 확인 (`programmers-problems.json` diff)
+3. 갱신된 JSON을 커밋 (`chore(gateway): SQL Kit 문제 목록 갱신`)
+4. 필요 시 tags 크롤러 후속 실행 (하단 참조)
+
+### 참고사항
+
+- 1차(문제 목록)와 2차(tags) 크롤러는 독립 실행 가능
+- 1차 크롤러 실행 후 tags가 누락된 문제가 있으면 2차 크롤러를 후속 실행
+- tags 크롤러 재실행 주기와 동일하게 분기별 동기화 권장
+
+---
+
 ## tags 크롤러 실행법
 
 ### 실행 명령

@@ -23,6 +23,10 @@ on:
         description: 'Force rebuild all services'
         required: false
         default: 'false'
+      apk_bust:
+        description: 'Force APK cache bust (apk upgrade 재실행)'
+        required: false
+        default: 'false'
 
 # 최소 권한 원칙: 기본 제로, 각 job에서 필요 권한만 명시
 permissions: {}
@@ -32,6 +36,7 @@ env:
   IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/algosu
   NODE_VERSION: '20'
   PYTHON_VERSION: '3.12'
+  APK_BUST_VALUE: ${{ github.event.inputs.apk_bust == 'true' && github.run_id || 'stable' }}
 
 jobs:
   # ============================================================
@@ -602,7 +607,7 @@ jobs:
           platforms: linux/arm64
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:main-${{ github.sha }}
-          build-args: APK_CACHE_BUST=${{ github.run_id }}
+          build-args: APK_CACHE_BUST=${{ env.APK_BUST_VALUE }}
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
@@ -636,7 +641,7 @@ jobs:
           platforms: linux/arm64
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ env.IMAGE_PREFIX }}-frontend:main-${{ github.sha }}
-          build-args: APK_CACHE_BUST=${{ github.run_id }}
+          build-args: APK_CACHE_BUST=${{ env.APK_BUST_VALUE }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
 
@@ -657,6 +662,19 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v6
+
+      # ---- host-side SSG 빌드 ----
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: blog/package-lock.json
+      - run: npm ci
+        working-directory: blog
+      - run: npm run build
+        working-directory: blog
+
+      # ---- Docker 이미지 빌드 (COPY only) ----
       - uses: docker/setup-qemu-action@v4
         with:
           platforms: linux/arm64
@@ -672,7 +690,7 @@ jobs:
           platforms: linux/arm64
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ env.IMAGE_PREFIX }}-blog:main-${{ github.sha }}
-          build-args: APK_CACHE_BUST=${{ github.run_id }}
+          build-args: APK_CACHE_BUST=${{ env.APK_BUST_VALUE }}
           cache-from: type=gha,scope=blog
           cache-to: type=gha,mode=max,scope=blog
 
