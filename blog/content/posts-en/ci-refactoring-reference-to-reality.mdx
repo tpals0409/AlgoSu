@@ -1,0 +1,501 @@
+---
+title: "AlgoSu CI Refactoring"
+date: "2026-04-21"
+excerpt: "Starting from a Channel.io blog post — auto-merge, composite actions, coverage gates, and pre-consultation across five sprints. A record of how one reference article turned into a real pipeline overhaul, and why two sprints that shipped zero lines of code were still wins."
+tags: ["ci-cd", "github-actions", "ai-dev", "refactoring"]
+category: journey
+order: 8
+---
+
+## From Reading a Reference to Doing It Myself
+
+The first time I read [Channel.io's Backend CI Refactoring post](https://channel.io/ko/team/blog/articles/backend-ci-refactoring-73fca77d) — Channel.io being a Korean SaaS company — my immediate reaction was: "I could do this for AlgoSu." Their story of cutting a 36.6-minute CI run down to 15 minutes and 38 seconds. The method was concrete, the principles clear.
+
+But I couldn't follow it directly. AlgoSu is different from Channel.io. **A solo developer running an AI agent orchestration setup**, a Docker-only build pipeline, and an Oracle-dispatch workflow for handing off tasks to agents. I could borrow the underlying principles — but I still had to **translate those principles into AlgoSu's context**.
+
+This isn't a post introducing a finished CI architecture. It's a record of five sprints — Sprint 102 through 106 — of reading a reference, experimenting, and sometimes abandoning the plan. The focus is on two moments where a sprint closed with **zero lines of implementation**, and why those weren't failures but wins.
+
+## Why I Needed a Reference
+
+An honest snapshot of where things stood at the start of Sprint 102:
+
+**Before — Three Problems:**
+- Dependabot-generated PRs piled up as manual squash-merge burden — **30 open PRs**
+- `setup-node + cache + npm ci` repeated 3–4 times per matrix node (zero DRY)
+- Coverage was being measured, but failing the threshold **didn't block PRs** (measured but not gated)
+
+<MetricGrid cols={3}>
+  <MetricCard label="Pending Dependabot PRs" value="30" hint="Generated weekly, piled up as manual squash-merge burden" accent={4} />
+  <MetricCard label="Duplicate Setup Steps" value="3–4×" hint="setup-node + cache + npm ci repeated across each job × service" accent={4} />
+  <MetricCard label="Coverage Gate" value="None" hint="Measured but didn't block PR merges" accent={4} />
+</MetricGrid>
+
+These three problems looked independent, but they shared a common cause: **the momentum of "good enough if it works right now."** If CI passed, we deployed. Cleaning up repetitive code always got pushed to the next sprint.
+
+Three principles I borrowed from the Channel.io post:
+
+1. **Small pilot → expand** — Don't apply to all services at once. Validate on the simplest service first, then roll out.
+2. **Workflow + repository settings go together** — A GitHub Actions file alone is half the picture. Repository settings have to back it up.
+3. **DRY is a result, not a goal** — You don't build composites to eliminate duplication; a good abstraction naturally removes it.
+
+There were also principles I deliberately **didn't** borrow. Channel.io's S3-polling prepare overlapping and dynamic queue test distribution would have been overengineering for AlgoSu. GHA artifacts were enough, and the test volume didn't justify the distribution overhead. Choosing what *not* to carry over is part of translating a reference.
+
+One more difference: AlgoSu runs on an Oracle-dispatch structure — Oracle assigns work to agents. I could apply the "pilot then expand" principle at the sprint level, but I also had to re-verify **agent-to-role matching** before each sprint kicked off. In Sprint 102, I initially assigned CI work to Gatekeeper, then had to rebalance to Architect. In an agent orchestration setup, validating role boundaries matters as much as writing the code.
+
+## The 4-Sprint Roadmap — The Full Picture
+
+The roadmap I drafted after reading the Channel.io reference covered four sprints (Sprint 102–105). In practice, Sprint 106 was added to handle deferred items. Here's what each sprint aimed for and what it actually delivered:
+
+<PhaseTimeline>
+  <PhaseMilestone phase="S102" title="Operations Automation" period="Dependabot grouping + Auto-merge + Branch Protection" status="done" icon="GitBranch" accent={1} />
+  <PhaseMilestone phase="S103" title="Composite Pilot" period="setup-node-service action + github-worker pilot + Coverage Gate 60%" status="done" icon="Layers" accent={2} />
+  <PhaseMilestone phase="S104" title="Rollout" period="Composite expanded to all Node services (67 lines deleted) + AI Coverage integration" status="done" icon="GitMerge" accent={3} />
+  <PhaseMilestone phase="S105" title="Measurement & Protocol" period="rebuild_all runbook + github-worker benchmarks + dynamic commitlint scope" status="done" icon="BarChart2" accent={4} />
+  <PhaseMilestone phase="S106" title="Deferred Items" period="Coverage 70% achieved (real implementation) + L2 & optimization stopped via pre-consultation" status="done" icon="CheckCircle" accent={5} />
+</PhaseTimeline>
+
+Each sprint was self-contained, yet the lessons from one fed directly into the design of the next. Sprint 103's "infra PRs can't benchmark themselves" finding became Sprint 105's rebuild_all protocol. Sprint 105's pre-consultation pattern made Sprint 106's zero-line conclusion possible.
+
+## Sprint 102 — Auto-merge & Branch Protection
+
+The first problem was 30 open Dependabot PRs. Manually reviewing and merging weekly patch/minor updates had accumulated into a serious backlog.
+
+The solution had two steps: **group dependabot.yml** to reduce individual PR count, and **auto-merge workflow** to automatically merge patch/minor updates.
+
+### Dependabot Grouping
+
+```yaml
+# .github/dependabot.yml (excerpt)
+updates:
+  - package-ecosystem: npm
+    directory: /services/gateway
+    schedule:
+      interval: weekly
+    groups:
+      gateway-minor-patch:
+        update-types:
+          - minor
+          - patch
+```
+
+I added `{service}-minor-patch` groups across all 8 ecosystems (5 Node services + Frontend + Blog + Python). Two Docker image updates were excluded from groups due to potential security impact.
+
+### Auto-merge Workflow
+
+```yaml
+# .github/workflows/dependabot-automerge.yml (key excerpt)
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+
+      - name: Auto-merge patch and minor
+        if: |
+          steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+          steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Skip major updates
+        if: steps.metadata.outputs.update-type == 'version-update:semver-major'
+        run: |
+          echo "Major update detected — skipping auto-merge."
+          exit 0
+```
+
+One important decision here: I chose **`pull_request_target`** instead of `pull_request` as the trigger. Dependabot PRs carry fork-like context and need `pull_request_target` to access secrets. To prevent code injection, I removed `actions/checkout` entirely — no step executing PR code means no injection path.
+
+Three layers of defense: job-level `if: github.actor == 'dependabot[bot]'`, step-level metadata type check, and complete removal of `actions/checkout`.
+
+### Repository Settings to Match
+
+After creating the workflow, auto-merge still didn't work. The reason turned out to be repository settings.
+
+GitHub's auto-merge requires two preconditions:
+1. Repository setting `allow_auto_merge: true`
+2. Branch Protection's required status checks must pass
+
+Oracle applied the settings directly via the gh API.
+
+```
+# Repository settings (applied via gh api)
+allow_auto_merge: true
+delete_branch_on_merge: true
+
+# main Branch Protection
+strict: true
+required_checks: ["Secret & Env Scan", "Detect Changed Services"]
+allow_force_pushes: false
+allow_deletions: false
+required_conversation_resolution: true
+```
+
+Required checks were kept minimal for a reason. Jobs like `quality-nestjs` and `test-node` get skipped when no relevant services changed. Registering a skipped job as a required check means that PR can never merge when those jobs don't run. Only the always-running `Secret & Env Scan` and `Detect Changed Services` were registered.
+
+Result: Dependabot pending PRs **30 → 2**. 28 were reorganized into 7 group PRs and queued for auto-merge. An unexpected bonus: Dependabot detected the grouping, automatically closed the existing individual PRs, and recreated them as group PRs. No manual closing needed.
+
+Sprint 102 PR #102 verification:
+
+| Check | Result |
+|-------|--------|
+| PR #102 full CI | ✅ 26 success / 10 skipped / 0 failure |
+| Auto-merge workflow | ✅ 7/7 success (PR #104–#110) |
+| Actual auto-merge confirmed | ✅ PR #104 (github-worker 3 updates) — `app/github-actions` merger verified |
+| Branch Protection in effect | ✅ Direct push to main blocked, strict mode requires up-to-date base |
+
+<Callout type="info" title="Key Lesson: Workflow ≠ Feature">
+A workflow file alone gets you halfway. `allow_auto_merge: true` + required status checks must both be in place for it to actually work. "The code looks right — why isn't it working?" might be a repository settings issue. CI automation doesn't end with a single file.
+</Callout>
+
+## Sprint 103–104 — Composite Action: Pilot to Rollout
+
+The second problem was the repeated `setup-node + cache + npm ci` pattern. Three jobs — `quality-nestjs`, `audit-npm`, and `test-node` — each ran the same setup steps across a 5-service matrix.
+
+I applied the Channel.io principle of "validate on the smallest service first, then expand" at the sprint level. **Sprint 103: github-worker pilot only. Sprint 104: full rollout.**
+
+### Sprint 103 — Composite Action Pilot
+
+I chose github-worker as the pilot service for a clear reason: of the five Node services, it has the simplest structure (pure Node.js, no NestJS), so side effects from pattern changes could be verified in the smallest possible blast radius.
+
+```yaml
+# .github/actions/setup-node-service/action.yml
+name: 'Setup Node Service'
+description: 'setup-node + lockfile cache + conditional install for a single service'
+inputs:
+  service-path:
+    description: 'Relative path to the service directory'
+    required: true
+  node-version:
+    description: 'Node.js version'
+    default: '20'
+  install-command:
+    description: 'Install command to run'
+    default: 'npm ci'
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Cache node_modules
+      id: cache
+      uses: actions/cache@v5
+      with:
+        path: ${{ inputs.service-path }}/node_modules
+        key: node-${{ inputs.node-version }}-${{ hashFiles(format('{0}/package-lock.json', inputs.service-path)) }}
+        restore-keys: |
+          node-${{ inputs.node-version }}-
+
+    - name: Install dependencies
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: ${{ inputs.install-command }}
+      working-directory: ${{ inputs.service-path }}
+```
+
+One key design decision: **`actions/checkout` was deliberately excluded from the composite.** Checkout is the same first step in every job and doesn't vary by service path. The composite extracts only what's service-specific — setup-node + cache + install.
+
+This kept the composite general-purpose. Each job can freely decide how to checkout (e.g., sparse-checkout), and the composite just uses whatever's already there. For the `audit-npm` job, I passed `install-command: 'npm ci --ignore-scripts'` to preserve the security scan policy.
+
+### Sprint 103 — Coverage Gate
+
+Coverage was already being measured, but falling below the threshold didn't block PRs. I wrote `scripts/check-coverage.mjs` to close that gap.
+
+```js
+// scripts/check-coverage.mjs (core logic excerpt)
+import { readdirSync, readFileSync, existsSync } from 'fs';
+import { join } from 'path';
+
+function parseLcov(content) {
+  let lh = 0, lf = 0, brh = 0, brf = 0;
+  for (const line of content.split('\n')) {
+    if (line.startsWith('LH:')) lh += parseInt(line.slice(3));
+    else if (line.startsWith('LF:')) lf += parseInt(line.slice(3));
+    else if (line.startsWith('BRH:')) brh += parseInt(line.slice(4));
+    else if (line.startsWith('BRF:')) brf += parseInt(line.slice(4));
+  }
+  return { lh, lf, brh, brf };
+}
+
+// Guard for missing coverage directory
+if (!existsSync(coverageDir)) {
+  process.stdout.write('No coverage artifacts found. Skipping gate.\n');
+  process.exit(0);
+}
+
+// Recursive scan — no script changes needed when adding new services
+function findLcovFiles(dir) { /* ... */ }
+```
+
+Written with zero external npm dependencies — no supply chain risk, simple logic: recursively scan all `lcov.info` files → aggregate LH/LF/BRH/BRF → validate lines AND branches simultaneously → exit 1 if below threshold.
+
+Started with a global 60% threshold. Since individual service Jest/pytest thresholds (Node 92–100%, Python 98%, Frontend 83%) already far exceed 60%, the global gate was designed as a floor guard for newly added services.
+
+### Sprint 104 — Full Rollout
+
+Sprint 104 was straightforward. Remove the `matrix.service != 'github-worker'` condition and route all services through the composite.
+
+```yaml
+# ci.yml (after rollout — this pattern applied to quality-nestjs / audit-npm / test-node)
+- name: Setup Node service
+  uses: ./.github/actions/setup-node-service
+  with:
+    service-path: services/${{ matrix.service }}
+    # For the audit-npm job:
+    # install-command: 'npm ci --ignore-scripts'
+```
+
+Removing the 3-step inline (Setup Node + Cache + Install) × 3 jobs = **67 lines deleted from ci.yml**, roughly a 25% reduction. A maintainability win you feel before you even measure performance.
+
+<Callout type="warn" title="Pitfall: Infra PRs Can't Benchmark Themselves">
+Sprint 103 PR #111 and Sprint 104 PR #113 both modified only `.github/workflows/ci.yml`. Since `detect-changes` path-filter saw no changes in `services/github-worker/**`, all service jobs were skipped. The composite action was added, but there were zero runs where it actually executed. Post-sample count: 0 — benchmarking impossible. This structural gap was carried into Sprint 105.
+</Callout>
+
+## Sprint 105 — Measurement Protocol & commitlint Automation
+
+Sprint 105 was the **closing sprint** of the four-sprint roadmap. Three tasks bundled together.
+
+### [A] rebuild_all Operational Protocol
+
+The fix for the Sprint 103/104 pitfall — infra PRs can't benchmark themselves — was already in ci.yml: `workflow_dispatch.inputs.rebuild_all=true`. It had been there since Sprint 103, but there was no protocol for when, by whom, and how to use it.
+
+The fix required **zero new code — just documenting the operational protocol**. I created `docs/runbook-ci-rebuild-all.md` and added a checkbox to `.github/pull_request_template.md`.
+
+Three trigger conditions were formalized:
+1. PRs that only change `.github/workflows/*.yml`
+2. PRs that change `.github/actions/**` composites
+3. PRs that change CI utility scripts like `scripts/check-coverage.mjs`
+
+A runbook only matters if it's rehearsed right after it's written. The [A] runbook was actually used in the [B] benchmark run within two hours of being merged.
+
+### [B] github-worker Benchmark — Pre-Consultation Yields N=1
+
+First came the question of how to run the benchmark. The original plan called for 5 post-samples. I ran it by Sensei first.
+
+Sensei's key finding: "Under the Welch-Satterthwaite formula, Pre n=4 locks degrees of freedom (df) at 4. Increasing Post n from 2 to 6 only improves MDE by 0.8s. The original N=5 plan is overengineering. N=1 is sufficient."
+
+That stopped unnecessary runner-minute spending before it happened. I added a dummy anchor comment to PR #117 (`6f42b0f`) to trigger `detect-changes`, collecting 2 natural runs (run 24702740418 · 24702828670) plus 1 synthetic `rebuild_all=true` run (run 24703075569) — Post n=3.
+
+Results:
+
+| Job | Before (n=4) | After (n=3) | Delta |
+|-----|-------------|-------------|-------|
+| Quality — github-worker | 22.2s (σ 5.8s) | 22.3s (σ 2.5s) | +0.1s (+0.4%) |
+| Audit — github-worker | 19.8s (σ 3.7s) | 18.0s (σ 3.0s) | −1.8s (−8.9%) |
+| Test GitHub Worker | 19.2s (σ 1.9s) | 20.0s (σ 1.0s) | +0.8s (+3.9%) |
+
+All three jobs within the ±10% practical threshold. Welch t-test: `|t_obs| < 0.7` (t_crit=2.776). Composite action rollout had no statistically detectable effect on github-worker per-job runtimes.
+
+Pre-consultation saved **75% of runner-minutes**. For the first time, I felt that "approve plan → execute immediately" isn't always the optimal path.
+
+### [C] Dynamic commitlint scope-enum
+
+During Sprint 103, CI had failed due to a scope error. `ci(actions)` and `ci(coverage)` — intuitively obvious scopes, but neither was in `commitlint.config.mjs`'s scope-enum, so the error only surfaced in the PR CI run. Without a local pre-commit hook, scope errors only show up after you push.
+
+Two problems solved at once: **move validation earlier with husky**, **eliminate manual maintenance with dynamic scope-enum generation**.
+
+I added husky at the root `package.json` and set up a commit-msg hook.
+
+```json
+// package.json (root — new file)
+{
+  "devDependencies": {
+    "@commitlint/cli": "^19.0.0",
+    "@commitlint/config-conventional": "^19.0.0",
+    "husky": "^9.0.0"
+  },
+  "scripts": {
+    "prepare": "husky"
+  }
+}
+```
+
+```bash
+# .husky/commit-msg
+npx --no -- commitlint --edit "$1"
+```
+
+Adding a root `package.json` doesn't affect existing CI jobs. Each job either specifies `working-directory` to a service directory or goes through a composite action. All CI jobs in PR #116 validated as SUCCESS.
+
+```js
+// commitlint.config.mjs
+import { readdirSync } from 'fs';
+
+// Auto-scan services/ — new services register automatically
+const dynamicScopes = readdirSync('./services', { withFileTypes: true })
+  .filter((d) => d.isDirectory())
+  .map((d) => d.name);
+
+const staticScopes = [
+  'ci', 'docs', 'blog', 'frontend', 'infra',
+  'deps', 'security', 'adr', 'e2e', 'runbook',
+];
+
+export default {
+  extends: ['@commitlint/config-conventional'],
+  rules: {
+    'scope-enum': [
+      2,
+      'always',
+      [...new Set([...dynamicScopes, ...staticScopes])].sort(),
+    ],
+  },
+};
+```
+
+Now adding a directory under `services/` automatically registers the scope. The recurring "remember to update scope-enum when adding a new directory" feedback loop was resolved structurally. **Human-dependent feedback promoted to system automation.**
+
+## Sprint 106 — The "Zero-Line Implementation" Decision
+
+Sprint 106 handled the three items deferred from Sprint 105. Ultimately, **one track was actually implemented**, while **two were closed without any code changes**.
+
+| Track | Task | Result |
+|-------|------|--------|
+| [A] Coverage 70% | Frontend branches 69.55% → 71%+ + global gate 70% | ✅ Implemented (PR #121, #122) |
+| [B] L2 Cache Layer | Target: 40% Docker build reduction | ❌ Not introduced (pre-consultation halt) |
+| [C] Frontend Build Optimization | `swcMinify` · `optimizePackageImports` · `sourceMaps` | ❌ Not introduced (pre-consultation halt) |
+
+### [A] Coverage 70% — Frontend Branches Was the Single Bottleneck
+
+To raise the global coverage gate from 60% to 70%, I first had to find the bottleneck. The weighted aggregate branches across all services was already around 82% — well above 70%. So why couldn't the gate be raised?
+
+Pre-consultation with Sensei revealed the structural reason. `check-coverage.mjs` only aggregates `lcov.info` for services detected by the path-filter. **For frontend-only PRs, only frontend branches are aggregated.** And frontend branches sat at 69.55%.
+
+The intuition that "all-service aggregate branches = 82%, global gate 70% → passes" was wrong. A frontend-only PR would aggregate at 69.55% and fail the 70% gate. In a path-filter-based CI design, the coverage gate needs to be explicit about *which lcov set it operates on* per PR scope.
+
+Fixing the bottleneck meant writing new tests to bring frontend branches up to 71%.
+
+Sensei's gap analysis:
+
+| Target | Branches Hit Needed | Current | Gap |
+|--------|---------------------|---------|-----|
+| 71.0% (contractual target) | 1,330 | 1,302 | +28 |
+| 72.0% (safety buffer) | 1,348 | 1,302 | +46 |
+
+Achievable with ~120–190 LOC of new tests across three recommended files (`lib/feedback.ts`, `components/ui/CodeBlock.tsx`, `components/providers/EventTracker.tsx`).
+
+Actual result: 77 tests added (PR #121), frontend branches **69.55% → 76.42%** (+6.87pp, exceeding the 71% target by +5.42pp). A conservatively designed scenario.
+
+<MetricGrid cols={2}>
+  <MetricCard label="Frontend Branches (Before)" value="69.55%" hint="1302 / 1872 branches hit" accent={4} />
+  <MetricCard label="Frontend Branches (After)" value="76.42%" hint="+5.42pp beyond the 71% target" accent={1} />
+</MetricGrid>
+
+PR #122 then changed the `ci.yml` coverage threshold from `60 → 70`. The sequencing guard was critical: **PR #121 had to be merged and CI-green first**, then #122. Merging #122 first would immediately cause any frontend-only PR to fail the coverage gate. Sensei's warning was written explicitly into the PR #122 body to enforce the sequencing.
+
+### [B] L2 Cache — Docker Buildkit Was Already L2
+
+I followed the Sprint 105 pattern: consult Sensei before implementing.
+
+What Sensei found was striking. `docker/build-push-action` already had `--cache-from=type=gha,mode=max` set, and `mode=max` stores **all intermediate layers** from builder stages in GHA cache.
+
+```
+# NestJS build layers — mode=max cache coverage
+Layer 1: FROM node:22-alpine AS builder         → cached
+Layer 2: COPY package*.json ./                  → HIT when package.json unchanged
+Layer 3: RUN npm ci                             → HIT when package.json unchanged
+Layer 4: COPY . .                               → MISS on source changes
+Layer 5: RUN npm run build   ← generates dist/  → re-runs on Layer 4 MISS
+```
+
+`RUN npm run build` — the `dist/` generation step — was already being saved as a GHA cache layer. Adding an external GHA filesystem cache would have been **100% redundant**.
+
+An additional finding: `ci.yml L624–630` already had a `Frontend .next/cache` GHA cache step — and it was non-functional dead code. The `build-frontend` job does a Docker build only, with no host-side `npm run build`, so `.next/cache` is never generated on the host filesystem. Restoring it restores nothing; saving it saves an empty directory. A leftover artifact from before the Docker-only pipeline migration.
+
+The deeper finding: **not a single build job ran `npm run build` on the host filesystem.** All TypeScript/Next.js compilation happens inside Docker containers. GHA filesystem caching only applies to the host filesystem — so the current Docker-only architecture has no path to benefit from it at all.
+
+Conclusion: L2 cache not introduced. Zero code changes. The dead step (ci.yml L624–630) removed in a separate PR.
+
+### [C] Frontend Optimization — All Three Were Already Handled
+
+I'd planned to apply three Next.js optimization options. Sensei verified each through direct `node_modules/` inspection:
+
+| Option | Plan | Verified Result | Verdict |
+|--------|------|-----------------|---------|
+| `swcMinify: true` | Explicit setting | Completely removed from Next.js 15.5.15 `config-schema.js` (`z.strictObject` violation) | **HARD BLOCK** |
+| `optimizePackageImports` | Add `@radix-ui/react-*`, `lucide-react` | No wildcard support + `lucide-react` already in default list | **Excluded** |
+| `productionBrowserSourceMaps: false` | Explicit setting | Default is already `false` in `config-schema.js` | **Excluded** |
+
+`swcMinify` was a valid option in Next.js 14.x when the plan was written. In 15.5.15 it was completely removed from the config schema — adding it breaks the build via `z.strictObject()` validation. When a library version advances after a plan is drafted, official docs alone aren't enough. Directly reading `node_modules/` source is the only reliable verification method.
+
+Conclusion: all three options inapplicable or already the default. Zero code changes.
+
+<Callout type="info" title="Pre-Consultation Elevated from 'How' to 'Whether'">
+In Sprint 105, pre-consultation was an **optimization tool** — reducing the post-sample count. In Sprint 106 [B] and [C], it became a **necessity gate** — confirming whether implementation was needed at all. If you write explicit stopping conditions into your plan ("if redundant, gain = 0 → stop"), the pre-consultation step has a clear decision criterion. Zero-line implementation is still a conclusion.
+</Callout>
+
+## Four Principles in Hindsight
+
+Looking back across five sprints, four principles kept showing up.
+
+### (i) Pilot → Expand Is the Basic Unit of Hypothesis Testing
+
+Sprint 103: github-worker pilot only. Sprint 104: full service rollout. Straightforward in hindsight, but this structure was what surfaced the "checkout excluded" design decision and the "infra PR can't benchmark itself" problem within a small blast radius. Applying it to all services at once would have meant encountering the same problems at a much larger scale.
+
+When picking a pilot, "simplest service first" is the right call. github-worker being pure Node.js without NestJS minimized side effects. If the pilot succeeds, expand. If it fails, fix and re-pilot. Sprint-level separation naturally enforced this cycle.
+
+### (ii) A Workflow Only Works When Paired with Repository Settings
+
+Sprint 102's auto-merge taught me this the hard way. It's easy to think "the workflow file is done — automation complete." But without `allow_auto_merge: true` and required status checks, the workflow can execute without auto-merge ever being scheduled.
+
+This principle applies across CI automation. Required checks without Branch Protection mean nothing; a coverage gate only blocks PR merges when registered in Branch Protection. Between "I built a workflow" and "automation works" there's always a settings layer.
+
+### (iii) Infra PRs Can't Benchmark Themselves
+
+The Sprint 103/104 pitfall. A PR that modifies the CI pipeline can't generate benchmark data for that pipeline. If the path-filter doesn't detect service code changes, all service jobs are skipped.
+
+The fix for this structural gap was `rebuild_all=true workflow_dispatch`. Formalizing when to use it was the core value of Sprint 105 [A]. A single runbook, zero code changes, closed a measurement gap that had accumulated over two sprints.
+
+### (iv) Pre-Consultation Is a "Necessity Gate" — Zero-Line Implementation Is Still a Conclusion
+
+<Callout type="success" title="The Real Win of Sprint 106">
+Two of three tracks closed with zero lines of code. That's not a failure. Sensei pre-consultation in Sprint 106 stopped two wrong turns before they happened. If we'd proceeded with the L2 cache, we would have gone through composite action + pilot + full rollout + benchmarking — all of it unnecessary. Confirming upfront that all of that was unnecessary is the highest return on investment possible.
+</Callout>
+
+## The Story Isn't Over
+
+Five sprints are done, but one structural constraint remains unresolved. **Every build job in AlgoSu is Docker-only.** Not a single job runs `npm run build` on the host filesystem.
+
+This constraint simultaneously blocked both L2 cache ([B]) and build timing measurement ([C]) in Sprint 106. Finding that both deferred items share the same root cause is the key input for Sprint 107's direction.
+
+The path forward:
+
+| Approach | Description | Expected Gain |
+|----------|-------------|---------------|
+| **Blog host-side SSG build** | CI builds `out/` on host → GHA cache → Docker does COPY only | 40–60% reduction on MISS |
+| **Frontend host-side build** | `.next/standalone` on host → GHA cache → Docker COPY only | 40–60% reduction on MISS |
+| **Per-service independent coverage gate** | `check-coverage.mjs` per-service threshold — resolves path-filter misunderstanding | Better visibility |
+
+The host-side build migration isn't a simple optimization PR. It's an architectural decision that requires simultaneous changes to both Dockerfile and ci.yml. Just as Channel.io separated the prepare phase into S3, AlgoSu is moving toward separating the build phase to the host side. But rather than rushing that decision, clearly understanding the current architecture's limits is the real contribution of these five sprints.
+
+Five sprints in summary:
+
+<MetricGrid cols={4}>
+  <MetricCard label="Dependabot PRs" value="30 → 2" hint="Sprint 102 — grouping + auto-merge" accent={1} />
+  <MetricCard label="CI Duplicate Code" value="−67 lines" hint="Sprint 103–104 — Composite action" accent={2} />
+  <MetricCard label="Frontend Branches" value="69.55 → 76.42%" hint="Sprint 106 — 77 tests added" accent={3} />
+  <MetricCard label="Zero-Line Decisions" value="2" hint="Sprint 106 — stopped via pre-consultation" accent={5} />
+</MetricGrid>
+
+---
+
+Reading [Channel.io's Backend CI Refactoring post](https://channel.io/ko/team/blog/articles/backend-ci-refactoring-73fca77d) again, I realize it didn't give me answers — **it gave me questions.** "Why does the AlgoSu pipeline take so long? What can be improved?" Translating those questions into AlgoSu's context and walking the path — that was Sprint 102 through 106.
+
+The reference pointed the direction. The rest, I walked myself.
