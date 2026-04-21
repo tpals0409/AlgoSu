@@ -86,7 +86,7 @@ temp/
 *.tmp
 *.bak
 
-# ── Claude Code (로컬 전용, GitHub 제외) ───────────────────
-CLAUDE.md
+# ── Claude Code (로컬 세션/설정 전용, GitHub 제외) ─────────
+# CLAUDE.md는 팀 공유 프로젝트 규정 문서로 git 추적 (Oracle 판정)
 .claude/
 agents/
