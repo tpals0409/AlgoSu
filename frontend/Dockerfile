@@ -11,6 +11,9 @@ COPY . .
 ENV NEXT_PUBLIC_ADSENSE_ENABLED=true
 ENV NEXT_PUBLIC_ADSENSE_CLIENT_ID=ca-pub-4088760185957474
 
+# 데모 체험 모드 — 로그인/회원가입 페이지에 "데모 체험하기" 버튼 노출
+ENV NEXT_PUBLIC_DEMO_ENABLED=true
+
 RUN npm run build
 
 FROM node:22-alpine AS runner
