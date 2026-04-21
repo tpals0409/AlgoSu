@@ -1,0 +1,52 @@
+# @file   dependabot-automerge.yml
+# @domain CI/CD
+# @layer  infrastructure
+# @related .github/dependabot.yml, .github/workflows/ci.yml
+#
+# Dependabot patch/minor PR을 CI 통과 후 자동 merge.
+# major 버전은 명시적으로 배제.
+# 보안: pull_request_target + no-checkout 패턴 (코드 인젝션 방지)
+
+name: Dependabot Auto-merge
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+# 최소 권한 원칙
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  dependabot-automerge:
+    name: Auto-merge Dependabot PR
+    runs-on: ubuntu-latest
+    # 1차 게이트: dependabot[bot] 외 actor 즉시 스킵
+    if: github.actor == 'dependabot[bot]'
+    steps:
+      # ── dependabot/fetch-metadata: 코드 체크아웃 없이 메타데이터 조회 ──
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── major 버전 명시 배제 (fail-safe) ──
+      - name: Skip major version updates
+        if: steps.metadata.outputs.update-type == 'version-update:semver-major'
+        run: |
+          echo "::notice::Major version update detected. Skipping auto-merge."
+          exit 0
+
+      # ── 2차 게이트: patch 또는 minor만 auto-merge 허용 ──
+      - name: Enable auto-merge (patch/minor only)
+        if: >-
+          steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+          steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        run: |
+          echo "update-type: ${{ steps.metadata.outputs.update-type }}"
+          echo "dependency-name: ${{ steps.metadata.outputs.dependency-name }}"
+          gh pr merge --auto --squash "${{ github.event.pull_request.html_url }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
