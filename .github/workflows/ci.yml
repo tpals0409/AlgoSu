@@ -212,32 +212,13 @@ jobs:
           fi
       - uses: actions/checkout@v6
         if: steps.check.outputs.skip == 'false'
-      # --- Composite action (github-worker 파일럿) ---
+      # --- Composite action ---
       - name: Setup Node service (composite)
-        if: steps.check.outputs.skip == 'false' && matrix.service == 'github-worker'
+        if: steps.check.outputs.skip == 'false'
         uses: ./.github/actions/setup-node-service
         with:
           service-path: services/${{ matrix.service }}
           node-version: ${{ env.NODE_VERSION }}
-
-      # --- 기존 inline 스텝 (github-worker 외) ---
-      - uses: actions/setup-node@v6
-        if: steps.check.outputs.skip == 'false' && matrix.service != 'github-worker'
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      - name: Cache node_modules
-        if: steps.check.outputs.skip == 'false' && matrix.service != 'github-worker'
-        uses: actions/cache@v5
-        id: cache-node
-        with:
-          path: services/${{ matrix.service }}/node_modules
-          key: node-${{ matrix.service }}-${{ hashFiles(format('services/{0}/package-lock.json', matrix.service)) }}
-          restore-keys: |
-            node-${{ matrix.service }}-
-      - name: Install dependencies
-        if: steps.check.outputs.skip == 'false' && matrix.service != 'github-worker' && steps.cache-node.outputs.cache-hit != 'true'
-        working-directory: services/${{ matrix.service }}
-        run: npm ci
       - name: ESLint
         if: steps.check.outputs.skip == 'false' && matrix.has_eslint == 'true'
         working-directory: services/${{ matrix.service }}
@@ -350,33 +331,14 @@ jobs:
           fi
       - uses: actions/checkout@v6
         if: steps.check.outputs.skip == 'false'
-      # --- Composite action (github-worker 파일럿) ---
+      # --- Composite action ---
       - name: Setup Node service (composite)
-        if: steps.check.outputs.skip == 'false' && matrix.service == 'github-worker'
+        if: steps.check.outputs.skip == 'false'
         uses: ./.github/actions/setup-node-service
         with:
           service-path: ${{ matrix.work_dir }}
           node-version: ${{ env.NODE_VERSION }}
           install-command: 'npm ci --ignore-scripts'
-
-      # --- 기존 inline 스텝 (github-worker 외) ---
-      - uses: actions/setup-node@v6
-        if: steps.check.outputs.skip == 'false' && matrix.service != 'github-worker'
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      - name: Cache node_modules
-        if: steps.check.outputs.skip == 'false' && matrix.service != 'github-worker'
-        id: cache-node
-        uses: actions/cache@v5
-        with:
-          path: ${{ matrix.work_dir }}/node_modules
-          key: node-${{ matrix.service }}-${{ hashFiles(format('{0}/package-lock.json', matrix.work_dir)) }}
-          restore-keys: |
-            node-${{ matrix.service }}-
-      - name: Install dependencies
-        if: steps.check.outputs.skip == 'false' && matrix.service != 'github-worker' && steps.cache-node.outputs.cache-hit != 'true'
-        working-directory: ${{ matrix.work_dir }}
-        run: npm ci --ignore-scripts
       - name: npm audit (high/critical)
         if: steps.check.outputs.skip == 'false'
         working-directory: ${{ matrix.work_dir }}
@@ -432,32 +394,13 @@ jobs:
           fi
       - uses: actions/checkout@v6
         if: steps.check.outputs.skip == 'false'
-      # --- Composite action (github-worker 파일럿) ---
+      # --- Composite action ---
       - name: Setup Node service (composite)
-        if: steps.check.outputs.skip == 'false' && matrix.service == 'github-worker'
+        if: steps.check.outputs.skip == 'false'
         uses: ./.github/actions/setup-node-service
         with:
           service-path: ${{ matrix.work_dir }}
           node-version: ${{ env.NODE_VERSION }}
-
-      # --- 기존 inline 스텝 (github-worker 외) ---
-      - uses: actions/setup-node@v6
-        if: steps.check.outputs.skip == 'false' && matrix.service != 'github-worker'
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      - name: Cache node_modules
-        if: steps.check.outputs.skip == 'false' && matrix.service != 'github-worker'
-        uses: actions/cache@v5
-        id: cache-node
-        with:
-          path: ${{ matrix.work_dir }}/node_modules
-          key: node-${{ matrix.service }}-${{ hashFiles(format('{0}/package-lock.json', matrix.work_dir)) }}
-          restore-keys: |
-            node-${{ matrix.service }}-
-      - name: Install dependencies
-        if: steps.check.outputs.skip == 'false' && matrix.service != 'github-worker' && steps.cache-node.outputs.cache-hit != 'true'
-        working-directory: ${{ matrix.work_dir }}
-        run: npm ci
       - name: Run unit tests
         if: steps.check.outputs.skip == 'false'
         working-directory: ${{ matrix.work_dir }}
@@ -497,13 +440,15 @@ jobs:
           pip install -r requirements-dev.txt
       - name: Run unit tests
         working-directory: services/ai-analysis
-        run: python -m pytest tests/ -v --cov=src --cov-report=xml
+        run: python -m pytest tests/ -v --cov=src --cov-report=xml --cov-report=lcov:coverage/lcov.info
       - name: Upload coverage
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: coverage-ai-analysis
-          path: services/ai-analysis/coverage.xml
+          path: |
+            services/ai-analysis/coverage.xml
+            services/ai-analysis/coverage/lcov.info
           retention-days: 7
 
   test-frontend:
@@ -542,16 +487,17 @@ jobs:
           retention-days: 7
 
   # ============================================================
-  # Coverage Gate — 글로벌 60% 임계치 강제 (Node + Frontend)
+  # Coverage Gate — 글로벌 60% 임계치 강제 (Node + AI Analysis + Frontend)
   # ============================================================
 
   coverage-gate:
     name: Coverage Gate
-    needs: [test-node, test-frontend]
+    needs: [test-node, test-ai-analysis, test-frontend]
     if: >-
       always() &&
       !cancelled() &&
       (needs.test-node.result == 'success' || needs.test-node.result == 'skipped') &&
+      (needs.test-ai-analysis.result == 'success' || needs.test-ai-analysis.result == 'skipped') &&
       (needs.test-frontend.result == 'success' || needs.test-frontend.result == 'skipped')
     runs-on: ubuntu-latest
     permissions:
