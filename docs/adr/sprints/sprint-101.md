@@ -2,7 +2,7 @@
 sprint: 101
 title: "잔여 항목 처리 — Register 3종 생성 + 문서 정리"
 date: "2026-04-21"
-status: in-progress
+status: completed
 ---
 
 # Sprint 101 — 잔여 항목 처리: Register 3종 생성 + 문서 정리
@@ -18,8 +18,8 @@ Sprint 99 완료 후 이월된 항목과 MEMORY.md "후속 처리 필요" 목록
 ## 작업 요약
 | 커밋 | 담당 | 내용 |
 |---|---|---|
-| (pending) | Oracle + scribe | Register 3종 페이지 신규 생성 |
-| (pending) | Oracle (직접) | MEMORY.md · sprint-window.md 잔여 목록 정리 |
+| `a12b4f1` (PR #100) | Oracle + scribe | Register 3종 페이지 신규 생성 (+853 lines) |
+| `ac5668a` (PR #101) | Oracle + librarian | Sprint 99~101 ADR 정비 및 잔여 목록 정리 |
 
 ## 수정 내용
 
@@ -51,6 +51,11 @@ Sprint 99 완료 후 이월된 항목과 MEMORY.md "후속 처리 필요" 목록
 - **callback 수정 범위 제외**: 기존 OAuth 콜백 흐름(`/callback#github_connected=false`)은 정상 동작 중이므로 스코프 밖 유지
 - **OnboardingStepper 인라인**: 공통 컴포넌트 추출은 향후 스프린트로 보류 (components/ui/ Palette 가이드 없이 생성 금지 규칙)
 - **이월 항목 코드 검증 의무화**: Sprint 99 사례처럼 "문서에 미처리로 남아있지만 코드에는 이미 반영" 상황 방지를 위해 /start 시 이월 항목 코드 존재 확인 프로세스 권장
+
+## 주요 교훈
+- 이월 항목은 문서만 믿지 말고 코드로 실상 재검증 필요. NotFound/H5 검색/SolvedProblem이 실제로는 이미 완료 상태였음
+- "UI 이식"으로 분류된 항목도 라우트 자체 부재 가능성 검증 필요 (Register 3종 사례)
+- OAuth 전용 구조에서도 Register 경로는 가입 CTA + 온보딩 단계 분리로 가치 있음 (callback 수정 없이 독립 경로 유지)
 
 ## 이월 (Sprint 102+)
 - SWR/React Query 도입 (프론트 데이터 페칭 표준화)
