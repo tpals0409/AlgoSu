@@ -127,6 +127,24 @@ function parseLevelText(text: string, defaultLevel: Level): number {
   return defaultLevel;
 }
 
+/**
+ * SQL Part 페이지 앵커 textContent에 포함된 "Level N X명 완료" suffix를 제거한다.
+ * extractCards가 whitespace를 이미 정규화({@link /\s+/g → ' '})했으므로
+ * suffix regex만 적용하면 충분하다.
+ *
+ * 알고리즘 챌린지 페이지는 해당 suffix가 없으므로 collectSqlPart 내에서만 호출.
+ *
+ * @pure 사이드이펙트 없음 — 단위 테스트 가능
+ * @example
+ *   stripSqlTitleSuffix('모든 레코드 조회하기 Level 1 94,495명 완료')
+ *   // → '모든 레코드 조회하기'
+ *   stripSqlTitleSuffix('식품분류별 가장 비싼 식품의 정보 조회하기 Level 4 19,647명 완료')
+ *   // → '식품분류별 가장 비싼 식품의 정보 조회하기'
+ */
+export function stripSqlTitleSuffix(rawTitle: string): string {
+  return rawTitle.replace(/\s+Level\s+\d+.*$/, '').trim();
+}
+
 // ═══════════════════════════════════════════════════════════
 //  브라우저 컨텍스트 데이터 구조
 // ═══════════════════════════════════════════════════════════
@@ -379,6 +397,9 @@ async function collectSqlPart(
     // SQL Part 페이지는 "Level N" 형식 사용 — 확장된 regex로 파싱
     const lvNum = parseLevelText(card.levelText, 1 as Level);
 
+    // SQL Part 페이지 앵커는 "제목 Level N X명 완료" 형식으로 묶여있음 — suffix 제거
+    const title = stripSqlTitleSuffix(card.title);
+
     // SQL 태그 강제 주입: 태그가 비어있어도 ['SQL'] 보장
     const baseTags = [...new Set(card.tagTexts)].slice(0, 4);
     const hasSqlTag = baseTags.some((t) => t.toUpperCase() === 'SQL');
@@ -386,7 +407,7 @@ async function collectSqlPart(
 
     collected.push({
       problemId: card.problemId,
-      title: card.title,
+      title,
       level: lvNum,
       tags,
       sourceUrl: `${LESSON_BASE}/${card.problemId}`,
@@ -545,10 +566,13 @@ async function main(): Promise<void> {
   });
 }
 
-main().catch((err: unknown) => {
-  sLog('error', '[SCRIPT_ERROR]', {
-    message: err instanceof Error ? err.message : String(err),
-    stack: err instanceof Error ? err.stack : undefined,
+// Entrypoint guard — allows safe import for unit testing of exported functions
+if (require.main === module) {
+  main().catch((err: unknown) => {
+    sLog('error', '[SCRIPT_ERROR]', {
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
+    process.exit(1);
   });
-  process.exit(1);
-});
+}
