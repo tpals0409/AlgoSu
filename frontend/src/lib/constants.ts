@@ -81,6 +81,8 @@ export const LANGUAGES: readonly LanguageOption[] = [
   { value: 'go', label: 'Go' },
   { value: 'rust', label: 'Rust' },
   { value: 'kotlin', label: 'Kotlin' },
+  /** Sprint 108: SQL 고득점 Kit 제출 지원 */
+  { value: 'sql', label: 'SQL' },
 ] as const;
 
 export const LANGUAGE_VALUES = LANGUAGES.map((l) => l.value);

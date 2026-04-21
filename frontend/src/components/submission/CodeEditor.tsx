@@ -45,6 +45,8 @@ const MONACO_LANG_MAP: Record<string, string> = {
   go: 'go',
   rust: 'rust',
   kotlin: 'kotlin',
+  /** Sprint 108: Monaco 내장 SQL 모드 사용 */
+  sql: 'sql',
 };
 
 // ─── 커스텀 테마 (디자인 시스템 v2 연동) ──
