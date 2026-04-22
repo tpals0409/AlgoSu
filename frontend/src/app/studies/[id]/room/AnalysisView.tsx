@@ -25,6 +25,7 @@ import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { getAvatarPresetKey, getAvatarSrc } from '@/lib/avatars';
+import { sanitizeUrl } from '@/lib/url';
 import type { Problem, Submission, AnalysisResult } from '@/lib/api';
 import { getSagaStatus, CATEGORY_LABELS, barColor, parseFeedbackCategories } from './utils';
 
@@ -128,8 +129,8 @@ export function AnalysisView({ problem, submission, analysis, loading, nicknameM
 
         <div className="flex items-center justify-between">
           <span className="text-[12px] text-text-3">{new Date(submission.createdAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-          {problem.sourceUrl && (
-            <a href={problem.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[12px] font-medium text-primary hover:underline">
+          {sanitizeUrl(problem.sourceUrl) && (
+            <a href={sanitizeUrl(problem.sourceUrl)!} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[12px] font-medium text-primary hover:underline">
               문제 보기<ExternalLink className="h-3 w-3" />
             </a>
           )}

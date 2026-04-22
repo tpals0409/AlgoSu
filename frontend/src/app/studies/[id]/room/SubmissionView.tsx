@@ -25,6 +25,7 @@ import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { StudyNoteEditor } from '@/components/review/StudyNoteEditor';
 import { getAvatarPresetKey, getAvatarSrc } from '@/lib/avatars';
+import { sanitizeUrl } from '@/lib/url';
 import type { Problem, Submission } from '@/lib/api';
 import { toTier, getSagaStatus } from './utils';
 
@@ -103,8 +104,8 @@ export function SubmissionView({ problem, submissions, loading, notSubmitted, ac
                 <span key={tag} className="rounded-badge px-2 py-0.5 text-[11px]" style={{ backgroundColor: 'var(--bg-alt)', color: 'var(--text-3)' }}>{tag}</span>
               ))}
             </div>
-            {problem.sourceUrl && (
-              <a href={problem.sourceUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[12px] font-medium text-primary transition-colors hover:underline">
+            {sanitizeUrl(problem.sourceUrl) && (
+              <a href={sanitizeUrl(problem.sourceUrl)!} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[12px] font-medium text-primary transition-colors hover:underline">
                 문제 보기<ExternalLink className="h-3 w-3" />
               </a>
             )}
