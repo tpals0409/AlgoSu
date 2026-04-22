@@ -542,6 +542,121 @@ class TestParseResponseFallback:
         # SQL_WEIGHTS: 80*0.30+70*0.20+60*0.15+50*0.15+40*0.20 = 62.5 → 62
         assert result["score"] == 62
 
+    def test_categories_is_string_falls_back_to_empty(self):
+        """categories가 문자열인 경우 빈 리스트로 대체 — AttributeError 방지 (P1 fix)"""
+        c = _make_client()
+
+        raw = json.dumps(
+            {
+                "totalScore": 70,
+                "summary": "test",
+                "categories": "correctness, efficiency",
+                "optimizedCode": None,
+            }
+        )
+        result = c._parse_response(raw)
+        assert result["status"] == "completed"
+        assert result["score"] == 70
+        assert result["categories"] == []
+
+    def test_categories_is_dict_falls_back_to_empty(self):
+        """categories가 단일 dict인 경우(리스트 미포장) 빈 리스트로 대체 (P1 fix)"""
+        c = _make_client()
+
+        raw = json.dumps(
+            {
+                "totalScore": 65,
+                "summary": "test",
+                "categories": {"name": "correctness", "score": 65, "comment": "ok"},
+                "optimizedCode": None,
+            }
+        )
+        result = c._parse_response(raw)
+        assert result["status"] == "completed"
+        assert result["score"] == 65
+        assert result["categories"] == []
+
+    def test_categories_with_non_dict_elements_filtered(self):
+        """categories 원소에 dict가 아닌 값(문자열 등)이 섞인 경우 필터링 (P1 fix)"""
+        c = _make_client()
+
+        raw = json.dumps(
+            {
+                "totalScore": 80,
+                "summary": "test",
+                "categories": [
+                    {"name": "correctness", "score": 80, "comment": "ok"},
+                    "invalid_element",
+                    42,
+                    {"name": "efficiency", "score": 75, "comment": "good"},
+                ],
+                "optimizedCode": None,
+            }
+        )
+        result = c._parse_response(raw)
+        assert result["status"] == "completed"
+        assert result["score"] == 80
+        # 비-dict 원소(문자열 "invalid_element", 42)는 필터링되어 2개만 남아야 함
+        assert len(result["categories"]) == 2
+        assert all(isinstance(cat, dict) for cat in result["categories"])
+
+    def test_categories_is_none_falls_back_to_empty(self):
+        """categories가 null인 경우 빈 리스트로 대체 (P1 fix)"""
+        c = _make_client()
+
+        raw = json.dumps(
+            {
+                "totalScore": 55,
+                "summary": "test",
+                "categories": None,
+                "optimizedCode": None,
+            }
+        )
+        result = c._parse_response(raw)
+        assert result["status"] == "completed"
+        assert result["score"] == 55
+        assert result["categories"] == []
+
+
+class TestValidateCategories:
+    """_validate_categories() 모듈 함수 단위 테스트"""
+
+    def test_valid_list_of_dicts_unchanged(self):
+        """정상 list[dict] 입력은 그대로 반환"""
+        from src.claude_client import _validate_categories
+
+        cats = [{"name": "correctness", "score": 80}]
+        assert _validate_categories(cats) == cats
+
+    def test_empty_list_unchanged(self):
+        """빈 리스트는 그대로 반환"""
+        from src.claude_client import _validate_categories
+
+        assert _validate_categories([]) == []
+
+    def test_non_list_returns_empty(self):
+        """리스트가 아닌 값(문자열, dict, int, None) → 빈 리스트"""
+        from src.claude_client import _validate_categories
+
+        assert _validate_categories("some string") == []
+        assert _validate_categories({"name": "x"}) == []
+        assert _validate_categories(42) == []
+        assert _validate_categories(None) == []
+
+    def test_mixed_list_filters_non_dicts(self):
+        """리스트 내 비-dict 원소는 필터링"""
+        from src.claude_client import _validate_categories
+
+        cats = [{"a": 1}, "bad", None, {"b": 2}, 99]
+        result = _validate_categories(cats)
+        assert result == [{"a": 1}, {"b": 2}]
+
+    def test_all_non_dict_elements_returns_empty(self):
+        """리스트의 모든 원소가 dict가 아닌 경우 빈 리스트"""
+        from src.claude_client import _validate_categories
+
+        assert _validate_categories(["a", "b", 1, None]) == []
+
 
 class TestSecurityCodeLogLimit:
     """5. 보안: 코드 로그 50자 제한"""
