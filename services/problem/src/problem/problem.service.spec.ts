@@ -261,6 +261,26 @@ describe('ProblemService', () => {
         NotFoundException,
       );
     });
+
+    it('studyId 누락 (undefined): BadRequestException — cross-study 방어', async () => {
+      await expect(
+        service.findByIdInternal(undefined as unknown as string, PROBLEM_ID),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.findByIdInternal(undefined as unknown as string, PROBLEM_ID),
+      ).rejects.toThrow('studyId가 필요합니다');
+
+      // DB 조회 자체가 발생하지 않아야 함
+      expect(dualWrite.findOne).not.toHaveBeenCalled();
+    });
+
+    it('studyId 빈 문자열: BadRequestException — cross-study 방어', async () => {
+      await expect(
+        service.findByIdInternal('', PROBLEM_ID),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(dualWrite.findOne).not.toHaveBeenCalled();
+    });
   });
 
   // ──────────────────────────────────────────────
@@ -400,6 +420,27 @@ describe('ProblemService', () => {
         weekNumber: '3월1주차',
         status: 'db_hit',
       });
+    });
+
+    it('studyId 누락 (undefined): BadRequestException — cross-study 방어', async () => {
+      await expect(
+        service.getDeadline(undefined as unknown as string, PROBLEM_ID),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.getDeadline(undefined as unknown as string, PROBLEM_ID),
+      ).rejects.toThrow('studyId가 필요합니다');
+
+      // 캐시·DB 조회 모두 발생하지 않아야 함
+      expect(deadlineCache.getDeadline).not.toHaveBeenCalled();
+      expect(dualWrite.findOne).not.toHaveBeenCalled();
+    });
+
+    it('studyId 빈 문자열: BadRequestException — cross-study 방어', async () => {
+      await expect(
+        service.getDeadline('', PROBLEM_ID),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(deadlineCache.getDeadline).not.toHaveBeenCalled();
     });
   });
 

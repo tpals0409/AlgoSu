@@ -92,8 +92,14 @@ export class ProblemService {
   /**
    * 문제 단건 조회 (내부용) — DELETED 포함 전체 상태 조회, studyId 스코핑
    * Submission 연동, 마감 시간 조회 등 내부 서비스에서 사용
+   *
+   * 방어 로직: studyId 누락 시 BadRequest — TypeORM where 조건 무시 방지
+   * @throws BadRequestException studyId가 falsy인 경우
    */
   async findByIdInternal(studyId: string, id: string): Promise<Problem> {
+    if (!studyId) {
+      throw new BadRequestException('studyId가 필요합니다 — cross-study 접근 차단');
+    }
     const problem = await this.dualWrite.findOne({ where: { id, studyId } });
     if (!problem) {
       throw new NotFoundException(`문제를 찾을 수 없습니다: id=${id}`);
@@ -124,11 +130,17 @@ export class ProblemService {
   /**
    * 마감 시간 조회 (Submission Service 내부 HTTP 연동용)
    * studyId 컨텍스트 포함 — 캐시 우선 → DB fallback
+   *
+   * 방어 로직: studyId 누락 시 BadRequest — TypeORM where 조건 무시 방지
+   * @throws BadRequestException studyId가 falsy인 경우
    */
   async getDeadline(
     studyId: string,
     problemId: string,
   ): Promise<{ deadline: string | null; weekNumber: string | null; status: string }> {
+    if (!studyId) {
+      throw new BadRequestException('studyId가 필요합니다 — cross-study 접근 차단');
+    }
     // 캐시 우선 — weekNumber는 캐시에 없으므로 DB fallback 필요
     const cached = await this.deadlineCache.getDeadline(studyId, problemId);
     if (cached !== null) {

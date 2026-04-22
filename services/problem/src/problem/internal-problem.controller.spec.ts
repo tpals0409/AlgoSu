@@ -2,25 +2,29 @@
  * @file InternalProblemController 단위 테스트
  * @domain problem
  * @layer controller
- * @related internal-problem.controller.ts
+ * @related internal-problem.controller.ts, parse-study-id.pipe.ts
  *
  * InternalKeyGuard만 적용된 내부 전용 문제 조회 엔드포인트 테스트.
  * StudyMemberGuard가 적용되지 않음을 확인한다.
+ * ParseStudyIdPipe를 통해 x-study-id UUID 검증이 적용됨을 확인한다.
  */
 import { Test, TestingModule } from '@nestjs/testing';
 import { InternalProblemController } from './internal-problem.controller';
 import { ProblemService } from './problem.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 import { InternalKeyGuard } from '../common/guards/internal-key.guard';
+import { ParseStudyIdPipe } from '../common/pipes/parse-study-id.pipe';
 import { ConfigService } from '@nestjs/config';
 import { REDIS_CLIENT } from '../cache/cache.module';
+import { BadRequestException } from '@nestjs/common';
 
 describe('InternalProblemController', () => {
   let controller: InternalProblemController;
   let service: Record<string, jest.Mock>;
+  let studyIdPipe: ParseStudyIdPipe;
 
-  const STUDY_ID = 'study-uuid-001';
-  const PROBLEM_ID = 'prob-uuid-001';
+  const STUDY_ID = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d';
+  const PROBLEM_ID = 'b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e';
 
   const mockProblem = {
     id: PROBLEM_ID,
@@ -64,6 +68,30 @@ describe('InternalProblemController', () => {
       .compile();
 
     controller = module.get<InternalProblemController>(InternalProblemController);
+    studyIdPipe = new ParseStudyIdPipe();
+  });
+
+  // ──────────────────────────────────────────────
+  // ParseStudyIdPipe — x-study-id 헤더 UUID 검증
+  // ──────────────────────────────────────────────
+  describe('ParseStudyIdPipe (x-study-id 검증)', () => {
+    it('유효한 UUID v4 통과', () => {
+      expect(studyIdPipe.transform(STUDY_ID)).toBe(STUDY_ID);
+    });
+
+    it('undefined 시 BadRequestException — 헤더 누락', () => {
+      expect(() => studyIdPipe.transform(undefined as unknown as string)).toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('빈 문자열 시 BadRequestException', () => {
+      expect(() => studyIdPipe.transform('')).toThrow(BadRequestException);
+    });
+
+    it('UUID 형식이 아닌 문자열 시 BadRequestException', () => {
+      expect(() => studyIdPipe.transform('not-a-uuid')).toThrow(BadRequestException);
+    });
   });
 
   // ──────────────────────────────────────────────
