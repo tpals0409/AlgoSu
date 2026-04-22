@@ -18,6 +18,7 @@ const mockGetContent = jest.fn();
 const mockCreateOrUpdateFileContents = jest.fn();
 const mockReposGet = jest.fn();
 const mockCreateForAuthenticatedUser = jest.fn();
+const mockReposUpdate = jest.fn();
 
 jest.mock('@octokit/rest', () => ({
   Octokit: jest.fn().mockImplementation(() => ({
@@ -26,6 +27,7 @@ jest.mock('@octokit/rest', () => ({
       getContent: mockGetContent,
       createOrUpdateFileContents: mockCreateOrUpdateFileContents,
       createForAuthenticatedUser: mockCreateForAuthenticatedUser,
+      update: mockReposUpdate,
     },
   })),
 }));
@@ -55,8 +57,9 @@ describe('GitHubPushService', () => {
 
     service = new GitHubPushService();
 
-    // 기본: 레포 존재
-    mockReposGet.mockResolvedValue(octokitResp({}));
+    // 기본: 레포 존재 (private)
+    mockReposGet.mockResolvedValue(octokitResp({ private: true }));
+    mockReposUpdate.mockResolvedValue(octokitResp({ private: true }));
     // 기본: 파일 없음 (404)
     mockGetContent.mockRejectedValue(new Error('Not Found'));
     mockCreateOrUpdateFileContents.mockResolvedValue(
@@ -154,10 +157,36 @@ describe('GitHubPushService', () => {
     expect(mockCreateForAuthenticatedUser).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'algosu-submissions',
-        private: false,
+        private: true,
         auto_init: true,
       }),
     );
+  });
+
+  // 6-a. 기존 공개 레포 → private 전환
+  it('push() -- 기존 공개 레포: private으로 전환', async () => {
+    mockReposGet.mockResolvedValue(octokitResp({ private: false }));
+
+    await service.push(basePushInput);
+
+    expect(mockReposUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        owner: 'test-owner',
+        repo: 'algosu-submissions',
+        private: true,
+      }),
+    );
+    expect(mockCreateForAuthenticatedUser).not.toHaveBeenCalled();
+  });
+
+  // 6-b. 기존 private 레포 → update 호출 없음
+  it('push() -- 기존 private 레포: repos.update 호출 없음', async () => {
+    mockReposGet.mockResolvedValue(octokitResp({ private: true }));
+
+    await service.push(basePushInput);
+
+    expect(mockReposUpdate).not.toHaveBeenCalled();
+    expect(mockCreateForAuthenticatedUser).not.toHaveBeenCalled();
   });
 
   // 7. 레포 조회 실패 (non-404) -- 에러 재throw
