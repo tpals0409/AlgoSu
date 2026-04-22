@@ -99,3 +99,4 @@ blog/              기술 블로그
 Oracle이 전문 에이전트에게 위임: `/agents:{name}` (conductor, gatekeeper, librarian, architect, scribe, postman, curator, critic, herald, palette, scout, sensei)
 
 **Critic**은 Codex(gpt-5) 기반 2차 코드리뷰를 담당합니다. 머지 직전 최종 심사에 호출하세요.
+`merge-gate` 프리셋(`[critic]`)을 통해 단독 교차 리뷰를 실행합니다 — `.claude-team.json` 참조.
