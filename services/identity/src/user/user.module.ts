@@ -9,13 +9,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './user.entity';
 import { UserService } from './user.service';
 import { UserController } from './user.controller';
+import { TokenEncryptionService } from './token-encryption.service';
 import { InternalKeyGuard } from '../common/guards/internal-key.guard';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([User])],
   controllers: [UserController],
-  providers: [UserService, InternalKeyGuard, StructuredLoggerService],
+  providers: [UserService, TokenEncryptionService, InternalKeyGuard, StructuredLoggerService],
   exports: [UserService],
 })
 export class UserModule {}

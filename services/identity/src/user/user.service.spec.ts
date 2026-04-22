@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { User, OAuthProvider } from './user.entity';
+import { TokenEncryptionService } from './token-encryption.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 // ─── Mock 헬퍼 ───────────────────────────────────────
@@ -49,6 +50,13 @@ const mockQueryBuilder = {
   execute: jest.fn().mockResolvedValue(undefined),
 };
 
+/** TokenEncryptionService mock — 암호화 결과를 예측 가능하게 고정 */
+const MOCK_ENCRYPTED_PREFIX = 'enc::';
+const mockTokenEncryptionService = {
+  encrypt: jest.fn((plain: string) => `${MOCK_ENCRYPTED_PREFIX}${plain}`),
+  isEncryptedFormat: jest.fn((val: string) => val.startsWith(MOCK_ENCRYPTED_PREFIX)),
+};
+
 describe('UserService', () => {
   let service: UserService;
   let userRepo: jest.Mocked<Repository<User>>;
@@ -69,6 +77,10 @@ describe('UserService', () => {
         {
           provide: DataSource,
           useValue: { createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner) },
+        },
+        {
+          provide: TokenEncryptionService,
+          useValue: mockTokenEncryptionService,
         },
         {
           provide: StructuredLoggerService,
@@ -307,7 +319,7 @@ describe('UserService', () => {
 
   // ─── updateGitHub ──────────────────────────────────
   describe('updateGitHub', () => {
-    it('GitHub 연동한다', async () => {
+    it('GitHub 연동 시 토큰을 암호화하여 저장한다', async () => {
       userRepo.findOne.mockResolvedValue(mockUser());
       userRepo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
 
@@ -318,11 +330,29 @@ describe('UserService', () => {
         token: 'tok',
       });
 
+      // encrypt가 평문 토큰으로 호출됐는지 검증
+      expect(mockTokenEncryptionService.encrypt).toHaveBeenCalledWith('tok');
+      // DB에는 암호화된 값이 저장되어야 함 (평문 'tok' 금지)
       expect(userRepo.update).toHaveBeenCalledWith('user-1', {
         github_connected: true,
         github_user_id: 'gh-1',
         github_username: 'ghuser',
-        github_token: 'tok',
+        github_token: `${MOCK_ENCRYPTED_PREFIX}tok`,
+      });
+    });
+
+    it('token이 null이면 암호화 없이 null 저장', async () => {
+      userRepo.findOne.mockResolvedValue(mockUser());
+      userRepo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+
+      await service.updateGitHub('user-1', { connected: true });
+
+      expect(mockTokenEncryptionService.encrypt).not.toHaveBeenCalled();
+      expect(userRepo.update).toHaveBeenCalledWith('user-1', {
+        github_connected: true,
+        github_user_id: null,
+        github_username: null,
+        github_token: null,
       });
     });
 
@@ -332,6 +362,7 @@ describe('UserService', () => {
 
       await service.updateGitHub('user-1', null);
 
+      expect(mockTokenEncryptionService.encrypt).not.toHaveBeenCalled();
       expect(userRepo.update).toHaveBeenCalledWith('user-1', {
         github_connected: false,
         github_user_id: null,
@@ -346,6 +377,7 @@ describe('UserService', () => {
 
       await service.updateGitHub('user-1', { connected: false });
 
+      expect(mockTokenEncryptionService.encrypt).not.toHaveBeenCalled();
       expect(userRepo.update).toHaveBeenCalledWith('user-1', {
         github_connected: false,
         github_user_id: null,
@@ -393,14 +425,17 @@ describe('UserService', () => {
 
   // ─── getGitHubTokenInfo ────────────────────────────
   describe('getGitHubTokenInfo', () => {
-    it('토큰 정보를 반환한다', async () => {
+    it('암호화된 토큰을 그대로 반환한다', async () => {
       userRepo.findOne.mockResolvedValue(
-        mockUser({ github_username: 'ghuser', github_token: 'enc-tok' }),
+        mockUser({ github_username: 'ghuser', github_token: `${MOCK_ENCRYPTED_PREFIX}enc-tok` }),
       );
 
       const result = await service.getGitHubTokenInfo('user-1');
 
-      expect(result).toEqual({ github_username: 'ghuser', github_token: 'enc-tok' });
+      expect(result).toEqual({
+        github_username: 'ghuser',
+        github_token: `${MOCK_ENCRYPTED_PREFIX}enc-tok`,
+      });
     });
 
     it('유저 미존재 시 NotFoundException', async () => {

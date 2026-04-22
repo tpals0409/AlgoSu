@@ -2,7 +2,7 @@
  * @file User 서비스 — OAuth 사용자 CRUD + GitHub 연동 + 프로필 설정
  * @domain identity
  * @layer service
- * @related user.entity.ts, user.controller.ts
+ * @related user.entity.ts, user.controller.ts, token-encryption.service.ts
  */
 import {
   Injectable,
@@ -16,6 +16,7 @@ import * as crypto from 'crypto';
 import { User, OAuthProvider } from './user.entity';
 import { UpsertUserDto } from './dto/upsert-user.dto';
 import { UpdateProfileSettingsDto } from './dto/update-profile-settings.dto';
+import { TokenEncryptionService } from './token-encryption.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 /** slug 예약어 — Next.js 라우트 + 시스템 경로 */
@@ -34,6 +35,7 @@ export class UserService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly dataSource: DataSource,
+    private readonly tokenEncryptionService: TokenEncryptionService,
     private readonly logger: StructuredLoggerService,
   ) {
     this.logger.setContext(UserService.name);
@@ -127,11 +129,17 @@ export class UserService {
       return;
     }
 
+    // P0 보안: 토큰은 DB 저장 전 AES-256-GCM 암호화 필수 (audit-20260422-p0-009)
+    // 복호화는 github-worker TokenManager.decryptUserToken()에서만 수행
+    const encryptedToken = data.token
+      ? this.tokenEncryptionService.encrypt(data.token)
+      : null;
+
     await this.userRepository.update(id, {
       github_connected: true,
       github_user_id: data.user_id ?? null,
       github_username: data.username ?? null,
-      github_token: data.token ?? null,
+      github_token: encryptedToken,
     });
   }
 
