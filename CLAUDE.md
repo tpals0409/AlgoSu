@@ -96,4 +96,6 @@ blog/              기술 블로그
 ## Agent 워크플로우
 
 모든 작업은 `/algosu-oracle`을 통해 요청합니다.
-Oracle이 전문 에이전트에게 위임: `/agents:{name}` (conductor, gatekeeper, librarian, architect, scribe, postman, curator, herald, palette, scout, sensei)
+Oracle이 전문 에이전트에게 위임: `/agents:{name}` (conductor, gatekeeper, librarian, architect, scribe, postman, curator, critic, herald, palette, scout, sensei)
+
+**Critic**은 Codex(gpt-5) 기반 2차 코드리뷰를 담당합니다. 머지 직전 최종 심사에 호출하세요.
