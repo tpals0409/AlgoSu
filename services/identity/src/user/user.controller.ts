@@ -39,7 +39,7 @@ export class UserController {
     return { data: user };
   }
 
-  /** slug 기반 공개 프로필 조회 */
+  /** slug 기반 공개 프로필 조회 — whitelist 프로젝션 (p0-011) */
   @ApiOperation({ summary: 'slug 기반 공개 프로필 조회' })
   @ApiResponse({ status: 200, description: '공개 프로필 정보' })
   @ApiResponse({ status: 404, description: '프로필 없음' })
@@ -47,7 +47,8 @@ export class UserController {
   async findBySlug(@Param('slug') slug: string) {
     const user = await this.userService.findBySlug(slug);
     if (!user) throw new NotFoundException('프로필을 찾을 수 없습니다.');
-    return { data: user };
+    const { publicId, name, avatar_url, profile_slug, github_connected, github_username, created_at } = user;
+    return { data: { publicId, name, avatar_url, profile_slug, github_connected, github_username, created_at } };
   }
 
   /** ID로 사용자 조회 */
