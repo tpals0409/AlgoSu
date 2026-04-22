@@ -7,7 +7,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { Repository, DataSource } from 'typeorm';
 import { SubmissionService } from './submission.service';
 import { Submission, SagaStep, GitHubSyncStatus } from './submission.entity';
@@ -140,7 +140,7 @@ describe('SubmissionService — AI 만족도', () => {
   describe('rateSatisfaction() — 신규 생성', () => {
     it('제출이 존재하면 만족도를 생성하고 반환한다 (thumbs up)', async () => {
       // Arrange
-      const submission = createMockSubmission();
+      const submission = createMockSubmission({ studyId: 'study-uuid-1' });
       const dto: CreateAiSatisfactionDto = { rating: 1 };
       const saved = createMockSatisfaction({ rating: 1 });
 
@@ -149,7 +149,7 @@ describe('SubmissionService — AI 만족도', () => {
       satisfactionRepo.findOneOrFail.mockResolvedValue(saved);
 
       // Act
-      const result = await service.rateSatisfaction('sub-uuid-1', 'user-1', dto);
+      const result = await service.rateSatisfaction('sub-uuid-1', 'user-1', 'study-uuid-1', dto);
 
       // Assert
       expect(submissionRepo.findOne).toHaveBeenCalledWith({ where: { id: 'sub-uuid-1' } });
@@ -173,7 +173,7 @@ describe('SubmissionService — AI 만족도', () => {
   describe('rateSatisfaction() — 기존 평가 변경 (UPSERT)', () => {
     it('기존 thumbs up → thumbs down 으로 변경한다', async () => {
       // Arrange
-      const submission = createMockSubmission();
+      const submission = createMockSubmission({ studyId: 'study-uuid-1' });
       const dto: CreateAiSatisfactionDto = { rating: -1, comment: '분석이 부정확합니다' };
       const updated = createMockSatisfaction({
         rating: -1,
@@ -185,7 +185,7 @@ describe('SubmissionService — AI 만족도', () => {
       satisfactionRepo.findOneOrFail.mockResolvedValue(updated);
 
       // Act
-      const result = await service.rateSatisfaction('sub-uuid-1', 'user-1', dto);
+      const result = await service.rateSatisfaction('sub-uuid-1', 'user-1', 'study-uuid-1', dto);
 
       // Assert
       expect(satisfactionRepo.upsert).toHaveBeenCalledWith(
@@ -211,8 +211,27 @@ describe('SubmissionService — AI 만족도', () => {
 
       // Act & Assert
       await expect(
-        service.rateSatisfaction('non-existent-id', 'user-1', dto),
+        service.rateSatisfaction('non-existent-id', 'user-1', 'study-uuid-1', dto),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ─── 3b. rateSatisfaction() — 다른 스터디 제출 IDOR 방지 ───────
+  describe('rateSatisfaction() — IDOR 방지 (스터디 불일치)', () => {
+    it('제출의 studyId가 요청 studyId와 다르면 ForbiddenException을 던진다', async () => {
+      // Arrange: 제출은 study-uuid-2 소속인데, 요청은 study-uuid-1로 접근
+      const submission = createMockSubmission({ studyId: 'study-uuid-2' });
+      const dto: CreateAiSatisfactionDto = { rating: 1 };
+
+      submissionRepo.findOne.mockResolvedValue(submission);
+
+      // Act & Assert
+      await expect(
+        service.rateSatisfaction('sub-uuid-1', 'user-1', 'study-uuid-1', dto),
+      ).rejects.toThrow(ForbiddenException);
+
+      // upsert는 호출되지 않아야 함
+      expect(satisfactionRepo.upsert).not.toHaveBeenCalled();
     });
   });
 

@@ -210,10 +210,24 @@ describe('SubmissionController', () => {
       const mockSatisfaction = { submissionId: 'sub-1', userId: 'user-1', rating: 1 };
       submissionService.rateSatisfaction.mockResolvedValue(mockSatisfaction as any);
 
-      const result = await controller.rateSatisfaction('sub-1', 'user-1', dto);
+      const result = await controller.rateSatisfaction('sub-1', 'user-1', 'study-1', dto);
 
       expect(result).toEqual({ data: mockSatisfaction });
-      expect(submissionService.rateSatisfaction).toHaveBeenCalledWith('sub-1', 'user-1', dto);
+      expect(submissionService.rateSatisfaction).toHaveBeenCalledWith('sub-1', 'user-1', 'study-1', dto);
+    });
+
+    it('다른 스터디 제출에 만족도 등록 시 ForbiddenException을 던진다 (IDOR)', async () => {
+      const dto = { rating: 1 } as any;
+      submissionService.rateSatisfaction.mockRejectedValue(
+        new ForbiddenException('다른 스터디의 제출에 접근할 수 없습니다.'),
+      );
+
+      await expect(
+        controller.rateSatisfaction('sub-other-study', 'user-1', 'study-1', dto),
+      ).rejects.toThrow(ForbiddenException);
+      expect(submissionService.rateSatisfaction).toHaveBeenCalledWith(
+        'sub-other-study', 'user-1', 'study-1', dto,
+      );
     });
   });
 
