@@ -5,7 +5,7 @@
  * @related url.ts
  */
 
-import { isSafeUrl, sanitizeUrl } from '../url';
+import { isSafeUrl, sanitizeUrl, isSafeInternalPath } from '../url';
 
 describe('isSafeUrl', () => {
   it.each([
@@ -50,5 +50,34 @@ describe('sanitizeUrl', () => {
 
   it('빈 문자열이면 undefined를 반환한다', () => {
     expect(sanitizeUrl('')).toBeUndefined();
+  });
+});
+
+describe('isSafeInternalPath', () => {
+  it.each([
+    ['/dashboard', true],
+    ['/submissions/s-1/analysis', true],
+    ['/problems/123', true],
+    ['/studies/abc/settings', true],
+    ['/search?q=test', true],
+    ['/path#section', true],
+  ])('허용 (내부 상대 경로): %s → %s', (path, expected) => {
+    expect(isSafeInternalPath(path)).toBe(expected);
+  });
+
+  it.each([
+    ['javascript:alert(1)', false],
+    ['javascript:void(0)', false],
+    ['JAVASCRIPT:alert(1)', false],
+    ['data:text/html,<script>alert(1)</script>', false],
+    ['https://evil.com/phishing', false],
+    ['http://evil.com', false],
+    ['//evil.com/path', false],
+    ['/\\evil.com', false],
+    ['', false],
+    [null, false],
+    [undefined, false],
+  ])('차단 (위험 경로): %s → %s', (path, expected) => {
+    expect(isSafeInternalPath(path as string)).toBe(expected);
   });
 });
