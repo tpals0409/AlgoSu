@@ -4,7 +4,9 @@
  * @layer component
  * @related NotificationToast, notificationApi, NotifPanel
  *
- * 60초 폴링으로 미읽음 수 체크, 증가 시 토스트 자동 표시.
+ * SWR refreshInterval 60초 폴링으로 미읽음 수 체크.
+ * 패널 열렸을 때만 알림 목록 fetch (conditional key).
+ * SSE/mutation 후 mutate()로 즉시 갱신.
  * 클릭 시 notification.link로 이동.
  * 10종 알림 타입 완전 대응 + "모두 읽음" 지원.
  */
@@ -12,6 +14,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
+import useSWR, { useSWRConfig } from 'swr';
 import {
   Bell,
   FileText,
@@ -28,6 +31,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { notificationApi, type Notification } from '@/lib/api';
+import { cacheKeys } from '@/lib/swr';
 import { NotificationToast } from '@/components/ui/NotificationToast';
 import { useNotificationSSE } from '@/hooks/useNotificationSSE';
 
@@ -92,75 +96,55 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
   const placement = props?.placement ?? 'sidebar';
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
   const [toastNotification, setToastNotification] =
     useState<Notification | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const bellRef = useRef<HTMLButtonElement>(null);
-  const prevUnreadRef = useRef<number>(0);
-  const initialLoadRef = useRef(true);
   const displayedToastIds = useRef(new Set<string>());
   const [panelStyle, setPanelStyle] = useState<React.CSSProperties>({});
+
+  // ─── SWR ───────────────────────────────
+
+  const { mutate } = useSWRConfig();
+
+  /**
+   * 미읽음 수 — 60초 refreshInterval (SSE fallback)
+   * @domain notification
+   */
+  const { data: unreadData } = useSWR<{ count: number }>(
+    cacheKeys.notifications.unreadCount(),
+    { refreshInterval: 60_000 },
+  );
+  const unreadCount = unreadData?.count ?? 0;
+
+  /**
+   * 알림 목록 — 패널 열렸을 때만 fetch (conditional key)
+   * @domain notification
+   */
+  const { data: notificationsData, isLoading } = useSWR<Notification[]>(
+    open ? cacheKeys.notifications.list() : null,
+  );
+  const notifications = notificationsData?.slice(0, MAX_NOTIFICATIONS) ?? [];
 
   // ─── HOOKS ─────────────────────────────
 
   /**
-   * SSE 실시간 알림 수신 — 새 알림 도착 시 즉시 UI 반영 + 토스트 (중복 방지)
+   * SSE 실시간 알림 수신 — 새 알림 도착 시 SWR 캐시 즉시 갱신 + 토스트 (중복 방지)
    * @domain notification
    */
-  const handleSSENotification = useCallback((notification: Notification) => {
-    if (notification.read) return;
-    if (displayedToastIds.current.has(notification.id)) return;
-    displayedToastIds.current.add(notification.id);
-    setUnreadCount((prev) => prev + 1);
-    setNotifications((prev) => {
-      // 중복 알림 방지
-      if (prev.some((n) => n.id === notification.id)) return prev;
-      return [notification, ...prev].slice(0, MAX_NOTIFICATIONS);
-    });
-    setToastNotification(notification);
-  }, []);
+  const handleSSENotification = useCallback(
+    (notification: Notification) => {
+      if (notification.read) return;
+      if (displayedToastIds.current.has(notification.id)) return;
+      displayedToastIds.current.add(notification.id);
+      void mutate(cacheKeys.notifications.unreadCount());
+      void mutate(cacheKeys.notifications.list());
+      setToastNotification(notification);
+    },
+    [mutate],
+  );
 
   const { sseDisconnected } = useNotificationSSE(true, handleSSENotification);
-
-  /**
-   * 미읽음 수 폴링 (60초마다, SSE fallback) + 초기 로드
-   * @domain notification
-   */
-  const fetchUnreadCount = useCallback(async () => {
-    try {
-      const { count } = await notificationApi.unreadCount();
-      setUnreadCount(count);
-      prevUnreadRef.current = count;
-      initialLoadRef.current = false;
-    } catch {
-      // 조용히 실패
-    }
-  }, []);
-
-  useEffect(() => {
-    void fetchUnreadCount();
-    const interval = setInterval(() => void fetchUnreadCount(), 60_000);
-    return () => clearInterval(interval);
-  }, [fetchUnreadCount]);
-
-  /**
-   * 드롭다운 열 때 알림 목록 로드
-   * @domain notification
-   */
-  const loadNotifications = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const data = await notificationApi.list();
-      setNotifications(data.slice(0, MAX_NOTIFICATIONS));
-    } catch {
-      // 조용히 실패
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
 
   /**
    * 벨 토글
@@ -170,7 +154,6 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
     setOpen((prev) => {
       const next = !prev;
       if (next) {
-        void loadNotifications();
         // 벨 버튼 기준으로 패널 위치 계산 (fixed)
         if (bellRef.current) {
           const rect = bellRef.current.getBoundingClientRect();
@@ -195,41 +178,40 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
       }
       return next;
     });
-  }, [loadNotifications, placement]);
+  }, [placement]);
 
   // ─── HANDLERS ──────────────────────────
 
   /**
-   * 개별 읽음 처리
+   * 개별 읽음 처리 — API 호출 후 SWR 캐시 갱신
    * @domain notification
    */
-  const handleMarkRead = useCallback(async (notificationId: string) => {
-    try {
-      await notificationApi.markRead(notificationId);
-      setNotifications((prev) =>
-        prev.map((n) =>
-          n.id === notificationId ? { ...n, read: true } : n,
-        ),
-      );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
-    } catch {
-      // 조용히 실패
-    }
-  }, []);
+  const handleMarkRead = useCallback(
+    async (notificationId: string) => {
+      try {
+        await notificationApi.markRead(notificationId);
+        void mutate(cacheKeys.notifications.unreadCount());
+        void mutate(cacheKeys.notifications.list());
+      } catch {
+        // 조용히 실패
+      }
+    },
+    [mutate],
+  );
 
   /**
-   * 전체 읽음 처리
+   * 전체 읽음 처리 — API 호출 후 SWR 캐시 갱신
    * @domain notification
    */
   const handleMarkAllRead = useCallback(async () => {
     try {
       await notificationApi.markAllRead();
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-      setUnreadCount(0);
+      void mutate(cacheKeys.notifications.unreadCount());
+      void mutate(cacheKeys.notifications.list());
     } catch {
       // 조용히 실패
     }
-  }, []);
+  }, [mutate]);
 
   const handleToastDismiss = useCallback(() => setToastNotification(null), []);
   const handleToastRead = useCallback((id: string) => void handleMarkRead(id), [handleMarkRead]);
