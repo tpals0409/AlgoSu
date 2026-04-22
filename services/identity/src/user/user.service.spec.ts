@@ -425,7 +425,7 @@ describe('UserService', () => {
 
   // ─── getGitHubTokenInfo ────────────────────────────
   describe('getGitHubTokenInfo', () => {
-    it('암호화된 토큰을 그대로 반환한다', async () => {
+    it('토큰 존재 시 has_token: true 반환 (토큰 자체 미반환 — p0-010)', async () => {
       userRepo.findOne.mockResolvedValue(
         mockUser({ github_username: 'ghuser', github_token: `${MOCK_ENCRYPTED_PREFIX}enc-tok` }),
       );
@@ -434,7 +434,20 @@ describe('UserService', () => {
 
       expect(result).toEqual({
         github_username: 'ghuser',
-        github_token: `${MOCK_ENCRYPTED_PREFIX}enc-tok`,
+        has_token: true,
+      });
+    });
+
+    it('토큰 미존재 시 has_token: false 반환', async () => {
+      userRepo.findOne.mockResolvedValue(
+        mockUser({ github_username: 'ghuser', github_token: null }),
+      );
+
+      const result = await service.getGitHubTokenInfo('user-1');
+
+      expect(result).toEqual({
+        github_username: 'ghuser',
+        has_token: false,
       });
     });
 
@@ -442,6 +455,28 @@ describe('UserService', () => {
       userRepo.findOne.mockResolvedValue(null);
 
       await expect(service.getGitHubTokenInfo('x')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ─── getEncryptedGitHubToken ──────────────────────
+  describe('getEncryptedGitHubToken', () => {
+    it('암호화된 토큰을 그대로 반환한다 (p0-010)', async () => {
+      userRepo.findOne.mockResolvedValue(
+        mockUser({ github_username: 'ghuser', github_token: `${MOCK_ENCRYPTED_PREFIX}enc-tok` }),
+      );
+
+      const result = await service.getEncryptedGitHubToken('user-1');
+
+      expect(result).toEqual({
+        github_username: 'ghuser',
+        encrypted_token: `${MOCK_ENCRYPTED_PREFIX}enc-tok`,
+      });
+    });
+
+    it('유저 미존재 시 NotFoundException', async () => {
+      userRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.getEncryptedGitHubToken('x')).rejects.toThrow(NotFoundException);
     });
   });
 

@@ -15,6 +15,7 @@ describe('InternalController', () => {
     identityClient = {
       getGitHubStatus: jest.fn(),
       getGitHubTokenInfo: jest.fn(),
+      getEncryptedGitHubToken: jest.fn(),
       getMember: jest.fn(),
       findStudyById: jest.fn(),
     };
@@ -44,14 +45,14 @@ describe('InternalController', () => {
     });
   });
 
-  describe('getGitHubToken', () => {
-    it('GitHub 토큰 정보 반환', async () => {
-      const expected = { github_username: 'octocat', github_token: 'gho_xxx' };
-      identityClient.getGitHubTokenInfo.mockResolvedValue(expected);
+  describe('getEncryptedGitHubToken', () => {
+    it('암호화된 GitHub 토큰 반환 (p0-010)', async () => {
+      const expected = { github_username: 'octocat', encrypted_token: 'enc_xxx' };
+      identityClient.getEncryptedGitHubToken.mockResolvedValue(expected);
 
-      const result = await controller.getGitHubToken(USER_ID);
+      const result = await controller.getEncryptedGitHubToken(USER_ID);
 
-      expect(identityClient.getGitHubTokenInfo).toHaveBeenCalledWith(USER_ID);
+      expect(identityClient.getEncryptedGitHubToken).toHaveBeenCalledWith(USER_ID);
       expect(result).toEqual(expected);
     });
   });

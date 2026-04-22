@@ -175,12 +175,22 @@ describe('IdentityClientService', () => {
     });
 
     describe('getGitHubTokenInfo', () => {
-      it('GitHub 토큰 정보 조회 — GET /api/users/:id/github-token', async () => {
-        const tokenInfo = { hasToken: true };
+      it('GitHub 토큰 존재 여부 조회 — GET /api/users/:id/github-token (p0-010)', async () => {
+        const tokenInfo = { github_username: 'octocat', has_token: true };
         httpService.request.mockReturnValue(okResponse(tokenInfo));
         const result = await service.getGitHubTokenInfo('u1');
         expect(result).toEqual(tokenInfo);
         expectRequestCall('GET', '/api/users/u1/github-token');
+      });
+    });
+
+    describe('getEncryptedGitHubToken', () => {
+      it('암호화된 GitHub 토큰 조회 — GET /api/users/:id/github-encrypted-token (p0-010)', async () => {
+        const tokenInfo = { github_username: 'octocat', encrypted_token: 'enc_xxx' };
+        httpService.request.mockReturnValue(okResponse(tokenInfo));
+        const result = await service.getEncryptedGitHubToken('u1');
+        expect(result).toEqual(tokenInfo);
+        expectRequestCall('GET', '/api/users/u1/github-encrypted-token');
       });
     });
 

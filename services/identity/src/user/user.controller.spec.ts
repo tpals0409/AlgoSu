@@ -41,6 +41,7 @@ describe('UserController', () => {
             updateGitHub: jest.fn(),
             getGitHubStatus: jest.fn(),
             getGitHubTokenInfo: jest.fn(),
+            getEncryptedGitHubToken: jest.fn(),
             findBySlug: jest.fn(),
             updateProfileSettings: jest.fn(),
           },
@@ -139,14 +140,27 @@ describe('UserController', () => {
 
   // ─── getGitHubTokenInfo ───────────────────────────
   describe('GET /api/users/:id/github-token', () => {
-    it('GitHub 토큰 정보를 반환한다', async () => {
-      const info = { github_username: 'ghuser', github_token: 'encrypted-tok' };
+    it('GitHub 토큰 존재 여부를 반환한다 (p0-010)', async () => {
+      const info = { github_username: 'ghuser', has_token: true };
       (service.getGitHubTokenInfo as jest.Mock).mockResolvedValue(info);
 
       const result = await controller.getGitHubTokenInfo('user-1');
 
       expect(result).toEqual({ data: info });
       expect(service.getGitHubTokenInfo).toHaveBeenCalledWith('user-1');
+    });
+  });
+
+  // ─── getEncryptedGitHubToken ─────────────────────
+  describe('GET /api/users/:id/github-encrypted-token', () => {
+    it('암호화된 GitHub 토큰을 반환한다 (p0-010)', async () => {
+      const info = { github_username: 'ghuser', encrypted_token: 'enc-tok' };
+      (service.getEncryptedGitHubToken as jest.Mock).mockResolvedValue(info);
+
+      const result = await controller.getEncryptedGitHubToken('user-1');
+
+      expect(result).toEqual({ data: info });
+      expect(service.getEncryptedGitHubToken).toHaveBeenCalledWith('user-1');
     });
   });
 

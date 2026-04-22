@@ -154,14 +154,25 @@ export class UserService {
     };
   }
 
-  /** GitHub 토큰 정보 조회 (암호화된 상태 그대로 반환) */
+  /** GitHub 토큰 존재 여부 조회 (토큰 자체 미반환 — p0-010) */
   async getGitHubTokenInfo(
     id: string,
-  ): Promise<{ github_username: string | null; github_token: string | null }> {
+  ): Promise<{ github_username: string | null; has_token: boolean }> {
     const user = await this.findByIdOrThrow(id);
     return {
       github_username: user.github_username,
-      github_token: user.github_token,
+      has_token: user.github_token !== null,
+    };
+  }
+
+  /** 암호화된 GitHub 토큰 조회 — 내부 서비스 전용 (p0-010) */
+  async getEncryptedGitHubToken(
+    id: string,
+  ): Promise<{ github_username: string | null; encrypted_token: string | null }> {
+    const user = await this.findByIdOrThrow(id);
+    return {
+      github_username: user.github_username,
+      encrypted_token: user.github_token,
     };
   }
 

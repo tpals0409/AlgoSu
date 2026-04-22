@@ -208,7 +208,7 @@ describe('GitHubWorker', () => {
         ok: true,
         json: async () => ({
           github_username: null,
-          github_token: null,
+          encrypted_token: null,
         }),
       });
 
@@ -256,7 +256,7 @@ describe('GitHubWorker', () => {
         ok: true,
         json: async () => ({
           github_username: 'test-user',
-          github_token: encryptedToken,
+          encrypted_token: encryptedToken,
         }),
       });
 
@@ -317,7 +317,7 @@ describe('GitHubWorker', () => {
         ok: true,
         json: async () => ({
           github_username: 'test-user',
-          github_token: encryptedToken,
+          encrypted_token: encryptedToken,
         }),
       });
 
@@ -379,7 +379,7 @@ describe('GitHubWorker', () => {
         ok: true,
         json: async () => ({
           github_username: 'test-user',
-          github_token: encryptedToken,
+          encrypted_token: encryptedToken,
         }),
       });
 
@@ -429,7 +429,7 @@ describe('GitHubWorker', () => {
         ok: true,
         json: async () => ({
           github_username: 'test-user',
-          github_token: 'invalid:encrypted:token',
+          encrypted_token: 'invalid:encrypted:token',
         }),
       });
 
@@ -477,7 +477,7 @@ describe('GitHubWorker', () => {
         ok: true,
         json: async () => ({
           github_username: 'test-user',
-          github_token: encryptedToken,
+          encrypted_token: encryptedToken,
         }),
       });
 
@@ -659,7 +659,7 @@ describe('GitHubWorker', () => {
         ok: true,
         json: async () => ({
           github_username: 'test-user',
-          github_token: encryptedToken,
+          encrypted_token: encryptedToken,
         }),
       });
 
@@ -710,7 +710,7 @@ describe('GitHubWorker', () => {
         ok: true,
         json: async () => ({
           github_username: 'test-user',
-          github_token: encryptedToken,
+          encrypted_token: encryptedToken,
         }),
       });
 
@@ -801,7 +801,7 @@ describe('GitHubWorker', () => {
         ok: true,
         json: async () => ({
           github_username: null,
-          github_token: null,
+          encrypted_token: null,
         }),
       });
 
@@ -842,7 +842,7 @@ describe('GitHubWorker', () => {
         ok: true,
         json: async () => ({
           github_username: null,
-          github_token: null,
+          encrypted_token: null,
         }),
       });
 
@@ -888,7 +888,7 @@ describe('GitHubWorker', () => {
         ok: true,
         json: async () => ({
           github_username: 'test-user',
-          github_token: null,
+          encrypted_token: null,
         }),
       });
 
@@ -941,7 +941,7 @@ describe('GitHubWorker', () => {
         ok: true,
         json: async () => ({
           github_username: 'test-user',
-          github_token: null,
+          encrypted_token: null,
         }),
       });
 
@@ -992,7 +992,7 @@ describe('GitHubWorker', () => {
         ok: true,
         json: async () => ({
           github_username: 'test-user',
-          github_token: encryptedToken,
+          encrypted_token: encryptedToken,
         }),
       });
 

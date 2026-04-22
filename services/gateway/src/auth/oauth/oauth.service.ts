@@ -484,11 +484,12 @@ export class OAuthService {
     return result as unknown as { github_connected: boolean; github_username: string | null };
   }
 
+  /** GitHub 토큰 존재 여부 조회 (토큰 자체 미반환 — p0-010) */
   async getGitHubTokenInfo(
     userId: string,
-  ): Promise<{ github_username: string | null; github_token: string | null }> {
+  ): Promise<{ github_username: string | null; has_token: boolean }> {
     const result = await this.identityClient.getGitHubTokenInfo(userId);
-    return result as unknown as { github_username: string | null; github_token: string | null };
+    return result as unknown as { github_username: string | null; has_token: boolean };
   }
 
 }

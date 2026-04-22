@@ -103,12 +103,21 @@ export class UserController {
     return { data: status };
   }
 
-  /** GitHub 토큰 정보 조회 (암호화 상태 그대로) */
-  @ApiOperation({ summary: 'GitHub 토큰 정보 조회' })
-  @ApiResponse({ status: 200, description: 'GitHub 토큰 정보' })
+  /** GitHub 토큰 존재 여부 조회 (토큰 자체 미반환 — p0-010) */
+  @ApiOperation({ summary: 'GitHub 토큰 존재 여부 조회' })
+  @ApiResponse({ status: 200, description: 'GitHub 토큰 존재 여부' })
   @Get(':id/github-token')
   async getGitHubTokenInfo(@Param('id', ParseUUIDPipe) id: string) {
     const info = await this.userService.getGitHubTokenInfo(id);
+    return { data: info };
+  }
+
+  /** 암호화된 GitHub 토큰 조회 — 내부 서비스 전용 (p0-010) */
+  @ApiOperation({ summary: '암호화된 GitHub 토큰 조회 (내부 전용)' })
+  @ApiResponse({ status: 200, description: '암호화된 GitHub 토큰' })
+  @Get(':id/github-encrypted-token')
+  async getEncryptedGitHubToken(@Param('id', ParseUUIDPipe) id: string) {
+    const info = await this.userService.getEncryptedGitHubToken(id);
     return { data: info };
   }
 
