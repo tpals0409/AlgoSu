@@ -4,7 +4,7 @@ title: "Phase D 실제 dispatch 실행 — P0 17건 자동 수정 루프 실증"
 period: "2026-04-22"
 status: complete
 start_commit: a25c105
-end_commit: (docs 커밋 후 기록)
+end_commit: 42f8f5b
 ---
 
 # Sprint 119 — Phase D: audit-queue dispatch + P0 자동 수정 E2E 실증
