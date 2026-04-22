@@ -31,6 +31,18 @@ from .metrics import (
 from .prompt import build_group_user_prompt, get_group_system_prompt
 from .worker import AIAnalysisWorker
 
+# ─── REDIS LUA SCRIPTS ────────────────────────
+# INCR + 최초 EXPIRE를 하나의 원자 트랜잭션으로 묶는다.
+# INCR 결과가 1이면 키가 방금 생성된 것이므로 EXPIRE를 설정한다.
+# Redis Lua 스크립트는 단일 명령으로 실행되어 장애 시에도 TTL 누락이 없다.
+_QUOTA_INCR_SCRIPT = """
+local current = redis.call('INCR', KEYS[1])
+if current == 1 then
+    redis.call('EXPIRE', KEYS[1], tonumber(ARGV[1]))
+end
+return current
+"""
+
 # ─── LOGGING ──────────────────────────────────
 
 setup_logging()
@@ -48,7 +60,10 @@ redis_client: redis.Redis | None = None
 
 def _check_and_increment_quota(user_id: str, limit: int) -> dict:
     """
-    AI 일일 한도 체크 + INCR -- Redis INCR/TTL 원자적 패턴
+    AI 일일 한도 체크 + INCR — Lua 스크립트로 INCR/EXPIRE 원자 처리
+
+    INCR와 최초 EXPIRE를 단일 Lua 스크립트로 묶어 원자성을 보장한다.
+    INCR 후 장애가 발생해도 TTL이 누락되지 않는다.
 
     @domain ai
     @guard ai-quota
@@ -63,16 +78,9 @@ def _check_and_increment_quota(user_id: str, limit: int) -> dict:
     today = date.today().isoformat()
     key = f"ai_limit:{user_id}:{today}"
 
-    pipe = redis_client.pipeline()
-    pipe.incr(key)
-    pipe.ttl(key)
-    results = pipe.execute()
-    current = int(results[0])
-    ttl = int(results[1])
-
-    # 첫 사용 시 TTL 설정 (24시간)
-    if ttl == -1:
-        redis_client.expire(key, 86400)
+    # Lua 스크립트: INCR + 최초 EXPIRE를 원자적으로 실행 (TTL=24시간)
+    # current == 1이면 키가 방금 생성된 것이므로 Lua 내부에서 EXPIRE 설정
+    current = int(redis_client.eval(_QUOTA_INCR_SCRIPT, 1, key, 86400))
 
     if current > limit:
         # 한도 초과 시 DECR로 원복
