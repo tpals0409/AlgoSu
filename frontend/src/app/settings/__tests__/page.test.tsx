@@ -133,8 +133,9 @@ beforeEach(() => {
   mockUpdateProfile.mockResolvedValue({ profileSlug: 'my-slug', isProfilePublic: true });
   // SWR fetcher: settings key를 mockGetProfile에 위임
   mockedSwrFetcher.mockReset();
-  mockedSwrFetcher.mockImplementation((key: string) => {
-    if (key === '/api/users/me/settings') return mockGetProfile();
+  mockedSwrFetcher.mockImplementation((key: string | readonly [string, ...unknown[]]) => {
+    const path = Array.isArray(key) ? key[0] : key;
+    if (path === '/api/users/me/settings') return mockGetProfile();
     return Promise.resolve(null);
   });
 });
