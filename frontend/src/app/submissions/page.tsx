@@ -2,12 +2,12 @@
  * @file 제출 목록 페이지 (Figma 디자인 반영)
  * @domain submission
  * @layer page
- * @related submissionApi, problemApi
+ * @related useSubmissions, useProblems
  */
 
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
+import React, { useState, useEffect, useMemo, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { FileText, Search, Loader2 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -16,17 +16,14 @@ import { AD_SLOTS } from '@/lib/constants/adSlots';
 import { Alert } from '@/components/ui/Alert';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import {
-  submissionApi,
-  problemApi,
-  type Submission,
-} from '@/lib/api';
 import { useStudy } from '@/contexts/StudyContext';
 import { DIFFICULTIES, DIFFICULTY_LABELS, DIFF_DOT_STYLE, DIFF_BADGE_STYLE, type Difficulty } from '@/lib/constants';
 import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
 import { relativeTime } from '@/lib/date';
+import { useSubmissions } from '@/hooks/use-submissions';
+import { useProblems } from '@/hooks/use-problems';
 
 // ─── CONSTANTS ────────────────────────────
 
@@ -88,16 +85,40 @@ export default function SubmissionsPage(): ReactNode {
   useRequireStudy();
   const { currentStudyId } = useStudy();
 
+  // ─── SWR DATA ───────────────────────────
+
+  const activeSid = isAuthenticated ? currentStudyId : null;
+  const { submissions, isLoading, error: submissionsError } = useSubmissions(activeSid, { page: 1, limit: 100 });
+  const { problems } = useProblems(activeSid);
+
+  const problemMap = useMemo(
+    () =>
+      new Map(
+        problems.map((p) => [
+          p.id,
+          {
+            title: p.title,
+            difficulty: (p.difficulty as Difficulty | null | undefined) ?? null,
+            level: p.level ?? null,
+            weekNumber: p.weekNumber ?? undefined,
+            sourcePlatform: p.sourcePlatform ?? null,
+          },
+        ]),
+      ),
+    [problems],
+  );
+
   // ─── STATE ──────────────────────────────
 
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [problemMap, setProblemMap] = useState<Map<string, { title: string; difficulty?: Difficulty | null; level?: number | null; weekNumber?: string; sourcePlatform?: 'BOJ' | 'PROGRAMMERS' | null }>>(new Map());
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterSearch, setFilterSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterDifficulty, setFilterDifficulty] = useState('');
   const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    if (submissionsError) setError(submissionsError.message);
+  }, [submissionsError]);
 
   useEffect(() => {
     const timer = setTimeout(() => setMounted(true), 50);
@@ -109,31 +130,6 @@ export default function SubmissionsPage(): ReactNode {
     transform: mounted ? 'translateY(0)' : 'translateY(16px)',
     transition: `opacity .5s cubic-bezier(.16,1,.3,1) ${delay}s, transform .5s cubic-bezier(.16,1,.3,1) ${delay}s`,
   });
-
-  // ─── API ────────────────────────────────
-
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const [result, problems] = await Promise.all([
-        submissionApi.list({ page: 1, limit: 100 }),
-        problemApi.findAll().catch(() => []),
-      ]);
-      setSubmissions(result.data);
-      setProblemMap(new Map(problems.map((p) => [p.id, { title: p.title, difficulty: (p.difficulty as Difficulty | null | undefined) ?? null, level: p.level ?? null, weekNumber: p.weekNumber ?? undefined, sourcePlatform: p.sourcePlatform ?? null }])));
-    } catch (err: unknown) {
-      setError((err as Error).message ?? '제출 이력을 불러오는 데 실패했습니다.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (isAuthenticated && currentStudyId) {
-      void loadData();
-    }
-  }, [isAuthenticated, currentStudyId, loadData]);
 
   // ─── FILTERING ──────────────────────────
 
