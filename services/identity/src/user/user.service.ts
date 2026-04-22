@@ -251,24 +251,25 @@ export class UserService {
     return this.userRepository.findOne({ where: { id: existing.id } }) as Promise<User>;
   }
 
-  /** ON CONFLICT 원자적 upsert */
+  /**
+   * ON CONFLICT 원자적 upsert — provider 일치 시에만 UPDATE (p0-012)
+   * WHERE 절로 TOCTOU race condition 방지
+   */
   private async atomicUpsert(dto: UpsertUserDto): Promise<User> {
-    await this.userRepository
-      .createQueryBuilder()
-      .insert()
-      .into(User)
-      .values({
-        email: dto.email,
-        name: dto.name ?? null,
-        avatar_url: 'preset:default',
-        oauth_provider: dto.oauth_provider,
-        github_connected: false,
-        publicId: crypto.randomUUID(),
-      })
-      .orUpdate(['name'], ['email'])
-      .execute();
+    const publicId = crypto.randomUUID();
+    await this.dataSource.query(
+      `INSERT INTO users (email, name, avatar_url, oauth_provider, github_connected, "publicId")
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (email) DO UPDATE SET name = $2
+       WHERE users.oauth_provider = $4`,
+      [dto.email, dto.name ?? null, 'preset:default', dto.oauth_provider, false, publicId],
+    );
 
-    return this.userRepository.findOne({ where: { email: dto.email } }) as Promise<User>;
+    const user = await this.userRepository.findOne({ where: { email: dto.email } });
+    if (!user || user.oauth_provider !== dto.oauth_provider) {
+      throw new ConflictException('동시 요청으로 provider 불일치가 발생했습니다.');
+    }
+    return user;
   }
 
   /** slug 유효성 검증 + 중복 확인 + 설정 */

@@ -76,7 +76,10 @@ describe('UserService', () => {
         },
         {
           provide: DataSource,
-          useValue: { createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner) },
+          useValue: {
+            createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner),
+            query: jest.fn().mockResolvedValue(undefined),
+          },
         },
         {
           provide: TokenEncryptionService,
@@ -147,7 +150,7 @@ describe('UserService', () => {
       oauth_provider: OAuthProvider.GOOGLE,
     };
 
-    it('새 유저를 생성한다 (atomicUpsert)', async () => {
+    it('새 유저를 생성한다 (atomicUpsert — raw query)', async () => {
       const created = mockUser({ email: dto.email });
       userRepo.findOne
         .mockResolvedValueOnce(null)            // existing 조회
@@ -156,7 +159,6 @@ describe('UserService', () => {
       const result = await service.upsertUser(dto);
 
       expect(result).toBe(created);
-      expect(mockQueryBuilder.execute).toHaveBeenCalled();
     });
 
     it('기존 유저가 있으면 기존 유저를 반환한다', async () => {
@@ -237,6 +239,24 @@ describe('UserService', () => {
         deleted.id,
         expect.objectContaining({ name: null }),
       );
+    });
+
+    it('p0-012: re-fetch 시 provider 불일치 → ConflictException', async () => {
+      // 동시 요청으로 다른 provider가 먼저 insert된 상황 시뮬레이션
+      const naverUser = mockUser({ email: dto.email, oauth_provider: OAuthProvider.NAVER });
+      userRepo.findOne
+        .mockResolvedValueOnce(null)            // existing 조회 — 없음
+        .mockResolvedValueOnce(naverUser);       // re-fetch — 다른 provider
+
+      await expect(service.upsertUser(dto)).rejects.toThrow(ConflictException);
+    });
+
+    it('p0-012: re-fetch 시 user null → ConflictException', async () => {
+      userRepo.findOne
+        .mockResolvedValueOnce(null)            // existing 조회
+        .mockResolvedValueOnce(null);            // re-fetch — null
+
+      await expect(service.upsertUser(dto)).rejects.toThrow(ConflictException);
     });
   });
 
