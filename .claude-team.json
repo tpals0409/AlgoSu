@@ -32,6 +32,12 @@
   "dispatch": {
     "enabled": true,
     "binDir": "~/.claude/oracle/bin",
-    "session": "oracle"
+    "session": "oracle",
+    "codeChangingAgents": ["conductor", "gatekeeper", "librarian", "architect", "postman", "curator", "herald", "palette", "sensei"],
+    "autoCritic": {
+      "enabled": true,
+      "trigger": "commitDetected",
+      "method": "codex review --base <HEAD_BEFORE>"
+    }
   }
 }
