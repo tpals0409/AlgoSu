@@ -43,6 +43,19 @@ class CircuitBreakerOpenError(Exception):
     pass
 
 
+class RateLimitRetryableError(Exception):
+    """Claude API Rate Limit 전용 예외 — 재시도 가능
+
+    Worker에서 catch하여 NACK+requeue 처리에 사용.
+    delayed 결과로 반환하여 ACK하면 메시지가 유실되므로,
+    반드시 예외로 전파하여 재큐잉·보상 처리를 위임해야 한다.
+
+    @domain ai
+    """
+
+    pass
+
+
 class ClaudeClient:
     """Claude Sonnet API 클라이언트 -- Circuit Breaker 적용
 
@@ -129,8 +142,9 @@ class ClaudeClient:
         except anthropic.RateLimitError:
             circuit_breaker.record_failure()
             claude_requests_total.labels(status="rate_limit").inc()
-            logger.warning("Claude API Rate Limit 초과")
-            return self._fallback_result()
+            logger.warning("Claude API Rate Limit 초과 -- NACK+requeue 위임")
+            # ACK 후 메시지 유실 방지: 재시도 가능 예외로 전파하여 워커에 재큐잉 위임
+            raise RateLimitRetryableError("Claude API Rate Limit 초과")
 
         except Exception as e:
             circuit_breaker.record_failure()

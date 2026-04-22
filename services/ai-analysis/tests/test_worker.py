@@ -691,6 +691,142 @@ class TestOnMessageCircuitBreakerOpen:
         mock_ch.basic_nack.assert_called_once_with(delivery_tag=42, requeue=True)
 
 
+class TestOnMessageRateLimitRetryable:
+    """_on_message() -- RateLimitRetryableError 시 NACK+requeue (P1 fix)
+
+    RateLimitError를 delayed 결과로 반환 후 ACK하면 메시지가 유실되므로,
+    예외로 전파하여 CircuitBreakerOpenError와 동일한 NACK+requeue 흐름을 탄다.
+    """
+
+    def test_rate_limit_requeue(self, worker, mock_dependencies, pika_mocks):
+        """Rate Limit 시 NACK+requeue (delivery_count < MAX_REQUEUE)"""
+        from src.claude_client import RateLimitRetryableError
+
+        mock_ch, mock_method, mock_properties = pika_mocks
+        deps = mock_dependencies
+
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"data": {"code": "x", "language": "python"}}
+        mock_resp.raise_for_status = MagicMock()
+        deps["http_client"].get.return_value = mock_resp
+
+        deps["claude"].analyze_code = MagicMock(
+            side_effect=RateLimitRetryableError("Rate limit exceeded")
+        )
+
+        mock_properties.headers = None  # delivery_count = 0 (첫 번째 시도)
+
+        body = json.dumps({"submissionId": "sub-rl-requeue"}).encode()
+
+        worker._on_message(mock_ch, mock_method, mock_properties, body)
+
+        # NACK with requeue=True (메시지 보존)
+        mock_ch.basic_nack.assert_called_once_with(delivery_tag=42, requeue=True)
+        mock_ch.basic_ack.assert_not_called()
+
+    def test_rate_limit_dlq_on_max_requeue(self, worker, mock_dependencies, pika_mocks):
+        """Rate Limit requeue 한도 초과 시 DLQ + delayed 보고 + quota 차감"""
+        from src.claude_client import RateLimitRetryableError
+
+        mock_ch, mock_method, mock_properties = pika_mocks
+        deps = mock_dependencies
+
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"data": {"code": "x", "language": "python"}}
+        mock_resp.raise_for_status = MagicMock()
+        deps["http_client"].get.return_value = mock_resp
+
+        mock_patch_resp = MagicMock()
+        mock_patch_resp.raise_for_status = MagicMock()
+        deps["http_client"].patch.return_value = mock_patch_resp
+
+        deps["claude"].analyze_code = MagicMock(
+            side_effect=RateLimitRetryableError("Rate limit exceeded")
+        )
+
+        # delivery_count = 3 (MAX_REQUEUE 초과)
+        mock_properties.headers = {"x-delivery-count": 3}
+        deps["redis_client"].get.return_value = b"3"
+
+        body = json.dumps(
+            {"submissionId": "sub-rl-dlq", "userId": "user-rl-dlq"}
+        ).encode()
+
+        worker._on_message(mock_ch, mock_method, mock_properties, body)
+
+        # NACK with requeue=False (DLQ 전송)
+        mock_ch.basic_nack.assert_called_once_with(delivery_tag=42, requeue=False)
+        mock_ch.basic_ack.assert_not_called()
+
+        # delayed 상태 DB 보고 확인
+        deps["http_client"].patch.assert_called_once()
+        payload = deps["http_client"].patch.call_args[1]["json"]
+        assert payload["analysisStatus"] == "delayed"
+
+        # quota 차감 보상 확인 (분석 미완료)
+        deps["redis_client"].decr.assert_called_once()
+
+    def test_rate_limit_dlq_no_user_id_no_decrement(
+        self, worker, mock_dependencies, pika_mocks
+    ):
+        """Rate Limit DLQ 시 userId 없으면 quota 차감 안 함"""
+        from src.claude_client import RateLimitRetryableError
+
+        mock_ch, mock_method, mock_properties = pika_mocks
+        deps = mock_dependencies
+
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"data": {"code": "x", "language": "python"}}
+        mock_resp.raise_for_status = MagicMock()
+        deps["http_client"].get.return_value = mock_resp
+
+        mock_patch_resp = MagicMock()
+        mock_patch_resp.raise_for_status = MagicMock()
+        deps["http_client"].patch.return_value = mock_patch_resp
+
+        deps["claude"].analyze_code = MagicMock(
+            side_effect=RateLimitRetryableError("Rate limit exceeded")
+        )
+
+        mock_properties.headers = {"x-delivery-count": 3}
+
+        # userId 없는 메시지
+        body = json.dumps({"submissionId": "sub-rl-no-user"}).encode()
+
+        worker._on_message(mock_ch, mock_method, mock_properties, body)
+
+        mock_ch.basic_nack.assert_called_once_with(delivery_tag=42, requeue=False)
+        # quota 차감 미호출
+        deps["redis_client"].decr.assert_not_called()
+
+    def test_rate_limit_requeue_within_limit(
+        self, worker, mock_dependencies, pika_mocks
+    ):
+        """delivery_count < MAX_REQUEUE 이면 requeue=True"""
+        from src.claude_client import RateLimitRetryableError
+
+        mock_ch, mock_method, mock_properties = pika_mocks
+        deps = mock_dependencies
+
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"data": {"code": "x", "language": "python"}}
+        mock_resp.raise_for_status = MagicMock()
+        deps["http_client"].get.return_value = mock_resp
+
+        deps["claude"].analyze_code = MagicMock(
+            side_effect=RateLimitRetryableError("Rate limit exceeded")
+        )
+
+        # delivery_count = 2 (MAX_REQUEUE=3 미만)
+        mock_properties.headers = {"x-delivery-count": 2}
+
+        body = json.dumps({"submissionId": "sub-rl-2"}).encode()
+
+        worker._on_message(mock_ch, mock_method, mock_properties, body)
+
+        mock_ch.basic_nack.assert_called_once_with(delivery_tag=42, requeue=True)
+
+
 class TestGetDeliveryCount:
     """_get_delivery_count() -- delivery count 조회"""
 

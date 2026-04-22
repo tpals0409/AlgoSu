@@ -151,24 +151,31 @@ class TestBuildPrompt:
 
 
 class TestAnalyzeCodeRateLimitError:
-    """6. analyze_code() -- RateLimitError: fallback 반환 + record_failure"""
+    """6. analyze_code() -- RateLimitError: RateLimitRetryableError raise + record_failure
 
-    def test_rate_limit_error_returns_delayed(
+    P1 fix: ACK 후 메시지 유실 방지.
+    delayed 결과 반환 대신 예외로 전파 → Worker가 NACK+requeue 처리.
+    """
+
+    def test_rate_limit_error_raises_retryable(
         self, client, mock_anthropic, mock_circuit_breaker
     ):
+        from src.claude_client import RateLimitRetryableError
+
         mock_anthropic_mod, mock_client = mock_anthropic
         # RateLimitError를 실제 Exception 서브클래스로 만들어서 raise
         mock_client.messages.create.side_effect = mock_anthropic_mod.RateLimitError(
             "Rate limit exceeded"
         )
 
-        result = client.analyze_code(
-            code='print("hello")',
-            language="python",
-        )
+        # delayed 결과 반환이 아닌 RateLimitRetryableError가 raise 되어야 함
+        with pytest.raises(RateLimitRetryableError):
+            client.analyze_code(
+                code='print("hello")',
+                language="python",
+            )
 
-        assert result["status"] == "delayed"
-        assert "일시적" in result["feedback"]
+        # Circuit Breaker에 실패 기록 및 메트릭 증가는 유지
         mock_circuit_breaker.record_failure.assert_called_once()
 
 

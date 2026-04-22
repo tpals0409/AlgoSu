@@ -18,7 +18,7 @@ import httpx
 import pika
 import redis
 
-from .claude_client import CircuitBreakerOpenError, ClaudeClient
+from .claude_client import CircuitBreakerOpenError, ClaudeClient, RateLimitRetryableError
 from .config import settings
 from .metrics import dlq_messages_total, mq_messages_processed_total
 
@@ -302,6 +302,60 @@ class AIAnalysisWorker:
                 dlq_messages_total.labels(reason="circuit_breaker_exhausted").inc()
                 mq_messages_processed_total.labels(result="nack_dlq").inc()
 
+        except RateLimitRetryableError:
+            # Claude API Rate Limit -- requeue 횟수 제한
+            # delayed 결과 반환 후 ACK하면 메시지가 유실되므로 NACK+requeue로 위임
+            delivery_count = self._get_delivery_count(properties)
+            try:
+                event_data = json.loads(body)
+                sid = event_data.get("submissionId", "unknown")
+                uid = event_data.get("userId", "")
+            except Exception:
+                sid = "unknown"
+                uid = ""
+
+            if delivery_count < MAX_REQUEUE:
+                logger.warning(
+                    "Rate Limit -- NACK+requeue",
+                    extra={
+                        "submissionId": sid,
+                        "delivery": delivery_count + 1,
+                        "maxRequeue": MAX_REQUEUE,
+                    },
+                )
+                ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+                mq_messages_processed_total.labels(result="nack_requeue").inc()
+            else:
+                logger.error(
+                    "Rate Limit -- requeue 한도 초과, DLQ 전송",
+                    extra={
+                        "submissionId": sid,
+                        "delivery": delivery_count + 1,
+                    },
+                )
+                # requeue 한도 초과 — quota 차감 보상 (분석 미완료)
+                if uid:
+                    self._decrement_quota(uid)
+                # 한도 초과 시 delayed 상태를 DB에 저장하여 사용자에게 알림
+                try:
+                    self._report_result(
+                        sid,
+                        {
+                            "feedback": "AI 분석이 일시적으로 지연되고 있습니다. 잠시 후 다시 확인해주세요.",
+                            "optimized_code": None,
+                            "score": 0,
+                            "status": "delayed",
+                        },
+                    )
+                except Exception as report_err:
+                    logger.warning(
+                        "delayed 상태 보고 실패",
+                        extra={"error": str(report_err)[:200]},
+                    )
+                ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+                dlq_messages_total.labels(reason="rate_limit_exhausted").inc()
+                mq_messages_processed_total.labels(result="nack_dlq").inc()
+
         except Exception as e:
             logger.error("AI 분석 처리 실패", extra={"error": str(e)[:200]})
             # 실패 시 카운터 차감 시도
@@ -331,6 +385,7 @@ class AIAnalysisWorker:
         @param source_platform: 문제 플랫폼 (예: 'BOJ', 'PROGRAMMERS') — 프롬프트 맥락 주입
         @returns: 분석 결과 dict
         @raises CircuitBreakerOpenError: Circuit Breaker OPEN 시
+        @raises RateLimitRetryableError: Claude API Rate Limit 초과 시 (NACK+requeue 위임)
         """
         last_result = None
         for attempt in range(1, MAX_RETRIES + 1):
