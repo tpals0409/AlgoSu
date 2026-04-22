@@ -2,7 +2,7 @@
  * @file Settings 페이지 — 프로필 공개 + slug 설정
  * @domain share
  * @layer page
- * @related settingsApi, ProfileVisibilitySettings
+ * @related useProfileSettings, settingsApi, ProfileVisibilitySettings
  */
 'use client';
 
@@ -12,7 +12,8 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Card } from '@/components/ui/Card';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
-import { settingsApi, type ProfileSettings } from '@/lib/api';
+import { settingsApi } from '@/lib/api';
+import { useProfileSettings } from '@/hooks/use-profile-settings';
 
 const SLUG_REGEX = /^[a-z0-9][a-z0-9-]{1,18}[a-z0-9]$/;
 const RESERVED_SLUGS = [
@@ -25,26 +26,32 @@ const RESERVED_SLUGS = [
 export default function SettingsPage(): ReactNode {
   useRequireAuth();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const [settings, setSettings] = useState<ProfileSettings | null>(null);
-  const [slug, setSlug] = useState('');
-  const [isPublic, setIsPublic] = useState(false);
+
+  // ─── SWR DATA ───────────────────────────
+
+  const { settings, isLoading: settingsLoading, mutate } = useProfileSettings(
+    isAuthenticated && !authLoading,
+  );
+
+  const loading = settingsLoading;
+
+  // ─── LOCAL STATE (form) ─────────────────
+
+  const [slug, setSlug] = useState(() => settings?.profileSlug ?? '');
+  const [isPublic, setIsPublic] = useState(() => settings?.isProfilePublic ?? false);
   const [slugError, setSlugError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  /* 설정 로드 */
+  /* settings SWR 데이터 수신 시 폼 초기화 (최초 1회) */
+  const [initialized, setInitialized] = useState(false);
   useEffect(() => {
-    if (!isAuthenticated || authLoading) return;
-    settingsApi.getProfile()
-      .then((data) => {
-        setSettings(data);
-        setSlug(data.profileSlug ?? '');
-        setIsPublic(data.isProfilePublic);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [isAuthenticated, authLoading]);
+    if (settings && !initialized) {
+      setSlug(settings.profileSlug ?? '');
+      setIsPublic(settings.isProfilePublic);
+      setInitialized(true);
+    }
+  }, [settings, initialized]);
 
   /* slug 검증 */
   const validateSlug = useCallback((value: string): string | null => {
@@ -81,7 +88,7 @@ export default function SettingsPage(): ReactNode {
         profileSlug: slug || undefined,
         isProfilePublic: isPublic,
       });
-      setSettings(updated);
+      await mutate(updated, { revalidate: false });
       setSaveMessage('설정이 저장되었습니다.');
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : '저장 실패';
@@ -89,7 +96,7 @@ export default function SettingsPage(): ReactNode {
     } finally {
       setSaving(false);
     }
-  }, [slug, isPublic, validateSlug]);
+  }, [slug, isPublic, validateSlug, mutate]);
 
   if (authLoading || loading) {
     return (
