@@ -140,7 +140,11 @@ export class PublicShareController {
   @UseGuards(ShareLinkGuard)
   async getSharedAnalysis(
     @Param('submissionId', ParseUUIDPipe) submissionId: string,
+    @Req() req: Request,
   ) {
+    /* ShareLinkGuard가 주입한 공유 토큰의 studyId */
+    const tokenStudyId = req.headers['x-share-study-id'] as string;
+
     const response = await fetch(
       `${this.submissionServiceUrl}/internal/${submissionId}`,
       {
@@ -159,6 +163,7 @@ export class PublicShareController {
 
     const result = (await response.json()) as {
       data: {
+        studyId?: string;
         aiFeedback?: string;
         aiScore?: number;
         aiOptimizedCode?: string;
@@ -167,6 +172,14 @@ export class PublicShareController {
       };
     };
     const sub = result.data;
+
+    /* IDOR 방어: 제출의 studyId가 공유 토큰의 studyId와 일치하는지 검증 */
+    if (!sub.studyId || sub.studyId !== tokenStudyId) {
+      this.logger.warn(
+        `IDOR 시도 감지: submissionId=${submissionId}, tokenStudyId=${tokenStudyId}, submissionStudyId=${sub.studyId ?? 'N/A'}`,
+      );
+      throw new NotFoundException('분석 결과를 조회할 수 없습니다.');
+    }
 
     return {
       data: {

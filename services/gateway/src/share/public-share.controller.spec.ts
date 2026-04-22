@@ -179,6 +179,7 @@ describe('PublicShareController', () => {
     it('분석 결과 프록시 성공 — 정상 필드 매핑', async () => {
       const mockResult = {
         data: {
+          studyId: STUDY_ID,
           aiFeedback: 'good',
           aiScore: 85,
           aiOptimizedCode: 'optimized',
@@ -188,7 +189,7 @@ describe('PublicShareController', () => {
       };
       mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockResult) });
 
-      const result = await controller.getSharedAnalysis(SUBMISSION_ID);
+      const result = await controller.getSharedAnalysis(SUBMISSION_ID, createMockReq());
 
       expect(result.data).toEqual({
         feedback: 'good',
@@ -200,10 +201,10 @@ describe('PublicShareController', () => {
     });
 
     it('분석 결과 — 누락 필드 null 폴백', async () => {
-      const mockResult = { data: {} };
+      const mockResult = { data: { studyId: STUDY_ID } };
       mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockResult) });
 
-      const result = await controller.getSharedAnalysis(SUBMISSION_ID);
+      const result = await controller.getSharedAnalysis(SUBMISSION_ID, createMockReq());
 
       expect(result.data).toEqual({
         feedback: null,
@@ -217,7 +218,59 @@ describe('PublicShareController', () => {
     it('Submission Service 분석 실패 — NotFoundException', async () => {
       mockFetch.mockResolvedValue({ ok: false, status: 404 });
 
-      await expect(controller.getSharedAnalysis(SUBMISSION_ID)).rejects.toThrow(NotFoundException);
+      await expect(
+        controller.getSharedAnalysis(SUBMISSION_ID, createMockReq()),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    /* ── IDOR 방어 테스트 ── */
+    it('IDOR: 다른 스터디의 제출 조회 시도 — NotFoundException', async () => {
+      const OTHER_STUDY_ID = 'other-study-uuid-999';
+      const mockResult = {
+        data: {
+          studyId: OTHER_STUDY_ID, // 토큰의 studyId(STUDY_ID)와 불일치
+          aiFeedback: 'secret',
+          aiScore: 100,
+          code: 'sensitive-code',
+        },
+      };
+      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockResult) });
+
+      await expect(
+        controller.getSharedAnalysis(SUBMISSION_ID, createMockReq()),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('IDOR: 응답에 studyId 필드가 없을 때 — NotFoundException', async () => {
+      const mockResult = {
+        data: {
+          // studyId 누락
+          aiFeedback: 'secret',
+          aiScore: 100,
+          code: 'sensitive-code',
+        },
+      };
+      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockResult) });
+
+      await expect(
+        controller.getSharedAnalysis(SUBMISSION_ID, createMockReq()),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('IDOR: 다른 스터디 시도 시 warn 로그 기록', async () => {
+      const OTHER_STUDY_ID = 'other-study-uuid-999';
+      const mockResult = {
+        data: { studyId: OTHER_STUDY_ID, code: 'secret' },
+      };
+      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockResult) });
+
+      await expect(
+        controller.getSharedAnalysis(SUBMISSION_ID, createMockReq()),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('IDOR 시도 감지'),
+      );
     });
   });
 
