@@ -2,9 +2,9 @@
  * @file app.module.ts — Submission 서비스 루트 모듈 (TypeORM·스케줄·메트릭 통합)
  * @domain submission
  * @layer module
- * @related submission.module.ts, review.module.ts, study-note.module.ts
+ * @related submission.module.ts, review.module.ts, study-note.module.ts, GatewayContextMiddleware
  */
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -14,6 +14,7 @@ import { StudyNoteModule } from './study-note/study-note.module';
 import { MetricsModule } from './common/metrics/metrics.module';
 import { LoggerModule } from './common/logger/logger.module';
 import { HealthController } from './health.controller';
+import { GatewayContextMiddleware } from './common/middleware/gateway-context.middleware';
 
 @Module({
   imports: [
@@ -57,4 +58,16 @@ import { HealthController } from './health.controller';
   ],
   controllers: [HealthController],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  /**
+   * GatewayContextMiddleware 전역 적용
+   *
+   * 모든 라우트에 적용하며, 미들웨어 내부에서 경로별 처리를 구분합니다:
+   * - /health, /metrics, /api-docs: 즉시 통과 (k8s 프로브)
+   * - /internal/*: X-Internal-Key 검증만 수행 (사용자 컨텍스트 불필요)
+   * - 그 외 모든 라우트: X-Internal-Key 검증 + request.user.userId 설정
+   */
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(GatewayContextMiddleware).forRoutes('*');
+  }
+}
