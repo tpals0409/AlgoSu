@@ -83,14 +83,10 @@ export default function ProblemsPage(): ReactNode {
     [stats?.solvedProblemIds],
   );
   const isLoading = problemsLoading;
-  const [error, setError] = useState<string | null>(null);
+  const errorMessage = problemsError?.message ?? null;
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
   const [showAddModal, setShowAddModal] = useState(false);
   const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    if (problemsError) setError(problemsError.message);
-  }, [problemsError]);
 
   useEffect(() => {
     const timer = setTimeout(() => setMounted(true), 50);
@@ -220,9 +216,9 @@ export default function ProblemsPage(): ReactNode {
         </div>
 
         {/* 에러 */}
-        {error && (
-          <Alert variant="error" onClose={() => setError(null)}>
-            {error}
+        {errorMessage && (
+          <Alert variant="error" onClose={() => mutateProblems()}>
+            {errorMessage}
           </Alert>
         )}
 
@@ -242,7 +238,7 @@ export default function ProblemsPage(): ReactNode {
         )}
 
         {/* 빈 상태 */}
-        {!isLoading && !error && problems.length === 0 && (
+        {!isLoading && !problemsError && problems.length === 0 && (
           <EmptyState
             icon={BookOpen}
             title="등록된 문제가 없습니다"

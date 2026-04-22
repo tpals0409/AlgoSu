@@ -73,7 +73,7 @@ describe('useSubmissions', () => {
     expect(result.current.submissions).toEqual([mockSubmission]);
     expect(result.current.meta).toEqual(mockPaginatedResponse.meta);
     expect(result.current.error).toBeNull();
-    expect(mockFetcher).toHaveBeenCalledWith('/api/submissions');
+    expect(mockFetcher).toHaveBeenCalledWith(['/api/submissions', 'study-1']);
   });
 
   it('studyId가 null이면 요청을 스킵하고 빈 초기값을 반환한다', () => {
@@ -114,7 +114,7 @@ describe('useSubmissions', () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    expect(mockFetcher).toHaveBeenCalledWith('/api/submissions?page=2&limit=5');
+    expect(mockFetcher).toHaveBeenCalledWith(['/api/submissions?page=2&limit=5', 'study-1']);
   });
 
   it('params.page만 있을 때 page 쿼리만 포함된 URL로 조회한다', async () => {
@@ -129,7 +129,7 @@ describe('useSubmissions', () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    expect(mockFetcher).toHaveBeenCalledWith('/api/submissions?page=3');
+    expect(mockFetcher).toHaveBeenCalledWith(['/api/submissions?page=3', 'study-1']);
   });
 
   it('mutate 함수가 노출된다', () => {

@@ -11,7 +11,7 @@ import { fetchApi } from '@/lib/api';
 /**
  * SWR fetcher — fetchApi를 위임하여 httpOnly Cookie 인증·X-Study-ID 헤더 자동 주입
  */
-export async function swrFetcher<T>(path: string): Promise<T> {
+export async function swrFetcher<T>(path: string, ..._args: unknown[]): Promise<T> {
   return fetchApi<T>(path);
 }
 

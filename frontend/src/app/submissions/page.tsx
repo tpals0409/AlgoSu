@@ -88,7 +88,7 @@ export default function SubmissionsPage(): ReactNode {
   // ─── SWR DATA ───────────────────────────
 
   const activeSid = isAuthenticated ? currentStudyId : null;
-  const { submissions, isLoading, error: submissionsError } = useSubmissions(activeSid, { page: 1, limit: 100 });
+  const { submissions, isLoading, error: submissionsError, mutate: mutateSubmissions } = useSubmissions(activeSid, { page: 1, limit: 100 });
   const { problems } = useProblems(activeSid);
 
   const problemMap = useMemo(
@@ -110,15 +110,11 @@ export default function SubmissionsPage(): ReactNode {
 
   // ─── STATE ──────────────────────────────
 
-  const [error, setError] = useState<string | null>(null);
+  const errorMessage = submissionsError?.message ?? null;
   const [filterSearch, setFilterSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterDifficulty, setFilterDifficulty] = useState('');
   const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    if (submissionsError) setError(submissionsError.message);
-  }, [submissionsError]);
 
   useEffect(() => {
     const timer = setTimeout(() => setMounted(true), 50);
@@ -226,9 +222,9 @@ export default function SubmissionsPage(): ReactNode {
         </div>
 
         {/* 에러 */}
-        {error && (
-          <Alert variant="error" onClose={() => setError(null)}>
-            {error}
+        {errorMessage && (
+          <Alert variant="error" onClose={() => void mutateSubmissions()}>
+            {errorMessage}
           </Alert>
         )}
 
@@ -248,7 +244,7 @@ export default function SubmissionsPage(): ReactNode {
         )}
 
         {/* 빈 상태 */}
-        {!isLoading && !error && submissions.length === 0 && (
+        {!isLoading && !submissionsError && submissions.length === 0 && (
           <EmptyState
             icon={FileText}
             title="제출 이력이 없습니다"
