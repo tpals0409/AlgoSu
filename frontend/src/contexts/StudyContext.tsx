@@ -15,6 +15,7 @@ import {
   type ReactNode,
 } from 'react';
 import { setCurrentStudyIdForApi, studyApi } from '@/lib/api';
+import { invalidateAllCache } from '@/lib/swr';
 import { useAuth } from '@/contexts/AuthContext';
 
 // ── 타입 ──
@@ -151,6 +152,7 @@ export function StudyProvider({ children }: StudyProviderProps): ReactNode {
   const setCurrentStudy = useCallback((studyId: string) => {
     setCurrentStudyId(studyId);
     setCurrentStudyIdForApi(studyId);
+    invalidateAllCache();
   }, []);
 
   const setStudies = useCallback((newStudies: Study[]) => {

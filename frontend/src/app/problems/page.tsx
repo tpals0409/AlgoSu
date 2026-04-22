@@ -7,14 +7,15 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { BookOpen, Plus, Search, Check } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Alert } from '@/components/ui/Alert';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { problemApi, studyApi, type Problem } from '@/lib/api';
+import { useProblems } from '@/hooks/use-problems';
+import { useStudyStats } from '@/hooks/use-study-stats';
 import { useStudy } from '@/contexts/StudyContext';
 import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
 import { DIFFICULTIES, DIFFICULTY_LABELS, DIFF_DOT_STYLE, DIFF_BADGE_STYLE, PLATFORM_SHORT_LABELS } from '@/lib/constants';
@@ -72,15 +73,24 @@ export default function ProblemsPage(): ReactNode {
   const { currentStudyId, currentStudyRole, incrementProblemsVersion } = useStudy();
   const isAdmin = currentStudyRole === 'ADMIN';
 
-  // ─── STATE ──────────────────────────────
+  // ─── SWR DATA ──────────────────────────────
 
-  const [problems, setProblems] = useState<Problem[]>([]);
-  const [solvedIds, setSolvedIds] = useState<Set<string>>(new Set());
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const activeSid = isAuthenticated ? currentStudyId : null;
+  const { problems, isLoading: problemsLoading, error: problemsError, mutate: mutateProblems } = useProblems(activeSid);
+  const { stats } = useStudyStats(activeSid);
+  const solvedIds = useMemo(
+    () => new Set(stats?.solvedProblemIds ?? []),
+    [stats?.solvedProblemIds],
+  );
+  const isLoading = problemsLoading;
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
   const [showAddModal, setShowAddModal] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    if (problemsError) setError(problemsError.message);
+  }, [problemsError]);
 
   useEffect(() => {
     const timer = setTimeout(() => setMounted(true), 50);
@@ -92,33 +102,6 @@ export default function ProblemsPage(): ReactNode {
     transform: mounted ? 'translateY(0)' : 'translateY(16px)',
     transition: `opacity .5s cubic-bezier(.16,1,.3,1) ${delay}s, transform .5s cubic-bezier(.16,1,.3,1) ${delay}s`,
   });
-
-  // ─── API ────────────────────────────────
-
-  const loadProblems = useCallback(async (): Promise<void> => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const [data, stats] = await Promise.all([
-        problemApi.findAll(),
-        currentStudyId ? studyApi.getStats(currentStudyId) : null,
-      ]);
-      setProblems(data);
-      if (stats?.solvedProblemIds) {
-        setSolvedIds(new Set(stats.solvedProblemIds));
-      }
-    } catch (err: unknown) {
-      setError((err as Error).message ?? '문제 목록을 불러오는 데 실패했습니다.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentStudyId]);
-
-  useEffect(() => {
-    if (isAuthenticated && currentStudyId) {
-      void loadProblems();
-    }
-  }, [isAuthenticated, currentStudyId, loadProblems]);
 
   // ─── HANDLERS ─────────────────────────────
 
@@ -133,10 +116,10 @@ export default function ProblemsPage(): ReactNode {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleAddProblem = useCallback((newProblem: NewProblemData) => {
-    setProblems((prev) => [newProblem as unknown as Problem, ...prev]);
+  const handleAddProblem = useCallback((_newProblem: NewProblemData) => {
+    mutateProblems();
     incrementProblemsVersion();
-  }, [incrementProblemsVersion]);
+  }, [mutateProblems, incrementProblemsVersion]);
 
   // ─── FILTERING ──────────────────────────
 

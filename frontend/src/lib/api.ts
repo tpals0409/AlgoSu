@@ -199,7 +199,7 @@ function requiresMembership(path: string): boolean {
 /**
  * API 요청 래퍼 — httpOnly Cookie 인증 (credentials: 'include')
  */
-async function fetchApi<T>(
+export async function fetchApi<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {

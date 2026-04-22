@@ -7,6 +7,7 @@ import { WebVitalsReporter } from '@/components/providers/WebVitalsReporter';
 import { EventTrackerProvider } from '@/components/providers/EventTracker';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { StudyProvider } from '@/contexts/StudyContext';
+import { SWRProvider } from '@/components/providers/SWRProvider';
 
 const adsenseEnabled = process.env.NEXT_PUBLIC_ADSENSE_ENABLED === 'true';
 const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID ?? '';
@@ -57,7 +58,9 @@ export default function RootLayout({ children }: RootLayoutProps): ReactNode {
           <EventTrackerProvider />
           <AuthProvider>
             <StudyProvider>
-              {children}
+              <SWRProvider>
+                {children}
+              </SWRProvider>
             </StudyProvider>
           </AuthProvider>
         </ThemeProvider>
