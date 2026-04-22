@@ -1,6 +1,16 @@
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
+import { SWRConfig } from 'swr';
 import { NotificationBell } from '../NotificationBell';
+import { swrFetcher } from '@/lib/swr';
 import type { Notification } from '@/lib/api';
+
+// SWR fetcher 모킹 — key 기반으로 응답 제어
+jest.mock('@/lib/swr', () => ({
+  ...jest.requireActual('@/lib/swr'),
+  swrFetcher: jest.fn(),
+}));
+
+const mockedSwrFetcher = jest.mocked(swrFetcher);
 
 jest.mock('lucide-react', () => {
   const Icon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />;
@@ -73,6 +83,25 @@ jest.mock('@/components/ui/NotificationToast', () => ({
   },
 }));
 
+/**
+ * SWR 테스트 wrapper — 격리된 캐시, 재시도 없음
+ * mockedSwrFetcher를 fetcher로 주입하여 key별 응답 제어
+ */
+const wrapper = ({ children }: { children: React.ReactNode }) => (
+  <SWRConfig
+    value={{
+      provider: () => new Map(),
+      dedupingInterval: 0,
+      fetcher: mockedSwrFetcher,
+      shouldRetryOnError: false,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+    }}
+  >
+    {children}
+  </SWRConfig>
+);
+
 // ─── 헬퍼: 다양한 시간의 알림 생성 ───────────────────────
 
 function makeNotification(overrides: Partial<Notification> = {}): Notification {
@@ -116,13 +145,19 @@ describe('NotificationBell', () => {
     mockList.mockResolvedValue([]);
     mockMarkRead.mockResolvedValue(undefined);
     mockMarkAllRead.mockResolvedValue(undefined);
+    // SWR fetcher: key별로 mockUnreadCount / mockList에 위임
+    mockedSwrFetcher.mockImplementation((key: string) => {
+      if (key === '/api/notifications/unread-count') return mockUnreadCount();
+      if (key === '/api/notifications') return mockList();
+      return Promise.resolve(null);
+    });
   });
 
   // ─── 기본 렌더링 ─────────────────────────────────────────
 
   it('벨 버튼이 렌더링된다', async () => {
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     expect(screen.getByRole('button', { name: /알림/ })).toBeInTheDocument();
   });
@@ -130,7 +165,7 @@ describe('NotificationBell', () => {
   it('미읽음 수가 있으면 뱃지를 표시한다', async () => {
     mockUnreadCount.mockResolvedValue({ count: 5 });
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     expect(screen.getByText('5')).toBeInTheDocument();
   });
@@ -138,7 +173,7 @@ describe('NotificationBell', () => {
   it('9개 초과 시 9+를 표시한다 (sidebar placement)', async () => {
     mockUnreadCount.mockResolvedValue({ count: 150 });
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     expect(screen.getByText('9+')).toBeInTheDocument();
   });
@@ -146,7 +181,7 @@ describe('NotificationBell', () => {
   it('벨 클릭 시 드롭다운이 열린다', async () => {
     mockList.mockResolvedValue([sampleNotification]);
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /알림/ }));
@@ -157,7 +192,7 @@ describe('NotificationBell', () => {
   it('알림이 없으면 빈 상태 메시지를 표시한다', async () => {
     mockList.mockResolvedValue([]);
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /알림/ }));
@@ -171,7 +206,7 @@ describe('NotificationBell', () => {
     const notif = makeNotification({ createdAt: new Date().toISOString() });
     mockList.mockResolvedValue([notif]);
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /알림/ }));
@@ -183,7 +218,7 @@ describe('NotificationBell', () => {
     const notif = makeNotification({ createdAt: minutesAgo(30) });
     mockList.mockResolvedValue([notif]);
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /알림/ }));
@@ -195,7 +230,7 @@ describe('NotificationBell', () => {
     const notif = makeNotification({ createdAt: hoursAgo(3) });
     mockList.mockResolvedValue([notif]);
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /알림/ }));
@@ -207,7 +242,7 @@ describe('NotificationBell', () => {
     const notif = makeNotification({ createdAt: daysAgo(3) });
     mockList.mockResolvedValue([notif]);
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /알림/ }));
@@ -220,7 +255,7 @@ describe('NotificationBell', () => {
     const notif = makeNotification({ createdAt: oldDate });
     mockList.mockResolvedValue([notif]);
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /알림/ }));
@@ -235,7 +270,7 @@ describe('NotificationBell', () => {
     mockUnreadCount.mockRejectedValue(new Error('network error'));
     await expect(async () => {
       await act(async () => {
-        render(<NotificationBell />);
+        render(<NotificationBell />, { wrapper });
       });
     }).not.toThrow();
   });
@@ -245,7 +280,7 @@ describe('NotificationBell', () => {
   it('list API 실패 시 isLoading이 false로 복구된다', async () => {
     mockList.mockRejectedValue(new Error('list error'));
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /알림/ }));
@@ -259,7 +294,7 @@ describe('NotificationBell', () => {
   it('벨을 두 번 클릭하면 드롭다운이 닫힌다', async () => {
     mockList.mockResolvedValue([]);
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     const bellBtn = screen.getByRole('button', { name: /알림/ });
     await act(async () => {
@@ -277,7 +312,7 @@ describe('NotificationBell', () => {
   it('외부 클릭 시 드롭다운이 닫힌다', async () => {
     mockList.mockResolvedValue([]);
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /알림/ }));
@@ -295,7 +330,7 @@ describe('NotificationBell', () => {
     const unreadNotif = makeNotification({ link: '/submissions/123', read: false });
     mockList.mockResolvedValue([unreadNotif]);
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /알림/ }));
@@ -312,7 +347,7 @@ describe('NotificationBell', () => {
     const readNotif = makeNotification({ read: true });
     mockList.mockResolvedValue([readNotif]);
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /알림/ }));
@@ -327,7 +362,7 @@ describe('NotificationBell', () => {
     const notif = makeNotification({ link: null, type: 'AI_COMPLETED' });
     mockList.mockResolvedValue([notif]);
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /알림/ }));
@@ -342,7 +377,7 @@ describe('NotificationBell', () => {
     const notif = makeNotification({ link: null, type: 'UNKNOWN_TYPE' as never, read: true });
     mockList.mockResolvedValue([notif]);
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /알림/ }));
@@ -358,7 +393,7 @@ describe('NotificationBell', () => {
     const unreadNotif = makeNotification({ read: false });
     mockList.mockResolvedValue([unreadNotif]);
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /알림/ }));
@@ -376,7 +411,7 @@ describe('NotificationBell', () => {
     mockUnreadCount.mockResolvedValue({ count: 3 });
     mockList.mockResolvedValue([makeNotification({ read: false })]);
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /알림/ }));
@@ -387,8 +422,12 @@ describe('NotificationBell', () => {
   it('"모두 읽음" 클릭 시 markAllRead를 호출하고 unreadCount를 0으로 만든다', async () => {
     mockUnreadCount.mockResolvedValue({ count: 3 });
     mockList.mockResolvedValue([makeNotification({ read: false })]);
+    // markAllRead 호출 시 SWR revalidation이 0을 반환하도록 사전 설정
+    mockMarkAllRead.mockImplementation(async () => {
+      mockUnreadCount.mockResolvedValue({ count: 0 });
+    });
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /알림/ }));
@@ -409,7 +448,7 @@ describe('NotificationBell', () => {
     mockUnreadCount.mockResolvedValue({ count: 2 });
     mockList.mockResolvedValue([makeNotification({ read: false })]);
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /알림/ }));
@@ -427,8 +466,10 @@ describe('NotificationBell', () => {
     mockUnreadCount.mockResolvedValue({ count: 0 });
     mockList.mockResolvedValue([]);
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
+    // SSE 수신 전에 revalidation이 1을 반환하도록 설정
+    mockUnreadCount.mockResolvedValue({ count: 1 });
     // SSE 콜백 직접 호출
     const sseNotif = makeNotification({ id: 'sse-1', title: 'SSE 알림' });
     await act(async () => {
@@ -444,7 +485,7 @@ describe('NotificationBell', () => {
     mockUnreadCount.mockResolvedValue({ count: 0 });
     mockList.mockResolvedValue([]);
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     const sseNotif = makeNotification({ id: 'sse-2', title: 'SSE 새 알림' });
     await act(async () => {
@@ -465,7 +506,7 @@ describe('NotificationBell', () => {
     mockUnreadCount.mockResolvedValue({ count: 0 });
     mockList.mockResolvedValue([]);
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /알림/ }));
@@ -492,7 +533,7 @@ describe('NotificationBell', () => {
       const notif = makeNotification({ type: type as never, link: null, read: true });
       mockList.mockResolvedValue([notif]);
       await act(async () => {
-        render(<NotificationBell />);
+        render(<NotificationBell />, { wrapper });
       });
       await act(async () => {
         fireEvent.click(screen.getByRole('button', { name: /알림/ }));
@@ -511,7 +552,7 @@ describe('NotificationBell', () => {
     const unreadNotif = makeNotification({ read: false });
     mockList.mockResolvedValue([unreadNotif]);
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /알림/ }));
@@ -523,7 +564,7 @@ describe('NotificationBell', () => {
     const readNotif = makeNotification({ read: true });
     mockList.mockResolvedValue([readNotif]);
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /알림/ }));
@@ -537,7 +578,7 @@ describe('NotificationBell', () => {
     let resolveList!: (v: Notification[]) => void;
     mockList.mockReturnValue(new Promise<Notification[]>((res) => { resolveList = res; }));
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /알림/ }));
@@ -559,7 +600,7 @@ describe('NotificationBell', () => {
     const notif2 = makeNotification({ id: 'n-2', title: 'Second', read: false });
     mockList.mockResolvedValue([notif1, notif2]);
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /알림/ }));
@@ -576,7 +617,7 @@ describe('NotificationBell', () => {
     // Branch 6 at line 200: if (ref.current && !ref.current.contains(e.target)) 의 false 분기
     mockList.mockResolvedValue([]);
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /알림/ }));
@@ -593,7 +634,7 @@ describe('NotificationBell', () => {
   it('NotificationToast의 onDismiss 콜백이 toastNotification을 null로 초기화한다', async () => {
     mockUnreadCount.mockResolvedValue({ count: 0 });
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     // SSE로 알림 수신하여 toastNotification 설정
     const sseNotif = makeNotification({ id: 'toast-1', title: '토스트 알림' });
@@ -612,7 +653,7 @@ describe('NotificationBell', () => {
   it('NotificationToast의 onRead 콜백이 handleMarkRead를 호출한다', async () => {
     mockUnreadCount.mockResolvedValue({ count: 0 });
     await act(async () => {
-      render(<NotificationBell />);
+      render(<NotificationBell />, { wrapper });
     });
     // SSE로 알림 수신하여 toastNotification 설정
     const sseNotif = makeNotification({ id: 'read-1', title: '읽음 알림' });

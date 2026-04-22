@@ -5,8 +5,19 @@
  */
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { SWRConfig } from 'swr';
 import SettingsPage from '../page';
+import { swrFetcher } from '@/lib/swr';
 import type { ProfileSettings } from '@/lib/api';
+
+/* ── SWR fetcher 모킹 ── */
+
+jest.mock('@/lib/swr', () => ({
+  ...jest.requireActual('@/lib/swr'),
+  swrFetcher: jest.fn(),
+}));
+
+const mockedSwrFetcher = jest.mocked(swrFetcher);
 
 /* ── mocks ── */
 
@@ -88,6 +99,25 @@ const DEFAULT_SETTINGS: ProfileSettings = {
   isProfilePublic: false,
 };
 
+/**
+ * SWR 테스트 wrapper — 격리된 캐시, mockedSwrFetcher 주입
+ * mockGetProfile에 위임하여 기존 테스트 패턴 유지
+ */
+const wrapper = ({ children }: { children: React.ReactNode }) => (
+  <SWRConfig
+    value={{
+      provider: () => new Map(),
+      dedupingInterval: 0,
+      fetcher: mockedSwrFetcher,
+      shouldRetryOnError: false,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+    }}
+  >
+    {children}
+  </SWRConfig>
+);
+
 /** 설정 로드 완료까지 대기 (로딩 스피너가 사라지고 폼이 렌더링될 때까지) */
 async function waitForLoaded() {
   await waitFor(() => {
@@ -101,6 +131,12 @@ beforeEach(() => {
   mockGetProfile.mockResolvedValue(DEFAULT_SETTINGS);
   mockUpdateProfile.mockReset();
   mockUpdateProfile.mockResolvedValue({ profileSlug: 'my-slug', isProfilePublic: true });
+  // SWR fetcher: settings key를 mockGetProfile에 위임
+  mockedSwrFetcher.mockReset();
+  mockedSwrFetcher.mockImplementation((key: string) => {
+    if (key === '/api/users/me/settings') return mockGetProfile();
+    return Promise.resolve(null);
+  });
 });
 
 /* ── tests ── */
@@ -108,21 +144,21 @@ beforeEach(() => {
 describe('SettingsPage', () => {
   describe('초기 렌더링', () => {
     it('설정 페이지 제목이 표시된다', async () => {
-      render(<SettingsPage />);
+      render(<SettingsPage />, { wrapper });
       await waitFor(() => {
         expect(screen.getByText('설정')).toBeInTheDocument();
       });
     });
 
     it('퍼블릭 프로필 섹션이 표시된다', async () => {
-      render(<SettingsPage />);
+      render(<SettingsPage />, { wrapper });
       await waitFor(() => {
         expect(screen.getByText('퍼블릭 프로필')).toBeInTheDocument();
       });
     });
 
     it('설정을 로드한다', async () => {
-      render(<SettingsPage />);
+      render(<SettingsPage />, { wrapper });
       await waitFor(() => {
         expect(mockGetProfile).toHaveBeenCalled();
       });
@@ -131,7 +167,7 @@ describe('SettingsPage', () => {
     it('기존 slug 값이 입력 필드에 표시된다', async () => {
       mockGetProfile.mockResolvedValue({ profileSlug: 'existing-slug', isProfilePublic: false });
 
-      render(<SettingsPage />);
+      render(<SettingsPage />, { wrapper });
       await waitFor(() => {
         expect(screen.getByDisplayValue('existing-slug')).toBeInTheDocument();
       });
@@ -141,7 +177,7 @@ describe('SettingsPage', () => {
   describe('slug 유효성 검증', () => {
     it('유효한 slug는 에러를 표시하지 않는다', async () => {
       const user = userEvent.setup();
-      render(<SettingsPage />);
+      render(<SettingsPage />, { wrapper });
       await waitForLoaded();
 
       const input = screen.getByPlaceholderText('my-profile');
@@ -153,7 +189,7 @@ describe('SettingsPage', () => {
 
     it('하이픈으로 시작하는 slug는 에러를 표시한다', async () => {
       const user = userEvent.setup();
-      render(<SettingsPage />);
+      render(<SettingsPage />, { wrapper });
       await waitForLoaded();
 
       const input = screen.getByPlaceholderText('my-profile');
@@ -168,7 +204,7 @@ describe('SettingsPage', () => {
 
     it('2자 이하의 slug는 에러를 표시한다', async () => {
       const user = userEvent.setup();
-      render(<SettingsPage />);
+      render(<SettingsPage />, { wrapper });
       await waitForLoaded();
 
       const input = screen.getByPlaceholderText('my-profile');
@@ -186,7 +222,7 @@ describe('SettingsPage', () => {
       '예약어 "%s"는 에러를 표시한다',
       async (reserved) => {
         const user = userEvent.setup();
-        render(<SettingsPage />);
+        render(<SettingsPage />, { wrapper });
         await waitForLoaded();
 
         const input = screen.getByPlaceholderText('my-profile');
@@ -202,7 +238,7 @@ describe('SettingsPage', () => {
 
   describe('공개 토글', () => {
     it('토글 스위치가 렌더링된다', async () => {
-      render(<SettingsPage />);
+      render(<SettingsPage />, { wrapper });
       await waitForLoaded();
 
       expect(screen.getByRole('switch')).toBeInTheDocument();
@@ -210,7 +246,7 @@ describe('SettingsPage', () => {
 
     it('토글 클릭 시 상태가 변경된다', async () => {
       const user = userEvent.setup();
-      render(<SettingsPage />);
+      render(<SettingsPage />, { wrapper });
       await waitForLoaded();
 
       const toggle = screen.getByRole('switch');
@@ -224,7 +260,7 @@ describe('SettingsPage', () => {
   describe('slug 없이 공개 시도', () => {
     it('slug 없이 공개하려 하면 경고를 표시한다', async () => {
       const user = userEvent.setup();
-      render(<SettingsPage />);
+      render(<SettingsPage />, { wrapper });
       await waitForLoaded();
 
       // 공개 토글 활성화
@@ -246,7 +282,7 @@ describe('SettingsPage', () => {
       const user = userEvent.setup();
       mockUpdateProfile.mockResolvedValue({ profileSlug: 'my-slug', isProfilePublic: true });
 
-      render(<SettingsPage />);
+      render(<SettingsPage />, { wrapper });
       await waitForLoaded();
 
       const input = screen.getByPlaceholderText('my-profile');
@@ -269,7 +305,7 @@ describe('SettingsPage', () => {
       const user = userEvent.setup();
       mockUpdateProfile.mockRejectedValue(new Error('이미 사용 중인 slug입니다.'));
 
-      render(<SettingsPage />);
+      render(<SettingsPage />, { wrapper });
       await waitForLoaded();
 
       const input = screen.getByPlaceholderText('my-profile');
@@ -286,7 +322,7 @@ describe('SettingsPage', () => {
       const user = userEvent.setup();
       mockUpdateProfile.mockReturnValue(new Promise(() => {})); // never resolves
 
-      render(<SettingsPage />);
+      render(<SettingsPage />, { wrapper });
       await waitForLoaded();
 
       const input = screen.getByPlaceholderText('my-profile');
@@ -299,7 +335,7 @@ describe('SettingsPage', () => {
 
     it('slug 에러가 있으면 저장 버튼이 비활성화된다', async () => {
       const user = userEvent.setup();
-      render(<SettingsPage />);
+      render(<SettingsPage />, { wrapper });
       await waitForLoaded();
 
       const input = screen.getByPlaceholderText('my-profile');
@@ -316,7 +352,7 @@ describe('SettingsPage', () => {
     it('저장된 slug + 공개 상태면 프로필 링크를 표시한다', async () => {
       mockGetProfile.mockResolvedValue({ profileSlug: 'my-profile', isProfilePublic: true });
 
-      render(<SettingsPage />);
+      render(<SettingsPage />, { wrapper });
       await waitFor(() => {
         expect(screen.getByText('내 프로필 링크:')).toBeInTheDocument();
       });
@@ -327,7 +363,7 @@ describe('SettingsPage', () => {
     it('비공개 상태면 프로필 링크를 표시하지 않는다', async () => {
       mockGetProfile.mockResolvedValue({ profileSlug: 'my-profile', isProfilePublic: false });
 
-      render(<SettingsPage />);
+      render(<SettingsPage />, { wrapper });
       await waitForLoaded();
 
       expect(screen.queryByText('내 프로필 링크:')).not.toBeInTheDocument();
