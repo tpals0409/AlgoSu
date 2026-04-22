@@ -2,9 +2,9 @@
 sprint: 114
 title: "Critic 에이전트 신설 — Codex 기반 교차 코드리뷰"
 period: "2026-04-22"
-status: in-progress
+status: complete
 start_commit: e4f0641
-end_commit: (tbd)
+end_commit: 84e044e
 ---
 
 # Sprint 114 — Critic 에이전트 신설 (Codex 기반 교차 코드리뷰)
@@ -138,4 +138,12 @@ OpenAI가 공개한 `codex-plugin-cc`(https://github.com/openai/codex-plugin-cc)
 
 ## 교훈
 
-(스프린트 종료 시 Scribe가 추가)
+- **Claude Code 내장 슬래시 커맨드는 AI 도구에 노출되지 않음**: `/reload-plugins`·`/codex:setup` 등 CLI 빌트인은 Bash·Skill·MCP 어떤 경로로도 호출 불가. 4개 대안(Bash/Skill/tmux-send-keys/osascript) 모두 차단 확인. osascript는 macOS 접근성 권한(-25211) 미부여로 실패. 결론: 플러그인 활성화는 사용자 슬래시 커맨드 또는 세션 재시작 필수
+- **플러그인 수동 설치 경로의 등가성**: `known_marketplaces.json` 등록 + `cache/{market}/{plugin}/{version}/` 파일 복사 + `installed_plugins.json` 엔트리 추가 3단계가 `/plugin install` 내부 동작과 동등. 단 활성화만 `/reload-plugins` 필요
+- **원격 OAuth는 device-auth 모드가 표준**: 일반 `codex login`은 localhost:1455 콜백 필요 → 원격 기기 승인 시 콜백 미도달로 실패. `--device-auth` 모드는 디바이스 코드만 공유하면 외부 기기 어디서든 승인 가능 → 원격/자동화 환경 기본값으로 권장
+- **codex-plugin-cc 구조 표준 준수**: commands(7) + agents(1: codex-rescue) + hooks + skills + prompts로 Claude Code 플러그인 스펙 완전 준수. Critic 페르소나 작성 시 플러그인 내부 문서(`commands/review.md` 등)를 참고해 인자 포맷 정합성 확보 가능
+- **플랜 모드에서 설치 단계를 조기 분리**: Phase A(인프라 설치)를 Phase B~D(파일 작성)과 병렬화 가능한 독립 단계로 명시 → 사용자 수동 작업(로그인, 슬래시 커맨드)이 블로커가 되어도 문서·페르소나 작업은 진행. 원격 환경의 시간 손실을 최소화
+
+## 이월
+
+- **Phase E 검증 완료 (Sprint 115)**: 다음 세션에서 `codex review --base 75cb80f` CLI 직접 호출로 시연 리뷰 수행 → P2 2건 발견 → Herald 수정 → 재리뷰 P1 1건 발견 → 수정 → 최종 ✅. Critic 3중 가치 입증. 상세: [sprint-115.md](./sprint-115.md)
