@@ -9,6 +9,7 @@ AlgoSu AI Analysis Service -- FastAPI 메인
 
 import hmac
 import logging
+import re
 import threading
 from contextlib import asynccontextmanager
 from datetime import date
@@ -16,7 +17,7 @@ from datetime import date
 import httpx
 import redis
 from fastapi import FastAPI, Header, HTTPException, Query, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from .circuit_breaker import circuit_breaker
 from .claude_client import MAX_TOKENS, MODEL_ID, ClaudeClient
@@ -293,11 +294,35 @@ async def check_and_increment_quota(
 # ─── GROUP ANALYSIS ──────────────────────────
 
 
+_UUID_FORMAT_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+    re.IGNORECASE,
+)
+
+
 class GroupAnalysisRequest(BaseModel):
+    """그룹 분석 요청 모델
+
+    @domain ai
+    @related group_analysis
+    """
+
     problem_id: str
     study_id: str
     user_id: str
     source_platform: str | None = None
+
+    @field_validator("problem_id", "study_id", "user_id")
+    @classmethod
+    def validate_uuid_format(cls, v: str) -> str:
+        """UUID 형식 검증 — 경로 삽입(path traversal) 방지
+
+        URL 경로에 삽입되는 필드가 UUID 형식이 아니면
+        ../../admin 같은 경로 조작이 가능하므로 차단한다.
+        """
+        if not _UUID_FORMAT_RE.match(v):
+            raise ValueError(f"유효한 UUID 형식이 아닙니다: {v}")
+        return v
 
 
 @app.post("/group-analysis")

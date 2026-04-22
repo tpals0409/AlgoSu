@@ -9,6 +9,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+# 테스트용 UUID 상수
+_TEST_PROBLEM_ID = "00000000-0000-4000-8000-000000000001"
+_TEST_STUDY_ID = "00000000-0000-4000-8000-000000000002"
+_TEST_USER_ID = "00000000-0000-4000-8000-000000000003"
+
 
 @pytest.fixture
 def mock_app_deps():
@@ -282,9 +287,29 @@ class TestGroupAnalysis:
         """Internal Key 없으면 401"""
         resp = client.post(
             "/group-analysis",
-            json={"problem_id": "p1", "study_id": "s1", "user_id": "u1"},
+            json={"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
         )
         assert resp.status_code == 401
+
+    @pytest.mark.parametrize(
+        "bad_payload",
+        [
+            {"problem_id": "../../admin", "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
+            {"problem_id": _TEST_PROBLEM_ID, "study_id": "not-a-uuid", "user_id": _TEST_USER_ID},
+            {"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": "abc"},
+        ],
+        ids=["path-traversal-problem_id", "invalid-study_id", "invalid-user_id"],
+    )
+    def test_group_analysis_rejects_non_uuid_ids(
+        self, bad_payload, client, mock_app_deps
+    ):
+        """UUID 형식이 아닌 ID는 422 — 경로 삽입 방지"""
+        resp = client.post(
+            "/group-analysis",
+            json=bad_payload,
+            headers={"X-Internal-Key": "test-key"},
+        )
+        assert resp.status_code == 422
 
     def test_group_analysis_circuit_breaker_open(self, client, mock_app_deps):
         """Circuit Breaker OPEN이면 503"""
@@ -292,7 +317,7 @@ class TestGroupAnalysis:
 
         resp = client.post(
             "/group-analysis",
-            json={"problem_id": "p1", "study_id": "s1", "user_id": "u1"},
+            json={"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
             headers={"X-Internal-Key": "test-key"},
         )
         assert resp.status_code == 503
@@ -305,7 +330,7 @@ class TestGroupAnalysis:
 
         resp = client.post(
             "/group-analysis",
-            json={"problem_id": "p1", "study_id": "s1", "user_id": "u1"},
+            json={"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
             headers={"X-Internal-Key": "test-key"},
         )
         assert resp.status_code == 503
@@ -320,7 +345,7 @@ class TestGroupAnalysis:
 
         resp = client.post(
             "/group-analysis",
-            json={"problem_id": "p1", "study_id": "s1", "user_id": "u1"},
+            json={"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
             headers={"X-Internal-Key": "test-key"},
         )
         assert resp.status_code == 429
@@ -346,7 +371,7 @@ class TestGroupAnalysis:
 
         resp = client.post(
             "/group-analysis",
-            json={"problem_id": "p1", "study_id": "s1", "user_id": "u1"},
+            json={"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
             headers={"X-Internal-Key": "test-key"},
         )
         assert resp.status_code == 502
@@ -376,7 +401,7 @@ class TestGroupAnalysis:
 
         resp = client.post(
             "/group-analysis",
-            json={"problem_id": "p1", "study_id": "s1", "user_id": "u1"},
+            json={"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
             headers={"X-Internal-Key": "test-key"},
         )
         assert resp.status_code == 404
@@ -425,12 +450,12 @@ class TestGroupAnalysis:
 
         resp = client.post(
             "/group-analysis",
-            json={"problem_id": "p1", "study_id": "s1", "user_id": "u1"},
+            json={"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
             headers={"X-Internal-Key": "test-key"},
         )
         assert resp.status_code == 200
         data = resp.json()["data"]
-        assert data["problemId"] == "p1"
+        assert data["problemId"] == _TEST_PROBLEM_ID
         assert data["submissionCount"] == 1
 
     @patch("src.main.ClaudeClient")
@@ -467,7 +492,7 @@ class TestGroupAnalysis:
 
         resp = client.post(
             "/group-analysis",
-            json={"problem_id": "p1", "study_id": "s1", "user_id": "u1"},
+            json={"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
             headers={"X-Internal-Key": "test-key"},
         )
         assert resp.status_code == 502
@@ -490,7 +515,7 @@ class TestGroupAnalysis:
 
             client.post(
                 "/group-analysis",
-                json={"problem_id": "p1", "study_id": "s1", "user_id": "u1"},
+                json={"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
                 headers={"X-Internal-Key": "test-key"},
             )
             # eval이 호출되었고 TTL=86400이 인수로 포함됨
