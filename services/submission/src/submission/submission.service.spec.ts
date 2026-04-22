@@ -202,6 +202,70 @@ describe('SubmissionService', () => {
       expect(repo.save).not.toHaveBeenCalled();
       expect(sagaOrchestrator.advanceToGitHubQueued).not.toHaveBeenCalled();
     });
+
+    it('멱등성 조회 시 userId를 포함한 3-tuple로 스코핑한다 (IDOR 방지)', async () => {
+      // findOne 조회 조건에 userId가 반드시 포함되어야 함을 검증
+      const existing = createMockSubmission({
+        userId: 'user-1',
+        idempotencyKey: 'idem-key-1',
+        sagaStep: SagaStep.DONE,
+      });
+
+      const dto: CreateSubmissionDto = {
+        problemId: 'problem-uuid-1',
+        language: 'python',
+        code: 'print("hello world")',
+        idempotencyKey: 'idem-key-1',
+      };
+
+      repo.findOne.mockResolvedValue(existing);
+
+      await service.create(dto, 'user-1', 'study-uuid-1');
+
+      // (studyId, userId, idempotencyKey) 3-tuple 조건 검증
+      expect(repo.findOne).toHaveBeenCalledWith({
+        where: {
+          idempotencyKey: 'idem-key-1',
+          studyId: 'study-uuid-1',
+          userId: 'user-1',
+        },
+      });
+    });
+
+    it('같은 idempotencyKey라도 다른 userId면 신규 제출을 생성한다 (크로스 유저 IDOR 방지)', async () => {
+      // user-2가 user-1과 동일한 idempotencyKey를 사용해도 별개의 제출로 처리됨
+      const dto: CreateSubmissionDto = {
+        problemId: 'problem-uuid-1',
+        language: 'python',
+        code: 'print("user-2 code")',
+        idempotencyKey: 'idem-key-1',
+      };
+
+      // user-2 기준으로는 기존 제출 없음 (null 반환)
+      repo.findOne.mockResolvedValue(null);
+
+      const savedForUser2 = createMockSubmission({
+        userId: 'user-2',
+        idempotencyKey: 'idem-key-1',
+        code: 'print("user-2 code")',
+      });
+      repo.create.mockReturnValue(savedForUser2);
+      repo.save.mockResolvedValue(savedForUser2);
+      sagaOrchestrator.advanceToGitHubQueued.mockResolvedValue(undefined);
+
+      // user-2로 제출
+      const result = await service.create(dto, 'user-2', 'study-uuid-1');
+
+      // user-1 제출이 아닌, user-2의 신규 제출 엔티티를 반환해야 함
+      expect(result.userId).toBe('user-2');
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: 'user-2' }),
+      );
+      // findOne이 userId: 'user-2'로 호출되어야 함 (user-1 데이터 조회 불가)
+      expect(repo.findOne).toHaveBeenCalledWith({
+        where: expect.objectContaining({ userId: 'user-2' }),
+      });
+    });
   });
 
   // ─── 4. create() — Saga 진행 실패 ────────────────────────────

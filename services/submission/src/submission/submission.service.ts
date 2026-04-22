@@ -53,10 +53,10 @@ export class SubmissionService {
    * 순서: DB 저장(saga_step=DB_SAVED) → Saga 진행(GITHUB_QUEUED)
    */
   async create(dto: CreateSubmissionDto, userId: string, studyId: string): Promise<Submission> {
-    // 멱등성 검사
+    // 멱등성 검사 — (studyId, userId, idempotencyKey) 3-tuple 스코핑으로 IDOR 방지
     if (dto.idempotencyKey) {
       const existing = await this.submissionRepo.findOne({
-        where: { idempotencyKey: dto.idempotencyKey, studyId },
+        where: { idempotencyKey: dto.idempotencyKey, studyId, userId },
       });
       if (existing) {
         this.logger.log(`멱등성 히트: idempotencyKey 기존 제출 반환`);
