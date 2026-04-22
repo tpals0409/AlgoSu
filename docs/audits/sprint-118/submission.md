@@ -1,0 +1,350 @@
+---
+sprint: 118
+service: submission
+audited_at: 2026-04-22
+loc_audited: 4860
+files_audited: 56
+codex_sessions: [019db3d2-6367-7861-ac68-862b80d43e65, 019db3d3-b5ce-75a1-9ab0-5e5f54d81536, 019db3d4-e097-7b61-a8e3-4decf6aa2033, 019db3d6-3014-71b0-9439-0f296689175a, 019db3d7-69c1-7042-ab1b-5028b7d8b85b, 019db3d9-21fd-7862-a1dc-6d809cbbdbd2, 019db3d9-c29f-7ad0-aa86-a874c67064bc]
+severity_counts: { P0: 3, P1: 41, P2: 21, Low: 0 }
+---
+
+# Audit — submission
+
+> 감사 일자: 2026-04-22 | LOC: 4860 | 파일: 56개
+> P0: 3 | P1: 41 | P2: 21 | Low: 0
+
+## P0 (머지 차단)
+
+### P0-01 — services/submission/src/common/guards/study-member.guard.ts:56
+- **category**: security
+- **message**: 요청 헤더의 X-User-ID 값을 신뢰해 멤버십을 검증하므로 클라이언트가 다른 사용자 ID를 넣어 권한을 우회할 수 있습니다.
+- **suggestion**: 인증 미들웨어가 검증한 JWT/세션의 사용자 ID를 request.user 등 신뢰 가능한 컨텍스트에서 읽고, 클라이언트 제공 X-User-ID는 내부 게이트웨이에서만 주입되도록 제한하세요.
+
+### P0-02 — services/submission/src/submission/submission.service.ts:59
+- **category**: security
+- **message**: 멱등성 조회가 userId로 스코프되지 않아 같은 studyId에서 idempotencyKey가 충돌하면 다른 사용자의 제출 엔티티(코드 포함)를 반환할 수 있습니다.
+- **suggestion**: 멱등성 키 조회 조건에 userId를 포함하고, DB에도 (study_id, user_id, idempotency_key) 복합 유니크 제약을 추가하세요.
+
+### P0-03 — services/submission/src/submission/submission.controller.ts:267
+- **category**: security
+- **message**: AI 만족도 등록/수정 시 submissionId가 현재 x-study-id에 속하는지 검증하지 않아 다른 스터디 제출에 만족도를 쓰는 IDOR가 가능합니다.
+- **suggestion**: x-study-id를 컨트롤러에서 받아 submission.studyId와 일치하는지 확인한 뒤 upsert하도록 서비스 메서드에 studyId 검증을 추가하세요.
+
+## P1 (재검증 필수)
+
+### P1-01 — services/submission/src/app.module.ts:41
+- **category**: security
+- **message**: PostgreSQL SSL 설정에서 rejectUnauthorized=false를 사용해 DB 인증서 검증을 비활성화하고 있어 중간자 공격에 취약합니다.
+- **suggestion**: 프로덕션에서는 CA 인증서를 설정하고 rejectUnauthorized=true를 사용하거나, 환경별로 로컬 개발에서만 검증 비활성화를 허용하세요.
+
+### P1-02 — services/submission/src/common/guards/study-member.guard.ts:94
+- **category**: security
+- **message**: 헤더에서 받은 studyId와 userId를 URL 경로에 그대로 삽입해 내부 Gateway 요청 경로 조작이 가능합니다.
+- **suggestion**: studyId/userId 형식을 UUID 또는 숫자 등으로 검증하고, URL에 넣을 때 encodeURIComponent를 적용하세요.
+
+### P1-03 — services/submission/src/common/guards/study-member.guard.ts:93
+- **category**: performance
+- **message**: Gateway 멤버십 확인 fetch에 타임아웃이 없어 Gateway 지연 시 요청 처리가 무기한 대기할 수 있습니다.
+- **suggestion**: AbortController 기반 타임아웃을 설정하고 실패 시 명확한 에러 처리와 재시도 정책을 분리하세요.
+
+### P1-04 — services/submission/src/common/guards/study-member.guard.ts:118
+- **category**: security
+- **message**: Gateway 응답의 role 값을 검증하지 않고 캐싱 및 인가 성공 처리하여 비정상 role도 접근을 허용합니다.
+- **suggestion**: data.role이 ADMIN 또는 MEMBER인지 확인한 뒤에만 request에 주입하고 Redis에 저장하세요.
+
+### P1-05 — services/submission/src/common/metrics/metrics.controller.ts:21
+- **category**: security
+- **message**: /metrics 엔드포인트가 인증 없이 노출되어 내부 경로, 상태 코드, 트래픽 정보를 외부에 공개할 수 있습니다.
+- **suggestion**: Prometheus 접근망에서만 접근하도록 네트워크 정책을 적용하거나 InternalKeyGuard/IP allowlist 등 별도 보호를 추가하세요.
+
+### P1-06 — services/submission/src/common/metrics/metrics.module.ts:47
+- **category**: performance
+- **message**: httpActiveRequests 감소를 tap next/error에서만 수행해 complete-only 응답이나 구독 해제 시 활성 요청 수가 누적될 수 있습니다.
+- **suggestion**: tap 대신 finalize에서 httpActiveRequests.dec()를 호출하고, duration/total 기록도 finalize 기반으로 정리하세요.
+
+### P1-07 — services/submission/src/database/data-source.ts:22
+- **category**: security
+- **message**: DATABASE_SSL=true일 때 TLS 인증서 검증을 비활성화하여 중간자 공격에 취약합니다.
+- **suggestion**: 운영 환경에서는 rejectUnauthorized를 true로 두고, 필요한 경우 CA 인증서를 ssl.ca로 명시하세요.
+
+### P1-08 — services/submission/src/common/metrics/metrics.service.ts:50
+- **category**: correctness
+- **message**: SERVICE_NAME 값을 검증 없이 Prometheus 메트릭 이름에 사용하여 하이픈 등 허용되지 않는 문자가 있으면 서비스 시작 시 예외가 발생할 수 있습니다.
+- **suggestion**: SERVICE_NAME을 [A-Za-z_:][A-Za-z0-9_:]* 규칙에 맞게 정규화하거나 잘못된 값이면 기본값으로 대체하세요.
+
+### P1-09 — services/submission/src/database/migrations/1709000004000-AddPublicIdToSubmissions.ts:28
+- **category**: performance
+- **message**: 기존 submissions 전체를 단일 UPDATE로 백필하여 대용량 테이블에서 긴 락, WAL 급증, 배포 지연을 유발할 수 있습니다.
+- **suggestion**: 배치 단위 백필로 나누고, NOT NULL 및 유니크 제약 검증은 별도 마이그레이션 단계로 분리하세요.
+
+### P1-10 — services/submission/src/database/migrations/1709000004000-AddPublicIdToSubmissions.ts:37
+- **category**: correctness
+- **message**: 마이그레이션 내부에서 COMMIT/BEGIN을 직접 실행해 TypeORM의 트랜잭션 관리와 충돌할 수 있습니다.
+- **suggestion**: 마이그레이션 클래스에 transaction = false를 설정하고 수동 COMMIT/BEGIN 없이 CREATE INDEX CONCURRENTLY를 실행하세요.
+
+### P1-11 — services/submission/src/database/migrations/1709000008000-AddIsLateToSubmissions.ts:22
+- **category**: data-integrity
+- **message**: up은 IF NOT EXISTS로 컬럼이 이미 있던 경우도 성공하지만 down은 무조건 is_late 컬럼을 삭제해 기존 데이터를 제거할 수 있습니다.
+- **suggestion**: down에서도 컬럼 소유 여부를 보장하거나 DROP COLUMN IF EXISTS 사용 전 이 마이그레이션이 생성한 컬럼인지 확인하도록 롤백을 보수적으로 바꾸세요.
+
+### P1-12 — services/submission/src/database/migrations/1709000010000-CreateReviewTables.ts:32
+- **category**: data-integrity
+- **message**: createTable(..., true)로 기존 review_comments 테이블이 있어도 통과하지만 down은 해당 테이블을 무조건 삭제해 기존 데이터를 잃을 수 있습니다.
+- **suggestion**: IF NOT EXISTS 방식 대신 중복 테이블이면 실패시키거나, down에서 이 마이그레이션이 생성한 객체만 제거하도록 가드하세요.
+
+### P1-13 — services/submission/src/database/migrations/1709000010000-CreateReviewTables.ts:112
+- **category**: data-integrity
+- **message**: soft-delete 컬럼을 둔 리뷰 댓글이 submissions 삭제 시 FK CASCADE로 물리 삭제되어 리뷰 이력과 감사 데이터를 잃을 수 있습니다.
+- **suggestion**: 삭제 정책을 RESTRICT 또는 SET NULL로 바꾸거나, 제출 삭제 시 서비스 계층에서 댓글도 soft-delete하는 흐름으로 분리하세요.
+
+### P1-14 — services/submission/src/database/migrations/1709000010000-CreateReviewTables.ts:187
+- **category**: data-integrity
+- **message**: soft-delete 대상인 답글이 댓글 hard delete 시 CASCADE로 물리 삭제되어 복구 가능한 삭제 모델과 충돌합니다.
+- **suggestion**: FK onDelete를 RESTRICT로 바꾸고 댓글 삭제는 soft-delete 전파 로직으로 처리하세요.
+
+### P1-15 — services/submission/src/database/migrations/1709000010000-CreateReviewTables.ts:193
+- **category**: correctness
+- **message**: 마이그레이션 중간에 COMMIT 후 여러 CREATE INDEX CONCURRENTLY를 실행하므로 인덱스 생성 중 하나가 실패하면 테이블/FK만 적용된 부분 적용 상태가 남습니다.
+- **suggestion**: 해당 마이그레이션을 transaction=false로 명시하거나 테이블 생성과 concurrent index 생성을 별도 마이그레이션으로 분리해 실패 단위를 줄이세요.
+
+### P1-16 — services/submission/src/database/migrations/1709000012000-AddReplyDeletedAtIndex.ts:16
+- **category**: correctness
+- **message**: 수동 COMMIT/BEGIN 패턴은 마이그레이션 러너의 트랜잭션 상태와 어긋날 수 있고, CREATE INDEX 실패 시 트랜잭션 복구 없이 실패할 수 있습니다.
+- **suggestion**: MigrationInterface에서 transaction=false를 명시하고 수동 COMMIT/BEGIN을 제거하거나, concurrent index 전용 마이그레이션으로 분리하세요.
+
+### P1-17 — services/submission/src/database/migrations/1709000016000-AddSubmissionIndexes.ts:12
+- **category**: performance
+- **message**: submissions에 일반 CREATE INDEX를 사용해 대용량 테이블에서는 쓰기 락과 배포 지연을 유발할 수 있습니다.
+- **suggestion**: PostgreSQL 운영 환경에서는 CREATE INDEX CONCURRENTLY IF NOT EXISTS를 사용하고 마이그레이션을 transaction=false로 실행하세요.
+
+### P1-18 — services/submission/src/draft/draft.service.ts:39
+- **category**: correctness
+- **message**: UPSERT라고 설명하지만 findOne 후 save를 수행해 동시 자동저장 요청이 들어오면 중복 삽입 경합으로 unique constraint 예외가 발생할 수 있습니다.
+- **suggestion**: (studyId,userId,problemId) unique key를 대상으로 repository.upsert 또는 INSERT ... ON CONFLICT DO UPDATE를 사용하고, 필요하면 unique violation 재시도 처리를 추가하세요.
+
+### P1-19 — services/submission/src/review/review.controller.ts:135
+- **category**: security
+- **message**: 대댓글 목록 조회가 x-study-id를 받지 않아 StudyMemberGuard가 확인한 스터디와 대상 댓글의 스터디를 바인딩하지 못합니다. commentPublicId를 알면 다른 스터디 댓글의 답글을 조회할 수 있는 IDOR 위험이 있습니다.
+- **suggestion**: 컨트롤러에서 x-study-id를 서비스로 전달하고, 서비스에서 댓글의 studyId 또는 연결된 submission.studyId가 요청 studyId와 일치하는지 검증하세요.
+
+### P1-20 — services/submission/src/review/review.service.ts:194
+- **category**: security
+- **message**: findRepliesByCommentPublicId가 commentPublicId만으로 댓글을 찾고 studyId 검증 없이 답글을 반환합니다. 스터디 리소스 경계가 우회될 수 있습니다.
+- **suggestion**: 메서드 인자로 studyId를 추가하고 ReviewComment.studyId 또는 Submission.studyId 조건을 함께 걸어 조회하세요.
+
+### P1-21 — services/submission/src/review/review.controller.ts:83
+- **category**: security
+- **message**: 댓글 수정 엔드포인트가 x-study-id를 서비스에 전달하지 않아 현재 요청의 스터디 멤버십과 수정 대상 댓글의 스터디가 연결되지 않습니다.
+- **suggestion**: updateComment/deleteComment/updateReply/deleteReply 모두 x-study-id를 전달하고 서비스에서 대상 리소스의 studyId와 비교하세요.
+
+### P1-22 — services/submission/src/review/review.service.ts:115
+- **category**: security
+- **message**: 댓글 수정이 authorId만 검증하고 studyId를 검증하지 않습니다. 사용자가 다른 스터디 컨텍스트로 자신의 과거 댓글을 수정하는 등 스터디 권한 경계를 우회할 수 있습니다.
+- **suggestion**: publicId 조회 조건 또는 후속 검증에 studyId를 포함하고, 컨트롤러에서 전달된 x-study-id와 댓글의 studyId가 일치하지 않으면 ForbiddenException을 던지세요.
+
+### P1-23 — services/submission/src/review/review.service.ts:217
+- **category**: security
+- **message**: 답글 수정/삭제가 답글 작성자만 확인하고 원본 댓글의 studyId를 확인하지 않습니다. 답글 publicId를 알면 현재 스터디 권한과 무관하게 접근될 수 있습니다.
+- **suggestion**: 답글 조회 시 comment 관계를 함께 로드하거나 조인하여 comment.studyId를 검증한 뒤 수정/삭제하세요.
+
+### P1-24 — services/submission/src/saga/mq-publisher.service.ts:128
+- **category**: correctness
+- **message**: 재연결 타이머에서 onModuleInit을 호출하지만 onModuleInit 내부 catch가 오류를 삼켜 실패해도 reconnectAttempt를 0으로 초기화하고 성공 로그를 남깁니다. 실패 루프가 1초 주기로 고정되고 상태가 잘못 기록됩니다.
+- **suggestion**: 연결 초기화 로직을 별도 메서드로 분리해 실패 시 예외를 다시 던지거나 boolean 결과를 반환하게 하고, 실제 연결 성공 후에만 reconnectAttempt를 초기화하세요.
+
+### P1-25 — services/submission/src/saga/mq-publisher.service.ts:60
+- **category**: correctness
+- **message**: 종료 중 channel/connection close 이벤트가 scheduleReconnect를 호출할 수 있어 onModuleDestroy 이후에도 RabbitMQ 재연결 타이머가 살아날 수 있습니다.
+- **suggestion**: isShuttingDown 플래그를 추가하고 onModuleDestroy 시작 시 true로 설정한 뒤 close/error 핸들러와 scheduleReconnect에서 재연결을 건너뛰세요.
+
+### P1-26 — services/submission/src/saga/mq-publisher.service.ts:174
+- **category**: data-integrity
+- **message**: 일반 Channel.publish 반환 성공은 브로커 확인이 아니므로 프로세스 종료나 연결 장애 시 DB 상태는 큐잉 완료인데 메시지는 유실될 수 있습니다.
+- **suggestion**: ConfirmChannel을 사용해 waitForConfirms 또는 publish 콜백으로 브로커 ack를 확인하거나 outbox 패턴으로 DB 상태 전이와 메시지 발행을 복구 가능하게 만드세요.
+
+### P1-27 — services/submission/src/saga/mq-publisher.service.ts:176
+- **category**: data-integrity
+- **message**: channel.publish가 false를 반환해도 메시지는 내부 버퍼에 적재된 상태일 수 있습니다. 이를 실패로 보고 같은 메시지를 재시도하면 중복 발행이 발생할 수 있습니다.
+- **suggestion**: false는 백프레셔로 처리해 drain을 기다리거나 ConfirmChannel ack 기준으로 성공/실패를 판단하고, 같은 메시지를 즉시 재발행하지 마세요.
+
+### P1-28 — services/submission/src/saga/saga-orchestrator.service.ts:81
+- **category**: performance
+- **message**: 시작 시 미완료 Saga를 take 없이 모두 조회합니다. 장애 후 미완료 제출이 많으면 부팅 시 메모리와 DB 부하가 급증할 수 있습니다.
+- **suggestion**: 배치 크기와 페이지네이션을 적용해 일정 개수씩 재개하고, sagaStep/createdAt 조건에 맞는 인덱스를 사용하세요.
+
+### P1-29 — services/submission/src/saga/saga-orchestrator.service.ts:108
+- **category**: correctness
+- **message**: setInterval이 이전 checkSagaTimeouts 실행 완료를 기다리지 않아 체크가 2분을 넘기면 동일 Saga를 동시에 재개하고 MQ 메시지를 중복 발행할 수 있습니다.
+- **suggestion**: 실행 중 플래그나 분산 락/원자적 claim 업데이트를 추가해 타임아웃 체크가 겹치지 않게 하세요.
+
+### P1-30 — services/submission/src/saga/saga-orchestrator.service.ts:296
+- **category**: performance
+- **message**: AI quota 체크 fetch에 타임아웃이 없어 AI Analysis Service 응답이 멈추면 Saga 진행이 무기한 대기할 수 있습니다.
+- **suggestion**: fetch 옵션에 AbortSignal.timeout을 추가하고 타임아웃 시 명확한 보상/재시도 정책을 적용하세요.
+
+### P1-31 — services/submission/src/saga/saga-orchestrator.service.ts:307
+- **category**: data-integrity
+- **message**: quota 체크 API 실패 시 true를 반환해 AI 분석 한도를 fail-open으로 우회합니다. 장애 상황에서 사용자별 일일 한도가 초과될 수 있습니다.
+- **suggestion**: quota 서비스 장애 시 재시도 후 큐잉을 보류하거나 fail-closed로 처리하고, 사용자 경험이 필요하면 별도 지연 상태를 저장하세요.
+
+### P1-32 — services/submission/src/study-note/study-note.service.ts:38
+- **category**: data-integrity
+- **message**: UPSERT가 findOne 후 save로 분리되어 동시 요청 시 두 요청이 모두 미존재로 판단한 뒤 unique constraint 충돌로 500 오류가 발생할 수 있습니다.
+- **suggestion**: TypeORM upsert 또는 INSERT ... ON CONFLICT DO UPDATE를 사용해 problemId+studyId 기준의 원자적 UPSERT로 변경하세요.
+
+### P1-33 — services/submission/src/submission/submission.controller.ts:294
+- **category**: security
+- **message**: AI 만족도 통계 조회가 submissionId의 스터디 소속을 확인하지 않아 임의 제출의 만족도 집계를 조회할 수 있습니다.
+- **suggestion**: x-study-id를 받아 submission.studyId와 비교하거나, 통계 조회 쿼리를 submissionId와 studyId 조건으로 제한하세요.
+
+### P1-34 — services/submission/src/submission/submission.service.ts:57
+- **category**: data-integrity
+- **message**: idempotencyKey 중복 확인과 저장이 원자적이지 않아 동시 요청에서 중복 제출이 생성될 수 있습니다.
+- **suggestion**: 복합 유니크 인덱스를 추가하고 insert/upsert 또는 트랜잭션으로 중복 키 충돌을 처리하세요.
+
+### P1-35 — services/submission/src/submission/submission.entity.ts:72
+- **category**: data-integrity
+- **message**: idempotency_key에 유니크 제약이 없어 애플리케이션 레벨 멱등성 검사가 경쟁 상태를 막지 못합니다.
+- **suggestion**: nullable 정책을 고려해 (study_id, user_id, idempotency_key) 부분 유니크 인덱스를 마이그레이션으로 추가하세요.
+
+### P1-36 — services/submission/src/submission/submission.controller.ts:64
+- **category**: correctness
+- **message**: 제출 저장과 Draft 삭제가 트랜잭션으로 묶여 있지 않아 Draft 삭제 실패 시 제출은 생성됐는데 API는 실패하는 부분 실패 상태가 됩니다.
+- **suggestion**: 정식 제출과 Draft 삭제를 하나의 서비스 트랜잭션으로 이동하거나, Draft 삭제 실패를 별도 보상/재시도 로직으로 처리하세요.
+
+### P1-37 — services/submission/src/submission/submission.service.ts:210
+- **category**: performance
+- **message**: findAllByStudy가 페이지네이션 없이 스터디 전체 제출을 반환해 큰 스터디에서 메모리와 응답 시간이 급증할 수 있습니다.
+- **suggestion**: limit/cursor 기반 페이지네이션을 추가하고 호출부도 페이지 단위로 조회하도록 변경하세요.
+
+### P1-38 — services/submission/src/submission/submission.service.ts:467
+- **category**: performance
+- **message**: 특정 유저의 전체 제출 내역을 제한 없이 조회해 장기 사용자의 통계 요청이 과도한 DB/메모리 부하를 만들 수 있습니다.
+- **suggestion**: 통계에 필요한 집계를 DB에서 직접 계산하거나 기간/개수 제한 및 페이지네이션을 적용하세요.
+
+### P1-39 — services/submission/src/submission/submission-internal.controller.ts:138
+- **category**: data-integrity
+- **message**: activeProblemIds를 쉼표로 분리만 하고 UUID 형식이나 개수 제한을 검증하지 않아 잘못된 UUID는 DB 오류를, 과도한 개수는 무거운 IN 쿼리를 유발합니다.
+- **suggestion**: 각 ID를 UUID로 검증하고 최대 개수를 제한한 뒤 서비스에 전달하세요.
+
+### P1-40 — services/submission/src/submission/submission.service.ts:503
+- **category**: performance
+- **message**: Problem Service 호출에 timeout이 없어 외부 서비스 지연 시 제출 생성 요청이 무기한 대기할 수 있습니다.
+- **suggestion**: AbortController 또는 HTTP 클라이언트 timeout을 설정하고 timeout 발생 시 명시적인 fallback/로그를 남기세요.
+
+### P1-41 — services/submission/src/submission/submission.service.ts:239
+- **category**: correctness
+- **message**: analysisStatus가 skipped인 경우 DTO에서는 허용하지만 sagaStep 전환이나 aiSkipped 갱신이 없어 제출이 진행 중 상태로 남을 수 있습니다.
+- **suggestion**: skipped 상태의 의미를 정의하고 aiSkipped=true 및 DONE/AI_SKIPPED 등 일관된 Saga 전이를 수행하세요.
+
+## P2 (비차단)
+
+### P2-01 — services/submission/src/common/guards/internal-key.guard.ts:48
+- **category**: security
+- **message**: 키 길이가 다르면 즉시 false를 반환해 기대 키 길이를 타이밍으로 추정할 여지가 있습니다.
+- **suggestion**: 고정 길이 HMAC 해시끼리 timingSafeEqual을 수행하거나 길이 차이에서도 동일한 비교 비용이 들도록 처리하세요.
+
+### P2-02 — services/submission/src/common/logger/structured-logger.service.ts:88
+- **category**: security
+- **message**: extra 필드를 그대로 로그에 병합해 Authorization, cookie, password 같은 민감 값이 구조화 로그에 남을 수 있습니다.
+- **suggestion**: 민감 키 denylist/allowlist 기반 redaction을 적용하고 객체 내부의 중첩 민감 값도 마스킹하세요.
+
+### P2-03 — services/submission/src/common/filters/global-exception.filter.ts:57
+- **category**: maintainability
+- **message**: logger.error에 stack 문자열을 두 번째 인자로 넘겨 StructuredLoggerService가 이를 스택이 아니라 context로 처리합니다.
+- **suggestion**: Error 객체를 전달하거나 StructuredLoggerService의 error 시그니처를 Nest Logger 호환 형태로 맞춰 스택이 error.stack에 기록되게 하세요.
+
+### P2-04 — services/submission/src/database/migrations/1700000000001-AddAiAnalysisColumns.ts:21
+- **category**: data-integrity
+- **message**: ai_score가 주석상 0-100 점수인데 DB CHECK 제약이 없어 음수나 100 초과 값이 저장될 수 있습니다.
+- **suggestion**: CHECK (ai_score IS NULL OR ai_score BETWEEN 0 AND 100) 제약을 추가하세요.
+
+### P2-05 — services/submission/src/database/migrations/1700000000001-AddAiAnalysisColumns.ts:23
+- **category**: data-integrity
+- **message**: ai_analysis_status가 nullable varchar라서 NULL 또는 정의되지 않은 상태값이 저장될 수 있습니다.
+- **suggestion**: NOT NULL과 CHECK 또는 ENUM으로 pending/completed/delayed/failed만 허용하세요.
+
+### P2-06 — services/submission/src/database/migrations/1709000016000-AddSubmissionIndexes.ts:12
+- **category**: correctness
+- **message**: 인덱스 생성에 IF NOT EXISTS가 없어 부분 적용 후 재실행하거나 이미 같은 인덱스가 있는 환경에서 마이그레이션이 실패합니다.
+- **suggestion**: 두 CREATE INDEX 문에 IF NOT EXISTS를 추가하고 down의 DROP INDEX와 동일한 이름을 명시적으로 따옴표 처리하세요.
+
+### P2-07 — services/submission/src/draft/draft.entity.ts:32
+- **category**: data-integrity
+- **message**: code 컬럼이 DB 레벨에서 길이 제한 없이 text로 열려 있어 DTO를 우회한 내부 저장 경로에서 과도한 크기의 초안이 저장될 수 있습니다.
+- **suggestion**: DTO의 100KB 제한과 동일한 CHECK 제약 또는 varchar 길이 제한을 DB/엔티티에도 추가하세요.
+
+### P2-08 — services/submission/src/review/dto/create-comment.dto.ts:12
+- **category**: correctness
+- **message**: lineNumber가 정수인지까지만 검증되어 0 또는 음수 줄 번호 댓글을 허용합니다.
+- **suggestion**: @Min(1)을 추가하고, 가능하면 제출 코드의 실제 라인 수 상한도 서비스 레벨에서 검증하세요.
+
+### P2-09 — services/submission/src/review/dto/create-comment.dto.ts:17
+- **category**: data-integrity
+- **message**: IsNotEmpty는 공백 문자열을 거르지 못해 내용이 공백뿐인 댓글이 생성될 수 있습니다.
+- **suggestion**: @Transform으로 trim한 뒤 IsNotEmpty를 적용하거나 커스텀 validator로 공백 전용 content를 거부하세요.
+
+### P2-10 — services/submission/src/review/dto/create-reply.dto.ts:13
+- **category**: data-integrity
+- **message**: IsNotEmpty는 공백 문자열을 거르지 못해 내용이 공백뿐인 답글이 생성될 수 있습니다.
+- **suggestion**: @Transform으로 trim한 뒤 IsNotEmpty를 적용하거나 커스텀 validator로 공백 전용 content를 거부하세요.
+
+### P2-11 — services/submission/src/review/dto/update-comment.dto.ts:10
+- **category**: data-integrity
+- **message**: IsNotEmpty는 공백 문자열을 거르지 못해 댓글 수정 시 내용을 공백만으로 바꿀 수 있습니다.
+- **suggestion**: @Transform으로 trim한 뒤 IsNotEmpty를 적용하거나 커스텀 validator로 공백 전용 content를 거부하세요.
+
+### P2-12 — services/submission/src/saga/saga-orchestrator.service.ts:70
+- **category**: correctness
+- **message**: PROBLEM_SERVICE_KEY가 없을 때 빈 문자열을 기본값으로 사용해 설정 누락을 숨깁니다. 내부 API 호출이 계속 실패해도 배포 시점에 감지하기 어렵습니다.
+- **suggestion**: 필수 내부 키라면 getOrThrow를 사용하고, 선택 값이라면 명시적으로 비활성화 경로와 로그를 분리하세요.
+
+### P2-13 — services/submission/src/review/review-comment.entity.ts:31
+- **category**: performance
+- **message**: 댓글 목록 조회가 submissionId, studyId, deletedAt, createdAt로 필터/정렬하지만 해당 복합 인덱스가 엔티티에 정의되어 있지 않습니다.
+- **suggestion**: review_comments에 (submissionId, studyId, deletedAt, createdAt) 또는 실제 쿼리 패턴에 맞는 복합 인덱스를 추가하세요.
+
+### P2-14 — services/submission/src/review/review-reply.entity.ts:29
+- **category**: performance
+- **message**: 답글 조회가 commentId, deletedAt, createdAt로 필터/정렬하지만 해당 인덱스가 없어 답글 수가 늘면 조회 비용이 커질 수 있습니다.
+- **suggestion**: review_replies에 (commentId, deletedAt, createdAt) 복합 인덱스를 추가하세요.
+
+### P2-15 — services/submission/src/study-note/study-note.controller.ts:40
+- **category**: correctness
+- **message**: x-study-id 헤더를 UUID로 검증하지 않아 잘못된 값이 서비스와 uuid 컬럼 쿼리로 전달되면 DB 오류가 400 대신 500으로 노출될 수 있습니다.
+- **suggestion**: @Headers('x-study-id', ParseUUIDPipe)처럼 헤더도 UUID 파이프로 검증하거나 전용 헤더 DTO/파이프를 추가하세요.
+
+### P2-16 — services/submission/src/study-note/study-note.controller.ts:39
+- **category**: correctness
+- **message**: x-user-id 헤더를 검증하지 않고 전달하며 서비스에서는 사용하지 않아 누락/오염된 사용자 식별자가 조용히 무시됩니다.
+- **suggestion**: 사용자 식별자가 필요 없다면 파라미터와 서비스 인자를 제거하고, 필요하다면 UUID 검증 및 소유권/감사 로직에 실제로 사용하세요.
+
+### P2-17 — services/submission/src/study-note/study-note.service.ts:33
+- **category**: maintainability
+- **message**: upsert 함수가 20라인을 초과하고 조회, 갱신, 생성, 로깅 책임을 한 메서드에 함께 담고 있습니다.
+- **suggestion**: 원자적 upsert 도입과 함께 생성/갱신 결과 처리 및 로깅을 작은 헬퍼로 분리해 메서드 길이와 책임을 줄이세요.
+
+### P2-18 — services/submission/src/submission/ai-satisfaction.entity.ts:22
+- **category**: data-integrity
+- **message**: rating 컬럼이 smallint일 뿐 DB 레벨에서 1 또는 -1만 허용하는 제약이 없어 DTO를 우회한 쓰기에서 잘못된 값이 저장될 수 있습니다.
+- **suggestion**: 엔티티에 Check 제약을 추가하거나 마이그레이션으로 CHECK (rating IN (1, -1)) 제약을 생성하세요.
+
+### P2-19 — services/submission/src/submission/dto/github-success-callback.dto.ts:12
+- **category**: data-integrity
+- **message**: filePath 길이 검증이 없어 github_file_path 컬럼 길이(500)를 초과하면 내부 콜백이 DB 오류로 실패할 수 있습니다.
+- **suggestion**: @MaxLength(500)을 추가하고 허용 가능한 경로 패턴도 함께 검증하세요.
+
+### P2-20 — services/submission/src/submission/submission-internal.controller.ts:116
+- **category**: correctness
+- **message**: studyId 쿼리 파라미터를 UUID로 검증하지 않아 잘못된 값이 서비스/DB 계층에서 500 오류로 이어질 수 있습니다.
+- **suggestion**: @Query('studyId', ParseUUIDPipe)를 사용하거나 DTO를 만들어 UUID 검증을 적용하세요.
+
+### P2-21 — services/submission/src/submission/submission.service.ts:278
+- **category**: maintainability
+- **message**: getStudyStats가 과도하게 길고 여러 통계 쿼리 조립을 한 메서드에 모두 포함해 변경과 테스트가 어렵습니다.
+- **suggestion**: 주차별/멤버별/문제별/사용자별 통계를 전용 private 메서드로 분리하고 반환 타입도 별도 인터페이스로 추출하세요.
+
+## Low (선택적 개선)
+
+(없음)
+
