@@ -66,4 +66,17 @@ describe('AuthGuard', () => {
     expect(mockReplace).toHaveBeenCalledWith('/login?redirect=%2F');
     expect(screen.queryByText('보호된 콘텐츠')).not.toBeInTheDocument();
   });
+
+  it('미인증 사용자는 현재 경로를 redirect 파라미터로 전달한다 (locale-aware)', () => {
+    mockPathname = '/dashboard';
+    mockUseAuth.mockReturnValue({ isAuthenticated: false, isLoading: false });
+    render(
+      <AuthGuard>
+        <div>보호된 콘텐츠</div>
+      </AuthGuard>,
+    );
+    // /en/dashboard → usePathname이 locale 제거 → /dashboard
+    expect(mockReplace).toHaveBeenCalledWith('/login?redirect=%2Fdashboard');
+    expect(screen.queryByText('보호된 콘텐츠')).not.toBeInTheDocument();
+  });
 });
