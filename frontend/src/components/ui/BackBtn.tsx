@@ -1,5 +1,5 @@
 /**
- * @file 뒤로가기 버튼 (Button ghost 패턴 통일)
+ * @file Back button (Button ghost pattern unified)
  * @domain common
  * @layer component
  * @related Button
@@ -8,6 +8,7 @@
 'use client';
 
 import type { ReactElement } from 'react';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -19,10 +20,12 @@ interface BackBtnProps {
 }
 
 export function BackBtn({
-  label = '뒤로',
+  label,
   href,
   className,
 }: BackBtnProps): ReactElement {
+  const t = useTranslations('ui');
+  const resolvedLabel = label ?? t('backBtn.defaultLabel');
   const router = useRouter();
 
   const handleClick = (): void => {
@@ -41,7 +44,7 @@ export function BackBtn({
       className={className}
     >
       <ChevronLeft aria-hidden="true" />
-      {label}
+      {resolvedLabel}
     </Button>
   );
 }
