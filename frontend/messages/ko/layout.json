@@ -1,0 +1,88 @@
+{
+  "appLayout": {
+    "nav": {
+      "dashboard": "대시보드",
+      "myStudies": "내 스터디",
+      "problems": "문제 목록",
+      "submissions": "제출 이력",
+      "studyRoom": "스터디룸",
+      "analytics": "통계"
+    },
+    "selectStudy": "스터디 선택",
+    "switchStudy": "스터디 전환",
+    "studyList": "스터디 목록",
+    "closeSidebar": "사이드바 닫기",
+    "toggleTheme": "테마 전환",
+    "darkMode": "다크 모드",
+    "lightMode": "라이트 모드",
+    "profile": "프로필",
+    "settings": "설정",
+    "admin": "관리자",
+    "logout": "로그아웃",
+    "demoBanner": "데모 모드 · 읽기 전용",
+    "avatarAlt": "{email} 아바타",
+    "openMenu": "메뉴 열기"
+  },
+  "topNav": {
+    "nav": {
+      "dashboard": "대시보드",
+      "problems": "문제",
+      "submissions": "제출",
+      "studyRoom": "스터디룸",
+      "analytics": "분석"
+    },
+    "mainNav": "주 내비게이션",
+    "selectStudy": "스터디 선택",
+    "switchStudy": "스터디 전환",
+    "studyList": "스터디 목록",
+    "openMenu": "메뉴 열기",
+    "closeMenu": "메뉴 닫기",
+    "toggleTheme": "테마 전환",
+    "profileMenuLabel": "{email} 프로필 메뉴",
+    "profileMenuTitle": "프로필 메뉴",
+    "profile": "프로필",
+    "settings": "설정",
+    "logout": "로그아웃",
+    "login": "로그인",
+    "avatarAlt": "{name} 아바타",
+    "defaultUser": "사용자",
+    "userInfo": "사용자 정보"
+  },
+  "studySidebar": {
+    "nav": {
+      "overview": "개요",
+      "problems": "문제",
+      "submissions": "제출",
+      "members": "멤버",
+      "settings": "설정"
+    },
+    "expandSidebar": "사이드바 확장",
+    "switchStudy": "스터디 전환",
+    "studyFallback": "스터디",
+    "studyList": "스터디 목록",
+    "collapseSidebar": "사이드바 접기",
+    "closeSidebar": "사이드바 닫기",
+    "studyNav": "스터디 내비게이션",
+    "openStudyMenu": "스터디 메뉴 열기"
+  },
+  "notificationBell": {
+    "justNow": "방금 전",
+    "minutesAgo": "{minutes}분 전",
+    "hoursAgo": "{hours}시간 전",
+    "daysAgo": "{days}일 전",
+    "label": "알림",
+    "ariaLabelUnread": "({count}개 미읽음)",
+    "ariaLabelDisconnected": "(실시간 연결 끊김)",
+    "sseDisconnectedTitle": "실시간 알림 연결이 끊어졌습니다. 60초마다 갱신됩니다.",
+    "panelTitle": "알림",
+    "panelList": "알림 목록",
+    "markAllRead": "모두 읽음",
+    "empty": "새로운 알림이 없습니다",
+    "unread": "미읽음"
+  },
+  "authShell": {},
+  "legalLayout": {
+    "privacy": "개인정보처리방침",
+    "terms": "이용약관"
+  }
+}

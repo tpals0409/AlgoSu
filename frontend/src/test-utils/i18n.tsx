@@ -20,8 +20,9 @@ import koErrors from '../../messages/ko/errors.json';
 import koDashboard from '../../messages/ko/dashboard.json';
 import koSubmissions from '../../messages/ko/submissions.json';
 import koReviews from '../../messages/ko/reviews.json';
+import koLayout from '../../messages/ko/layout.json';
 
-/** 기본 ko 메시지 (전 네임스페이스 병합) */
+/** Default ko messages (all namespaces merged) */
 const DEFAULT_MESSAGES: AbstractIntlMessages = {
   landing: koLanding,
   auth: koAuth,
@@ -30,6 +31,7 @@ const DEFAULT_MESSAGES: AbstractIntlMessages = {
   dashboard: koDashboard,
   submissions: koSubmissions,
   reviews: koReviews,
+  layout: koLayout,
 };
 
 interface RenderWithI18nOptions extends Omit<RenderOptions, 'wrapper'> {

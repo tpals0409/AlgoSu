@@ -1,0 +1,88 @@
+{
+  "appLayout": {
+    "nav": {
+      "dashboard": "Dashboard",
+      "myStudies": "My Studies",
+      "problems": "Problems",
+      "submissions": "Submissions",
+      "studyRoom": "Study Room",
+      "analytics": "Analytics"
+    },
+    "selectStudy": "Select Study",
+    "switchStudy": "Switch Study",
+    "studyList": "Study List",
+    "closeSidebar": "Close Sidebar",
+    "toggleTheme": "Toggle Theme",
+    "darkMode": "Dark Mode",
+    "lightMode": "Light Mode",
+    "profile": "Profile",
+    "settings": "Settings",
+    "admin": "Admin",
+    "logout": "Log Out",
+    "demoBanner": "Demo Mode · Read-only",
+    "avatarAlt": "{email} avatar",
+    "openMenu": "Open Menu"
+  },
+  "topNav": {
+    "nav": {
+      "dashboard": "Dashboard",
+      "problems": "Problems",
+      "submissions": "Submissions",
+      "studyRoom": "Study Room",
+      "analytics": "Analytics"
+    },
+    "mainNav": "Main Navigation",
+    "selectStudy": "Select Study",
+    "switchStudy": "Switch Study",
+    "studyList": "Study List",
+    "openMenu": "Open Menu",
+    "closeMenu": "Close Menu",
+    "toggleTheme": "Toggle Theme",
+    "profileMenuLabel": "{email} Profile Menu",
+    "profileMenuTitle": "Profile Menu",
+    "profile": "Profile",
+    "settings": "Settings",
+    "logout": "Log Out",
+    "login": "Log In",
+    "avatarAlt": "{name} avatar",
+    "defaultUser": "User",
+    "userInfo": "User Info"
+  },
+  "studySidebar": {
+    "nav": {
+      "overview": "Overview",
+      "problems": "Problems",
+      "submissions": "Submissions",
+      "members": "Members",
+      "settings": "Settings"
+    },
+    "expandSidebar": "Expand Sidebar",
+    "switchStudy": "Switch Study",
+    "studyFallback": "Study",
+    "studyList": "Study List",
+    "collapseSidebar": "Collapse Sidebar",
+    "closeSidebar": "Close Sidebar",
+    "studyNav": "Study Navigation",
+    "openStudyMenu": "Open Study Menu"
+  },
+  "notificationBell": {
+    "justNow": "Just now",
+    "minutesAgo": "{minutes}m ago",
+    "hoursAgo": "{hours}h ago",
+    "daysAgo": "{days}d ago",
+    "label": "Notifications",
+    "ariaLabelUnread": "({count} unread)",
+    "ariaLabelDisconnected": "(real-time disconnected)",
+    "sseDisconnectedTitle": "Real-time notification connection lost. Refreshing every 60 seconds.",
+    "panelTitle": "Notifications",
+    "panelList": "Notification List",
+    "markAllRead": "Mark all read",
+    "empty": "No new notifications",
+    "unread": "Unread"
+  },
+  "authShell": {},
+  "legalLayout": {
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service"
+  }
+}
