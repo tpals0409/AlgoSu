@@ -4,6 +4,8 @@ import { LandingContent } from '@/components/landing/LandingContent';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
+  useParams: () => ({ locale: 'ko' }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 jest.mock('next-themes', () => ({
