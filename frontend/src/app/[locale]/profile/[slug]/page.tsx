@@ -9,8 +9,9 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
-import Link from 'next/link';
+import { Link } from '@/i18n/navigation';
 import { User as UserIcon, BookOpen, Code2, Brain, ExternalLink, AlertCircle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { publicApi, type PublicProfile } from '@/lib/api';
 import { getAvatarSrc, getAvatarPresetKey } from '@/lib/avatars';
 import { Card } from '@/components/ui/Card';
@@ -18,6 +19,7 @@ import { Card } from '@/components/ui/Card';
 export default function PublicProfilePage(): ReactNode {
   const params = useParams();
   const slug = params?.slug as string;
+  const t = useTranslations('account');
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -45,7 +47,7 @@ export default function PublicProfilePage(): ReactNode {
       <Shell>
         <div className="flex flex-col items-center gap-3 py-16">
           <AlertCircle size={32} style={{ color: 'var(--text-3)' }} />
-          <p className="text-sm" style={{ color: 'var(--text-3)' }}>프로필을 찾을 수 없습니다.</p>
+          <p className="text-sm" style={{ color: 'var(--text-3)' }}>{t('profile.public.notFound')}</p>
         </div>
       </Shell>
     );
@@ -67,12 +69,12 @@ export default function PublicProfilePage(): ReactNode {
           />
           <div className="mt-3 text-center sm:mt-0 sm:text-left">
             <h1 className="text-xl font-bold" style={{ color: 'var(--text)' }}>
-              {profile.name ?? '이름 없음'}
+              {profile.name ?? t('profile.public.noName')}
             </h1>
             <div className="mt-2 flex flex-wrap justify-center gap-4 sm:justify-start">
-              <StatBadge icon={<Code2 size={14} />} value={profile.totalSubmissions} label="총 제출" />
+              <StatBadge icon={<Code2 size={14} />} value={profile.totalSubmissions} label={t('profile.public.totalSubmissions')} />
               {profile.averageAiScore != null && (
-                <StatBadge icon={<Brain size={14} />} value={profile.averageAiScore} label="AI 평균" />
+                <StatBadge icon={<Brain size={14} />} value={profile.averageAiScore} label={t('profile.public.aiAverage')} />
               )}
             </div>
           </div>
@@ -82,11 +84,11 @@ export default function PublicProfilePage(): ReactNode {
         <div>
           <h2 className="mb-3 text-sm font-medium" style={{ color: 'var(--text-2)' }}>
             <BookOpen size={14} className="mr-1 inline" />
-            참여 스터디
+            {t('profile.public.studies.title')}
           </h2>
           {profile.studies.length === 0 ? (
             <Card className="p-6 text-center text-sm" style={{ color: 'var(--text-3)' }}>
-              참여 중인 스터디가 없습니다.
+              {t('profile.public.studies.empty')}
             </Card>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -95,12 +97,12 @@ export default function PublicProfilePage(): ReactNode {
                   <div className="flex items-center justify-between">
                     <h3 className="font-medium" style={{ color: 'var(--text)' }}>{study.studyName}</h3>
                     <span className="text-xs" style={{ color: 'var(--text-3)' }}>
-                      <UserIcon size={12} className="mr-0.5 inline" />{study.memberCount}명
+                      <UserIcon size={12} className="mr-0.5 inline" />{t('profile.public.studies.memberCount', { count: study.memberCount })}
                     </span>
                   </div>
                   <div className="mt-2 flex gap-4 text-xs" style={{ color: 'var(--text-3)' }}>
-                    <span>제출 {study.totalSubmissions}건</span>
-                    {study.averageAiScore != null && <span>AI 평균 {study.averageAiScore}점</span>}
+                    <span>{t('profile.public.studies.submissionCount', { count: study.totalSubmissions })}</span>
+                    {study.averageAiScore != null && <span>{t('profile.public.studies.aiScore', { score: study.averageAiScore })}</span>}
                   </div>
                   {study.shareLink && (
                     <Link
@@ -108,7 +110,7 @@ export default function PublicProfilePage(): ReactNode {
                       className="mt-3 inline-flex items-center gap-1 rounded-btn px-3 py-1.5 text-xs font-medium transition-colors"
                       style={{ backgroundColor: 'var(--primary-soft)', color: 'var(--primary)' }}
                     >
-                      스터디룸 보기 <ExternalLink size={12} />
+                      {t('profile.public.studies.viewStudyRoom')} <ExternalLink size={12} />
                     </Link>
                   )}
                 </Card>
