@@ -11,6 +11,7 @@
 
 import { useState, useEffect, type ReactElement } from 'react';
 import { FileText, Save } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { studyNoteApi, type StudyNote } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -28,6 +29,7 @@ interface StudyNoteEditorProps {
  * @domain study
  */
 export function StudyNoteEditor({ problemId }: StudyNoteEditorProps): ReactElement {
+  const t = useTranslations('reviews');
   const [note, setNote] = useState<StudyNote | null>(null);
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
@@ -64,7 +66,7 @@ export function StudyNoteEditor({ problemId }: StudyNoteEditorProps): ReactEleme
       setNote(saved);
       setEditing(false);
     } catch {
-      setSaveError('저장에 실패했습니다. 다시 시도해주세요.');
+      setSaveError(t('studyNote.saveError'));
     } finally {
       setSaving(false);
     }
@@ -84,10 +86,10 @@ export function StudyNoteEditor({ problemId }: StudyNoteEditorProps): ReactEleme
       <div className="flex items-center justify-between border-b border-border px-5 py-3">
         <div className="flex items-center gap-2">
           <FileText className="h-4 w-4 text-primary" />
-          <span className="text-sm font-semibold text-text">스터디 노트</span>
+          <span className="text-sm font-semibold text-text">{t('studyNote.title')}</span>
         </div>
         <span className="rounded-badge bg-muted-soft px-2 py-0.5 text-[10px] font-medium text-muted">
-          전체 공개
+          {t('studyNote.public')}
         </span>
       </div>
 
@@ -100,8 +102,8 @@ export function StudyNoteEditor({ problemId }: StudyNoteEditorProps): ReactEleme
               onChange={(e) => setContent(e.target.value)}
               className="w-full resize-y rounded-badge border border-border bg-input-bg px-3 py-2 text-xs leading-relaxed text-text outline-none transition-colors placeholder:text-text-3 focus:border-primary"
               rows={6}
-              placeholder="스터디 노트를 작성해주세요..."
-              aria-label="스터디 노트 편집"
+              placeholder={t('studyNote.editPlaceholder')}
+              aria-label={t('studyNote.editAriaLabel')}
             />
             {saveError && (
               <p className="mt-2 text-xs text-error">{saveError}</p>
@@ -116,7 +118,7 @@ export function StudyNoteEditor({ problemId }: StudyNoteEditorProps): ReactEleme
                   setContent(note?.content ?? '');
                 }}
               >
-                취소
+                {t('studyNote.cancel')}
               </Button>
               <Button
                 variant="primary"
@@ -125,7 +127,7 @@ export function StudyNoteEditor({ problemId }: StudyNoteEditorProps): ReactEleme
                 disabled={saving || !content.trim()}
               >
                 <Save className="h-3 w-3" />
-                {saving ? '저장 중...' : '저장'}
+                {saving ? t('studyNote.saving') : t('studyNote.save')}
               </Button>
             </div>
           </div>
@@ -137,7 +139,7 @@ export function StudyNoteEditor({ problemId }: StudyNoteEditorProps): ReactEleme
               </p>
             ) : (
               <p className="text-xs text-text-3">
-                아직 작성된 노트가 없습니다.
+                {t('studyNote.empty')}
               </p>
             )}
             <div className="mt-3 flex justify-end">
@@ -147,7 +149,7 @@ export function StudyNoteEditor({ problemId }: StudyNoteEditorProps): ReactEleme
                 onClick={() => setEditing(true)}
               >
                 <FileText className="h-3 w-3" />
-                {note?.content ? '수정' : '작성'}
+                {note?.content ? t('studyNote.editButton') : t('studyNote.createButton')}
               </Button>
             </div>
           </div>
