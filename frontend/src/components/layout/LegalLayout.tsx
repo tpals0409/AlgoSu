@@ -1,22 +1,26 @@
 /**
- * @file 법적 페이지 공통 레이아웃 (privacy, terms)
+ * @file Legal page common layout (privacy, terms)
  * @domain common
  * @layer layout
  * @related /privacy, /terms
  */
 
+'use client';
+
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { useTranslations } from 'next-intl';
 
 interface LegalLayoutProps {
   readonly children: ReactNode;
 }
 
 /**
- * 법적 문서 페이지 레이아웃 — Nav + Main + Footer
- * Server Component (정적 렌더링)
+ * Legal document page layout — Nav + Main + Footer
  */
 export function LegalLayout({ children }: LegalLayoutProps): ReactNode {
+  const t = useTranslations('layout');
+
   return (
     <div className="flex min-h-screen flex-col bg-bg text-text">
       {/* Nav */}
@@ -41,11 +45,11 @@ export function LegalLayout({ children }: LegalLayoutProps): ReactNode {
         <div className="mx-auto flex max-w-3xl flex-col items-center gap-3 px-6">
           <div className="flex items-center gap-4 text-[12px] font-medium text-text-3">
             <Link href="/privacy" className="transition-colors hover:text-text">
-              개인정보처리방침
+              {t('legalLayout.privacy')}
             </Link>
-            <span aria-hidden>·</span>
+            <span aria-hidden>&middot;</span>
             <Link href="/terms" className="transition-colors hover:text-text">
-              이용약관
+              {t('legalLayout.terms')}
             </Link>
           </div>
           <p className="text-[11px] text-text-3">

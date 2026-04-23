@@ -1,22 +1,23 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithI18n } from '@/test-utils/i18n';
 import { LegalLayout } from '../LegalLayout';
 
 describe('LegalLayout', () => {
-  it('children과 nav/footer가 렌더링된다', () => {
-    render(
+  it('renders children with nav and footer', () => {
+    renderWithI18n(
       <LegalLayout>
-        <p>테스트 콘텐츠</p>
+        <p>Test content</p>
       </LegalLayout>,
     );
 
     expect(screen.getByText('AlgoSu')).toBeInTheDocument();
-    expect(screen.getByText('테스트 콘텐츠')).toBeInTheDocument();
+    expect(screen.getByText('Test content')).toBeInTheDocument();
     expect(screen.getAllByText(/개인정보처리방침/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/이용약관/).length).toBeGreaterThanOrEqual(1);
   });
 
-  it('privacy/terms 링크가 존재한다', () => {
-    render(
+  it('has privacy/terms links', () => {
+    renderWithI18n(
       <LegalLayout>
         <div />
       </LegalLayout>,
