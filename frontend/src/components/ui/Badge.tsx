@@ -1,5 +1,5 @@
 /**
- * @file 범용 상태 뱃지 컴포넌트
+ * @file General-purpose status badge component
  * @domain common
  * @layer component
  * @related DiffBadge, StatusBadge, ScoreBadge, LangBadge
@@ -38,14 +38,14 @@ const badgeVariants = cva(
 export interface BadgeProps
   extends React.HTMLAttributes<HTMLSpanElement>,
     VariantProps<typeof badgeVariants> {
-  /** true 일 때 텍스트 앞에 currentColor dot 표시 */
+  /** When true, displays a currentColor dot before text */
   readonly dot?: boolean;
 }
 
 // ─── RENDER ──────────────────────────────────
 
 /**
- * 범용 뱃지 컴포넌트 (상태/정보 표시)
+ * General-purpose badge component (status/info display)
  * @domain common
  */
 const Badge = React.memo(function Badge({ className, variant, dot, children, ...props }: BadgeProps): React.ReactElement {
