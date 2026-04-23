@@ -1,19 +1,20 @@
 /**
- * @file 인증 가드 Provider
+ * @file Authentication guard Provider
  * @domain common
  * @layer component
  * @related src/i18n/routing.ts, src/middleware.ts, src/app/[locale]/layout.tsx
  *
- * 자식 렌더링 전 인증 상태를 검증한다.
- * 미인증 시 /login으로 리디렉트, 로딩 중 Skeleton 표시.
+ * Verifies authentication state before rendering children.
+ * Redirects unauthenticated users to /login, displays Skeleton while loading.
  *
- * next-intl usePathname을 사용하여 locale prefix를 제거한 경로를
- * redirect 파라미터로 전달 — locale 중립 경로로 로그인 후 복귀 보장.
+ * Uses next-intl usePathname to strip locale prefix from the path,
+ * passing a locale-neutral route as the redirect parameter
+ * to ensure post-login return works correctly.
  *
- * @constraint NextIntlClientProvider 컨텍스트 필수 — [locale] 세그먼트 하위에서만 동작.
- *   createNavigation(routing).usePathname()은 내부적으로 useLocale()을 호출하며,
- *   NextIntlClientProvider가 상위 트리에 없으면 런타임 에러가 발생한다.
- *   app/layout.tsx(root) 또는 [locale] 트리 밖에서 사용 금지.
+ * @constraint Requires NextIntlClientProvider context — only works under [locale] segment.
+ *   createNavigation(routing).usePathname() internally calls useLocale(),
+ *   which throws a runtime error if NextIntlClientProvider is not in the tree.
+ *   Do not use outside app/layout.tsx (root) or the [locale] subtree.
  */
 
 'use client';
@@ -26,8 +27,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/Skeleton';
 
 /**
- * locale prefix를 제거한 경로를 반환하는 next-intl 탐색 헬퍼.
- * /en/dashboard → /dashboard, /dashboard → /dashboard
+ * Returns a path with locale prefix stripped.
+ * /en/dashboard -> /dashboard, /dashboard -> /dashboard
  */
 const { usePathname } = createNavigation(routing);
 
