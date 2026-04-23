@@ -30,6 +30,9 @@ export default async function ProblemNotFound(): Promise<ReactNode> {
       <p className="mt-4 text-sm text-text-3">
         {t('problemNotFound.title')}
       </p>
+      <p className="mt-2 text-xs text-text-3">
+        {t('problemNotFound.description')}
+      </p>
       <Link
         href="/problems"
         className="mt-6 rounded-btn bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:brightness-110"
