@@ -12,6 +12,7 @@
 
 import { useState } from 'react';
 import { MessageSquarePlus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import {
   Sheet,
   SheetContent,
@@ -24,14 +25,15 @@ import { BugReportForm } from './BugReportForm';
 
 type Tab = 'feedback' | 'bug';
 
-const TABS: { key: Tab; label: string }[] = [
-  { key: 'feedback', label: '피드백' },
-  { key: 'bug', label: '버그 리포트' },
-];
-
 export function FeedbackWidget() {
+  const t = useTranslations('feedback');
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>('feedback');
+
+  const tabs: { key: Tab; label: string }[] = [
+    { key: 'feedback', label: t('widget.tabFeedback') },
+    { key: 'bug', label: t('widget.tabBugReport') },
+  ];
 
   const handleSuccess = () => {
     // Close the sheet after a short delay so the user sees the toast
@@ -44,7 +46,7 @@ export function FeedbackWidget() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="피드백 보내기"
+        aria-label={t('widget.openButton')}
         className="fixed bottom-36 right-4 z-40 rounded-full p-3 shadow-lg transition-transform hover:scale-105 md:bottom-20"
         style={{ background: 'var(--primary)', color: 'white' }}
       >
@@ -63,13 +65,13 @@ export function FeedbackWidget() {
               className="text-[16px] font-bold"
               style={{ color: 'var(--text)' }}
             >
-              의견 보내기
+              {t('widget.title')}
             </SheetTitle>
             <SheetDescription
               className="text-[12px]"
               style={{ color: 'var(--text-3)' }}
             >
-              AlgoSu를 개선하는 데 도움을 주세요.
+              {t('widget.description')}
             </SheetDescription>
           </SheetHeader>
 
@@ -78,18 +80,18 @@ export function FeedbackWidget() {
             className="flex border-b"
             style={{ borderColor: 'var(--border)' }}
           >
-            {TABS.map((t) => (
+            {tabs.map((tabItem) => (
               <button
-                key={t.key}
+                key={tabItem.key}
                 type="button"
-                onClick={() => setTab(t.key)}
+                onClick={() => setTab(tabItem.key)}
                 className="relative flex-1 px-3 py-2 text-[13px] font-medium transition-colors"
                 style={{
-                  color: tab === t.key ? 'var(--primary)' : 'var(--text-3)',
+                  color: tab === tabItem.key ? 'var(--primary)' : 'var(--text-3)',
                 }}
               >
-                {t.label}
-                {tab === t.key && (
+                {tabItem.label}
+                {tab === tabItem.key && (
                   <span
                     className="absolute bottom-0 left-0 right-0 h-[2px]"
                     style={{ background: 'var(--primary)' }}

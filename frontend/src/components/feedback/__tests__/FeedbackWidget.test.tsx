@@ -1,4 +1,5 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { renderWithI18n } from '@/test-utils/i18n';
 import { FeedbackWidget } from '../FeedbackWidget';
 
 // ── Mocks ──
@@ -56,13 +57,13 @@ describe('FeedbackWidget', () => {
 
   // 1. 플로팅 버튼 렌더링
   it('플로팅 버튼이 렌더링된다', () => {
-    render(<FeedbackWidget />);
+    renderWithI18n(<FeedbackWidget />);
     expect(screen.getByLabelText('피드백 보내기')).toBeInTheDocument();
   });
 
   // 2. 버튼 클릭 시 Sheet 열림
   it('버튼 클릭 시 Sheet 이 열리고 제목이 표시된다', async () => {
-    render(<FeedbackWidget />);
+    renderWithI18n(<FeedbackWidget />);
     openSheet();
 
     await waitFor(() => {
@@ -73,7 +74,7 @@ describe('FeedbackWidget', () => {
 
   // 3. 탭 전환 (피드백 -> 버그 리포트)
   it('탭을 전환하면 버그 리포트 폼이 표시된다', async () => {
-    render(<FeedbackWidget />);
+    renderWithI18n(<FeedbackWidget />);
     openSheet();
 
     await waitFor(() => {
@@ -93,7 +94,7 @@ describe('FeedbackWidget', () => {
 
   // 4. FeedbackForm: 내용 미입력 시 유효성 에러
   it('FeedbackForm: 내용 미입력 시 유효성 에러를 표시한다', async () => {
-    render(<FeedbackWidget />);
+    renderWithI18n(<FeedbackWidget />);
     openSheet();
 
     await waitFor(() => {
@@ -114,7 +115,7 @@ describe('FeedbackWidget', () => {
   it('FeedbackForm: 제출 성공 시 feedbackApi.create 호출 + 성공 toast', async () => {
     mockCreate.mockResolvedValue({ publicId: 'fb-1' });
 
-    render(<FeedbackWidget />);
+    renderWithI18n(<FeedbackWidget />);
     openSheet();
 
     await waitFor(() => {
@@ -142,7 +143,7 @@ describe('FeedbackWidget', () => {
   it('BugReportForm: 제출 성공 시 category=BUG 로 API 호출', async () => {
     mockCreate.mockResolvedValue({ publicId: 'fb-2' });
 
-    render(<FeedbackWidget />);
+    renderWithI18n(<FeedbackWidget />);
     openSheet();
 
     await waitFor(() => {
