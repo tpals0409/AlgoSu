@@ -1,10 +1,13 @@
 /**
- * @file 로딩 스피너 컴포넌트 (sm/md/lg 사이즈)
+ * @file Loading spinner component (sm/md/lg sizes)
  * @domain common
  * @layer component
  * @related Skeleton
  */
+'use client';
+
 import * as React from 'react';
+import { useTranslations } from 'next-intl';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
@@ -35,30 +38,35 @@ export interface LoadingSpinnerProps
   readonly label?: string;
 }
 
-const LoadingSpinner = React.memo(function LoadingSpinner({ className, size, color, label = '로딩 중...', ...props }: LoadingSpinnerProps): React.ReactElement {
+const LoadingSpinner = React.memo(function LoadingSpinner({ className, size, color, label, ...props }: LoadingSpinnerProps): React.ReactElement {
+  const t = useTranslations('ui');
+  const resolvedLabel = label ?? t('loadingSpinner.loading');
   return (
-    <span role="status" aria-label={label} className={cn('inline-flex items-center justify-center', className)} {...props}>
+    <span role="status" aria-label={resolvedLabel} className={cn('inline-flex items-center justify-center', className)} {...props}>
       <span aria-hidden="true" className={cn(spinnerVariants({ size, color }))} />
-      <span className="sr-only">{label}</span>
+      <span className="sr-only">{resolvedLabel}</span>
     </span>
   );
 });
 
-const FullscreenSpinner = React.memo(function FullscreenSpinner({ label = '로딩 중...' }: { readonly label?: string }): React.ReactElement {
+const FullscreenSpinner = React.memo(function FullscreenSpinner({ label }: { readonly label?: string }): React.ReactElement {
+  const t = useTranslations('ui');
+  const resolvedLabel = label ?? t('loadingSpinner.loading');
   return (
     <div
       role="status"
-      aria-label={label}
+      aria-label={resolvedLabel}
       className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-bg/80 backdrop-blur-sm"
     >
-      <LoadingSpinner size="xl" label={label} />
-      <p className="text-sm font-medium text-text-3">{label}</p>
+      <LoadingSpinner size="xl" label={resolvedLabel} />
+      <p className="text-sm font-medium text-text-3">{resolvedLabel}</p>
     </div>
   );
 });
 
 const InlineSpinner = React.memo(function InlineSpinner({ className }: { readonly className?: string }): React.ReactElement {
-  return <LoadingSpinner size="sm" color="current" className={className} label="처리 중..." />;
+  const t = useTranslations('ui');
+  return <LoadingSpinner size="sm" color="current" className={className} label={t('loadingSpinner.processing')} />;
 });
 
 export { LoadingSpinner, FullscreenSpinner, InlineSpinner };
