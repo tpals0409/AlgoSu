@@ -17,6 +17,7 @@ import koLanding from '../../messages/ko/landing.json';
 import koAuth from '../../messages/ko/auth.json';
 import koCommon from '../../messages/ko/common.json';
 import koErrors from '../../messages/ko/errors.json';
+import koDashboard from '../../messages/ko/dashboard.json';
 
 /** 기본 ko 메시지 (전 네임스페이스 병합) */
 const DEFAULT_MESSAGES: AbstractIntlMessages = {
@@ -24,6 +25,7 @@ const DEFAULT_MESSAGES: AbstractIntlMessages = {
   auth: koAuth,
   common: koCommon,
   errors: koErrors,
+  dashboard: koDashboard,
 };
 
 interface RenderWithI18nOptions extends Omit<RenderOptions, 'wrapper'> {

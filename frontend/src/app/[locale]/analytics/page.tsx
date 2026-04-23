@@ -8,7 +8,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, type ReactNode, type CSSProperties } from 'react';
-import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { useRouter } from '@/i18n/navigation';
 import dynamic from 'next/dynamic';
 import { BarChart3 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -68,6 +69,7 @@ function parseWeekKey(w: string): number {
 // ─── PAGE ────────────────────────────────
 
 export default function AnalyticsPage(): ReactNode {
+  const t = useTranslations('dashboard');
   const router = useRouter();
   const { isReady, isAuthenticated } = useRequireAuth();
   useRequireStudy();
@@ -94,7 +96,7 @@ export default function AnalyticsPage(): ReactNode {
 
   // AuthContext에서 user.id 직접 사용 (httpOnly Cookie 인증)
   const myId = user?.id ?? null;
-  const userName = myNickname ?? user?.email?.split('@')[0] ?? '사용자';
+  const userName = myNickname ?? user?.email?.split('@')[0] ?? t('analyticsSection.defaultUser');
 
   const loadData = useCallback(async () => {
     if (!currentStudyId) return;
@@ -109,7 +111,7 @@ export default function AnalyticsPage(): ReactNode {
       if (results[0].status === 'fulfilled') {
         setStats(results[0].value as StudyStats);
       } else {
-        setError('통계 데이터를 불러오는 데 실패했습니다.');
+        setError(t('analyticsSection.errors.statsFailed'));
       }
       if (results[1].status === 'fulfilled') {
         setAllProblems((results[1].value as Problem[]) ?? []);
@@ -120,11 +122,11 @@ export default function AnalyticsPage(): ReactNode {
         if (me?.nickname) setMyNickname(me.nickname);
       }
     } catch {
-      setError('데이터를 불러오는 데 실패했습니다.');
+      setError(t('analyticsSection.errors.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [currentStudyId, myId]);
+  }, [currentStudyId, myId, t]);
 
   useEffect(() => {
     if (!isAuthenticated || !studiesLoaded) return;
@@ -223,7 +225,7 @@ export default function AnalyticsPage(): ReactNode {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-bg">
         <LoadingSpinner size="lg" color="primary" />
-        <p className="text-sm text-text-3">로딩 중...</p>
+        <p className="text-sm text-text-3">{t('analyticsSection.loading')}</p>
       </div>
     );
   }
@@ -233,9 +235,9 @@ export default function AnalyticsPage(): ReactNode {
       <div className="space-y-4">
         {/* 헤더 */}
         <div style={fade(0)}>
-          <h1 className="text-[22px] font-bold tracking-tight text-text">내 통계</h1>
+          <h1 className="text-[22px] font-bold tracking-tight text-text">{t('analyticsSection.heading')}</h1>
           <p className="mt-0.5 text-sm text-text-3">
-            {userName}님의 알고리즘 학습 현황
+            {t('analyticsSection.userStats', { name: userName })}
           </p>
         </div>
 
@@ -253,13 +255,13 @@ export default function AnalyticsPage(): ReactNode {
                 <BarChart3 className="h-5 w-5 text-primary" aria-hidden />
               </div>
               <div>
-                <p className="text-sm font-medium text-text">스터디를 선택해주세요</p>
+                <p className="text-sm font-medium text-text">{t('analyticsSection.empty.noStudy')}</p>
                 <p className="mt-1 text-[11px] text-text-3">
-                  통계를 보려면 먼저 스터디를 선택해야 합니다.
+                  {t('analyticsSection.empty.noStudyDesc')}
                 </p>
               </div>
               <Button variant="primary" size="sm" onClick={() => router.push('/studies')}>
-                스터디 목록
+                {t('analyticsSection.empty.studyList')}
               </Button>
             </div>
           </Card>
@@ -286,13 +288,13 @@ export default function AnalyticsPage(): ReactNode {
                 <BarChart3 className="h-5 w-5 text-primary" aria-hidden />
               </div>
               <div>
-                <p className="text-sm font-medium text-text">아직 제출 데이터가 없습니다</p>
+                <p className="text-sm font-medium text-text">{t('analyticsSection.empty.noData')}</p>
                 <p className="mt-1 text-[11px] text-text-3">
-                  문제를 풀고 코드를 제출하면 통계를 확인할 수 있습니다.
+                  {t('analyticsSection.empty.noDataDesc')}
                 </p>
               </div>
               <Button variant="primary" size="sm" onClick={() => router.push('/problems')}>
-                문제 목록 보기
+                {t('analyticsSection.empty.problemList')}
               </Button>
             </div>
           </Card>
@@ -325,7 +327,7 @@ export default function AnalyticsPage(): ReactNode {
               }
               return consecutive;
             })() : 0}
-            streakRank={`최근 ${myWeeklyData.length}주 중`}
+            streakRank={t('analyticsSection.weeks.recent', { count: myWeeklyData.length })}
             weeklyData={myWeeklyData}
             aiScoreData={(() => {
               // 유저 전체 제출에서 문제별 최고 점수만 추이에 반영 (같은 문제 1회)
