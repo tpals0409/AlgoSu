@@ -1,5 +1,5 @@
 /**
- * @file 카드 컴포넌트 (v2 디자인 시스템)
+ * @file Card component (v2 design system)
  * @domain common
  * @layer component
  * @related Badge, Button
@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 // ─── CARD ────────────────────────────────────
 
 /**
- * 카드 루트 컴포넌트 (v2 shadow + rounded-card + hover)
+ * Card root component (v2 shadow + rounded-card + hover)
  * @domain common
  */
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
