@@ -119,7 +119,7 @@ describe('Button', () => {
   });
 
   it('renders as child component when asChild is true', () => {
-    render(
+    renderWithI18n(
       <Button asChild>
         {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
         <a href="/test">Link</a>
@@ -182,7 +182,7 @@ describe('Card', () => {
     const descRef = createRef<HTMLParagraphElement>();
     const contentRef = createRef<HTMLDivElement>();
     const footerRef = createRef<HTMLDivElement>();
-    render(
+    renderWithI18n(
       <Card>
         <CardHeader ref={headerRef}>H</CardHeader>
         <CardTitle ref={titleRef}>T</CardTitle>
