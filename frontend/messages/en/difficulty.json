@@ -1,0 +1,16 @@
+{
+  "labels": {
+    "bronze": "Bronze",
+    "silver": "Silver",
+    "gold": "Gold",
+    "platinum": "Platinum",
+    "diamond": "Diamond"
+  },
+  "tooltips": {
+    "bronze": "Introductory problems covering the basics.",
+    "silver": "Problems requiring fundamental algorithm knowledge.",
+    "gold": "Intermediate problems using algorithms and data structures.",
+    "platinum": "Advanced problems requiring optimization skills.",
+    "diamond": "Top-tier problems with complex algorithm combinations."
+  }
+}

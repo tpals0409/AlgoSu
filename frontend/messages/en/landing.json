@@ -1,0 +1,24 @@
+{
+  "hero": {
+    "title": "Algorithms are more fun together",
+    "subtitle": "An algorithm study platform powered by AI feedback and peer reviews"
+  },
+  "cta": {
+    "getStarted": "Get Started",
+    "learnMore": "Learn More"
+  },
+  "features": {
+    "aiAnalysis": {
+      "title": "AI Code Analysis",
+      "description": "Get AI-powered analysis of time complexity and improvement suggestions for your submissions."
+    },
+    "peerReview": {
+      "title": "Peer Review",
+      "description": "Review your peers' code and exchange constructive feedback together."
+    },
+    "progressTracking": {
+      "title": "Progress Tracking",
+      "description": "Track your growth with difficulty-based stats and progress graphs."
+    }
+  }
+}

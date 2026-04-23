@@ -1,0 +1,24 @@
+{
+  "hero": {
+    "title": "알고리즘, 함께 풀면 더 즐겁습니다",
+    "subtitle": "AI 피드백과 동료 리뷰로 성장하는 알고리즘 스터디 플랫폼"
+  },
+  "cta": {
+    "getStarted": "시작하기",
+    "learnMore": "자세히 알아보기"
+  },
+  "features": {
+    "aiAnalysis": {
+      "title": "AI 코드 분석",
+      "description": "제출한 코드에 대해 AI가 시간 복잡도, 개선점을 분석해 드립니다."
+    },
+    "peerReview": {
+      "title": "동료 리뷰",
+      "description": "함께 공부하는 동료의 코드를 리뷰하고 피드백을 주고받으세요."
+    },
+    "progressTracking": {
+      "title": "성장 추적",
+      "description": "난이도별 풀이 통계와 성장 그래프로 실력 향상을 확인하세요."
+    }
+  }
+}
