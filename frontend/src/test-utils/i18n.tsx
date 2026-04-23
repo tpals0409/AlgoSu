@@ -16,12 +16,14 @@ import type { AbstractIntlMessages } from 'use-intl';
 import koLanding from '../../messages/ko/landing.json';
 import koAuth from '../../messages/ko/auth.json';
 import koCommon from '../../messages/ko/common.json';
+import koErrors from '../../messages/ko/errors.json';
 
 /** 기본 ko 메시지 (전 네임스페이스 병합) */
 const DEFAULT_MESSAGES: AbstractIntlMessages = {
   landing: koLanding,
   auth: koAuth,
   common: koCommon,
+  errors: koErrors,
 };
 
 interface RenderWithI18nOptions extends Omit<RenderOptions, 'wrapper'> {
