@@ -1,19 +1,36 @@
+/**
+ * @file 문제 상세 레이아웃 — locale 분기 메타데이터
+ * @domain problem
+ * @layer layout
+ * @related problems/[id]/page.tsx, messages/problems.json
+ *
+ * getTranslations('problems')로 detail 키를 사용한다.
+ */
+
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import { getTranslations } from 'next-intl/server';
 
-interface LayoutProps {
+interface ProblemDetailLayoutProps {
   readonly children: ReactNode;
-  readonly params: Promise<{ id: string }>;
+  readonly params: Promise<{ locale: string; id: string }>;
 }
 
-export async function generateMetadata({ params }: LayoutProps): Promise<Metadata> {
-  const { id } = await params;
+/**
+ * 문제 상세 메타데이터 — 로케일 분기.
+ */
+export async function generateMetadata({
+  params,
+}: ProblemDetailLayoutProps): Promise<Metadata> {
+  const { locale, id } = await params;
+  const t = await getTranslations({ locale, namespace: 'problems' });
+
   return {
-    title: `문제 ${id}`,
-    description: `문제 ${id}번 상세 정보와 코드 제출`,
+    title: t('submit.metaTitle', { problemId: id }),
+    description: t('submit.metaDescription', { problemId: id }),
   };
 }
 
-export default function ProblemDetailLayout({ children }: LayoutProps): ReactNode {
+export default function ProblemDetailLayout({ children }: ProblemDetailLayoutProps): ReactNode {
   return children;
 }
