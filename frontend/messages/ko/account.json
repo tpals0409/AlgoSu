@@ -71,6 +71,33 @@
       }
     }
   },
+  "shareLink": {
+    "title": "내 공유 링크",
+    "studyLabel": "스터디",
+    "studyPlaceholder": "선택",
+    "expiresLabel": "만료",
+    "expiresNever": "무기한",
+    "expires7d": "7일",
+    "expires30d": "30일",
+    "expires90d": "90일",
+    "creating": "생성 중...",
+    "create": "링크 생성",
+    "loading": "로딩 중...",
+    "empty": "공유 링크가 없습니다.",
+    "selectStudy": "스터디를 선택해주세요.",
+    "createdCopied": "링크가 생성되어 클립보드에 복사되었습니다.",
+    "deactivated": "링크가 비활성화되었습니다.",
+    "confirmDeactivate": "이 공유 링크를 비활성화하시겠습니까?",
+    "copyAria": "링크 복사",
+    "deactivateAria": "링크 비활성화",
+    "expired": "만료됨",
+    "expiresAt": "만료: {date}",
+    "errors": {
+      "noPermission": "권한이 없습니다.",
+      "generic": "오류가 발생했습니다. 다시 시도해주세요.",
+      "network": "네트워크 연결을 확인해주세요."
+    }
+  },
   "settings": {
     "meta": {
       "title": "설정"
