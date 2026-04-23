@@ -59,6 +59,12 @@
     "hoursLeft": "{count}h left",
     "closingSoon": "Closing soon"
   },
+  "thisWeek": {
+    "title": "In Progress",
+    "viewAll": "View All",
+    "empty": "No problems in progress",
+    "weekLabel": "M{month} W{week}"
+  },
   "analyticsSection": {
     "meta": {
       "title": "Learning Analytics",

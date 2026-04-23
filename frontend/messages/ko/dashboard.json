@@ -59,6 +59,12 @@
     "hoursLeft": "{count}시간 남음",
     "closingSoon": "곧 마감"
   },
+  "thisWeek": {
+    "title": "진행 중인 문제",
+    "viewAll": "전체 보기",
+    "empty": "진행 중인 문제가 없습니다",
+    "weekLabel": "{month}월{week}주차"
+  },
   "analyticsSection": {
     "meta": {
       "title": "학습 분석",
