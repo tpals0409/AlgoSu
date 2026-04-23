@@ -10,6 +10,7 @@ import { renderWithI18n } from '@/test-utils/i18n';
 import { LanguageSwitcher } from '../LanguageSwitcher';
 
 const mockReplace = jest.fn();
+let mockSearchParams = new URLSearchParams();
 
 jest.mock('@/i18n/navigation', () => ({
   useRouter: () => ({ replace: mockReplace, push: jest.fn(), back: jest.fn() }),
@@ -20,6 +21,11 @@ jest.mock('@/i18n/navigation', () => ({
   redirect: jest.fn(),
 }));
 
+jest.mock('next/navigation', () => ({
+  ...jest.requireActual('next/navigation'),
+  useSearchParams: () => mockSearchParams,
+}));
+
 jest.mock('@/lib/utils', () => ({
   cn: (...args: unknown[]) => (args.filter(Boolean) as string[]).join(' '),
 }));
@@ -27,6 +33,7 @@ jest.mock('@/lib/utils', () => ({
 describe('LanguageSwitcher', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSearchParams = new URLSearchParams();
     Object.defineProperty(document, 'cookie', {
       writable: true,
       value: '',
@@ -93,5 +100,26 @@ describe('LanguageSwitcher', () => {
     renderWithI18n(<LanguageSwitcher />);
     const enButton = screen.getByText('EN');
     expect(enButton).not.toHaveAttribute('aria-current');
+  });
+
+  it('쿼리 파라미터가 있으면 locale 전환 시 보존된다 (?page=2)', () => {
+    mockSearchParams = new URLSearchParams('page=2');
+    renderWithI18n(<LanguageSwitcher />);
+    fireEvent.click(screen.getByText('EN'));
+    expect(mockReplace).toHaveBeenCalledWith('/dashboard?page=2', { locale: 'en' });
+  });
+
+  it('복수 쿼리 파라미터도 보존된다 (?page=2&sort=asc)', () => {
+    mockSearchParams = new URLSearchParams('page=2&sort=asc');
+    renderWithI18n(<LanguageSwitcher />);
+    fireEvent.click(screen.getByText('EN'));
+    expect(mockReplace).toHaveBeenCalledWith('/dashboard?page=2&sort=asc', { locale: 'en' });
+  });
+
+  it('쿼리 파라미터가 없으면 경로만 전달된다', () => {
+    mockSearchParams = new URLSearchParams();
+    renderWithI18n(<LanguageSwitcher />);
+    fireEvent.click(screen.getByText('EN'));
+    expect(mockReplace).toHaveBeenCalledWith('/dashboard', { locale: 'en' });
   });
 });
