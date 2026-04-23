@@ -10,6 +10,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { getTranslations } from 'next-intl/server';
+import { AuthShell } from '@/components/layout/AuthShell';
 
 interface AuthLayoutProps {
   readonly children: ReactNode;
@@ -35,5 +36,5 @@ export async function generateMetadata({
 }
 
 export default function AuthLayout({ children }: AuthLayoutProps): ReactNode {
-  return <>{children}</>;
+  return <AuthShell>{children}</AuthShell>;
 }
