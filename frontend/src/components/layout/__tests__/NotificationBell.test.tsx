@@ -33,6 +33,7 @@ jest.mock('lucide-react', () => {
 const mockPush = jest.fn();
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
+  useParams: () => ({ locale: 'ko' }),
 }));
 
 jest.mock('@/lib/utils', () => ({
