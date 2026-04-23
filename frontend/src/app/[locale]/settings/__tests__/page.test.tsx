@@ -26,6 +26,10 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/settings',
 }));
 
+jest.mock('next-intl', () => ({
+  useTranslations: () => (key: string) => key,
+}));
+
 jest.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'light', setTheme: jest.fn() }),
 }));
@@ -121,8 +125,8 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
 /** 설정 로드 완료까지 대기 (로딩 스피너가 사라지고 폼이 렌더링될 때까지) */
 async function waitForLoaded() {
   await waitFor(() => {
-    expect(screen.getByText('퍼블릭 프로필')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('my-profile')).toBeInTheDocument();
+    expect(screen.getByText('settings.form.publicProfile.title')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('settings.form.slug.placeholder')).toBeInTheDocument();
   });
 }
 
@@ -147,14 +151,14 @@ describe('SettingsPage', () => {
     it('설정 페이지 제목이 표시된다', async () => {
       render(<SettingsPage />, { wrapper });
       await waitFor(() => {
-        expect(screen.getByText('설정')).toBeInTheDocument();
+        expect(screen.getByText('settings.heading')).toBeInTheDocument();
       });
     });
 
     it('퍼블릭 프로필 섹션이 표시된다', async () => {
       render(<SettingsPage />, { wrapper });
       await waitFor(() => {
-        expect(screen.getByText('퍼블릭 프로필')).toBeInTheDocument();
+        expect(screen.getByText('settings.form.publicProfile.title')).toBeInTheDocument();
       });
     });
 
@@ -181,11 +185,11 @@ describe('SettingsPage', () => {
       render(<SettingsPage />, { wrapper });
       await waitForLoaded();
 
-      const input = screen.getByPlaceholderText('my-profile');
+      const input = screen.getByPlaceholderText('settings.form.slug.placeholder');
       await user.clear(input);
       await user.type(input, 'valid-slug');
 
-      expect(screen.queryByText(/영문소문자/)).not.toBeInTheDocument();
+      expect(screen.queryByText('settings.validation.slug.pattern')).not.toBeInTheDocument();
     });
 
     it('하이픈으로 시작하는 slug는 에러를 표시한다', async () => {
@@ -193,13 +197,13 @@ describe('SettingsPage', () => {
       render(<SettingsPage />, { wrapper });
       await waitForLoaded();
 
-      const input = screen.getByPlaceholderText('my-profile');
+      const input = screen.getByPlaceholderText('settings.form.slug.placeholder');
       await user.clear(input);
       // 하이픈으로 시작 — SLUG_REGEX 불만족
       await user.type(input, '-invalid');
 
       await waitFor(() => {
-        expect(screen.getByText(/영문소문자, 숫자, 하이픈만/)).toBeInTheDocument();
+        expect(screen.getByText('settings.validation.slug.pattern')).toBeInTheDocument();
       });
     });
 
@@ -208,12 +212,12 @@ describe('SettingsPage', () => {
       render(<SettingsPage />, { wrapper });
       await waitForLoaded();
 
-      const input = screen.getByPlaceholderText('my-profile');
+      const input = screen.getByPlaceholderText('settings.form.slug.placeholder');
       await user.clear(input);
       await user.type(input, 'ab');
 
       await waitFor(() => {
-        expect(screen.getByText(/영문소문자, 숫자, 하이픈만/)).toBeInTheDocument();
+        expect(screen.getByText('settings.validation.slug.pattern')).toBeInTheDocument();
       });
     });
   });
@@ -226,12 +230,12 @@ describe('SettingsPage', () => {
         render(<SettingsPage />, { wrapper });
         await waitForLoaded();
 
-        const input = screen.getByPlaceholderText('my-profile');
+        const input = screen.getByPlaceholderText('settings.form.slug.placeholder');
         await user.clear(input);
         await user.type(input, reserved);
 
         await waitFor(() => {
-          expect(screen.getByText('사용할 수 없는 예약어입니다.')).toBeInTheDocument();
+          expect(screen.getByText('settings.validation.slug.reserved')).toBeInTheDocument();
         });
       },
     );
@@ -268,10 +272,10 @@ describe('SettingsPage', () => {
       await user.click(screen.getByRole('switch'));
 
       // slug 비어있는 상태로 저장 시도
-      await user.click(screen.getByRole('button', { name: '저장' }));
+      await user.click(screen.getByRole('button', { name: 'settings.form.save' }));
 
       await waitFor(() => {
-        expect(screen.getByText('프로필 공개를 위해 slug를 먼저 설정해주세요.')).toBeInTheDocument();
+        expect(screen.getByText('settings.validation.slug.requiredForPublic')).toBeInTheDocument();
       });
 
       expect(mockUpdateProfile).not.toHaveBeenCalled();
@@ -286,14 +290,14 @@ describe('SettingsPage', () => {
       render(<SettingsPage />, { wrapper });
       await waitForLoaded();
 
-      const input = screen.getByPlaceholderText('my-profile');
+      const input = screen.getByPlaceholderText('settings.form.slug.placeholder');
       await user.clear(input);
       await user.type(input, 'my-slug');
       await user.click(screen.getByRole('switch'));
-      await user.click(screen.getByRole('button', { name: '저장' }));
+      await user.click(screen.getByRole('button', { name: 'settings.form.save' }));
 
       await waitFor(() => {
-        expect(screen.getByText('설정이 저장되었습니다.')).toBeInTheDocument();
+        expect(screen.getByText('settings.validation.save.success')).toBeInTheDocument();
       });
 
       expect(mockUpdateProfile).toHaveBeenCalledWith({
@@ -309,10 +313,10 @@ describe('SettingsPage', () => {
       render(<SettingsPage />, { wrapper });
       await waitForLoaded();
 
-      const input = screen.getByPlaceholderText('my-profile');
+      const input = screen.getByPlaceholderText('settings.form.slug.placeholder');
       await user.clear(input);
       await user.type(input, 'taken-slug');
-      await user.click(screen.getByRole('button', { name: '저장' }));
+      await user.click(screen.getByRole('button', { name: 'settings.form.save' }));
 
       await waitFor(() => {
         expect(screen.getByText('이미 사용 중인 slug입니다.')).toBeInTheDocument();
@@ -326,12 +330,12 @@ describe('SettingsPage', () => {
       render(<SettingsPage />, { wrapper });
       await waitForLoaded();
 
-      const input = screen.getByPlaceholderText('my-profile');
+      const input = screen.getByPlaceholderText('settings.form.slug.placeholder');
       await user.clear(input);
       await user.type(input, 'my-slug');
-      await user.click(screen.getByRole('button', { name: '저장' }));
+      await user.click(screen.getByRole('button', { name: 'settings.form.save' }));
 
-      expect(screen.getByText('저장 중...')).toBeInTheDocument();
+      expect(screen.getByText('settings.form.saving')).toBeInTheDocument();
     });
 
     it('slug 에러가 있으면 저장 버튼이 비활성화된다', async () => {
@@ -339,12 +343,12 @@ describe('SettingsPage', () => {
       render(<SettingsPage />, { wrapper });
       await waitForLoaded();
 
-      const input = screen.getByPlaceholderText('my-profile');
+      const input = screen.getByPlaceholderText('settings.form.slug.placeholder');
       await user.clear(input);
       await user.type(input, 'admin'); // reserved
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'settings.form.save' })).toBeDisabled();
       });
     });
   });
@@ -355,7 +359,7 @@ describe('SettingsPage', () => {
 
       render(<SettingsPage />, { wrapper });
       await waitFor(() => {
-        expect(screen.getByText('내 프로필 링크:')).toBeInTheDocument();
+        expect(screen.getByText('settings.form.profileLink')).toBeInTheDocument();
       });
 
       expect(screen.getByText('algosu.com/profile/my-profile')).toBeInTheDocument();
@@ -367,7 +371,7 @@ describe('SettingsPage', () => {
       render(<SettingsPage />, { wrapper });
       await waitForLoaded();
 
-      expect(screen.queryByText('내 프로필 링크:')).not.toBeInTheDocument();
+      expect(screen.queryByText('settings.form.profileLink')).not.toBeInTheDocument();
     });
   });
 });

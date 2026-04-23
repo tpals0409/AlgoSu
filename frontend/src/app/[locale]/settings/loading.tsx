@@ -5,16 +5,17 @@
  * @related Skeleton, AppLayout
  */
 
-'use client';
-
 import type { ReactNode } from 'react';
+import { getTranslations } from 'next-intl/server';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { SkeletonListPage } from '@/components/ui/Skeleton';
 
-export default function SettingsLoading(): ReactNode {
+export default async function SettingsLoading(): Promise<ReactNode> {
+  const t = await getTranslations('account');
+
   return (
     <AppLayout>
-      <div className="space-y-6" aria-busy="true" aria-label="설정 로딩 중">
+      <div className="space-y-6" aria-busy="true" aria-label={t('settings.loading')}>
         <SkeletonListPage rows={4} />
       </div>
     </AppLayout>

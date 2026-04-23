@@ -15,6 +15,24 @@ jest.mock('next/navigation', () => ({
   useParams: () => mockSlug,
 }));
 
+jest.mock('next-intl', () => ({
+  useTranslations: () => (key: string, params?: Record<string, unknown>) => {
+    if (params) {
+      return Object.entries(params).reduce(
+        (str, [k, v]) => str.replace(`{${k}}`, String(v)),
+        key,
+      );
+    }
+    return key;
+  },
+}));
+
+jest.mock('@/i18n/navigation', () => ({
+  Link: ({ children, href, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => (
+    <a href={href} {...props}>{children}</a>
+  ),
+}));
+
 jest.mock('next/image', () => ({
   __esModule: true,
   default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => (
@@ -110,7 +128,7 @@ describe('PublicProfilePage', () => {
       render(<PublicProfilePage />);
       await waitFor(() => {
         expect(screen.getByText('52')).toBeInTheDocument();
-        expect(screen.getByText('총 제출')).toBeInTheDocument();
+        expect(screen.getByText('profile.public.totalSubmissions')).toBeInTheDocument();
       });
     });
 
@@ -120,7 +138,7 @@ describe('PublicProfilePage', () => {
       render(<PublicProfilePage />);
       await waitFor(() => {
         expect(screen.getByText('83')).toBeInTheDocument();
-        expect(screen.getByText('AI 평균')).toBeInTheDocument();
+        expect(screen.getByText('profile.public.aiAverage')).toBeInTheDocument();
       });
     });
 
@@ -139,8 +157,8 @@ describe('PublicProfilePage', () => {
 
       render(<PublicProfilePage />);
       await waitFor(() => {
-        expect(screen.getByText('제출 42건')).toBeInTheDocument();
-        expect(screen.getByText('AI 평균 85점')).toBeInTheDocument();
+        expect(screen.getAllByText('profile.public.studies.submissionCount').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText('profile.public.studies.aiScore').length).toBeGreaterThanOrEqual(1);
       });
     });
 
@@ -149,7 +167,7 @@ describe('PublicProfilePage', () => {
 
       render(<PublicProfilePage />);
       await waitFor(() => {
-        expect(screen.getByText('이름 없음')).toBeInTheDocument();
+        expect(screen.getByText('profile.public.noName')).toBeInTheDocument();
       });
     });
 
@@ -158,7 +176,7 @@ describe('PublicProfilePage', () => {
 
       render(<PublicProfilePage />);
       await waitFor(() => {
-        expect(screen.getByText('참여 중인 스터디가 없습니다.')).toBeInTheDocument();
+        expect(screen.getByText('profile.public.studies.empty')).toBeInTheDocument();
       });
     });
   });
@@ -169,7 +187,7 @@ describe('PublicProfilePage', () => {
 
       render(<PublicProfilePage />);
       await waitFor(() => {
-        expect(screen.getByText('프로필을 찾을 수 없습니다.')).toBeInTheDocument();
+        expect(screen.getByText('profile.public.notFound')).toBeInTheDocument();
       });
     });
   });
@@ -180,7 +198,7 @@ describe('PublicProfilePage', () => {
 
       render(<PublicProfilePage />);
       await waitFor(() => {
-        const link = screen.getByText('스터디룸 보기');
+        const link = screen.getByText('profile.public.studies.viewStudyRoom');
         expect(link).toBeInTheDocument();
         expect(link.closest('a')).toHaveAttribute('href', '/shared/abc123');
       });
@@ -197,7 +215,7 @@ describe('PublicProfilePage', () => {
         expect(screen.getByText('Data Structure Study')).toBeInTheDocument();
       });
 
-      expect(screen.queryByText('스터디룸 보기')).not.toBeInTheDocument();
+      expect(screen.queryByText('profile.public.studies.viewStudyRoom')).not.toBeInTheDocument();
     });
   });
 
