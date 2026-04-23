@@ -9,6 +9,7 @@
 
 import { useState, type ReactElement, type FormEvent } from 'react';
 import { Send } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
 
 // ─── TYPES ────────────────────────────────
@@ -30,6 +31,7 @@ export function CommentForm({
   onSubmit,
   disabled = false,
 }: CommentFormProps): ReactElement {
+  const t = useTranslations('reviews');
   const [content, setContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -48,8 +50,8 @@ export function CommentForm({
   };
 
   const placeholder = lineNumber
-    ? `Line ${lineNumber}에 대한 댓글...`
-    : '전체 댓글을 남겨보세요...';
+    ? t('commentForm.linePlaceholder', { line: lineNumber })
+    : t('commentForm.generalPlaceholder');
 
   return (
     <form onSubmit={handleSubmit} className="flex gap-2">
@@ -73,10 +75,10 @@ export function CommentForm({
         variant="primary"
         size="sm"
         disabled={!content.trim() || submitting}
-        aria-label="댓글 등록"
+        aria-label={t('commentForm.submitAriaLabel')}
       >
         <Send className="h-3 w-3" />
-        등록
+        {t('commentForm.submit')}
       </Button>
     </form>
   );
