@@ -1,16 +1,34 @@
+/**
+ * @file 제출 상세 레이아웃 — locale 분기 메타데이터
+ * @domain submission
+ * @layer layout
+ * @related submissions/[id]/status/page.tsx, submissions/[id]/analysis/page.tsx, messages/submissions.json
+ *
+ * getTranslations('submissions')로 detail.meta* 키를 사용한다.
+ */
+
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import { getTranslations } from 'next-intl/server';
 
 interface LayoutProps {
   readonly children: ReactNode;
-  readonly params: Promise<{ id: string }>;
+  readonly params: Promise<{ locale: string; id: string }>;
 }
 
+/**
+ * Submission Detail 메타데이터 — 로케일 분기.
+ *
+ * /ko/submissions/abc → "제출 #abc"
+ * /en/submissions/abc → "Submission #abc"
+ */
 export async function generateMetadata({ params }: LayoutProps): Promise<Metadata> {
-  const { id } = await params;
+  const { locale, id } = await params;
+  const t = await getTranslations({ locale, namespace: 'submissions' });
+
   return {
-    title: `제출 #${id}`,
-    description: `제출 ${id}번의 상태와 분석 결과를 확인하세요.`,
+    title: t('detail.metaTitle', { id }),
+    description: t('detail.metaDescription', { id }),
   };
 }
 

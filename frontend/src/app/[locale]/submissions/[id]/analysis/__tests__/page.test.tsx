@@ -1,10 +1,16 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithI18n } from '@/test-utils/i18n';
 import AnalysisPage from '../page';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
   useParams: () => ({ id: 'sub-123' }),
   usePathname: () => '/submissions/sub-123/analysis',
+}));
+
+jest.mock('@/i18n/navigation', () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn(), refresh: jest.fn() }),
+  Link: ({ children, ...props }: { children: React.ReactNode; href: string }) => <a {...props}>{children}</a>,
 }));
 
 jest.mock('next/link', () => {
@@ -197,7 +203,7 @@ describe('AnalysisPage', () => {
     mockFindById.mockReturnValue(new Promise(() => {}));
     mockGetAnalysis.mockReturnValue(new Promise(() => {}));
 
-    render(<AnalysisPage />);
+    renderWithI18n(<AnalysisPage />);
     expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
   });
 
@@ -205,7 +211,7 @@ describe('AnalysisPage', () => {
     mockFindById.mockReturnValue(new Promise(() => {}));
     mockGetAnalysis.mockReturnValue(new Promise(() => {}));
 
-    render(<AnalysisPage />);
+    renderWithI18n(<AnalysisPage />);
     expect(screen.getByTestId('app-layout')).toBeInTheDocument();
   });
 
@@ -213,7 +219,7 @@ describe('AnalysisPage', () => {
     mockFindById.mockReturnValue(new Promise(() => {}));
     mockGetAnalysis.mockReturnValue(new Promise(() => {}));
 
-    render(<AnalysisPage />);
+    renderWithI18n(<AnalysisPage />);
     expect(screen.getByTestId('app-layout')).toBeInTheDocument();
   });
 
@@ -233,7 +239,7 @@ describe('AnalysisPage', () => {
       optimizedCode: null,
     });
 
-    render(<AnalysisPage />);
+    renderWithI18n(<AnalysisPage />);
     expect(await screen.findByText('AI 분석 중...')).toBeInTheDocument();
   });
 
@@ -253,7 +259,7 @@ describe('AnalysisPage', () => {
       optimizedCode: null,
     });
 
-    render(<AnalysisPage />);
+    renderWithI18n(<AnalysisPage />);
     expect(
       await screen.findByText(/AI 분석 중 오류가 발생했습니다/),
     ).toBeInTheDocument();
@@ -285,7 +291,7 @@ describe('AnalysisPage', () => {
       optimizedCode: null,
     });
 
-    render(<AnalysisPage />);
+    renderWithI18n(<AnalysisPage />);
     expect(await screen.findByText('잘 작성된 코드입니다.')).toBeInTheDocument();
     expect(screen.getByTestId('score-gauge')).toBeInTheDocument();
   });

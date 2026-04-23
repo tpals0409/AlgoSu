@@ -1,9 +1,15 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithI18n } from '@/test-utils/i18n';
 import SubmissionsPage from '../page';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
   usePathname: () => '/submissions',
+}));
+
+jest.mock('@/i18n/navigation', () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn(), refresh: jest.fn() }),
+  Link: ({ children, ...props }: { children: React.ReactNode; href: string }) => <a {...props}>{children}</a>,
 }));
 
 jest.mock('next-themes', () => ({
@@ -158,17 +164,17 @@ jest.mock('lucide-react', () => {
 
 describe('SubmissionsPage', () => {
   it('제출 목록 페이지가 렌더링된다', async () => {
-    render(<SubmissionsPage />);
+    renderWithI18n(<SubmissionsPage />);
     expect(await screen.findByText('제출 이력')).toBeInTheDocument();
   });
 
   it('AppLayout 안에 렌더링된다', () => {
-    render(<SubmissionsPage />);
+    renderWithI18n(<SubmissionsPage />);
     expect(screen.getByTestId('app-layout')).toBeInTheDocument();
   });
 
   it('상태 탭이 표시된다', () => {
-    render(<SubmissionsPage />);
+    renderWithI18n(<SubmissionsPage />);
     expect(screen.getByText('분석 완료')).toBeInTheDocument();
   });
 });
