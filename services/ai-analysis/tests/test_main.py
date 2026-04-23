@@ -630,3 +630,49 @@ class TestGetQuotaXUserIdFallback:
         )
         assert resp.status_code == 200
         assert resp.json()["data"]["used"] == 0
+
+
+class TestGetQuotaRedisNone:
+    """GET /quota -- redis_client가 None인 경우 (branch 254->259)"""
+
+    def test_quota_redis_client_none_returns_used_zero(self, client, mock_app_deps):
+        """redis_client=None이면 Redis 조회 없이 used=0 반환 (branch 254->259)"""
+        import src.main as main_mod
+
+        main_mod.redis_client = None
+
+        resp = client.get(
+            "/quota",
+            params={"userId": "user-no-redis"},
+            headers={"X-Internal-Key": "test-key"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()["data"]
+        assert data["used"] == 0
+        assert data["limit"] == 5
+        assert data["remaining"] == 5
+
+
+class TestRollbackQuotaRedisNone:
+    """_rollback_quota() -- redis_client=None 시 즉시 반환 (line 107)"""
+
+    def test_rollback_quota_returns_immediately_when_redis_none(self, mock_app_deps):
+        """redis_client가 None이면 _rollback_quota는 아무 작업 없이 반환"""
+        import src.main as main_mod
+
+        main_mod.redis_client = None
+        # 예외 없이 조용히 반환해야 함
+        result = main_mod._rollback_quota("user-rollback-none")
+        assert result is None
+
+
+class TestLifespan:
+    """lifespan context manager -- startup/shutdown 통합 (lines 144-146)"""
+
+    def test_lifespan_triggers_startup_and_shutdown(self, mock_app_deps):
+        """TestClient 컨텍스트 매니저 사용 시 lifespan startup/shutdown 실행"""
+        from src.main import app
+
+        with TestClient(app) as c:
+            resp = c.get("/health")
+            assert resp.status_code == 200

@@ -690,6 +690,43 @@ class TestOnMessageCircuitBreakerOpen:
         # requeue=True (아직 MAX_REQUEUE 미만)
         mock_ch.basic_nack.assert_called_once_with(delivery_tag=42, requeue=True)
 
+    def test_circuit_breaker_dlq_report_failure_handled(
+        self, worker, mock_dependencies, pika_mocks
+    ):
+        """CB DLQ 경로에서 delayed 상태 보고 실패 시 예외 무시 후 DLQ 전송 (lines 300-301)"""
+        from src.claude_client import CircuitBreakerOpenError
+
+        mock_ch, mock_method, mock_properties = pika_mocks
+        deps = mock_dependencies
+
+        # _get_submission 모킹
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"data": {"code": "x", "language": "python"}}
+        mock_resp.raise_for_status = MagicMock()
+        deps["http_client"].get.return_value = mock_resp
+
+        # _report_result(delayed) 실패 → except Exception as report_err: 진입
+        deps["http_client"].patch.side_effect = Exception("Submission service down")
+
+        # CircuitBreakerOpenError 발생
+        deps["claude"].analyze_code = MagicMock(
+            side_effect=CircuitBreakerOpenError("CB OPEN")
+        )
+
+        # delivery_count = 3 (MAX_REQUEUE 초과 → DLQ 경로)
+        mock_properties.headers = {"x-delivery-count": 3}
+        deps["redis_client"].get.return_value = b"2"
+
+        body = json.dumps(
+            {"submissionId": "sub-cb-report-fail", "userId": "user-cb-rf"}
+        ).encode()
+
+        worker._on_message(mock_ch, mock_method, mock_properties, body)
+
+        # 보고 실패에도 불구하고 DLQ로 전송 (requeue=False)
+        mock_ch.basic_nack.assert_called_once_with(delivery_tag=42, requeue=False)
+        mock_ch.basic_ack.assert_not_called()
+
 
 class TestOnMessageRateLimitRetryable:
     """_on_message() -- RateLimitRetryableError 시 NACK+requeue (P1 fix)
@@ -826,6 +863,43 @@ class TestOnMessageRateLimitRetryable:
 
         mock_ch.basic_nack.assert_called_once_with(delivery_tag=42, requeue=True)
 
+    def test_rate_limit_dlq_report_failure_handled(
+        self, worker, mock_dependencies, pika_mocks
+    ):
+        """RateLimit DLQ 경로에서 delayed 상태 보고 실패 시 예외 무시 후 DLQ 전송 (lines 354-355)"""
+        from src.claude_client import RateLimitRetryableError
+
+        mock_ch, mock_method, mock_properties = pika_mocks
+        deps = mock_dependencies
+
+        # _get_submission 모킹
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"data": {"code": "x", "language": "python"}}
+        mock_resp.raise_for_status = MagicMock()
+        deps["http_client"].get.return_value = mock_resp
+
+        # _report_result(delayed) 실패 → except Exception as report_err: 진입
+        deps["http_client"].patch.side_effect = Exception("Submission service down")
+
+        # RateLimitRetryableError 발생
+        deps["claude"].analyze_code = MagicMock(
+            side_effect=RateLimitRetryableError("Rate limit exceeded")
+        )
+
+        # delivery_count = 3 (MAX_REQUEUE 초과 → DLQ 경로)
+        mock_properties.headers = {"x-delivery-count": 3}
+        deps["redis_client"].get.return_value = b"2"
+
+        body = json.dumps(
+            {"submissionId": "sub-rl-report-fail", "userId": "user-rl-rf"}
+        ).encode()
+
+        worker._on_message(mock_ch, mock_method, mock_properties, body)
+
+        # 보고 실패에도 불구하고 DLQ로 전송 (requeue=False)
+        mock_ch.basic_nack.assert_called_once_with(delivery_tag=42, requeue=False)
+        mock_ch.basic_ack.assert_not_called()
+
 
 class TestGetDeliveryCount:
     """_get_delivery_count() -- delivery count 조회"""
@@ -851,6 +925,12 @@ class TestGetDeliveryCount:
     def test_none_properties(self, worker, mock_dependencies):
         """properties가 None이면 0 반환"""
         assert worker._get_delivery_count(None) == 0
+
+    def test_headers_present_but_both_counts_zero(self, worker, mock_dependencies):
+        """headers 존재하지만 x-delivery-count=0, retry_count=0 → 0 반환 (branch 191->193)"""
+        mock_props = MagicMock()
+        mock_props.headers = {"x-delivery-count": 0, "retry_count": 0}
+        assert worker._get_delivery_count(mock_props) == 0
 
 
 class TestConnectWithRetry:
@@ -972,6 +1052,49 @@ class TestOnMessageExceptionNoUserId:
 
         # NACK 확인
         mock_ch.basic_nack.assert_called_once_with(delivery_tag=42, requeue=False)
+
+
+class TestOnMessageFailedNoUserId:
+    """_on_message() -- 분석 실패 + userId 없음: quota 차감 미호출 (branch 221->225)"""
+
+    def test_failed_result_no_userId_no_quota_decrement(
+        self, worker, mock_dependencies, pika_mocks
+    ):
+        """분석 실패 시 userId 없으면 quota 차감 안 함 (if user_id: False branch)"""
+        mock_ch, mock_method, mock_properties = pika_mocks
+        deps = mock_dependencies
+
+        # _get_submission 모킹
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"data": {"code": "x", "language": "python"}}
+        mock_resp.raise_for_status = MagicMock()
+        deps["http_client"].get.return_value = mock_resp
+
+        # _report_result 모킹 (성공)
+        mock_patch_resp = MagicMock()
+        mock_patch_resp.raise_for_status = MagicMock()
+        deps["http_client"].patch.return_value = mock_patch_resp
+
+        # 분석 실패 반환
+        deps["claude"].analyze_code = MagicMock(
+            return_value={
+                "feedback": "fail",
+                "optimized_code": None,
+                "score": 0,
+                "status": "failed",
+            }
+        )
+
+        # userId 없는 메시지 → if user_id: False → branch 221->225 커버
+        body = json.dumps({"submissionId": "sub-no-uid-fail"}).encode()
+
+        with patch("src.worker.time.sleep"):
+            worker._on_message(mock_ch, mock_method, mock_properties, body)
+
+        # quota 차감 미호출 확인
+        deps["redis_client"].decr.assert_not_called()
+        # ACK 확인 (처리 자체는 성공)
+        mock_ch.basic_ack.assert_called_once()
 
 
 class TestPublishStatusWithRetry:

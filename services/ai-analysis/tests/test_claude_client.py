@@ -925,3 +925,78 @@ class TestSharedHelpers:
         c = _make_client()
         with pytest.raises(json.JSONDecodeError):
             c._extract_first_json_object("no json here")
+
+    def test_strip_markdown_block_no_closing_backtick(self):
+        """``` 시작이지만 닫는 ``` 없는 경우 — 루프 exhaustion (branches 443->442, 442->446)"""
+        c = _make_client()
+        # 닫는 ``` 없음 → for 루프에서 모든 라인 검사 후 break 없이 종료
+        raw = "```json\nline1 content\nline2 content\nno closing backtick"
+        result = c._strip_markdown_block(raw)
+        # end_idx 미갱신 → 전체 내용 사용 → first_newline 이후 내용 반환
+        assert "line1 content" in result
+        assert "line2 content" in result
+
+    def test_strip_markdown_block_single_line_after_fence(self):
+        """``` 시작, 한 줄 내용, 닫는 ``` 없음 — 루프 단일 이터레이션 False"""
+        c = _make_client()
+        raw = "```python\nsome code"
+        result = c._strip_markdown_block(raw)
+        assert "some code" in result
+
+
+class TestParseResponseFallbackNewBranches:
+    """_parse_response() 추가 커버리지 — 미커버 분기 보완"""
+
+    def test_backtick_start_no_closing_backtick_in_fallback(self):
+        """파싱 실패 fallback: ``` 시작이지만 닫는 ``` 없음 (branch 269->273 False)"""
+        c = _make_client()
+        # ``` 로 시작하지만 닫는 ``` 없음 → split 후 content가 ``` 로 안 끝남
+        raw = "```json\nbroken json content without closing"
+        result = c._parse_response(raw)
+        # 파싱 실패 → fallback, score=0, failed
+        assert result["status"] == "failed"
+        assert result["score"] == 0
+
+    def test_totalScore_zero_categories_all_unknown_names(self):
+        """totalScore=0 + categories 이름이 모두 가중치 미등록 → weighted_sum=0 (branch 252->255)"""
+        c = _make_client()
+        # 카테고리 이름이 weights dict에 없음 → weight=0 → weighted_sum=0
+        raw = json.dumps(
+            {
+                "totalScore": 0,
+                "summary": "test",
+                "categories": [
+                    {"name": "unknown_category_a", "score": 90, "comment": "ok"},
+                    {"name": "unknown_category_b", "score": 80, "comment": "ok"},
+                ],
+                "optimizedCode": None,
+            }
+        )
+        result = c._parse_response(raw)
+        # weighted_sum=0 → score는 0으로 유지 (branch 252->255: False path)
+        assert result["status"] == "completed"
+        assert result["score"] == 0
+
+
+class TestParseGroupResponseFallbackNewBranches:
+    """_parse_group_response() 추가 커버리지 — lines 417-419"""
+
+    def test_group_response_fallback_backtick_no_closing(self):
+        """그룹 분석 fallback: ``` 시작이지만 닫는 ``` 없음 (lines 417-418)"""
+        c = _make_client()
+        raw = "```json\nbroken group json without closing backtick"
+        result = c._parse_group_response(raw)
+        # 파싱 실패 → fallback, status=failed
+        assert result["status"] == "failed"
+        # split 후 내용이 fallback에 포함됨
+        assert "broken group json" in result["comparison"]
+
+    def test_group_response_fallback_backtick_with_closing(self):
+        """그룹 분석 fallback: ``` 시작 + 닫는 ``` 있음 → 닫는 ``` 제거 (line 419)"""
+        c = _make_client()
+        # 닫는 ``` 있지만 JSON은 invalid → fallback 진입 → line 419 실행
+        raw = "```json\nbroken group json\n```"
+        result = c._parse_group_response(raw)
+        assert result["status"] == "failed"
+        # 닫는 ``` 이 제거되어야 함
+        assert "```" not in result["comparison"]

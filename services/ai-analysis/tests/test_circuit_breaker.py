@@ -66,6 +66,20 @@ class TestRecordFailureAtThreshold:
         assert cb.failure_count == 5
 
 
+class TestIsOpenWhenClosed:
+    """4b. is_open -- CLOSED 상태: else 분기 → False 즉시 반환 (line 87)"""
+
+    def test_is_open_returns_false_when_closed(self, cb: CircuitBreaker):
+        """CLOSED 상태에서 is_open은 False (else branch → line 87)"""
+        assert cb.state == CircuitState.CLOSED
+        assert cb.is_open is False
+
+    def test_is_open_returns_false_when_half_open(self, cb: CircuitBreaker):
+        """HALF_OPEN 상태에서 is_open은 False (else branch → line 87)"""
+        cb.state = CircuitState.HALF_OPEN
+        assert cb.is_open is False
+
+
 class TestIsOpenBeforeTimeout:
     """5. is_open -- OPEN + timeout 미경과: True"""
 
