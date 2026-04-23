@@ -1,12 +1,12 @@
 /**
- * @file 스터디 사이드바 (v2 디자인 시스템)
+ * @file Study sidebar (v2 design system)
  * @domain study
  * @layer component
  * @related StudyContext, TopNav
  *
- * 스터디 페이지 전용 사이드바.
- * 데스크톱: 좌측 고정, 모바일(< md): 슬라이드 오버레이 + 백드롭.
- * 네비게이션: 개요 | 문제 | 제출 | 멤버 | 설정 (ADMIN만)
+ * Study-specific sidebar.
+ * Desktop: fixed left, Mobile(< md): slide overlay + backdrop.
+ * Navigation: Overview | Problems | Submissions | Members | Settings (ADMIN only)
  */
 
 'use client';
@@ -26,6 +26,7 @@ import {
   Menu,
   X,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { useStudy } from '@/contexts/StudyContext';
 import { getAvatarPresetKey, getAvatarSrc } from '@/lib/avatars';
@@ -35,17 +36,17 @@ import Image from 'next/image';
 
 interface SidebarLink {
   href: (studyId: string) => string;
-  label: string;
+  labelKey: string;
   icon: typeof LayoutDashboard;
   adminOnly?: boolean;
 }
 
 const SIDEBAR_LINKS: SidebarLink[] = [
-  { href: (id) => `/studies/${id}`, label: '개요', icon: LayoutDashboard },
-  { href: (id) => `/studies/${id}/problems`, label: '문제', icon: BookOpen },
-  { href: (id) => `/studies/${id}/submissions`, label: '제출', icon: FileText },
-  { href: (id) => `/studies/${id}/members`, label: '멤버', icon: Users },
-  { href: (id) => `/studies/${id}/settings`, label: '설정', icon: Settings, adminOnly: true },
+  { href: (id) => `/studies/${id}`, labelKey: 'overview', icon: LayoutDashboard },
+  { href: (id) => `/studies/${id}/problems`, labelKey: 'problems', icon: BookOpen },
+  { href: (id) => `/studies/${id}/submissions`, labelKey: 'submissions', icon: FileText },
+  { href: (id) => `/studies/${id}/members`, labelKey: 'members', icon: Users },
+  { href: (id) => `/studies/${id}/settings`, labelKey: 'settings', icon: Settings, adminOnly: true },
 ];
 
 // ─── STUDY SIDEBAR ──────────────────────────
@@ -53,6 +54,7 @@ const SIDEBAR_LINKS: SidebarLink[] = [
 export function StudySidebar(): ReactNode {
   const pathname = usePathname();
   const router = useRouter();
+  const t = useTranslations('layout');
   const {
     currentStudyId,
     currentStudyName,
@@ -91,14 +93,14 @@ export function StudySidebar(): ReactNode {
   // Shared nav content (used in both desktop aside and mobile overlay)
   const navContent = (
     <>
-      {/* 스터디 선택 헤더 */}
+      {/* Study selector header */}
       <div className="border-b border-border px-3 py-3">
         {/* Desktop: collapsed view */}
         {collapsed && (
           <div className="hidden md:block">
             <button
               type="button"
-              aria-label="사이드바 확장"
+              aria-label={t('studySidebar.expandSidebar')}
               onClick={() => setCollapsed(false)}
               className="flex h-7 w-7 items-center justify-center rounded-badge text-text-3 transition-colors hover:bg-bg-alt hover:text-text"
             >
@@ -113,7 +115,7 @@ export function StudySidebar(): ReactNode {
             <div className="relative min-w-0 flex-1">
               <button
                 type="button"
-                aria-label="스터디 전환"
+                aria-label={t('studySidebar.switchStudy')}
                 aria-haspopup="listbox"
                 aria-expanded={studyDropdownOpen}
                 onClick={() => setStudyDropdownOpen((prev) => !prev)}
@@ -135,14 +137,14 @@ export function StudySidebar(): ReactNode {
                     {currentStudyName?.charAt(0) ?? ''}
                   </div>
                 )}
-                <span className="truncate">{currentStudyName ?? '스터디'}</span>
+                <span className="truncate">{currentStudyName ?? t('studySidebar.studyFallback')}</span>
                 <ChevronDown className="h-3 w-3 shrink-0 text-text-3" aria-hidden />
               </button>
 
               {studyDropdownOpen && (
                 <div
                   role="listbox"
-                  aria-label="스터디 목록"
+                  aria-label={t('studySidebar.studyList')}
                   className="absolute left-0 top-full z-50 mt-1 w-full min-w-[160px] overflow-hidden rounded-card border border-border bg-bg-card shadow-card"
                 >
                   {studies.map((study) => (
@@ -193,7 +195,7 @@ export function StudySidebar(): ReactNode {
             {/* Desktop: collapse toggle */}
             <button
               type="button"
-              aria-label="사이드바 접기"
+              aria-label={t('studySidebar.collapseSidebar')}
               onClick={() => setCollapsed(true)}
               className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-badge text-text-3 transition-colors hover:bg-bg-alt hover:text-text md:flex"
             >
@@ -203,7 +205,7 @@ export function StudySidebar(): ReactNode {
             {/* Mobile: close button */}
             <button
               type="button"
-              aria-label="사이드바 닫기"
+              aria-label={t('studySidebar.closeSidebar')}
               onClick={closeMobile}
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-badge text-text-3 transition-colors hover:bg-bg-alt hover:text-text md:hidden"
             >
@@ -213,18 +215,19 @@ export function StudySidebar(): ReactNode {
         </div>
       </div>
 
-      {/* 네비게이션 링크 */}
-      <nav className="flex-1 overflow-y-auto py-2" aria-label="스터디 내비게이션">
+      {/* Navigation links */}
+      <nav className="flex-1 overflow-y-auto py-2" aria-label={t('studySidebar.studyNav')}>
         <ul className="flex flex-col gap-0.5 px-2" role="list">
-          {SIDEBAR_LINKS.map(({ href, label, icon: Icon, adminOnly }) => {
+          {SIDEBAR_LINKS.map(({ href, labelKey, icon: Icon, adminOnly }) => {
             if (adminOnly && !isAdmin) return null;
 
             const linkHref = href(currentStudyId);
             const isActive =
               pathname === linkHref || pathname.startsWith(linkHref + '/');
+            const label = t(`studySidebar.nav.${labelKey}`);
 
             return (
-              <li key={label}>
+              <li key={labelKey}>
                 <Link
                   href={linkHref}
                   title={collapsed ? label : undefined}
@@ -264,7 +267,7 @@ export function StudySidebar(): ReactNode {
       {/* Mobile: hamburger trigger button */}
       <button
         type="button"
-        aria-label="스터디 메뉴 열기"
+        aria-label={t('studySidebar.openStudyMenu')}
         onClick={() => setMobileOpen(true)}
         className="fixed bottom-4 right-4 z-30 flex h-12 w-12 items-center justify-center rounded-full shadow-lg md:hidden"
         style={{ background: 'var(--primary)', color: 'white' }}
