@@ -22,6 +22,7 @@ import koReviews from '../../messages/ko/reviews.json';
 import koLayout from '../../messages/ko/layout.json';
 import koProblems from '../../messages/ko/problems.json';
 import koAnalytics from '../../messages/ko/analytics.json';
+import koFeedback from '../../messages/ko/feedback.json';
 
 /** Default ko messages (all namespaces merged) */
 const DEFAULT_MESSAGES: AbstractIntlMessages = {
@@ -35,6 +36,7 @@ const DEFAULT_MESSAGES: AbstractIntlMessages = {
   layout: koLayout,
   problems: koProblems,
   analytics: koAnalytics,
+  feedback: koFeedback,
 };
 
 interface RenderWithI18nOptions extends RenderOptions {

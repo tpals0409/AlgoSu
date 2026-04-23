@@ -1,0 +1,44 @@
+{
+  "bugReport": {
+    "descriptionLabel": "Bug Description",
+    "descriptionPlaceholder": "Describe what went wrong...",
+    "screenshotLabel": "Screenshot (optional)",
+    "screenshotPreviewAlt": "Screenshot preview",
+    "screenshotFullAlt": "Full screenshot view",
+    "screenshotClickToView": "Click to view full size",
+    "removeScreenshot": "Remove screenshot",
+    "attachImage": "Attach image or paste from clipboard (Ctrl+V)",
+    "selectFile": "Select screenshot file",
+    "close": "Close",
+    "submitting": "Sending...",
+    "submit": "Send Bug Report",
+    "submitSuccess": "Thank you for your bug report!",
+    "submitError": "Failed to send bug report. Please try again later.",
+    "errors": {
+      "imageOnly": "Only image files can be attached.",
+      "canvasContext": "Could not create canvas context.",
+      "imageTooLarge": "Image is too large. Please use a smaller image.",
+      "imageUnreadable": "Could not read the image.",
+      "imageProcessFailed": "Image processing failed."
+    }
+  },
+  "feedbackForm": {
+    "categoryLabel": "Category",
+    "categoryGeneral": "General",
+    "categoryFeature": "Feature Request",
+    "categoryUx": "UX Improvement",
+    "contentLabel": "Content",
+    "contentPlaceholder": "Feel free to share your thoughts...",
+    "submitting": "Sending...",
+    "submit": "Send Feedback",
+    "submitSuccess": "Thank you for your feedback!",
+    "submitError": "Failed to send feedback. Please try again later."
+  },
+  "widget": {
+    "openButton": "Send Feedback",
+    "title": "Send Feedback",
+    "description": "Help us improve AlgoSu.",
+    "tabFeedback": "Feedback",
+    "tabBugReport": "Bug Report"
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "bugReport": {
+    "descriptionLabel": "버그 설명",
+    "descriptionPlaceholder": "어떤 문제가 발생했는지 설명해주세요...",
+    "screenshotLabel": "스크린샷 (선택)",
+    "screenshotPreviewAlt": "스크린샷 미리보기",
+    "screenshotFullAlt": "스크린샷 전체보기",
+    "screenshotClickToView": "클릭하여 전체 보기",
+    "removeScreenshot": "스크린샷 제거",
+    "attachImage": "이미지 첨부 또는 클립보드 붙여넣기 (Ctrl+V)",
+    "selectFile": "스크린샷 파일 선택",
+    "close": "닫기",
+    "submitting": "전송 중...",
+    "submit": "버그 리포트 보내기",
+    "submitSuccess": "버그 리포트를 보내주셔서 감사합니다!",
+    "submitError": "버그 리포트 전송에 실패했습니다. 잠시 후 다시 시도해주세요.",
+    "errors": {
+      "imageOnly": "이미지 파일만 첨부할 수 있습니다.",
+      "canvasContext": "Canvas context를 생성할 수 없습니다.",
+      "imageTooLarge": "이미지가 너무 큽니다. 더 작은 이미지를 사용해주세요.",
+      "imageUnreadable": "이미지를 읽을 수 없습니다.",
+      "imageProcessFailed": "이미지 처리에 실패했습니다."
+    }
+  },
+  "feedbackForm": {
+    "categoryLabel": "카테고리",
+    "categoryGeneral": "일반",
+    "categoryFeature": "기능 요청",
+    "categoryUx": "UX 개선",
+    "contentLabel": "내용",
+    "contentPlaceholder": "의견을 자유롭게 작성해주세요...",
+    "submitting": "전송 중...",
+    "submit": "피드백 보내기",
+    "submitSuccess": "피드백을 보내주셔서 감사합니다!",
+    "submitError": "피드백 전송에 실패했습니다. 잠시 후 다시 시도해주세요."
+  },
+  "widget": {
+    "openButton": "피드백 보내기",
+    "title": "의견 보내기",
+    "description": "AlgoSu를 개선하는 데 도움을 주세요.",
+    "tabFeedback": "피드백",
+    "tabBugReport": "버그 리포트"
+  }
+}
