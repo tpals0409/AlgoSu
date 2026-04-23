@@ -19,6 +19,7 @@ import {
   ChevronUp,
   MessageSquare,
 } from 'lucide-react';
+import { useTranslations, useLocale } from 'next-intl';
 import { cn } from '@/lib/utils';
 import type { ReviewComment } from '@/lib/api';
 import { ReplyItem } from '@/components/review/ReplyItem';
@@ -38,17 +39,26 @@ interface CommentThreadProps {
 
 // ─── HELPERS ──────────────────────────────
 
-/** ISO 날짜를 상대 시간으로 변환 */
-function formatRelativeTime(iso: string): string {
+/**
+ * ISO 날짜를 상대 시간으로 변환
+ * @param iso - ISO 8601 날짜 문자열
+ * @param tTime - reviews.time 네임스페이스 번역 함수
+ * @param locale - 현재 로케일 (날짜 포맷용)
+ */
+function formatRelativeTime(
+  iso: string,
+  tTime: (key: string, values?: Record<string, number>) => string,
+  locale: string,
+): string {
   const diff = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return '방금';
-  if (minutes < 60) return `${minutes}분 전`;
+  if (minutes < 1) return tTime('justNow');
+  if (minutes < 60) return tTime('minutesAgo', { minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}시간 전`;
+  if (hours < 24) return tTime('hoursAgo', { hours });
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}일 전`;
-  return new Date(iso).toLocaleDateString('ko-KR', {
+  if (days < 7) return tTime('daysAgo', { days });
+  return new Date(iso).toLocaleDateString(locale, {
     month: 'short',
     day: 'numeric',
   });
@@ -73,6 +83,11 @@ function CommentItem({
   onDelete,
   onReply,
 }: CommentItemProps): ReactElement {
+  const t = useTranslations('reviews');
+  const locale = useLocale();
+  const tTime = (key: string, values?: Record<string, number>) =>
+    t(`time.${key}` as Parameters<typeof t>[0], values as never);
+
   const authorName = nicknameMap[comment.authorId] ?? comment.authorId.slice(0, 8);
   const [showReplies, setShowReplies] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -91,7 +106,7 @@ function CommentItem({
   if (isDeleted) {
     return (
       <div className="border-b border-border px-1 py-3">
-        <p className="text-xs italic text-text-3">삭제된 댓글입니다</p>
+        <p className="text-xs italic text-text-3">{t('commentThread.deletedComment')}</p>
       </div>
     );
   }
@@ -119,7 +134,7 @@ function CommentItem({
             </span>
             {isAuthor && (
               <span className="rounded-badge bg-primary-soft px-1.5 py-0.5 text-[9px] font-medium text-primary">
-                나
+                {t('commentThread.me')}
               </span>
             )}
             {comment.lineNumber && (
@@ -128,7 +143,7 @@ function CommentItem({
               </span>
             )}
             <span className="text-[10px] text-text-3">
-              {formatRelativeTime(comment.createdAt)}
+              {formatRelativeTime(comment.createdAt, tTime, locale)}
             </span>
           </div>
 
@@ -140,7 +155,7 @@ function CommentItem({
                 onChange={(e) => setEditContent(e.target.value)}
                 className="w-full resize-none rounded-badge border border-border bg-input-bg px-2 py-1.5 text-xs text-text outline-none focus:border-primary"
                 rows={2}
-                aria-label="댓글 수정"
+                aria-label={t('commentThread.editComment')}
               />
               <div className="mt-1 flex gap-1.5">
                 <button
@@ -148,7 +163,7 @@ function CommentItem({
                   onClick={handleEdit}
                   className="rounded-badge bg-primary px-2.5 py-1 text-[10px] font-semibold text-white transition-all hover:brightness-110"
                 >
-                  저장
+                  {t('commentThread.save')}
                 </button>
                 <button
                   type="button"
@@ -158,7 +173,7 @@ function CommentItem({
                   }}
                   className="rounded-badge border border-border px-2.5 py-1 text-[10px] text-text-3 transition-colors hover:bg-bg-alt hover:text-text"
                 >
-                  취소
+                  {t('commentThread.cancel')}
                 </button>
               </div>
             </div>
@@ -176,23 +191,23 @@ function CommentItem({
                   type="button"
                   onClick={() => setEditing(true)}
                   className="flex items-center gap-0.5 text-[10px] text-text-3 transition-colors hover:text-primary"
-                  aria-label="댓글 수정"
+                  aria-label={t('commentThread.editComment')}
                 >
                   <Pencil className="h-2.5 w-2.5" />
-                  수정
+                  {t('commentThread.edit')}
                 </button>
                 <button
                   type="button"
                   onClick={() => {
-                    if (window.confirm('댓글을 삭제하시겠습니까?')) {
+                    if (window.confirm(t('commentThread.confirmDelete'))) {
                       onDelete(comment.publicId);
                     }
                   }}
                   className="flex items-center gap-0.5 text-[10px] text-text-3 transition-colors hover:text-error"
-                  aria-label="댓글 삭제"
+                  aria-label={t('commentThread.deleteComment')}
                 >
                   <Trash2 className="h-2.5 w-2.5" />
-                  삭제
+                  {t('commentThread.delete')}
                 </button>
               </>
             )}
@@ -207,7 +222,7 @@ function CommentItem({
                 ) : (
                   <ChevronDown className="h-2.5 w-2.5" />
                 )}
-                답글 {replies.length}
+                {t('commentThread.replies', { count: replies.length })}
               </button>
             )}
           </div>
@@ -257,6 +272,8 @@ export function CommentThread({
   onReply,
   selectedLine,
 }: CommentThreadProps): ReactElement {
+  const t = useTranslations('reviews');
+
   // 선택된 라인이 있으면 해당 라인 댓글만, 없으면 전체
   const filtered = selectedLine
     ? comments.filter((c) => c.lineNumber === selectedLine)
@@ -268,8 +285,8 @@ export function CommentThread({
         <MessageSquare className="mx-auto mb-2 h-6 w-6 text-text-3 opacity-40" />
         <p className="text-xs text-text-3">
           {selectedLine
-            ? `Line ${selectedLine}에 아직 댓글이 없습니다`
-            : '코드 라인을 클릭하면 댓글을 확인하고 남길 수 있어요'}
+            ? t('commentThread.emptyLine', { line: selectedLine })
+            : t('commentThread.emptyGeneral')}
         </p>
       </div>
     );
