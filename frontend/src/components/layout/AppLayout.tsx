@@ -2,7 +2,7 @@
  * @file 앱 레이아웃 (v3 사이드바 디자인)
  * @domain common
  * @layer component
- * @related NotificationBell, AuthContext, StudyContext
+ * @related NotificationBell, AuthContext, StudyContext, LanguageSwitcher
  *
  * 데스크탑(>= md/768px): 왼쪽 220px 고정 사이드바
  * 모바일(< md/768px): 오른쪽 슬라이드 오버레이 사이드바 + 상단 모바일 헤더
@@ -40,6 +40,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudy } from '@/contexts/StudyContext';
 import { NotificationBell } from '@/components/layout/NotificationBell';
+import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 import { Logo } from '@/components/ui/Logo';
 import { getAvatarSrc, getAvatarPresetKey } from '@/lib/avatars';
@@ -375,6 +376,11 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
                   {isDark ? '다크 모드' : '라이트 모드'}
                 </button>
 
+                {/* Language switcher */}
+                <div className="px-3 py-1.5">
+                  <LanguageSwitcher />
+                </div>
+
                 {/* Profile link */}
                 <Link
                   href="/profile"
@@ -449,14 +455,17 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
                 AlgoSu
               </span>
             </Link>
-            <button
-              type="button"
-              onClick={logout}
-              className="flex items-center gap-1.5 rounded-btn px-3 py-1.5 text-[13px] font-medium text-text-3 transition-colors hover:bg-bg-alt hover:text-error"
-            >
-              <LogOut className="h-4 w-4" aria-hidden />
-              로그아웃
-            </button>
+            <div className="flex items-center gap-2">
+              <LanguageSwitcher />
+              <button
+                type="button"
+                onClick={logout}
+                className="flex items-center gap-1.5 rounded-btn px-3 py-1.5 text-[13px] font-medium text-text-3 transition-colors hover:bg-bg-alt hover:text-error"
+              >
+                <LogOut className="h-4 w-4" aria-hidden />
+                로그아웃
+              </button>
+            </div>
           </header>
         )}
 
