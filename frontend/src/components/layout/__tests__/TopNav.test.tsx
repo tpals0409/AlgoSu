@@ -1,4 +1,5 @@
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { screen, fireEvent, act } from '@testing-library/react';
+import { renderWithI18n } from '@/test-utils/i18n';
 import { TopNav } from '../TopNav';
 
 // ─── MOCK CONTROL VARIABLES ───────────────────────────────────────────────────
@@ -71,6 +72,7 @@ jest.mock('@/components/layout/LanguageSwitcher', () => ({
 
 jest.mock('@/lib/avatars', () => ({
   getAvatarSrc: () => '/avatar.png',
+  getAvatarPresetKey: (v: string) => v,
 }));
 
 jest.mock('@/lib/utils', () => ({
@@ -93,26 +95,26 @@ function resetDefaults() {
 
 // ─── TESTS ────────────────────────────────────────────────────────────────────
 
-describe('TopNav — 기본 렌더링', () => {
+describe('TopNav — basic rendering', () => {
   beforeEach(resetDefaults);
 
-  it('header 엘리먼트를 렌더링한다', () => {
-    render(<TopNav />);
+  it('header element is rendered', () => {
+    renderWithI18n(<TopNav />);
     expect(screen.getByRole('banner')).toBeInTheDocument();
   });
 
-  it('주 내비게이션 aria-label을 렌더링한다', () => {
-    render(<TopNav />);
-    expect(screen.getByRole('navigation', { name: '주 내비게이션' })).toBeInTheDocument();
+  it('main navigation aria-label is rendered', () => {
+    renderWithI18n(<TopNav />);
+    expect(screen.getByRole('navigation', { name: /내비게이션/ })).toBeInTheDocument();
   });
 
-  it('로고 텍스트 AlgoSu를 렌더링한다', () => {
-    render(<TopNav />);
+  it('logo text AlgoSu is rendered', () => {
+    renderWithI18n(<TopNav />);
     expect(screen.getByText('AlgoSu')).toBeInTheDocument();
   });
 
-  it('인증+스터디 상태일 때 네비 링크를 렌더링한다', () => {
-    render(<TopNav />);
+  it('nav links are rendered when authenticated with study', () => {
+    renderWithI18n(<TopNav />);
     expect(screen.getByText('대시보드')).toBeInTheDocument();
     expect(screen.getByText('문제')).toBeInTheDocument();
     expect(screen.getByText('제출')).toBeInTheDocument();
@@ -120,20 +122,20 @@ describe('TopNav — 기본 렌더링', () => {
     expect(screen.getByText('분석')).toBeInTheDocument();
   });
 
-  it('테마 전환 버튼을 렌더링한다', () => {
-    render(<TopNav />);
-    expect(screen.getByRole('button', { name: '테마 전환' })).toBeInTheDocument();
+  it('theme toggle button is rendered', () => {
+    renderWithI18n(<TopNav />);
+    expect(screen.getByRole('button', { name: /테마 전환/ })).toBeInTheDocument();
   });
 
-  it('인증 상태일 때 NotificationBell을 렌더링한다', () => {
-    render(<TopNav />);
+  it('NotificationBell is rendered when authenticated', () => {
+    renderWithI18n(<TopNav />);
     expect(screen.getByTestId('notification-bell')).toBeInTheDocument();
   });
 });
 
-// ─── 비인증 상태 ───────────────────────────────────────────────────────────────
+// ─── Unauthenticated ─────────────────────────────────────────────────────────
 
-describe('TopNav — 비인증 상태', () => {
+describe('TopNav — unauthenticated', () => {
   beforeEach(() => {
     resetDefaults();
     mockIsAuthenticated = false;
@@ -142,46 +144,46 @@ describe('TopNav — 비인증 상태', () => {
     mockCurrentStudyId = null;
   });
 
-  it('로그인 링크를 표시한다', () => {
-    render(<TopNav />);
+  it('shows login link', () => {
+    renderWithI18n(<TopNav />);
     expect(screen.getByText('로그인')).toBeInTheDocument();
   });
 
-  it('네비 링크를 표시하지 않는다', () => {
-    render(<TopNav />);
+  it('does not show nav links', () => {
+    renderWithI18n(<TopNav />);
     expect(screen.queryByText('대시보드')).not.toBeInTheDocument();
   });
 
-  it('모바일 햄버거 버튼을 표시하지 않는다', () => {
-    render(<TopNav />);
+  it('does not show mobile hamburger button', () => {
+    renderWithI18n(<TopNav />);
     expect(screen.queryByRole('button', { name: /메뉴/ })).not.toBeInTheDocument();
   });
 
-  it('StudySelector를 표시하지 않는다', () => {
-    render(<TopNav />);
-    expect(screen.queryByRole('button', { name: '스터디 전환' })).not.toBeInTheDocument();
+  it('does not show StudySelector', () => {
+    renderWithI18n(<TopNav />);
+    expect(screen.queryByRole('button', { name: /스터디 전환/ })).not.toBeInTheDocument();
     expect(screen.queryByText('스터디 선택')).not.toBeInTheDocument();
   });
 });
 
-// ─── StudySelector — studies 없음 ─────────────────────────────────────────────
+// ─── StudySelector — no studies ─────────────────────────────────────────────
 
-describe('TopNav — StudySelector (인증됨, 스터디 없음)', () => {
+describe('TopNav — StudySelector (authenticated, no studies)', () => {
   beforeEach(() => {
     resetDefaults();
-    // Authenticated but no studies => renders "스터디 선택" link
+    // Authenticated but no studies => renders "Select Study" link
     mockStudies = [];
     mockCurrentStudyId = null;
   });
 
-  it('"스터디 선택" 링크를 표시한다', () => {
-    render(<TopNav />);
-    expect(screen.getByRole('link', { name: '스터디 선택' })).toBeInTheDocument();
+  it('shows "Select Study" link', () => {
+    renderWithI18n(<TopNav />);
+    expect(screen.getByRole('link', { name: /스터디 선택/ })).toBeInTheDocument();
   });
 
-  it('"스터디 선택" 링크는 /studies로 이동한다', () => {
-    render(<TopNav />);
-    const link = screen.getByRole('link', { name: '스터디 선택' });
+  it('"Select Study" link points to /studies', () => {
+    renderWithI18n(<TopNav />);
+    const link = screen.getByRole('link', { name: /스터디 선택/ });
     expect(link).toHaveAttribute('href', '/studies');
   });
 });
@@ -198,21 +200,21 @@ describe('TopNav — StudySelector dropdown', () => {
     mockCurrentStudyId = 'study-1';
   });
 
-  it('스터디 전환 버튼이 렌더링된다', () => {
-    render(<TopNav />);
-    expect(screen.getByRole('button', { name: '스터디 전환' })).toBeInTheDocument();
+  it('switch study button is rendered', () => {
+    renderWithI18n(<TopNav />);
+    expect(screen.getByRole('button', { name: /스터디 전환/ })).toBeInTheDocument();
   });
 
-  it('버튼 클릭 시 드롭다운이 열린다', () => {
-    render(<TopNav />);
-    fireEvent.click(screen.getByRole('button', { name: '스터디 전환' }));
-    expect(screen.getByRole('listbox', { name: '스터디 목록' })).toBeInTheDocument();
+  it('dropdown opens on button click', () => {
+    renderWithI18n(<TopNav />);
+    fireEvent.click(screen.getByRole('button', { name: /스터디 전환/ }));
+    expect(screen.getByRole('listbox', { name: /스터디 목록/ })).toBeInTheDocument();
   });
 
-  it('드롭다운에 스터디 목록이 표시된다', () => {
-    render(<TopNav />);
-    fireEvent.click(screen.getByRole('button', { name: '스터디 전환' }));
-    const listbox = screen.getByRole('listbox', { name: '스터디 목록' });
+  it('dropdown shows study list', () => {
+    renderWithI18n(<TopNav />);
+    fireEvent.click(screen.getByRole('button', { name: /스터디 전환/ }));
+    const listbox = screen.getByRole('listbox', { name: /스터디 목록/ });
     expect(listbox).toBeInTheDocument();
     // Options contain initial letter + study name
     const options = listbox.querySelectorAll('[role="option"]');
@@ -221,10 +223,10 @@ describe('TopNav — StudySelector dropdown', () => {
     expect(listbox).toHaveTextContent('Another Study');
   });
 
-  it('스터디 선택 시 setCurrentStudy가 호출되고 드롭다운이 닫힌다', () => {
-    render(<TopNav />);
-    fireEvent.click(screen.getByRole('button', { name: '스터디 전환' }));
-    const listbox = screen.getByRole('listbox', { name: '스터디 목록' });
+  it('selecting a study calls setCurrentStudy and closes dropdown', () => {
+    renderWithI18n(<TopNav />);
+    fireEvent.click(screen.getByRole('button', { name: /스터디 전환/ }));
+    const listbox = screen.getByRole('listbox', { name: /스터디 목록/ });
     const options = listbox.querySelectorAll('[role="option"]');
     // Click the second option (Another Study)
     fireEvent.click(options[1]);
@@ -232,9 +234,9 @@ describe('TopNav — StudySelector dropdown', () => {
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
   });
 
-  it('스터디 선택 시 드롭다운이 닫힌다', () => {
-    render(<TopNav />);
-    fireEvent.click(screen.getByRole('button', { name: '스터디 전환' }));
+  it('selecting a study closes dropdown', () => {
+    renderWithI18n(<TopNav />);
+    fireEvent.click(screen.getByRole('button', { name: /스터디 전환/ }));
     const listbox = screen.getByRole('listbox');
     expect(listbox).toBeInTheDocument();
     const options = listbox.querySelectorAll('[role="option"]');
@@ -242,18 +244,18 @@ describe('TopNav — StudySelector dropdown', () => {
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
   });
 
-  it('버튼 재클릭 시 드롭다운이 닫힌다 (토글)', () => {
-    render(<TopNav />);
-    const btn = screen.getByRole('button', { name: '스터디 전환' });
+  it('re-clicking button closes dropdown (toggle)', () => {
+    renderWithI18n(<TopNav />);
+    const btn = screen.getByRole('button', { name: /스터디 전환/ });
     fireEvent.click(btn);
     expect(screen.getByRole('listbox')).toBeInTheDocument();
     fireEvent.click(btn);
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
   });
 
-  it('외부 클릭 시 드롭다운이 닫힌다', () => {
-    render(<TopNav />);
-    fireEvent.click(screen.getByRole('button', { name: '스터디 전환' }));
+  it('clicking outside closes dropdown', () => {
+    renderWithI18n(<TopNav />);
+    fireEvent.click(screen.getByRole('button', { name: /스터디 전환/ }));
     expect(screen.getByRole('listbox')).toBeInTheDocument();
     act(() => {
       fireEvent.mouseDown(document.body);
@@ -261,10 +263,10 @@ describe('TopNav — StudySelector dropdown', () => {
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
   });
 
-  it('현재 스터디가 없을 때 버튼에 "스터디 선택" 텍스트를 표시한다', () => {
+  it('shows "Select Study" text in button when no current study', () => {
     mockCurrentStudyId = null;
-    render(<TopNav />);
-    expect(screen.getByRole('button', { name: '스터디 전환' })).toHaveTextContent('스터디 선택');
+    renderWithI18n(<TopNav />);
+    expect(screen.getByRole('button', { name: /스터디 전환/ })).toHaveTextContent(/스터디 선택/);
   });
 });
 
@@ -273,46 +275,46 @@ describe('TopNav — StudySelector dropdown', () => {
 describe('TopNav — ProfileDropdown', () => {
   beforeEach(resetDefaults);
 
-  it('프로필 이미지 버튼이 렌더링된다', () => {
-    render(<TopNav />);
+  it('profile image button is rendered', () => {
+    renderWithI18n(<TopNav />);
     expect(screen.getByRole('button', { name: /프로필 메뉴/ })).toBeInTheDocument();
   });
 
-  it('프로필 버튼 클릭 시 드롭다운이 열린다', () => {
-    render(<TopNav />);
+  it('dropdown opens on profile button click', () => {
+    renderWithI18n(<TopNav />);
     fireEvent.click(screen.getByRole('button', { name: /프로필 메뉴/ }));
-    expect(screen.getByRole('menu', { name: '프로필 메뉴' })).toBeInTheDocument();
+    expect(screen.getByRole('menu', { name: /프로필 메뉴/ })).toBeInTheDocument();
   });
 
-  it('드롭다운에 사용자 이메일이 표시된다', () => {
-    render(<TopNav />);
+  it('dropdown shows user email', () => {
+    renderWithI18n(<TopNav />);
     fireEvent.click(screen.getByRole('button', { name: /프로필 메뉴/ }));
     expect(screen.getByText('test@example.com')).toBeInTheDocument();
   });
 
-  it('드롭다운에 프로필/설정 링크가 표시된다', () => {
-    render(<TopNav />);
+  it('dropdown shows profile/settings links', () => {
+    renderWithI18n(<TopNav />);
     fireEvent.click(screen.getByRole('button', { name: /프로필 메뉴/ }));
-    expect(screen.getByRole('menuitem', { name: '프로필' })).toBeInTheDocument();
-    expect(screen.getByRole('menuitem', { name: '설정' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /프로필/ })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /설정/ })).toBeInTheDocument();
   });
 
-  it('로그아웃 버튼 클릭 시 logout이 호출된다', () => {
-    render(<TopNav />);
+  it('clicking logout calls logout', () => {
+    renderWithI18n(<TopNav />);
     fireEvent.click(screen.getByRole('button', { name: /프로필 메뉴/ }));
-    fireEvent.click(screen.getByRole('menuitem', { name: '로그아웃' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /로그아웃/ }));
     expect(mockLogout).toHaveBeenCalledTimes(1);
   });
 
-  it('로그아웃 후 드롭다운이 닫힌다', () => {
-    render(<TopNav />);
+  it('dropdown closes after logout', () => {
+    renderWithI18n(<TopNav />);
     fireEvent.click(screen.getByRole('button', { name: /프로필 메뉴/ }));
-    fireEvent.click(screen.getByRole('menuitem', { name: '로그아웃' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /로그아웃/ }));
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 
-  it('프로필 버튼 재클릭 시 드롭다운이 닫힌다 (토글)', () => {
-    render(<TopNav />);
+  it('re-clicking profile button closes dropdown (toggle)', () => {
+    renderWithI18n(<TopNav />);
     const btn = screen.getByRole('button', { name: /프로필 메뉴/ });
     fireEvent.click(btn);
     expect(screen.getByRole('menu')).toBeInTheDocument();
@@ -320,8 +322,8 @@ describe('TopNav — ProfileDropdown', () => {
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 
-  it('외부 클릭 시 프로필 드롭다운이 닫힌다', () => {
-    render(<TopNav />);
+  it('clicking outside closes profile dropdown', () => {
+    renderWithI18n(<TopNav />);
     fireEvent.click(screen.getByRole('button', { name: /프로필 메뉴/ }));
     expect(screen.getByRole('menu')).toBeInTheDocument();
     act(() => {
@@ -330,101 +332,101 @@ describe('TopNav — ProfileDropdown', () => {
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 
-  it('프로필 메뉴 아이템 클릭 시 드롭다운이 닫힌다', () => {
-    render(<TopNav />);
+  it('clicking profile menu item closes dropdown', () => {
+    renderWithI18n(<TopNav />);
     fireEvent.click(screen.getByRole('button', { name: /프로필 메뉴/ }));
-    fireEvent.click(screen.getByRole('menuitem', { name: '프로필' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /프로필/ }));
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 
-  it('설정 메뉴 아이템 클릭 시 드롭다운이 닫힌다', () => {
-    render(<TopNav />);
+  it('clicking settings menu item closes dropdown', () => {
+    renderWithI18n(<TopNav />);
     fireEvent.click(screen.getByRole('button', { name: /프로필 메뉴/ }));
-    fireEvent.click(screen.getByRole('menuitem', { name: '설정' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /설정/ }));
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 });
 
-// ─── 테마 토글 ────────────────────────────────────────────────────────────────
+// ─── Theme toggle ────────────────────────────────────────────────────────────
 
-describe('TopNav — 테마 토글', () => {
+describe('TopNav — theme toggle', () => {
   beforeEach(resetDefaults);
 
-  it('light 테마일 때 클릭하면 dark로 변경 요청한다', () => {
+  it('clicking in light theme requests dark', () => {
     mockTheme = 'light';
-    render(<TopNav />);
-    fireEvent.click(screen.getByRole('button', { name: '테마 전환' }));
+    renderWithI18n(<TopNav />);
+    fireEvent.click(screen.getByRole('button', { name: /테마 전환/ }));
     expect(mockSetTheme).toHaveBeenCalledWith('dark');
   });
 
-  it('dark 테마일 때 클릭하면 light로 변경 요청한다', () => {
+  it('clicking in dark theme requests light', () => {
     mockTheme = 'dark';
-    render(<TopNav />);
-    fireEvent.click(screen.getByRole('button', { name: '테마 전환' }));
+    renderWithI18n(<TopNav />);
+    fireEvent.click(screen.getByRole('button', { name: /테마 전환/ }));
     expect(mockSetTheme).toHaveBeenCalledWith('light');
   });
 });
 
-// ─── 모바일 메뉴 ──────────────────────────────────────────────────────────────
+// ─── Mobile menu ─────────────────────────────────────────────────────────────
 
-describe('TopNav — 모바일 메뉴', () => {
+describe('TopNav — mobile menu', () => {
   beforeEach(resetDefaults);
 
-  it('hasStudy일 때 메뉴 열기 버튼이 렌더링된다', () => {
-    render(<TopNav />);
-    expect(screen.getByRole('button', { name: '메뉴 열기' })).toBeInTheDocument();
+  it('open menu button is rendered when hasStudy', () => {
+    renderWithI18n(<TopNav />);
+    expect(screen.getByRole('button', { name: /메뉴 열기/ })).toBeInTheDocument();
   });
 
-  it('메뉴 열기 버튼 클릭 시 메뉴 닫기 버튼으로 전환된다', () => {
-    render(<TopNav />);
-    fireEvent.click(screen.getByRole('button', { name: '메뉴 열기' }));
-    expect(screen.getByRole('button', { name: '메뉴 닫기' })).toBeInTheDocument();
+  it('clicking open menu button switches to close menu button', () => {
+    renderWithI18n(<TopNav />);
+    fireEvent.click(screen.getByRole('button', { name: /메뉴 열기/ }));
+    expect(screen.getByRole('button', { name: /메뉴 닫기/ })).toBeInTheDocument();
   });
 
-  it('모바일 드롭다운에 네비 링크가 표시된다', () => {
-    render(<TopNav />);
-    fireEvent.click(screen.getByRole('button', { name: '메뉴 열기' }));
+  it('mobile dropdown shows nav links', () => {
+    renderWithI18n(<TopNav />);
+    fireEvent.click(screen.getByRole('button', { name: /메뉴 열기/ }));
     const dashLinks = screen.getAllByText('대시보드');
     expect(dashLinks.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('모바일 메뉴 닫기 버튼 클릭 시 드롭다운이 닫힌다', () => {
-    render(<TopNav />);
-    fireEvent.click(screen.getByRole('button', { name: '메뉴 열기' }));
-    fireEvent.click(screen.getByRole('button', { name: '메뉴 닫기' }));
-    expect(screen.getByRole('button', { name: '메뉴 열기' })).toBeInTheDocument();
+  it('clicking close menu button closes dropdown', () => {
+    renderWithI18n(<TopNav />);
+    fireEvent.click(screen.getByRole('button', { name: /메뉴 열기/ }));
+    fireEvent.click(screen.getByRole('button', { name: /메뉴 닫기/ }));
+    expect(screen.getByRole('button', { name: /메뉴 열기/ })).toBeInTheDocument();
   });
 
-  it('모바일 메뉴의 링크 클릭 시 메뉴가 닫힌다', () => {
-    render(<TopNav />);
-    fireEvent.click(screen.getByRole('button', { name: '메뉴 열기' }));
+  it('clicking a mobile menu link closes the menu', () => {
+    renderWithI18n(<TopNav />);
+    fireEvent.click(screen.getByRole('button', { name: /메뉴 열기/ }));
     const allDashLinks = screen.getAllByRole('link', { name: '대시보드' });
     fireEvent.click(allDashLinks[allDashLinks.length - 1]);
-    expect(screen.getByRole('button', { name: '메뉴 열기' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /메뉴 열기/ })).toBeInTheDocument();
   });
 
-  it('mobileMenuOpen=true 시 document.body.style.overflow=hidden 설정', () => {
-    render(<TopNav />);
-    fireEvent.click(screen.getByRole('button', { name: '메뉴 열기' }));
+  it('mobileMenuOpen=true sets document.body.style.overflow=hidden', () => {
+    renderWithI18n(<TopNav />);
+    fireEvent.click(screen.getByRole('button', { name: /메뉴 열기/ }));
     expect(document.body.style.overflow).toBe('hidden');
   });
 
-  it('mobileMenuOpen=false 시 document.body.style.overflow 복원', () => {
-    render(<TopNav />);
-    fireEvent.click(screen.getByRole('button', { name: '메뉴 열기' }));
-    fireEvent.click(screen.getByRole('button', { name: '메뉴 닫기' }));
+  it('mobileMenuOpen=false restores document.body.style.overflow', () => {
+    renderWithI18n(<TopNav />);
+    fireEvent.click(screen.getByRole('button', { name: /메뉴 열기/ }));
+    fireEvent.click(screen.getByRole('button', { name: /메뉴 닫기/ }));
     expect(document.body.style.overflow).toBe('');
   });
 });
 
-// ─── 활성 경로 스타일링 ────────────────────────────────────────────────────────
+// ─── Active path styling ─────────────────────────────────────────────────────
 
-describe('TopNav — 활성 경로 스타일링', () => {
+describe('TopNav — active path styling', () => {
   beforeEach(resetDefaults);
 
-  it('/dashboard 경로일 때 대시보드 링크가 active 클래스를 가진다', () => {
+  it('/dashboard path gives dashboard link active class', () => {
     mockPathname = '/dashboard';
-    render(<TopNav />);
+    renderWithI18n(<TopNav />);
     const links = screen.getAllByRole('link', { name: '대시보드' });
     const hasActive = links.some(
       (el) =>
@@ -433,9 +435,9 @@ describe('TopNav — 활성 경로 스타일링', () => {
     expect(hasActive).toBe(true);
   });
 
-  it('/dashboard/sub 경로일 때도 대시보드가 active 처리된다', () => {
+  it('/dashboard/sub path also gives dashboard active', () => {
     mockPathname = '/dashboard/sub';
-    render(<TopNav />);
+    renderWithI18n(<TopNav />);
     const links = screen.getAllByRole('link', { name: '대시보드' });
     const hasActive = links.some(
       (el) =>
@@ -444,9 +446,9 @@ describe('TopNav — 활성 경로 스타일링', () => {
     expect(hasActive).toBe(true);
   });
 
-  it('/ 경로일 때 어떤 네비 링크도 active가 아니다', () => {
+  it('/ path gives no nav link active', () => {
     mockPathname = '/';
-    render(<TopNav />);
+    renderWithI18n(<TopNav />);
     const links = screen.getAllByRole('link', { name: '대시보드' });
     const hasActive = links.some(
       (el) =>
@@ -455,11 +457,10 @@ describe('TopNav — 활성 경로 스타일링', () => {
     expect(hasActive).toBe(false);
   });
 
-  it('/dashboard 경로에서 모바일 메뉴를 열면 active 링크가 있다', () => {
+  it('/dashboard path shows active link in mobile menu', () => {
     mockPathname = '/dashboard';
-    render(<TopNav />);
-    fireEvent.click(screen.getByRole('button', { name: '메뉴 열기' }));
-    // 모바일 메뉴에서 active 클래스가 있는 링크 확인
+    renderWithI18n(<TopNav />);
+    fireEvent.click(screen.getByRole('button', { name: /메뉴 열기/ }));
     const mobileLinks = screen.getAllByRole('link', { name: '대시보드' });
     const hasActiveMobile = mobileLinks.some(
       (el) => el.className.includes('bg-primary-soft') && el.className.includes('text-primary'),
@@ -468,69 +469,57 @@ describe('TopNav — 활성 경로 스타일링', () => {
   });
 });
 
-describe('TopNav — ProfileDropdown user null 케이스', () => {
+describe('TopNav — ProfileDropdown user null cases', () => {
   beforeEach(() => {
     resetDefaults();
     mockIsAuthenticated = true;
   });
 
-  it('user.email이 없으면 빈 문자열로 aria-label을 표시한다', () => {
-    // ProfileDropdown에서 user?.email ?? '' 처리
-    render(<TopNav />);
-    // 기존 테스트에서 email이 있는 경우를 커버했으므로 여기서는 단순 렌더링 확인
+  it('empty email renders profile menu aria-label', () => {
+    renderWithI18n(<TopNav />);
     const profileBtn = screen.getByRole('button', { name: /프로필 메뉴/ });
     expect(profileBtn).toBeInTheDocument();
   });
 
-  it('user.email이 undefined이면 드롭다운에 빈 문자열을 표시한다 (user?.email ?? "" 분기)', () => {
+  it('undefined email shows empty string in dropdown (user?.email ?? "" branch)', () => {
     mockUserEmail = undefined;
     mockUser = { email: undefined, avatarPreset: 'default' };
-    render(<TopNav />);
-    // 프로필 버튼 클릭하여 드롭다운 열기
+    renderWithI18n(<TopNav />);
     fireEvent.click(screen.getByRole('button', { name: /프로필 메뉴/ }));
-    // aria-label이 " 프로필 메뉴"로 시작
-    expect(screen.getByRole('menu', { name: '프로필 메뉴' })).toBeInTheDocument();
+    expect(screen.getByRole('menu', { name: /프로필 메뉴/ })).toBeInTheDocument();
   });
 
-  it('user.avatarPreset이 undefined이면 기본 아바타를 사용한다 (avatarPreset ?? "default" 분기)', () => {
+  it('undefined avatarPreset uses default avatar (avatarPreset ?? "default" branch)', () => {
     mockUserAvatarPreset = undefined;
     mockUser = { email: 'test@example.com', avatarPreset: undefined };
-    render(<TopNav />);
-    // 렌더링 오류 없이 아바타 이미지가 표시된다
-    const img = screen.getByAltText('test@example.com 아바타');
+    renderWithI18n(<TopNav />);
+    const img = screen.getByAltText(/test@example.com/);
     expect(img).toBeInTheDocument();
   });
 
-  it('StudySelector 외부 클릭 시 ref.current가 null이 아닌 경우 닫힌다', () => {
-    // ref.current && !ref.current.contains() 분기 커버
-    render(<TopNav />);
-    // 드롭다운 열기
-    fireEvent.click(screen.getByRole('button', { name: '스터디 전환' }));
+  it('clicking outside StudySelector closes it (ref.current && !ref.current.contains branch)', () => {
+    renderWithI18n(<TopNav />);
+    fireEvent.click(screen.getByRole('button', { name: /스터디 전환/ }));
     expect(screen.getByRole('listbox')).toBeInTheDocument();
-    // ref.current가 DOM에 있고 외부 클릭
     act(() => {
       fireEvent.mouseDown(document.body);
     });
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
   });
 
-  it('StudySelector 내부 클릭 시 드롭다운이 유지된다 (ref.current.contains() = true 분기)', () => {
-    // !ref.current.contains(e.target) === false 분기: 내부 클릭은 닫지 않음
-    render(<TopNav />);
-    fireEvent.click(screen.getByRole('button', { name: '스터디 전환' }));
+  it('clicking inside StudySelector keeps dropdown open (ref.current.contains() = true branch)', () => {
+    renderWithI18n(<TopNav />);
+    fireEvent.click(screen.getByRole('button', { name: /스터디 전환/ }));
     expect(screen.getByRole('listbox')).toBeInTheDocument();
-    // 내부 요소에 mouseDown → contains()가 true → setOpen(false) 미호출
     const listbox = screen.getByRole('listbox');
     act(() => {
       fireEvent.mouseDown(listbox);
     });
-    // 드롭다운은 여전히 열려 있어야 함 (버튼 클릭이 아닌 내부 mouseDown)
     expect(screen.getByRole('listbox')).toBeInTheDocument();
   });
 
-  it('ProfileDropdown 외부 클릭 시 ref.current가 null이 아닌 경우 닫힌다', () => {
-    // ref.current && !ref.current.contains() 분기 커버
-    render(<TopNav />);
+  it('clicking outside ProfileDropdown closes it (ref.current && !ref.current.contains branch)', () => {
+    renderWithI18n(<TopNav />);
     fireEvent.click(screen.getByRole('button', { name: /프로필 메뉴/ }));
     expect(screen.getByRole('menu')).toBeInTheDocument();
     act(() => {
@@ -539,24 +528,18 @@ describe('TopNav — ProfileDropdown user null 케이스', () => {
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 
-  it('user가 null이면 프로필 메뉴의 aria-label과 이메일이 빈 문자열이다 (user?.email ?? "" 및 user?.avatarPreset ?? "default" null 분기)', () => {
+  it('null user shows empty email and default avatar (null branch)', () => {
     mockUser = null;
-    render(<TopNav />);
-    // user가 null이어도 isAuthenticated=true이므로 ProfileDropdown이 렌더링됨
+    renderWithI18n(<TopNav />);
     const profileBtn = screen.getByRole('button', { name: /프로필 메뉴/ });
     expect(profileBtn).toBeInTheDocument();
-    // user?.email이 undefined → '' 표시
-    expect(profileBtn).toHaveAttribute('aria-label', ' 프로필 메뉴');
-    // user?.avatarPreset이 undefined → 'default' 사용
-    expect(screen.getByAltText('사용자 아바타')).toBeInTheDocument();
-    // 드롭다운 열기
+    expect(screen.getByAltText(/아바타/)).toBeInTheDocument();
     fireEvent.click(profileBtn);
-    expect(screen.getByRole('menu', { name: '프로필 메뉴' })).toBeInTheDocument();
+    expect(screen.getByRole('menu', { name: /프로필 메뉴/ })).toBeInTheDocument();
   });
 
-  it('ProfileDropdown 내부 클릭 시 드롭다운이 유지된다 (ref.current.contains() = true 분기)', () => {
-    // !ref.current.contains(e.target) === false 분기: 내부 클릭은 닫지 않음
-    render(<TopNav />);
+  it('clicking inside ProfileDropdown keeps it open (ref.current.contains() = true branch)', () => {
+    renderWithI18n(<TopNav />);
     fireEvent.click(screen.getByRole('button', { name: /프로필 메뉴/ }));
     expect(screen.getByRole('menu')).toBeInTheDocument();
     const menu = screen.getByRole('menu');

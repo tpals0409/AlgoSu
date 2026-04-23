@@ -1,5 +1,5 @@
 /**
- * @file 공유 링크 관리 컴포넌트 — 생성/복사/비활성화
+ * @file Share link management component — create/copy/deactivate
  * @domain share
  * @layer component
  * @related shareLinkApi, profile/page.tsx
@@ -12,22 +12,25 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { Link2, Copy, Trash2, Plus, Check } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { useStudy } from '@/contexts/StudyContext';
 import { shareLinkApi, ApiError, type ShareLinkData } from '@/lib/api';
 
-/** 에러 타입별 사용자 메시지 분류 */
-function getErrorMessage(err: unknown): string {
+/** Map error to translation key */
+function getErrorKey(err: unknown): string {
   if (err instanceof ApiError) {
-    if (err.status === 401 || err.status === 403) return '권한이 없습니다.';
-    return '오류가 발생했습니다. 다시 시도해주세요.';
+    if (err.status === 401 || err.status === 403) return 'shareLink.errors.noPermission';
+    return 'shareLink.errors.generic';
   }
-  if (err instanceof TypeError) return '네트워크 연결을 확인해주세요.';
-  return '오류가 발생했습니다. 다시 시도해주세요.';
+  if (err instanceof TypeError) return 'shareLink.errors.network';
+  return 'shareLink.errors.generic';
 }
 
 export function ShareLinkManager(): ReactNode {
+  const t = useTranslations('account');
+  const locale = useLocale();
   const { currentStudyId, studies } = useStudy();
   const [links, setLinks] = useState<ShareLinkData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,7 +41,7 @@ export function ShareLinkManager(): ReactNode {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  /* 링크 목록 로드 */
+  /* Load link list */
   const loadLinks = useCallback(async () => {
     if (!selectedStudyId) { setLinks([]); setLoading(false); setError(null); return; }
     try {
@@ -47,18 +50,18 @@ export function ShareLinkManager(): ReactNode {
       setLinks(data);
     } catch (err) {
       setLinks([]);
-      setError(getErrorMessage(err));
+      setError(t(getErrorKey(err)));
     } finally {
       setLoading(false);
     }
-  }, [selectedStudyId]);
+  }, [selectedStudyId, t]);
 
   useEffect(() => {
     setLoading(true);
     void loadLinks();
   }, [loadLinks]);
 
-  /* 링크 생성 */
+  /* Create link */
   const handleCreate = useCallback(async () => {
     if (!selectedStudyId) return;
     setCreating(true);
@@ -78,16 +81,16 @@ export function ShareLinkManager(): ReactNode {
       setLinks((prev) => [link, ...prev]);
       const url = `${window.location.origin}/shared/${link.token}`;
       await navigator.clipboard.writeText(url);
-      setMessage('링크가 생성되어 클립보드에 복사되었습니다.');
+      setMessage(t('shareLink.createdCopied'));
     } catch (err) {
       setMessage(null);
-      setError(getErrorMessage(err));
+      setError(t(getErrorKey(err)));
     } finally {
       setCreating(false);
     }
-  }, [selectedStudyId, expiresOption]);
+  }, [selectedStudyId, expiresOption, t]);
 
-  /* 링크 복사 */
+  /* Copy link */
   const handleCopy = useCallback(async (token: string, linkId: string) => {
     const url = `${window.location.origin}/shared/${token}`;
     await navigator.clipboard.writeText(url);
@@ -95,32 +98,32 @@ export function ShareLinkManager(): ReactNode {
     setTimeout(() => setCopiedId(null), 2000);
   }, []);
 
-  /* 링크 비활성화 */
+  /* Deactivate link */
   const handleDeactivate = useCallback(async (linkId: string) => {
     if (!selectedStudyId) return;
-    if (!window.confirm('이 공유 링크를 비활성화하시겠습니까?')) return;
+    if (!window.confirm(t('shareLink.confirmDeactivate'))) return;
     setError(null);
     try {
       await shareLinkApi.deactivate(selectedStudyId, linkId);
       setLinks((prev) => prev.filter((l) => l.id !== linkId));
-      setMessage('링크가 비활성화되었습니다.');
+      setMessage(t('shareLink.deactivated'));
     } catch (err) {
       setMessage(null);
-      setError(getErrorMessage(err));
+      setError(t(getErrorKey(err)));
     }
-  }, [selectedStudyId]);
+  }, [selectedStudyId, t]);
 
   return (
     <Card className="space-y-4 p-5">
       <div className="flex items-center gap-2">
         <Link2 size={16} style={{ color: 'var(--primary)' }} />
-        <h3 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>내 공유 링크</h3>
+        <h3 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{t('shareLink.title')}</h3>
       </div>
 
-      {/* 스터디 선택 + 만료 기간 + 생성 */}
+      {/* Study select + expiry + create */}
       <div className="flex flex-wrap items-end gap-2">
         <div>
-          <label htmlFor="share-study" className="mb-1 block text-xs" style={{ color: 'var(--text-3)' }}>스터디</label>
+          <label htmlFor="share-study" className="mb-1 block text-xs" style={{ color: 'var(--text-3)' }}>{t('shareLink.studyLabel')}</label>
           <select
             id="share-study"
             value={selectedStudyId}
@@ -128,14 +131,14 @@ export function ShareLinkManager(): ReactNode {
             className="rounded-btn border px-2 py-1.5 text-xs"
             style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg)', color: 'var(--text)' }}
           >
-            <option value="">선택</option>
+            <option value="">{t('shareLink.studyPlaceholder')}</option>
             {studies.map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
           </select>
         </div>
         <div>
-          <label htmlFor="share-expires" className="mb-1 block text-xs" style={{ color: 'var(--text-3)' }}>만료</label>
+          <label htmlFor="share-expires" className="mb-1 block text-xs" style={{ color: 'var(--text-3)' }}>{t('shareLink.expiresLabel')}</label>
           <select
             id="share-expires"
             value={expiresOption}
@@ -143,10 +146,10 @@ export function ShareLinkManager(): ReactNode {
             className="rounded-btn border px-2 py-1.5 text-xs"
             style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg)', color: 'var(--text)' }}
           >
-            <option value="never">무기한</option>
-            <option value="7">7일</option>
-            <option value="30">30일</option>
-            <option value="90">90일</option>
+            <option value="never">{t('shareLink.expiresNever')}</option>
+            <option value="7">{t('shareLink.expires7d')}</option>
+            <option value="30">{t('shareLink.expires30d')}</option>
+            <option value="90">{t('shareLink.expires90d')}</option>
           </select>
         </div>
         <button
@@ -156,7 +159,7 @@ export function ShareLinkManager(): ReactNode {
           className="flex items-center gap-1 rounded-btn px-3 py-1.5 text-xs font-medium text-white transition-opacity disabled:opacity-50"
           style={{ backgroundColor: 'var(--primary)' }}
         >
-          <Plus size={14} />{creating ? '생성 중...' : '링크 생성'}
+          <Plus size={14} />{creating ? t('shareLink.creating') : t('shareLink.create')}
         </button>
       </div>
 
@@ -172,12 +175,12 @@ export function ShareLinkManager(): ReactNode {
         </p>
       )}
 
-      {/* 링크 목록 */}
+      {/* Link list */}
       {loading ? (
-        <div className="py-4 text-center text-xs" style={{ color: 'var(--text-3)' }}>로딩 중...</div>
+        <div className="py-4 text-center text-xs" style={{ color: 'var(--text-3)' }}>{t('shareLink.loading')}</div>
       ) : links.length === 0 ? (
         <div className="py-4 text-center text-xs" style={{ color: 'var(--text-3)' }}>
-          {selectedStudyId ? '공유 링크가 없습니다.' : '스터디를 선택해주세요.'}
+          {selectedStudyId ? t('shareLink.empty') : t('shareLink.selectStudy')}
         </div>
       ) : (
         <div className="space-y-2">
@@ -194,8 +197,12 @@ export function ShareLinkManager(): ReactNode {
                     /shared/{link.token.slice(0, 12)}...
                   </p>
                   <p className="text-[10px]" style={{ color: 'var(--text-3)' }}>
-                    {expired ? '만료됨' : link.expires_at ? `만료: ${new Date(link.expires_at).toLocaleDateString('ko-KR')}` : '무기한'}
-                    {' · '}{new Date(link.created_at).toLocaleDateString('ko-KR')}
+                    {expired
+                      ? t('shareLink.expired')
+                      : link.expires_at
+                        ? t('shareLink.expiresAt', { date: new Date(link.expires_at).toLocaleDateString(locale) })
+                        : t('shareLink.expiresNever')}
+                    {' · '}{new Date(link.created_at).toLocaleDateString(locale)}
                   </p>
                 </div>
                 <div className="flex items-center gap-1">
@@ -204,7 +211,7 @@ export function ShareLinkManager(): ReactNode {
                     onClick={() => void handleCopy(link.token, link.id)}
                     className="rounded-btn p-1.5 transition-colors"
                     style={{ color: copiedId === link.id ? 'var(--success)' : 'var(--text-3)' }}
-                    aria-label="링크 복사"
+                    aria-label={t('shareLink.copyAria')}
                   >
                     {copiedId === link.id ? <Check size={14} /> : <Copy size={14} />}
                   </button>
@@ -214,7 +221,7 @@ export function ShareLinkManager(): ReactNode {
                       onClick={() => void handleDeactivate(link.id)}
                       className="rounded-btn p-1.5 transition-colors"
                       style={{ color: 'var(--error)' }}
-                      aria-label="링크 비활성화"
+                      aria-label={t('shareLink.deactivateAria')}
                     >
                       <Trash2 size={14} />
                     </button>

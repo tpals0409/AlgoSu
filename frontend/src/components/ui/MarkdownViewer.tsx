@@ -1,5 +1,5 @@
 /**
- * MarkdownViewer — react-markdown 기반 스타일드 마크다운 렌더러
+ * MarkdownViewer — styled markdown renderer based on react-markdown
  * @file MarkdownViewer.tsx
  * @domain ui
  * @layer component
@@ -15,7 +15,7 @@ interface MarkdownViewerProps {
   className?: string;
 }
 
-/** ul/ol 구분을 위한 리스트 타입 Context */
+/** List type Context for ul/ol differentiation */
 const ListTypeCtx = createContext<'ul' | 'ol'>('ul');
 
 function UlWrapper({ children }: { readonly children?: ReactNode }) {

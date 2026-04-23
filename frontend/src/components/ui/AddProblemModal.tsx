@@ -1,23 +1,25 @@
 /**
- * @file 문제 추가 모달 (BOJ / 프로그래머스 플랫폼 토글, SQL 자동 태깅)
+ * @file Add Problem modal (BOJ / Programmers platform toggle, SQL auto-tagging)
  * @domain problem
  * @layer component
  * @related problemApi, solvedacApi, programmersApi, PROGRAMMERS_LEVEL_LABELS, CreateProblemData
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import {
   Search, X, ArrowLeft, Plus, Loader2, ExternalLink, AlertCircle,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Btn, type Difficulty, DIFFICULTY_CONFIG } from './AlgosuUI';
 import { problemApi, solvedacApi, programmersApi, studyApi, type CreateProblemData } from '@/lib/api';
 import { PROGRAMMERS_LEVEL_LABELS } from '@/lib/constants';
 import { useStudy } from '@/contexts/StudyContext';
 
 // ── solved.ac types ──────────────────────────────────────────────────────────
-// Gateway `/api/external/solvedac/search`가 한국어 태그명으로 평탄화된 `string[]`을 반환한다.
-// 직접 solved.ac 호출 시의 `{ key, displayNames[] }` 구조는 Gateway 레이어가 흡수한다.
+// Gateway `/api/external/solvedac/search` returns flattened `string[]` with
+// Korean tag names. The `{ key, displayNames[] }` structure from direct
+// solved.ac calls is absorbed by the Gateway layer.
 
 export interface SolvedProblem {
   problemId: number;
@@ -25,15 +27,15 @@ export interface SolvedProblem {
   level: number; // BOJ: 0=unrated, 1-5=Bronze ... 21-25=Diamond | PROGRAMMERS: 1~5
   tags: string[];
   acceptedUserCount: number;
-  /** 프로그래머스: Gateway에서 직접 제공되는 난이도 */
+  /** Programmers: difficulty provided directly by Gateway */
   difficulty?: Difficulty;
-  /** 프로그래머스: Gateway에서 직접 제공되는 문제 URL */
+  /** Programmers: problem URL provided directly by Gateway */
   sourceUrl?: string;
-  /** 프로그래머스: 문제 카테고리 (algorithm | sql) */
+  /** Programmers: problem category (algorithm | sql) */
   category?: 'algorithm' | 'sql';
 }
 
-// solved.ac level(0~30) → our Difficulty + level(원시값 그대로 저장)
+// solved.ac level(0~30) -> our Difficulty + level(raw value preserved)
 function toOurDiff(solvedLevel: number): { difficulty: Difficulty; level: number } {
   if (solvedLevel <= 0) return { difficulty: 'BRONZE', level: 1 };
   const tiers: Difficulty[] = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND', 'RUBY'];
@@ -42,8 +44,8 @@ function toOurDiff(solvedLevel: number): { difficulty: Difficulty; level: number
 }
 
 /**
- * 프로그래머스 SQL 문제 여부 판정.
- * category 또는 tags 기반 이중 체크.
+ * Determine if a Programmers problem is SQL-based.
+ * Dual check via category or tags.
  */
 function isSqlProblem(p: SolvedProblem): boolean {
   if (p.category === 'sql') return true;
@@ -51,8 +53,8 @@ function isSqlProblem(p: SolvedProblem): boolean {
 }
 
 /**
- * SQL 태그를 중복 없이 머지 (대소문자 정규화).
- * 이미 SQL 태그가 있으면 원본 유지.
+ * Merge SQL tag without duplication (case-normalized).
+ * Preserves original if SQL tag already exists.
  */
 function mergeSqlTag(tags: string[]): string[] {
   const has = tags.some((t) => t.toUpperCase() === 'SQL');
@@ -71,13 +73,13 @@ const TIER_NAMES = [
 ];
 
 /**
- * Gateway의 `/api/external/solvedac/search` 프록시 호출.
- * 직접 solved.ac 호출 시 Referer 헤더로 403이 발생해 Gateway 경유 필수.
+ * Gateway `/api/external/solvedac/search` proxy call.
+ * Direct solved.ac calls trigger 403 via Referer header, so Gateway proxy is required.
  */
 async function searchSolvedAC(query: string): Promise<SolvedProblem[]> {
   const data = await solvedacApi.searchByQuery(query, 1);
   if (!data || !Array.isArray(data.items)) {
-    throw new Error('검색 결과를 불러오지 못했습니다. 다시 시도해주세요.');
+    throw new Error('SEARCH_RESULT_INVALID');
   }
   return data.items.map((item) => ({
     problemId: item.problemId,
@@ -89,13 +91,13 @@ async function searchSolvedAC(query: string): Promise<SolvedProblem[]> {
 }
 
 /**
- * Gateway의 `/api/external/programmers/search` 프록시 호출.
- * 프로그래머스 검색 결과를 SolvedProblem 형태로 변환한다.
+ * Gateway `/api/external/programmers/search` proxy call.
+ * Converts Programmers search results to SolvedProblem format.
  */
 async function searchProgrammers(query: string): Promise<SolvedProblem[]> {
   const data = await programmersApi.searchByQuery(query, 1);
   if (!data || !Array.isArray(data.items)) {
-    throw new Error('검색 결과를 불러오지 못했습니다. 다시 시도해주세요.');
+    throw new Error('SEARCH_RESULT_INVALID');
   }
   return data.items.map((item) => ({
     problemId: item.problemId,
@@ -109,47 +111,60 @@ async function searchProgrammers(query: string): Promise<SolvedProblem[]> {
   }));
 }
 
-// ── 주차 계산 (달력 기준) ────────────────────────────────────────────────────
+// ── Week calculation (calendar-based) ────────────────────────────────────
 
-const DOW_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
+/** Day-of-week keys for i18n lookup */
+const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
+
+/** Structured week option (locale-independent) */
+interface WeekOption {
+  month: number;
+  week: number;
+  /** Stable key for select value (e.g. "4-1") */
+  key: string;
+}
 
 /**
- * 현재 주차부터 이후 주차만 표시 (현재 월 + 다음달 1주차).
+ * Generate week options from current week onward (current month + next month week 1).
  *
- * 달력 기준 주차 계산:
- * - 매월 1일이 속한 주가 1주차이며, 일요일(0)을 주 시작으로 간주합니다.
- * - currentWeek = ceil((오늘일 + firstDayOfWeek) / 7)
- * - totalWeeks  = ceil((마지막일 + firstDayOfWeek) / 7)
+ * Calendar-based week calculation:
+ * - Week 1 starts from the week containing the 1st of the month (Sunday = week start).
+ * - currentWeek = ceil((today + firstDayOfWeek) / 7)
+ * - totalWeeks  = ceil((lastDay + firstDayOfWeek) / 7)
  */
-function generateWeekOptions(): string[] {
+function generateWeekData(): WeekOption[] {
   const now = new Date();
   const month = now.getMonth() + 1;
   const firstDayOfWeek = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
   const currentWeek = Math.ceil((now.getDate() + firstDayOfWeek) / 7);
   const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const totalWeeks = Math.ceil((lastDay + firstDayOfWeek) / 7);
-  const options: string[] = [];
+  const options: WeekOption[] = [];
   for (let w = currentWeek; w <= totalWeeks; w++) {
-    options.push(`${month}월${w}주차`);
+    options.push({ month, week: w, key: `${month}-${w}` });
   }
   const nextMonth = month === 12 ? 1 : month + 1;
-  options.push(`${nextMonth}월1주차`);
+  options.push({ month: nextMonth, week: 1, key: `${nextMonth}-1` });
   return options;
 }
 
+/** Structured date option (locale-independent) */
+interface DateOption {
+  dayIndex: number;
+  month: number;
+  day: number;
+  value: string;
+}
+
 /**
- * 주차 문자열 → 해당 주의 날짜 목록 (달력 기준, KST 23:59:59).
+ * Get date entries for a given week (calendar-based, KST 23:59:59).
  *
- * 주의 시작/끝은 1일의 요일 오프셋을 반영하여 계산합니다:
+ * Week start/end accounts for the 1st day-of-week offset:
  * - rawStart = (week - 1) * 7 - firstDayOfWeek + 1
  * - rawEnd   = week * 7 - firstDayOfWeek
- * 월 경계(1 ~ daysInMonth)로 clamp 합니다.
+ * Clamped to month boundary (1 ~ daysInMonth).
  */
-function getWeekDates(weekStr: string): { label: string; value: string }[] {
-  const match = weekStr.match(/(\d+)월(\d+)주차/);
-  if (!match) return [];
-  const month = parseInt(match[1]);
-  const week = parseInt(match[2]);
+function getWeekDateData(month: number, week: number): DateOption[] {
   const now = new Date();
   const year = now.getFullYear();
   const adjustedYear = month < now.getMonth() + 1 && month === 1 ? year + 1 : year;
@@ -161,12 +176,13 @@ function getWeekDates(weekStr: string): { label: string; value: string }[] {
   const startDate = Math.max(1, rawStart);
   const endDate = Math.min(daysInMonth, rawEnd);
 
-  const dates: { label: string; value: string }[] = [];
+  const dates: DateOption[] = [];
   for (let d = startDate; d <= endDate; d++) {
     const date = new Date(adjustedYear, month - 1, d, 23, 59, 59);
-    const dayName = DOW_LABELS[date.getDay()];
     dates.push({
-      label: `${dayName}요일 (${month}/${d})`,
+      dayIndex: date.getDay(),
+      month,
+      day: d,
       value: date.toISOString(),
     });
   }
@@ -185,7 +201,7 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 
 // ── Step 1: Search ───────────────────────────────────────────────────────────
 
-/** SearchStep props — 플랫폼에 따라 검색 함수·UI 텍스트가 분기된다 */
+/** SearchStep props — search function and UI text vary by platform */
 interface SearchStepProps {
   onSelect: (p: SolvedProblem) => void;
   platform: 'BOJ' | 'PROGRAMMERS';
@@ -194,6 +210,7 @@ interface SearchStepProps {
 }
 
 function SearchStep({ onSelect, platform, searchFn, onPlatformChange }: SearchStepProps) {
+  const t = useTranslations('problems');
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SolvedProblem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -205,7 +222,7 @@ function SearchStep({ onSelect, platform, searchFn, onPlatformChange }: SearchSt
     inputRef.current?.focus();
   }, []);
 
-  /* 플랫폼 전환 시 검색 결과 초기화 */
+  /* Reset search results on platform switch */
   useEffect(() => {
     setQuery('');
     setResults([]);
@@ -222,27 +239,25 @@ function SearchStep({ onSelect, platform, searchFn, onPlatformChange }: SearchSt
       try {
         const items = await searchFn(query.trim());
         setResults(items.slice(0, 10));
-      } catch (err) {
-        setError(err instanceof Error && err.message
-          ? err.message
-          : '검색 중 오류가 발생했습니다. 다시 시도해주세요.');
+      } catch {
+        setError(t('addModal.error.searchError'));
       } finally {
         setLoading(false);
       }
     }, 400);
 
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [query, searchFn]);
+  }, [query, searchFn, t]);
 
-  /** 플랫폼별 placeholder 텍스트 */
+  /** Platform-specific placeholder text */
   const placeholder = platform === 'BOJ'
-    ? '문제 번호 또는 제목으로 검색…'
-    : '프로그래머스 문제 검색…';
+    ? t('addModal.search.placeholderBoj')
+    : t('addModal.search.placeholderProgrammers');
 
-  /** 플랫폼별 보조 안내 문구 */
+  /** Platform-specific helper text */
   const helperText = platform === 'BOJ'
-    ? 'solved.ac 기반으로 검색됩니다.'
-    : '프로그래머스 문제를 검색합니다.';
+    ? t('addModal.search.helperBoj')
+    : t('addModal.search.helperProgrammers');
 
   return (
     <div className="flex flex-col" style={{ minHeight: 320 }}>
@@ -252,7 +267,7 @@ function SearchStep({ onSelect, platform, searchFn, onPlatformChange }: SearchSt
           className="inline-flex rounded-btn p-0.5"
           style={{ backgroundColor: 'var(--bg-alt)' }}
           role="tablist"
-          aria-label="출처 플랫폼 선택"
+          aria-label={t('addModal.platform.aria')}
         >
           {(['PROGRAMMERS', 'BOJ'] as const).map((p) => (
             <button
@@ -275,7 +290,7 @@ function SearchStep({ onSelect, platform, searchFn, onPlatformChange }: SearchSt
                   : { color: 'var(--text-3)' }
               }
             >
-              {p === 'BOJ' ? '백준' : '프로그래머스'}
+              {p === 'BOJ' ? t('addModal.platform.boj') : t('addModal.platform.programmers')}
             </button>
           ))}
         </div>
@@ -345,12 +360,12 @@ function SearchStep({ onSelect, platform, searchFn, onPlatformChange }: SearchSt
               <Search className="h-4 w-4" style={{ color: 'var(--text-3)' }} />
             </div>
             <p className="text-[13px] font-medium" style={{ color: 'var(--text-2)' }}>
-              {platform === 'BOJ' ? '백준 문제를 검색하세요' : '프로그래머스 문제를 검색하세요'}
+              {platform === 'BOJ' ? t('addModal.search.emptyTitleBoj') : t('addModal.search.emptyTitleProgrammers')}
             </p>
             <p className="mt-1 text-[11px]" style={{ color: 'var(--text-3)' }}>
               {platform === 'BOJ'
-                ? '문제 번호(예: 1000) 또는 문제 이름을 입력하세요.'
-                : '문제 이름(예: 폰켓몬)을 입력하세요.'}
+                ? t('addModal.search.emptyHintBoj')
+                : t('addModal.search.emptyHintProgrammers')}
             </p>
           </div>
         )}
@@ -359,10 +374,10 @@ function SearchStep({ onSelect, platform, searchFn, onPlatformChange }: SearchSt
         {query.trim() && !loading && results.length === 0 && !error && (
           <div className="py-12 text-center">
             <p className="text-[13px] font-medium" style={{ color: 'var(--text-2)' }}>
-              검색 결과가 없습니다
+              {t('addModal.search.noResults')}
             </p>
             <p className="mt-1 text-[11px]" style={{ color: 'var(--text-3)' }}>
-              다른 키워드로 검색해보세요.
+              {t('addModal.search.noResultsHint')}
             </p>
           </div>
         )}
@@ -423,7 +438,7 @@ function SearchStep({ onSelect, platform, searchFn, onPlatformChange }: SearchSt
                         <span className="h-1.5 w-1.5 rounded-full" style={{ background: cfg.color }} />
                         {tierLabel}
                       </span>
-                      {/* SQL badge — 프로그래머스 SQL 카테고리 */}
+                      {/* SQL badge — Programmers SQL category */}
                       {platform === 'PROGRAMMERS' && p.category === 'sql' && (
                         <span
                           className="rounded-badge px-1.5 py-0.5 text-[10px] font-semibold"
@@ -433,23 +448,23 @@ function SearchStep({ onSelect, platform, searchFn, onPlatformChange }: SearchSt
                         </span>
                       )}
                       {/* Tags */}
-                      {tags.map((t) => (
+                      {tags.map((tg) => (
                         <span
-                          key={t}
+                          key={tg}
                           className="rounded-badge px-1.5 py-0.5 text-[10px] font-medium"
                           style={{ background: 'var(--bg-alt)', color: 'var(--text-3)' }}
                         >
-                          {t}
+                          {tg}
                         </span>
                       ))}
                     </div>
                   </div>
 
-                  {/* Solved count — BOJ만 표시 */}
+                  {/* Solved count — BOJ only */}
                   {platform === 'BOJ' && (
                     <div className="shrink-0 text-right">
                       <p className="text-[10px]" style={{ color: 'var(--text-3)' }}>
-                        {p.acceptedUserCount.toLocaleString()}명 해결
+                        {t('addModal.search.solvedCount', { count: p.acceptedUserCount.toLocaleString() })}
                       </p>
                     </div>
                   )}
@@ -480,7 +495,8 @@ function ConfirmStep({
   isAdding?: boolean;
   addError?: string | null;
 }) {
-  const [weekNumber, setWeekNumber] = useState('');
+  const t = useTranslations('problems');
+  const [weekKey, setWeekKey] = useState('');
   const [deadline, setDeadline] = useState('');
   const [errors, setErrors] = useState<{ weekNumber?: string; deadline?: string }>({});
 
@@ -491,13 +507,35 @@ function ConfirmStep({
     : (PROGRAMMERS_LEVEL_LABELS[problem.level] ?? `Lv.${problem.level}`);
   const tags = problem.tags.slice(0, 5);
 
+  /** Week options (memoized) */
+  const weekOptions = useMemo(() => generateWeekData(), []);
+
+  /** Parsed month/week from selected key */
+  const selectedWeek = useMemo(() => {
+    if (!weekKey) return null;
+    const opt = weekOptions.find((w) => w.key === weekKey);
+    return opt ?? null;
+  }, [weekKey, weekOptions]);
+
+  /** Date options for the selected week */
+  const dateOptions = useMemo(() => {
+    if (!selectedWeek) return [];
+    return getWeekDateData(selectedWeek.month, selectedWeek.week).map((d) => {
+      const dayName = t(`addModal.dayNames.${DAY_KEYS[d.dayIndex]}`);
+      return {
+        label: t('addModal.confirm.dateFormat', { dayName, month: d.month, day: d.day }),
+        value: d.value,
+      };
+    });
+  }, [selectedWeek, t]);
+
   function validate() {
     const e: typeof errors = {};
-    if (!weekNumber.trim()) e.weekNumber = '주차를 입력하세요.';
+    if (!weekKey) e.weekNumber = t('addModal.validation.weekRequired');
     if (!deadline) {
-      e.deadline = '마감일을 선택하세요.';
+      e.deadline = t('addModal.validation.deadlineRequired');
     } else if (new Date(deadline) < new Date()) {
-      e.deadline = '과거 날짜는 선택할 수 없습니다.';
+      e.deadline = t('addModal.validation.deadlinePast');
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -505,7 +543,11 @@ function ConfirmStep({
 
   function handleAdd() {
     if (!validate()) return;
-    onAdd(weekNumber.trim(), deadline);
+    // Canonical DB format (locale-independent) — backend/dashboard regex expects "N월M주차"
+    const weekNumber = selectedWeek
+      ? `${selectedWeek.month}월${selectedWeek.week}주차`
+      : '';
+    onAdd(weekNumber, deadline);
   }
 
   return (
@@ -519,7 +561,7 @@ function ConfirmStep({
           style={{ color: 'var(--text-3)' }}
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          검색으로 돌아가기
+          {t('addModal.confirm.back')}
         </button>
       </div>
 
@@ -548,7 +590,7 @@ function ConfirmStep({
                   <span className="h-1.5 w-1.5 rounded-full" style={{ background: cfg.color }} />
                   {tierLabel}
                 </span>
-                {/* SQL badge — 확인 단계 */}
+                {/* SQL badge — confirm step */}
                 {platform === 'PROGRAMMERS' && isSqlProblem(problem) && (
                   <span
                     className="rounded-badge px-1.5 py-0.5 text-[10px] font-semibold"
@@ -560,13 +602,13 @@ function ConfirmStep({
                 <span className="text-[11px]" style={{ color: 'var(--text-3)' }}>
                   #{problem.problemId}
                 </span>
-                {tags.map((t) => (
+                {tags.map((tg) => (
                   <span
-                    key={t}
+                    key={tg}
                     className="rounded-badge px-1.5 py-0.5 text-[10px]"
                     style={{ background: 'var(--bg-card)', color: 'var(--text-3)' }}
                   >
-                    {t}
+                    {tg}
                   </span>
                 ))}
               </div>
@@ -589,22 +631,24 @@ function ConfirmStep({
 
         {/* Week number */}
         <div className="space-y-1.5">
-          <FieldLabel>주차 *</FieldLabel>
+          <FieldLabel>{t('addModal.confirm.weekLabel')}</FieldLabel>
           <select
-            value={weekNumber}
-            onChange={(e) => { setWeekNumber(e.target.value); setDeadline(''); setErrors((er) => ({ ...er, weekNumber: undefined })); }}
+            value={weekKey}
+            onChange={(e) => { setWeekKey(e.target.value); setDeadline(''); setErrors((er) => ({ ...er, weekNumber: undefined })); }}
             className="h-9 w-full rounded-btn border px-3 text-[13px] outline-none transition-[border-color] appearance-none bg-[length:16px] bg-[right_8px_center] bg-no-repeat"
             style={{
               borderColor: errors.weekNumber ? 'var(--error)' : 'var(--border)',
-              color: weekNumber ? 'var(--text)' : 'var(--text-3)',
+              color: weekKey ? 'var(--text)' : 'var(--text-3)',
               backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E")`,
             }}
             onFocus={(e) => !errors.weekNumber && (e.currentTarget.style.borderColor = 'var(--primary)')}
             onBlur={(e) => (e.currentTarget.style.borderColor = errors.weekNumber ? 'var(--error)' : 'var(--border)')}
           >
-            <option value="" disabled>주차를 선택하세요</option>
-            {generateWeekOptions().map((w) => (
-              <option key={w} value={w}>{w}</option>
+            <option value="" disabled>{t('addModal.confirm.weekPlaceholder')}</option>
+            {weekOptions.map((w) => (
+              <option key={w.key} value={w.key}>
+                {t('addModal.confirm.weekFormat', { month: w.month, week: w.week })}
+              </option>
             ))}
           </select>
           {errors.weekNumber && (
@@ -614,11 +658,11 @@ function ConfirmStep({
 
         {/* Deadline */}
         <div className="space-y-1.5">
-          <FieldLabel>마감일 *</FieldLabel>
+          <FieldLabel>{t('addModal.confirm.deadlineLabel')}</FieldLabel>
           <select
             value={deadline}
             onChange={(e) => { setDeadline(e.target.value); setErrors((er) => ({ ...er, deadline: undefined })); }}
-            disabled={!weekNumber}
+            disabled={!weekKey}
             className="h-9 w-full rounded-btn border px-3 text-[13px] outline-none transition-[border-color] appearance-none bg-[length:16px] bg-[right_8px_center] bg-no-repeat disabled:opacity-50"
             style={{
               borderColor: errors.deadline ? 'var(--error)' : 'var(--border)',
@@ -628,8 +672,8 @@ function ConfirmStep({
             onFocus={(e) => !errors.deadline && (e.currentTarget.style.borderColor = 'var(--primary)')}
             onBlur={(e) => (e.currentTarget.style.borderColor = errors.deadline ? 'var(--error)' : 'var(--border)')}
           >
-            <option value="" disabled>{weekNumber ? '요일을 선택하세요' : '주차를 먼저 선택하세요'}</option>
-            {weekNumber && getWeekDates(weekNumber).map((d) => (
+            <option value="" disabled>{weekKey ? t('addModal.confirm.deadlinePlaceholder') : t('addModal.confirm.deadlinePlaceholderDisabled')}</option>
+            {dateOptions.map((d) => (
               <option key={d.value} value={d.value}>{d.label}</option>
             ))}
           </select>
@@ -644,14 +688,14 @@ function ConfirmStep({
         className="flex items-center justify-end gap-2 border-t px-5 py-3.5"
         style={{ borderColor: 'var(--border)' }}
       >
-        <Btn variant="outline" size="md" onClick={onBack} disabled={isAdding}>뒤로</Btn>
+        <Btn variant="outline" size="md" onClick={onBack} disabled={isAdding}>{t('addModal.confirm.backButton')}</Btn>
         <Btn variant="primary" size="md" onClick={handleAdd} disabled={isAdding}>
           {isAdding ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : (
             <Plus className="h-3.5 w-3.5" />
           )}
-          {isAdding ? '추가 중...' : '문제 추가'}
+          {isAdding ? t('addModal.confirm.adding') : t('addModal.confirm.addButton')}
         </Btn>
       </div>
       {addError && (
@@ -691,6 +735,7 @@ interface AddProblemModalProps {
 }
 
 export function AddProblemModal({ open, onClose, onAdd: onAddCallback }: AddProblemModalProps) {
+  const t = useTranslations('problems');
   const [step, setStep] = useState<Step>('search');
   const [selected, setSelected] = useState<SolvedProblem | null>(null);
   const [platform, setPlatform] = useState<'BOJ' | 'PROGRAMMERS'>('PROGRAMMERS');
@@ -765,7 +810,7 @@ export function AddProblemModal({ open, onClose, onAdd: onAddCallback }: AddProb
       });
       handleClose();
     } catch (err: unknown) {
-      setAddError(err instanceof Error ? err.message : '문제 추가에 실패했습니다.');
+      setAddError(err instanceof Error ? err.message : t('addModal.error.addFailed'));
     } finally {
       setIsAdding(false);
     }
@@ -808,13 +853,13 @@ export function AddProblemModal({ open, onClose, onAdd: onAddCallback }: AddProb
                   style={{ color: 'var(--text)' }}
                 >
                   {step === 'search'
-                    ? (platform === 'BOJ' ? '백준 문제 검색' : '프로그래머스 문제 검색')
-                    : '문제 추가'}
+                    ? (platform === 'BOJ' ? t('addModal.header.searchTitleBoj') : t('addModal.header.searchTitleProgrammers'))
+                    : t('addModal.header.confirmTitle')}
                 </Dialog.Title>
                 <Dialog.Description className="text-[11px]" style={{ color: 'var(--text-3)' }}>
                   {step === 'search'
-                    ? '추가할 문제를 검색하여 선택하세요.'
-                    : '주차와 마감일을 설정하세요.'}
+                    ? t('addModal.header.searchDescription')
+                    : t('addModal.header.confirmDescription')}
                 </Dialog.Description>
               </div>
             </div>

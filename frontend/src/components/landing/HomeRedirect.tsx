@@ -1,5 +1,5 @@
 /**
- * @file 인증 유저 대시보드 리다이렉트
+ * @file Authenticated user dashboard redirect
  * @domain common
  * @layer component
  * @related AuthContext, StudyContext
@@ -12,7 +12,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
 /**
- * 인증된 유저를 /studies로 리다이렉트
+ * Redirects authenticated users to /studies
  * @domain common
  */
 export function HomeRedirect(): null {

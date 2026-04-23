@@ -1,10 +1,13 @@
 /**
- * @file 난이도 뱃지 (플랫폼 인지형 — BOJ 티어 / 프로그래머스 Lv.N)
+ * @file Difficulty badge (platform-aware — BOJ tier / Programmers Lv.N)
  * @domain common
  * @layer component
  * @related Badge, constants, problems/page.tsx, DashboardTwoColumn
  */
+'use client';
+
 import * as React from 'react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import {
   type Difficulty,
@@ -14,7 +17,7 @@ import {
   toTierLevel,
 } from '@/lib/constants';
 
-/** CSS 변수 기반 난이도 색상 — 모든 환경에서 동작 */
+/** CSS variable-based difficulty colors — works in all environments */
 const DIFF_STYLES: Record<Difficulty, { color: string; bg: string; border: string }> = {
   BRONZE:   { color: 'var(--diff-bronze-color)',   bg: 'var(--diff-bronze-bg)',   border: 'var(--diff-bronze-color)' },
   SILVER:   { color: 'var(--diff-silver-color)',   bg: 'var(--diff-silver-bg)',   border: 'var(--diff-silver-color)' },
@@ -24,7 +27,7 @@ const DIFF_STYLES: Record<Difficulty, { color: string; bg: string; border: strin
   RUBY:     { color: 'var(--diff-ruby-color)',     bg: 'var(--diff-ruby-bg)',     border: 'var(--diff-ruby-color)' },
 };
 
-/** 프로그래머스 Lv.0(difficulty null) 또는 매핑 실패 시 neutral fallback */
+/** Neutral fallback for Programmers Lv.0 (difficulty null) or mapping failure */
 const NEUTRAL_STYLE = { color: 'var(--text-2)', bg: 'var(--bg-alt)', border: 'var(--border)' };
 
 export interface DifficultyBadgeProps
@@ -37,14 +40,14 @@ export interface DifficultyBadgeProps
 }
 
 /**
- * 난이도 뱃지 — 플랫폼에 따라 라벨 규칙을 분기한다.
+ * Difficulty badge — branches label rules by platform.
  *
- * - BOJ(기본): `DIFFICULTY_LABELS[difficulty]` + `toTierLevel(level)` → "Bronze 5" 형식
- * - PROGRAMMERS: `PROGRAMMERS_LEVEL_LABELS[level]` → "Lv.N" 형식
- *   색상은 gateway `levelToDifficulty(Lv.1~5 → BRONZE~DIAMOND)` 매핑을 재사용한다.
- *   Lv.0(difficulty null) 또는 매핑 실패 시 neutral fallback 적용.
+ * - BOJ (default): `DIFFICULTY_LABELS[difficulty]` + `toTierLevel(level)` → "Bronze 5" format
+ * - PROGRAMMERS: `PROGRAMMERS_LEVEL_LABELS[level]` → "Lv.N" format
+ *   Colors reuse the gateway `levelToDifficulty(Lv.1~5 → BRONZE~DIAMOND)` mapping.
+ *   Neutral fallback applied for Lv.0 (difficulty null) or mapping failure.
  *
- * BOJ 컨텍스트에서 `difficulty`가 null이면 렌더링을 생략한다(기존 동작 유지).
+ * When `difficulty` is null in BOJ context, rendering is skipped (existing behavior).
  */
 const DifficultyBadge = React.memo(function DifficultyBadge({
   className,
@@ -56,6 +59,7 @@ const DifficultyBadge = React.memo(function DifficultyBadge({
   style,
   ...props
 }: DifficultyBadgeProps): React.ReactElement | null {
+  const t = useTranslations('ui');
   const isProgrammers = sourcePlatform === 'PROGRAMMERS';
 
   if (isProgrammers) {
@@ -73,7 +77,7 @@ const DifficultyBadge = React.memo(function DifficultyBadge({
           color: colors.color,
           ...style,
         }}
-        aria-label={`난이도: ${labelText}`}
+        aria-label={t('difficultyBadge.ariaLabel', { label: labelText })}
         {...props}
       >
         {showDot && (
@@ -88,7 +92,7 @@ const DifficultyBadge = React.memo(function DifficultyBadge({
     );
   }
 
-  // BOJ(또는 플랫폼 미지정) — difficulty가 없으면 렌더링 생략
+  // BOJ (or unspecified platform) — skip rendering when difficulty is absent
   if (!difficulty) return null;
   const label = DIFFICULTY_LABELS[difficulty];
   const displayLevel = toTierLevel(level);
@@ -107,7 +111,7 @@ const DifficultyBadge = React.memo(function DifficultyBadge({
         color: colors.color,
         ...style,
       }}
-      aria-label={`난이도: ${label}${tier}`}
+      aria-label={t('difficultyBadge.ariaLabel', { label: `${label}${tier}` })}
       {...props}
     >
       {showDot && (

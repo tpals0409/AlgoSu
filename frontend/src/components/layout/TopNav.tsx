@@ -1,5 +1,5 @@
 /**
- * @file 상단 네비게이션 바 (v2 디자인 시스템)
+ * @file Top navigation bar (v2 design system)
  * @domain common
  * @layer component
  * @related Logo, NotificationBell, AuthContext, StudyContext
@@ -23,6 +23,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudy } from '@/contexts/StudyContext';
@@ -34,17 +35,18 @@ import { getAvatarSrc, getAvatarPresetKey } from '@/lib/avatars';
 // ─── CONSTANTS ───────────────────────────────
 
 const NAV_LINKS = [
-  { href: '/dashboard', label: '대시보드' },
-  { href: '/problems', label: '문제' },
-  { href: '/submissions', label: '제출' },
-  { href: '/study-room', label: '스터디룸' },
-  { href: '/analytics', label: '분석' },
+  { href: '/dashboard', labelKey: 'dashboard' },
+  { href: '/problems', labelKey: 'problems' },
+  { href: '/submissions', labelKey: 'submissions' },
+  { href: '/study-room', labelKey: 'studyRoom' },
+  { href: '/analytics', labelKey: 'analytics' },
 ] as const;
 
 // ─── STUDY SELECTOR ──────────────────────────
 
 function StudySelector(): ReactNode {
   const { currentStudyId, studies, setCurrentStudy } = useStudy();
+  const t = useTranslations('layout');
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -66,7 +68,7 @@ function StudySelector(): ReactNode {
         href="/studies"
         className="inline-flex items-center gap-1 rounded-badge bg-bg-alt px-2.5 py-1 text-[11px] font-medium text-text-2 transition-colors hover:text-text"
       >
-        스터디 선택
+        {t('topNav.selectStudy')}
       </Link>
     );
   }
@@ -75,7 +77,7 @@ function StudySelector(): ReactNode {
     <div className="relative" ref={ref}>
       <button
         type="button"
-        aria-label="스터디 전환"
+        aria-label={t('topNav.switchStudy')}
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((prev) => !prev)}
@@ -98,7 +100,7 @@ function StudySelector(): ReactNode {
           </div>
         )}
         <span className="max-w-[48px] truncate sm:max-w-[80px]">
-          {currentStudy?.name ?? '스터디 선택'}
+          {currentStudy?.name ?? t('topNav.selectStudy')}
         </span>
         <ChevronDown className="h-3 w-3 shrink-0" aria-hidden />
       </button>
@@ -106,7 +108,7 @@ function StudySelector(): ReactNode {
       {open && (
         <div
           role="listbox"
-          aria-label="스터디 목록"
+          aria-label={t('topNav.studyList')}
           className="absolute left-0 top-full z-50 mt-1 min-w-[140px] overflow-hidden rounded-card border border-border bg-bg-card shadow-card"
         >
           {studies.map((study) => (
@@ -159,6 +161,7 @@ function StudySelector(): ReactNode {
 
 function ProfileDropdown(): ReactNode {
   const { user, logout } = useAuth();
+  const t = useTranslations('layout');
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -181,7 +184,7 @@ function ProfileDropdown(): ReactNode {
     <div className="relative" ref={ref}>
       <button
         type="button"
-        aria-label={`${user?.email ?? ''} 프로필 메뉴`}
+        aria-label={t('topNav.profileMenuLabel', { email: user?.email ?? '' })}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((prev) => !prev)}
@@ -189,7 +192,7 @@ function ProfileDropdown(): ReactNode {
       >
         <Image
           src={getAvatarSrc(user?.avatarPreset ?? 'default')}
-          alt={`${user?.email ?? '사용자'} 아바타`}
+          alt={t('topNav.avatarAlt', { name: user?.email ?? t('topNav.defaultUser') })}
           width={32}
           height={32}
           className="h-full w-full"
@@ -199,17 +202,17 @@ function ProfileDropdown(): ReactNode {
       {open && (
         <div
           role="menu"
-          aria-label="프로필 메뉴"
+          aria-label={t('topNav.profileMenuTitle')}
           className="absolute right-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-card border border-border bg-bg-card shadow-card"
         >
-          {/* 사용자 정보 */}
+          {/* User info */}
           <div className="border-b border-border px-3 py-2.5">
             <p className="truncate text-[12px] font-medium text-text">
               {user?.email ?? ''}
             </p>
           </div>
 
-          {/* 메뉴 항목 */}
+          {/* Menu items */}
           <div className="py-1">
             <Link
               href="/profile"
@@ -218,7 +221,7 @@ function ProfileDropdown(): ReactNode {
               className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-text-2 transition-colors hover:bg-bg-alt hover:text-text"
             >
               <User className="h-3.5 w-3.5" aria-hidden />
-              프로필
+              {t('topNav.profile')}
             </Link>
             <Link
               href="/settings"
@@ -227,7 +230,7 @@ function ProfileDropdown(): ReactNode {
               className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-text-2 transition-colors hover:bg-bg-alt hover:text-text"
             >
               <Settings className="h-3.5 w-3.5" aria-hidden />
-              설정
+              {t('topNav.settings')}
             </Link>
           </div>
 
@@ -239,7 +242,7 @@ function ProfileDropdown(): ReactNode {
               className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-error transition-colors hover:bg-error-soft"
             >
               <LogOut className="h-3.5 w-3.5" aria-hidden />
-              로그아웃
+              {t('topNav.logout')}
             </button>
           </div>
         </div>
@@ -251,7 +254,7 @@ function ProfileDropdown(): ReactNode {
 // ─── TOP NAV ─────────────────────────────────
 
 /**
- * 상단 네비게이션 바 (glass-nav + v2 토큰)
+ * Top navigation bar (glass-nav + v2 tokens)
  * @domain common
  */
 export function TopNav(): ReactNode {
@@ -259,6 +262,7 @@ export function TopNav(): ReactNode {
   const { isAuthenticated } = useAuth();
   const { currentStudyId } = useStudy();
   const { theme, setTheme } = useTheme();
+  const t = useTranslations('layout');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const hasStudy = isAuthenticated && currentStudyId !== null;
 
@@ -271,9 +275,9 @@ export function TopNav(): ReactNode {
     <header className="sticky top-0 z-50 border-b border-border glass-nav">
       <nav
         className="mx-auto flex max-w-container items-center justify-between px-5 py-3"
-        aria-label="주 내비게이션"
+        aria-label={t('topNav.mainNav')}
       >
-        {/* 로고 */}
+        {/* Logo */}
         <Link
           href="/"
           className="flex shrink-0 items-center gap-2 text-text transition-opacity hover:opacity-80 font-bold text-base tracking-tight"
@@ -282,10 +286,10 @@ export function TopNav(): ReactNode {
           <span className="hidden sm:inline">AlgoSu</span>
         </Link>
 
-        {/* 네비 항목 */}
+        {/* Nav items */}
         {hasStudy && (
           <ul className="hidden items-center gap-1.5 sm:flex" role="list">
-            {NAV_LINKS.map(({ href, label }) => {
+            {NAV_LINKS.map(({ href, labelKey }) => {
               const isActive = pathname === href || pathname.startsWith(href + '/');
               return (
                 <li key={href}>
@@ -299,7 +303,7 @@ export function TopNav(): ReactNode {
                         : 'text-text-2 hover:bg-bg-alt hover:text-text',
                     )}
                   >
-                    {label}
+                    {t(`topNav.nav.${labelKey}`)}
                   </Link>
                 </li>
               );
@@ -307,11 +311,11 @@ export function TopNav(): ReactNode {
           </ul>
         )}
 
-        {/* 모바일 햄버거 */}
+        {/* Mobile hamburger */}
         {hasStudy && (
           <button
             type="button"
-            aria-label={mobileMenuOpen ? '메뉴 닫기' : '메뉴 열기'}
+            aria-label={mobileMenuOpen ? t('topNav.closeMenu') : t('topNav.openMenu')}
             onClick={() => setMobileMenuOpen((v) => !v)}
             className="flex items-center justify-center bg-bg-alt text-text-3 transition-colors hover:text-text sm:hidden w-9 h-9 rounded-sm"
           >
@@ -323,17 +327,17 @@ export function TopNav(): ReactNode {
           </button>
         )}
 
-        {/* 우측 영역 */}
+        {/* Right area */}
         <div className="flex items-center gap-1.5 sm:gap-2">
           {isAuthenticated && <StudySelector />}
 
-          {/* 언어 스위처 */}
+          {/* Language switcher */}
           <LanguageSwitcher />
 
-          {/* 테마 토글 */}
+          {/* Theme toggle */}
           <button
             type="button"
-            aria-label="테마 전환"
+            aria-label={t('topNav.toggleTheme')}
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className="relative flex items-center justify-center bg-transparent text-text-3 transition-colors hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary w-8 h-8 rounded-sm"
           >
@@ -351,17 +355,17 @@ export function TopNav(): ReactNode {
               href="/login"
               className="inline-flex items-center justify-center bg-primary text-white transition-colors hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary px-[10px] py-[5px] text-[11px] font-semibold tracking-[0.2px] rounded-btn"
             >
-              로그인
+              {t('topNav.login')}
             </Link>
           )}
         </div>
       </nav>
 
-      {/* 모바일 드롭다운 */}
+      {/* Mobile dropdown */}
       {hasStudy && mobileMenuOpen && (
         <div className="border-t border-border px-4 py-2 sm:hidden">
           <ul className="flex flex-col gap-1" role="list">
-            {NAV_LINKS.map(({ href, label }) => {
+            {NAV_LINKS.map(({ href, labelKey }) => {
               const isActive = pathname === href || pathname.startsWith(href + '/');
               return (
                 <li key={href}>
@@ -375,7 +379,7 @@ export function TopNav(): ReactNode {
                         : 'text-text-2 hover:bg-bg-alt hover:text-text',
                     )}
                   >
-                    {label}
+                    {t(`topNav.nav.${labelKey}`)}
                   </Link>
                 </li>
               );

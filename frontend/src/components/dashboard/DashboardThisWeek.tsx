@@ -10,6 +10,7 @@
 import { type ReactNode, useMemo } from 'react';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useStudy } from '@/contexts/StudyContext';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -19,6 +20,9 @@ import { cn } from '@/lib/utils';
 
 // ─── HELPERS ────────────────────────────
 
+/** 번역 함수 축약 타입 */
+type TranslateFn = (key: string, values?: Record<string, number | string>) => string;
+
 
 function getDDay(deadline: string): { label: string; style: React.CSSProperties } {
   const diff = Math.ceil((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
@@ -27,15 +31,18 @@ function getDDay(deadline: string): { label: string; style: React.CSSProperties 
   else if (diff === 0) label = 'D-Day';
   else label = `D-${diff}`;
 
-  // 긴급도별 색상 — CSS 변수 기반
   if (diff <= 1) return { label, style: { backgroundColor: 'var(--error-soft)', color: 'var(--error)' } };
   if (diff <= 3) return { label, style: { backgroundColor: 'var(--primary-soft)', color: 'var(--primary)' } };
   return { label, style: { backgroundColor: 'var(--bg-alt)', color: 'var(--text-2)' } };
 }
 
-function formatWeekLabel(deadline: string): string {
+/** 주차 라벨 포맷 (i18n 지원) */
+function formatWeekLabel(
+  deadline: string,
+  t: TranslateFn,
+): string {
   const d = new Date(deadline);
-  return `${d.getMonth() + 1}월${Math.ceil(d.getDate() / 7)}주차`;
+  return t('thisWeek.weekLabel', { month: d.getMonth() + 1, week: Math.ceil(d.getDate() / 7) });
 }
 
 // ─── TYPES ───────────────────────────────
@@ -56,6 +63,7 @@ export default function DashboardThisWeek({
   fadeStyle,
 }: DashboardThisWeekProps): ReactNode {
   const { currentStudyId: _currentStudyId } = useStudy();
+  const t = useTranslations('dashboard');
 
   const problemItems = useMemo(
     () =>
@@ -86,7 +94,7 @@ export default function DashboardThisWeek({
                 />
                 {p.deadline && (
                   <span className="text-[11px] text-text-3">
-                    {formatWeekLabel(p.deadline)}
+                    {formatWeekLabel(p.deadline, t)}
                   </span>
                 )}
               </div>
@@ -105,18 +113,18 @@ export default function DashboardThisWeek({
           </Link>
         );
       }),
-    [currentWeekProblems, submittedProblemIds],
+    [currentWeekProblems, submittedProblemIds, t],
   );
 
   return (
     <Card className="overflow-hidden p-0" style={fadeStyle}>
       <CardHeader className="flex flex-row items-center justify-between px-4 pb-2 pt-4">
-        <CardTitle>진행 중인 문제</CardTitle>
+        <CardTitle>{t('thisWeek.title')}</CardTitle>
         <Link
           href="/problems"
           className="flex items-center gap-0.5 text-[12px] font-medium text-text-3 transition-colors hover:text-primary"
         >
-          전체 보기 <ArrowRight className="h-3 w-3" />
+          {t('thisWeek.viewAll')} <ArrowRight className="h-3 w-3" />
         </Link>
       </CardHeader>
       {isLoading ? (
@@ -127,7 +135,7 @@ export default function DashboardThisWeek({
         </div>
       ) : currentWeekProblems.length === 0 ? (
         <div className="py-8 text-center">
-          <p className="text-sm text-text-3">진행 중인 문제가 없습니다</p>
+          <p className="text-sm text-text-3">{t('thisWeek.empty')}</p>
         </div>
       ) : (
         <div>{problemItems}</div>

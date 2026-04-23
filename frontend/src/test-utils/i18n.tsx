@@ -1,12 +1,11 @@
 /**
- * @file i18n 테스트 유틸리티 — NextIntlClientProvider 래핑 렌더 헬퍼
+ * @file i18n test utility — NextIntlClientProvider wrapping render helper
  * @domain test
  * @layer utility
  * @related src/lib/test-utils.tsx, src/i18n/routing.ts
  *
- * 테스트에서 useTranslations 훅이 동작하도록
- * NextIntlClientProvider로 래핑하는 공용 헬퍼.
- * 네임스페이스별 메시지를 선택적으로 주입할 수 있다.
+ * Wraps components with NextIntlClientProvider so useTranslations
+ * hooks work in tests. Supports selective namespace message injection.
  */
 
 import { render, type RenderOptions } from '@testing-library/react';
@@ -20,8 +19,14 @@ import koErrors from '../../messages/ko/errors.json';
 import koDashboard from '../../messages/ko/dashboard.json';
 import koSubmissions from '../../messages/ko/submissions.json';
 import koReviews from '../../messages/ko/reviews.json';
+import koLayout from '../../messages/ko/layout.json';
+import koProblems from '../../messages/ko/problems.json';
+import koAnalytics from '../../messages/ko/analytics.json';
+import koFeedback from '../../messages/ko/feedback.json';
+import koAccount from '../../messages/ko/account.json';
+import koUI from '../../messages/ko/ui.json';
 
-/** 기본 ko 메시지 (전 네임스페이스 병합) */
+/** Default ko messages (all namespaces merged) */
 const DEFAULT_MESSAGES: AbstractIntlMessages = {
   landing: koLanding,
   auth: koAuth,
@@ -30,21 +35,30 @@ const DEFAULT_MESSAGES: AbstractIntlMessages = {
   dashboard: koDashboard,
   submissions: koSubmissions,
   reviews: koReviews,
+  layout: koLayout,
+  problems: koProblems,
+  analytics: koAnalytics,
+  feedback: koFeedback,
+  account: koAccount,
+  ui: koUI,
 };
 
-interface RenderWithI18nOptions extends Omit<RenderOptions, 'wrapper'> {
-  /** 로케일 (기본: 'ko') */
+interface RenderWithI18nOptions extends RenderOptions {
+  /** Locale (default: 'ko') */
   readonly locale?: string;
-  /** 메시지 오버라이드 (기본: ko 전체 네임스페이스) */
+  /** Message override (default: all ko namespaces) */
   readonly messages?: AbstractIntlMessages;
 }
 
 /**
- * NextIntlClientProvider 래핑 렌더 헬퍼.
+ * NextIntlClientProvider wrapping render helper.
  *
- * @param ui - 렌더링할 React 엘리먼트
- * @param options - locale, messages 등 오버라이드 옵션
- * @returns @testing-library/react render 결과
+ * When an outer `wrapper` is provided (e.g. SWRConfig), the tree is:
+ *   OuterWrapper > NextIntlClientProvider > ui
+ *
+ * @param ui - React element to render
+ * @param options - locale, messages, wrapper overrides
+ * @returns @testing-library/react render result
  */
 export function renderWithI18n(
   ui: React.ReactElement,

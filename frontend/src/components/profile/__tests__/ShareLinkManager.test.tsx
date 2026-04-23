@@ -1,5 +1,6 @@
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { renderWithI18n } from '@/test-utils/i18n';
 import { ShareLinkManager } from '../ShareLinkManager';
 import { ApiError, type ShareLinkData } from '@/lib/api';
 
@@ -93,7 +94,7 @@ afterEach(() => {
 describe('ShareLinkManager', () => {
   describe('initial rendering', () => {
     it('shows loading then empty list message', async () => {
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       expect(screen.getByText('로딩 중...')).toBeInTheDocument();
 
       await waitFor(() => {
@@ -103,7 +104,7 @@ describe('ShareLinkManager', () => {
     });
 
     it('renders study dropdown with studies', async () => {
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => expect(mockList).toHaveBeenCalled());
 
       const select = screen.getByLabelText('스터디');
@@ -113,7 +114,7 @@ describe('ShareLinkManager', () => {
     });
 
     it('renders expires dropdown options', async () => {
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => expect(mockList).toHaveBeenCalled());
 
       expect(screen.getByLabelText('만료')).toBeInTheDocument();
@@ -128,7 +129,7 @@ describe('ShareLinkManager', () => {
     it('shows guidance message and does not call API', async () => {
       mockStudyContext.currentStudyId = null;
 
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => {
         expect(screen.getByText('스터디를 선택해주세요.')).toBeInTheDocument();
       });
@@ -137,7 +138,7 @@ describe('ShareLinkManager', () => {
     it('disables create button when no study selected', async () => {
       mockStudyContext.currentStudyId = null;
 
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => {
         expect(screen.getByText('스터디를 선택해주세요.')).toBeInTheDocument();
       });
@@ -153,7 +154,7 @@ describe('ShareLinkManager', () => {
         makeLink({ id: 'link-2', token: 'token222222222222', expires_at: '2026-12-31T00:00:00.000Z' }),
       ]);
 
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => {
         expect(screen.getByText(/token111111/)).toBeInTheDocument();
       });
@@ -167,7 +168,7 @@ describe('ShareLinkManager', () => {
         makeLink({ id: 'link-expired', token: 'expiredtoken1234', expires_at: '2020-01-01T00:00:00.000Z' }),
       ]);
 
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => {
         expect(screen.getByText(/expiredtoken/)).toBeInTheDocument();
       });
@@ -180,7 +181,7 @@ describe('ShareLinkManager', () => {
     it('shows deactivate button for active links', async () => {
       mockList.mockResolvedValue([makeLink()]);
 
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => {
         expect(screen.getByRole('button', { name: '링크 비활성화' })).toBeInTheDocument();
       });
@@ -189,7 +190,7 @@ describe('ShareLinkManager', () => {
     it('shows empty list and error message on API error', async () => {
       mockList.mockRejectedValue(new Error('network error'));
 
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => {
         expect(screen.getByText('공유 링크가 없습니다.')).toBeInTheDocument();
         expect(screen.getByRole('alert')).toHaveTextContent('오류가 발생했습니다. 다시 시도해주세요.');
@@ -199,7 +200,7 @@ describe('ShareLinkManager', () => {
     it('shows network error message on TypeError', async () => {
       mockList.mockRejectedValue(new TypeError('Failed to fetch'));
 
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => {
         expect(screen.getByRole('alert')).toHaveTextContent('네트워크 연결을 확인해주세요.');
       });
@@ -208,7 +209,7 @@ describe('ShareLinkManager', () => {
     it('shows permission error on 403 ApiError', async () => {
       mockList.mockRejectedValue(new ApiError('Forbidden', 403));
 
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => {
         expect(screen.getByRole('alert')).toHaveTextContent('권한이 없습니다.');
       });
@@ -218,7 +219,7 @@ describe('ShareLinkManager', () => {
   describe('link creation', () => {
     it('creates link with no expiry and copies to clipboard', async () => {
       const { user, clipboardSpy } = setupUser();
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => expect(mockList).toHaveBeenCalled());
 
       await user.click(screen.getByRole('button', { name: /링크 생성/ }));
@@ -234,7 +235,7 @@ describe('ShareLinkManager', () => {
 
     it('creates link with expiry when option is set', async () => {
       const { user } = setupUser();
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => expect(mockList).toHaveBeenCalled());
 
       await user.selectOptions(screen.getByLabelText('만료'), '7');
@@ -252,7 +253,7 @@ describe('ShareLinkManager', () => {
       mockList.mockResolvedValue([makeLink({ id: 'old', token: 'oldtoken12345678x' })]);
       mockCreate.mockResolvedValue(makeLink({ id: 'new', token: 'newtoken12345678x' }));
 
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => expect(screen.getByText(/oldtoken1234/)).toBeInTheDocument());
 
       await user.click(screen.getByRole('button', { name: /링크 생성/ }));
@@ -267,7 +268,7 @@ describe('ShareLinkManager', () => {
       const { user } = setupUser();
       mockCreate.mockRejectedValue(new Error('fail'));
 
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => expect(mockList).toHaveBeenCalled());
 
       await user.click(screen.getByRole('button', { name: /링크 생성/ }));
@@ -281,7 +282,7 @@ describe('ShareLinkManager', () => {
       const { user } = setupUser();
       mockCreate.mockRejectedValue(new TypeError('Failed to fetch'));
 
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => expect(mockList).toHaveBeenCalled());
 
       await user.click(screen.getByRole('button', { name: /링크 생성/ }));
@@ -295,7 +296,7 @@ describe('ShareLinkManager', () => {
       const { user } = setupUser();
       mockCreate.mockRejectedValue(new ApiError('Unauthorized', 401));
 
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => expect(mockList).toHaveBeenCalled());
 
       await user.click(screen.getByRole('button', { name: /링크 생성/ }));
@@ -312,7 +313,7 @@ describe('ShareLinkManager', () => {
       );
 
       const { user } = setupUser();
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => expect(mockList).toHaveBeenCalled());
 
       await user.click(screen.getByRole('button', { name: /링크 생성/ }));
@@ -330,7 +331,7 @@ describe('ShareLinkManager', () => {
 
     it('does nothing when selectedStudyId is empty', async () => {
       const { user } = setupUser();
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => expect(mockList).toHaveBeenCalled());
 
       await user.selectOptions(screen.getByLabelText('스터디'), '');
@@ -347,7 +348,7 @@ describe('ShareLinkManager', () => {
       const { user, clipboardSpy } = setupUser();
       mockList.mockResolvedValue([makeLink({ token: 'copytoken123456789' })]);
 
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => expect(screen.getByText(/copytoken123/)).toBeInTheDocument());
 
       await user.click(screen.getByRole('button', { name: '링크 복사' }));
@@ -363,7 +364,7 @@ describe('ShareLinkManager', () => {
       const { user } = setupUser();
       mockList.mockResolvedValue([makeLink()]);
 
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => expect(screen.getByRole('button', { name: '링크 복사' })).toBeInTheDocument());
 
       await user.click(screen.getByRole('button', { name: '링크 복사' }));
@@ -381,7 +382,7 @@ describe('ShareLinkManager', () => {
       const { user } = setupUser();
       mockList.mockResolvedValue([makeLink({ id: 'link-del', token: 'deltoken12345678x' })]);
 
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => expect(screen.getByText(/deltoken1234/)).toBeInTheDocument());
 
       await user.click(screen.getByRole('button', { name: '링크 비활성화' }));
@@ -399,7 +400,7 @@ describe('ShareLinkManager', () => {
       const { user } = setupUser();
       mockList.mockResolvedValue([makeLink()]);
 
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => expect(screen.getByRole('button', { name: '링크 비활성화' })).toBeInTheDocument());
 
       await user.click(screen.getByRole('button', { name: '링크 비활성화' }));
@@ -412,7 +413,7 @@ describe('ShareLinkManager', () => {
       mockDeactivate.mockRejectedValue(new Error('fail'));
       mockList.mockResolvedValue([makeLink()]);
 
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => expect(screen.getByRole('button', { name: '링크 비활성화' })).toBeInTheDocument());
 
       await user.click(screen.getByRole('button', { name: '링크 비활성화' }));
@@ -427,7 +428,7 @@ describe('ShareLinkManager', () => {
       mockDeactivate.mockRejectedValue(new ApiError('Forbidden', 403));
       mockList.mockResolvedValue([makeLink()]);
 
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => expect(screen.getByRole('button', { name: '링크 비활성화' })).toBeInTheDocument());
 
       await user.click(screen.getByRole('button', { name: '링크 비활성화' }));
@@ -441,7 +442,7 @@ describe('ShareLinkManager', () => {
       const { user } = setupUser();
       mockList.mockResolvedValue([makeLink()]);
 
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => expect(screen.getByRole('button', { name: '링크 비활성화' })).toBeInTheDocument());
 
       await user.selectOptions(screen.getByLabelText('스터디'), '');
@@ -455,7 +456,7 @@ describe('ShareLinkManager', () => {
   describe('study change', () => {
     it('reloads links when study changes', async () => {
       const { user } = setupUser();
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => expect(mockList).toHaveBeenCalledWith('study-1'));
 
       mockList.mockClear();
@@ -470,7 +471,7 @@ describe('ShareLinkManager', () => {
 
     it('shows guidance when study is deselected', async () => {
       const { user } = setupUser();
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => expect(mockList).toHaveBeenCalled());
 
       mockList.mockClear();
@@ -485,7 +486,7 @@ describe('ShareLinkManager', () => {
   describe('message styling', () => {
     it('success message uses success color', async () => {
       const { user } = setupUser();
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => expect(mockList).toHaveBeenCalled());
 
       await user.click(screen.getByRole('button', { name: /링크 생성/ }));
@@ -500,7 +501,7 @@ describe('ShareLinkManager', () => {
       const { user } = setupUser();
       mockCreate.mockRejectedValue(new Error('fail'));
 
-      render(<ShareLinkManager />);
+      renderWithI18n(<ShareLinkManager />);
       await waitFor(() => expect(mockList).toHaveBeenCalled());
 
       await user.click(screen.getByRole('button', { name: /링크 생성/ }));

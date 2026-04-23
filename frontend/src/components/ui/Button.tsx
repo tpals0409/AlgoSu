@@ -1,5 +1,5 @@
 /**
- * @file 버튼 컴포넌트 (v2 디자인 시스템)
+ * @file Button component (v2 design system)
  * @domain common
  * @layer component
  * @related Card, Input
@@ -80,7 +80,7 @@ export interface ButtonProps
 // ─── RENDER ──────────────────────────────────
 
 /**
- * 버튼 컴포넌트 (primary/ghost/secondary/danger/outline/link)
+ * Button component (primary/ghost/secondary/danger/outline/link)
  * @domain common
  */
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(

@@ -71,6 +71,33 @@
       }
     }
   },
+  "shareLink": {
+    "title": "My Share Links",
+    "studyLabel": "Study",
+    "studyPlaceholder": "Select",
+    "expiresLabel": "Expires",
+    "expiresNever": "Never",
+    "expires7d": "7 days",
+    "expires30d": "30 days",
+    "expires90d": "90 days",
+    "creating": "Creating...",
+    "create": "Create Link",
+    "loading": "Loading...",
+    "empty": "No share links.",
+    "selectStudy": "Please select a study.",
+    "createdCopied": "Link created and copied to clipboard.",
+    "deactivated": "Link has been deactivated.",
+    "confirmDeactivate": "Deactivate this share link?",
+    "copyAria": "Copy link",
+    "deactivateAria": "Deactivate link",
+    "expired": "Expired",
+    "expiresAt": "Expires: {date}",
+    "errors": {
+      "noPermission": "You do not have permission.",
+      "generic": "An error occurred. Please try again.",
+      "network": "Please check your network connection."
+    }
+  },
   "settings": {
     "meta": {
       "title": "Settings"

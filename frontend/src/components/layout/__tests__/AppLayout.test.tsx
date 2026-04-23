@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithI18n } from '@/test-utils/i18n';
 import { AppLayout } from '../AppLayout';
 
 const mockLogout = jest.fn();
@@ -104,7 +105,7 @@ beforeEach(() => {
 
 describe('AppLayout', () => {
   it('renders children', () => {
-    render(
+    renderWithI18n(
       <AppLayout>
         <div data-testid="child">Hello</div>
       </AppLayout>,
@@ -113,12 +114,12 @@ describe('AppLayout', () => {
   });
 
   it('renders main content area', () => {
-    render(<AppLayout>content</AppLayout>);
+    renderWithI18n(<AppLayout>content</AppLayout>);
     expect(screen.getByText('content')).toBeInTheDocument();
   });
 
   it('renders LanguageSwitcher in no-study header', () => {
-    render(<AppLayout>content</AppLayout>);
+    renderWithI18n(<AppLayout>content</AppLayout>);
     expect(screen.getByTestId('language-switcher')).toBeInTheDocument();
   });
 
@@ -130,7 +131,7 @@ describe('AppLayout', () => {
       sessionExpired: true,
     });
 
-    render(<AppLayout>content</AppLayout>);
+    renderWithI18n(<AppLayout>content</AppLayout>);
     expect(screen.queryByText('세션이 만료되었습니다')).not.toBeInTheDocument();
   });
 });

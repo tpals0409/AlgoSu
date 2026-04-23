@@ -8,7 +8,12 @@
 'use client';
 
 import { type ReactElement } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { cn } from '@/lib/utils';
+import {
+  createTimeTranslator,
+  formatReviewRelativeTime,
+} from '@/lib/utils/review-time';
 import type { ReviewReply } from '@/lib/api';
 
 // ─── TYPES ────────────────────────────────
@@ -19,24 +24,6 @@ interface ReplyItemProps {
   readonly nicknameMap?: Record<string, string>;
 }
 
-// ─── HELPERS ──────────────────────────────
-
-/** ISO 날짜를 한국어 상대 시간으로 변환 */
-function formatRelativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return '방금';
-  if (minutes < 60) return `${minutes}분 전`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}시간 전`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}일 전`;
-  return new Date(iso).toLocaleDateString('ko-KR', {
-    month: 'short',
-    day: 'numeric',
-  });
-}
-
 // ─── RENDER ───────────────────────────────
 
 /**
@@ -44,6 +31,10 @@ function formatRelativeTime(iso: string): string {
  * @domain review
  */
 export function ReplyItem({ reply, currentUserId, nicknameMap = {} }: ReplyItemProps): ReactElement {
+  const t = useTranslations('reviews');
+  const locale = useLocale();
+  const tTime = createTimeTranslator(t);
+
   const isAuthor = reply.authorId === currentUserId;
   const authorName = nicknameMap[reply.authorId] ?? reply.authorId.slice(0, 8);
 
@@ -66,11 +57,11 @@ export function ReplyItem({ reply, currentUserId, nicknameMap = {} }: ReplyItemP
           </span>
           {isAuthor && (
             <span className="rounded-badge bg-primary-soft px-1.5 py-0.5 text-[9px] font-medium text-primary">
-              나
+              {t('replyItem.me')}
             </span>
           )}
           <span className="text-[10px] text-text-3">
-            {formatRelativeTime(reply.createdAt)}
+            {formatReviewRelativeTime(reply.createdAt, tTime, locale)}
           </span>
         </div>
         <p className="mt-0.5 text-xs leading-relaxed text-text-2">

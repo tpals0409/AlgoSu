@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithI18n } from '@/test-utils/i18n';
 import DashboardThisWeek from '../DashboardThisWeek';
 import type { Problem } from '@/lib/api';
 
@@ -81,22 +82,22 @@ describe('DashboardThisWeek', () => {
   };
 
   it('진행 중인 문제 제목을 렌더링한다', () => {
-    render(<DashboardThisWeek {...defaultProps} />);
+    renderWithI18n(<DashboardThisWeek {...defaultProps} />);
     expect(screen.getByText('진행 중인 문제')).toBeInTheDocument();
   });
 
   it('전체 보기 링크를 표시한다', () => {
-    render(<DashboardThisWeek {...defaultProps} />);
+    renderWithI18n(<DashboardThisWeek {...defaultProps} />);
     expect(screen.getByText('전체 보기')).toBeInTheDocument();
   });
 
   it('로딩 중에는 Skeleton을 표시한다', () => {
-    render(<DashboardThisWeek {...defaultProps} isLoading={true} />);
+    renderWithI18n(<DashboardThisWeek {...defaultProps} isLoading={true} />);
     expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
   });
 
   it('문제가 없으면 안내 메시지를 표시한다', () => {
-    render(<DashboardThisWeek {...defaultProps} />);
+    renderWithI18n(<DashboardThisWeek {...defaultProps} />);
     expect(screen.getByText('진행 중인 문제가 없습니다')).toBeInTheDocument();
   });
 
@@ -105,7 +106,7 @@ describe('DashboardThisWeek', () => {
       makeProblem({ id: 'p-1', title: '두 수의 합' }),
       makeProblem({ id: 'p-2', title: '최단 경로' }),
     ];
-    render(
+    renderWithI18n(
       <DashboardThisWeek {...defaultProps} currentWeekProblems={problems} />,
     );
     expect(screen.getByText('두 수의 합')).toBeInTheDocument();
@@ -114,7 +115,7 @@ describe('DashboardThisWeek', () => {
 
   it('제출된 문제는 opacity-50 클래스가 적용된다', () => {
     const problems = [makeProblem({ id: 'p-1' })];
-    render(
+    renderWithI18n(
       <DashboardThisWeek
         {...defaultProps}
         currentWeekProblems={problems}
@@ -126,7 +127,7 @@ describe('DashboardThisWeek', () => {
 
   it('난이도 라벨을 표시한다', () => {
     const problems = [makeProblem({ id: 'p-1', difficulty: 'SILVER', level: 3 })];
-    render(
+    renderWithI18n(
       <DashboardThisWeek {...defaultProps} currentWeekProblems={problems} />,
     );
     expect(screen.getByText('Silver 3')).toBeInTheDocument();

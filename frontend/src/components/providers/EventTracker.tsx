@@ -1,5 +1,5 @@
 /**
- * @file 이벤트 트래커 Provider — 페이지 전환 시 PAGE_VIEW 자동 기록
+ * @file Event tracker Provider — auto-records PAGE_VIEW on route changes
  * @domain common
  * @layer provider
  */

@@ -1,10 +1,13 @@
 /**
- * @file 알림 Alert 컴포넌트 (success/error/warning/info)
+ * @file Alert component (success/error/warning/info)
  * @domain common
  * @layer component
  * @related Toast, NotificationToast
  */
+'use client';
+
 import * as React from 'react';
+import { useTranslations } from 'next-intl';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { CheckCircle2, XCircle, AlertTriangle, Info, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -39,6 +42,7 @@ export interface AlertProps
 }
 
 function Alert({ className, variant = 'info', title, onClose, children, ...props }: AlertProps): React.ReactElement {
+  const t = useTranslations('ui');
   const Icon = ALERT_ICONS[variant ?? 'info'];
 
   return (
@@ -52,7 +56,7 @@ function Alert({ className, variant = 'info', title, onClose, children, ...props
         <button
           type="button"
           onClick={onClose}
-          aria-label="알림 닫기"
+          aria-label={t('alert.closeLabel')}
           className="ml-auto -mr-1 flex h-6 w-6 shrink-0 items-center justify-center rounded opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           <X className="h-3.5 w-3.5" aria-hidden />

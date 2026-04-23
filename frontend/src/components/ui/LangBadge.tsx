@@ -1,10 +1,12 @@
 /**
- * @file 언어 뱃지 (mono font)
+ * @file Language badge (mono font)
  * @domain submission
  * @layer component
  */
+'use client';
 
 import React, { type ReactElement } from 'react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
 interface LangBadgeProps {
@@ -13,9 +15,10 @@ interface LangBadgeProps {
 }
 
 export const LangBadge = React.memo(function LangBadge({ language, className }: LangBadgeProps): ReactElement {
+  const t = useTranslations('ui');
   return (
     <span
-      aria-label={`프로그래밍 언어 ${language}`}
+      aria-label={t('langBadge.ariaLabel', { language })}
       className={cn(
         'inline-flex items-center rounded-badge bg-muted-soft px-2.5 py-0.5 font-mono text-[11px] font-medium leading-none text-muted',
         className,

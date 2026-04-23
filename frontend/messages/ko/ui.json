@@ -1,0 +1,39 @@
+{
+  "alert": {
+    "closeLabel": "알림 닫기"
+  },
+  "backBtn": {
+    "defaultLabel": "뒤로"
+  },
+  "categoryBar": {
+    "ariaLabel": "{category} {grade} {score}점",
+    "scoreLabel": "{category} 점수"
+  },
+  "difficultyBadge": {
+    "ariaLabel": "난이도: {label}"
+  },
+  "langBadge": {
+    "ariaLabel": "프로그래밍 언어 {language}"
+  },
+  "loadingSpinner": {
+    "loading": "로딩 중...",
+    "processing": "처리 중..."
+  },
+  "notificationToast": {
+    "close": "닫기"
+  },
+  "scoreGauge": {
+    "excellent": "우수",
+    "average": "보통",
+    "needsImprovement": "개선 필요",
+    "ariaLabel": "점수 {score}점 — {label}"
+  },
+  "skeleton": {
+    "contentLoading": "콘텐츠 로딩 중",
+    "tableLoading": "테이블 로딩 중",
+    "dashboardLoading": "대시보드 로딩 중",
+    "listLoading": "목록 로딩 중",
+    "profileLoading": "프로필 로딩 중",
+    "reviewLoading": "리뷰 로딩 중"
+  }
+}

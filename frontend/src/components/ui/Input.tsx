@@ -1,5 +1,5 @@
 /**
- * @file 입력 필드 컴포넌트 (v2 디자인 시스템)
+ * @file Input field component (v2 design system)
  * @domain common
  * @layer component
  * @related Button, Card
@@ -19,7 +19,7 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
 // ─── RENDER ──────────────────────────────────
 
 /**
- * 입력 필드 (v2 input-bg + focus primary)
+ * Input field (v2 input-bg + focus primary)
  * @domain common
  */
 const Input = React.forwardRef<HTMLInputElement, InputProps>(

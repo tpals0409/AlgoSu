@@ -1,4 +1,5 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/react';
+import { renderWithI18n } from '@/test-utils/i18n';
 import DashboardWeeklyChart from '../DashboardWeeklyChart';
 
 jest.mock('lucide-react', () => {
@@ -45,17 +46,17 @@ describe('DashboardWeeklyChart', () => {
   });
 
   it('제목 "주차별 제출 현황"을 렌더링한다', () => {
-    render(<DashboardWeeklyChart {...defaultProps} />);
+    renderWithI18n(<DashboardWeeklyChart {...defaultProps} />);
     expect(screen.getByText('주차별 제출 현황')).toBeInTheDocument();
   });
 
   it('weekViewLabel을 표시한다', () => {
-    render(<DashboardWeeklyChart {...defaultProps} weekViewLabel="나의 제출" />);
+    renderWithI18n(<DashboardWeeklyChart {...defaultProps} weekViewLabel="나의 제출" />);
     expect(screen.getByText('나의 제출')).toBeInTheDocument();
   });
 
   it('데이터가 없으면 빈 상태 메시지를 표시한다', () => {
-    render(<DashboardWeeklyChart {...defaultProps} />);
+    renderWithI18n(<DashboardWeeklyChart {...defaultProps} />);
     expect(screen.getByText('제출 기록이 없습니다.')).toBeInTheDocument();
   });
 
@@ -71,7 +72,7 @@ describe('DashboardWeeklyChart', () => {
         ['1월2주차', 5],
       ]),
     };
-    render(<DashboardWeeklyChart {...props} />);
+    renderWithI18n(<DashboardWeeklyChart {...props} />);
     expect(screen.getByText('1월1주차')).toBeInTheDocument();
     expect(screen.getByText('1월2주차')).toBeInTheDocument();
     expect(screen.getByText('3')).toBeInTheDocument();
@@ -79,7 +80,7 @@ describe('DashboardWeeklyChart', () => {
   });
 
   it('카드 클릭 시 onCycleView가 호출된다', () => {
-    render(<DashboardWeeklyChart {...defaultProps} />);
+    renderWithI18n(<DashboardWeeklyChart {...defaultProps} />);
     fireEvent.click(screen.getByTestId('card'));
     expect(defaultProps.onCycleView).toHaveBeenCalledTimes(1);
   });
@@ -90,7 +91,7 @@ describe('DashboardWeeklyChart', () => {
       count: i + 1,
     }));
     const pcMap = new Map(weeks.map((w) => [w.week, 10]));
-    render(
+    renderWithI18n(
       <DashboardWeeklyChart
         {...defaultProps}
         filteredByWeek={weeks}
@@ -105,7 +106,7 @@ describe('DashboardWeeklyChart', () => {
       { week: '1월1주차', count: 3 },
       { week: '1월2주차', count: 5 },
     ];
-    render(
+    renderWithI18n(
       <DashboardWeeklyChart
         {...defaultProps}
         filteredByWeek={weeks}
@@ -118,7 +119,7 @@ describe('DashboardWeeklyChart', () => {
   it('weekViewUserId가 null이 아니면 개인별 max를 사용한다', () => {
     const weeks = [{ week: '1월1주차', count: 3 }];
     const pcMap = new Map([['1월1주차', 5]]);
-    render(
+    renderWithI18n(
       <DashboardWeeklyChart
         {...defaultProps}
         filteredByWeek={weeks}
@@ -134,7 +135,7 @@ describe('DashboardWeeklyChart', () => {
 
   it('problemCountByWeek에 없는 주차는 max=0으로 바 너비 0%이다', () => {
     const weeks = [{ week: '없는주차', count: 2 }];
-    render(
+    renderWithI18n(
       <DashboardWeeklyChart
         {...defaultProps}
         filteredByWeek={weeks}
@@ -148,7 +149,7 @@ describe('DashboardWeeklyChart', () => {
   it('mounted=false이면 바 너비가 0%이다', () => {
     const weeks = [{ week: '1월1주차', count: 3 }];
     const pcMap = new Map([['1월1주차', 5]]);
-    render(
+    renderWithI18n(
       <DashboardWeeklyChart
         {...defaultProps}
         filteredByWeek={weeks}
@@ -161,21 +162,21 @@ describe('DashboardWeeklyChart', () => {
 
   it('Enter 키를 누르면 onCycleView가 호출된다 (line 88)', () => {
     const onCycleView = jest.fn();
-    render(<DashboardWeeklyChart {...defaultProps} onCycleView={onCycleView} />);
+    renderWithI18n(<DashboardWeeklyChart {...defaultProps} onCycleView={onCycleView} />);
     fireEvent.keyDown(screen.getByTestId('card'), { key: 'Enter' });
     expect(onCycleView).toHaveBeenCalledTimes(1);
   });
 
   it('Space 키를 누르면 onCycleView가 호출된다 (line 88)', () => {
     const onCycleView = jest.fn();
-    render(<DashboardWeeklyChart {...defaultProps} onCycleView={onCycleView} />);
+    renderWithI18n(<DashboardWeeklyChart {...defaultProps} onCycleView={onCycleView} />);
     fireEvent.keyDown(screen.getByTestId('card'), { key: ' ' });
     expect(onCycleView).toHaveBeenCalledTimes(1);
   });
 
   it('Enter/Space 외 키로는 onCycleView가 호출되지 않는다', () => {
     const onCycleView = jest.fn();
-    render(<DashboardWeeklyChart {...defaultProps} onCycleView={onCycleView} />);
+    renderWithI18n(<DashboardWeeklyChart {...defaultProps} onCycleView={onCycleView} />);
     fireEvent.keyDown(screen.getByTestId('card'), { key: 'Escape' });
     expect(onCycleView).not.toHaveBeenCalled();
   });
@@ -187,7 +188,7 @@ describe('DashboardWeeklyChart', () => {
     }));
     const pcMap = new Map(weeks.map((w) => [w.week, 10]));
     const onCycleView = jest.fn();
-    render(
+    renderWithI18n(
       <DashboardWeeklyChart
         {...defaultProps}
         filteredByWeek={weeks}

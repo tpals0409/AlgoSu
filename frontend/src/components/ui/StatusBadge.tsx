@@ -1,5 +1,5 @@
 /**
- * @file 상태 뱃지 (진행 중/종료/분석 완료/분석 중 등)
+ * @file Status badge (in progress / closed / analysis complete / analyzing etc.)
  * @domain common
  * @layer component
  */

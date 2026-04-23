@@ -1,5 +1,5 @@
 /**
- * @file 알림 토스트 포탈 (10종 알림 타입 + 자동 소멸)
+ * @file Notification toast portal (10 notification types + auto-dismiss)
  * @domain notification
  * @layer component
  * @related NotificationBell, Toast, notificationApi
@@ -7,6 +7,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
+import { useTranslations } from 'next-intl';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import {
@@ -56,6 +57,7 @@ export function NotificationToast({
   onDismiss,
   onRead,
 }: NotificationToastProps): ReactNode {
+  const t = useTranslations('ui');
   const router = useRouter();
   const [toast, setToast] = useState<ToastItem | null>(null);
   const onDismissRef = useRef(onDismiss);
@@ -66,19 +68,19 @@ export function NotificationToast({
 
   useEffect(() => {
     if (!notification) return;
-    // 같은 알림 중복 표시 방지
+    // Prevent duplicate notification display
     if (notification.id === lastNotificationIdRef.current) return;
     lastNotificationIdRef.current = notification.id;
 
-    // 새 알림 표시
+    // Show new notification
     setToast({ notification, visible: false });
 
-    // 다음 프레임에서 slide-in 애니메이션 시작
+    // Start slide-in animation on next frame
     const showTimer = setTimeout(() => {
       setToast((prev) => /* istanbul ignore next -- defensive null guard */ (prev ? { ...prev, visible: true } : null));
     }, 50);
 
-    // 4초 후 자동 닫기
+    // Auto-close after 4 seconds
     const hideTimer = setTimeout(() => {
       setToast((prev) => /* istanbul ignore next -- defensive null guard */ (prev ? { ...prev, visible: false } : null));
       setTimeout(() => {
@@ -160,7 +162,7 @@ export function NotificationToast({
           type="button"
           onClick={handleClose}
           className="mt-0.5 shrink-0 text-text-3 hover:text-text transition-colors"
-          aria-label="닫기"
+          aria-label={t('notificationToast.close')}
         >
           <X className="h-3.5 w-3.5" aria-hidden />
         </button>

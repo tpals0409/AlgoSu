@@ -1,5 +1,5 @@
 /**
- * @file SWR 글로벌 설정 Provider
+ * @file SWR global configuration Provider
  * @domain common
  * @layer provider
  * @related swr.ts, layout.tsx
@@ -12,7 +12,7 @@ import { ApiError } from '@/lib/api';
 import type { ReactNode } from 'react';
 
 /**
- * SWR 글로벌 Provider — fetcher, 재시도 정책, 캐시 설정
+ * SWR global Provider — fetcher, retry policy, cache config
  */
 export function SWRProvider({ children }: { readonly children: ReactNode }): ReactNode {
   return (

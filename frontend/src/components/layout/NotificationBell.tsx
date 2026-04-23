@@ -1,14 +1,14 @@
 /**
- * @file 알림 벨 (v2 디자인 시스템)
+ * @file Notification bell (v2 design system)
  * @domain notification
  * @layer component
  * @related NotificationToast, notificationApi, NotifPanel
  *
- * SWR refreshInterval 60초 폴링으로 미읽음 수 체크.
- * 패널 열렸을 때만 알림 목록 fetch (conditional key).
- * SSE/mutation 후 mutate()로 즉시 갱신.
- * 클릭 시 notification.link로 이동.
- * 10종 알림 타입 완전 대응 + "모두 읽음" 지원.
+ * SWR refreshInterval 60s polling for unread count.
+ * Notification list fetched only when panel is open (conditional key).
+ * SSE/mutation triggers mutate() for instant refresh.
+ * Click navigates to notification.link.
+ * Full coverage of 10 notification types + "mark all read".
  */
 
 'use client';
@@ -29,6 +29,7 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useTranslations, useLocale } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { isSafeInternalPath } from '@/lib/url';
 import { notificationApi, type Notification } from '@/lib/api';
@@ -40,7 +41,7 @@ import { useNotificationSSE } from '@/hooks/useNotificationSSE';
 
 const MAX_NOTIFICATIONS = 50;
 
-/** 알림 타입별 클릭 시 이동할 경로 (link 없는 경우 fallback) */
+/** Fallback route per notification type (when link is absent) */
 const TYPE_ROUTE: Record<string, string> = {
   ROLE_CHANGED: '/studies',
   SUBMISSION_STATUS: '/submissions',
@@ -54,7 +55,7 @@ const TYPE_ROUTE: Record<string, string> = {
   FEEDBACK_RESOLVED: '/feedbacks',
 };
 
-/** 알림 타입별 아이콘 */
+/** Icon per notification type */
 const TYPE_ICON: Record<string, typeof Bell> = {
   SUBMISSION_STATUS: FileText,
   AI_COMPLETED: Brain,
@@ -68,34 +69,24 @@ const TYPE_ICON: Record<string, typeof Bell> = {
   FEEDBACK_RESOLVED: CheckCircle,
 };
 
-// ─── HELPERS ─────────────────────────────
+// ─── LOCALE MAPPING ─────────────────────
 
-/**
- * 상대 시간 포맷
- * @domain common
- */
-function formatRelativeTime(dateStr: string): string {
-  const now = Date.now();
-  const diff = now - new Date(dateStr).getTime();
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return '방금 전';
-  if (minutes < 60) return `${minutes}분 전`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}시간 전`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}일 전`;
-  return new Date(dateStr).toLocaleDateString('ko-KR');
-}
+const LOCALE_DATE_MAP: Record<string, string> = {
+  ko: 'ko-KR',
+  en: 'en-US',
+};
 
 // ─── RENDER ──────────────────────────────
 
 /**
- * 알림 벨 + 드롭다운 패널 + 토스트
+ * Notification bell + dropdown panel + toast
  * @domain notification
  */
 export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): ReactNode {
   const placement = props?.placement ?? 'sidebar';
   const router = useRouter();
+  const t = useTranslations('layout');
+  const locale = useLocale();
   const [open, setOpen] = useState(false);
   const [toastNotification, setToastNotification] =
     useState<Notification | null>(null);
@@ -104,12 +95,31 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
   const displayedToastIds = useRef(new Set<string>());
   const [panelStyle, setPanelStyle] = useState<React.CSSProperties>({});
 
+  // ─── HELPERS ──────────────────────────────
+
+  /**
+   * Relative time format
+   * @domain common
+   */
+  const formatRelativeTime = (dateStr: string): string => {
+    const now = Date.now();
+    const diff = now - new Date(dateStr).getTime();
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 1) return t('notificationBell.justNow');
+    if (minutes < 60) return t('notificationBell.minutesAgo', { minutes });
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return t('notificationBell.hoursAgo', { hours });
+    const days = Math.floor(hours / 24);
+    if (days < 7) return t('notificationBell.daysAgo', { days });
+    return new Date(dateStr).toLocaleDateString(LOCALE_DATE_MAP[locale] ?? 'ko-KR');
+  };
+
   // ─── SWR ───────────────────────────────
 
   const { mutate } = useSWRConfig();
 
   /**
-   * 미읽음 수 — 60초 refreshInterval (SSE fallback)
+   * Unread count — 60s refreshInterval (SSE fallback)
    * @domain notification
    */
   const { data: unreadData } = useSWR<{ count: number }>(
@@ -119,7 +129,7 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
   const unreadCount = unreadData?.count ?? 0;
 
   /**
-   * 알림 목록 — 패널 열렸을 때만 fetch (conditional key)
+   * Notification list — fetched only when panel is open (conditional key)
    * @domain notification
    */
   const { data: notificationsData, isLoading } = useSWR<Notification[]>(
@@ -130,7 +140,7 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
   // ─── HOOKS ─────────────────────────────
 
   /**
-   * SSE 실시간 알림 수신 — 새 알림 도착 시 SWR 캐시 즉시 갱신 + 토스트 (중복 방지)
+   * SSE real-time notification — on new notification: SWR cache refresh + toast (dedup)
    * @domain notification
    */
   const handleSSENotification = useCallback(
@@ -147,15 +157,22 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
 
   const { sseDisconnected } = useNotificationSSE(true, handleSSENotification);
 
+  // Build accessible aria-label for bell button
+  const bellAriaLabel = [
+    t('notificationBell.label'),
+    unreadCount > 0 ? t('notificationBell.ariaLabelUnread', { count: unreadCount }) : null,
+    sseDisconnected ? t('notificationBell.ariaLabelDisconnected') : null,
+  ].filter(Boolean).join(' ');
+
   /**
-   * 벨 토글
+   * Bell toggle
    * @domain notification
    */
   const handleToggle = useCallback(() => {
     setOpen((prev) => {
       const next = !prev;
       if (next) {
-        // 벨 버튼 기준으로 패널 위치 계산 (fixed)
+        // Calculate panel position relative to bell button (fixed)
         if (bellRef.current) {
           const rect = bellRef.current.getBoundingClientRect();
           const isDesktop = window.innerWidth >= 768; // md breakpoint
@@ -164,11 +181,11 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
               position: 'fixed',
               bottom: window.innerHeight - rect.top + 8,
               ...(isDesktop
-                ? { left: rect.left }                          // 데스크탑: 사이드바 왼쪽 → 오른쪽으로 펼침
-                : { right: window.innerWidth - rect.right }),  // 모바일: 사이드바 오른쪽 → 왼쪽으로 펼침
+                ? { left: rect.left }                          // Desktop: sidebar left → open right
+                : { right: window.innerWidth - rect.right }),  // Mobile: sidebar right → open left
             });
           } else {
-            // 헤더: 버튼 아래쪽으로 열림, 오른쪽 정렬
+            // Header: open below button, right-aligned
             setPanelStyle({
               position: 'fixed',
               top: rect.bottom + 8,
@@ -184,7 +201,7 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
   // ─── HANDLERS ──────────────────────────
 
   /**
-   * 개별 읽음 처리 — API 호출 후 SWR 캐시 갱신
+   * Mark individual notification read — API call then SWR cache refresh
    * @domain notification
    */
   const handleMarkRead = useCallback(
@@ -194,14 +211,14 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
         void mutate(cacheKeys.notifications.unreadCount());
         void mutate(cacheKeys.notifications.list());
       } catch {
-        // 조용히 실패
+        // Silent failure
       }
     },
     [mutate],
   );
 
   /**
-   * 전체 읽음 처리 — API 호출 후 SWR 캐시 갱신
+   * Mark all notifications read — API call then SWR cache refresh
    * @domain notification
    */
   const handleMarkAllRead = useCallback(async () => {
@@ -210,14 +227,14 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
       void mutate(cacheKeys.notifications.unreadCount());
       void mutate(cacheKeys.notifications.list());
     } catch {
-      // 조용히 실패
+      // Silent failure
     }
   }, [mutate]);
 
   const handleToastDismiss = useCallback(() => setToastNotification(null), []);
   const handleToastRead = useCallback((id: string) => void handleMarkRead(id), [handleMarkRead]);
 
-  // 외부 클릭 닫기
+  // Close on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
@@ -231,16 +248,16 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
   return (
     <>
       <div ref={ref}>
-        {/* 벨 버튼 */}
+        {/* Bell button */}
         {placement === 'sidebar' ? (
           <button
             ref={bellRef}
             type="button"
             onClick={handleToggle}
-            aria-label={`알림 ${unreadCount > 0 ? `(${unreadCount}개 미읽음)` : ''}${sseDisconnected ? ' (실시간 연결 끊김)' : ''}`}
+            aria-label={bellAriaLabel}
             aria-haspopup="true"
             aria-expanded={open}
-            title={sseDisconnected ? '실시간 알림 연결이 끊어졌습니다. 60초마다 갱신됩니다.' : undefined}
+            title={sseDisconnected ? t('notificationBell.sseDisconnectedTitle') : undefined}
             className={cn(
               'flex w-full items-center gap-2.5 rounded-btn px-3 py-2 text-[13px] font-medium transition-all duration-150',
               open
@@ -258,7 +275,7 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
                 />
               )}
             </span>
-            <span className="flex-1 text-left">알림</span>
+            <span className="flex-1 text-left">{t('notificationBell.label')}</span>
             {unreadCount > 0 && (
               <span
                 className="flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold text-white"
@@ -272,10 +289,10 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
           <button
             ref={bellRef}
             type="button"
-            aria-label={`알림 ${unreadCount > 0 ? `(${unreadCount}개 미읽음)` : ''}${sseDisconnected ? ' (실시간 연결 끊김)' : ''}`}
+            aria-label={bellAriaLabel}
             aria-haspopup="true"
             aria-expanded={open}
-            title={sseDisconnected ? '실시간 알림 연결이 끊어졌습니다. 60초마다 갱신됩니다.' : undefined}
+            title={sseDisconnected ? t('notificationBell.sseDisconnectedTitle') : undefined}
             onClick={handleToggle}
             className={cn(
               'relative flex items-center justify-center bg-bg-alt w-7 h-7 rounded-sm',
@@ -302,29 +319,29 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
           </button>
         )}
 
-        {/* 드롭다운 */}
+        {/* Dropdown */}
         {open && (
           <div
             className="z-[60] w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-card border border-border bg-bg-card shadow-modal sm:max-w-80"
             style={panelStyle}
             role="menu"
-            aria-label="알림 목록"
+            aria-label={t('notificationBell.panelList')}
           >
-            {/* 헤더 */}
+            {/* Header */}
             <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-              <span className="text-[12px] font-semibold text-text">알림</span>
+              <span className="text-[12px] font-semibold text-text">{t('notificationBell.panelTitle')}</span>
               {unreadCount > 0 && (
                 <button
                   type="button"
                   onClick={() => void handleMarkAllRead()}
                   className="text-[10px] font-medium text-primary transition-colors hover:underline"
                 >
-                  모두 읽음
+                  {t('notificationBell.markAllRead')}
                 </button>
               )}
             </div>
 
-            {/* 알림 목록 */}
+            {/* Notification list */}
             <div className="max-h-80 overflow-y-auto">
               {isLoading && (
                 <div className="space-y-2 p-3">
@@ -344,7 +361,7 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
                     aria-hidden
                   />
                   <p className="mt-2 text-[11px] text-text-3">
-                    새로운 알림이 없습니다
+                    {t('notificationBell.empty')}
                   </p>
                 </div>
               )}
@@ -420,7 +437,7 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
                       {!notification.read && (
                         <span
                           className="mt-1.5 shrink-0 rounded-full bg-primary w-1.5 h-1.5"
-                          aria-label="미읽음"
+                          aria-label={t('notificationBell.unread')}
                         />
                       )}
                     </button>
@@ -431,7 +448,7 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
         )}
       </div>
 
-      {/* 하단 토스트 알림 */}
+      {/* Bottom toast notification */}
       <NotificationToast
         notification={toastNotification}
         onDismiss={handleToastDismiss}

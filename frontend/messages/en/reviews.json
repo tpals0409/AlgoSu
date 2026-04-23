@@ -20,5 +20,51 @@
     "loadError": "Failed to load data.",
     "notFound": "Submission not found.",
     "codeUnavailable": "// Unable to load code."
+  },
+  "time": {
+    "justNow": "Just now",
+    "minutesAgo": "{minutes}m ago",
+    "hoursAgo": "{hours}h ago",
+    "daysAgo": "{days}d ago"
+  },
+  "commentThread": {
+    "deletedComment": "This comment has been deleted",
+    "me": "Me",
+    "editComment": "Edit comment",
+    "save": "Save",
+    "cancel": "Cancel",
+    "deleteComment": "Delete comment",
+    "confirmDelete": "Are you sure you want to delete this comment?",
+    "edit": "Edit",
+    "delete": "Delete",
+    "replies": "Replies {count}",
+    "emptyLine": "No comments on Line {line} yet",
+    "emptyGeneral": "Click on a code line to view or leave comments"
+  },
+  "studyNote": {
+    "title": "Study Note",
+    "public": "Public",
+    "editPlaceholder": "Write your study note...",
+    "editAriaLabel": "Edit study note",
+    "cancel": "Cancel",
+    "saving": "Saving...",
+    "save": "Save",
+    "saveError": "Failed to save. Please try again.",
+    "empty": "No notes written yet.",
+    "editButton": "Edit",
+    "createButton": "Write"
+  },
+  "codePanel": {
+    "linesCount": "{count} lines",
+    "hasComment": "Has comments"
+  },
+  "replyItem": {
+    "me": "Me"
+  },
+  "commentForm": {
+    "linePlaceholder": "Comment on Line {line}...",
+    "generalPlaceholder": "Leave a comment...",
+    "submit": "Submit",
+    "submitAriaLabel": "Submit comment"
   }
 }

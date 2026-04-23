@@ -1,4 +1,5 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { renderWithI18n } from '@/test-utils/i18n';
 import { CommentForm } from '../CommentForm';
 
 jest.mock('lucide-react', () => {
@@ -22,21 +23,21 @@ describe('CommentForm', () => {
   });
 
   it('라인 미선택 시 전체 댓글 placeholder를 표시한다', () => {
-    render(<CommentForm {...defaultProps} />);
+    renderWithI18n(<CommentForm {...defaultProps} />);
     expect(
       screen.getByPlaceholderText('전체 댓글을 남겨보세요...'),
     ).toBeInTheDocument();
   });
 
   it('lineNumber가 있으면 라인 댓글 placeholder를 표시한다', () => {
-    render(<CommentForm {...defaultProps} lineNumber={5} />);
+    renderWithI18n(<CommentForm {...defaultProps} lineNumber={5} />);
     expect(
       screen.getByPlaceholderText('Line 5에 대한 댓글...'),
     ).toBeInTheDocument();
   });
 
   it('내용 입력 후 등록 버튼으로 제출할 수 있다', async () => {
-    render(<CommentForm {...defaultProps} />);
+    renderWithI18n(<CommentForm {...defaultProps} />);
     const textarea = screen.getByRole('textbox');
     fireEvent.change(textarea, { target: { value: '좋은 코드' } });
     fireEvent.click(screen.getByLabelText('댓글 등록'));
@@ -46,7 +47,7 @@ describe('CommentForm', () => {
   });
 
   it('Enter 키로 제출할 수 있다', async () => {
-    render(<CommentForm {...defaultProps} />);
+    renderWithI18n(<CommentForm {...defaultProps} />);
     const textarea = screen.getByRole('textbox');
     fireEvent.change(textarea, { target: { value: '댓글 내용' } });
     fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false });
@@ -56,7 +57,7 @@ describe('CommentForm', () => {
   });
 
   it('빈 내용은 제출되지 않는다', async () => {
-    render(<CommentForm {...defaultProps} />);
+    renderWithI18n(<CommentForm {...defaultProps} />);
     const textarea = screen.getByRole('textbox');
     fireEvent.change(textarea, { target: { value: '   ' } });
     fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false });
@@ -64,12 +65,12 @@ describe('CommentForm', () => {
   });
 
   it('disabled 상태에서 textarea가 비활성화된다', () => {
-    render(<CommentForm {...defaultProps} disabled />);
+    renderWithI18n(<CommentForm {...defaultProps} disabled />);
     expect(screen.getByRole('textbox')).toBeDisabled();
   });
 
   it('제출 후 textarea가 초기화된다', async () => {
-    render(<CommentForm {...defaultProps} />);
+    renderWithI18n(<CommentForm {...defaultProps} />);
     const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: '테스트' } });
     fireEvent.click(screen.getByLabelText('댓글 등록'));
@@ -79,7 +80,7 @@ describe('CommentForm', () => {
   });
 
   it('Shift+Enter는 제출하지 않는다', async () => {
-    render(<CommentForm {...defaultProps} />);
+    renderWithI18n(<CommentForm {...defaultProps} />);
     const textarea = screen.getByRole('textbox');
     fireEvent.change(textarea, { target: { value: '줄바꿈 테스트' } });
     fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: true });
@@ -93,7 +94,7 @@ describe('CommentForm', () => {
       new Promise<void>((resolve) => { resolveSubmit = resolve; })
     );
 
-    render(<CommentForm onSubmit={pendingOnSubmit} />);
+    renderWithI18n(<CommentForm onSubmit={pendingOnSubmit} />);
     const textarea = screen.getByRole('textbox');
     fireEvent.change(textarea, { target: { value: '제출 중 테스트' } });
     fireEvent.click(screen.getByLabelText('댓글 등록'));

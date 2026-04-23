@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithI18n } from '@/test-utils/i18n';
 import { ReplyItem } from '../ReplyItem';
 import type { ReviewReply } from '@/lib/api';
 
@@ -27,32 +28,32 @@ const makeReply = (overrides: Partial<ReviewReply> = {}): ReviewReply => ({
 
 describe('ReplyItem', () => {
   it('답글 내용을 렌더링한다', () => {
-    render(<ReplyItem reply={makeReply()} currentUserId="user-abc-1234" />);
+    renderWithI18n(<ReplyItem reply={makeReply()} currentUserId="user-abc-1234" />);
     expect(screen.getByText('답글 내용입니다')).toBeInTheDocument();
   });
 
   it('작성자 ID 앞 8자를 표시한다', () => {
-    render(<ReplyItem reply={makeReply()} currentUserId="other" />);
+    renderWithI18n(<ReplyItem reply={makeReply()} currentUserId="other" />);
     expect(screen.getByText('user-abc')).toBeInTheDocument();
   });
 
   it('아바타에 작성자 ID 앞 2자를 대문자로 표시한다', () => {
-    render(<ReplyItem reply={makeReply()} currentUserId="other" />);
+    renderWithI18n(<ReplyItem reply={makeReply()} currentUserId="other" />);
     expect(screen.getByText('US')).toBeInTheDocument();
   });
 
   it('본인 댓글이면 "나" 배지를 표시한다', () => {
-    render(<ReplyItem reply={makeReply()} currentUserId="user-abc-1234" />);
+    renderWithI18n(<ReplyItem reply={makeReply()} currentUserId="user-abc-1234" />);
     expect(screen.getByText('나')).toBeInTheDocument();
   });
 
   it('다른 사용자의 댓글이면 "나" 배지가 없다', () => {
-    render(<ReplyItem reply={makeReply()} currentUserId="other-user" />);
+    renderWithI18n(<ReplyItem reply={makeReply()} currentUserId="other-user" />);
     expect(screen.queryByText('나')).not.toBeInTheDocument();
   });
 
   it('상대 시간을 표시한다 (10분 전)', () => {
-    render(<ReplyItem reply={makeReply()} currentUserId="other" />);
+    renderWithI18n(<ReplyItem reply={makeReply()} currentUserId="other" />);
     expect(screen.getByText('10분 전')).toBeInTheDocument();
   });
 
@@ -60,7 +61,7 @@ describe('ReplyItem', () => {
     const reply = makeReply({
       createdAt: new Date(NOW - 3 * 3600000).toISOString(),
     });
-    render(<ReplyItem reply={reply} currentUserId="other" />);
+    renderWithI18n(<ReplyItem reply={reply} currentUserId="other" />);
     expect(screen.getByText('3시간 전')).toBeInTheDocument();
   });
 
@@ -68,7 +69,7 @@ describe('ReplyItem', () => {
     const reply = makeReply({
       createdAt: new Date(NOW - 10000).toISOString(),
     });
-    render(<ReplyItem reply={reply} currentUserId="other" />);
+    renderWithI18n(<ReplyItem reply={reply} currentUserId="other" />);
     expect(screen.getByText('방금')).toBeInTheDocument();
   });
 
@@ -76,8 +77,8 @@ describe('ReplyItem', () => {
     const reply = makeReply({
       createdAt: new Date(NOW - 10 * 24 * 3600000).toISOString(),
     });
-    render(<ReplyItem reply={reply} currentUserId="other" />);
-    // toLocaleDateString('ko-KR') 결과 검증 - 숫자가 포함된 날짜 형식
+    renderWithI18n(<ReplyItem reply={reply} currentUserId="other" />);
+    // toLocaleDateString('ko') 결과 검증 - 숫자가 포함된 날짜 형식
     const timeEl = screen.getByText(/\d+/);
     expect(timeEl).toBeInTheDocument();
   });
@@ -86,7 +87,7 @@ describe('ReplyItem', () => {
     const reply = makeReply({
       createdAt: new Date(NOW - 6 * 24 * 3600000).toISOString(),
     });
-    render(<ReplyItem reply={reply} currentUserId="other" />);
+    renderWithI18n(<ReplyItem reply={reply} currentUserId="other" />);
     expect(screen.getByText('6일 전')).toBeInTheDocument();
   });
 });

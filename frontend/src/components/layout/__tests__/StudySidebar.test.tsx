@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { renderWithI18n } from '@/test-utils/i18n';
 import { StudySidebar } from '../StudySidebar';
 
 const mockPush = jest.fn();
@@ -61,8 +62,8 @@ beforeEach(() => {
 
 describe('StudySidebar', () => {
   it('renders navigation with study links', () => {
-    render(<StudySidebar />);
-    const navs = screen.getAllByRole('navigation', { name: '스터디 내비게이션' });
+    renderWithI18n(<StudySidebar />);
+    const navs = screen.getAllByRole('navigation', { name: /내비게이션/ });
     expect(navs.length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('개요').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('문제').length).toBeGreaterThanOrEqual(1);
@@ -71,22 +72,22 @@ describe('StudySidebar', () => {
   });
 
   it('shows settings link for ADMIN role', () => {
-    render(<StudySidebar />);
+    renderWithI18n(<StudySidebar />);
     expect(screen.getAllByText('설정').length).toBeGreaterThanOrEqual(1);
   });
 
   it('displays current study name in dropdown button', () => {
-    render(<StudySidebar />);
+    renderWithI18n(<StudySidebar />);
     expect(screen.getAllByText('Test Study').length).toBeGreaterThanOrEqual(1);
   });
 
   it('opens study dropdown and allows switching', async () => {
     const user = userEvent.setup();
-    render(<StudySidebar />);
+    renderWithI18n(<StudySidebar />);
 
-    const toggleButtons = screen.getAllByRole('button', { name: '스터디 전환' });
+    const toggleButtons = screen.getAllByRole('button', { name: /스터디 전환/ });
     await user.click(toggleButtons[0]);
-    const listbox = screen.getAllByRole('listbox', { name: '스터디 목록' })[0];
+    const listbox = screen.getAllByRole('listbox', { name: /스터디 목록/ })[0];
     expect(listbox).toBeInTheDocument();
 
     const options = listbox.querySelectorAll('[role="option"]');
@@ -98,15 +99,15 @@ describe('StudySidebar', () => {
 
   it('can collapse and expand the sidebar', async () => {
     const user = userEvent.setup();
-    render(<StudySidebar />);
+    renderWithI18n(<StudySidebar />);
 
     // Collapse (use first match — desktop sidebar)
-    const collapseButtons = screen.getAllByRole('button', { name: '사이드바 접기' });
+    const collapseButtons = screen.getAllByRole('button', { name: /사이드바 접기/ });
     await user.click(collapseButtons[0]);
-    expect(screen.getAllByRole('button', { name: '사이드바 확장' }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole('button', { name: /사이드바 확장/ }).length).toBeGreaterThanOrEqual(1);
 
     // Expand
-    const expandButtons = screen.getAllByRole('button', { name: '사이드바 확장' });
+    const expandButtons = screen.getAllByRole('button', { name: /사이드바 확장/ });
     await user.click(expandButtons[0]);
     expect(screen.getAllByText('개요').length).toBeGreaterThanOrEqual(1);
   });
@@ -119,7 +120,7 @@ describe('StudySidebar', () => {
       studies: [{ id: 'study-1', name: 'Test Study' }],
       setCurrentStudy: jest.fn(),
     });
-    render(<StudySidebar />);
+    renderWithI18n(<StudySidebar />);
     expect(screen.queryByText('설정')).not.toBeInTheDocument();
     expect(screen.getAllByText('개요').length).toBeGreaterThanOrEqual(1);
   });
@@ -132,11 +133,11 @@ describe('StudySidebar', () => {
       studies: [],
       setCurrentStudy: jest.fn(),
     });
-    const { container } = render(<StudySidebar />);
+    const { container } = renderWithI18n(<StudySidebar />);
     expect(container.innerHTML).toBe('');
   });
 
-  it('currentStudyName이 null이면 "스터디" 텍스트를 표시한다', () => {
+  it('shows fallback text when currentStudyName is null', () => {
     mockUseStudy.mockReturnValue({
       currentStudyId: 'study-1',
       currentStudyName: null,
@@ -144,9 +145,9 @@ describe('StudySidebar', () => {
       studies: [{ id: 'study-1', name: 'Test Study' }],
       setCurrentStudy: mockSetCurrentStudy,
     });
-    render(<StudySidebar />);
-    const toggleButtons = screen.getAllByRole('button', { name: '스터디 전환' });
-    // currentStudyName ?? '스터디' 분기: null일 때 '스터디' 표시
-    expect(toggleButtons[0]).toHaveTextContent('스터디');
+    renderWithI18n(<StudySidebar />);
+    const toggleButtons = screen.getAllByRole('button', { name: /스터디 전환/ });
+    // currentStudyName ?? t('studySidebar.studyFallback') branch: null shows fallback
+    expect(toggleButtons[0]).toHaveTextContent(/스터디/);
   });
 });
