@@ -191,15 +191,23 @@ function CallbackContent(): ReactNode {
   );
 }
 
+/** Suspense 폴백 — 접근성 aria-label + role="status" 포함 */
+function CallbackFallback(): ReactNode {
+  const t = useTranslations('common');
+  return (
+    <div
+      className="flex flex-col items-center gap-4"
+      aria-label={t('loading.verifying')}
+      role="status"
+    >
+      <LoadingSpinner />
+    </div>
+  );
+}
+
 export default function CallbackPage(): ReactNode {
   return (
-    <Suspense
-      fallback={
-        <div className="flex flex-col items-center gap-4">
-          <LoadingSpinner />
-        </div>
-      }
-    >
+    <Suspense fallback={<CallbackFallback />}>
       <CallbackContent />
     </Suspense>
   );

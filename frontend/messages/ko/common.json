@@ -29,7 +29,8 @@
   },
   "loading": {
     "default": "불러오는 중...",
-    "submitting": "제출 중..."
+    "submitting": "제출 중...",
+    "verifying": "인증 확인 중..."
   },
   "empty": {
     "default": "표시할 항목이 없습니다.",

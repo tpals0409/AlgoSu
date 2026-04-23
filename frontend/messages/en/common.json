@@ -29,7 +29,8 @@
   },
   "loading": {
     "default": "Loading...",
-    "submitting": "Submitting..."
+    "submitting": "Submitting...",
+    "verifying": "Verifying..."
   },
   "empty": {
     "default": "No items to display.",
