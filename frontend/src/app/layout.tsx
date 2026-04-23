@@ -1,16 +1,18 @@
+/**
+ * @file Root Layout — html/body 기반 최소 래퍼
+ * @domain i18n
+ * @layer layout
+ * @related src/app/[locale]/layout.tsx, src/i18n/routing.ts
+ *
+ * Next.js App Router가 요구하는 루트 레이아웃.
+ * getLocale()로 현재 locale을 읽어 <html lang> 속성을 동적으로 설정한다.
+ * 모든 프로바이더와 UI 요소는 app/[locale]/layout.tsx에서 처리한다.
+ */
+
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import Script from 'next/script';
+import { getLocale } from 'next-intl/server';
 import '@/app/globals.css';
-import { ThemeProvider } from '@/components/providers/ThemeProvider';
-import { WebVitalsReporter } from '@/components/providers/WebVitalsReporter';
-import { EventTrackerProvider } from '@/components/providers/EventTracker';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { StudyProvider } from '@/contexts/StudyContext';
-import { SWRProvider } from '@/components/providers/SWRProvider';
-
-const adsenseEnabled = process.env.NEXT_PUBLIC_ADSENSE_ENABLED === 'true';
-const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID ?? '';
 
 export const metadata: Metadata = {
   title: {
@@ -31,40 +33,18 @@ interface RootLayoutProps {
   readonly children: ReactNode;
 }
 
-export default function RootLayout({ children }: RootLayoutProps): ReactNode {
+/**
+ * 루트 레이아웃 — <html lang> 동적 설정 + globals.css 주입.
+ * 모든 로케일 라우트는 app/[locale]/layout.tsx가 감싸므로
+ * 이 레이아웃은 최소한의 HTML 구조만 제공한다.
+ */
+export default async function RootLayout({
+  children,
+}: RootLayoutProps): Promise<ReactNode> {
+  const locale = await getLocale();
   return (
-    <html lang="ko" suppressHydrationWarning>
-      <body className="font-sans">
-        <a
-          href="#main-content"
-          className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-white focus:text-black"
-        >
-          콘텐츠로 건너뛰기
-        </a>
-        {adsenseEnabled && adsenseClientId && (
-          <Script
-            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClientId}`}
-            strategy="afterInteractive"
-            crossOrigin="anonymous"
-          />
-        )}
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <WebVitalsReporter />
-          <EventTrackerProvider />
-          <AuthProvider>
-            <StudyProvider>
-              <SWRProvider>
-                {children}
-              </SWRProvider>
-            </StudyProvider>
-          </AuthProvider>
-        </ThemeProvider>
-      </body>
+    <html lang={locale} suppressHydrationWarning>
+      <body className="font-sans">{children}</body>
     </html>
   );
 }

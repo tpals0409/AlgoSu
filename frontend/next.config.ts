@@ -1,12 +1,15 @@
 /**
- * @file Next.js 설정 — CSP, rewrites, standalone 빌드
+ * @file Next.js 설정 — CSP, rewrites, standalone 빌드, i18n
  * @domain common
  * @layer config
+ * @related src/i18n/request.ts, src/i18n/routing.ts
  */
 
 import type { NextConfig } from 'next';
 import withBundleAnalyzer from '@next/bundle-analyzer';
 import { withSentryConfig } from '@sentry/nextjs';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const createNextIntlPlugin = require('next-intl/plugin');
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3000';
 const minioUrl = process.env.NEXT_PUBLIC_MINIO_URL ?? '';
@@ -78,7 +81,10 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSentryConfig(withAnalyzer(nextConfig), {
+/** next-intl 플러그인 — i18n/request.ts를 진입점으로 사용 */
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
+
+export default withSentryConfig(withAnalyzer(withNextIntl(nextConfig)), {
   silent: true,
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
