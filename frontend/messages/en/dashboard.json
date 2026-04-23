@@ -43,6 +43,22 @@
   },
   "loading": "Loading...",
   "retry": "Retry",
+  "twoColumn": {
+    "recentSubmissions": "Recent Submissions",
+    "viewAll": "View All",
+    "noSubmissions": "No submissions yet",
+    "problemFallback": "Problem {id}",
+    "upcomingDeadlines": "Upcoming Deadlines",
+    "submitted": "Submitted",
+    "justNow": "Just now",
+    "minutesAgo": "{count}m ago",
+    "hoursAgo": "{count}h ago",
+    "daysAgo": "{count}d ago",
+    "dateShort": "{month}/{day}",
+    "daysLeft": "{count}d left",
+    "hoursLeft": "{count}h left",
+    "closingSoon": "Closing soon"
+  },
   "analyticsSection": {
     "meta": {
       "title": "Learning Analytics",

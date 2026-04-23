@@ -43,6 +43,22 @@
   },
   "loading": "로딩 중...",
   "retry": "다시 시도",
+  "twoColumn": {
+    "recentSubmissions": "최근 제출",
+    "viewAll": "전체 보기",
+    "noSubmissions": "아직 제출 내역이 없습니다",
+    "problemFallback": "문제 {id}",
+    "upcomingDeadlines": "마감 임박 문제",
+    "submitted": "제출 완료",
+    "justNow": "방금 전",
+    "minutesAgo": "{count}분 전",
+    "hoursAgo": "{count}시간 전",
+    "daysAgo": "{count}일 전",
+    "dateShort": "{month}.{day}",
+    "daysLeft": "{count}일 남음",
+    "hoursLeft": "{count}시간 남음",
+    "closingSoon": "곧 마감"
+  },
   "analyticsSection": {
     "meta": {
       "title": "학습 분석",

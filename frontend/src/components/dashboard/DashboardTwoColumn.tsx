@@ -10,6 +10,7 @@
 import { type ReactNode } from 'react';
 import Link from 'next/link';
 import { ArrowRight, CheckCircle2, Clock } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
@@ -22,8 +23,11 @@ import { cn } from '@/lib/utils';
 
 // ─── HELPERS ─────────────────────────────
 
-/** 상대 시간 포맷: 방금 전, N분 전, N시간 전, N일 전 */
-function formatRelativeTime(dateStr: string): string {
+/** 번역 함수 축약 타입 */
+type TranslateFn = (key: string, values?: Record<string, number | string>) => string;
+
+/** 상대 시간 포맷 (i18n 지원) */
+function formatRelativeTime(dateStr: string, t: TranslateFn): string {
   const now = Date.now();
   const then = new Date(dateStr).getTime();
   const diffMs = now - then;
@@ -31,13 +35,13 @@ function formatRelativeTime(dateStr: string): string {
   const diffHour = Math.floor(diffMs / 3600000);
   const diffDay = Math.floor(diffMs / 86400000);
 
-  if (diffMin < 1) return '방금 전';
-  if (diffMin < 60) return `${diffMin}분 전`;
-  if (diffHour < 24) return `${diffHour}시간 전`;
-  if (diffDay < 7) return `${diffDay}일 전`;
+  if (diffMin < 1) return t('twoColumn.justNow');
+  if (diffMin < 60) return t('twoColumn.minutesAgo', { count: diffMin });
+  if (diffHour < 24) return t('twoColumn.hoursAgo', { count: diffHour });
+  if (diffDay < 7) return t('twoColumn.daysAgo', { count: diffDay });
 
   const d = new Date(dateStr);
-  return `${d.getMonth() + 1}.${d.getDate()}`;
+  return t('twoColumn.dateShort', { month: d.getMonth() + 1, day: d.getDate() });
 }
 
 // ─── TYPES ───────────────────────────────
@@ -63,19 +67,20 @@ export default function DashboardTwoColumn({
   isLoading,
   fadeStyle,
 }: DashboardTwoColumnProps): ReactNode {
+  const t = useTranslations('dashboard');
   const problemMap = new Map(allProblems.map((p) => [p.id, p]));
   return (
     <div className={upcomingDeadlines.length > 0 ? "grid gap-3.5 md:grid-cols-2" : "block"} style={fadeStyle}>
 
-      {/* 최근 제출 5건 */}
+      {/* Recent Submissions */}
       <Card className="overflow-hidden p-0">
         <CardHeader className="flex flex-row items-center justify-between px-4 pb-2 pt-4">
-          <CardTitle>최근 제출</CardTitle>
+          <CardTitle>{t('twoColumn.recentSubmissions')}</CardTitle>
           <Link
             href="/submissions"
             className="flex items-center gap-0.5 text-[12px] font-medium text-text-3 transition-colors hover:text-primary"
           >
-            전체 보기 <ArrowRight className="h-3 w-3" />
+            {t('twoColumn.viewAll')} <ArrowRight className="h-3 w-3" />
           </Link>
         </CardHeader>
         {isLoading ? (
@@ -86,7 +91,7 @@ export default function DashboardTwoColumn({
           </div>
         ) : recentSubmissions.length === 0 ? (
           <p className="py-8 text-center text-sm text-text-3">
-            아직 제출 내역이 없습니다
+            {t('twoColumn.noSubmissions')}
           </p>
         ) : (
           <div>
@@ -104,7 +109,7 @@ export default function DashboardTwoColumn({
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13px] font-semibold transition-colors group-hover:text-primary">
-                    {s.problemTitle ?? problemTitleMap.get(s.problemId) ?? `문제 ${s.problemId.slice(0, 8)}`}
+                    {s.problemTitle ?? problemTitleMap.get(s.problemId) ?? t('twoColumn.problemFallback', { id: s.problemId.slice(0, 8) })}
                   </p>
                   <div className="mt-1 flex items-center gap-2">
                     {(() => {
@@ -122,7 +127,7 @@ export default function DashboardTwoColumn({
                       {s.language}
                     </span>
                     <span className="text-[11px] text-text-3">
-                      {formatRelativeTime(s.createdAt)}
+                      {formatRelativeTime(s.createdAt, t)}
                     </span>
                   </div>
                 </div>
@@ -138,16 +143,16 @@ export default function DashboardTwoColumn({
         )}
       </Card>
 
-      {/* 마감 임박 문제 - upcomingDeadlines가 있을 때만 렌더 */}
+      {/* Upcoming Deadlines */}
       {upcomingDeadlines.length > 0 && (
         <Card className="overflow-hidden p-0">
           <CardHeader className="flex flex-row items-center justify-between px-4 pb-2 pt-4">
-            <CardTitle>마감 임박 문제</CardTitle>
+            <CardTitle>{t('twoColumn.upcomingDeadlines')}</CardTitle>
             <Link
               href="/problems"
               className="flex items-center gap-0.5 text-[12px] font-medium text-text-3 transition-colors hover:text-primary"
             >
-              전체 보기 <ArrowRight className="h-3 w-3" />
+              {t('twoColumn.viewAll')} <ArrowRight className="h-3 w-3" />
             </Link>
           </CardHeader>
           <div>
@@ -194,7 +199,7 @@ export default function DashboardTwoColumn({
                   </div>
                   <div className="flex items-center gap-2">
                     {isSubmitted && (
-                      <Badge variant="success">제출 완료</Badge>
+                      <Badge variant="success">{t('twoColumn.submitted')}</Badge>
                     )}
                     <span className={cn(
                       'flex items-center gap-1 font-mono text-[11px] whitespace-nowrap',
@@ -202,10 +207,10 @@ export default function DashboardTwoColumn({
                     )}>
                       <Clock className="h-3 w-3" aria-hidden />
                       {diffDays > 0
-                        ? `${diffDays}일 남음`
+                        ? t('twoColumn.daysLeft', { count: diffDays })
                         : diffHours > 0
-                          ? `${diffHours}시간 남음`
-                          : '곧 마감'}
+                          ? t('twoColumn.hoursLeft', { count: diffHours })
+                          : t('twoColumn.closingSoon')}
                     </span>
                   </div>
                 </Link>
@@ -217,4 +222,3 @@ export default function DashboardTwoColumn({
     </div>
   );
 }
-

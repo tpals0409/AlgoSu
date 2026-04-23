@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithI18n } from '@/test-utils/i18n';
 import DashboardTwoColumn from '../DashboardTwoColumn';
 import type { DashboardTwoColumnProps } from '../DashboardTwoColumn';
 import type { Submission, Problem } from '@/lib/api';
@@ -100,29 +101,29 @@ const defaultProps: DashboardTwoColumnProps = {
 
 describe('DashboardTwoColumn', () => {
   it('최근 제출 헤더를 렌더링한다', () => {
-    render(<DashboardTwoColumn {...defaultProps} />);
+    renderWithI18n(<DashboardTwoColumn {...defaultProps} />);
     expect(screen.getByText('최근 제출')).toBeInTheDocument();
   });
 
   it('마감 임박 문제가 있으면 마감 임박 헤더를 렌더링한다', () => {
     const problems = [makeProblem({ id: 'p-1' })];
-    render(<DashboardTwoColumn {...defaultProps} upcomingDeadlines={problems} />);
+    renderWithI18n(<DashboardTwoColumn {...defaultProps} upcomingDeadlines={problems} />);
     expect(screen.getByText('최근 제출')).toBeInTheDocument();
     expect(screen.getByText('마감 임박 문제')).toBeInTheDocument();
   });
 
   it('마감 임박 문제가 없으면 마감 임박 섹션을 렌더링하지 않는다', () => {
-    render(<DashboardTwoColumn {...defaultProps} />);
+    renderWithI18n(<DashboardTwoColumn {...defaultProps} />);
     expect(screen.queryByText('마감 임박 문제')).not.toBeInTheDocument();
   });
 
   it('로딩 중에는 Skeleton을 표시한다', () => {
-    render(<DashboardTwoColumn {...defaultProps} isLoading={true} />);
+    renderWithI18n(<DashboardTwoColumn {...defaultProps} isLoading={true} />);
     expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
   });
 
   it('제출이 없으면 안내 메시지를 표시한다', () => {
-    render(<DashboardTwoColumn {...defaultProps} />);
+    renderWithI18n(<DashboardTwoColumn {...defaultProps} />);
     expect(screen.getByText('아직 제출 내역이 없습니다')).toBeInTheDocument();
   });
 
@@ -132,7 +133,7 @@ describe('DashboardTwoColumn', () => {
       makeSubmission({ id: 's-2', problemId: 'p-2', problemTitle: '최단 경로', sagaStep: 'AI_QUEUED' }),
     ];
     const problems = [makeProblem({ id: 'p-1' }), makeProblem({ id: 'p-2', title: '최단 경로' })];
-    render(
+    renderWithI18n(
       <DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} allProblems={problems} />,
     );
     expect(screen.getByText('두 수의 합')).toBeInTheDocument();
@@ -145,7 +146,7 @@ describe('DashboardTwoColumn', () => {
     const problems = [
       makeProblem({ id: 'p-1', title: '두 수의 합', deadline: new Date(Date.now() + 86400000 * 2).toISOString() }),
     ];
-    render(
+    renderWithI18n(
       <DashboardTwoColumn {...defaultProps} upcomingDeadlines={problems} />,
     );
     expect(screen.getByText('두 수의 합')).toBeInTheDocument();
@@ -153,7 +154,7 @@ describe('DashboardTwoColumn', () => {
 
   it('제출된 문제에 "제출 완료" 뱃지를 표시한다', () => {
     const problems = [makeProblem({ id: 'p-1' })];
-    render(
+    renderWithI18n(
       <DashboardTwoColumn
         {...defaultProps}
         upcomingDeadlines={problems}
@@ -168,7 +169,7 @@ describe('DashboardTwoColumn', () => {
       makeSubmission({ id: 's-1', problemId: 'p-99', problemTitle: undefined }),
     ];
     const titleMap = new Map([['p-99', '맵에서 가져온 제목']]);
-    render(
+    renderWithI18n(
       <DashboardTwoColumn
         {...defaultProps}
         recentSubmissions={submissions}
@@ -180,7 +181,7 @@ describe('DashboardTwoColumn', () => {
   });
 
   it('전체 보기 링크가 올바른 경로를 가진다', () => {
-    render(<DashboardTwoColumn {...defaultProps} />);
+    renderWithI18n(<DashboardTwoColumn {...defaultProps} />);
     const links = screen.getAllByText('전체 보기');
     expect(links[0].closest('a')).toHaveAttribute('href', '/submissions');
   });
@@ -190,7 +191,7 @@ describe('DashboardTwoColumn', () => {
       id: 's-1', problemId: 'p-1', problemTitle: '테스트',
       createdAt: new Date(Date.now() - 30000).toISOString(), // 30초 전
     })];
-    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} allProblems={[makeProblem({ id: 'p-1' })]} />);
+    renderWithI18n(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} allProblems={[makeProblem({ id: 'p-1' })]} />);
     expect(screen.getByText('방금 전')).toBeInTheDocument();
   });
 
@@ -199,7 +200,7 @@ describe('DashboardTwoColumn', () => {
       id: 's-1', problemId: 'p-1', problemTitle: '테스트',
       createdAt: new Date(Date.now() - 2 * 3600000).toISOString(), // 2시간 전
     })];
-    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} allProblems={[makeProblem({ id: 'p-1' })]} />);
+    renderWithI18n(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} allProblems={[makeProblem({ id: 'p-1' })]} />);
     expect(screen.getByText('2시간 전')).toBeInTheDocument();
   });
 
@@ -208,7 +209,7 @@ describe('DashboardTwoColumn', () => {
       id: 's-1', problemId: 'p-1', problemTitle: '테스트',
       createdAt: new Date(Date.now() - 8 * 86400000).toISOString(), // 8일 전
     })];
-    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} allProblems={[makeProblem({ id: 'p-1' })]} />);
+    renderWithI18n(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} allProblems={[makeProblem({ id: 'p-1' })]} />);
     // M.D 형식의 날짜가 있는지 확인 (예: "1.1")
     const datePattern = /\d+\.\d+/;
     const timeEl = screen.getByText(datePattern);
@@ -220,7 +221,7 @@ describe('DashboardTwoColumn', () => {
       id: 'p-1', title: '긴급 문제',
       deadline: new Date(Date.now() + 30 * 60000).toISOString(), // 30분 후
     })];
-    render(<DashboardTwoColumn {...defaultProps} upcomingDeadlines={problems} />);
+    renderWithI18n(<DashboardTwoColumn {...defaultProps} upcomingDeadlines={problems} />);
     expect(screen.getByText('곧 마감')).toBeInTheDocument();
   });
 
@@ -230,7 +231,7 @@ describe('DashboardTwoColumn', () => {
       // 정확히 2시간 + 10분 후 마감 (diffDays=0, diffHours>=1)
       deadline: new Date(Date.now() + 2 * 3600000 + 600000).toISOString(),
     })];
-    render(<DashboardTwoColumn {...defaultProps} upcomingDeadlines={problems} />);
+    renderWithI18n(<DashboardTwoColumn {...defaultProps} upcomingDeadlines={problems} />);
     expect(screen.getByText(/\d+시간 남음/)).toBeInTheDocument();
   });
 
@@ -238,13 +239,13 @@ describe('DashboardTwoColumn', () => {
     const submissions = [makeSubmission({
       id: 's-1', problemId: 'abcdefgh-1234', problemTitle: undefined,
     })];
-    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} problemTitleMap={new Map()} allProblems={[makeProblem({ id: 'abcdefgh-1234' })]} />);
+    renderWithI18n(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} problemTitleMap={new Map()} allProblems={[makeProblem({ id: 'abcdefgh-1234' })]} />);
     expect(screen.getByText('문제 abcdefgh')).toBeInTheDocument();
   });
 
   it('difficulty가 없는 문제는 DifficultyBadge를 표시하지 않는다', () => {
     const problems = [makeProblem({ id: 'p-1', difficulty: undefined })];
-    render(<DashboardTwoColumn {...defaultProps} upcomingDeadlines={problems} />);
+    renderWithI18n(<DashboardTwoColumn {...defaultProps} upcomingDeadlines={problems} />);
     expect(screen.queryByTestId('difficulty-badge')).not.toBeInTheDocument();
   });
 
@@ -253,7 +254,7 @@ describe('DashboardTwoColumn', () => {
       id: 's-1', problemId: 'p-1', problemTitle: '분 테스트',
       createdAt: new Date(Date.now() - 30 * 60000).toISOString(), // 30분 전
     })];
-    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} allProblems={[makeProblem({ id: 'p-1' })]} />);
+    renderWithI18n(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} allProblems={[makeProblem({ id: 'p-1' })]} />);
     expect(screen.getByText('30분 전')).toBeInTheDocument();
   });
 
@@ -262,7 +263,7 @@ describe('DashboardTwoColumn', () => {
       id: 's-1', problemId: 'p-1', problemTitle: '일 테스트',
       createdAt: new Date(Date.now() - 3 * 86400000).toISOString(), // 3일 전
     })];
-    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} allProblems={[makeProblem({ id: 'p-1' })]} />);
+    renderWithI18n(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} allProblems={[makeProblem({ id: 'p-1' })]} />);
     expect(screen.getByText('3일 전')).toBeInTheDocument();
   });
 
@@ -273,7 +274,7 @@ describe('DashboardTwoColumn', () => {
       makeSubmission({ id: 's-3', problemId: 'p-3', problemTitle: '세 번째', sagaStep: 'DONE' }),
     ];
     const problems = [makeProblem({ id: 'p-1' }), makeProblem({ id: 'p-2' }), makeProblem({ id: 'p-3' })];
-    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} allProblems={problems} />);
+    renderWithI18n(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} allProblems={problems} />);
     expect(screen.getByText('첫 번째')).toBeInTheDocument();
     expect(screen.getByText('두 번째')).toBeInTheDocument();
     expect(screen.getByText('세 번째')).toBeInTheDocument();
@@ -281,7 +282,7 @@ describe('DashboardTwoColumn', () => {
 
   it('SAGA_STEP_CONFIG에 없는 sagaStep은 raw step 값을 표시한다', () => {
     const submissions = [makeSubmission({ id: 's-1', problemId: 'p-1', problemTitle: '테스트', sagaStep: 'UNKNOWN_STEP' as never })];
-    render(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} allProblems={[makeProblem({ id: 'p-1' })]} />);
+    renderWithI18n(<DashboardTwoColumn {...defaultProps} recentSubmissions={submissions} allProblems={[makeProblem({ id: 'p-1' })]} />);
     expect(screen.getByText('UNKNOWN_STEP')).toBeInTheDocument();
   });
 
@@ -290,7 +291,7 @@ describe('DashboardTwoColumn', () => {
       makeProblem({ id: 'p-1', title: '첫 번째 문제', deadline: new Date(Date.now() + 86400000).toISOString() }),
       makeProblem({ id: 'p-2', title: '마지막 문제', deadline: new Date(Date.now() + 86400000 * 2).toISOString() }),
     ];
-    render(<DashboardTwoColumn {...defaultProps} upcomingDeadlines={problems} />);
+    renderWithI18n(<DashboardTwoColumn {...defaultProps} upcomingDeadlines={problems} />);
     expect(screen.getByText('첫 번째 문제')).toBeInTheDocument();
     expect(screen.getByText('마지막 문제')).toBeInTheDocument();
   });
