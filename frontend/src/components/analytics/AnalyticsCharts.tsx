@@ -122,14 +122,14 @@ export default function AnalyticsCharts({
   const [barsAnimated, setBarsAnimated] = useState(false);
 
   useEffect(() => {
-    const t = setTimeout(() => setMounted(true), 50);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setMounted(true), 50);
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
     if (!mounted) return;
-    const t = setTimeout(() => setBarsAnimated(true), 300);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setBarsAnimated(true), 300);
+    return () => clearTimeout(timer);
   }, [mounted]);
 
   const fade = (delay = 0): CSSProperties => ({
