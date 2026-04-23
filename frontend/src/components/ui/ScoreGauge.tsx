@@ -1,14 +1,15 @@
 /**
- * @file SVG 원형 점수 게이지 (애니메이션)
+ * @file SVG circular score gauge (animated)
  * @domain ai
  * @layer component
  *
- * useAnimVal로 뷰포트 진입 시 0 -> score 애니메이션.
+ * Uses useAnimVal for 0 -> score animation on viewport entry.
  */
 
 'use client';
 
 import type { ReactElement } from 'react';
+import { useTranslations } from 'next-intl';
 import { useAnimVal } from '@/hooks/useAnimVal';
 import { cn } from '@/lib/utils';
 
@@ -25,10 +26,11 @@ function getColor(score: number): string {
   return 'var(--error)';
 }
 
-function getLabel(score: number): string {
-  if (score >= 80) return '우수';
-  if (score >= 50) return '보통';
-  return '개선 필요';
+/** Returns the i18n key suffix for the score grade label */
+function getGradeKey(score: number): 'excellent' | 'average' | 'needsImprovement' {
+  if (score >= 80) return 'excellent';
+  if (score >= 50) return 'average';
+  return 'needsImprovement';
 }
 
 export function ScoreGauge({
@@ -37,6 +39,7 @@ export function ScoreGauge({
   className,
   label,
 }: ScoreGaugeProps): ReactElement {
+  const t = useTranslations('ui');
   const [ref, animScore] = useAnimVal(score, 1200);
   const strokeWidth = 8;
   const radius = (size - strokeWidth) / 2;
@@ -53,7 +56,7 @@ export function ScoreGauge({
       aria-valuenow={score}
       aria-valuemin={0}
       aria-valuemax={100}
-      aria-label={`점수 ${score}점 — ${getLabel(score)}`}
+      aria-label={t('scoreGauge.ariaLabel', { score, label: t(`scoreGauge.${getGradeKey(score)}`) })}
     >
       <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
         <circle
@@ -85,7 +88,7 @@ export function ScoreGauge({
           {Math.round(animScore)}
         </span>
         <span className="mt-[-2px] text-xs font-medium text-text-3">
-          {label ?? getLabel(score)}
+          {label ?? t(`scoreGauge.${getGradeKey(score)}`)}
         </span>
       </div>
     </div>
