@@ -1,10 +1,10 @@
 /**
- * @file 노드 그래프 로고 (시안 B 확정)
+ * @file Node graph logo (Design B finalized)
  * @domain common
  * @layer component
  *
- * 4 노드 + 엣지 + 대각선, gradient fill SVG.
- * size, primary, accent props로 크기/색상 제어.
+ * 4 nodes + edges + diagonal, gradient fill SVG.
+ * size, primary, accent props control dimensions/colors.
  */
 
 import type { ReactElement } from 'react';
