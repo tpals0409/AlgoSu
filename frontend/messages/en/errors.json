@@ -44,5 +44,20 @@
   "studyRoom": {
     "title": "Study Room Error",
     "description": "Failed to load the study room."
+  },
+  "notFound": {
+    "title": "404",
+    "description": "The page could not be found",
+    "home": "Go Home"
+  },
+  "studyNotFound": {
+    "title": "Study Not Found",
+    "description": "The study you requested does not exist or has been removed.",
+    "cta": "Back to Studies"
+  },
+  "problemNotFound": {
+    "title": "Problem Not Found",
+    "description": "The problem you requested does not exist or has been removed.",
+    "cta": "Back to Problems"
   }
 }
