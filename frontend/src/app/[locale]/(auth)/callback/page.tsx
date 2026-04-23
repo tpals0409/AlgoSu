@@ -40,6 +40,8 @@ const ERROR_KEY_MAP: Record<string, string> = {
   invalid_state: 'errors.invalidState',
   missing_code: 'errors.missingCode',
   provider_denied: 'errors.providerDenied',
+  account_conflict: 'errors.accountConflict',
+  email_in_use: 'errors.accountConflict',
 };
 
 function CallbackContent(): ReactNode {
@@ -60,15 +62,9 @@ function CallbackContent(): ReactNode {
 
     if (errorParam) {
       const decoded = decodeURIComponent(errorParam);
-      // 화이트리스트 에러 코드 → 번역 키, 그 외 → 기존 메시지 또는 fallback
+      // 화이트리스트 매핑 → 번역 키, 미등록 코드 → 일반 실패 메시지 (i18n 안전)
       const mappedKey = ERROR_KEY_MAP[decoded];
-      if (mappedKey) {
-        setError(t(mappedKey));
-      } else if (decoded.includes('이미') || decoded.includes('가입')) {
-        setError(decoded);
-      } else {
-        setError(t('errors.oauthFailed'));
-      }
+      setError(mappedKey ? t(mappedKey) : t('errors.oauthFailed'));
       setStep('error');
       return;
     }
