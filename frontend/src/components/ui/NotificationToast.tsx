@@ -24,6 +24,7 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { isSafeInternalPath } from '@/lib/url';
 import type { Notification } from '@/lib/api';
 
 const TYPE_ICON: Record<string, typeof Bell> = {
@@ -101,7 +102,7 @@ export function NotificationToast({
       setTimeout(() => {
         setToast(null);
         onDismissRef.current();
-        if (link) router.push(link);
+        if (link && isSafeInternalPath(link)) router.push(link);
       }, 300);
       return { ...prev, visible: false };
     });

@@ -65,6 +65,10 @@ jest.mock('@/components/layout/NotificationBell', () => ({
   NotificationBell: () => <div data-testid="notification-bell" />,
 }));
 
+jest.mock('@/components/layout/LanguageSwitcher', () => ({
+  LanguageSwitcher: () => <div data-testid="language-switcher" />,
+}));
+
 jest.mock('@/lib/avatars', () => ({
   getAvatarSrc: () => '/avatar.png',
 }));

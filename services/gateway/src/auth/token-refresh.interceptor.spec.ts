@@ -86,7 +86,7 @@ describe('TokenRefreshInterceptor', () => {
 
   it('만료까지 90분 남은 토큰 -- 갱신 안 함 (임계값 60분 초과)', async () => {
     const token = createToken(90 * 60); // 90분
-    const ctx = createContext({ token }, { 'x-user-id': USER_ID });
+    const ctx = createContext({ token });
 
     const result = await lastValueFrom(
       interceptor.intercept(ctx, createCallHandler()),
@@ -98,7 +98,7 @@ describe('TokenRefreshInterceptor', () => {
 
   it('만료까지 30분 남은 토큰 -- 자동 갱신 트리거 (임계값 60분 이내)', async () => {
     const token = createToken(30 * 60); // 30분 (< 60분 임계값)
-    const ctx = createContext({ token }, { 'x-user-id': USER_ID });
+    const ctx = createContext({ token });
 
     const result = await lastValueFrom(
       interceptor.intercept(ctx, createCallHandler()),
@@ -111,19 +111,38 @@ describe('TokenRefreshInterceptor', () => {
     expect(mockOAuthService.issueAccessToken).toHaveBeenCalled();
   });
 
-  it('x-user-id 헤더 없으면 갱신 안 함', async () => {
-    const token = createToken(60); // 1분
-    const ctx = createContext({ token }); // x-user-id 없음
+  it('[보안] JWT payload에 sub/userId 없으면 갱신 안 함', async () => {
+    // sub 클레임 없는 토큰 — decodeToken이 null 반환 → 갱신 스킵
+    const tokenNoSub = jwt.sign(
+      { exp: Math.floor(Date.now() / 1000) + 60 }, // 1분 뒤 만료, sub 없음
+      JWT_SECRET,
+      { algorithm: 'HS256' },
+    );
+    const ctx = createContext({ token: tokenNoSub });
 
     await lastValueFrom(interceptor.intercept(ctx, createCallHandler()));
 
     expect(mockOAuthService.findUserById).not.toHaveBeenCalled();
   });
 
+  it('[보안] 클라이언트 x-user-id 헤더 무시 — JWT payload.sub를 식별자로 사용', async () => {
+    // 공격 시나리오: 공격자가 자신의 만료 임박 토큰 + 피해자 x-user-id 헤더 주입
+    const VICTIM_ID = 'victim-user-uuid-9999';
+    const token = createToken(30 * 60); // 30분 (< 60분 임계값) — 공격자 자신의 토큰
+    const ctx = createContext({ token }, { 'x-user-id': VICTIM_ID });
+
+    await lastValueFrom(interceptor.intercept(ctx, createCallHandler()));
+    await new Promise((r) => setImmediate(r));
+
+    // 피해자 ID(VICTIM_ID)가 아닌 토큰 payload.sub(USER_ID)로 조회해야 함
+    expect(mockOAuthService.findUserById).toHaveBeenCalledWith(USER_ID);
+    expect(mockOAuthService.findUserById).not.toHaveBeenCalledWith(VICTIM_ID);
+  });
+
   it('사용자 조회 실패 시 에러 로깅만 (응답 정상)', async () => {
     const token = createToken(60);
     mockOAuthService.findUserById.mockRejectedValue(new Error('DB down'));
-    const ctx = createContext({ token }, { 'x-user-id': USER_ID });
+    const ctx = createContext({ token });
 
     const result = await lastValueFrom(
       interceptor.intercept(ctx, createCallHandler()),
@@ -135,7 +154,7 @@ describe('TokenRefreshInterceptor', () => {
   });
 
   it('디코딩 불가능한 토큰 -- 갱신 없이 통과', async () => {
-    const ctx = createContext({ token: 'invalid-token' }, { 'x-user-id': USER_ID });
+    const ctx = createContext({ token: 'invalid-token' });
 
     const result = await lastValueFrom(
       interceptor.intercept(ctx, createCallHandler()),
@@ -147,21 +166,16 @@ describe('TokenRefreshInterceptor', () => {
 
   describe('추가 분기 커버리지', () => {
     it('remainingSeconds가 null인 토큰(exp 없음) — 갱신 없이 통과', async () => {
-      // exp 없는 토큰 → getRemainingSeconds가 null 반환 → 갱신 스킵
-      // jwt.sign에 expiresIn 미지정 시 exp 필드 없음
+      // exp 없는 토큰 → decodeToken이 null 반환 → 갱신 스킵
       const tokenNoExp = jwt.sign({ sub: USER_ID, iat: Math.floor(Date.now() / 1000) }, JWT_SECRET);
-      // jwt.decode로 exp가 없는지 확인 (테스트 전제 검증)
-      // exp 있는 경우 jwt.sign은 기본적으로 exp를 안 붙임 (expiresIn 미지정)
 
-      const ctx = createContext({ token: tokenNoExp }, { 'x-user-id': USER_ID });
+      const ctx = createContext({ token: tokenNoExp });
 
       const result = await lastValueFrom(
         interceptor.intercept(ctx, createCallHandler()),
       );
 
       expect(result).toBe('ok');
-      // exp가 없으면 getRemainingSeconds → null → 갱신 안 함
-      // exp가 있으면 remainingSeconds > REFRESH_THRESHOLD → 갱신 안 함
       expect(mockOAuthService.findUserById).not.toHaveBeenCalled();
     });
 
@@ -173,7 +187,7 @@ describe('TokenRefreshInterceptor', () => {
         noTimestamp: true,
       });
 
-      const ctx = createContext({ token: tokenWithoutExp }, { 'x-user-id': USER_ID });
+      const ctx = createContext({ token: tokenWithoutExp });
 
       const result = await lastValueFrom(
         interceptor.intercept(ctx, createCallHandler()),
@@ -186,7 +200,7 @@ describe('TokenRefreshInterceptor', () => {
     it('findUserById가 null 반환 시 — 쿠키 발급 안 함', async () => {
       const token = createToken(60); // 1분 — 갱신 임계값 이내
       mockOAuthService.findUserById.mockResolvedValue(null); // user 없음
-      const ctx = createContext({ token }, { 'x-user-id': USER_ID });
+      const ctx = createContext({ token });
 
       const result = await lastValueFrom(
         interceptor.intercept(ctx, createCallHandler()),
@@ -201,7 +215,8 @@ describe('TokenRefreshInterceptor', () => {
 
     it('res.headersSent가 true인 경우 — 쿠키 미발급', async () => {
       const token = createToken(60); // 1분 — 갱신 임계값 이내
-      const req = { cookies: { token }, headers: { 'x-user-id': USER_ID } };
+      // userId는 토큰 payload에서 추출 — 헤더 불필요
+      const req = { cookies: { token }, headers: {} };
       const res = { cookie: jest.fn(), headersSent: true }; // 이미 전송된 응답
       const ctx = {
         switchToHttp: () => ({

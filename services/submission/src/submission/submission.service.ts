@@ -7,6 +7,7 @@
 import {
   Injectable,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, In } from 'typeorm';
@@ -53,10 +54,10 @@ export class SubmissionService {
    * 순서: DB 저장(saga_step=DB_SAVED) → Saga 진행(GITHUB_QUEUED)
    */
   async create(dto: CreateSubmissionDto, userId: string, studyId: string): Promise<Submission> {
-    // 멱등성 검사
+    // 멱등성 검사 — (studyId, userId, idempotencyKey) 3-tuple 스코핑으로 IDOR 방지
     if (dto.idempotencyKey) {
       const existing = await this.submissionRepo.findOne({
-        where: { idempotencyKey: dto.idempotencyKey, studyId },
+        where: { idempotencyKey: dto.idempotencyKey, studyId, userId },
       });
       if (existing) {
         this.logger.log(`멱등성 히트: idempotencyKey 기존 제출 반환`);
@@ -534,14 +535,23 @@ export class SubmissionService {
   /**
    * AI 만족도 등록/수정 (UPSERT)
    * 동일 submissionId+userId 조합이 이미 있으면 rating/comment 업데이트
+   *
+   * IDOR 방지: studyId 검증 — 요청자의 x-study-id에 속하지 않는 제출에 대한
+   * 만족도 쓰기를 차단합니다.
    */
   async rateSatisfaction(
     submissionId: string,
     userId: string,
+    studyId: string,
     dto: CreateAiSatisfactionDto,
   ): Promise<AiSatisfaction> {
     // 제출 존재 여부 확인
-    await this.findById(submissionId);
+    const submission = await this.findById(submissionId);
+
+    // IDOR 방지: 요청한 스터디의 제출인지 검증
+    if (submission.studyId !== studyId) {
+      throw new ForbiddenException('다른 스터디의 제출에 접근할 수 없습니다.');
+    }
 
     await this.satisfactionRepo.upsert(
       {

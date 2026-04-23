@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { NotificationToast } from '../NotificationToast';
 import type { Notification } from '@/lib/api';
+import { isSafeInternalPath } from '@/lib/url';
 
 const mockPush = jest.fn();
 jest.mock('next/navigation', () => ({
@@ -269,6 +270,33 @@ describe('NotificationToast', () => {
     );
     // cleanup에 의해 타이머 정리 & effect에서 notification이 null이므로 early return
     act(() => { jest.advanceTimersByTime(100); });
+  });
+
+  it.each([
+    'javascript:alert(document.cookie)',
+    'https://evil.com/phishing',
+    '//evil.com/steal',
+    '/\\evil.com',
+  ])('악성 link(%s)는 router.push를 호출하지 않는다', (maliciousLink) => {
+    const onRead = jest.fn();
+    const onDismiss = jest.fn();
+    const notification = makeNotification({ link: maliciousLink });
+    expect(isSafeInternalPath(maliciousLink)).toBe(false);
+
+    render(
+      <NotificationToast notification={notification} onDismiss={onDismiss} onRead={onRead} />,
+    );
+
+    act(() => { jest.advanceTimersByTime(100); });
+
+    const buttons = screen.getAllByRole('button');
+    const toastBody = buttons.find((el) => el.getAttribute('tabindex') === '0')!;
+    fireEvent.click(toastBody);
+
+    act(() => { jest.advanceTimersByTime(300); });
+
+    expect(onRead).toHaveBeenCalledWith('n-1');
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
   it('showTimer 전에 닫기 버튼 클릭 시 prev null 분기를 탄다 (line 59)', () => {

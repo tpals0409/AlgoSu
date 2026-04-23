@@ -914,19 +914,19 @@ describe('OAuthService', () => {
   });
 
   // ============================
-  // 32. getGitHubTokenInfo (lines 568-579)
+  // 32. getGitHubTokenInfo (p0-010 — has_token only)
   // ============================
   describe('getGitHubTokenInfo', () => {
-    it('GitHub 토큰 정보 반환', async () => {
+    it('GitHub 토큰 존재 여부 반환 (p0-010)', async () => {
       identityClient.getGitHubTokenInfo.mockResolvedValue({
         github_username: 'octocat',
-        github_token: 'encrypted-token-value',
+        has_token: true,
       });
 
       const result = await service.getGitHubTokenInfo('user-id-1');
 
       expect(result.github_username).toBe('octocat');
-      expect(result.github_token).toBe('encrypted-token-value');
+      expect(result.has_token).toBe(true);
     });
 
     it('사용자 없음 → Identity 서비스에서 에러 전파', async () => {

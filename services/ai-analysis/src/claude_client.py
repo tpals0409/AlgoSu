@@ -32,10 +32,49 @@ MODEL_ID = "claude-haiku-4-5-20251001"
 MAX_TOKENS = 8192
 
 
+def _validate_categories(categories: object) -> list[dict]:
+    """categories 필드 스키마 검증 — list[dict]가 아니면 안전한 기본값으로 보정
+
+    Claude 응답에서 categories가 리스트가 아니거나 원소가 dict가 아닌 경우
+    AttributeError 런타임 예외가 발생하므로, 파싱 즉시 검증하여 안전 처리한다.
+
+    @domain ai
+    @param categories: parsed JSON에서 추출한 categories 원시 값
+    @returns: 원소가 모두 dict인 리스트
+    """
+    if not isinstance(categories, list):
+        logger.warning(
+            "categories 필드가 list가 아님 — 빈 리스트로 대체",
+            extra={"categoriesType": type(categories).__name__},
+        )
+        return []
+
+    valid = [cat for cat in categories if isinstance(cat, dict)]
+    if len(valid) != len(categories):
+        logger.warning(
+            "categories에 dict가 아닌 원소 포함 — 필터링",
+            extra={"total": len(categories), "valid": len(valid)},
+        )
+    return valid
+
+
 class CircuitBreakerOpenError(Exception):
     """Circuit Breaker OPEN 상태 전용 예외
 
     Worker에서 catch하여 NACK+requeue 처리에 사용.
+
+    @domain ai
+    """
+
+    pass
+
+
+class RateLimitRetryableError(Exception):
+    """Claude API Rate Limit 전용 예외 — 재시도 가능
+
+    Worker에서 catch하여 NACK+requeue 처리에 사용.
+    delayed 결과로 반환하여 ACK하면 메시지가 유실되므로,
+    반드시 예외로 전파하여 재큐잉·보상 처리를 위임해야 한다.
 
     @domain ai
     """
@@ -129,8 +168,9 @@ class ClaudeClient:
         except anthropic.RateLimitError:
             circuit_breaker.record_failure()
             claude_requests_total.labels(status="rate_limit").inc()
-            logger.warning("Claude API Rate Limit 초과")
-            return self._fallback_result()
+            logger.warning("Claude API Rate Limit 초과 -- NACK+requeue 위임")
+            # ACK 후 메시지 유실 방지: 재시도 가능 예외로 전파하여 워커에 재큐잉 위임
+            raise RateLimitRetryableError("Claude API Rate Limit 초과")
 
         except Exception as e:
             circuit_breaker.record_failure()
@@ -187,6 +227,9 @@ class ClaudeClient:
             summary = parsed.get("summary", "")
             categories = parsed.get("categories", [])
             optimized_code = parsed.get("optimizedCode")
+
+            # categories 스키마 검증 — list[dict]가 아니면 안전 처리
+            categories = _validate_categories(categories)
 
             # feedback: summary + 카테고리별 코멘트 결합
             feedback_parts = [summary]

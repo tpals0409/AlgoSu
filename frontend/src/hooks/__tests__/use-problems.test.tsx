@@ -60,7 +60,7 @@ describe('useProblems', () => {
 
     expect(result.current.problems).toEqual([mockProblem]);
     expect(result.current.error).toBeNull();
-    expect(mockFetcher).toHaveBeenCalledWith('/api/problems/all');
+    expect(mockFetcher).toHaveBeenCalledWith(['/api/problems/all', 'study-1']);
   });
 
   it('studyId가 null이면 요청을 스킵하고 빈 배열을 반환한다', () => {

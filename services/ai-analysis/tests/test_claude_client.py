@@ -151,24 +151,31 @@ class TestBuildPrompt:
 
 
 class TestAnalyzeCodeRateLimitError:
-    """6. analyze_code() -- RateLimitError: fallback 반환 + record_failure"""
+    """6. analyze_code() -- RateLimitError: RateLimitRetryableError raise + record_failure
 
-    def test_rate_limit_error_returns_delayed(
+    P1 fix: ACK 후 메시지 유실 방지.
+    delayed 결과 반환 대신 예외로 전파 → Worker가 NACK+requeue 처리.
+    """
+
+    def test_rate_limit_error_raises_retryable(
         self, client, mock_anthropic, mock_circuit_breaker
     ):
+        from src.claude_client import RateLimitRetryableError
+
         mock_anthropic_mod, mock_client = mock_anthropic
         # RateLimitError를 실제 Exception 서브클래스로 만들어서 raise
         mock_client.messages.create.side_effect = mock_anthropic_mod.RateLimitError(
             "Rate limit exceeded"
         )
 
-        result = client.analyze_code(
-            code='print("hello")',
-            language="python",
-        )
+        # delayed 결과 반환이 아닌 RateLimitRetryableError가 raise 되어야 함
+        with pytest.raises(RateLimitRetryableError):
+            client.analyze_code(
+                code='print("hello")',
+                language="python",
+            )
 
-        assert result["status"] == "delayed"
-        assert "일시적" in result["feedback"]
+        # Circuit Breaker에 실패 기록 및 메트릭 증가는 유지
         mock_circuit_breaker.record_failure.assert_called_once()
 
 
@@ -535,6 +542,121 @@ class TestParseResponseFallback:
         # SQL_WEIGHTS: 80*0.30+70*0.20+60*0.15+50*0.15+40*0.20 = 62.5 → 62
         assert result["score"] == 62
 
+    def test_categories_is_string_falls_back_to_empty(self):
+        """categories가 문자열인 경우 빈 리스트로 대체 — AttributeError 방지 (P1 fix)"""
+        c = _make_client()
+
+        raw = json.dumps(
+            {
+                "totalScore": 70,
+                "summary": "test",
+                "categories": "correctness, efficiency",
+                "optimizedCode": None,
+            }
+        )
+        result = c._parse_response(raw)
+        assert result["status"] == "completed"
+        assert result["score"] == 70
+        assert result["categories"] == []
+
+    def test_categories_is_dict_falls_back_to_empty(self):
+        """categories가 단일 dict인 경우(리스트 미포장) 빈 리스트로 대체 (P1 fix)"""
+        c = _make_client()
+
+        raw = json.dumps(
+            {
+                "totalScore": 65,
+                "summary": "test",
+                "categories": {"name": "correctness", "score": 65, "comment": "ok"},
+                "optimizedCode": None,
+            }
+        )
+        result = c._parse_response(raw)
+        assert result["status"] == "completed"
+        assert result["score"] == 65
+        assert result["categories"] == []
+
+    def test_categories_with_non_dict_elements_filtered(self):
+        """categories 원소에 dict가 아닌 값(문자열 등)이 섞인 경우 필터링 (P1 fix)"""
+        c = _make_client()
+
+        raw = json.dumps(
+            {
+                "totalScore": 80,
+                "summary": "test",
+                "categories": [
+                    {"name": "correctness", "score": 80, "comment": "ok"},
+                    "invalid_element",
+                    42,
+                    {"name": "efficiency", "score": 75, "comment": "good"},
+                ],
+                "optimizedCode": None,
+            }
+        )
+        result = c._parse_response(raw)
+        assert result["status"] == "completed"
+        assert result["score"] == 80
+        # 비-dict 원소(문자열 "invalid_element", 42)는 필터링되어 2개만 남아야 함
+        assert len(result["categories"]) == 2
+        assert all(isinstance(cat, dict) for cat in result["categories"])
+
+    def test_categories_is_none_falls_back_to_empty(self):
+        """categories가 null인 경우 빈 리스트로 대체 (P1 fix)"""
+        c = _make_client()
+
+        raw = json.dumps(
+            {
+                "totalScore": 55,
+                "summary": "test",
+                "categories": None,
+                "optimizedCode": None,
+            }
+        )
+        result = c._parse_response(raw)
+        assert result["status"] == "completed"
+        assert result["score"] == 55
+        assert result["categories"] == []
+
+
+class TestValidateCategories:
+    """_validate_categories() 모듈 함수 단위 테스트"""
+
+    def test_valid_list_of_dicts_unchanged(self):
+        """정상 list[dict] 입력은 그대로 반환"""
+        from src.claude_client import _validate_categories
+
+        cats = [{"name": "correctness", "score": 80}]
+        assert _validate_categories(cats) == cats
+
+    def test_empty_list_unchanged(self):
+        """빈 리스트는 그대로 반환"""
+        from src.claude_client import _validate_categories
+
+        assert _validate_categories([]) == []
+
+    def test_non_list_returns_empty(self):
+        """리스트가 아닌 값(문자열, dict, int, None) → 빈 리스트"""
+        from src.claude_client import _validate_categories
+
+        assert _validate_categories("some string") == []
+        assert _validate_categories({"name": "x"}) == []
+        assert _validate_categories(42) == []
+        assert _validate_categories(None) == []
+
+    def test_mixed_list_filters_non_dicts(self):
+        """리스트 내 비-dict 원소는 필터링"""
+        from src.claude_client import _validate_categories
+
+        cats = [{"a": 1}, "bad", None, {"b": 2}, 99]
+        result = _validate_categories(cats)
+        assert result == [{"a": 1}, {"b": 2}]
+
+    def test_all_non_dict_elements_returns_empty(self):
+        """리스트의 모든 원소가 dict가 아닌 경우 빈 리스트"""
+        from src.claude_client import _validate_categories
+
+        assert _validate_categories(["a", "b", 1, None]) == []
+
 
 class TestSecurityCodeLogLimit:
     """5. 보안: 코드 로그 50자 제한"""
@@ -803,3 +925,78 @@ class TestSharedHelpers:
         c = _make_client()
         with pytest.raises(json.JSONDecodeError):
             c._extract_first_json_object("no json here")
+
+    def test_strip_markdown_block_no_closing_backtick(self):
+        """``` 시작이지만 닫는 ``` 없는 경우 — 루프 exhaustion (branches 443->442, 442->446)"""
+        c = _make_client()
+        # 닫는 ``` 없음 → for 루프에서 모든 라인 검사 후 break 없이 종료
+        raw = "```json\nline1 content\nline2 content\nno closing backtick"
+        result = c._strip_markdown_block(raw)
+        # end_idx 미갱신 → 전체 내용 사용 → first_newline 이후 내용 반환
+        assert "line1 content" in result
+        assert "line2 content" in result
+
+    def test_strip_markdown_block_single_line_after_fence(self):
+        """``` 시작, 한 줄 내용, 닫는 ``` 없음 — 루프 단일 이터레이션 False"""
+        c = _make_client()
+        raw = "```python\nsome code"
+        result = c._strip_markdown_block(raw)
+        assert "some code" in result
+
+
+class TestParseResponseFallbackNewBranches:
+    """_parse_response() 추가 커버리지 — 미커버 분기 보완"""
+
+    def test_backtick_start_no_closing_backtick_in_fallback(self):
+        """파싱 실패 fallback: ``` 시작이지만 닫는 ``` 없음 (branch 269->273 False)"""
+        c = _make_client()
+        # ``` 로 시작하지만 닫는 ``` 없음 → split 후 content가 ``` 로 안 끝남
+        raw = "```json\nbroken json content without closing"
+        result = c._parse_response(raw)
+        # 파싱 실패 → fallback, score=0, failed
+        assert result["status"] == "failed"
+        assert result["score"] == 0
+
+    def test_totalScore_zero_categories_all_unknown_names(self):
+        """totalScore=0 + categories 이름이 모두 가중치 미등록 → weighted_sum=0 (branch 252->255)"""
+        c = _make_client()
+        # 카테고리 이름이 weights dict에 없음 → weight=0 → weighted_sum=0
+        raw = json.dumps(
+            {
+                "totalScore": 0,
+                "summary": "test",
+                "categories": [
+                    {"name": "unknown_category_a", "score": 90, "comment": "ok"},
+                    {"name": "unknown_category_b", "score": 80, "comment": "ok"},
+                ],
+                "optimizedCode": None,
+            }
+        )
+        result = c._parse_response(raw)
+        # weighted_sum=0 → score는 0으로 유지 (branch 252->255: False path)
+        assert result["status"] == "completed"
+        assert result["score"] == 0
+
+
+class TestParseGroupResponseFallbackNewBranches:
+    """_parse_group_response() 추가 커버리지 — lines 417-419"""
+
+    def test_group_response_fallback_backtick_no_closing(self):
+        """그룹 분석 fallback: ``` 시작이지만 닫는 ``` 없음 (lines 417-418)"""
+        c = _make_client()
+        raw = "```json\nbroken group json without closing backtick"
+        result = c._parse_group_response(raw)
+        # 파싱 실패 → fallback, status=failed
+        assert result["status"] == "failed"
+        # split 후 내용이 fallback에 포함됨
+        assert "broken group json" in result["comparison"]
+
+    def test_group_response_fallback_backtick_with_closing(self):
+        """그룹 분석 fallback: ``` 시작 + 닫는 ``` 있음 → 닫는 ``` 제거 (line 419)"""
+        c = _make_client()
+        # 닫는 ``` 있지만 JSON은 invalid → fallback 진입 → line 419 실행
+        raw = "```json\nbroken group json\n```"
+        result = c._parse_group_response(raw)
+        assert result["status"] == "failed"
+        # 닫는 ``` 이 제거되어야 함
+        assert "```" not in result["comparison"]

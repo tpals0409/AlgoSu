@@ -41,6 +41,7 @@ describe('UserController', () => {
             updateGitHub: jest.fn(),
             getGitHubStatus: jest.fn(),
             getGitHubTokenInfo: jest.fn(),
+            getEncryptedGitHubToken: jest.fn(),
             findBySlug: jest.fn(),
             updateProfileSettings: jest.fn(),
           },
@@ -139,8 +140,8 @@ describe('UserController', () => {
 
   // ─── getGitHubTokenInfo ───────────────────────────
   describe('GET /api/users/:id/github-token', () => {
-    it('GitHub 토큰 정보를 반환한다', async () => {
-      const info = { github_username: 'ghuser', github_token: 'encrypted-tok' };
+    it('GitHub 토큰 존재 여부를 반환한다 (p0-010)', async () => {
+      const info = { github_username: 'ghuser', has_token: true };
       (service.getGitHubTokenInfo as jest.Mock).mockResolvedValue(info);
 
       const result = await controller.getGitHubTokenInfo('user-1');
@@ -150,14 +151,54 @@ describe('UserController', () => {
     });
   });
 
+  // ─── getEncryptedGitHubToken ─────────────────────
+  describe('GET /api/users/:id/github-encrypted-token', () => {
+    it('암호화된 GitHub 토큰을 반환한다 (p0-010)', async () => {
+      const info = { github_username: 'ghuser', encrypted_token: 'enc-tok' };
+      (service.getEncryptedGitHubToken as jest.Mock).mockResolvedValue(info);
+
+      const result = await controller.getEncryptedGitHubToken('user-1');
+
+      expect(result).toEqual({ data: info });
+      expect(service.getEncryptedGitHubToken).toHaveBeenCalledWith('user-1');
+    });
+  });
+
   // ─── findBySlug ───────────────────────────────────
   describe('GET /api/users/by-slug/:slug', () => {
-    it('slug로 공개 프로필을 반환한다', async () => {
-      (service.findBySlug as jest.Mock).mockResolvedValue(mockUser);
+    it('slug로 공개 프로필을 whitelist 프로젝션으로 반환한다 (p0-011)', async () => {
+      const fullUser = {
+        ...mockUser,
+        publicId: 'pub-1',
+        profile_slug: 'my-slug',
+        github_connected: false,
+        github_username: null,
+        created_at: new Date('2025-01-01'),
+        // 비공개 필드 — 응답에 포함되면 안 됨
+        email: 'secret@example.com',
+        github_token: 'enc-secret',
+        oauth_provider: 'google',
+        is_profile_public: true,
+      };
+      (service.findBySlug as jest.Mock).mockResolvedValue(fullUser);
 
       const result = await controller.findBySlug('my-slug');
 
-      expect(result).toEqual({ data: mockUser });
+      expect(result).toEqual({
+        data: {
+          publicId: 'pub-1',
+          name: '테스트',
+          avatar_url: 'preset:default',
+          profile_slug: 'my-slug',
+          github_connected: false,
+          github_username: null,
+          created_at: new Date('2025-01-01'),
+        },
+      });
+      // 비공개 필드가 노출되지 않아야 함
+      expect(result.data).not.toHaveProperty('email');
+      expect(result.data).not.toHaveProperty('github_token');
+      expect(result.data).not.toHaveProperty('oauth_provider');
       expect(service.findBySlug).toHaveBeenCalledWith('my-slug');
     });
 

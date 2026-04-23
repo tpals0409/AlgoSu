@@ -36,14 +36,14 @@ export class InternalController {
   }
 
   /**
-   * GET /internal/users/:user_id/github-token
-   * GitHub Worker가 유저의 암호화된 토큰 조회 시 사용
+   * GET /internal/users/:user_id/github-encrypted-token
+   * GitHub Worker가 유저의 암호화된 토큰 조회 시 사용 (p0-010)
    */
-  @Get('users/:user_id/github-token')
-  async getGitHubToken(
+  @Get('users/:user_id/github-encrypted-token')
+  async getEncryptedGitHubToken(
     @Param('user_id', ParseUUIDPipe) userId: string,
-  ): Promise<{ github_username: string | null; github_token: string | null }> {
-    return this.identityClient.getGitHubTokenInfo(userId) as Promise<{ github_username: string | null; github_token: string | null }>;
+  ): Promise<{ github_username: string | null; encrypted_token: string | null }> {
+    return this.identityClient.getEncryptedGitHubToken(userId) as Promise<{ github_username: string | null; encrypted_token: string | null }>;
   }
 
   /**

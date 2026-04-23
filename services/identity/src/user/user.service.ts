@@ -2,7 +2,7 @@
  * @file User 서비스 — OAuth 사용자 CRUD + GitHub 연동 + 프로필 설정
  * @domain identity
  * @layer service
- * @related user.entity.ts, user.controller.ts
+ * @related user.entity.ts, user.controller.ts, token-encryption.service.ts
  */
 import {
   Injectable,
@@ -16,6 +16,7 @@ import * as crypto from 'crypto';
 import { User, OAuthProvider } from './user.entity';
 import { UpsertUserDto } from './dto/upsert-user.dto';
 import { UpdateProfileSettingsDto } from './dto/update-profile-settings.dto';
+import { TokenEncryptionService } from './token-encryption.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 /** slug 예약어 — Next.js 라우트 + 시스템 경로 */
@@ -34,6 +35,7 @@ export class UserService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly dataSource: DataSource,
+    private readonly tokenEncryptionService: TokenEncryptionService,
     private readonly logger: StructuredLoggerService,
   ) {
     this.logger.setContext(UserService.name);
@@ -127,11 +129,17 @@ export class UserService {
       return;
     }
 
+    // P0 보안: 토큰은 DB 저장 전 AES-256-GCM 암호화 필수 (audit-20260422-p0-009)
+    // 복호화는 github-worker TokenManager.decryptUserToken()에서만 수행
+    const encryptedToken = data.token
+      ? this.tokenEncryptionService.encrypt(data.token)
+      : null;
+
     await this.userRepository.update(id, {
       github_connected: true,
       github_user_id: data.user_id ?? null,
       github_username: data.username ?? null,
-      github_token: data.token ?? null,
+      github_token: encryptedToken,
     });
   }
 
@@ -146,14 +154,25 @@ export class UserService {
     };
   }
 
-  /** GitHub 토큰 정보 조회 (암호화된 상태 그대로 반환) */
+  /** GitHub 토큰 존재 여부 조회 (토큰 자체 미반환 — p0-010) */
   async getGitHubTokenInfo(
     id: string,
-  ): Promise<{ github_username: string | null; github_token: string | null }> {
+  ): Promise<{ github_username: string | null; has_token: boolean }> {
     const user = await this.findByIdOrThrow(id);
     return {
       github_username: user.github_username,
-      github_token: user.github_token,
+      has_token: user.github_token !== null,
+    };
+  }
+
+  /** 암호화된 GitHub 토큰 조회 — 내부 서비스 전용 (p0-010) */
+  async getEncryptedGitHubToken(
+    id: string,
+  ): Promise<{ github_username: string | null; encrypted_token: string | null }> {
+    const user = await this.findByIdOrThrow(id);
+    return {
+      github_username: user.github_username,
+      encrypted_token: user.github_token,
     };
   }
 
@@ -232,24 +251,25 @@ export class UserService {
     return this.userRepository.findOne({ where: { id: existing.id } }) as Promise<User>;
   }
 
-  /** ON CONFLICT 원자적 upsert */
+  /**
+   * ON CONFLICT 원자적 upsert — provider 일치 시에만 UPDATE (p0-012)
+   * WHERE 절로 TOCTOU race condition 방지
+   */
   private async atomicUpsert(dto: UpsertUserDto): Promise<User> {
-    await this.userRepository
-      .createQueryBuilder()
-      .insert()
-      .into(User)
-      .values({
-        email: dto.email,
-        name: dto.name ?? null,
-        avatar_url: 'preset:default',
-        oauth_provider: dto.oauth_provider,
-        github_connected: false,
-        publicId: crypto.randomUUID(),
-      })
-      .orUpdate(['name'], ['email'])
-      .execute();
+    const publicId = crypto.randomUUID();
+    await this.dataSource.query(
+      `INSERT INTO users (email, name, avatar_url, oauth_provider, github_connected, "publicId")
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (email) DO UPDATE SET name = $2
+       WHERE users.oauth_provider = $4`,
+      [dto.email, dto.name ?? null, 'preset:default', dto.oauth_provider, false, publicId],
+    );
 
-    return this.userRepository.findOne({ where: { email: dto.email } }) as Promise<User>;
+    const user = await this.userRepository.findOne({ where: { email: dto.email } });
+    if (!user || user.oauth_provider !== dto.oauth_provider) {
+      throw new ConflictException('동시 요청으로 provider 불일치가 발생했습니다.');
+    }
+    return user;
   }
 
   /** slug 유효성 검증 + 중복 확인 + 설정 */

@@ -33,9 +33,10 @@ interface GitHubPushEvent {
   timestamp: string;
 }
 
+/** Gateway 암호화 토큰 엔드포인트 응답 (p0-010) */
 interface UserGitHubInfo {
   github_username: string | null;
-  github_token: string | null;
+  encrypted_token: string | null;
 }
 
 const QUEUE = 'submission.github_push';
@@ -233,7 +234,7 @@ export class GitHubWorker {
    */
   private async getUserGitHubInfo(userId: string): Promise<UserGitHubInfo> {
     const res = await fetch(
-      `${this.gatewayInternalUrl}/internal/users/${userId}/github-token`,
+      `${this.gatewayInternalUrl}/internal/users/${userId}/github-encrypted-token`,
       {
         headers: {
           'X-Internal-Key': this.internalKeyGateway,
@@ -316,9 +317,9 @@ export class GitHubWorker {
 
     // 토큰 복호화 시도 → 실패 시 GitHub App 설치 토큰 fallback
     let decryptedToken: string;
-    if (githubInfo.github_token) {
+    if (githubInfo.encrypted_token) {
       try {
-        decryptedToken = this.tokenManager.decryptUserToken(githubInfo.github_token);
+        decryptedToken = this.tokenManager.decryptUserToken(githubInfo.encrypted_token);
       } catch {
         logger.warn('유저 토큰 복호화 실패 → App 토큰 fallback', { tag: 'GITHUB_APP_FALLBACK', traceId: event.submissionId, code: 'GHW_BIZ_005' });
         try {

@@ -1,0 +1,455 @@
+---
+sprint: 118
+service: identity
+audited_at: 2026-04-22
+loc_audited: 4265
+files_audited: 69
+codex_sessions: [019db3c2-662b-7443-9305-3f62dcf33516, 019db3c3-5659-7531-8b14-a48f1e5970d0, 019db3c4-bcc5-71c3-98c6-108da3c46403, 019db3c5-663a-7a83-8b49-d78e9fe9d393, 019db3cc-18ae-7ca3-8995-62cfc55aacf2, 019db3cd-fb0b-7690-b0a7-ff9dc07f7902, 019db3cf-29cf-7022-a9c5-73e7bc29f65e, 019db3d0-89f5-7272-a70b-313468df665f, 019db3d1-771d-7f13-bb0b-e5f54aae6104]
+severity_counts: { P0: 5, P1: 37, P2: 44, Low: 0 }
+---
+
+# Audit — identity
+
+> 감사 일자: 2026-04-22 | LOC: 4265 | 파일: 69개
+> P0: 5 | P1: 37 | P2: 44 | Low: 0
+
+## P0 (머지 차단)
+
+### P0-01 — services/identity/src/database/data-source.ts:22
+- **category**: security
+- **message**: DATABASE_SSL=true일 때 TLS 인증서 검증을 비활성화해 중간자 공격에 취약합니다.
+- **suggestion**: 운영 환경에서는 rejectUnauthorized를 true로 두고 필요한 CA 인증서를 ca 옵션으로 주입하세요.
+
+### P0-02 — services/identity/src/user/entity.ts:51
+- **category**: security
+- **message**: GitHub 액세스 토큰을 text 컬럼에 평문으로 저장해 DB 유출 시 외부 저장소 권한이 즉시 노출됩니다.
+- **suggestion**: 토큰은 KMS/환경별 암호화 키로 저장 전 암호화하고, 복호화는 실제 GitHub 호출 직전에만 수행하도록 분리하세요.
+
+### P0-03 — services/identity/src/user/user.service.ts:156
+- **category**: security
+- **message**: getGitHubTokenInfo가 github_token을 그대로 반환해 내부 키 또는 호출 경로가 노출되면 GitHub 토큰이 유출됩니다.
+- **suggestion**: 토큰 원문 반환 API를 제거하거나 권한이 제한된 내부 작업 전용 메서드로 바꾸고, 응답에는 연결 상태나 토큰 존재 여부만 포함하세요.
+
+### P0-04 — services/identity/src/user/user.service.ts:162
+- **category**: security
+- **message**: 공개 프로필 조회가 User 엔티티 전체를 반환할 수 있어 email, github_token 등 비공개 필드가 함께 노출될 위험이 있습니다.
+- **suggestion**: findBySlug는 publicId, name, avatar_url, profile_slug 등 공개 필드만 select하거나 별도 PublicProfile DTO로 매핑해 반환하세요.
+
+### P0-05 — services/identity/src/user/user.service.ts:249
+- **category**: security
+- **message**: OAuth upsert가 사전 조회 후 ON CONFLICT에서 provider 불일치를 다시 검증하지 않아 동시 요청 시 1계정1OAuth 정책을 우회할 수 있습니다.
+- **suggestion**: 충돌 처리 시 기존 oauth_provider가 요청 provider와 같은 경우에만 업데이트하거나, upsert 후 같은 트랜잭션에서 provider를 재검증해 불일치 시 실패시키세요.
+
+## P1 (재검증 필수)
+
+### P1-01 — services/identity/src/app.module.ts:47
+- **category**: security
+- **message**: DATABASE_SSL=true일 때 TLS 인증서 검증을 rejectUnauthorized:false로 비활성화하여 DB 연결이 중간자 공격에 취약합니다.
+- **suggestion**: 운영 환경에서는 CA 인증서를 설정하고 rejectUnauthorized:true를 사용하도록 환경별 SSL 옵션을 분리하세요.
+
+### P1-02 — services/identity/src/common/metrics/metrics.controller.ts:15
+- **category**: security
+- **message**: /metrics 엔드포인트에 인증/인가가 없어 내부 메트릭, 경로, 상태 정보가 외부에 노출될 수 있습니다.
+- **suggestion**: InternalKeyGuard, 네트워크 ACL, 또는 별도 인증을 적용하고 공개 라우팅에서 제외하세요.
+
+### P1-03 — services/identity/src/common/metrics/metrics.module.ts:40
+- **category**: correctness
+- **message**: 메트릭 기록을 tap(next/error)에만 걸어 Observable이 값 없이 완료되거나 여러 값을 방출하면 active request 게이지가 누수되거나 중복 감소/중복 집계됩니다.
+- **suggestion**: finalize에서 active request 감소를 보장하고, 요청당 한 번만 duration/count를 기록하도록 상태 플래그를 사용하세요.
+
+### P1-04 — services/identity/src/database/migrations/1700000300000-CreateStudiesTables.ts:27
+- **category**: data-integrity
+- **message**: studies.created_by, study_members.user_id, study_invites.created_by가 users 테이블 외래키로 보호되지 않아 존재하지 않는 사용자를 참조할 수 있습니다.
+- **suggestion**: users 테이블 생성 이후 별도 마이그레이션에서 각 사용자 참조 컬럼에 FOREIGN KEY 제약을 추가하세요.
+
+### P1-05 — services/identity/src/database/migrations/1700000400000-CreateUsersTable.ts:33
+- **category**: data-integrity
+- **message**: email UNIQUE가 대소문자를 구분해 동일 이메일의 대소문자 변형 계정이 중복 생성될 수 있습니다.
+- **suggestion**: citext 타입을 사용하거나 lower(email)에 대한 UNIQUE 인덱스로 이메일 정규화를 DB에서 보장하세요.
+
+### P1-06 — services/identity/src/database/migrations/1700000400000-CreateUsersTable.ts:37
+- **category**: data-integrity
+- **message**: github_connected=true인데 github_user_id가 NULL인 상태를 DB가 허용해 GitHub 연동 검증 로직이 우회될 수 있습니다.
+- **suggestion**: CHECK (github_connected = false OR github_user_id IS NOT NULL) 제약을 추가하세요.
+
+### P1-07 — services/identity/src/database/migrations/1700000500000-CreateNotificationsTable.ts:23
+- **category**: data-integrity
+- **message**: notifications.user_id에 users 외래키가 없어 삭제되었거나 존재하지 않는 사용자 알림이 누적될 수 있습니다.
+- **suggestion**: users 테이블을 참조하는 FOREIGN KEY를 추가하고 삭제 정책(CASCADE 또는 RESTRICT)을 명시하세요.
+
+### P1-08 — services/identity/src/database/migrations/1709000001000-AddPublicIdToUsers.ts:40
+- **category**: correctness
+- **message**: 마이그레이션 내부에서 COMMIT/BEGIN을 직접 실행해 TypeORM 트랜잭션 상태와 실제 DB 트랜잭션 상태가 어긋날 수 있습니다.
+- **suggestion**: 마이그레이션 클래스에 transaction=false를 선언하고 수동 COMMIT/BEGIN 없이 CREATE INDEX CONCURRENTLY를 실행하세요.
+
+### P1-09 — services/identity/src/database/migrations/1709000001000-AddPublicIdToUsers.ts:23
+- **category**: correctness
+- **message**: publicId 컬럼에 DB 기본값이 없어 마이그레이션 이후 publicId를 명시하지 않는 users INSERT가 실패합니다.
+- **suggestion**: 컬럼에 DEFAULT gen_random_uuid()를 설정하거나 애플리케이션 배포 순서를 분리해 모든 INSERT가 publicId를 채우도록 보장하세요.
+
+### P1-10 — services/identity/src/database/migrations/1709000002000-AddPublicIdToStudies.ts:40
+- **category**: correctness
+- **message**: 마이그레이션 내부에서 COMMIT/BEGIN을 직접 실행해 TypeORM 트랜잭션 상태와 실제 DB 트랜잭션 상태가 어긋날 수 있습니다.
+- **suggestion**: 마이그레이션 클래스에 transaction=false를 선언하고 수동 COMMIT/BEGIN 없이 CREATE INDEX CONCURRENTLY를 실행하세요.
+
+### P1-11 — services/identity/src/database/migrations/1709000002000-AddPublicIdToStudies.ts:23
+- **category**: correctness
+- **message**: publicId 컬럼에 DB 기본값이 없어 마이그레이션 이후 publicId를 명시하지 않는 studies INSERT가 실패합니다.
+- **suggestion**: 컬럼에 DEFAULT gen_random_uuid()를 설정하거나 애플리케이션 배포 순서를 분리해 모든 INSERT가 publicId를 채우도록 보장하세요.
+
+### P1-12 — services/identity/src/database/migrations/1709000005000-AddPublicIdToNotifications.ts:42
+- **category**: correctness
+- **message**: 마이그레이션 내부에서 COMMIT/BEGIN을 직접 실행해 TypeORM 트랜잭션 상태와 실제 DB 트랜잭션 상태가 어긋날 수 있습니다.
+- **suggestion**: 마이그레이션 클래스에 transaction=false를 선언하고 수동 COMMIT/BEGIN 없이 CREATE INDEX CONCURRENTLY를 실행하세요.
+
+### P1-13 — services/identity/src/database/migrations/1709000005000-AddPublicIdToNotifications.ts:25
+- **category**: correctness
+- **message**: publicId 컬럼에 DB 기본값이 없어 마이그레이션 이후 publicId를 명시하지 않는 notifications INSERT가 실패합니다.
+- **suggestion**: 컬럼에 DEFAULT gen_random_uuid()를 설정하거나 애플리케이션 배포 순서를 분리해 모든 INSERT가 publicId를 채우도록 보장하세요.
+
+### P1-14 — services/identity/src/database/migrations/1709000012000-AddGithubTokenColumn.ts:16
+- **category**: security
+- **message**: GitHub OAuth 토큰을 users 테이블에 평문 TEXT 컬럼으로 저장하도록 추가해 DB 유출 시 외부 계정 접근 권한이 그대로 노출됩니다.
+- **suggestion**: 토큰은 애플리케이션 레벨 암호화나 KMS/시크릿 저장소를 사용해 저장하고, 필요한 최소 scope와 만료/회전 정책을 함께 적용하세요.
+
+### P1-15 — services/identity/src/database/migrations/1709000015000-AddProfileFieldsToUsers.ts:34
+- **category**: data-integrity
+- **message**: 마이그레이션 내부에서 COMMIT/BEGIN을 직접 실행해 TypeORM의 트랜잭션 경계를 깨고, 이후 실패 시 이전 마이그레이션까지 부분 커밋될 수 있습니다.
+- **suggestion**: 해당 마이그레이션을 transaction=false로 명시하거나 전체 마이그레이션 트랜잭션 모드를 조정하고, 수동 COMMIT/BEGIN 의존을 제거하세요.
+
+### P1-16 — services/identity/src/database/migrations/1709000015000-AddProfileFieldsToUsers.ts:36
+- **category**: correctness
+- **message**: CREATE UNIQUE INDEX CONCURRENTLY가 IF NOT EXISTS 없이 실행되어 재시도나 부분 실패 복구 시 이미 존재하는 인덱스 때문에 마이그레이션이 실패합니다.
+- **suggestion**: CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS를 사용하고, 실패로 남은 invalid index 처리 절차를 추가하세요.
+
+### P1-17 — services/identity/src/database/migrations/1709000017000-CreateFeedbacksTable.ts:15
+- **category**: data-integrity
+- **message**: feedbacks.user_id에 users(id) 외래키가 없어 삭제되었거나 존재하지 않는 사용자 피드백이 저장될 수 있습니다.
+- **suggestion**: users(id)에 대한 FOREIGN KEY를 추가하고 서비스 정책에 맞게 ON DELETE 동작을 명시하세요.
+
+### P1-18 — services/identity/src/database/migrations/1709000017000-CreateFeedbacksTable.ts:16
+- **category**: data-integrity
+- **message**: category와 status가 단순 VARCHAR라 DB 직접 쓰기나 버그로 엔티티 enum 밖의 값이 저장될 수 있습니다.
+- **suggestion**: category/status에 CHECK 제약 또는 PostgreSQL ENUM을 추가해 허용값을 DB 계층에서도 강제하세요.
+
+### P1-19 — services/identity/src/database/migrations/1709000018000-RemoveFeedbackClosedStatus.ts:15
+- **category**: data-integrity
+- **message**: study_id 컬럼에 studies(id) 외래키가 없어 존재하지 않는 스터디 ID가 피드백에 연결될 수 있습니다.
+- **suggestion**: study_id에 FOREIGN KEY를 추가하고 스터디 삭제 시 정책에 맞게 ON DELETE SET NULL 등을 명시하세요.
+
+### P1-20 — services/identity/src/database/migrations/1709000019000-AddFeedbackResolvedNotificationType.ts:17
+- **category**: data-integrity
+- **message**: 마이그레이션 내부에서 COMMIT/BEGIN을 직접 실행해 TypeORM의 트랜잭션 관리와 원자성을 깨뜨릴 수 있습니다.
+- **suggestion**: 이 마이그레이션을 transaction=false로 명시하거나 마이그레이션 실행 모드를 조정해 수동 트랜잭션 제어를 없애세요.
+
+### P1-21 — services/identity/src/feedback/feedback.module.ts:19
+- **category**: correctness
+- **message**: FeedbackController가 InternalKeyGuard를 사용하지만 FeedbackModule에 해당 가드 provider/import가 없어 DI 실패로 피드백 API가 동작하지 않을 수 있습니다.
+- **suggestion**: InternalKeyGuard와 의존성 logger를 공용 모듈로 export/import하거나 FeedbackModule providers에 InternalKeyGuard를 명시적으로 등록하세요.
+
+### P1-22 — services/identity/src/feedback/feedback.controller.ts:67
+- **category**: correctness
+- **message**: page/limit을 parseInt로만 변환해 NaN, 음수, 0 같은 값이 서비스로 전달되며 쿼리 오류나 비정상 페이지네이션을 유발할 수 있습니다.
+- **suggestion**: DefaultValuePipe, ParseIntPipe와 min/max 검증 DTO를 사용해 page는 1 이상, limit은 1~100 범위로 제한하세요.
+
+### P1-23 — services/identity/src/feedback/feedback.service.ts:91
+- **category**: correctness
+- **message**: limit이 NaN 또는 음수일 때 Math.min 결과가 그대로 take에 들어가 DB 쿼리가 실패할 수 있습니다.
+- **suggestion**: Number.isFinite 검증 후 기본값을 적용하고, limit을 Math.max(1, Math.min(limit, 100)) 형태로 정규화하세요.
+
+### P1-24 — services/identity/src/feedback/feedback.service.ts:221
+- **category**: data-integrity
+- **message**: RESOLVED 상태에서 OPEN 또는 IN_PROGRESS로 재오픈해도 resolvedAt이 초기화되지 않아 미해결 피드백에 해결 시간이 남습니다.
+- **suggestion**: status가 RESOLVED가 아닐 때 resolvedAt을 null로 설정해 상태와 해결 시각의 정합성을 유지하세요.
+
+### P1-25 — services/identity/src/feedback/feedback.service.ts:212
+- **category**: correctness
+- **message**: DB에 잘못된 status 값이 저장되어 있으면 ALLOWED_TRANSITIONS[feedback.status]가 undefined가 되어 includes 호출에서 런타임 예외가 발생합니다.
+- **suggestion**: 현재 상태가 전이 맵에 존재하는지 먼저 검증하고, 엔티티/DB 컬럼도 enum 또는 CHECK 제약으로 제한하세요.
+
+### P1-26 — services/identity/src/notification/dto/mark-as-read.dto.ts:9
+- **category**: security
+- **message**: 읽음 처리 요청자의 userId를 요청 바디에서 신뢰하면 호출자가 다른 사용자의 UUID를 넣어 권한 검사를 우회할 수 있습니다.
+- **suggestion**: userId는 바디 DTO에서 받지 말고 인증 컨텍스트나 게이트웨이가 서명/검증한 내부 주체 정보에서 주입하도록 변경하세요.
+
+### P1-27 — services/identity/src/share/dto/deactivate-share-link.dto.ts:9
+- **category**: security
+- **message**: 공유 링크 비활성화 권한 검사용 userId를 요청 바디에서 받기 때문에 소유자 UUID를 아는 호출자가 권한을 위조할 수 있습니다.
+- **suggestion**: 요청자 식별자는 바디가 아니라 인증된 사용자 컨텍스트 또는 신뢰 가능한 내부 헤더에서 가져오고 DTO에서는 제거하세요.
+
+### P1-28 — services/identity/src/share/share-link.controller.ts:34
+- **category**: security
+- **message**: 공유 링크 생성 시 created_by와 study_id만 서비스에 전달하며 요청자가 해당 스터디의 링크 생성 권한을 가진 사용자인지 이 컨트롤러 경계에서 보장되지 않습니다.
+- **suggestion**: 서비스 계층에서 스터디 멤버십/소유자 권한을 검증하거나, 인증 컨텍스트의 사용자 ID로 created_by를 강제해 임의 사용자 명의 생성을 막으세요.
+
+### P1-29 — services/identity/src/share/share-link.service.ts:37
+- **category**: security
+- **message**: 공유 링크 생성 시 study_id와 created_by의 멤버십/권한을 검증하지 않아 호출자가 임의 스터디에 대한 링크를 만들 수 있습니다.
+- **suggestion**: 링크 생성 전에 created_by가 해당 study_id의 관리자 또는 허용된 멤버인지 조회해 검증하고, 실패 시 ForbiddenException을 반환하세요.
+
+### P1-30 — services/identity/src/study/dto/add-member.dto.ts:18
+- **category**: security
+- **message**: 멤버 추가 요청 본문에서 role을 직접 받을 수 있어 호출자가 신규 멤버를 ADMIN으로 추가하는 권한 상승 경로가 됩니다.
+- **suggestion**: 일반 멤버 추가 DTO에서는 role 입력을 제거하거나 MEMBER만 허용하고, 관리자 승격은 별도 권한 검증이 있는 API로 분리하세요.
+
+### P1-31 — services/identity/src/study/dto/create-invite.dto.ts:9
+- **category**: security
+- **message**: created_by를 클라이언트 입력으로 받아 초대 생성자를 임의 사용자로 위조할 수 있습니다.
+- **suggestion**: created_by는 요청 본문에서 제거하고 인증 컨텍스트 또는 신뢰된 내부 호출 메타데이터에서 설정하세요.
+
+### P1-32 — services/identity/src/study/dto/create-study.dto.ts:17
+- **category**: security
+- **message**: created_by를 요청 본문에서 받아 스터디 생성자를 임의 사용자로 위조할 수 있습니다.
+- **suggestion**: created_by는 DTO에서 제거하고 인증된 사용자 ID 또는 신뢰된 내부 컨텍스트에서 주입하세요.
+
+### P1-33 — services/identity/src/study/study.service.ts:298
+- **category**: data-integrity
+- **message**: 초대 소비 시 expires_at 및 max_uses를 검증하지 않아 만료되었거나 사용 한도를 초과한 초대도 계속 소비될 수 있습니다.
+- **suggestion**: used_count 증가 전에 만료 여부와 max_uses 한도를 검사하고, 조건을 만족하지 않으면 명확한 예외를 반환하세요.
+
+### P1-34 — services/identity/src/study/study.service.ts:299
+- **category**: data-integrity
+- **message**: 초대 사용 횟수를 findOne 후 save로 증가시켜 동시 요청에서 lost update가 발생하고 max_uses를 초과할 수 있습니다.
+- **suggestion**: 트랜잭션, pessimistic lock, 또는 조건부 UPDATE used_count = used_count + 1 방식으로 원자적으로 증가시키세요.
+
+### P1-35 — services/identity/src/study/study.service.ts:283
+- **category**: correctness
+- **message**: 초대 코드 조회가 만료 여부와 사용 한도 상태를 확인하지 않아 클라이언트가 유효하지 않은 초대를 정상 초대로 처리할 수 있습니다.
+- **suggestion**: findInviteByCode에서 expires_at과 used_count/max_uses를 검증하거나 응답에 유효 상태를 명시하세요.
+
+### P1-36 — services/identity/src/user/user.service.ts:91
+- **category**: data-integrity
+- **message**: 소프트 삭제 때 이메일을 무작위 값으로 바꿔 upsertUser의 탈퇴 계정 복구 로직이 원래 이메일로 기존 계정을 찾을 수 없습니다.
+- **suggestion**: 원본 이메일 해시/외부 OAuth subject를 별도 컬럼에 보존해 복구 조회에 사용하거나, 복구 정책이 없다면 주석과 restoreDeletedUser 경로를 제거하세요.
+
+### P1-37 — services/identity/src/user/user.service.ts:130
+- **category**: data-integrity
+- **message**: connected=true 요청에서도 user_id, username, token이 모두 선택값이라 github_connected=true이면서 토큰이나 사용자 식별자가 null인 불완전한 연동 상태가 저장될 수 있습니다.
+- **suggestion**: 연동 활성화 시 필수 필드를 검증하고 누락되면 BadRequestException을 던지며, 해제 요청과 활성화 요청 DTO를 분리하세요.
+
+## P2 (비차단)
+
+### P2-01 — services/identity/src/common/metrics/metrics.module.ts:54
+- **category**: correctness
+- **message**: 예외 발생 시 예외 필터가 상태 코드를 설정하기 전에 res.statusCode를 읽으면 실패 요청이 200으로 집계될 수 있습니다.
+- **suggestion**: error 콜백에서 예외 타입의 HTTP status를 추출하거나 finalize 시점에 최종 응답 상태를 기준으로 기록하세요.
+
+### P2-02 — services/identity/src/common/logger/structured-logger.service.ts:43
+- **category**: maintainability
+- **message**: 싱글톤 로거가 mutable context를 공유해 여러 소비자가 setContext를 호출하면 로그 context가 마지막 주입 객체 기준으로 덮어써집니다.
+- **suggestion**: 로거를 transient scope로 만들거나 child logger/context를 호출 인자로 전달하는 방식으로 변경하세요.
+
+### P2-03 — services/identity/src/common/guards/internal-key.guard.ts:65
+- **category**: security
+- **message**: 키 길이가 다르면 즉시 반환하여 timingSafeEqual을 사용해도 기대 키 길이가 타이밍으로 노출될 수 있습니다.
+- **suggestion**: 입력과 기대값을 동일한 길이의 HMAC/해시로 변환한 뒤 timingSafeEqual로 비교하세요.
+
+### P2-04 — services/identity/src/database/migrations/1700000300000-CreateStudiesTables.ts:54
+- **category**: data-integrity
+- **message**: study_invites.used_count와 max_uses에 범위 제약이 없어 음수 사용 횟수나 0 이하 최대 사용 횟수가 저장될 수 있습니다.
+- **suggestion**: used_count >= 0, max_uses IS NULL OR max_uses > 0 같은 CHECK 제약을 추가하세요.
+
+### P2-05 — services/identity/src/database/migrations/1709000011000-AddStudyIdAndLinkToNotifications.ts:17
+- **category**: data-integrity
+- **message**: notifications.study_id가 UUID 컬럼만 추가되고 studies(id)에 대한 외래키가 없어 삭제되거나 존재하지 않는 스터디를 참조할 수 있습니다.
+- **suggestion**: study_id에 REFERENCES studies(id)를 추가하고 서비스 정책에 맞게 ON DELETE SET NULL 또는 CASCADE 동작을 명시하세요.
+
+### P2-06 — services/identity/src/database/migrations/1709000010000-AddStatusToStudies.ts:20
+- **category**: data-integrity
+- **message**: studies.status가 VARCHAR(10)만으로 정의되어 허용되지 않은 상태값도 DB에 저장될 수 있습니다.
+- **suggestion**: CHECK 제약 또는 PostgreSQL ENUM을 추가해 ACTIVE, CLOSED 등 허용된 상태값만 저장되도록 제한하세요.
+
+### P2-07 — services/identity/src/database/migrations/1709000014000-CreateShareLinksTable.ts:25
+- **category**: correctness
+- **message**: 마이그레이션 내부에서 COMMIT/BEGIN을 직접 실행해 TypeORM의 트랜잭션 관리 방식과 충돌할 수 있고, 실패 시 앞선 CREATE TABLE만 커밋된 부분 적용 상태가 남을 수 있습니다.
+- **suggestion**: 해당 마이그레이션은 transaction = false 방식으로 분리하거나, CONCURRENTLY가 꼭 필요하지 않다면 일반 CREATE INDEX로 트랜잭션 안에서 원자적으로 실행하세요.
+
+### P2-08 — services/identity/src/database/migrations/1709000006000-ExtendNotificationTypeEnum9.ts:19
+- **category**: correctness
+- **message**: 마이그레이션 내부에서 COMMIT/BEGIN을 직접 실행해 TypeORM 트랜잭션 실행 모드와 충돌하거나 실패 시 일부 ENUM 값만 추가된 상태가 남을 수 있습니다.
+- **suggestion**: TypeORM의 마이그레이션 transaction 설정을 사용해 트랜잭션 밖에서 실행하도록 분리하고, DB 버전에 맞춰 ALTER TYPE 실행 방식을 명확히 하세요.
+
+### P2-09 — services/identity/src/database/migrations/1709000015000-AddProfileFieldsToUsers.ts:13
+- **category**: correctness
+- **message**: information_schema.columns 조회가 table_schema를 제한하지 않아 다른 스키마의 users 컬럼을 보고 현재 스키마 변경을 건너뛸 수 있습니다.
+- **suggestion**: WHERE table_schema = current_schema() 조건을 추가하거나 queryRunner.hasColumn처럼 현재 스키마를 인식하는 API를 사용하세요.
+
+### P2-10 — services/identity/src/database/migrations/1709000016000-AddAvatarUrlToStudies.ts:12
+- **category**: correctness
+- **message**: information_schema.columns 조회가 table_schema를 제한하지 않아 다른 스키마의 studies 컬럼을 보고 현재 스키마 변경을 건너뛸 수 있습니다.
+- **suggestion**: WHERE table_schema = current_schema() 조건을 추가하거나 queryRunner.hasColumn을 사용하세요.
+
+### P2-11 — services/identity/src/database/migrations/1709000017000-CreateFeedbacksTable.ts:20
+- **category**: performance
+- **message**: screenshot 컬럼이 TEXT로만 정의되어 DB 직접 쓰기 경로에서는 크기 제한 없이 대용량 문자열이 저장될 수 있습니다.
+- **suggestion**: CHECK (octet_length(screenshot) <= ...) 제약을 추가하거나 스크린샷은 객체 스토리지에 저장하고 참조 URL만 보관하세요.
+
+### P2-12 — services/identity/src/database/migrations/1709000019000-AddFeedbackResolvedNotificationType.ts:26
+- **category**: maintainability
+- **message**: down 마이그레이션이 no-op이라 롤백 후에도 enum 값이 남아 코드와 스키마 상태가 불일치할 수 있습니다.
+- **suggestion**: 불가역 마이그레이션이면 명시적으로 예외를 던지거나, 필요한 경우 enum 재생성 방식의 롤백 절차를 구현하세요.
+
+### P2-13 — services/identity/src/discord/discord-webhook.service.ts:66
+- **category**: security
+- **message**: 사용자 입력(content, pageUrl)이 Discord Markdown 코드블록과 인라인 코드에 이스케이프 없이 삽입되어 포맷 깨짐, 멘션, 피싱성 메시지로 악용될 수 있습니다.
+- **suggestion**: 백틱과 멘션 문자를 이스케이프하고 webhook payload에 allowed_mentions: { parse: [] }를 포함하세요.
+
+### P2-14 — services/identity/src/discord/discord-webhook.service.ts:73
+- **category**: performance
+- **message**: 외부 Discord webhook 호출에 타임아웃이 없어 네트워크 지연 시 fetch Promise와 소켓 리소스가 오래 유지될 수 있습니다.
+- **suggestion**: AbortController 또는 AbortSignal.timeout으로 짧은 타임아웃을 설정하고 실패를 기존 warn 로그로 처리하세요.
+
+### P2-15 — services/identity/src/discord/discord-webhook.service.ts:37
+- **category**: maintainability
+- **message**: sendFeedbackNotification 메서드가 20줄을 크게 넘고 해결 알림 메서드와 payload 구성 로직이 중복됩니다.
+- **suggestion**: 미리보기 생성, 메타라인 생성, webhook 전송을 작은 private 메서드로 분리해 중복과 변경 범위를 줄이세요.
+
+### P2-16 — services/identity/src/feedback/dto/create-feedback.dto.ts:23
+- **category**: correctness
+- **message**: content에 IsNotEmpty가 없어 빈 문자열 피드백이 유효한 요청으로 통과합니다.
+- **suggestion**: @IsNotEmpty() 또는 @MinLength(1)을 추가하고 trim 적용 여부를 서비스나 파이프에서 명확히 처리하세요.
+
+### P2-17 — services/identity/src/feedback/dto/create-feedback.dto.ts:31
+- **category**: data-integrity
+- **message**: pageUrl이 문자열 길이만 검증되어 URL이 아닌 값이나 javascript: 같은 위험한 스킴이 저장될 수 있습니다.
+- **suggestion**: @IsUrl({ protocols: ['http', 'https'], require_protocol: true }) 같은 URL 검증과 스킴 화이트리스트를 적용하세요.
+
+### P2-18 — services/identity/src/feedback/dto/create-feedback.dto.ts:41
+- **category**: data-integrity
+- **message**: screenshot이 문자열 길이만 검증되어 이미지 형식이 아닌 임의 문자열이 저장될 수 있습니다.
+- **suggestion**: data URL MIME 타입과 base64 형식을 검증하고, 가능하면 파일 저장소 업로드 방식으로 전환하세요.
+
+### P2-19 — services/identity/src/feedback/feedback.entity.ts:56
+- **category**: data-integrity
+- **message**: category를 varchar로 저장해 DB 레벨에서 FeedbackCategory 값이 강제되지 않습니다.
+- **suggestion**: TypeORM enum 컬럼 또는 CHECK 제약을 사용해 허용된 카테고리만 저장되도록 하세요.
+
+### P2-20 — services/identity/src/feedback/feedback.entity.ts:71
+- **category**: data-integrity
+- **message**: status를 varchar로 저장해 DB 레벨에서 FeedbackStatus 값이 강제되지 않아 잘못된 상태가 서비스 로직을 깨뜨릴 수 있습니다.
+- **suggestion**: TypeORM enum 컬럼 또는 CHECK 제약을 사용하고 기본값도 FeedbackStatus.OPEN 상수로 지정하세요.
+
+### P2-21 — services/identity/src/notification/dto/create-notification.dto.ts:31
+- **category**: data-integrity
+- **message**: message 필드에 길이 제한이 없어 과도하게 큰 알림 본문이 저장될 수 있습니다.
+- **suggestion**: 서비스 요구사항에 맞는 @MaxLength를 추가하고 필요하면 DB 컬럼 길이도 함께 제한하세요.
+
+### P2-22 — services/identity/src/notification/dto/create-notification.dto.ts:34
+- **category**: security
+- **message**: link가 문자열 길이만 검증되어 javascript: 같은 위험한 URL 또는 의도하지 않은 외부 링크가 저장될 수 있습니다.
+- **suggestion**: 내부 경로만 허용하는 정규식 또는 안전한 URL 스킴 allowlist 검증을 추가하세요.
+
+### P2-23 — services/identity/src/feedback/feedback.service.ts:84
+- **category**: maintainability
+- **message**: findAll 함수가 페이지네이션, 필터, 사용자/스터디 보강, 통계 집계를 모두 처리해 20라인을 크게 넘고 변경 위험이 큽니다.
+- **suggestion**: 목록 조회, 관련 정보 배치 조회, 통계 집계를 별도 private 메서드로 분리하세요.
+
+### P2-24 — services/identity/src/share/share-link.controller.ts:69
+- **category**: security
+- **message**: 토큰 경로 파라미터에 형식 검증 파이프가 없어 잘못된 토큰 입력도 컨트롤러를 통과합니다.
+- **suggestion**: 64자 hex 토큰 전용 Parse/ValidationPipe를 컨트롤러에 적용해 서비스 호출 전에 입력을 거부하세요.
+
+### P2-25 — services/identity/src/share/dto/create-share-link.dto.ts:11
+- **category**: convention
+- **message**: DTO 필드가 study_id, created_by, expires_at처럼 snake_case를 사용해 같은 코드베이스의 camelCase DTO 관례와 일관되지 않습니다.
+- **suggestion**: DTO 내부 필드는 studyId, createdBy, expiresAt으로 바꾸고 외부 JSON 호환이 필요하면 class-transformer 매핑을 사용하세요.
+
+### P2-26 — services/identity/src/notification/notification.entity.ts:35
+- **category**: performance
+- **message**: 미읽음 목록 조회가 userId/read 필터 후 createdAt 정렬을 수행하지만 복합 인덱스에 createdAt이 없어 사용자별 알림이 많으면 정렬 비용이 커질 수 있습니다.
+- **suggestion**: ['userId', 'read', 'createdAt'] 순서의 복합 인덱스를 추가해 최신 50건 조회 경로를 커버하세요.
+
+### P2-27 — services/identity/src/notification/notification.entity.ts:51
+- **category**: performance
+- **message**: 오래된 알림 삭제가 createdAt 조건으로 수행되지만 createdAt 단독 인덱스가 없어 테이블이 커지면 전체 스캔이 발생할 수 있습니다.
+- **suggestion**: createdAt 컬럼에 인덱스를 추가하거나 보존 정책 삭제 작업에 맞는 파티셔닝/배치 삭제 전략을 적용하세요.
+
+### P2-28 — services/identity/src/share/share-link.service.ts:43
+- **category**: correctness
+- **message**: expires_at 문자열을 Date로 변환한 뒤 Invalid Date 여부를 확인하지 않아 잘못된 날짜가 저장 시 DB 오류나 500 응답으로 이어질 수 있습니다.
+- **suggestion**: Number.isNaN(expiresAt.getTime()) 검사를 추가하고 잘못된 날짜는 BadRequestException으로 처리하세요.
+
+### P2-29 — services/identity/src/share/share-link.service.ts:69
+- **category**: performance
+- **message**: 공유 링크 목록 조회에 페이지네이션이나 개수 제한이 없어 링크가 많은 사용자/스터디에서 응답 지연과 메모리 사용 증가가 발생할 수 있습니다.
+- **suggestion**: take/skip 또는 cursor 기반 페이지네이션을 추가하고 기본/최대 조회 개수를 제한하세요.
+
+### P2-30 — services/identity/src/study/dto/add-member.dto.ts:13
+- **category**: data-integrity
+- **message**: nickname에 최소 길이/공백 제거 검증이 없어 빈 문자열이나 공백만 있는 닉네임이 저장될 수 있습니다.
+- **suggestion**: @MinLength(1)와 trim 변환을 적용하거나 @Matches(/\S/)로 실제 문자가 포함되도록 검증하세요.
+
+### P2-31 — services/identity/src/study/dto/create-invite.dto.ts:16
+- **category**: data-integrity
+- **message**: max_uses에 상한이 없어 비현실적으로 큰 값이 DB integer 범위를 넘거나 초대 정책을 우회할 수 있습니다.
+- **suggestion**: @Max로 서비스 정책과 DB integer 범위에 맞는 상한을 명시하세요.
+
+### P2-32 — services/identity/src/study/dto/create-study.dto.ts:13
+- **category**: data-integrity
+- **message**: description에 최대 길이 제한이 없어 과도하게 큰 문자열이 저장될 수 있습니다.
+- **suggestion**: DB/제품 정책에 맞춰 @MaxLength를 추가하고 필요하면 text 필드 저장 한도를 명확히 하세요.
+
+### P2-33 — services/identity/src/study/dto/create-study.dto.ts:9
+- **category**: data-integrity
+- **message**: name에 최소 길이/공백 제거 검증이 없어 빈 문자열이나 공백만 있는 스터디명이 허용됩니다.
+- **suggestion**: @MinLength(1)와 trim 변환을 적용하거나 @Matches(/\S/)로 실제 문자가 포함되도록 검증하세요.
+
+### P2-34 — services/identity/src/study/dto/create-study.dto.ts:30
+- **category**: data-integrity
+- **message**: nickname에 최소 길이/공백 제거 검증이 없어 빈 문자열이나 공백만 있는 생성자 닉네임이 저장될 수 있습니다.
+- **suggestion**: @MinLength(1)와 trim 변환을 적용하거나 @Matches(/\S/)로 실제 문자가 포함되도록 검증하세요.
+
+### P2-35 — services/identity/src/study/dto/create-study.dto.ts:20
+- **category**: data-integrity
+- **message**: github_repo가 임의 문자열만 검증되어 잘못된 저장소 식별자나 URL이 저장될 수 있습니다.
+- **suggestion**: 허용 형식을 owner/repo 또는 GitHub URL로 정하고 @Matches 또는 URL 검증으로 제한하세요.
+
+### P2-36 — services/identity/src/study/dto/update-nickname.dto.ts:9
+- **category**: data-integrity
+- **message**: nickname 수정 DTO에 최소 길이/공백 제거 검증이 없어 빈 문자열이나 공백만 있는 닉네임으로 변경할 수 있습니다.
+- **suggestion**: @MinLength(1)와 trim 변환을 적용하거나 @Matches(/\S/)로 실제 문자가 포함되도록 검증하세요.
+
+### P2-37 — services/identity/src/study/study.service.ts:268
+- **category**: correctness
+- **message**: 초대 코드를 UUID 앞 8자리만 사용해 생성하고 충돌 재시도가 없어 unique 제약 충돌 시 초대 생성이 실패할 수 있습니다.
+- **suggestion**: 충분한 엔트로피의 코드 생성기를 사용하고 unique 충돌 발생 시 제한된 횟수로 재생성하도록 처리하세요.
+
+### P2-38 — services/identity/src/study/study.service.ts:177
+- **category**: correctness
+- **message**: 멤버 추가 전에 스터디 존재 여부를 확인하지 않아 존재하지 않는 studyId 입력 시 DB FK 오류가 그대로 노출될 수 있습니다.
+- **suggestion**: 멤버 생성 전에 스터디를 조회하고 없으면 NotFoundException을 반환하세요.
+
+### P2-39 — services/identity/src/study/study.service.ts:101
+- **category**: performance
+- **message**: 사용자 참여 스터디 목록 조회에 페이지네이션이나 제한이 없어 스터디가 많은 사용자의 요청에서 응답 지연과 메모리 사용량 증가가 발생할 수 있습니다.
+- **suggestion**: limit/offset 또는 커서 기반 페이지네이션을 추가하고 기본 조회 개수를 제한하세요.
+
+### P2-40 — services/identity/src/study/study.service.ts:224
+- **category**: performance
+- **message**: 스터디 멤버 목록 조회에 페이지네이션이 없어 대규모 스터디에서 한 번에 모든 멤버를 로드합니다.
+- **suggestion**: 멤버 목록 API에 페이지네이션 파라미터와 기본 최대 조회 개수를 적용하세요.
+
+### P2-41 — services/identity/src/user/dto/update-github.dto.ts:25
+- **category**: data-integrity
+- **message**: token 필드에 길이 제한이 없어 과도하게 큰 문자열이 유입되어 저장소 오류나 불필요한 메모리 사용을 유발할 수 있습니다.
+- **suggestion**: 토큰 저장 정책에 맞는 MaxLength를 추가하고, 가능하면 원문 토큰 저장 대신 암호화 또는 별도 secret 저장소를 사용하세요.
+
+### P2-42 — services/identity/src/user/user.entity.ts:57
+- **category**: data-integrity
+- **message**: profile_slug의 전역 unique 인덱스가 deleted_at을 고려하지 않아 탈퇴한 사용자의 slug가 영구히 재사용 불가능합니다.
+- **suggestion**: 소프트 삭제 시 profile_slug를 null로 지우거나, deleted_at IS NULL 조건의 부분 unique 인덱스로 변경하세요.
+
+### P2-43 — services/identity/src/user/user.service.ts:261
+- **category**: correctness
+- **message**: slug 중복 확인과 저장이 분리되어 동시 요청 시 unique 제약 위반이 409가 아닌 500 오류로 노출될 수 있습니다.
+- **suggestion**: 저장 시 QueryFailedError의 unique violation을 잡아 ConflictException으로 변환하거나 트랜잭션/락으로 중복 검증과 저장을 묶으세요.
+
+### P2-44 — services/identity/src/user/user.service.ts:244
+- **category**: correctness
+- **message**: UpsertUserDto에 avatar_url이 정의되어 있지만 신규 생성과 복구 모두 OAuth avatar_url을 무시하고 항상 preset:default를 저장합니다.
+- **suggestion**: 정책상 외부 아바타를 허용한다면 dto.avatar_url ?? 'preset:default'를 저장하고, 허용하지 않는다면 DTO에서 avatar_url 필드를 제거하세요.
+
+## Low (선택적 개선)
+
+(없음)
+

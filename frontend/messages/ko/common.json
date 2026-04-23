@@ -1,0 +1,44 @@
+{
+  "nav": {
+    "dashboard": "대시보드",
+    "problems": "문제",
+    "studies": "스터디",
+    "submissions": "제출",
+    "reviews": "리뷰",
+    "profile": "프로필",
+    "settings": "설정"
+  },
+  "footer": {
+    "company": "AlgoSu",
+    "terms": "이용약관",
+    "privacy": "개인정보처리방침"
+  },
+  "buttons": {
+    "save": "저장",
+    "cancel": "취소",
+    "confirm": "확인",
+    "close": "닫기",
+    "retry": "다시 시도",
+    "loading": "로딩 중..."
+  },
+  "errors": {
+    "generic": "오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+    "network": "네트워크 연결을 확인해 주세요.",
+    "unauthorized": "로그인이 필요합니다.",
+    "notFound": "요청하신 페이지를 찾을 수 없습니다."
+  },
+  "loading": {
+    "default": "불러오는 중...",
+    "submitting": "제출 중...",
+    "verifying": "인증 확인 중..."
+  },
+  "language": {
+    "switcher": "언어 전환",
+    "ko": "한국어",
+    "en": "English"
+  },
+  "empty": {
+    "default": "표시할 항목이 없습니다.",
+    "noResults": "검색 결과가 없습니다."
+  }
+}

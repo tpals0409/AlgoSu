@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { User, OAuthProvider } from './user.entity';
+import { TokenEncryptionService } from './token-encryption.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 // ─── Mock 헬퍼 ───────────────────────────────────────
@@ -49,6 +50,13 @@ const mockQueryBuilder = {
   execute: jest.fn().mockResolvedValue(undefined),
 };
 
+/** TokenEncryptionService mock — 암호화 결과를 예측 가능하게 고정 */
+const MOCK_ENCRYPTED_PREFIX = 'enc::';
+const mockTokenEncryptionService = {
+  encrypt: jest.fn((plain: string) => `${MOCK_ENCRYPTED_PREFIX}${plain}`),
+  isEncryptedFormat: jest.fn((val: string) => val.startsWith(MOCK_ENCRYPTED_PREFIX)),
+};
+
 describe('UserService', () => {
   let service: UserService;
   let userRepo: jest.Mocked<Repository<User>>;
@@ -68,7 +76,14 @@ describe('UserService', () => {
         },
         {
           provide: DataSource,
-          useValue: { createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner) },
+          useValue: {
+            createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner),
+            query: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: TokenEncryptionService,
+          useValue: mockTokenEncryptionService,
         },
         {
           provide: StructuredLoggerService,
@@ -135,7 +150,7 @@ describe('UserService', () => {
       oauth_provider: OAuthProvider.GOOGLE,
     };
 
-    it('새 유저를 생성한다 (atomicUpsert)', async () => {
+    it('새 유저를 생성한다 (atomicUpsert — raw query)', async () => {
       const created = mockUser({ email: dto.email });
       userRepo.findOne
         .mockResolvedValueOnce(null)            // existing 조회
@@ -144,7 +159,6 @@ describe('UserService', () => {
       const result = await service.upsertUser(dto);
 
       expect(result).toBe(created);
-      expect(mockQueryBuilder.execute).toHaveBeenCalled();
     });
 
     it('기존 유저가 있으면 기존 유저를 반환한다', async () => {
@@ -225,6 +239,24 @@ describe('UserService', () => {
         deleted.id,
         expect.objectContaining({ name: null }),
       );
+    });
+
+    it('p0-012: re-fetch 시 provider 불일치 → ConflictException', async () => {
+      // 동시 요청으로 다른 provider가 먼저 insert된 상황 시뮬레이션
+      const naverUser = mockUser({ email: dto.email, oauth_provider: OAuthProvider.NAVER });
+      userRepo.findOne
+        .mockResolvedValueOnce(null)            // existing 조회 — 없음
+        .mockResolvedValueOnce(naverUser);       // re-fetch — 다른 provider
+
+      await expect(service.upsertUser(dto)).rejects.toThrow(ConflictException);
+    });
+
+    it('p0-012: re-fetch 시 user null → ConflictException', async () => {
+      userRepo.findOne
+        .mockResolvedValueOnce(null)            // existing 조회
+        .mockResolvedValueOnce(null);            // re-fetch — null
+
+      await expect(service.upsertUser(dto)).rejects.toThrow(ConflictException);
     });
   });
 
@@ -307,7 +339,7 @@ describe('UserService', () => {
 
   // ─── updateGitHub ──────────────────────────────────
   describe('updateGitHub', () => {
-    it('GitHub 연동한다', async () => {
+    it('GitHub 연동 시 토큰을 암호화하여 저장한다', async () => {
       userRepo.findOne.mockResolvedValue(mockUser());
       userRepo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
 
@@ -318,11 +350,29 @@ describe('UserService', () => {
         token: 'tok',
       });
 
+      // encrypt가 평문 토큰으로 호출됐는지 검증
+      expect(mockTokenEncryptionService.encrypt).toHaveBeenCalledWith('tok');
+      // DB에는 암호화된 값이 저장되어야 함 (평문 'tok' 금지)
       expect(userRepo.update).toHaveBeenCalledWith('user-1', {
         github_connected: true,
         github_user_id: 'gh-1',
         github_username: 'ghuser',
-        github_token: 'tok',
+        github_token: `${MOCK_ENCRYPTED_PREFIX}tok`,
+      });
+    });
+
+    it('token이 null이면 암호화 없이 null 저장', async () => {
+      userRepo.findOne.mockResolvedValue(mockUser());
+      userRepo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+
+      await service.updateGitHub('user-1', { connected: true });
+
+      expect(mockTokenEncryptionService.encrypt).not.toHaveBeenCalled();
+      expect(userRepo.update).toHaveBeenCalledWith('user-1', {
+        github_connected: true,
+        github_user_id: null,
+        github_username: null,
+        github_token: null,
       });
     });
 
@@ -332,6 +382,7 @@ describe('UserService', () => {
 
       await service.updateGitHub('user-1', null);
 
+      expect(mockTokenEncryptionService.encrypt).not.toHaveBeenCalled();
       expect(userRepo.update).toHaveBeenCalledWith('user-1', {
         github_connected: false,
         github_user_id: null,
@@ -346,6 +397,7 @@ describe('UserService', () => {
 
       await service.updateGitHub('user-1', { connected: false });
 
+      expect(mockTokenEncryptionService.encrypt).not.toHaveBeenCalled();
       expect(userRepo.update).toHaveBeenCalledWith('user-1', {
         github_connected: false,
         github_user_id: null,
@@ -393,20 +445,58 @@ describe('UserService', () => {
 
   // ─── getGitHubTokenInfo ────────────────────────────
   describe('getGitHubTokenInfo', () => {
-    it('토큰 정보를 반환한다', async () => {
+    it('토큰 존재 시 has_token: true 반환 (토큰 자체 미반환 — p0-010)', async () => {
       userRepo.findOne.mockResolvedValue(
-        mockUser({ github_username: 'ghuser', github_token: 'enc-tok' }),
+        mockUser({ github_username: 'ghuser', github_token: `${MOCK_ENCRYPTED_PREFIX}enc-tok` }),
       );
 
       const result = await service.getGitHubTokenInfo('user-1');
 
-      expect(result).toEqual({ github_username: 'ghuser', github_token: 'enc-tok' });
+      expect(result).toEqual({
+        github_username: 'ghuser',
+        has_token: true,
+      });
+    });
+
+    it('토큰 미존재 시 has_token: false 반환', async () => {
+      userRepo.findOne.mockResolvedValue(
+        mockUser({ github_username: 'ghuser', github_token: null }),
+      );
+
+      const result = await service.getGitHubTokenInfo('user-1');
+
+      expect(result).toEqual({
+        github_username: 'ghuser',
+        has_token: false,
+      });
     });
 
     it('유저 미존재 시 NotFoundException', async () => {
       userRepo.findOne.mockResolvedValue(null);
 
       await expect(service.getGitHubTokenInfo('x')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ─── getEncryptedGitHubToken ──────────────────────
+  describe('getEncryptedGitHubToken', () => {
+    it('암호화된 토큰을 그대로 반환한다 (p0-010)', async () => {
+      userRepo.findOne.mockResolvedValue(
+        mockUser({ github_username: 'ghuser', github_token: `${MOCK_ENCRYPTED_PREFIX}enc-tok` }),
+      );
+
+      const result = await service.getEncryptedGitHubToken('user-1');
+
+      expect(result).toEqual({
+        github_username: 'ghuser',
+        encrypted_token: `${MOCK_ENCRYPTED_PREFIX}enc-tok`,
+      });
+    });
+
+    it('유저 미존재 시 NotFoundException', async () => {
+      userRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.getEncryptedGitHubToken('x')).rejects.toThrow(NotFoundException);
     });
   });
 

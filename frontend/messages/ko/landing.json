@@ -1,0 +1,80 @@
+{
+  "meta": {
+    "title": "AlgoSu — 알고리즘 스터디 플랫폼",
+    "description": "문제 풀이부터 GitHub 동기화, AI 코드 분석까지. 팀과 함께 체계적으로 성장하세요."
+  },
+  "nav": {
+    "themeToggle": "테마 전환",
+    "getStarted": "시작하기"
+  },
+  "hero": {
+    "titleLine1": "알고리즘 스터디의",
+    "titleLine2": "새로운 기준",
+    "subtitleLine1": "문제 풀이부터 GitHub 동기화, AI 코드 분석까지.",
+    "subtitleLine2": "팀과 함께 체계적으로 성장하세요."
+  },
+  "cta": {
+    "primary": "무료로 시작하기",
+    "secondary": "핵심 기능"
+  },
+  "features": {
+    "badge": "FEATURES",
+    "heading": "스터디에 필요한 모든 것",
+    "aiAnalysis": {
+      "title": "AI 코드 분석",
+      "description": "제출 코드를 AI가 자동으로 분석. 효율성, 가독성, 정확성 점수와 상세 피드백 제공."
+    },
+    "githubSync": {
+      "title": "GitHub 자동 동기화",
+      "description": "제출한 코드를 GitHub 저장소에 자동 커밋. 포트폴리오를 자연스럽게 쌓아가세요."
+    },
+    "studyCollab": {
+      "title": "스터디 협업",
+      "description": "팀원과 함께 문제를 풀고 서로의 코드를 비교·리뷰하는 공동 성장 공간."
+    },
+    "dashboard": {
+      "title": "통계 대시보드",
+      "description": "주차별 제출 현황, 난이도 분포, 언어별 통계로 성장 곡선을 한눈에 확인."
+    },
+    "codeReview": {
+      "title": "코드 리뷰",
+      "description": "팀원의 풀이를 비교하고 AI 분석 결과를 함께 확인. 서로의 코드에서 배우세요."
+    },
+    "progressMgmt": {
+      "title": "진도 관리",
+      "description": "마감일, 제출 여부, 미제출 알림까지. 스터디 진행 상황을 체계적으로 관리."
+    }
+  },
+  "testimonials": {
+    "badge": "TESTIMONIAL",
+    "heading": "사용자 후기",
+    "items": {
+      "0": {
+        "quote": "AI 분석 덕분에 코드 품질이 확실히 올랐어요. 혼자서는 발견 못했을 패턴들을 잡아주네요.",
+        "name": "이서연",
+        "role": "백엔드 개발자",
+        "initial": "이"
+      },
+      "1": {
+        "quote": "GitHub 자동 커밋이 정말 편리해요. 스터디하면서 자연스럽게 1일 1커밋 달성 중입니다!",
+        "name": "박준서",
+        "role": "대학원생",
+        "initial": "박"
+      },
+      "2": {
+        "quote": "통계 대시보드로 어떤 알고리즘이 약한지 파악하고 집중 공략할 수 있었어요.",
+        "name": "최예린",
+        "role": "취준생",
+        "initial": "최"
+      }
+    }
+  },
+  "finalCta": {
+    "heading": "지금 바로 시작하세요",
+    "description": "스터디 개설부터 AI 분석까지, 5분이면 충분합니다."
+  },
+  "footer": {
+    "privacy": "개인정보처리방침",
+    "terms": "이용약관"
+  }
+}

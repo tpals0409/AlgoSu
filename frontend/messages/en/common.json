@@ -1,0 +1,44 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "problems": "Problems",
+    "studies": "Studies",
+    "submissions": "Submissions",
+    "reviews": "Reviews",
+    "profile": "Profile",
+    "settings": "Settings"
+  },
+  "footer": {
+    "company": "AlgoSu",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy"
+  },
+  "buttons": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "close": "Close",
+    "retry": "Retry",
+    "loading": "Loading..."
+  },
+  "errors": {
+    "generic": "An error occurred. Please try again later.",
+    "network": "Please check your network connection.",
+    "unauthorized": "Please log in to continue.",
+    "notFound": "The page you requested could not be found."
+  },
+  "loading": {
+    "default": "Loading...",
+    "submitting": "Submitting...",
+    "verifying": "Verifying..."
+  },
+  "language": {
+    "switcher": "Switch language",
+    "ko": "Korean",
+    "en": "English"
+  },
+  "empty": {
+    "default": "No items to display.",
+    "noResults": "No results found."
+  }
+}

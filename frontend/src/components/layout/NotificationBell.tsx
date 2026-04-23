@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { isSafeInternalPath } from '@/lib/url';
 import { notificationApi, type Notification } from '@/lib/api';
 import { cacheKeys } from '@/lib/swr';
 import { NotificationToast } from '@/components/ui/NotificationToast';
@@ -364,7 +365,7 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
                         const route =
                           notification.link ??
                           TYPE_ROUTE[notification.type];
-                        if (route) {
+                        if (route && isSafeInternalPath(route)) {
                           setOpen(false);
                           router.push(route);
                         }

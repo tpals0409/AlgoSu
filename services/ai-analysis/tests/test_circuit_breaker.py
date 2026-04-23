@@ -31,6 +31,7 @@ class TestCircuitBreakerInitialState:
         assert cb.success_count == 0
         assert cb.half_open_successes == 0
         assert cb.last_failure_time == 0
+        assert cb._half_open_in_flight == 0
 
 
 class TestRecordSuccess:
@@ -63,6 +64,20 @@ class TestRecordFailureAtThreshold:
 
         assert cb.state == CircuitState.OPEN
         assert cb.failure_count == 5
+
+
+class TestIsOpenWhenClosed:
+    """4b. is_open -- CLOSED 상태: else 분기 → False 즉시 반환 (line 87)"""
+
+    def test_is_open_returns_false_when_closed(self, cb: CircuitBreaker):
+        """CLOSED 상태에서 is_open은 False (else branch → line 87)"""
+        assert cb.state == CircuitState.CLOSED
+        assert cb.is_open is False
+
+    def test_is_open_returns_false_when_half_open(self, cb: CircuitBreaker):
+        """HALF_OPEN 상태에서 is_open은 False (else branch → line 87)"""
+        cb.state = CircuitState.HALF_OPEN
+        assert cb.is_open is False
 
 
 class TestIsOpenBeforeTimeout:
@@ -286,3 +301,124 @@ class TestThreadSafety:
             t.join()
 
         assert len(errors) == 0
+
+
+class TestHalfOpenInflightTracking:
+    """HALF_OPEN 상태 in-flight 요청 수 추적 — P1 감사 수정 (audit-20260422-p1-018)
+
+    HALF_OPEN 진입 후 half_open_requests를 초과하는 동시 요청이
+    Claude API로 쇄도하는 것을 방지하는 기능을 검증한다.
+    """
+
+    def test_can_execute_increments_in_flight_in_half_open(self, cb: CircuitBreaker):
+        """HALF_OPEN에서 can_execute() 호출 시 in-flight 카운터 증가"""
+        cb.state = CircuitState.HALF_OPEN
+        cb._half_open_in_flight = 0
+
+        cb.can_execute()
+        assert cb._half_open_in_flight == 1
+
+        cb.can_execute()
+        assert cb._half_open_in_flight == 2
+
+    def test_can_execute_blocks_when_in_flight_at_limit(self, cb: CircuitBreaker):
+        """HALF_OPEN in-flight 한도(half_open_requests=2) 도달 시 추가 요청 차단"""
+        cb.state = CircuitState.HALF_OPEN
+        cb._half_open_in_flight = 0
+
+        assert cb.can_execute() is True   # in-flight=1
+        assert cb.can_execute() is True   # in-flight=2 (한도)
+        assert cb.can_execute() is False  # 한도 초과 → 차단
+        assert cb._half_open_in_flight == 2
+
+    def test_record_success_decrements_in_flight_in_half_open(self, cb: CircuitBreaker):
+        """HALF_OPEN record_success() — in-flight 감소 (HALF_OPEN 유지)"""
+        cb.state = CircuitState.HALF_OPEN
+        cb._half_open_in_flight = 2
+        cb.half_open_successes = 0
+
+        cb.record_success()
+
+        assert cb._half_open_in_flight == 1
+        assert cb.state == CircuitState.HALF_OPEN
+        assert cb.half_open_successes == 1
+
+    def test_record_failure_decrements_in_flight_in_half_open(self, cb: CircuitBreaker):
+        """HALF_OPEN record_failure() — in-flight 감소 후 OPEN 전환"""
+        cb.state = CircuitState.HALF_OPEN
+        cb._half_open_in_flight = 2
+
+        cb.record_failure()
+
+        assert cb._half_open_in_flight == 1
+        assert cb.state == CircuitState.OPEN
+
+    def test_slot_freed_by_success_allows_next_request(self, cb: CircuitBreaker):
+        """record_success()로 슬롯 해제 후 can_execute() 재허용"""
+        cb.state = CircuitState.HALF_OPEN
+        cb._half_open_in_flight = 0
+
+        assert cb.can_execute() is True   # in-flight=1
+        assert cb.can_execute() is True   # in-flight=2 (한도)
+        assert cb.can_execute() is False  # 차단
+
+        # 슬롯 1개 해제
+        cb.record_success()               # in-flight=1, successes=1
+        assert cb._half_open_in_flight == 1
+
+        assert cb.can_execute() is True   # in-flight=2 (한도 재도달)
+        assert cb.can_execute() is False  # 차단
+
+    def test_can_execute_transitions_open_to_half_open_after_timeout(self, cb: CircuitBreaker):
+        """can_execute(): OPEN + timeout 경과 → HALF_OPEN 전환 + True 반환 + in-flight=1"""
+        for _ in range(5):
+            cb.record_failure()
+        assert cb.state == CircuitState.OPEN
+
+        with patch("src.circuit_breaker.time") as mock_time:
+            mock_time.time.return_value = cb.last_failure_time + 31
+            result = cb.can_execute()
+
+        assert result is True
+        assert cb.state == CircuitState.HALF_OPEN
+        assert cb._half_open_in_flight == 1
+
+    def test_in_flight_not_negative_on_underflow(self, cb: CircuitBreaker):
+        """in-flight 카운터가 0 미만으로 내려가지 않음 (방어 코드 검증)"""
+        cb.state = CircuitState.HALF_OPEN
+        cb._half_open_in_flight = 0
+
+        cb.record_success()  # in-flight=max(0, -1)=0
+        assert cb._half_open_in_flight == 0
+
+    def test_concurrent_half_open_allows_exactly_half_open_requests(self):
+        """동시 다발 접근 시 정확히 half_open_requests 수만큼만 허용 (스레드 안전)"""
+        half_open_req = 3
+        cb = CircuitBreaker(
+            failure_threshold=5,
+            recovery_timeout=30,
+            half_open_requests=half_open_req,
+        )
+        cb.state = CircuitState.HALF_OPEN
+        cb._half_open_in_flight = 0
+
+        num_threads = 20
+        results: list = []
+        results_lock = threading.Lock()
+        barrier = threading.Barrier(num_threads)
+
+        def worker():
+            barrier.wait()
+            allowed = cb.can_execute()
+            with results_lock:
+                results.append(allowed)
+
+        threads = [threading.Thread(target=worker) for _ in range(num_threads)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        allowed_count = sum(1 for r in results if r)
+        assert allowed_count == half_open_req
+        assert cb._half_open_in_flight == half_open_req

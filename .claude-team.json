@@ -14,6 +14,7 @@
     { "name": "scribe", "label": "Scribe(서기관)", "tier": 2, "model": "claude-sonnet-4-6", "description": "메모리/문서/Skill 관리" },
     { "name": "postman", "label": "Postman(배달부)", "tier": 2, "model": "claude-sonnet-4-6", "description": "GitHub Push, MQ 소비, DLQ" },
     { "name": "curator", "label": "Curator(출제자)", "tier": 2, "model": "claude-sonnet-4-6", "description": "문제 관리, 마감 시간, Dashboard Read Model" },
+    { "name": "critic", "label": "Critic(비평가)", "tier": 2, "model": "claude-sonnet-4-6", "description": "Codex(gpt-5) 기반 교차 코드리뷰, merge-gate 심사관" },
     { "name": "herald", "label": "Herald(전령)", "tier": 3, "model": "claude-sonnet-4-6", "description": "프론트엔드 UI, SSE, 실시간 상태" },
     { "name": "palette", "label": "Palette(팔레트)", "tier": 3, "model": "claude-opus-4-6", "description": "디자인 시스템, 토큰, shadcn/ui" },
     { "name": "scout", "label": "Scout(정찰병)", "tier": 3, "model": "claude-sonnet-4-6", "description": "UX 테스트, 사용자 관점 피드백" },
@@ -24,12 +25,19 @@
     "backend": ["conductor", "gatekeeper", "librarian", "postman", "curator"],
     "frontend": ["herald", "palette", "scout"],
     "infra": ["architect", "librarian"],
-    "review": ["scout", "sensei"],
-    "docs": ["scribe", "librarian"]
+    "review": ["scout", "sensei", "critic"],
+    "docs": ["scribe", "librarian"],
+    "merge-gate": ["critic"]
   },
   "dispatch": {
     "enabled": true,
     "binDir": "~/.claude/oracle/bin",
-    "session": "oracle"
+    "session": "oracle",
+    "codeChangingAgents": ["conductor", "gatekeeper", "librarian", "architect", "postman", "curator", "herald", "palette", "sensei"],
+    "autoCritic": {
+      "enabled": true,
+      "trigger": "commitDetected",
+      "method": "codex review --base <HEAD_BEFORE>"
+    }
   }
 }

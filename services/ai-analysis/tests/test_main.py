@@ -9,6 +9,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+# 테스트용 UUID 상수
+_TEST_PROBLEM_ID = "00000000-0000-4000-8000-000000000001"
+_TEST_STUDY_ID = "00000000-0000-4000-8000-000000000002"
+_TEST_USER_ID = "00000000-0000-4000-8000-000000000003"
+
 
 @pytest.fixture
 def mock_app_deps():
@@ -125,9 +130,8 @@ class TestCheckAndIncrementQuota:
 
     def test_quota_check_allowed(self, client, mock_app_deps):
         deps = mock_app_deps
-        pipe_mock = MagicMock()
-        pipe_mock.execute.return_value = [2, 86000]
-        deps["redis_client"].pipeline.return_value = pipe_mock
+        # Lua eval이 current 값을 직접 반환
+        deps["redis_client"].eval.return_value = 2
 
         import src.main as main_mod
 
@@ -145,9 +149,7 @@ class TestCheckAndIncrementQuota:
 
     def test_quota_check_denied_over_limit(self, client, mock_app_deps):
         deps = mock_app_deps
-        pipe_mock = MagicMock()
-        pipe_mock.execute.return_value = [6, 86000]  # limit=5, current=6
-        deps["redis_client"].pipeline.return_value = pipe_mock
+        deps["redis_client"].eval.return_value = 6  # limit=5, current=6
 
         import src.main as main_mod
 
@@ -164,10 +166,10 @@ class TestCheckAndIncrementQuota:
         deps["redis_client"].decr.assert_called()
 
     def test_quota_check_sets_ttl_on_first_use(self, client, mock_app_deps):
+        """첫 사용 시 Lua 스크립트가 EXPIRE를 원자적으로 처리함을 확인"""
         deps = mock_app_deps
-        pipe_mock = MagicMock()
-        pipe_mock.execute.return_value = [1, -1]  # first use, ttl=-1
-        deps["redis_client"].pipeline.return_value = pipe_mock
+        # Lua 스크립트가 current=1 반환 → 스크립트 내부에서 EXPIRE 처리
+        deps["redis_client"].eval.return_value = 1
 
         import src.main as main_mod
 
@@ -179,7 +181,12 @@ class TestCheckAndIncrementQuota:
             headers={"X-Internal-Key": "test-key"},
         )
         assert resp.status_code == 200
-        deps["redis_client"].expire.assert_called_once()
+        # eval 호출 시 TTL=86400이 인수로 포함되었는지 확인
+        call_args = deps["redis_client"].eval.call_args
+        assert call_args is not None
+        assert 86400 in call_args.args
+        # expire는 Lua 내부에서 처리되므로 별도 호출 없음
+        deps["redis_client"].expire.assert_not_called()
 
     def test_quota_check_no_redis(self, client, mock_app_deps):
         import src.main as main_mod
@@ -280,9 +287,29 @@ class TestGroupAnalysis:
         """Internal Key 없으면 401"""
         resp = client.post(
             "/group-analysis",
-            json={"problem_id": "p1", "study_id": "s1", "user_id": "u1"},
+            json={"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
         )
         assert resp.status_code == 401
+
+    @pytest.mark.parametrize(
+        "bad_payload",
+        [
+            {"problem_id": "../../admin", "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
+            {"problem_id": _TEST_PROBLEM_ID, "study_id": "not-a-uuid", "user_id": _TEST_USER_ID},
+            {"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": "abc"},
+        ],
+        ids=["path-traversal-problem_id", "invalid-study_id", "invalid-user_id"],
+    )
+    def test_group_analysis_rejects_non_uuid_ids(
+        self, bad_payload, client, mock_app_deps
+    ):
+        """UUID 형식이 아닌 ID는 422 — 경로 삽입 방지"""
+        resp = client.post(
+            "/group-analysis",
+            json=bad_payload,
+            headers={"X-Internal-Key": "test-key"},
+        )
+        assert resp.status_code == 422
 
     def test_group_analysis_circuit_breaker_open(self, client, mock_app_deps):
         """Circuit Breaker OPEN이면 503"""
@@ -290,7 +317,7 @@ class TestGroupAnalysis:
 
         resp = client.post(
             "/group-analysis",
-            json={"problem_id": "p1", "study_id": "s1", "user_id": "u1"},
+            json={"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
             headers={"X-Internal-Key": "test-key"},
         )
         assert resp.status_code == 503
@@ -303,7 +330,7 @@ class TestGroupAnalysis:
 
         resp = client.post(
             "/group-analysis",
-            json={"problem_id": "p1", "study_id": "s1", "user_id": "u1"},
+            json={"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
             headers={"X-Internal-Key": "test-key"},
         )
         assert resp.status_code == 503
@@ -313,14 +340,12 @@ class TestGroupAnalysis:
         import src.main as main_mod
 
         deps = mock_app_deps
-        pipe_mock = MagicMock()
-        pipe_mock.execute.return_value = [6, 86000]  # limit=5, current=6
-        deps["redis_client"].pipeline.return_value = pipe_mock
+        deps["redis_client"].eval.return_value = 6  # limit=5, current=6
         main_mod.redis_client = deps["redis_client"]
 
         resp = client.post(
             "/group-analysis",
-            json={"problem_id": "p1", "study_id": "s1", "user_id": "u1"},
+            json={"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
             headers={"X-Internal-Key": "test-key"},
         )
         assert resp.status_code == 429
@@ -334,9 +359,7 @@ class TestGroupAnalysis:
         import src.main as main_mod
 
         deps = mock_app_deps
-        pipe_mock = MagicMock()
-        pipe_mock.execute.return_value = [1, 86000]
-        deps["redis_client"].pipeline.return_value = pipe_mock
+        deps["redis_client"].eval.return_value = 1
         main_mod.redis_client = deps["redis_client"]
 
         # AsyncClient mock이 예외 발생
@@ -348,7 +371,7 @@ class TestGroupAnalysis:
 
         resp = client.post(
             "/group-analysis",
-            json={"problem_id": "p1", "study_id": "s1", "user_id": "u1"},
+            json={"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
             headers={"X-Internal-Key": "test-key"},
         )
         assert resp.status_code == 502
@@ -362,9 +385,7 @@ class TestGroupAnalysis:
         import src.main as main_mod
 
         deps = mock_app_deps
-        pipe_mock = MagicMock()
-        pipe_mock.execute.return_value = [1, 86000]
-        deps["redis_client"].pipeline.return_value = pipe_mock
+        deps["redis_client"].eval.return_value = 1
         main_mod.redis_client = deps["redis_client"]
 
         # 빈 제출 목록 -- httpx.AsyncClient 응답은 MagicMock 사용 (json()이 동기)
@@ -380,7 +401,7 @@ class TestGroupAnalysis:
 
         resp = client.post(
             "/group-analysis",
-            json={"problem_id": "p1", "study_id": "s1", "user_id": "u1"},
+            json={"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
             headers={"X-Internal-Key": "test-key"},
         )
         assert resp.status_code == 404
@@ -394,9 +415,7 @@ class TestGroupAnalysis:
         import src.main as main_mod
 
         deps = mock_app_deps
-        pipe_mock = MagicMock()
-        pipe_mock.execute.return_value = [1, 86000]
-        deps["redis_client"].pipeline.return_value = pipe_mock
+        deps["redis_client"].eval.return_value = 1
         main_mod.redis_client = deps["redis_client"]
 
         # 제출 목록 -- json()은 동기 메서드이므로 MagicMock 사용
@@ -431,12 +450,12 @@ class TestGroupAnalysis:
 
         resp = client.post(
             "/group-analysis",
-            json={"problem_id": "p1", "study_id": "s1", "user_id": "u1"},
+            json={"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
             headers={"X-Internal-Key": "test-key"},
         )
         assert resp.status_code == 200
         data = resp.json()["data"]
-        assert data["problemId"] == "p1"
+        assert data["problemId"] == _TEST_PROBLEM_ID
         assert data["submissionCount"] == 1
 
     @patch("src.main.ClaudeClient")
@@ -448,9 +467,7 @@ class TestGroupAnalysis:
         import src.main as main_mod
 
         deps = mock_app_deps
-        pipe_mock = MagicMock()
-        pipe_mock.execute.return_value = [1, 86000]
-        deps["redis_client"].pipeline.return_value = pipe_mock
+        deps["redis_client"].eval.return_value = 1
         main_mod.redis_client = deps["redis_client"]
 
         # 제출 목록
@@ -475,24 +492,20 @@ class TestGroupAnalysis:
 
         resp = client.post(
             "/group-analysis",
-            json={"problem_id": "p1", "study_id": "s1", "user_id": "u1"},
+            json={"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
             headers={"X-Internal-Key": "test-key"},
         )
         assert resp.status_code == 502
 
     def test_group_analysis_first_use_sets_ttl(self, client, mock_app_deps):
-        """첫 사용 시 TTL 설정"""
+        """첫 사용 시 Lua 스크립트가 EXPIRE를 원자적으로 처리함을 확인"""
         import src.main as main_mod
 
         deps = mock_app_deps
-        pipe_mock = MagicMock()
-        pipe_mock.execute.return_value = [1, -1]  # ttl=-1, first use
-        deps["redis_client"].pipeline.return_value = pipe_mock
+        # Lua eval이 current=1 반환 → 스크립트 내부에서 EXPIRE 원자 처리
+        deps["redis_client"].eval.return_value = 1
         main_mod.redis_client = deps["redis_client"]
 
-        # Circuit breaker OPEN으로 설정하면 quota 체크 후 CB 체크에서 실패
-        # 대신 no_redis가 아닌 상태에서 redis 미연결 아닌 상태로 quota까지 도달
-        # expire가 호출되는지 확인 - group_analysis는 quota 후 submission fetch에서 실패할 것
         with patch("src.main.httpx") as mock_httpx:
             mock_async_client = AsyncMock()
             mock_async_client.get.side_effect = Exception("conn error")
@@ -502,11 +515,15 @@ class TestGroupAnalysis:
 
             client.post(
                 "/group-analysis",
-                json={"problem_id": "p1", "study_id": "s1", "user_id": "u1"},
+                json={"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
                 headers={"X-Internal-Key": "test-key"},
             )
-            # TTL 설정 확인
-            deps["redis_client"].expire.assert_called_once()
+            # eval이 호출되었고 TTL=86400이 인수로 포함됨
+            deps["redis_client"].eval.assert_called_once()
+            call_args = deps["redis_client"].eval.call_args
+            assert 86400 in call_args.args
+            # expire는 Lua 내부에서 처리되므로 별도 호출 없음
+            deps["redis_client"].expire.assert_not_called()
 
 
 class TestStartupShutdownEvents:
@@ -613,3 +630,49 @@ class TestGetQuotaXUserIdFallback:
         )
         assert resp.status_code == 200
         assert resp.json()["data"]["used"] == 0
+
+
+class TestGetQuotaRedisNone:
+    """GET /quota -- redis_client가 None인 경우 (branch 254->259)"""
+
+    def test_quota_redis_client_none_returns_used_zero(self, client, mock_app_deps):
+        """redis_client=None이면 Redis 조회 없이 used=0 반환 (branch 254->259)"""
+        import src.main as main_mod
+
+        main_mod.redis_client = None
+
+        resp = client.get(
+            "/quota",
+            params={"userId": "user-no-redis"},
+            headers={"X-Internal-Key": "test-key"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()["data"]
+        assert data["used"] == 0
+        assert data["limit"] == 5
+        assert data["remaining"] == 5
+
+
+class TestRollbackQuotaRedisNone:
+    """_rollback_quota() -- redis_client=None 시 즉시 반환 (line 107)"""
+
+    def test_rollback_quota_returns_immediately_when_redis_none(self, mock_app_deps):
+        """redis_client가 None이면 _rollback_quota는 아무 작업 없이 반환"""
+        import src.main as main_mod
+
+        main_mod.redis_client = None
+        # 예외 없이 조용히 반환해야 함
+        result = main_mod._rollback_quota("user-rollback-none")
+        assert result is None
+
+
+class TestLifespan:
+    """lifespan context manager -- startup/shutdown 통합 (lines 144-146)"""
+
+    def test_lifespan_triggers_startup_and_shutdown(self, mock_app_deps):
+        """TestClient 컨텍스트 매니저 사용 시 lifespan startup/shutdown 실행"""
+        from src.main import app
+
+        with TestClient(app) as c:
+            resp = c.get("/health")
+            assert resp.status_code == 200

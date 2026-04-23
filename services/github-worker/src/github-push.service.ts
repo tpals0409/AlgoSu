@@ -278,21 +278,35 @@ export class GitHubPushService {
 
   /**
    * 유저의 algosu-submissions 레포 존재 확인, 없으면 자동 생성
+   *
+   * 보안 정책:
+   * - 신규 레포는 반드시 private:true 로 생성 (제출 코드 공개 노출 방지)
+   * - 기존 레포가 public인 경우 즉시 private으로 전환
    */
   private async ensureRepoExists(octokit: Octokit, username: string): Promise<void> {
     try {
-      await octokit.repos.get({
+      const repoResp = await octokit.repos.get({
         owner: username,
         repo: REPO_NAME,
       });
+
+      // 공개 레포 → private 전환 (제출 코드 공개 노출 방지)
+      if (repoResp.data.private === false) {
+        await octokit.repos.update({
+          owner: username,
+          repo: REPO_NAME,
+          private: true,
+        });
+        logger.warn('공개 레포를 private으로 전환', { action: 'REPO_VISIBILITY_FIXED' });
+      }
     } catch (error: unknown) {
       const status = (error as { status?: number }).status;
       if (status === 404) {
-        // 레포 자동 생성 (private)
+        // 레포 자동 생성 (private 강제 — 제출 코드 공개 노출 방지)
         await octokit.repos.createForAuthenticatedUser({
           name: REPO_NAME,
           description: 'AlgoSu 알고리즘 제출 자동 저장',
-          private: false,
+          private: true,
           auto_init: true,
         });
         logger.info('레포 자동 생성 완료', { action: 'REPO_CREATED' });

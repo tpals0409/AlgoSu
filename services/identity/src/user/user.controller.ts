@@ -39,7 +39,7 @@ export class UserController {
     return { data: user };
   }
 
-  /** slug 기반 공개 프로필 조회 */
+  /** slug 기반 공개 프로필 조회 — whitelist 프로젝션 (p0-011) */
   @ApiOperation({ summary: 'slug 기반 공개 프로필 조회' })
   @ApiResponse({ status: 200, description: '공개 프로필 정보' })
   @ApiResponse({ status: 404, description: '프로필 없음' })
@@ -47,7 +47,8 @@ export class UserController {
   async findBySlug(@Param('slug') slug: string) {
     const user = await this.userService.findBySlug(slug);
     if (!user) throw new NotFoundException('프로필을 찾을 수 없습니다.');
-    return { data: user };
+    const { publicId, name, avatar_url, profile_slug, github_connected, github_username, created_at } = user;
+    return { data: { publicId, name, avatar_url, profile_slug, github_connected, github_username, created_at } };
   }
 
   /** ID로 사용자 조회 */
@@ -103,12 +104,21 @@ export class UserController {
     return { data: status };
   }
 
-  /** GitHub 토큰 정보 조회 (암호화 상태 그대로) */
-  @ApiOperation({ summary: 'GitHub 토큰 정보 조회' })
-  @ApiResponse({ status: 200, description: 'GitHub 토큰 정보' })
+  /** GitHub 토큰 존재 여부 조회 (토큰 자체 미반환 — p0-010) */
+  @ApiOperation({ summary: 'GitHub 토큰 존재 여부 조회' })
+  @ApiResponse({ status: 200, description: 'GitHub 토큰 존재 여부' })
   @Get(':id/github-token')
   async getGitHubTokenInfo(@Param('id', ParseUUIDPipe) id: string) {
     const info = await this.userService.getGitHubTokenInfo(id);
+    return { data: info };
+  }
+
+  /** 암호화된 GitHub 토큰 조회 — 내부 서비스 전용 (p0-010) */
+  @ApiOperation({ summary: '암호화된 GitHub 토큰 조회 (내부 전용)' })
+  @ApiResponse({ status: 200, description: '암호화된 GitHub 토큰' })
+  @Get(':id/github-encrypted-token')
+  async getEncryptedGitHubToken(@Param('id', ParseUUIDPipe) id: string) {
+    const info = await this.userService.getEncryptedGitHubToken(id);
     return { data: info };
   }
 

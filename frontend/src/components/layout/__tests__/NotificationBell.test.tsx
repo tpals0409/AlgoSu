@@ -146,9 +146,10 @@ describe('NotificationBell', () => {
     mockMarkRead.mockResolvedValue(undefined);
     mockMarkAllRead.mockResolvedValue(undefined);
     // SWR fetcher: key별로 mockUnreadCount / mockList에 위임
-    mockedSwrFetcher.mockImplementation((key: string) => {
-      if (key === '/api/notifications/unread-count') return mockUnreadCount();
-      if (key === '/api/notifications') return mockList();
+    mockedSwrFetcher.mockImplementation((key: string | readonly [string, ...unknown[]]) => {
+      const path = Array.isArray(key) ? key[0] : key;
+      if (path === '/api/notifications/unread-count') return mockUnreadCount();
+      if (path === '/api/notifications') return mockList();
       return Promise.resolve(null);
     });
   });

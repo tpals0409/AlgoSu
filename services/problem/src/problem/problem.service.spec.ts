@@ -261,6 +261,26 @@ describe('ProblemService', () => {
         NotFoundException,
       );
     });
+
+    it('studyId 누락 (undefined): BadRequestException — cross-study 방어', async () => {
+      await expect(
+        service.findByIdInternal(undefined as unknown as string, PROBLEM_ID),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.findByIdInternal(undefined as unknown as string, PROBLEM_ID),
+      ).rejects.toThrow('studyId가 필요합니다');
+
+      // DB 조회 자체가 발생하지 않아야 함
+      expect(dualWrite.findOne).not.toHaveBeenCalled();
+    });
+
+    it('studyId 빈 문자열: BadRequestException — cross-study 방어', async () => {
+      await expect(
+        service.findByIdInternal('', PROBLEM_ID),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(dualWrite.findOne).not.toHaveBeenCalled();
+    });
   });
 
   // ──────────────────────────────────────────────
@@ -398,6 +418,58 @@ describe('ProblemService', () => {
       expect(result).toEqual({
         deadline: null,
         weekNumber: '3월1주차',
+        status: 'db_hit',
+      });
+    });
+
+    it('studyId 누락 (undefined): BadRequestException — cross-study 방어', async () => {
+      await expect(
+        service.getDeadline(undefined as unknown as string, PROBLEM_ID),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.getDeadline(undefined as unknown as string, PROBLEM_ID),
+      ).rejects.toThrow('studyId가 필요합니다');
+
+      // 캐시·DB 조회 모두 발생하지 않아야 함
+      expect(deadlineCache.getDeadline).not.toHaveBeenCalled();
+      expect(dualWrite.findOne).not.toHaveBeenCalled();
+    });
+
+    it('studyId 빈 문자열: BadRequestException — cross-study 방어', async () => {
+      await expect(
+        service.getDeadline('', PROBLEM_ID),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(deadlineCache.getDeadline).not.toHaveBeenCalled();
+    });
+
+    it('캐시 히트: weekNumber null 문제 — weekNumber null 반환 (nullish 분기)', async () => {
+      // line 151: problem.weekNumber ?? null — weekNumber=null → null 반환 브랜치 커버
+      const problemNoWeek = { ...mockProblem, weekNumber: null } as unknown as Problem;
+      deadlineCache.getDeadline.mockResolvedValue('2026-03-07T23:59:59.000Z');
+      dualWrite.findOne.mockResolvedValue(problemNoWeek);
+
+      const result = await service.getDeadline(STUDY_ID, PROBLEM_ID);
+
+      expect(result).toEqual({
+        deadline: '2026-03-07T23:59:59.000Z',
+        weekNumber: null,
+        status: 'cache_hit',
+      });
+    });
+
+    it('DB fallback: weekNumber null 문제 — weekNumber null 반환 (nullish 분기)', async () => {
+      // line 162: problem.weekNumber ?? null — weekNumber=null → null 반환 브랜치 커버
+      const problemNoWeek = { ...mockProblem, weekNumber: null } as unknown as Problem;
+      deadlineCache.getDeadline.mockResolvedValue(null);
+      dualWrite.findOne.mockResolvedValue(problemNoWeek);
+      deadlineCache.setDeadline.mockResolvedValue(undefined);
+
+      const result = await service.getDeadline(STUDY_ID, PROBLEM_ID);
+
+      expect(result).toEqual({
+        deadline: mockProblem.deadline!.toISOString(),
+        weekNumber: null,
         status: 'db_hit',
       });
     });
@@ -542,6 +614,24 @@ describe('ProblemService', () => {
       await expect(service.update(STUDY_ID, 'non-existent', dto)).rejects.toThrow(NotFoundException);
       expect(mockQr.rollbackTransaction).toHaveBeenCalled();
       expect(mockQr.release).toHaveBeenCalled();
+    });
+
+    it('level 수정: dto.level 정의 시 problem.level 갱신 (level !== undefined 분기)', async () => {
+      // line 195: if (dto.level !== undefined) — true 브랜치 커버
+      const dto: UpdateProblemDto = { level: 5 };
+      const updatedProblem = { ...mockProblem, level: 5 } as Problem;
+
+      const mockQr = createMockQueryRunner();
+      mockQr.manager.findOne.mockResolvedValue({ ...mockProblem });
+      mockQr.manager.save.mockResolvedValue(updatedProblem);
+      dataSource.createQueryRunner.mockReturnValue(mockQr);
+      deadlineCache.invalidateDeadline.mockResolvedValue(undefined);
+      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
+
+      const result = await service.update(STUDY_ID, PROBLEM_ID, dto);
+
+      expect(result.level).toBe(5);
+      expect(mockQr.commitTransaction).toHaveBeenCalled();
     });
   });
 

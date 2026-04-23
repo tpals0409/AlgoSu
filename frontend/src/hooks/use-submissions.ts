@@ -31,7 +31,7 @@ export function useSubmissions(
   if (params?.limit) query.set('limit', String(params.limit));
 
   const { data, error, isLoading, mutate } = useSWR<PaginatedResponse<Submission>>(
-    studyId ? cacheKeys.submissions.list(query) : null,
+    studyId ? [cacheKeys.submissions.list(query), studyId] : null,
   );
 
   return {

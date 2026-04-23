@@ -44,7 +44,17 @@ import { FeedbackModule } from './feedback/feedback.module';
         maxQueryExecutionTime: 200, // 200ms 초과 쿼리 경고 로그 (monitoring-log-rules.md §8-1)
         ssl:
           config.get<string>('DATABASE_SSL') === 'true'
-            ? { rejectUnauthorized: false }
+            ? {
+                rejectUnauthorized: true, // 인증서 검증 비활성화 금지 (MITM 방어)
+                ...(config.get<string>('DATABASE_SSL_CA')
+                  ? {
+                      ca: Buffer.from(
+                        config.get<string>('DATABASE_SSL_CA')!,
+                        'base64',
+                      ).toString('utf-8'),
+                    }
+                  : {}),
+              }
             : false,
         extra: {
           max: parseInt(config.get<string>('DATABASE_POOL_MAX', '20'), 10),

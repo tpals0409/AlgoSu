@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudy } from '@/contexts/StudyContext';
 import { NotificationBell } from '@/components/layout/NotificationBell';
+import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
 import { Logo } from '@/components/ui/Logo';
 import { getAvatarSrc, getAvatarPresetKey } from '@/lib/avatars';
 
@@ -325,6 +326,9 @@ export function TopNav(): ReactNode {
         {/* 우측 영역 */}
         <div className="flex items-center gap-1.5 sm:gap-2">
           {isAuthenticated && <StudySelector />}
+
+          {/* 언어 스위처 */}
+          <LanguageSwitcher />
 
           {/* 테마 토글 */}
           <button

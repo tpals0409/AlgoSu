@@ -22,7 +22,7 @@ interface UseProblemsReturn {
  */
 export function useProblems(studyId: string | null): UseProblemsReturn {
   const { data, error, isLoading, mutate } = useSWR<Problem[]>(
-    studyId ? cacheKeys.problems.all() : null,
+    studyId ? [cacheKeys.problems.all(), studyId] : null,
   );
 
   return {

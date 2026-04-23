@@ -88,6 +88,10 @@ jest.mock('@/components/ui/Logo', () => ({
   Logo: () => <div data-testid="logo" />,
 }));
 
+jest.mock('@/components/layout/LanguageSwitcher', () => ({
+  LanguageSwitcher: () => <div data-testid="language-switcher" />,
+}));
+
 beforeEach(() => {
   mockLogout.mockClear();
   mockUseAuth.mockReturnValue({
@@ -111,6 +115,11 @@ describe('AppLayout', () => {
   it('renders main content area', () => {
     render(<AppLayout>content</AppLayout>);
     expect(screen.getByText('content')).toBeInTheDocument();
+  });
+
+  it('renders LanguageSwitcher in no-study header', () => {
+    render(<AppLayout>content</AppLayout>);
+    expect(screen.getByTestId('language-switcher')).toBeInTheDocument();
   });
 
   it('does not show session expired overlay (moved to login page)', () => {

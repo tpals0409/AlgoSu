@@ -185,9 +185,14 @@ export class IdentityClientService {
     return this.request('GET', `/api/users/${id}/github-status`);
   }
 
-  /** GitHub 토큰 정보 조회 (암호화 상태 그대로) */
+  /** GitHub 토큰 존재 여부 조회 (토큰 자체 미반환 — p0-010) */
   async getGitHubTokenInfo(id: string): Promise<Record<string, unknown>> {
     return this.request('GET', `/api/users/${id}/github-token`);
+  }
+
+  /** 암호화된 GitHub 토큰 조회 — 내부 서비스 전용 (p0-010) */
+  async getEncryptedGitHubToken(id: string): Promise<Record<string, unknown>> {
+    return this.request('GET', `/api/users/${id}/github-encrypted-token`);
   }
 
   /** slug 기반 공개 프로필 조회 */

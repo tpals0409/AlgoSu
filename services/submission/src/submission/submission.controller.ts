@@ -261,15 +261,24 @@ export class SubmissionController {
 
   /**
    * POST /satisfaction/:submissionId — AI 만족도 등록/수정
+   *
+   * IDOR 방지: x-study-id를 수신하여 해당 제출이 요청자의 스터디에 속하는지
+   * 서비스 레이어에서 검증합니다.
    */
   @ApiOperation({ summary: 'AI 분석 만족도 등록/수정' })
   @Post('satisfaction/:submissionId')
   async rateSatisfaction(
     @Param('submissionId', ParseUUIDPipe) submissionId: string,
     @Headers('x-user-id') userId: string,
+    @Headers('x-study-id') studyId: string,
     @Body() dto: CreateAiSatisfactionDto,
   ) {
-    const satisfaction = await this.submissionService.rateSatisfaction(submissionId, userId, dto);
+    const satisfaction = await this.submissionService.rateSatisfaction(
+      submissionId,
+      userId,
+      studyId,
+      dto,
+    );
     return { data: satisfaction };
   }
 

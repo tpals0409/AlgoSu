@@ -11,6 +11,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   BeforeInsert,
+  Index,
 } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
@@ -32,7 +33,15 @@ export enum GitHubSyncStatus {
   SKIPPED = 'SKIPPED',
 }
 
+/**
+ * (study_id, user_id, idempotency_key) 복합 유니크 제약 — IDOR 방지
+ * 동일 스터디·사용자 내에서만 멱등성 키가 유일하며, NULL 값은 제외(partial index)
+ */
 @Entity('submissions')
+@Index('uq_submissions_study_user_idem', ['studyId', 'userId', 'idempotencyKey'], {
+  unique: true,
+  where: '"idempotency_key" IS NOT NULL',
+})
 export class Submission {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

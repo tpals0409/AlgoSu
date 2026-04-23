@@ -1,0 +1,80 @@
+{
+  "meta": {
+    "title": "AlgoSu — Algorithm Study Platform",
+    "description": "From problem solving to GitHub sync and AI code analysis. Grow systematically with your team."
+  },
+  "nav": {
+    "themeToggle": "Toggle theme",
+    "getStarted": "Get Started"
+  },
+  "hero": {
+    "titleLine1": "The New Standard for",
+    "titleLine2": "Algorithm Study",
+    "subtitleLine1": "From problem solving to GitHub sync and AI code analysis.",
+    "subtitleLine2": "Grow systematically with your team."
+  },
+  "cta": {
+    "primary": "Start for Free",
+    "secondary": "Key Features"
+  },
+  "features": {
+    "badge": "FEATURES",
+    "heading": "Everything You Need for Study",
+    "aiAnalysis": {
+      "title": "AI Code Analysis",
+      "description": "AI automatically analyzes your submissions — efficiency, readability, accuracy scores with detailed feedback."
+    },
+    "githubSync": {
+      "title": "GitHub Auto-Sync",
+      "description": "Auto-commit submissions to your GitHub repo. Build your portfolio naturally."
+    },
+    "studyCollab": {
+      "title": "Study Collaboration",
+      "description": "Solve problems together, compare and review each other's code in a shared growth space."
+    },
+    "dashboard": {
+      "title": "Stats Dashboard",
+      "description": "Track your growth at a glance with weekly submissions, difficulty breakdowns, and language stats."
+    },
+    "codeReview": {
+      "title": "Code Review",
+      "description": "Compare peers' solutions and review AI analysis together. Learn from each other's code."
+    },
+    "progressMgmt": {
+      "title": "Progress Management",
+      "description": "Deadlines, submission status, and reminders — manage your study progress systematically."
+    }
+  },
+  "testimonials": {
+    "badge": "TESTIMONIAL",
+    "heading": "What Users Say",
+    "items": {
+      "0": {
+        "quote": "Thanks to AI analysis, my code quality has noticeably improved. It catches patterns I'd never spot on my own.",
+        "name": "Seoyeon Lee",
+        "role": "Backend Developer",
+        "initial": "S"
+      },
+      "1": {
+        "quote": "The auto GitHub commit is so convenient. I'm naturally hitting my daily commit streak while studying!",
+        "name": "Junseo Park",
+        "role": "Graduate Student",
+        "initial": "J"
+      },
+      "2": {
+        "quote": "The stats dashboard helped me identify my weak algorithms and focus my practice there.",
+        "name": "Yerin Choi",
+        "role": "Job Seeker",
+        "initial": "Y"
+      }
+    }
+  },
+  "finalCta": {
+    "heading": "Get Started Today",
+    "description": "From creating a study group to AI analysis — it only takes 5 minutes."
+  },
+  "footer": {
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service"
+  }
+}
