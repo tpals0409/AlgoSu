@@ -12,24 +12,26 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Send } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { feedbackSchema, type FeedbackFormData, type FeedbackCategory } from '@/lib/schemas/feedback';
 import { feedbackApi } from '@/lib/api';
 import { useStudy } from '@/contexts/StudyContext';
 import { eventTracker } from '@/lib/event-tracker';
-
-const CATEGORY_OPTIONS: { value: FeedbackCategory; label: string }[] = [
-  { value: 'GENERAL', label: '일반' },
-  { value: 'FEATURE', label: '기능 요청' },
-  { value: 'UX', label: 'UX 개선' },
-];
 
 interface FeedbackFormProps {
   readonly onSuccess?: () => void;
 }
 
 export function FeedbackForm({ onSuccess }: FeedbackFormProps) {
+  const t = useTranslations('feedback');
   const { currentStudyId } = useStudy();
   const [submitting, setSubmitting] = useState(false);
+
+  const categoryOptions: { value: FeedbackCategory; label: string }[] = [
+    { value: 'GENERAL', label: t('feedbackForm.categoryGeneral') },
+    { value: 'FEATURE', label: t('feedbackForm.categoryFeature') },
+    { value: 'UX', label: t('feedbackForm.categoryUx') },
+  ];
 
   const {
     register,
@@ -57,11 +59,11 @@ export function FeedbackForm({ onSuccess }: FeedbackFormProps) {
         pageUrl: typeof window !== 'undefined' ? window.location.href : undefined,
       });
       eventTracker?.track('feedback:submit', { meta: { category: data.category } });
-      toast.success('피드백을 보내주셔서 감사합니다!');
+      toast.success(t('feedbackForm.submitSuccess'));
       reset();
       onSuccess?.();
     } catch {
-      toast.error('피드백 전송에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      toast.error(t('feedbackForm.submitError'));
     } finally {
       setSubmitting(false);
     }
@@ -75,10 +77,10 @@ export function FeedbackForm({ onSuccess }: FeedbackFormProps) {
           className="mb-1.5 block text-[12px] font-medium"
           style={{ color: 'var(--text-2)' }}
         >
-          카테고리
+          {t('feedbackForm.categoryLabel')}
         </label>
         <div className="flex gap-2">
-          {CATEGORY_OPTIONS.map((opt) => (
+          {categoryOptions.map((opt) => (
             <button
               key={opt.value}
               type="button"
@@ -112,13 +114,13 @@ export function FeedbackForm({ onSuccess }: FeedbackFormProps) {
           className="mb-1.5 block text-[12px] font-medium"
           style={{ color: 'var(--text-2)' }}
         >
-          내용
+          {t('feedbackForm.contentLabel')}
         </label>
         <textarea
           id="feedback-content"
           {...register('content')}
           rows={5}
-          placeholder="의견을 자유롭게 작성해주세요..."
+          placeholder={t('feedbackForm.contentPlaceholder')}
           className="w-full resize-none rounded-card border px-3 py-2 text-[13px] outline-none transition-colors focus:ring-2"
           style={{
             background: 'var(--bg)',
@@ -143,7 +145,7 @@ export function FeedbackForm({ onSuccess }: FeedbackFormProps) {
         style={{ background: 'var(--primary)' }}
       >
         <Send className="h-3.5 w-3.5" aria-hidden />
-        {submitting ? '전송 중...' : '피드백 보내기'}
+        {submitting ? t('feedbackForm.submitting') : t('feedbackForm.submit')}
       </button>
     </form>
   );

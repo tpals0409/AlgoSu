@@ -4,7 +4,8 @@
  * @layer component
  */
 
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { renderWithI18n } from '@/test-utils/i18n';
 import { FeedbackForm } from '../FeedbackForm';
 
 // ── Mocks ──
@@ -46,7 +47,7 @@ describe('FeedbackForm', () => {
   });
 
   it('기본 렌더링 — 카테고리 버튼 3개 + 내용 텍스트영역 + 제출 버튼', () => {
-    render(<FeedbackForm />);
+    renderWithI18n(<FeedbackForm />);
     expect(screen.getByText('일반')).toBeInTheDocument();
     expect(screen.getByText('기능 요청')).toBeInTheDocument();
     expect(screen.getByText('UX 개선')).toBeInTheDocument();
@@ -55,7 +56,7 @@ describe('FeedbackForm', () => {
   });
 
   it('카테고리를 FEATURE로 전환하면 해당 카테고리로 API 호출', async () => {
-    render(<FeedbackForm />);
+    renderWithI18n(<FeedbackForm />);
 
     // 기능 요청 카테고리 선택
     fireEvent.click(screen.getByText('기능 요청'));
@@ -77,7 +78,7 @@ describe('FeedbackForm', () => {
   });
 
   it('카테고리를 UX로 전환하면 해당 카테고리로 API 호출', async () => {
-    render(<FeedbackForm />);
+    renderWithI18n(<FeedbackForm />);
 
     fireEvent.click(screen.getByText('UX 개선'));
 
@@ -98,7 +99,7 @@ describe('FeedbackForm', () => {
   it('API 실패 시 에러 toast를 표시한다', async () => {
     mockCreate.mockRejectedValue(new Error('server error'));
 
-    render(<FeedbackForm />);
+    renderWithI18n(<FeedbackForm />);
 
     fireEvent.change(screen.getByLabelText('내용'), {
       target: { value: '테스트 피드백 내용입니다.' },
@@ -115,7 +116,7 @@ describe('FeedbackForm', () => {
 
   it('onSuccess 콜백을 호출한다', async () => {
     const onSuccess = jest.fn();
-    render(<FeedbackForm onSuccess={onSuccess} />);
+    renderWithI18n(<FeedbackForm onSuccess={onSuccess} />);
 
     fireEvent.change(screen.getByLabelText('내용'), {
       target: { value: '좋은 서비스입니다! 잘 사용하고 있습니다.' },
@@ -129,7 +130,7 @@ describe('FeedbackForm', () => {
   });
 
   it('2000자 초과 시 유효성 에러', async () => {
-    render(<FeedbackForm />);
+    renderWithI18n(<FeedbackForm />);
 
     const longText = 'x'.repeat(2001);
     fireEvent.change(screen.getByLabelText('내용'), {
