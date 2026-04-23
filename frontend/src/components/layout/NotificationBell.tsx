@@ -158,12 +158,11 @@ export function NotificationBell(props?: { placement?: 'sidebar' | 'header' }): 
   const { sseDisconnected } = useNotificationSSE(true, handleSSENotification);
 
   // Build accessible aria-label for bell button
-  const bellAriaLabel = (() => {
-    let label = t('notificationBell.label');
-    if (unreadCount > 0) label += ` ${t('notificationBell.ariaLabelUnread', { count: unreadCount })}`;
-    if (sseDisconnected) label += ` ${t('notificationBell.ariaLabelDisconnected')}`;
-    return label;
-  })();
+  const bellAriaLabel = [
+    t('notificationBell.label'),
+    unreadCount > 0 ? t('notificationBell.ariaLabelUnread', { count: unreadCount }) : null,
+    sseDisconnected ? t('notificationBell.ariaLabelDisconnected') : null,
+  ].filter(Boolean).join(' ');
 
   /**
    * Bell toggle
