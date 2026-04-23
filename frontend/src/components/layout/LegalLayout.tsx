@@ -1,25 +1,23 @@
 /**
- * @file Legal page common layout (privacy, terms)
+ * @file Legal page common layout (privacy, terms) — Server Component
  * @domain common
  * @layer layout
  * @related /privacy, /terms
  */
 
-'use client';
-
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { useTranslations } from 'next-intl';
+import { getTranslations } from 'next-intl/server';
 
 interface LegalLayoutProps {
   readonly children: ReactNode;
 }
 
 /**
- * Legal document page layout — Nav + Main + Footer
+ * Legal document page layout — Nav + Main + Footer (Server Component)
  */
-export function LegalLayout({ children }: LegalLayoutProps): ReactNode {
-  const t = useTranslations('layout');
+export async function LegalLayout({ children }: LegalLayoutProps): Promise<ReactNode> {
+  const t = await getTranslations({ namespace: 'layout' });
 
   return (
     <div className="flex min-h-screen flex-col bg-bg text-text">
