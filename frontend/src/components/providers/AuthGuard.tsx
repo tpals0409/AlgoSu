@@ -2,17 +2,29 @@
  * @file 인증 가드 Provider
  * @domain common
  * @layer component
+ * @related src/i18n/routing.ts, src/middleware.ts
  *
  * 자식 렌더링 전 인증 상태를 검증한다.
  * 미인증 시 /login으로 리디렉트, 로딩 중 Skeleton 표시.
+ *
+ * next-intl usePathname을 사용하여 locale prefix를 제거한 경로를
+ * redirect 파라미터로 전달 — locale 중립 경로로 로그인 후 복귀 보장.
  */
 
 'use client';
 
 import { useEffect, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { createNavigation } from 'next-intl/navigation';
+import { routing } from '@/i18n/routing';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/Skeleton';
+
+/**
+ * locale prefix를 제거한 경로를 반환하는 next-intl 탐색 헬퍼.
+ * /en/dashboard → /dashboard, /dashboard → /dashboard
+ */
+const { usePathname } = createNavigation(routing);
 
 interface AuthGuardProps {
   readonly children: ReactNode;
@@ -20,14 +32,15 @@ interface AuthGuardProps {
 
 export function AuthGuard({ children }: AuthGuardProps): ReactNode {
   const router = useRouter();
+  const pathname = usePathname();
   const { isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      const redirect = encodeURIComponent(window.location.pathname);
+      const redirect = encodeURIComponent(pathname);
       router.replace(`/login?redirect=${redirect}`);
     }
-  }, [isLoading, isAuthenticated, router]);
+  }, [isLoading, isAuthenticated, router, pathname]);
 
   if (isLoading) {
     return (

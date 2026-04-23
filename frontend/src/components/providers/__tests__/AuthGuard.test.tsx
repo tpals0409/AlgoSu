@@ -7,6 +7,17 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),
 }));
 
+// next-intl createNavigation → usePathname: locale prefix 제거된 경로 반환 mock
+let mockPathname = '/';
+jest.mock('next-intl/navigation', () => ({
+  createNavigation: () => ({
+    usePathname: () => mockPathname,
+    useRouter: () => ({}),
+    Link: () => null,
+    redirect: () => null,
+  }),
+}));
+
 const mockUseAuth = jest.fn();
 jest.mock('@/contexts/AuthContext', () => ({
   useAuth: () => mockUseAuth(),
