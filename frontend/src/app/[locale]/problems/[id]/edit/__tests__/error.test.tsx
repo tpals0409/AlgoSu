@@ -1,47 +1,46 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/react';
+import { renderWithI18n } from '@/test-utils/i18n';
 import ProblemEditErrorPage from '../error';
 
-jest.mock('next/link', () => {
-  const MockLink = ({ children, href }: { children: React.ReactNode; href: string }) => (
-    <a href={href}>{children}</a>
-  );
-  MockLink.displayName = 'MockLink';
-  return MockLink;
-});
+jest.mock('@/i18n/navigation', () => ({
+  Link: ({ children, href, ...rest }: { children: React.ReactNode; href: string; [key: string]: unknown }) => (
+    <a href={href} {...rest}>{children}</a>
+  ),
+}));
 
 describe('ProblemEditErrorPage', () => {
   const mockReset = jest.fn();
-  const mockError = new Error('테스트 오류');
+  const mockError = new Error('test error');
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('오류 제목이 렌더링된다', () => {
-    render(<ProblemEditErrorPage error={mockError} reset={mockReset} />);
-    expect(screen.getByText('문제 수정 오류')).toBeInTheDocument();
+    renderWithI18n(<ProblemEditErrorPage error={mockError} reset={mockReset} />);
+    expect(screen.getByText('문제 오류')).toBeInTheDocument();
   });
 
   it('오류 설명 메시지가 렌더링된다', () => {
-    render(<ProblemEditErrorPage error={mockError} reset={mockReset} />);
-    expect(screen.getByText('문제 수정 페이지를 불러올 수 없습니다.')).toBeInTheDocument();
+    renderWithI18n(<ProblemEditErrorPage error={mockError} reset={mockReset} />);
+    expect(screen.getByText('문제를 불러올 수 없습니다.')).toBeInTheDocument();
   });
 
   it('다시 시도 버튼이 렌더링된다', () => {
-    render(<ProblemEditErrorPage error={mockError} reset={mockReset} />);
+    renderWithI18n(<ProblemEditErrorPage error={mockError} reset={mockReset} />);
     expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
   });
 
   it('다시 시도 버튼 클릭 시 reset이 호출된다', () => {
-    render(<ProblemEditErrorPage error={mockError} reset={mockReset} />);
+    renderWithI18n(<ProblemEditErrorPage error={mockError} reset={mockReset} />);
     fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
     expect(mockReset).toHaveBeenCalledTimes(1);
   });
 
-  it('문제 목록으로 링크가 렌더링된다', () => {
-    render(<ProblemEditErrorPage error={mockError} reset={mockReset} />);
-    const link = screen.getByRole('link', { name: '문제 목록으로' });
+  it('홈으로 돌아가기 링크가 렌더링된다', () => {
+    renderWithI18n(<ProblemEditErrorPage error={mockError} reset={mockReset} />);
+    const link = screen.getByRole('link', { name: '홈으로 돌아가기' });
     expect(link).toBeInTheDocument();
-    expect(link).toHaveAttribute('href', '/problems');
+    expect(link).toHaveAttribute('href', '/');
   });
 });
