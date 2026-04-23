@@ -2,13 +2,18 @@
  * @file 인증 가드 Provider
  * @domain common
  * @layer component
- * @related src/i18n/routing.ts, src/middleware.ts
+ * @related src/i18n/routing.ts, src/middleware.ts, src/app/[locale]/layout.tsx
  *
  * 자식 렌더링 전 인증 상태를 검증한다.
  * 미인증 시 /login으로 리디렉트, 로딩 중 Skeleton 표시.
  *
  * next-intl usePathname을 사용하여 locale prefix를 제거한 경로를
  * redirect 파라미터로 전달 — locale 중립 경로로 로그인 후 복귀 보장.
+ *
+ * @constraint NextIntlClientProvider 컨텍스트 필수 — [locale] 세그먼트 하위에서만 동작.
+ *   createNavigation(routing).usePathname()은 내부적으로 useLocale()을 호출하며,
+ *   NextIntlClientProvider가 상위 트리에 없으면 런타임 에러가 발생한다.
+ *   app/layout.tsx(root) 또는 [locale] 트리 밖에서 사용 금지.
  */
 
 'use client';
