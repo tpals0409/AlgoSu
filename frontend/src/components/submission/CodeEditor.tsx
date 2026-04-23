@@ -15,7 +15,7 @@ import {
 } from 'react';
 import dynamic from 'next/dynamic';
 import { useTheme } from 'next-themes';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import type { BeforeMount, OnMount } from '@monaco-editor/react';
 import { Send, RotateCcw, Minus, Plus, Maximize2, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -124,6 +124,7 @@ export function CodeEditor({
 }: CodeEditorProps): ReactNode {
   const { resolvedTheme } = useTheme();
   const t = useTranslations('submissions');
+  const locale = useLocale();
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fontSize, setFontSize] = useState(13);
@@ -402,7 +403,7 @@ export function CodeEditor({
             {/* Deadline display — desktop only */}
             {deadline && (
               <span className="hidden sm:inline text-[11px] text-text-3">
-                {t('editor.deadline.label')}: {new Date(deadline).toLocaleString('ko-KR')}
+                {t('editor.deadline.label')}: {new Date(deadline).toLocaleString(locale)}
               </span>
             )}
             {/* Fullscreen toggle */}
