@@ -32,6 +32,11 @@
     "submitting": "Submitting...",
     "verifying": "Verifying..."
   },
+  "language": {
+    "switcher": "Switch language",
+    "ko": "Korean",
+    "en": "English"
+  },
   "empty": {
     "default": "No items to display.",
     "noResults": "No results found."

@@ -32,6 +32,11 @@
     "submitting": "제출 중...",
     "verifying": "인증 확인 중..."
   },
+  "language": {
+    "switcher": "언어 전환",
+    "ko": "한국어",
+    "en": "English"
+  },
   "empty": {
     "default": "표시할 항목이 없습니다.",
     "noResults": "검색 결과가 없습니다."
