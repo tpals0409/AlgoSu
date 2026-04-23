@@ -93,5 +93,64 @@
       "description": "GitHub을 연동하면 제출 코드가 자동으로 GitHub에 동기화됩니다.",
       "link": "GitHub 연동하기"
     }
+  },
+  "addModal": {
+    "platform": {
+      "boj": "백준",
+      "programmers": "프로그래머스",
+      "aria": "출처 플랫폼 선택"
+    },
+    "search": {
+      "placeholderBoj": "문제 번호 또는 제목으로 검색…",
+      "placeholderProgrammers": "프로그래머스 문제 검색…",
+      "helperBoj": "solved.ac 기반으로 검색됩니다.",
+      "helperProgrammers": "프로그래머스 문제를 검색합니다.",
+      "emptyTitleBoj": "백준 문제를 검색하세요",
+      "emptyTitleProgrammers": "프로그래머스 문제를 검색하세요",
+      "emptyHintBoj": "문제 번호(예: 1000) 또는 문제 이름을 입력하세요.",
+      "emptyHintProgrammers": "문제 이름(예: 폰켓몬)을 입력하세요.",
+      "noResults": "검색 결과가 없습니다",
+      "noResultsHint": "다른 키워드로 검색해보세요.",
+      "solvedCount": "{count}명 해결"
+    },
+    "header": {
+      "searchTitleBoj": "백준 문제 검색",
+      "searchTitleProgrammers": "프로그래머스 문제 검색",
+      "confirmTitle": "문제 추가",
+      "searchDescription": "추가할 문제를 검색하여 선택하세요.",
+      "confirmDescription": "주차와 마감일을 설정하세요."
+    },
+    "confirm": {
+      "back": "검색으로 돌아가기",
+      "weekLabel": "주차 *",
+      "weekPlaceholder": "주차를 선택하세요",
+      "deadlineLabel": "마감일 *",
+      "deadlinePlaceholder": "요일을 선택하세요",
+      "deadlinePlaceholderDisabled": "주차를 먼저 선택하세요",
+      "backButton": "뒤로",
+      "adding": "추가 중...",
+      "addButton": "문제 추가",
+      "weekFormat": "{month}월{week}주차",
+      "dateFormat": "{dayName}요일 ({month}/{day})"
+    },
+    "dayNames": {
+      "sun": "일",
+      "mon": "월",
+      "tue": "화",
+      "wed": "수",
+      "thu": "목",
+      "fri": "금",
+      "sat": "토"
+    },
+    "validation": {
+      "weekRequired": "주차를 입력하세요.",
+      "deadlineRequired": "마감일을 선택하세요.",
+      "deadlinePast": "과거 날짜는 선택할 수 없습니다."
+    },
+    "error": {
+      "searchFailed": "검색 결과를 불러오지 못했습니다. 다시 시도해주세요.",
+      "searchError": "검색 중 오류가 발생했습니다. 다시 시도해주세요.",
+      "addFailed": "문제 추가에 실패했습니다."
+    }
   }
 }

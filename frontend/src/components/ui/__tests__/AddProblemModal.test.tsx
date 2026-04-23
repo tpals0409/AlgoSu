@@ -1,13 +1,14 @@
 /**
- * @file AddProblemModal 플랫폼 토글 + SQL 자동 태깅 테스트
+ * @file AddProblemModal platform toggle + SQL auto-tagging tests
  * @domain problem
  * @layer component
  * @related AddProblemModal, solvedacApi, programmersApi, CreateProblemData
  */
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { screen, fireEvent, act } from '@testing-library/react';
+import { renderWithI18n } from '@/test-utils/i18n';
 
-// ── lucide-react 아이콘 경량 mock ──────────────────
+// ── lucide-react icon lightweight mock ──────────────────
 jest.mock('lucide-react', () => {
   const Icon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />;
   return {
@@ -39,14 +40,14 @@ jest.mock('@/contexts/StudyContext', () => ({
 import { problemApi } from '@/lib/api';
 import { AddProblemModal } from '../AddProblemModal';
 
-describe('AddProblemModal — 플랫폼 토글', () => {
+describe('AddProblemModal — platform toggle', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useRealTimers();
   });
 
-  it('모달이 열리면 기본 플랫폼이 PROGRAMMERS 토글이 활성화되어 있다', () => {
-    render(<AddProblemModal open={true} onClose={jest.fn()} />);
+  it('opens with PROGRAMMERS tab active by default', () => {
+    renderWithI18n(<AddProblemModal open={true} onClose={jest.fn()} />);
 
     const tabs = screen.getAllByRole('tab');
     const programmersTab = tabs.find((t) => t.textContent === '프로그래머스');
@@ -58,48 +59,48 @@ describe('AddProblemModal — 플랫폼 토글', () => {
     expect(bojTab!.getAttribute('aria-selected')).toBe('false');
   });
 
-  it('플랫폼 토글 전환 시 보조 문구가 변경된다', () => {
-    render(<AddProblemModal open={true} onClose={jest.fn()} />);
+  it('changes helper text when platform toggle is switched', () => {
+    renderWithI18n(<AddProblemModal open={true} onClose={jest.fn()} />);
 
-    // 초기 상태: PROGRAMMERS — '프로그래머스' 보조 문구
+    // Initial state: PROGRAMMERS helper text
     expect(screen.getByText('프로그래머스 문제를 검색합니다.')).toBeTruthy();
 
-    // BOJ 탭 클릭
+    // Click BOJ tab
     const bojTab = screen.getAllByRole('tab').find((t) => t.textContent === '백준')!;
     fireEvent.click(bojTab);
 
-    // BOJ — 'solved.ac' 보조 문구
+    // BOJ helper text
     expect(screen.getByText('solved.ac 기반으로 검색됩니다.')).toBeTruthy();
 
-    // 다시 PROGRAMMERS 탭 클릭
+    // Click PROGRAMMERS tab again
     const programmersTab = screen.getAllByRole('tab').find((t) => t.textContent === '프로그래머스')!;
     fireEvent.click(programmersTab);
 
     expect(screen.getByText('프로그래머스 문제를 검색합니다.')).toBeTruthy();
   });
 
-  it('searchFn이 올바른 플랫폼의 API를 호출한다', async () => {
+  it('calls the correct platform API for search', async () => {
     jest.useFakeTimers();
 
-    // 검색 결과 빈 배열 반환
+    // Return empty results
     mockSearchByQueryProgrammers.mockResolvedValue({ items: [] });
     mockSearchByQuerySolvedac.mockResolvedValue({ items: [] });
 
-    render(<AddProblemModal open={true} onClose={jest.fn()} />);
+    renderWithI18n(<AddProblemModal open={true} onClose={jest.fn()} />);
 
-    // PROGRAMMERS 상태에서 검색 입력
+    // Search in PROGRAMMERS mode
     const input = screen.getByPlaceholderText('프로그래머스 문제 검색…');
-    fireEvent.change(input, { target: { value: '폰켓몬' } });
+    fireEvent.change(input, { target: { value: 'test' } });
 
-    // 디바운스 400ms 경과
+    // Debounce 400ms
     await act(async () => {
       jest.advanceTimersByTime(400);
     });
 
-    expect(mockSearchByQueryProgrammers).toHaveBeenCalledWith('폰켓몬', 1);
+    expect(mockSearchByQueryProgrammers).toHaveBeenCalledWith('test', 1);
     expect(mockSearchByQuerySolvedac).not.toHaveBeenCalled();
 
-    // BOJ 탭으로 전환 후 검색
+    // Switch to BOJ tab and search
     const bojTab = screen.getAllByRole('tab').find((t) => t.textContent === '백준')!;
     fireEvent.click(bojTab);
 
@@ -114,12 +115,12 @@ describe('AddProblemModal — 플랫폼 토글', () => {
   });
 });
 
-// ── SQL 자동 태깅 + 배지 ─────────────────────────────────────────────────────
+// ── SQL auto-tagging + badge ─────────────────────────────────────────────────────
 
-/** SQL 카테고리 검색 결과 픽스처 */
+/** SQL category search result fixture */
 const SQL_ITEM = {
   problemId: 59034,
-  title: '모든 레코드 조회하기',
+  title: 'SELECT ALL',
   level: 1,
   difficulty: 'BRONZE' as const,
   sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/59034',
@@ -127,18 +128,18 @@ const SQL_ITEM = {
   category: 'sql' as const,
 };
 
-/** algorithm 카테고리 검색 결과 픽스처 */
+/** Algorithm category search result fixture */
 const ALGO_ITEM = {
   problemId: 42576,
-  title: '완주하지 못한 선수',
+  title: 'Incomplete Runner',
   level: 1,
   difficulty: 'BRONZE' as const,
   sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/42576',
-  tags: ['해시'],
+  tags: ['hash'],
   category: 'algorithm' as const,
 };
 
-describe('AddProblemModal — SQL 배지', () => {
+describe('AddProblemModal — SQL badge', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
@@ -148,12 +149,12 @@ describe('AddProblemModal — SQL 배지', () => {
     jest.useRealTimers();
   });
 
-  it('SQL 카테고리 검색 결과에 SQL 배지가 렌더링된다', async () => {
+  it('renders SQL badge for SQL category results', async () => {
     mockSearchByQueryProgrammers.mockResolvedValue({
       items: [SQL_ITEM],
     });
 
-    render(<AddProblemModal open={true} onClose={jest.fn()} />);
+    renderWithI18n(<AddProblemModal open={true} onClose={jest.fn()} />);
 
     const input = screen.getByPlaceholderText('프로그래머스 문제 검색…');
     fireEvent.change(input, { target: { value: 'SQL' } });
@@ -166,28 +167,28 @@ describe('AddProblemModal — SQL 배지', () => {
     expect(badges.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('algorithm 카테고리 검색 결과에는 SQL 배지가 없다', async () => {
+  it('does not render SQL badge for algorithm category results', async () => {
     mockSearchByQueryProgrammers.mockResolvedValue({
       items: [ALGO_ITEM],
     });
 
-    render(<AddProblemModal open={true} onClose={jest.fn()} />);
+    renderWithI18n(<AddProblemModal open={true} onClose={jest.fn()} />);
 
     const input = screen.getByPlaceholderText('프로그래머스 문제 검색…');
-    fireEvent.change(input, { target: { value: '완주' } });
+    fireEvent.change(input, { target: { value: 'runner' } });
 
     await act(async () => {
       jest.advanceTimersByTime(400);
     });
 
-    expect(screen.getByText('완주하지 못한 선수')).toBeTruthy();
+    expect(screen.getByText('Incomplete Runner')).toBeTruthy();
     expect(screen.queryByText('SQL')).toBeNull();
   });
 });
 
 /**
- * 주차·마감일 선택 후 "문제 추가" 클릭 헬퍼.
- * 마감일 검증(과거 날짜 거부)을 우회하기 위해 마지막 옵션을 선택한다.
+ * Select week + deadline then click "Add Problem" helper.
+ * Picks last options to avoid past-date validation rejection.
  */
 async function selectWeekAndSubmit() {
   const selects = screen.getAllByRole('combobox');
@@ -212,20 +213,20 @@ async function selectWeekAndSubmit() {
   });
 }
 
-describe('AddProblemModal — SQL 자동 태깅 로직', () => {
+describe('AddProblemModal — SQL auto-tagging logic', () => {
   const mockCreate = problemApi.create as jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
-    /* 월 초로 고정 — 마감일이 과거가 되지 않도록 */
+    /* Pin to start of month so deadlines are not in the past */
     jest.setSystemTime(new Date('2026-04-01T09:00:00'));
     mockCreate.mockResolvedValue({
       id: 'created-1',
       title: SQL_ITEM.title,
       difficulty: 'BRONZE',
       level: 1,
-      weekNumber: '4월1주차',
+      weekNumber: '4月1周次',
       deadline: '2026-04-05T14:59:59.000Z',
       tags: ['SQL'],
       sourceUrl: SQL_ITEM.sourceUrl,
@@ -237,12 +238,12 @@ describe('AddProblemModal — SQL 자동 태깅 로직', () => {
     jest.useRealTimers();
   });
 
-  it('SQL 카테고리 문제 선택 시 allowedLanguages=["sql"] 및 tags에 SQL 포함', async () => {
+  it('includes allowedLanguages=["sql"] and SQL tag for SQL category problems', async () => {
     mockSearchByQueryProgrammers.mockResolvedValue({
       items: [SQL_ITEM],
     });
 
-    render(<AddProblemModal open={true} onClose={jest.fn()} />);
+    renderWithI18n(<AddProblemModal open={true} onClose={jest.fn()} />);
 
     const input = screen.getByPlaceholderText('프로그래머스 문제 검색…');
     fireEvent.change(input, { target: { value: 'SQL' } });
@@ -251,7 +252,7 @@ describe('AddProblemModal — SQL 자동 태깅 로직', () => {
       jest.advanceTimersByTime(400);
     });
 
-    fireEvent.click(screen.getByText('모든 레코드 조회하기'));
+    fireEvent.click(screen.getByText('SELECT ALL'));
 
     await selectWeekAndSubmit();
 
@@ -261,7 +262,7 @@ describe('AddProblemModal — SQL 자동 태깅 로직', () => {
     expect(createArg.tags).toContain('SQL');
   });
 
-  it('algorithm 카테고리 문제 선택 시 allowedLanguages 미설정', async () => {
+  it('does not include allowedLanguages for algorithm category problems', async () => {
     mockSearchByQueryProgrammers.mockResolvedValue({
       items: [ALGO_ITEM],
     });
@@ -270,23 +271,23 @@ describe('AddProblemModal — SQL 자동 태깅 로직', () => {
       title: ALGO_ITEM.title,
       difficulty: 'BRONZE',
       level: 1,
-      weekNumber: '4월1주차',
+      weekNumber: '4月1周次',
       deadline: '2026-04-05T14:59:59.000Z',
-      tags: ['해시'],
+      tags: ['hash'],
       sourceUrl: ALGO_ITEM.sourceUrl,
       sourcePlatform: 'PROGRAMMERS',
     });
 
-    render(<AddProblemModal open={true} onClose={jest.fn()} />);
+    renderWithI18n(<AddProblemModal open={true} onClose={jest.fn()} />);
 
     const input = screen.getByPlaceholderText('프로그래머스 문제 검색…');
-    fireEvent.change(input, { target: { value: '완주' } });
+    fireEvent.change(input, { target: { value: 'runner' } });
 
     await act(async () => {
       jest.advanceTimersByTime(400);
     });
 
-    fireEvent.click(screen.getByText('완주하지 못한 선수'));
+    fireEvent.click(screen.getByText('Incomplete Runner'));
 
     await selectWeekAndSubmit();
 

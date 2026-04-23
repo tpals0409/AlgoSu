@@ -93,5 +93,64 @@
       "description": "Link GitHub to automatically sync your submitted code.",
       "link": "Link GitHub"
     }
+  },
+  "addModal": {
+    "platform": {
+      "boj": "BOJ",
+      "programmers": "Programmers",
+      "aria": "Select source platform"
+    },
+    "search": {
+      "placeholderBoj": "Search by problem number or title...",
+      "placeholderProgrammers": "Search Programmers problems...",
+      "helperBoj": "Powered by solved.ac search.",
+      "helperProgrammers": "Search Programmers problems.",
+      "emptyTitleBoj": "Search for BOJ problems",
+      "emptyTitleProgrammers": "Search for Programmers problems",
+      "emptyHintBoj": "Enter a problem number (e.g., 1000) or title.",
+      "emptyHintProgrammers": "Enter a problem name (e.g., Ponkemon).",
+      "noResults": "No results found",
+      "noResultsHint": "Try a different keyword.",
+      "solvedCount": "{count} solved"
+    },
+    "header": {
+      "searchTitleBoj": "Search BOJ Problems",
+      "searchTitleProgrammers": "Search Programmers Problems",
+      "confirmTitle": "Add Problem",
+      "searchDescription": "Search and select a problem to add.",
+      "confirmDescription": "Set the week and deadline."
+    },
+    "confirm": {
+      "back": "Back to search",
+      "weekLabel": "Week *",
+      "weekPlaceholder": "Select a week",
+      "deadlineLabel": "Deadline *",
+      "deadlinePlaceholder": "Select a day",
+      "deadlinePlaceholderDisabled": "Select a week first",
+      "backButton": "Back",
+      "adding": "Adding...",
+      "addButton": "Add Problem",
+      "weekFormat": "Month {month} Week {week}",
+      "dateFormat": "{dayName} ({month}/{day})"
+    },
+    "dayNames": {
+      "sun": "Sun",
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat"
+    },
+    "validation": {
+      "weekRequired": "Please select a week.",
+      "deadlineRequired": "Please select a deadline.",
+      "deadlinePast": "Cannot select a past date."
+    },
+    "error": {
+      "searchFailed": "Failed to load search results. Please try again.",
+      "searchError": "An error occurred during search. Please try again.",
+      "addFailed": "Failed to add the problem."
+    }
   }
 }
