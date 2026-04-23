@@ -1,0 +1,144 @@
+{
+  "meta": {
+    "title": "제출 목록",
+    "description": "코드 제출 내역을 확인하세요."
+  },
+  "list": {
+    "heading": "제출 이력",
+    "subheading": "내가 제출한 코드와 AI 분석 결과를 확인하세요.",
+    "searchPlaceholder": "문제 검색...",
+    "statusPlaceholder": "상태 선택",
+    "difficultyAll": "전체",
+    "empty": {
+      "title": "제출 이력이 없습니다",
+      "description": "아직 제출한 코드가 없습니다. 문제를 풀어보세요!",
+      "action": "문제 목록"
+    },
+    "noResults": {
+      "title": "검색 결과가 없습니다",
+      "description": "필터 조건을 변경해 보세요.",
+      "resetFilter": "필터 초기화"
+    },
+    "statusFilter": {
+      "all": "전체",
+      "done": "분석 완료",
+      "aiQueued": "AI 분석 대기",
+      "githubQueued": "GitHub 동기화",
+      "dbSaved": "저장됨",
+      "failed": "실패"
+    },
+    "statusDisplay": {
+      "done": "분석 완료",
+      "aiQueued": "AI 분석 대기",
+      "githubQueued": "GitHub 동기화 중",
+      "dbSaved": "저장됨",
+      "failed": "실패"
+    },
+    "analyzing": "분석 중",
+    "problemFallback": "문제 {id}",
+    "ariaViewSubmission": "{title} 제출 보기"
+  },
+  "status": {
+    "heading": "제출 상태",
+    "backToProblem": "문제로 돌아가기",
+    "loadingInfo": "제출 정보를 불러오는 중...",
+    "loadError": "제출 정보를 불러오는 데 실패했습니다.",
+    "submissionId": "제출 ID",
+    "aiQuota": "AI {used}/{limit}회",
+    "stepStatus": {
+      "done": "완료",
+      "failed": "실패",
+      "inProgress": "진행 중",
+      "pending": "대기 중"
+    },
+    "overall": {
+      "done": {
+        "title": "제출 완료",
+        "description": "AI 분석이 완료되었습니다."
+      },
+      "githubTokenInvalid": {
+        "title": "GitHub 동기화 실패",
+        "description": "GitHub 계정 연동을 다시 확인해주세요."
+      },
+      "aiFailed": {
+        "title": "AI 분석 실패",
+        "description": "AI 분석 중 오류가 발생했습니다."
+      },
+      "aiDelayed": {
+        "title": "AI 분석 지연",
+        "description": "AI 분석이 지연되고 있습니다. 잠시 후 다시 확인해주세요."
+      },
+      "error": {
+        "title": "연결 오류",
+        "description": "실시간 상태 연결에 문제가 발생했습니다. 새로고침해 주세요."
+      },
+      "processing": {
+        "title": "처리 중",
+        "description": "제출을 처리하고 있습니다. 잠시 기다려주세요."
+      }
+    },
+    "github": {
+      "relinkNeeded": "GitHub 재연동이 필요합니다",
+      "relinkDescription": "GitHub 토큰이 만료되었거나 권한이 변경되었습니다. 재연동 후 다시 제출하면 코드가 GitHub에 자동으로 동기화됩니다.",
+      "relinking": "GitHub 연동 중...",
+      "relink": "GitHub 재연동",
+      "profileSettings": "프로필에서 설정"
+    },
+    "actions": {
+      "resubmit": "다시 제출",
+      "viewAnalysis": "AI 분석 보기",
+      "problemList": "문제 목록으로",
+      "refresh": "새로고침",
+      "updatingRealtime": "실시간으로 업데이트 중..."
+    }
+  },
+  "detail": {
+    "metaTitle": "제출 #{id}",
+    "metaDescription": "제출 {id}번의 상태와 분석 결과를 확인하세요."
+  },
+  "analysis": {
+    "heading": "AI 분석 결과",
+    "pageTitle": "AI 코드 분석",
+    "pageTitleWithProblem": "AI 코드 분석 | {title}",
+    "submissionFallback": "제출 {id}",
+    "viewProblem": "문제 보기",
+    "statusCompleted": "분석 완료",
+    "scoreUnit": "{score}점",
+    "timeComplexity": "시간 {value}",
+    "spaceComplexity": "공간 {value}",
+    "categories": {
+      "heading": "항목별 평가",
+      "efficiency": "효율성",
+      "readability": "가독성",
+      "correctness": "정확성",
+      "structure": "코드 구조",
+      "bestPractice": "모범 사례",
+      "style": "코드 스타일",
+      "maintainability": "유지보수성"
+    },
+    "optimizedCode": "AI 개선 코드",
+    "copy": "복사",
+    "copied": "복사됨",
+    "loading": "로딩 중...",
+    "codeUnavailable": "제출한 코드를 불러올 수 없습니다.",
+    "loadError": "AI 분석 결과를 불러오는 데 실패했습니다.",
+    "pending": {
+      "title": "AI 분석 중...",
+      "description": "분석이 완료되면 자동으로 결과가 표시됩니다.",
+      "elapsed": "경과 시간: {minutes}분 {seconds}초"
+    },
+    "delayed": {
+      "title": "분석 지연 중",
+      "description": "AI 분석 서비스가 일시적으로 지연되고 있습니다."
+    },
+    "timeout": {
+      "title": "분석이 예상보다 오래 걸리고 있습니다",
+      "description": "나중에 다시 확인해주세요."
+    },
+    "failed": {
+      "title": "분석 실패",
+      "description": "AI 분석 중 오류가 발생했습니다. 코드를 다시 제출하거나 관리자에게 문의해주세요."
+    },
+    "refresh": "새로고침"
+  }
+}
