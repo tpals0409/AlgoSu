@@ -22,12 +22,22 @@ const NAMESPACES = ['common', 'landing', 'auth', 'difficulty'] as const;
  */
 async function loadNamespace(
   locale: string,
-  ns: string,
+  ns: (typeof NAMESPACES)[number],
 ): Promise<AbstractIntlMessages> {
   try {
     const mod = await import(`../../messages/${locale}/${ns}.json`);
     return mod.default as AbstractIntlMessages;
-  } catch {
+  } catch (err: unknown) {
+    // eslint-disable-next-line no-console -- i18n 로드 실패 구조화 경고 (런타임 디버깅 필수)
+    console.warn(
+      JSON.stringify({
+        level: 'warn',
+        event: 'i18n_namespace_load_failed',
+        locale,
+        namespace: ns,
+        error: String(err),
+      }),
+    );
     return {};
   }
 }
