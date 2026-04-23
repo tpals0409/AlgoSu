@@ -1,11 +1,11 @@
 /**
- * @file Syntax Highlighted 코드 블록
+ * @file Syntax highlighted code block
  * @domain ui
  * @layer component
  * @related CodePanel, analysis/page
  *
- * react-syntax-highlighter (Prism) 기반.
- * 라이트/다크 테마 자동 전환.
+ * Based on react-syntax-highlighter (Prism).
+ * Automatic light/dark theme switching.
  */
 
 'use client';
