@@ -12,6 +12,7 @@
 
 import { useRef, useEffect, useMemo, type ReactElement } from 'react';
 import { MessageSquare } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
 // ─── TYPES ────────────────────────────────
@@ -60,6 +61,7 @@ export function CodePanel({
   onLineClick,
   selectedLine,
 }: CodePanelProps): ReactElement {
+  const t = useTranslations('reviews');
   const codeRef = useRef<HTMLDivElement>(null);
   const lines = code.split('\n');
 
@@ -93,7 +95,7 @@ export function CodePanel({
           solution.{language.toLowerCase()}
         </span>
         <span className="text-[10px] text-text-3">
-          {lines.length}줄
+          {t('codePanel.linesCount', { count: lines.length })}
         </span>
       </div>
 
@@ -156,7 +158,7 @@ export function CodePanel({
                 {hasComment && (
                   <MessageSquare
                     className="h-3 w-3 text-primary"
-                    aria-label="댓글 있음"
+                    aria-label={t('codePanel.hasComment')}
                   />
                 )}
               </div>
