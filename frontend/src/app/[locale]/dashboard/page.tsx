@@ -8,8 +8,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useTranslations } from 'next-intl';
+import { Link, useRouter } from '@/i18n/navigation';
 import dynamic from 'next/dynamic';
 import {
   FileText,
@@ -160,6 +160,7 @@ function StatCard({
 // ─── RENDER ──────────────────────────────
 
 export default function DashboardPage(): ReactNode {
+  const t = useTranslations('dashboard');
   const router = useRouter();
   const { isReady } = useRequireAuth();
   const { isStudyReady } = useRequireStudy();
@@ -215,14 +216,14 @@ export default function DashboardPage(): ReactNode {
       if (results[0].status === 'fulfilled' && results[0].value) {
         setStats(results[0].value as StudyStats);
       } else if (results[0].status === 'rejected') {
-        errors.stats = '통계를 불러올 수 없습니다.';
+        errors.stats = t('errors.stats');
       }
 
       if (results[1].status === 'fulfilled') {
         const paginated = results[1].value as { data: Submission[]; meta: unknown };
         setRecentSubmissions(paginated.data ?? []);
       } else {
-        errors.submissions = '최근 제출 목록을 불러올 수 없습니다.';
+        errors.submissions = t('errors.submissions');
       }
 
       if (results[2].status === 'fulfilled') {
@@ -230,27 +231,27 @@ export default function DashboardPage(): ReactNode {
         setActiveProblems(problems);
         setAllProblems(problems);
       } else {
-        errors.problems = '문제 목록을 불러올 수 없습니다.';
+        errors.problems = t('errors.problems');
       }
 
       if (results[3].status === 'fulfilled') {
         setMembers((results[3].value as StudyMember[]) ?? []);
       } else if (results[3].status === 'rejected') {
-        errors.members = '멤버 목록을 불러올 수 없습니다.';
+        errors.members = t('errors.members');
       }
 
       setSectionErrors(errors);
 
       const allFailed = results.every((r) => r.status === 'rejected');
       if (allFailed) {
-        setError('대시보드 데이터를 불러오는 데 실패했습니다.');
+        setError(t('errors.loadFailed'));
       }
     } catch {
-      setError('대시보드 데이터를 불러오는 데 실패했습니다.');
+      setError(t('errors.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [currentStudyId]);
+  }, [currentStudyId, t]);
 
 
   useEffect(() => {
@@ -411,11 +412,11 @@ export default function DashboardPage(): ReactNode {
   }, [stats, weekViewUserId, parseWeekKey, allProblems, activeProblemIds]);
 
   const getViewLabel = useCallback((userId: string | null) => {
-    if (userId === null) return '전체';
-    if (userId === myUserId) return '내 풀이';
+    if (userId === null) return t('weekView.all');
+    if (userId === myUserId) return t('weekView.mySubmissions');
     const member = members.find((m) => m.user_id === userId);
     return member?.nickname ?? member?.username ?? member?.email?.split('@')[0] ?? userId.slice(0, 8);
-  }, [members, myUserId]);
+  }, [members, myUserId, t]);
 
   const weekViewLabel = useMemo(() => getViewLabel(weekViewUserId), [weekViewUserId, getViewLabel]);
 
@@ -432,7 +433,7 @@ export default function DashboardPage(): ReactNode {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-bg">
         <LoadingSpinner size="lg" color="primary" />
-        <p className="text-sm text-text-3">로딩 중...</p>
+        <p className="text-sm text-text-3">{t('loading')}</p>
       </div>
     );
   }
@@ -455,11 +456,11 @@ export default function DashboardPage(): ReactNode {
               {(() => {
                 const me = myUserId ? members.find((m) => m.user_id === myUserId) : null;
                 const displayName = me?.nickname ?? user?.email?.split('@')[0];
-                return displayName ? `안녕하세요, ${displayName}님 👋` : '안녕하세요 👋';
+                return displayName ? t('greeting.hello', { name: displayName }) : t('greeting.helloDefault');
               })()}
             </h1>
             <p className="mt-0.5 text-xs text-text-3">
-              오늘도 꾸준히 성장하는 하루 되세요.
+              {t('greeting.sub')}
             </p>
           </div>
         </div>
@@ -469,7 +470,7 @@ export default function DashboardPage(): ReactNode {
             {error}
             <Button variant="ghost" size="sm" className="ml-2 h-auto px-2 py-0.5 text-inherit" onClick={() => void loadDashboard()}>
               <RefreshCw className="mr-1 h-3 w-3" aria-hidden />
-              다시 시도
+              {t('retry')}
             </Button>
           </Alert>
         )}
@@ -478,10 +479,10 @@ export default function DashboardPage(): ReactNode {
         {!currentStudyId && !isLoading && (
           <EmptyState
             icon={Users}
-            title="스터디에 가입하거나 새 스터디를 만들어보세요"
-            description="스터디에 참여하면 대시보드에서 제출 현황, 통계, 문제 목록을 확인할 수 있습니다."
+            title={t('empty.noStudy')}
+            description={t('empty.noStudyDesc')}
             action={{
-              label: '스터디 둘러보기',
+              label: t('empty.browseStudies'),
               onClick: () => router.push('/studies'),
               variant: 'primary',
             }}
@@ -495,18 +496,18 @@ export default function DashboardPage(): ReactNode {
               <div className="flex min-w-0 flex-1 items-center gap-3">
                 <Github className="h-5 w-5 shrink-0 text-warning" aria-hidden />
                 <div>
-                  <p className="text-[13px] font-medium text-text">GitHub 연동을 추천합니다</p>
-                  <p className="text-[11px] text-text-3">GitHub을 연동하면 제출 코드가 자동으로 GitHub에 동기화됩니다.</p>
+                  <p className="text-[13px] font-medium text-text">{t('cta.github')}</p>
+                  <p className="text-[11px] text-text-3">{t('cta.githubDesc')}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => router.push('/github-link')}>
-                  연동하기
+                  {t('cta.githubLink')}
                 </Button>
                 <button
                   type="button"
                   className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-3 transition-colors hover:bg-bg-alt hover:text-text"
-                  aria-label="배너 닫기"
+                  aria-label={t('cta.closeBanner')}
                   onClick={() => {
                     setBannerDismissed(true);
                     sessionStorage.setItem('algosu:github-banner-dismissed', 'true');
@@ -525,7 +526,7 @@ export default function DashboardPage(): ReactNode {
             {[sectionErrors.stats, sectionErrors.members].filter(Boolean).join(' ')}
             <Button variant="ghost" size="sm" className="ml-2 h-auto px-2 py-0.5 text-inherit" onClick={() => void loadDashboard()}>
               <RefreshCw className="mr-1 h-3 w-3" aria-hidden />
-              다시 시도
+              {t('retry')}
             </Button>
           </Alert>
         )}
@@ -535,7 +536,7 @@ export default function DashboardPage(): ReactNode {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-3.5 lg:grid-cols-4" style={fade(0.08)}>
             <StatCard
               icon={FileText}
-              label="제출 수"
+              label={t('stats.submissions')}
               value={statsLoading ? '' : myStats.count}
               loading={statsLoading}
               href="/submissions"
@@ -543,7 +544,7 @@ export default function DashboardPage(): ReactNode {
             />
             <StatCard
               icon={Users}
-              label={currentStudyName ?? '스터디'}
+              label={currentStudyName ?? t('stats.study')}
               value={statsLoading ? '' : members.length}
               loading={statsLoading}
               href={currentStudyId ? `/studies/${currentStudyId}` : undefined}
@@ -552,8 +553,8 @@ export default function DashboardPage(): ReactNode {
             />
             <StatCard
               icon={BarChart3}
-              label="통계"
-              value={statsLoading ? '' : <>{myAvgAIScore}<span className="font-sans">점</span></>}
+              label={t('stats.analytics')}
+              value={statsLoading ? '' : <>{myAvgAIScore}<span className="font-sans">{t('stats.scoreUnit')}</span></>}
               loading={statsLoading}
               href="/analytics"
               animRef={completionRef}
@@ -567,8 +568,8 @@ export default function DashboardPage(): ReactNode {
                     <MessageCircle className="h-4 w-4 text-white" aria-hidden />
                   </div>
                   <div className="min-w-0">
-                    <p className="whitespace-nowrap text-xl sm:text-[28px] font-bold leading-none tracking-tight text-white">스터디룸</p>
-                    <p className="mt-1 whitespace-nowrap text-xs font-medium text-white/70">입장하기</p>
+                    <p className="whitespace-nowrap text-xl sm:text-[28px] font-bold leading-none tracking-tight text-white">{t('studyRoom.title')}</p>
+                    <p className="mt-1 whitespace-nowrap text-xs font-medium text-white/70">{t('studyRoom.enter')}</p>
                   </div>
                 </div>
               </Card>
@@ -582,7 +583,7 @@ export default function DashboardPage(): ReactNode {
             {sectionErrors.problems}
             <Button variant="ghost" size="sm" className="ml-2 h-auto px-2 py-0.5 text-inherit" onClick={() => void loadDashboard()}>
               <RefreshCw className="mr-1 h-3 w-3" aria-hidden />
-              다시 시도
+              {t('retry')}
             </Button>
           </Alert>
         )}
@@ -605,7 +606,7 @@ export default function DashboardPage(): ReactNode {
               />
             ) : (
               <div className="rounded-card border border-border bg-bg-card p-6 shadow-card">
-                <p className="text-sm text-text-3">아직 제출 데이터가 없습니다.</p>
+                <p className="text-sm text-text-3">{t('empty.noData')}</p>
               </div>
             )}
 
@@ -625,7 +626,7 @@ export default function DashboardPage(): ReactNode {
             {sectionErrors.submissions}
             <Button variant="ghost" size="sm" className="ml-2 h-auto px-2 py-0.5 text-inherit" onClick={() => void loadDashboard()}>
               <RefreshCw className="mr-1 h-3 w-3" aria-hidden />
-              다시 시도
+              {t('retry')}
             </Button>
           </Alert>
         )}
