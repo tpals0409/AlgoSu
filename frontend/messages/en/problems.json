@@ -1,0 +1,97 @@
+{
+  "meta": {
+    "title": "Problems",
+    "description": "Browse study problems and submit your code."
+  },
+  "list": {
+    "heading": "Problems",
+    "subheading": "Browse study problems and submit your code.",
+    "searchPlaceholder": "Search problems...",
+    "filter": {
+      "statusPlaceholder": "Select status",
+      "all": "All",
+      "inProgress": "In Progress",
+      "finished": "Closed"
+    },
+    "difficultyAll": "All",
+    "empty": {
+      "title": "No problems found",
+      "description": "New problems will be added soon."
+    },
+    "noResults": {
+      "title": "No results found",
+      "description": "Try adjusting your filters.",
+      "resetFilter": "Reset filters"
+    },
+    "badge": {
+      "inProgress": "Active",
+      "finished": "Closed",
+      "deadline": "Closed"
+    },
+    "ariaViewProblem": "View problem: {title}",
+    "addProblem": "Add Problem"
+  },
+  "detail": {
+    "backToList": "Problems",
+    "error": "Failed to load problem.",
+    "notFound": "Problem not found.",
+    "deleteProblem": "Delete problem",
+    "deleteConfirm": {
+      "title": "Delete this problem?",
+      "description": "This action cannot be undone. All related submission data will also be deleted.",
+      "cancel": "Cancel",
+      "deleting": "Deleting...",
+      "delete": "Delete"
+    },
+    "status": {
+      "inProgress": "Active",
+      "lateSubmission": "Late",
+      "finished": "Closed"
+    },
+    "viewOnPlatform": "View on {platform}",
+    "deadline": {
+      "title": "Deadline Info",
+      "date": "Deadline",
+      "week": "Week",
+      "platform": "Platform"
+    },
+    "submissions": {
+      "title": "Submissions",
+      "empty": "No submissions yet.",
+      "late": "Late",
+      "scoreUnit": "{score}pts"
+    },
+    "deadlineFormat": "{month}/{day} ({dayName})",
+    "dayNames": {
+      "sun": "Sun",
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat"
+    }
+  },
+  "submit": {
+    "metaTitle": "Submit - Problem {problemId}",
+    "metaDescription": "Submit your code for problem {problemId}.",
+    "enterCode": "Please enter your code.",
+    "success": "Submitted successfully",
+    "successDescription": "AI analysis has started. Please wait a moment.",
+    "submitError": "An error occurred during submission.",
+    "deleteError": "An error occurred while deleting.",
+    "lateWarning": {
+      "title": "Late Submission",
+      "description": "The deadline has passed. Your submission will be recorded as late."
+    },
+    "closed": {
+      "title": "Submissions Closed",
+      "description": "This problem is closed. No more submissions are accepted."
+    },
+    "github": {
+      "title": "GitHub Not Linked",
+      "description": "Link GitHub to automatically sync your submitted code.",
+      "link": "Link GitHub"
+    }
+  }
+}

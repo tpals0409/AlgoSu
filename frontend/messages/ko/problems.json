@@ -1,0 +1,97 @@
+{
+  "meta": {
+    "title": "문제 목록",
+    "description": "스터디 문제를 확인하고 코드를 제출하세요."
+  },
+  "list": {
+    "heading": "문제 목록",
+    "subheading": "스터디 문제를 확인하고 코드를 제출하세요.",
+    "searchPlaceholder": "문제 검색...",
+    "filter": {
+      "statusPlaceholder": "상태 선택",
+      "all": "전체",
+      "inProgress": "진행 중",
+      "finished": "종료"
+    },
+    "difficultyAll": "전체",
+    "empty": {
+      "title": "등록된 문제가 없습니다",
+      "description": "곧 새로운 문제가 추가될 예정입니다."
+    },
+    "noResults": {
+      "title": "검색 결과가 없습니다",
+      "description": "필터 조건을 변경해 보세요.",
+      "resetFilter": "필터 초기화"
+    },
+    "badge": {
+      "inProgress": "진행 중",
+      "finished": "종료",
+      "deadline": "마감"
+    },
+    "ariaViewProblem": "{title} 문제 보기",
+    "addProblem": "문제 추가"
+  },
+  "detail": {
+    "backToList": "문제 목록",
+    "error": "문제를 불러오는 데 실패했습니다.",
+    "notFound": "문제를 찾을 수 없습니다.",
+    "deleteProblem": "문제 삭제",
+    "deleteConfirm": {
+      "title": "문제를 삭제하시겠습니까?",
+      "description": "이 작업은 되돌릴 수 없습니다. 관련 제출 데이터도 함께 삭제됩니다.",
+      "cancel": "취소",
+      "deleting": "삭제 중...",
+      "delete": "삭제"
+    },
+    "status": {
+      "inProgress": "진행 중",
+      "lateSubmission": "지각 제출",
+      "finished": "종료"
+    },
+    "viewOnPlatform": "{platform}에서 문제 보기",
+    "deadline": {
+      "title": "마감 정보",
+      "date": "마감일",
+      "week": "주차",
+      "platform": "플랫폼"
+    },
+    "submissions": {
+      "title": "제출 현황",
+      "empty": "아직 제출 데이터가 없습니다.",
+      "late": "지각",
+      "scoreUnit": "{score}점"
+    },
+    "deadlineFormat": "{month}월 {day}일 ({dayName})",
+    "dayNames": {
+      "sun": "일",
+      "mon": "월",
+      "tue": "화",
+      "wed": "수",
+      "thu": "목",
+      "fri": "금",
+      "sat": "토"
+    }
+  },
+  "submit": {
+    "metaTitle": "제출 - 문제 {problemId}",
+    "metaDescription": "문제 {problemId}번에 코드를 제출하세요.",
+    "enterCode": "코드를 입력해주세요.",
+    "success": "제출되었습니다",
+    "successDescription": "AI 분석이 시작됩니다. 잠시만 기다려주세요.",
+    "submitError": "제출 중 오류가 발생했습니다.",
+    "deleteError": "삭제 중 오류가 발생했습니다.",
+    "lateWarning": {
+      "title": "지각 제출",
+      "description": "마감 시간이 지났습니다. 지금 제출하면 지각으로 기록됩니다."
+    },
+    "closed": {
+      "title": "제출 마감",
+      "description": "이 문제는 마감되었습니다. 더 이상 제출할 수 없습니다."
+    },
+    "github": {
+      "title": "GitHub 미연동",
+      "description": "GitHub을 연동하면 제출 코드가 자동으로 GitHub에 동기화됩니다.",
+      "link": "GitHub 연동하기"
+    }
+  }
+}
