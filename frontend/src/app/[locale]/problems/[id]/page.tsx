@@ -125,7 +125,8 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
 
     void load();
     return () => { cancelled = true; };
-  }, [isAuthenticated, currentStudyId, problemId, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t는 stable ref; 데이터 재요청 트리거 불필요
+  }, [isAuthenticated, currentStudyId, problemId]);
 
   // ─── HANDLERS ─────────────────────────────
 

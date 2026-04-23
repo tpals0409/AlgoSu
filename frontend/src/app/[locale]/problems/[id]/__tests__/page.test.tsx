@@ -2,9 +2,54 @@ import { render, screen, act } from '@testing-library/react';
 import { Suspense } from 'react';
 import ProblemDetailPage from '../page';
 
+jest.mock('@/i18n/navigation', () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
+  usePathname: () => '/problems/test-id',
+  Link: ({ children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { children: React.ReactNode }) => <a {...props}>{children}</a>,
+}));
+
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
   usePathname: () => '/problems/test-id',
+}));
+
+jest.mock('next-intl', () => ({
+  useTranslations: () => (key: string, params?: Record<string, string | number>) => {
+    const map: Record<string, string> = {
+      'detail.backToList': '문제 목록',
+      'detail.error': '문제를 불러오는 데 실패했습니다.',
+      'detail.notFound': '문제를 찾을 수 없습니다.',
+      'detail.deleteProblem': '문제 삭제',
+      'detail.deleteConfirm.title': '문제를 삭제하시겠습니까?',
+      'detail.deleteConfirm.cancel': '취소',
+      'detail.deleteConfirm.deleting': '삭제 중...',
+      'detail.deleteConfirm.delete': '삭제',
+      'detail.status.inProgress': '진행 중',
+      'detail.status.lateSubmission': '지각 제출',
+      'detail.status.finished': '종료',
+      'detail.deadline.title': '마감 정보',
+      'detail.deadline.date': '마감일',
+      'detail.deadline.week': '주차',
+      'detail.deadline.platform': '플랫폼',
+      'detail.submissions.title': '제출 현황',
+      'detail.submissions.empty': '아직 제출 데이터가 없습니다.',
+      'detail.submissions.late': '지각',
+      'submit.enterCode': '코드를 입력해주세요.',
+      'submit.success': '제출되었습니다',
+      'submit.lateWarning.title': '지각 제출',
+      'submit.closed.title': '제출 마감',
+      'submit.github.title': 'GitHub 미연동',
+      'submit.github.link': 'GitHub 연동하기',
+    };
+    if (params) {
+      const tpl = map[key] ?? key;
+      return Object.entries(params).reduce(
+        (s, [k, v]) => s.replace(`{${k}}`, String(v)),
+        tpl,
+      );
+    }
+    return map[key] ?? key;
+  },
 }));
 
 jest.mock('next-themes', () => ({
