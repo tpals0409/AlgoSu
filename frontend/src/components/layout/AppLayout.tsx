@@ -1,12 +1,12 @@
 /**
- * @file 앱 레이아웃 (v3 사이드바 디자인)
+ * @file App layout (v3 sidebar design)
  * @domain common
  * @layer component
  * @related NotificationBell, AuthContext, StudyContext, LanguageSwitcher
  *
- * 데스크탑(>= md/768px): 왼쪽 220px 고정 사이드바
- * 모바일(< md/768px): 오른쪽 슬라이드 오버레이 사이드바 + 상단 모바일 헤더
- * 세션 만료 오버레이 포함.
+ * Desktop(>= md/768px): Left 220px fixed sidebar
+ * Mobile(< md/768px): Right slide overlay sidebar + top mobile header
+ * Includes session expired overlay.
  */
 
 'use client';
@@ -35,6 +35,7 @@ import {
   Shield,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { useTranslations } from 'next-intl';
 import { Toaster } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -48,12 +49,12 @@ import { getAvatarSrc, getAvatarPresetKey } from '@/lib/avatars';
 // ─── CONSTANTS ───────────────────────────────
 
 const NAV_ITEMS = [
-  { label: '대시보드', icon: LayoutDashboard, href: '/dashboard' },
-  { label: '내 스터디', icon: Users, href: '/studies' },
-  { label: '문제 목록', icon: BookOpen, href: '/problems' },
-  { label: '제출 이력', icon: FileText, href: '/submissions' },
-  { label: '스터디룸', icon: MessagesSquare, href: '/study-room' },
-  { label: '통계', icon: BarChart3, href: '/analytics' },
+  { labelKey: 'dashboard', icon: LayoutDashboard, href: '/dashboard' },
+  { labelKey: 'myStudies', icon: Users, href: '/studies' },
+  { labelKey: 'problems', icon: BookOpen, href: '/problems' },
+  { labelKey: 'submissions', icon: FileText, href: '/submissions' },
+  { labelKey: 'studyRoom', icon: MessagesSquare, href: '/study-room' },
+  { labelKey: 'analytics', icon: BarChart3, href: '/analytics' },
 ] as const;
 
 // ─── HELPERS ─────────────────────────────────
@@ -82,6 +83,7 @@ function SidebarStudySelector({
 }): ReactNode {
   const { currentStudyId, currentStudyName, studies, setCurrentStudy } =
     useStudy();
+  const t = useTranslations('layout');
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -89,7 +91,7 @@ function SidebarStudySelector({
   useClickOutside(ref, closeDropdown);
 
   const currentStudy = studies.find((s) => s.id === currentStudyId);
-  const displayName = currentStudy?.name ?? currentStudyName ?? '스터디 선택';
+  const displayName = currentStudy?.name ?? currentStudyName ?? t('appLayout.selectStudy');
 
   if (studies.length === 0) {
     return (
@@ -100,7 +102,7 @@ function SidebarStudySelector({
           className="flex w-full items-center gap-2 rounded-btn px-2 py-1.5 text-left text-[12px] font-medium text-text-2 transition-colors hover:bg-bg-alt hover:text-text"
         >
           <Plus className="h-4 w-4 shrink-0" aria-hidden />
-          스터디 선택
+          {t('appLayout.selectStudy')}
         </Link>
       </div>
     );
@@ -114,7 +116,7 @@ function SidebarStudySelector({
     >
       <button
         type="button"
-        aria-label="스터디 전환"
+        aria-label={t('appLayout.switchStudy')}
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
@@ -144,7 +146,7 @@ function SidebarStudySelector({
             {displayName}
           </p>
           <p className="text-[10px]" style={{ color: 'var(--text-3)' }}>
-            스터디 전환
+            {t('appLayout.switchStudy')}
           </p>
         </div>
         <ChevronDown
@@ -161,7 +163,7 @@ function SidebarStudySelector({
       {open && (
         <div
           role="listbox"
-          aria-label="스터디 목록"
+          aria-label={t('appLayout.studyList')}
           className="mt-1.5 overflow-hidden rounded-card border"
           style={{
             background: 'var(--bg)',
@@ -248,6 +250,7 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
   const { currentStudyId } = useStudy();
   const { theme, setTheme } = useTheme();
+  const t = useTranslations('layout');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const isDark = theme === 'dark';
@@ -318,7 +321,7 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
                 </Link>
                 <button
                   type="button"
-                  aria-label="사이드바 닫기"
+                  aria-label={t('appLayout.closeSidebar')}
                   onClick={closeSidebar}
                   className="rounded-btn p-1 md:hidden"
                   style={{ color: 'var(--text-3)' }}
@@ -348,7 +351,7 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
                       )}
                     >
                       <Icon className="h-4 w-4 shrink-0" aria-hidden />
-                      {item.label}
+                      {t(`appLayout.nav.${item.labelKey}`)}
                     </Link>
                   );
                 })}
@@ -364,7 +367,7 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
                 {/* Theme toggle */}
                 <button
                   type="button"
-                  aria-label="테마 전환"
+                  aria-label={t('appLayout.toggleTheme')}
                   onClick={() => setTheme(isDark ? 'light' : 'dark')}
                   className="flex w-full items-center gap-2.5 rounded-btn px-3 py-2 text-[13px] font-medium text-text-3 transition-all duration-150 hover:bg-bg-alt hover:text-text-2"
                 >
@@ -373,7 +376,7 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
                   ) : (
                     <Sun className="h-4 w-4 shrink-0" aria-hidden />
                   )}
-                  {isDark ? '다크 모드' : '라이트 모드'}
+                  {isDark ? t('appLayout.darkMode') : t('appLayout.lightMode')}
                 </button>
 
                 {/* Language switcher */}
@@ -395,7 +398,7 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
                   {user ? (
                     <Image
                       src={getAvatarSrc(user.avatarPreset ?? 'default')}
-                      alt={`${user.email} 아바타`}
+                      alt={t('appLayout.avatarAlt', { email: user.email })}
                       width={16}
                       height={16}
                       className="h-4 w-4 shrink-0 rounded-full"
@@ -403,10 +406,10 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
                   ) : (
                     <User className="h-4 w-4 shrink-0" aria-hidden />
                   )}
-                  프로필
+                  {t('appLayout.profile')}
                 </Link>
 
-                {/* 설정 */}
+                {/* Settings */}
                 <Link
                   href="/settings"
                   onClick={closeSidebar}
@@ -418,10 +421,10 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
                   )}
                 >
                   <Settings className="h-4 w-4 shrink-0" aria-hidden />
-                  설정
+                  {t('appLayout.settings')}
                 </Link>
 
-                {/* 관리자 */}
+                {/* Admin */}
                 {isAdmin && (
                   <Link
                     href="/admin"
@@ -434,7 +437,7 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
                     )}
                   >
                     <Shield className="h-4 w-4 shrink-0" aria-hidden />
-                    관리자
+                    {t('appLayout.admin')}
                   </Link>
                 )}
 
@@ -443,7 +446,7 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
           </>
         )}
 
-        {/* ── No-study top bar (로그아웃 접근용) ──────────── */}
+        {/* ── No-study top bar (logout access) ──────────── */}
         {isAuthenticated && !hasStudy && (
           <header
             className="fixed left-0 right-0 top-0 z-30 flex h-14 items-center justify-between border-b px-4"
@@ -463,7 +466,7 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
                 className="flex items-center gap-1.5 rounded-btn px-3 py-1.5 text-[13px] font-medium text-text-3 transition-colors hover:bg-bg-alt hover:text-error"
               >
                 <LogOut className="h-4 w-4" aria-hidden />
-                로그아웃
+                {t('appLayout.logout')}
               </button>
             </div>
           </header>
@@ -490,7 +493,7 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
             <div className="relative">
               <button
                 type="button"
-                aria-label="메뉴 열기"
+                aria-label={t('appLayout.openMenu')}
                 onClick={() => setSidebarOpen(true)}
                 className="rounded-btn p-1.5"
                 style={{ color: 'var(--text-3)' }}
@@ -519,7 +522,7 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
               <circle cx="12" cy="12" r="10" />
               <polygon points="10 8 16 12 10 16 10 8" />
             </svg>
-            데모 모드 · 읽기 전용
+            {t('appLayout.demoBanner')}
           </div>
         )}
 
