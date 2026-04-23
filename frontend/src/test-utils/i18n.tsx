@@ -34,19 +34,22 @@ const DEFAULT_MESSAGES: AbstractIntlMessages = {
   layout: koLayout,
 };
 
-interface RenderWithI18nOptions extends Omit<RenderOptions, 'wrapper'> {
-  /** 로케일 (기본: 'ko') */
+interface RenderWithI18nOptions extends RenderOptions {
+  /** Locale (default: 'ko') */
   readonly locale?: string;
-  /** 메시지 오버라이드 (기본: ko 전체 네임스페이스) */
+  /** Message override (default: all ko namespaces) */
   readonly messages?: AbstractIntlMessages;
 }
 
 /**
- * NextIntlClientProvider 래핑 렌더 헬퍼.
+ * NextIntlClientProvider wrapping render helper.
  *
- * @param ui - 렌더링할 React 엘리먼트
- * @param options - locale, messages 등 오버라이드 옵션
- * @returns @testing-library/react render 결과
+ * When an outer `wrapper` is provided (e.g. SWRConfig), the tree is:
+ *   OuterWrapper > NextIntlClientProvider > ui
+ *
+ * @param ui - React element to render
+ * @param options - locale, messages, wrapper overrides
+ * @returns @testing-library/react render result
  */
 export function renderWithI18n(
   ui: React.ReactElement,
