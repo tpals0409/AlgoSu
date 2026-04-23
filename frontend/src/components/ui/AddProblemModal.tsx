@@ -543,9 +543,9 @@ function ConfirmStep({
 
   function handleAdd() {
     if (!validate()) return;
-    // Format week number using translation (API contract: locale-dependent label)
+    // Canonical DB format (locale-independent) — backend/dashboard regex expects "N월M주차"
     const weekNumber = selectedWeek
-      ? t('addModal.confirm.weekFormat', { month: selectedWeek.month, week: selectedWeek.week })
+      ? `${selectedWeek.month}월${selectedWeek.week}주차`
       : '';
     onAdd(weekNumber, deadline);
   }
