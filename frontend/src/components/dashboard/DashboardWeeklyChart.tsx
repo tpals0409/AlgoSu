@@ -9,6 +9,7 @@
 
 import type { ReactNode, KeyboardEvent, CSSProperties } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 
 // ─── WEEKLY BAR ──────────────────────────
@@ -78,18 +79,20 @@ export default function DashboardWeeklyChart({
   onCycleView,
   fadeStyle,
 }: DashboardWeeklyChartProps): ReactNode {
+  const t = useTranslations('dashboard');
+
   return (
     <Card
       role="button"
       tabIndex={0}
-      aria-label={`주차별 제출 현황 — ${weekViewLabel} (클릭하여 전환)`}
+      aria-label={t('weeklyChart.ariaLabel', { label: weekViewLabel })}
       className="group cursor-pointer overflow-hidden p-0"
       onClick={onCycleView}
       onKeyDown={(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onCycleView(); } }}
       style={fadeStyle}
     >
       <CardHeader className="flex flex-row items-center gap-2.5 px-4 pt-4">
-        <CardTitle>주차별 제출 현황</CardTitle>
+        <CardTitle>{t('weeklyChart.title')}</CardTitle>
         <span className="inline-flex items-center gap-1 rounded-full bg-primary-soft2 px-2.5 py-1 text-[11px] font-medium text-primary">
           <span
             className="inline-block h-[5px] w-[5px] shrink-0 rounded-full gradient-brand"
@@ -98,13 +101,13 @@ export default function DashboardWeeklyChart({
           {weekViewLabel}
         </span>
         <span className="text-[10px] text-text-3 opacity-0 transition-opacity group-hover:opacity-100">
-          클릭하여 전환
+          {t('weeklyChart.clickToSwitch')}
         </span>
       </CardHeader>
       <CardContent>
         {filteredByWeek.length === 0 ? (
           <p className="py-4 text-center text-sm text-text-3">
-            제출 기록이 없습니다.
+            {t('weeklyChart.empty')}
           </p>
         ) : (
           <div key={weekViewLabel} className="space-y-2.5 animate-fade-in">
@@ -128,7 +131,7 @@ export default function DashboardWeeklyChart({
                 onClick={(e) => e.stopPropagation()}
                 className="block pt-1 text-center text-[11px] font-medium text-primary transition-colors hover:underline"
               >
-                전체 {filteredByWeek.length}주 보기 →
+                {t('weeklyChart.viewAllWeeks', { count: filteredByWeek.length })}
               </Link>
             )}
           </div>

@@ -65,6 +65,13 @@
     "empty": "진행 중인 문제가 없습니다",
     "weekLabel": "{month}월{week}주차"
   },
+  "weeklyChart": {
+    "title": "주차별 제출 현황",
+    "ariaLabel": "주차별 제출 현황 — {label} (클릭하여 전환)",
+    "clickToSwitch": "클릭하여 전환",
+    "empty": "제출 기록이 없습니다.",
+    "viewAllWeeks": "전체 {count}주 보기 →"
+  },
   "analyticsSection": {
     "meta": {
       "title": "학습 분석",
