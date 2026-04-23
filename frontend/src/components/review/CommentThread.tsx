@@ -21,6 +21,10 @@ import {
 } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { cn } from '@/lib/utils';
+import {
+  createTimeTranslator,
+  formatReviewRelativeTime,
+} from '@/lib/utils/review-time';
 import type { ReviewComment } from '@/lib/api';
 import { ReplyItem } from '@/components/review/ReplyItem';
 import { CommentForm } from '@/components/review/CommentForm';
@@ -35,33 +39,6 @@ interface CommentThreadProps {
   readonly onDelete: (publicId: string) => void;
   readonly onReply: (commentPublicId: string, content: string) => Promise<void>;
   readonly selectedLine?: number | null;
-}
-
-// ─── HELPERS ──────────────────────────────
-
-/**
- * ISO 날짜를 상대 시간으로 변환
- * @param iso - ISO 8601 날짜 문자열
- * @param tTime - reviews.time 네임스페이스 번역 함수
- * @param locale - 현재 로케일 (날짜 포맷용)
- */
-function formatRelativeTime(
-  iso: string,
-  tTime: (key: string, values?: Record<string, number>) => string,
-  locale: string,
-): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return tTime('justNow');
-  if (minutes < 60) return tTime('minutesAgo', { minutes });
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return tTime('hoursAgo', { hours });
-  const days = Math.floor(hours / 24);
-  if (days < 7) return tTime('daysAgo', { days });
-  return new Date(iso).toLocaleDateString(locale, {
-    month: 'short',
-    day: 'numeric',
-  });
 }
 
 // ─── SINGLE COMMENT ──────────────────────
@@ -85,8 +62,7 @@ function CommentItem({
 }: CommentItemProps): ReactElement {
   const t = useTranslations('reviews');
   const locale = useLocale();
-  const tTime = (key: string, values?: Record<string, number>) =>
-    t(`time.${key}` as Parameters<typeof t>[0], values as never);
+  const tTime = createTimeTranslator(t);
 
   const authorName = nicknameMap[comment.authorId] ?? comment.authorId.slice(0, 8);
   const [showReplies, setShowReplies] = useState(false);
@@ -143,7 +119,7 @@ function CommentItem({
               </span>
             )}
             <span className="text-[10px] text-text-3">
-              {formatRelativeTime(comment.createdAt, tTime, locale)}
+              {formatReviewRelativeTime(comment.createdAt, tTime, locale)}
             </span>
           </div>
 
