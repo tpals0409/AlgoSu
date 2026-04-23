@@ -1,5 +1,5 @@
 /**
- * @file next-themes ThemeProvider 래퍼
+ * @file next-themes ThemeProvider wrapper
  * @domain common
  * @layer component
  * @related AppLayout
@@ -11,8 +11,8 @@ import { ThemeProvider as NextThemesProvider } from 'next-themes';
 import type { ThemeProviderProps } from 'next-themes';
 
 /**
- * next-themes ThemeProvider 래퍼.
- * 추후 테마 로직 변경 시 단일 진입점에서 수정 가능.
+ * next-themes ThemeProvider wrapper.
+ * Single entry point for future theme logic changes.
  */
 function ThemeProvider({ children, ...props }: ThemeProviderProps): React.ReactElement {
   return <NextThemesProvider {...props}>{children}</NextThemesProvider>;
