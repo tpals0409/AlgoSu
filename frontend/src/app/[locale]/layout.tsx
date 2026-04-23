@@ -10,6 +10,7 @@
  * - Skip navigation, AdSense Script 포함
  */
 
+import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import Script from 'next/script';
 import { NextIntlClientProvider } from 'next-intl';
@@ -25,6 +26,16 @@ import { notFound } from 'next/navigation';
 
 const adsenseEnabled = process.env.NEXT_PUBLIC_ADSENSE_ENABLED === 'true';
 const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID ?? '';
+
+/**
+ * metadataBase: 상대 경로 OG/트위터 이미지 URL 자동 보완.
+ * 하위 페이지의 generateMetadata에서 canonical/alternates를 상대 경로로 쓸 수 있게 한다.
+ */
+export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_BASE_URL ?? 'https://algosu.kr',
+  ),
+};
 
 interface LocaleLayoutProps {
   readonly children: ReactNode;
