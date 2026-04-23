@@ -1,7 +1,9 @@
 import { render, screen } from '@testing-library/react';
+import { NextIntlClientProvider } from 'next-intl';
 import { FeatureCards } from '../FeatureCards';
 import { HeroButtons } from '../HeroButtons';
 import { HomeRedirect } from '../HomeRedirect';
+import koLanding from '../../../../messages/ko/landing.json';
 
 // ─── Common Mocks ────────────────────────
 
@@ -59,6 +61,17 @@ jest.mock('@/components/ui/Button', () => ({
   },
 }));
 
+// ─── i18n Helper ─────────────────────────
+
+/** NextIntlClientProvider 래핑 렌더 헬퍼 (ko 로케일) */
+function renderWithI18n(ui: React.ReactElement) {
+  return render(
+    <NextIntlClientProvider locale="ko" messages={{ landing: koLanding }}>
+      {ui}
+    </NextIntlClientProvider>,
+  );
+}
+
 beforeEach(() => {
   mockReplace.mockClear();
   mockVisible = true;
@@ -72,7 +85,7 @@ beforeEach(() => {
 
 describe('FeatureCards', () => {
   it('renders six feature cards with titles', () => {
-    render(<FeatureCards />);
+    renderWithI18n(<FeatureCards />);
     expect(screen.getByText('AI 코드 분석')).toBeInTheDocument();
     expect(screen.getByText('GitHub 자동 동기화')).toBeInTheDocument();
     expect(screen.getByText('스터디 협업')).toBeInTheDocument();
@@ -82,13 +95,13 @@ describe('FeatureCards', () => {
   });
 
   it('renders the section heading', () => {
-    render(<FeatureCards />);
+    renderWithI18n(<FeatureCards />);
     expect(screen.getByText('스터디에 필요한 모든 것')).toBeInTheDocument();
   });
 
   it('visible=false이면 opacity:0 스타일을 적용한다', () => {
     mockVisible = false;
-    render(<FeatureCards />);
+    renderWithI18n(<FeatureCards />);
     // The heading div should have opacity 0 when not visible
     const section = document.querySelector('#features');
     expect(section).toBeInTheDocument();
@@ -99,7 +112,7 @@ describe('FeatureCards', () => {
 
   it('visible=true이면 opacity:1 스타일을 적용한다', () => {
     mockVisible = true;
-    render(<FeatureCards />);
+    renderWithI18n(<FeatureCards />);
     const section = document.querySelector('#features');
     const headingDiv = section!.querySelector('div');
     expect(headingDiv).toHaveStyle({ opacity: 1 });
@@ -110,7 +123,7 @@ describe('FeatureCards', () => {
 
 describe('HeroButtons', () => {
   it('renders login and demo links', () => {
-    render(<HeroButtons />);
+    renderWithI18n(<HeroButtons />);
     const loginLink = screen.getByText('무료로 시작하기');
     expect(loginLink).toBeInTheDocument();
     expect(loginLink.closest('a')).toHaveAttribute('href', '/login');

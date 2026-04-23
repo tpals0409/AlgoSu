@@ -1,8 +1,8 @@
 /**
- * @file Hero 섹션 CTA 버튼
+ * @file Hero 섹션 CTA 버튼 (번역 적용)
  * @domain common
  * @layer component
- * @related Button, AuthContext
+ * @related Button, AuthContext, LandingContent
  */
 
 'use client';
@@ -10,6 +10,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
 
 /**
@@ -17,16 +18,18 @@ import { Button } from '@/components/ui/Button';
  * @domain common
  */
 export function HeroButtons(): ReactNode {
+  const t = useTranslations('landing');
+
   return (
     <div className="flex flex-col items-center gap-3">
       <div className="flex justify-center gap-3">
         <Button asChild size="lg" variant="primary" className="shadow-glow">
           <Link href="/login" className="flex items-center gap-2">
-            무료로 시작하기 <ArrowRight className="h-4 w-4" />
+            {t('cta.primary')} <ArrowRight className="h-4 w-4" />
           </Link>
         </Button>
         <Button asChild size="lg" variant="ghost">
-          <Link href="#features">핵심 기능</Link>
+          <Link href="#features">{t('cta.secondary')}</Link>
         </Button>
       </div>
     </div>

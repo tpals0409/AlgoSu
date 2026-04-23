@@ -1,5 +1,7 @@
 import { render, screen } from '@testing-library/react';
-import LandingPage from '../page';
+import { NextIntlClientProvider } from 'next-intl';
+import { LandingContent } from '@/components/landing/LandingContent';
+import koLanding from '../../../../messages/ko/landing.json';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
@@ -45,37 +47,50 @@ jest.mock('lucide-react', () => {
   return { Sun: Icon, Moon: Icon };
 });
 
-describe('LandingPage', () => {
+jest.mock('@/components/ad/AdBanner', () => ({
+  AdBanner: () => <div data-testid="ad-banner" />,
+}));
+
+/** NextIntlClientProvider 래핑 렌더 헬퍼 (ko 로케일) */
+function renderWithI18n(ui: React.ReactElement) {
+  return render(
+    <NextIntlClientProvider locale="ko" messages={{ landing: koLanding }}>
+      {ui}
+    </NextIntlClientProvider>,
+  );
+}
+
+describe('LandingPage (LandingContent)', () => {
   it('랜딩 페이지가 렌더링된다', () => {
-    render(<LandingPage />);
+    renderWithI18n(<LandingContent />);
     expect(screen.getByText('알고리즘 스터디의')).toBeInTheDocument();
     expect(screen.getByText('새로운 기준')).toBeInTheDocument();
   });
 
   it('네비게이션에 로고와 시작하기 링크가 표시된다', () => {
-    render(<LandingPage />);
+    renderWithI18n(<LandingContent />);
     const navLink = screen.getByRole('link', { name: /AlgoSu/ });
     expect(navLink).toBeInTheDocument();
     expect(screen.getByText('시작하기')).toBeInTheDocument();
   });
 
   it('테마 전환 버튼이 존재한다', () => {
-    render(<LandingPage />);
+    renderWithI18n(<LandingContent />);
     expect(screen.getByRole('button', { name: '테마 전환' })).toBeInTheDocument();
   });
 
   it('HomeRedirect 컴포넌트가 렌더링된다', () => {
-    render(<LandingPage />);
+    renderWithI18n(<LandingContent />);
     expect(screen.getByTestId('home-redirect')).toBeInTheDocument();
   });
 
   it('FeatureCards 컴포넌트가 렌더링된다', () => {
-    render(<LandingPage />);
+    renderWithI18n(<LandingContent />);
     expect(screen.getByTestId('feature-cards')).toBeInTheDocument();
   });
 
   it('사용자 후기 섹션이 표시된다', () => {
-    render(<LandingPage />);
+    renderWithI18n(<LandingContent />);
     expect(screen.getByText('사용자 후기')).toBeInTheDocument();
     expect(screen.getByText('이서연')).toBeInTheDocument();
     expect(screen.getByText('박준서')).toBeInTheDocument();
@@ -83,22 +98,22 @@ describe('LandingPage', () => {
   });
 
   it('최하단 CTA 섹션이 표시된다', () => {
-    render(<LandingPage />);
+    renderWithI18n(<LandingContent />);
     expect(screen.getByText('지금 바로 시작하세요')).toBeInTheDocument();
   });
 
   it('푸터가 표시된다', () => {
-    render(<LandingPage />);
+    renderWithI18n(<LandingContent />);
     expect(screen.getByText(/All rights reserved/)).toBeInTheDocument();
   });
 
   it('시작하기 링크가 표시된다', () => {
-    render(<LandingPage />);
+    renderWithI18n(<LandingContent />);
     expect(screen.getByText('시작하기')).toBeInTheDocument();
   });
 
   it('서브타이틀이 표시된다', () => {
-    render(<LandingPage />);
+    renderWithI18n(<LandingContent />);
     expect(screen.getByText(/문제 풀이부터 GitHub 동기화/)).toBeInTheDocument();
   });
 });

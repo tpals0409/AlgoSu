@@ -1,56 +1,28 @@
 /**
- * @file 기능 소개 6-Card 섹션
+ * @file 기능 소개 6-Card 섹션 (번역 적용)
  * @domain common
  * @layer component
- * @related Card
+ * @related Card, LandingContent
  */
 
 'use client';
 
 import type { ReactNode } from 'react';
 import { Code2, Github, Users, BarChart2, MessageSquareCode, CheckSquare } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useInView } from '@/hooks/useInView';
 
 // ─── CONSTANTS ────────────────────────────
 
-interface Feature {
-  icon: typeof Code2;
-  title: string;
-  desc: string;
-}
-
-const FEATURES: Feature[] = [
-  {
-    icon: Code2,
-    title: 'AI 코드 분석',
-    desc: '제출 코드를 AI가 자동으로 분석. 효율성, 가독성, 정확성 점수와 상세 피드백 제공.',
-  },
-  {
-    icon: Github,
-    title: 'GitHub 자동 동기화',
-    desc: '제출한 코드를 GitHub 저장소에 자동 커밋. 포트폴리오를 자연스럽게 쌓아가세요.',
-  },
-  {
-    icon: Users,
-    title: '스터디 협업',
-    desc: '팀원과 함께 문제를 풀고 서로의 코드를 비교·리뷰하는 공동 성장 공간.',
-  },
-  {
-    icon: BarChart2,
-    title: '통계 대시보드',
-    desc: '주차별 제출 현황, 난이도 분포, 언어별 통계로 성장 곡선을 한눈에 확인.',
-  },
-  {
-    icon: MessageSquareCode,
-    title: '코드 리뷰',
-    desc: '팀원의 풀이를 비교하고 AI 분석 결과를 함께 확인. 서로의 코드에서 배우세요.',
-  },
-  {
-    icon: CheckSquare,
-    title: '진도 관리',
-    desc: '마감일, 제출 여부, 미제출 알림까지. 스터디 진행 상황을 체계적으로 관리.',
-  },
-];
+/** 기능 카드 키-아이콘 매핑 (번역 키는 landing.features.{key}) */
+const FEATURE_ITEMS = [
+  { key: 'aiAnalysis', icon: Code2 },
+  { key: 'githubSync', icon: Github },
+  { key: 'studyCollab', icon: Users },
+  { key: 'dashboard', icon: BarChart2 },
+  { key: 'codeReview', icon: MessageSquareCode },
+  { key: 'progressMgmt', icon: CheckSquare },
+] as const;
 
 // ─── RENDER ──────────────────────────────
 
@@ -59,6 +31,7 @@ const FEATURES: Feature[] = [
  * @domain common
  */
 export function FeatureCards(): ReactNode {
+  const t = useTranslations('landing');
   const [ref, visible] = useInView(0.1);
 
   return (
@@ -75,19 +48,19 @@ export function FeatureCards(): ReactNode {
         }}
       >
         <span className="mb-4 inline-flex rounded-full bg-primary-soft px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary">
-          FEATURES
+          {t('features.badge')}
         </span>
         <h2 className="text-[26px] font-bold tracking-tight">
-          스터디에 필요한 모든 것
+          {t('features.heading')}
         </h2>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        {FEATURES.map((f, i) => {
+        {FEATURE_ITEMS.map((f, i) => {
           const Icon = f.icon;
           return (
             <div
-              key={f.title}
+              key={f.key}
               className="group rounded-card border border-border bg-bg-card p-7 shadow transition-all duration-300 ease-bounce hover:-translate-y-1 hover:shadow-hover"
               style={{
                 opacity: visible ? 1 : 0,
@@ -98,9 +71,11 @@ export function FeatureCards(): ReactNode {
               <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-md bg-primary-soft text-primary">
                 <Icon className="h-[22px] w-[22px]" />
               </div>
-              <h3 className="mb-2 text-base font-semibold">{f.title}</h3>
+              <h3 className="mb-2 text-base font-semibold">
+                {t(`features.${f.key}.title`)}
+              </h3>
               <p className="text-[13px] leading-relaxed text-text-2">
-                {f.desc}
+                {t(`features.${f.key}.description`)}
               </p>
             </div>
           );
