@@ -44,5 +44,11 @@
   },
   "ad": {
     "devPlaceholder": "Ad Area (Development Mode)"
+  },
+  "guestNav": {
+    "themeToggle": "Toggle theme",
+    "homeAria": "AlgoSu guest home",
+    "explore": "Explore",
+    "signup": "Sign Up"
   }
 }
