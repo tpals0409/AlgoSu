@@ -1,15 +1,16 @@
 /**
- * @file 문제 목록 페이지 (Figma 디자인 반영)
+ * @file 문제 목록 페이지 (Figma 디자인 반영, i18n 적용)
  * @domain problem
  * @layer page
- * @related problemApi, studyApi, DifficultyBadge, AppLayout
+ * @related problemApi, studyApi, DifficultyBadge, AppLayout, messages/problems.json
  */
 
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
 import { BookOpen, Plus, Search, Check } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { useRouter } from '@/i18n/navigation';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Alert } from '@/components/ui/Alert';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -41,21 +42,18 @@ const INITIAL_FILTERS: Filters = {
   status: '',
 };
 
-const STATUS_TABS = [
-  { value: '', label: '전체' },
-  { value: 'ACTIVE', label: '진행 중' },
-  { value: 'CLOSED', label: '종료' },
-] as const;
-
-
 // ─── HELPERS ─────────────────────────────
 
-/** D-day 표시 (Figma: "D-N" 또는 "마감") */
-function getDdayDisplay(deadline: string | null, status: string): { label: string; color: string } {
-  if (status !== 'ACTIVE') return { label: '마감', color: 'var(--text-3)' };
+/** D-day 표시 (Figma: "D-N" 또는 번역된 마감 라벨) */
+function getDdayDisplay(
+  deadline: string | null,
+  status: string,
+  deadlineLabel: string,
+): { label: string; color: string } {
+  if (status !== 'ACTIVE') return { label: deadlineLabel, color: 'var(--text-3)' };
   if (!deadline) return { label: '', color: '' };
   const remaining = new Date(deadline).getTime() - Date.now();
-  if (remaining <= 0) return { label: '마감', color: 'var(--text-3)' };
+  if (remaining <= 0) return { label: deadlineLabel, color: 'var(--text-3)' };
   const days = Math.ceil(remaining / 86400000);
   return { label: `D-${days}`, color: 'var(--error)' };
 }
@@ -68,10 +66,18 @@ function getDdayDisplay(deadline: string | null, status: string): { label: strin
  */
 export default function ProblemsPage(): ReactNode {
   const router = useRouter();
+  const t = useTranslations('problems');
   const { isAuthenticated } = useRequireAuth();
   useRequireStudy();
   const { currentStudyId, currentStudyRole, incrementProblemsVersion } = useStudy();
   const isAdmin = currentStudyRole === 'ADMIN';
+
+  /** 상태 탭 (번역 적용) */
+  const STATUS_TABS = useMemo(() => [
+    { value: '', label: t('list.filter.all') },
+    { value: 'ACTIVE', label: t('list.filter.inProgress') },
+    { value: 'CLOSED', label: t('list.filter.finished') },
+  ] as const, [t]);
 
   // ─── SWR DATA ──────────────────────────────
 
@@ -143,14 +149,17 @@ export default function ProblemsPage(): ReactNode {
     });
   }, [problems, filters]);
 
+  /** 마감 라벨 (번역) */
+  const deadlineLabel = t('list.badge.deadline');
+
   return (
     <AppLayout>
       <div className="space-y-4">
         {/* 헤더 */}
         <div style={fade(0)}>
-          <h1 className="text-[22px] font-bold tracking-tight text-text">문제 목록</h1>
+          <h1 className="text-[22px] font-bold tracking-tight text-text">{t('list.heading')}</h1>
           <p className="text-[13px] mt-1" style={{ color: 'var(--text-3)' }}>
-            스터디 문제를 확인하고 코드를 제출하세요.
+            {t('list.subheading')}
           </p>
         </div>
 
@@ -160,7 +169,7 @@ export default function ProblemsPage(): ReactNode {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none" style={{ color: 'var(--text-3)' }} aria-hidden />
             <input
               type="text"
-              placeholder="문제 검색..."
+              placeholder={t('list.searchPlaceholder')}
               value={filters.search}
               onChange={(e) => handleFilterChange('search', e.target.value)}
               className="w-full h-[44px] pl-10 pr-4 rounded-xl text-text text-sm font-body outline-none transition-[border-color] duration-150 placeholder:text-text-3 focus:border-primary"
@@ -169,7 +178,7 @@ export default function ProblemsPage(): ReactNode {
           </div>
           <Select value={filters.status} onValueChange={(v) => handleFilterChange('status', v === '__all__' ? '' : v)}>
             <SelectTrigger className="h-[44px] w-[130px] shrink-0 self-end sm:self-auto rounded-xl text-[13px] font-medium" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-              <SelectValue placeholder="상태 선택" />
+              <SelectValue placeholder={t('list.filter.statusPlaceholder')} />
             </SelectTrigger>
             <SelectContent>
               {STATUS_TABS.map((tab) => (
@@ -191,7 +200,7 @@ export default function ProblemsPage(): ReactNode {
                 : { backgroundColor: 'var(--bg-card)', color: 'var(--text-2)', border: '1px solid var(--border)' }
             }
           >
-            전체
+            {t('list.difficultyAll')}
           </button>
           {DIFFICULTIES.map((d) => {
             const diffKey = d.toLowerCase();
@@ -241,8 +250,8 @@ export default function ProblemsPage(): ReactNode {
         {!isLoading && !problemsError && problems.length === 0 && (
           <EmptyState
             icon={BookOpen}
-            title="등록된 문제가 없습니다"
-            description="곧 새로운 문제가 추가될 예정입니다."
+            title={t('list.empty.title')}
+            description={t('list.empty.description')}
           />
         )}
 
@@ -250,9 +259,9 @@ export default function ProblemsPage(): ReactNode {
         {!isLoading && problems.length > 0 && filteredProblems.length === 0 && (
           <EmptyState
             icon={Search}
-            title="검색 결과가 없습니다"
-            description="필터 조건을 변경해 보세요."
-            action={{ label: '필터 초기화', onClick: () => setFilters(INITIAL_FILTERS) }}
+            title={t('list.noResults.title')}
+            description={t('list.noResults.description')}
+            action={{ label: t('list.noResults.resetFilter'), onClick: () => setFilters(INITIAL_FILTERS) }}
             size="sm"
           />
         )}
@@ -261,7 +270,7 @@ export default function ProblemsPage(): ReactNode {
         {!isLoading && filteredProblems.length > 0 && (
           <div className="space-y-2" style={fade(0.14)}>
             {filteredProblems.map((problem) => {
-              const dday = getDdayDisplay(problem.deadline, problem.status);
+              const dday = getDdayDisplay(problem.deadline, problem.status, deadlineLabel);
               const isSolved = solvedIds.has(problem.id);
 
               return (
@@ -269,7 +278,7 @@ export default function ProblemsPage(): ReactNode {
                   key={problem.id}
                   type="button"
                   onClick={() => handleProblemClick(problem.id)}
-                  aria-label={`${problem.title} 문제 보기`}
+                  aria-label={t('list.ariaViewProblem', { title: problem.title })}
                   className="group flex items-center gap-3 sm:gap-4 w-full px-3 sm:px-5 py-3 sm:py-4 rounded-xl border border-border transition-all text-left bg-bg-card hover:-translate-y-0.5 hover:shadow-hover"
                 >
                   {/* 플랫폼 아이콘 */}
@@ -317,7 +326,7 @@ export default function ProblemsPage(): ReactNode {
                             {isActive && (
                               <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--success)' }} aria-hidden />
                             )}
-                            {isActive ? '진행 중' : '종료'}
+                            {isActive ? t('list.badge.inProgress') : t('list.badge.finished')}
                           </span>
                         );
                       })()}
@@ -353,7 +362,7 @@ export default function ProblemsPage(): ReactNode {
             style={{ backgroundColor: 'var(--primary)' }}
           >
             <Plus className="h-4 w-4" />
-            문제 추가
+            {t('list.addProblem')}
           </button>
           <AddProblemModal
             open={showAddModal}
