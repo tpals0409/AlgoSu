@@ -26,7 +26,7 @@ export default async function ProblemNotFound(): Promise<ReactNode> {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-bg px-4">
       <Logo size={48} className="mb-6" />
-      <h1 className="text-7xl font-bold text-primary">404</h1>
+      <h1 className="text-7xl font-bold text-primary">{t('problemNotFound.code')}</h1>
       <p className="mt-4 text-sm text-text-3">
         {t('problemNotFound.title')}
       </p>
