@@ -32,6 +32,7 @@ jest.mock('@/components/ui/Skeleton', () => ({
 describe('AuthGuard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockPathname = '/';
   });
 
   it('로딩 중에는 Skeleton을 표시한다', () => {
