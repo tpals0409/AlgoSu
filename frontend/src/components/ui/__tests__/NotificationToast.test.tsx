@@ -1,4 +1,6 @@
 import { render, screen, fireEvent, act } from '@testing-library/react';
+import { NextIntlClientProvider } from 'next-intl';
+import koUI from '../../../../messages/ko/ui.json';
 import { NotificationToast } from '../NotificationToast';
 import type { Notification } from '@/lib/api';
 import { isSafeInternalPath } from '@/lib/url';
@@ -7,6 +9,20 @@ const mockPush = jest.fn();
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }));
+
+/** i18n wrapper so rerender() also gets the provider automatically */
+function I18nWrapper({ children }: { readonly children: React.ReactNode }) {
+  return (
+    <NextIntlClientProvider locale="ko" messages={{ ui: koUI }}>
+      {children}
+    </NextIntlClientProvider>
+  );
+}
+
+/** Wrap element with NextIntlClientProvider for useTranslations */
+function renderToast(ui: React.ReactElement) {
+  return render(ui, { wrapper: I18nWrapper });
+}
 
 jest.mock('lucide-react', () => {
   const Icon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />;
@@ -48,7 +64,7 @@ describe('NotificationToast', () => {
   });
 
   it('notification이 null이면 아무것도 렌더링하지 않는다', () => {
-    const { container } = render(
+    const { container } = renderToast(
       <NotificationToast notification={null} onDismiss={jest.fn()} onRead={jest.fn()} />,
     );
     expect(container.innerHTML).toBe('');
@@ -56,7 +72,7 @@ describe('NotificationToast', () => {
 
   it('notification이 있으면 제목과 메시지를 표시한다', () => {
     const notification = makeNotification();
-    render(
+    renderToast(
       <NotificationToast notification={notification} onDismiss={jest.fn()} onRead={jest.fn()} />,
     );
 
@@ -68,7 +84,7 @@ describe('NotificationToast', () => {
 
   it('닫기 버튼이 존재한다', () => {
     const notification = makeNotification();
-    render(
+    renderToast(
       <NotificationToast notification={notification} onDismiss={jest.fn()} onRead={jest.fn()} />,
     );
 
@@ -80,7 +96,7 @@ describe('NotificationToast', () => {
   it('닫기 버튼 클릭 시 onDismiss를 호출한다', () => {
     const onDismiss = jest.fn();
     const notification = makeNotification();
-    render(
+    renderToast(
       <NotificationToast notification={notification} onDismiss={onDismiss} onRead={jest.fn()} />,
     );
 
@@ -97,7 +113,7 @@ describe('NotificationToast', () => {
     const onRead = jest.fn();
     const onDismiss = jest.fn();
     const notification = makeNotification();
-    render(
+    renderToast(
       <NotificationToast notification={notification} onDismiss={onDismiss} onRead={onRead} />,
     );
 
@@ -117,7 +133,7 @@ describe('NotificationToast', () => {
   it('4초 후 자동으로 사라진다', () => {
     const onDismiss = jest.fn();
     const notification = makeNotification();
-    render(
+    renderToast(
       <NotificationToast notification={notification} onDismiss={onDismiss} onRead={jest.fn()} />,
     );
 
@@ -130,7 +146,7 @@ describe('NotificationToast', () => {
     const onRead = jest.fn();
     const onDismiss = jest.fn();
     const notification = makeNotification({ link: undefined });
-    render(
+    renderToast(
       <NotificationToast notification={notification} onDismiss={onDismiss} onRead={onRead} />,
     );
 
@@ -150,7 +166,7 @@ describe('NotificationToast', () => {
 
   it('알 수 없는 알림 타입은 기본 Bell 아이콘을 사용한다', () => {
     const notification = makeNotification({ type: 'UNKNOWN_TYPE' as never });
-    render(
+    renderToast(
       <NotificationToast notification={notification} onDismiss={jest.fn()} onRead={jest.fn()} />,
     );
 
@@ -162,7 +178,7 @@ describe('NotificationToast', () => {
   it('Enter 키로 토스트를 클릭할 수 있다', () => {
     const onRead = jest.fn();
     const notification = makeNotification();
-    render(
+    renderToast(
       <NotificationToast notification={notification} onDismiss={jest.fn()} onRead={onRead} />,
     );
 
@@ -178,7 +194,7 @@ describe('NotificationToast', () => {
   it('Enter 외 키로는 토스트 클릭 동작이 실행되지 않는다', () => {
     const onRead = jest.fn();
     const notification = makeNotification();
-    render(
+    renderToast(
       <NotificationToast notification={notification} onDismiss={jest.fn()} onRead={onRead} />,
     );
 
@@ -198,7 +214,7 @@ describe('NotificationToast', () => {
     // toast가 이미 null이므로 prev ? ... : null 의 null 분기가 실행됨
     const onDismiss = jest.fn();
     const notification = makeNotification();
-    render(
+    renderToast(
       <NotificationToast notification={notification} onDismiss={onDismiss} onRead={jest.fn()} />,
     );
 
@@ -221,7 +237,7 @@ describe('NotificationToast', () => {
     const onDismiss = jest.fn();
     const onRead = jest.fn();
     const notification = makeNotification();
-    render(
+    renderToast(
       <NotificationToast notification={notification} onDismiss={onDismiss} onRead={onRead} />,
     );
 
@@ -249,7 +265,7 @@ describe('NotificationToast', () => {
     const onDismiss = jest.fn();
     const onRead = jest.fn();
     const notification = makeNotification();
-    const { rerender } = render(
+    const { rerender } = renderToast(
       <NotificationToast notification={notification} onDismiss={onDismiss} onRead={onRead} />,
     );
 
@@ -283,7 +299,7 @@ describe('NotificationToast', () => {
     const notification = makeNotification({ link: maliciousLink });
     expect(isSafeInternalPath(maliciousLink)).toBe(false);
 
-    render(
+    renderToast(
       <NotificationToast notification={notification} onDismiss={onDismiss} onRead={onRead} />,
     );
 
@@ -304,7 +320,7 @@ describe('NotificationToast', () => {
     // showTimer가 50ms 후 실행될 때 prev가 null
     const onDismiss = jest.fn();
     const notification = makeNotification();
-    render(
+    renderToast(
       <NotificationToast notification={notification} onDismiss={onDismiss} onRead={jest.fn()} />,
     );
 
