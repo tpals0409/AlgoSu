@@ -63,7 +63,7 @@
     "title": "In Progress",
     "viewAll": "View All",
     "empty": "No problems in progress",
-    "weekLabel": "M{month} W{week}"
+    "weekLabel": "Week {week}, Month {month}"
   },
   "weeklyChart": {
     "title": "Weekly Submissions",
