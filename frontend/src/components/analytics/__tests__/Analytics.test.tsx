@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithI18n } from '@/test-utils/i18n';
 import AnalyticsCharts from '../AnalyticsCharts';
 import type { AnalyticsChartsProps } from '../AnalyticsCharts';
 
@@ -65,7 +66,7 @@ const defaultProps: AnalyticsChartsProps = {
 
 describe('AnalyticsCharts', () => {
   it('StatCard 4개의 값을 렌더링한다', () => {
-    render(<AnalyticsCharts {...defaultProps} />);
+    renderWithI18n(<AnalyticsCharts {...defaultProps} />);
     expect(screen.getByText('28')).toBeInTheDocument();
     expect(screen.getByText('22문제')).toBeInTheDocument();
     expect(screen.getByText('87점')).toBeInTheDocument();
@@ -73,32 +74,32 @@ describe('AnalyticsCharts', () => {
   });
 
   it('주차별 제출 추이 섹션을 표시한다', () => {
-    render(<AnalyticsCharts {...defaultProps} />);
+    renderWithI18n(<AnalyticsCharts {...defaultProps} />);
     expect(screen.getByText('주차별 제출 추이')).toBeInTheDocument();
   });
 
   it('AI 점수 추이 섹션과 평균 뱃지를 표시한다', () => {
-    render(<AnalyticsCharts {...defaultProps} />);
+    renderWithI18n(<AnalyticsCharts {...defaultProps} />);
     expect(screen.getByText('AI 점수 추이')).toBeInTheDocument();
     expect(screen.getByText('평균 87점')).toBeInTheDocument();
   });
 
   it('난이도별 해결 수를 표시한다', () => {
-    render(<AnalyticsCharts {...defaultProps} />);
+    renderWithI18n(<AnalyticsCharts {...defaultProps} />);
     expect(screen.getByText('난이도별 해결 수')).toBeInTheDocument();
     expect(screen.getByText('Silver')).toBeInTheDocument();
     expect(screen.getByText('Gold')).toBeInTheDocument();
   });
 
   it('알고리즘 태그 분포를 표시한다', () => {
-    render(<AnalyticsCharts {...defaultProps} />);
+    renderWithI18n(<AnalyticsCharts {...defaultProps} />);
     expect(screen.getByText('알고리즘 태그 분포')).toBeInTheDocument();
     expect(screen.getByText('DP')).toBeInTheDocument();
     expect(screen.getByText('그래프')).toBeInTheDocument();
   });
 
   it('총 해결 문제 수를 표시한다', () => {
-    render(<AnalyticsCharts {...defaultProps} />);
+    renderWithI18n(<AnalyticsCharts {...defaultProps} />);
     expect(screen.getByText(/총 14문제 해결 완료/)).toBeInTheDocument();
   });
 });

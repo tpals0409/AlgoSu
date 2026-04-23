@@ -28,6 +28,7 @@ import {
   LineChart,
   Line,
 } from 'recharts';
+import { useTranslations } from 'next-intl';
 import { Card } from '@/components/ui/Card';
 
 // ─── TYPES ───────────────────────────────
@@ -116,6 +117,7 @@ export default function AnalyticsCharts({
   difficultyData,
   tagData,
 }: AnalyticsChartsProps): ReactNode {
+  const t = useTranslations('analytics');
   const [mounted, setMounted] = useState(false);
   const [barsAnimated, setBarsAnimated] = useState(false);
 
@@ -145,38 +147,38 @@ export default function AnalyticsCharts({
         <StatCard
           icon={FileText}
           value={totalSubmissions}
-          label="누적 제출 횟수"
-          sub="누적 제출 횟수"
+          label={t('charts.statCards.totalSubmissions')}
+          sub={t('charts.statCards.totalSubmissions')}
         />
         <StatCard
           icon={CheckCircle2}
-          value={`${solvedProblems}문제`}
-          label="해결 문제"
-          sub={`완료율 ${completionPct}%`}
+          value={t('charts.statCards.solvedCount', { count: solvedProblems })}
+          label={t('charts.statCards.solvedProblems')}
+          sub={t('charts.statCards.completionRate', { pct: completionPct })}
         />
         <StatCard
           icon={Sparkles}
-          value={`${avgAIScore}점`}
-          label="평균 AI 점수"
-          sub="AI 코드 분석 평균"
+          value={t('charts.statCards.avgScore', { score: avgAIScore })}
+          label={t('charts.statCards.avgAIScore')}
+          sub={t('charts.statCards.aiScoreAvgSub')}
         />
         <StatCard
           icon={Flame}
-          value={`${streak}주`}
-          label="연속 제출"
+          value={t('charts.statCards.streakValue', { count: streak })}
+          label={t('charts.statCards.streak')}
           sub={streakRank}
         />
       </div>
 
-      {/* ── 주차별 제출 추이 (Bar Chart) ── */}
+      {/* ── Weekly Submission Trend (Bar Chart) ── */}
       <Card className="p-5" style={fade(0.06)}>
         <div className="flex items-center gap-2 mb-4">
           <TrendingUp className="h-4 w-4" style={{ color: 'var(--primary)' }} />
-          <span className="text-[14px] font-semibold text-text">주차별 제출 추이</span>
+          <span className="text-[14px] font-semibold text-text">{t('charts.weeklyTrend.title')}</span>
         </div>
         {weeklyData.length === 0 ? (
           <div className="h-[200px] flex items-center justify-center text-text-3 text-sm">
-            아직 제출 기록이 없습니다.
+            {t('charts.weeklyTrend.empty')}
           </div>
         ) : (
           <div className="overflow-x-auto" style={{ backgroundColor: 'var(--bg-card)' }}>
@@ -212,7 +214,7 @@ export default function AnalyticsCharts({
                       fontSize: '12px',
                     }}
                   />
-                  <Bar dataKey="count" fill="var(--primary)" radius={[4, 4, 0, 0]} name="제출" />
+                  <Bar dataKey="count" fill="var(--primary)" radius={[4, 4, 0, 0]} name={t('charts.weeklyTrend.barName')} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -220,23 +222,23 @@ export default function AnalyticsCharts({
         )}
       </Card>
 
-      {/* ── AI 점수 추이 (Line Chart + 리스트) ── */}
+      {/* ── AI Score Trend (Line Chart + List) ── */}
       <Card className="p-5" style={fade(0.1)}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4" style={{ color: 'var(--primary)' }} />
-            <span className="text-[14px] font-semibold text-text">AI 점수 추이</span>
+            <span className="text-[14px] font-semibold text-text">{t('charts.aiScore.title')}</span>
           </div>
           <span
             className="rounded-full px-3 py-1 text-[12px] font-bold"
             style={{ backgroundColor: 'var(--primary-soft)', color: 'var(--primary)' }}
           >
-            평균 {avgAIScore}점
+            {t('charts.aiScore.avgBadge', { score: avgAIScore })}
           </span>
         </div>
         {aiScoreData.length === 0 ? (
           <div className="h-[200px] flex items-center justify-center text-text-3 text-sm">
-            분석 완료된 제출이 없습니다.
+            {t('charts.aiScore.empty')}
           </div>
         ) : (
           <div className="overflow-x-auto" style={{ backgroundColor: 'var(--bg-card)' }}>
@@ -275,7 +277,7 @@ export default function AnalyticsCharts({
                     strokeWidth={2.5}
                     dot={{ fill: 'var(--primary)', strokeWidth: 0, r: 4 }}
                     activeDot={{ r: 6, fill: 'var(--primary)' }}
-                    name="AI 점수"
+                    name={t('charts.aiScore.lineName')}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -284,17 +286,17 @@ export default function AnalyticsCharts({
         )}
       </Card>
 
-      {/* ── 난이도별 해결 수 + 알고리즘 태그 분포 (2열) ── */}
+      {/* ── Difficulty + Algorithm Tags (2-col) ── */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2" style={fade(0.14)}>
-        {/* 난이도별 해결 수 */}
+        {/* Problems by Difficulty */}
         <Card className="flex flex-col p-5">
           <div className="flex items-center gap-2 mb-4">
             <BarChart3 className="h-4 w-4" style={{ color: 'var(--primary)' }} />
-            <span className="text-[14px] font-semibold text-text">난이도별 해결 수</span>
+            <span className="text-[14px] font-semibold text-text">{t('charts.difficulty.title')}</span>
           </div>
           {difficultyData.length === 0 ? (
             <div className="h-[200px] flex items-center justify-center text-text-3 text-sm">
-              아직 문제를 해결하지 않았습니다.
+              {t('charts.difficulty.empty')}
             </div>
           ) : (
             <>
@@ -327,22 +329,22 @@ export default function AnalyticsCharts({
                   style={{ color: 'var(--success)' }}
                 >
                   <CheckCircle2 className="h-3.5 w-3.5" />
-                  총 {difficultyData.reduce((s, r) => s + r.count, 0)}문제 해결 완료
+                  {t('charts.difficulty.totalSolved', { count: difficultyData.reduce((s, r) => s + r.count, 0) })}
                 </span>
               </div>
             </>
           )}
         </Card>
 
-        {/* 알고리즘 태그 분포 */}
+        {/* Algorithm Tag Distribution */}
         <Card className="p-5">
           <div className="flex items-center gap-2 mb-4">
             <Tag className="h-4 w-4" style={{ color: 'var(--primary)' }} />
-            <span className="text-[14px] font-semibold text-text">알고리즘 태그 분포</span>
+            <span className="text-[14px] font-semibold text-text">{t('charts.tags.title')}</span>
           </div>
           {tagData.length === 0 ? (
             <div className="h-[200px] flex items-center justify-center text-text-3 text-sm">
-              아직 문제를 해결하지 않았습니다.
+              {t('charts.tags.empty')}
             </div>
           ) : (
             <div className="space-y-3">
