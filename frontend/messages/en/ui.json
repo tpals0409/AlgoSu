@@ -1,0 +1,39 @@
+{
+  "alert": {
+    "closeLabel": "Close alert"
+  },
+  "backBtn": {
+    "defaultLabel": "Back"
+  },
+  "categoryBar": {
+    "ariaLabel": "{category} {grade} {score} points",
+    "scoreLabel": "{category} score"
+  },
+  "difficultyBadge": {
+    "ariaLabel": "Difficulty: {label}"
+  },
+  "langBadge": {
+    "ariaLabel": "Programming language {language}"
+  },
+  "loadingSpinner": {
+    "loading": "Loading...",
+    "processing": "Processing..."
+  },
+  "notificationToast": {
+    "close": "Close"
+  },
+  "scoreGauge": {
+    "excellent": "Excellent",
+    "average": "Average",
+    "needsImprovement": "Needs improvement",
+    "ariaLabel": "Score {score} points — {label}"
+  },
+  "skeleton": {
+    "contentLoading": "Loading content",
+    "tableLoading": "Loading table",
+    "dashboardLoading": "Loading dashboard",
+    "listLoading": "Loading list",
+    "profileLoading": "Loading profile",
+    "reviewLoading": "Loading review"
+  }
+}
