@@ -13,7 +13,7 @@
 import type { ReactNode } from 'react';
 import Script from 'next/script';
 import { NextIntlClientProvider } from 'next-intl';
-import { getMessages } from 'next-intl/server';
+import { getMessages, getTranslations } from 'next-intl/server';
 import { routing } from '@/i18n/routing';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import { WebVitalsReporter } from '@/components/providers/WebVitalsReporter';
@@ -51,8 +51,9 @@ export default async function LocaleLayout({
     notFound();
   }
 
-  // next-intl 메시지 로드 (Phase B: 빈 객체, Phase C~: 실제 번역)
+  // next-intl 메시지 로드
   const messages = await getMessages();
+  const t = await getTranslations({ locale, namespace: 'common' });
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
@@ -60,7 +61,7 @@ export default async function LocaleLayout({
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-white focus:text-black"
       >
-        콘텐츠로 건너뛰기
+        {t('nav.skipNav')}
       </a>
       {adsenseEnabled && adsenseClientId && (
         <Script

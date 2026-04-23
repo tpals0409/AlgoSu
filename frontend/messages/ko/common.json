@@ -1,5 +1,6 @@
 {
   "nav": {
+    "skipNav": "콘텐츠로 건너뛰기",
     "dashboard": "대시보드",
     "problems": "문제",
     "studies": "스터디",
