@@ -1,0 +1,108 @@
+{
+  "profile": {
+    "meta": {
+      "title": "Profile",
+      "description": "Manage your profile settings."
+    },
+    "own": {
+      "heading": "Profile",
+      "subtitle": "Manage your account and GitHub connection.",
+      "avatar": {
+        "changeLabel": "Change avatar",
+        "imageAlt": "Profile avatar",
+        "pickerTitle": "Select avatar"
+      },
+      "badge": {
+        "connected": "Connected"
+      },
+      "basicInfo": {
+        "title": "Basic Info",
+        "edit": "Edit",
+        "editDisabled": "Coming soon",
+        "name": "Name",
+        "email": "Email",
+        "loginMethod": "Login method"
+      },
+      "github": {
+        "title": "GitHub Integration",
+        "notConnected": "GitHub connection is required for code submission",
+        "link": "Connect",
+        "relink": "Reconnect",
+        "unlink": "Disconnect"
+      },
+      "account": {
+        "title": "Account Management",
+        "logout": "Log out",
+        "delete": "Delete account"
+      },
+      "logoutModal": {
+        "title": "Log out?",
+        "description": "Your session will end and you will be redirected to the login page.",
+        "cancel": "Cancel",
+        "confirm": "Log out"
+      },
+      "deleteModal": {
+        "title": "Delete your account?",
+        "description": "This action cannot be undone. All data will be permanently deleted.",
+        "cancel": "Cancel",
+        "confirm": "Delete",
+        "deleting": "Deleting..."
+      },
+      "errors": {
+        "githubLink": "Failed to connect GitHub. Please try again later.",
+        "githubUnlink": "Failed to disconnect GitHub.",
+        "githubRelink": "Failed to reconnect GitHub.",
+        "avatarChange": "Failed to change avatar.",
+        "deleteAccount": "Failed to delete account. Please try again later."
+      }
+    },
+    "public": {
+      "notFound": "Profile not found.",
+      "noName": "No name",
+      "totalSubmissions": "Submissions",
+      "aiAverage": "AI Avg",
+      "studies": {
+        "title": "Study Groups",
+        "empty": "No study groups joined.",
+        "memberCount": "{count} members",
+        "submissionCount": "{count} submissions",
+        "aiScore": "AI avg {score}",
+        "viewStudyRoom": "View study room"
+      }
+    }
+  },
+  "settings": {
+    "meta": {
+      "title": "Settings"
+    },
+    "loading": "Loading settings",
+    "heading": "Settings",
+    "form": {
+      "publicProfile": {
+        "title": "Public Profile",
+        "toggle": "Profile visibility",
+        "toggleDescription": "When enabled, anyone can view your profile"
+      },
+      "slug": {
+        "label": "Profile URL",
+        "prefix": "algosu.com/profile/",
+        "placeholder": "my-profile",
+        "preview": "Preview: algosu.com/profile/{slug}"
+      },
+      "save": "Save",
+      "saving": "Saving...",
+      "profileLink": "My profile link:"
+    },
+    "validation": {
+      "slug": {
+        "pattern": "Lowercase letters, numbers, and hyphens only (3–20 chars, no leading/trailing hyphens)",
+        "reserved": "This slug is reserved and cannot be used.",
+        "requiredForPublic": "Please set a slug before enabling public profile."
+      },
+      "save": {
+        "success": "Settings saved.",
+        "failed": "Save failed"
+      }
+    }
+  }
+}
