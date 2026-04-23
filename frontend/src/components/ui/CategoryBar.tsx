@@ -1,14 +1,15 @@
 /**
- * @file AI 카테고리별 점수 바
+ * @file AI category score bar
  * @domain ai
  * @layer component
  *
- * 클릭 시 코드 하이라이트 연동 (선택 상태 외부 관리).
+ * Clicking links to code highlighting (selection state managed externally).
  */
 
 'use client';
 
 import type { ReactElement } from 'react';
+import { useTranslations } from 'next-intl';
 import { useAnimVal } from '@/hooks/useAnimVal';
 import { cn } from '@/lib/utils';
 
@@ -41,6 +42,7 @@ export function CategoryBar({
   onClick,
   className,
 }: CategoryBarProps): ReactElement {
+  const t = useTranslations('ui');
   const [ref, animWidth] = useAnimVal(item.score, 800);
   const colors = COLOR_MAP[item.color];
 
@@ -52,7 +54,7 @@ export function CategoryBar({
       onClick={onClick}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.(); } }}
       aria-pressed={selected}
-      aria-label={`${item.category} ${item.grade} ${item.score}점`}
+      aria-label={t('categoryBar.ariaLabel', { category: item.category, grade: item.grade, score: item.score })}
       className={cn(
         'cursor-pointer border-b border-border px-6 py-4 transition-colors',
         selected ? 'border-l-[3px] border-l-primary bg-primary-soft' : 'border-l-[3px] border-l-transparent',
@@ -78,7 +80,7 @@ export function CategoryBar({
         aria-valuenow={item.score}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label={`${item.category} 점수`}
+        aria-label={t('categoryBar.scoreLabel', { category: item.category })}
       >
         <div
           className={cn('h-full rounded-full transition-[width] duration-100 ease-linear', colors.bar)}
