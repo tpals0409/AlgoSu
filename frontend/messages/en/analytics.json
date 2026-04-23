@@ -1,0 +1,35 @@
+{
+  "charts": {
+    "statCards": {
+      "totalSubmissions": "Total Submissions",
+      "solvedCount": "{count} solved",
+      "solvedProblems": "Solved Problems",
+      "completionRate": "{pct}% completed",
+      "avgScore": "{score} pts",
+      "avgAIScore": "Avg AI Score",
+      "aiScoreAvgSub": "AI Code Analysis Avg",
+      "streakValue": "{count} wks",
+      "streak": "Streak"
+    },
+    "weeklyTrend": {
+      "title": "Weekly Submission Trend",
+      "empty": "No submission records yet.",
+      "barName": "Submissions"
+    },
+    "aiScore": {
+      "title": "AI Score Trend",
+      "avgBadge": "Avg {score} pts",
+      "empty": "No analyzed submissions yet.",
+      "lineName": "AI Score"
+    },
+    "difficulty": {
+      "title": "Problems by Difficulty",
+      "empty": "No problems solved yet.",
+      "totalSolved": "{count} problems solved"
+    },
+    "tags": {
+      "title": "Algorithm Tag Distribution",
+      "empty": "No problems solved yet."
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "charts": {
+    "statCards": {
+      "totalSubmissions": "누적 제출 횟수",
+      "solvedCount": "{count}문제",
+      "solvedProblems": "해결 문제",
+      "completionRate": "완료율 {pct}%",
+      "avgScore": "{score}점",
+      "avgAIScore": "평균 AI 점수",
+      "aiScoreAvgSub": "AI 코드 분석 평균",
+      "streakValue": "{count}주",
+      "streak": "연속 제출"
+    },
+    "weeklyTrend": {
+      "title": "주차별 제출 추이",
+      "empty": "아직 제출 기록이 없습니다.",
+      "barName": "제출"
+    },
+    "aiScore": {
+      "title": "AI 점수 추이",
+      "avgBadge": "평균 {score}점",
+      "empty": "분석 완료된 제출이 없습니다.",
+      "lineName": "AI 점수"
+    },
+    "difficulty": {
+      "title": "난이도별 해결 수",
+      "empty": "아직 문제를 해결하지 않았습니다.",
+      "totalSolved": "총 {count}문제 해결 완료"
+    },
+    "tags": {
+      "title": "알고리즘 태그 분포",
+      "empty": "아직 문제를 해결하지 않았습니다."
+    }
+  }
+}
