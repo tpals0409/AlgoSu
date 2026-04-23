@@ -2,7 +2,7 @@
  * @file 문제 404 Not Found 페이지 — 국제화 대응 (Server Component)
  * @domain problem
  * @layer page
- * @related errors.json, Logo, i18n/routing
+ * @related errors.json, Logo
  *
  * getTranslations('errors')로 problemNotFound 키를 참조하여
  * 로케일별 문제 404 페이지를 렌더링한다.
@@ -11,7 +11,6 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
-import { routing } from '@/i18n/routing';
 import { Logo } from '@/components/ui/Logo';
 
 /**
@@ -19,13 +18,10 @@ import { Logo } from '@/components/ui/Logo';
  *
  * - Logo + 404 타이틀 + 설명 + 문제 목록 링크
  * - errors.problemNotFound 번역 키 사용
- * - defaultLocale 폴백으로 안전 처리
+ * - locale: request.ts getRequestConfig 자동 적용
  */
 export default async function ProblemNotFound(): Promise<ReactNode> {
-  const t = await getTranslations({
-    locale: routing.defaultLocale,
-    namespace: 'errors',
-  });
+  const t = await getTranslations({ namespace: 'errors' });
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-bg px-4">
