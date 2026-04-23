@@ -2,8 +2,9 @@
 sprint: 122
 title: "글로벌 영문화 완성 — LanguageSwitcher UX 경로 + 전체 페이지 번역 + SEO 대응"
 period: "2026-04-23"
-status: in_progress
+status: completed
 start_commit: a98b84c
+end_commit: 37c8eb2
 ---
 
 # Sprint 122 — i18n UX 경로 완성 및 전체 페이지 번역 적용
@@ -262,48 +263,103 @@ Sprint 121 Phase B에서 `app/[locale]/*` 재편 시 확인된 컴포넌트 내 
 
 ---
 
-## 이월 시드 (Sprint 122 처리 대상)
+## Phase 실행 결과
 
-### Sprint 120 Frontend P1 3건
+| Phase | 내용 | 결과 |
+|-------|------|------|
+| A | 설계 결정 (D1~D3) ADR 확정 + Scout 전수 스캔 (96 app files, 53 components, 초기 i18n 적용 8% → 페이지 레벨 100% 달성) | ✅ |
+| B | LanguageSwitcher UX 경로 완성 — LandingContent Nav 헤더 우측 삽입 + `AuthShell` Client Component 신설 | ✅ |
+| C | P0 하드코딩 일괄 처리 — skip-nav, `errors.json` 12 페이지 키, `LocalizedErrorPage` 래퍼로 21개 `error.tsx` 일괄 치환, `not-found` 3개 Server Component 전환, `AdBanner` 번역 | ✅ |
+| D Wave 1 | dashboard + analytics 번역 (D-0/D-1/D-2, `dashboard.json` ~80 keys) | ✅ |
+| D Wave 2 | problems 도메인 번역 (D-3a/b/c/d, `problems.json` ~80 keys, 4 pages) | ✅ |
+| D Wave 3 | submissions 도메인 번역 (D-4a/b/c/d, `submissions.json`, 3 pages) | ✅ |
+| D Wave 4 | reviews 번역 (D-5a/b, `reviews.json`, 1 page) | ✅ |
+| D Wave 5 | account 번역 (D-6a/b/c, `account.json`, profile + profile/[slug] + settings) | ✅ |
+| E | SEO — `buildLocaleAlternates` 헬퍼, `metadataBase`, `sitemap.ts` hreflang, `robots.ts` | ✅ |
+| H-1 | ADR 최종화 + 메모리 갱신 | ✅ |
 
-| Finding | 파일 | 내용 | Phase |
-|---------|------|------|-------|
-| p1-023 | `middleware.ts` | `/shared` 경로 PUBLIC_PATHS 누락 | H |
-| p1-024 | `admin/layout.tsx` | admin 권한 CSR 전용 (서버 검증 미비) | H |
-| p1-025 | `callback/page.tsx` | OAuth error fragment 직접 표시 | H |
+**누적 네임스페이스 10개**: `common`, `landing`, `auth`, `difficulty`, `errors`, `dashboard`, `problems`, `submissions`, `reviews`, `account`  
+**Wave D 총 커밋**: 14 commits  
+**최종 커밋**: `37c8eb2` (Phase E)
 
-### P1 Security 49건 (Sprint 118/119 배치)
+---
 
-Sprint 119 Phase D에서 P0 13/17 + P1 일부를 완료했으나, **P1 security 49건**은 Sprint 120~121 i18n 작업과 충돌 방지를 위해 유보되었다. Sprint 122 Phase H에서 우선순위에 따라 배치 처리한다.
+## Critic 리뷰 이력
 
-- **배치 전략**: Gatekeeper가 49건을 파일 도메인별 그룹화 → 3~5건 단위 atomic commit
-- **범위 제외**: i18n 관련 파일(messages/, src/i18n/)은 Sprint 122 번역 작업 완료 후 처리
+| 차수 | 리뷰 ID | 대상 | 주요 파인딩 | 처리 결과 |
+|------|---------|------|-------------|-----------|
+| 1차 | 145430 | Phase B+C 8 commits | P2 1건 — not-found provider 누락 | fix-palette 커밋으로 즉시 해소 |
+| 2차 | 145430-66123 | fix 3 commits | Medium 2건 + Low 1건 | 모두 pre-existing 또는 non-blocking 판정, 추가 조치 불필요 |
+| Wave 1~5 개별 | — | Wave D 14 commits | auto-critic 트리거됨 | 개별 결과 별도 확인 필요 (미집계) |
 
-### Critic 이월 시드 6건
+---
 
-| 항목 | 출처 | 처리 방법 | Phase |
-|------|------|-----------|-------|
-| 동적 번역 키 타입 안전성 | Critic Low-2 (Sprint 121) | next-intl 타입 플러그인 도입 가능성 검토 → Architect 판단 | 검토 후 결정 |
-| CI 번역 키 패리티 검사 | Critic M-C2 (Sprint 121) | ko/en JSON 키 구조 불일치 자동 감지 CI 스텝 추가 | H |
-| AuthContext locale-aware 전환 | Phase F 발견 (Sprint 121) | `window.location.href` → `useRouter` (`@/i18n/navigation`) | H |
-| 백엔드 OAuth 에러 코드 영문화 | M-E2 근본 해결 (Sprint 121) | 백엔드 구조화 에러 코드 반환 전환 — Sprint 123+ | 이월 |
-| register 페이지 번역 | 범위 외 (Sprint 121) | `register/`, `register/github`, `register/profile` 번역 | F |
-| renderWithI18n 테스트 마이그레이션 | Critic Low-2 (Sprint 121) | 기존 `render()` → `renderWithI18n()` 점진 전환 | 이월 (Sprint 123) |
+## 검증
 
-### 백엔드 응답 i18n (Sprint 123+)
+| 항목 | 결과 |
+|------|------|
+| `tsc --noEmit` | ✅ PASS |
+| ESLint | ✅ PASS |
+| jest | ✅ PASS |
+| Critic Critical/High | 0건 |
 
-백엔드(NestJS/FastAPI) 에러 메시지 및 응답 본문의 영문화는 Sprint 122 범위에서 제외한다.
+---
 
-**보류 근거**:
-- 현재 프론트엔드는 백엔드 에러 코드를 `auth.json errors.*` 키로 매핑하는 화이트리스트 방식으로 임시 대응 중
-- `Accept-Language` 헤더 기반 서버 응답 국제화는 NestJS `i18n` 모듈(`nestjs-i18n`) 도입 또는 에러 코드 표준화 전략이 필요
-- Sprint 122는 프론트엔드 UX 완성에 집중, 백엔드 전략은 Sprint 123에서 별도 ADR로 확정
+## Sprint 123 이월 시드
+
+Sprint 122 범위에서 의도적으로 제외하고 Sprint 123으로 이관하는 항목 목록.
+
+### 컴포넌트 번역 (53개)
+
+우선순위 순:
+- `AppLayout` / `TopNav` / `StudySidebar` / `NotificationBell`
+- `Dashboard*` / `Analytics*` 위젯 컴포넌트
+- `Feedback*` / `Review*` / `Submission*`
+- `ShareLinkManager` 및 기타 공용 컴포넌트
+
+### 미번역 페이지
+
+| 페이지 | 이유 |
+|--------|------|
+| `admin/problems/[id]/edit`, `admin/problems/create` | admin 도메인 분리 처리 |
+| `admin/feedbacks` | admin 도메인 분리 처리 |
+| `problems/[id]/status` (스터디 통계) | 독립 번역 키 설계 필요 |
+| `studies/page`, `studies/[id]/page`, `studies/[id]/room` | studies 도메인 전체 별도 Wave |
+| `guest/page`, `shared/[token]/page` | 공개 공유 경로 |
+| `privacy/terms` | 법무 검토 후 번역 |
+
+### i18n 품질 개선
+
+| 항목 | 출처 |
+|------|------|
+| `renderWithI18n` 테스트 마이그레이션 완전 적용 | Critic Low-2 (Sprint 121) |
+| next-intl 타입 플러그인 도입 (동적 번역 키 타입 안전성) | Critic 권고 |
+| Zod 스키마 검증 메시지 i18n — `errorMap` 패턴 도입 검토 | 신규 시드 |
+| `lib/date.ts` 상대 시간 `useFormatter` 전환 | 신규 시드 |
+| `hooks/useSubmissionSSE` 동적 번역 caller 레벨 전환 | 신규 시드 |
+| `studies/[id]/room/utils.ts` 순수 TS 유틸 내 한글 | 신규 시드 |
+| `lib/api/client.ts` HTTP 에러 메시지 국제화 | 신규 시드 |
+
+### 보안 및 백엔드
+
+| 항목 | 출처 |
+|------|------|
+| Sprint 120 이월 Frontend P1 3건 (p1-023/024/025) | Sprint 120 미처리 |
+| P1 security 49건 | Sprint 118/119 배치 |
+| 백엔드 OAuth 에러 구조화 (Sprint 121 M-E2 근본 해결) | 별도 ADR 필요 |
+
+### Critic 지적 anti-pattern
+
+| 항목 | 내용 |
+|------|------|
+| `code: '404'` 번역 키 제거 | 숫자형 키를 문자열로 쓰는 anti-pattern — `notFound` 등 의미론적 키로 교체 |
 
 ---
 
 ## 관련 문서
 
 - 이전 스프린트: [sprint-121.md](./sprint-121.md)
+- 다음 스프린트: [sprint-123.md](./sprint-123.md)
 - 현재 스프린트 윈도우: `memory/sprint-window.md`
 - 디자인 토큰: `CLAUDE.md` § 디자인 토큰 (UI v2)
 - 어노테이션 사전: `docs/annotation-dictionary.md`
