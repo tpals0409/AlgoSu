@@ -1,18 +1,22 @@
 /**
- * @file Login 페이지 (v2 전면 교체)
+ * @file Login 페이지 (i18n 번역 적용)
  * @domain identity
  * @layer page
- * @related AuthContext, authApi, Logo
+ * @related AuthContext, authApi, Logo, @/i18n/navigation
+ *
+ * useTranslations('auth') 훅으로 모든 UI 문자열을 번역 키로 참조한다.
+ * locale-aware Link를 사용하여 /en 로케일에서도 올바른 경로 유지.
  */
 
 'use client';
 
 import { useState, useCallback, useEffect, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import { Suspense } from 'react';
 import { useTheme } from 'next-themes';
 import { Sun, Moon } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { Link } from '@/i18n/navigation';
 import { Logo } from '@/components/ui/Logo';
 import { Alert } from '@/components/ui/Alert';
 import { InlineSpinner } from '@/components/ui/LoadingSpinner';
@@ -25,39 +29,35 @@ type OAuthProvider = 'google' | 'naver' | 'kakao';
 
 // ─── CONSTANTS ────────────────────────────
 
-const PROVIDERS: {
-  id: OAuthProvider;
-  label: string;
-  icon: () => ReactNode;
-  className: string;
-  hoverClassName: string;
-}[] = [
-  {
-    id: 'google',
-    label: 'Google로 계속하기',
+/** OAuth 프로바이더별 스타일 설정 */
+const PROVIDER_STYLES: Record<
+  OAuthProvider,
+  { icon: () => ReactNode; className: string; hoverClassName: string }
+> = {
+  google: {
     icon: GoogleIcon,
     className: 'border border-border bg-bg-card text-text',
     hoverClassName: 'hover:bg-bg-alt',
   },
-  {
-    id: 'naver',
-    label: '네이버로 계속하기',
+  naver: {
     icon: NaverIcon,
     className: 'border-transparent bg-oauth-naver text-white',
     hoverClassName: 'hover:brightness-95',
   },
-  {
-    id: 'kakao',
-    label: '카카오로 계속하기',
+  kakao: {
     icon: KakaoIcon,
     className: 'border-transparent bg-oauth-kakao-bg text-oauth-kakao-text',
     hoverClassName: 'hover:brightness-95',
   },
-];
+};
+
+/** 프로바이더 렌더링 순서 */
+const PROVIDER_ORDER: OAuthProvider[] = ['google', 'naver', 'kakao'];
 
 // ─── LOGIN CONTENT ───────────────────────
 
 function LoginContent(): ReactNode {
+  const t = useTranslations('auth');
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, isLoading: authLoading, loginFromCookie } = useAuth();
@@ -105,14 +105,14 @@ function LoginContent(): ReactNode {
   useEffect(() => {
     const errorParam = searchParams.get('error');
     if (errorParam) {
-      setError('인증에 실패했습니다. 다시 시도해주세요.');
+      setError(t('errors.authFailed'));
     }
     const expiredParam = searchParams.get('expired');
     if (expiredParam === 'true') {
       setShowExpiredModal(true);
       window.history.replaceState({}, '', '/login');
     }
-  }, [searchParams]);
+  }, [searchParams, t]);
 
   /** 데모 로그인 핸들러 */
   const handleDemoLogin = useCallback(async () => {
@@ -120,14 +120,13 @@ function LoginContent(): ReactNode {
     setDemoLoading(true);
     try {
       const { redirect } = await authApi.demoLogin();
-      // 쿠키가 설정되었으므로 loginFromCookie로 상태 동기화 후 리다이렉트
       loginFromCookie();
       router.push(redirect);
     } catch {
-      setError('데모 로그인에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      setError(t('errors.demoFailed'));
       setDemoLoading(false);
     }
-  }, [router, loginFromCookie]);
+  }, [router, loginFromCookie, t]);
 
   /** OAuth 로그인 핸들러 */
   const handleOAuth = useCallback(async (provider: OAuthProvider) => {
@@ -137,10 +136,10 @@ function LoginContent(): ReactNode {
       const { url } = await authApi.getOAuthUrl(provider);
       window.location.href = url;
     } catch {
-      setError('로그인 서비스에 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      setError(t('errors.serviceFailed'));
       setLoadingProvider(null);
     }
-  }, []);
+  }, [t]);
 
   /** fade-in 스타일 */
   const fade = (delay = 0): React.CSSProperties => ({
@@ -164,7 +163,7 @@ function LoginContent(): ReactNode {
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className="flex h-9 w-9 items-center justify-center rounded-btn text-text-3 hover:text-text hover:bg-bg-alt transition-colors"
-            aria-label="테마 전환"
+            aria-label={t('login.themeToggle')}
           >
             {theme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
           </button>
@@ -180,7 +179,6 @@ function LoginContent(): ReactNode {
         />
 
         <div className="relative w-full max-w-[360px]" style={fade(0)}>
-          {/* 로그인 컨텐츠 */}
           <div className="pt-10 pb-8 px-8">
             {/* 로고 + 제목 */}
             <div className="mb-8 text-center" style={fade(0.1)}>
@@ -188,10 +186,10 @@ function LoginContent(): ReactNode {
                 <Logo size={48} />
               </div>
               <h1 className="mb-1.5 text-[26px] font-bold tracking-tight text-text leading-snug">
-                AlgoSu에 오신 것을<br />환영합니다
+                {t('login.title')}<br />{t('login.titleLine2')}
               </h1>
               <p className="text-[13px] text-text-3">
-                소셜 계정으로 간편하게 로그인하세요.
+                {t('login.subtitle')}
               </p>
             </div>
 
@@ -206,18 +204,19 @@ function LoginContent(): ReactNode {
 
             {/* OAuth 버튼 */}
             <div className="flex flex-col gap-2.5">
-              {PROVIDERS.map((provider, idx) => {
-                const isCurrentLoading = loadingProvider === provider.id;
+              {PROVIDER_ORDER.map((providerId, idx) => {
+                const style = PROVIDER_STYLES[providerId];
+                const isCurrentLoading = loadingProvider === providerId;
                 const isDisabled = loadingProvider !== null;
-                const Icon = provider.icon;
+                const Icon = style.icon;
 
                 return (
                   <button
-                    key={provider.id}
+                    key={providerId}
                     type="button"
                     disabled={isDisabled}
-                    onClick={() => void handleOAuth(provider.id)}
-                    className={`flex h-12 w-full items-center justify-center gap-2.5 rounded-btn border text-sm font-medium transition-all disabled:opacity-50 ${provider.className} ${provider.hoverClassName}`}
+                    onClick={() => void handleOAuth(providerId)}
+                    className={`flex h-12 w-full items-center justify-center gap-2.5 rounded-btn border text-sm font-medium transition-all disabled:opacity-50 ${style.className} ${style.hoverClassName}`}
                     style={fade(0.25 + idx * 0.08)}
                   >
                     {isCurrentLoading ? (
@@ -225,7 +224,9 @@ function LoginContent(): ReactNode {
                     ) : (
                       <Icon />
                     )}
-                    {isCurrentLoading ? '연결 중...' : provider.label}
+                    {isCurrentLoading
+                      ? t('login.provider.connecting')
+                      : t(`login.provider.${providerId}`)}
                   </button>
                 );
               })}
@@ -236,7 +237,7 @@ function LoginContent(): ReactNode {
               <div style={fade(0.5)}>
                 <div className="my-5 flex items-center gap-3">
                   <div className="h-px flex-1 bg-border" />
-                  <span className="text-[11px] text-text-3">또는</span>
+                  <span className="text-[11px] text-text-3">{t('login.demo.divider')}</span>
                   <div className="h-px flex-1 bg-border" />
                 </div>
                 <button
@@ -246,22 +247,22 @@ function LoginContent(): ReactNode {
                   className="flex h-12 w-full items-center justify-center gap-2.5 rounded-btn border border-dashed border-primary/40 bg-primary/5 text-sm font-medium text-primary transition-all hover:bg-primary/10 disabled:opacity-50"
                 >
                   {demoLoading ? <InlineSpinner /> : <DemoIcon />}
-                  {demoLoading ? '접속 중...' : '데모 체험하기'}
+                  {demoLoading ? t('login.demo.loading') : t('login.demo.button')}
                 </button>
                 <p className="mt-2 text-center text-[11px] text-text-3">
-                  로그인 없이 전체 기능을 둘러볼 수 있습니다 (읽기 전용)
+                  {t('login.demo.description')}
                 </p>
               </div>
             )}
 
             {/* 게스트 둘러보기 */}
             <p className="mt-4 text-center text-[11px] text-text-3" style={fade(0.55)}>
-              회원가입 전에 예시만 빠르게 보고 싶나요?{' '}
+              {t('login.guest.prompt')}{' '}
               <Link
                 href="/guest"
                 className="underline transition-colors hover:text-text"
               >
-                게스트로 둘러보기
+                {t('login.guest.link')}
               </Link>
             </p>
 
@@ -270,9 +271,15 @@ function LoginContent(): ReactNode {
               className="mt-7 text-center text-[11px] leading-relaxed text-text-3"
               style={fade(0.45)}
             >
-              로그인 시{' '}
-              <Link href="/terms" className="underline transition-colors hover:text-text">서비스 이용약관</Link> 및{' '}
-              <Link href="/privacy" className="underline transition-colors hover:text-text">개인정보처리방침</Link>에 동의하는 것으로 간주됩니다.
+              {t('login.terms.prefix')}{' '}
+              <Link href="/terms" className="underline transition-colors hover:text-text">
+                {t('login.terms.termsLink')}
+              </Link>{' '}
+              {t('login.terms.conjunction')}{' '}
+              <Link href="/privacy" className="underline transition-colors hover:text-text">
+                {t('login.terms.privacyLink')}
+              </Link>
+              {t('login.terms.suffix')}
             </p>
           </div>
         </div>
@@ -283,8 +290,8 @@ function LoginContent(): ReactNode {
         <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setShowExpiredModal(false)} />
           <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
-            <p className="text-[14px] font-semibold text-text">세션이 종료되었습니다</p>
-            <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>보안을 위해 자동으로 로그아웃되었습니다. 다시 로그인해주세요.</p>
+            <p className="text-[14px] font-semibold text-text">{t('expired.title')}</p>
+            <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>{t('expired.description')}</p>
             <div className="flex items-center justify-end">
               <button
                 type="button"
@@ -292,7 +299,7 @@ function LoginContent(): ReactNode {
                 className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity"
                 style={{ backgroundColor: 'var(--primary)' }}
               >
-                확인
+                {t('expired.confirm')}
               </button>
             </div>
           </div>
@@ -303,11 +310,11 @@ function LoginContent(): ReactNode {
       <footer className="py-5 text-center">
         <div className="mb-2 flex items-center justify-center gap-4 text-[12px] font-medium text-text-3">
           <Link href="/privacy" className="transition-colors hover:text-text">
-            개인정보처리방침
+            {t('login.footer.privacy')}
           </Link>
           <span aria-hidden>·</span>
           <Link href="/terms" className="transition-colors hover:text-text">
-            이용약관
+            {t('login.footer.terms')}
           </Link>
         </div>
         <p className="text-[11px] text-text-3">
@@ -379,4 +386,3 @@ function KakaoIcon(): ReactNode {
     </svg>
   );
 }
-

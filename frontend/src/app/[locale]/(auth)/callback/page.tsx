@@ -1,10 +1,24 @@
+/**
+ * @file OAuth 콜백 페이지 (i18n 번역 적용)
+ * @domain identity
+ * @layer page
+ * @related OAuthController, AuthContext, @/i18n/navigation
+ *
+ * 백엔드가 httpOnly Cookie로 JWT를 설정하고, github_connected만 fragment로 전달.
+ * /callback#github_connected=true|false
+ *
+ * github_connected=false 시 GitHub 연동 선택 UI를 인라인으로 표시.
+ * useTranslations('auth') 훅으로 모든 UI 문자열을 번역 키로 참조한다.
+ */
+
 'use client';
 
 import { Suspense } from 'react';
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { useTranslations } from 'next-intl';
+import { Link } from '@/i18n/navigation';
 import { LoadingSpinner, InlineSpinner } from '@/components/ui/LoadingSpinner';
 import { Alert } from '@/components/ui/Alert';
 import {
@@ -19,21 +33,17 @@ import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 import { authApi } from '@/lib/api';
 
-/**
- * @file OAuth 콜백 페이지 — /callback
- * @domain identity
- * @layer page
- * @related OAuthController, AuthContext
- *
- * 백엔드가 httpOnly Cookie로 JWT를 설정하고, github_connected만 fragment로 전달.
- * /callback#github_connected=true|false
- *
- * github_connected=false 시 GitHub 연동 선택 UI를 인라인으로 표시.
- */
-
 type CallbackStep = 'loading' | 'error' | 'github-prompt';
 
+/** OAuth 에러 코드 → 번역 키 매핑 화이트리스트 */
+const ERROR_KEY_MAP: Record<string, string> = {
+  invalid_state: 'errors.invalidState',
+  missing_code: 'errors.missingCode',
+  provider_denied: 'errors.providerDenied',
+};
+
 function CallbackContent(): ReactNode {
+  const t = useTranslations('auth');
   const router = useRouter();
   const { loginFromCookie, updateGitHubStatus } = useAuth();
   const [step, setStep] = useState<CallbackStep>('loading');
@@ -50,10 +60,15 @@ function CallbackContent(): ReactNode {
 
     if (errorParam) {
       const decoded = decodeURIComponent(errorParam);
-      const friendlyMessage = decoded.includes('이미') || decoded.includes('가입')
-        ? decoded
-        : 'OAuth 인증에 실패했습니다. 다시 시도해주세요.';
-      setError(friendlyMessage);
+      // 화이트리스트 에러 코드 → 번역 키, 그 외 → 기존 메시지 또는 fallback
+      const mappedKey = ERROR_KEY_MAP[decoded];
+      if (mappedKey) {
+        setError(t(mappedKey));
+      } else if (decoded.includes('이미') || decoded.includes('가입')) {
+        setError(decoded);
+      } else {
+        setError(t('errors.oauthFailed'));
+      }
       setStep('error');
       return;
     }
@@ -72,8 +87,9 @@ function CallbackContent(): ReactNode {
       // github_connected=true 또는 파라미터 없음 → 홈으로
       router.replace('/');
     }
-  }, [router, loginFromCookie, updateGitHubStatus]);
+  }, [router, loginFromCookie, updateGitHubStatus, t]);
 
+  /** GitHub 연동 핸들러 */
   const handleLinkGitHub = useCallback(async () => {
     setLinkError(null);
     setLinkLoading(true);
@@ -81,11 +97,12 @@ function CallbackContent(): ReactNode {
       const { url } = await authApi.linkGitHub();
       window.location.href = url;
     } catch {
-      setLinkError('GitHub 연동 서비스에 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      setLinkError(t('errors.githubLinkFailed'));
       setLinkLoading(false);
     }
-  }, []);
+  }, [t]);
 
+  /** 건너뛰기 핸들러 */
   const handleSkip = useCallback(() => {
     router.replace('/');
   }, [router]);
@@ -98,7 +115,7 @@ function CallbackContent(): ReactNode {
         </Alert>
         <div className="text-center">
           <Link href="/login" className="text-sm text-primary underline-offset-4 transition-colors hover:text-primary-light hover:underline">
-            로그인 페이지로 돌아가기
+            {t('callback.backToLogin')}
           </Link>
         </div>
       </div>
@@ -109,9 +126,9 @@ function CallbackContent(): ReactNode {
     return (
       <Card className="w-full">
         <CardHeader>
-          <CardTitle>GitHub 계정 연동</CardTitle>
+          <CardTitle>{t('callback.github.title')}</CardTitle>
           <CardDescription>
-            GitHub을 연동하면 코드 자동 업로드 기능을 사용할 수 있습니다.
+            {t('callback.github.description')}
           </CardDescription>
         </CardHeader>
 
@@ -125,15 +142,15 @@ function CallbackContent(): ReactNode {
           <ul className="space-y-2 rounded-card bg-bg-alt p-4 text-sm text-text-2">
             <li className="flex items-start gap-2">
               <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden />
-              코드 제출 시 GitHub 레포지토리에 자동으로 Push됩니다.
+              {t('callback.github.benefit1')}
             </li>
             <li className="flex items-start gap-2">
               <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden />
-              스터디 팀원들과 코드를 공유하고 AI 분석 결과를 받을 수 있습니다.
+              {t('callback.github.benefit2')}
             </li>
             <li className="flex items-start gap-2">
               <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden />
-              GitHub 연동은 프로필에서 언제든 설정할 수 있습니다.
+              {t('callback.github.benefit3')}
             </li>
           </ul>
         </CardContent>
@@ -149,10 +166,10 @@ function CallbackContent(): ReactNode {
             {linkLoading ? (
               <>
                 <InlineSpinner />
-                연결 중...
+                {t('callback.github.linking')}
               </>
             ) : (
-              'GitHub 연동하기'
+              t('callback.github.linkButton')
             )}
           </Button>
           <Button
@@ -162,7 +179,7 @@ function CallbackContent(): ReactNode {
             disabled={linkLoading}
             onClick={handleSkip}
           >
-            나중에 하기
+            {t('callback.github.skipButton')}
           </Button>
         </CardFooter>
       </Card>
@@ -173,7 +190,7 @@ function CallbackContent(): ReactNode {
   return (
     <div className="flex flex-col items-center gap-4">
       <LoadingSpinner />
-      <p className="text-sm text-text-2">로그인 처리 중...</p>
+      <p className="text-sm text-text-2">{t('callback.loading')}</p>
     </div>
   );
 }
@@ -184,7 +201,6 @@ export default function CallbackPage(): ReactNode {
       fallback={
         <div className="flex flex-col items-center gap-4">
           <LoadingSpinner />
-          <p className="text-sm text-text-2">로그인 처리 중...</p>
         </div>
       }
     >
