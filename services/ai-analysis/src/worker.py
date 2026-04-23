@@ -18,7 +18,11 @@ import httpx
 import pika
 import redis
 
-from .claude_client import CircuitBreakerOpenError, ClaudeClient, RateLimitRetryableError
+from .claude_client import (
+    CircuitBreakerOpenError,
+    ClaudeClient,
+    RateLimitRetryableError,
+)
 from .config import settings
 from .metrics import dlq_messages_total, mq_messages_processed_total
 
