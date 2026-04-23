@@ -1,5 +1,5 @@
 /**
- * @file AI 분석 만족도 평가 버튼
+ * @file AI analysis satisfaction rating button
  * @domain submission
  * @layer component
  * @related submissionApi, analysis/page
@@ -7,6 +7,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { ThumbsUp, ThumbsDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { submissionApi } from '@/lib/api';
@@ -18,6 +19,7 @@ interface AiSatisfactionButtonProps {
 }
 
 export function AiSatisfactionButton({ submissionId }: AiSatisfactionButtonProps) {
+  const t = useTranslations('submissions');
   const [rating, setRating] = useState<1 | -1 | null>(null);
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<{ up: number; down: number } | null>(null);
@@ -29,7 +31,7 @@ export function AiSatisfactionButton({ submissionId }: AiSatisfactionButtonProps
         if (res?.rating === 1 || res?.rating === -1) setRating(res.rating);
       })
       .catch(() => {
-        /* silent — 평가 미존재 시 무시 */
+        /* silent — ignore when no rating exists */
       });
     submissionApi
       .getSatisfactionStats(submissionId)
@@ -46,16 +48,16 @@ export function AiSatisfactionButton({ submissionId }: AiSatisfactionButtonProps
         await submissionApi.rateSatisfaction(submissionId, { rating: value });
         setRating(value);
         eventTracker?.track('satisfaction:rate', { meta: { rating: value } });
-        // 통계 갱신
+        // refresh stats
         submissionApi.getSatisfactionStats(submissionId).then(setStats).catch(() => {});
-        toast('의견 감사합니다!');
+        toast(t('aiSatisfaction.thankYou'));
       } catch {
-        toast.error('평가 저장에 실패했습니다.');
+        toast.error(t('aiSatisfaction.saveFailed'));
       } finally {
         setLoading(false);
       }
     },
-    [submissionId],
+    [submissionId, t],
   );
 
   return (
@@ -63,7 +65,7 @@ export function AiSatisfactionButton({ submissionId }: AiSatisfactionButtonProps
       className="flex items-center gap-3 mt-4 pt-4"
       style={{ borderTop: '1px solid var(--border)' }}
     >
-      <span className="text-[13px] text-text-3">AI 분석이 도움이 되었나요?</span>
+      <span className="text-[13px] text-text-3">{t('aiSatisfaction.question')}</span>
       <button
         type="button"
         onClick={() => handleRate(1)}
@@ -76,7 +78,7 @@ export function AiSatisfactionButton({ submissionId }: AiSatisfactionButtonProps
         disabled={loading}
       >
         <ThumbsUp className="h-3.5 w-3.5" />
-        좋아요
+        {t('aiSatisfaction.like')}
         {stats && stats.up > 0 && (
           <span className="ml-0.5 text-[11px] opacity-70">{stats.up}</span>
         )}
@@ -93,7 +95,7 @@ export function AiSatisfactionButton({ submissionId }: AiSatisfactionButtonProps
         disabled={loading}
       >
         <ThumbsDown className="h-3.5 w-3.5" />
-        아쉬워요
+        {t('aiSatisfaction.dislike')}
         {stats && stats.down > 0 && (
           <span className="ml-0.5 text-[11px] opacity-70">{stats.down}</span>
         )}

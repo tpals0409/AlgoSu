@@ -141,6 +141,13 @@
     },
     "refresh": "Refresh"
   },
+  "aiSatisfaction": {
+    "question": "Was the AI analysis helpful?",
+    "like": "Helpful",
+    "dislike": "Not helpful",
+    "thankYou": "Thanks for your feedback!",
+    "saveFailed": "Failed to save your rating."
+  },
   "editor": {
     "loading": "Loading editor...",
     "label": {

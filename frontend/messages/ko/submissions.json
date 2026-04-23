@@ -141,6 +141,13 @@
     },
     "refresh": "새로고침"
   },
+  "aiSatisfaction": {
+    "question": "AI 분석이 도움이 되었나요?",
+    "like": "좋아요",
+    "dislike": "아쉬워요",
+    "thankYou": "의견 감사합니다!",
+    "saveFailed": "평가 저장에 실패했습니다."
+  },
   "editor": {
     "loading": "에디터 로딩 중...",
     "label": {

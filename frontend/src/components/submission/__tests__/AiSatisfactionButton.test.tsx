@@ -1,11 +1,12 @@
 /**
- * @file AiSatisfactionButton 단위 테스트
+ * @file AiSatisfactionButton unit tests
  * @domain submission
  * @layer component
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { renderWithI18n } from '@/test-utils/i18n';
 import { AiSatisfactionButton } from '../AiSatisfactionButton';
 
 /* ---------- mocks ---------- */
@@ -49,7 +50,7 @@ beforeEach(() => {
 
 describe('AiSatisfactionButton', () => {
   it('초기 렌더링 — "AI 분석이 도움이 되었나요?" 텍스트를 표시한다', async () => {
-    render(<AiSatisfactionButton submissionId={SUBMISSION_ID} />);
+    renderWithI18n(<AiSatisfactionButton submissionId={SUBMISSION_ID} />);
     expect(screen.getByText('AI 분석이 도움이 되었나요?')).toBeInTheDocument();
     // getSatisfaction settle 대기
     await waitFor(() =>
@@ -58,7 +59,7 @@ describe('AiSatisfactionButton', () => {
   });
 
   it('mount 시 getSatisfaction API를 호출한다', async () => {
-    render(<AiSatisfactionButton submissionId={SUBMISSION_ID} />);
+    renderWithI18n(<AiSatisfactionButton submissionId={SUBMISSION_ID} />);
     await waitFor(() =>
       expect(mockGetSatisfaction).toHaveBeenCalledTimes(1),
     );
@@ -67,7 +68,7 @@ describe('AiSatisfactionButton', () => {
 
   it('좋아요 클릭 → rateSatisfaction(submissionId, { rating: 1 }) 호출', async () => {
     const user = userEvent.setup();
-    render(<AiSatisfactionButton submissionId={SUBMISSION_ID} />);
+    renderWithI18n(<AiSatisfactionButton submissionId={SUBMISSION_ID} />);
     await waitFor(() => expect(mockGetSatisfaction).toHaveBeenCalled());
 
     await user.click(screen.getByText('좋아요'));
@@ -82,7 +83,7 @@ describe('AiSatisfactionButton', () => {
 
   it('아쉬워요 클릭 → rateSatisfaction(submissionId, { rating: -1 }) 호출', async () => {
     const user = userEvent.setup();
-    render(<AiSatisfactionButton submissionId={SUBMISSION_ID} />);
+    renderWithI18n(<AiSatisfactionButton submissionId={SUBMISSION_ID} />);
     await waitFor(() => expect(mockGetSatisfaction).toHaveBeenCalled());
 
     await user.click(screen.getByText('아쉬워요'));
@@ -97,7 +98,7 @@ describe('AiSatisfactionButton', () => {
 
   it('기존 평가가 있을 때 active 상태 스타일이 적용된다', async () => {
     mockGetSatisfaction.mockResolvedValue({ rating: 1 });
-    render(<AiSatisfactionButton submissionId={SUBMISSION_ID} />);
+    renderWithI18n(<AiSatisfactionButton submissionId={SUBMISSION_ID} />);
 
     await waitFor(() => {
       const likeBtn = screen.getByText('좋아요').closest('button')!;
@@ -108,7 +109,7 @@ describe('AiSatisfactionButton', () => {
   it('API 에러 시 에러가 발생하지 않는다 (사용자 경험 보호)', async () => {
     mockRateSatisfaction.mockRejectedValue(new Error('server error'));
     const user = userEvent.setup();
-    render(<AiSatisfactionButton submissionId={SUBMISSION_ID} />);
+    renderWithI18n(<AiSatisfactionButton submissionId={SUBMISSION_ID} />);
     await waitFor(() => expect(mockGetSatisfaction).toHaveBeenCalled());
 
     await user.click(screen.getByText('좋아요'));
@@ -122,7 +123,7 @@ describe('AiSatisfactionButton', () => {
 
   it('getSatisfaction 실패 시에도 에러 없이 렌더링된다', async () => {
     mockGetSatisfaction.mockRejectedValue(new Error('not found'));
-    render(<AiSatisfactionButton submissionId={SUBMISSION_ID} />);
+    renderWithI18n(<AiSatisfactionButton submissionId={SUBMISSION_ID} />);
 
     await waitFor(() => expect(mockGetSatisfaction).toHaveBeenCalled());
     // 에러 없이 정상 렌더링
