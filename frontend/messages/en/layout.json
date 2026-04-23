@@ -45,8 +45,7 @@
     "logout": "Log Out",
     "login": "Log In",
     "avatarAlt": "{name} avatar",
-    "defaultUser": "User",
-    "userInfo": "User Info"
+    "defaultUser": "User"
   },
   "studySidebar": {
     "nav": {

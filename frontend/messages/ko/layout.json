@@ -45,8 +45,7 @@
     "logout": "로그아웃",
     "login": "로그인",
     "avatarAlt": "{name} 아바타",
-    "defaultUser": "사용자",
-    "userInfo": "사용자 정보"
+    "defaultUser": "사용자"
   },
   "studySidebar": {
     "nav": {
