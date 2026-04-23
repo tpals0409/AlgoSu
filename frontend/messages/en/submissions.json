@@ -140,5 +140,58 @@
       "description": "An error occurred during AI analysis. Please resubmit or contact support."
     },
     "refresh": "Refresh"
+  },
+  "editor": {
+    "loading": "Loading editor...",
+    "label": {
+      "language": "Programming language",
+      "fontDecrease": "Decrease font size",
+      "fontIncrease": "Increase font size",
+      "reset": "Reset code",
+      "resetShort": "Reset"
+    },
+    "deadline": {
+      "label": "Deadline",
+      "imminent": "Less than 1 minute until deadline. Submit now!",
+      "approaching": "Less than 5 minutes until deadline. Hurry up and submit."
+    },
+    "submitConfirm": {
+      "title": "Submit your code?",
+      "lateTitle": "Submit late?",
+      "description": "You cannot modify after submission.",
+      "lateDescription": "The deadline has passed. This will be recorded as a late submission.",
+      "cancel": "Cancel",
+      "submit": "Submit",
+      "lateSubmit": "Submit Late"
+    },
+    "langChange": {
+      "title": "Change language?",
+      "description": "Your current code will be deleted.",
+      "cancel": "Cancel",
+      "confirm": "Change"
+    },
+    "fullscreen": {
+      "enter": "Fullscreen",
+      "exitTitle": "Exit Fullscreen (Esc)",
+      "exit": "Exit Fullscreen"
+    },
+    "shortcut": {
+      "submit": "Submit Code (Ctrl+Enter)"
+    },
+    "footer": {
+      "charUnit": "chars",
+      "charsNeeded": "{count} more needed",
+      "submit": "Submit",
+      "submitShort": "Submit",
+      "lateSubmit": "Late Submit",
+      "lateSubmitShort": "Late",
+      "submitting": "Submitting...",
+      "submittingShort": "Submit..."
+    },
+    "error": {
+      "tooShort": "Code must be at least 10 characters.",
+      "tooLarge": "Code cannot exceed 100KB.",
+      "submitFailed": "An error occurred during submission."
+    }
   }
 }

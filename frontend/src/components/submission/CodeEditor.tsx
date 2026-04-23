@@ -1,5 +1,5 @@
 /**
- * @file Monaco 기반 코드 에디터 컴포넌트
+ * @file Monaco-based code editor component
  * @domain submission
  * @layer component
  * @related useAutoSave, SubmissionStatus
@@ -15,6 +15,7 @@ import {
 } from 'react';
 import dynamic from 'next/dynamic';
 import { useTheme } from 'next-themes';
+import { useTranslations } from 'next-intl';
 import type { BeforeMount, OnMount } from '@monaco-editor/react';
 import { Send, RotateCcw, Minus, Plus, Maximize2, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -22,18 +23,24 @@ import { Alert } from '@/components/ui/Alert';
 import { InlineSpinner } from '@/components/ui/LoadingSpinner';
 import { LANGUAGES } from '@/lib/constants';
 
-// ─── SSR-safe dynamic import (번들 최적화) ──
+// ─── SSR-safe dynamic import (bundle optimization) ──
+
+/** Loading fallback for Monaco editor (uses i18n provider) */
+function EditorLoadingFallback(): ReactNode {
+  const t = useTranslations('submissions');
+  return (
+    <div className="flex h-[520px] w-full items-center justify-center rounded-md border border-border bg-bg-card">
+      <span className="text-sm text-text-2">{t('editor.loading')}</span>
+    </div>
+  );
+}
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
-  loading: () => (
-    <div className="flex h-[520px] w-full items-center justify-center rounded-md border border-border bg-bg-card">
-      <span className="text-sm text-text-2">에디터 로딩 중...</span>
-    </div>
-  ),
+  loading: () => <EditorLoadingFallback />,
 });
 
-// ─── Monaco 언어 ID 매핑 ────────────────
+// ─── Monaco language ID mapping ────────────────
 
 const MONACO_LANG_MAP: Record<string, string> = {
   python: 'python',
@@ -45,11 +52,11 @@ const MONACO_LANG_MAP: Record<string, string> = {
   go: 'go',
   rust: 'rust',
   kotlin: 'kotlin',
-  /** Sprint 108: Monaco 내장 SQL 모드 사용 */
+  /** Sprint 108: use Monaco built-in SQL mode */
   sql: 'sql',
 };
 
-// ─── 커스텀 테마 (디자인 시스템 v2 연동) ──
+// ─── Custom themes (design system v2 integration) ──
 
 type MonacoInstance = Parameters<BeforeMount>[0];
 
@@ -99,7 +106,7 @@ interface CodeEditorProps {
   onSubmit: () => Promise<void>;
   isSubmitting: boolean;
   deadline?: string | null;
-  /** Monaco 에디터 높이 (기본 "520px") */
+  /** Monaco editor height (default "520px") */
   editorHeight?: string;
   isLate?: boolean;
 }
@@ -116,6 +123,7 @@ export function CodeEditor({
   isLate,
 }: CodeEditorProps): ReactNode {
   const { resolvedTheme } = useTheme();
+  const t = useTranslations('submissions');
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fontSize, setFontSize] = useState(13);
@@ -125,17 +133,17 @@ export function CodeEditor({
     'imminent' | 'approaching' | null
   >(null);
 
-  // ─── 확인 팝업 상태 ─────────────────
+  // ─── Submit confirm dialog state ─────────────────
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [pendingLanguage, setPendingLanguage] = useState<string | null>(null);
 
-  // ─── Escape로 모달/풀스크린 해제 ──────────
+  // ─── Escape to close modal/fullscreen ──────────
   useEffect(() => {
     if (!fullscreen && !showSubmitConfirm && !pendingLanguage) return;
     const handleKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
       if (e.defaultPrevented) return;
-      // 모달이 열려있으면 모달을 먼저 닫음
+      // Close modal first if open
       if (showSubmitConfirm) { setShowSubmitConfirm(false); return; }
       if (pendingLanguage) { setPendingLanguage(null); return; }
       setFullscreen(false);
@@ -144,7 +152,7 @@ export function CodeEditor({
     return () => window.removeEventListener('keydown', handleKey);
   }, [fullscreen, showSubmitConfirm, pendingLanguage]);
 
-  // ─── 마감 임박 경고 타이머 ────────────
+  // ─── Deadline warning timer ────────────
   useEffect(() => {
     if (!deadline) return;
     const check = () => {
@@ -159,18 +167,18 @@ export function CodeEditor({
     return () => clearInterval(interval);
   }, [deadline]);
 
-  // ─── 폰트 크기 반영 ─────────────────
+  // ─── Apply font size ─────────────────
   useEffect(() => {
     editorRef.current?.updateOptions({ fontSize });
   }, [fontSize]);
 
-  // ─── 풀스크린 시 minimap + layout 반영 ──
+  // ─── Fullscreen minimap + layout ──
   useEffect(() => {
     editorRef.current?.updateOptions({ minimap: { enabled: fullscreen } });
     editorRef.current?.layout();
   }, [fullscreen]);
 
-  // ─── 언어 변경 (코드가 있으면 경고 팝업) ─
+  // ─── Language change (confirm if code exists) ─
   const handleLanguageChange = useCallback(
     (newLang: string) => {
       if (code.trim()) {
@@ -191,13 +199,13 @@ export function CodeEditor({
     }
   }, [pendingLanguage, onLanguageChange, onCodeChange]);
 
-  // ─── 초기화 (백지상태) ────────────────
+  // ─── Reset (blank state) ────────────────
   const handleReset = useCallback(() => {
     onCodeChange('');
     editorRef.current?.focus();
   }, [onCodeChange]);
 
-  // ─── Monaco 콜백 ─────────────────────
+  // ─── Monaco callbacks ─────────────────────
   const handleBeforeMount: BeforeMount = useCallback((monaco) => {
     defineThemes(monaco);
   }, []);
@@ -209,75 +217,76 @@ export function CodeEditor({
     [onCodeChange],
   );
 
-  // ─── 제출 핸들러 (확인 팝업 포함) ─────
+  // ─── Submit handler (with confirm dialog) ─────
   const handleSubmit = useCallback(async (): Promise<void> => {
     setError(null);
     if (code.length < 10) {
-      setError('코드는 최소 10자 이상이어야 합니다.');
+      setError(t('editor.error.tooShort'));
       return;
     }
     if (code.length > 102_400) {
-      setError('코드는 100KB를 초과할 수 없습니다.');
+      setError(t('editor.error.tooLarge'));
       return;
     }
     setShowSubmitConfirm(true);
-  }, [code]);
+  }, [code, t]);
 
   const confirmSubmit = useCallback(async (): Promise<void> => {
     setShowSubmitConfirm(false);
     try {
       await onSubmit();
     } catch (err: unknown) {
-      setError((err as Error).message ?? '제출 중 오류가 발생했습니다.');
+      setError((err as Error).message ?? t('editor.error.submitFailed'));
     }
-  }, [onSubmit]);
+  }, [onSubmit, t]);
 
-  // ─── Ctrl+Enter 단축키 + 커서 위치 ───
+  // ─── Ctrl+Enter shortcut + cursor position ───
   const submitRef = useRef(handleSubmit);
   submitRef.current = handleSubmit;
 
   const handleMount: OnMount = useCallback((editor, monaco) => {
     editorRef.current = editor;
 
-    // Ctrl+Enter / Cmd+Enter → 제출
+    // Ctrl+Enter / Cmd+Enter → Submit
     editor.addAction({
       id: 'algosu-submit',
-      label: '코드 제출 (Ctrl+Enter)',
+      label: t('editor.shortcut.submit'),
       keybindings: [
         monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
       ],
       run: () => { void submitRef.current(); },
     });
 
-    // 커서 위치 추적
+    // Cursor position tracking
     editor.onDidChangeCursorPosition((e) => {
       setCursorPos({ line: e.position.lineNumber, col: e.position.column });
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const monacoTheme = resolvedTheme === 'dark' ? 'algosu-dark' : 'algosu-light';
 
   return (
     <div className={fullscreen ? 'fixed inset-0 z-[100] flex flex-col bg-bg-card' : 'space-y-3'}>
-      {/* 마감 임박 경고 */}
+      {/* Deadline imminent warning */}
       {deadlineWarning === 'imminent' && (
         <Alert variant="error">
-          마감까지 1분 미만 남았습니다. 지금 바로 제출하세요!
+          {t('editor.deadline.imminent')}
         </Alert>
       )}
       {deadlineWarning === 'approaching' && (
         <Alert variant="warning">
-          마감까지 5분 이내입니다. 제출을 서두르세요.
+          {t('editor.deadline.approaching')}
         </Alert>
       )}
 
-      {/* 제출 확인 모달 */}
+      {/* Submit confirm modal */}
       {showSubmitConfirm && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setShowSubmitConfirm(false)} />
           <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
-            <p className="text-[14px] font-semibold text-text">{isLate ? '지각 제출하시겠습니까?' : '코드를 제출하시겠습니까?'}</p>
-            <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>{isLate ? '마감 시간이 지났습니다. 지각으로 기록됩니다.' : '제출 후에는 수정할 수 없습니다.'}</p>
+            <p className="text-[14px] font-semibold text-text">{isLate ? t('editor.submitConfirm.lateTitle') : t('editor.submitConfirm.title')}</p>
+            <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>{isLate ? t('editor.submitConfirm.lateDescription') : t('editor.submitConfirm.description')}</p>
             <div className="flex items-center justify-end gap-2">
               <button
                 type="button"
@@ -285,7 +294,7 @@ export function CodeEditor({
                 className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt"
                 style={{ color: 'var(--text-2)' }}
               >
-                취소
+                {t('editor.submitConfirm.cancel')}
               </button>
               <button
                 type="button"
@@ -293,20 +302,20 @@ export function CodeEditor({
                 className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity"
                 style={{ backgroundColor: isLate ? 'var(--warning)' : 'var(--primary)' }}
               >
-                {isLate ? '지각 제출' : '제출'}
+                {isLate ? t('editor.submitConfirm.lateSubmit') : t('editor.submitConfirm.submit')}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* 언어 변경 확인 모달 */}
+      {/* Language change confirm modal */}
       {pendingLanguage && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setPendingLanguage(null)} />
           <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
-            <p className="text-[14px] font-semibold text-text">언어를 변경하시겠습니까?</p>
-            <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>작성 중인 코드가 삭제됩니다.</p>
+            <p className="text-[14px] font-semibold text-text">{t('editor.langChange.title')}</p>
+            <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>{t('editor.langChange.description')}</p>
             <div className="flex items-center justify-end gap-2">
               <button
                 type="button"
@@ -314,7 +323,7 @@ export function CodeEditor({
                 className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt"
                 style={{ color: 'var(--text-2)' }}
               >
-                취소
+                {t('editor.langChange.cancel')}
               </button>
               <button
                 type="button"
@@ -322,23 +331,23 @@ export function CodeEditor({
                 className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity"
                 style={{ backgroundColor: 'var(--primary)' }}
               >
-                변경
+                {t('editor.langChange.confirm')}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* 에디터 카드 */}
+      {/* Editor card */}
       <div className={fullscreen
         ? 'flex flex-1 flex-col overflow-hidden'
         : 'overflow-hidden rounded-card border border-border bg-bg-card shadow'
       }>
-        {/* ── 에디터 헤더 ── */}
+        {/* ── Editor header ── */}
         <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2 sm:px-4 sm:py-3">
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* 언어 선택 */}
-            <label htmlFor="language" className="sr-only">프로그래밍 언어</label>
+            {/* Language selector */}
+            <label htmlFor="language" className="sr-only">{t('editor.label.language')}</label>
             <select
               id="language"
               value={language}
@@ -353,13 +362,13 @@ export function CodeEditor({
               ))}
             </select>
 
-            {/* 폰트 크기 — 데스크톱만 */}
+            {/* Font size controls — desktop only */}
             <div className="hidden sm:flex items-center gap-0.5">
               <button
                 type="button"
                 onClick={() => setFontSize((s) => Math.max(10, s - 1))}
                 className="flex items-center justify-center w-5 h-5 rounded text-text-3 transition-colors hover:text-text hover:bg-bg-alt disabled:opacity-40"
-                aria-label="폰트 축소"
+                aria-label={t('editor.label.fontDecrease')}
                 disabled={fontSize <= 10}
               >
                 <Minus className="h-2.5 w-2.5" aria-hidden />
@@ -369,40 +378,40 @@ export function CodeEditor({
                 type="button"
                 onClick={() => setFontSize((s) => Math.min(20, s + 1))}
                 className="flex items-center justify-center w-5 h-5 rounded text-text-3 transition-colors hover:text-text hover:bg-bg-alt disabled:opacity-40"
-                aria-label="폰트 확대"
+                aria-label={t('editor.label.fontIncrease')}
                 disabled={fontSize >= 20}
               >
                 <Plus className="h-2.5 w-2.5" aria-hidden />
               </button>
             </div>
 
-            {/* 초기화 */}
+            {/* Reset */}
             <button
               type="button"
               onClick={handleReset}
               disabled={isSubmitting}
               className="flex items-center gap-1 text-[11px] text-text-3 transition-colors hover:text-text disabled:opacity-40"
-              aria-label="코드 초기화"
+              aria-label={t('editor.label.reset')}
             >
               <RotateCcw className="h-3 w-3" aria-hidden />
-              <span className="hidden sm:inline">초기화</span>
+              <span className="hidden sm:inline">{t('editor.label.resetShort')}</span>
             </button>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* 마감 시간 — 데스크톱만 */}
+            {/* Deadline display — desktop only */}
             {deadline && (
               <span className="hidden sm:inline text-[11px] text-text-3">
-                마감: {new Date(deadline).toLocaleString('ko-KR')}
+                {t('editor.deadline.label')}: {new Date(deadline).toLocaleString('ko-KR')}
               </span>
             )}
-            {/* 풀스크린 토글 */}
+            {/* Fullscreen toggle */}
             <button
               type="button"
               onClick={() => setFullscreen((f) => !f)}
               className="flex items-center justify-center w-6 h-6 rounded text-text-3 transition-colors hover:text-text hover:bg-bg-alt"
-              title={fullscreen ? '풀스크린 해제 (Esc)' : '풀스크린'}
-              aria-label={fullscreen ? '풀스크린 해제' : '풀스크린'}
+              title={fullscreen ? t('editor.fullscreen.exitTitle') : t('editor.fullscreen.enter')}
+              aria-label={fullscreen ? t('editor.fullscreen.exit') : t('editor.fullscreen.enter')}
             >
               {fullscreen
                 ? <Minimize2 className="h-3.5 w-3.5" aria-hidden />
@@ -442,16 +451,16 @@ export function CodeEditor({
           />
         </div>
 
-        {/* ── 에디터 푸터 (제출 바) ── */}
+        {/* ── Editor footer (submit bar) ── */}
         <div className="flex items-center justify-between border-t border-border px-3 py-2 sm:px-4 sm:py-3">
           <div className="flex items-center gap-2 sm:gap-3 font-mono text-[10px] sm:text-[11px] text-text-3">
             <span>
               {cursorPos.line}:{cursorPos.col}
             </span>
             <span>
-              {code.length}<span className="hidden sm:inline">자</span>
+              {code.length}<span className="hidden sm:inline">{t('editor.footer.charUnit')}</span>
               {!isSubmitting && code.length > 0 && code.length < 10 && (
-                <span className="ml-1 text-warning">({10 - code.length}<span className="hidden sm:inline">자 더 필요</span>)</span>
+                <span className="ml-1 text-warning">({t('editor.footer.charsNeeded', { count: 10 - code.length })})</span>
               )}
             </span>
           </div>
@@ -466,14 +475,14 @@ export function CodeEditor({
               {isSubmitting ? (
                 <>
                   <InlineSpinner />
-                  <span className="hidden sm:inline">제출 중...</span>
-                  <span className="sm:hidden">제출...</span>
+                  <span className="hidden sm:inline">{t('editor.footer.submitting')}</span>
+                  <span className="sm:hidden">{t('editor.footer.submittingShort')}</span>
                 </>
               ) : (
                 <>
                   <Send className="h-3.5 w-3.5" aria-hidden />
-                  <span className="hidden sm:inline">{isLate ? '지각 제출' : '제출하기'}</span>
-                  <span className="sm:hidden">{isLate ? '지각' : '제출'}</span>
+                  <span className="hidden sm:inline">{isLate ? t('editor.footer.lateSubmit') : t('editor.footer.submit')}</span>
+                  <span className="sm:hidden">{isLate ? t('editor.footer.lateSubmitShort') : t('editor.footer.submitShort')}</span>
                 </>
               )}
             </Button>
@@ -481,7 +490,7 @@ export function CodeEditor({
         </div>
       </div>
 
-      {/* 에러 메시지 */}
+      {/* Error message */}
       {error && (
         <Alert variant="error" onClose={() => setError(null)}>
           {error}

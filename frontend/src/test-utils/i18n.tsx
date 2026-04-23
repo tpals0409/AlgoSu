@@ -1,12 +1,11 @@
 /**
- * @file i18n 테스트 유틸리티 — NextIntlClientProvider 래핑 렌더 헬퍼
+ * @file i18n test utility — NextIntlClientProvider wrapping render helper
  * @domain test
  * @layer utility
  * @related src/lib/test-utils.tsx, src/i18n/routing.ts
  *
- * 테스트에서 useTranslations 훅이 동작하도록
- * NextIntlClientProvider로 래핑하는 공용 헬퍼.
- * 네임스페이스별 메시지를 선택적으로 주입할 수 있다.
+ * Wraps components with NextIntlClientProvider so useTranslations
+ * hooks work in tests. Supports selective namespace message injection.
  */
 
 import { render, type RenderOptions } from '@testing-library/react';
@@ -21,6 +20,7 @@ import koDashboard from '../../messages/ko/dashboard.json';
 import koSubmissions from '../../messages/ko/submissions.json';
 import koReviews from '../../messages/ko/reviews.json';
 import koLayout from '../../messages/ko/layout.json';
+import koProblems from '../../messages/ko/problems.json';
 
 /** Default ko messages (all namespaces merged) */
 const DEFAULT_MESSAGES: AbstractIntlMessages = {
@@ -32,6 +32,7 @@ const DEFAULT_MESSAGES: AbstractIntlMessages = {
   submissions: koSubmissions,
   reviews: koReviews,
   layout: koLayout,
+  problems: koProblems,
 };
 
 interface RenderWithI18nOptions extends RenderOptions {
