@@ -14,7 +14,9 @@
 'use client';
 
 import { useState, useEffect, useCallback, type ReactElement } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { useRouter } from '@/i18n/navigation';
 import dynamic from 'next/dynamic';
 import {
   ChevronLeft,
@@ -152,6 +154,7 @@ function toCategoryItem(cat: ReviewFeedbackCategory): CategoryItem {
 export default function CodeReviewPage(): ReactElement {
   const params = useParams<{ submissionId: string }>();
   const router = useRouter();
+  const t = useTranslations('reviews');
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   useRequireStudy();
   const { currentStudyId } = useStudy();
@@ -194,7 +197,7 @@ export default function CodeReviewPage(): ReactElement {
       setComments(cmts);
     } catch (err) {
       console.error('[CodeReviewPage] loadData failed:', err);
-      setError('데이터를 불러오지 못했습니다.');
+      setError(t('detail.loadError'));
     } finally {
       setLoading(false);
     }
@@ -282,14 +285,14 @@ export default function CodeReviewPage(): ReactElement {
         <div className="flex flex-1 items-center justify-center">
           <div className="text-center" aria-live="polite">
             <AlertCircle className="mx-auto mb-3 h-8 w-8 text-error opacity-60" aria-hidden />
-            <p className="text-sm text-text-2">{error ?? '제출물을 찾을 수 없습니다.'}</p>
+            <p className="text-sm text-text-2">{error ?? t('detail.notFound')}</p>
             <Button
               variant="ghost"
               size="sm"
               className="mt-4"
               onClick={() => router.back()}
             >
-              돌아가기
+              {t('detail.goBack')}
             </Button>
           </div>
         </div>
@@ -297,7 +300,7 @@ export default function CodeReviewPage(): ReactElement {
     );
   }
 
-  const codeContent = submission?.code ?? analysis?.optimizedCode ?? '// 코드를 불러올 수 없습니다.';
+  const codeContent = submission?.code ?? analysis?.optimizedCode ?? t('detail.codeUnavailable');
 
   return (
     <div className="flex min-h-screen flex-col bg-bg">
@@ -314,16 +317,16 @@ export default function CodeReviewPage(): ReactElement {
                     : '/studies',
                 )}
                 className="flex items-center gap-1 text-xs text-text-3 transition-colors hover:text-text shrink-0"
-                aria-label="제출 목록으로 이동"
+                aria-label={t('detail.ariaBackToList')}
               >
                 <ChevronRight className="h-3.5 w-3.5 rotate-180" aria-hidden />
-                <span className="hidden sm:inline">제출 목록</span>
+                <span className="hidden sm:inline">{t('detail.submissionList')}</span>
               </button>
               <span className="text-[10px] text-text-3 opacity-30 hidden sm:inline">|</span>
               <div className="flex items-center gap-2 min-w-0">
                 <Code2 className="h-4 w-4 text-primary shrink-0" aria-hidden />
                 <span className="text-sm font-semibold text-text truncate">
-                  {submission.problemTitle ?? '코드 리뷰'}
+                  {submission.problemTitle ?? t('detail.heading')}
                 </span>
                 <LangBadge language={submission.language} />
                 {submission.userId && nicknameMap[submission.userId] && (
@@ -341,7 +344,7 @@ export default function CodeReviewPage(): ReactElement {
               variant="ghost"
               size="sm"
               onClick={() => setFocusMode(true)}
-              aria-label="Focus 모드"
+              aria-label={t('detail.ariaFocusMode')}
               className="shrink-0"
             >
               <Maximize2 className="h-3.5 w-3.5" aria-hidden />
@@ -365,11 +368,11 @@ export default function CodeReviewPage(): ReactElement {
               className="flex items-center gap-1 text-xs text-text-3 hover:text-text transition-colors"
             >
               <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
-              제출 목록
+              {t('detail.submissionList')}
             </button>
             <span className="h-4 w-px bg-border" />
             <span className="text-xs font-medium text-text truncate max-w-[200px]">
-              {submission?.problemTitle ?? '문제'}
+              {submission?.problemTitle ?? t('detail.problemFallback')}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -391,7 +394,7 @@ export default function CodeReviewPage(): ReactElement {
           <div className="flex items-center gap-2 rounded-card border border-info/20 bg-info-soft px-4 py-2.5">
             <AlertCircle className="h-3.5 w-3.5 shrink-0 text-info" aria-hidden />
             <p className="text-[12px] text-text-2">
-              마감 전 코드는 본인만 볼 수 있으며, 마감 후 스터디 멤버에게 공개됩니다.
+              {t('detail.deadlineBanner')}
             </p>
           </div>
         </div>
@@ -408,7 +411,7 @@ export default function CodeReviewPage(): ReactElement {
           )}
         >
           <Code2 className="inline h-3.5 w-3.5 mr-1" aria-hidden />
-          코드
+          {t('detail.tabCode')}
         </button>
         <button
           type="button"
@@ -418,7 +421,7 @@ export default function CodeReviewPage(): ReactElement {
             mobileTab === 'review' ? 'text-primary border-b-2 border-primary' : 'text-text-3',
           )}
         >
-          리뷰
+          {t('detail.tabReview')}
         </button>
       </div>
 
@@ -454,9 +457,9 @@ export default function CodeReviewPage(): ReactElement {
               <div className="flex items-center gap-4 p-5">
                 <ScoreGauge score={totalScore} size={90} />
                 <div className="flex-1">
-                  <p className="text-sm font-semibold text-text">AI 분석 결과</p>
+                  <p className="text-sm font-semibold text-text">{t('detail.aiAnalysisHeading')}</p>
                   <p className="mt-0.5 text-[11px] text-text-3">
-                    {categories.length}개 카테고리 평가
+                    {t('detail.categoryCount', { count: categories.length })}
                   </p>
                 </div>
               </div>
@@ -480,7 +483,7 @@ export default function CodeReviewPage(): ReactElement {
           {/* 댓글 섹션 (dynamic: CommentThread + CommentForm) */}
           <div className="rounded-card border border-border bg-bg-card p-4 shadow-card">
             <div className="mb-3 text-sm font-semibold text-text">
-              {selectedLine ? `Line ${selectedLine} 댓글` : '댓글'}
+              {selectedLine ? t('detail.lineComments', { line: selectedLine }) : t('detail.comments')}
               <span className="ml-1.5 text-[11px] font-normal text-text-3">
                 ({comments.length})
               </span>
