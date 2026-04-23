@@ -8,6 +8,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
 interface AdBannerProps {
@@ -37,6 +38,7 @@ export function AdBanner({
   const containerRef = useRef<HTMLDivElement>(null);
   const isInitialized = useRef(false);
   const [isHidden, setIsHidden] = useState(false);
+  const t = useTranslations('common');
 
   const isEnabled = process.env.NEXT_PUBLIC_ADSENSE_ENABLED === 'true';
   const clientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID ?? '';
@@ -74,7 +76,7 @@ export function AdBanner({
             className,
           )}
         >
-          광고 영역 (개발 모드)
+          {t('ad.devPlaceholder')}
         </div>
       );
     }
