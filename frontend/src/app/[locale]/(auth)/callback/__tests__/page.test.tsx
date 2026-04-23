@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithI18n } from '@/test-utils/i18n';
 import CallbackPage from '../page';
 
 jest.mock('next/navigation', () => ({
@@ -49,14 +50,27 @@ jest.mock('@/lib/api', () => ({
   },
 }));
 
+jest.mock('@/i18n/navigation', () => {
+  const MockLink = ({ children, href, ...rest }: { children: React.ReactNode; href: string; [key: string]: unknown }) => (
+    <a href={href} {...rest}>{children}</a>
+  );
+  MockLink.displayName = 'MockLink';
+  return {
+    Link: MockLink,
+    redirect: jest.fn(),
+    usePathname: () => '/callback',
+    useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
+  };
+});
+
 describe('CallbackPage', () => {
   it('콜백 페이지가 렌더링된다', () => {
-    render(<CallbackPage />);
+    renderWithI18n(<CallbackPage />);
     expect(screen.getAllByText('로그인 처리 중...').length).toBeGreaterThanOrEqual(1);
   });
 
   it('로딩 스피너가 표시된다', () => {
-    render(<CallbackPage />);
+    renderWithI18n(<CallbackPage />);
     expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
   });
 });

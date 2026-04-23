@@ -1,10 +1,13 @@
 import { render, screen } from '@testing-library/react';
 import AuthLayout from '../layout';
 
+/** params mock — locale 'ko' 기본 */
+const mockParams = Promise.resolve({ locale: 'ko' });
+
 describe('AuthLayout', () => {
   it('children이 렌더링된다', () => {
     render(
-      <AuthLayout>
+      <AuthLayout params={mockParams}>
         <div data-testid="child">Child Content</div>
       </AuthLayout>,
     );
@@ -14,7 +17,7 @@ describe('AuthLayout', () => {
 
   it('children을 fragment로 감싸서 렌더링한다', () => {
     const { container } = render(
-      <AuthLayout>
+      <AuthLayout params={mockParams}>
         <div>Test</div>
       </AuthLayout>,
     );
@@ -25,7 +28,7 @@ describe('AuthLayout', () => {
 
   it('여러 children을 렌더링한다', () => {
     render(
-      <AuthLayout>
+      <AuthLayout params={mockParams}>
         <div data-testid="first">First</div>
         <div data-testid="second">Second</div>
       </AuthLayout>,

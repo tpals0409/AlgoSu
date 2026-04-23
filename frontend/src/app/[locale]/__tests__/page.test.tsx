@@ -10,12 +10,16 @@ jest.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'light', setTheme: jest.fn() }),
 }));
 
-jest.mock('next/link', () => {
+jest.mock('@/i18n/navigation', () => {
+  const MockLink = ({ children, href, ...rest }: { children: React.ReactNode; href: string; [key: string]: unknown }) => (
+    <a href={href} {...rest}>{children}</a>
+  );
+  MockLink.displayName = 'MockLink';
   return {
-    __esModule: true,
-    default: ({ children, href }: { children: React.ReactNode; href: string }) => (
-      <a href={href}>{children}</a>
-    ),
+    Link: MockLink,
+    redirect: jest.fn(),
+    usePathname: () => '/',
+    useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
   };
 });
 

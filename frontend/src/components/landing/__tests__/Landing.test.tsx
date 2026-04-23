@@ -39,15 +39,20 @@ jest.mock('@/hooks/useInView', () => ({
   useInView: () => [{ current: null }, mockVisible],
 }));
 
-// Mock next/link
-jest.mock('next/link', () => {
+// Mock locale-aware Link (@/i18n/navigation)
+jest.mock('@/i18n/navigation', () => {
   const MockLink = ({ children, href, ...rest }: { children: React.ReactNode; href: string; [key: string]: unknown }) => (
     <a href={href} {...rest}>
       {children}
     </a>
   );
   MockLink.displayName = 'MockLink';
-  return MockLink;
+  return {
+    Link: MockLink,
+    redirect: jest.fn(),
+    usePathname: () => '/',
+    useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
+  };
 });
 
 // Mock Button component with asChild support
