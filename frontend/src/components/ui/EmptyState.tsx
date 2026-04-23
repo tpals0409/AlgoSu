@@ -1,5 +1,5 @@
 /**
- * @file 빈 상태 안내 컴포넌트 (아이콘 + 메시지 + 액션)
+ * @file Empty state guide component (icon + message + action)
  * @domain common
  * @layer component
  * @related Button, Card
