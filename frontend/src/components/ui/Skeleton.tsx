@@ -1,10 +1,12 @@
 /**
- * @file 스켈레톤 로딩 UI (B4 통일)
+ * @file Skeleton loading UI (B4 unified)
  * @domain common
  * @layer component
  */
+'use client';
 
 import * as React from 'react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
 export interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -33,6 +35,7 @@ function SkeletonBlock({ className, style }: { className?: string; style?: React
 }
 
 function Skeleton({ className, variant = 'rect', width, height, lines = 1, style, ...props }: SkeletonProps): React.ReactElement {
+  const t = useTranslations('ui');
   const baseStyle: React.CSSProperties = {
     width: width !== undefined ? (typeof width === 'number' ? `${width}px` : width) : undefined,
     height: height !== undefined ? (typeof height === 'number' ? `${height}px` : height) : undefined,
@@ -49,7 +52,7 @@ function Skeleton({ className, variant = 'rect', width, height, lines = 1, style
 
   if (variant === 'text' && lines > 1) {
     return (
-      <div className={cn('flex flex-col gap-2', className)} aria-busy="true" aria-label="콘텐츠 로딩 중" {...props}>
+      <div className={cn('flex flex-col gap-2', className)} aria-busy="true" aria-label={t('skeleton.contentLoading')} {...props}>
         {Array.from({ length: lines }, (_, i) => (
           <SkeletonBlock key={i} className="h-4" style={i === lines - 1 ? { width: '75%' } : undefined} />
         ))}
@@ -62,7 +65,7 @@ function Skeleton({ className, variant = 'rect', width, height, lines = 1, style
       className={cn(variant === 'text' ? 'h-4 w-full' : 'h-10 w-full', className)}
       style={baseStyle}
       aria-busy
-      aria-label="콘텐츠 로딩 중"
+      aria-label={t('skeleton.contentLoading')}
       {...(props as React.HTMLAttributes<HTMLDivElement>)}
     />
   );
@@ -84,8 +87,9 @@ function SkeletonCard(): React.ReactElement {
 }
 
 function SkeletonTable({ rows = 5 }: { readonly rows?: number }): React.ReactElement {
+  const t = useTranslations('ui');
   return (
-    <div className="space-y-3" aria-busy="true" aria-label="테이블 로딩 중">
+    <div className="space-y-3" aria-busy="true" aria-label={t('skeleton.tableLoading')}>
       {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="flex gap-4">
           <Skeleton width={40} height={20} />
@@ -98,10 +102,11 @@ function SkeletonTable({ rows = 5 }: { readonly rows?: number }): React.ReactEle
   );
 }
 
-/** 대시보드 페이지 스켈레톤: 상단 4 stat 카드 + 2열 리스트 */
+/** Dashboard page skeleton: top 4 stat cards + 2-column list */
 function SkeletonDashboard(): React.ReactElement {
+  const t = useTranslations('ui');
   return (
-    <div className="space-y-6" aria-busy="true" aria-label="대시보드 로딩 중">
+    <div className="space-y-6" aria-busy="true" aria-label={t('skeleton.dashboardLoading')}>
       <Skeleton variant="text" width="30%" height={28} />
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {Array.from({ length: 4 }, (_, i) => (
@@ -138,10 +143,11 @@ function SkeletonDashboard(): React.ReactElement {
   );
 }
 
-/** 테이블 페이지 스켈레톤: 헤더 + 필터 바 + 테이블 행 */
+/** Table page skeleton: header + filter bar + table rows */
 function SkeletonListPage({ rows = 8 }: { readonly rows?: number }): React.ReactElement {
+  const t = useTranslations('ui');
   return (
-    <div className="space-y-6" aria-busy="true" aria-label="목록 로딩 중">
+    <div className="space-y-6" aria-busy="true" aria-label={t('skeleton.listLoading')}>
       <div className="flex items-center justify-between">
         <Skeleton variant="text" width="25%" height={28} />
         <Skeleton width={100} height={36} className="rounded-md" />
@@ -156,10 +162,11 @@ function SkeletonListPage({ rows = 8 }: { readonly rows?: number }): React.React
   );
 }
 
-/** 프로필 페이지 스켈레톤 */
+/** Profile page skeleton */
 function SkeletonProfile(): React.ReactElement {
+  const t = useTranslations('ui');
   return (
-    <div className="space-y-6" aria-busy="true" aria-label="프로필 로딩 중">
+    <div className="space-y-6" aria-busy="true" aria-label={t('skeleton.profileLoading')}>
       <Skeleton variant="text" width="20%" height={28} />
       <div className="rounded-card border border-border bg-bg-card p-6 shadow-card">
         <div className="flex items-center gap-4">
@@ -178,10 +185,11 @@ function SkeletonProfile(): React.ReactElement {
   );
 }
 
-/** 2-패널 리뷰 페이지 스켈레톤 */
+/** 2-panel review page skeleton */
 function SkeletonReview(): React.ReactElement {
+  const t = useTranslations('ui');
   return (
-    <div className="space-y-4" aria-busy="true" aria-label="리뷰 로딩 중">
+    <div className="space-y-4" aria-busy="true" aria-label={t('skeleton.reviewLoading')}>
       <div className="flex items-center gap-3">
         <Skeleton width={32} height={32} className="rounded-md" />
         <Skeleton width="40%" height={24} />
