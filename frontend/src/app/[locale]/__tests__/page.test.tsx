@@ -1,7 +1,6 @@
-import { render, screen } from '@testing-library/react';
-import { NextIntlClientProvider } from 'next-intl';
+import { screen } from '@testing-library/react';
+import { renderWithI18n } from '@/test-utils/i18n';
 import { LandingContent } from '@/components/landing/LandingContent';
-import koLanding from '../../../../messages/ko/landing.json';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
@@ -50,15 +49,6 @@ jest.mock('lucide-react', () => {
 jest.mock('@/components/ad/AdBanner', () => ({
   AdBanner: () => <div data-testid="ad-banner" />,
 }));
-
-/** NextIntlClientProvider 래핑 렌더 헬퍼 (ko 로케일) */
-function renderWithI18n(ui: React.ReactElement) {
-  return render(
-    <NextIntlClientProvider locale="ko" messages={{ landing: koLanding }}>
-      {ui}
-    </NextIntlClientProvider>,
-  );
-}
 
 describe('LandingPage (LandingContent)', () => {
   it('랜딩 페이지가 렌더링된다', () => {

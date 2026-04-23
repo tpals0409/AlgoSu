@@ -1,9 +1,8 @@
 import { render, screen } from '@testing-library/react';
-import { NextIntlClientProvider } from 'next-intl';
+import { renderWithI18n } from '@/test-utils/i18n';
 import { FeatureCards } from '../FeatureCards';
 import { HeroButtons } from '../HeroButtons';
 import { HomeRedirect } from '../HomeRedirect';
-import koLanding from '../../../../messages/ko/landing.json';
 
 // ─── Common Mocks ────────────────────────
 
@@ -60,17 +59,6 @@ jest.mock('@/components/ui/Button', () => ({
     return <button {...props}>{children}</button>;
   },
 }));
-
-// ─── i18n Helper ─────────────────────────
-
-/** NextIntlClientProvider 래핑 렌더 헬퍼 (ko 로케일) */
-function renderWithI18n(ui: React.ReactElement) {
-  return render(
-    <NextIntlClientProvider locale="ko" messages={{ landing: koLanding }}>
-      {ui}
-    </NextIntlClientProvider>,
-  );
-}
 
 beforeEach(() => {
   mockReplace.mockClear();
