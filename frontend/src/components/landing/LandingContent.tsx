@@ -17,6 +17,7 @@ import { useTheme } from 'next-themes';
 import { Moon, Sun } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Logo } from '@/components/ui/Logo';
+import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
 import { HomeRedirect } from '@/components/landing/HomeRedirect';
 import { HeroButtons } from '@/components/landing/HeroButtons';
 import { FeatureCards } from '@/components/landing/FeatureCards';
@@ -76,6 +77,7 @@ export function LandingContent(): ReactNode {
             >
               {theme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
             </button>
+            <LanguageSwitcher />
             <Link
               href="/login"
               className="inline-flex h-9 items-center rounded-btn bg-primary px-[18px] text-[13px] font-semibold text-white transition-all hover:brightness-110"
