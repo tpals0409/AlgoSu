@@ -1,10 +1,10 @@
 /**
- * @file Web Vitals 수집 컴포넌트
+ * @file Web Vitals collection component
  * @domain common
  * @layer provider
  *
- * LCP, FID, CLS, TTFB, INP 메트릭을 수집하여 structured logging으로 출력.
- * 향후 서버 엔드포인트 전송 시 sendToAnalytics 함수만 교체하면 됨.
+ * Collects LCP, FID, CLS, TTFB, INP metrics and outputs them as structured logging.
+ * To send to a server endpoint, replace the sendToAnalytics function.
  */
 
 'use client';
@@ -29,7 +29,7 @@ function sendToAnalytics(metric: {
     );
   }
 
-  // 이벤트 트래커로 전송
+  // Send via event tracker
   eventTracker?.track('WEB_VITAL', {
     meta: {
       name: metric.name,
