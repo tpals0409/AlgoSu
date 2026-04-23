@@ -1,0 +1,48 @@
+{
+  "generic": {
+    "title": "오류 발생",
+    "description": "예기치 않은 오류가 발생했습니다.",
+    "retry": "다시 시도",
+    "home": "홈으로 돌아가기"
+  },
+  "dashboard": {
+    "title": "대시보드 오류",
+    "description": "대시보드를 불러올 수 없습니다."
+  },
+  "problems": {
+    "title": "문제 오류",
+    "description": "문제를 불러올 수 없습니다."
+  },
+  "submissions": {
+    "title": "제출 오류",
+    "description": "제출 정보를 불러올 수 없습니다."
+  },
+  "reviews": {
+    "title": "리뷰 오류",
+    "description": "리뷰를 불러올 수 없습니다."
+  },
+  "profile": {
+    "title": "프로필 오류",
+    "description": "프로필 정보를 불러올 수 없습니다."
+  },
+  "settings": {
+    "title": "설정 오류",
+    "description": "설정 페이지를 불러올 수 없습니다."
+  },
+  "studies": {
+    "title": "스터디 오류",
+    "description": "스터디 정보를 불러올 수 없습니다."
+  },
+  "analytics": {
+    "title": "분석 오류",
+    "description": "분석 데이터를 불러올 수 없습니다."
+  },
+  "shared": {
+    "title": "공유 링크 오류",
+    "description": "공유된 페이지를 불러올 수 없습니다."
+  },
+  "studyRoom": {
+    "title": "스터디룸 오류",
+    "description": "스터디룸을 불러올 수 없습니다."
+  }
+}
