@@ -1,5 +1,6 @@
 {
   "nav": {
+    "skipNav": "콘텐츠로 건너뛰기",
     "dashboard": "대시보드",
     "problems": "문제",
     "studies": "스터디",
@@ -40,5 +41,8 @@
   "empty": {
     "default": "표시할 항목이 없습니다.",
     "noResults": "검색 결과가 없습니다."
+  },
+  "ad": {
+    "devPlaceholder": "광고 영역 (개발 모드)"
   }
 }

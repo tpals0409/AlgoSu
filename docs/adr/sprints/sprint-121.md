@@ -222,6 +222,23 @@ frontend/messages/
 - `next build` 성공
 - Jest 122 suites / 1312 tests 전체 통과 (+4건: AppLayout 1 + LanguageSwitcher 3)
 
+### 마감 후 발견된 UX 결함 (Sprint 122 이관 확정)
+
+**증상**: 머지 후 사용자 리포트 — "토글버튼 미동작, 영문 사이트에서도 한글".
+
+**진단**:
+- `LanguageSwitcher`는 `AppLayout`에만 통합되어 있음 (로그인 후 화면에서만 노출).
+- **랜딩 페이지(`LandingContent.tsx`)와 인증 레이아웃(`app/[locale]/(auth)/layout.tsx`)에는 토글 버튼이 렌더링되지 않음** — 로그인 전 사용자는 UI로 locale 전환 불가.
+- URL 직접 입력(`/en/`)으로 영문 랜딩은 정상 렌더링되나, 그 외 미번역 페이지(dashboard, problems 등 — Sprint 121 범위 외)는 한국어 유지.
+- `app/[locale]/layout.tsx`(skip-nav), `app/[locale]/not-found.tsx`, `app/[locale]/*/error.tsx`(12+ 파일), `components/ad/AdBanner.tsx` 등에 **하드코딩 한글 문자열** 잔존.
+
+**판정**: Sprint 121 범위(기반 + 시범 2페이지 = 랜딩/auth)는 기술적으로 충족. 단, 사용자 UX 완성을 위해 Sprint 122 최우선 Phase로 이관.
+
+**Sprint 122 최우선 작업 (영문화 완성 — `sprint-window.md [2]` 참조)**:
+1. LanguageSwitcher UX 경로 완성 (LandingContent Nav + Auth layout)
+2. 하드코딩 한글 일괄 정리 (layout skip-nav, not-found, error.tsx 12+, AdBanner)
+3. 주요 페이지 번역 확장 (dashboard/problems/submissions/reviews/profile/settings)
+
 ---
 
 ## 이월 항목 (Sprint 122+ 예정)

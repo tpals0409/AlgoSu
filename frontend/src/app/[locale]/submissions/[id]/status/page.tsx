@@ -1,15 +1,16 @@
 /**
- * @file 제출 상태 페이지 (SSE 실시간 업데이트)
+ * @file 제출 상태 페이지 (SSE 실시간 업데이트, i18n 적용)
  * @domain submission
  * @layer page
- * @related useSubmissionSSE, submissionApi, Badge, AppLayout
+ * @related useSubmissionSSE, submissionApi, Badge, AppLayout, messages/submissions.json
  */
 
 'use client';
 
 import { useState, useEffect, use, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { CheckCircle2, XCircle, Clock, ChevronLeft, RotateCcw, ArrowRight, Sparkles, LinkIcon } from 'lucide-react';
+import { useRouter } from '@/i18n/navigation';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -39,50 +40,24 @@ interface Step {
 
 // ─── HELPERS ──────────────────────────────
 
-function getOverallStatusMessage(status: SSEStatus): {
-  title: string;
-  description: string;
-  variant: 'success' | 'error' | 'warning' | 'info';
-} {
-  switch (status) {
-    case 'done':
-      return {
-        title: '제출 완료',
-        description: 'AI 분석이 완료되었습니다.',
-        variant: 'success',
-      };
-    case 'github_token_invalid':
-      return {
-        title: 'GitHub 동기화 실패',
-        description: 'GitHub 계정 연동을 다시 확인해주세요.',
-        variant: 'error',
-      };
-    case 'ai_failed':
-      return {
-        title: 'AI 분석 실패',
-        description: 'AI 분석 중 오류가 발생했습니다.',
-        variant: 'error',
-      };
-    case 'ai_delayed':
-      return {
-        title: 'AI 분석 지연',
-        description: 'AI 분석이 지연되고 있습니다. 잠시 후 다시 확인해주세요.',
-        variant: 'warning',
-      };
-    case 'error':
-      return {
-        title: '연결 오류',
-        description: '실시간 상태 연결에 문제가 발생했습니다. 새로고침해 주세요.',
-        variant: 'error',
-      };
-    default:
-      return {
-        title: '처리 중',
-        description: '제출을 처리하고 있습니다. 잠시 기다려주세요.',
-        variant: 'info',
-      };
-  }
-}
+/** SSE status → i18n 키 매핑 */
+const OVERALL_STATUS_MAP: Record<string, { titleKey: string; descKey: string; variant: 'success' | 'error' | 'warning' | 'info' }> = {
+  done: { titleKey: 'status.overall.done.title', descKey: 'status.overall.done.description', variant: 'success' },
+  github_token_invalid: { titleKey: 'status.overall.githubTokenInvalid.title', descKey: 'status.overall.githubTokenInvalid.description', variant: 'error' },
+  ai_failed: { titleKey: 'status.overall.aiFailed.title', descKey: 'status.overall.aiFailed.description', variant: 'error' },
+  ai_delayed: { titleKey: 'status.overall.aiDelayed.title', descKey: 'status.overall.aiDelayed.description', variant: 'warning' },
+  error: { titleKey: 'status.overall.error.title', descKey: 'status.overall.error.description', variant: 'error' },
+};
+
+const DEFAULT_OVERALL = { titleKey: 'status.overall.processing.title', descKey: 'status.overall.processing.description', variant: 'info' as const };
+
+/** StepStatus → i18n 키 매핑 */
+const STEP_STATUS_KEYS: Record<StepStatus, string> = {
+  done: 'status.stepStatus.done',
+  failed: 'status.stepStatus.failed',
+  in_progress: 'status.stepStatus.inProgress',
+  pending: 'status.stepStatus.pending',
+};
 
 const TERMINAL_STATUSES: SSEStatus[] = ['done', 'github_token_invalid', 'ai_failed'];
 
@@ -117,19 +92,12 @@ function StepIcon({ status }: { readonly status: StepStatus }): ReactNode {
   );
 }
 
-function StepItem({ step, isLast }: { readonly step: Step; readonly isLast: boolean }): ReactNode {
+function StepItem({ step, isLast, statusLabel }: { readonly step: Step; readonly isLast: boolean; readonly statusLabel: string }): ReactNode {
   const statusVariant: Record<StepStatus, 'success' | 'error' | 'warning' | 'info' | 'muted'> = {
     done: 'success',
     failed: 'error',
     in_progress: 'info',
     pending: 'muted',
-  };
-
-  const statusLabel: Record<StepStatus, string> = {
-    done: '완료',
-    failed: '실패',
-    in_progress: '진행 중',
-    pending: '대기 중',
   };
 
   return (
@@ -147,7 +115,7 @@ function StepItem({ step, isLast }: { readonly step: Step; readonly isLast: bool
             {step.label}
           </span>
           <Badge variant={statusVariant[step.status]}>
-            {statusLabel[step.status]}
+            {statusLabel}
           </Badge>
         </div>
         {step.detail && (
@@ -168,6 +136,7 @@ function StepItem({ step, isLast }: { readonly step: Step; readonly isLast: bool
 export default function SubmissionStatusPage({ params }: PageProps): ReactNode {
   const { id: submissionId } = use(params);
   const router = useRouter();
+  const t = useTranslations('submissions');
   const { isAuthenticated } = useRequireAuth();
   useRequireStudy();
   const { currentStudyId } = useStudy();
@@ -194,7 +163,7 @@ export default function SubmissionStatusPage({ params }: PageProps): ReactNode {
 
   const steps = mapSSEToSteps(status);
   const isTerminal = TERMINAL_STATUSES.includes(status);
-  const overallStatus = getOverallStatusMessage(status);
+  const overallMap = OVERALL_STATUS_MAP[status] ?? DEFAULT_OVERALL;
 
   // ─── EFFECTS ────────────────────────────
 
@@ -206,14 +175,14 @@ export default function SubmissionStatusPage({ params }: PageProps): ReactNode {
         const data = await submissionApi.findById(submissionId);
         setSubmission(data);
       } catch (err: unknown) {
-        setLoadError((err as Error).message ?? '제출 정보를 불러오는 데 실패했습니다.');
+        setLoadError((err as Error).message ?? t('status.loadError'));
       } finally {
         setInitialLoaded(true);
       }
     };
 
     void load();
-  }, [submissionId, isAuthenticated, currentStudyId]);
+  }, [submissionId, isAuthenticated, currentStudyId, t]);
 
   return (
     <AppLayout>
@@ -232,28 +201,28 @@ export default function SubmissionStatusPage({ params }: PageProps): ReactNode {
           className="-ml-1"
         >
           <ChevronLeft />
-          문제로 돌아가기
+          {t('status.backToProblem')}
         </Button>
 
         {/* 메인 카드 */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>제출 상태</CardTitle>
+              <CardTitle>{t('status.heading')}</CardTitle>
               {quota && (
                 <Badge
                   variant={quota.remaining > 0 ? 'muted' : 'warning'}
                   className="flex items-center gap-1.5"
                 >
                   <Sparkles className="h-3 w-3" aria-hidden />
-                  {`AI ${quota.used}/${quota.limit}회`}
+                  {t('status.aiQuota', { used: quota.used, limit: quota.limit })}
                 </Badge>
               )}
             </div>
             <p className="mt-0.5 font-mono text-[10px] text-text-3">
               {submission
                 ? `${submission.language} / ${new Date(submission.createdAt).toLocaleString('ko-KR')}`
-                : '제출 정보를 불러오는 중...'}
+                : t('status.loadingInfo')}
             </p>
           </CardHeader>
 
@@ -262,8 +231,8 @@ export default function SubmissionStatusPage({ params }: PageProps): ReactNode {
             {loadError && <Alert variant="error">{loadError}</Alert>}
 
             {/* 상태 알림 */}
-            <Alert variant={overallStatus.variant} title={overallStatus.title}>
-              {overallStatus.description}
+            <Alert variant={overallMap.variant} title={t(overallMap.titleKey)}>
+              {t(overallMap.descKey)}
             </Alert>
 
             {/* 스텝 목록 */}
@@ -273,6 +242,7 @@ export default function SubmissionStatusPage({ params }: PageProps): ReactNode {
                   key={step.label}
                   step={step}
                   isLast={index === steps.length - 1}
+                  statusLabel={t(STEP_STATUS_KEYS[step.status])}
                 />
               ))}
             </div>
@@ -280,7 +250,7 @@ export default function SubmissionStatusPage({ params }: PageProps): ReactNode {
             {/* 제출 ID */}
             <div className="rounded-btn bg-bg-alt px-3 py-2">
               <span className="text-[11px] text-text-3">
-                제출 ID: <span className="font-mono">{submissionId.slice(0, 12)}...</span>
+                {t('status.submissionId')}: <span className="font-mono">{submissionId.slice(0, 12)}...</span>
               </span>
             </div>
           </CardContent>
@@ -295,11 +265,10 @@ export default function SubmissionStatusPage({ params }: PageProps): ReactNode {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-text">
-                  GitHub 재연동이 필요합니다
+                  {t('status.github.relinkNeeded')}
                 </p>
                 <p className="mt-1 text-[11px] text-text-3 leading-relaxed">
-                  GitHub 토큰이 만료되었거나 권한이 변경되었습니다.
-                  재연동 후 다시 제출하면 코드가 GitHub에 자동으로 동기화됩니다.
+                  {t('status.github.relinkDescription')}
                 </p>
                 <div className="mt-3 flex gap-2">
                   <Button
@@ -316,14 +285,14 @@ export default function SubmissionStatusPage({ params }: PageProps): ReactNode {
                       }
                     }}
                   >
-                    {relinkLoading ? 'GitHub 연동 중...' : 'GitHub 재연동'}
+                    {relinkLoading ? t('status.github.relinking') : t('status.github.relink')}
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => router.push('/profile')}
                   >
-                    프로필에서 설정
+                    {t('status.github.profileSettings')}
                   </Button>
                 </div>
               </div>
@@ -341,7 +310,7 @@ export default function SubmissionStatusPage({ params }: PageProps): ReactNode {
                 className="flex-1"
                 onClick={() => router.push(`/problems/${submission.problemId}`)}
               >
-                다시 제출
+                {t('status.actions.resubmit')}
               </Button>
             )}
             {status === 'done' && (
@@ -351,7 +320,7 @@ export default function SubmissionStatusPage({ params }: PageProps): ReactNode {
                 className="flex-1"
                 onClick={() => router.push(`/submissions/${submissionId}/analysis`)}
               >
-                AI 분석 보기
+                {t('status.actions.viewAnalysis')}
                 <ArrowRight className="h-4 w-4" />
               </Button>
             )}
@@ -362,7 +331,7 @@ export default function SubmissionStatusPage({ params }: PageProps): ReactNode {
                 className="flex-1"
                 onClick={() => router.push('/problems')}
               >
-                문제 목록으로
+                {t('status.actions.problemList')}
               </Button>
             )}
           </div>
@@ -380,7 +349,7 @@ export default function SubmissionStatusPage({ params }: PageProps): ReactNode {
             }}
           >
             <RotateCcw className="h-4 w-4" />
-            새로고침
+            {t('status.actions.refresh')}
           </Button>
         )}
 
@@ -388,7 +357,7 @@ export default function SubmissionStatusPage({ params }: PageProps): ReactNode {
         {!isTerminal && status !== 'error' && (
           <div className="flex items-center justify-center gap-2 text-[11px] text-text-3">
             <LoadingSpinner size="sm" color="primary" />
-            실시간으로 업데이트 중...
+            {t('status.actions.updatingRealtime')}
           </div>
         )}
       </div>

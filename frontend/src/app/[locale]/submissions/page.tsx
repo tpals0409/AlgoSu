@@ -1,15 +1,16 @@
 /**
- * @file 제출 목록 페이지 (Figma 디자인 반영)
+ * @file 제출 목록 페이지 (Figma 디자인 반영, i18n 적용)
  * @domain submission
  * @layer page
- * @related useSubmissions, useProblems
+ * @related useSubmissions, useProblems, messages/submissions.json
  */
 
 'use client';
 
 import React, { useState, useEffect, useMemo, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { FileText, Search, Loader2 } from 'lucide-react';
+import { useRouter } from '@/i18n/navigation';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AdBanner } from '@/components/ad/AdBanner';
 import { AD_SLOTS } from '@/lib/constants/adSlots';
@@ -27,15 +28,27 @@ import { useProblems } from '@/hooks/use-problems';
 
 // ─── CONSTANTS ────────────────────────────
 
-const STATUS_TABS = [
-  { value: '', label: '전체' },
-  { value: 'DONE', label: '분석 완료' },
-  { value: 'AI_QUEUED', label: 'AI 분석 대기' },
-  { value: 'GITHUB_QUEUED', label: 'GitHub 동기화' },
-  { value: 'DB_SAVED', label: '저장됨' },
-  { value: 'FAILED', label: '실패' },
-] as const;
+/** 상태 필터 탭 — value만 정의, label은 t()로 해소 */
+const STATUS_TAB_VALUES = ['', 'DONE', 'AI_QUEUED', 'GITHUB_QUEUED', 'DB_SAVED', 'FAILED'] as const;
 
+/** STATUS_TAB_VALUES → i18n 키 매핑 */
+const STATUS_FILTER_KEYS: Record<string, string> = {
+  '': 'list.statusFilter.all',
+  DONE: 'list.statusFilter.done',
+  AI_QUEUED: 'list.statusFilter.aiQueued',
+  GITHUB_QUEUED: 'list.statusFilter.githubQueued',
+  DB_SAVED: 'list.statusFilter.dbSaved',
+  FAILED: 'list.statusFilter.failed',
+};
+
+/** sagaStep → i18n 키 + 스타일 매핑 */
+const STATUS_DISPLAY_MAP: Record<string, { key: string; bg: string; color: string; dot: boolean }> = {
+  DONE: { key: 'list.statusDisplay.done', bg: 'var(--success-soft)', color: 'var(--success)', dot: true },
+  AI_QUEUED: { key: 'list.statusDisplay.aiQueued', bg: 'var(--warning-soft)', color: 'var(--warning)', dot: false },
+  GITHUB_QUEUED: { key: 'list.statusDisplay.githubQueued', bg: 'var(--primary-soft)', color: 'var(--primary)', dot: false },
+  DB_SAVED: { key: 'list.statusDisplay.dbSaved', bg: 'var(--bg-alt)', color: 'var(--text-3)', dot: false },
+  FAILED: { key: 'list.statusDisplay.failed', bg: 'var(--error-soft)', color: 'var(--error)', dot: false },
+};
 
 // 언어 아바타 색상 — 동적 언어별 색상, Tailwind 토큰 등록 시 전환 예정
 const LANG_AVATAR: Record<string, { label: string; bg: string; color: string }> = {
@@ -52,24 +65,6 @@ const LANG_AVATAR: Record<string, { label: string; bg: string; color: string }> 
 
 // ─── HELPERS ─────────────────────────────
 
-/** 상태를 라벨로 변환 */
-function getStatusDisplay(sagaStep: string): { label: string; bg: string; color: string; dot: boolean } {
-  switch (sagaStep) {
-    case 'DONE':
-      return { label: '분석 완료', bg: 'var(--success-soft)', color: 'var(--success)', dot: true };
-    case 'AI_QUEUED':
-      return { label: 'AI 분석 대기', bg: 'var(--warning-soft)', color: 'var(--warning)', dot: false };
-    case 'GITHUB_QUEUED':
-      return { label: 'GitHub 동기화 중', bg: 'var(--primary-soft)', color: 'var(--primary)', dot: false };
-    case 'DB_SAVED':
-      return { label: '저장됨', bg: 'var(--bg-alt)', color: 'var(--text-3)', dot: false };
-    case 'FAILED':
-      return { label: '실패', bg: 'var(--error-soft)', color: 'var(--error)', dot: false };
-    default:
-      return { label: sagaStep, bg: 'var(--bg-alt)', color: 'var(--text-3)', dot: false };
-  }
-}
-
 /** 점수 색상 */
 function scoreColor(score: number): string {
   if (score >= 80) return 'var(--success)';
@@ -81,6 +76,7 @@ function scoreColor(score: number): string {
 
 export default function SubmissionsPage(): ReactNode {
   const router = useRouter();
+  const t = useTranslations('submissions');
   const { isAuthenticated } = useRequireAuth();
   useRequireStudy();
   const { currentStudyId } = useStudy();
@@ -154,9 +150,9 @@ export default function SubmissionsPage(): ReactNode {
       <div className="space-y-4">
         {/* 헤더 */}
         <div style={fade(0)}>
-          <h1 className="text-[22px] font-bold tracking-tight text-text">제출 이력</h1>
+          <h1 className="text-[22px] font-bold tracking-tight text-text">{t('list.heading')}</h1>
           <p className="text-[13px] mt-1" style={{ color: 'var(--text-3)' }}>
-            내가 제출한 코드와 AI 분석 결과를 확인하세요.
+            {t('list.subheading')}
           </p>
         </div>
 
@@ -166,7 +162,7 @@ export default function SubmissionsPage(): ReactNode {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none" style={{ color: 'var(--text-3)' }} aria-hidden />
             <input
               type="text"
-              placeholder="문제 검색..."
+              placeholder={t('list.searchPlaceholder')}
               value={filterSearch}
               onChange={(e) => setFilterSearch(e.target.value)}
               className="w-full h-[44px] pl-10 pr-4 rounded-xl text-text text-sm font-body outline-none transition-[border-color] duration-150 placeholder:text-text-3 focus:border-primary"
@@ -175,11 +171,11 @@ export default function SubmissionsPage(): ReactNode {
           </div>
           <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v === '__all__' ? '' : v)}>
             <SelectTrigger className="h-[44px] w-[160px] shrink-0 self-end sm:self-auto rounded-xl text-[13px] font-medium" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-              <SelectValue placeholder="상태 선택" />
+              <SelectValue placeholder={t('list.statusPlaceholder')} />
             </SelectTrigger>
             <SelectContent>
-              {STATUS_TABS.map((tab) => (
-                <SelectItem key={tab.value || '__all__'} value={tab.value || '__all__'}>{tab.label}</SelectItem>
+              {STATUS_TAB_VALUES.map((value) => (
+                <SelectItem key={value || '__all__'} value={value || '__all__'}>{t(STATUS_FILTER_KEYS[value])}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -197,7 +193,7 @@ export default function SubmissionsPage(): ReactNode {
                 : { backgroundColor: 'var(--bg-card)', color: 'var(--text-2)', border: '1px solid var(--border)' }
             }
           >
-            전체
+            {t('list.difficultyAll')}
           </button>
           {DIFFICULTIES.map((d) => {
             const diffKey = d.toLowerCase();
@@ -247,9 +243,9 @@ export default function SubmissionsPage(): ReactNode {
         {!isLoading && !submissionsError && submissions.length === 0 && (
           <EmptyState
             icon={FileText}
-            title="제출 이력이 없습니다"
-            description="아직 제출한 코드가 없습니다. 문제를 풀어보세요!"
-            action={{ label: '문제 목록', onClick: () => router.push('/problems') }}
+            title={t('list.empty.title')}
+            description={t('list.empty.description')}
+            action={{ label: t('list.empty.action'), onClick: () => router.push('/problems') }}
           />
         )}
 
@@ -257,9 +253,9 @@ export default function SubmissionsPage(): ReactNode {
         {!isLoading && submissions.length > 0 && filtered.length === 0 && (
           <EmptyState
             icon={Search}
-            title="검색 결과가 없습니다"
-            description="필터 조건을 변경해 보세요."
-            action={{ label: '필터 초기화', onClick: () => { setFilterSearch(''); setFilterStatus(''); setFilterDifficulty(''); } }}
+            title={t('list.noResults.title')}
+            description={t('list.noResults.description')}
+            action={{ label: t('list.noResults.resetFilter'), onClick: () => { setFilterSearch(''); setFilterStatus(''); setFilterDifficulty(''); } }}
             size="sm"
           />
         )}
@@ -269,9 +265,10 @@ export default function SubmissionsPage(): ReactNode {
           <div className="space-y-2" style={fade(0.14)}>
             {filtered.map((s) => {
               const pInfo = problemMap.get(s.problemId);
-              const title = s.problemTitle ?? pInfo?.title ?? `문제 ${s.problemId}`;
+              const title = s.problemTitle ?? pInfo?.title ?? t('list.problemFallback', { id: s.problemId });
               const diffKey = pInfo?.difficulty ? (pInfo.difficulty as string).toLowerCase() : '';
-              const status = getStatusDisplay(s.sagaStep);
+              const displayMap = STATUS_DISPLAY_MAP[s.sagaStep] ?? { key: '', bg: 'var(--bg-alt)', color: 'var(--text-3)', dot: false };
+              const statusLabel = displayMap.key ? t(displayMap.key) : s.sagaStep;
               const lang = LANG_AVATAR[s.language] ?? { label: s.language.slice(0, 2).toUpperCase(), bg: 'var(--bg-alt)', color: 'var(--text-3)' };
               const isDone = s.sagaStep === 'DONE';
 
@@ -280,7 +277,7 @@ export default function SubmissionsPage(): ReactNode {
                   key={s.id}
                   type="button"
                   onClick={() => router.push(isDone ? `/submissions/${s.id}/analysis` : `/submissions/${s.id}/status`)}
-                  aria-label={`${title} 제출 보기`}
+                  aria-label={t('list.ariaViewSubmission', { title })}
                   className="group flex items-center gap-3 sm:gap-4 w-full px-3 sm:px-5 py-3 sm:py-4 rounded-xl border border-border transition-all text-left bg-bg-card hover:-translate-y-0.5 hover:shadow-hover"
                 >
                   {/* 언어 아바타 (라운드 스퀘어, 난이도 색상) */}
@@ -315,10 +312,10 @@ export default function SubmissionsPage(): ReactNode {
                       {/* 상태 뱃지 */}
                       <span
                         className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
-                        style={{ backgroundColor: status.bg, color: status.color }}
+                        style={{ backgroundColor: displayMap.bg, color: displayMap.color }}
                       >
-                        {status.dot && <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: status.color }} aria-hidden />}
-                        {status.label}
+                        {displayMap.dot && <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: displayMap.color }} aria-hidden />}
+                        {statusLabel}
                       </span>
                       {/* 상대 시간 */}
                       <span className="text-[11px] font-medium" style={{ color: 'var(--text-3)' }}>
@@ -339,7 +336,7 @@ export default function SubmissionsPage(): ReactNode {
                     ) : s.sagaStep === 'AI_QUEUED' ? (
                       <div className="flex items-center gap-1.5" style={{ color: 'var(--warning)' }}>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        <span className="text-[12px] font-medium">분석 중</span>
+                        <span className="text-[12px] font-medium">{t('list.analyzing')}</span>
                       </div>
                     ) : s.sagaStep === 'GITHUB_QUEUED' ? (
                       <div className="flex items-center gap-1.5" style={{ color: 'var(--primary)' }}>
@@ -347,9 +344,9 @@ export default function SubmissionsPage(): ReactNode {
                         <span className="text-[12px] font-medium">GitHub</span>
                       </div>
                     ) : s.sagaStep === 'FAILED' ? (
-                      <span className="text-[12px] font-medium" style={{ color: 'var(--error)' }}>실패</span>
+                      <span className="text-[12px] font-medium" style={{ color: 'var(--error)' }}>{t('list.statusDisplay.failed')}</span>
                     ) : (
-                      <span className="text-[12px] font-medium" style={{ color: 'var(--text-3)' }}>저장됨</span>
+                      <span className="text-[12px] font-medium" style={{ color: 'var(--text-3)' }}>{t('list.statusDisplay.dbSaved')}</span>
                     )}
                   </div>
                 </button>

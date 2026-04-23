@@ -1,0 +1,65 @@
+{
+  "generic": {
+    "title": "Error Occurred",
+    "description": "An unexpected error occurred.",
+    "retry": "Retry",
+    "home": "Go Home"
+  },
+  "dashboard": {
+    "title": "Dashboard Error",
+    "description": "Failed to load the dashboard."
+  },
+  "problems": {
+    "title": "Problem Error",
+    "description": "Failed to load the problem."
+  },
+  "submissions": {
+    "title": "Submission Error",
+    "description": "Failed to load submission data."
+  },
+  "reviews": {
+    "title": "Review Error",
+    "description": "Failed to load the review."
+  },
+  "profile": {
+    "title": "Profile Error",
+    "description": "Failed to load profile information."
+  },
+  "settings": {
+    "title": "Settings Error",
+    "description": "Failed to load the settings page."
+  },
+  "studies": {
+    "title": "Study Error",
+    "description": "Failed to load study information."
+  },
+  "analytics": {
+    "title": "Analytics Error",
+    "description": "Failed to load analytics data."
+  },
+  "shared": {
+    "title": "Shared Link Error",
+    "description": "Failed to load the shared page."
+  },
+  "studyRoom": {
+    "title": "Study Room Error",
+    "description": "Failed to load the study room."
+  },
+  "notFound": {
+    "title": "404",
+    "description": "The page could not be found",
+    "home": "Go Home"
+  },
+  "studyNotFound": {
+    "code": "404",
+    "title": "Study Not Found",
+    "description": "The study you requested does not exist or has been removed.",
+    "cta": "Back to Studies"
+  },
+  "problemNotFound": {
+    "code": "404",
+    "title": "Problem Not Found",
+    "description": "The problem you requested does not exist or has been removed.",
+    "cta": "Back to Problems"
+  }
+}

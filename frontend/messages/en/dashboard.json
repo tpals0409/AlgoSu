@@ -1,0 +1,71 @@
+{
+  "meta": {
+    "title": "Dashboard",
+    "description": "Check your study progress and statistics."
+  },
+  "greeting": {
+    "hello": "Hello, {name} 👋",
+    "helloDefault": "Hello 👋",
+    "sub": "Keep growing every day."
+  },
+  "stats": {
+    "submissions": "Submissions",
+    "study": "Study",
+    "analytics": "Stats",
+    "scoreUnit": "pts"
+  },
+  "studyRoom": {
+    "title": "Study Room",
+    "enter": "Enter"
+  },
+  "cta": {
+    "github": "We recommend linking GitHub",
+    "githubDesc": "Link GitHub to automatically sync your submitted code.",
+    "githubLink": "Link GitHub",
+    "closeBanner": "Close banner"
+  },
+  "empty": {
+    "noStudy": "Join or create a study group",
+    "noStudyDesc": "Join a study to view submissions, statistics, and problem lists on your dashboard.",
+    "browseStudies": "Browse Studies",
+    "noData": "No submission data yet."
+  },
+  "errors": {
+    "stats": "Failed to load statistics.",
+    "submissions": "Failed to load recent submissions.",
+    "problems": "Failed to load problem list.",
+    "members": "Failed to load member list.",
+    "loadFailed": "Failed to load dashboard data."
+  },
+  "weekView": {
+    "all": "All",
+    "mySubmissions": "My Solutions"
+  },
+  "loading": "Loading...",
+  "retry": "Retry",
+  "analyticsSection": {
+    "meta": {
+      "title": "Learning Analytics",
+      "description": "Check your algorithm learning analytics report."
+    },
+    "heading": "My Stats",
+    "userStats": "{name}'s Algorithm Learning Progress",
+    "defaultUser": "User",
+    "empty": {
+      "noStudy": "Please select a study",
+      "noStudyDesc": "You need to select a study to view statistics.",
+      "studyList": "Study List",
+      "noData": "No submission data yet",
+      "noDataDesc": "Solve problems and submit code to see your statistics.",
+      "problemList": "View Problems"
+    },
+    "errors": {
+      "statsFailed": "Failed to load statistics data.",
+      "loadFailed": "Failed to load data."
+    },
+    "weeks": {
+      "recent": "Out of last {count} weeks"
+    },
+    "loading": "Loading..."
+  }
+}

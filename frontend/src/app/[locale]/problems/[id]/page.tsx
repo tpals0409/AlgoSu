@@ -1,20 +1,21 @@
 /**
- * @file 문제 상세 + 코드 제출 통합 페이지 (Figma 디자인 반영)
+ * @file 문제 상세 + 코드 제출 통합 페이지 (Figma 디자인 반영, i18n 적용)
  * @domain problem, submission
  * @layer page
- * @related problemApi, submissionApi, CodeEditor
+ * @related problemApi, submissionApi, CodeEditor, messages/problems.json
  */
 
 'use client';
 
 import React, { useState, useEffect, useCallback, use, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
   ArrowLeft,
   ExternalLink,
   Trash2,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { useRouter } from '@/i18n/navigation';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
@@ -38,6 +39,8 @@ interface PageProps {
   readonly params: Promise<{ id: string }>;
 }
 
+/** 요일 키 배열 (getDay() 인덱스 → 번역 키 매핑) */
+const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
 
 
 // ─── RENDER ───────────────────────────────
@@ -49,6 +52,7 @@ interface PageProps {
 export default function ProblemDetailPage({ params }: PageProps): ReactNode {
   const { id: problemId } = use(params);
   const router = useRouter();
+  const t = useTranslations('problems');
   const { isAuthenticated } = useRequireAuth();
   useRequireStudy();
   const { githubConnected } = useAuth();
@@ -112,7 +116,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
         setSubmissions(submissionData);
       } catch (err: unknown) {
         if (!cancelled) {
-          setError((err as Error).message ?? '문제를 불러오는 데 실패했습니다.');
+          setError((err as Error).message ?? t('detail.error'));
         }
       } finally {
         if (!cancelled) setIsLoading(false);
@@ -121,6 +125,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
 
     void load();
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t는 stable ref; 데이터 재요청 트리거 불필요
   }, [isAuthenticated, currentStudyId, problemId]);
 
   // ─── HANDLERS ─────────────────────────────
@@ -136,7 +141,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
   const handleSubmit = useCallback(async (): Promise<void> => {
     if (!problem) return;
     if (!code.trim()) {
-      setSubmitError('코드를 입력해주세요.');
+      setSubmitError(t('submit.enterCode'));
       return;
     }
     setIsSubmitting(true);
@@ -149,17 +154,17 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
         code,
       });
 
-      toast.success('제출되었습니다', {
-        description: 'AI 분석이 시작됩니다. 잠시만 기다려주세요.',
+      toast.success(t('submit.success'), {
+        description: t('submit.successDescription'),
         duration: 3000,
       });
       router.push(`/submissions/${submission.id}/status`);
     } catch (err: unknown) {
-      setSubmitError((err as Error).message ?? '제출 중 오류가 발생했습니다.');
+      setSubmitError((err as Error).message ?? t('submit.submitError'));
     } finally {
       setIsSubmitting(false);
     }
-  }, [problem, language, code, problemId, router]);
+  }, [problem, language, code, router, t]);
 
   const handleDelete = useCallback(async (): Promise<void> => {
     setIsDeleting(true);
@@ -167,11 +172,11 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
       await problemApi.delete(problemId);
       router.push('/problems');
     } catch (err: unknown) {
-      setError((err as Error).message ?? '삭제 중 오류가 발생했습니다.');
+      setError((err as Error).message ?? t('submit.deleteError'));
       setIsDeleting(false);
       setShowDeleteConfirm(false);
     }
-  }, [problemId, router]);
+  }, [problemId, router, t]);
 
   // ─── LOADING ────────────────────────────
 
@@ -191,10 +196,10 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
     return (
       <AppLayout>
         <div className="space-y-4">
-          <Alert variant="error">{error ?? '문제를 찾을 수 없습니다.'}</Alert>
+          <Alert variant="error">{error ?? t('detail.notFound')}</Alert>
           <Button variant="ghost" size="sm" onClick={() => router.push('/problems')}>
             <ArrowLeft />
-            문제 목록
+            {t('detail.backToList')}
           </Button>
         </div>
       </AppLayout>
@@ -205,12 +210,17 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
   const isPastDeadline = !!problem.deadline && new Date(problem.deadline) <= new Date();
   const isLateWindow = canSubmit && isPastDeadline;
   const isOngoing = problem.status === 'ACTIVE' && !isPastDeadline;
-  // 마감일 포맷
+
+  // 마감일 포맷 (i18n)
   const deadlineFormatted = problem.deadline
     ? (() => {
         const d = new Date(problem.deadline);
-        const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-        return `${d.getMonth() + 1}월 ${d.getDate()}일 (${dayNames[d.getDay()]})`;
+        const dayName = t(`detail.dayNames.${DAY_KEYS[d.getDay()]}`);
+        return t('detail.deadlineFormat', {
+          month: d.getMonth() + 1,
+          day: d.getDate(),
+          dayName,
+        });
       })()
     : '-';
 
@@ -232,7 +242,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
               type="button"
               onClick={() => setShowDeleteConfirm(true)}
               className="flex items-center justify-center shrink-0 h-9 w-9 rounded-full transition-colors hover:bg-bg-alt"
-              aria-label="문제 삭제"
+              aria-label={t('detail.deleteProblem')}
             >
               <Trash2 className="h-4 w-4" style={{ color: 'var(--text-3)' }} />
             </button>
@@ -244,8 +254,8 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
           <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
             <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setShowDeleteConfirm(false)} />
             <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
-              <p className="text-[14px] font-semibold text-text">문제를 삭제하시겠습니까?</p>
-              <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>이 작업은 되돌릴 수 없습니다. 관련 제출 데이터도 함께 삭제됩니다.</p>
+              <p className="text-[14px] font-semibold text-text">{t('detail.deleteConfirm.title')}</p>
+              <p className="text-[13px]" style={{ color: 'var(--text-2)' }}>{t('detail.deleteConfirm.description')}</p>
               <div className="flex items-center justify-end gap-2">
                 <button
                   type="button"
@@ -253,7 +263,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
                   className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt"
                   style={{ color: 'var(--text-2)' }}
                 >
-                  취소
+                  {t('detail.deleteConfirm.cancel')}
                 </button>
                 <button
                   type="button"
@@ -262,7 +272,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
                   className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity disabled:opacity-50"
                   style={{ backgroundColor: 'var(--error)' }}
                 >
-                  {isDeleting ? '삭제 중...' : '삭제'}
+                  {isDeleting ? t('detail.deleteConfirm.deleting') : t('detail.deleteConfirm.delete')}
                 </button>
               </div>
             </div>
@@ -295,7 +305,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
                   }
                 >
                   {isOngoing && <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--success)' }} aria-hidden />}
-                  {isOngoing ? '진행 중' : isLateWindow ? '지각 제출' : '종료'}
+                  {isOngoing ? t('detail.status.inProgress') : isLateWindow ? t('detail.status.lateSubmission') : t('detail.status.finished')}
                 </span>
                 {problem.tags?.map((tag) => (
                   <span
@@ -328,7 +338,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
                   style={{ color: 'var(--primary)' }}
                 >
                   <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                  {problem.sourcePlatform ?? 'BOJ'}에서 문제 보기
+                  {t('detail.viewOnPlatform', { platform: problem.sourcePlatform ?? 'BOJ' })}
                 </a>
               )}
             </div>
@@ -338,8 +348,8 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
               <div className="space-y-3">
                 {/* 지각 제출 경고 */}
                 {isLateWindow && (
-                  <Alert variant="warning" title="지각 제출">
-                    마감 시간이 지났습니다. 지금 제출하면 지각으로 기록됩니다.
+                  <Alert variant="warning" title={t('submit.lateWarning.title')}>
+                    {t('submit.lateWarning.description')}
                   </Alert>
                 )}
 
@@ -352,15 +362,15 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
 
                 {/* GitHub 미연동 안내 */}
                 {!githubConnected && (
-                  <Alert variant="info" title="GitHub 미연동">
-                    GitHub을 연동하면 제출 코드가 자동으로 GitHub에 동기화됩니다.{' '}
+                  <Alert variant="info" title={t('submit.github.title')}>
+                    {t('submit.github.description')}{' '}
                     <Button
                       variant="link"
                       size="sm"
                       onClick={() => router.push('/github-link')}
                       className="inline h-auto p-0 text-inherit underline font-medium"
                     >
-                      GitHub 연동하기
+                      {t('submit.github.link')}
                     </Button>
                   </Alert>
                 )}
@@ -381,8 +391,8 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
 
             {/* 마감 안내 */}
             {!canSubmit && (
-              <Alert variant="warning" title="제출 마감">
-                이 문제는 마감되었습니다. 더 이상 제출할 수 없습니다.
+              <Alert variant="warning" title={t('submit.closed.title')}>
+                {t('submit.closed.description')}
               </Alert>
             )}
           </div>
@@ -392,27 +402,27 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
 
             {/* 마감 정보 */}
             <div className="rounded-xl border border-border p-3 sm:p-5 space-y-3 bg-bg-card">
-              <h3 className="text-[14px] font-bold text-text">마감 정보</h3>
+              <h3 className="text-[14px] font-bold text-text">{t('detail.deadline.title')}</h3>
               <div className="flex items-center justify-between">
-                <span className="text-[13px]" style={{ color: 'var(--text-3)' }}>마감일</span>
+                <span className="text-[13px]" style={{ color: 'var(--text-3)' }}>{t('detail.deadline.date')}</span>
                 <span className="text-[13px] font-medium text-text">{deadlineFormatted}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-[13px]" style={{ color: 'var(--text-3)' }}>주차</span>
+                <span className="text-[13px]" style={{ color: 'var(--text-3)' }}>{t('detail.deadline.week')}</span>
                 <span className="text-[13px] font-medium text-text">{problem.weekNumber}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-[13px]" style={{ color: 'var(--text-3)' }}>플랫폼</span>
+                <span className="text-[13px]" style={{ color: 'var(--text-3)' }}>{t('detail.deadline.platform')}</span>
                 <span className="text-[13px] font-medium text-text">{problem.sourcePlatform ?? '-'}</span>
               </div>
             </div>
 
             {/* 제출 현황 */}
             <div className="rounded-xl border border-border p-3 sm:p-5 bg-bg-card">
-              <h3 className="text-[14px] font-bold text-text mb-3">제출 현황</h3>
+              <h3 className="text-[14px] font-bold text-text mb-3">{t('detail.submissions.title')}</h3>
               {submissions.length === 0 ? (
                 <p className="text-[13px]" style={{ color: 'var(--text-3)' }}>
-                  아직 제출 데이터가 없습니다.
+                  {t('detail.submissions.empty')}
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -451,7 +461,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
                                 className="inline-flex items-center rounded-badge px-1.5 py-0.5 text-[10px] font-semibold"
                                 style={{ backgroundColor: 'var(--warning-soft)', color: 'var(--warning)' }}
                               >
-                                지각
+                                {t('detail.submissions.late')}
                               </span>
                             )}
                           </div>
@@ -459,7 +469,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
                         </div>
                         {s.aiScore != null && (
                           <span className="text-[13px] font-bold" style={{ color: s.aiScore >= 80 ? 'var(--success)' : s.aiScore >= 60 ? 'var(--warning)' : 'var(--error)' }}>
-                            {s.aiScore}점
+                            {t('detail.submissions.scoreUnit', { score: s.aiScore })}
                           </span>
                         )}
                       </button>

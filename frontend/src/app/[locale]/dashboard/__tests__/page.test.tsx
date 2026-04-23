@@ -1,5 +1,14 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithI18n } from '@/test-utils/i18n';
 import DashboardPage from '../page';
+
+jest.mock('@/i18n/navigation', () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
+  usePathname: () => '/dashboard',
+  Link: ({ children, ...props }: { children: React.ReactNode; href: string }) => (
+    <a {...props}>{children}</a>
+  ),
+}));
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
@@ -93,14 +102,6 @@ jest.mock('@/lib/avatars', () => ({
   getAvatarSrc: () => '/avatar.png',
 }));
 
-jest.mock('next/link', () => {
-  const MockLink = ({ children, ...props }: { children: React.ReactNode; href: string }) => (
-    <a {...props}>{children}</a>
-  );
-  MockLink.displayName = 'MockLink';
-  return MockLink;
-});
-
 jest.mock('lucide-react', () => {
   const Icon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />;
   return {
@@ -109,6 +110,8 @@ jest.mock('lucide-react', () => {
     BarChart3: Icon,
     Github: Icon,
     MessageCircle: Icon,
+    X: Icon,
+    RefreshCw: Icon,
   };
 });
 
@@ -121,17 +124,17 @@ jest.mock('next/dynamic', () => () => {
 
 describe('DashboardPage', () => {
   it('대시보드 페이지가 렌더링된다', () => {
-    render(<DashboardPage />);
+    renderWithI18n(<DashboardPage />);
     expect(screen.getByText(/안녕하세요/)).toBeInTheDocument();
   });
 
   it('AppLayout 안에 렌더링된다', () => {
-    render(<DashboardPage />);
+    renderWithI18n(<DashboardPage />);
     expect(screen.getByTestId('app-layout')).toBeInTheDocument();
   });
 
   it('성장 메시지가 표시된다', () => {
-    render(<DashboardPage />);
+    renderWithI18n(<DashboardPage />);
     expect(screen.getByText('오늘도 꾸준히 성장하는 하루 되세요.')).toBeInTheDocument();
   });
 });

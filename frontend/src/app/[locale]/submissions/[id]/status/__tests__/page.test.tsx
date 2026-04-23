@@ -1,10 +1,16 @@
-import { render, screen, act } from '@testing-library/react';
+import { screen, act } from '@testing-library/react';
 import { Suspense } from 'react';
+import { renderWithI18n } from '@/test-utils/i18n';
 import SubmissionStatusPage from '../page';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn(), refresh: jest.fn() }),
   usePathname: () => '/submissions/sub-123/status',
+}));
+
+jest.mock('@/i18n/navigation', () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn(), refresh: jest.fn() }),
+  Link: ({ children, ...props }: { children: React.ReactNode; href: string }) => <a {...props}>{children}</a>,
 }));
 
 jest.mock('next-themes', () => ({
@@ -129,8 +135,8 @@ jest.mock('lucide-react', () => {
   };
 });
 
-function renderWithSuspense(ui: React.ReactElement) {
-  return render(
+function renderStatusPage(ui: React.ReactElement) {
+  return renderWithI18n(
     <Suspense fallback={<div>Loading...</div>}>
       {ui}
     </Suspense>,
@@ -152,35 +158,35 @@ describe('SubmissionStatusPage', () => {
 
   it('제출 상태 페이지가 렌더링된다', async () => {
     await act(async () => {
-      renderWithSuspense(<SubmissionStatusPage params={Promise.resolve({ id: 'sub-123' })} />);
+      renderStatusPage(<SubmissionStatusPage params={Promise.resolve({ id: 'sub-123' })} />);
     });
     expect(await screen.findByText('제출 상태')).toBeInTheDocument();
   });
 
   it('AppLayout 안에 렌더링된다', async () => {
     await act(async () => {
-      renderWithSuspense(<SubmissionStatusPage params={Promise.resolve({ id: 'sub-123' })} />);
+      renderStatusPage(<SubmissionStatusPage params={Promise.resolve({ id: 'sub-123' })} />);
     });
     expect(screen.getByTestId('app-layout')).toBeInTheDocument();
   });
 
   it('뒤로가기 버튼이 표시된다', async () => {
     await act(async () => {
-      renderWithSuspense(<SubmissionStatusPage params={Promise.resolve({ id: 'sub-123' })} />);
+      renderStatusPage(<SubmissionStatusPage params={Promise.resolve({ id: 'sub-123' })} />);
     });
     expect(screen.getByText('문제로 돌아가기')).toBeInTheDocument();
   });
 
   it('처리 중 상태 알림이 표시된다', async () => {
     await act(async () => {
-      renderWithSuspense(<SubmissionStatusPage params={Promise.resolve({ id: 'sub-123' })} />);
+      renderStatusPage(<SubmissionStatusPage params={Promise.resolve({ id: 'sub-123' })} />);
     });
     expect(screen.getByText('처리 중')).toBeInTheDocument();
   });
 
   it('스텝 목록이 표시된다', async () => {
     await act(async () => {
-      renderWithSuspense(<SubmissionStatusPage params={Promise.resolve({ id: 'sub-123' })} />);
+      renderStatusPage(<SubmissionStatusPage params={Promise.resolve({ id: 'sub-123' })} />);
     });
     expect(screen.getByText('코드 제출')).toBeInTheDocument();
     expect(screen.getByText('GitHub Push')).toBeInTheDocument();
@@ -189,7 +195,7 @@ describe('SubmissionStatusPage', () => {
 
   it('AI 할당량 배지가 표시된다', async () => {
     await act(async () => {
-      renderWithSuspense(<SubmissionStatusPage params={Promise.resolve({ id: 'sub-123' })} />);
+      renderStatusPage(<SubmissionStatusPage params={Promise.resolve({ id: 'sub-123' })} />);
     });
     expect(screen.getByText('AI 1/10회')).toBeInTheDocument();
   });

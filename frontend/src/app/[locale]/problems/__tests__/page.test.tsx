@@ -1,9 +1,41 @@
 import { render, screen } from '@testing-library/react';
 import ProblemsPage from '../page';
 
+jest.mock('@/i18n/navigation', () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
+  usePathname: () => '/problems',
+  Link: ({ children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { children: React.ReactNode }) => <a {...props}>{children}</a>,
+}));
+
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
   usePathname: () => '/problems',
+}));
+
+jest.mock('next-intl', () => ({
+  useTranslations: () => (key: string, params?: Record<string, string>) => {
+    const map: Record<string, string> = {
+      'list.heading': '문제 목록',
+      'list.subheading': '스터디 문제를 확인하고 코드를 제출하세요.',
+      'list.searchPlaceholder': '문제 검색...',
+      'list.filter.statusPlaceholder': '상태 선택',
+      'list.filter.all': '전체',
+      'list.filter.inProgress': '진행 중',
+      'list.filter.finished': '종료',
+      'list.difficultyAll': '전체',
+      'list.empty.title': '등록된 문제가 없습니다',
+      'list.empty.description': '곧 새로운 문제가 추가될 예정입니다.',
+      'list.noResults.title': '검색 결과가 없습니다',
+      'list.noResults.description': '필터 조건을 변경해 보세요.',
+      'list.noResults.resetFilter': '필터 초기화',
+      'list.badge.inProgress': '진행 중',
+      'list.badge.finished': '종료',
+      'list.badge.deadline': '마감',
+      'list.addProblem': '문제 추가',
+    };
+    if (params && map[key]) return map[key];
+    return map[key] ?? key;
+  },
 }));
 
 jest.mock('next-themes', () => ({

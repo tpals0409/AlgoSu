@@ -10,10 +10,11 @@
  * - Skip navigation, AdSense Script 포함
  */
 
+import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import Script from 'next/script';
 import { NextIntlClientProvider } from 'next-intl';
-import { getMessages } from 'next-intl/server';
+import { getMessages, getTranslations } from 'next-intl/server';
 import { routing } from '@/i18n/routing';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import { WebVitalsReporter } from '@/components/providers/WebVitalsReporter';
@@ -25,6 +26,16 @@ import { notFound } from 'next/navigation';
 
 const adsenseEnabled = process.env.NEXT_PUBLIC_ADSENSE_ENABLED === 'true';
 const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID ?? '';
+
+/**
+ * metadataBase: 상대 경로 OG/트위터 이미지 URL 자동 보완.
+ * 하위 페이지의 generateMetadata에서 canonical/alternates를 상대 경로로 쓸 수 있게 한다.
+ */
+export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_BASE_URL ?? 'https://algosu.kr',
+  ),
+};
 
 interface LocaleLayoutProps {
   readonly children: ReactNode;
@@ -51,8 +62,9 @@ export default async function LocaleLayout({
     notFound();
   }
 
-  // next-intl 메시지 로드 (Phase B: 빈 객체, Phase C~: 실제 번역)
+  // next-intl 메시지 로드
   const messages = await getMessages();
+  const t = await getTranslations({ locale, namespace: 'common' });
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
@@ -60,7 +72,7 @@ export default async function LocaleLayout({
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-white focus:text-black"
       >
-        콘텐츠로 건너뛰기
+        {t('nav.skipNav')}
       </a>
       {adsenseEnabled && adsenseClientId && (
         <Script

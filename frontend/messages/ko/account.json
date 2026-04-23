@@ -1,0 +1,108 @@
+{
+  "profile": {
+    "meta": {
+      "title": "프로필",
+      "description": "프로필 설정을 관리하세요."
+    },
+    "own": {
+      "heading": "프로필",
+      "subtitle": "계정 정보와 GitHub 연동을 관리하세요.",
+      "avatar": {
+        "changeLabel": "아바타 변경",
+        "imageAlt": "프로필 아바타",
+        "pickerTitle": "아바타 선택"
+      },
+      "badge": {
+        "connected": "연결됨"
+      },
+      "basicInfo": {
+        "title": "기본 정보",
+        "edit": "수정",
+        "editDisabled": "준비 중",
+        "name": "이름",
+        "email": "이메일",
+        "loginMethod": "로그인 방식"
+      },
+      "github": {
+        "title": "GitHub 연동",
+        "notConnected": "코드 제출을 위해 연동이 필요합니다",
+        "link": "연동하기",
+        "relink": "재연동",
+        "unlink": "해제"
+      },
+      "account": {
+        "title": "계정 관리",
+        "logout": "로그아웃",
+        "delete": "계정 탈퇴"
+      },
+      "logoutModal": {
+        "title": "로그아웃 하시겠습니까?",
+        "description": "현재 세션이 종료되고 로그인 페이지로 이동합니다.",
+        "cancel": "취소",
+        "confirm": "로그아웃"
+      },
+      "deleteModal": {
+        "title": "계정을 삭제하시겠습니까?",
+        "description": "이 작업은 되돌릴 수 없습니다. 모든 데이터가 영구 삭제됩니다.",
+        "cancel": "취소",
+        "confirm": "삭제",
+        "deleting": "삭제 중..."
+      },
+      "errors": {
+        "githubLink": "GitHub 연동에 실패했습니다. 잠시 후 다시 시도해주세요.",
+        "githubUnlink": "GitHub 연동 해제에 실패했습니다.",
+        "githubRelink": "GitHub 재연동에 실패했습니다.",
+        "avatarChange": "아바타 변경에 실패했습니다.",
+        "deleteAccount": "계정 삭제에 실패했습니다. 잠시 후 다시 시도해주세요."
+      }
+    },
+    "public": {
+      "notFound": "프로필을 찾을 수 없습니다.",
+      "noName": "이름 없음",
+      "totalSubmissions": "총 제출",
+      "aiAverage": "AI 평균",
+      "studies": {
+        "title": "참여 스터디",
+        "empty": "참여 중인 스터디가 없습니다.",
+        "memberCount": "{count}명",
+        "submissionCount": "제출 {count}건",
+        "aiScore": "AI 평균 {score}점",
+        "viewStudyRoom": "스터디룸 보기"
+      }
+    }
+  },
+  "settings": {
+    "meta": {
+      "title": "설정"
+    },
+    "loading": "설정 로딩 중",
+    "heading": "설정",
+    "form": {
+      "publicProfile": {
+        "title": "퍼블릭 프로필",
+        "toggle": "프로필 공개",
+        "toggleDescription": "활성화하면 누구나 프로필을 볼 수 있습니다"
+      },
+      "slug": {
+        "label": "프로필 URL",
+        "prefix": "algosu.com/profile/",
+        "placeholder": "my-profile",
+        "preview": "미리보기: algosu.com/profile/{slug}"
+      },
+      "save": "저장",
+      "saving": "저장 중...",
+      "profileLink": "내 프로필 링크:"
+    },
+    "validation": {
+      "slug": {
+        "pattern": "영문소문자, 숫자, 하이픈만 (3~20자, 시작/끝 하이픈 불가)",
+        "reserved": "사용할 수 없는 예약어입니다.",
+        "requiredForPublic": "프로필 공개를 위해 slug를 먼저 설정해주세요."
+      },
+      "save": {
+        "success": "설정이 저장되었습니다.",
+        "failed": "저장 실패"
+      }
+    }
+  }
+}

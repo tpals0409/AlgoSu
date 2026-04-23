@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "title": "Code Review #{id}",
+    "description": "View your AI code review results."
+  },
+  "detail": {
+    "heading": "Code Review",
+    "submissionList": "Submissions",
+    "ariaBackToList": "Go to submission list",
+    "goBack": "Go Back",
+    "problemFallback": "Problem",
+    "deadlineBanner": "Before the deadline, only you can view the code. After the deadline, it will be shared with study members.",
+    "tabCode": "Code",
+    "tabReview": "Review",
+    "aiAnalysisHeading": "AI Analysis Results",
+    "categoryCount": "{count} categories evaluated",
+    "comments": "Comments",
+    "lineComments": "Line {line} Comments",
+    "ariaFocusMode": "Focus mode",
+    "loadError": "Failed to load data.",
+    "notFound": "Submission not found.",
+    "codeUnavailable": "// Unable to load code."
+  }
+}

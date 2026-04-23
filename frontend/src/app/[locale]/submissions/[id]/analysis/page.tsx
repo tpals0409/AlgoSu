@@ -1,16 +1,18 @@
 /**
- * @file AI 분석 결과 페이지 (Figma v3 — 2-column layout)
+ * @file AI 분석 결과 페이지 (Figma v3 — 2-column layout, i18n 적용)
  * @domain ai
  * @layer page
- * @related submissionApi, ScoreGauge, CodeBlock
+ * @related submissionApi, ScoreGauge, CodeBlock, messages/submissions.json
  */
 
 'use client';
 
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { ArrowLeft, Loader2, Copy, Check, ExternalLink, Clock, Zap, Sparkles, ChevronDown, Brain, BarChart3 } from 'lucide-react';
+import { Link } from '@/i18n/navigation';
+import { useRouter } from '@/i18n/navigation';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -39,14 +41,15 @@ function barColor(score: number): string {
   return 'var(--error)';
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  efficiency: '효율성',
-  readability: '가독성',
-  correctness: '정확성',
-  structure: '코드 구조',
-  bestPractice: '모범 사례',
-  style: '코드 스타일',
-  maintainability: '유지보수성',
+/** category name → i18n 키 매핑 */
+const CATEGORY_KEYS: Record<string, string> = {
+  efficiency: 'analysis.categories.efficiency',
+  readability: 'analysis.categories.readability',
+  correctness: 'analysis.categories.correctness',
+  structure: 'analysis.categories.structure',
+  bestPractice: 'analysis.categories.bestPractice',
+  style: 'analysis.categories.style',
+  maintainability: 'analysis.categories.maintainability',
 };
 
 // ─── RENDER ───────────────────────────────
@@ -54,6 +57,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 export default function AnalysisPage(): ReactNode {
   const params = useParams();
   const router = useRouter();
+  const t = useTranslations('submissions');
   const { isReady, isAuthenticated } = useRequireAuth();
   useRequireStudy();
   const { currentStudyId } = useStudy();
@@ -124,11 +128,11 @@ export default function AnalysisPage(): ReactNode {
         }
       }
     } catch (err: unknown) {
-      setError((err as Error).message ?? 'AI 분석 결과를 불러오는 데 실패했습니다.');
+      setError((err as Error).message ?? t('analysis.loadError'));
     } finally {
       setIsLoading(false);
     }
-  }, [submissionId]);
+  }, [submissionId, t]);
 
   useEffect(() => {
     if (isAuthenticated && submissionId && currentStudyId) {
@@ -172,12 +176,12 @@ export default function AnalysisPage(): ReactNode {
   useEffect(() => {
     const title = submission?.problemTitle ?? problemMeta?.title;
     if (title) {
-      document.title = `AI 코드 분석 | ${title}`;
+      document.title = t('analysis.pageTitleWithProblem', { title });
     } else {
-      document.title = 'AI 코드 분석';
+      document.title = t('analysis.pageTitle');
     }
     return () => { document.title = 'AlgoSu'; };
-  }, [submission?.problemTitle, problemMeta?.title]);
+  }, [submission?.problemTitle, problemMeta?.title, t]);
 
   useEffect(() => {
     const handleVisibility = () => {
@@ -211,7 +215,7 @@ export default function AnalysisPage(): ReactNode {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-bg">
         <LoadingSpinner size="lg" color="primary" />
-        <p className="text-sm text-text-3">로딩 중...</p>
+        <p className="text-sm text-text-3">{t('analysis.loading')}</p>
       </div>
     );
   }
@@ -236,7 +240,7 @@ export default function AnalysisPage(): ReactNode {
               <ArrowLeft className="h-5 w-5 text-[var(--text)]" />
             </button>
             <h1 className="text-lg sm:text-xl font-bold tracking-tight text-text truncate">
-              {submission?.problemTitle ?? problemMeta?.title ?? `제출 ${submissionId.slice(0, 8)}`}
+              {submission?.problemTitle ?? problemMeta?.title ?? t('analysis.submissionFallback', { id: submissionId.slice(0, 8) })}
             </h1>
           </div>
 
@@ -265,7 +269,7 @@ export default function AnalysisPage(): ReactNode {
                 className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium bg-[var(--success-soft)] text-[var(--success)]"
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-[var(--success)]" aria-hidden />
-                분석 완료
+                {t('analysis.statusCompleted')}
               </span>
             )}
             {/* 점수 뱃지 */}
@@ -273,7 +277,7 @@ export default function AnalysisPage(): ReactNode {
               <span
                 className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold bg-[var(--success-soft)] text-[var(--success)]"
               >
-                {parsed.totalScore}점
+                {t('analysis.scoreUnit', { score: parsed.totalScore })}
               </span>
             )}
             {/* 태그 뱃지 */}
@@ -297,7 +301,7 @@ export default function AnalysisPage(): ReactNode {
                 href={`/problems/${submission.problemId}`}
                 className="inline-flex items-center gap-1 text-[12px] font-medium text-primary hover:underline shrink-0"
               >
-                문제 보기
+                {t('analysis.viewProblem')}
                 <ExternalLink className="h-3 w-3" aria-hidden />
               </Link>
             )}
@@ -328,15 +332,15 @@ export default function AnalysisPage(): ReactNode {
             <CardContent className="flex flex-col items-center justify-center py-16 gap-4">
               <LoadingSpinner size="lg" />
               <div className="text-center">
-                <p className="text-sm font-medium text-text">AI 분석 중...</p>
-                <p className="mt-1 text-[11px] text-text-3">분석이 완료되면 자동으로 결과가 표시됩니다.</p>
+                <p className="text-sm font-medium text-text">{t('analysis.pending.title')}</p>
+                <p className="mt-1 text-[11px] text-text-3">{t('analysis.pending.description')}</p>
                 {elapsedSeconds > 0 && (
                   <p className="mt-1 text-[11px] text-text-3">
-                    경과 시간: {Math.floor(elapsedSeconds / 60)}분 {elapsedSeconds % 60}초
+                    {t('analysis.pending.elapsed', { minutes: Math.floor(elapsedSeconds / 60), seconds: elapsedSeconds % 60 })}
                   </p>
                 )}
               </div>
-              <Button variant="ghost" size="sm" onClick={handleManualRefresh}>새로고침</Button>
+              <Button variant="ghost" size="sm" onClick={handleManualRefresh}>{t('analysis.refresh')}</Button>
             </CardContent>
           </Card>
         )}
@@ -349,15 +353,15 @@ export default function AnalysisPage(): ReactNode {
                 <Loader2 className="h-8 w-8 text-warning" aria-hidden />
               </div>
               <div className="text-center">
-                <p className="text-sm font-medium text-text">분석 지연 중</p>
-                <p className="mt-1 text-[11px] text-text-3">AI 분석 서비스가 일시적으로 지연되고 있습니다.</p>
+                <p className="text-sm font-medium text-text">{t('analysis.delayed.title')}</p>
+                <p className="mt-1 text-[11px] text-text-3">{t('analysis.delayed.description')}</p>
                 {elapsedSeconds > 0 && (
                   <p className="mt-1 text-[11px] text-text-3">
-                    경과 시간: {Math.floor(elapsedSeconds / 60)}분 {elapsedSeconds % 60}초
+                    {t('analysis.pending.elapsed', { minutes: Math.floor(elapsedSeconds / 60), seconds: elapsedSeconds % 60 })}
                   </p>
                 )}
               </div>
-              <Button variant="ghost" size="sm" onClick={handleManualRefresh}>새로고침</Button>
+              <Button variant="ghost" size="sm" onClick={handleManualRefresh}>{t('analysis.refresh')}</Button>
             </CardContent>
           </Card>
         )}
@@ -370,8 +374,8 @@ export default function AnalysisPage(): ReactNode {
                 <Clock className="h-8 w-8 text-[var(--warning)]" aria-hidden />
               </div>
               <div className="text-center">
-                <p className="text-sm font-medium text-text">분석이 예상보다 오래 걸리고 있습니다</p>
-                <p className="mt-1 text-[11px] text-text-3">나중에 다시 확인해주세요.</p>
+                <p className="text-sm font-medium text-text">{t('analysis.timeout.title')}</p>
+                <p className="mt-1 text-[11px] text-text-3">{t('analysis.timeout.description')}</p>
               </div>
               <Button variant="ghost" size="sm" onClick={() => {
                 pollCountRef.current = 0;
@@ -379,15 +383,15 @@ export default function AnalysisPage(): ReactNode {
                 setElapsedSeconds(0);
                 setPollTimedOut(false);
                 void loadData();
-              }}>새로고침</Button>
+              }}>{t('analysis.refresh')}</Button>
             </CardContent>
           </Card>
         )}
 
         {/* ─── FAILED ────────────────────────── */}
         {!isLoading && analysis && analysis.analysisStatus === 'failed' && (
-          <Alert variant="error" title="분석 실패">
-            AI 분석 중 오류가 발생했습니다. 코드를 다시 제출하거나 관리자에게 문의해주세요.
+          <Alert variant="error" title={t('analysis.failed.title')}>
+            {t('analysis.failed.description')}
           </Alert>
         )}
 
@@ -412,7 +416,7 @@ export default function AnalysisPage(): ReactNode {
                       className="flex items-center gap-1.5 px-2.5 py-1 rounded-badge text-[11px] font-medium transition-colors hover:bg-bg-alt text-[var(--text-3)]"
                     >
                       {copied ? <Check className="h-3 w-3 text-[var(--success)]" /> : <Copy className="h-3 w-3" />}
-                      {copied ? '복사됨' : '복사'}
+                      {copied ? t('analysis.copied') : t('analysis.copy')}
                     </button>
                   )}
                 </div>
@@ -426,7 +430,7 @@ export default function AnalysisPage(): ReactNode {
                     />
                   ) : (
                     <div className="p-4 text-xs text-text-3 bg-[var(--code-bg)]">
-                      제출한 코드를 불러올 수 없습니다.
+                      {t('analysis.codeUnavailable')}
                     </div>
                   )}
                 </div>
@@ -440,7 +444,7 @@ export default function AnalysisPage(): ReactNode {
                 <div className="flex items-center justify-between px-5 h-12 shrink-0 border-b border-[var(--border)]">
                   <span className="flex items-center gap-2 text-[13px] font-semibold text-text">
                     <Brain className="h-4 w-4 text-[var(--primary)]" aria-hidden />
-                    AI 분석 결과
+                    {t('analysis.heading')}
                   </span>
                 </div>
 
@@ -458,7 +462,7 @@ export default function AnalysisPage(): ReactNode {
                           className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium bg-[var(--info-soft)] text-[var(--info)]"
                         >
                           <Clock className="h-3.5 w-3.5" aria-hidden />
-                          시간 {parsed.timeComplexity}
+                          {t('analysis.timeComplexity', { value: parsed.timeComplexity })}
                         </span>
                       )}
                       {parsed.spaceComplexity && (
@@ -466,7 +470,7 @@ export default function AnalysisPage(): ReactNode {
                           className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium bg-[var(--primary-soft)] text-[var(--primary)]"
                         >
                           <Zap className="h-3.5 w-3.5" aria-hidden />
-                          공간 {parsed.spaceComplexity}
+                          {t('analysis.spaceComplexity', { value: parsed.spaceComplexity })}
                         </span>
                       )}
                     </div>
@@ -486,11 +490,11 @@ export default function AnalysisPage(): ReactNode {
                     <div className="space-y-1">
                       <p className="flex items-center gap-1.5 text-[13px] font-medium text-text pb-1 border-b border-b-[var(--border)]">
                         <BarChart3 className="h-3.5 w-3.5 text-[var(--primary)]" aria-hidden />
-                        항목별 평가
+                        {t('analysis.categories.heading')}
                       </p>
                       {parsed.categories.map((cat) => {
                         const color = barColor(cat.score);
-                        const label = CATEGORY_LABELS[cat.name] ?? cat.name;
+                        const label = CATEGORY_KEYS[cat.name] ? t(CATEGORY_KEYS[cat.name]) : cat.name;
                         return (
                           <div key={cat.name} className="py-2.5">
                             <div className="flex items-center justify-between mb-1">
@@ -519,7 +523,7 @@ export default function AnalysisPage(): ReactNode {
                       >
                         <span className="flex items-center gap-1.5">
                           <Sparkles className="h-3.5 w-3.5 text-[var(--primary)]" aria-hidden />
-                          AI 개선 코드
+                          {t('analysis.optimizedCode')}
                         </span>
                         <ChevronDown
                           className="h-4 w-4 text-text-3 transition-transform"

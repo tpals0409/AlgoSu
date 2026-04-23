@@ -1,5 +1,14 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithI18n } from '@/test-utils/i18n';
 import AnalyticsPage from '../page';
+
+jest.mock('@/i18n/navigation', () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
+  usePathname: () => '/analytics',
+  Link: ({ children, ...props }: { children: React.ReactNode; href: string }) => (
+    <a {...props}>{children}</a>
+  ),
+}));
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
@@ -100,14 +109,6 @@ jest.mock('@/lib/avatars', () => ({
   getAvatarSrc: () => '/avatar.png',
 }));
 
-jest.mock('next/link', () => {
-  const MockLink = ({ children, ...props }: { children: React.ReactNode; href: string }) => (
-    <a {...props}>{children}</a>
-  );
-  MockLink.displayName = 'MockLink';
-  return MockLink;
-});
-
 jest.mock('lucide-react', () => {
   const Icon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />;
   return {
@@ -119,17 +120,17 @@ jest.mock('lucide-react', () => {
 
 describe('AnalyticsPage', () => {
   it('통계 페이지가 렌더링된다', async () => {
-    render(<AnalyticsPage />);
+    renderWithI18n(<AnalyticsPage />);
     expect(await screen.findByText('내 통계')).toBeInTheDocument();
   });
 
   it('AppLayout 안에 렌더링된다', () => {
-    render(<AnalyticsPage />);
+    renderWithI18n(<AnalyticsPage />);
     expect(screen.getByTestId('app-layout')).toBeInTheDocument();
   });
 
   it('사용자 학습 현황 메시지가 표시된다', async () => {
-    render(<AnalyticsPage />);
+    renderWithI18n(<AnalyticsPage />);
     expect(await screen.findByText(/알고리즘 학습 현황/)).toBeInTheDocument();
   });
 });

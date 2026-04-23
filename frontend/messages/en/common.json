@@ -1,5 +1,6 @@
 {
   "nav": {
+    "skipNav": "Skip to content",
     "dashboard": "Dashboard",
     "problems": "Problems",
     "studies": "Studies",
@@ -40,5 +41,8 @@
   "empty": {
     "default": "No items to display.",
     "noResults": "No results found."
+  },
+  "ad": {
+    "devPlaceholder": "Ad Area (Development Mode)"
   }
 }

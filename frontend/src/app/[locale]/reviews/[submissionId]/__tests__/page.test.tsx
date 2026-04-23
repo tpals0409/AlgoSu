@@ -1,10 +1,18 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithI18n } from '@/test-utils/i18n';
 import CodeReviewPage from '../page';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
   useParams: () => ({ submissionId: 'sub-123' }),
   usePathname: () => '/reviews/sub-123',
+}));
+
+jest.mock('@/i18n/navigation', () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
+  Link: ({ children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { children: React.ReactNode }) => (
+    <a {...props}>{children}</a>
+  ),
 }));
 
 jest.mock('next/dynamic', () => {
@@ -132,7 +140,7 @@ describe('CodeReviewPage', () => {
     mockGetAnalysis.mockReturnValue(new Promise(() => {}));
     mockListComments.mockReturnValue(new Promise(() => {}));
 
-    render(<CodeReviewPage />);
+    renderWithI18n(<CodeReviewPage />);
     expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
   });
 
@@ -151,7 +159,7 @@ describe('CodeReviewPage', () => {
     });
     mockListComments.mockResolvedValue([]);
 
-    render(<CodeReviewPage />);
+    renderWithI18n(<CodeReviewPage />);
     expect(await screen.findByText('Two Sum')).toBeInTheDocument();
   });
 
@@ -160,7 +168,7 @@ describe('CodeReviewPage', () => {
     mockGetAnalysis.mockRejectedValue(new Error('Network Error'));
     mockListComments.mockRejectedValue(new Error('Network Error'));
 
-    render(<CodeReviewPage />);
+    renderWithI18n(<CodeReviewPage />);
     expect(await screen.findByText('데이터를 불러오지 못했습니다.')).toBeInTheDocument();
   });
 
@@ -169,7 +177,7 @@ describe('CodeReviewPage', () => {
     mockGetAnalysis.mockResolvedValue(null);
     mockListComments.mockResolvedValue([]);
 
-    render(<CodeReviewPage />);
+    renderWithI18n(<CodeReviewPage />);
     expect(await screen.findByText('데이터를 불러오지 못했습니다.')).toBeInTheDocument();
   });
 });

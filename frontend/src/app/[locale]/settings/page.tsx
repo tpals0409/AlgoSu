@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { Settings, Globe, Link as LinkIcon, Check, AlertCircle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card } from '@/components/ui/Card';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,6 +27,7 @@ const RESERVED_SLUGS = [
 export default function SettingsPage(): ReactNode {
   useRequireAuth();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const t = useTranslations('account');
 
   // ─── SWR DATA ───────────────────────────
 
@@ -57,10 +59,10 @@ export default function SettingsPage(): ReactNode {
   const validateSlug = useCallback((value: string): string | null => {
     if (!value) return null;
     if (!SLUG_REGEX.test(value)) {
-      return '영문소문자, 숫자, 하이픈만 (3~20자, 시작/끝 하이픈 불가)';
+      return t('settings.validation.slug.pattern');
     }
     if (RESERVED_SLUGS.includes(value.toLowerCase())) {
-      return '사용할 수 없는 예약어입니다.';
+      return t('settings.validation.slug.reserved');
     }
     return null;
   }, []);
@@ -75,7 +77,7 @@ export default function SettingsPage(): ReactNode {
   /* 저장 */
   const handleSave = useCallback(async () => {
     if (isPublic && !slug) {
-      setSlugError('프로필 공개를 위해 slug를 먼저 설정해주세요.');
+      setSlugError(t('settings.validation.slug.requiredForPublic'));
       return;
     }
     const err = validateSlug(slug);
@@ -89,9 +91,9 @@ export default function SettingsPage(): ReactNode {
         isProfilePublic: isPublic,
       });
       await mutate(updated, { revalidate: false });
-      setSaveMessage('설정이 저장되었습니다.');
+      setSaveMessage(t('settings.validation.save.success'));
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : '저장 실패';
+      const msg = e instanceof Error ? e.message : t('settings.validation.save.failed');
       setSaveMessage(msg);
     } finally {
       setSaving(false);
@@ -113,22 +115,22 @@ export default function SettingsPage(): ReactNode {
       <div className="mx-auto max-w-xl space-y-6">
         <div className="flex items-center gap-2">
           <Settings size={20} className="text-text" />
-          <h1 className="text-lg font-semibold text-text">설정</h1>
+          <h1 className="text-lg font-semibold text-text">{t('settings.heading')}</h1>
         </div>
 
         {/* 퍼블릭 프로필 설정 */}
         <Card className="space-y-5 p-5">
           <div className="flex items-center gap-2">
             <Globe size={16} className="text-primary" />
-            <h2 className="text-sm font-semibold text-text">퍼블릭 프로필</h2>
+            <h2 className="text-sm font-semibold text-text">{t('settings.form.publicProfile.title')}</h2>
           </div>
 
           {/* 공개 토글 */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-text">프로필 공개</p>
+              <p className="text-sm font-medium text-text">{t('settings.form.publicProfile.toggle')}</p>
               <p className="text-xs text-text-3">
-                활성화하면 누구나 프로필을 볼 수 있습니다
+                {t('settings.form.publicProfile.toggleDescription')}
               </p>
             </div>
             <button
@@ -148,16 +150,16 @@ export default function SettingsPage(): ReactNode {
           <div>
             <label htmlFor="profile-slug" className="mb-1 block text-sm font-medium text-text">
               <LinkIcon size={14} className="mr-1 inline" />
-              프로필 URL
+              {t('settings.form.slug.label')}
             </label>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-text-3">algosu.com/profile/</span>
+              <span className="text-xs text-text-3">{t('settings.form.slug.prefix')}</span>
               <input
                 id="profile-slug"
                 type="text"
                 value={slug}
                 onChange={(e) => handleSlugChange(e.target.value)}
-                placeholder="my-profile"
+                placeholder={t('settings.form.slug.placeholder')}
                 maxLength={20}
                 className={`flex-1 rounded-btn border px-3 py-1.5 text-sm outline-none transition-colors bg-bg text-text ${slugError ? 'border-error' : 'border-border'}`}
               />
@@ -169,7 +171,7 @@ export default function SettingsPage(): ReactNode {
             )}
             {slug && !slugError && (
               <p className="mt-1 text-xs text-text-3">
-                미리보기: algosu.com/profile/{slug}
+                {t('settings.form.slug.preview', { slug })}
               </p>
             )}
           </div>
@@ -182,11 +184,11 @@ export default function SettingsPage(): ReactNode {
               disabled={saving || !!slugError}
               className="rounded-btn px-4 py-2 text-sm font-medium text-white transition-opacity disabled:opacity-50 bg-primary"
             >
-              {saving ? '저장 중...' : '저장'}
+              {saving ? t('settings.form.saving') : t('settings.form.save')}
             </button>
             {saveMessage && (
-              <span className={`flex items-center gap-1 text-xs ${saveMessage.includes('저장') ? 'text-success' : 'text-error'}`}>
-                {saveMessage.includes('저장') && <Check size={14} />}
+              <span className={`flex items-center gap-1 text-xs ${saveMessage === t('settings.validation.save.success') ? 'text-success' : 'text-error'}`}>
+                {saveMessage === t('settings.validation.save.success') && <Check size={14} />}
                 {saveMessage}
               </span>
             )}
@@ -195,7 +197,7 @@ export default function SettingsPage(): ReactNode {
           {/* 프로필 링크 */}
           {settings?.profileSlug && settings.isProfilePublic && (
             <div className="rounded-card border border-border bg-bg-alt p-3">
-              <p className="text-xs text-text-3">내 프로필 링크:</p>
+              <p className="text-xs text-text-3">{t('settings.form.profileLink')}</p>
               <a
                 href={`/profile/${settings.profileSlug}`}
                 target="_blank"

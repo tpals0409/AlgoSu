@@ -1,4 +1,5 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/react';
+import { renderWithI18n } from '@/test-utils/i18n';
 import StudiesPage from '../page';
 
 const mockPush = jest.fn();
@@ -6,6 +7,9 @@ const mockReplace = jest.fn();
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush, replace: mockReplace, back: jest.fn() }),
+  useParams: () => ({ locale: 'ko' }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/studies',
 }));
 
 jest.mock('next/link', () => {
@@ -127,6 +131,10 @@ jest.mock('@/lib/schemas/study', () => ({
   studyCreateSchema: {},
 }));
 
+jest.mock('@/components/ad/AdBanner', () => ({
+  AdBanner: () => <div data-testid="ad-banner" />,
+}));
+
 jest.mock('lucide-react', () => {
   const Icon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />;
   return { Users: Icon, Plus: Icon, ArrowRight: Icon, Crown: Icon, Settings: Icon };
@@ -138,23 +146,23 @@ describe('StudiesPage', () => {
   });
 
   it('페이지 헤더가 렌더링된다', async () => {
-    render(<StudiesPage />);
+    renderWithI18n(<StudiesPage />);
     expect(screen.getAllByText('내 스터디').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('참여 중인 스터디를 관리하세요.')).toBeInTheDocument();
   });
 
   it('스터디 탐색 탭이 표시된다', () => {
-    render(<StudiesPage />);
+    renderWithI18n(<StudiesPage />);
     expect(screen.getByText('스터디 탐색')).toBeInTheDocument();
   });
 
   it('AppLayout으로 감싸져 렌더링된다', () => {
-    render(<StudiesPage />);
+    renderWithI18n(<StudiesPage />);
     expect(screen.getByTestId('app-layout')).toBeInTheDocument();
   });
 
   it('초대 코드 입력 영역이 스터디 탐색 탭에서 표시된다', () => {
-    render(<StudiesPage />);
+    renderWithI18n(<StudiesPage />);
     const exploreTab = screen.getByText('스터디 탐색');
     fireEvent.click(exploreTab);
     expect(screen.getByText('초대 코드로 가입')).toBeInTheDocument();
@@ -166,7 +174,7 @@ describe('StudiesPage', () => {
     const { studyApi } = require('@/lib/api');
     studyApi.list.mockResolvedValue([]);
 
-    render(<StudiesPage />);
+    renderWithI18n(<StudiesPage />);
 
     const empty = await screen.findByTestId('empty-state');
     expect(empty).toBeInTheDocument();

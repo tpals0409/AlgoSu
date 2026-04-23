@@ -6,6 +6,10 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/profile',
 }));
 
+jest.mock('next-intl', () => ({
+  useTranslations: () => (key: string) => key,
+}));
+
 jest.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'light', setTheme: jest.fn() }),
 }));
@@ -132,7 +136,7 @@ jest.mock('next/image', () => ({
 describe('ProfilePage', () => {
   it('프로필 페이지가 렌더링된다', () => {
     render(<ProfilePage />);
-    expect(screen.getByText('프로필')).toBeInTheDocument();
+    expect(screen.getByText('profile.own.heading')).toBeInTheDocument();
   });
 
   it('AppLayout 안에 렌더링된다', () => {
@@ -142,27 +146,27 @@ describe('ProfilePage', () => {
 
   it('기본 정보 섹션이 표시된다', () => {
     render(<ProfilePage />);
-    expect(screen.getByText('기본 정보')).toBeInTheDocument();
+    expect(screen.getByText('profile.own.basicInfo.title')).toBeInTheDocument();
   });
 
   it('GitHub 연동 섹션이 표시된다', () => {
     render(<ProfilePage />);
-    const elements = screen.getAllByText('GitHub 연동');
+    const elements = screen.getAllByText('profile.own.github.title');
     expect(elements.length).toBeGreaterThanOrEqual(1);
   });
 
   it('계정 관리 섹션이 표시된다', () => {
     render(<ProfilePage />);
-    expect(screen.getByText('계정 관리')).toBeInTheDocument();
+    expect(screen.getByText('profile.own.account.title')).toBeInTheDocument();
   });
 
   it('로그아웃 버튼이 표시된다', () => {
     render(<ProfilePage />);
-    expect(screen.getByText('로그아웃')).toBeInTheDocument();
+    expect(screen.getByText('profile.own.account.logout')).toBeInTheDocument();
   });
 
   it('계정 탈퇴 버튼이 표시된다', () => {
     render(<ProfilePage />);
-    expect(screen.getByText('계정 탈퇴')).toBeInTheDocument();
+    expect(screen.getByText('profile.own.account.delete')).toBeInTheDocument();
   });
 });

@@ -1,20 +1,26 @@
 /**
- * @file 리다이렉트: /submit/[problemId] → /problems/[problemId]
+ * @file 리다이렉트: /submit/[problemId] → /problems/[problemId] (i18n 적용)
+ * @domain submission
+ * @layer page
+ * @related problems/[id]/page.tsx, messages/problems.json
  * @deprecated 통합 페이지로 이동됨
  */
 
-import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
+import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 
 interface MetadataProps {
-  readonly params: Promise<{ problemId: string }>;
+  readonly params: Promise<{ locale: string; problemId: string }>;
 }
 
 export async function generateMetadata({ params }: MetadataProps): Promise<Metadata> {
-  const { problemId } = await params;
+  const { locale, problemId } = await params;
+  const t = await getTranslations({ locale, namespace: 'problems' });
+
   return {
-    title: `제출 - 문제 ${problemId}`,
-    description: `문제 ${problemId}번에 코드를 제출하세요.`,
+    title: t('submit.metaTitle', { problemId }),
+    description: t('submit.metaDescription', { problemId }),
   };
 }
 

@@ -33,6 +33,7 @@ import { AVATAR_PRESETS, getAvatarSrc } from '@/lib/avatars';
 import { ShareLinkManager } from '@/components/profile/ShareLinkManager';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import { useTranslations } from 'next-intl';
 
 // ─── CONSTANTS ───────────────────────────
 
@@ -53,6 +54,7 @@ export default function ProfilePage(): ReactNode {
   const { user, logout, githubConnected, updateGitHubStatus, updateAvatar } =
     useAuth();
   useStudy();
+  const t = useTranslations('account');
 
   // ─── STATE ─────────────────────────────
   const [error, setError] = useState<string | null>(null);
@@ -128,7 +130,7 @@ export default function ProfilePage(): ReactNode {
       const { url } = await authApi.linkGitHub();
       window.location.href = url;
     } catch {
-      setError('GitHub 연동에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      setError(t('profile.own.errors.githubLink'));
       setGithubLoading(false);
     }
   }, []);
@@ -145,7 +147,7 @@ export default function ProfilePage(): ReactNode {
       updateGitHubStatus(false);
       setGithubUsernameState(null);
     } catch {
-      setError('GitHub 연동 해제에 실패했습니다.');
+      setError(t('profile.own.errors.githubUnlink'));
     } finally {
       setGithubLoading(false);
     }
@@ -162,7 +164,7 @@ export default function ProfilePage(): ReactNode {
       const { url } = await authApi.relinkGitHub();
       window.location.href = url;
     } catch {
-      setError('GitHub 재연동에 실패했습니다.');
+      setError(t('profile.own.errors.githubRelink'));
       setGithubLoading(false);
     }
   }, []);
@@ -179,7 +181,7 @@ export default function ProfilePage(): ReactNode {
         await updateAvatar(presetKey);
         setShowAvatarPicker(false);
       } catch {
-        setError('아바타 변경에 실패했습니다.');
+        setError(t('profile.own.errors.avatarChange'));
       } finally {
         setAvatarLoading(false);
       }
@@ -206,7 +208,7 @@ export default function ProfilePage(): ReactNode {
       await authApi.deleteAccount();
       logout();
     } catch {
-      setError('계정 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      setError(t('profile.own.errors.deleteAccount'));
       setDeleteLoading(false);
       setShowDeleteConfirm(false);
     }
@@ -242,9 +244,9 @@ export default function ProfilePage(): ReactNode {
       <div className="space-y-4">
         {/* 페이지 헤더 */}
         <div style={fade(0)}>
-          <h1 className="text-[22px] font-bold tracking-tight text-text">프로필</h1>
+          <h1 className="text-[22px] font-bold tracking-tight text-text">{t('profile.own.heading')}</h1>
           <p className="mt-0.5 text-sm text-text-3">
-            계정 정보와 GitHub 연동을 관리하세요.
+            {t('profile.own.subtitle')}
           </p>
         </div>
 
@@ -266,12 +268,12 @@ export default function ProfilePage(): ReactNode {
                   type="button"
                   className="w-24 h-24 shrink-0 overflow-hidden rounded-full ring-2 ring-transparent transition-all hover:ring-primary-light focus-visible:outline-none focus-visible:ring-primary"
                   onClick={() => setShowAvatarPicker((v) => !v)}
-                  aria-label="아바타 변경"
+                  aria-label={t('profile.own.avatar.changeLabel')}
                   disabled={avatarLoading}
                 >
                   <Image
                     src={getAvatarSrc(user?.avatarPreset ?? 'default')}
-                    alt="프로필 아바타"
+                    alt={t('profile.own.avatar.imageAlt')}
                     width={96}
                     height={96}
                     className="h-full w-full"
@@ -302,7 +304,7 @@ export default function ProfilePage(): ReactNode {
                     className="flex items-center gap-1 rounded-full px-3 py-0.5 text-[11px] font-semibold bg-[var(--success-soft)] text-[var(--success)]"
                   >
                     <Github className="h-3 w-3" aria-hidden />
-                    연결됨
+                    {t('profile.own.badge.connected')}
                   </span>
                 )}
               </div>
@@ -312,7 +314,7 @@ export default function ProfilePage(): ReactNode {
             {/* 아바타 선택 그리드 */}
             {showAvatarPicker && (
               <div className="mt-5 w-full rounded-card border p-4 border-[var(--border)] bg-[var(--bg-alt)]">
-                <p className="mb-3 text-[12px] font-medium text-text">아바타 선택</p>
+                <p className="mb-3 text-[12px] font-medium text-text">{t('profile.own.avatar.pickerTitle')}</p>
                 <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
                   {AVATAR_PRESETS.map((preset) => {
                     const isSelected = (user?.avatarPreset ?? 'default') === preset.key;
@@ -353,28 +355,28 @@ export default function ProfilePage(): ReactNode {
             {/* 기본 정보 */}
             <Card className="p-5" style={fade(0.1)}>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-[14px] font-semibold text-text">기본 정보</h3>
+                <h3 className="text-[14px] font-semibold text-text">{t('profile.own.basicInfo.title')}</h3>
                 <button
                   type="button"
                   disabled
-                  title="준비 중"
+                  title={t('profile.own.basicInfo.editDisabled')}
                   className="flex items-center gap-1 text-[12px] text-text-3 opacity-50 cursor-not-allowed"
                 >
                   <Pencil className="h-3.5 w-3.5" aria-hidden />
-                  수정
+                  {t('profile.own.basicInfo.edit')}
                 </button>
               </div>
               <div className="space-y-4">
                 <div>
-                  <p className="text-[11px] text-text-3">이름</p>
+                  <p className="text-[11px] text-text-3">{t('profile.own.basicInfo.name')}</p>
                   <p className="mt-0.5 text-[14px] font-medium text-text">{profileName}</p>
                 </div>
                 <div>
-                  <p className="text-[11px] text-text-3">이메일</p>
+                  <p className="text-[11px] text-text-3">{t('profile.own.basicInfo.email')}</p>
                   <p className="mt-0.5 text-[14px] font-medium text-text">{user?.email ?? '-'}</p>
                 </div>
                 <div>
-                  <p className="text-[11px] text-text-3">로그인 방식</p>
+                  <p className="text-[11px] text-text-3">{t('profile.own.basicInfo.loginMethod')}</p>
                   <p className="mt-0.5 text-[14px] font-medium text-text">
                     {providerLabel ? providerLabel.toUpperCase() : '-'}
                   </p>
@@ -392,11 +394,11 @@ export default function ProfilePage(): ReactNode {
                     <Github className="h-5 w-5 text-text" aria-hidden />
                   </div>
                   <div>
-                    <p className="text-[14px] font-semibold text-text">GitHub 연동</p>
+                    <p className="text-[14px] font-semibold text-text">{t('profile.own.github.title')}</p>
                     <p className="text-[12px] text-text-3">
                       {githubConnected
                         ? `@${githubUsername ?? 'unknown'}`
-                        : '코드 제출을 위해 연동이 필요합니다'}
+                        : t('profile.own.github.notConnected')}
                     </p>
                   </div>
                 </div>
@@ -405,7 +407,7 @@ export default function ProfilePage(): ReactNode {
                     className="flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold border border-[var(--success)] text-[var(--success)]"
                   >
                     <span className="h-1.5 w-1.5 rounded-full bg-[var(--success)]" />
-                    연결됨
+                    {t('profile.own.badge.connected')}
                   </span>
                 ) : (
                   <button
@@ -415,7 +417,7 @@ export default function ProfilePage(): ReactNode {
                     className="flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold transition-colors bg-[var(--primary)] text-white"
                   >
                     {githubLoading ? <InlineSpinner /> : <Link2 className="h-3 w-3" aria-hidden />}
-                    연동하기
+                    {t('profile.own.github.link')}
                   </button>
                 )}
               </div>
@@ -429,7 +431,7 @@ export default function ProfilePage(): ReactNode {
                     className="flex items-center gap-1 text-[11px] text-text-3 transition-colors hover:text-text"
                   >
                     {githubLoading ? <InlineSpinner /> : <RefreshCw className="h-3 w-3" aria-hidden />}
-                    재연동
+                    {t('profile.own.github.relink')}
                   </button>
                   <span className="text-text-3">·</span>
                   <button
@@ -439,7 +441,7 @@ export default function ProfilePage(): ReactNode {
                     className="flex items-center gap-1 text-[11px] transition-colors hover:opacity-80 text-[var(--error)]"
                   >
                     {githubLoading ? <InlineSpinner /> : <Unlink className="h-3 w-3" aria-hidden />}
-                    해제
+                    {t('profile.own.github.unlink')}
                   </button>
                 </div>
               )}
@@ -447,7 +449,7 @@ export default function ProfilePage(): ReactNode {
 
             {/* 계정 관리 */}
             <Card className="p-5" style={fade(0.2)}>
-              <h3 className="text-[14px] font-semibold text-text mb-4">계정 관리</h3>
+              <h3 className="text-[14px] font-semibold text-text mb-4">{t('profile.own.account.title')}</h3>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                 <button
                   type="button"
@@ -455,14 +457,14 @@ export default function ProfilePage(): ReactNode {
                   className="flex items-center justify-center gap-2 rounded-btn px-4 py-2 text-[13px] font-medium text-text-2 transition-colors hover:bg-bg-alt border border-[var(--border)]"
                 >
                   <LogOut className="h-4 w-4" aria-hidden />
-                  로그아웃
+                  {t('profile.own.account.logout')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowDeleteConfirm(true)}
                   className="flex items-center justify-center gap-2 rounded-btn px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-90 bg-[var(--error)]"
                 >
-                  계정 탈퇴
+                  {t('profile.own.account.delete')}
                 </button>
               </div>
             </Card>
@@ -474,22 +476,22 @@ export default function ProfilePage(): ReactNode {
           <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
             <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setShowLogoutConfirm(false)} />
             <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
-              <p className="text-[14px] font-semibold text-text">로그아웃 하시겠습니까?</p>
-              <p className="text-[13px] text-[var(--text-2)]">현재 세션이 종료되고 로그인 페이지로 이동합니다.</p>
+              <p className="text-[14px] font-semibold text-text">{t('profile.own.logoutModal.title')}</p>
+              <p className="text-[13px] text-[var(--text-2)]">{t('profile.own.logoutModal.description')}</p>
               <div className="flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setShowLogoutConfirm(false)}
                   className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt text-[var(--text-2)]"
                 >
-                  취소
+                  {t('profile.own.logoutModal.cancel')}
                 </button>
                 <button
                   type="button"
                   onClick={handleLogout}
                   className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity bg-[var(--primary)]"
                 >
-                  로그아웃
+                  {t('profile.own.logoutModal.confirm')}
                 </button>
               </div>
             </div>
@@ -501,8 +503,8 @@ export default function ProfilePage(): ReactNode {
           <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
             <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setShowDeleteConfirm(false)} />
             <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
-              <p className="text-[14px] font-semibold text-text">계정을 삭제하시겠습니까?</p>
-              <p className="text-[13px] text-[var(--text-2)]">이 작업은 되돌릴 수 없습니다. 모든 데이터가 영구 삭제됩니다.</p>
+              <p className="text-[14px] font-semibold text-text">{t('profile.own.deleteModal.title')}</p>
+              <p className="text-[13px] text-[var(--text-2)]">{t('profile.own.deleteModal.description')}</p>
               <div className="flex items-center justify-end gap-2">
                 <button
                   type="button"
@@ -510,7 +512,7 @@ export default function ProfilePage(): ReactNode {
                   disabled={deleteLoading}
                   className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt text-[var(--text-2)]"
                 >
-                  취소
+                  {t('profile.own.deleteModal.cancel')}
                 </button>
                 <button
                   type="button"
@@ -518,7 +520,7 @@ export default function ProfilePage(): ReactNode {
                   disabled={deleteLoading}
                   className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity disabled:opacity-50 bg-[var(--error)]"
                 >
-                  {deleteLoading ? '삭제 중...' : '삭제'}
+                  {deleteLoading ? t('profile.own.deleteModal.deleting') : t('profile.own.deleteModal.confirm')}
                 </button>
               </div>
             </div>

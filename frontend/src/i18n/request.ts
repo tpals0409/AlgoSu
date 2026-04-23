@@ -5,7 +5,7 @@
  * @related src/i18n/routing.ts, next.config.ts
  *
  * createNextIntlPlugin이 이 파일을 i18n 설정 진입점으로 사용한다.
- * 네임스페이스 4개(common, landing, auth, difficulty)를 동적 import하여
+ * 네임스페이스를 동적 import하여
  * 단일 messages 객체로 병합 후 반환한다.
  */
 
@@ -14,7 +14,7 @@ import type { AbstractIntlMessages } from 'use-intl';
 import { routing } from './routing';
 
 /** 지원하는 번역 네임스페이스 목록 */
-const NAMESPACES = ['common', 'landing', 'auth', 'difficulty'] as const;
+const NAMESPACES = ['common', 'landing', 'auth', 'difficulty', 'errors', 'dashboard', 'problems', 'submissions', 'reviews', 'account'] as const;
 
 /**
  * 단일 네임스페이스 JSON을 동적 import한다.

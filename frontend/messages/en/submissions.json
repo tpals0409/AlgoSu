@@ -1,0 +1,144 @@
+{
+  "meta": {
+    "title": "Submissions",
+    "description": "View your code submission history."
+  },
+  "list": {
+    "heading": "Submission History",
+    "subheading": "Review your submitted code and AI analysis results.",
+    "searchPlaceholder": "Search problems...",
+    "statusPlaceholder": "Select status",
+    "difficultyAll": "All",
+    "empty": {
+      "title": "No submissions yet",
+      "description": "You haven't submitted any code yet. Try solving a problem!",
+      "action": "View Problems"
+    },
+    "noResults": {
+      "title": "No results found",
+      "description": "Try adjusting your filters.",
+      "resetFilter": "Reset filters"
+    },
+    "statusFilter": {
+      "all": "All",
+      "done": "Analyzed",
+      "aiQueued": "AI Pending",
+      "githubQueued": "GitHub Sync",
+      "dbSaved": "Saved",
+      "failed": "Failed"
+    },
+    "statusDisplay": {
+      "done": "Analyzed",
+      "aiQueued": "AI Pending",
+      "githubQueued": "Syncing to GitHub",
+      "dbSaved": "Saved",
+      "failed": "Failed"
+    },
+    "analyzing": "Analyzing",
+    "problemFallback": "Problem {id}",
+    "ariaViewSubmission": "View submission: {title}"
+  },
+  "status": {
+    "heading": "Submission Status",
+    "backToProblem": "Back to problem",
+    "loadingInfo": "Loading submission info...",
+    "loadError": "Failed to load submission info.",
+    "submissionId": "Submission ID",
+    "aiQuota": "AI {used}/{limit} uses",
+    "stepStatus": {
+      "done": "Done",
+      "failed": "Failed",
+      "inProgress": "In Progress",
+      "pending": "Pending"
+    },
+    "overall": {
+      "done": {
+        "title": "Submission Complete",
+        "description": "AI analysis has been completed."
+      },
+      "githubTokenInvalid": {
+        "title": "GitHub Sync Failed",
+        "description": "Please re-link your GitHub account."
+      },
+      "aiFailed": {
+        "title": "AI Analysis Failed",
+        "description": "An error occurred during AI analysis."
+      },
+      "aiDelayed": {
+        "title": "AI Analysis Delayed",
+        "description": "AI analysis is delayed. Please check back later."
+      },
+      "error": {
+        "title": "Connection Error",
+        "description": "There was a problem with the real-time status connection. Please refresh."
+      },
+      "processing": {
+        "title": "Processing",
+        "description": "Your submission is being processed. Please wait."
+      }
+    },
+    "github": {
+      "relinkNeeded": "GitHub re-linking required",
+      "relinkDescription": "Your GitHub token has expired or permissions have changed. Re-link and resubmit to automatically sync your code to GitHub.",
+      "relinking": "Linking GitHub...",
+      "relink": "Re-link GitHub",
+      "profileSettings": "Go to profile settings"
+    },
+    "actions": {
+      "resubmit": "Resubmit",
+      "viewAnalysis": "View AI Analysis",
+      "problemList": "Back to Problems",
+      "refresh": "Refresh",
+      "updatingRealtime": "Updating in real-time..."
+    }
+  },
+  "detail": {
+    "metaTitle": "Submission #{id}",
+    "metaDescription": "View the status and analysis results for submission {id}."
+  },
+  "analysis": {
+    "heading": "AI Analysis Results",
+    "pageTitle": "AI Code Analysis",
+    "pageTitleWithProblem": "AI Code Analysis | {title}",
+    "submissionFallback": "Submission {id}",
+    "viewProblem": "View Problem",
+    "statusCompleted": "Analysis Complete",
+    "scoreUnit": "{score}pts",
+    "timeComplexity": "Time {value}",
+    "spaceComplexity": "Space {value}",
+    "categories": {
+      "heading": "Category Scores",
+      "efficiency": "Efficiency",
+      "readability": "Readability",
+      "correctness": "Correctness",
+      "structure": "Code Structure",
+      "bestPractice": "Best Practices",
+      "style": "Code Style",
+      "maintainability": "Maintainability"
+    },
+    "optimizedCode": "AI Optimized Code",
+    "copy": "Copy",
+    "copied": "Copied",
+    "loading": "Loading...",
+    "codeUnavailable": "Unable to load submitted code.",
+    "loadError": "Failed to load AI analysis results.",
+    "pending": {
+      "title": "Analyzing...",
+      "description": "Results will appear automatically when analysis is complete.",
+      "elapsed": "Elapsed: {minutes}m {seconds}s"
+    },
+    "delayed": {
+      "title": "Analysis Delayed",
+      "description": "The AI analysis service is temporarily delayed."
+    },
+    "timeout": {
+      "title": "Analysis is taking longer than expected",
+      "description": "Please check back later."
+    },
+    "failed": {
+      "title": "Analysis Failed",
+      "description": "An error occurred during AI analysis. Please resubmit or contact support."
+    },
+    "refresh": "Refresh"
+  }
+}
