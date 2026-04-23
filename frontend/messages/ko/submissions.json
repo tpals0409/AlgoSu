@@ -92,6 +92,10 @@
       "updatingRealtime": "실시간으로 업데이트 중..."
     }
   },
+  "progressStatus": {
+    "heading": "제출 진행 상태",
+    "failedFallback": "{label} 실패"
+  },
   "detail": {
     "metaTitle": "제출 #{id}",
     "metaDescription": "제출 {id}번의 상태와 분석 결과를 확인하세요."

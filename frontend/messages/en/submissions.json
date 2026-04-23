@@ -92,6 +92,10 @@
       "updatingRealtime": "Updating in real-time..."
     }
   },
+  "progressStatus": {
+    "heading": "Submission Progress",
+    "failedFallback": "{label} failed"
+  },
   "detail": {
     "metaTitle": "Submission #{id}",
     "metaDescription": "View the status and analysis results for submission {id}."
