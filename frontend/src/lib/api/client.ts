@@ -2,8 +2,10 @@
  * @file API 클라이언트 인프라 — fetchApi, 에러 클래스, 스터디 ID 관리
  * @domain common
  * @layer api
- * @related AuthContext, JwtMiddleware
+ * @related AuthContext, JwtMiddleware, locale-path.ts
  */
+
+import { stripLocalePrefix, withLocalePrefix } from '@/lib/locale-path';
 
 const API_BASE =
   typeof process !== 'undefined' && process.env['NEXT_PUBLIC_API_BASE_URL']
@@ -109,9 +111,9 @@ export async function fetchApi<T>(
 
     // 401 세션 만료 시 로그인 페이지로 리다이렉트 (세션 만료 모달 표시)
     if (res.status === 401 && typeof window !== 'undefined') {
-      const currentPath = window.location.pathname;
-      if (!currentPath.startsWith('/login') && !currentPath.startsWith('/callback') && currentPath !== '/') {
-        window.location.href = '/login?expired=true';
+      const strippedPath = stripLocalePrefix(window.location.pathname);
+      if (!strippedPath.startsWith('/login') && !strippedPath.startsWith('/callback') && strippedPath !== '/') {
+        window.location.href = withLocalePrefix('/login?expired=true');
       }
     }
 

@@ -20,6 +20,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useSessionKeepAlive } from '@/hooks/useSessionKeepAlive';
+import { withLocalePrefix } from '@/lib/locale-path';
 import {
   setGitHubConnected as setGitHubConnectedStorage,
   setGitHubUsername as setGitHubUsernameStorage,
@@ -173,7 +174,7 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
     // 3) 서버에 logout 요청 (httpOnly Cookie 삭제) — 완료 후 리다이렉트
     fetch('/auth/logout', { method: 'POST', credentials: 'include' })
       .finally(() => {
-        window.location.href = '/login';
+        window.location.href = withLocalePrefix('/login');
       });
   }, []);
 
@@ -204,7 +205,7 @@ export function AuthProvider({ children }: AuthProviderProps): ReactNode {
     setCurrentStudyIdForApi(null);
     fetch('/auth/logout', { method: 'POST', credentials: 'include' })
       .finally(() => {
-        window.location.href = '/login?expired=true';
+        window.location.href = withLocalePrefix('/login?expired=true');
       });
   }, []);
 
