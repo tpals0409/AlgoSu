@@ -269,7 +269,8 @@ describe('NotificationBell', () => {
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /알림/ }));
     });
-    const formatted = new Date(oldDate).toLocaleDateString('ko-KR');
+    // renderWithI18n provides 'ko' locale; LOCALE_DATE_MAP['ko'] → 'ko-KR' produces same output
+    const formatted = new Date(oldDate).toLocaleDateString('ko');
     expect(screen.getByText(formatted)).toBeInTheDocument();
   });
 

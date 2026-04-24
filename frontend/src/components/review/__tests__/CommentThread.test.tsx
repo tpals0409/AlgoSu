@@ -195,7 +195,8 @@ describe('CommentThread', () => {
     ];
     renderWithI18n(<CommentThread {...defaultProps} comments={comments} />);
     // Should display localized date string (not relative time)
-    const expectedDate = pastDate.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+    // renderWithI18n provides 'ko' locale; review-time.ts calls toLocaleDateString(locale, opts)
+    const expectedDate = pastDate.toLocaleDateString('ko', { month: 'short', day: 'numeric' });
     expect(screen.getByText(expectedDate)).toBeInTheDocument();
   });
 

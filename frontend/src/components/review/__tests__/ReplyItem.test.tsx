@@ -78,9 +78,9 @@ describe('ReplyItem', () => {
       createdAt: new Date(NOW - 10 * 24 * 3600000).toISOString(),
     });
     renderWithI18n(<ReplyItem reply={reply} currentUserId="other" />);
-    // toLocaleDateString('ko') 결과 검증 - 숫자가 포함된 날짜 형식
-    const timeEl = screen.getByText(/\d+/);
-    expect(timeEl).toBeInTheDocument();
+    // renderWithI18n provides 'ko' locale; formatReviewRelativeTime calls toLocaleDateString(locale, opts)
+    const expectedDate = new Date(NOW - 10 * 24 * 3600000).toLocaleDateString('ko', { month: 'short', day: 'numeric' });
+    expect(screen.getByText(expectedDate)).toBeInTheDocument();
   });
 
   it('6일 경과 시 일 단위로 표시한다', () => {
