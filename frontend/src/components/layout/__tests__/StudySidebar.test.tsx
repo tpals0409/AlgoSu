@@ -23,9 +23,11 @@ jest.mock('lucide-react', () => {
   };
 });
 
-jest.mock('next/navigation', () => ({
+jest.mock('@/i18n/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
   usePathname: () => '/studies/study-1',
+  Link: () => null,
+  redirect: jest.fn(),
 }));
 
 jest.mock('@/contexts/StudyContext', () => ({

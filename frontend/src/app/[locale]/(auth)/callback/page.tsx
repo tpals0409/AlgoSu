@@ -15,10 +15,9 @@
 
 import { Suspense } from 'react';
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
-import { Link } from '@/i18n/navigation';
+import { Link, useRouter } from '@/i18n/navigation';
 import { LoadingSpinner, InlineSpinner } from '@/components/ui/LoadingSpinner';
 import { Alert } from '@/components/ui/Alert';
 import {

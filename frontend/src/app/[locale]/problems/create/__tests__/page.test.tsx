@@ -2,8 +2,13 @@ import { screen } from '@testing-library/react';
 import { renderWithI18n } from '@/test-utils/i18n';
 import ProblemCreatePage from '../page';
 
-jest.mock('next/navigation', () => ({
+jest.mock('@/i18n/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
+  usePathname: () => '/problems/create',
+  Link: () => null,
+  redirect: jest.fn(),
+}));
+jest.mock('next/navigation', () => ({
   useParams: () => ({ locale: 'ko' }),
   usePathname: () => '/problems/create',
 }));

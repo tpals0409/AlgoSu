@@ -8,7 +8,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/i18n/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useTheme } from 'next-themes';

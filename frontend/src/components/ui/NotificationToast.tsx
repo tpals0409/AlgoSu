@@ -9,7 +9,7 @@
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { createPortal } from 'react-dom';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/i18n/navigation';
 import {
   Bell,
   FileText,

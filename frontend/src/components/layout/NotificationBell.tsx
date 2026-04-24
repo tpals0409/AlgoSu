@@ -28,7 +28,7 @@ import {
   Lock,
   CheckCircle,
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/i18n/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { isSafeInternalPath } from '@/lib/url';

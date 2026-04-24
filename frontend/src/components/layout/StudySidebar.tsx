@@ -13,7 +13,7 @@
 
 import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter } from '@/i18n/navigation';
 import {
   LayoutDashboard,
   BookOpen,

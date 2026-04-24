@@ -31,8 +31,13 @@ jest.mock('lucide-react', () => {
 });
 
 const mockPush = jest.fn();
-jest.mock('next/navigation', () => ({
+jest.mock('@/i18n/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
+  usePathname: () => '/',
+  Link: () => null,
+  redirect: jest.fn(),
+}));
+jest.mock('next/navigation', () => ({
   useParams: () => ({ locale: 'ko' }),
 }));
 
