@@ -295,7 +295,7 @@ export default function AnalysisPage(): ReactNode {
           {/* 시간 + 문제 보기 링크 */}
           <div className="flex flex-wrap items-center justify-between gap-1">
             <span className="text-[11px] sm:text-[12px] text-text-3">
-              {submission ? `${relativeTime(submission.createdAt)} · ${new Date(submission.createdAt).toLocaleDateString(locale, { month: 'long', day: 'numeric' })} ${new Date(submission.createdAt).toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit', hour12: true })}` : ''}
+              {submission ? `${relativeTime(submission.createdAt, locale)} · ${new Date(submission.createdAt).toLocaleDateString(locale, { month: 'long', day: 'numeric' })} ${new Date(submission.createdAt).toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit', hour12: true })}` : ''}
             </span>
             {submission && (
               <Link
