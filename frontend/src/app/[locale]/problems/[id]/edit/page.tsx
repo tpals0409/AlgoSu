@@ -9,6 +9,7 @@
 
 import { useState, useEffect, useCallback, use, type FormEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Search, ExternalLink, Trash2, FileText, Settings, X } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
@@ -64,6 +65,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
   const { isAuthenticated } = useRequireAuth();
   useRequireStudy();
   const { currentStudyId, currentStudyRole } = useStudy();
+  const tErrors = useTranslations('errors');
 
   // ─── STATE ──────────────────────────────
 
@@ -535,7 +537,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                 label="문제 제목"
                 value={form.title}
                 onChange={handleChange('title')}
-                error={fieldErrors.title}
+                error={fieldErrors.title ? tErrors(fieldErrors.title) : undefined}
                 disabled={isSubmitting || bojApplied || programmersApplied}
               />
 
@@ -586,7 +588,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                     ))}
                   </select>
                   {fieldErrors.weekNumber && (
-                    <p className="mt-1 text-[11px] text-error">{fieldErrors.weekNumber}</p>
+                    <p className="mt-1 text-[11px] text-error">{tErrors(fieldErrors.weekNumber)}</p>
                   )}
                 </div>
               </div>
@@ -618,7 +620,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                   ))}
                 </select>
                 {fieldErrors.deadline && (
-                  <p className="mt-1 text-[11px] text-error">{fieldErrors.deadline}</p>
+                  <p className="mt-1 text-[11px] text-error">{tErrors(fieldErrors.deadline)}</p>
                 )}
               </div>
 
