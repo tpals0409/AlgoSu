@@ -1,4 +1,8 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
 import { OAuthService } from './oauth.service';
@@ -846,6 +850,26 @@ describe('OAuthService', () => {
       // Identity 서비스가 provider 불일치로 BadRequestException
       identityClient.upsertUser.mockRejectedValue(
         new BadRequestException('이미 Naver 계정으로 가입된 이메일입니다.'),
+      );
+
+      await expect(
+        service.handleCallback('google', 'code', 'state'),
+      ).rejects.toThrow(OAuthAccountConflictException);
+    });
+
+    it('Identity 서비스 ConflictException(409) → OAuthAccountConflictException', async () => {
+      mockRedis.del.mockResolvedValue(1);
+
+      mockAxios.post.mockResolvedValueOnce({
+        data: { access_token: 'google-token' },
+      });
+      mockAxios.get.mockResolvedValueOnce({
+        data: { email: 'race@test.com', name: 'Race User' },
+      });
+
+      // Identity 서비스가 동시성 race로 ConflictException (HTTP 409)
+      identityClient.upsertUser.mockRejectedValue(
+        new ConflictException('동시 upsert 충돌'),
       );
 
       await expect(

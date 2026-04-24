@@ -7,6 +7,7 @@
 import {
   Injectable,
   BadRequestException,
+  ConflictException,
   NotFoundException,
   InternalServerErrorException,
 } from '@nestjs/common';
@@ -447,7 +448,10 @@ export class OAuthService {
     try {
       return await this.upsertUser(profile, provider);
     } catch (error) {
-      if (error instanceof BadRequestException) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof ConflictException
+      ) {
         throw new OAuthAccountConflictException();
       }
       throw new OAuthAuthFailedException();
