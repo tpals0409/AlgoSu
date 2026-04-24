@@ -252,9 +252,59 @@ If it persists, check status.claude.com.
 
 ### D2 — short-task inbox Write permission 조사 리포트 (sensei)
 
-- 독립 실행 모드에서 `~/.claude/oracle/inbox/` Write 권한 차단 원인 분석
-- `--add-dir` 옵션 효과 검증 (Sprint 124 G-1에서 추가)
-- 리포트를 sprint-125.md에 보완 예정 (sensei 완료 후 갱신)
+#### 재현 사례 3건 요약
+
+| # | task_id | 에이전트 | 타임라인 | 실패 형태 | Oracle 처리 |
+|---|---------|----------|----------|-----------|-------------|
+| 1 | task-20260424-151306-69314 | palette | 15:13~15:16 | **인지 스킵** — Write 미시도, stdout 요약만 출력 | completed_no_result (미복구) |
+| 2 | task-20260424-161529-80208 | critic | 16:15~16:19 | **성공** — inbox 파일 3,498 bytes 정상 기록 | completed (baseline) |
+| 3 | task-20260424-163101-82662 | critic | 16:31~16:33 | **권한 차단** — 에이전트가 명시적 오류 보고, stdout fallback | Oracle 수동 복구 → 16:37 inbox 파일 생성 |
+
+**사례 3 에이전트 메시지 (원문)**:
+> ⚠️ `/Users/leokim/.claude/oracle/inbox/` 경로 쓰기 권한이 차단되어 결과 파일 생성 실패.
+> `.claude/settings.json` 또는 허용 목록에 해당 경로 추가가 필요합니다.
+
+**성공 사례(#2) vs 실패 사례(#3)의 차이**: 두 작업 모두 동일한 모델(`claude-sonnet-4-6`), 동일한 runner 스크립트, 동일한 `--permission-mode bypassPermissions --add-dir ~/.claude/oracle/inbox` 플래그 사용. 외부적으로 구분 가능한 차이 없음.
+
+#### 근본 원인 가설
+
+현재 `oracle-spawn.sh` runner는 다음 조합을 사용:
+```
+claude -p ... --permission-mode bypassPermissions --add-dir ~/.claude/oracle/inbox
+```
+
+**H1 (주 가설)**: Claude Code는 `~/.claude/` 경로를 자체 설정 디렉토리로 인식해
+내부 "sensitive path" 보호를 적용. 이 보호는 `bypassPermissions` 이후 단계에서
+동작하여 `--add-dir`로 화이트리스트에 올려도 **비결정적으로** 차단이 발동.
+→ 동일 플래그로도 세션마다 결과가 다른 이유 설명 가능.
+
+**H2 (보조 가설)**: `env -u CLAUDECODE` 로 CLAUDECODE 환경변수를 제거하면
+Claude Code가 "헤드리스 모드"로 동작하며, `--add-dir` 화이트리스트를
+세션 컨텍스트에 정상 등록하지 못하는 타이밍 버그 존재.
+
+**H3 (인지 실패)**: 사례 1(palette)처럼 일부 에이전트는 코드 작업 완료 후
+결과 파일 Write 단계를 건너뛰는 인지 오류 발생 — 권한 문제가 아닌 프롬프트 준수 실패.
+
+#### 후보 해결책 장단점 비교
+
+| 해결책 | 방식 | 효과 | 노력 | 부작용 |
+|--------|------|------|------|--------|
+| **A. inbox 경로 rename** (`~/.claude/oracle/inbox` → `~/oracle-results`) | 구조 변경 — `~/.claude/` 보호 영역 완전 회피 | ✅ 근본 해결 | Medium (oracle-spawn/reap/watchdog 전 경로 갱신) | 기존 inbox 파일 이전 필요 |
+| **B. oracle-reap.sh 자동 stdout 추출** | inbox 없으면 `.out` 파일 파싱 후 결과 자동 복구 | △ 우회 (근본 미해결) | Low | 포맷 의존성 — YAML frontmatter 누락 시 복구 실패 |
+| **C. 프로젝트 settings.local.json 명시 Write 추가** | `/AlgoSu/.claude/settings.local.json`에 `Write(~/.claude/oracle/*)` 추가 | △ 부분 해결 (전역 `Write(*)` 있음에도 차단 발생 — 효과 불확실) | Very Low | 없음 |
+| **D. 에이전트 프롬프트 Bash fallback 지시** | 에이전트 persona에 "Write 실패 시 Bash(cat > file) 재시도" 명시 | ✅ 실용적 자가회복 | Low (Oracle 승인 필요) | 토큰 소모 ↑, 에이전트 행동 변경 |
+| **E. runner에 Write 사전 테스트 + 조기 경고** | runner 시작 시 `touch inbox_file` → 실패하면 로그 경고 | △ 조기 감지, 해결 아님 | Low | `__AGENT_DONE__` 전 실패 감지 → Oracle 수동 개입 유도 |
+
+**권장 조합**: **A (장기) + D (단기)** — 경로 rename으로 근본 해결, 그 전까지 에이전트 Bash fallback으로 자가회복.
+
+#### Oracle 승인 필요 항목 (Sprint 126)
+
+- [ ] **D (단기)**: 에이전트 공통 persona `_base.md` 또는 개별 persona에 Bash fallback 지시 추가 (Oracle 직접 수정)
+  ```
+  결과 파일 Write가 거부되면: Bash("cat > {결과파일경로} << 'EOF'\n{내용}\nEOF")로 재시도
+  ```
+- [ ] **A (장기)**: `oracle-spawn.sh` `INBOX_DIR` 변수를 `~/oracle-results`로 rename, 관련 스크립트 전수 갱신
+- [ ] **B (단기, 선택)**: `oracle-reap.sh`에 stdout 추출 로직 추가 — `inbox` 없음 + `.out` 에 YAML frontmatter 패턴 있으면 자동 복구
 
 ---
 
@@ -266,7 +316,7 @@ If it persists, check status.claude.com.
 | 신규 번역 키 (Wave A~B) | ~200+ (ko+en) |
 | 네임스페이스 도달 (Sprint 125 기준) | 18개 (Wave B 확정) |
 | OAuth 에러 코드 정규화 | 7종 enum 완성 |
-| Sprint 124 이월 9항목 마감 | 8/9 (D1 조사완료·Oracle적용대기, D2 sensei 진행) |
+| Sprint 124 이월 9항목 마감 | 9/9 ✅ (D1·D2 조사완료, Oracle 적용 대기) |
 
 ---
 
@@ -278,4 +328,6 @@ If it persists, check status.claude.com.
 | `difficultyData` useMemo 추출 | Wave B Critic Low | Low |
 | unclassified 차트 ko/en 비대칭 데이터 레이어 정렬 | Wave B Critic Low | Low |
 | oracle-spawn.sh 529 재시도 diff 적용 (Oracle 직접 적용 필요) | Sprint 125 D1 | Medium |
-| Wave D: inbox Write permission 조사 (sensei 완료 후 갱신) | Sprint 125 D2 | Medium |
+| oracle inbox 경로 rename (`~/.claude/oracle/inbox` → `~/oracle-results`) — 근본 해결 | Sprint 125 D2 (해결책 A) | Medium |
+| 에이전트 persona Bash fallback 지시 추가 — Write 차단 시 자가회복 | Sprint 125 D2 (해결책 D) | Medium |
+| oracle-reap.sh stdout 자동 추출 — inbox 없음 시 `.out` 파싱 복구 | Sprint 125 D2 (해결책 B) | Low |
