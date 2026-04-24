@@ -1,5 +1,6 @@
-import { render, screen, act } from '@testing-library/react';
+import { screen, act } from '@testing-library/react';
 import { Suspense } from 'react';
+import { renderWithI18n } from '@/test-utils/i18n';
 import StudyDetailPage from '../page';
 
 jest.mock('@/components/ui/MarkdownViewer', () => ({
@@ -180,7 +181,7 @@ describe('StudyDetailPage', () => {
   const renderPage = async () => {
     const paramsPromise = Promise.resolve({ id: 'study-1' });
     await act(async () => {
-      render(
+      renderWithI18n(
         <Suspense fallback={<div>loading</div>}>
           <StudyDetailPage params={paramsPromise} />
         </Suspense>,
