@@ -27,6 +27,7 @@ import { StudyNoteEditor } from '@/components/review/StudyNoteEditor';
 import { getAvatarPresetKey, getAvatarSrc } from '@/lib/avatars';
 import { sanitizeUrl } from '@/lib/url';
 import type { Problem, Submission } from '@/lib/api';
+import { useLocale } from 'next-intl';
 import { toTier, getSagaStatus } from './utils';
 
 export interface SubmissionViewProps {
@@ -47,6 +48,7 @@ export interface SubmissionViewProps {
 }
 
 export function SubmissionView({ problem, submissions, loading, notSubmitted, accessDenied, nicknameMap, avatarMap, error, totalMembers, submittedCount, analyzedCount, onBack, onSelectSubmission, onRetry }: SubmissionViewProps): ReactNode {
+  const locale = useLocale();
   const [viewMounted, setViewMounted] = useState(false);
   useEffect(() => { const t = setTimeout(() => setViewMounted(true), 50); return () => clearTimeout(t); }, []);
   const vfade = (delay = 0): CSSProperties => ({
@@ -177,7 +179,7 @@ export function SubmissionView({ problem, submissions, loading, notSubmitted, ac
                         )}
                       </div>
                       <p className="text-[11px] text-text-3">
-                        {new Date(sub.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        {new Date(sub.createdAt).toLocaleDateString(locale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
                     <ChevronRight className="h-4 w-4 shrink-0 text-text-3" />
