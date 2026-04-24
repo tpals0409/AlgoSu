@@ -14,7 +14,7 @@ import type { AbstractIntlMessages } from 'use-intl';
 import { routing } from './routing';
 
 /** 지원하는 번역 네임스페이스 목록 */
-const NAMESPACES = ['common', 'landing', 'auth', 'difficulty', 'errors', 'dashboard', 'problems', 'submissions', 'reviews', 'account', 'layout', 'analytics', 'feedback', 'ui', 'studies'] as const;
+const NAMESPACES = ['common', 'landing', 'auth', 'difficulty', 'errors', 'dashboard', 'problems', 'submissions', 'reviews', 'account', 'layout', 'analytics', 'feedback', 'ui', 'studies', 'admin', 'sharing', 'legal'] as const;
 
 /**
  * 단일 네임스페이스 JSON을 동적 import한다.

@@ -1,0 +1,56 @@
+{
+  "error": {
+    "invalidLink": "유효하지 않은 공유 링크입니다.",
+    "loadFailed": "스터디 정보를 불러올 수 없습니다."
+  },
+  "header": {
+    "sharedDescription": "공유된 스터디룸입니다. 문제를 선택해 멤버별 풀이를 확인하세요.",
+    "guestBadge": "게스트",
+    "themeToggle": "테마 전환"
+  },
+  "stats": {
+    "members": "멤버",
+    "problems": "문제",
+    "submissions": "제출"
+  },
+  "problemList": {
+    "empty": "등록된 문제가 없습니다.",
+    "submittedCount": "{count}명 제출"
+  },
+  "submissionList": {
+    "totalMembers": "전체 멤버",
+    "submitted": "제출",
+    "analyzed": "분석 완료",
+    "empty": "아직 제출 기록이 없습니다.",
+    "mySubmission": "내 제출",
+    "avatarAlt": "{name} 아바타",
+    "scoreUnit": "{score}점"
+  },
+  "analysis": {
+    "completed": "분석 완료",
+    "scoreUnit": "{score}점",
+    "codeHeader": "코드",
+    "copied": "복사됨",
+    "copy": "복사",
+    "codeUnavailable": "제출한 코드를 불러올 수 없습니다.",
+    "aiResult": "AI 분석 결과",
+    "notCompleted": "분석이 아직 완료되지 않았습니다. (상태: {status})",
+    "timeComplexity": "시간 {complexity}",
+    "spaceComplexity": "공간 {complexity}",
+    "categoryEvaluation": "항목별 평가",
+    "optimizedCode": "AI 개선 코드"
+  },
+  "categories": {
+    "efficiency": "효율성",
+    "readability": "가독성",
+    "correctness": "정확성",
+    "structure": "코드 구조",
+    "bestPractice": "모범 사례",
+    "style": "코드 스타일",
+    "maintainability": "유지보수성"
+  },
+  "memberName": {
+    "anonymous": "익명",
+    "profileOwner": "프로필 소유자"
+  }
+}

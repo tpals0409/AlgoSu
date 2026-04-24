@@ -1,0 +1,60 @@
+{
+  "feedbacks": {
+    "heading": "Feedback Management",
+    "description": "Review and manage user feedback.",
+    "stats": {
+      "total": "Total",
+      "open": "Open",
+      "bug": "Bugs"
+    },
+    "search": {
+      "placeholder": "Search content...",
+      "button": "Search"
+    },
+    "filter": {
+      "all": "All",
+      "categoryLabel": "Category:"
+    },
+    "status": {
+      "OPEN": "Open",
+      "IN_PROGRESS": "In Progress",
+      "RESOLVED": "Resolved"
+    },
+    "category": {
+      "GENERAL": "General",
+      "BUG": "Bug",
+      "FEATURE": "Feature Request",
+      "UX": "UX"
+    },
+    "table": {
+      "content": "Content",
+      "author": "Author",
+      "category": "Category",
+      "status": "Status",
+      "createdAt": "Created"
+    },
+    "loading": "Loading...",
+    "empty": "No feedback found.",
+    "toast": {
+      "loadFailed": "Failed to load feedback list.",
+      "statusChanged": "Status changed to {status}.",
+      "statusChangeFailed": "Failed to change status."
+    },
+    "pagination": {
+      "prev": "Previous",
+      "next": "Next",
+      "pageOf": "{page} / {total}"
+    },
+    "modal": {
+      "unknownAuthor": "Unknown",
+      "contentLabel": "Content",
+      "pageUrlLabel": "Page URL",
+      "browserInfoLabel": "Browser Info",
+      "screenshotLabel": "Screenshot",
+      "screenshotAlt": "Feedback screenshot",
+      "createdAtLabel": "Created:",
+      "resolvedAtLabel": "Resolved:",
+      "statusChangeLabel": "Change status:"
+    }
+  }
+}

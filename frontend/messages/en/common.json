@@ -50,5 +50,13 @@
     "homeAria": "AlgoSu guest home",
     "explore": "Explore",
     "signup": "Sign Up"
+  },
+  "guest": {
+    "previewLabel": "Preview",
+    "heading": "AlgoSu Code Analysis Preview",
+    "description": "Try AI code analysis without signing up.",
+    "descriptionSub": "With the full service, you can analyze your own code.",
+    "footerCta": "Want more features?",
+    "footerLogin": "Log In / Sign Up →"
   }
 }

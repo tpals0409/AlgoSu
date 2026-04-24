@@ -1,0 +1,113 @@
+{
+  "privacy": {
+    "meta": {
+      "title": "Privacy Policy | AlgoSu",
+      "description": "AlgoSu's Privacy Policy."
+    },
+    "heading": "Privacy Policy",
+    "intro": "AlgoSu (hereinafter referred to as the \"Service\") values user privacy and complies with applicable data protection laws including the Personal Information Protection Act. This policy describes the types of personal information collected, the purposes of collection, and retention periods.",
+    "effectiveDate": "Effective: April 15, 2026 | Last updated: April 15, 2026",
+    "section1": {
+      "title": "1. Personal Information Collected",
+      "socialLogin": "Social Login Information: Email, name, profile image (within the scope provided by Google, Naver, Kakao OAuth)",
+      "github": "GitHub Integration: GitHub username, integration token (when the user connects manually)",
+      "usage": "Service Usage Records: Code submission history, AI analysis results, study activity logs",
+      "auto": "Automatically Collected Information: Access IP, browser information, cookies, access timestamps"
+    },
+    "section2": {
+      "title": "2. Purpose of Collection and Use",
+      "item1": "User identification and authentication",
+      "item2": "Core service delivery including code submission, AI analysis, and GitHub sync",
+      "item3": "Study group management and learning statistics",
+      "item4": "Service improvement and error resolution",
+      "item5": "Advertisement display (Google AdSense)"
+    },
+    "section3": {
+      "title": "3. Retention and Usage Period",
+      "body": "Personal information is destroyed without delay upon service withdrawal. However, information may be retained for the period required by applicable laws.",
+      "item1": "Service usage records: Deleted immediately upon account deletion",
+      "item2": "Records related to display and advertising under the E-Commerce Act: 6 months (if applicable)"
+    },
+    "section4": {
+      "title": "4. Disclosure to Third Parties",
+      "body": "The Service does not provide personal information to third parties without user consent in principle. However, the following cases are exceptions.",
+      "adsense": "Google AdSense: Non-identifiable cookie-based information may be transmitted to Google for ad serving.",
+      "github": "GitHub: When the user sets up GitHub integration, code submission data is synchronized to the user's GitHub repository.",
+      "legal": "When required by law"
+    },
+    "section5": {
+      "title": "5. Cookie Policy",
+      "body": "The Service uses essential cookies to maintain authentication sessions, and third-party cookies may be used for Google AdSense ad delivery. Users may reject cookie storage through browser settings, but this may limit service functionality."
+    },
+    "section6": {
+      "title": "6. User Rights",
+      "item1": "Request to view, modify, or delete personal information",
+      "item2": "Delete all personal information through service withdrawal",
+      "item3": "Delete integration information by disconnecting GitHub",
+      "body": "These rights can be exercised directly from the profile settings page or by contacting us at the address below."
+    },
+    "section7": {
+      "title": "7. Privacy Officer and Contact",
+      "team": "Responsible: AlgoSu Operations Team",
+      "email": "Email: privacy@algosu.kr"
+    },
+    "section8": {
+      "title": "8. Policy Changes",
+      "body": "This Privacy Policy may be modified due to changes in laws or service policies, and changes will be communicated through service announcements."
+    }
+  },
+  "terms": {
+    "meta": {
+      "title": "Terms of Service | AlgoSu",
+      "description": "AlgoSu's Terms of Service."
+    },
+    "heading": "Terms of Service",
+    "intro": "These Terms define the conditions and procedures of use for AlgoSu (hereinafter referred to as the \"Service\"), as well as the rights and obligations between the user and the Service.",
+    "effectiveDate": "Effective: April 15, 2026 | Last updated: April 15, 2026",
+    "article1": {
+      "title": "Article 1 (Service Overview)",
+      "body": "AlgoSu is an algorithm study platform that provides features including code submission, AI analysis, automatic GitHub synchronization, and peer review."
+    },
+    "article2": {
+      "title": "Article 2 (Eligibility)",
+      "item1": "The Service is available to users who register through social login (Google, Naver, Kakao).",
+      "item2": "Children under 14 years of age may not use the Service without the consent of their legal guardian."
+    },
+    "article3": {
+      "title": "Article 3 (User Obligations and Prohibited Activities)",
+      "body": "Users must not engage in the following activities.",
+      "item1": "Plagiarizing others' code or submitting false code",
+      "item2": "Interfering with the normal operation of the Service",
+      "item3": "Unauthorized collection or use of other users' personal information",
+      "item4": "Unauthorized commercial use or resale of the Service",
+      "item5": "Generating abnormally large volumes of requests using automation tools"
+    },
+    "article4": {
+      "title": "Article 4 (Intellectual Property Rights)",
+      "item1": "All intellectual property rights including the Service's UI, design, logo, and software belong to AlgoSu.",
+      "item2": "Copyright of code submitted by users belongs to the respective user. However, it may be used within the Service for AI analysis and learning statistics purposes."
+    },
+    "article5": {
+      "title": "Article 5 (Service Suspension and Modification)",
+      "body": "The Service may be temporarily suspended due to unavoidable reasons such as system maintenance, technical issues, or natural disasters. Service content may be changed as operationally necessary. Important changes will be announced in advance."
+    },
+    "article6": {
+      "title": "Article 6 (Disclaimer)",
+      "item1": "The Service is provided free of charge and bears no legal responsibility for direct or indirect damages resulting from Service use.",
+      "item2": "AI analysis results are for reference only and do not guarantee code accuracy or performance.",
+      "item3": "The Service has no obligation to intervene in disputes between users."
+    },
+    "article7": {
+      "title": "Article 7 (Account Deletion)",
+      "body": "Users may delete their account at any time from the profile settings page. Upon deletion, personal information and service usage records are immediately removed."
+    },
+    "article8": {
+      "title": "Article 8 (Terms Modification)",
+      "body": "These Terms may be modified due to changes in applicable laws or service policies. When Terms are modified, notice will be provided through the Service at least 7 days before the effective date. Users who do not agree to the modified Terms may discontinue use by deleting their account."
+    },
+    "article9": {
+      "title": "Article 9 (Governing Law and Jurisdiction)",
+      "body": "These Terms shall be interpreted in accordance with the laws of the Republic of Korea, and the jurisdiction for disputes related to Service use shall follow the Civil Procedure Act."
+    }
+  }
+}
