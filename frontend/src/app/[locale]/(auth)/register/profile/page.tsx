@@ -9,7 +9,7 @@
 
 import { useState, useCallback, useEffect, type ReactNode } from 'react';
 import { useRouter } from '@/i18n/navigation';
-import Link from 'next/link';
+import { Link } from '@/i18n/navigation';
 import Image from 'next/image';
 import { useTheme } from 'next-themes';
 import { Sun, Moon } from 'lucide-react';
