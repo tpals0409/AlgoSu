@@ -69,7 +69,7 @@ function parseWeekKey(w: string): number {
 // ─── PAGE ────────────────────────────────
 
 export default function AnalyticsPage(): ReactNode {
-  const t = useTranslations('dashboard');
+  const t = useTranslations('analytics');
   const locale = useLocale();
   const router = useRouter();
   const { isReady, isAuthenticated } = useRequireAuth();
@@ -97,7 +97,7 @@ export default function AnalyticsPage(): ReactNode {
 
   // AuthContext에서 user.id 직접 사용 (httpOnly Cookie 인증)
   const myId = user?.id ?? null;
-  const userName = myNickname ?? user?.email?.split('@')[0] ?? t('analyticsSection.defaultUser');
+  const userName = myNickname ?? user?.email?.split('@')[0] ?? t('defaultUser');
 
   const loadData = useCallback(async () => {
     if (!currentStudyId) return;
@@ -112,7 +112,7 @@ export default function AnalyticsPage(): ReactNode {
       if (results[0].status === 'fulfilled') {
         setStats(results[0].value as StudyStats);
       } else {
-        setError(t('analyticsSection.errors.statsFailed'));
+        setError(t('errors.statsFailed'));
       }
       if (results[1].status === 'fulfilled') {
         setAllProblems((results[1].value as Problem[]) ?? []);
@@ -123,7 +123,7 @@ export default function AnalyticsPage(): ReactNode {
         if (me?.nickname) setMyNickname(me.nickname);
       }
     } catch {
-      setError(t('analyticsSection.errors.loadFailed'));
+      setError(t('errors.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -226,7 +226,7 @@ export default function AnalyticsPage(): ReactNode {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-bg">
         <LoadingSpinner size="lg" color="primary" />
-        <p className="text-sm text-text-3">{t('analyticsSection.loading')}</p>
+        <p className="text-sm text-text-3">{t('loading')}</p>
       </div>
     );
   }
@@ -236,9 +236,9 @@ export default function AnalyticsPage(): ReactNode {
       <div className="space-y-4">
         {/* 헤더 */}
         <div style={fade(0)}>
-          <h1 className="text-[22px] font-bold tracking-tight text-text">{t('analyticsSection.heading')}</h1>
+          <h1 className="text-[22px] font-bold tracking-tight text-text">{t('heading')}</h1>
           <p className="mt-0.5 text-sm text-text-3">
-            {t('analyticsSection.userStats', { name: userName })}
+            {t('userStats', { name: userName })}
           </p>
         </div>
 
@@ -256,13 +256,13 @@ export default function AnalyticsPage(): ReactNode {
                 <BarChart3 className="h-5 w-5 text-primary" aria-hidden />
               </div>
               <div>
-                <p className="text-sm font-medium text-text">{t('analyticsSection.empty.noStudy')}</p>
+                <p className="text-sm font-medium text-text">{t('empty.noStudy')}</p>
                 <p className="mt-1 text-[11px] text-text-3">
-                  {t('analyticsSection.empty.noStudyDesc')}
+                  {t('empty.noStudyDesc')}
                 </p>
               </div>
               <Button variant="primary" size="sm" onClick={() => router.push('/studies')}>
-                {t('analyticsSection.empty.studyList')}
+                {t('empty.studyList')}
               </Button>
             </div>
           </Card>
@@ -289,13 +289,13 @@ export default function AnalyticsPage(): ReactNode {
                 <BarChart3 className="h-5 w-5 text-primary" aria-hidden />
               </div>
               <div>
-                <p className="text-sm font-medium text-text">{t('analyticsSection.empty.noData')}</p>
+                <p className="text-sm font-medium text-text">{t('empty.noData')}</p>
                 <p className="mt-1 text-[11px] text-text-3">
-                  {t('analyticsSection.empty.noDataDesc')}
+                  {t('empty.noDataDesc')}
                 </p>
               </div>
               <Button variant="primary" size="sm" onClick={() => router.push('/problems')}>
-                {t('analyticsSection.empty.problemList')}
+                {t('empty.problemList')}
               </Button>
             </div>
           </Card>
@@ -328,7 +328,7 @@ export default function AnalyticsPage(): ReactNode {
               }
               return consecutive;
             })() : 0}
-            streakRank={t('analyticsSection.weeks.recent', { count: myWeeklyData.length })}
+            streakRank={t('weeks.recent', { count: myWeeklyData.length })}
             weeklyData={myWeeklyData}
             aiScoreData={(() => {
               // 유저 전체 제출에서 문제별 최고 점수만 추이에 반영 (같은 문제 1회)

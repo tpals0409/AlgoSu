@@ -2,10 +2,10 @@
  * @file Analytics 레이아웃 — locale 분기 메타데이터
  * @domain analytics
  * @layer layout
- * @related analytics/page.tsx, messages/dashboard.json (analyticsSection)
+ * @related analytics/page.tsx, messages/analytics.json
  *
- * getTranslations('dashboard')로 analyticsSection.meta 키를 사용한다.
- * dashboard 네임스페이스에 analytics 섹션이 통합되어 있다 (architect D2 결정).
+ * getTranslations('analytics')로 meta 키를 사용한다.
+ * Sprint 125 Wave B2에서 dashboard.analyticsSection → analytics 네임스페이스로 이관.
  */
 
 import type { Metadata } from 'next';
@@ -27,11 +27,11 @@ export async function generateMetadata({
   params,
 }: AnalyticsLayoutProps): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: 'dashboard' });
+  const t = await getTranslations({ locale, namespace: 'analytics' });
 
   return {
-    title: t('analyticsSection.meta.title'),
-    description: t('analyticsSection.meta.description'),
+    title: t('meta.title'),
+    description: t('meta.description'),
   };
 }
 
