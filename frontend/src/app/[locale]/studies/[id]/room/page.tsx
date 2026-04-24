@@ -1,8 +1,8 @@
 /**
- * @file 스터디룸 — 주차별 문제 타임라인 + 제출 현황 + 분석 뷰
+ * @file 스터디룸 — 주차별 문제 타임라인 + 제출 현황 + 분석 뷰 (i18n 적용)
  * @domain study
  * @layer page
- * @related AppLayout, StudyContext, problemApi, submissionApi, StatCard, WeekSection, SubmissionView, AnalysisView
+ * @related AppLayout, StudyContext, problemApi, submissionApi, StatCard, WeekSection, SubmissionView, AnalysisView, messages/studies.json
  */
 
 'use client';
@@ -16,7 +16,8 @@ import {
   type ReactElement,
   type CSSProperties,
 } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   BookOpen,
   Users,
@@ -52,8 +53,8 @@ import { AnalysisView } from './AnalysisView';
 // ─── COMPONENT ────────────────────────────
 
 export default function StudyRoomPage(): ReactElement {
+  const t = useTranslations('studies');
   const params = useParams<{ id: string }>();
-  void useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { currentStudyId, setCurrentStudy, studies: contextStudies } = useStudy();
@@ -82,8 +83,8 @@ export default function StudyRoomPage(): ReactElement {
   // mount animation
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
-    const t = setTimeout(() => setMounted(true), 50);
-    return () => clearTimeout(t);
+    const tm = setTimeout(() => setMounted(true), 50);
+    return () => clearTimeout(tm);
   }, []);
 
   const [barsAnimated, setBarsAnimated] = useState(false);
@@ -141,7 +142,7 @@ export default function StudyRoomPage(): ReactElement {
         }
       })
       .catch(() => {
-        if (!cancelled) setError('문제 목록을 불러오지 못했습니다.');
+        if (!cancelled) setError(t('room.error.loadProblemsFailed'));
       })
       .finally(() => {
         if (!cancelled) setLoadingProblems(false);
@@ -168,7 +169,7 @@ export default function StudyRoomPage(): ReactElement {
     }
 
     return () => { cancelled = true; abortControllerRef.current?.abort(); };
-  }, [isAuthenticated, authLoading, currentStudyId]);
+  }, [isAuthenticated, authLoading, currentStudyId, t]);
 
   const loadSubmissions = useCallback(async (problem: Problem, signal?: AbortSignal): Promise<void> => {
     setLoadingSubmissions(true);
@@ -194,13 +195,13 @@ export default function StudyRoomPage(): ReactElement {
         }
         setSubmissions([]);
       } else {
-        setSubmissionError('제출 목록을 불러오지 못했습니다.');
+        setSubmissionError(t('room.error.loadSubmissionsFailed'));
         setSubmissions([]);
       }
     } finally {
       if (!signal?.aborted) setLoadingSubmissions(false);
     }
-  }, []);
+  }, [t]);
 
   const loadAnalysis = useCallback(async (sub: Submission): Promise<void> => {
     setLoadingAnalysis(true);
@@ -356,15 +357,15 @@ export default function StudyRoomPage(): ReactElement {
             />
           )}
           <div>
-            <h1 className="text-[22px] font-bold tracking-tight text-text">스터디룸</h1>
-            <p className="mt-0.5 text-sm text-text-2">문제를 선택해 멤버별 제출 코드를 확인하세요.</p>
+            <h1 className="text-[22px] font-bold tracking-tight text-text">{t('room.heading')}</h1>
+            <p className="mt-0.5 text-sm text-text-2">{t('room.description')}</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3" style={fade(0.06)}>
-          <StatCard icon={<BookOpen className="h-5 w-5" />} iconBg="var(--primary-soft)" iconColor="var(--primary)" value={stats.totalProblems} label="전체 문제" />
-          <StatCard icon={<Users className="h-5 w-5" />} iconBg="var(--info-soft, rgba(59,130,206,0.12))" iconColor="var(--info, #3B82CE)" value={stats.totalSubmissions} label="총 제출" />
-          <StatCard icon={<Sparkles className="h-5 w-5" />} iconBg="var(--success-soft)" iconColor="var(--success)" value={stats.totalAnalyzed} label="분석 완료" />
+          <StatCard icon={<BookOpen className="h-5 w-5" />} iconBg="var(--primary-soft)" iconColor="var(--primary)" value={stats.totalProblems} label={t('room.stats.totalProblems')} />
+          <StatCard icon={<Users className="h-5 w-5" />} iconBg="var(--info-soft, rgba(59,130,206,0.12))" iconColor="var(--info, #3B82CE)" value={stats.totalSubmissions} label={t('room.stats.totalSubmissions')} />
+          <StatCard icon={<Sparkles className="h-5 w-5" />} iconBg="var(--success-soft)" iconColor="var(--success)" value={stats.totalAnalyzed} label={t('room.stats.totalAnalyzed')} />
         </div>
 
         {error && (
@@ -373,11 +374,11 @@ export default function StudyRoomPage(): ReactElement {
             <span className="flex-1 text-xs text-error">{error}</span>
             <button
               type="button"
-              onClick={() => { setError(null); setLoadingProblems(true); problemApi.findAll().then(setProblems).catch(() => setError('문제 목록을 불러오지 못했습니다.')).finally(() => setLoadingProblems(false)); }}
+              onClick={() => { setError(null); setLoadingProblems(true); problemApi.findAll().then(setProblems).catch(() => setError(t('room.error.loadProblemsFailed'))).finally(() => setLoadingProblems(false)); }}
               className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-error transition-colors hover:bg-error/10"
             >
               <RefreshCw className="h-3 w-3" aria-hidden />
-              다시 시도
+              {t('room.retry')}
             </button>
           </div>
         )}
@@ -388,7 +389,7 @@ export default function StudyRoomPage(): ReactElement {
           ) : problems.length === 0 ? (
             <div className="rounded-card border border-border bg-bg-card py-16 text-center shadow-card">
               <Code2 className="mx-auto mb-3 h-8 w-8 text-text-3 opacity-40" />
-              <p className="text-sm text-text-3">등록된 문제가 없습니다</p>
+              <p className="text-sm text-text-3">{t('room.emptyProblems')}</p>
             </div>
           ) : (
             <div className="space-y-6">

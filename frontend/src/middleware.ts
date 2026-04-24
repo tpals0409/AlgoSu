@@ -23,7 +23,15 @@ import { routing } from '@/i18n/routing';
 const intlMiddleware = createMiddleware(routing);
 
 // ── 인증 없이 접근 가능한 경로 (locale prefix 제거 후 기준) ─────────────────
-const PUBLIC_PATHS = ['/', '/login', '/callback', '/guest'] as const;
+const PUBLIC_PATHS = [
+  '/',
+  '/login',
+  '/callback',
+  '/guest',
+  '/shared',
+  '/privacy',
+  '/terms',
+] as const;
 
 /**
  * URL에서 non-default locale prefix를 제거한 순수 경로 반환.

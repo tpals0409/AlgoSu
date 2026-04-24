@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithI18n } from '@/test-utils/i18n';
 import StudyRoomPage from '../page';
 
 jest.mock('next/navigation', () => ({
@@ -137,22 +138,22 @@ jest.mock('lucide-react', () => {
 
 describe('StudyRoomPage', () => {
   it('스터디룸 타이틀이 렌더링된다', async () => {
-    render(<StudyRoomPage />);
+    renderWithI18n(<StudyRoomPage />);
     expect(await screen.findByText('스터디룸')).toBeInTheDocument();
   });
 
   it('AppLayout 안에 렌더링된다', () => {
-    render(<StudyRoomPage />);
+    renderWithI18n(<StudyRoomPage />);
     expect(screen.getByTestId('app-layout')).toBeInTheDocument();
   });
 
   it('안내 텍스트가 표시된다', () => {
-    render(<StudyRoomPage />);
+    renderWithI18n(<StudyRoomPage />);
     expect(screen.getByText('문제를 선택해 멤버별 제출 코드를 확인하세요.')).toBeInTheDocument();
   });
 
   it('문제가 없으면 빈 상태가 표시된다', async () => {
-    render(<StudyRoomPage />);
+    renderWithI18n(<StudyRoomPage />);
     expect(await screen.findByText('등록된 문제가 없습니다')).toBeInTheDocument();
   });
 });
@@ -173,7 +174,7 @@ describe('StudyRoomPage - with problems', () => {
       },
     ]);
 
-    render(<StudyRoomPage />);
+    renderWithI18n(<StudyRoomPage />);
     expect(await screen.findByText('Two Sum')).toBeInTheDocument();
     expect(screen.getByText('1월1주차')).toBeInTheDocument();
   });

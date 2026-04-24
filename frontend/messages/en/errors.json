@@ -61,5 +61,27 @@
     "title": "Problem Not Found",
     "description": "The problem you requested does not exist or has been removed.",
     "cta": "Back to Problems"
+  },
+  "validation": {
+    "study": {
+      "nameRequired": "Please enter a study name.",
+      "nameTooShort": "Study name must be at least 2 characters.",
+      "nicknameRequired": "Please enter a nickname."
+    },
+    "submission": {
+      "problemIdRequired": "Problem ID is required.",
+      "languageRequired": "Please select a language.",
+      "codeRequired": "Please enter your code."
+    },
+    "problem": {
+      "titleRequired": "Please enter a problem title.",
+      "weekNumberRequired": "Please select a week.",
+      "deadlineRequired": "Please select a deadline."
+    },
+    "feedback": {
+      "contentTooShort": "Please enter at least 5 characters.",
+      "contentTooLong": "Content must be 2000 characters or less.",
+      "screenshotTooLarge": "The image is too large."
+    }
   }
 }

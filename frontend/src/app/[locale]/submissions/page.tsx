@@ -8,7 +8,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, type ReactNode } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { FileText, Search, Loader2 } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -77,6 +77,7 @@ function scoreColor(score: number): string {
 export default function SubmissionsPage(): ReactNode {
   const router = useRouter();
   const t = useTranslations('submissions');
+  const locale = useLocale();
   const { isAuthenticated } = useRequireAuth();
   useRequireStudy();
   const { currentStudyId } = useStudy();
@@ -319,7 +320,7 @@ export default function SubmissionsPage(): ReactNode {
                       </span>
                       {/* 상대 시간 */}
                       <span className="text-[11px] font-medium" style={{ color: 'var(--text-3)' }}>
-                        {relativeTime(s.createdAt)}
+                        {relativeTime(s.createdAt, locale)}
                       </span>
                     </div>
                   </div>

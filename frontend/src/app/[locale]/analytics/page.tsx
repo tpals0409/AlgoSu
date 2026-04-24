@@ -8,7 +8,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, type ReactNode, type CSSProperties } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import dynamic from 'next/dynamic';
 import { BarChart3 } from 'lucide-react';
@@ -70,6 +70,7 @@ function parseWeekKey(w: string): number {
 
 export default function AnalyticsPage(): ReactNode {
   const t = useTranslations('dashboard');
+  const locale = useLocale();
   const router = useRouter();
   const { isReady, isAuthenticated } = useRequireAuth();
   useRequireStudy();
@@ -346,7 +347,7 @@ export default function AnalyticsPage(): ReactNode {
               return Array.from(bestByProblem.values())
                 .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
                 .map((v) => ({
-                  date: new Date(v.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }),
+                  date: new Date(v.createdAt).toLocaleDateString(locale, { month: 'short', day: 'numeric' }),
                   score: v.score,
                   problem: v.title,
                 }));

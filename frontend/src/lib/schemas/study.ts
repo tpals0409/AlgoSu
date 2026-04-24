@@ -10,12 +10,12 @@ export const studyCreateSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(1, '스터디 이름을 입력해주세요.')
-    .min(2, '스터디 이름은 2자 이상이어야 합니다.'),
+    .min(1, 'validation.study.nameRequired')
+    .min(2, 'validation.study.nameTooShort'),
   nickname: z
     .string()
     .trim()
-    .min(1, '닉네임을 입력해주세요.'),
+    .min(1, 'validation.study.nicknameRequired'),
   description: z.string().optional(),
 });
 

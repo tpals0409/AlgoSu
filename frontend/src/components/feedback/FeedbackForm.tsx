@@ -24,6 +24,7 @@ interface FeedbackFormProps {
 
 export function FeedbackForm({ onSuccess }: FeedbackFormProps) {
   const t = useTranslations('feedback');
+  const tErrors = useTranslations('errors');
   const { currentStudyId } = useStudy();
   const [submitting, setSubmitting] = useState(false);
 
@@ -130,9 +131,9 @@ export function FeedbackForm({ onSuccess }: FeedbackFormProps) {
             ['--tw-ring-color' as any]: 'var(--primary)',
           }}
         />
-        {errors.content && (
+        {errors.content?.message && (
           <p className="mt-1 text-[11px]" style={{ color: 'var(--error)' }}>
-            {errors.content.message}
+            {tErrors(errors.content.message)}
           </p>
         )}
       </div>

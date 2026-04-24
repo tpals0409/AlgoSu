@@ -1,7 +1,8 @@
 /**
- * @file 스터디 설정 페이지 — 기본 정보 / 그라운드룰 / 멤버 / 초대코드 / 삭제
+ * @file 스터디 설정 페이지 — 기본 정보 / 그라운드룰 / 멤버 / 초대코드 / 삭제 (i18n 적용)
  * @domain study
  * @layer page
+ * @related messages/studies.json
  */
 
 'use client';
@@ -15,6 +16,7 @@ import {
   type CSSProperties,
 } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   ArrowLeft,
   Crown,
@@ -63,6 +65,7 @@ interface SettingsMember {
 
 export default function StudySettingsPage({ params }: PageProps): ReactNode {
   const { id: studyId } = use(params);
+  const t = useTranslations('studies');
   const router = useRouter();
   const { isAuthenticated } = useRequireAuth();
   const { user } = useAuth();
@@ -116,8 +119,8 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
   useEffect(() => {
     if (isLoading) return;
     setMounted(false);
-    const t = setTimeout(() => setMounted(true), 50);
-    return () => clearTimeout(t);
+    const tm = setTimeout(() => setMounted(true), 50);
+    return () => clearTimeout(tm);
   }, [isLoading]);
 
   // ESC 키로 모달 닫기
@@ -159,8 +162,8 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
   /** 성공 메시지 자동 제거 */
   useEffect(() => {
     if (!successMsg) return;
-    const t = setTimeout(() => setSuccessMsg(null), 3000);
-    return () => clearTimeout(t);
+    const tm = setTimeout(() => setSuccessMsg(null), 3000);
+    return () => clearTimeout(tm);
   }, [successMsg]);
 
   const fade = (delay = 0): CSSProperties => ({
@@ -186,16 +189,16 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
       setRulesText(studyData.groundRules ?? '');
       setSelectedStudyAvatarKey(getAvatarPresetKey(studyData.avatar_url));
       setMembers(memberData);
-      document.title = `${studyData.name} 설정 | AlgoSu`;
+      document.title = `${studyData.name} ${t('settings.heading')} | AlgoSu`;
     } catch (err: unknown) {
       setError(
         (err as Error).message ??
-          '스터디 정보를 불러오는 데 실패했습니다.',
+          t('settings.error.loadFailed'),
       );
     } finally {
       setIsLoading(false);
     }
-  }, [studyId]);
+  }, [studyId, t]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -208,7 +211,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
   /** 기본 정보 저장 (스터디 이름 + 소개) */
   const handleSaveInfo = async (): Promise<void> => {
     if (!studyName.trim()) {
-      setError('스터디 이름을 입력해주세요.');
+      setError(t('settings.error.nameRequired'));
       return;
     }
     setIsSavingInfo(true);
@@ -219,9 +222,9 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
         description: studyDesc.trim(),
       });
       setStudy(updated);
-      setSuccessMsg('기본 정보가 저장되었습니다.');
+      setSuccessMsg(t('settings.success.infoSaved'));
     } catch (err: unknown) {
-      setError((err as Error).message ?? '기본 정보 저장에 실패했습니다.');
+      setError((err as Error).message ?? t('settings.error.saveInfoFailed'));
     } finally {
       setIsSavingInfo(false);
     }
@@ -233,9 +236,9 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
     setError(null);
     try {
       await studyApi.updateGroundRules(studyId, rulesText);
-      setSuccessMsg('그라운드룰이 저장되었습니다.');
+      setSuccessMsg(t('settings.success.rulesSaved'));
     } catch (err: unknown) {
-      setError((err as Error).message ?? '그라운드룰 저장에 실패했습니다.');
+      setError((err as Error).message ?? t('settings.error.saveRulesFailed'));
     } finally {
       setIsSavingRules(false);
     }
@@ -251,9 +254,9 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
       await studyApi.removeMember(studyId, member.userId);
       const updatedMembers = await studyApi.getMembers(studyId);
       setMembers(updatedMembers);
-      setSuccessMsg(`${member.name} 님이 스터디에서 내보내졌습니다.`);
+      setSuccessMsg(t('settings.success.memberRemoved', { name: member.name }));
     } catch (err: unknown) {
-      setError((err as Error).message ?? '멤버 내보내기에 실패했습니다.');
+      setError((err as Error).message ?? t('settings.error.removeMemberFailed'));
     }
   };
 
@@ -264,10 +267,10 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
       await studyApi.changeRole(studyId, member.userId, newRole);
       const updatedMembers = await studyApi.getMembers(studyId);
       setMembers(updatedMembers);
-      const roleLabel = newRole === 'ADMIN' ? '관리자' : '멤버';
-      setSuccessMsg(`${member.name} 님의 역할이 ${roleLabel}(으)로 변경되었습니다.`);
+      const roleLabel = newRole === 'ADMIN' ? t('settings.roles.admin') : t('settings.roles.member');
+      setSuccessMsg(t('settings.success.roleChanged', { name: member.name, role: roleLabel }));
     } catch (err: unknown) {
-      setError((err as Error).message ?? '역할 변경에 실패했습니다.');
+      setError((err as Error).message ?? t('settings.error.changeRoleFailed'));
     }
   };
 
@@ -291,7 +294,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
       setCodeExpiry(remainingSec);
       setCodeActive(remainingSec > 0);
     } catch (err: unknown) {
-      setError((err as Error).message ?? '초대 코드 생성에 실패했습니다.');
+      setError((err as Error).message ?? t('settings.error.inviteCodeFailed'));
     } finally {
       setIsRefreshingCode(false);
     }
@@ -305,7 +308,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
       await studyApi.delete(studyId);
       router.push('/studies');
     } catch (err: unknown) {
-      setError((err as Error).message ?? '스터디 삭제에 실패했습니다.');
+      setError((err as Error).message ?? t('settings.error.deleteFailed'));
       setIsDeleting(false);
     }
   };
@@ -316,7 +319,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
     return (
       <AppLayout>
         <div className="flex min-h-[60vh] items-center justify-center">
-          <LoadingSpinner size="lg" label="설정을 불러오는 중..." />
+          <LoadingSpinner size="lg" label={t('settings.loading')} />
         </div>
       </AppLayout>
     );
@@ -334,7 +337,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
           >
             <ArrowLeft className="h-5 w-5 text-[var(--text)]" />
           </button>
-          <span className="text-sm text-text-2">돌아가기</span>
+          <span className="text-sm text-text-2">{t('settings.goBack')}</span>
         </div>
       </AppLayout>
     );
@@ -365,7 +368,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
             </button>
             <div>
               <h1 className="text-[22px] font-bold tracking-tight text-text">
-                스터디 설정
+                {t('settings.heading')}
               </h1>
               <p className="text-xs text-text-3">{study?.name ?? ''}</p>
             </div>
@@ -386,20 +389,20 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
 
         {/* ── 스터디 아바타 ── */}
         <section className="space-y-3" style={fade(0.04)}>
-          <h2 className="text-sm font-semibold text-text-3">스터디 아바타</h2>
+          <h2 className="text-sm font-semibold text-text-3">{t('settings.avatar.heading')}</h2>
           <Card>
             <CardContent className="py-5 space-y-4">
               <div className="flex items-center gap-4">
                 <Image
                   src={getAvatarSrc(selectedStudyAvatarKey)}
-                  alt="스터디 아바타"
+                  alt={t('settings.avatar.alt')}
                   width={64}
                   height={64}
                   className="h-16 w-16 rounded-xl"
                 />
                 <div className="space-y-1">
                   <p className="text-[13px] text-text-2">
-                    스터디를 대표하는 아바타를 선택하세요.
+                    {t('settings.avatar.description')}
                   </p>
                   <p className="text-[11px] text-text-3">
                     {STUDY_AVATAR_PRESETS.find((p) => p.key === selectedStudyAvatarKey)?.label ?? '기본'}
@@ -442,15 +445,15 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                         avatarUrl: toAvatarUrl(selectedStudyAvatarKey),
                       });
                       setStudy(updated);
-                      setSuccessMsg('스터디 아바타가 저장되었습니다.');
+                      setSuccessMsg(t('settings.success.avatarSaved'));
                     } catch (err: unknown) {
-                      setError((err as Error).message ?? '아바타 저장에 실패했습니다.');
+                      setError((err as Error).message ?? t('settings.error.saveAvatarFailed'));
                     } finally {
                       setIsSavingAvatar(false);
                     }
                   }}
                 >
-                  {isSavingAvatar ? '저장 중...' : '아바타 저장'}
+                  {isSavingAvatar ? t('settings.avatar.saving') : t('settings.avatar.save')}
                 </Button>
               </div>
             </CardContent>
@@ -459,29 +462,29 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
 
         {/* ── 기본 정보 ── */}
         <section className="space-y-3" style={fade(0.08)}>
-          <h2 className="text-sm font-semibold text-text-3">기본 정보</h2>
+          <h2 className="text-sm font-semibold text-text-3">{t('settings.info.heading')}</h2>
           <Card>
             <CardContent className="space-y-4 py-5">
               <div className="space-y-1.5">
                 <label className="text-[13px] font-medium text-text">
-                  스터디 이름
+                  {t('settings.info.nameLabel')}
                 </label>
                 <Input
                   value={studyName}
                   onChange={(e) => setStudyName(e.target.value)}
-                  placeholder="스터디 이름"
+                  placeholder={t('settings.info.namePlaceholder')}
                 />
               </div>
               <div className="space-y-1.5">
                 <label className="text-[13px] font-medium text-text">
-                  소개
+                  {t('settings.info.descriptionLabel')}
                 </label>
                 <textarea
                   className="flex w-full rounded-btn border border-border bg-bg px-3 py-2 text-sm text-text placeholder:text-text-3 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                   rows={3}
                   value={studyDesc}
                   onChange={(e) => setStudyDesc(e.target.value)}
-                  placeholder="스터디를 소개해주세요"
+                  placeholder={t('settings.info.descriptionPlaceholder')}
                 />
               </div>
               <div className="flex justify-end">
@@ -490,7 +493,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                   onClick={() => setShowSaveInfoConfirm(true)}
                   disabled={isSavingInfo}
                 >
-                  {isSavingInfo ? '저장 중...' : '저장'}
+                  {isSavingInfo ? t('settings.info.saving') : t('settings.info.save')}
                 </Button>
               </div>
             </CardContent>
@@ -499,11 +502,11 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
 
         {/* ── 그라운드룰 ── */}
         <section className="space-y-3" style={fade(0.12)}>
-          <h2 className="text-sm font-semibold text-text-3">그라운드룰</h2>
+          <h2 className="text-sm font-semibold text-text-3">{t('settings.rules.heading')}</h2>
           <Card>
             <CardContent className="space-y-3 py-5">
               <div className="flex items-center justify-between">
-                <span className="text-[13px] text-text-2">마크다운으로 작성</span>
+                <span className="text-[13px] text-text-2">{t('settings.rules.markdownHint')}</span>
                 <div className="flex overflow-hidden rounded-btn border border-border">
                   <button
                     type="button"
@@ -515,7 +518,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                     onClick={() => setRulesMode('edit')}
                   >
                     <Pencil className="h-3 w-3" aria-hidden />
-                    편집
+                    {t('settings.rules.edit')}
                   </button>
                   <button
                     type="button"
@@ -527,7 +530,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                     onClick={() => setRulesMode('preview')}
                   >
                     <Eye className="h-3 w-3" aria-hidden />
-                    미리보기
+                    {t('settings.rules.preview')}
                   </button>
                 </div>
               </div>
@@ -538,7 +541,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                   rows={12}
                   value={rulesText}
                   onChange={(e) => setRulesText(e.target.value)}
-                  placeholder="그라운드룰을 마크다운으로 작성하세요"
+                  placeholder={t('settings.rules.placeholder')}
                 />
               ) : (
                 <div
@@ -550,14 +553,14 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
 
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-[11px] text-text-3">
-                  Markdown 지원: **굵게**, *기울임*, ## 제목, - 목록
+                  {t('settings.rules.mdSupport')}
                 </span>
                 <Button
                   size="sm"
                   onClick={() => setShowSaveRulesConfirm(true)}
                   disabled={isSavingRules}
                 >
-                  {isSavingRules ? '저장 중...' : '저장'}
+                  {isSavingRules ? t('settings.rules.saving') : t('settings.rules.save')}
                 </Button>
               </div>
             </CardContent>
@@ -567,7 +570,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
         {/* ── 멤버 ── */}
         <section className="space-y-3" style={fade(0.16)}>
           <h2 className="text-sm font-semibold text-text-3">
-            멤버 · {displayMembers.length}명
+            {t('settings.members.heading', { count: displayMembers.length })}
           </h2>
           <Card className="p-0 overflow-hidden">
             {displayMembers.map((member, idx) => (
@@ -610,17 +613,17 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                       <div className="flex h-7 w-7 items-center justify-center">
                         <Crown
                           className="h-4 w-4 text-[var(--primary)]"
-                          aria-label="관리자"
+                          aria-label={t('settings.members.admin')}
                         />
                       </div>
                       {member.userId !== user?.id && (
                         <button
                           type="button"
                           className="flex h-7 items-center gap-1 rounded-lg px-2 text-[11px] font-medium text-text-3 transition-colors hover:bg-bg-alt hover:text-text-2"
-                          aria-label={`${member.name} 멤버로 변경`}
+                          aria-label={`${member.name} ${t('settings.members.changeToMember')}`}
                           onClick={() => setPendingRoleChange({ member, newRole: 'MEMBER' })}
                         >
-                          멤버로 변경
+                          {t('settings.members.changeToMember')}
                         </button>
                       )}
                     </>
@@ -629,16 +632,16 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                       <button
                         type="button"
                         className="flex h-7 items-center gap-1 rounded-lg px-2 text-[11px] font-medium text-text-3 transition-colors hover:bg-primary/10 hover:text-primary"
-                        aria-label={`${member.name} 관리자로 변경`}
+                        aria-label={`${member.name} ${t('settings.members.changeToAdmin')}`}
                         onClick={() => setPendingRoleChange({ member, newRole: 'ADMIN' })}
                       >
                         <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
-                        관리자
+                        {t('settings.members.changeToAdmin')}
                       </button>
                       <button
                         type="button"
                         className="flex h-7 w-7 items-center justify-center rounded-lg text-text-3 transition-colors hover:bg-error-soft hover:text-error"
-                        aria-label={`${member.name} 내보내기`}
+                        aria-label={`${member.name} ${t('settings.members.removeMember')}`}
                         onClick={() => setRemoveMember(member)}
                       >
                         <Trash2 className="h-4 w-4" aria-hidden />
@@ -653,12 +656,12 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
 
         {/* ── 초대 코드 ── */}
         <section className="space-y-3" style={fade(0.2)}>
-          <h2 className="text-sm font-semibold text-text-3">초대 코드</h2>
+          <h2 className="text-sm font-semibold text-text-3">{t('settings.invite.heading')}</h2>
           <Card>
             <CardContent className="space-y-3 py-4">
               <div className="flex items-center gap-2">
                 <Input
-                  value={codeActive ? inviteCode : (inviteCode ? '만료됨' : '코드를 생성해주세요')}
+                  value={codeActive ? inviteCode : (inviteCode ? t('settings.invite.expired') : t('settings.invite.generate'))}
                   readOnly
                   className={`min-w-0 font-mono text-sm ${!codeActive ? 'text-text-3' : ''} ${inviteCode && !codeActive ? 'line-through' : ''}`}
                 />
@@ -667,7 +670,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                   className="shrink-0 rounded-lg border border-border p-2.5 text-text-3 transition-colors hover:bg-bg-alt hover:text-text disabled:opacity-40"
                   onClick={() => void handleCopyCode()}
                   disabled={!codeActive}
-                  aria-label="초대 코드 복사"
+                  aria-label={t('settings.invite.copy')}
                 >
                   <Copy className="h-4 w-4" aria-hidden />
                 </button>
@@ -676,7 +679,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                   className="shrink-0 rounded-lg border border-border p-2.5 text-text-3 transition-colors hover:bg-bg-alt hover:text-text disabled:opacity-40"
                   onClick={() => void handleRefreshCode()}
                   disabled={isRefreshingCode}
-                  aria-label="초대 코드 재생성"
+                  aria-label={t('settings.invite.refresh')}
                 >
                   <RefreshCw className={`h-4 w-4 ${isRefreshingCode ? 'animate-spin' : ''}`} aria-hidden />
                 </button>
@@ -690,15 +693,15 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                     >
                       {String(Math.floor(codeExpiry / 60)).padStart(2, '0')}:{String(codeExpiry % 60).padStart(2, '0')}
                     </span>
-                    {' '}후 만료
+                    {' '}{t('settings.invite.expiresIn')}
                   </p>
                 ) : (
                   <p className={`text-xs ${inviteCode ? 'text-[var(--error)]' : 'text-[var(--text-3)]'}`}>
-                    {inviteCode ? '코드가 만료되었습니다. 새로 생성해주세요.' : '초대 코드를 생성하세요.'}
+                    {inviteCode ? t('settings.invite.expiredMessage') : t('settings.invite.generateMessage')}
                   </p>
                 )}
                 {codeCopied && (
-                  <p className="text-xs text-success">복사되었습니다!</p>
+                  <p className="text-xs text-success">{t('settings.invite.copied')}</p>
                 )}
               </div>
             </CardContent>
@@ -707,22 +710,22 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
 
         {/* ── 위험 구역 ── */}
         <section className="space-y-3" style={fade(0.24)}>
-          <h2 className="text-sm font-semibold text-text-3">위험 구역</h2>
+          <h2 className="text-sm font-semibold text-text-3">{t('settings.danger.heading')}</h2>
           <Card
             className="border-error/30 bg-[var(--error-soft)]"
           >
             <CardContent className="space-y-3 py-5">
               <div className="space-y-1.5 text-[13px] text-text-2">
-                <p className="font-medium">스터디 삭제 정책</p>
+                <p className="font-medium">{t('settings.danger.policyTitle')}</p>
                 <ul className="list-inside list-disc space-y-0.5 text-[12px]">
-                  <li>관리자가 1명일 때만 삭제할 수 있습니다.</li>
-                  <li>삭제 시 모든 문제·제출 기록·분석 결과가 영구 삭제됩니다.</li>
-                  <li>삭제된 스터디는 복구할 수 없습니다.</li>
+                  <li>{t('settings.danger.policyRule1')}</li>
+                  <li>{t('settings.danger.policyRule2')}</li>
+                  <li>{t('settings.danger.policyRule3')}</li>
                 </ul>
               </div>
               {members.filter((m) => m.role === 'ADMIN').length > 1 ? (
                 <p className="text-[12px] font-medium text-[var(--error)]">
-                  관리자가 2명 이상이므로 삭제할 수 없습니다. 다른 관리자의 권한을 해제한 후 다시 시도하세요.
+                  {t('settings.danger.multiAdminWarning')}
                 </p>
               ) : (
                 <Button
@@ -730,7 +733,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
                   size="sm"
                   onClick={() => setShowDeleteConfirm(true)}
                 >
-                  스터디 삭제
+                  {t('settings.danger.deleteButton')}
                 </Button>
               )}
             </CardContent>
@@ -743,15 +746,18 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
         <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setPendingRoleChange(null)} />
           <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
-            <p className="text-[14px] font-semibold text-text">역할을 변경하시겠습니까?</p>
+            <p className="text-[14px] font-semibold text-text">{t('settings.modal.roleChange.title')}</p>
             <p className="text-[13px] text-[var(--text-2)]">
-              {pendingRoleChange.member.name} 님의 역할을 {pendingRoleChange.newRole === 'ADMIN' ? '관리자' : '멤버'}(으)로 변경합니다.
+              {t('settings.modal.roleChange.description', {
+                name: pendingRoleChange.member.name,
+                role: pendingRoleChange.newRole === 'ADMIN' ? t('settings.roles.admin') : t('settings.roles.member'),
+              })}
             </p>
             <div className="flex items-center justify-end gap-2">
               <button type="button" onClick={() => setPendingRoleChange(null)}
-                className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt text-[var(--text-2)]">취소</button>
+                className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt text-[var(--text-2)]">{t('settings.modal.roleChange.cancel')}</button>
               <button type="button" onClick={() => { void handleChangeRole(pendingRoleChange.member, pendingRoleChange.newRole); setPendingRoleChange(null); }}
-                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity bg-[var(--primary)]">변경</button>
+                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity bg-[var(--primary)]">{t('settings.modal.roleChange.confirm')}</button>
             </div>
           </div>
         </div>
@@ -762,16 +768,16 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
         <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setShowDeleteConfirm(false)} />
           <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
-            <p className="text-[14px] font-semibold text-text">스터디를 삭제하시겠습니까?</p>
+            <p className="text-[14px] font-semibold text-text">{t('settings.modal.delete.title')}</p>
             <p className="text-[13px] text-[var(--text-2)]">
-              이 작업은 되돌릴 수 없습니다. 모든 스터디 데이터가 삭제됩니다.
+              {t('settings.modal.delete.description')}
             </p>
             <div className="flex items-center justify-end gap-2">
               <button type="button" onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt text-[var(--text-2)]">취소</button>
+                className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt text-[var(--text-2)]">{t('settings.modal.delete.cancel')}</button>
               <button type="button" onClick={() => { void handleDeleteStudy(); }}
                 disabled={isDeleting}
-                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity disabled:opacity-50 bg-[var(--error)]">{isDeleting ? '삭제 중...' : '삭제'}</button>
+                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity disabled:opacity-50 bg-[var(--error)]">{isDeleting ? t('settings.modal.delete.deleting') : t('settings.modal.delete.confirm')}</button>
             </div>
           </div>
         </div>
@@ -782,15 +788,15 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
         <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setShowSaveInfoConfirm(false)} />
           <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
-            <p className="text-[14px] font-semibold text-text">스터디 정보를 저장하시겠습니까?</p>
+            <p className="text-[14px] font-semibold text-text">{t('settings.modal.saveInfo.title')}</p>
             <p className="text-[13px] text-[var(--text-2)]">
-              변경된 스터디 이름과 소개가 저장됩니다.
+              {t('settings.modal.saveInfo.description')}
             </p>
             <div className="flex items-center justify-end gap-2">
               <button type="button" onClick={() => setShowSaveInfoConfirm(false)}
-                className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt text-[var(--text-2)]">취소</button>
+                className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt text-[var(--text-2)]">{t('settings.modal.saveInfo.cancel')}</button>
               <button type="button" onClick={() => { void handleSaveInfo(); setShowSaveInfoConfirm(false); }}
-                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity bg-[var(--primary)]">저장</button>
+                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity bg-[var(--primary)]">{t('settings.modal.saveInfo.confirm')}</button>
             </div>
           </div>
         </div>
@@ -801,15 +807,15 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
         <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setShowSaveRulesConfirm(false)} />
           <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
-            <p className="text-[14px] font-semibold text-text">그라운드 룰을 저장하시겠습니까?</p>
+            <p className="text-[14px] font-semibold text-text">{t('settings.modal.saveRules.title')}</p>
             <p className="text-[13px] text-[var(--text-2)]">
-              변경된 그라운드 룰이 모든 멤버에게 적용됩니다.
+              {t('settings.modal.saveRules.description')}
             </p>
             <div className="flex items-center justify-end gap-2">
               <button type="button" onClick={() => setShowSaveRulesConfirm(false)}
-                className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt text-[var(--text-2)]">취소</button>
+                className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt text-[var(--text-2)]">{t('settings.modal.saveRules.cancel')}</button>
               <button type="button" onClick={() => { void handleSaveRules(); setShowSaveRulesConfirm(false); }}
-                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity bg-[var(--primary)]">저장</button>
+                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity bg-[var(--primary)]">{t('settings.modal.saveRules.confirm')}</button>
             </div>
           </div>
         </div>
@@ -820,15 +826,15 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
         <div className="fixed inset-0 z-[200] flex items-center justify-center" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-black/40" role="presentation" onClick={() => setRemoveMember(null)} />
           <div className="relative rounded-xl border border-border bg-bg-card p-5 shadow-lg w-[340px] space-y-4">
-            <p className="text-[14px] font-semibold text-text">멤버를 내보내시겠습니까?</p>
+            <p className="text-[14px] font-semibold text-text">{t('settings.modal.removeMember.title')}</p>
             <p className="text-[13px] text-[var(--text-2)]">
-              {removeMember.name} 님을 스터디에서 내보냅니다. 이 작업은 되돌릴 수 없습니다.
+              {t('settings.modal.removeMember.description', { name: removeMember.name })}
             </p>
             <div className="flex items-center justify-end gap-2">
               <button type="button" onClick={() => setRemoveMember(null)}
-                className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt text-[var(--text-2)]">취소</button>
+                className="px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-bg-alt text-[var(--text-2)]">{t('settings.modal.removeMember.cancel')}</button>
               <button type="button" onClick={() => void handleRemoveMemberConfirm()}
-                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity bg-[var(--error)]">내보내기</button>
+                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-opacity bg-[var(--error)]">{t('settings.modal.removeMember.confirm')}</button>
             </div>
           </div>
         </div>

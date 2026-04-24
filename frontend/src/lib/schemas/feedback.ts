@@ -12,10 +12,10 @@ export type FeedbackCategory = (typeof FEEDBACK_CATEGORIES)[number];
 
 export const feedbackSchema = z.object({
   category: z.enum(FEEDBACK_CATEGORIES),
-  content: z.string().min(5, '5자 이상 입력해주세요.').max(2000, '2000자 이내로 입력해주세요.'),
+  content: z.string().min(5, 'validation.feedback.contentTooShort').max(2000, 'validation.feedback.contentTooLong'),
   pageUrl: z.string().optional(),
   browserInfo: z.string().optional(),
-  screenshot: z.string().max(700_000, '이미지가 너무 큽니다.').optional(),
+  screenshot: z.string().max(700_000, 'validation.feedback.screenshotTooLarge').optional(),
 });
 
 export type FeedbackFormData = z.infer<typeof feedbackSchema>;

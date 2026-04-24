@@ -1,0 +1,220 @@
+{
+  "list": {
+    "heading": "My Studies",
+    "description": "Manage the studies you're participating in.",
+    "tabMy": "My Studies",
+    "tabExplore": "Explore Studies",
+    "error": {
+      "loadFailed": "Failed to load study list.",
+      "joinFailed": "Failed to join the study.",
+      "createFailed": "Failed to create the study. Please try again.",
+      "verifyFailed": "Failed to verify the invite code."
+    },
+    "empty": {
+      "title": "No studies joined yet",
+      "description": "Create a new study or join one with an invite code.",
+      "action": "Create Study"
+    },
+    "card": {
+      "admin": "Admin",
+      "member": "Member",
+      "memberCount": "{count} members",
+      "settings": "Study settings",
+      "viewDetail": "View details",
+      "createNew": "Create new study"
+    },
+    "explore": {
+      "joinByCode": "Join with invite code",
+      "codePlaceholder": "Enter invite code",
+      "verifying": "Verifying...",
+      "joinButton": "Join"
+    },
+    "joinModal": {
+      "title": "Join Study",
+      "nicknamePrompt": "Enter the nickname you'd like to use in {name}.",
+      "nicknamePlaceholder": "Enter nickname",
+      "nicknameRequired": "Please enter a nickname.",
+      "cancel": "Cancel",
+      "joining": "Joining...",
+      "submit": "Join"
+    },
+    "createModal": {
+      "title": "Create New Study",
+      "description": "Solve algorithm problems together with your team",
+      "nameLabel": "Study Name",
+      "namePlaceholder": "e.g. Algorithm Study Group 1",
+      "nicknameLabel": "Nickname",
+      "nicknamePlaceholder": "Nickname to use in this study",
+      "descriptionLabel": "Description (optional)",
+      "descriptionPlaceholder": "Brief description of the study",
+      "avatarLabel": "Study Avatar",
+      "cancel": "Cancel",
+      "creating": "Creating...",
+      "submit": "Create Study"
+    }
+  },
+  "detail": {
+    "loading": "Loading study info...",
+    "backToList": "Study list",
+    "admin": "Admin",
+    "member": "Member",
+    "memberCount": "{count} members",
+    "settings": "Study settings",
+    "error": {
+      "loadFailed": "Failed to load study info."
+    },
+    "tabs": {
+      "rules": "Ground Rules",
+      "problems": "Problems",
+      "members": "Members"
+    },
+    "rules": {
+      "title": "Ground Rules",
+      "empty": "No ground rules have been set yet."
+    },
+    "problems": {
+      "active": "In Progress",
+      "ended": "Ended Problems",
+      "emptyActive": "No problems in progress.",
+      "emptyEnded": "No ended problems.",
+      "expired": "Closed",
+      "statusEnded": "Ended"
+    },
+    "members": {
+      "save": "Save",
+      "cancel": "Cancel",
+      "editNickname": "Edit nickname",
+      "me": "Me",
+      "submissions": "{count} submitted",
+      "completed": "{done}/{total} completed"
+    }
+  },
+  "room": {
+    "heading": "Study Room",
+    "description": "Select a problem to view member submissions.",
+    "stats": {
+      "totalProblems": "Total Problems",
+      "totalSubmissions": "Total Submissions",
+      "totalAnalyzed": "Analyzed"
+    },
+    "error": {
+      "loadProblemsFailed": "Failed to load problem list.",
+      "loadSubmissionsFailed": "Failed to load submission list."
+    },
+    "retry": "Retry",
+    "emptyProblems": "No problems registered"
+  },
+  "settings": {
+    "heading": "Study Settings",
+    "loading": "Loading settings...",
+    "goBack": "Go back",
+    "error": {
+      "loadFailed": "Failed to load study info.",
+      "nameRequired": "Please enter a study name.",
+      "saveInfoFailed": "Failed to save basic info.",
+      "saveRulesFailed": "Failed to save ground rules.",
+      "removeMemberFailed": "Failed to remove member.",
+      "changeRoleFailed": "Failed to change role.",
+      "inviteCodeFailed": "Failed to generate invite code.",
+      "deleteFailed": "Failed to delete the study.",
+      "saveAvatarFailed": "Failed to save avatar."
+    },
+    "success": {
+      "infoSaved": "Basic info has been saved.",
+      "rulesSaved": "Ground rules have been saved.",
+      "memberRemoved": "{name} has been removed from the study.",
+      "roleChanged": "{name}'s role has been changed to {role}.",
+      "avatarSaved": "Study avatar has been saved."
+    },
+    "avatar": {
+      "heading": "Study Avatar",
+      "alt": "Study avatar",
+      "description": "Choose an avatar to represent your study.",
+      "saving": "Saving...",
+      "save": "Save Avatar"
+    },
+    "info": {
+      "heading": "Basic Info",
+      "nameLabel": "Study Name",
+      "namePlaceholder": "Study name",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Introduce your study",
+      "saving": "Saving...",
+      "save": "Save"
+    },
+    "rules": {
+      "heading": "Ground Rules",
+      "markdownHint": "Write in Markdown",
+      "edit": "Edit",
+      "preview": "Preview",
+      "placeholder": "Write ground rules in Markdown",
+      "mdSupport": "Markdown supported: **bold**, *italic*, ## heading, - list",
+      "saving": "Saving...",
+      "save": "Save"
+    },
+    "members": {
+      "heading": "Members · {count}",
+      "admin": "Admin",
+      "changeToMember": "Change to Member",
+      "changeToAdmin": "Admin",
+      "removeMember": "Remove"
+    },
+    "invite": {
+      "heading": "Invite Code",
+      "expired": "Expired",
+      "generate": "Generate a code",
+      "copy": "Copy invite code",
+      "refresh": "Regenerate invite code",
+      "expiresIn": "until expiry",
+      "expiredMessage": "Code has expired. Please generate a new one.",
+      "generateMessage": "Generate an invite code.",
+      "copied": "Copied!"
+    },
+    "danger": {
+      "heading": "Danger Zone",
+      "policyTitle": "Study Deletion Policy",
+      "policyRule1": "Can only be deleted when there is one admin.",
+      "policyRule2": "All problems, submissions, and analysis results will be permanently deleted.",
+      "policyRule3": "Deleted studies cannot be recovered.",
+      "multiAdminWarning": "Cannot delete with multiple admins. Remove other admins first.",
+      "deleteButton": "Delete Study"
+    },
+    "modal": {
+      "roleChange": {
+        "title": "Change role?",
+        "description": "Change {name}'s role to {role}.",
+        "cancel": "Cancel",
+        "confirm": "Change"
+      },
+      "delete": {
+        "title": "Delete this study?",
+        "description": "This action cannot be undone. All study data will be deleted.",
+        "cancel": "Cancel",
+        "deleting": "Deleting...",
+        "confirm": "Delete"
+      },
+      "saveInfo": {
+        "title": "Save study info?",
+        "description": "The updated study name and description will be saved.",
+        "cancel": "Cancel",
+        "confirm": "Save"
+      },
+      "saveRules": {
+        "title": "Save ground rules?",
+        "description": "Updated ground rules will apply to all members.",
+        "cancel": "Cancel",
+        "confirm": "Save"
+      },
+      "removeMember": {
+        "title": "Remove member?",
+        "description": "Remove {name} from the study. This action cannot be undone.",
+        "cancel": "Cancel",
+        "confirm": "Remove"
+      }
+    },
+    "roles": {
+      "admin": "Admin",
+      "member": "Member"
+    }
+  }
+}

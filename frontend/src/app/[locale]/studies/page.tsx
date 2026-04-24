@@ -1,8 +1,8 @@
 /**
- * @file 스터디 목록 페이지 (v3 Figma 디자인)
+ * @file 스터디 목록 페이지 (v3 Figma 디자인, i18n 적용)
  * @domain study
  * @layer page
- * @related StudyContext, studyApi, AppLayout
+ * @related StudyContext, studyApi, AppLayout, messages/studies.json
  */
 
 'use client';
@@ -11,6 +11,7 @@ import { useState, useEffect, useCallback, type ReactNode, type CSSProperties } 
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useTranslations } from 'next-intl';
 import { Users, Plus, ArrowRight, Crown, Settings } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -48,6 +49,8 @@ function getInitial(name: string): string {
  * @domain study
  */
 export default function StudiesPage(): ReactNode {
+  const t = useTranslations('studies');
+  const tErrors = useTranslations('errors');
   const router = useRouter();
   const { isAuthenticated } = useRequireAuth();
   const { setCurrentStudy, setStudies } = useStudy();
@@ -105,11 +108,11 @@ export default function StudiesPage(): ReactNode {
       setLocalStudies(data);
       setStudies(data);
     } catch {
-      setError('스터디 목록을 불러오는 데 실패했습니다.');
+      setError(t('list.error.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, [setStudies]);
+  }, [setStudies, t]);
 
   // ─── EFFECTS ───────────────────────────
 
@@ -151,12 +154,12 @@ export default function StudiesPage(): ReactNode {
       if (err instanceof ApiError) {
         setJoinError(err.message);
       } else {
-        setJoinError('초대 코드 확인에 실패했습니다.');
+        setJoinError(t('list.error.verifyFailed'));
       }
     } finally {
       setIsVerifying(false);
     }
-  }, [joinCode]);
+  }, [joinCode, t]);
 
   /**
    * 2단계: 닉네임 입력 후 실제 가입
@@ -164,7 +167,7 @@ export default function StudiesPage(): ReactNode {
    */
   const handleJoin = useCallback(async () => {
     if (!joinNickname.trim()) {
-      setJoinModalError('닉네임을 입력해주세요.');
+      setJoinModalError(t('list.joinModal.nicknameRequired'));
       return;
     }
     setJoinModalError(null);
@@ -181,12 +184,12 @@ export default function StudiesPage(): ReactNode {
       if (err instanceof ApiError) {
         setJoinModalError(err.message);
       } else {
-        setJoinModalError('스터디 가입에 실패했습니다.');
+        setJoinModalError(t('list.error.joinFailed'));
       }
     } finally {
       setIsJoining(false);
     }
-  }, [joinCode, joinNickname, studies, setStudies, setCurrentStudy, router]);
+  }, [joinCode, joinNickname, studies, setStudies, setCurrentStudy, router, t]);
 
   /**
    * 스터디 생성 제출
@@ -210,9 +213,9 @@ export default function StudiesPage(): ReactNode {
       createForm.reset();
       router.push(`/studies/${created.id}`);
     } catch {
-      setCreateApiError('스터디 생성에 실패했습니다. 다시 시도해주세요.');
+      setCreateApiError(t('list.error.createFailed'));
     }
-  }, [studies, setStudies, setCurrentStudy, createForm, router]);
+  }, [studies, setStudies, setCurrentStudy, createForm, router, t]);
 
   const openCreateModal = useCallback(() => {
     createForm.reset();
@@ -226,9 +229,9 @@ export default function StudiesPage(): ReactNode {
       <div className="space-y-6">
         {/* 페이지 헤더 */}
         <div style={fade(0)}>
-          <h1 className="text-[22px] font-bold tracking-tight text-text">내 스터디</h1>
+          <h1 className="text-[22px] font-bold tracking-tight text-text">{t('list.heading')}</h1>
           <p className="mt-0.5 text-sm text-text-2">
-            참여 중인 스터디를 관리하세요.
+            {t('list.description')}
           </p>
         </div>
 
@@ -244,7 +247,7 @@ export default function StudiesPage(): ReactNode {
             )}
             onClick={() => setActiveTab('my')}
           >
-            내 스터디
+            {t('list.tabMy')}
           </button>
           <button
             type="button"
@@ -256,7 +259,7 @@ export default function StudiesPage(): ReactNode {
             )}
             onClick={() => setActiveTab('explore')}
           >
-            스터디 탐색
+            {t('list.tabExplore')}
           </button>
         </div>
 
@@ -278,10 +281,10 @@ export default function StudiesPage(): ReactNode {
             ) : studies.length === 0 ? (
               <EmptyState
                 icon={Users}
-                title="참여 중인 스터디가 없습니다"
-                description="새 스터디를 만들거나 초대 코드로 가입하세요."
+                title={t('list.empty.title')}
+                description={t('list.empty.description')}
                 action={{
-                  label: '스터디 만들기',
+                  label: t('list.empty.action'),
                   onClick: openCreateModal,
                 }}
               />
@@ -320,17 +323,17 @@ export default function StudiesPage(): ReactNode {
                             {study.role === 'ADMIN' ? (
                               <Badge className="bg-bg-alt text-text-2">
                                 <Crown className="h-3 w-3" aria-hidden />
-                                관리자
+                                {t('list.card.admin')}
                               </Badge>
                             ) : (
                               <Badge className="bg-bg-alt text-text-2">
-                                멤버
+                                {t('list.card.member')}
                               </Badge>
                             )}
                           </div>
                           {study.memberCount !== undefined && (
                             <p className="mt-0.5 text-xs text-text-3">
-                              {study.memberCount}명 참여
+                              {t('list.card.memberCount', { count: study.memberCount })}
                             </p>
                           )}
                         </div>
@@ -342,7 +345,7 @@ export default function StudiesPage(): ReactNode {
                               e.stopPropagation();
                               router.push(`/studies/${study.id}/settings`);
                             }}
-                            aria-label="스터디 설정"
+                            aria-label={t('list.card.settings')}
                           >
                             <Settings className="h-4 w-4" aria-hidden />
                           </button>
@@ -368,7 +371,7 @@ export default function StudiesPage(): ReactNode {
                         router.push(`/studies/${study.id}`);
                       }}
                     >
-                      자세히 보기
+                      {t('list.card.viewDetail')}
                       <ArrowRight className="h-3.5 w-3.5" aria-hidden />
                     </button>
                   </Card>
@@ -386,7 +389,7 @@ export default function StudiesPage(): ReactNode {
                   >
                     <Plus className="h-5 w-5" style={{ color: 'var(--primary)' }} aria-hidden />
                   </div>
-                  <span className="text-sm font-medium">새 스터디 만들기</span>
+                  <span className="text-sm font-medium">{t('list.card.createNew')}</span>
                 </button>
               </div>
             )}
@@ -397,11 +400,11 @@ export default function StudiesPage(): ReactNode {
         {activeTab === 'explore' && (
           <Card style={fade(0.12)}>
             <CardContent className="space-y-3 py-4">
-              <p className="text-sm font-medium text-text">초대 코드로 가입</p>
+              <p className="text-sm font-medium text-text">{t('list.explore.joinByCode')}</p>
               <div className="flex items-start gap-2">
                 <div className="flex-1">
                   <Input
-                    placeholder="초대 코드 입력"
+                    placeholder={t('list.explore.codePlaceholder')}
                     value={joinCode}
                     onChange={(e) => {
                       setJoinCode(e.target.value);
@@ -418,7 +421,7 @@ export default function StudiesPage(): ReactNode {
                       joinError ? 'text-error' : 'text-transparent',
                     )}
                   >
-                    {joinError ?? '\u00A0'}
+                    {joinError ?? ' '}
                   </p>
                 </div>
                 <Button
@@ -427,7 +430,7 @@ export default function StudiesPage(): ReactNode {
                   disabled={isVerifying || !joinCode.trim()}
                   onClick={() => void handleVerify()}
                 >
-                  {isVerifying ? '확인 중...' : '가입'}
+                  {isVerifying ? t('list.explore.verifying') : t('list.explore.joinButton')}
                 </Button>
               </div>
             </CardContent>
@@ -441,9 +444,9 @@ export default function StudiesPage(): ReactNode {
               <form onSubmit={(e) => void createForm.handleSubmit(handleCreate)(e)} noValidate>
                 <CardContent className="space-y-4 py-5">
                   <div>
-                    <p id="create-study-title" className="text-sm font-semibold text-text">새 스터디 만들기</p>
+                    <p id="create-study-title" className="text-sm font-semibold text-text">{t('list.createModal.title')}</p>
                     <p className="mt-1 text-xs text-text-2">
-                      팀원들과 함께 알고리즘 문제를 풀어보세요
+                      {t('list.createModal.description')}
                     </p>
                   </div>
 
@@ -454,25 +457,25 @@ export default function StudiesPage(): ReactNode {
                   )}
 
                   <Input
-                    label="스터디 이름"
-                    placeholder="예: 알고리즘 스터디 1기"
+                    label={t('list.createModal.nameLabel')}
+                    placeholder={t('list.createModal.namePlaceholder')}
                     {...createForm.register('name')}
-                    error={createForm.formState.errors.name?.message}
+                    error={createForm.formState.errors.name?.message ? tErrors(createForm.formState.errors.name.message) : undefined}
                     disabled={createForm.formState.isSubmitting}
                     autoFocus
                   />
 
                   <Input
-                    label="닉네임"
-                    placeholder="스터디 내에서 사용할 닉네임"
+                    label={t('list.createModal.nicknameLabel')}
+                    placeholder={t('list.createModal.nicknamePlaceholder')}
                     {...createForm.register('nickname')}
-                    error={createForm.formState.errors.nickname?.message}
+                    error={createForm.formState.errors.nickname?.message ? tErrors(createForm.formState.errors.nickname.message) : undefined}
                     disabled={createForm.formState.isSubmitting}
                   />
 
                   <Input
-                    label="설명 (선택)"
-                    placeholder="스터디에 대한 간단한 설명"
+                    label={t('list.createModal.descriptionLabel')}
+                    placeholder={t('list.createModal.descriptionPlaceholder')}
                     {...createForm.register('description')}
                     disabled={createForm.formState.isSubmitting}
                   />
@@ -480,7 +483,7 @@ export default function StudiesPage(): ReactNode {
                   {/* 스터디 아바타 선택 */}
                   <div className="space-y-1.5">
                     <label className="text-[13px] font-medium text-text">
-                      스터디 아바타
+                      {t('list.createModal.avatarLabel')}
                     </label>
                     <div className="grid grid-cols-6 gap-2">
                       {STUDY_AVATAR_PRESETS.map((preset) => (
@@ -518,7 +521,7 @@ export default function StudiesPage(): ReactNode {
                       disabled={createForm.formState.isSubmitting}
                       onClick={() => setShowCreateModal(false)}
                     >
-                      취소
+                      {t('list.createModal.cancel')}
                     </Button>
                     <Button
                       type="submit"
@@ -530,10 +533,10 @@ export default function StudiesPage(): ReactNode {
                       {createForm.formState.isSubmitting ? (
                         <>
                           <InlineSpinner />
-                          생성 중...
+                          {t('list.createModal.creating')}
                         </>
                       ) : (
-                        '스터디 만들기'
+                        t('list.createModal.submit')
                       )}
                     </Button>
                   </div>
@@ -552,13 +555,13 @@ export default function StudiesPage(): ReactNode {
             <Card className="mx-4 w-full max-w-sm">
               <CardContent className="space-y-4 py-5">
                 <div>
-                  <p id="join-study-title" className="text-sm font-semibold text-text">스터디 가입</p>
+                  <p id="join-study-title" className="text-sm font-semibold text-text">{t('list.joinModal.title')}</p>
                   <p className="mt-1 text-xs text-text-2">
-                    <span className="font-medium text-primary">{verifiedStudyName}</span>에서 사용할 닉네임을 입력해주세요.
+                    {t('list.joinModal.nicknamePrompt', { name: verifiedStudyName })}
                   </p>
                 </div>
                 <Input
-                  placeholder="닉네임 입력"
+                  placeholder={t('list.joinModal.nicknamePlaceholder')}
                   value={joinNickname}
                   onChange={(e) => {
                     setJoinNickname(e.target.value);
@@ -581,7 +584,7 @@ export default function StudiesPage(): ReactNode {
                     onClick={() => setShowNicknameModal(false)}
                     disabled={isJoining}
                   >
-                    취소
+                    {t('list.joinModal.cancel')}
                   </Button>
                   <Button
                     variant="primary"
@@ -590,7 +593,7 @@ export default function StudiesPage(): ReactNode {
                     disabled={isJoining || !joinNickname.trim()}
                     onClick={() => void handleJoin()}
                   >
-                    {isJoining ? '가입 중...' : '가입하기'}
+                    {isJoining ? t('list.joinModal.joining') : t('list.joinModal.submit')}
                   </Button>
                 </div>
               </CardContent>

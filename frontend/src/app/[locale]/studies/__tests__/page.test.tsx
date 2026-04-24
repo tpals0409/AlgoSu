@@ -147,13 +147,13 @@ describe('StudiesPage', () => {
 
   it('페이지 헤더가 렌더링된다', async () => {
     renderWithI18n(<StudiesPage />);
-    expect(screen.getAllByText('내 스터디').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('참여 중인 스터디를 관리하세요.')).toBeInTheDocument();
+    expect(screen.getAllByText(/내 스터디/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/참여 중인 스터디를 관리하세요/)).toBeInTheDocument();
   });
 
   it('스터디 탐색 탭이 표시된다', () => {
     renderWithI18n(<StudiesPage />);
-    expect(screen.getByText('스터디 탐색')).toBeInTheDocument();
+    expect(screen.getByText(/스터디 탐색/)).toBeInTheDocument();
   });
 
   it('AppLayout으로 감싸져 렌더링된다', () => {
@@ -163,10 +163,10 @@ describe('StudiesPage', () => {
 
   it('초대 코드 입력 영역이 스터디 탐색 탭에서 표시된다', () => {
     renderWithI18n(<StudiesPage />);
-    const exploreTab = screen.getByText('스터디 탐색');
+    const exploreTab = screen.getByText(/스터디 탐색/);
     fireEvent.click(exploreTab);
-    expect(screen.getByText('초대 코드로 가입')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('초대 코드 입력')).toBeInTheDocument();
+    expect(screen.getByText(/초대 코드로 가입/)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/초대 코드 입력/)).toBeInTheDocument();
   });
 
   it('빈 상태에서 EmptyState가 표시된다', async () => {
@@ -178,6 +178,6 @@ describe('StudiesPage', () => {
 
     const empty = await screen.findByTestId('empty-state');
     expect(empty).toBeInTheDocument();
-    expect(screen.getByText('참여 중인 스터디가 없습니다')).toBeInTheDocument();
+    expect(screen.getByText(/참여 중인 스터디가 없습니다/)).toBeInTheDocument();
   });
 });

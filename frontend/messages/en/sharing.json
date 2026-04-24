@@ -1,0 +1,56 @@
+{
+  "error": {
+    "invalidLink": "Invalid sharing link.",
+    "loadFailed": "Failed to load study information."
+  },
+  "header": {
+    "sharedDescription": "This is a shared study room. Select a problem to view each member's solution.",
+    "guestBadge": "Guest",
+    "themeToggle": "Toggle theme"
+  },
+  "stats": {
+    "members": "Members",
+    "problems": "Problems",
+    "submissions": "Submissions"
+  },
+  "problemList": {
+    "empty": "No problems registered.",
+    "submittedCount": "{count} submitted"
+  },
+  "submissionList": {
+    "totalMembers": "Total Members",
+    "submitted": "Submitted",
+    "analyzed": "Analyzed",
+    "empty": "No submissions yet.",
+    "mySubmission": "My Submission",
+    "avatarAlt": "{name} avatar",
+    "scoreUnit": "{score} pts"
+  },
+  "analysis": {
+    "completed": "Analysis Complete",
+    "scoreUnit": "{score} pts",
+    "codeHeader": "Code",
+    "copied": "Copied",
+    "copy": "Copy",
+    "codeUnavailable": "Unable to load submitted code.",
+    "aiResult": "AI Analysis Result",
+    "notCompleted": "Analysis is not yet complete. (Status: {status})",
+    "timeComplexity": "Time {complexity}",
+    "spaceComplexity": "Space {complexity}",
+    "categoryEvaluation": "Category Evaluation",
+    "optimizedCode": "AI Optimized Code"
+  },
+  "categories": {
+    "efficiency": "Efficiency",
+    "readability": "Readability",
+    "correctness": "Correctness",
+    "structure": "Code Structure",
+    "bestPractice": "Best Practice",
+    "style": "Code Style",
+    "maintainability": "Maintainability"
+  },
+  "memberName": {
+    "anonymous": "Anonymous",
+    "profileOwner": "Profile Owner"
+  }
+}

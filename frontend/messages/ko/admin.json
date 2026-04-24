@@ -1,0 +1,60 @@
+{
+  "feedbacks": {
+    "heading": "피드백 관리",
+    "description": "사용자 피드백을 확인하고 상태를 관리합니다.",
+    "stats": {
+      "total": "전체",
+      "open": "미해결",
+      "bug": "버그"
+    },
+    "search": {
+      "placeholder": "내용 검색...",
+      "button": "검색"
+    },
+    "filter": {
+      "all": "전체",
+      "categoryLabel": "카테고리:"
+    },
+    "status": {
+      "OPEN": "열림",
+      "IN_PROGRESS": "진행 중",
+      "RESOLVED": "해결됨"
+    },
+    "category": {
+      "GENERAL": "일반",
+      "BUG": "버그",
+      "FEATURE": "기능 요청",
+      "UX": "UX"
+    },
+    "table": {
+      "content": "내용",
+      "author": "작성자",
+      "category": "카테고리",
+      "status": "상태",
+      "createdAt": "등록일"
+    },
+    "loading": "불러오는 중...",
+    "empty": "피드백이 없습니다.",
+    "toast": {
+      "loadFailed": "피드백 목록을 불러오지 못했습니다.",
+      "statusChanged": "상태가 {status}(으)로 변경되었습니다.",
+      "statusChangeFailed": "상태 변경에 실패했습니다."
+    },
+    "pagination": {
+      "prev": "이전",
+      "next": "다음",
+      "pageOf": "{page} / {total}"
+    },
+    "modal": {
+      "unknownAuthor": "알 수 없음",
+      "contentLabel": "내용",
+      "pageUrlLabel": "페이지 URL",
+      "browserInfoLabel": "브라우저 정보",
+      "screenshotLabel": "스크린샷",
+      "screenshotAlt": "피드백 스크린샷",
+      "createdAtLabel": "등록일:",
+      "resolvedAtLabel": "해결일:",
+      "statusChangeLabel": "상태 변경:"
+    }
+  }
+}

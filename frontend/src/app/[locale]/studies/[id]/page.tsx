@@ -1,8 +1,8 @@
 /**
- * @file 스터디 상세 페이지 — 3탭 (그라운드룰 / 문제 / 멤버)
+ * @file 스터디 상세 페이지 — 3탭 (그라운드룰 / 문제 / 멤버), i18n 적용
  * @domain study
  * @layer page
- * @related StudyContext, studyApi, AppLayout
+ * @related StudyContext, studyApi, AppLayout, messages/studies.json
  */
 
 'use client';
@@ -16,6 +16,7 @@ import {
   type CSSProperties,
 } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   ArrowLeft,
   Shield,
@@ -56,14 +57,6 @@ interface PageProps {
   readonly params: Promise<{ id: string }>;
 }
 
-// ─── CONSTANTS ───────────────────────────
-
-const TABS: { key: TabKey; label: string; icon: typeof Users }[] = [
-  { key: 'rules', label: '그라운드룰', icon: Shield },
-  { key: 'problems', label: '문제', icon: BookOpen },
-  { key: 'members', label: '멤버', icon: Users },
-];
-
 // ─── RENDER ──────────────────────────────
 
 /**
@@ -72,9 +65,17 @@ const TABS: { key: TabKey; label: string; icon: typeof Users }[] = [
  */
 export default function StudyDetailPage({ params }: PageProps): ReactNode {
   const { id: studyId } = use(params);
+  const t = useTranslations('studies');
   const router = useRouter();
   const { isAuthenticated } = useRequireAuth();
   const { user } = useAuth();
+
+  // ─── CONSTANTS (i18n 의존) ────────────────
+  const TABS: { key: TabKey; label: string; icon: typeof Users }[] = [
+    { key: 'rules', label: t('detail.tabs.rules'), icon: Shield },
+    { key: 'problems', label: t('detail.tabs.problems'), icon: BookOpen },
+    { key: 'members', label: t('detail.tabs.members'), icon: Users },
+  ];
 
   // ─── STATE ─────────────────────────────
   const [tab, setTab] = useState<TabKey>('rules');
@@ -88,8 +89,8 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
   // mount animation
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
-    const t = setTimeout(() => setMounted(true), 50);
-    return () => clearTimeout(t);
+    const tm = setTimeout(() => setMounted(true), 50);
+    return () => clearTimeout(tm);
   }, []);
 
   const fade = (delay = 0): CSSProperties => ({
@@ -130,12 +131,12 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
     } catch (err: unknown) {
       setError(
         (err as Error).message ??
-          '스터디 정보를 불러오는 데 실패했습니다.',
+          t('detail.error.loadFailed'),
       );
     } finally {
       setIsLoading(false);
     }
-  }, [studyId]);
+  }, [studyId, t]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -149,7 +150,7 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
     return (
       <AppLayout>
         <div className="flex min-h-[60vh] items-center justify-center">
-          <LoadingSpinner size="lg" label="스터디 정보를 불러오는 중..." />
+          <LoadingSpinner size="lg" label={t('detail.loading')} />
         </div>
       </AppLayout>
     );
@@ -167,7 +168,7 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
           >
             <ArrowLeft className="h-5 w-5" style={{ color: 'var(--text)' }} />
           </button>
-          <span className="text-sm text-text-2">스터디 목록</span>
+          <span className="text-sm text-text-2">{t('detail.backToList')}</span>
         </div>
       </AppLayout>
     );
@@ -212,13 +213,13 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
                 {isAdmin && (
                   <Badge className="bg-bg-alt text-text-2">
                     <Crown className="h-3 w-3" aria-hidden />
-                    관리자
+                    {t('detail.admin')}
                   </Badge>
                 )}
               </div>
               <span className="text-xs text-text-3">
                 {study?.description ? `${study.description} · ` : ''}
-                {memberCount}명 참여
+                {t('detail.memberCount', { count: memberCount })}
               </span>
             </div>
           </div>
@@ -229,7 +230,7 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
               type="button"
               className="shrink-0 rounded-lg p-1.5 text-text-3 transition-colors hover:bg-bg-alt hover:text-text"
               onClick={() => router.push(`/studies/${studyId}/settings`)}
-              aria-label="스터디 설정"
+              aria-label={t('detail.settings')}
             >
               <Settings className="h-4.5 w-4.5" aria-hidden />
             </button>
@@ -247,22 +248,22 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
           className="flex gap-1 rounded-card border border-border bg-bg-card p-1 shadow"
           style={fade(0.06)}
         >
-          {TABS.map((t) => {
-            const Icon = t.icon;
+          {TABS.map((tabItem) => {
+            const Icon = tabItem.icon;
             return (
               <button
-                key={t.key}
+                key={tabItem.key}
                 type="button"
-                onClick={() => setTab(t.key)}
+                onClick={() => setTab(tabItem.key)}
                 className={cn(
                   'flex flex-1 items-center justify-center gap-1.5 rounded-btn py-2 text-[13px] font-medium transition-all',
-                  tab === t.key
+                  tab === tabItem.key
                     ? 'bg-primary text-white'
                     : 'text-text-3 hover:text-text',
                 )}
               >
                 <Icon className="h-3.5 w-3.5" aria-hidden />
-                {t.label}
+                {tabItem.label}
               </button>
             );
           })}
@@ -307,6 +308,8 @@ function RulesTab({
   readonly isAdmin: boolean;
   readonly groundRules: string | null;
 }): ReactNode {
+  const t = useTranslations('studies');
+
   return (
     <div className="space-y-4 animate-fade-in">
       <Card>
@@ -315,7 +318,7 @@ function RulesTab({
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Shield className="h-4 w-4 text-primary" aria-hidden />
-              <span className="text-sm font-semibold text-text">그라운드룰</span>
+              <span className="text-sm font-semibold text-text">{t('detail.rules.title')}</span>
             </div>
           </div>
 
@@ -324,7 +327,7 @@ function RulesTab({
             <MarkdownViewer content={groundRules} />
           ) : (
             <p className="text-sm text-text-3">
-              아직 그라운드룰이 등록되지 않았습니다.
+              {t('detail.rules.empty')}
             </p>
           )}
         </CardContent>
@@ -345,11 +348,11 @@ function difficultyToTier(difficulty: string): string {
 /**
  * D-day 계산 — deadline까지 남은 일수
  */
-function calcDDay(deadline: string): string {
+function calcDDay(deadline: string, t: (key: string) => string): string {
   const now = new Date();
   const dl = new Date(deadline);
   const diff = Math.ceil((dl.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  if (diff < 0) return '마감';
+  if (diff < 0) return t('detail.problems.expired');
   if (diff === 0) return 'D-Day';
   return `D-${diff}`;
 }
@@ -363,6 +366,8 @@ function ProblemsTab({
 }: {
   readonly problems: Problem[];
 }): ReactNode {
+  const t = useTranslations('studies');
+
   // deadline이 지난 ACTIVE 문제는 종료로 간주
   const isExpired = (p: Problem) =>
     p.status === 'ACTIVE' && new Date(p.deadline) < new Date();
@@ -378,7 +383,7 @@ function ProblemsTab({
       sourcePlatform: p.sourcePlatform,
       tier: difficultyToTier(p.difficulty),
       tags: p.tags ?? [],
-      dDay: calcDDay(p.deadline),
+      dDay: calcDDay(p.deadline, t),
     }));
 
   const endedProblems = problems
@@ -399,7 +404,7 @@ function ProblemsTab({
     <div className="space-y-5 animate-fade-in">
       {/* 진행 중 */}
       <div className="space-y-2">
-        <p className="text-sm font-semibold text-text">진행 중</p>
+        <p className="text-sm font-semibold text-text">{t('detail.problems.active')}</p>
         {activeProblems.length > 0 ? (
           <div className="space-y-2">
             {activeProblems.map((p) => (
@@ -409,7 +414,7 @@ function ProblemsTab({
         ) : (
           <Card>
             <CardContent className="py-6 text-center">
-              <p className="text-sm text-text-3">진행 중인 문제가 없습니다.</p>
+              <p className="text-sm text-text-3">{t('detail.problems.emptyActive')}</p>
             </CardContent>
           </Card>
         )}
@@ -417,7 +422,7 @@ function ProblemsTab({
 
       {/* 종료된 문제 */}
       <div className="space-y-2">
-        <p className="text-sm font-semibold text-text">종료된 문제</p>
+        <p className="text-sm font-semibold text-text">{t('detail.problems.ended')}</p>
         {endedProblems.length > 0 ? (
           <div className="space-y-2">
             {endedProblems.map((p) => (
@@ -427,7 +432,7 @@ function ProblemsTab({
         ) : (
           <Card>
             <CardContent className="py-6 text-center">
-              <p className="text-sm text-text-3">종료된 문제가 없습니다.</p>
+              <p className="text-sm text-text-3">{t('detail.problems.emptyEnded')}</p>
             </CardContent>
           </Card>
         )}
@@ -441,6 +446,8 @@ function ProblemsTab({
  * @domain study
  */
 function ProblemCard({ problem }: { readonly problem: { id: string; number: number; title: string; difficulty: import('@/lib/constants').Difficulty | null; level?: number | null; sourcePlatform?: 'BOJ' | 'PROGRAMMERS' | null; tier: string; tags: string[]; dDay?: string; ended?: boolean } }): ReactNode {
+  const t = useTranslations('studies');
+
   return (
     <Card className="p-0 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3">
@@ -484,7 +491,7 @@ function ProblemCard({ problem }: { readonly problem: { id: string; number: numb
           <Badge variant="warning">{problem.dDay}</Badge>
         )}
         {problem.ended && (
-          <Badge className="bg-bg-alt text-text-3">종료</Badge>
+          <Badge className="bg-bg-alt text-text-3">{t('detail.problems.statusEnded')}</Badge>
         )}
       </div>
     </Card>
@@ -512,6 +519,8 @@ function MembersTab({
   readonly totalProblems: number;
   readonly onNicknameUpdated: () => Promise<void>;
 }): ReactNode {
+  const t = useTranslations('studies');
+
   // 닉네임 수정 상태
   const [editingNickname, setEditingNickname] = useState(false);
   const [nicknameValue, setNicknameValue] = useState('');
@@ -605,7 +614,7 @@ function MembersTab({
                       className="rounded p-0.5 text-success hover:bg-success/10 disabled:opacity-50"
                       onClick={() => void saveNickname()}
                       disabled={nicknameSaving}
-                      aria-label="저장"
+                      aria-label={t('detail.members.save')}
                     >
                       <Check className="h-3.5 w-3.5" aria-hidden />
                     </button>
@@ -614,7 +623,7 @@ function MembersTab({
                       className="rounded p-0.5 text-text-3 hover:bg-bg-alt"
                       onClick={() => setEditingNickname(false)}
                       disabled={nicknameSaving}
-                      aria-label="취소"
+                      aria-label={t('detail.members.cancel')}
                     >
                       <X className="h-3.5 w-3.5" aria-hidden />
                     </button>
@@ -630,7 +639,7 @@ function MembersTab({
                           setNicknameValue(name);
                           setEditingNickname(true);
                         }}
-                        aria-label="닉네임 수정"
+                        aria-label={t('detail.members.editNickname')}
                       >
                         <Pencil className="h-3 w-3" aria-hidden />
                       </button>
@@ -640,17 +649,17 @@ function MembersTab({
                 {role === 'ADMIN' ? (
                   <Badge className="bg-bg-alt text-text-2">
                     <Crown className="h-2.5 w-2.5" aria-hidden />
-                    관리자
+                    {t('detail.admin')}
                   </Badge>
                 ) : (
-                  <Badge className="bg-bg-alt text-text-2">멤버</Badge>
+                  <Badge className="bg-bg-alt text-text-2">{t('detail.member')}</Badge>
                 )}
                 {isMe && !editingNickname && (
                   <span
                     className="rounded-full px-1.5 py-0.5 text-[10px] font-medium"
                     style={{ backgroundColor: 'var(--primary-soft)', color: 'var(--primary)' }}
                   >
-                    나
+                    {t('detail.members.me')}
                   </span>
                 )}
               </div>
@@ -659,8 +668,8 @@ function MembersTab({
           </div>
 
           <div className="shrink-0 text-right">
-            <p className="text-sm font-semibold text-text">{done}제출</p>
-            <p className="text-[11px] text-text-3">{done}/{total} 완료</p>
+            <p className="text-sm font-semibold text-text">{t('detail.members.submissions', { count: done })}</p>
+            <p className="text-[11px] text-text-3">{t('detail.members.completed', { done, total })}</p>
           </div>
         </div>
 

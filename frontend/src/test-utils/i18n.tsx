@@ -25,6 +25,7 @@ import koAnalytics from '../../messages/ko/analytics.json';
 import koFeedback from '../../messages/ko/feedback.json';
 import koAccount from '../../messages/ko/account.json';
 import koUI from '../../messages/ko/ui.json';
+import koStudies from '../../messages/ko/studies.json';
 
 /** Default ko messages (all namespaces merged) */
 const DEFAULT_MESSAGES: AbstractIntlMessages = {
@@ -41,6 +42,7 @@ const DEFAULT_MESSAGES: AbstractIntlMessages = {
   feedback: koFeedback,
   account: koAccount,
   ui: koUI,
+  studies: koStudies,
 };
 
 interface RenderWithI18nOptions extends RenderOptions {

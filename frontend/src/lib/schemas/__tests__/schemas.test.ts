@@ -29,7 +29,7 @@ describe('studyCreateSchema', () => {
     });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues[0].message).toBe('스터디 이름을 입력해주세요.');
+      expect(result.error.issues[0].message).toBe('validation.study.nameRequired');
     }
   });
 
@@ -40,7 +40,7 @@ describe('studyCreateSchema', () => {
     });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues[0].message).toBe('스터디 이름은 2자 이상이어야 합니다.');
+      expect(result.error.issues[0].message).toBe('validation.study.nameTooShort');
     }
   });
 
@@ -51,7 +51,7 @@ describe('studyCreateSchema', () => {
     });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues[0].message).toBe('닉네임을 입력해주세요.');
+      expect(result.error.issues[0].message).toBe('validation.study.nicknameRequired');
     }
   });
 
@@ -100,7 +100,7 @@ describe('problemCreateSchema', () => {
     });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues[0].message).toBe('문제 제목을 입력해주세요.');
+      expect(result.error.issues[0].message).toBe('validation.problem.titleRequired');
     }
   });
 
@@ -111,7 +111,7 @@ describe('problemCreateSchema', () => {
     });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues[0].message).toBe('주차를 선택해주세요.');
+      expect(result.error.issues[0].message).toBe('validation.problem.weekNumberRequired');
     }
   });
 
@@ -122,7 +122,7 @@ describe('problemCreateSchema', () => {
     });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues[0].message).toBe('마감일을 선택해주세요.');
+      expect(result.error.issues[0].message).toBe('validation.problem.deadlineRequired');
     }
   });
 
@@ -170,7 +170,7 @@ describe('submissionSchema', () => {
     });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues[0].message).toBe('문제 ID가 필요합니다.');
+      expect(result.error.issues[0].message).toBe('validation.submission.problemIdRequired');
     }
   });
 
@@ -181,7 +181,7 @@ describe('submissionSchema', () => {
     });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues[0].message).toBe('언어를 선택해주세요.');
+      expect(result.error.issues[0].message).toBe('validation.submission.languageRequired');
     }
   });
 
@@ -192,7 +192,7 @@ describe('submissionSchema', () => {
     });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues[0].message).toBe('코드를 입력해주세요.');
+      expect(result.error.issues[0].message).toBe('validation.submission.codeRequired');
     }
   });
 

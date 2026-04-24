@@ -5,6 +5,7 @@ import SubmissionStatusPage from '../page';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn(), refresh: jest.fn() }),
+  useParams: () => ({ locale: 'ko' }),
   usePathname: () => '/submissions/sub-123/status',
 }));
 

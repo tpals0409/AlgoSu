@@ -1,8 +1,8 @@
 /**
- * @file 게스트 스터디룸 — 공유 링크 기반 읽기 전용 뷰
+ * @file 게스트 스터디룸 — 공유 링크 기반 읽기 전용 뷰 (i18n 적용)
  * @domain share
  * @layer page
- * @related GuestContext.tsx, anonymize.ts, publicApi
+ * @related GuestContext.tsx, anonymize.ts, publicApi, messages/sharing.json
  *
  * 보안: 쓰기 UI 일체 숨김, 익명화 적용
  * UI: 스터디룸(study-room) 디자인 시스템 착안
@@ -25,6 +25,7 @@ import {
   Clock, Zap, ChevronDown, BarChart3, Sun, Moon,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { useTranslations, useLocale } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { GuestProvider, useGuest } from '@/contexts/GuestContext';
 import { publicApi, type Problem, type Submission, type AnalysisResult } from '@/lib/api';
@@ -48,24 +49,15 @@ function barColor(score: number): string {
   return 'var(--error)';
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  efficiency: '효율성',
-  readability: '가독성',
-  correctness: '정확성',
-  structure: '코드 구조',
-  bestPractice: '모범 사례',
-  style: '코드 스타일',
-  maintainability: '유지보수성',
-};
-
 /* ───────────────── 페이지 진입점 ───────────────── */
 
 export default function SharedStudyPage(): ReactNode {
   const params = useParams();
   const token = params?.token as string;
+  const t = useTranslations('sharing');
 
   if (!token) {
-    return <ErrorView message="유효하지 않은 공유 링크입니다." />;
+    return <ErrorView message={t('error.invalidLink')} />;
   }
 
   return (
@@ -78,6 +70,7 @@ export default function SharedStudyPage(): ReactNode {
 /* ───────────────── 메인 콘텐츠 ───────────────── */
 
 function SharedStudyContent(): ReactNode {
+  const t = useTranslations('sharing');
   const { studyData, createdByUserId, token, loading, error } = useGuest();
   const [problems, setProblems] = useState<Problem[]>([]);
   const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
@@ -182,7 +175,7 @@ function SharedStudyContent(): ReactNode {
 
   if (loading) return <GuestShell><LoadingView /></GuestShell>;
   if (error) return <GuestShell><ErrorView message={error} /></GuestShell>;
-  if (!studyData) return <GuestShell><ErrorView message="스터디 정보를 불러올 수 없습니다." /></GuestShell>;
+  if (!studyData) return <GuestShell><ErrorView message={t('error.loadFailed')} /></GuestShell>;
 
   /* ── 3단계 뷰: 분석 → 제출 → 문제 목록 ── */
 
@@ -229,21 +222,21 @@ function SharedStudyContent(): ReactNode {
             {studyData.studyName}
           </h1>
           <p className="mt-0.5 text-sm text-[var(--text-2)]">
-            공유된 스터디룸입니다. 문제를 선택해 멤버별 풀이를 확인하세요.
+            {t('header.sharedDescription')}
           </p>
         </div>
 
         {/* 스탯 카드 — fade: 동적 애니메이션, Tailwind 전환 불가 */}
         <div className="grid grid-cols-3 gap-3" style={fade(0.1)}>
-          <StatCard icon={<Users size={18} />} value={studyData.memberCount} label="멤버" bg="var(--primary-soft)" fg="var(--primary)" />
-          <StatCard icon={<FileText size={18} />} value={problems.length} label="문제" bg="var(--info-soft)" fg="var(--info)" />
-          <StatCard icon={<CheckCircle2 size={18} />} value={uniqueSubmissionCount} label="제출" bg="var(--success-soft)" fg="var(--success)" />
+          <SharedStatCard icon={<Users size={18} />} value={studyData.memberCount} label={t('stats.members')} bg="var(--primary-soft)" fg="var(--primary)" />
+          <SharedStatCard icon={<FileText size={18} />} value={problems.length} label={t('stats.problems')} bg="var(--info-soft)" fg="var(--info)" />
+          <SharedStatCard icon={<CheckCircle2 size={18} />} value={uniqueSubmissionCount} label={t('stats.submissions')} bg="var(--success-soft)" fg="var(--success)" />
         </div>
 
         {/* 주차별 문제 목록 */}
         {problems.length === 0 ? (
           <Card className="p-8 text-center text-[var(--text-3)]">
-            등록된 문제가 없습니다.
+            {t('problemList.empty')}
           </Card>
         ) : (
           Array.from(weekGroups.entries()).map(([week, weekProblems], wi) => (
@@ -315,7 +308,7 @@ function SharedStudyContent(): ReactNode {
                             />
                           </div>
                           <span className="shrink-0 text-[11px] font-medium text-[var(--text-3)]">
-                            {subCount}명 제출
+                            {t('problemList.submittedCount', { count: subCount })}
                           </span>
                         </div>
                       </div>
@@ -345,6 +338,9 @@ function SubmissionListView({ problem, submissions, onSelect, onBack, createdByU
   readonly members: Array<{ userId: string; nickname: string; role: string }>;
   readonly memberCount: number;
 }): ReactNode {
+  const t = useTranslations('sharing');
+  const locale = useLocale();
+
   /* 고유 유저 수 */
   const uniqueSubmitters = new Set(submissions.map((s) => s.userId)).size;
   const analyzedCount = submissions.filter((s) => s.aiScore != null).length;
@@ -384,33 +380,33 @@ function SubmissionListView({ problem, submissions, onSelect, onBack, createdByU
             <Users className="h-4 w-4 text-[var(--text-3)]" />
             <span className="text-lg font-bold text-[var(--text)]">{memberCount}</span>
           </div>
-          <p className="text-[11px] text-[var(--text-3)]">전체 멤버</p>
+          <p className="text-[11px] text-[var(--text-3)]">{t('submissionList.totalMembers')}</p>
         </Card>
         <Card className="p-3">
           <div className="flex items-center justify-center gap-1.5">
             <CheckCircle2 className="h-4 w-4 text-[var(--success)]" />
             <span className="text-lg font-bold text-[var(--text)]">{uniqueSubmitters}</span>
           </div>
-          <p className="text-[11px] text-[var(--text-3)]">제출</p>
+          <p className="text-[11px] text-[var(--text-3)]">{t('submissionList.submitted')}</p>
         </Card>
         <Card className="p-3">
           <div className="flex items-center justify-center gap-1.5">
             <Brain className="h-4 w-4 text-[var(--primary)]" />
             <span className="text-lg font-bold text-[var(--text)]">{analyzedCount}</span>
           </div>
-          <p className="text-[11px] text-[var(--text-3)]">분석 완료</p>
+          <p className="text-[11px] text-[var(--text-3)]">{t('submissionList.analyzed')}</p>
         </Card>
       </div>
 
       {/* 제출 카드 그리드 */}
       {submissions.length === 0 ? (
         <Card className="p-8 text-center text-[var(--text-3)]">
-          아직 제출 기록이 없습니다.
+          {t('submissionList.empty')}
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {submissions.map((sub) => {
-            const memberName = getMemberDisplayName(sub.userId, createdByUserId, token, members);
+            const memberName = getMemberDisplayName(sub.userId, createdByUserId, token, members, t);
             const isOwner = !!(sub.userId && createdByUserId && shouldShowRealName(sub.userId, createdByUserId));
             return (
               <Card
@@ -427,7 +423,7 @@ function SubmissionListView({ problem, submissions, onSelect, onBack, createdByU
                   {/* 아바타 */}
                   <img
                     src={getAvatarSrc('default')}
-                    alt={`${memberName} 아바타`}
+                    alt={t('submissionList.avatarAlt', { name: memberName })}
                     className="h-10 w-10 shrink-0 rounded-full object-cover"
                   />
                   <div className="min-w-0 flex-1">
@@ -435,7 +431,7 @@ function SubmissionListView({ problem, submissions, onSelect, onBack, createdByU
                       <span className="text-[13px] font-semibold text-[var(--text)]">{memberName}</span>
                       {isOwner && (
                         <span className="rounded-full px-2 py-0.5 text-[10px] font-bold bg-[var(--primary-soft)] text-[var(--primary)]">
-                          내 제출
+                          {t('submissionList.mySubmission')}
                         </span>
                       )}
                       <span className="rounded-full px-2 py-0.5 text-[11px] font-medium uppercase bg-[var(--bg-alt)] text-[var(--text-2)]">
@@ -446,11 +442,11 @@ function SubmissionListView({ problem, submissions, onSelect, onBack, createdByU
                       {sub.aiScore != null && (
                         <span className="flex items-center gap-1 text-[11px] font-medium text-[var(--primary)]">
                           <Sparkles size={12} />
-                          {sub.aiScore}점
+                          {t('submissionList.scoreUnit', { score: sub.aiScore })}
                         </span>
                       )}
                       <span className="text-[11px] text-[var(--text-3)]">
-                        {new Date(sub.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        {new Date(sub.createdAt).toLocaleDateString(locale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
                   </div>
@@ -476,7 +472,9 @@ function AnalysisView({ submission, analysis, loading: analysisLoading, onBack, 
   readonly token: string;
   readonly members: Array<{ userId: string; nickname: string; role: string }>;
 }): ReactNode {
-  const memberName = getMemberDisplayName(submission.userId, createdByUserId, token, members);
+  const t = useTranslations('sharing');
+  const locale = useLocale();
+  const memberName = getMemberDisplayName(submission.userId, createdByUserId, token, members, t);
   const code = submission.code || (analysis as AnalysisResult & { code?: string } | null)?.code;
   const parsed = analysis ? parseFeedback(analysis.feedback, analysis.score, analysis.optimizedCode) : null;
   const [copied, setCopied] = useState(false);
@@ -525,21 +523,21 @@ function AnalysisView({ submission, analysis, loading: analysisLoading, onBack, 
           {analysis?.analysisStatus === 'completed' && (
             <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium bg-[var(--success-soft)] text-[var(--success)]">
               <span className="h-1.5 w-1.5 rounded-full bg-[var(--success)]" aria-hidden />
-              분석 완료
+              {t('analysis.completed')}
             </span>
           )}
           {/* 점수 뱃지 */}
           {parsed && (
             <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold bg-[var(--success-soft)] text-[var(--success)]">
-              {parsed.totalScore}점
+              {t('analysis.scoreUnit', { score: parsed.totalScore })}
             </span>
           )}
         </div>
 
         {/* 시간 */}
         <span className="text-[11px] sm:text-[12px] text-[var(--text-3)]">
-          {new Date(submission.createdAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })}{' '}
-          {new Date(submission.createdAt).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit', hour12: true })}
+          {new Date(submission.createdAt).toLocaleDateString(locale, { month: 'long', day: 'numeric' })}{' '}
+          {new Date(submission.createdAt).toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' })}
         </span>
       </div>
 
@@ -548,7 +546,7 @@ function AnalysisView({ submission, analysis, loading: analysisLoading, onBack, 
         <LoadingView />
       ) : analysis.analysisStatus !== 'completed' ? (
         <Card className="p-8 text-center text-[var(--text-3)]">
-          분석이 아직 완료되지 않았습니다. (상태: {analysis.analysisStatus})
+          {t('analysis.notCompleted', { status: analysis.analysisStatus })}
         </Card>
       ) : parsed && (
         /* ─── COMPLETED: 2-Column Layout ────── */
@@ -569,7 +567,7 @@ function AnalysisView({ submission, analysis, loading: analysisLoading, onBack, 
                     className="flex items-center gap-1.5 px-2.5 py-1 rounded-badge text-[11px] font-medium transition-colors hover:bg-bg-alt text-[var(--text-3)]"
                   >
                     {copied ? <Check className="h-3 w-3 text-[var(--success)]" /> : <Copy className="h-3 w-3" />}
-                    {copied ? '복사됨' : '복사'}
+                    {copied ? t('analysis.copied') : t('analysis.copy')}
                   </button>
                 )}
               </div>
@@ -583,7 +581,7 @@ function AnalysisView({ submission, analysis, loading: analysisLoading, onBack, 
                   />
                 ) : (
                   <div className="p-4 text-xs text-[var(--text-3)] bg-[var(--code-bg)]">
-                    제출한 코드를 불러올 수 없습니다.
+                    {t('analysis.codeUnavailable')}
                   </div>
                 )}
               </div>
@@ -597,7 +595,7 @@ function AnalysisView({ submission, analysis, loading: analysisLoading, onBack, 
               <div className="flex items-center justify-between px-5 h-12 shrink-0 border-b border-[var(--border)]">
                 <span className="flex items-center gap-2 text-[13px] font-semibold text-[var(--text)]">
                   <Brain className="h-4 w-4 text-[var(--primary)]" aria-hidden />
-                  AI 분석 결과
+                  {t('analysis.aiResult')}
                 </span>
               </div>
 
@@ -613,13 +611,13 @@ function AnalysisView({ submission, analysis, loading: analysisLoading, onBack, 
                     {parsed.timeComplexity && (
                       <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium bg-[var(--info-soft)] text-[var(--info)]">
                         <Clock className="h-3.5 w-3.5" aria-hidden />
-                        시간 {parsed.timeComplexity}
+                        {t('analysis.timeComplexity', { complexity: parsed.timeComplexity })}
                       </span>
                     )}
                     {parsed.spaceComplexity && (
                       <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium bg-[var(--primary-soft)] text-[var(--primary)]">
                         <Zap className="h-3.5 w-3.5" aria-hidden />
-                        공간 {parsed.spaceComplexity}
+                        {t('analysis.spaceComplexity', { complexity: parsed.spaceComplexity })}
                       </span>
                     )}
                   </div>
@@ -637,11 +635,12 @@ function AnalysisView({ submission, analysis, loading: analysisLoading, onBack, 
                   <div className="space-y-1">
                     <p className="flex items-center gap-1.5 text-[13px] font-medium pb-1 text-[var(--text)] border-b border-b-[var(--border)]">
                       <BarChart3 className="h-3.5 w-3.5 text-[var(--primary)]" aria-hidden />
-                      항목별 평가
+                      {t('analysis.categoryEvaluation')}
                     </p>
                     {parsed.categories.map((cat) => {
                       const color = barColor(cat.score);
-                      const label = CATEGORY_LABELS[cat.name] ?? cat.name;
+                      const categoryKey = `categories.${cat.name}` as const;
+                      const label = t.has(categoryKey) ? t(categoryKey) : cat.name;
                       return (
                         <div key={cat.name} className="py-2.5">
                           <div className="flex items-center justify-between mb-1">
@@ -673,7 +672,7 @@ function AnalysisView({ submission, analysis, loading: analysisLoading, onBack, 
                     >
                       <span className="flex items-center gap-1.5">
                         <Sparkles className="h-3.5 w-3.5 text-[var(--primary)]" aria-hidden />
-                        AI 개선 코드
+                        {t('analysis.optimizedCode')}
                       </span>
                       <ChevronDown
                         className={cn('h-4 w-4 transition-transform text-[var(--text-3)]', showOptimized && 'rotate-180')}
@@ -701,7 +700,7 @@ function AnalysisView({ submission, analysis, loading: analysisLoading, onBack, 
 
 /* ───────────────── 공통 컴포넌트 ───────────────── */
 
-function StatCard({ icon, value, label, bg, fg }: {
+function SharedStatCard({ icon, value, label, bg, fg }: {
   readonly icon: ReactNode;
   readonly value: number;
   readonly label: string;
@@ -726,6 +725,7 @@ function StatCard({ icon, value, label, bg, fg }: {
 }
 
 function GuestShell({ children }: { readonly children: ReactNode }): ReactNode {
+  const t = useTranslations('sharing');
   const { theme, setTheme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -737,12 +737,12 @@ function GuestShell({ children }: { readonly children: ReactNode }): ReactNode {
             <Image src="/avatars/default.svg" alt="AlgoSu" width={28} height={28} />
             <span className="text-sm font-semibold text-[var(--text)]">AlgoSu</span>
             <span className="rounded-badge px-2 py-0.5 text-[10px] font-medium bg-[var(--bg-alt)] text-[var(--text-3)]">
-              게스트
+              {t('header.guestBadge')}
             </span>
           </div>
           <button
             type="button"
-            aria-label="테마 전환"
+            aria-label={t('header.themeToggle')}
             onClick={() => setTheme(isDark ? 'light' : 'dark')}
             className="flex items-center justify-center rounded-btn p-2 transition-all duration-150 hover:bg-bg-alt text-[var(--text-3)]"
           >
@@ -779,11 +779,12 @@ function getMemberDisplayName(
   createdByUserId: string | null,
   token: string,
   members: Array<{ userId: string; nickname: string }>,
+  t: ReturnType<typeof useTranslations<'sharing'>>,
 ): string {
-  if (!userId) return '익명';
+  if (!userId) return t('memberName.anonymous');
   if (createdByUserId && shouldShowRealName(userId, createdByUserId)) {
     const member = members.find((m) => m.userId === userId);
-    return member?.nickname ?? '프로필 소유자';
+    return member?.nickname ?? t('memberName.profileOwner');
   }
   return getAnonymousName(userId, token);
 }

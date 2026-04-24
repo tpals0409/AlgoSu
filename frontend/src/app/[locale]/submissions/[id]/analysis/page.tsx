@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { useParams } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { ArrowLeft, Loader2, Copy, Check, ExternalLink, Clock, Zap, Sparkles, ChevronDown, Brain, BarChart3 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { useRouter } from '@/i18n/navigation';
@@ -58,6 +58,7 @@ export default function AnalysisPage(): ReactNode {
   const params = useParams();
   const router = useRouter();
   const t = useTranslations('submissions');
+  const locale = useLocale();
   const { isReady, isAuthenticated } = useRequireAuth();
   useRequireStudy();
   const { currentStudyId } = useStudy();
@@ -294,7 +295,7 @@ export default function AnalysisPage(): ReactNode {
           {/* 시간 + 문제 보기 링크 */}
           <div className="flex flex-wrap items-center justify-between gap-1">
             <span className="text-[11px] sm:text-[12px] text-text-3">
-              {submission ? `${relativeTime(submission.createdAt)} · ${new Date(submission.createdAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })} ${new Date(submission.createdAt).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit', hour12: true })}` : ''}
+              {submission ? `${relativeTime(submission.createdAt, locale)} · ${new Date(submission.createdAt).toLocaleDateString(locale, { month: 'long', day: 'numeric' })} ${new Date(submission.createdAt).toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' })}` : ''}
             </span>
             {submission && (
               <Link

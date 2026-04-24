@@ -10,16 +10,16 @@ export const problemCreateSchema = z.object({
   title: z
     .string()
     .trim()
-    .min(1, '문제 제목을 입력해주세요.'),
+    .min(1, 'validation.problem.titleRequired'),
   description: z.string().optional(),
   difficulty: z.string().optional(),
   weekNumber: z
     .string()
     .trim()
-    .min(1, '주차를 선택해주세요.'),
+    .min(1, 'validation.problem.weekNumberRequired'),
   deadline: z
     .string()
-    .min(1, '마감일을 선택해주세요.'),
+    .min(1, 'validation.problem.deadlineRequired'),
   allowedLanguages: z.array(z.string()),
   sourceUrl: z.string().optional(),
   sourcePlatform: z.string().optional(),

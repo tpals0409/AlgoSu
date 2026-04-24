@@ -1,8 +1,10 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithI18n } from '@/test-utils/i18n';
 import ProblemCreatePage from '../page';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
+  useParams: () => ({ locale: 'ko' }),
   usePathname: () => '/problems/create',
 }));
 
@@ -183,32 +185,32 @@ jest.mock('lucide-react', () => {
 
 describe('ProblemCreatePage', () => {
   it('ADMIN 사용자에게 문제 생성 폼이 렌더링된다', () => {
-    render(<ProblemCreatePage />);
+    renderWithI18n(<ProblemCreatePage />);
     expect(screen.getByText('문제 추가')).toBeInTheDocument();
   });
 
   it('AppLayout 안에 렌더링된다', () => {
-    render(<ProblemCreatePage />);
+    renderWithI18n(<ProblemCreatePage />);
     expect(screen.getByTestId('app-layout')).toBeInTheDocument();
   });
 
   it('프로그래머스 문제 검색 섹션이 기본 표시된다', () => {
-    render(<ProblemCreatePage />);
+    renderWithI18n(<ProblemCreatePage />);
     expect(screen.getByText('프로그래머스 문제 검색')).toBeInTheDocument();
   });
 
   it('기본 정보 섹션이 표시된다', () => {
-    render(<ProblemCreatePage />);
+    renderWithI18n(<ProblemCreatePage />);
     expect(screen.getByText('기본 정보')).toBeInTheDocument();
   });
 
   it('문제 생성 버튼이 표시된다', () => {
-    render(<ProblemCreatePage />);
+    renderWithI18n(<ProblemCreatePage />);
     expect(screen.getByText('문제 생성')).toBeInTheDocument();
   });
 
   it('뒤로가기 버튼이 표시된다', () => {
-    render(<ProblemCreatePage />);
+    renderWithI18n(<ProblemCreatePage />);
     expect(screen.getByText('문제 목록')).toBeInTheDocument();
   });
 });
@@ -227,7 +229,7 @@ describe('ProblemCreatePage - Non-ADMIN', () => {
       studiesLoaded: true,
     });
 
-    render(<ProblemCreatePage />);
+    renderWithI18n(<ProblemCreatePage />);
     expect(screen.getByText('문제 생성은 관리자만 가능합니다.')).toBeInTheDocument();
 
     studyContext.useStudy = originalUseStudy;
