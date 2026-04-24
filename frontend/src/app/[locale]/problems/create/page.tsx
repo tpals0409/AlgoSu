@@ -53,6 +53,7 @@ export default function ProblemCreatePage(): ReactNode {
   const { isReady } = useRequireAuth();
   useRequireStudy();
   const { currentStudyId, currentStudyRole, incrementProblemsVersion } = useStudy();
+  const t = useTranslations('problems');
   const tErrors = useTranslations('errors');
 
   // ─── FORM (React Hook Form + Zod) ──────
@@ -167,8 +168,8 @@ export default function ProblemCreatePage(): ReactNode {
     const isApplied = activePlatform === 'BOJ' ? bojApplied : programmersApplied;
     if (!isApplied) {
       const errorMsg = activePlatform === 'BOJ'
-        ? '백준 문제를 검색해주세요.'
-        : '프로그래머스 문제를 검색해주세요.';
+        ? t('create.error.bojRequired')
+        : t('create.error.programmersRequired');
       if (activePlatform === 'BOJ') { setBojError(errorMsg); }
       else { setProgrammersError(errorMsg); }
       return;
@@ -215,7 +216,7 @@ export default function ProblemCreatePage(): ReactNode {
       incrementProblemsVersion();
       setCreated(true);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : '문제 생성에 실패했습니다.');
+      setSubmitError(err instanceof Error ? err.message : t('create.error.submitFailed'));
     }
   };
 
@@ -235,8 +236,8 @@ export default function ProblemCreatePage(): ReactNode {
     return (
       <AppLayout>
         <div className="space-y-4">
-          <Alert variant="error">문제 생성은 관리자만 가능합니다.</Alert>
-          <BackBtn label="문제 목록" href="/problems" />
+          <Alert variant="error">{t('create.error.adminOnly')}</Alert>
+          <BackBtn label={t('form.backToList')} href="/problems" />
         </div>
       </AppLayout>
     );
@@ -254,14 +255,14 @@ export default function ProblemCreatePage(): ReactNode {
                 <CheckCircle2 className="h-8 w-8 text-success" aria-hidden />
               </div>
               <div className="text-center">
-                <p className="text-sm font-medium text-text">문제가 등록되었습니다!</p>
+                <p className="text-sm font-medium text-text">{t('create.success.title')}</p>
                 <p className="mt-1 text-[11px] text-text-3">
-                  추가로 문제를 등록하거나 목록으로 돌아갈 수 있습니다.
+                  {t('create.success.description')}
                 </p>
               </div>
               <div className="flex gap-3 mt-2">
                 <Button variant="ghost" size="md" onClick={() => router.push('/problems')}>
-                  목록으로
+                  {t('create.success.goToList')}
                 </Button>
                 <Button
                   variant="primary"
@@ -294,7 +295,7 @@ export default function ProblemCreatePage(): ReactNode {
                     setSubmitError(null);
                   }}
                 >
-                  다시 등록
+                  {t('create.success.createAnother')}
                 </Button>
               </div>
             </CardContent>
@@ -310,12 +311,12 @@ export default function ProblemCreatePage(): ReactNode {
     <AppLayout>
       <div className="mx-auto max-w-[640px] space-y-4">
         {/* 뒤로가기 */}
-        <BackBtn label="문제 목록" href="/problems" className="-ml-1" />
+        <BackBtn label={t('form.backToList')} href="/problems" className="-ml-1" />
 
         {/* 페이지 타이틀 */}
         <div>
-          <h1 className="text-[22px] font-bold tracking-tight text-text">문제 추가</h1>
-          <p className="mt-0.5 text-xs text-text-3">문제를 검색하고 스터디에 추가하세요</p>
+          <h1 className="text-[22px] font-bold tracking-tight text-text">{t('create.heading')}</h1>
+          <p className="mt-0.5 text-xs text-text-3">{t('create.subheading')}</p>
         </div>
 
         {/* 카드 1: 문제 검색 (필수) */}
@@ -325,8 +326,8 @@ export default function ProblemCreatePage(): ReactNode {
               <div className="flex items-center justify-center w-7 h-7 rounded-md bg-primary-soft text-primary">
                 <Search className="h-3.5 w-3.5" />
               </div>
-              {activePlatform === 'BOJ' ? '백준 문제 검색' : '프로그래머스 문제 검색'}
-              <span className="text-error text-[11px]">필수</span>
+              {activePlatform === 'BOJ' ? t('form.searchTitle.boj') : t('form.searchTitle.programmers')}
+              <span className="text-error text-[11px]">{t('form.required')}</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -335,7 +336,7 @@ export default function ProblemCreatePage(): ReactNode {
               className="inline-flex rounded-btn p-0.5 mb-3"
               style={{ backgroundColor: 'var(--bg-alt)' }}
               role="tablist"
-              aria-label="출처 플랫폼 선택"
+              aria-label={t('form.platformAriaLabel')}
             >
               {(['PROGRAMMERS', 'BOJ'] as const).map((p) => (
                 <button
@@ -358,15 +359,15 @@ export default function ProblemCreatePage(): ReactNode {
                       : { color: 'var(--text-3)' }
                   }
                 >
-                  {p === 'BOJ' ? '백준' : '프로그래머스'}
+                  {p === 'BOJ' ? t('form.platform.boj') : t('form.platform.programmers')}
                 </button>
               ))}
             </div>
 
             <p className="text-[11px] text-text-3">
               {activePlatform === 'BOJ'
-                ? '문제 번호를 입력하면 제목, 난이도, 태그가 자동으로 입력됩니다.'
-                : '프로그래머스 문제 번호를 입력하면 자동으로 입력됩니다.'}
+                ? t('form.searchDesc.boj')
+                : t('form.searchDesc.programmers')}
             </p>
 
             {/* BOJ 검색 UI */}
@@ -379,7 +380,7 @@ export default function ProblemCreatePage(): ReactNode {
                       type="text"
                       inputMode="numeric"
                       pattern="[0-9]*"
-                      placeholder="문제 번호 (예: 1000)"
+                      placeholder={t('form.searchPlaceholder.boj')}
                       value={bojQuery}
                       onChange={(e) => { setBojQuery(e.target.value); setBojError(null); }}
                       onKeyDown={handleBojKeyDown}
@@ -396,7 +397,7 @@ export default function ProblemCreatePage(): ReactNode {
                       className="shrink-0"
                     >
                       <X className="h-3.5 w-3.5" />
-                      연결 해제
+                      {t('form.disconnect')}
                     </Button>
                   ) : (
                     <Button
@@ -407,7 +408,7 @@ export default function ProblemCreatePage(): ReactNode {
                       onClick={() => void handleBojSearch()}
                       className="shrink-0"
                     >
-                      {bojSearching ? <InlineSpinner /> : '검색'}
+                      {bojSearching ? <InlineSpinner /> : t('form.search')}
                     </Button>
                   )}
                 </div>
@@ -455,7 +456,7 @@ export default function ProblemCreatePage(): ReactNode {
                       type="text"
                       inputMode="numeric"
                       pattern="[0-9]*"
-                      placeholder="문제 번호 (예: 42839)"
+                      placeholder={t('form.searchPlaceholder.programmers')}
                       value={programmersQuery}
                       onChange={(e) => { setProgrammersQuery(e.target.value); setProgrammersError(null); }}
                       onKeyDown={handleProgrammersKeyDown}
@@ -472,7 +473,7 @@ export default function ProblemCreatePage(): ReactNode {
                       className="shrink-0"
                     >
                       <X className="h-3.5 w-3.5" />
-                      연결 해제
+                      {t('form.disconnect')}
                     </Button>
                   ) : (
                     <Button
@@ -483,7 +484,7 @@ export default function ProblemCreatePage(): ReactNode {
                       onClick={() => void handleProgrammersSearch()}
                       className="shrink-0"
                     >
-                      {programmersSearching ? <InlineSpinner /> : '검색'}
+                      {programmersSearching ? <InlineSpinner /> : t('form.search')}
                     </Button>
                   )}
                 </div>
@@ -530,14 +531,14 @@ export default function ProblemCreatePage(): ReactNode {
               <div className="flex items-center justify-center w-7 h-7 rounded-md bg-primary-soft text-primary">
                 <FileText className="h-3.5 w-3.5" />
               </div>
-              기본 정보
+              {t('form.basicInfo')}
             </CardTitle>
           </CardHeader>
           <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} noValidate>
             <CardContent className="space-y-4">
               <Input
-                label="제목"
-                placeholder="문제 검색 시 자동 입력됩니다"
+                label={t('create.titleLabel')}
+                placeholder={t('create.titlePlaceholder')}
                 {...register('title')}
                 error={errors.title?.message ? tErrors(errors.title.message) : undefined}
                 readOnly
@@ -546,10 +547,10 @@ export default function ProblemCreatePage(): ReactNode {
               />
 
               <div className="flex flex-col">
-                <label htmlFor="create-description" className={labelClass}>설명 (선택)</label>
+                <label htmlFor="create-description" className={labelClass}>{t('form.descriptionLabel')}</label>
                 <textarea
                   id="create-description"
-                  placeholder="문제에 대한 설명을 입력하세요"
+                  placeholder={t('form.descriptionPlaceholder')}
                   {...register('description')}
                   disabled={isSubmitting}
                   rows={4}
@@ -559,14 +560,14 @@ export default function ProblemCreatePage(): ReactNode {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col">
-                  <label htmlFor="create-difficulty" className={labelClass}>난이도</label>
+                  <label htmlFor="create-difficulty" className={labelClass}>{t('form.difficultyLabel')}</label>
                   <select
                     id="create-difficulty"
                     {...register('difficulty')}
                     disabled={isSubmitting || bojApplied || programmersApplied}
                     className={selectClass}
                   >
-                    <option value="">선택 안 함</option>
+                    <option value="">{t('form.difficultyNone')}</option>
                     {DIFFICULTIES.map((d) => (
                       <option key={d} value={d}>{DIFFICULTY_LABELS[d]}</option>
                     ))}
@@ -575,7 +576,7 @@ export default function ProblemCreatePage(): ReactNode {
 
                 <div className="flex flex-col">
                   <label htmlFor="create-weekNumber" className={labelClass}>
-                    주차 <span className="text-error text-[11px]">필수</span>
+                    {t('form.weekLabel')} <span className="text-error text-[11px]">{t('form.required')}</span>
                   </label>
                   <Controller
                     name="weekNumber"
@@ -611,12 +612,12 @@ export default function ProblemCreatePage(): ReactNode {
                 <div className="flex items-center justify-center w-7 h-7 rounded-md bg-primary-soft text-primary">
                   <Clock className="h-3.5 w-3.5" />
                 </div>
-                <span className="text-sm font-semibold text-text">마감 & 설정</span>
+                <span className="text-sm font-semibold text-text">{t('create.deadlineSettings')}</span>
               </div>
 
               <div className="flex flex-col">
                 <label htmlFor="create-deadline" className={labelClass}>
-                  마감일 <span className="text-error text-[11px]">필수</span>
+                  {t('form.deadlineLabel')} <span className="text-error text-[11px]">{t('form.required')}</span>
                 </label>
                 <select
                   id="create-deadline"
@@ -625,7 +626,7 @@ export default function ProblemCreatePage(): ReactNode {
                   aria-required
                   className={`${selectClass} ${errors.deadline ? 'border-error' : ''}`}
                 >
-                  <option value="" disabled>요일을 선택하세요</option>
+                  <option value="" disabled>{t('form.deadlinePlaceholder')}</option>
                   {getWeekDates(weekNumber).map((d) => (
                     <option key={d.value} value={d.value}>{d.label}</option>
                   ))}
@@ -636,7 +637,7 @@ export default function ProblemCreatePage(): ReactNode {
               </div>
 
               <div className="flex flex-col">
-                <span className={labelClass}>허용 언어</span>
+                <span className={labelClass}>{t('form.allowedLanguages')}</span>
                 <div className="flex flex-wrap gap-1.5">
                   {LANGUAGES.map((lang) => {
                     const selected = allowedLanguages.includes(lang.value);
@@ -664,7 +665,7 @@ export default function ProblemCreatePage(): ReactNode {
               </div>
 
               <Input
-                label="출처 URL"
+                label={t('form.sourceUrl')}
                 {...register('sourceUrl')}
                 readOnly
                 tabIndex={-1}
@@ -672,7 +673,7 @@ export default function ProblemCreatePage(): ReactNode {
               />
 
               <Input
-                label="출처 플랫폼"
+                label={t('form.sourcePlatform')}
                 {...register('sourcePlatform')}
                 readOnly
                 tabIndex={-1}
@@ -698,7 +699,7 @@ export default function ProblemCreatePage(): ReactNode {
                 disabled={isSubmitting}
                 onClick={() => router.back()}
               >
-                취소
+                {t('form.cancel')}
               </Button>
               <Button
                 type="submit"
@@ -710,12 +711,12 @@ export default function ProblemCreatePage(): ReactNode {
                 {isSubmitting ? (
                   <>
                     <InlineSpinner />
-                    생성 중...
+                    {t('create.submitting')}
                   </>
                 ) : (
                   <>
                     <Plus className="h-4 w-4" />
-                    문제 생성
+                    {t('create.submitButton')}
                   </>
                 )}
               </Button>

@@ -65,6 +65,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
   const { isAuthenticated } = useRequireAuth();
   useRequireStudy();
   const { currentStudyId, currentStudyRole } = useStudy();
+  const t = useTranslations('problems');
   const tErrors = useTranslations('errors');
 
   // ─── STATE ──────────────────────────────
@@ -123,7 +124,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
     (newPlatform: 'BOJ' | 'PROGRAMMERS') => {
       if (newPlatform === activePlatform) return;
       if (bojApplied || programmersApplied) {
-        if (!window.confirm('플랫폼을 변경하면 검색 결과가 초기화됩니다. 계속하시겠습니까?')) return;
+        if (!window.confirm(t('edit.confirm.platformChange'))) return;
         handleBojReset();
         handleProgrammersReset();
       }
@@ -161,7 +162,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
         });
       } catch (err: unknown) {
         if (!cancelled) {
-          setLoadError((err as Error).message ?? '문제를 불러오는 데 실패했습니다.');
+          setLoadError((err as Error).message ?? t('edit.error.loadFailed'));
         }
       } finally {
         if (!cancelled) setIsPageLoading(false);
@@ -210,12 +211,12 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
       }
 
       if (problem.status === 'ACTIVE' && form.status === 'CLOSED') {
-        const confirmed = window.confirm('문제를 마감하면 더 이상 제출할 수 없습니다. 계속하시겠습니까?');
+        const confirmed = window.confirm(t('edit.confirm.closeActive'));
         if (!confirmed) return;
       }
 
       if (problem.status === 'DRAFT' && form.status === 'ACTIVE') {
-        const confirmed = window.confirm('문제를 활성화하면 멤버들이 이 문제를 보고 제출할 수 있습니다. 계속하시겠습니까?');
+        const confirmed = window.confirm(t('edit.confirm.activateDraft'));
         if (!confirmed) return;
       }
 
@@ -241,7 +242,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
         await problemApi.update(problemId, data);
         router.push(`/problems/${problemId}`);
       } catch (err) {
-        setSubmitError(err instanceof Error ? err.message : '문제 수정에 실패했습니다.');
+        setSubmitError(err instanceof Error ? err.message : t('edit.error.submitFailed'));
       } finally {
         setIsSubmitting(false);
       }
@@ -250,7 +251,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
   );
 
   const handleDelete = useCallback(async (): Promise<void> => {
-    const confirmed = window.confirm('정말 이 문제를 삭제하시겠습니까? 관련 제출 기록도 함께 삭제됩니다.');
+    const confirmed = window.confirm(t('edit.confirm.delete'));
     if (!confirmed) return;
 
     setIsDeleting(true);
@@ -258,7 +259,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
       await problemApi.delete(problemId);
       router.replace('/problems');
     } catch {
-      setSubmitError('문제 삭제에 실패했습니다.');
+      setSubmitError(t('edit.error.deleteFailed'));
       setIsDeleting(false);
     }
   }, [problemId, router]);
@@ -269,8 +270,8 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
     return (
       <AppLayout>
         <div className="space-y-4">
-          <Alert variant="error">문제 수정은 관리자만 가능합니다.</Alert>
-          <BackBtn label="문제 목록" href="/problems" />
+          <Alert variant="error">{t('edit.error.adminOnly')}</Alert>
+          <BackBtn label={t('form.backToList')} href="/problems" />
         </div>
       </AppLayout>
     );
@@ -294,8 +295,8 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
     return (
       <AppLayout>
         <div className="space-y-4">
-          <Alert variant="error">{loadError ?? '문제를 찾을 수 없습니다.'}</Alert>
-          <BackBtn label="문제 목록" href="/problems" />
+          <Alert variant="error">{loadError ?? t('edit.error.notFound')}</Alert>
+          <BackBtn label={t('form.backToList')} href="/problems" />
         </div>
       </AppLayout>
     );
@@ -307,12 +308,12 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
     <AppLayout>
       <div className="mx-auto max-w-[640px] space-y-4">
         {/* 뒤로가기 */}
-        <BackBtn label="문제 상세" href={`/problems/${problemId}`} className="-ml-1" />
+        <BackBtn label={t('edit.backLabel')} href={`/problems/${problemId}`} className="-ml-1" />
 
         {/* 페이지 타이틀 */}
         <div>
-          <h1 className="text-[22px] font-bold tracking-tight text-text">문제 수정</h1>
-          <p className="mt-0.5 text-xs text-text-3">문제 정보를 수정하거나 삭제할 수 있습니다</p>
+          <h1 className="text-[22px] font-bold tracking-tight text-text">{t('edit.heading')}</h1>
+          <p className="mt-0.5 text-xs text-text-3">{t('edit.subheading')}</p>
         </div>
 
         {/* 카드 1: 문제 검색 */}
@@ -322,7 +323,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
               <div className="flex items-center justify-center w-7 h-7 rounded-md bg-primary-soft text-primary">
                 <Search className="h-3.5 w-3.5" />
               </div>
-              {activePlatform === 'BOJ' ? '백준 문제 검색' : '프로그래머스 문제 검색'}
+              {activePlatform === 'BOJ' ? t('form.searchTitle.boj') : t('form.searchTitle.programmers')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -331,7 +332,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
               className="inline-flex rounded-btn p-0.5 mb-3"
               style={{ backgroundColor: 'var(--bg-alt)' }}
               role="tablist"
-              aria-label="출처 플랫폼 선택"
+              aria-label={t('form.platformAriaLabel')}
             >
               {(['PROGRAMMERS', 'BOJ'] as const).map((p) => (
                 <button
@@ -354,15 +355,15 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                       : { color: 'var(--text-3)' }
                   }
                 >
-                  {p === 'BOJ' ? '백준' : '프로그래머스'}
+                  {p === 'BOJ' ? t('form.platform.boj') : t('form.platform.programmers')}
                 </button>
               ))}
             </div>
 
             <p className="text-[11px] text-text-3">
               {activePlatform === 'BOJ'
-                ? '문제 번호를 입력하면 제목, 난이도, 태그가 자동으로 입력됩니다.'
-                : '프로그래머스 문제 번호를 입력하면 자동으로 입력됩니다.'}
+                ? t('form.searchDesc.boj')
+                : t('form.searchDesc.programmers')}
             </p>
 
             {/* BOJ 검색 UI */}
@@ -374,7 +375,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                     <input
                       type="text"
                       inputMode="numeric"
-                      placeholder="백준 문제번호로 검색"
+                      placeholder={t('edit.searchPlaceholderBoj')}
                       value={bojQuery}
                       onChange={(e) => { setBojQuery(e.target.value); setBojError(null); }}
                       onKeyDown={handleBojKeyDown}
@@ -392,7 +393,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                       className="shrink-0"
                     >
                       <X className="h-3.5 w-3.5" />
-                      연결 해제
+                      {t('form.disconnect')}
                     </Button>
                   ) : (
                     <Button
@@ -403,7 +404,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                       onClick={() => void handleBojSearch()}
                       className="shrink-0"
                     >
-                      {bojSearching ? <InlineSpinner /> : '검색'}
+                      {bojSearching ? <InlineSpinner /> : t('form.search')}
                     </Button>
                   )}
                 </div>
@@ -451,7 +452,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                       type="text"
                       inputMode="numeric"
                       pattern="[0-9]*"
-                      placeholder="문제 번호 (예: 42839)"
+                      placeholder={t('form.searchPlaceholder.programmers')}
                       value={programmersQuery}
                       onChange={(e) => { setProgrammersQuery(e.target.value); setProgrammersError(null); }}
                       onKeyDown={handleProgrammersKeyDown}
@@ -469,7 +470,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                       className="shrink-0"
                     >
                       <X className="h-3.5 w-3.5" />
-                      연결 해제
+                      {t('form.disconnect')}
                     </Button>
                   ) : (
                     <Button
@@ -480,7 +481,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                       onClick={() => void handleProgrammersSearch()}
                       className="shrink-0"
                     >
-                      {programmersSearching ? <InlineSpinner /> : '검색'}
+                      {programmersSearching ? <InlineSpinner /> : t('form.search')}
                     </Button>
                   )}
                 </div>
@@ -527,14 +528,14 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
               <div className="flex items-center justify-center w-7 h-7 rounded-md bg-primary-soft text-primary">
                 <FileText className="h-3.5 w-3.5" />
               </div>
-              기본 정보
+              {t('form.basicInfo')}
             </CardTitle>
           </CardHeader>
 
           <form onSubmit={(e) => void handleSubmit(e)} noValidate>
             <CardContent className="space-y-4">
               <Input
-                label="문제 제목"
+                label={t('edit.titleLabel')}
                 value={form.title}
                 onChange={handleChange('title')}
                 error={fieldErrors.title ? tErrors(fieldErrors.title) : undefined}
@@ -542,7 +543,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
               />
 
               <div className="flex flex-col">
-                <label htmlFor="edit-description" className={labelClass}>설명 (선택)</label>
+                <label htmlFor="edit-description" className={labelClass}>{t('form.descriptionLabel')}</label>
                 <textarea
                   id="edit-description"
                   value={form.description}
@@ -555,7 +556,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col">
-                  <label htmlFor="edit-difficulty" className={labelClass}>난이도</label>
+                  <label htmlFor="edit-difficulty" className={labelClass}>{t('form.difficultyLabel')}</label>
                   <select
                     id="edit-difficulty"
                     value={form.difficulty}
@@ -563,7 +564,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                     disabled={isSubmitting || bojApplied || programmersApplied}
                     className={selectClass}
                   >
-                    <option value="">선택 안 함</option>
+                    <option value="">{t('form.difficultyNone')}</option>
                     {DIFFICULTIES.map((d) => (
                       <option key={d} value={d}>{DIFFICULTY_LABELS[d]}</option>
                     ))}
@@ -572,7 +573,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
 
                 <div className="flex flex-col">
                   <label htmlFor="edit-weekNumber" className={labelClass}>
-                    주차 <span className="text-error text-[11px]">필수</span>
+                    {t('form.weekLabel')} <span className="text-error text-[11px]">{t('form.required')}</span>
                   </label>
                   <select
                     id="edit-weekNumber"
@@ -598,12 +599,12 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                 <div className="flex items-center justify-center w-7 h-7 rounded-md bg-primary-soft text-primary">
                   <Settings className="h-3.5 w-3.5" />
                 </div>
-                <span className="text-sm font-semibold text-text">마감 & 상태</span>
+                <span className="text-sm font-semibold text-text">{t('edit.deadlineSettings')}</span>
               </div>
 
               <div className="flex flex-col">
                 <label htmlFor="edit-deadline" className={labelClass}>
-                  마감일 <span className="text-error text-[11px]">필수</span>
+                  {t('form.deadlineLabel')} <span className="text-error text-[11px]">{t('form.required')}</span>
                 </label>
                 <select
                   id="edit-deadline"
@@ -614,7 +615,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                   aria-required
                   className={`${selectClass} ${fieldErrors.deadline ? 'border-error' : ''}`}
                 >
-                  <option value="" disabled>요일을 선택하세요</option>
+                  <option value="" disabled>{t('form.deadlinePlaceholder')}</option>
                   {getWeekDates(form.weekNumber).map((d) => (
                     <option key={d.value} value={d.value}>{d.label}</option>
                   ))}
@@ -625,7 +626,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
               </div>
 
               <div className="flex flex-col">
-                <label htmlFor="edit-status" className={labelClass}>상태</label>
+                <label htmlFor="edit-status" className={labelClass}>{t('edit.statusLabel')}</label>
                 <select
                   id="edit-status"
                   value={form.status}
@@ -641,7 +642,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
 
               {/* 허용 언어 */}
               <div className="flex flex-col">
-                <span className={labelClass}>허용 언어</span>
+                <span className={labelClass}>{t('form.allowedLanguages')}</span>
                 <div className="flex flex-wrap gap-1.5">
                   {LANGUAGES.map((lang) => {
                     const selected = form.allowedLanguages.includes(lang.value);
@@ -669,14 +670,14 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
               </div>
 
               <Input
-                label="출처 URL"
+                label={t('form.sourceUrl')}
                 value={form.sourceUrl}
                 onChange={handleChange('sourceUrl')}
                 disabled={isSubmitting || bojApplied || programmersApplied}
               />
 
               <Input
-                label="출처 플랫폼"
+                label={t('form.sourcePlatform')}
                 value={form.sourcePlatform}
                 onChange={handleChange('sourcePlatform')}
                 disabled
@@ -702,7 +703,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                   onClick={() => router.back()}
                   className="flex-1 sm:flex-initial"
                 >
-                  취소
+                  {t('form.cancel')}
                 </Button>
                 <Button
                   type="submit"
@@ -714,10 +715,10 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                   {isSubmitting ? (
                     <>
                       <InlineSpinner />
-                      수정 중...
+                      {t('edit.submitting')}
                     </>
                   ) : (
-                    '수정 완료'
+                    t('edit.submitButton')
                   )}
                 </Button>
               </div>
@@ -731,12 +732,12 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                 {isDeleting ? (
                   <>
                     <InlineSpinner />
-                    삭제 중...
+                    {t('edit.deleting')}
                   </>
                 ) : (
                   <>
                     <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                    삭제
+                    {t('edit.deleteButton')}
                   </>
                 )}
               </Button>

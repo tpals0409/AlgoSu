@@ -94,6 +94,88 @@
       "link": "GitHub 연동하기"
     }
   },
+  "form": {
+    "platform": {
+      "boj": "백준",
+      "programmers": "프로그래머스"
+    },
+    "searchTitle": {
+      "boj": "백준 문제 검색",
+      "programmers": "프로그래머스 문제 검색"
+    },
+    "searchDesc": {
+      "boj": "문제 번호를 입력하면 제목, 난이도, 태그가 자동으로 입력됩니다.",
+      "programmers": "프로그래머스 문제 번호를 입력하면 자동으로 입력됩니다."
+    },
+    "searchPlaceholder": {
+      "boj": "문제 번호 (예: 1000)",
+      "programmers": "문제 번호 (예: 42839)"
+    },
+    "disconnect": "연결 해제",
+    "search": "검색",
+    "basicInfo": "기본 정보",
+    "descriptionLabel": "설명 (선택)",
+    "descriptionPlaceholder": "문제에 대한 설명을 입력하세요",
+    "difficultyLabel": "난이도",
+    "difficultyNone": "선택 안 함",
+    "weekLabel": "주차",
+    "required": "필수",
+    "deadlineLabel": "마감일",
+    "deadlinePlaceholder": "요일을 선택하세요",
+    "allowedLanguages": "허용 언어",
+    "sourceUrl": "출처 URL",
+    "sourcePlatform": "출처 플랫폼",
+    "cancel": "취소",
+    "backToList": "문제 목록",
+    "platformAriaLabel": "출처 플랫폼 선택"
+  },
+  "create": {
+    "heading": "문제 추가",
+    "subheading": "문제를 검색하고 스터디에 추가하세요",
+    "titleLabel": "제목",
+    "titlePlaceholder": "문제 검색 시 자동 입력됩니다",
+    "deadlineSettings": "마감 & 설정",
+    "submitting": "생성 중...",
+    "submitButton": "문제 생성",
+    "success": {
+      "title": "문제가 등록되었습니다!",
+      "description": "추가로 문제를 등록하거나 목록으로 돌아갈 수 있습니다.",
+      "goToList": "목록으로",
+      "createAnother": "다시 등록"
+    },
+    "error": {
+      "adminOnly": "문제 생성은 관리자만 가능합니다.",
+      "submitFailed": "문제 생성에 실패했습니다.",
+      "bojRequired": "백준 문제를 검색해주세요.",
+      "programmersRequired": "프로그래머스 문제를 검색해주세요."
+    }
+  },
+  "edit": {
+    "heading": "문제 수정",
+    "subheading": "문제 정보를 수정하거나 삭제할 수 있습니다",
+    "backLabel": "문제 상세",
+    "titleLabel": "문제 제목",
+    "deadlineSettings": "마감 & 상태",
+    "statusLabel": "상태",
+    "submitting": "수정 중...",
+    "submitButton": "수정 완료",
+    "deleting": "삭제 중...",
+    "deleteButton": "삭제",
+    "searchPlaceholderBoj": "백준 문제번호로 검색",
+    "error": {
+      "adminOnly": "문제 수정은 관리자만 가능합니다.",
+      "loadFailed": "문제를 불러오는 데 실패했습니다.",
+      "notFound": "문제를 찾을 수 없습니다.",
+      "submitFailed": "문제 수정에 실패했습니다.",
+      "deleteFailed": "문제 삭제에 실패했습니다."
+    },
+    "confirm": {
+      "platformChange": "플랫폼을 변경하면 검색 결과가 초기화됩니다. 계속하시겠습니까?",
+      "closeActive": "문제를 마감하면 더 이상 제출할 수 없습니다. 계속하시겠습니까?",
+      "activateDraft": "문제를 활성화하면 멤버들이 이 문제를 보고 제출할 수 있습니다. 계속하시겠습니까?",
+      "delete": "정말 이 문제를 삭제하시겠습니까? 관련 제출 기록도 함께 삭제됩니다."
+    }
+  },
   "addModal": {
     "platform": {
       "boj": "백준",
