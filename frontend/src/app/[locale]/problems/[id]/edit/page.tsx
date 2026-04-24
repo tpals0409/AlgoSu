@@ -130,7 +130,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
       }
       setActivePlatform(newPlatform);
     },
-    [activePlatform, bojApplied, programmersApplied, handleBojReset, handleProgrammersReset],
+    [activePlatform, bojApplied, programmersApplied, handleBojReset, handleProgrammersReset, t],
   );
 
   // ─── EFFECTS ────────────────────────────
@@ -171,7 +171,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
 
     void load();
     return () => { cancelled = true; };
-  }, [isAuthenticated, currentStudyId, problemId]);
+  }, [isAuthenticated, currentStudyId, problemId, t]);
 
   // ─── HANDLERS ─────────────────────────────
 
@@ -247,7 +247,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
         setIsSubmitting(false);
       }
     },
-    [form, problem, problemId, router],
+    [form, problem, problemId, router, t],
   );
 
   const handleDelete = useCallback(async (): Promise<void> => {
@@ -262,7 +262,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
       setSubmitError(t('edit.error.deleteFailed'));
       setIsDeleting(false);
     }
-  }, [problemId, router]);
+  }, [problemId, router, t]);
 
   // ─── GUARDS ─────────────────────────────
 
