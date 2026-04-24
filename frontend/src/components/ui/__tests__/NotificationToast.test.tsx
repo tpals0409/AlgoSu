@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
-import koUI from '../../../../messages/ko/ui.json';
+import koUI from '@messages/ko/ui.json';
 import { NotificationToast } from '../NotificationToast';
 import type { Notification } from '@/lib/api';
 import { isSafeInternalPath } from '@/lib/url';
