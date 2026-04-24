@@ -39,6 +39,7 @@ export function withLocalePrefix(path: string): string {
   return `${getLocalePrefix()}${path}`;
 }
 
+/** @sync src/middleware.ts#stripLocalePath — Node/Browser 전용, 로직 동일 */
 /**
  * pathname에서 locale prefix를 제거한 순수 경로를 반환한다.
  * middleware.ts의 stripLocalePath와 동일한 로직이지만 클라이언트용.
