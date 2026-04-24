@@ -37,7 +37,7 @@
     "confirmDelete": "댓글을 삭제하시겠습니까?",
     "edit": "수정",
     "delete": "삭제",
-    "replies": "답글 {count}",
+    "replies": "{count, plural, other {답글 #개}}",
     "emptyLine": "Line {line}에 아직 댓글이 없습니다",
     "emptyGeneral": "코드 라인을 클릭하면 댓글을 확인하고 남길 수 있어요"
   },

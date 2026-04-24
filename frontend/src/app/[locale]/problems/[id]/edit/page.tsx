@@ -8,7 +8,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, use, type FormEvent, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
 import { Search, ExternalLink, Trash2, FileText, Settings, X } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';

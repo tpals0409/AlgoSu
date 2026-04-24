@@ -20,17 +20,9 @@
 'use client';
 
 import { useEffect, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
-import { createNavigation } from 'next-intl/navigation';
-import { routing } from '@/i18n/routing';
+import { useRouter, usePathname } from '@/i18n/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/Skeleton';
-
-/**
- * Returns a path with locale prefix stripped.
- * /en/dashboard -> /dashboard, /dashboard -> /dashboard
- */
-const { usePathname } = createNavigation(routing);
 
 interface AuthGuardProps {
   readonly children: ReactNode;

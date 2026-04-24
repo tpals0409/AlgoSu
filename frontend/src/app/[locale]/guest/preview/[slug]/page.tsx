@@ -13,7 +13,7 @@
 import type { ReactNode } from 'react';
 import { useParams } from 'next/navigation';
 import { notFound } from 'next/navigation';
-import Link from 'next/link';
+import { Link } from '@/i18n/navigation';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { GuestNav } from '@/components/guest/GuestNav';
 import { Card, CardContent } from '@/components/ui/Card';

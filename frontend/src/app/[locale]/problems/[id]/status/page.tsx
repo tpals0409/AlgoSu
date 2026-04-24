@@ -6,7 +6,8 @@
 'use client';
 
 import { useEffect, use } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
+import { useRouter } from '@/i18n/navigation';
 
 interface PageProps {
   readonly params: Promise<{ id: string }>;

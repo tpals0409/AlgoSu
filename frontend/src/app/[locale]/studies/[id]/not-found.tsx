@@ -9,7 +9,7 @@
  */
 
 import type { ReactNode } from 'react';
-import Link from 'next/link';
+import { Link } from '@/i18n/navigation';
 import { getTranslations } from 'next-intl/server';
 import { Logo } from '@/components/ui/Logo';
 

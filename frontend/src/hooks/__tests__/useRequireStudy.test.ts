@@ -6,8 +6,11 @@ import { useRequireStudy } from '../useRequireStudy';
 
 const mockReplace = jest.fn();
 
-jest.mock('next/navigation', () => ({
+jest.mock('@/i18n/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),
+  usePathname: () => '/',
+  Link: () => null,
+  redirect: jest.fn(),
 }));
 
 const mockUseStudy = jest.fn();

@@ -4,8 +4,11 @@ import GitHubLinkCompletePage from '../page';
 const mockReplace = jest.fn();
 const mockUpdateGitHubStatus = jest.fn();
 
-jest.mock('next/navigation', () => ({
+jest.mock('@/i18n/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: mockReplace, back: jest.fn() }),
+  usePathname: () => '/',
+  Link: () => null,
+  redirect: jest.fn(),
 }));
 
 jest.mock('@/contexts/AuthContext', () => ({

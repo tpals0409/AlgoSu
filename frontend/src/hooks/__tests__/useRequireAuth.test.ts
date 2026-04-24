@@ -6,8 +6,11 @@ import { useRequireAuth } from '../useRequireAuth';
 
 const mockReplace = jest.fn();
 
-jest.mock('next/navigation', () => ({
+jest.mock('@/i18n/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),
+  usePathname: () => '/',
+  Link: () => null,
+  redirect: jest.fn(),
 }));
 
 const mockUseAuth = jest.fn();

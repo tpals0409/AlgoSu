@@ -195,7 +195,8 @@ describe('CommentThread', () => {
     ];
     renderWithI18n(<CommentThread {...defaultProps} comments={comments} />);
     // Should display localized date string (not relative time)
-    const expectedDate = pastDate.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+    // renderWithI18n provides 'ko' locale; review-time.ts calls toLocaleDateString(locale, opts)
+    const expectedDate = pastDate.toLocaleDateString('ko', { month: 'short', day: 'numeric' });
     expect(screen.getByText(expectedDate)).toBeInTheDocument();
   });
 
@@ -278,7 +279,7 @@ describe('CommentThread', () => {
     const reply = makeReply();
     const comments = [makeComment({ replies: [reply] })];
     renderWithI18n(<CommentThread {...defaultProps} comments={comments} />);
-    expect(screen.getByText(/답글 1/)).toBeInTheDocument();
+    expect(screen.getByText(/답글 1개/)).toBeInTheDocument();
   });
 
   it('대댓글이 없으면 답글 버튼이 표시되지 않는다', () => {
@@ -291,7 +292,7 @@ describe('CommentThread', () => {
     const reply = makeReply({ publicId: 'r-1', content: '답글 내용' });
     const comments = [makeComment({ replies: [reply] })];
     renderWithI18n(<CommentThread {...defaultProps} comments={comments} />);
-    fireEvent.click(screen.getByText(/답글 1/));
+    fireEvent.click(screen.getByText(/답글 1개/));
     expect(screen.getByTestId('reply-r-1')).toBeInTheDocument();
   });
 
@@ -299,7 +300,7 @@ describe('CommentThread', () => {
     const reply = makeReply();
     const comments = [makeComment({ replies: [reply] })];
     renderWithI18n(<CommentThread {...defaultProps} comments={comments} />);
-    fireEvent.click(screen.getByText(/답글 1/));
+    fireEvent.click(screen.getByText(/답글 1개/));
     expect(screen.getByTestId('comment-form')).toBeInTheDocument();
   });
 
@@ -307,7 +308,7 @@ describe('CommentThread', () => {
     const reply = makeReply({ publicId: 'r-1' });
     const comments = [makeComment({ replies: [reply] })];
     renderWithI18n(<CommentThread {...defaultProps} comments={comments} />);
-    const toggleBtn = screen.getByText(/답글 1/);
+    const toggleBtn = screen.getByText(/답글 1개/);
     fireEvent.click(toggleBtn);
     expect(screen.getByTestId('reply-r-1')).toBeInTheDocument();
     fireEvent.click(toggleBtn);
@@ -318,7 +319,7 @@ describe('CommentThread', () => {
     const reply = makeReply();
     const comments = [makeComment({ publicId: 'c-1', replies: [reply] })];
     renderWithI18n(<CommentThread {...defaultProps} comments={comments} />);
-    fireEvent.click(screen.getByText(/답글 1/));
+    fireEvent.click(screen.getByText(/답글 1개/));
     fireEvent.click(screen.getByTestId('reply-submit'));
     await waitFor(() => {
       expect(defaultProps.onReply).toHaveBeenCalledWith('c-1', 'test reply');
@@ -332,7 +333,7 @@ describe('CommentThread', () => {
     ];
     const comments = [makeComment({ replies })];
     renderWithI18n(<CommentThread {...defaultProps} comments={comments} />);
-    fireEvent.click(screen.getByText(/답글 2/));
+    fireEvent.click(screen.getByText(/답글 2개/));
     expect(screen.getByTestId('reply-r-1')).toBeInTheDocument();
     expect(screen.getByTestId('reply-r-2')).toBeInTheDocument();
   });

@@ -31,8 +31,13 @@ jest.mock('lucide-react', () => {
 });
 
 const mockPush = jest.fn();
-jest.mock('next/navigation', () => ({
+jest.mock('@/i18n/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
+  usePathname: () => '/',
+  Link: () => null,
+  redirect: jest.fn(),
+}));
+jest.mock('next/navigation', () => ({
   useParams: () => ({ locale: 'ko' }),
 }));
 
@@ -264,7 +269,8 @@ describe('NotificationBell', () => {
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /알림/ }));
     });
-    const formatted = new Date(oldDate).toLocaleDateString('ko-KR');
+    // renderWithI18n provides 'ko' locale; LOCALE_DATE_MAP['ko'] → 'ko-KR' produces same output
+    const formatted = new Date(oldDate).toLocaleDateString('ko');
     expect(screen.getByText(formatted)).toBeInTheDocument();
   });
 

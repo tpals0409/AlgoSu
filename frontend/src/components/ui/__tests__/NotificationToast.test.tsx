@@ -6,8 +6,11 @@ import type { Notification } from '@/lib/api';
 import { isSafeInternalPath } from '@/lib/url';
 
 const mockPush = jest.fn();
-jest.mock('next/navigation', () => ({
+jest.mock('@/i18n/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
+  usePathname: () => '/',
+  Link: () => null,
+  redirect: jest.fn(),
 }));
 
 /** i18n wrapper so rerender() also gets the provider automatically */

@@ -1,8 +1,13 @@
 import { render, act } from '@testing-library/react';
 
 const mockReplace = jest.fn();
-jest.mock('next/navigation', () => ({
+jest.mock('@/i18n/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),
+  usePathname: () => '/',
+  Link: () => null,
+  redirect: jest.fn(),
+}));
+jest.mock('next/navigation', () => ({
   useSearchParams: () => ({
     get: (key: string) => (key === 'submissionId' ? 'sub-123' : null),
   }),

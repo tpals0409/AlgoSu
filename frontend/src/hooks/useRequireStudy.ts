@@ -10,7 +10,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/i18n/navigation';
 import { useStudy } from '@/contexts/StudyContext';
 
 export function useRequireStudy(): { isStudyReady: boolean } {

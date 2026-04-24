@@ -3,19 +3,12 @@ import { AuthGuard } from '../AuthGuard';
 
 const mockReplace = jest.fn();
 
-jest.mock('next/navigation', () => ({
-  useRouter: () => ({ replace: mockReplace }),
-}));
-
-// next-intl createNavigation → usePathname: locale prefix 제거된 경로 반환 mock
 let mockPathname = '/';
-jest.mock('next-intl/navigation', () => ({
-  createNavigation: () => ({
-    usePathname: () => mockPathname,
-    useRouter: () => ({}),
-    Link: () => null,
-    redirect: () => null,
-  }),
+jest.mock('@/i18n/navigation', () => ({
+  useRouter: () => ({ replace: mockReplace }),
+  usePathname: () => mockPathname,
+  Link: () => null,
+  redirect: jest.fn(),
 }));
 
 const mockUseAuth = jest.fn();

@@ -7,8 +7,13 @@ jest.mock('@/components/ui/MarkdownViewer', () => ({
   MarkdownViewer: ({ content }: { content: string }) => <div data-testid="markdown-viewer">{content}</div>,
 }));
 
-jest.mock('next/navigation', () => ({
+jest.mock('@/i18n/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
+  usePathname: () => '/studies/study-1',
+  Link: () => null,
+  redirect: jest.fn(),
+}));
+jest.mock('next/navigation', () => ({
   usePathname: () => '/studies/study-1',
 }));
 

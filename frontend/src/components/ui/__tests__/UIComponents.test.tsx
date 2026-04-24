@@ -19,8 +19,11 @@ jest.mock('lucide-react', () => {
 // ── next/navigation mock (BackBtn 용) ───────────
 const mockPush = jest.fn();
 const mockBack = jest.fn();
-jest.mock('next/navigation', () => ({
+jest.mock('@/i18n/navigation', () => ({
   useRouter: () => ({ push: mockPush, back: mockBack }),
+  usePathname: () => '/',
+  Link: () => null,
+  redirect: jest.fn(),
 }));
 
 import { Badge } from '../Badge';

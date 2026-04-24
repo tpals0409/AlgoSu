@@ -5,8 +5,13 @@ import StudiesPage from '../page';
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
 
-jest.mock('next/navigation', () => ({
+jest.mock('@/i18n/navigation', () => ({
   useRouter: () => ({ push: mockPush, replace: mockReplace, back: jest.fn() }),
+  usePathname: () => '/studies',
+  Link: () => null,
+  redirect: jest.fn(),
+}));
+jest.mock('next/navigation', () => ({
   useParams: () => ({ locale: 'ko' }),
   useSearchParams: () => new URLSearchParams(),
   usePathname: () => '/studies',

@@ -51,7 +51,7 @@ jest.mock('@/i18n/navigation', () => {
     Link: MockLink,
     redirect: jest.fn(),
     usePathname: () => '/',
-    useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
+    useRouter: () => ({ push: jest.fn(), replace: mockReplace }),
   };
 });
 
