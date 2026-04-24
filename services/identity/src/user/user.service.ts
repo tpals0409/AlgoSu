@@ -9,6 +9,7 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, IsNull } from 'typeorm';
@@ -266,7 +267,12 @@ export class UserService {
     );
 
     const user = await this.userRepository.findOne({ where: { email: dto.email } });
-    if (!user || user.oauth_provider !== dto.oauth_provider) {
+    if (!user) {
+      throw new InternalServerErrorException(
+        'upsert 후 사용자 조회 실패',
+      );
+    }
+    if (user.oauth_provider !== dto.oauth_provider) {
       throw new ConflictException('동시 요청으로 provider 불일치가 발생했습니다.');
     }
     return user;

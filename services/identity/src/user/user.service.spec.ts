@@ -5,6 +5,7 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { User, OAuthProvider } from './user.entity';
@@ -251,12 +252,12 @@ describe('UserService', () => {
       await expect(service.upsertUser(dto)).rejects.toThrow(ConflictException);
     });
 
-    it('p0-012: re-fetch 시 user null → ConflictException', async () => {
+    it('p0-012: re-fetch 시 user null → InternalServerErrorException (C5 오분류 정제)', async () => {
       userRepo.findOne
         .mockResolvedValueOnce(null)            // existing 조회
         .mockResolvedValueOnce(null);            // re-fetch — null
 
-      await expect(service.upsertUser(dto)).rejects.toThrow(ConflictException);
+      await expect(service.upsertUser(dto)).rejects.toThrow(InternalServerErrorException);
     });
   });
 
