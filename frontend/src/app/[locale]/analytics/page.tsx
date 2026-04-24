@@ -31,6 +31,7 @@ import {
   type Problem,
 } from '@/lib/api';
 import { DIFFICULTY_COLORS, DIFFICULTIES } from '@/lib/constants';
+import { parseWeekKey } from '@/lib/util/parseWeekKey';
 
 // ─── DYNAMIC IMPORT ──────────────────────
 
@@ -51,21 +52,6 @@ const AnalyticsCharts = dynamic(
   },
 );
 
-// ─── HELPERS ─────────────────────────────
-
-function parseWeekKey(w: string): number {
-  const m = w.match(/^(\d+)월(\d+)주차$/);
-  if (!m) return 0;
-  const month = Number(m[1]);
-  const week = Number(m[2]);
-  // 현재 월 기준으로 연도를 추정하여 연도 경계(12월→1월) 정렬 문제 해결
-  const now = new Date();
-  const curMonth = now.getMonth() + 1;
-  const curYear = now.getFullYear();
-  const year = month > curMonth + 6 ? curYear - 1 : curYear;
-  return year * 10000 + month * 100 + week;
-}
-
 // ─── PAGE ────────────────────────────────
 
 export default function AnalyticsPage(): ReactNode {
@@ -85,8 +71,8 @@ export default function AnalyticsPage(): ReactNode {
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
-    const t = setTimeout(() => setMounted(true), 50);
-    return () => clearTimeout(t);
+    const mountTimer = setTimeout(() => setMounted(true), 50);
+    return () => clearTimeout(mountTimer);
   }, []);
 
   const fade = (delay = 0): CSSProperties => ({
@@ -218,6 +204,19 @@ export default function AnalyticsPage(): ReactNode {
     return Array.from(countMap.entries())
       .map(([tag, count]) => ({ tag, count }))
       .sort((a, b) => b.count - a.count);
+  }, [allProblems, myProblemIds, t]);
+
+  const difficultyData = useMemo(() => {
+    const DIFFICULTY_ORDER = DIFFICULTIES.map((key) => ({ key, color: DIFFICULTY_COLORS[key] }));
+    const countMap = new Map<string, number>();
+    for (const p of allProblems) {
+      if (!myProblemIds.has(p.id)) continue;
+      const d = p.difficulty ?? t('unclassified');
+      countMap.set(d, (countMap.get(d) ?? 0) + 1);
+    }
+    return DIFFICULTY_ORDER
+      .filter((d) => countMap.has(d.key))
+      .map((d) => ({ tier: d.key, count: countMap.get(d.key)!, color: d.color }));
   }, [allProblems, myProblemIds, t]);
 
   // ─── LOADING ───────────────────────────
@@ -352,18 +351,7 @@ export default function AnalyticsPage(): ReactNode {
                   problem: v.title,
                 }));
             })()}
-            difficultyData={(() => {
-              const DIFFICULTY_ORDER = DIFFICULTIES.map((key) => ({ key, color: DIFFICULTY_COLORS[key] }));
-              const countMap = new Map<string, number>();
-              for (const p of allProblems) {
-                if (!myProblemIds.has(p.id)) continue;
-                const d = p.difficulty ?? t('unclassified');
-                countMap.set(d, (countMap.get(d) ?? 0) + 1);
-              }
-              return DIFFICULTY_ORDER
-                .filter((d) => countMap.has(d.key))
-                .map((d) => ({ tier: d.key, count: countMap.get(d.key)!, color: d.color }));
-            })()}
+            difficultyData={difficultyData}
             tagData={tagDistribution}
             userName={userName}
           />
