@@ -23,6 +23,7 @@ import { Alert } from '@/components/ui/Alert';
 import { InlineSpinner } from '@/components/ui/LoadingSpinner';
 import { authApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { withLocalePrefix } from '@/lib/locale-path';
 
 // ─── TYPES ────────────────────────────────
 
@@ -111,7 +112,7 @@ function LoginContent(): ReactNode {
     const expiredParam = searchParams.get('expired');
     if (expiredParam === 'true') {
       setShowExpiredModal(true);
-      window.history.replaceState({}, '', '/login');
+      window.history.replaceState({}, '', withLocalePrefix('/login'));
     }
   }, [searchParams, t]);
 

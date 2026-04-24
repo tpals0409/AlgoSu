@@ -2,9 +2,14 @@
 sprint: 125
 title: "Sprint 124 이월 9항목 마감 — i18n 완결 + OAuth 에러 정규화 + Oracle 인프라"
 period: "2026-04-24"
-status: in-progress
+status: completed
 start_commit: 7f753a8
-end_commit: TBD (Wave D 완료 후 최종 squash merge)
+end_commit: f627971
+prs:
+  - "#142 feat(i18n): Wave A 기계적 품질 개선 + Critic follow-up (squash f6c0391)"
+  - "#143 feat(i18n): Wave B i18n 번역 보강 + B5 Critic follow-up (squash 83313ee)"
+  - "#144 feat(auth): Wave C Gateway OAuth 정규화 (ADR-025) + identity atomicUpsert (squash 27d3f95)"
+  - "#145 docs(adr): Wave D Oracle 인프라 조사 리포트 (squash f627971)"
 ---
 
 # Sprint 125 — Sprint 124 이월 9항목 마감
@@ -26,8 +31,8 @@ follow-up으로 흡수, Low는 즉시 처리 또는 유지 근거 기록 후 종
 | 5 | 테스트 3건 ko-KR 하드코딩 정리 | A | ✅ |
 | 6 | analytics 네임스페이스 기술부채 | B-2 | ✅ |
 | 7 | admin-guard defaultLocale 하드코딩 제거 | A | ✅ (탐색 결과 이미 해소) |
-| 8 | Oracle 인프라: short-task inbox Write permission 조사 | D | 🔲 |
-| 9 | Critic API 529 재시도 정책 | D | 🔲 |
+| 8 | Oracle 인프라: short-task inbox Write permission 조사 | D | ✅ (조사 리포트 완료, 구현은 Sprint 126 예약) |
+| 9 | Critic API 529 재시도 정책 | D | ✅ (조사 리포트 완료, 구현은 Sprint 126 예약) |
 
 ---
 
