@@ -1,8 +1,8 @@
 /**
- * @file 게스트 모드 인덱스 — 샘플 분석 결과 미리보기 목록
+ * @file 게스트 모드 인덱스 — 샘플 분석 결과 미리보기 목록 (i18n 적용)
  * @domain guest
  * @layer page
- * @related GuestSample, GuestNav, DifficultyBadge, Card
+ * @related GuestSample, GuestNav, DifficultyBadge, Card, messages/common.json
  *
  * 비인증 사용자가 AI 코드 분석 결과를 사전 체험하는 정적 페이지.
  * 인증/JWT 없음. PUBLIC_PATHS에 '/guest' 등록으로 접근 허용.
@@ -11,6 +11,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { GuestNav } from '@/components/guest/GuestNav';
 import { Card, CardContent } from '@/components/ui/Card';
 import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
@@ -70,19 +71,21 @@ function SampleCard({ sample }: { readonly sample: GuestSample }): ReactNode {
 
 /** 히어로 섹션 — 서비스 설명 */
 function HeroSection(): ReactNode {
+  const t = useTranslations('common');
+
   return (
     <section className="px-6 py-12 text-center">
       <div className="mx-auto max-w-container">
         <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-primary">
-          미리보기
+          {t('guest.previewLabel')}
         </p>
         <h1 className="mb-3 text-2xl font-bold tracking-tight text-text sm:text-3xl">
-          AlgoSu 코드 분석 체험
+          {t('guest.heading')}
         </h1>
         <p className="mx-auto max-w-md text-sm leading-relaxed text-text-2">
-          회원가입 없이 AI 코드 분석 결과를 미리 확인해보세요.
+          {t('guest.description')}
           <br />
-          실제 서비스에서는 내 코드를 직접 분석받을 수 있습니다.
+          {t('guest.descriptionSub')}
         </p>
       </div>
     </section>
@@ -106,12 +109,14 @@ function SampleGrid(): ReactNode {
 
 /** 하단 로그인 유도 푸터 */
 function GuestFooter(): ReactNode {
+  const t = useTranslations('common');
+
   return (
     <footer className="border-t border-border bg-bg-card py-8 text-center">
       <p className="text-sm text-text-2">
-        더 많은 기능을 이용하려면{' '}
+        {t('guest.footerCta')}{' '}
         <Link href="/login" className="font-semibold text-primary transition-all hover:underline">
-          로그인 / 회원가입 →
+          {t('guest.footerLogin')}
         </Link>
       </p>
     </footer>
