@@ -12,6 +12,7 @@ import { useSearchParams } from 'next/navigation';
 import { useRouter } from '@/i18n/navigation';
 import { Link } from '@/i18n/navigation';
 import { Suspense } from 'react';
+import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
 import { Sun, Moon } from 'lucide-react';
 import { Logo } from '@/components/ui/Logo';
@@ -59,7 +60,8 @@ const PROVIDERS: {
 // ─── STEPPER ─────────────────────────────
 
 function OnboardingStepper({ current }: { current: 1 | 2 | 3 }): ReactNode {
-  const steps = ['가입', '프로필', 'GitHub'];
+  const tAuth = useTranslations('auth');
+  const steps = [tAuth('register.stepper.step1'), tAuth('register.stepper.step2'), tAuth('register.stepper.step3')];
   return (
     <div className="flex items-center justify-center gap-2 mb-8">
       {steps.map((label, i) => {
