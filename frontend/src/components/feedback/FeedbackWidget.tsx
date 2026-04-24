@@ -10,7 +10,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { MessageSquarePlus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import {
@@ -30,10 +30,13 @@ export function FeedbackWidget() {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>('feedback');
 
-  const tabs: { key: Tab; label: string }[] = [
-    { key: 'feedback', label: t('widget.tabFeedback') },
-    { key: 'bug', label: t('widget.tabBugReport') },
-  ];
+  const tabs: { key: Tab; label: string }[] = useMemo(
+    () => [
+      { key: 'feedback', label: t('widget.tabFeedback') },
+      { key: 'bug', label: t('widget.tabBugReport') },
+    ],
+    [t],
+  );
 
   const handleSuccess = () => {
     // Close the sheet after a short delay so the user sees the toast

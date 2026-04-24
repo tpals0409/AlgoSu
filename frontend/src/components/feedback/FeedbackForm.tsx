@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -28,11 +28,14 @@ export function FeedbackForm({ onSuccess }: FeedbackFormProps) {
   const { currentStudyId } = useStudy();
   const [submitting, setSubmitting] = useState(false);
 
-  const categoryOptions: { value: FeedbackCategory; label: string }[] = [
-    { value: 'GENERAL', label: t('feedbackForm.categoryGeneral') },
-    { value: 'FEATURE', label: t('feedbackForm.categoryFeature') },
-    { value: 'UX', label: t('feedbackForm.categoryUx') },
-  ];
+  const categoryOptions: { value: FeedbackCategory; label: string }[] = useMemo(
+    () => [
+      { value: 'GENERAL', label: t('feedbackForm.categoryGeneral') },
+      { value: 'FEATURE', label: t('feedbackForm.categoryFeature') },
+      { value: 'UX', label: t('feedbackForm.categoryUx') },
+    ],
+    [t],
+  );
 
   const {
     register,
