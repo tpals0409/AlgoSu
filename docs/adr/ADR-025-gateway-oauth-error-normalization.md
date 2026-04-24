@@ -1,8 +1,8 @@
 # ADR-025: Gateway OAuth 에러 코드 정규화
 
-- **상태**: 제안됨 (Proposed)
+- **상태**: 수용됨 (Accepted)
 - **날짜**: 2026-04-24
-- **스프린트**: Sprint 124 Phase D (기록), Sprint 125+ (구현)
+- **스프린트**: Sprint 124 Phase D (기록), Sprint 125 Wave C (구현)
 - **의사결정자**: Oracle (심판관)
 - **발의**: Critic (task-20260424-110809-47170)
 
@@ -145,13 +145,63 @@ catch (error) {
 
 ## 후속 작업 (Sprint 125 로드맵)
 
-- [ ] Gateway `oauth.service.ts` 예외 유형 식별자 추가 (또는 커스텀 예외 클래스 신설)
-- [ ] `oauth.controller.ts` catch 블록 → enum 매핑 방식으로 리팩토링
-- [ ] 프론트 `callback/page.tsx` ALLOWED_ERRORS 최종 동기화 (invalid_state 실유효화)
-- [ ] `callback.error.*` 번역 키 7개 언어별 최종 확정
-- [ ] OAuth 에러 분기별 통합 테스트 추가 (access_denied, invalid_state, token_exchange,
-  profile_fetch, account_conflict, auth_failed)
-- [ ] `ERROR_KEY_MAP` 레거시 키 완전 삭제
+- [x] Gateway `oauth.service.ts` 예외 유형 식별자 추가 — 5 Exception 클래스 throw 지점 확정 (Wave C1)
+- [x] `oauth.controller.ts` catch 블록 → `instanceof OAuthCallbackException` 분기 방식으로 리팩토링 (Wave C1)
+- [x] 프론트 `callback/page.tsx` ALLOWED_ERRORS 최종 동기화 (invalid_state 실유효화 + 3종 추가) (Wave C2)
+- [x] `callback.error.*` 번역 키 7개 ko/en 최종 확정 (Wave C2)
+- [x] OAuth 에러 분기별 단위 테스트 추가 — controller 7종 + service throw 지점 검증 (Wave C1)
+- [ ] `errors.*` 레거시 번역 키 중 미참조 항목 제거 → Sprint 126 기술부채 등록 (auth.json `errors.authFailed`, `errors.serviceFailed` 검토 필요)
+
+---
+
+## 구현 결과 (Sprint 125 Wave C)
+
+### 최종 enum 7종 확정
+
+| 코드 | 트리거 조건 | HTTP Status |
+|------|------------|------------|
+| `access_denied` | OAuth 제공자 사용자 거부 | 400 |
+| `missing_params` | code / state 파라미터 누락 | 400 |
+| `invalid_state` | CSRF state 만료 또는 불일치 | 400 |
+| `token_exchange` | OAuth 토큰 교환 실패 | 400 |
+| `profile_fetch` | 프로필 조회 실패 | 400 |
+| `account_conflict` | 이메일 중복 계정 충돌 | 409 |
+| `auth_failed` | 분류 불가 예외 (default fallback) | 500 |
+
+### Exception 클래스 목록
+
+파일: `services/gateway/src/auth/oauth/exceptions/oauth-callback.exception.ts`
+
+```
+OAuthCallbackException          (추상 기반 클래스)
+├── OAuthAccessDeniedException
+├── OAuthMissingParamsException
+├── OAuthInvalidStateException
+├── OAuthTokenExchangeException
+├── OAuthProfileFetchException
+├── OAuthAccountConflictException
+└── OAuthAuthFailedException
+```
+
+### 프론트엔드 i18n 키 매핑
+
+파일: `frontend/src/app/[locale]/(auth)/callback/page.tsx`
+
+| AuthError (ALLOWED_ERRORS) | ko 번역 | en 번역 |
+|---------------------------|---------|---------|
+| `access_denied` | OAuth 인증을 거부했습니다. 다시 시도해 주세요. | You denied the OAuth authorization request. |
+| `missing_params` | 인증 정보가 누락되었습니다. 다시 시도해 주세요. | Authentication parameters are missing. |
+| `invalid_state` | 인증 상태(CSRF) 검증에 실패했습니다. 다시 시도해 주세요. | CSRF state verification failed. |
+| `token_exchange` | 토큰 교환 중 문제가 발생했습니다. | Failed to exchange OAuth token. |
+| `profile_fetch` | 프로필 정보를 불러오지 못했습니다. | Failed to load profile information. |
+| `account_conflict` | 이미 다른 방식으로 가입된 이메일입니다. | This email is already registered with another method. |
+| `auth_failed` | 인증 처리에 실패했습니다. 잠시 후 다시 시도해 주세요. | Authentication processing failed. |
+
+### 커밋 SHA 참조
+
+- Wave C1 (gateway): `0d13282c214bb4d3ef1f320eff199d524f9c9134`
+- Wave C2 (frontend): `98a16219f8609636343af10adff0f69fe01f65b6`
+- Wave C3 (docs/adr): 본 커밋
 
 ---
 
