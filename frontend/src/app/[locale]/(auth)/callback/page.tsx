@@ -35,13 +35,34 @@ import { authApi } from '@/lib/api';
 
 type CallbackStep = 'loading' | 'error' | 'github-prompt';
 
-/** OAuth 에러 코드 → 번역 키 매핑 화이트리스트 */
-const ERROR_KEY_MAP: Record<string, string> = {
-  invalid_state: 'errors.invalidState',
-  missing_code: 'errors.missingCode',
-  provider_denied: 'errors.providerDenied',
-  account_conflict: 'errors.accountConflict',
-  email_in_use: 'errors.accountConflict',
+/**
+ * OAuth 에러 코드 화이트리스트 — URL fragment에 임의 문자열이 주입되어
+ * 피싱/social engineering에 악용되지 않도록 허용된 코드만 렌더한다.
+ */
+const ALLOWED_ERRORS = [
+  'oauth_denied',
+  'invalid_state',
+  'no_code',
+  'token_exchange',
+  'profile_fetch',
+] as const;
+
+type AuthError = (typeof ALLOWED_ERRORS)[number];
+
+/** 화이트리스트 검증 — 미등록 코드는 null 반환 */
+function toAuthError(value: string): AuthError | null {
+  return (ALLOWED_ERRORS as readonly string[]).includes(value)
+    ? (value as AuthError)
+    : null;
+}
+
+/** AuthError → i18n 번역 키 매핑 */
+const ERROR_KEY_MAP: Record<AuthError, string> = {
+  oauth_denied: 'callback.error.oauth_denied',
+  invalid_state: 'callback.error.invalid_state',
+  no_code: 'callback.error.no_code',
+  token_exchange: 'callback.error.token_exchange',
+  profile_fetch: 'callback.error.profile_fetch',
 };
 
 function CallbackContent(): ReactNode {
@@ -62,9 +83,12 @@ function CallbackContent(): ReactNode {
 
     if (errorParam) {
       const decoded = decodeURIComponent(errorParam);
-      // 화이트리스트 매핑 → 번역 키, 미등록 코드 → 일반 실패 메시지 (i18n 안전)
-      const mappedKey = ERROR_KEY_MAP[decoded];
-      setError(mappedKey ? t(mappedKey) : t('errors.oauthFailed'));
+      // 화이트리스트 검증 → 등록 코드는 매핑 키, 미등록은 unknown 폴백 (피싱 방지)
+      const authError = toAuthError(decoded);
+      const errorKey = authError
+        ? ERROR_KEY_MAP[authError]
+        : 'callback.error.unknown';
+      setError(t(errorKey));
       setStep('error');
       return;
     }
