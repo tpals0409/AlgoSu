@@ -211,13 +211,13 @@ export default function AnalyticsPage(): ReactNode {
     const countMap = new Map<string, number>();
     for (const p of allProblems) {
       if (!myProblemIds.has(p.id)) continue;
-      const d = p.difficulty ?? t('unclassified');
+      const d = p.difficulty ?? 'UNCLASSIFIED';
       countMap.set(d, (countMap.get(d) ?? 0) + 1);
     }
     return DIFFICULTY_ORDER
       .filter((d) => countMap.has(d.key))
       .map((d) => ({ tier: d.key, count: countMap.get(d.key)!, color: d.color }));
-  }, [allProblems, myProblemIds, t]);
+  }, [allProblems, myProblemIds]);
 
   // ─── LOADING ───────────────────────────
 

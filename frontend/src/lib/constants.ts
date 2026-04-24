@@ -11,10 +11,10 @@
 
 // ── Difficulty ──
 
-export type Difficulty = 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND' | 'RUBY';
+export type Difficulty = 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND' | 'RUBY' | 'UNCLASSIFIED';
 
 export const DIFFICULTIES: readonly Difficulty[] = [
-  'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND', 'RUBY',
+  'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND', 'RUBY', 'UNCLASSIFIED',
 ] as const;
 
 export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
@@ -24,6 +24,7 @@ export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
   PLATINUM: 'Platinum',
   DIAMOND: 'Diamond',
   RUBY: 'Ruby',
+  UNCLASSIFIED: 'Unclassified',
 };
 
 /**
@@ -42,26 +43,29 @@ export const DIFFICULTY_COLORS: Record<Difficulty, string> = {
   PLATINUM: '#27e2a4',
   DIAMOND: '#00b4fc',
   RUBY: '#FF0062',
+  UNCLASSIFIED: '#8B8B95',
 };
 
 /** 난이도별 도트 색상 — CSS 변수(--diff-*-color) 기반 inline style */
 export const DIFF_DOT_STYLE: Record<string, { backgroundColor: string }> = {
-  bronze:   { backgroundColor: 'var(--diff-bronze-color)' },
-  silver:   { backgroundColor: 'var(--diff-silver-color)' },
-  gold:     { backgroundColor: 'var(--diff-gold-color)' },
-  platinum: { backgroundColor: 'var(--diff-platinum-color)' },
-  diamond:  { backgroundColor: 'var(--diff-diamond-color)' },
-  ruby:     { backgroundColor: 'var(--diff-ruby-color)' },
+  bronze:       { backgroundColor: 'var(--diff-bronze-color)' },
+  silver:       { backgroundColor: 'var(--diff-silver-color)' },
+  gold:         { backgroundColor: 'var(--diff-gold-color)' },
+  platinum:     { backgroundColor: 'var(--diff-platinum-color)' },
+  diamond:      { backgroundColor: 'var(--diff-diamond-color)' },
+  ruby:         { backgroundColor: 'var(--diff-ruby-color)' },
+  unclassified: { backgroundColor: 'var(--diff-unclassified-color)' },
 };
 
 /** 난이도별 뱃지 배경 — CSS 변수(--diff-*-bg, --diff-*-color) 기반 inline style */
 export const DIFF_BADGE_STYLE: Record<string, { backgroundColor: string; color: string }> = {
-  bronze:   { backgroundColor: 'var(--diff-bronze-bg)',   color: 'var(--diff-bronze-color)' },
-  silver:   { backgroundColor: 'var(--diff-silver-bg)',   color: 'var(--diff-silver-color)' },
-  gold:     { backgroundColor: 'var(--diff-gold-bg)',     color: 'var(--diff-gold-color)' },
-  platinum: { backgroundColor: 'var(--diff-platinum-bg)', color: 'var(--diff-platinum-color)' },
-  diamond:  { backgroundColor: 'var(--diff-diamond-bg)',  color: 'var(--diff-diamond-color)' },
-  ruby:     { backgroundColor: 'var(--diff-ruby-bg)',     color: 'var(--diff-ruby-color)' },
+  bronze:       { backgroundColor: 'var(--diff-bronze-bg)',        color: 'var(--diff-bronze-color)' },
+  silver:       { backgroundColor: 'var(--diff-silver-bg)',        color: 'var(--diff-silver-color)' },
+  gold:         { backgroundColor: 'var(--diff-gold-bg)',          color: 'var(--diff-gold-color)' },
+  platinum:     { backgroundColor: 'var(--diff-platinum-bg)',      color: 'var(--diff-platinum-color)' },
+  diamond:      { backgroundColor: 'var(--diff-diamond-bg)',       color: 'var(--diff-diamond-color)' },
+  ruby:         { backgroundColor: 'var(--diff-ruby-bg)',          color: 'var(--diff-ruby-color)' },
+  unclassified: { backgroundColor: 'var(--diff-unclassified-bg)', color: 'var(--diff-unclassified-color)' },
 };
 
 // ── Language ──

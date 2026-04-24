@@ -11,8 +11,12 @@ import {
 import type { SagaStep } from '@/lib/constants';
 
 describe('DIFFICULTIES', () => {
-  it('6개 난이도를 포함한다', () => {
-    expect(DIFFICULTIES).toHaveLength(6);
+  it('7개 난이도를 포함한다 (Sprint 127: UNCLASSIFIED 추가)', () => {
+    expect(DIFFICULTIES).toHaveLength(7);
+  });
+
+  it('UNCLASSIFIED를 포함한다', () => {
+    expect(DIFFICULTIES).toContain('UNCLASSIFIED');
   });
 
   it('모든 난이도에 라벨이 있다', () => {
@@ -26,6 +30,10 @@ describe('DIFFICULTIES', () => {
     for (const d of DIFFICULTIES) {
       expect(DIFFICULTY_COLORS[d]).toMatch(/^#[0-9a-f]{6}$/i);
     }
+  });
+
+  it('UNCLASSIFIED 색상이 #8B8B95이다', () => {
+    expect(DIFFICULTY_COLORS.UNCLASSIFIED).toBe('#8B8B95');
   });
 });
 

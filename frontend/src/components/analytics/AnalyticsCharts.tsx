@@ -30,6 +30,7 @@ import {
 } from 'recharts';
 import { useTranslations } from 'next-intl';
 import { Card } from '@/components/ui/Card';
+import { DIFFICULTY_LABELS, type Difficulty } from '@/lib/constants';
 
 // ─── TYPES ───────────────────────────────
 
@@ -308,7 +309,7 @@ export default function AnalyticsCharts({
                         className="h-2.5 w-2.5 rounded-full shrink-0"
                         style={{ backgroundColor: row.color }}
                       />
-                      <span className="text-[13px] text-text">{row.tier}</span>
+                      <span className="text-[13px] text-text">{DIFFICULTY_LABELS[row.tier as Difficulty] ?? row.tier}</span>
                     </div>
                     <div className="flex-1 h-5 rounded-sm overflow-hidden" style={{ backgroundColor: 'var(--bg-alt)' }}>
                       <div

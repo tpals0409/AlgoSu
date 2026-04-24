@@ -67,6 +67,7 @@
   --diff-platinum-color: #27E2A4;
   --diff-diamond-color:  #00B4FC;
   --diff-ruby-color:     #FF0062;
+  --diff-unclassified-color: #8B8B95;
 
   /* ── Diff badge soft backgrounds ── */
   --diff-bronze-bg:   rgba(173, 86,   0,   0.10);
@@ -75,6 +76,7 @@
   --diff-platinum-bg: rgba(39,  226, 164,  0.10);
   --diff-diamond-bg:  rgba(0,   180, 252,  0.10);
   --diff-ruby-bg:     rgba(255,   0,  98,  0.10);
+  --diff-unclassified-bg: rgba(139, 139, 149, 0.10);
 
   /* ── Language colors ── */
   --lang-python-color: #3572A5;
