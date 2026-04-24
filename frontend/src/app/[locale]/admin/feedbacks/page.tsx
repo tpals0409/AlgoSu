@@ -1,5 +1,11 @@
+/**
+ * @file 피드백 관리 대시보드 — 상세모달/카테고리필터/검색/isAdmin (i18n 적용)
+ * @domain admin
+ * @layer page
+ * @related adminApi, messages/admin.json
+ */
 'use client';
-// Sprint 62 — 피드백 관리 대시보드 (상세모달/카테고리필터/검색/isAdmin)
+
 import { useEffect, useState, useCallback, type ReactNode } from 'react';
 import {
   MessageSquare,
@@ -11,6 +17,7 @@ import {
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { adminApi, type AdminFeedback } from '@/lib/api';
 
@@ -22,23 +29,10 @@ type StatusFilter = (typeof STATUSES)[number];
 const CATEGORIES = ['ALL', 'GENERAL', 'BUG', 'FEATURE', 'UX'] as const;
 type CategoryFilter = (typeof CATEGORIES)[number];
 
-const STATUS_LABEL: Record<string, string> = {
-  OPEN: '열림',
-  IN_PROGRESS: '진행 중',
-  RESOLVED: '해결됨',
-};
-
 const STATUS_STYLE: Record<string, string> = {
   OPEN: 'bg-bg-alt text-text-2',
   IN_PROGRESS: 'bg-primary-soft text-primary',
   RESOLVED: 'bg-success/10 text-success',
-};
-
-const CATEGORY_LABEL: Record<string, string> = {
-  GENERAL: '일반',
-  BUG: '버그',
-  FEATURE: '기능 요청',
-  UX: 'UX',
 };
 
 const CATEGORY_ICON: Record<string, ReactNode> = {
@@ -67,6 +61,8 @@ const PAGE_SIZE = 20;
 // ── 페이지 ──
 
 export default function AdminFeedbacksPage() {
+  const t = useTranslations('admin');
+
   const [feedbacks, setFeedbacks] = useState<AdminFeedback[]>([]);
   const [total, setTotal] = useState(0);
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -92,11 +88,11 @@ export default function AdminFeedbacksPage() {
       setTotal(res.total);
       if (res.counts) setCounts(res.counts);
     } catch {
-      toast.error('피드백 목록을 불러오지 못했습니다.');
+      toast.error(t('feedbacks.toast.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [page, statusFilter, categoryFilter, searchQuery]);
+  }, [page, statusFilter, categoryFilter, searchQuery, t]);
 
   useEffect(() => {
     void fetchFeedbacks();
@@ -113,9 +109,9 @@ export default function AdminFeedbacksPage() {
       setFeedbacks((prev) =>
         prev.map((f) => (f.publicId === publicId ? updated : f)),
       );
-      toast.success(`상태가 ${STATUS_LABEL[newStatus] ?? newStatus}(으)로 변경되었습니다.`);
+      toast.success(t('feedbacks.toast.statusChanged', { status: t(`feedbacks.status.${newStatus}`) }));
     } catch {
-      toast.error('상태 변경에 실패했습니다.');
+      toast.error(t('feedbacks.toast.statusChangeFailed'));
     }
   };
 
@@ -137,18 +133,18 @@ export default function AdminFeedbacksPage() {
       {/* 헤더 */}
       <div>
         <h1 className="text-[20px] font-bold tracking-tight text-[var(--text)]">
-          피드백 관리
+          {t('feedbacks.heading')}
         </h1>
         <p className="mt-1 text-[13px] text-[var(--text-3)]">
-          사용자 피드백을 확인하고 상태를 관리합니다.
+          {t('feedbacks.description')}
         </p>
       </div>
 
       {/* 통계 카드 */}
       <div className="grid grid-cols-3 gap-4">
-        <StatCard label="전체" value={totalCount} />
-        <StatCard label="미해결" value={openCount} accent="var(--warning)" />
-        <StatCard label="버그" value={bugCount} accent="var(--error)" />
+        <StatCard label={t('feedbacks.stats.total')} value={totalCount} />
+        <StatCard label={t('feedbacks.stats.open')} value={openCount} accent="var(--warning)" />
+        <StatCard label={t('feedbacks.stats.bug')} value={bugCount} accent="var(--error)" />
       </div>
 
       {/* 검색 */}
@@ -159,7 +155,7 @@ export default function AdminFeedbacksPage() {
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="내용 검색..."
+            placeholder={t('feedbacks.search.placeholder')}
             className="flex-1 bg-transparent text-[13px] text-[var(--text)] outline-none placeholder:text-text-3"
           />
           {searchInput && (
@@ -179,7 +175,7 @@ export default function AdminFeedbacksPage() {
           type="submit"
           className="rounded-btn bg-primary-soft px-3 py-1.5 text-[12px] font-medium text-primary transition-colors hover:bg-primary/20"
         >
-          검색
+          {t('feedbacks.search.button')}
         </button>
       </form>
 
@@ -203,7 +199,7 @@ export default function AdminFeedbacksPage() {
                   : 'text-text-3 hover:bg-bg-alt hover:text-text-2',
               )}
             >
-              {s === 'ALL' ? '전체' : STATUS_LABEL[s]}
+              {s === 'ALL' ? t('feedbacks.filter.all') : t(`feedbacks.status.${s}`)}
             </button>
           ))}
         </div>
@@ -211,7 +207,7 @@ export default function AdminFeedbacksPage() {
         {/* 카테고리 필터 */}
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-medium text-[var(--text-3)]">
-            카테고리:
+            {t('feedbacks.filter.categoryLabel')}
           </span>
           {CATEGORIES.map((c) => (
             <button
@@ -227,7 +223,7 @@ export default function AdminFeedbacksPage() {
                   : 'text-text-3 hover:bg-bg-alt hover:text-text-2',
               )}
             >
-              {c === 'ALL' ? '전체' : CATEGORY_LABEL[c]}
+              {c === 'ALL' ? t('feedbacks.filter.all') : t(`feedbacks.category.${c}`)}
             </button>
           ))}
         </div>
@@ -237,22 +233,22 @@ export default function AdminFeedbacksPage() {
       <div className="overflow-hidden rounded-card border border-[var(--border)] bg-[var(--bg-card)]">
         {/* 헤더 행 */}
         <div className="grid grid-cols-[1fr_120px_100px_100px_140px] gap-4 border-b border-[var(--border)] px-4 py-3 text-[12px] font-semibold text-[var(--text-3)]">
-          <span>내용</span>
-          <span>작성자</span>
-          <span>카테고리</span>
-          <span>상태</span>
-          <span>등록일</span>
+          <span>{t('feedbacks.table.content')}</span>
+          <span>{t('feedbacks.table.author')}</span>
+          <span>{t('feedbacks.table.category')}</span>
+          <span>{t('feedbacks.table.status')}</span>
+          <span>{t('feedbacks.table.createdAt')}</span>
         </div>
 
         {loading && (
           <div className="px-4 py-8 text-center text-[13px] text-[var(--text-3)]">
-            불러오는 중...
+            {t('feedbacks.loading')}
           </div>
         )}
 
         {!loading && feedbacks.length === 0 && (
           <div className="px-4 py-8 text-center text-[13px] text-[var(--text-3)]">
-            피드백이 없습니다.
+            {t('feedbacks.empty')}
           </div>
         )}
 
@@ -312,7 +308,7 @@ export default function AdminFeedbacksPage() {
                   )}
                 >
                   {CATEGORY_ICON[fb.category] ?? CATEGORY_ICON.GENERAL}
-                  {CATEGORY_LABEL[fb.category] ?? fb.category}
+                  {t(`feedbacks.category.${fb.category}`)}
                 </span>
               </div>
 
@@ -330,7 +326,7 @@ export default function AdminFeedbacksPage() {
                 >
                   {(ALLOWED_TRANSITIONS[fb.status] ?? [fb.status]).map((st) => (
                     <option key={st} value={st}>
-                      {STATUS_LABEL[st]}
+                      {t(`feedbacks.status.${st}`)}
                     </option>
                   ))}
                 </select>
@@ -359,10 +355,10 @@ export default function AdminFeedbacksPage() {
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             className="rounded-btn px-3 py-1.5 text-[12px] font-medium text-text-3 transition-colors hover:bg-bg-alt disabled:opacity-40"
           >
-            이전
+            {t('feedbacks.pagination.prev')}
           </button>
           <span className="text-[12px] font-medium text-[var(--text-2)]">
-            {page} / {totalPages}
+            {t('feedbacks.pagination.pageOf', { page, total: totalPages })}
           </span>
           <button
             type="button"
@@ -370,7 +366,7 @@ export default function AdminFeedbacksPage() {
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             className="rounded-btn px-3 py-1.5 text-[12px] font-medium text-text-3 transition-colors hover:bg-bg-alt disabled:opacity-40"
           >
-            다음
+            {t('feedbacks.pagination.next')}
           </button>
         </div>
       )}
@@ -428,6 +424,8 @@ function FeedbackDetailModal({
   onClose: () => void;
   onStatusChange: (publicId: string, status: string) => void;
 }) {
+  const t = useTranslations('admin');
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
@@ -447,7 +445,7 @@ function FeedbackDetailModal({
               )}
             >
               {CATEGORY_ICON[feedback.category] ?? CATEGORY_ICON.GENERAL}
-              {CATEGORY_LABEL[feedback.category] ?? feedback.category}
+              {t(`feedbacks.category.${feedback.category}`)}
             </span>
             <span
               className={cn(
@@ -455,7 +453,7 @@ function FeedbackDetailModal({
                 STATUS_STYLE[feedback.status] ?? STATUS_STYLE.OPEN,
               )}
             >
-              {STATUS_LABEL[feedback.status] ?? feedback.status}
+              {t(`feedbacks.status.${feedback.status}`)}
             </span>
           </div>
           <button
@@ -469,7 +467,7 @@ function FeedbackDetailModal({
 
         {/* 작성자/스터디 */}
         <div className="mt-3 flex items-center gap-4 text-[12px] text-[var(--text-2)]">
-          <span>{feedback.userName ?? feedback.userEmail ?? '알 수 없음'}</span>
+          <span>{feedback.userName ?? feedback.userEmail ?? t('feedbacks.modal.unknownAuthor')}</span>
           {feedback.studyName && (
             <span className="rounded-btn bg-bg-alt px-2 py-0.5 text-[11px] text-[var(--text-3)]">
               {feedback.studyName}
@@ -481,7 +479,7 @@ function FeedbackDetailModal({
         <div className="mt-4 space-y-3">
           <div>
             <p className="text-[11px] font-medium text-[var(--text-3)]">
-              내용
+              {t('feedbacks.modal.contentLabel')}
             </p>
             <p className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed text-[var(--text)]">
               {feedback.content}
@@ -491,7 +489,7 @@ function FeedbackDetailModal({
           {feedback.pageUrl && (
             <div>
               <p className="text-[11px] font-medium text-[var(--text-3)]">
-                페이지 URL
+                {t('feedbacks.modal.pageUrlLabel')}
               </p>
               <p className="mt-1 text-[12px] break-all text-[var(--text-2)]">
                 {feedback.pageUrl}
@@ -502,7 +500,7 @@ function FeedbackDetailModal({
           {feedback.browserInfo && (
             <div>
               <p className="text-[11px] font-medium text-[var(--text-3)]">
-                브라우저 정보
+                {t('feedbacks.modal.browserInfoLabel')}
               </p>
               <p className="mt-1 text-[12px] text-[var(--text-2)]">
                 {feedback.browserInfo}
@@ -513,11 +511,11 @@ function FeedbackDetailModal({
           {feedback.screenshot && (
             <div>
               <p className="text-[11px] font-medium text-[var(--text-3)]">
-                스크린샷
+                {t('feedbacks.modal.screenshotLabel')}
               </p>
               <img
                 src={feedback.screenshot}
-                alt="피드백 스크린샷"
+                alt={t('feedbacks.modal.screenshotAlt')}
                 className="mt-1 max-h-[300px] rounded-card border border-[var(--border)] object-contain"
               />
             </div>
@@ -525,7 +523,7 @@ function FeedbackDetailModal({
 
           <div className="flex items-center gap-4 text-[12px] text-[var(--text-3)]">
             <span>
-              등록일:{' '}
+              {t('feedbacks.modal.createdAtLabel')}{' '}
               {new Date(feedback.createdAt).toLocaleDateString('ko-KR', {
                 year: 'numeric',
                 month: '2-digit',
@@ -536,7 +534,7 @@ function FeedbackDetailModal({
             </span>
             {feedback.resolvedAt && (
               <span>
-                해결일:{' '}
+                {t('feedbacks.modal.resolvedAtLabel')}{' '}
                 {new Date(feedback.resolvedAt).toLocaleDateString('ko-KR', {
                   year: 'numeric',
                   month: '2-digit',
@@ -552,7 +550,7 @@ function FeedbackDetailModal({
         {/* 상태 변경 버튼 */}
         <div className="mt-4 flex items-center gap-2 border-t border-[var(--border)] pt-4">
           <span className="text-[11px] font-medium text-[var(--text-3)]">
-            상태 변경:
+            {t('feedbacks.modal.statusChangeLabel')}
           </span>
           {(ALLOWED_TRANSITIONS[feedback.status] ?? [])
             .filter((s) => s !== feedback.status)
@@ -566,7 +564,7 @@ function FeedbackDetailModal({
                   STATUS_STYLE[st] ?? STATUS_STYLE.OPEN,
                 )}
               >
-                {STATUS_LABEL[st]}
+                {t(`feedbacks.status.${st}`)}
               </button>
             ))}
         </div>
