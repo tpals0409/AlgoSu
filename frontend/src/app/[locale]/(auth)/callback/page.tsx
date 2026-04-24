@@ -40,11 +40,10 @@ type CallbackStep = 'loading' | 'error' | 'github-prompt';
  * 피싱/social engineering에 악용되지 않도록 허용된 코드만 렌더한다.
  */
 const ALLOWED_ERRORS = [
-  'oauth_denied',
-  'invalid_state',
-  'no_code',
-  'token_exchange',
-  'profile_fetch',
+  'access_denied',    // OAuth 제공자 거부 (GitHub raw pass-through)
+  'missing_params',   // code/state 누락
+  'auth_failed',      // 일반 인증 실패 (catch-all)
+  'invalid_state',    // CSRF state 검증 실패 (defensive)
 ] as const;
 
 type AuthError = (typeof ALLOWED_ERRORS)[number];
@@ -58,11 +57,10 @@ function toAuthError(value: string): AuthError | null {
 
 /** AuthError → i18n 번역 키 매핑 */
 const ERROR_KEY_MAP: Record<AuthError, string> = {
-  oauth_denied: 'callback.error.oauth_denied',
+  access_denied: 'callback.error.access_denied',
+  missing_params: 'callback.error.missing_params',
+  auth_failed: 'callback.error.auth_failed',
   invalid_state: 'callback.error.invalid_state',
-  no_code: 'callback.error.no_code',
-  token_exchange: 'callback.error.token_exchange',
-  profile_fetch: 'callback.error.profile_fetch',
 };
 
 function CallbackContent(): ReactNode {
