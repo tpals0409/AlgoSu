@@ -8,7 +8,7 @@
 'use client';
 
 import { useState, useEffect, use, type ReactNode } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { CheckCircle2, XCircle, Clock, ChevronLeft, RotateCcw, ArrowRight, Sparkles, LinkIcon } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -137,6 +137,7 @@ export default function SubmissionStatusPage({ params }: PageProps): ReactNode {
   const { id: submissionId } = use(params);
   const router = useRouter();
   const t = useTranslations('submissions');
+  const locale = useLocale();
   const { isAuthenticated } = useRequireAuth();
   useRequireStudy();
   const { currentStudyId } = useStudy();
@@ -221,7 +222,7 @@ export default function SubmissionStatusPage({ params }: PageProps): ReactNode {
             </div>
             <p className="mt-0.5 font-mono text-[10px] text-text-3">
               {submission
-                ? `${submission.language} / ${new Date(submission.createdAt).toLocaleString('ko-KR')}`
+                ? `${submission.language} / ${new Date(submission.createdAt).toLocaleString(locale)}`
                 : t('status.loadingInfo')}
             </p>
           </CardHeader>
