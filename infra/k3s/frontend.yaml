@@ -41,6 +41,8 @@ spec:
           env:
             - name: NEXT_PUBLIC_API_BASE_URL
               value: ""
+            - name: GATEWAY_INTERNAL_URL
+              value: "http://gateway.algosu.svc.cluster.local:3000"
           resources:
             requests:
               memory: "128Mi"
