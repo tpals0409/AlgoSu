@@ -2,6 +2,13 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OAuthController } from './oauth.controller';
 import * as jwt from 'jsonwebtoken';
+import {
+  OAuthInvalidStateException,
+  OAuthTokenExchangeException,
+  OAuthProfileFetchException,
+  OAuthAccountConflictException,
+  OAuthAuthFailedException,
+} from './exceptions';
 
 describe('OAuthController', () => {
   let controller: OAuthController;
@@ -129,25 +136,63 @@ describe('OAuthController', () => {
       );
     });
 
-    it('handleCallback 실패 (BadRequest) -- 사용자 메시지 전달', async () => {
-      mockOAuthService.handleCallback.mockRejectedValue(
-        new BadRequestException('이미 연동된 계정입니다.'),
-      );
+    it('OAuthInvalidStateException → error=invalid_state 리다이렉트', async () => {
+      mockOAuthService.handleCallback.mockRejectedValue(new OAuthInvalidStateException());
       const res = createMockRes();
       await controller.handleOAuthCallback('google', 'code', 'state', undefined as any, res as any);
 
       expect(res.redirect).toHaveBeenCalledWith(
-        expect.stringContaining(encodeURIComponent('이미 연동된 계정입니다.')),
+        `${FRONTEND_URL}/callback#error=invalid_state`,
       );
     });
 
-    it('handleCallback 실패 (일반 에러) -- auth_failed 리다이렉트', async () => {
+    it('OAuthTokenExchangeException → error=token_exchange 리다이렉트', async () => {
+      mockOAuthService.handleCallback.mockRejectedValue(new OAuthTokenExchangeException());
+      const res = createMockRes();
+      await controller.handleOAuthCallback('google', 'code', 'state', undefined as any, res as any);
+
+      expect(res.redirect).toHaveBeenCalledWith(
+        `${FRONTEND_URL}/callback#error=token_exchange`,
+      );
+    });
+
+    it('OAuthProfileFetchException → error=profile_fetch 리다이렉트', async () => {
+      mockOAuthService.handleCallback.mockRejectedValue(new OAuthProfileFetchException());
+      const res = createMockRes();
+      await controller.handleOAuthCallback('google', 'code', 'state', undefined as any, res as any);
+
+      expect(res.redirect).toHaveBeenCalledWith(
+        `${FRONTEND_URL}/callback#error=profile_fetch`,
+      );
+    });
+
+    it('OAuthAccountConflictException → error=account_conflict 리다이렉트', async () => {
+      mockOAuthService.handleCallback.mockRejectedValue(new OAuthAccountConflictException());
+      const res = createMockRes();
+      await controller.handleOAuthCallback('google', 'code', 'state', undefined as any, res as any);
+
+      expect(res.redirect).toHaveBeenCalledWith(
+        `${FRONTEND_URL}/callback#error=account_conflict`,
+      );
+    });
+
+    it('OAuthAuthFailedException → error=auth_failed 리다이렉트', async () => {
+      mockOAuthService.handleCallback.mockRejectedValue(new OAuthAuthFailedException());
+      const res = createMockRes();
+      await controller.handleOAuthCallback('google', 'code', 'state', undefined as any, res as any);
+
+      expect(res.redirect).toHaveBeenCalledWith(
+        `${FRONTEND_URL}/callback#error=auth_failed`,
+      );
+    });
+
+    it('non-OAuthCallbackException → error=auth_failed 폴백', async () => {
       mockOAuthService.handleCallback.mockRejectedValue(new Error('DB error'));
       const res = createMockRes();
       await controller.handleOAuthCallback('google', 'code', 'state', undefined as any, res as any);
 
       expect(res.redirect).toHaveBeenCalledWith(
-        expect.stringContaining('error=auth_failed'),
+        `${FRONTEND_URL}/callback#error=auth_failed`,
       );
     });
   });

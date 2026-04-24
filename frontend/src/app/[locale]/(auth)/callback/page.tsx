@@ -42,7 +42,10 @@ const ALLOWED_ERRORS = [
   'access_denied',    // OAuth 제공자 거부 (GitHub raw pass-through)
   'missing_params',   // code/state 누락
   'auth_failed',      // 일반 인증 실패 (catch-all)
-  'invalid_state',    // CSRF state 검증 실패 (defensive)
+  'invalid_state',    // CSRF state 검증 실패
+  'token_exchange',   // OAuth 토큰 교환 실패
+  'profile_fetch',    // 프로필 조회 실패
+  'account_conflict', // 이메일 중복 계정 충돌
 ] as const;
 
 type AuthError = (typeof ALLOWED_ERRORS)[number];
@@ -60,6 +63,9 @@ const ERROR_KEY_MAP: Record<AuthError, string> = {
   missing_params: 'callback.error.missing_params',
   auth_failed: 'callback.error.auth_failed',
   invalid_state: 'callback.error.invalid_state',
+  token_exchange: 'callback.error.token_exchange',
+  profile_fetch: 'callback.error.profile_fetch',
+  account_conflict: 'callback.error.account_conflict',
 };
 
 function CallbackContent(): ReactNode {
