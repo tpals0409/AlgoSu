@@ -47,6 +47,13 @@ export const cacheKeys = {
     profile: () => '/api/users/me/settings' as const,
   },
   aiQuota: () => '/api/analysis/quota' as const,
+  feedbacks: {
+    list: (params?: URLSearchParams) => {
+      const qs = params?.toString();
+      return `/api/feedbacks${qs ? `?${qs}` : ''}` as const;
+    },
+    detail: (publicId: string) => `/api/feedbacks/${publicId}/detail` as const,
+  },
 } as const;
 
 /**

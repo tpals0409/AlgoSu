@@ -6,7 +6,7 @@
  */
 'use client';
 
-import { useEffect, useState, useCallback, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   MessageSquare,
   Bug,
@@ -20,6 +20,8 @@ import { toast } from 'sonner';
 import { useTranslations, useLocale } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { adminApi, type AdminFeedback } from '@/lib/api';
+import { useFeedbacks } from '@/hooks/use-feedbacks';
+import { useFeedbackDetail } from '@/hooks/use-feedback-detail';
 
 // ── 상수 ──
 
@@ -64,53 +66,56 @@ export default function AdminFeedbacksPage() {
   const t = useTranslations('admin');
   const locale = useLocale();
 
-  const [feedbacks, setFeedbacks] = useState<AdminFeedback[]>([]);
-  const [total, setTotal] = useState(0);
-  const [counts, setCounts] = useState<Record<string, number>>({});
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInput, setSearchInput] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [selectedFeedback, setSelectedFeedback] = useState<AdminFeedback | null>(null);
+  const [selectedPublicId, setSelectedPublicId] = useState<string | null>(null);
 
-  const fetchFeedbacks = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await adminApi.feedbacks(
-        page,
-        PAGE_SIZE,
-        categoryFilter !== 'ALL' ? categoryFilter : undefined,
-        searchQuery || undefined,
-        statusFilter !== 'ALL' ? statusFilter : undefined,
-      );
-      setFeedbacks(res.items);
-      setTotal(res.total);
-      if (res.counts) setCounts(res.counts);
-    } catch {
-      toast.error(t('feedbacks.toast.loadFailed'));
-    } finally {
-      setLoading(false);
-    }
-  }, [page, statusFilter, categoryFilter, searchQuery, t]);
+  const {
+    feedbacks,
+    total,
+    counts,
+    isLoading: loading,
+    error: feedbacksError,
+    mutate: mutateFeedbacks,
+  } = useFeedbacks({
+    page,
+    pageSize: PAGE_SIZE,
+    category: categoryFilter !== 'ALL' ? categoryFilter : undefined,
+    search: searchQuery || undefined,
+    status: statusFilter !== 'ALL' ? statusFilter : undefined,
+  });
 
+  const { detail: selectedDetail } = useFeedbackDetail(selectedPublicId);
+
+  // 모달이 열렸을 때 상세 fetch가 실패하더라도 목록 행(fallback)으로 표시
+  const selectedFeedback: AdminFeedback | null =
+    selectedDetail ?? feedbacks.find((f) => f.publicId === selectedPublicId) ?? null;
+
+  // 목록 로드 실패 시 토스트 1회 노출
   useEffect(() => {
-    void fetchFeedbacks();
-  }, [fetchFeedbacks]);
+    if (feedbacksError) {
+      toast.error(t('feedbacks.toast.loadFailed'));
+    }
+  }, [feedbacksError, t]);
 
   // 필터 변경 시 페이지 리셋
   useEffect(() => {
     setPage(1);
   }, [statusFilter, categoryFilter, searchQuery]);
 
+  /**
+   * 상태 변경 — PATCH 호출 후 목록 SWR 재검증 (서버 권위)
+   */
   const handleStatusChange = async (publicId: string, newStatus: string) => {
     try {
-      const updated = await adminApi.updateFeedbackStatus(publicId, newStatus);
-      setFeedbacks((prev) =>
-        prev.map((f) => (f.publicId === publicId ? updated : f)),
+      await adminApi.updateFeedbackStatus(publicId, newStatus);
+      mutateFeedbacks();
+      toast.success(
+        t('feedbacks.toast.statusChanged', { status: t(`feedbacks.status.${newStatus}`) }),
       );
-      toast.success(t('feedbacks.toast.statusChanged', { status: t(`feedbacks.status.${newStatus}`) }));
     } catch {
       toast.error(t('feedbacks.toast.statusChangeFailed'));
     }
@@ -258,11 +263,7 @@ export default function AdminFeedbacksPage() {
             <div
               key={fb.publicId}
               className="grid cursor-pointer grid-cols-[1fr_120px_100px_100px_140px] gap-4 border-b border-[var(--border)] px-4 py-3 transition-colors hover:bg-bg-alt"
-              onClick={() => {
-                adminApi.feedbackDetail(fb.publicId)
-                  .then((detail) => setSelectedFeedback(detail))
-                  .catch(() => setSelectedFeedback(fb));
-              }}
+              onClick={() => setSelectedPublicId(fb.publicId)}
             >
               {/* 내용 */}
               <div className="min-w-0">
@@ -376,10 +377,10 @@ export default function AdminFeedbacksPage() {
       {selectedFeedback && (
         <FeedbackDetailModal
           feedback={selectedFeedback}
-          onClose={() => setSelectedFeedback(null)}
+          onClose={() => setSelectedPublicId(null)}
           onStatusChange={(publicId, status) => {
             void handleStatusChange(publicId, status);
-            setSelectedFeedback(null);
+            setSelectedPublicId(null);
           }}
         />
       )}
