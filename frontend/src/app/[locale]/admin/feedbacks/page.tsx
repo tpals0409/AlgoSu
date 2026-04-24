@@ -17,7 +17,7 @@ import {
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { adminApi, type AdminFeedback } from '@/lib/api';
 
@@ -62,6 +62,7 @@ const PAGE_SIZE = 20;
 
 export default function AdminFeedbacksPage() {
   const t = useTranslations('admin');
+  const locale = useLocale();
 
   const [feedbacks, setFeedbacks] = useState<AdminFeedback[]>([]);
   const [total, setTotal] = useState(0);
@@ -335,7 +336,7 @@ export default function AdminFeedbacksPage() {
               {/* 등록일 */}
               <div className="flex items-center">
                 <span className="text-[12px] text-[var(--text-3)]">
-                  {new Date(fb.createdAt).toLocaleDateString('ko-KR', {
+                  {new Date(fb.createdAt).toLocaleDateString(locale, {
                     year: 'numeric',
                     month: '2-digit',
                     day: '2-digit',
@@ -425,6 +426,7 @@ function FeedbackDetailModal({
   onStatusChange: (publicId: string, status: string) => void;
 }) {
   const t = useTranslations('admin');
+  const locale = useLocale();
 
   return (
     <div
@@ -524,7 +526,7 @@ function FeedbackDetailModal({
           <div className="flex items-center gap-4 text-[12px] text-[var(--text-3)]">
             <span>
               {t('feedbacks.modal.createdAtLabel')}{' '}
-              {new Date(feedback.createdAt).toLocaleDateString('ko-KR', {
+              {new Date(feedback.createdAt).toLocaleDateString(locale, {
                 year: 'numeric',
                 month: '2-digit',
                 day: '2-digit',
@@ -535,7 +537,7 @@ function FeedbackDetailModal({
             {feedback.resolvedAt && (
               <span>
                 {t('feedbacks.modal.resolvedAtLabel')}{' '}
-                {new Date(feedback.resolvedAt).toLocaleDateString('ko-KR', {
+                {new Date(feedback.resolvedAt).toLocaleDateString(locale, {
                   year: 'numeric',
                   month: '2-digit',
                   day: '2-digit',
