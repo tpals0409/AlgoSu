@@ -135,19 +135,126 @@ follow-up으로 흡수, Low는 즉시 처리 또는 유지 근거 기록 후 종
 
 ---
 
-## Wave D — Oracle 인프라 (herald + sensei) — 🔲 예정
+## Wave D — Oracle 인프라 (herald + sensei) — ✅ 조사 완료, Oracle 적용 대기
 
-### D1 — Critic API 529 재시도 로직 (herald)
+### D1 — Critic API 529 재시도 로직 조사 및 설계 (herald)
 
-- `~/.claude/oracle/bin/oracle-auto-critic.sh` 수정
-- 529 응답 시 지수 백오프 재시도 (최대 3회)
-- 재시도 소진 시 Oracle에 `status: partial` 리포트 + 수동 호출 안내
+#### 근본 원인 분석
+
+Sprint 124 Critic 7회 중 1회 (`critic-task-20260424-115243-51116`) 529 Overloaded 발생.
+로그 확인 결과:
+
+```
+# ~/.claude/oracle/logs/critic-task-20260424-115243-51116.out
+API Error: 529 Overloaded. This is a server-side issue, usually temporary — try again in a moment.
+If it persists, check status.claude.com.
+```
+
+**발생 지점**: `claude -p` 자체 호출 실패 (Claude API 레이어). Critic 에이전트 내부의
+`codex review` Bash 호출이 아님. 즉, 에이전트가 시작조차 되지 못한 상태.
+
+#### 재시도 옵션 비교
+
+| 옵션 | 위치 | 실효성 | 구현 주체 |
+|------|------|--------|-----------|
+| A | `critic.md` 프롬프트에 재시도 지시 | ❌ 에이전트가 시작되지 않으므로 무효 | Oracle |
+| B | `oracle-spawn.sh` 러너 템플릿에 `claude -p` 재시도 루프 | ✅ 근본 지점 직접 처리, 전체 에이전트 커버 | Oracle (민감 파일) |
+| C | `oracle-auto-critic.sh`에서 이전 실패 감지 후 재시도 task 재큐잉 | △ 간접 처리, 재시도 간격 길어짐 | Oracle (민감 파일) |
+
+**권장: 옵션 B** — `oracle-spawn.sh` 러너 템플릿의 `claude -p` 호출부를 재시도 루프로 래핑.
+모든 에이전트(Critic 포함)에 일괄 적용되며 근본 지점을 직접 처리.
+
+#### Oracle 적용 diff (옵션 B)
+
+파일: `~/.claude/oracle/bin/oracle-spawn.sh`
+
+**변경 위치**: `RUNNER_EOF` heredoc 내 `claude -p` 호출부 (현재 줄 175~182 근방)
+
+```diff
+-env -u CLAUDECODE NO_COLOR=1 TERM=dumb \\
+-  claude -p "\$TASK_PROMPT" \\
+-  --model "${model}" \\
+-  --system-prompt "\$SYSTEM_PROMPT" \\
+-  --permission-mode bypassPermissions \\
+-  --add-dir "${INBOX_DIR}" \\
+-  --output-format text \\
+-  2>&1 | tee "${log_file}"
++# Sprint 125 D1: API 529 Overloaded 재시도 래퍼 (최대 3회, 지수 백오프 2s/4s/8s)
++_RETRY_MAX=3
++_RETRY_N=0
++_RETRY_BACKOFF=2
++
++while true; do
++  _TMP=\$(mktemp /tmp/oracle-runner-XXXXXX)
++  env -u CLAUDECODE NO_COLOR=1 TERM=dumb \\
++    claude -p "\$TASK_PROMPT" \\
++    --model "${model}" \\
++    --system-prompt "\$SYSTEM_PROMPT" \\
++    --permission-mode bypassPermissions \\
++    --add-dir "${INBOX_DIR}" \\
++    --output-format text \\
++    2>&1 | tee "\$_TMP" | tee -a "${log_file}" || true
++
++  if grep -qF "API Error: 529 Overloaded" "\$_TMP" && [[ "\$_RETRY_N" -lt "\$_RETRY_MAX" ]]; then
++    _RETRY_N=\$((_RETRY_N + 1))
++    echo "[runner][retry] API 529 Overloaded — \${_RETRY_BACKOFF}s 후 재시도 (\${_RETRY_N}/\${_RETRY_MAX})" | tee -a "${log_file}"
++    printf '%s\t%s\t%s\tretry=%s\tbackoff=%ss\n' \
++      "\$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${agent}" "${task_id}" "\$_RETRY_N" "\$_RETRY_BACKOFF" \
++      >> "${LOGS_DIR}/auto-critic-retry.log" 2>/dev/null || true
++    sleep "\$_RETRY_BACKOFF"
++    _RETRY_BACKOFF=\$((_RETRY_BACKOFF * 2))
++    rm -f "\$_TMP"
++  else
++    rm -f "\$_TMP"
++    break
++  fi
++done
+```
+
+#### HEREDOC 이스케이핑 주의사항
+
+`<<RUNNER_EOF` (비quoted) heredoc에서:
+- `\$_TMP` → runner에서 `$_TMP` (런타임 변수) ✅
+- `\$(mktemp ...)` → runner에서 `$(mktemp ...)` (런타임 명령 치환) ✅
+- `\${_RETRY_N}` → runner에서 `${_RETRY_N}` (런타임 변수) ✅
+- `${model}`, `${INBOX_DIR}`, `${log_file}`, `${LOGS_DIR}`, `${agent}`, `${task_id}` → 러너 생성 시점 확장 (outer bash 변수) ✅
+- `\\` at EOL → runner에서 `\` (줄 이음) ✅
+
+#### 보조: oracle-auto-critic.sh 헤더 주석 추가 (옵션)
+
+파일: `~/.claude/oracle/bin/oracle-auto-critic.sh`
+
+```diff
+ # 사용법: oracle-auto-critic.sh <agent> <task_id> <base_commit>
++#
++# Sprint 125 D1: 재시도 로그 경로 — oracle-spawn.sh runner가 append
++# RETRY_LOG: ~/.claude/oracle/logs/auto-critic-retry.log
+ set -euo pipefail
++
++RETRY_LOG="${ORACLE_DIR}/logs/auto-critic-retry.log"
+```
+
+#### 재시도 로그 스펙
+
+경로: `~/.claude/oracle/logs/auto-critic-retry.log`
+형식 (TSV): `<ISO8601_UTC>\t<agent>\t<task_id>\tretry=<N>\tbackoff=<Xs>`
+예시:
+```
+2026-04-24T16:44:00Z	critic	task-20260424-115243-51116	retry=1	backoff=2s
+2026-04-24T16:44:02Z	critic	task-20260424-115243-51116	retry=2	backoff=4s
+```
+
+#### Oracle 승인 필요 항목
+
+- [ ] `oracle-spawn.sh` 러너 템플릿 위 diff 적용 (민감 파일 — Oracle 직접 편집)
+- [ ] `oracle-auto-critic.sh` 헤더 주석 추가 (옵션, Oracle 직접 편집)
+- [ ] `~/.claude/oracle/logs/auto-critic-retry.log` 초기 파일 생성: `touch ~/.claude/oracle/logs/auto-critic-retry.log`
 
 ### D2 — short-task inbox Write permission 조사 리포트 (sensei)
 
 - 독립 실행 모드에서 `~/.claude/oracle/inbox/` Write 권한 차단 원인 분석
 - `--add-dir` 옵션 효과 검증 (Sprint 124 G-1에서 추가)
-- 리포트를 sprint-125.md에 보완 예정
+- 리포트를 sprint-125.md에 보완 예정 (sensei 완료 후 갱신)
 
 ---
 
@@ -159,7 +266,7 @@ follow-up으로 흡수, Low는 즉시 처리 또는 유지 근거 기록 후 종
 | 신규 번역 키 (Wave A~B) | ~200+ (ko+en) |
 | 네임스페이스 도달 (Sprint 125 기준) | 18개 (Wave B 확정) |
 | OAuth 에러 코드 정규화 | 7종 enum 완성 |
-| Sprint 124 이월 9항목 마감 | 7/9 ✅ (Wave D 2항목 예정) |
+| Sprint 124 이월 9항목 마감 | 8/9 (D1 조사완료·Oracle적용대기, D2 sensei 진행) |
 
 ---
 
@@ -170,5 +277,5 @@ follow-up으로 흡수, Low는 즉시 처리 또는 유지 근거 기록 후 종
 | `errors.authFailed` / `errors.serviceFailed` 미참조 레거시 키 검토 | ADR-025 후속 | Low |
 | `difficultyData` useMemo 추출 | Wave B Critic Low | Low |
 | unclassified 차트 ko/en 비대칭 데이터 레이어 정렬 | Wave B Critic Low | Low |
-| Wave D: Critic 529 재시도 (완료 후 삭제) | Sprint 125 D1 | Medium |
-| Wave D: inbox Write permission 조사 (완료 후 삭제) | Sprint 125 D2 | Medium |
+| oracle-spawn.sh 529 재시도 diff 적용 (Oracle 직접 적용 필요) | Sprint 125 D1 | Medium |
+| Wave D: inbox Write permission 조사 (sensei 완료 후 갱신) | Sprint 125 D2 | Medium |
