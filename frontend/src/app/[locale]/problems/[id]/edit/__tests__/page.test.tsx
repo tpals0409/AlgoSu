@@ -1,8 +1,10 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithI18n } from '@/test-utils/i18n';
 import ProblemEditPage from '../page';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
+  useParams: () => ({ locale: 'ko' }),
   usePathname: () => '/problems/1/edit',
 }));
 
@@ -184,27 +186,27 @@ describe('ProblemEditPage', () => {
   const defaultParams = makeParams({ id: 'prob-1' });
 
   it('ADMIN일 때 문제 수정 페이지가 렌더링된다', async () => {
-    render(<ProblemEditPage params={defaultParams} />);
+    renderWithI18n(<ProblemEditPage params={defaultParams} />);
     expect(await screen.findByText('문제 수정')).toBeInTheDocument();
   });
 
   it('AppLayout 안에 렌더링된다', async () => {
-    render(<ProblemEditPage params={defaultParams} />);
+    renderWithI18n(<ProblemEditPage params={defaultParams} />);
     expect(await screen.findByTestId('app-layout')).toBeInTheDocument();
   });
 
   it('뒤로가기 버튼이 표시된다', async () => {
-    render(<ProblemEditPage params={defaultParams} />);
+    renderWithI18n(<ProblemEditPage params={defaultParams} />);
     expect(await screen.findByText('문제 상세')).toBeInTheDocument();
   });
 
   it('수정 완료 버튼이 표시된다', async () => {
-    render(<ProblemEditPage params={defaultParams} />);
+    renderWithI18n(<ProblemEditPage params={defaultParams} />);
     expect(await screen.findByText('수정 완료')).toBeInTheDocument();
   });
 
   it('삭제 버튼이 표시된다', async () => {
-    render(<ProblemEditPage params={defaultParams} />);
+    renderWithI18n(<ProblemEditPage params={defaultParams} />);
     expect(await screen.findByText('삭제')).toBeInTheDocument();
   });
 });
@@ -224,7 +226,7 @@ describe('ProblemEditPage - non-ADMIN', () => {
     });
 
     const params = makeParams({ id: 'prob-1' });
-    render(<ProblemEditPage params={params} />);
+    renderWithI18n(<ProblemEditPage params={params} />);
     expect(await screen.findByText('문제 수정은 관리자만 가능합니다.')).toBeInTheDocument();
 
     // Restore

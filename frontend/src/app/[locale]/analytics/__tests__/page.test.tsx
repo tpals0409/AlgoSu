@@ -12,6 +12,7 @@ jest.mock('@/i18n/navigation', () => ({
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
+  useParams: () => ({ locale: 'ko' }),
   usePathname: () => '/analytics',
 }));
 
