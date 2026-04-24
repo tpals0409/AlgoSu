@@ -5,6 +5,14 @@ import { OAuthService } from './oauth.service';
 import { OAuthProvider, IdentityUser } from '../../common/types/identity.types';
 import { IdentityClientService } from '../../identity-client/identity-client.service';
 import { SessionPolicyService } from '../session-policy/session-policy.service';
+import {
+  OAuthInvalidStateException,
+  OAuthTokenExchangeException,
+  OAuthProfileFetchException,
+  OAuthAccountConflictException,
+  OAuthAuthFailedException,
+  OAuthCallbackException,
+} from './exceptions';
 
 // --- ioredis 모듈 모킹 ---
 const mockRedis = {
@@ -121,14 +129,14 @@ describe('OAuthService', () => {
       expect(mockRedis.del).toHaveBeenCalledWith('oauth:state:valid-state');
     });
 
-    it('무효한 state → BadRequestException (del 반환값 0)', async () => {
+    it('무효한 state → OAuthInvalidStateException (del 반환값 0)', async () => {
       mockRedis.del.mockResolvedValue(0);
 
       await expect(service.validateAndConsumeState('invalid-state')).rejects.toThrow(
-        BadRequestException,
+        OAuthInvalidStateException,
       );
-      await expect(service.validateAndConsumeState('invalid-state')).rejects.toThrow(
-        '유효하지 않거나 만료된 OAuth state입니다.',
+      await expect(service.validateAndConsumeState('invalid-state')).rejects.toBeInstanceOf(
+        OAuthCallbackException,
       );
     });
   });
@@ -262,10 +270,10 @@ describe('OAuthService', () => {
       expect(result.user.avatar_url).toBe('preset:cat');
     });
 
-    it('미지원 provider → BadRequestException', async () => {
+    it('미지원 provider → OAuthAuthFailedException', async () => {
       await expect(
         service.handleCallback('twitter', 'auth-code', 'valid-state'),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(OAuthAuthFailedException);
     });
   });
 
@@ -622,35 +630,35 @@ describe('OAuthService', () => {
   // 22. exchangeKakaoToken — email 없는 경우 (line 277-279)
   // ============================
   describe('exchangeKakaoToken — kakao_account.email 없음', () => {
-    it('email 없으면 BadRequestException', async () => {
+    it('email 없으면 OAuthProfileFetchException', async () => {
       mockRedis.del.mockResolvedValue(1);
 
-      mockAxios.post.mockResolvedValue({
+      mockAxios.post.mockResolvedValueOnce({
         data: { access_token: 'kakao-token' },
       });
       // kakao_account 없거나 email 없음
-      mockAxios.get.mockResolvedValue({
+      mockAxios.get.mockResolvedValueOnce({
         data: { kakao_account: {} },
       });
 
       await expect(
         service.handleCallback('kakao', 'kakao-code', 'valid-state'),
-      ).rejects.toThrow('Kakao 계정에서 이메일을 가져올 수 없습니다.');
+      ).rejects.toThrow(OAuthProfileFetchException);
     });
 
-    it('kakao_account 자체가 없으면 BadRequestException', async () => {
+    it('kakao_account 자체가 없으면 OAuthProfileFetchException', async () => {
       mockRedis.del.mockResolvedValue(1);
 
-      mockAxios.post.mockResolvedValue({
+      mockAxios.post.mockResolvedValueOnce({
         data: { access_token: 'kakao-token' },
       });
-      mockAxios.get.mockResolvedValue({
+      mockAxios.get.mockResolvedValueOnce({
         data: {},
       });
 
       await expect(
         service.handleCallback('kakao', 'kakao-code', 'valid-state'),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(OAuthProfileFetchException);
     });
 
     it('kakao profile 없으면 name/avatar_url null 처리 (line 283-284)', async () => {
@@ -823,15 +831,15 @@ describe('OAuthService', () => {
   // ============================
   // 26. upsertUser — provider 불일치 분기 (lines 396-405)
   // ============================
-  describe('upsertUser — provider 불일치', () => {
-    it('다른 provider로 가입된 이메일 → Identity 서비스에서 BadRequestException', async () => {
+  describe('upsertUser — provider 불일치 (ADR-025 정규화)', () => {
+    it('다른 provider로 가입된 이메일 → OAuthAccountConflictException', async () => {
       mockRedis.del.mockResolvedValue(1);
 
       // Google으로 callback, 하지만 기존 유저는 Naver로 가입
-      mockAxios.post.mockResolvedValue({
+      mockAxios.post.mockResolvedValueOnce({
         data: { access_token: 'google-token' },
       });
-      mockAxios.get.mockResolvedValue({
+      mockAxios.get.mockResolvedValueOnce({
         data: { email: 'existing@naver.com', name: 'Naver User' },
       });
 
@@ -842,7 +850,24 @@ describe('OAuthService', () => {
 
       await expect(
         service.handleCallback('google', 'code', 'state'),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(OAuthAccountConflictException);
+    });
+
+    it('Identity 서비스 비 BadRequest 에러 → OAuthAuthFailedException', async () => {
+      mockRedis.del.mockResolvedValue(1);
+
+      mockAxios.post.mockResolvedValueOnce({
+        data: { access_token: 'google-token' },
+      });
+      mockAxios.get.mockResolvedValueOnce({
+        data: { email: 'db-err@test.com', name: 'DB Error User' },
+      });
+
+      identityClient.upsertUser.mockRejectedValue(new Error('DB connection failed'));
+
+      await expect(
+        service.handleCallback('google', 'code', 'state'),
+      ).rejects.toThrow(OAuthAuthFailedException);
     });
   });
 
@@ -1004,12 +1029,103 @@ describe('OAuthService', () => {
   });
 
   // ============================
-  // 36. sse controller line 339 coverage — removeChannelListener when channel not found
-  // (이 테스트는 SseController spec에 속하지만 참조용)
+  // 36. ADR-025 — 토큰 교환 실패 → OAuthTokenExchangeException
   // ============================
+  describe('exchangeOAuthToken — 토큰 교환 실패 (ADR-025)', () => {
+    beforeEach(() => {
+      mockRedis.del.mockResolvedValue(1);
+    });
+
+    it('Google 토큰 교환 실패 → OAuthTokenExchangeException', async () => {
+      mockAxios.post.mockRejectedValueOnce(new Error('Google token endpoint down'));
+
+      await expect(
+        service.handleCallback('google', 'code', 'valid-state'),
+      ).rejects.toThrow(OAuthTokenExchangeException);
+    });
+
+    it('Naver 토큰 교환 실패 → OAuthTokenExchangeException', async () => {
+      mockAxios.post.mockRejectedValueOnce(new Error('Naver token endpoint down'));
+
+      await expect(
+        service.handleCallback('naver', 'code', 'valid-state'),
+      ).rejects.toThrow(OAuthTokenExchangeException);
+    });
+
+    it('Kakao 토큰 교환 실패 → OAuthTokenExchangeException', async () => {
+      mockAxios.post.mockRejectedValueOnce(new Error('Kakao token endpoint down'));
+
+      await expect(
+        service.handleCallback('kakao', 'code', 'valid-state'),
+      ).rejects.toThrow(OAuthTokenExchangeException);
+    });
+  });
 
   // ============================
-  // 36. removeChannelListener — channelListeners 없을 때 (sse.controller.ts line 339)
-  // 이미 SSE spec에서 추가했으나 oauth 테스트 파일 완결을 위해 기술
+  // 37. ADR-025 — 프로필 조회 실패 → OAuthProfileFetchException
   // ============================
+  describe('fetchProfile — 프로필 조회 실패 (ADR-025)', () => {
+    beforeEach(() => {
+      mockRedis.del.mockResolvedValue(1);
+    });
+
+    it('Google 프로필 조회 실패 → OAuthProfileFetchException', async () => {
+      mockAxios.post.mockResolvedValueOnce({
+        data: { access_token: 'google-token' },
+      });
+      mockAxios.get.mockRejectedValueOnce(new Error('Google userinfo endpoint down'));
+
+      await expect(
+        service.handleCallback('google', 'code', 'valid-state'),
+      ).rejects.toThrow(OAuthProfileFetchException);
+    });
+
+    it('Naver 프로필 조회 실패 → OAuthProfileFetchException', async () => {
+      mockAxios.post.mockResolvedValueOnce({
+        data: { access_token: 'naver-token' },
+      });
+      mockAxios.get.mockRejectedValueOnce(new Error('Naver profile endpoint down'));
+
+      await expect(
+        service.handleCallback('naver', 'code', 'valid-state'),
+      ).rejects.toThrow(OAuthProfileFetchException);
+    });
+
+    it('Kakao 프로필 조회 실패 → OAuthProfileFetchException', async () => {
+      mockAxios.post.mockResolvedValueOnce({
+        data: { access_token: 'kakao-token' },
+      });
+      mockAxios.get.mockRejectedValueOnce(new Error('Kakao profile endpoint down'));
+
+      await expect(
+        service.handleCallback('kakao', 'code', 'valid-state'),
+      ).rejects.toThrow(OAuthProfileFetchException);
+    });
+  });
+
+  // ============================
+  // 38. ADR-025 — OAuthCallbackException code 필드 검증
+  // ============================
+  describe('OAuthCallbackException — code 필드 정합성', () => {
+    it('각 Exception의 code 필드가 올바른 enum 값을 반환', () => {
+      expect(new OAuthInvalidStateException().code).toBe('invalid_state');
+      expect(new OAuthTokenExchangeException().code).toBe('token_exchange');
+      expect(new OAuthProfileFetchException().code).toBe('profile_fetch');
+      expect(new OAuthAccountConflictException().code).toBe('account_conflict');
+      expect(new OAuthAuthFailedException().code).toBe('auth_failed');
+    });
+
+    it('모든 Exception이 OAuthCallbackException 인스턴스', () => {
+      const exceptions = [
+        new OAuthInvalidStateException(),
+        new OAuthTokenExchangeException(),
+        new OAuthProfileFetchException(),
+        new OAuthAccountConflictException(),
+        new OAuthAuthFailedException(),
+      ];
+      for (const ex of exceptions) {
+        expect(ex).toBeInstanceOf(OAuthCallbackException);
+      }
+    });
+  });
 });

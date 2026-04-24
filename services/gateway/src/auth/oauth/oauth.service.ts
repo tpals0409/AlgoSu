@@ -19,6 +19,13 @@ import { OAuthProvider, IdentityUser } from '../../common/types/identity.types';
 import { encryptToken } from './token-crypto.util';
 import { IdentityClientService } from '../../identity-client/identity-client.service';
 import { SessionPolicyService } from '../session-policy/session-policy.service';
+import {
+  OAuthInvalidStateException,
+  OAuthTokenExchangeException,
+  OAuthProfileFetchException,
+  OAuthAccountConflictException,
+  OAuthAuthFailedException,
+} from './exceptions';
 
 interface OAuthTokenResponse {
   access_token: string;
@@ -73,7 +80,7 @@ export class OAuthService {
   async validateAndConsumeState(state: string): Promise<void> {
     const exists = await this.redis.del(`oauth:state:${state}`);
     if (exists === 0) {
-      throw new BadRequestException('유효하지 않거나 만료된 OAuth state입니다.');
+      throw new OAuthInvalidStateException();
     }
   }
 
@@ -167,10 +174,10 @@ export class OAuthService {
         oauthProvider = OAuthProvider.KAKAO;
         break;
       default:
-        throw new BadRequestException(`지원하지 않는 OAuth Provider: ${provider}`);
+        throw new OAuthAuthFailedException();
     }
 
-    const user = await this.upsertUser(profile, oauthProvider);
+    const user = await this.upsertUserSafe(profile, oauthProvider);
     const accessToken = this.issueJwt(user);
 
     return { accessToken, user };
@@ -181,7 +188,7 @@ export class OAuthService {
     const clientSecret = this.configService.getOrThrow<string>('GOOGLE_CLIENT_SECRET');
     const redirectUri = `${this.callbackBaseUrl}/auth/oauth/google/callback`;
 
-    const tokenRes = await axios.post<OAuthTokenResponse>(
+    const accessToken = await this.exchangeOAuthToken(
       'https://oauth2.googleapis.com/token',
       {
         code,
@@ -192,26 +199,34 @@ export class OAuthService {
       },
     );
 
-    const userInfoRes = await axios.get<{
-      email: string;
-      name?: string;
-      picture?: string;
-    }>('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: { Authorization: `Bearer ${tokenRes.data.access_token}` },
-    });
+    return this.fetchGoogleProfile(accessToken);
+  }
 
-    return {
-      email: userInfoRes.data.email,
-      name: userInfoRes.data.name ?? null,
-      avatar_url: userInfoRes.data.picture ?? null,
-    };
+  /** Google 프로필 조회 — 실패 시 OAuthProfileFetchException */
+  private async fetchGoogleProfile(accessToken: string): Promise<OAuthUserProfile> {
+    try {
+      const res = await axios.get<{
+        email: string;
+        name?: string;
+        picture?: string;
+      }>('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      return {
+        email: res.data.email,
+        name: res.data.name ?? null,
+        avatar_url: res.data.picture ?? null,
+      };
+    } catch {
+      throw new OAuthProfileFetchException();
+    }
   }
 
   private async exchangeNaverToken(code: string, state: string): Promise<OAuthUserProfile> {
     const clientId = this.configService.getOrThrow<string>('NAVER_CLIENT_ID');
     const clientSecret = this.configService.getOrThrow<string>('NAVER_CLIENT_SECRET');
 
-    const tokenRes = await axios.post<OAuthTokenResponse>(
+    const accessToken = await this.exchangeOAuthToken(
       'https://nid.naver.com/oauth2.0/token',
       null,
       {
@@ -225,18 +240,26 @@ export class OAuthService {
       },
     );
 
-    const profileRes = await axios.get<{
-      response: { email: string; name?: string; profile_image?: string };
-    }>('https://openapi.naver.com/v1/nid/me', {
-      headers: { Authorization: `Bearer ${tokenRes.data.access_token}` },
-    });
+    return this.fetchNaverProfile(accessToken);
+  }
 
-    const profile = profileRes.data.response;
-    return {
-      email: profile.email,
-      name: profile.name ?? null,
-      avatar_url: profile.profile_image ?? null,
-    };
+  /** Naver 프로필 조회 — 실패 시 OAuthProfileFetchException */
+  private async fetchNaverProfile(accessToken: string): Promise<OAuthUserProfile> {
+    try {
+      const res = await axios.get<{
+        response: { email: string; name?: string; profile_image?: string };
+      }>('https://openapi.naver.com/v1/nid/me', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const profile = res.data.response;
+      return {
+        email: profile.email,
+        name: profile.name ?? null,
+        avatar_url: profile.profile_image ?? null,
+      };
+    } catch {
+      throw new OAuthProfileFetchException();
+    }
   }
 
   private async exchangeKakaoToken(code: string): Promise<OAuthUserProfile> {
@@ -244,7 +267,7 @@ export class OAuthService {
     const clientSecret = this.configService.getOrThrow<string>('KAKAO_CLIENT_SECRET');
     const redirectUri = `${this.callbackBaseUrl}/auth/oauth/kakao/callback`;
 
-    const tokenRes = await axios.post<OAuthTokenResponse>(
+    const accessToken = await this.exchangeOAuthToken(
       'https://kauth.kakao.com/oauth/token',
       null,
       {
@@ -259,25 +282,35 @@ export class OAuthService {
       },
     );
 
-    const profileRes = await axios.get<{
-      kakao_account?: {
-        email?: string;
-        profile?: { nickname?: string; profile_image_url?: string };
+    return this.fetchKakaoProfile(accessToken);
+  }
+
+  /** Kakao 프로필 조회 — 실패 시 OAuthProfileFetchException */
+  private async fetchKakaoProfile(accessToken: string): Promise<OAuthUserProfile> {
+    try {
+      const res = await axios.get<{
+        kakao_account?: {
+          email?: string;
+          profile?: { nickname?: string; profile_image_url?: string };
+        };
+      }>('https://kapi.kakao.com/v2/user/me', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      const account = res.data.kakao_account;
+      if (!account?.email) {
+        throw new OAuthProfileFetchException();
+      }
+
+      return {
+        email: account.email,
+        name: account.profile?.nickname ?? null,
+        avatar_url: account.profile?.profile_image_url ?? null,
       };
-    }>('https://kapi.kakao.com/v2/user/me', {
-      headers: { Authorization: `Bearer ${tokenRes.data.access_token}` },
-    });
-
-    const account = profileRes.data.kakao_account;
-    if (!account?.email) {
-      throw new BadRequestException('Kakao 계정에서 이메일을 가져올 수 없습니다.');
+    } catch (error) {
+      if (error instanceof OAuthProfileFetchException) throw error;
+      throw new OAuthProfileFetchException();
     }
-
-    return {
-      email: account.email,
-      name: account.profile?.nickname ?? null,
-      avatar_url: account.profile?.profile_image_url ?? null,
-    };
   }
 
   // --- GitHub 연동 ---
@@ -382,7 +415,44 @@ export class OAuthService {
     return this.linkGitHub(userId, code);
   }
 
+  // --- 공통 토큰 교환 헬퍼 ---
+
+  /**
+   * OAuth 토큰 교환 공통 래퍼 — 실패 시 OAuthTokenExchangeException
+   * @returns access_token 문자열
+   */
+  private async exchangeOAuthToken(
+    url: string,
+    data: unknown,
+    config?: Record<string, unknown>,
+  ): Promise<string> {
+    try {
+      const res = await axios.post<OAuthTokenResponse>(url, data, config);
+      return res.data.access_token;
+    } catch {
+      throw new OAuthTokenExchangeException();
+    }
+  }
+
   // --- User CRUD ---
+
+  /**
+   * 사용자 upsert — provider 충돌 시 OAuthAccountConflictException
+   * handleCallback 전용 래퍼 (ADR-025 에러 코드 정규화)
+   */
+  private async upsertUserSafe(
+    profile: OAuthUserProfile,
+    provider: OAuthProvider,
+  ): Promise<IdentityUser> {
+    try {
+      return await this.upsertUser(profile, provider);
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw new OAuthAccountConflictException();
+      }
+      throw new OAuthAuthFailedException();
+    }
+  }
 
   private async upsertUser(
     profile: OAuthUserProfile,

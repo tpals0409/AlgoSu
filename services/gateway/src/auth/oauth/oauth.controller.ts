@@ -27,6 +27,7 @@ import * as jwt from 'jsonwebtoken';
 import { OAuthService } from './oauth.service';
 import { setTokenCookie } from '../cookie.util';
 import { StructuredLoggerService } from '../../common/logger/structured-logger.service';
+import { OAuthCallbackException } from './exceptions';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -133,15 +134,12 @@ export class OAuthController {
       });
       res.redirect(`${frontendUrl}/callback#${params.toString()}`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'unknown';
-      this.logger.warn(`OAuth 콜백 처리 실패: provider=${provider}, error=${message}`);
-
-      // 중복 제공자 에러 등 사용자 친화 메시지 전달
-      const isUserFacing = error instanceof BadRequestException;
-      const errorParam = isUserFacing
-        ? encodeURIComponent(message)
+      // ADR-025: 정규화된 ASCII 에러 코드로 리다이렉트 (encodeURIComponent 한글 패턴 폐지)
+      const code = error instanceof OAuthCallbackException
+        ? error.code
         : 'auth_failed';
-      res.redirect(`${frontendUrl}/callback#error=${errorParam}`);
+      this.logger.warn(`OAuth 콜백 처리 실패: provider=${provider}, code=${code}`);
+      res.redirect(`${frontendUrl}/callback#error=${code}`);
     }
   }
 
