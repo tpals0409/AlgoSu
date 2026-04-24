@@ -127,7 +127,9 @@
     "sourcePlatform": "Source Platform",
     "cancel": "Cancel",
     "backToList": "Problems",
-    "platformAriaLabel": "Select source platform"
+    "platformAriaLabel": "Select source platform",
+    "bojViewAriaLabel": "View on Baekjoon",
+    "programmersViewAriaLabel": "View on Programmers"
   },
   "create": {
     "heading": "Add Problem",

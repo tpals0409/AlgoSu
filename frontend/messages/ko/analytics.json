@@ -21,6 +21,7 @@
   "weeks": {
     "recent": "최근 {count}주 중"
   },
+  "unclassified": "미분류",
   "loading": "로딩 중...",
   "charts": {
     "statCards": {

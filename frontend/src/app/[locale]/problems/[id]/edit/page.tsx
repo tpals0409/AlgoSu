@@ -425,7 +425,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="ml-auto shrink-0 text-text-3 hover:text-primary transition-colors"
-                      aria-label="백준에서 보기"
+                      aria-label={t('form.bojViewAriaLabel')}
                     >
                       <ExternalLink className="h-3.5 w-3.5" />
                     </a>
@@ -502,7 +502,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="ml-auto shrink-0 text-text-3 hover:text-primary transition-colors"
-                      aria-label="프로그래머스에서 보기"
+                      aria-label={t('form.programmersViewAriaLabel')}
                     >
                       <ExternalLink className="h-3.5 w-3.5" />
                     </a>

@@ -21,6 +21,7 @@
   "weeks": {
     "recent": "Out of last {count} weeks"
   },
+  "unclassified": "Unclassified",
   "loading": "Loading...",
   "charts": {
     "statCards": {

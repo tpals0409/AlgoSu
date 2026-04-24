@@ -127,7 +127,9 @@
     "sourcePlatform": "출처 플랫폼",
     "cancel": "취소",
     "backToList": "문제 목록",
-    "platformAriaLabel": "출처 플랫폼 선택"
+    "platformAriaLabel": "출처 플랫폼 선택",
+    "bojViewAriaLabel": "백준에서 보기",
+    "programmersViewAriaLabel": "프로그래머스에서 보기"
   },
   "create": {
     "heading": "문제 추가",

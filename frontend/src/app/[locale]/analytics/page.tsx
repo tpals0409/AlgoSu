@@ -212,13 +212,13 @@ export default function AnalyticsPage(): ReactNode {
     const countMap = new Map<string, number>();
     for (const p of allProblems) {
       if (!myProblemIds.has(p.id)) continue;
-      const tags = p.tags?.length ? p.tags : ['미분류'];
+      const tags = p.tags?.length ? p.tags : [t('unclassified')];
       for (const tag of tags) countMap.set(tag, (countMap.get(tag) ?? 0) + 1);
     }
     return Array.from(countMap.entries())
       .map(([tag, count]) => ({ tag, count }))
       .sort((a, b) => b.count - a.count);
-  }, [allProblems, myProblemIds]);
+  }, [allProblems, myProblemIds, t]);
 
   // ─── LOADING ───────────────────────────
 
@@ -357,7 +357,7 @@ export default function AnalyticsPage(): ReactNode {
               const countMap = new Map<string, number>();
               for (const p of allProblems) {
                 if (!myProblemIds.has(p.id)) continue;
-                const d = p.difficulty ?? '미분류';
+                const d = p.difficulty ?? t('unclassified');
                 countMap.set(d, (countMap.get(d) ?? 0) + 1);
               }
               return DIFFICULTY_ORDER
