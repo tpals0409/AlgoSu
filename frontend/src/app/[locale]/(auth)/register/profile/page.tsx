@@ -11,7 +11,6 @@ import { useState, useCallback, useEffect, type ReactNode } from 'react';
 import { useRouter } from '@/i18n/navigation';
 import { Link } from '@/i18n/navigation';
 import Image from 'next/image';
-import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
 import { Sun, Moon } from 'lucide-react';
 import { Logo } from '@/components/ui/Logo';
@@ -20,33 +19,8 @@ import { InlineSpinner } from '@/components/ui/LoadingSpinner';
 import { authApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { AVATAR_PRESETS, getAvatarSrc, toAvatarUrl } from '@/lib/avatars';
+import { OnboardingStepper } from '@/components/onboarding/OnboardingStepper';
 
-// ─── STEPPER ─────────────────────────────
-
-function OnboardingStepper({ current }: { current: 1 | 2 | 3 }): ReactNode {
-  const tAuth = useTranslations('auth');
-  const steps = [tAuth('register.stepper.step1'), tAuth('register.stepper.step2'), tAuth('register.stepper.step3')];
-  return (
-    <div className="flex items-center justify-center gap-2 mb-8">
-      {steps.map((label, i) => {
-        const step = i + 1;
-        const isActive = step === current;
-        const isDone = step < current;
-        return (
-          <div key={label} className="flex items-center gap-2">
-            {i > 0 && <div className={`h-px w-6 ${isDone ? 'bg-primary' : 'bg-border'}`} />}
-            <div className={`flex items-center gap-1.5 text-xs font-medium ${isActive ? 'text-primary' : isDone ? 'text-primary/60' : 'text-text-3'}`}>
-              <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${isActive ? 'bg-primary text-white' : isDone ? 'bg-primary/20 text-primary' : 'bg-bg-alt text-text-3'}`}>
-                {isDone ? '\u2713' : step}
-              </span>
-              {label}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 // ─── PROFILE CONTENT ────────────────────
 
