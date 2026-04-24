@@ -31,15 +31,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
 import { useAnimVal } from '@/hooks/useAnimVal';
-import {
-  studyApi,
-  submissionApi,
-  problemApi,
-  type StudyStats,
-  type StudyMember,
-  type Submission,
-  type Problem,
-} from '@/lib/api';
+import { useStudyStats } from '@/hooks/use-study-stats';
+import { useSubmissions } from '@/hooks/use-submissions';
+import { useProblems } from '@/hooks/use-problems';
+import { useStudyMembers } from '@/hooks/use-study-members';
 import { cn, getCurrentWeekLabel } from '@/lib/utils';
 import { parseWeekKey } from '@/lib/util/parseWeekKey';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -168,20 +163,35 @@ export default function DashboardPage(): ReactNode {
   const { isAuthenticated, githubConnected, user } = useAuth();
   const { currentStudyId, currentStudyName, studiesLoaded, problemsVersion } = useStudy();
 
+  // SWR 훅 — 각 섹션별 독립 로딩/에러 추적
+  const weekLabel = useMemo(() => getCurrentWeekLabel(), []);
+  const {
+    stats,
+    isLoading: statsHookLoading,
+    error: statsError,
+    mutate: mutateStats,
+  } = useStudyStats(currentStudyId, weekLabel);
+  const {
+    submissions: recentSubmissions,
+    isLoading: submissionsHookLoading,
+    error: submissionsError,
+    mutate: mutateSubmissions,
+  } = useSubmissions(currentStudyId, { page: 1, limit: 5 });
+  const {
+    problems: allProblems,
+    isLoading: problemsHookLoading,
+    error: problemsError,
+    mutate: mutateProblems,
+  } = useProblems(currentStudyId);
+  const {
+    members,
+    isLoading: membersHookLoading,
+    error: membersError,
+    mutate: mutateMembers,
+  } = useStudyMembers(currentStudyId);
 
-  const [stats, setStats] = useState<StudyStats | null>(null);
-  const [members, setMembers] = useState<StudyMember[]>([]);
-  const [recentSubmissions, setRecentSubmissions] = useState<Submission[]>([]);
-  const [activeProblems, setActiveProblems] = useState<Problem[]>([]);
-  const [allProblems, setAllProblems] = useState<Problem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [sectionErrors, setSectionErrors] = useState<{
-    stats: string | null;
-    submissions: string | null;
-    problems: string | null;
-    members: string | null;
-  }>({ stats: null, submissions: null, problems: null, members: null });
+  const activeProblems = allProblems;
+
   const [mounted, setMounted] = useState(false);
   const [weekViewUserId, setWeekViewUserId] = useState<string | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
@@ -193,80 +203,51 @@ export default function DashboardPage(): ReactNode {
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => setMounted(true), 50);
-    return () => clearTimeout(timer);
+    const mountTimer = setTimeout(() => setMounted(true), 50);
+    return () => clearTimeout(mountTimer);
   }, []);
 
-  // ─── DATA FETCH ──────────────────────────
+  // ─── DATA REFRESH ────────────────────────
 
-  const loadDashboard = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    setSectionErrors({ stats: null, submissions: null, problems: null, members: null });
+  /**
+   * 모든 섹션을 동시에 재검증 (전역 retry 버튼)
+   */
+  const reloadAll = useCallback(() => {
+    mutateStats();
+    mutateSubmissions();
+    mutateProblems();
+    mutateMembers();
+  }, [mutateStats, mutateSubmissions, mutateProblems, mutateMembers]);
 
-    try {
-      const results = await Promise.allSettled([
-        currentStudyId ? studyApi.getStats(currentStudyId, getCurrentWeekLabel()) : Promise.resolve(null),
-        submissionApi.list({ page: 1, limit: 5 }),
-        problemApi.findAll(),
-        currentStudyId ? studyApi.getMembers(currentStudyId) : Promise.resolve([]),
-      ]);
-
-      const errors = { stats: null as string | null, submissions: null as string | null, problems: null as string | null, members: null as string | null };
-
-      if (results[0].status === 'fulfilled' && results[0].value) {
-        setStats(results[0].value as StudyStats);
-      } else if (results[0].status === 'rejected') {
-        errors.stats = t('errors.stats');
-      }
-
-      if (results[1].status === 'fulfilled') {
-        const paginated = results[1].value as { data: Submission[]; meta: unknown };
-        setRecentSubmissions(paginated.data ?? []);
-      } else {
-        errors.submissions = t('errors.submissions');
-      }
-
-      if (results[2].status === 'fulfilled') {
-        const problems = (results[2].value as Problem[]) ?? [];
-        setActiveProblems(problems);
-        setAllProblems(problems);
-      } else {
-        errors.problems = t('errors.problems');
-      }
-
-      if (results[3].status === 'fulfilled') {
-        setMembers((results[3].value as StudyMember[]) ?? []);
-      } else if (results[3].status === 'rejected') {
-        errors.members = t('errors.members');
-      }
-
-      setSectionErrors(errors);
-
-      const allFailed = results.every((r) => r.status === 'rejected');
-      if (allFailed) {
-        setError(t('errors.loadFailed'));
-      }
-    } catch {
-      setError(t('errors.loadFailed'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentStudyId, t]);
-
-
-  useEffect(() => {
-    if (isAuthenticated && studiesLoaded && currentStudyId) {
-      void loadDashboard();
-    }
-  }, [isAuthenticated, studiesLoaded, currentStudyId, loadDashboard]);
-
-  // 문제 등록/삭제 시 problemsVersion 변경 → refetch
+  // 문제 등록/삭제 시 problemsVersion 변경 → 문제·통계 무효화
   useEffect(() => {
     if (isAuthenticated && studiesLoaded && currentStudyId && problemsVersion > 0) {
-      void loadDashboard();
+      mutateProblems();
+      mutateStats();
     }
   }, [problemsVersion]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─── ERROR LABELS ────────────────────────
+
+  const sectionErrors = useMemo(() => ({
+    stats: statsError ? t('errors.stats') : null,
+    submissions: submissionsError ? t('errors.submissions') : null,
+    problems: problemsError ? t('errors.problems') : null,
+    members: membersError ? t('errors.members') : null,
+  }), [statsError, submissionsError, problemsError, membersError, t]);
+
+  const [globalErrorDismissed, setGlobalErrorDismissed] = useState(false);
+  const allFailed =
+    !!statsError && !!submissionsError && !!problemsError && !!membersError;
+  const error = !globalErrorDismissed && allFailed ? t('errors.loadFailed') : null;
+
+  // 에러 상태 변화 시 dismiss 플래그 리셋
+  useEffect(() => {
+    if (allFailed) setGlobalErrorDismissed(false);
+  }, [allFailed]);
+
+  const isLoading =
+    statsHookLoading || submissionsHookLoading || problemsHookLoading || membersHookLoading;
 
   // ─── DERIVED STATE ────────────────────────
 
@@ -407,7 +388,7 @@ export default function DashboardPage(): ReactNode {
 
   const weekViewLabel = useMemo(() => getViewLabel(weekViewUserId), [weekViewUserId, getViewLabel]);
 
-  const statsLoading = isLoading || (currentStudyId != null && stats === null && !error);
+  const statsLoading = statsHookLoading || (currentStudyId != null && stats === null && !error);
 
   // animated counters (ref만 StatCard에 전달)
   const [submissionRef] = useAnimVal(myStats.count);
@@ -453,9 +434,9 @@ export default function DashboardPage(): ReactNode {
         </div>
 
         {error && (
-          <Alert variant="error" onClose={() => setError(null)}>
+          <Alert variant="error" onClose={() => setGlobalErrorDismissed(true)}>
             {error}
-            <Button variant="ghost" size="sm" className="ml-2 h-auto px-2 py-0.5 text-inherit" onClick={() => void loadDashboard()}>
+            <Button variant="ghost" size="sm" className="ml-2 h-auto px-2 py-0.5 text-inherit" onClick={reloadAll}>
               <RefreshCw className="mr-1 h-3 w-3" aria-hidden />
               {t('retry')}
             </Button>
@@ -511,7 +492,15 @@ export default function DashboardPage(): ReactNode {
         {(sectionErrors.stats || sectionErrors.members) && (
           <Alert variant="error" style={fade(0.07)}>
             {[sectionErrors.stats, sectionErrors.members].filter(Boolean).join(' ')}
-            <Button variant="ghost" size="sm" className="ml-2 h-auto px-2 py-0.5 text-inherit" onClick={() => void loadDashboard()}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-2 h-auto px-2 py-0.5 text-inherit"
+              onClick={() => {
+                if (sectionErrors.stats) mutateStats();
+                if (sectionErrors.members) mutateMembers();
+              }}
+            >
               <RefreshCw className="mr-1 h-3 w-3" aria-hidden />
               {t('retry')}
             </Button>
@@ -568,7 +557,7 @@ export default function DashboardPage(): ReactNode {
         {sectionErrors.problems && (
           <Alert variant="error" style={fade(0.14)}>
             {sectionErrors.problems}
-            <Button variant="ghost" size="sm" className="ml-2 h-auto px-2 py-0.5 text-inherit" onClick={() => void loadDashboard()}>
+            <Button variant="ghost" size="sm" className="ml-2 h-auto px-2 py-0.5 text-inherit" onClick={mutateProblems}>
               <RefreshCw className="mr-1 h-3 w-3" aria-hidden />
               {t('retry')}
             </Button>
@@ -611,7 +600,7 @@ export default function DashboardPage(): ReactNode {
         {sectionErrors.submissions && (
           <Alert variant="error" style={fade(0.22)}>
             {sectionErrors.submissions}
-            <Button variant="ghost" size="sm" className="ml-2 h-auto px-2 py-0.5 text-inherit" onClick={() => void loadDashboard()}>
+            <Button variant="ghost" size="sm" className="ml-2 h-auto px-2 py-0.5 text-inherit" onClick={mutateSubmissions}>
               <RefreshCw className="mr-1 h-3 w-3" aria-hidden />
               {t('retry')}
             </Button>
