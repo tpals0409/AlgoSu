@@ -102,7 +102,14 @@
       "loadSubmissionsFailed": "제출 목록을 불러오지 못했습니다."
     },
     "retry": "다시 시도",
-    "emptyProblems": "등록된 문제가 없습니다"
+    "emptyProblems": "등록된 문제가 없습니다",
+    "analysis": {
+      "analyzing": "AI 분석 중...",
+      "failed": "분석 실패",
+      "pending": "분석 대기 중",
+      "analyzingDesc": "분석이 완료되면 결과가 표시됩니다.",
+      "pendingDesc": "아직 분석이 완료되지 않았습니다."
+    }
   },
   "settings": {
     "heading": "스터디 설정",

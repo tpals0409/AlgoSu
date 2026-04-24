@@ -27,7 +27,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { getAvatarPresetKey, getAvatarSrc } from '@/lib/avatars';
 import { sanitizeUrl } from '@/lib/url';
 import type { Problem, Submission, AnalysisResult } from '@/lib/api';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { getSagaStatus, CATEGORY_LABELS, barColor, parseFeedbackCategories } from './utils';
 
 export interface AnalysisViewProps {
@@ -42,6 +42,7 @@ export interface AnalysisViewProps {
 
 export function AnalysisView({ problem, submission, analysis, loading, nicknameMap, avatarMap, onBack }: AnalysisViewProps): ReactNode {
   const locale = useLocale();
+  const t = useTranslations('studies');
   const [copied, setCopied] = useState(false);
   const [showOptimized, setShowOptimized] = useState(false);
   const [analysisBarsAnimated, setAnalysisBarsAnimated] = useState(false);
@@ -87,10 +88,10 @@ export function AnalysisView({ problem, submission, analysis, loading, nicknameM
               <Sparkles className="h-8 w-8 text-warning" />
               <div className="text-center">
                 <p className="text-sm font-medium text-text">
-                  {saga.variant === 'warning' ? 'AI 분석 중...' : analysis?.analysisStatus === 'failed' ? '분석 실패' : '분석 대기 중'}
+                  {saga.variant === 'warning' ? t('room.analysis.analyzing') : analysis?.analysisStatus === 'failed' ? t('room.analysis.failed') : t('room.analysis.pending')}
                 </p>
                 <p className="mt-1 text-[11px] text-text-3">
-                  {saga.variant === 'warning' ? '분석이 완료되면 결과가 표시됩니다.' : '아직 분석이 완료되지 않았습니다.'}
+                  {saga.variant === 'warning' ? t('room.analysis.analyzingDesc') : t('room.analysis.pendingDesc')}
                 </p>
               </div>
             </>
