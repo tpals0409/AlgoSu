@@ -31,6 +31,14 @@ blog/              기술 블로그
 - 브랜치: `<type>/<scope>-<description>`, main 직접 push 금지
 - PR: Squash merge, 필수 체크리스트 (테스트/타입체크/lint/보안/DB)
 - CODEOWNERS 자동 리뷰어
+- **에이전트 브랜치 규율 (Sprint 126 D 강화)**:
+  - ✅ 모든 에이전트(Oracle 위임 작업 포함)는 **단일 작업 브랜치**에서만 작업
+  - ✅ 작업 시작 전 `git checkout -b <type>/sprint-NNN-<description>`로 신규 브랜치 생성
+  - ✅ commit/push는 작업 브랜치에서만 — main 체크아웃 후 직접 commit 금지
+  - ✅ 머지는 항상 PR + Squash merge (CI green + Critic 통과 필수)
+  - ❌ `git checkout main && git commit` 또는 `git push origin main` 절대 금지
+  - ❌ 작업 완료 후 브랜치 전환 없이 main에 직접 commit 금지
+  - 위반 사례: Sprint 125 Wave D에서 Oracle 인프라 조사 중 main 직접 commit 발생 → 본 규칙으로 재발 차단
 
 ### 함수 규칙
 - 단일 책임, 20줄 이내
