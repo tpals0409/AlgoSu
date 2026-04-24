@@ -25,7 +25,7 @@ import {
   Clock, Zap, ChevronDown, BarChart3, Sun, Moon,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { GuestProvider, useGuest } from '@/contexts/GuestContext';
 import { publicApi, type Problem, type Submission, type AnalysisResult } from '@/lib/api';
@@ -339,6 +339,7 @@ function SubmissionListView({ problem, submissions, onSelect, onBack, createdByU
   readonly memberCount: number;
 }): ReactNode {
   const t = useTranslations('sharing');
+  const locale = useLocale();
 
   /* 고유 유저 수 */
   const uniqueSubmitters = new Set(submissions.map((s) => s.userId)).size;
@@ -445,7 +446,7 @@ function SubmissionListView({ problem, submissions, onSelect, onBack, createdByU
                         </span>
                       )}
                       <span className="text-[11px] text-[var(--text-3)]">
-                        {new Date(sub.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        {new Date(sub.createdAt).toLocaleDateString(locale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
                   </div>
@@ -472,6 +473,7 @@ function AnalysisView({ submission, analysis, loading: analysisLoading, onBack, 
   readonly members: Array<{ userId: string; nickname: string; role: string }>;
 }): ReactNode {
   const t = useTranslations('sharing');
+  const locale = useLocale();
   const memberName = getMemberDisplayName(submission.userId, createdByUserId, token, members, t);
   const code = submission.code || (analysis as AnalysisResult & { code?: string } | null)?.code;
   const parsed = analysis ? parseFeedback(analysis.feedback, analysis.score, analysis.optimizedCode) : null;
@@ -534,8 +536,8 @@ function AnalysisView({ submission, analysis, loading: analysisLoading, onBack, 
 
         {/* 시간 */}
         <span className="text-[11px] sm:text-[12px] text-[var(--text-3)]">
-          {new Date(submission.createdAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })}{' '}
-          {new Date(submission.createdAt).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit', hour12: true })}
+          {new Date(submission.createdAt).toLocaleDateString(locale, { month: 'long', day: 'numeric' })}{' '}
+          {new Date(submission.createdAt).toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit', hour12: true })}
         </span>
       </div>
 
@@ -637,7 +639,8 @@ function AnalysisView({ submission, analysis, loading: analysisLoading, onBack, 
                     </p>
                     {parsed.categories.map((cat) => {
                       const color = barColor(cat.score);
-                      const label = t(`categories.${cat.name}`);
+                      const categoryKey = `categories.${cat.name}` as const;
+                      const label = t.has(categoryKey) ? t(categoryKey) : cat.name;
                       return (
                         <div key={cat.name} className="py-2.5">
                           <div className="flex items-center justify-between mb-1">
