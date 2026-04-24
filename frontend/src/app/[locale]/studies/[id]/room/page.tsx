@@ -16,7 +16,7 @@ import {
   type ReactElement,
   type CSSProperties,
 } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   BookOpen,
@@ -55,7 +55,6 @@ import { AnalysisView } from './AnalysisView';
 export default function StudyRoomPage(): ReactElement {
   const t = useTranslations('studies');
   const params = useParams<{ id: string }>();
-  void useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { currentStudyId, setCurrentStudy, studies: contextStudies } = useStudy();
