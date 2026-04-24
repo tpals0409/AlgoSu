@@ -537,7 +537,7 @@ function AnalysisView({ submission, analysis, loading: analysisLoading, onBack, 
         {/* 시간 */}
         <span className="text-[11px] sm:text-[12px] text-[var(--text-3)]">
           {new Date(submission.createdAt).toLocaleDateString(locale, { month: 'long', day: 'numeric' })}{' '}
-          {new Date(submission.createdAt).toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit', hour12: true })}
+          {new Date(submission.createdAt).toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' })}
         </span>
       </div>
 
