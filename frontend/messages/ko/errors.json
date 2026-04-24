@@ -61,5 +61,27 @@
     "title": "문제를 찾을 수 없습니다",
     "description": "요청하신 문제가 존재하지 않거나 삭제되었습니다.",
     "cta": "문제 목록으로 돌아가기"
+  },
+  "validation": {
+    "study": {
+      "nameRequired": "스터디 이름을 입력해주세요.",
+      "nameTooShort": "스터디 이름은 2자 이상이어야 합니다.",
+      "nicknameRequired": "닉네임을 입력해주세요."
+    },
+    "submission": {
+      "problemIdRequired": "문제 ID가 필요합니다.",
+      "languageRequired": "언어를 선택해주세요.",
+      "codeRequired": "코드를 입력해주세요."
+    },
+    "problem": {
+      "titleRequired": "문제 제목을 입력해주세요.",
+      "weekNumberRequired": "주차를 선택해주세요.",
+      "deadlineRequired": "마감일을 선택해주세요."
+    },
+    "feedback": {
+      "contentTooShort": "5자 이상 입력해주세요.",
+      "contentTooLong": "2000자 이내로 입력해주세요.",
+      "screenshotTooLarge": "이미지가 너무 큽니다."
+    }
   }
 }

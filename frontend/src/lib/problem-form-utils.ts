@@ -137,8 +137,8 @@ export function matchDeadlineToWeekDate(deadline: string, weekLabel: string): st
  */
 export function validateProblemForm(form: ProblemFormState): ProblemFormErrors {
   const errors: ProblemFormErrors = {};
-  if (!form.title.trim()) errors.title = '문제 제목을 입력해주세요.';
-  if (!form.weekNumber.trim()) errors.weekNumber = '주차를 선택해주세요.';
-  if (!form.deadline) errors.deadline = '마감일을 선택해주세요.';
+  if (!form.title.trim()) errors.title = 'validation.problem.titleRequired';
+  if (!form.weekNumber.trim()) errors.weekNumber = 'validation.problem.weekNumberRequired';
+  if (!form.deadline) errors.deadline = 'validation.problem.deadlineRequired';
   return errors;
 }

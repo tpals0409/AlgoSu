@@ -67,6 +67,7 @@ interface BugReportFormProps {
 
 export function BugReportForm({ onSuccess }: BugReportFormProps) {
   const t = useTranslations('feedback');
+  const tErrors = useTranslations('errors');
   const { currentStudyId } = useStudy();
   const [submitting, setSubmitting] = useState(false);
   const [screenshot, setScreenshot] = useState<string | null>(null);
@@ -205,9 +206,9 @@ export function BugReportForm({ onSuccess }: BugReportFormProps) {
             ['--tw-ring-color' as any]: 'var(--primary)',
           }}
         />
-        {errors.content && (
+        {errors.content?.message && (
           <p className="mt-1 text-[11px]" style={{ color: 'var(--error)' }}>
-            {errors.content.message}
+            {tErrors(errors.content.message)}
           </p>
         )}
       </div>

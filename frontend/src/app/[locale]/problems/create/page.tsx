@@ -11,6 +11,7 @@ import { useState, useCallback, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useTranslations } from 'next-intl';
 import { CheckCircle2, Search, ExternalLink, Plus, FileText, Clock, X } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
@@ -52,6 +53,7 @@ export default function ProblemCreatePage(): ReactNode {
   const { isReady } = useRequireAuth();
   useRequireStudy();
   const { currentStudyId, currentStudyRole, incrementProblemsVersion } = useStudy();
+  const tErrors = useTranslations('errors');
 
   // ─── FORM (React Hook Form + Zod) ──────
 
@@ -537,7 +539,7 @@ export default function ProblemCreatePage(): ReactNode {
                 label="제목"
                 placeholder="문제 검색 시 자동 입력됩니다"
                 {...register('title')}
-                error={errors.title?.message}
+                error={errors.title?.message ? tErrors(errors.title.message) : undefined}
                 readOnly
                 tabIndex={-1}
                 className="cursor-default opacity-70"
@@ -596,8 +598,8 @@ export default function ProblemCreatePage(): ReactNode {
                       </select>
                     )}
                   />
-                  {errors.weekNumber && (
-                    <p className="mt-1 text-[11px] text-error">{errors.weekNumber.message}</p>
+                  {errors.weekNumber?.message && (
+                    <p className="mt-1 text-[11px] text-error">{tErrors(errors.weekNumber.message)}</p>
                   )}
                 </div>
               </div>
@@ -628,8 +630,8 @@ export default function ProblemCreatePage(): ReactNode {
                     <option key={d.value} value={d.value}>{d.label}</option>
                   ))}
                 </select>
-                {errors.deadline && (
-                  <p className="mt-1 text-[11px] text-error">{errors.deadline.message}</p>
+                {errors.deadline?.message && (
+                  <p className="mt-1 text-[11px] text-error">{tErrors(errors.deadline.message)}</p>
                 )}
               </div>
 

@@ -496,6 +496,7 @@ function ConfirmStep({
   addError?: string | null;
 }) {
   const t = useTranslations('problems');
+  const tErrors = useTranslations('errors');
   const [weekKey, setWeekKey] = useState('');
   const [deadline, setDeadline] = useState('');
   const [errors, setErrors] = useState<{ weekNumber?: string; deadline?: string }>({});
@@ -652,7 +653,7 @@ function ConfirmStep({
             ))}
           </select>
           {errors.weekNumber && (
-            <p className="text-[11px]" style={{ color: 'var(--error)' }}>{errors.weekNumber}</p>
+            <p className="text-[11px]" style={{ color: 'var(--error)' }}>{tErrors(errors.weekNumber)}</p>
           )}
         </div>
 
@@ -678,7 +679,7 @@ function ConfirmStep({
             ))}
           </select>
           {errors.deadline && (
-            <p className="text-[11px]" style={{ color: 'var(--error)' }}>{errors.deadline}</p>
+            <p className="text-[11px]" style={{ color: 'var(--error)' }}>{tErrors(errors.deadline)}</p>
           )}
         </div>
       </div>

@@ -9,9 +9,9 @@
 import { z } from 'zod';
 
 export const submissionSchema = z.object({
-  problemId: z.string().min(1, '문제 ID가 필요합니다.'),
-  language: z.string().min(1, '언어를 선택해주세요.'),
-  code: z.string().min(1, '코드를 입력해주세요.'),
+  problemId: z.string().min(1, 'validation.submission.problemIdRequired'),
+  language: z.string().min(1, 'validation.submission.languageRequired'),
+  code: z.string().min(1, 'validation.submission.codeRequired'),
 });
 
 export type SubmissionFormData = z.infer<typeof submissionSchema>;

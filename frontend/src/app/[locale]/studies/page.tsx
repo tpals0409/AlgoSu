@@ -50,6 +50,7 @@ function getInitial(name: string): string {
  */
 export default function StudiesPage(): ReactNode {
   const t = useTranslations('studies');
+  const tErrors = useTranslations('errors');
   const router = useRouter();
   const { isAuthenticated } = useRequireAuth();
   const { setCurrentStudy, setStudies } = useStudy();
@@ -459,7 +460,7 @@ export default function StudiesPage(): ReactNode {
                     label={t('list.createModal.nameLabel')}
                     placeholder={t('list.createModal.namePlaceholder')}
                     {...createForm.register('name')}
-                    error={createForm.formState.errors.name?.message}
+                    error={createForm.formState.errors.name?.message ? tErrors(createForm.formState.errors.name.message) : undefined}
                     disabled={createForm.formState.isSubmitting}
                     autoFocus
                   />
@@ -468,7 +469,7 @@ export default function StudiesPage(): ReactNode {
                     label={t('list.createModal.nicknameLabel')}
                     placeholder={t('list.createModal.nicknamePlaceholder')}
                     {...createForm.register('nickname')}
-                    error={createForm.formState.errors.nickname?.message}
+                    error={createForm.formState.errors.nickname?.message ? tErrors(createForm.formState.errors.nickname.message) : undefined}
                     disabled={createForm.formState.isSubmitting}
                   />
 
