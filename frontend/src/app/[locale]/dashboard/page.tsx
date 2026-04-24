@@ -164,31 +164,34 @@ export default function DashboardPage(): ReactNode {
   const { currentStudyId, currentStudyName, studiesLoaded, problemsVersion } = useStudy();
 
   // SWR 훅 — 각 섹션별 독립 로딩/에러 추적
+  // Sprint 126 Wave C P2#1 fix: auth/study 가드 결합 — isLoading 기간 동안 보호 API 호출 차단
+  const fetchableStudyId =
+    isAuthenticated && studiesLoaded ? currentStudyId : null;
   const weekLabel = useMemo(() => getCurrentWeekLabel(), []);
   const {
     stats,
     isLoading: statsHookLoading,
     error: statsError,
     mutate: mutateStats,
-  } = useStudyStats(currentStudyId, weekLabel);
+  } = useStudyStats(fetchableStudyId, weekLabel);
   const {
     submissions: recentSubmissions,
     isLoading: submissionsHookLoading,
     error: submissionsError,
     mutate: mutateSubmissions,
-  } = useSubmissions(currentStudyId, { page: 1, limit: 5 });
+  } = useSubmissions(fetchableStudyId, { page: 1, limit: 5 });
   const {
     problems: allProblems,
     isLoading: problemsHookLoading,
     error: problemsError,
     mutate: mutateProblems,
-  } = useProblems(currentStudyId);
+  } = useProblems(fetchableStudyId);
   const {
     members,
     isLoading: membersHookLoading,
     error: membersError,
     mutate: mutateMembers,
-  } = useStudyMembers(currentStudyId);
+  } = useStudyMembers(fetchableStudyId);
 
   const activeProblems = allProblems;
 
@@ -388,7 +391,8 @@ export default function DashboardPage(): ReactNode {
 
   const weekViewLabel = useMemo(() => getViewLabel(weekViewUserId), [weekViewUserId, getViewLabel]);
 
-  const statsLoading = statsHookLoading || (currentStudyId != null && stats === null && !error);
+  // Sprint 126 Wave C P2#2 fix: 전역 error가 아닌 statsError로 게이팅 (stats만 실패 시 영구 true 방지)
+  const statsLoading = statsHookLoading || (currentStudyId != null && stats === null && !statsError);
 
   // animated counters (ref만 StatCard에 전달)
   const [submissionRef] = useAnimVal(myStats.count);
