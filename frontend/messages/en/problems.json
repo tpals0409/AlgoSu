@@ -94,6 +94,90 @@
       "link": "Link GitHub"
     }
   },
+  "form": {
+    "platform": {
+      "boj": "BOJ",
+      "programmers": "Programmers"
+    },
+    "searchTitle": {
+      "boj": "Search BOJ Problem",
+      "programmers": "Search Programmers Problem"
+    },
+    "searchDesc": {
+      "boj": "Enter a problem number to auto-fill the title, difficulty, and tags.",
+      "programmers": "Enter a Programmers problem number to auto-fill details."
+    },
+    "searchPlaceholder": {
+      "boj": "Problem number (e.g. 1000)",
+      "programmers": "Problem number (e.g. 42839)"
+    },
+    "disconnect": "Disconnect",
+    "search": "Search",
+    "basicInfo": "Basic Info",
+    "descriptionLabel": "Description (optional)",
+    "descriptionPlaceholder": "Enter a description for this problem",
+    "difficultyLabel": "Difficulty",
+    "difficultyNone": "None",
+    "weekLabel": "Week",
+    "required": "Required",
+    "deadlineLabel": "Deadline",
+    "deadlinePlaceholder": "Select a day",
+    "allowedLanguages": "Allowed Languages",
+    "sourceUrl": "Source URL",
+    "sourcePlatform": "Source Platform",
+    "cancel": "Cancel",
+    "backToList": "Problems",
+    "platformAriaLabel": "Select source platform",
+    "bojViewAriaLabel": "View on Baekjoon",
+    "programmersViewAriaLabel": "View on Programmers"
+  },
+  "create": {
+    "heading": "Add Problem",
+    "subheading": "Search and add a problem to the study",
+    "titleLabel": "Title",
+    "titlePlaceholder": "Auto-filled by search",
+    "deadlineSettings": "Deadline & Settings",
+    "submitting": "Creating...",
+    "submitButton": "Create Problem",
+    "success": {
+      "title": "Problem has been created!",
+      "description": "You can add more problems or go back to the list.",
+      "goToList": "Go to List",
+      "createAnother": "Add Another"
+    },
+    "error": {
+      "adminOnly": "Only admins can create problems.",
+      "submitFailed": "Failed to create the problem.",
+      "bojRequired": "Please search for a BOJ problem.",
+      "programmersRequired": "Please search for a Programmers problem."
+    }
+  },
+  "edit": {
+    "heading": "Edit Problem",
+    "subheading": "Edit problem details or delete the problem",
+    "backLabel": "Problem Detail",
+    "titleLabel": "Problem Title",
+    "deadlineSettings": "Deadline & Status",
+    "statusLabel": "Status",
+    "submitting": "Saving...",
+    "submitButton": "Save Changes",
+    "deleting": "Deleting...",
+    "deleteButton": "Delete",
+    "searchPlaceholderBoj": "Search by BOJ problem number",
+    "error": {
+      "adminOnly": "Only admins can edit problems.",
+      "loadFailed": "Failed to load the problem.",
+      "notFound": "Problem not found.",
+      "submitFailed": "Failed to update the problem.",
+      "deleteFailed": "Failed to delete the problem."
+    },
+    "confirm": {
+      "platformChange": "Changing the platform will reset search results. Continue?",
+      "closeActive": "Closing this problem will prevent further submissions. Continue?",
+      "activateDraft": "Activating this problem will make it visible to members. Continue?",
+      "delete": "Are you sure you want to delete this problem? All related submissions will also be deleted."
+    }
+  },
   "addModal": {
     "platform": {
       "boj": "BOJ",

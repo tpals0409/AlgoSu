@@ -71,30 +71,5 @@
     "clickToSwitch": "Click to switch",
     "empty": "No submission records.",
     "viewAllWeeks": "View all {count} weeks →"
-  },
-  "analyticsSection": {
-    "meta": {
-      "title": "Learning Analytics",
-      "description": "Check your algorithm learning analytics report."
-    },
-    "heading": "My Stats",
-    "userStats": "{name}'s Algorithm Learning Progress",
-    "defaultUser": "User",
-    "empty": {
-      "noStudy": "Please select a study",
-      "noStudyDesc": "You need to select a study to view statistics.",
-      "studyList": "Study List",
-      "noData": "No submission data yet",
-      "noDataDesc": "Solve problems and submit code to see your statistics.",
-      "problemList": "View Problems"
-    },
-    "errors": {
-      "statsFailed": "Failed to load statistics data.",
-      "loadFailed": "Failed to load data."
-    },
-    "weeks": {
-      "recent": "Out of last {count} weeks"
-    },
-    "loading": "Loading..."
   }
 }
