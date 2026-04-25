@@ -11,7 +11,7 @@
 
 'use client';
 
-import type { ReactNode } from 'react';
+import { type ReactNode, Suspense } from 'react';
 import { Link } from '@/i18n/navigation';
 import { useTheme } from 'next-themes';
 import { Moon, Sun } from 'lucide-react';
@@ -77,7 +77,9 @@ export function LandingContent(): ReactNode {
             >
               {theme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
             </button>
-            <LanguageSwitcher />
+            <Suspense fallback={null}>
+              <LanguageSwitcher />
+            </Suspense>
             <Link
               href="/login"
               className="inline-flex h-9 items-center rounded-btn bg-primary px-[18px] text-[13px] font-semibold text-white transition-all hover:brightness-110"

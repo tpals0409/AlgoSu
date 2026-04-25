@@ -5,6 +5,7 @@
  * @related LanguageSwitcher, @/i18n/navigation
  */
 
+import { Suspense } from 'react';
 import { screen, fireEvent } from '@testing-library/react';
 import { renderWithI18n } from '@/test-utils/i18n';
 import { LanguageSwitcher } from '../LanguageSwitcher';
@@ -121,5 +122,67 @@ describe('LanguageSwitcher', () => {
     renderWithI18n(<LanguageSwitcher />);
     fireEvent.click(screen.getByText('EN'));
     expect(mockReplace).toHaveBeenCalledWith('/dashboard', { locale: 'en' });
+  });
+});
+
+/**
+ * H1 fix 회귀 테스트 —
+ * LanguageSwitcher는 useSearchParams를 사용하므로 SSR 단계에서
+ * Suspense 경계 없이 렌더되면 Next.js 경고가 발생한다.
+ * 각 마운트 포인트(AppLayout, AuthShell, LandingContent)에서
+ * <Suspense fallback={null}> 로 감싼 것을 검증한다.
+ */
+describe('LanguageSwitcher — Suspense 경계 (H1)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockSearchParams = new URLSearchParams();
+    Object.defineProperty(document, 'cookie', {
+      writable: true,
+      value: '',
+    });
+  });
+
+  it('Suspense fallback={null}로 감싸진 상태에서 정상 렌더된다', () => {
+    renderWithI18n(
+      <Suspense fallback={null}>
+        <LanguageSwitcher />
+      </Suspense>,
+    );
+    expect(screen.getByRole('radiogroup')).toBeInTheDocument();
+    expect(screen.getByText('KO')).toBeInTheDocument();
+    expect(screen.getByText('EN')).toBeInTheDocument();
+  });
+
+  it('Suspense 내부에서도 locale 전환 클릭이 동작한다', () => {
+    renderWithI18n(
+      <Suspense fallback={null}>
+        <LanguageSwitcher />
+      </Suspense>,
+    );
+    fireEvent.click(screen.getByText('EN'));
+    expect(mockReplace).toHaveBeenCalledWith('/dashboard', { locale: 'en' });
+  });
+
+  /**
+   * Phase 1 보고서 4-2 누락 케이스 —
+   * 영어 로케일 초기 상태에서 KO 클릭 시 한국어로 전환.
+   * 영어 로케일에서 EN 버튼이 활성화되고 KO 클릭이 replace를 호출해야 한다.
+   */
+  it('영어 로케일 기준 KO 클릭 시 router.replace(/dashboard, { locale: ko }) 호출', () => {
+    // locale: 'en' 으로 렌더 → useLocale() === 'en' → EN이 active, KO는 inactive
+    renderWithI18n(<LanguageSwitcher />, { locale: 'en' });
+    // EN이 활성 상태인지 확인
+    expect(screen.getByText('EN')).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByText('KO')).toHaveAttribute('aria-checked', 'false');
+    // KO 클릭 → locale: ko 로 전환 요청
+    fireEvent.click(screen.getByText('KO'));
+    expect(mockReplace).toHaveBeenCalledWith('/dashboard', { locale: 'ko' });
+  });
+
+  it('영어 로케일에서 KO 클릭 시 NEXT_LOCALE=ko 쿠키가 설정된다', () => {
+    renderWithI18n(<LanguageSwitcher />, { locale: 'en' });
+    fireEvent.click(screen.getByText('KO'));
+    expect(document.cookie).toContain('NEXT_LOCALE=ko');
+    expect(document.cookie).toContain('SameSite=Lax');
   });
 });

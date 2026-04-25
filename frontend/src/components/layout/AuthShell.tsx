@@ -13,7 +13,7 @@
 
 'use client';
 
-import type { ReactNode } from 'react';
+import { type ReactNode, Suspense } from 'react';
 import { Link } from '@/i18n/navigation';
 import { Logo } from '@/components/ui/Logo';
 import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
@@ -40,7 +40,9 @@ export function AuthShell({ children }: AuthShellProps): ReactNode {
           <Logo size={24} />
           AlgoSu
         </Link>
-        <LanguageSwitcher />
+        <Suspense fallback={null}>
+          <LanguageSwitcher />
+        </Suspense>
       </header>
       <main className="pt-12">{children}</main>
     </>
