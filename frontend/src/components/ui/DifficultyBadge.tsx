@@ -17,15 +17,17 @@ import {
   toTierLevel,
 } from '@/lib/constants';
 
-/** CSS variable-based difficulty colors — works in all environments */
+/**
+ * CSS variable-based difficulty colors — works in all environments.
+ * 백엔드 enum(BRONZE~RUBY)만 받음. UNCLASSIFIED는 UI 표시 전용이므로 여기 포함하지 않음.
+ */
 const DIFF_STYLES: Record<Difficulty, { color: string; bg: string; border: string }> = {
-  BRONZE:       { color: 'var(--diff-bronze-color)',        bg: 'var(--diff-bronze-bg)',        border: 'var(--diff-bronze-color)' },
-  SILVER:       { color: 'var(--diff-silver-color)',        bg: 'var(--diff-silver-bg)',        border: 'var(--diff-silver-color)' },
-  GOLD:         { color: 'var(--diff-gold-color)',          bg: 'var(--diff-gold-bg)',          border: 'var(--diff-gold-color)' },
-  PLATINUM:     { color: 'var(--diff-platinum-color)',      bg: 'var(--diff-platinum-bg)',      border: 'var(--diff-platinum-color)' },
-  DIAMOND:      { color: 'var(--diff-diamond-color)',       bg: 'var(--diff-diamond-bg)',       border: 'var(--diff-diamond-color)' },
-  RUBY:         { color: 'var(--diff-ruby-color)',          bg: 'var(--diff-ruby-bg)',          border: 'var(--diff-ruby-color)' },
-  UNCLASSIFIED: { color: 'var(--diff-unclassified-color)',  bg: 'var(--diff-unclassified-bg)',  border: 'var(--diff-unclassified-color)' },
+  BRONZE:   { color: 'var(--diff-bronze-color)',   bg: 'var(--diff-bronze-bg)',   border: 'var(--diff-bronze-color)' },
+  SILVER:   { color: 'var(--diff-silver-color)',   bg: 'var(--diff-silver-bg)',   border: 'var(--diff-silver-color)' },
+  GOLD:     { color: 'var(--diff-gold-color)',     bg: 'var(--diff-gold-bg)',     border: 'var(--diff-gold-color)' },
+  PLATINUM: { color: 'var(--diff-platinum-color)', bg: 'var(--diff-platinum-bg)', border: 'var(--diff-platinum-color)' },
+  DIAMOND:  { color: 'var(--diff-diamond-color)',  bg: 'var(--diff-diamond-bg)',  border: 'var(--diff-diamond-color)' },
+  RUBY:     { color: 'var(--diff-ruby-color)',     bg: 'var(--diff-ruby-bg)',     border: 'var(--diff-ruby-color)' },
 };
 
 /** Neutral fallback for Programmers Lv.0 (difficulty null) or mapping failure */
