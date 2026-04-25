@@ -6,7 +6,7 @@
  */
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   MessageSquare,
   Bug,
@@ -114,16 +114,29 @@ export default function AdminFeedbacksPage() {
    * - PATCH 완료 후 명시적으로 `mutate*()` 호출 → 서버 상태와 동기화
    * - PATCH 진행 중 GET이 먼저 응답해 optimistic을 덮어쓰는 시나리오 차단
    */
+  /** in-flight PATCH 카운터 — 0일 때만 GET 재검증 (동시 PATCH race 방지) */
+  const inFlightRef = useRef(0);
+
   const handleStatusChange = async (publicId: string, newStatus: string) => {
-    /** 목록 캐시 optimistic updater — 해당 항목의 status만 교체 */
+    /** 목록 캐시 optimistic updater — status 교체 + 필터 범위 밖 행 제거 + counts 갱신 */
     const listUpdater = (current: { items: AdminFeedback[]; total: number; counts?: Record<string, number> } | undefined) => {
       if (!current) return current;
-      return {
-        ...current,
-        items: current.items.map((fb) =>
-          fb.publicId === publicId ? { ...fb, status: newStatus } : fb,
-        ),
-      };
+
+      const prevStatus = current.items.find((fb) => fb.publicId === publicId)?.status;
+      const updated = current.items.map((fb) =>
+        fb.publicId === publicId ? { ...fb, status: newStatus } : fb,
+      );
+      const filtered = statusFilter !== 'ALL'
+        ? updated.filter((fb) => fb.publicId !== publicId || newStatus === statusFilter)
+        : updated;
+
+      const nextCounts = { ...current.counts };
+      if (prevStatus && prevStatus !== newStatus) {
+        nextCounts[prevStatus] = Math.max(0, (nextCounts[prevStatus] ?? 0) - 1);
+        nextCounts[newStatus] = (nextCounts[newStatus] ?? 0) + 1;
+      }
+
+      return { ...current, items: filtered, total: current.total, counts: nextCounts };
     };
 
     // optimistic: 즉시 UI 반영만 (재검증은 PATCH 완료 후)
@@ -138,19 +151,20 @@ export default function AdminFeedbacksPage() {
       );
     }
 
+    inFlightRef.current += 1;
     try {
       await adminApi.updateFeedbackStatus(publicId, newStatus);
       toast.success(
         t('feedbacks.toast.statusChanged', { status: t(`feedbacks.status.${newStatus}`) }),
       );
-      // 성공 시 서버 상태로 동기화 (counts/list row/모달 stale 방지)
-      mutateFeedbacks();
-      if (isDetailOpen) mutateDetail();
     } catch {
-      // 실패 시 서버 상태로 롤백 — 재검증으로 최신 데이터 복원
-      mutateFeedbacks();
-      if (isDetailOpen) mutateDetail();
       toast.error(t('feedbacks.toast.statusChangeFailed'));
+    } finally {
+      inFlightRef.current -= 1;
+      if (inFlightRef.current === 0) {
+        mutateFeedbacks();
+        mutateDetail();
+      }
     }
   };
 
