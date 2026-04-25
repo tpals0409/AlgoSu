@@ -37,7 +37,8 @@
     "autoCritic": {
       "enabled": true,
       "trigger": "commitDetected",
-      "method": "codex review --base <HEAD_BEFORE>"
+      "method": "codex review --base <HEAD_BEFORE>",
+      "requireSessionId": true
     }
   }
 }
