@@ -38,8 +38,13 @@ describe('GatewayContextMiddleware', () => {
     } as unknown as ConfigService;
   }
 
+  /**
+   * NestJS forRoutes('*') 환경을 충실히 시뮬레이션하기 위해
+   * `originalUrl`을 함께 주입한다. (실제 prod에서는 req.path가 mount-strip되어 '/'가 됨)
+   */
   function createRequest(overrides: {
     path?: string;
+    originalUrl?: string;
     internalKey?: string | null;
     userId?: string | null;
   } = {}): GatewayRequest {
@@ -55,8 +60,13 @@ describe('GatewayContextMiddleware', () => {
       overrides.userId === undefined ? VALID_USER_ID : overrides.userId;
     if (userId !== null) headers['x-user-id'] = userId;
 
+    const path = overrides.path ?? '/submissions';
+    const originalUrl = overrides.originalUrl ?? path;
+
     return {
-      path: overrides.path ?? '/submissions',
+      path,
+      originalUrl,
+      url: originalUrl,
       headers,
     } as unknown as GatewayRequest;
   }
@@ -191,6 +201,104 @@ describe('GatewayContextMiddleware', () => {
         expect(req.user).toEqual({ userId: VALID_USER_ID });
         expect(mockNext).toHaveBeenCalledTimes(1);
       });
+    });
+  });
+
+  // ──────────────────────────────────────────────
+  // 회귀 검증 — NestJS forRoutes('*') mount-strip 우회
+  // (Sprint 93 A-1: 운영 /health 401 회귀 차단)
+  // ──────────────────────────────────────────────
+  describe('mount-strip 회귀 검증 (req.path가 strip되는 prod 시뮬레이션)', () => {
+    it('req.path="/" 이지만 originalUrl="/health" → 프로브 통과 (헤더 없이)', () => {
+      const req = createRequest({
+        path: '/',
+        originalUrl: '/health',
+        internalKey: null,
+        userId: null,
+      });
+
+      middleware.use(req, mockRes, mockNext);
+
+      expect(mockNext).toHaveBeenCalledTimes(1);
+      expect(req.user).toBeUndefined();
+    });
+
+    it('req.path="/" 이지만 originalUrl="/health/ready" → 프로브 통과', () => {
+      const req = createRequest({
+        path: '/',
+        originalUrl: '/health/ready',
+        internalKey: null,
+        userId: null,
+      });
+
+      middleware.use(req, mockRes, mockNext);
+
+      expect(mockNext).toHaveBeenCalledTimes(1);
+      expect(req.user).toBeUndefined();
+    });
+
+    it('req.path="/" 이지만 originalUrl="/metrics" → 프로브 통과', () => {
+      const req = createRequest({
+        path: '/',
+        originalUrl: '/metrics',
+        internalKey: null,
+        userId: null,
+      });
+
+      middleware.use(req, mockRes, mockNext);
+
+      expect(mockNext).toHaveBeenCalledTimes(1);
+    });
+
+    it('쿼리스트링 포함된 originalUrl="/health?ready=1" → 프로브 통과', () => {
+      const req = createRequest({
+        path: '/',
+        originalUrl: '/health?ready=1',
+        internalKey: null,
+        userId: null,
+      });
+
+      middleware.use(req, mockRes, mockNext);
+
+      expect(mockNext).toHaveBeenCalledTimes(1);
+      expect(req.user).toBeUndefined();
+    });
+
+    it('originalUrl 부재 시 url fallback — url="/health" → 프로브 통과', () => {
+      const req = {
+        path: '/',
+        url: '/health',
+        headers: {},
+      } as unknown as GatewayRequest;
+
+      middleware.use(req, mockRes, mockNext);
+
+      expect(mockNext).toHaveBeenCalledTimes(1);
+    });
+
+    it('originalUrl/url 모두 부재 시 안전 fallback "/" → 프로브 미해당, 인증 진행', () => {
+      const req = {
+        path: '/submissions',
+        headers: {},
+      } as unknown as GatewayRequest;
+
+      // 헤더 없으니 인증 단계에서 401
+      expect(() => middleware.use(req, mockRes, mockNext)).toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('/internal/* 도 originalUrl 기준으로 prefix 매칭', () => {
+      const req = createRequest({
+        path: '/',
+        originalUrl: '/internal/submissions/abc',
+        userId: null,
+      });
+
+      middleware.use(req, mockRes, mockNext);
+
+      expect(mockNext).toHaveBeenCalledTimes(1);
+      expect(req.user).toBeUndefined();
     });
   });
 });
