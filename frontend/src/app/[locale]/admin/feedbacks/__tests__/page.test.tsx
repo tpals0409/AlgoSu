@@ -392,6 +392,71 @@ describe('AdminFeedbacksPage', () => {
         expect(screen.queryByText('feedbacks.modal.statusChangeLabel')).not.toBeInTheDocument();
       });
     });
+
+    /**
+     * Sprint 127 Wave-B P1 (Critic 019dc215) — SWR race condition 회귀 방지.
+     *
+     * 시나리오: 사용자가 status 드롭다운을 변경하면
+     * - optimistic 단계에서는 GET 재검증이 시작되어선 안 됨 (revalidate=false)
+     * - PATCH가 완료된 후에만 fetcher가 다시 호출되어야 함 (서버 동기화)
+     */
+    it('PATCH 진행 중에는 GET 재검증이 발생하지 않고, PATCH 완료 후에만 재요청된다', async () => {
+      const user = userEvent.setup();
+
+      // PATCH를 수동으로 resolve 가능한 deferred로 만든다
+      let resolvePatch: (value: AdminFeedback) => void = () => {};
+      const patchPromise = new Promise<AdminFeedback>((resolve) => {
+        resolvePatch = resolve;
+      });
+      mockUpdateFeedbackStatus.mockReturnValue(patchPromise);
+
+      render(<AdminFeedbacksPage />, { wrapper });
+      await waitForListLoaded();
+
+      const fetchCallsBefore = mockFetcher.mock.calls.length;
+
+      // 드롭다운 변경 → optimistic 적용
+      const selects = screen.getAllByRole('combobox');
+      await user.selectOptions(selects[0], 'RESOLVED');
+
+      // PATCH가 호출되었는지 확인
+      await waitFor(() => {
+        expect(mockUpdateFeedbackStatus).toHaveBeenCalledWith('fb-1', 'RESOLVED');
+      });
+
+      // PATCH가 아직 resolve되지 않은 시점 — 재검증 GET이 발생해선 안 됨
+      // (optimistic 단계는 revalidate: false 이므로 fetcher 추가 호출 0회)
+      expect(mockFetcher.mock.calls.length).toBe(fetchCallsBefore);
+
+      // PATCH 완료 → 명시 mutate가 GET 재검증을 트리거
+      resolvePatch({ ...fb1, status: 'RESOLVED' });
+
+      await waitFor(() => {
+        expect(mockFetcher.mock.calls.length).toBeGreaterThan(fetchCallsBefore);
+      });
+    });
+
+    it('상태 변경 실패 시 롤백 재검증이 호출된다 (catch path)', async () => {
+      const user = userEvent.setup();
+      mockUpdateFeedbackStatus.mockRejectedValue(new Error('PATCH failed'));
+
+      render(<AdminFeedbacksPage />, { wrapper });
+      await waitForListLoaded();
+
+      const fetchCallsBefore = mockFetcher.mock.calls.length;
+
+      const selects = screen.getAllByRole('combobox');
+      await user.selectOptions(selects[0], 'RESOLVED');
+
+      await waitFor(() => {
+        expect(mockUpdateFeedbackStatus).toHaveBeenCalled();
+      });
+
+      // catch에서 mutateFeedbacks() 호출 → 재검증 GET 발생
+      await waitFor(() => {
+        expect(mockFetcher.mock.calls.length).toBeGreaterThan(fetchCallsBefore);
+      });
+    });
   });
 
   describe('에러 핸들링', () => {
