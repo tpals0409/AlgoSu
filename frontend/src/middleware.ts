@@ -33,6 +33,7 @@ const PUBLIC_PATHS = [
   '/terms',
 ] as const;
 
+/** @sync src/lib/locale-path.ts#stripLocalePrefix — Edge Runtime 전용, 로직 동일 */
 /**
  * URL에서 non-default locale prefix를 제거한 순수 경로 반환.
  * ko(기본)는 prefix가 없으므로 그대로 반환.

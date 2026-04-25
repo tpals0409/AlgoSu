@@ -88,7 +88,7 @@ export default function AdminFeedbacksPage() {
     status: statusFilter !== 'ALL' ? statusFilter : undefined,
   });
 
-  const { detail: selectedDetail } = useFeedbackDetail(selectedPublicId);
+  const { detail: selectedDetail, mutate: mutateDetail } = useFeedbackDetail(selectedPublicId);
 
   // 모달이 열렸을 때 상세 fetch가 실패하더라도 목록 행(fallback)으로 표시
   const selectedFeedback: AdminFeedback | null =
@@ -107,16 +107,49 @@ export default function AdminFeedbacksPage() {
   }, [statusFilter, categoryFilter, searchQuery]);
 
   /**
-   * 상태 변경 — PATCH 호출 후 목록 SWR 재검증 (서버 권위)
+   * 상태 변경 — optimistic UI 적용 후 PATCH 완료를 기다린 뒤 명시 재검증
+   *
+   * SWR race condition 방지 (Sprint 127 Wave-B P1, Critic 019dc215):
+   * - optimistic 단계는 `revalidate: false`로 GET 재검증을 시작하지 않음
+   * - PATCH 완료 후 명시적으로 `mutate*()` 호출 → 서버 상태와 동기화
+   * - PATCH 진행 중 GET이 먼저 응답해 optimistic을 덮어쓰는 시나리오 차단
    */
   const handleStatusChange = async (publicId: string, newStatus: string) => {
+    /** 목록 캐시 optimistic updater — 해당 항목의 status만 교체 */
+    const listUpdater = (current: { items: AdminFeedback[]; total: number; counts?: Record<string, number> } | undefined) => {
+      if (!current) return current;
+      return {
+        ...current,
+        items: current.items.map((fb) =>
+          fb.publicId === publicId ? { ...fb, status: newStatus } : fb,
+        ),
+      };
+    };
+
+    // optimistic: 즉시 UI 반영만 (재검증은 PATCH 완료 후)
+    mutateFeedbacks(listUpdater, { revalidate: false });
+
+    // 상세 모달이 열려 있으면 상세 캐시도 optimistic 갱신 (재검증은 PATCH 완료 후)
+    const isDetailOpen = selectedPublicId === publicId;
+    if (isDetailOpen) {
+      mutateDetail(
+        (current) => (current ? { ...current, status: newStatus } : current),
+        { revalidate: false },
+      );
+    }
+
     try {
       await adminApi.updateFeedbackStatus(publicId, newStatus);
-      mutateFeedbacks();
       toast.success(
         t('feedbacks.toast.statusChanged', { status: t(`feedbacks.status.${newStatus}`) }),
       );
+      // 성공 시 서버 상태로 동기화 (counts/list row/모달 stale 방지)
+      mutateFeedbacks();
+      if (isDetailOpen) mutateDetail();
     } catch {
+      // 실패 시 서버 상태로 롤백 — 재검증으로 최신 데이터 복원
+      mutateFeedbacks();
+      if (isDetailOpen) mutateDetail();
       toast.error(t('feedbacks.toast.statusChangeFailed'));
     }
   };

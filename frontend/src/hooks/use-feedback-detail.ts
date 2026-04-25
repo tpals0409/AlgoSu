@@ -9,11 +9,17 @@ import useSWR from 'swr';
 import { cacheKeys } from '@/lib/swr';
 import type { AdminFeedback } from '@/lib/api';
 
+/** optimistic updater — 현재 상세를 받아 새 상세를 반환 */
+type DetailUpdater = (
+  current: AdminFeedback | undefined,
+) => AdminFeedback | undefined;
+
 interface UseFeedbackDetailReturn {
   detail: AdminFeedback | null;
   isLoading: boolean;
   error: Error | null;
-  mutate: () => void;
+  /** 단순 재검증 또는 optimistic updater 전달 가능 */
+  mutate: (updater?: DetailUpdater, opts?: { revalidate?: boolean }) => void;
 }
 
 /**
@@ -29,6 +35,12 @@ export function useFeedbackDetail(publicId: string | null): UseFeedbackDetailRet
     detail: data ?? null,
     isLoading,
     error: error ?? null,
-    mutate: () => void mutate(),
+    mutate: (updater?: DetailUpdater, opts?: { revalidate?: boolean }) => {
+      if (updater) {
+        void mutate(updater, opts);
+      } else {
+        void mutate();
+      }
+    },
   };
 }

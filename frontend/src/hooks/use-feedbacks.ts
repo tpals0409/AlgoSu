@@ -5,7 +5,7 @@
  * @related adminApi, cacheKeys, AdminFeedbacksPage
  */
 
-import useSWR from 'swr';
+import useSWR, { type MutatorOptions } from 'swr';
 import { cacheKeys } from '@/lib/swr';
 import type { AdminFeedback } from '@/lib/api';
 
@@ -23,13 +23,24 @@ interface FeedbacksResponse {
   counts?: Record<string, number>;
 }
 
+/**
+ * optimistic updater — 현재 응답을 받아 새 응답을 반환
+ */
+type FeedbacksUpdater = (
+  current: FeedbacksResponse | undefined,
+) => FeedbacksResponse | undefined;
+
 interface UseFeedbacksReturn {
   feedbacks: AdminFeedback[];
   total: number;
   counts: Record<string, number>;
   isLoading: boolean;
   error: Error | null;
-  mutate: () => void;
+  /** 단순 재검증 또는 optimistic updater 전달 가능 */
+  mutate: (
+    updater?: FeedbacksUpdater,
+    opts?: MutatorOptions<FeedbacksResponse>,
+  ) => void;
 }
 
 /**
@@ -62,6 +73,12 @@ export function useFeedbacks(params: UseFeedbacksParams): UseFeedbacksReturn {
     counts: data?.counts ?? {},
     isLoading,
     error: error ?? null,
-    mutate: () => void mutate(),
+    mutate: (updater?: FeedbacksUpdater, opts?: MutatorOptions<FeedbacksResponse>) => {
+      if (updater) {
+        void mutate(updater, opts);
+      } else {
+        void mutate();
+      }
+    },
   };
 }
