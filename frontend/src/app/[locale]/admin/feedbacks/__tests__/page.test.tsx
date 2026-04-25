@@ -677,7 +677,7 @@ describe('AdminFeedbacksPage', () => {
       });
     });
 
-    it('PATCH 실패 시에도 in-flight 카운터가 감소하여 재검증이 정상 호출된다', async () => {
+    it('PATCH 실패 시 in-flight gating을 우회해 즉시 롤백 재검증이 호출된다 (Critic 019dc268 P2)', async () => {
       const user = userEvent.setup();
       setupFetcher();
 
@@ -696,20 +696,57 @@ describe('AdminFeedbacksPage', () => {
       await user.selectOptions(selects[0], 'RESOLVED');
       await user.selectOptions(selects[1], 'RESOLVED');
 
-      await waitFor(() => {
-        expect(mockUpdateFeedbackStatus).toHaveBeenCalledTimes(2);
-      });
-
-      // PATCH2 실패 — 아직 PATCH1 진행 중이므로 GET 보류
-      await new Promise((r) => setTimeout(r, 50));
-      expect(mockFetcher.mock.calls.length).toBe(fetchCallsBefore);
-
-      // PATCH1 완료 → in-flight 0 → 재검증
-      resolvePatch1({ ...fb1, status: 'RESOLVED' });
-
+      // PATCH2 실패 → in-flight=1이지만 즉시 롤백 GET이 트리거되어야 함
       await waitFor(() => {
         expect(mockFetcher.mock.calls.length).toBeGreaterThan(fetchCallsBefore);
       });
+
+      // PATCH1은 아직 진행 중 — 정리
+      resolvePatch1({ ...fb1, status: 'RESOLVED' });
+    });
+  });
+
+  describe('필터 total 동기 감소 (Sprint 128 P3)', () => {
+    it('status 필터 활성 시 행이 제거되면 total도 같이 감소한다 (페이지네이션 일관성)', async () => {
+      const user = userEvent.setup();
+      // 페이지네이션이 의미 있도록 total > items.length 시나리오
+      const data: typeof mockListResponse = {
+        items: [fb1],  // 표시되는 항목은 1개지만 서버 total은 21
+        total: 21,
+        counts: { OPEN: 21, IN_PROGRESS: 0, RESOLVED: 0 },
+      };
+      setupFetcher(data);
+
+      let resolvePatch: (v: AdminFeedback) => void = () => {};
+      mockUpdateFeedbackStatus.mockReturnValue(
+        new Promise<AdminFeedback>((r) => { resolvePatch = r; }),
+      );
+
+      render(<AdminFeedbacksPage />, { wrapper });
+      await waitForListLoaded();
+
+      // OPEN 필터 활성 — total=21 → totalPages=2 (PAGE_SIZE=20)
+      const openButtons = screen.getAllByText('feedbacks.status.OPEN');
+      const filterBtn = openButtons.find((el) => el.tagName === 'BUTTON') as HTMLElement;
+      await user.click(filterBtn);
+
+      await waitFor(() => {
+        expect(mockFetcher).toHaveBeenCalledWith(expect.stringContaining('status=OPEN'));
+      });
+
+      // 페이지네이션이 표시됨 (totalPages > 1) — pageOf 라벨로 식별
+      expect(screen.getByText(/feedbacks\.pagination\.pageOf/)).toBeInTheDocument();
+
+      // fb1(OPEN) → RESOLVED — 필터 범위 밖
+      const selects = screen.getAllByRole('combobox');
+      await user.selectOptions(selects[0], 'RESOLVED');
+
+      // optimistic: items 0건, total 20 → totalPages=1로 감소 (페이지네이션 사라지거나 단일 페이지)
+      await waitFor(() => {
+        expect(screen.queryByText('Button does not work')).not.toBeInTheDocument();
+      });
+
+      resolvePatch({ ...fb1, status: 'RESOLVED' });
     });
   });
 });

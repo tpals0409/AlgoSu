@@ -136,7 +136,11 @@ export default function AdminFeedbacksPage() {
         nextCounts[newStatus] = (nextCounts[newStatus] ?? 0) + 1;
       }
 
-      return { ...current, items: filtered, total: current.total, counts: nextCounts };
+      // 필터 범위 밖 행 제거 시 total도 동기 감소 (Critic 019dc268 P3)
+      const removed = current.items.length - filtered.length;
+      const nextTotal = Math.max(0, current.total - removed);
+
+      return { ...current, items: filtered, total: nextTotal, counts: nextCounts };
     };
 
     // optimistic: 즉시 UI 반영만 (재검증은 PATCH 완료 후)
@@ -152,16 +156,20 @@ export default function AdminFeedbacksPage() {
     }
 
     inFlightRef.current += 1;
+    let failed = false;
     try {
       await adminApi.updateFeedbackStatus(publicId, newStatus);
       toast.success(
         t('feedbacks.toast.statusChanged', { status: t(`feedbacks.status.${newStatus}`) }),
       );
     } catch {
+      failed = true;
       toast.error(t('feedbacks.toast.statusChangeFailed'));
     } finally {
       inFlightRef.current -= 1;
-      if (inFlightRef.current === 0) {
+      // 실패 시 즉시 롤백 (다른 PATCH의 in-flight gating 우회 — Critic 019dc268 P2)
+      // 성공 시는 모든 PATCH 완료 후 1회만 재검증
+      if (failed || inFlightRef.current === 0) {
         mutateFeedbacks();
         mutateDetail();
       }
