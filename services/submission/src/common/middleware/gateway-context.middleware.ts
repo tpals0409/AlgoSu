@@ -61,7 +61,11 @@ export class GatewayContextMiddleware implements NestMiddleware {
    * 4. X-User-ID 추출 + UUID 형식 검증 → request.user 설정
    */
   use(req: GatewayRequest, _res: Response, next: NextFunction): void {
-    const path = req.path;
+    // NestJS forRoutes('*')는 Express app.use('/(.*)', mw)로 마운트되어
+    // req.path가 마운트 prefix만큼 strip됨 (`/health` → `/`).
+    // 프로브 경로 우회를 위해 strip되지 않는 originalUrl을 사용하고
+    // 쿼리스트링은 제거해 prefix 매칭만 수행한다.
+    const path = this.resolveRequestPath(req);
 
     // 1. k8s 프로브 / Swagger — 내부 키 검증 불필요
     if (this.isProbe(path)) {
@@ -83,6 +87,17 @@ export class GatewayContextMiddleware implements NestMiddleware {
     this.logger.log(`게이트웨이 컨텍스트 확립: userId=${userId}, path=${path}`);
 
     return next();
+  }
+
+  /**
+   * 요청 경로를 mount-strip의 영향 없이 추출
+   * - `req.originalUrl`은 Express가 raw URL을 보존 → forRoutes('*') 마운트에도 안전
+   * - 쿼리스트링(`?ready=1`)은 prefix 매칭에 방해되므로 제거
+   */
+  private resolveRequestPath(req: GatewayRequest): string {
+    const rawUrl = req.originalUrl ?? req.url ?? '/';
+    const queryIdx = rawUrl.indexOf('?');
+    return queryIdx === -1 ? rawUrl : rawUrl.slice(0, queryIdx);
   }
 
   /**
