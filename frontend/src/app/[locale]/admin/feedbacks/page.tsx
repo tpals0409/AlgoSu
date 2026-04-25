@@ -106,6 +106,12 @@ export default function AdminFeedbacksPage() {
     setPage(1);
   }, [statusFilter, categoryFilter, searchQuery]);
 
+  // optimistic total 감소로 totalPages가 줄어들면 page를 범위 안으로 clamp (Critic 019dc26b P2)
+  useEffect(() => {
+    const nextTotalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    if (page > nextTotalPages) setPage(nextTotalPages);
+  }, [total, page]);
+
   /**
    * 상태 변경 — optimistic UI 적용 후 PATCH 완료를 기다린 뒤 명시 재검증
    *

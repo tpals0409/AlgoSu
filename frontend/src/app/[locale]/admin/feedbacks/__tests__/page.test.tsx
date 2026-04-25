@@ -748,5 +748,50 @@ describe('AdminFeedbacksPage', () => {
 
       resolvePatch({ ...fb1, status: 'RESOLVED' });
     });
+
+    it('totalPages가 줄어들면 page가 자동 clamp 된다 (Critic 019dc26b P2)', async () => {
+      const user = userEvent.setup();
+      // page=2 진입을 위해 페이지네이션 가능한 데이터 준비
+      const data: typeof mockListResponse = {
+        items: [fb1],
+        total: 21,
+        counts: { OPEN: 21, IN_PROGRESS: 0, RESOLVED: 0 },
+      };
+      setupFetcher(data);
+
+      let resolvePatch: (v: AdminFeedback) => void = () => {};
+      mockUpdateFeedbackStatus.mockReturnValue(
+        new Promise<AdminFeedback>((r) => { resolvePatch = r; }),
+      );
+
+      render(<AdminFeedbacksPage />, { wrapper });
+      await waitForListLoaded();
+
+      // page=2로 이동 (next 버튼 클릭)
+      const nextBtn = screen.getByText('feedbacks.pagination.next');
+      await user.click(nextBtn);
+
+      await waitFor(() => {
+        // page=2 → fetcher 호출에 page=2 포함
+        expect(mockFetcher).toHaveBeenCalledWith(expect.stringContaining('page=2'));
+      });
+
+      // OPEN 필터 활성 (page는 useEffect에서 1로 리셋되지만, 다시 next 클릭 가능)
+      // 여기서는 단순히 fb1을 RESOLVED로 변경 → total 20으로 줄어듦
+      mockFetcher.mockClear();
+      const selects = screen.getAllByRole('combobox');
+      await user.selectOptions(selects[0], 'RESOLVED');
+
+      // optimistic 후 page가 1 이내로 clamp되어 page=1로 GET 호출이 일어나거나
+      // 적어도 더 이상 page=2를 fetch하지 않아야 함
+      resolvePatch({ ...fb1, status: 'RESOLVED' });
+
+      // out-of-range page=2가 잔존하지 않음을 검증
+      await waitFor(() => {
+        const calls = mockFetcher.mock.calls.map((c) => String(c[0]));
+        const hasPage1 = calls.some((url) => url.includes('page=1'));
+        expect(hasPage1).toBe(true);
+      });
+    });
   });
 });
