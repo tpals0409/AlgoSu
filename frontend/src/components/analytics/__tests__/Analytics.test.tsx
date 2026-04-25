@@ -54,8 +54,9 @@ const defaultProps: AnalyticsChartsProps = {
     { date: '3/5', score: 92, problem: '두 수의 합' },
   ],
   difficultyData: [
-    { tier: 'Silver', count: 8, color: '#808080' },
-    { tier: 'Gold', count: 6, color: '#FFD700' },
+    { tier: 'SILVER', count: 8, color: '#808080' },
+    { tier: 'GOLD', count: 6, color: '#FFD700' },
+    { tier: 'UNCLASSIFIED', count: 3, color: '#999999' },
   ],
   tagData: [
     { tag: 'DP', count: 6 },
@@ -100,6 +101,6 @@ describe('AnalyticsCharts', () => {
 
   it('총 해결 문제 수를 표시한다', () => {
     renderWithI18n(<AnalyticsCharts {...defaultProps} />);
-    expect(screen.getByText(/총 14문제 해결 완료/)).toBeInTheDocument();
+    expect(screen.getByText(/총 17문제 해결 완료/)).toBeInTheDocument();
   });
 });

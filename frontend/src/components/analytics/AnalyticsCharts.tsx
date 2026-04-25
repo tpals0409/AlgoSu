@@ -46,7 +46,7 @@ interface AIScoreEntry {
 }
 
 interface DifficultyRow {
-  tier: string;
+  tier: DifficultyDisplay;
   count: number;
   color: string;
 }
@@ -309,7 +309,7 @@ export default function AnalyticsCharts({
                         className="h-2.5 w-2.5 rounded-full shrink-0"
                         style={{ backgroundColor: row.color }}
                       />
-                      <span className="text-[13px] text-text">{row.tier === 'UNCLASSIFIED' ? t('unclassified') : (DIFFICULTY_LABELS[row.tier as DifficultyDisplay] ?? row.tier)}</span>
+                      <span className="text-[13px] text-text">{row.tier === 'UNCLASSIFIED' ? t('unclassified') : DIFFICULTY_LABELS[row.tier]}</span>
                     </div>
                     <div className="flex-1 h-5 rounded-sm overflow-hidden" style={{ backgroundColor: 'var(--bg-alt)' }}>
                       <div
