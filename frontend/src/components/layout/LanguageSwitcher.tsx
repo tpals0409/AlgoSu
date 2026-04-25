@@ -2,12 +2,12 @@
  * @file 언어 스위처 — 로케일 전환 버튼 (ko/en)
  * @domain common
  * @layer component
- * @related i18n/navigation, AppLayout, TopNav
+ * @related i18n/navigation, AppLayout
  *
  * 현재 locale을 감지하고 ko/en 토글 UI를 제공한다.
  * 선택 시 next-intl locale-aware router로 경로를 전환하고
  * NEXT_LOCALE 쿠키를 365일 유효기간으로 갱신한다.
- * Glassmorphism 스타일로 TopNav/AppLayout와 시각적 일관성 유지.
+ * Glassmorphism 스타일로 AppLayout와 시각적 일관성 유지.
  * useSearchParams로 쿼리 파라미터를 보존하여 locale 전환 시 손실 방지.
  */
 

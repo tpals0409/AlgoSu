@@ -2,7 +2,7 @@
  * @file 프리셋 아바타 시스템 (키/라벨/URL 변환)
  * @domain common
  * @layer lib
- * @related ProfilePage, TopNav
+ * @related ProfilePage, AppLayout
  */
 
 export interface AvatarPreset {

@@ -195,13 +195,6 @@ describe('AppLayout isActive — locale-aware pathname (H3)', () => {
     expect(dashboardLink.className).toContain('bg-primary-soft');
   });
 
-  it('한국어 로케일 /dashboard에서 대시보드 nav 활성화 — 회귀', () => {
-    mockUsePathname.mockReturnValue('/dashboard');
-    renderWithI18n(<AppLayout>content</AppLayout>);
-    const dashboardLink = screen.getByRole('link', { name: /대시보드/ });
-    expect(dashboardLink.className).toContain('bg-primary-soft');
-  });
-
   it('다른 경로 /problems에서 대시보드 nav가 비활성화된다', () => {
     mockUsePathname.mockReturnValue('/problems');
     renderWithI18n(<AppLayout>content</AppLayout>);

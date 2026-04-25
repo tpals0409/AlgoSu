@@ -5,7 +5,7 @@
  * @related StudyContext, /studies/[id]/room
  *
  * 현재 선택된 스터디의 스터디룸으로 리다이렉트합니다.
- * TopNav에서 스터디 ID 없이 접근할 수 있도록 중간 라우트 역할.
+ * AppLayout에서 스터디 ID 없이 접근할 수 있도록 중간 라우트 역할.
  */
 
 'use client';
