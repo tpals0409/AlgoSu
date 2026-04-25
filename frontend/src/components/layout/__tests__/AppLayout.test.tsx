@@ -1,9 +1,19 @@
+/**
+ * @file AppLayout 단위 테스트
+ * @domain common
+ * @layer test
+ * @related AppLayout, @/i18n/navigation (H3 fix: locale-stripped usePathname)
+ */
+
 import { screen } from '@testing-library/react';
 import { renderWithI18n } from '@/test-utils/i18n';
 import { AppLayout } from '../AppLayout';
 
 const mockLogout = jest.fn();
 const mockUseAuth = jest.fn();
+const mockUseStudy = jest.fn();
+/** locale-stripped pathname mock — @/i18n/navigation 교체(H3) 검증용 */
+const mockUsePathname = jest.fn().mockReturnValue('/');
 
 jest.mock('lucide-react', () => {
   const Icon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />;
@@ -29,9 +39,28 @@ jest.mock('lucide-react', () => {
   };
 });
 
+/** next/navigation — AppLayout은 더 이상 usePathname을 여기서 가져오지 않음(H3 fix) */
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
-  usePathname: () => '/',
+}));
+
+/**
+ * @/i18n/navigation mock — locale-stripped usePathname 제공.
+ * H3 fix 이후 AppLayout의 isActive()는 이 mock이 반환하는 경로를 사용한다.
+ */
+jest.mock('@/i18n/navigation', () => ({
+  usePathname: () => mockUsePathname(),
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
+  Link: ({
+    children,
+    href,
+    ...rest
+  }: {
+    children: React.ReactNode;
+    href: string;
+    [key: string]: unknown;
+  }) => <a href={href} {...rest}>{children}</a>,
+  redirect: jest.fn(),
 }));
 
 jest.mock('next/link', () => {
@@ -60,12 +89,7 @@ jest.mock('@/contexts/AuthContext', () => ({
 }));
 
 jest.mock('@/contexts/StudyContext', () => ({
-  useStudy: () => ({
-    currentStudyId: null,
-    currentStudyName: null,
-    studies: [],
-    setCurrentStudy: jest.fn(),
-  }),
+  useStudy: (...args: unknown[]) => mockUseStudy(...args),
 }));
 
 jest.mock('@/components/layout/NotificationBell', () => ({
@@ -101,6 +125,13 @@ beforeEach(() => {
     logout: mockLogout,
     sessionExpired: false,
   });
+  mockUseStudy.mockReturnValue({
+    currentStudyId: null,
+    currentStudyName: null,
+    studies: [],
+    setCurrentStudy: jest.fn(),
+  });
+  mockUsePathname.mockReturnValue('/');
 });
 
 describe('AppLayout', () => {
@@ -133,5 +164,55 @@ describe('AppLayout', () => {
 
     renderWithI18n(<AppLayout>content</AppLayout>);
     expect(screen.queryByText('세션이 만료되었습니다')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * H3 fix 회귀 테스트 —
+ * usePathname을 next/navigation → @/i18n/navigation(locale-stripped)으로 교체한 뒤
+ * isActive() 비교 로직이 locale prefix 없는 경로를 받는지 검증한다.
+ *
+ * 영어 로케일에서 next/navigation이 '/en/dashboard'를 반환하면
+ * isActive('/dashboard') === false 로 사이드바 전체 비활성화 — 이 버그를 방지.
+ */
+describe('AppLayout isActive — locale-aware pathname (H3)', () => {
+  beforeEach(() => {
+    // 사이드바가 렌더되려면 hasStudy = true 필요
+    mockUseStudy.mockReturnValue({
+      currentStudyId: 'study-1',
+      currentStudyName: '테스트 스터디',
+      studies: [{ id: 'study-1', name: '테스트 스터디', avatar_url: null }],
+      setCurrentStudy: jest.fn(),
+    });
+  });
+
+  it('locale-stripped /dashboard 경로에서 대시보드 nav가 활성화된다', () => {
+    // @/i18n/navigation.usePathname이 locale prefix 없는 '/dashboard' 반환
+    // — 영어 로케일이라도 locale-stripped이므로 isActive('/dashboard') === true
+    mockUsePathname.mockReturnValue('/dashboard');
+    renderWithI18n(<AppLayout>content</AppLayout>);
+    const dashboardLink = screen.getByRole('link', { name: /대시보드/ });
+    expect(dashboardLink.className).toContain('bg-primary-soft');
+  });
+
+  it('한국어 로케일 /dashboard에서 대시보드 nav 활성화 — 회귀', () => {
+    mockUsePathname.mockReturnValue('/dashboard');
+    renderWithI18n(<AppLayout>content</AppLayout>);
+    const dashboardLink = screen.getByRole('link', { name: /대시보드/ });
+    expect(dashboardLink.className).toContain('bg-primary-soft');
+  });
+
+  it('다른 경로 /problems에서 대시보드 nav가 비활성화된다', () => {
+    mockUsePathname.mockReturnValue('/problems');
+    renderWithI18n(<AppLayout>content</AppLayout>);
+    const dashboardLink = screen.getByRole('link', { name: /대시보드/ });
+    expect(dashboardLink.className).not.toContain('bg-primary-soft');
+  });
+
+  it('@/i18n/navigation.usePathname이 호출된다 (next/navigation 아님)', () => {
+    mockUsePathname.mockReturnValue('/dashboard');
+    renderWithI18n(<AppLayout>content</AppLayout>);
+    // mockUsePathname이 호출됐다면 AppLayout이 @/i18n/navigation을 사용 중
+    expect(mockUsePathname).toHaveBeenCalled();
   });
 });
