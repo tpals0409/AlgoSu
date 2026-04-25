@@ -30,7 +30,7 @@ import {
   type StudyStats,
   type Problem,
 } from '@/lib/api';
-import { DIFFICULTY_COLORS, DIFFICULTIES } from '@/lib/constants';
+import { DIFFICULTY_COLORS, DIFFICULTIES_DISPLAY } from '@/lib/constants';
 import { parseWeekKey } from '@/lib/util/parseWeekKey';
 
 // ─── DYNAMIC IMPORT ──────────────────────
@@ -207,17 +207,18 @@ export default function AnalyticsPage(): ReactNode {
   }, [allProblems, myProblemIds, t]);
 
   const difficultyData = useMemo(() => {
-    const DIFFICULTY_ORDER = DIFFICULTIES.map((key) => ({ key, color: DIFFICULTY_COLORS[key] }));
+    const DIFFICULTY_ORDER = DIFFICULTIES_DISPLAY.map((key) => ({ key, color: DIFFICULTY_COLORS[key] }));
     const countMap = new Map<string, number>();
     for (const p of allProblems) {
       if (!myProblemIds.has(p.id)) continue;
-      const d = p.difficulty ?? t('unclassified');
+      // 백엔드 difficulty=null인 문제는 UI 전용 'UNCLASSIFIED' 카테고리로 분류
+      const d = p.difficulty ?? 'UNCLASSIFIED';
       countMap.set(d, (countMap.get(d) ?? 0) + 1);
     }
     return DIFFICULTY_ORDER
       .filter((d) => countMap.has(d.key))
       .map((d) => ({ tier: d.key, count: countMap.get(d.key)!, color: d.color }));
-  }, [allProblems, myProblemIds, t]);
+  }, [allProblems, myProblemIds]);
 
   // ─── LOADING ───────────────────────────
 

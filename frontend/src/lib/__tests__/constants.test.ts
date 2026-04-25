@@ -1,5 +1,6 @@
 import {
   DIFFICULTIES,
+  DIFFICULTIES_DISPLAY,
   DIFFICULTY_LABELS,
   DIFFICULTY_COLORS,
   LANGUAGES,
@@ -10,9 +11,13 @@ import {
 } from '@/lib/constants';
 import type { SagaStep } from '@/lib/constants';
 
-describe('DIFFICULTIES', () => {
-  it('6개 난이도를 포함한다', () => {
+describe('DIFFICULTIES (백엔드 호환)', () => {
+  it('6개 백엔드 enum 난이도를 포함한다 (BRONZE~RUBY)', () => {
     expect(DIFFICULTIES).toHaveLength(6);
+  });
+
+  it('UNCLASSIFIED를 포함하지 않는다 (백엔드 enum과 정합)', () => {
+    expect(DIFFICULTIES).not.toContain('UNCLASSIFIED');
   });
 
   it('모든 난이도에 라벨이 있다', () => {
@@ -26,6 +31,25 @@ describe('DIFFICULTIES', () => {
     for (const d of DIFFICULTIES) {
       expect(DIFFICULTY_COLORS[d]).toMatch(/^#[0-9a-f]{6}$/i);
     }
+  });
+});
+
+describe('DIFFICULTIES_DISPLAY (UI 표시 전용)', () => {
+  it('7개 항목을 포함한다 (DIFFICULTIES + UNCLASSIFIED)', () => {
+    expect(DIFFICULTIES_DISPLAY).toHaveLength(7);
+  });
+
+  it('UNCLASSIFIED를 포함한다', () => {
+    expect(DIFFICULTIES_DISPLAY).toContain('UNCLASSIFIED');
+  });
+
+  it('DIFFICULTIES를 prefix로 가진다', () => {
+    expect(DIFFICULTIES_DISPLAY.slice(0, DIFFICULTIES.length)).toEqual([...DIFFICULTIES]);
+  });
+
+  it('UNCLASSIFIED 라벨/색상이 정의되어 있다', () => {
+    expect(DIFFICULTY_LABELS.UNCLASSIFIED).toBe('Unclassified');
+    expect(DIFFICULTY_COLORS.UNCLASSIFIED).toBe('#8B8B95');
   });
 });
 

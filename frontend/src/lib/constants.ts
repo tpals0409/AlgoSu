@@ -11,19 +11,36 @@
 
 // ── Difficulty ──
 
+/**
+ * 백엔드 호환 난이도 enum — `services/problem` `Difficulty` (BRONZE~RUBY)와 1:1 매칭.
+ * 폼 입력값/DTO 페이로드/필터 pill은 반드시 이 타입만 사용한다 (UNCLASSIFIED 금지).
+ */
 export type Difficulty = 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND' | 'RUBY';
 
+/**
+ * UI 표시 전용 가상 카테고리 포함 타입 — analytics 차트 등에서 사용.
+ * `UNCLASSIFIED`는 backend enum이 아니며, DB `difficulty=null` 데이터를 시각화할 때만 사용한다.
+ */
+export type DifficultyDisplay = Difficulty | 'UNCLASSIFIED';
+
+/** 백엔드 호환 — 폼 옵션, 필터 pill에 사용 (UNCLASSIFIED 미포함) */
 export const DIFFICULTIES: readonly Difficulty[] = [
   'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND', 'RUBY',
 ] as const;
 
-export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
+/** 표시 전용 — analytics 차트 등 UI에만 사용 (UNCLASSIFIED 포함) */
+export const DIFFICULTIES_DISPLAY: readonly DifficultyDisplay[] = [
+  ...DIFFICULTIES, 'UNCLASSIFIED',
+] as const;
+
+export const DIFFICULTY_LABELS: Record<DifficultyDisplay, string> = {
   BRONZE: 'Bronze',
   SILVER: 'Silver',
   GOLD: 'Gold',
   PLATINUM: 'Platinum',
   DIAMOND: 'Diamond',
   RUBY: 'Ruby',
+  UNCLASSIFIED: 'Unclassified',
 };
 
 /**
@@ -35,33 +52,36 @@ export function toTierLevel(rawLevel: number | null | undefined): number | null 
   return 5 - ((rawLevel - 1) % 5);
 }
 
-export const DIFFICULTY_COLORS: Record<Difficulty, string> = {
+export const DIFFICULTY_COLORS: Record<DifficultyDisplay, string> = {
   BRONZE: '#ad5600',
   SILVER: '#435f7a',
   GOLD: '#ec9a00',
   PLATINUM: '#27e2a4',
   DIAMOND: '#00b4fc',
   RUBY: '#FF0062',
+  UNCLASSIFIED: '#8B8B95',
 };
 
 /** 난이도별 도트 색상 — CSS 변수(--diff-*-color) 기반 inline style */
 export const DIFF_DOT_STYLE: Record<string, { backgroundColor: string }> = {
-  bronze:   { backgroundColor: 'var(--diff-bronze-color)' },
-  silver:   { backgroundColor: 'var(--diff-silver-color)' },
-  gold:     { backgroundColor: 'var(--diff-gold-color)' },
-  platinum: { backgroundColor: 'var(--diff-platinum-color)' },
-  diamond:  { backgroundColor: 'var(--diff-diamond-color)' },
-  ruby:     { backgroundColor: 'var(--diff-ruby-color)' },
+  bronze:       { backgroundColor: 'var(--diff-bronze-color)' },
+  silver:       { backgroundColor: 'var(--diff-silver-color)' },
+  gold:         { backgroundColor: 'var(--diff-gold-color)' },
+  platinum:     { backgroundColor: 'var(--diff-platinum-color)' },
+  diamond:      { backgroundColor: 'var(--diff-diamond-color)' },
+  ruby:         { backgroundColor: 'var(--diff-ruby-color)' },
+  unclassified: { backgroundColor: 'var(--diff-unclassified-color)' },
 };
 
 /** 난이도별 뱃지 배경 — CSS 변수(--diff-*-bg, --diff-*-color) 기반 inline style */
 export const DIFF_BADGE_STYLE: Record<string, { backgroundColor: string; color: string }> = {
-  bronze:   { backgroundColor: 'var(--diff-bronze-bg)',   color: 'var(--diff-bronze-color)' },
-  silver:   { backgroundColor: 'var(--diff-silver-bg)',   color: 'var(--diff-silver-color)' },
-  gold:     { backgroundColor: 'var(--diff-gold-bg)',     color: 'var(--diff-gold-color)' },
-  platinum: { backgroundColor: 'var(--diff-platinum-bg)', color: 'var(--diff-platinum-color)' },
-  diamond:  { backgroundColor: 'var(--diff-diamond-bg)',  color: 'var(--diff-diamond-color)' },
-  ruby:     { backgroundColor: 'var(--diff-ruby-bg)',     color: 'var(--diff-ruby-color)' },
+  bronze:       { backgroundColor: 'var(--diff-bronze-bg)',       color: 'var(--diff-bronze-color)' },
+  silver:       { backgroundColor: 'var(--diff-silver-bg)',       color: 'var(--diff-silver-color)' },
+  gold:         { backgroundColor: 'var(--diff-gold-bg)',         color: 'var(--diff-gold-color)' },
+  platinum:     { backgroundColor: 'var(--diff-platinum-bg)',     color: 'var(--diff-platinum-color)' },
+  diamond:      { backgroundColor: 'var(--diff-diamond-bg)',      color: 'var(--diff-diamond-color)' },
+  ruby:         { backgroundColor: 'var(--diff-ruby-bg)',         color: 'var(--diff-ruby-color)' },
+  unclassified: { backgroundColor: 'var(--diff-unclassified-bg)', color: 'var(--diff-unclassified-color)' },
 };
 
 // ── Language ──
