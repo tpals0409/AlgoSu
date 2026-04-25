@@ -11,7 +11,7 @@
 
 import { screen } from '@testing-library/react';
 import { renderWithI18n } from '@/test-utils/i18n';
-import koAuth from '../../../../../../messages/ko/auth.json';
+import koAuth from '@messages/ko/auth.json';
 import CallbackPage from '../page';
 
 jest.mock('next/navigation', () => ({

@@ -12,20 +12,20 @@ import { render, type RenderOptions } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import type { AbstractIntlMessages } from 'use-intl';
 
-import koLanding from '../../messages/ko/landing.json';
-import koAuth from '../../messages/ko/auth.json';
-import koCommon from '../../messages/ko/common.json';
-import koErrors from '../../messages/ko/errors.json';
-import koDashboard from '../../messages/ko/dashboard.json';
-import koSubmissions from '../../messages/ko/submissions.json';
-import koReviews from '../../messages/ko/reviews.json';
-import koLayout from '../../messages/ko/layout.json';
-import koProblems from '../../messages/ko/problems.json';
-import koAnalytics from '../../messages/ko/analytics.json';
-import koFeedback from '../../messages/ko/feedback.json';
-import koAccount from '../../messages/ko/account.json';
-import koUI from '../../messages/ko/ui.json';
-import koStudies from '../../messages/ko/studies.json';
+import koLanding from '@messages/ko/landing.json';
+import koAuth from '@messages/ko/auth.json';
+import koCommon from '@messages/ko/common.json';
+import koErrors from '@messages/ko/errors.json';
+import koDashboard from '@messages/ko/dashboard.json';
+import koSubmissions from '@messages/ko/submissions.json';
+import koReviews from '@messages/ko/reviews.json';
+import koLayout from '@messages/ko/layout.json';
+import koProblems from '@messages/ko/problems.json';
+import koAnalytics from '@messages/ko/analytics.json';
+import koFeedback from '@messages/ko/feedback.json';
+import koAccount from '@messages/ko/account.json';
+import koUI from '@messages/ko/ui.json';
+import koStudies from '@messages/ko/studies.json';
 
 /** Default ko messages (all namespaces merged) */
 const DEFAULT_MESSAGES: AbstractIntlMessages = {
