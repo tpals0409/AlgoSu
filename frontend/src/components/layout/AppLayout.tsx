@@ -11,7 +11,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
+import { useState, useEffect, useRef, useCallback, type ReactNode, Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from '@/i18n/navigation';
@@ -381,7 +381,9 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
 
                 {/* Language switcher */}
                 <div className="px-3 py-1.5">
-                  <LanguageSwitcher />
+                  <Suspense fallback={null}>
+                    <LanguageSwitcher />
+                  </Suspense>
                 </div>
 
                 {/* Profile link */}
@@ -459,7 +461,9 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
               </span>
             </Link>
             <div className="flex items-center gap-2">
-              <LanguageSwitcher />
+              <Suspense fallback={null}>
+                <LanguageSwitcher />
+              </Suspense>
               <button
                 type="button"
                 onClick={logout}
