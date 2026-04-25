@@ -2,7 +2,7 @@
  * @file Study sidebar (v2 design system)
  * @domain study
  * @layer component
- * @related StudyContext, TopNav
+ * @related StudyContext, AppLayout
  *
  * Study-specific sidebar.
  * Desktop: fixed left, Mobile(< md): slide overlay + backdrop.
