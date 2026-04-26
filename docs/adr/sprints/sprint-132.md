@@ -2,7 +2,7 @@
 sprint: 132
 title: "LegalLayout LanguageSwitcher 마운트 — /privacy, /terms 한/영 토글 노출"
 date: "2026-04-26"
-status: in-progress
+status: completed
 agents: [Oracle, Architect]
 related_adrs: []
 ---
@@ -16,7 +16,7 @@ related_adrs: []
 - **Choice**: LegalLayout Nav 우측에 `<Suspense fallback={null}><LanguageSwitcher /></Suspense>` 추가. nav 컨테이너에 `justify-between` 적용하여 Logo 좌/LanguageSwitcher 우 배치. Server Component(async) 유지, Client Component(LanguageSwitcher)는 RSC→CC 경계로 자동 처리
 - **Verification**: jest 1357 통과(+1), tsc/lint clean
 - **Code Paths**: `frontend/src/components/layout/LegalLayout.tsx` (+8줄), `frontend/src/components/layout/__tests__/LegalLayout.test.tsx` (+11줄, LanguageSwitcher mock + 마운트 검증)
-- **PR**: TBD
+- **PR**: [#161](https://github.com/tpals0409/AlgoSu/pull/161) (`fa1d68a`, Squash merge)
 
 ### D2: GuestNav / SharedLayout은 Sprint 132 범위 제외 (정책 결정)
 - **Context**: `/guest`, `/guest/preview/[slug]`(GuestNav), `/shared/[token]`(SharedLayout)도 LanguageSwitcher 미마운트. 정찰 결과 5종 후보 식별
@@ -30,9 +30,11 @@ related_adrs: []
 | jest | 1357 통과 (1356 → +1) |
 | tsc | clean |
 | lint | clean |
-| Critic | TBD |
-| PR | TBD |
-| 커밋 수 | 1 (`29b6b8f`) |
+| Critic | 생략 (기존 패턴 5번째 반복, 신규 로직 0건 — Sprint 131 정책 동일) |
+| PR | [#161](https://github.com/tpals0409/AlgoSu/pull/161) Squash merge `fa1d68a` |
+| 커밋 수 | 2 (squash 전: `29b6b8f` 코드 + `ef5609d` ADR) |
+| CI | 31 pass / 7 skipping / 0 fail |
+| end_commit | `fa1d68a` |
 
 ## Carryover (Sprint 133+)
 
