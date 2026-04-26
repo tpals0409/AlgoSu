@@ -2,7 +2,7 @@
  * @file Guest-only navigation bar
  * @domain guest
  * @layer component
- * @related /guest page, /guest/preview/[slug] page, Logo
+ * @related /guest page, /guest/preview/[slug] page, Logo, LanguageSwitcher
  *
  * Simple nav accessible without authentication, no AppLayout/Sidebar.
  * Logo + sign-up CTA + theme toggle.
@@ -10,11 +10,13 @@
 
 'use client';
 
+import { Suspense } from 'react';
 import type { ReactElement } from 'react';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { Sun, Moon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
 import { Logo } from '@/components/ui/Logo';
 import { eventTracker } from '@/lib/event-tracker';
 
@@ -68,6 +70,9 @@ export function GuestNav(): ReactElement {
 
         {/* Right actions */}
         <div className="flex items-center gap-2">
+          <Suspense fallback={null}>
+            <LanguageSwitcher />
+          </Suspense>
           <ThemeToggle />
           <Link
             href="/login"
