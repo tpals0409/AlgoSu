@@ -29,9 +29,20 @@ related_adrs: ["ADR-026"]
 - **Choice**: D-2 이월 해소. Circuit Breaker 패턴 부재는 별건으로 Sprint 134+ 시드
 - **Code Paths**: `services/github-worker/src/worker.ts:132,224,350-402`, `services/submission/src/saga/mq-publisher.service.ts:88-105,149-207`, `services/submission/src/saga/saga-orchestrator.service.ts:34-42,455`
 
-### D4: infra 매니페스트 부재 확인 — C-1 이 레포 작업 불가 (Wave B 정찰)
+### D4: infra 매니페스트 부재 확인 — C-1 이 레포 작업 불가 (Wave B 정찰) ⚠️ **사후 정정 (2026-04-27)**
 - **Context**: Scout 정찰 중 `infra/` 디렉토리가 이 AlgoSu 레포에 존재하지 않음 확인. k8s 매니페스트는 aether-gitops 외부 레포에만 존재
 - **Choice**: C-1(revisionHistoryLimit 추가) 포함 모든 매니페스트 변경은 aether-gitops 레포에서 별도 작업 필요. Sprint 134+ 이월
+
+### D4 정정 (Sprint 133 사후, 2026-04-27)
+- **사실 관계 정정**: `infra/` 디렉토리는 본 레포에 **실제로 존재**한다. Sprint 133 Wave B 정찰의 `find infra/ ...` 명령이 셸 글로빙 / 인자 형태 문제로 빈 결과를 반환하여 "부재"로 오판한 것
+- **실제 구조**:
+  - `infra/k3s/` — base Kustomize 매니페스트 (gateway/frontend/postgres/redis/rabbitmq/minio/identity/problem/submission/github-worker/ai-analysis 등 전체 서비스)
+  - `infra/overlays/{dev,staging,prod}/` — 환경별 Kustomize overlay (이미 분리 완료, ADR-028 옵션 A 적용 근거)
+  - `infra/sealed-secrets/` — SealedSecret 템플릿
+  - `infra/DEPLOYMENT.md` — 배포 가이드 (L115에 `revisionHistoryLimit: 3` 정책 명시)
+- **C-1 재분류**: revisionHistoryLimit 적용은 **본 레포 `infra/k3s/*.yaml` 직접 수정 가능**. aether-gitops 외부 작업 아님. Sprint 134 작업 후보로 정정
+- **검증 패턴 교훈**: Scout 정찰 시 `find <dir>` 빈 결과는 디렉토리 부재가 아니라 명령 인자 / 글로빙 문제일 수 있음 — `ls -la <dir>` + `test -d <dir>` + `find <dir> -type f | head` 3중 확인 필수
+- **연관 ADR**: ADR-028(부분 적용됨 확정), 사용자 발언 2026-04-27 "개발서버는 이미 분리되어있습니다"
 
 ## Patterns
 
