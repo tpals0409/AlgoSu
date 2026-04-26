@@ -2,12 +2,15 @@
  * @file Legal page common layout (privacy, terms) — Server Component
  * @domain common
  * @layer layout
- * @related /privacy, /terms
+ * @related /privacy, /terms, LanguageSwitcher
  */
 
 import Link from 'next/link';
+import { Suspense } from 'react';
 import type { ReactNode } from 'react';
 import { getTranslations } from 'next-intl/server';
+
+import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
 
 interface LegalLayoutProps {
   readonly children: ReactNode;
@@ -23,13 +26,16 @@ export async function LegalLayout({ children }: LegalLayoutProps): Promise<React
     <div className="flex min-h-screen flex-col bg-bg text-text">
       {/* Nav */}
       <nav className="sticky top-0 z-50 border-b border-border bg-bg/80 backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-3xl items-center px-6">
+        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-6">
           <Link
             href="/"
             className="text-base font-bold tracking-tight text-text transition-colors hover:text-primary"
           >
             AlgoSu
           </Link>
+          <Suspense fallback={null}>
+            <LanguageSwitcher />
+          </Suspense>
         </div>
       </nav>
 

@@ -12,6 +12,10 @@
 import { render, screen } from '@testing-library/react';
 import { LegalLayout } from '../LegalLayout';
 
+jest.mock('@/components/layout/LanguageSwitcher', () => ({
+  LanguageSwitcher: () => <div data-testid="language-switcher">LangSwitch</div>,
+}));
+
 jest.mock('next-intl/server', () => ({
   getTranslations: () =>
     Promise.resolve((key: string) => {
@@ -32,6 +36,13 @@ describe('LegalLayout', () => {
     expect(screen.getByText('Test content')).toBeInTheDocument();
     expect(screen.getAllByText(/개인정보처리방침/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/이용약관/).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('renders LanguageSwitcher in nav', async () => {
+    const jsx = await LegalLayout({ children: <div /> });
+    render(<>{jsx}</>);
+
+    expect(screen.getByTestId('language-switcher')).toBeInTheDocument();
   });
 
   it('has privacy/terms links', async () => {
