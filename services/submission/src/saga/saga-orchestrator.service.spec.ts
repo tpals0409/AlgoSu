@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { SagaOrchestratorService } from './saga-orchestrator.service';
 import { Submission, SagaStep, GitHubSyncStatus } from '../submission/submission.entity';
 import { MqPublisherService } from './mq-publisher.service';
+import { CircuitBreakerService } from '../common/circuit-breaker';
 
 // ─── Mock 팩토리 ────────────────────────────────────────────────
 const mockSubmissionRepo = () => ({
@@ -17,6 +18,16 @@ const mockMqPublisher = () => ({
   publishGitHubPush: jest.fn(),
   publishAiAnalysis: jest.fn(),
 });
+
+const mockCircuitBreakerService = () => {
+  const mockBreaker = { fire: jest.fn().mockResolvedValue(true) };
+  return {
+    createBreaker: jest.fn().mockReturnValue(mockBreaker),
+    getBreaker: jest.fn().mockReturnValue(mockBreaker),
+    getState: jest.fn().mockReturnValue('CLOSED'),
+    _mockBreaker: mockBreaker,
+  };
+};
 
 // ─── 테스트 헬퍼 ────────────────────────────────────────────────
 const createMockSubmission = (overrides: Partial<Submission> = {}): Submission => ({
@@ -49,6 +60,7 @@ describe('SagaOrchestratorService', () => {
   let service: SagaOrchestratorService;
   let repo: jest.Mocked<Repository<Submission>>;
   let mqPublisher: jest.Mocked<MqPublisherService>;
+  let cbService: ReturnType<typeof mockCircuitBreakerService>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -56,6 +68,7 @@ describe('SagaOrchestratorService', () => {
         SagaOrchestratorService,
         { provide: getRepositoryToken(Submission), useFactory: mockSubmissionRepo },
         { provide: MqPublisherService, useFactory: mockMqPublisher },
+        { provide: CircuitBreakerService, useFactory: mockCircuitBreakerService },
         {
           provide: ConfigService,
           useValue: {
@@ -83,6 +96,7 @@ describe('SagaOrchestratorService', () => {
     service = module.get<SagaOrchestratorService>(SagaOrchestratorService);
     repo = module.get(getRepositoryToken(Submission));
     mqPublisher = module.get(MqPublisherService);
+    cbService = module.get(CircuitBreakerService);
   });
 
   afterEach(async () => {
@@ -247,11 +261,7 @@ describe('SagaOrchestratorService', () => {
       repo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
       mqPublisher.publishAiAnalysis.mockResolvedValue(undefined);
 
-      // quota 허용
-      (global as any).fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ data: { allowed: true, used: 1, limit: 10 } }),
-      });
+      // CB fire -> true (기본 mock: quota 허용)
 
       // Act
       await service.compensateGitHubFailed('sub-uuid-1', GitHubSyncStatus.FAILED);
@@ -500,12 +510,8 @@ describe('SagaOrchestratorService', () => {
       repo.findOne.mockResolvedValue(submission);
       repo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
 
-      // checkAiQuota가 false를 반환하도록 mock
-      const mockFetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ data: { allowed: false, used: 10, limit: 10 } }),
-      });
-      (global as any).fetch = mockFetch;
+      // CB fire가 false를 반환하도록 mock (한도 초과)
+      cbService._mockBreaker.fire.mockResolvedValueOnce(false);
 
       await service.advanceToAiQueued('sub-uuid-1');
 
@@ -533,11 +539,7 @@ describe('SagaOrchestratorService', () => {
       repo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
       mqPublisher.publishAiAnalysis.mockResolvedValue(undefined);
 
-      // quota 허용
-      (global as any).fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ data: { allowed: true, used: 1, limit: 10 } }),
-      });
+      // CB fire -> true (기본 mock: quota 허용)
 
       await service.advanceToAiQueued('sub-uuid-1', true);
 
@@ -557,11 +559,7 @@ describe('SagaOrchestratorService', () => {
       repo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
       mqPublisher.publishAiAnalysis.mockResolvedValue(undefined);
 
-      // quota 허용
-      (global as any).fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ data: { allowed: true, used: 1, limit: 10 } }),
-      });
+      // CB fire -> true (기본 mock: quota 허용)
 
       await service.compensateGitHubFailed('sub-uuid-1', GitHubSyncStatus.SKIPPED);
 
@@ -595,19 +593,20 @@ describe('SagaOrchestratorService', () => {
     });
   });
 
-  // ─── 17. checkAiQuota — fetch 실패 시 허용 ────────────────────
-  describe('advanceToAiQueued() — quota 체크 실패', () => {
-    it('fetch 네트워크 오류 시 AI 분석을 허용한다', async () => {
+  // ─── 17. checkAiQuota — CB 장애 시 fallback 허용 ───────────────
+  describe('advanceToAiQueued() — quota 체크 실패 (CB fallback)', () => {
+    it('CB fire 예외 시에도 AI 분석을 허용한다 (방어적 catch)', async () => {
       const submission = createMockSubmission({ sagaStep: SagaStep.GITHUB_QUEUED });
       repo.findOne.mockResolvedValue(submission);
       repo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
       mqPublisher.publishAiAnalysis.mockResolvedValue(undefined);
 
-      (global as any).fetch = jest.fn().mockRejectedValue(new Error('Network error'));
+      // CB fire가 예외를 던지는 경우 (방어적 코드 경로)
+      cbService._mockBreaker.fire.mockRejectedValueOnce(new Error('CB error'));
 
       await service.advanceToAiQueued('sub-uuid-1');
 
-      // 네트워크 오류 시에도 AI 분석 진행 (낙관적 락 WHERE 조건 포함)
+      // 방어적 catch로 AI 분석 허용 (낙관적 락 WHERE 조건 포함)
       expect(repo.update).toHaveBeenCalledWith(
         { id: 'sub-uuid-1', sagaStep: SagaStep.GITHUB_QUEUED },
         {
@@ -618,14 +617,13 @@ describe('SagaOrchestratorService', () => {
       expect(mqPublisher.publishAiAnalysis).toHaveBeenCalled();
     });
 
-    it('fetch 응답이 ok가 아니면 AI 분석을 허용한다', async () => {
+    it('CB fire가 true를 반환하면 AI 분석을 진행한다 (정상 허용)', async () => {
       const submission = createMockSubmission({ sagaStep: SagaStep.GITHUB_QUEUED });
       repo.findOne.mockResolvedValue(submission);
       repo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
       mqPublisher.publishAiAnalysis.mockResolvedValue(undefined);
 
-      (global as any).fetch = jest.fn().mockResolvedValue({ ok: false, status: 500 });
-
+      // 기본 mock: fire -> true
       await service.advanceToAiQueued('sub-uuid-1');
 
       expect(mqPublisher.publishAiAnalysis).toHaveBeenCalled();
@@ -807,6 +805,121 @@ describe('SagaOrchestratorService', () => {
       expect(repo.update).not.toHaveBeenCalled();
       expect(mqPublisher.publishGitHubPush).not.toHaveBeenCalled();
       expect(mqPublisher.publishAiAnalysis).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── 23. CB 통합: AI 서비스 장애 시 fallback → Saga 계속 ────────
+  describe('Circuit Breaker 통합', () => {
+    it('AI 서비스 장애 시 CB OPEN → fallback true → Saga 계속 진행', async () => {
+      const submission = createMockSubmission({ sagaStep: SagaStep.GITHUB_QUEUED });
+      repo.findOne.mockResolvedValue(submission);
+      repo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+      mqPublisher.publishAiAnalysis.mockResolvedValue(undefined);
+
+      // CB fallback 시뮬레이션: fire가 true 반환 (기본 mock)
+      await service.advanceToAiQueued('sub-uuid-1');
+
+      // fallback true → AI 분석 진행
+      expect(repo.update).toHaveBeenCalledWith(
+        { id: 'sub-uuid-1', sagaStep: SagaStep.GITHUB_QUEUED },
+        {
+          sagaStep: SagaStep.AI_QUEUED,
+          githubSyncStatus: GitHubSyncStatus.SYNCED,
+        },
+      );
+      expect(mqPublisher.publishAiAnalysis).toHaveBeenCalled();
+    });
+
+    it('CB OPEN 상태에서도 submissionRepo.save 정상 실행 (보상 트랜잭션 무관)', async () => {
+      repo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+
+      // CB 상태와 관계없이 보상 트랜잭션은 정상 동작
+      await service.compensateAiFailed('sub-uuid-1');
+
+      expect(repo.update).toHaveBeenCalledWith(
+        { id: 'sub-uuid-1', sagaStep: SagaStep.AI_QUEUED },
+        { sagaStep: SagaStep.DONE },
+      );
+    });
+
+    it('onModuleInit에서 CB가 생성된다', async () => {
+      repo.find.mockResolvedValue([]);
+      await service.onModuleInit();
+
+      expect(cbService.createBreaker).toHaveBeenCalledWith(
+        'aiQuotaCheck',
+        expect.any(Function),
+        expect.objectContaining({ fallback: expect.any(Function) }),
+      );
+    });
+  });
+
+  // ─── 24. fetchAiQuota — CB action 본체 직접 검증 ────────────────
+  describe('fetchAiQuota (CB action 본체)', () => {
+    it('200 OK + allowed=true 응답 시 true 반환', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch' as never).mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ data: { allowed: true, used: 1, limit: 10 } }),
+      } as never);
+
+      const result = await (
+        service as unknown as { fetchAiQuota: (u: string) => Promise<boolean> }
+      ).fetchAiQuota('user-1');
+
+      expect(result).toBe(true);
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.stringContaining('/quota/check?userId=user-1'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'X-Internal-Key': expect.any(String),
+          }),
+        }),
+      );
+      fetchSpy.mockRestore();
+    });
+
+    it('200 OK + allowed=false 응답 시 false 반환', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch' as never).mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ data: { allowed: false, used: 10, limit: 10 } }),
+      } as never);
+
+      const result = await (
+        service as unknown as { fetchAiQuota: (u: string) => Promise<boolean> }
+      ).fetchAiQuota('user-2');
+
+      expect(result).toBe(false);
+      fetchSpy.mockRestore();
+    });
+
+    it('non-2xx 응답 시 throw — CB가 failure로 기록 가능', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch' as never).mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+      } as never);
+
+      await expect(
+        (service as unknown as { fetchAiQuota: (u: string) => Promise<boolean> }).fetchAiQuota(
+          'user-3',
+        ),
+      ).rejects.toThrow('AI quota check failed: status=503');
+      fetchSpy.mockRestore();
+    });
+
+    it('fetch 자체 throw 시 그대로 전파 — CB가 failure로 기록 가능', async () => {
+      const fetchSpy = jest
+        .spyOn(global, 'fetch' as never)
+        .mockRejectedValueOnce(new Error('network down') as never);
+
+      await expect(
+        (service as unknown as { fetchAiQuota: (u: string) => Promise<boolean> }).fetchAiQuota(
+          'user-4',
+        ),
+      ).rejects.toThrow('network down');
+      fetchSpy.mockRestore();
     });
   });
 });

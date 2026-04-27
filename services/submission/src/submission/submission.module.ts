@@ -15,9 +15,13 @@ import { SubmissionService } from './submission.service';
 import { DraftService } from '../draft/draft.service';
 import { SagaOrchestratorService } from '../saga/saga-orchestrator.service';
 import { MqPublisherService } from '../saga/mq-publisher.service';
+import { CircuitBreakerModule } from '../common/circuit-breaker';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Submission, AiSatisfaction, Draft])],
+  imports: [
+    TypeOrmModule.forFeature([Submission, AiSatisfaction, Draft]),
+    CircuitBreakerModule,
+  ],
   controllers: [SubmissionController, SubmissionInternalController],
   providers: [
     SubmissionService,

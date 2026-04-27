@@ -23,8 +23,10 @@ import {
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { Observable, tap } from 'rxjs';
 import { Request, Response } from 'express';
+import { Registry } from 'prom-client';
 import { MetricsService } from './metrics.service';
 import { MetricsController } from './metrics.controller';
+import { METRICS_REGISTRY } from '../circuit-breaker/circuit-breaker.constants';
 
 @Injectable()
 class MetricsInterceptor implements NestInterceptor {
@@ -80,9 +82,10 @@ class MetricsInterceptor implements NestInterceptor {
 @Module({
   controllers: [MetricsController],
   providers: [
+    { provide: METRICS_REGISTRY, useFactory: () => new Registry() },
     MetricsService,
     { provide: APP_INTERCEPTOR, useClass: MetricsInterceptor },
   ],
-  exports: [MetricsService],
+  exports: [MetricsService, METRICS_REGISTRY],
 })
 export class MetricsModule {}
