@@ -106,6 +106,8 @@ spec:
                   name: grafana-slo-dashboard
               - configMap:
                   name: grafana-service-dashboard
+              - configMap:
+                  name: grafana-cb-dashboard
 ---
 apiVersion: v1
 kind: Service
