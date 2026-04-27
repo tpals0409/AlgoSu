@@ -1,10 +1,11 @@
+import { Registry } from 'prom-client';
 import { MetricsService } from './metrics.service';
 
 describe('MetricsService', () => {
   let service: MetricsService;
 
   beforeEach(() => {
-    service = new MetricsService();
+    service = new MetricsService(new Registry());
   });
 
   describe('onModuleInit()', () => {

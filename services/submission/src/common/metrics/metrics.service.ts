@@ -21,7 +21,7 @@
  * - 고카디널리티 라벨 금지: userId, traceId, requestId
  * - path 동적 세그먼트 정규화: /problems/123 → /problems/:id
  */
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import {
   Registry,
   collectDefaultMetrics,
@@ -29,6 +29,7 @@ import {
   Counter,
   Gauge,
 } from 'prom-client';
+import { METRICS_REGISTRY } from '../circuit-breaker/circuit-breaker.constants';
 
 const UUID_SEGMENT =
   /\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
@@ -45,8 +46,10 @@ export class MetricsService implements OnModuleInit {
   readonly httpActiveRequests: Gauge<string>;
   readonly httpErrorsTotal: Counter<string>;
 
-  constructor() {
-    this.registry = new Registry();
+  constructor(
+    @Inject(METRICS_REGISTRY) registry: Registry,
+  ) {
+    this.registry = registry;
     this.serviceName = process.env['SERVICE_NAME'] ?? 'submission';
 
     const prefix = `algosu_${this.serviceName}`;
