@@ -106,12 +106,29 @@ NestJS HTTP 호출부에 Circuit Breaker 패턴을 도입하여 외부 서비스
 | typecheck | 0 errors |
 | lint | 0 errors |
 
+### D8: Wave A submission CB에 Wave B 정책 동기화 (별건 PR)
+- **Context**: Wave A의 `services/submission/src/common/circuit-breaker/` 모듈에 Wave B(D7)에서 정착된 errorFilter 화이트리스트 정책이 미적용. 메트릭 정확성 + contract regression 보호 일관성을 위해 동기화 필요. fetchAiQuota는 `fallback: () => true`로 사용자 영향 0이지만 contract regression / auth outage 시 dead dependency hammering 위험은 동일
+- **Choice**:
+  - `FILTERED_BUSINESS_STATUS = {404, 410, 422}` 화이트리스트 적용 (Wave B 동일, 400 제외)
+  - `DEFAULT_ERROR_FILTER` 추가 — `createBreaker`에서 기본 적용, 호출자 override 가능
+  - success 이벤트에서 `result instanceof Error` 분기 → `requests_total{result="filtered"}` 라벨 분리 (success 카운트 오염 방지)
+  - `fetchAiQuota` non-2xx throw 시 `error.status` 첨부 → errorFilter가 분기 가능
+  - `buildHttpError(message, status)` 헬퍼를 `circuit-breaker.constants.ts`에 추가 (재사용성 + 일관성)
+- **Rationale**: 두 모듈(submission/github-worker)의 CB 정책이 일관되어야 운영/모니터링 일관성 확보. 영구 5xx/401/403 발생 시 CB OPEN → fallback 발동(fail-open 유지) → dead dependency hammering 차단. Public API 시그니처 무변경(createBreaker/getBreaker/getState/onModuleDestroy 모두 유지) — 호출부(saga-orchestrator) 회귀 0건
+- **Code Paths**:
+  - `services/submission/src/common/circuit-breaker/circuit-breaker.service.ts` (FILTERED_BUSINESS_STATUS / DEFAULT_ERROR_FILTER / errorFilter option / success 핸들러 filtered 분기)
+  - `services/submission/src/common/circuit-breaker/circuit-breaker.constants.ts` (`buildHttpError` 헬퍼)
+  - `services/submission/src/saga/saga-orchestrator.service.ts` (`fetchAiQuota`에서 buildHttpError 사용)
+  - `services/submission/src/common/circuit-breaker/circuit-breaker.service.spec.ts` (errorFilter 단위 + 통합 + buildHttpError 검증, +15 tests)
+  - `services/submission/src/saga/saga-orchestrator.service.spec.ts` (fetchAiQuota status 첨부 2건 추가)
+- **테스트**: 21 suites / 290 → **305 tests** (+15 net), coverage threshold 충족 (stmts 97.91% / branches 92.82% / functions 96.34% / lines 97.98% — 임계 97/92/96/97 전부 통과)
+
 ## Carryover (Wave C~E)
 
 - [x] Wave B: github-worker 7곳 CB 적용 (status-reporter 5 + worker.ts 2, 메서드별 별도 CB — 단일 host에 다양한 action 공존하므로 메서드별 분리가 reject/failure label 분리에 유리)
 - [ ] Wave C: submission 2곳 추가 (fetchSourcePlatform L257 + submission.service L504)
 - [ ] Wave D: Grafana 대시보드 1식
 - [ ] Wave E: Sprint 135 ADR 종합 갱신 + sprint-window.md 최종 정리
-- [ ] **Wave A 후속 정정 (D7 Critic 2차)**: `services/submission/src/common/circuit-breaker/circuit-breaker.service.ts`에 동일 정책 적용 — `FILTERED_BUSINESS_STATUS = {400, 404, 410, 422}` 화이트리스트 errorFilter + success 핸들러 `result instanceof Error` 분기로 `filtered` 라벨 분리. 현재 fetchAiQuota fallback이 fail-open이라 사용자 영향 없으나 일관성·메트릭 정확성·인증 장애 보호 위해 권장
+- [x] **Wave A 후속 정정 (D7 Critic 2차) → D8로 격상 완료**: `services/submission/src/common/circuit-breaker/circuit-breaker.service.ts`에 동일 정책 적용 — `FILTERED_BUSINESS_STATUS = {404, 410, 422}` 화이트리스트 errorFilter + success 핸들러 `result instanceof Error` 분기로 `filtered` 라벨 분리. fetchAiQuota throw 시 status 첨부. buildHttpError 헬퍼 추가
 - [ ] 별건 시드: CLAUDE.md L11 "ai-feedback" → 실제 "ai-analysis" 명명 불일치 (Sprint 136+)
 - [ ] 별건 시드: E2E 자동 PR CI 통합 (Sprint 134 이월)
