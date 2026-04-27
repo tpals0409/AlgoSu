@@ -11,7 +11,6 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, In } from 'typeorm';
-import { ConfigService } from '@nestjs/config';
 import { Submission, SagaStep } from './submission.entity';
 import { AiSatisfaction } from './ai-satisfaction.entity';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
@@ -20,6 +19,7 @@ import { CreateAiSatisfactionDto } from './dto/create-ai-satisfaction.dto';
 import { PaginationQueryDto, PaginatedResult } from './dto/pagination-query.dto';
 import { SagaOrchestratorService } from '../saga/saga-orchestrator.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
+import { ProblemServiceClient } from '../common/problem-service-client';
 
 /** 목록 조회 시 선택할 필드 — code/aiFeedback/aiOptimizedCode 대용량 텍스트 제외 */
 const SUBMISSION_LIST_FIELDS: (keyof Submission)[] = [
@@ -39,8 +39,8 @@ export class SubmissionService {
     @InjectRepository(AiSatisfaction)
     private readonly satisfactionRepo: Repository<AiSatisfaction>,
     private readonly sagaOrchestrator: SagaOrchestratorService,
-    private readonly configService: ConfigService,
     private readonly dataSource: DataSource,
+    private readonly problemClient: ProblemServiceClient,
   ) {
     this.logger = new StructuredLoggerService();
     this.logger.setContext(SubmissionService.name);
@@ -476,10 +476,12 @@ export class SubmissionService {
   }
 
   /**
-   * A3: 마감 시간 체크 + weekNumber 조회 — Problem Service 내부 API 호출
-   * deadline이 지났으면 isLate=true, 아직이면 false
-   * weekNumber: Problem에 설정된 주차 정보
-   * 조회 실패 시 안전하게 { isLate: false, weekNumber: null } 반환 (제출 차단하지 않음)
+   * A3: 마감 시간 체크 + weekNumber 조회 — ProblemServiceClient 위임 (CB 보호).
+   *
+   * deadline이 지났으면 isLate=true, 아직이면 false. weekNumber: Problem에 설정된 주차 정보.
+   * client 내부에서 CB OPEN/조회 실패 시 fallback `{isLate: false, weekNumber: null}` 반환 →
+   * 제출 차단하지 않음 (graceful degradation 유지).
+   *
    * @domain submission
    * @guard problem-deadline
    */
@@ -488,46 +490,7 @@ export class SubmissionService {
     problemId: string,
     userId?: string,
   ): Promise<{ isLate: boolean; weekNumber: string | null }> {
-    try {
-      const problemServiceUrl = this.configService.getOrThrow<string>('PROBLEM_SERVICE_URL');
-      const internalKey = this.configService.getOrThrow<string>('PROBLEM_SERVICE_KEY');
-
-      const headers: Record<string, string> = {
-        'x-internal-key': internalKey,
-        'x-study-id': studyId,
-        'Content-Type': 'application/json',
-      };
-      if (userId) {
-        headers['x-user-id'] = userId;
-      }
-
-      const response = await fetch(
-        `${problemServiceUrl}/internal/deadline/${problemId}`,
-        { method: 'GET', headers },
-      );
-
-      if (!response.ok) {
-        this.logger.warn(`마감 시간 조회 실패: problemId=${problemId}, status=${response.status}`);
-        return { isLate: false, weekNumber: null };
-      }
-
-      const result = (await response.json()) as {
-        data: { deadline: string | null; weekNumber: string | null; status: string };
-      };
-      const { deadline, weekNumber } = result.data;
-
-      if (!deadline) {
-        return { isLate: false, weekNumber: weekNumber ?? null };
-      }
-
-      return {
-        isLate: new Date(deadline) < new Date(),
-        weekNumber: weekNumber ?? null,
-      };
-    } catch (error: unknown) {
-      this.logger.warn(`마감 시간 조회 에러: problemId=${problemId}, ${(error as Error).message}`);
-      return { isLate: false, weekNumber: null };
-    }
+    return this.problemClient.getDeadline(problemId, studyId, userId);
   }
 
   // ── AI 만족도 ──────────────────────────────────────────
