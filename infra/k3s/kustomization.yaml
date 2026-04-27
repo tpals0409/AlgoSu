@@ -52,6 +52,7 @@ resources:
   - monitoring/grafana-dashboard-provider.yaml
   - monitoring/grafana-slo-dashboard.yaml
   - monitoring/grafana-service-dashboard.yaml
+  - monitoring/grafana-cb-dashboard.yaml
   - monitoring/loki-config.yaml
   - monitoring/promtail.yaml
 
