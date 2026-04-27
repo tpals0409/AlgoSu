@@ -14,6 +14,7 @@ import { Submission, SagaStep, GitHubSyncStatus } from '../submission/submission
 import { MqPublisherService } from './mq-publisher.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 import { CircuitBreakerService } from '../common/circuit-breaker';
+import { buildHttpError } from '../common/circuit-breaker/circuit-breaker.constants';
 
 /**
  * Saga Orchestrator -- 제출 플로우 상태 관리
@@ -316,7 +317,8 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
       },
     );
     if (!resp.ok) {
-      throw new Error(`AI quota check failed: status=${resp.status}`);
+      // status 첨부 — CB errorFilter(DEFAULT_ERROR_FILTER)가 화이트리스트(404/410/422) 여부 분기 (Sprint 135 D8)
+      throw buildHttpError(`AI quota check failed: status=${resp.status}`, resp.status);
     }
     const body = (await resp.json()) as {
       data: { allowed: boolean; used: number; limit: number };
