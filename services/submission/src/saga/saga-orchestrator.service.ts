@@ -13,6 +13,7 @@ import { Repository, Not, In, MoreThan, LessThan, QueryRunner } from 'typeorm';
 import { Submission, SagaStep, GitHubSyncStatus } from '../submission/submission.entity';
 import { MqPublisherService } from './mq-publisher.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
+import { CircuitBreakerService } from '../common/circuit-breaker';
 
 /**
  * Saga Orchestrator -- 제출 플로우 상태 관리
@@ -53,6 +54,7 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
     private readonly submissionRepo: Repository<Submission>,
     private readonly mqPublisher: MqPublisherService,
     private readonly configService: ConfigService,
+    private readonly cbService: CircuitBreakerService,
   ) {
     this.logger = new StructuredLoggerService();
     this.logger.setContext(SagaOrchestratorService.name);
@@ -103,6 +105,32 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
 
       this.logger.log('미완료 Saga 재개 완료');
     }
+
+    // CB: AI Quota 체크에 Circuit Breaker 적용
+    this.cbService.createBreaker(
+      'aiQuotaCheck',
+      async (userId: string) => {
+        const resp = await fetch(
+          `${this.aiAnalysisServiceUrl}/quota/check?userId=${encodeURIComponent(userId)}`,
+          {
+            method: 'POST',
+            headers: {
+              'X-Internal-Key': this.aiAnalysisInternalKey,
+              'Content-Type': 'application/json',
+            },
+            signal: AbortSignal.timeout(10_000),
+          },
+        );
+        if (!resp.ok) {
+          throw new Error(`AI quota check failed: status=${resp.status}`);
+        }
+        const body = (await resp.json()) as {
+          data: { allowed: boolean; used: number; limit: number };
+        };
+        return body.data.allowed;
+      },
+      { fallback: () => true },
+    );
 
     // M3: 주기적 타임아웃 체크 시작 (미완료 Saga 유무와 관계없이 항상 등록)
     this.timeoutTimer = setInterval(() => {
@@ -285,7 +313,9 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * AI 일일 한도 체크 -- AI Analysis Service /quota/check API 호출
+   * AI 일일 한도 체크 -- Circuit Breaker 경유 AI Analysis Service 호출
+   *
+   * CB OPEN 시 fallback → true (허용) -- 기존 catch 로직과 동일
    *
    * @guard ai-quota
    * @param userId 사용자 ID
@@ -293,28 +323,10 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
    */
   private async checkAiQuota(userId: string): Promise<boolean> {
     try {
-      const resp = await fetch(
-        `${this.aiAnalysisServiceUrl}/quota/check?userId=${encodeURIComponent(userId)}`,
-        {
-          method: 'POST',
-          headers: {
-            'X-Internal-Key': this.aiAnalysisInternalKey,
-            'Content-Type': 'application/json',
-          },
-        },
-      );
-
-      if (!resp.ok) {
-        this.logger.warn(`AI 한도 체크 API 오류: status=${resp.status}`);
-        // API 실패 시 허용 (AI 분석 실패보다 나음)
-        return true;
-      }
-
-      const body = (await resp.json()) as { data: { allowed: boolean; used: number; limit: number } };
-      return body.data.allowed;
-    } catch (error: unknown) {
-      this.logger.error(`AI 한도 체크 실패: ${(error as Error).message}`);
-      // 네트워크 오류 시 허용 (AI 분석 실패보다 나음)
+      const breaker = this.cbService.getBreaker('aiQuotaCheck');
+      return (await breaker!.fire(userId)) as boolean;
+    } catch {
+      // fallback이 처리하므로 여기 도달하지 않음 (방어적 코드)
       return true;
     }
   }
