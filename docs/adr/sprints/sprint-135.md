@@ -141,10 +141,35 @@ NestJS HTTP 호출부에 Circuit Breaker 패턴을 도입하여 외부 서비스
   - **테스트 추가**: plain object throw + filtered (1건) / WeakSet 재사용 안전성 (1건) / primitive 한계 명시 (1건) / 객체 resolve 회귀 방지 (1건) — 총 +4건
   - **Sprint 136+ 시드 갱신**: Wave B(`services/github-worker/src/circuit-breaker.ts`)에 동일 wrapper 패턴 적용 (현재 `instanceof Error` 휴리스틱)
 
-## Carryover (Wave C~E)
+### D9: Wave C — submission 서비스 Problem Service 호출 2곳 CB 적용
+
+- **Context**: submission 서비스의 Problem Service HTTP 호출 2곳(`saga-orchestrator.fetchSourcePlatform`, `submission.service.checkLateSubmission`)이 CB 미보호 상태. dead host 시 무한 호출 가능 + 마감 시간 조회 실패 시 graceful degradation은 되지만 dead host hammering 차단 부재
+- **Choice**:
+  - 호스트 단일 CB(`problem-service-internal`) — Wave B status-reporter dispatcher 패턴 동일
+  - `ProblemServiceClient` NestJS 서비스로 캡슐화 — 두 호출 op(`getSourcePlatform`, `getDeadline`)를 dispatcher로 통합 (`_dispatch` + `_doGetSourcePlatform` + `_doGetDeadline` SRP 분리)
+  - op별 fallback(`getSourcePlatform: undefined`, `getDeadline: {isLate: false, weekNumber: null}`) — 기존 graceful degradation 유지
+  - 4xx 화이트리스트 default 적용(`{404, 410, 422}`) — Problem Service의 dynamic endpoint(`/internal/{problemId}`)이므로 404 = "problem not found" 자연스러운 비즈니스 에러로 간주, 5xx/auth/timeout만 CB failure 카운트
+  - non-2xx 시 `buildHttpError(message, status)` 사용해 status 첨부 → DEFAULT_ERROR_FILTER가 화이트리스트 분기 가능
+- **Code Paths**:
+  - `services/submission/src/common/problem-service-client/` (신규 모듈 — module/client/index/spec)
+  - `services/submission/src/saga/saga-orchestrator.service.ts` (`fetchSourcePlatform` private 메서드 제거 → client 위임, problemServiceUrl/Key 필드 제거)
+  - `services/submission/src/submission/submission.service.ts` (`checkLateSubmission` 본체 client 위임 1줄로 단순화, ConfigService 의존성 제거)
+  - `services/submission/src/submission/submission.module.ts` (`ProblemServiceClientModule` import)
+- **호스트 단일 CB 인스턴스 (Sprint 135 종합)**:
+  - submission 서비스: `aiQuotaCheck` (1) + `problem-service-internal` (1) = 2개
+  - github-worker: `submission-internal` (1) + `gateway-getUserGitHubInfo` (1) + `problem-getProblemInfo` (1) = 3개
+  - 총 5개 CB 인스턴스로 4개 외부 서비스(AI Analysis / submission internal / Gateway / Problem Service) 보호
+- **테스트**: `problem-service-client.spec.ts` 24건 신규 + saga-orchestrator/submission.service/ai-satisfaction spec 갱신. 전체 334 tests pass, coverage stmts 98.46% / branches 94.53% / functions 96.59% / lines 98.55% (threshold 97/92/96/97 충족)
+- **Public API 시그니처 무변경**: SagaOrchestratorService.advanceToAiQueued / SubmissionService.create 호출자 영향 0
+- **Critic 1차 P2 후속 정정**: env(`PROBLEM_SERVICE_KEY`) 미설정 시 fetch slow path(timeout 5초 → CB OPEN) 회귀 차단. public 메서드(`getSourcePlatform`/`getDeadline`) 시작에 key 검증 → 즉시 fallback 반환으로 sub-millisecond 회복. 기존 `submission.service.checkLateSubmission`의 `getOrThrow` 즉시 fallback 동작 보존. `problem-service-client.spec.ts`에 env 미설정 fallback 검증 2건 추가 (fetch 미발생 + hostBreaker.fire 미호출 + 기본값 반환)
+- **Critic 2차 P1 후속 정정**: `CircuitBreakerModule`을 `@Global()`로 마킹 + `ProblemServiceClientModule.imports`에서 제거. NestJS가 module scope별로 `CircuitBreakerService`를 별도 인스턴스화하여 prom-client duplicate metric registration 에러로 submission 서비스 boot 실패하는 회귀 차단. AppModule 또는 SubmissionModule에서 1회 import만으로 전역 사용
+- **Critic 3차 P1 후속 정정 — 방어 코드 추가**: `getSourcePlatform`/`getDeadline`의 `hostBreaker.fire` 결과에 `instanceof Error` 검사 추가. 현재 opossum 8.x는 errorFilter 통과 시 `reject(error)` 호출되어 catch에서 fallback 반환되지만, 명시적 검사로 (1) 향후 opossum 동작 변경 대비 + (2) 코드 의도 명확화 + (3) Error 객체가 비즈니스 로직(`sourcePlatform: Error`, `isLate: Error`)에 도달하지 않도록 보장. defense in depth. 테스트 2건 신규(getSourcePlatform/getDeadline 각 1건 — Error를 resolve로 mock하여 fallback 반환 검증). 전체 336 → **338 tests** pass, problem-service-client.ts coverage stmts/branches/functions/lines 모두 100% 유지
+- **Critic 4차 P2 후속 정정 — URL 검증 추가**: 1차 P2 수정에서 `problemServiceKey`만 검증하고 `problemServiceUrl`은 default 값(`'http://problem-service:3002'`)으로 fallback되어 누락. URL 미설정 + KEY 설정 시 default 호스트로 fetch 5초 timeout → CB OPEN 회귀 가능. constructor에서 default 제거(`?? ''`로 빈 문자열 보존) + `isConfigReady()` private helper로 URL/KEY 둘 다 검증 + public 메서드(`getSourcePlatform`/`getDeadline`)의 가드를 `if (!this.problemServiceKey)` → `if (!this.isConfigReady())`로 통합. `getOrThrow` 미사용(boot 시점 throw 회귀 위험) — get + 빈 문자열 fallback 패턴 유지. 테스트 5건 신규(URL 미설정 / URL+KEY 둘 다 미설정 각 getSourcePlatform/getDeadline + ConfigService.get이 undefined 반환 시 default 미적용 검증). 전체 338 → **343 tests** pass, problem-service-client.ts stmts/branches/lines 100% 유지(functions 91.66%은 index.ts 빈 re-export 한정 — 본 파일 100%)
+
+## Carryover (Wave D~E)
 
 - [x] Wave B: github-worker 7곳 CB 적용 (status-reporter 5 + worker.ts 2, 메서드별 별도 CB — 단일 host에 다양한 action 공존하므로 메서드별 분리가 reject/failure label 분리에 유리)
-- [ ] Wave C: submission 2곳 추가 (fetchSourcePlatform L257 + submission.service L504)
+- [x] Wave C: submission 2곳 추가 (fetchSourcePlatform + submission.service.checkLateSubmission) — D9
 - [ ] Wave D: Grafana 대시보드 1식
 - [ ] Wave E: Sprint 135 ADR 종합 갱신 + sprint-window.md 최종 정리
 - [x] **Wave A 후속 정정 (D7 Critic 2차) → D8로 격상 완료**: `services/submission/src/common/circuit-breaker/circuit-breaker.service.ts`에 동일 정책 적용 — `FILTERED_BUSINESS_STATUS = {404, 410, 422}` 화이트리스트 errorFilter + success 핸들러 `result instanceof Error` 분기로 `filtered` 라벨 분리. fetchAiQuota throw 시 status 첨부. buildHttpError 헬퍼 추가
