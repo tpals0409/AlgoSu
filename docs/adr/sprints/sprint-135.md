@@ -123,6 +123,22 @@ NestJS HTTP 호출부에 Circuit Breaker 패턴을 도입하여 외부 서비스
   - `services/submission/src/saga/saga-orchestrator.service.spec.ts` (fetchAiQuota status 첨부 2건 추가)
 - **테스트**: 21 suites / 290 → **305 tests** (+15 net), coverage threshold 충족 (stmts 97.91% / branches 92.82% / functions 96.34% / lines 97.98% — 임계 97/92/96/97 전부 통과)
 
+#### D8 Critic 1차 후속 정정 (P1+P2)
+
+- **P1 — `aiQuotaCheck` CB에 `errorFilter: () => false` override 적용**:
+  - `fetchAiQuota`는 고정 endpoint(`/quota/check`)만 호출 → 404/410/422도 resource-not-found가 아닌 "AI Analysis Service 라우트 misconfig 또는 서비스 부재" 시그널
+  - default 화이트리스트(`{404,410,422}`)를 그대로 적용하면 dead service에 무한 호출 + CB OPEN 미발동 + 알람 미발화 위험
+  - `errorFilter: () => false`로 모든 비-2xx를 CB failure로 카운트하여 `volumeThreshold` 도달 시 OPEN → fallback `() => true`로 사용자 영향 0 + 알람 시그널 확보
+  - **Code Paths**: `services/submission/src/saga/saga-orchestrator.service.ts:onModuleInit` createBreaker 호출
+  - **테스트**: `saga-orchestrator.service.spec.ts`에 `errorFilter` option 검증 + override 동작 단위 검증 2건 신규
+- **P2 — `result instanceof Error` 분기 한계 명시 (JSDoc only)**:
+  - `result instanceof Error` 휴리스틱은 두 케이스에서 부정확:
+    1. action이 Error 인스턴스를 정상 resolve로 반환 → filtered로 오분류
+    2. errorFilter가 Error가 아닌 값(string, plain object 등) 통과 → success로 오분류
+  - 본 프로젝트의 모든 CB action은 Error를 throw로만 사용하므로 (1) 실용적 영향 0. (2)는 호출자 시그니처 준수 시 발생하지 않음
+  - **향후 개선 시드**: errorFilter wrapper 패턴(filterImpl 호출 시 사이드 이펙트로 카운트 증가)으로 분류 정확성 회복. Wave B(`services/github-worker/src/circuit-breaker.ts`)에 동일 한계 존재 → 두 모듈 동시 follow-up 권장 (Sprint 136+ 별건 PR)
+  - **Code Paths**: `services/submission/src/common/circuit-breaker/circuit-breaker.service.ts` success 핸들러 위 JSDoc
+
 ## Carryover (Wave C~E)
 
 - [x] Wave B: github-worker 7곳 CB 적용 (status-reporter 5 + worker.ts 2, 메서드별 별도 CB — 단일 host에 다양한 action 공존하므로 메서드별 분리가 reject/failure label 분리에 유리)
@@ -132,3 +148,4 @@ NestJS HTTP 호출부에 Circuit Breaker 패턴을 도입하여 외부 서비스
 - [x] **Wave A 후속 정정 (D7 Critic 2차) → D8로 격상 완료**: `services/submission/src/common/circuit-breaker/circuit-breaker.service.ts`에 동일 정책 적용 — `FILTERED_BUSINESS_STATUS = {404, 410, 422}` 화이트리스트 errorFilter + success 핸들러 `result instanceof Error` 분기로 `filtered` 라벨 분리. fetchAiQuota throw 시 status 첨부. buildHttpError 헬퍼 추가
 - [ ] 별건 시드: CLAUDE.md L11 "ai-feedback" → 실제 "ai-analysis" 명명 불일치 (Sprint 136+)
 - [ ] 별건 시드: E2E 자동 PR CI 통합 (Sprint 134 이월)
+- [ ] **Sprint 136+ 시드 (D8 P2 follow-up)**: CB filtered 분류 정확성 개선 — `services/submission/src/common/circuit-breaker/circuit-breaker.service.ts` + `services/github-worker/src/circuit-breaker.ts` 양 모듈에 errorFilter wrapper 패턴 도입 (`instanceof Error` 휴리스틱 대체)
