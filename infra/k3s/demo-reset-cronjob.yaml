@@ -1,20 +1,12 @@
 ##
-# @file 데모 데이터 리셋 CronJob — 6시간마다 demo-seed.sql 실행
+# @file 데모 데이터 리셋 CronJob — 6시간마다 demo seed SQL 실행
 # @domain infra
 # @layer cronjob
-# @related scripts/demo-seed.sql
+# @related scripts/demo-seed-identity.sql, scripts/demo-seed-problem.sql, scripts/demo-seed-submission.sql
+#
+# ConfigMap 동기화: kustomization.yaml configMapGenerator로 이전됨
+# (demo-seed-sql ConfigMap은 Kustomize가 scripts/ 파일에서 자동 생성)
 ##
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: demo-seed-sql
-  namespace: algosu
-data:
-  demo-seed.sql: |
-    -- 이 파일은 scripts/demo-seed.sql에서 복사합니다.
-    -- ConfigMap 업데이트: kubectl create configmap demo-seed-sql --from-file=demo-seed.sql=scripts/demo-seed.sql -n algosu --dry-run=client -o yaml | kubectl apply -f -
-    SELECT 1;
----
 apiVersion: batch/v1
 kind: CronJob
 metadata:

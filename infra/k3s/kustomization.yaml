@@ -64,6 +64,15 @@ configMapGenerator:
     options:
       disableNameSuffixHash: true
 
+  - name: demo-seed-sql
+    namespace: algosu
+    files:
+      - identity-seed.sql=../../scripts/demo-seed-identity.sql
+      - problem-seed.sql=../../scripts/demo-seed-problem.sql
+      - submission-seed.sql=../../scripts/demo-seed-submission.sql
+    options:
+      disableNameSuffixHash: true
+
 labels:
   - pairs:
       app.kubernetes.io/part-of: algosu
