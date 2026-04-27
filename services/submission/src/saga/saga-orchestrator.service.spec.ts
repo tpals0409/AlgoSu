@@ -909,6 +909,46 @@ describe('SagaOrchestratorService', () => {
       fetchSpy.mockRestore();
     });
 
+    it('non-2xx 응답 시 throw된 에러에 status 속성이 첨부된다 (Sprint 135 D8)', async () => {
+      // CB DEFAULT_ERROR_FILTER가 status로 분기 가능하도록 buildHttpError 사용
+      const fetchSpy = jest.spyOn(global, 'fetch' as never).mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+      } as never);
+
+      let captured: (Error & { status?: number }) | undefined;
+      try {
+        await (
+          service as unknown as { fetchAiQuota: (u: string) => Promise<boolean> }
+        ).fetchAiQuota('user-503');
+      } catch (e) {
+        captured = e as Error & { status?: number };
+      }
+
+      expect(captured).toBeInstanceOf(Error);
+      expect(captured?.status).toBe(503);
+      fetchSpy.mockRestore();
+    });
+
+    it('non-2xx 404 응답 시 throw된 에러 status가 404로 첨부 (errorFilter 화이트리스트 통과)', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch' as never).mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+      } as never);
+
+      let captured: (Error & { status?: number }) | undefined;
+      try {
+        await (
+          service as unknown as { fetchAiQuota: (u: string) => Promise<boolean> }
+        ).fetchAiQuota('user-404');
+      } catch (e) {
+        captured = e as Error & { status?: number };
+      }
+
+      expect(captured?.status).toBe(404);
+      fetchSpy.mockRestore();
+    });
+
     it('fetch 자체 throw 시 그대로 전파 — CB가 failure로 기록 가능', async () => {
       const fetchSpy = jest
         .spyOn(global, 'fetch' as never)

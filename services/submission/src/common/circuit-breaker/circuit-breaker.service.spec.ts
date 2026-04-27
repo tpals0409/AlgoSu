@@ -7,8 +7,12 @@
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { Registry } from 'prom-client';
-import { CircuitBreakerService } from './circuit-breaker.service';
-import { METRICS_REGISTRY } from './circuit-breaker.constants';
+import {
+  CircuitBreakerService,
+  DEFAULT_ERROR_FILTER,
+  FILTERED_BUSINESS_STATUS,
+} from './circuit-breaker.service';
+import { METRICS_REGISTRY, buildHttpError } from './circuit-breaker.constants';
 
 describe('CircuitBreakerService', () => {
   let service: CircuitBreakerService;
@@ -377,6 +381,242 @@ describe('CircuitBreakerService', () => {
       expect(service.getBreaker('shutdown-ok')).toBeUndefined();
       // 실패한 것은 Map에 보존 — 호출자가 retry할 수 있도록 참조 유지
       expect(service.getBreaker('shutdown-fail')).toBe(bFail);
+    });
+  });
+
+  // ─── 11. errorFilter — 비즈니스 4xx 화이트리스트만 CB 제외 (Sprint 135 D8) ─────────
+  describe('errorFilter — 비즈니스 4xx 화이트리스트만 CB 제외 (Wave B 동기화)', () => {
+    describe('FILTERED_BUSINESS_STATUS 화이트리스트 정의', () => {
+      it('404/410/422만 포함하고 400/401/403/408/429/5xx는 제외한다', () => {
+        // Wave B Critic 3차 P2: 400은 contract regression 보호 대상
+        // 401/403은 인증 outage / 408 timeout / 429 rate limit / 5xx는 회로 보호 대상
+        expect(FILTERED_BUSINESS_STATUS.has(404)).toBe(true);
+        expect(FILTERED_BUSINESS_STATUS.has(410)).toBe(true);
+        expect(FILTERED_BUSINESS_STATUS.has(422)).toBe(true);
+        // 보호 대상 (CB failure로 카운트되어야 함)
+        expect(FILTERED_BUSINESS_STATUS.has(400)).toBe(false);
+        expect(FILTERED_BUSINESS_STATUS.has(401)).toBe(false);
+        expect(FILTERED_BUSINESS_STATUS.has(403)).toBe(false);
+        expect(FILTERED_BUSINESS_STATUS.has(408)).toBe(false);
+        expect(FILTERED_BUSINESS_STATUS.has(429)).toBe(false);
+        expect(FILTERED_BUSINESS_STATUS.has(500)).toBe(false);
+      });
+    });
+
+    describe('DEFAULT_ERROR_FILTER 단위 동작', () => {
+      it('화이트리스트 status(404/410/422)는 true 반환 (CB failure 제외)', () => {
+        expect(DEFAULT_ERROR_FILTER(buildHttpError('not found', 404))).toBe(true);
+        expect(DEFAULT_ERROR_FILTER(buildHttpError('gone', 410))).toBe(true);
+        expect(DEFAULT_ERROR_FILTER(buildHttpError('unprocessable', 422))).toBe(true);
+      });
+
+      it('화이트리스트 외 4xx(400/401/403)는 false 반환 (CB failure 카운트)', () => {
+        expect(DEFAULT_ERROR_FILTER(buildHttpError('bad req', 400))).toBe(false);
+        expect(DEFAULT_ERROR_FILTER(buildHttpError('unauthorized', 401))).toBe(false);
+        expect(DEFAULT_ERROR_FILTER(buildHttpError('forbidden', 403))).toBe(false);
+      });
+
+      it('5xx status는 false 반환 (CB failure 카운트)', () => {
+        expect(DEFAULT_ERROR_FILTER(buildHttpError('server', 500))).toBe(false);
+        expect(DEFAULT_ERROR_FILTER(buildHttpError('unavail', 503))).toBe(false);
+      });
+
+      it('status 없는 에러(네트워크/타임아웃)는 false 반환', () => {
+        expect(DEFAULT_ERROR_FILTER(new Error('ENETUNREACH'))).toBe(false);
+        expect(DEFAULT_ERROR_FILTER(null)).toBe(false);
+        expect(DEFAULT_ERROR_FILTER(undefined)).toBe(false);
+        expect(DEFAULT_ERROR_FILTER({})).toBe(false);
+      });
+    });
+
+    it('404(화이트리스트) 영구 발생 시 CLOSED 유지 + filtered 메트릭만 증가', async () => {
+      const action = jest.fn().mockRejectedValue(buildHttpError('not found', 404));
+      service.createBreaker('test-404-filtered', action, {
+        volumeThreshold: 1,
+        errorThresholdPercentage: 1,
+        resetTimeout: 30_000,
+        rollingCountTimeout: 10_000,
+        rollingCountBuckets: 1,
+        timeout: false,
+      });
+
+      const breaker = service.getBreaker('test-404-filtered')!;
+
+      // 5번 404 throw → errorFilter true → success(error) → filtered 메트릭
+      for (let i = 0; i < 5; i++) {
+        try {
+          await breaker.fire();
+        } catch {
+          /* 호출자에는 throw 전파되나 CB 통계엔 미반영 */
+        }
+      }
+
+      expect(service.getState('test-404-filtered')).toBe('CLOSED');
+
+      const metrics = await registry.getMetricsAsJSON();
+      const reqMetric = metrics.find(
+        (m) => m.name === 'algosu_submission_circuit_breaker_requests_total',
+      );
+      const filteredVal = (reqMetric?.values ?? []).find(
+        (v) =>
+          v.labels?.['name'] === 'test-404-filtered' && v.labels?.['result'] === 'filtered',
+      )?.value;
+      const successVal = (reqMetric?.values ?? []).find(
+        (v) =>
+          v.labels?.['name'] === 'test-404-filtered' && v.labels?.['result'] === 'success',
+      )?.value;
+      const failureVal = (reqMetric?.values ?? []).find(
+        (v) =>
+          v.labels?.['name'] === 'test-404-filtered' && v.labels?.['result'] === 'failure',
+      )?.value;
+      expect(filteredVal).toBe(5);
+      expect(successVal).toBeUndefined();
+      expect(failureVal).toBeUndefined();
+    });
+
+    it('400(화이트리스트 외) 영구 발생 시 OPEN 전이 — contract regression 보호', async () => {
+      const action = jest.fn().mockRejectedValue(buildHttpError('bad request', 400));
+      service.createBreaker('test-400-open', action, {
+        volumeThreshold: 1,
+        errorThresholdPercentage: 1,
+        resetTimeout: 30_000,
+        rollingCountTimeout: 10_000,
+        rollingCountBuckets: 1,
+        timeout: false,
+      });
+
+      const breaker = service.getBreaker('test-400-open')!;
+      for (let i = 0; i < 3; i++) {
+        try { await breaker.fire(); } catch { /* expected */ }
+      }
+
+      expect(service.getState('test-400-open')).toBe('OPEN');
+    });
+
+    it('401(화이트리스트 외) 영구 발생 시 OPEN 전이 — 인증 outage 보호', async () => {
+      const action = jest.fn().mockRejectedValue(buildHttpError('unauthorized', 401));
+      service.createBreaker('test-401-open', action, {
+        volumeThreshold: 1,
+        errorThresholdPercentage: 1,
+        resetTimeout: 30_000,
+        rollingCountTimeout: 10_000,
+        rollingCountBuckets: 1,
+        timeout: false,
+      });
+
+      const breaker = service.getBreaker('test-401-open')!;
+      for (let i = 0; i < 3; i++) {
+        try { await breaker.fire(); } catch { /* expected */ }
+      }
+
+      expect(service.getState('test-401-open')).toBe('OPEN');
+    });
+
+    it('5xx(503) 영구 발생 시 OPEN 전이 — 일반 인프라 장애 보호', async () => {
+      const action = jest.fn().mockRejectedValue(buildHttpError('upstream', 503));
+      service.createBreaker('test-503-open', action, {
+        volumeThreshold: 1,
+        errorThresholdPercentage: 1,
+        resetTimeout: 30_000,
+        rollingCountTimeout: 10_000,
+        rollingCountBuckets: 1,
+        timeout: false,
+      });
+
+      const breaker = service.getBreaker('test-503-open')!;
+      for (let i = 0; i < 3; i++) {
+        try { await breaker.fire(); } catch { /* expected */ }
+      }
+
+      expect(service.getState('test-503-open')).toBe('OPEN');
+    });
+
+    it('호출자가 errorFilter override 시 default가 아닌 호출자 함수가 사용됨', async () => {
+      // override: 모든 에러를 filtered (= CB failure 미카운트)
+      const customFilter = jest.fn().mockReturnValue(true);
+      const action = jest.fn().mockRejectedValue(buildHttpError('upstream down', 503));
+
+      service.createBreaker('test-override', action, {
+        volumeThreshold: 1,
+        errorThresholdPercentage: 1,
+        resetTimeout: 30_000,
+        rollingCountTimeout: 10_000,
+        rollingCountBuckets: 1,
+        timeout: false,
+        errorFilter: customFilter,
+      });
+
+      const breaker = service.getBreaker('test-override')!;
+      for (let i = 0; i < 3; i++) {
+        try { await breaker.fire(); } catch { /* expected */ }
+      }
+
+      // customFilter가 모두 true → OPEN 전이 안 됨 (default였다면 5xx로 OPEN)
+      expect(service.getState('test-override')).toBe('CLOSED');
+      expect(customFilter).toHaveBeenCalled();
+    });
+
+    it('filtered 카운터가 success 카운터와 분리됨 (혼합 시나리오)', async () => {
+      let mode: 'ok' | '404' = 'ok';
+      const action = jest.fn().mockImplementation(() => {
+        if (mode === 'ok') return Promise.resolve('value');
+        return Promise.reject(buildHttpError('not found', 404));
+      });
+
+      service.createBreaker('test-mixed', action, {
+        volumeThreshold: 100,
+        errorThresholdPercentage: 99,
+        resetTimeout: 30_000,
+        rollingCountTimeout: 10_000,
+        rollingCountBuckets: 1,
+        timeout: false,
+      });
+
+      const breaker = service.getBreaker('test-mixed')!;
+
+      // 2번 정상 성공
+      for (let i = 0; i < 2; i++) {
+        await breaker.fire();
+      }
+
+      // 3번 404 (filtered)
+      mode = '404';
+      for (let i = 0; i < 3; i++) {
+        try { await breaker.fire(); } catch { /* expected */ }
+      }
+
+      const metrics = await registry.getMetricsAsJSON();
+      const reqMetric = metrics.find(
+        (m) => m.name === 'algosu_submission_circuit_breaker_requests_total',
+      );
+      const successVal = (reqMetric?.values ?? []).find(
+        (v) => v.labels?.['name'] === 'test-mixed' && v.labels?.['result'] === 'success',
+      )?.value;
+      const filteredVal = (reqMetric?.values ?? []).find(
+        (v) => v.labels?.['name'] === 'test-mixed' && v.labels?.['result'] === 'filtered',
+      )?.value;
+      const failureVal = (reqMetric?.values ?? []).find(
+        (v) => v.labels?.['name'] === 'test-mixed' && v.labels?.['result'] === 'failure',
+      )?.value;
+
+      expect(successVal).toBe(2);
+      expect(filteredVal).toBe(3);
+      expect(failureVal).toBeUndefined();
+    });
+  });
+
+  // ─── 12. buildHttpError 헬퍼 (Sprint 135 D8) ───────────────────
+  describe('buildHttpError 헬퍼', () => {
+    it('Error 인스턴스에 status 속성을 첨부한다', () => {
+      const err = buildHttpError('quota check failed', 503);
+      expect(err).toBeInstanceOf(Error);
+      expect(err.message).toBe('quota check failed');
+      expect(err.status).toBe(503);
+    });
+
+    it('DEFAULT_ERROR_FILTER가 buildHttpError 결과로 분기 가능', () => {
+      expect(DEFAULT_ERROR_FILTER(buildHttpError('not found', 404))).toBe(true);
+      expect(DEFAULT_ERROR_FILTER(buildHttpError('upstream', 503))).toBe(false);
     });
   });
 });
