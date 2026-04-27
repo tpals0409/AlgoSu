@@ -161,6 +161,7 @@ NestJS HTTP 호출부에 Circuit Breaker 패턴을 도입하여 외부 서비스
   - 총 5개 CB 인스턴스로 4개 외부 서비스(AI Analysis / submission internal / Gateway / Problem Service) 보호
 - **테스트**: `problem-service-client.spec.ts` 24건 신규 + saga-orchestrator/submission.service/ai-satisfaction spec 갱신. 전체 334 tests pass, coverage stmts 98.46% / branches 94.53% / functions 96.59% / lines 98.55% (threshold 97/92/96/97 충족)
 - **Public API 시그니처 무변경**: SagaOrchestratorService.advanceToAiQueued / SubmissionService.create 호출자 영향 0
+- **Critic 1차 P2 후속 정정**: env(`PROBLEM_SERVICE_KEY`) 미설정 시 fetch slow path(timeout 5초 → CB OPEN) 회귀 차단. public 메서드(`getSourcePlatform`/`getDeadline`) 시작에 key 검증 → 즉시 fallback 반환으로 sub-millisecond 회복. 기존 `submission.service.checkLateSubmission`의 `getOrThrow` 즉시 fallback 동작 보존. `problem-service-client.spec.ts`에 env 미설정 fallback 검증 2건 추가 (fetch 미발생 + hostBreaker.fire 미호출 + 기본값 반환)
 
 ## Carryover (Wave D~E)
 
