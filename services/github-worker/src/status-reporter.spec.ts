@@ -265,4 +265,85 @@ describe('StatusReporter', () => {
       expect(mockRedisQuit).toHaveBeenCalled();
     });
   });
+
+  describe('Sprint 135 D7 — throw 시 status 첨부', () => {
+    interface HttpAwareError extends Error {
+      status?: number;
+    }
+
+    it('_doGetSubmission non-ok 시 throw된 에러에 status 첨부 (404)', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 404 });
+
+      let caught: HttpAwareError | null = null;
+      try {
+        await (reporter as unknown as { _doGetSubmission(id: string): Promise<unknown> })
+          ._doGetSubmission('sub-x');
+      } catch (e) {
+        caught = e as HttpAwareError;
+      }
+
+      expect(caught).not.toBeNull();
+      expect(caught!.status).toBe(404);
+    });
+
+    it('_doReportSuccess non-ok 시 throw된 에러에 status 첨부 (500)', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
+
+      let caught: HttpAwareError | null = null;
+      try {
+        await (reporter as unknown as { _doReportSuccess(id: string, p: string): Promise<void> })
+          ._doReportSuccess('sub-y', '/path');
+      } catch (e) {
+        caught = e as HttpAwareError;
+      }
+
+      expect(caught).not.toBeNull();
+      expect(caught!.status).toBe(500);
+    });
+
+    it('_doReportFailed non-ok 시 throw된 에러에 status 첨부 (502)', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 502 });
+
+      let caught: HttpAwareError | null = null;
+      try {
+        await (reporter as unknown as { _doReportFailed(id: string): Promise<void> })
+          ._doReportFailed('sub-z');
+      } catch (e) {
+        caught = e as HttpAwareError;
+      }
+
+      expect(caught).not.toBeNull();
+      expect(caught!.status).toBe(502);
+    });
+
+    it('_doReportTokenInvalid non-ok 시 throw된 에러에 status 첨부 (503)', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 503 });
+
+      let caught: HttpAwareError | null = null;
+      try {
+        await (reporter as unknown as { _doReportTokenInvalid(id: string): Promise<void> })
+          ._doReportTokenInvalid('sub-w');
+      } catch (e) {
+        caught = e as HttpAwareError;
+      }
+
+      expect(caught).not.toBeNull();
+      expect(caught!.status).toBe(503);
+    });
+
+    it('_doReportSkipped non-ok 시 throw된 에러에 status 첨부 (500)', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
+
+      let caught: HttpAwareError | null = null;
+      try {
+        await (reporter as unknown as { _doReportSkipped(id: string): Promise<void> })
+          ._doReportSkipped('sub-v');
+      } catch (e) {
+        caught = e as HttpAwareError;
+      }
+
+      expect(caught).not.toBeNull();
+      expect(caught!.status).toBe(500);
+    });
+  });
 });

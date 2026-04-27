@@ -34,6 +34,18 @@ interface SubmissionData {
   code: string;
 }
 
+/**
+ * HTTP 응답 status를 첨부한 Error 생성 (Sprint 135 D7).
+ *
+ * CircuitBreakerManager의 DEFAULT_ERROR_FILTER가 `err.status` 400~499 범위를
+ * filtered 처리(failure 미카운트)하므로, 4xx 영구 에러로 인한 CB OPEN 회피.
+ */
+function buildHttpError(message: string, status: number): Error & { status: number } {
+  const err = new Error(message) as Error & { status: number };
+  err.status = status;
+  return err;
+}
+
 export class StatusReporter {
   private redis: Redis;
   private readonly submissionUrl: string;
@@ -93,7 +105,7 @@ export class StatusReporter {
     });
 
     if (!res.ok) {
-      throw new Error(`Submission 조회 실패: ${res.status}`);
+      throw buildHttpError(`Submission 조회 실패: ${res.status}`, res.status);
     }
 
     const body = (await res.json()) as { data: SubmissionData };
@@ -122,7 +134,7 @@ export class StatusReporter {
     });
 
     if (!resp.ok) {
-      throw new Error(`reportSuccess 실패: ${resp.status}`);
+      throw buildHttpError(`reportSuccess 실패: ${resp.status}`, resp.status);
     }
   }
 
@@ -147,7 +159,7 @@ export class StatusReporter {
     });
 
     if (!resp.ok) {
-      throw new Error(`reportFailed 실패: ${resp.status}`);
+      throw buildHttpError(`reportFailed 실패: ${resp.status}`, resp.status);
     }
   }
 
@@ -172,7 +184,7 @@ export class StatusReporter {
     });
 
     if (!resp.ok) {
-      throw new Error(`reportTokenInvalid 실패: ${resp.status}`);
+      throw buildHttpError(`reportTokenInvalid 실패: ${resp.status}`, resp.status);
     }
   }
 
@@ -209,7 +221,7 @@ export class StatusReporter {
     });
 
     if (!resp.ok) {
-      throw new Error(`reportSkipped 실패: ${resp.status}`);
+      throw buildHttpError(`reportSkipped 실패: ${resp.status}`, resp.status);
     }
   }
 

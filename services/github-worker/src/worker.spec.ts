@@ -1172,4 +1172,72 @@ describe('GitHubWorker', () => {
       ).rejects.toThrow('Problem 정보 조회 실패: 503');
     });
   });
+
+  describe('Sprint 135 D7 — throw 시 status 첨부', () => {
+    interface HttpAwareError extends Error {
+      status?: number;
+    }
+
+    it('_doGetUserGitHubInfo non-ok 시 throw된 에러에 status 첨부 (500)', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
+
+      let caught: HttpAwareError | null = null;
+      try {
+        await (worker as unknown as { _doGetUserGitHubInfo(id: string): Promise<unknown> })
+          ._doGetUserGitHubInfo('user-1');
+      } catch (e) {
+        caught = e as HttpAwareError;
+      }
+
+      expect(caught).not.toBeNull();
+      expect(caught!.status).toBe(500);
+    });
+
+    it('_doGetUserGitHubInfo non-ok 시 throw된 에러에 status 첨부 (404 - 4xx)', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 404 });
+
+      let caught: HttpAwareError | null = null;
+      try {
+        await (worker as unknown as { _doGetUserGitHubInfo(id: string): Promise<unknown> })
+          ._doGetUserGitHubInfo('user-missing');
+      } catch (e) {
+        caught = e as HttpAwareError;
+      }
+
+      expect(caught).not.toBeNull();
+      expect(caught!.status).toBe(404);
+    });
+
+    it('_doGetProblemInfo non-ok 시 throw된 에러에 status 첨부 (503)', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 503 });
+
+      let caught: HttpAwareError | null = null;
+      try {
+        await (worker as unknown as {
+          _doGetProblemInfo(p: string, s: string, u: string): Promise<unknown>;
+        })._doGetProblemInfo('p-x', 's-x', 'u-x');
+      } catch (e) {
+        caught = e as HttpAwareError;
+      }
+
+      expect(caught).not.toBeNull();
+      expect(caught!.status).toBe(503);
+    });
+
+    it('_doGetProblemInfo non-ok 시 throw된 에러에 status 첨부 (404 - 4xx)', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 404 });
+
+      let caught: HttpAwareError | null = null;
+      try {
+        await (worker as unknown as {
+          _doGetProblemInfo(p: string, s: string, u: string): Promise<unknown>;
+        })._doGetProblemInfo('p-missing', 's-1', 'u-1');
+      } catch (e) {
+        caught = e as HttpAwareError;
+      }
+
+      expect(caught).not.toBeNull();
+      expect(caught!.status).toBe(404);
+    });
+  });
 });

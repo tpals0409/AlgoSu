@@ -19,6 +19,21 @@ const OPOSSUM_TIMEOUT_CODE = 'ETIMEDOUT';
 const STATE_CODE = { closed: 0, halfOpen: 1, open: 2 } as const;
 
 /**
+ * 기본 errorFilter -- HTTP 4xx 비즈니스 에러를 CB failure에서 제외 (Sprint 135 D7)
+ *
+ * opossum `errorFilter`는 true 반환 시 success 이벤트로 처리되어 failure counter 미증가 +
+ * OPEN 전이 미트리거. CB는 인프라 장애(5xx/timeout/network) 보호용이므로 4xx 영구 에러
+ * (404/401/403 등)는 retry해도 결과가 동일하여 CB 진입 부적절.
+ *
+ * 호출부에서 fetch non-ok 응답 시 throw하는 Error에 `status` 필드를 첨부하면 본 필터가
+ * 분기. status 미첨부(네트워크 에러 등)는 false → CB failure 정상 카운트.
+ */
+export const DEFAULT_ERROR_FILTER = (err: unknown): boolean => {
+  const status = (err as { status?: number } | null)?.status;
+  return typeof status === 'number' && status >= 400 && status < 500;
+};
+
+/**
  * opossum 기본 설정 -- Wave A(submission) / Python 참조 일관성
  * @see services/submission/src/common/circuit-breaker/circuit-breaker.constants.ts
  * @see services/ai-analysis/src/circuit_breaker.py
@@ -30,6 +45,7 @@ export const DEFAULT_CB_OPTIONS = {
   rollingCountTimeout: 60_000,
   rollingCountBuckets: 6,
   volumeThreshold: 5,
+  errorFilter: DEFAULT_ERROR_FILTER,
 } as const;
 
 /** CB 생성 시 전달 가능한 추가 옵션 */
@@ -41,6 +57,11 @@ export interface CreateBreakerOptions {
   rollingCountBuckets?: number;
   volumeThreshold?: number;
   fallback?: (...args: unknown[]) => unknown;
+  /**
+   * opossum errorFilter override -- 미지정 시 DEFAULT_ERROR_FILTER 사용 (4xx 제외).
+   * true 반환 시 해당 에러는 CB failure로 카운트되지 않는다.
+   */
+  errorFilter?: (err: unknown) => boolean;
 }
 
 /**

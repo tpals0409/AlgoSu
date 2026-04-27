@@ -11,7 +11,7 @@
 jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
 
 import { Registry } from 'prom-client';
-import { CircuitBreakerManager } from './circuit-breaker';
+import { CircuitBreakerManager, DEFAULT_ERROR_FILTER } from './circuit-breaker';
 
 describe('CircuitBreakerManager', () => {
   let manager: CircuitBreakerManager;
@@ -385,6 +385,148 @@ describe('CircuitBreakerManager', () => {
       expect(spyOk).toHaveBeenCalledTimes(1);
       expect(manager.getBreaker('shutdown-ok')).toBeUndefined();
       expect(manager.getBreaker('shutdown-fail')).toBe(bFail);
+    });
+  });
+
+  // ─── 11. errorFilter — 4xx CB 제외 (Sprint 135 D7) ────────────
+  describe('errorFilter — 4xx 비즈니스 에러 CB 제외', () => {
+    /** status 첨부된 HTTP-style 에러 헬퍼 */
+    function httpError(message: string, status: number): Error & { status: number } {
+      const err = new Error(message) as Error & { status: number };
+      err.status = status;
+      return err;
+    }
+
+    describe('DEFAULT_ERROR_FILTER 단위 동작', () => {
+      it('4xx status는 true 반환 (CB failure 제외)', () => {
+        expect(DEFAULT_ERROR_FILTER(httpError('not found', 404))).toBe(true);
+        expect(DEFAULT_ERROR_FILTER(httpError('unauthorized', 401))).toBe(true);
+        expect(DEFAULT_ERROR_FILTER(httpError('forbidden', 403))).toBe(true);
+        expect(DEFAULT_ERROR_FILTER(httpError('bad req', 400))).toBe(true);
+        expect(DEFAULT_ERROR_FILTER(httpError('teapot', 499))).toBe(true);
+      });
+
+      it('5xx status는 false 반환 (CB failure 카운트)', () => {
+        expect(DEFAULT_ERROR_FILTER(httpError('server', 500))).toBe(false);
+        expect(DEFAULT_ERROR_FILTER(httpError('bad gw', 502))).toBe(false);
+        expect(DEFAULT_ERROR_FILTER(httpError('unavail', 503))).toBe(false);
+      });
+
+      it('status 없는 에러(네트워크/타임아웃)는 false 반환', () => {
+        expect(DEFAULT_ERROR_FILTER(new Error('ENETUNREACH'))).toBe(false);
+        expect(DEFAULT_ERROR_FILTER(null)).toBe(false);
+        expect(DEFAULT_ERROR_FILTER(undefined)).toBe(false);
+        expect(DEFAULT_ERROR_FILTER({})).toBe(false);
+      });
+
+      it('경계값 400 미만/500 이상은 false', () => {
+        expect(DEFAULT_ERROR_FILTER(httpError('redirect', 399))).toBe(false);
+        expect(DEFAULT_ERROR_FILTER(httpError('boundary', 500))).toBe(false);
+      });
+    });
+
+    it('4xx 에러는 volumeThreshold 도달해도 OPEN 전이 안 됨', async () => {
+      const action = jest.fn().mockRejectedValue(httpError('not found', 404));
+      manager.createBreaker('test-4xx-skip', action, {
+        volumeThreshold: 1,
+        errorThresholdPercentage: 1,
+        resetTimeout: 30_000,
+        rollingCountTimeout: 10_000,
+        rollingCountBuckets: 1,
+        timeout: false,
+      });
+
+      const breaker = manager.getBreaker('test-4xx-skip')!;
+
+      // 5번 4xx throw → errorFilter true → success 이벤트 + failure 미카운트
+      for (let i = 0; i < 5; i++) {
+        try {
+          await breaker.fire();
+        } catch {
+          /* 호출자에는 throw 전파되나 CB 통계엔 미반영 */
+        }
+      }
+
+      expect(manager.getState('test-4xx-skip')).toBe('CLOSED');
+
+      // 메트릭: success 라벨이 5건 증가, failure는 미증가
+      const metrics = await registry.getMetricsAsJSON();
+      const reqMetric = metrics.find(
+        (m) => m.name === 'algosu_github_worker_circuit_breaker_requests_total',
+      );
+      const successVal = (reqMetric?.values ?? []).find(
+        (v) => v.labels?.['name'] === 'test-4xx-skip' && v.labels?.['result'] === 'success',
+      )?.value;
+      const failureVal = (reqMetric?.values ?? []).find(
+        (v) => v.labels?.['name'] === 'test-4xx-skip' && v.labels?.['result'] === 'failure',
+      )?.value;
+      expect(successVal).toBe(5);
+      expect(failureVal).toBeUndefined();
+    });
+
+    it('5xx 에러는 정상 CB failure로 카운트되어 OPEN 전이', async () => {
+      const action = jest.fn().mockRejectedValue(httpError('upstream down', 503));
+      manager.createBreaker('test-5xx-open', action, {
+        volumeThreshold: 1,
+        errorThresholdPercentage: 1,
+        resetTimeout: 30_000,
+        rollingCountTimeout: 10_000,
+        rollingCountBuckets: 1,
+        timeout: false,
+      });
+
+      const breaker = manager.getBreaker('test-5xx-open')!;
+
+      for (let i = 0; i < 3; i++) {
+        try { await breaker.fire(); } catch { /* expected */ }
+      }
+
+      expect(manager.getState('test-5xx-open')).toBe('OPEN');
+    });
+
+    it('status 없는 에러(네트워크/타임아웃)는 정상 CB failure로 카운트', async () => {
+      const action = jest.fn().mockRejectedValue(new Error('ECONNREFUSED'));
+      manager.createBreaker('test-network-open', action, {
+        volumeThreshold: 1,
+        errorThresholdPercentage: 1,
+        resetTimeout: 30_000,
+        rollingCountTimeout: 10_000,
+        rollingCountBuckets: 1,
+        timeout: false,
+      });
+
+      const breaker = manager.getBreaker('test-network-open')!;
+
+      for (let i = 0; i < 3; i++) {
+        try { await breaker.fire(); } catch { /* expected */ }
+      }
+
+      expect(manager.getState('test-network-open')).toBe('OPEN');
+    });
+
+    it('호출자가 errorFilter override 시 default가 아닌 호출자 함수가 사용됨', async () => {
+      // override: 모든 에러를 filtered (= CB failure 미카운트)
+      const customFilter = jest.fn().mockReturnValue(true);
+      const action = jest.fn().mockRejectedValue(httpError('upstream down', 503));
+
+      manager.createBreaker('test-override', action, {
+        volumeThreshold: 1,
+        errorThresholdPercentage: 1,
+        resetTimeout: 30_000,
+        rollingCountTimeout: 10_000,
+        rollingCountBuckets: 1,
+        timeout: false,
+        errorFilter: customFilter,
+      });
+
+      const breaker = manager.getBreaker('test-override')!;
+      for (let i = 0; i < 3; i++) {
+        try { await breaker.fire(); } catch { /* expected */ }
+      }
+
+      // customFilter가 모두 true → OPEN 전이 안 됨 (default였다면 5xx로 OPEN)
+      expect(manager.getState('test-override')).toBe('CLOSED');
+      expect(customFilter).toHaveBeenCalled();
     });
   });
 });

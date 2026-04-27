@@ -24,6 +24,18 @@ interface ProblemInfo {
 }
 
 /**
+ * HTTP 응답 status를 첨부한 Error 생성 (Sprint 135 D7).
+ *
+ * CircuitBreakerManager의 DEFAULT_ERROR_FILTER가 4xx를 filtered 처리하여
+ * 4xx 영구 에러로 인한 CB OPEN 회피.
+ */
+function buildHttpError(message: string, status: number): Error & { status: number } {
+  const err = new Error(message) as Error & { status: number };
+  err.status = status;
+  return err;
+}
+
+/**
  * GitHub Worker — RabbitMQ 소비자 (유저 토큰 기반)
  *
  * 보안 요구사항:
@@ -285,7 +297,7 @@ export class GitHubWorker {
     );
 
     if (!res.ok) {
-      throw new Error(`유저 GitHub 정보 조회 실패: ${res.status}`);
+      throw buildHttpError(`유저 GitHub 정보 조회 실패: ${res.status}`, res.status);
     }
 
     return (await res.json()) as UserGitHubInfo;
@@ -336,7 +348,7 @@ export class GitHubWorker {
       logger.warn(`Problem 정보 조회 실패 (${res.status}) — 기본값 사용`, {
         tag: 'PROBLEM_FETCH',
       });
-      throw new Error(`Problem 정보 조회 실패: ${res.status}`);
+      throw buildHttpError(`Problem 정보 조회 실패: ${res.status}`, res.status);
     }
 
     const body = (await res.json()) as {
