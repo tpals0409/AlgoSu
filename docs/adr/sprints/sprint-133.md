@@ -70,8 +70,8 @@ related_adrs: ["ADR-026"]
 Sprint 130 운영 부채 미소화분 (aether-gitops 외부 레포 또는 인프라 의존):
 - [ ] ADR-027 구현 — aether-gitops 브랜치 규율
 - [ ] ADR-028 구현 — 개발 서버 분리 (인프라 비용 결정 선행)
-- [ ] C-1: revisionHistoryLimit 추가 (aether-gitops 매니페스트, `infra/` 부재 확인됨)
-- [ ] D-1: E2E 전체 테스트 자동화 (`e2e-full.sh` 미존재, docker-compose 의존)
+- [x] C-1: revisionHistoryLimit: 3 적용 완료 — 본 레포 infra/k3s/*.yaml 8개 Deployment (Sprint 134 PR로 적용)
+- [x] D-1: 사후 정정 — e2e-full.sh 657줄 실재, .github/workflows/ci.yml workflow_dispatch 수동 전용. 자동 PR CI 통합은 Sprint 135 신규 시드로 재분류 (Sprint 134 정정)
 - [ ] SealedSecret 컨트롤러 키 rotation 자동 재봉인 CI
 - [ ] AlertManager receiver self-test 룰
 
