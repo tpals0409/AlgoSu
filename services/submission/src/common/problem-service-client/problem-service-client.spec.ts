@@ -548,10 +548,11 @@ describe('ProblemServiceClient', () => {
     });
   });
 
-  // ─── 6.5. env 미설정 시 즉시 fallback (Critic 1차 P2) ────────────
-  describe('env 미설정 시 즉시 fallback (Critic 1차 P2)', () => {
+  // ─── 6.5. env 미설정 시 즉시 fallback (Critic 4차 P2 — URL+KEY 둘 다) ─
+  describe('env 미설정 시 즉시 fallback (Critic 4차 P2 — URL+KEY 둘 다)', () => {
     beforeEach(() => service.onModuleInit());
 
+    // ── KEY 단독 미설정 (Critic 1차 P2 보존) ────────────────────────
     it('getSourcePlatform: PROBLEM_SERVICE_KEY 미설정 시 fetch 미발생 + undefined 즉시 반환', async () => {
       // 인스턴스 필드를 직접 비워 env miss 시뮬레이션 (테스트 격리: this 테스트 케이스 한정)
       (service as unknown as { problemServiceKey: string }).problemServiceKey = '';
@@ -574,6 +575,102 @@ describe('ProblemServiceClient', () => {
       expect(result).toEqual({ isLate: false, weekNumber: null });
       expect(fetchSpy).not.toHaveBeenCalled();
       expect(cbService._mockBreaker.fire).not.toHaveBeenCalled();
+      fetchSpy.mockRestore();
+    });
+
+    // ── URL 단독 미설정 (Critic 4차 P2 신규) ────────────────────────
+    it('getSourcePlatform: PROBLEM_SERVICE_URL 미설정 시 fetch 미발생 + undefined 즉시 반환', async () => {
+      (service as unknown as { problemServiceUrl: string }).problemServiceUrl = '';
+      const fetchSpy = jest.spyOn(global, 'fetch' as never);
+
+      const result = await service.getSourcePlatform('p1', 's1', 'u1');
+
+      expect(result).toBeUndefined();
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(cbService._mockBreaker.fire).not.toHaveBeenCalled();
+      fetchSpy.mockRestore();
+    });
+
+    it('getDeadline: PROBLEM_SERVICE_URL 미설정 시 fetch 미발생 + 기본값 즉시 반환', async () => {
+      (service as unknown as { problemServiceUrl: string }).problemServiceUrl = '';
+      const fetchSpy = jest.spyOn(global, 'fetch' as never);
+
+      const result = await service.getDeadline('p1', 's1');
+
+      expect(result).toEqual({ isLate: false, weekNumber: null });
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(cbService._mockBreaker.fire).not.toHaveBeenCalled();
+      fetchSpy.mockRestore();
+    });
+
+    // ── URL + KEY 둘 다 미설정 (Critic 4차 P2 신규) ─────────────────
+    it('getSourcePlatform: URL+KEY 둘 다 미설정 시 fetch 미발생 + undefined 즉시 반환', async () => {
+      const target = service as unknown as {
+        problemServiceUrl: string;
+        problemServiceKey: string;
+      };
+      target.problemServiceUrl = '';
+      target.problemServiceKey = '';
+      const fetchSpy = jest.spyOn(global, 'fetch' as never);
+
+      const result = await service.getSourcePlatform('p1', 's1', 'u1');
+
+      expect(result).toBeUndefined();
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(cbService._mockBreaker.fire).not.toHaveBeenCalled();
+      fetchSpy.mockRestore();
+    });
+
+    it('getDeadline: URL+KEY 둘 다 미설정 시 fetch 미발생 + 기본값 즉시 반환', async () => {
+      const target = service as unknown as {
+        problemServiceUrl: string;
+        problemServiceKey: string;
+      };
+      target.problemServiceUrl = '';
+      target.problemServiceKey = '';
+      const fetchSpy = jest.spyOn(global, 'fetch' as never);
+
+      const result = await service.getDeadline('p1', 's1');
+
+      expect(result).toEqual({ isLate: false, weekNumber: null });
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(cbService._mockBreaker.fire).not.toHaveBeenCalled();
+      fetchSpy.mockRestore();
+    });
+
+    // ── ConfigService에서 undefined 반환 시 default 미적용 검증 (Critic 4차 P2) ─
+    it('constructor: ConfigService.get이 undefined 반환 시 default 적용 안되고 빈 문자열 보존', async () => {
+      // 신규 모듈 — get()이 undefined 반환하도록 mock
+      const customConfig = {
+        get: jest.fn(() => undefined),
+      };
+      const customCb = mockCircuitBreakerService();
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          ProblemServiceClient,
+          { provide: ConfigService, useValue: customConfig },
+          { provide: CircuitBreakerService, useValue: customCb },
+        ],
+      }).compile();
+
+      const newClient = module.get<ProblemServiceClient>(ProblemServiceClient);
+      newClient.onModuleInit();
+
+      const target = newClient as unknown as {
+        problemServiceUrl: string;
+        problemServiceKey: string;
+      };
+      // default 호스트(`http://problem-service:3002`)로 fallback되지 않고 빈 문자열 유지 확인
+      expect(target.problemServiceUrl).toBe('');
+      expect(target.problemServiceKey).toBe('');
+
+      // isConfigReady() false → fetch/CB 둘 다 미호출
+      const fetchSpy = jest.spyOn(global, 'fetch' as never);
+      const result = await newClient.getSourcePlatform('p1', 's1', 'u1');
+
+      expect(result).toBeUndefined();
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(customCb._mockBreaker.fire).not.toHaveBeenCalled();
       fetchSpy.mockRestore();
     });
   });

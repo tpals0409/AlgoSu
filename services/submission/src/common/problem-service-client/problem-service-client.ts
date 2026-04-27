@@ -66,14 +66,22 @@ export class ProblemServiceClient implements OnModuleInit {
   ) {
     this.logger = new StructuredLoggerService();
     this.logger.setContext(ProblemServiceClient.name);
-    this.problemServiceUrl = this.configService.get<string>(
-      'PROBLEM_SERVICE_URL',
-      'http://problem-service:3002',
-    );
-    this.problemServiceKey = this.configService.get<string>(
-      'PROBLEM_SERVICE_KEY',
-      '',
-    );
+    // env 미설정 시 즉시 fallback을 위해 default 제거 (Critic 4차 P2).
+    // URL이 default 값으로 fallback되면 isConfigReady() 검증을 우회 → fetch slow path → 5초 timeout 회귀 발생
+    this.problemServiceUrl =
+      this.configService.get<string>('PROBLEM_SERVICE_URL') ?? '';
+    this.problemServiceKey =
+      this.configService.get<string>('PROBLEM_SERVICE_KEY') ?? '';
+  }
+
+  /**
+   * 환경변수 준비 상태 — URL과 KEY 둘 다 설정되어야 외부 호출 가능.
+   *
+   * 둘 중 하나라도 미설정이면 default 호스트로 fetch → 5초 timeout → CB OPEN 회귀 위험.
+   * 즉시 fallback으로 sub-millisecond 회복 보장 (Critic 4차 P2).
+   */
+  private isConfigReady(): boolean {
+    return this.problemServiceUrl !== '' && this.problemServiceKey !== '';
   }
 
   /**
@@ -106,11 +114,11 @@ export class ProblemServiceClient implements OnModuleInit {
     studyId: string,
     userId: string,
   ): Promise<string | undefined> {
-    // env miss 시 즉시 fallback — fetch slow path 회피 (Critic 1차 P2).
+    // env(URL/KEY) 미설정 시 즉시 fallback — fetch slow path 회피 (Critic 4차 P2).
     // 기존 `submission.service.checkLateSubmission`의 `getOrThrow` 즉시 fallback 동작 보존.
-    if (!this.problemServiceKey) {
+    if (!this.isConfigReady()) {
       this.logger.warn(
-        'PROBLEM_SERVICE_KEY 미설정 — getSourcePlatform 즉시 fallback (env 검증 필요)',
+        'PROBLEM_SERVICE_URL 또는 PROBLEM_SERVICE_KEY 미설정 — getSourcePlatform 즉시 fallback (env 검증 필요)',
       );
       return undefined;
     }
@@ -148,11 +156,11 @@ export class ProblemServiceClient implements OnModuleInit {
     studyId: string,
     userId?: string,
   ): Promise<DeadlineResult> {
-    // env miss 시 즉시 fallback — fetch slow path 회피 (Critic 1차 P2).
+    // env(URL/KEY) 미설정 시 즉시 fallback — fetch slow path 회피 (Critic 4차 P2).
     // 기존 `submission.service.checkLateSubmission`의 `getOrThrow` 즉시 fallback 동작 보존.
-    if (!this.problemServiceKey) {
+    if (!this.isConfigReady()) {
       this.logger.warn(
-        'PROBLEM_SERVICE_KEY 미설정 — getDeadline 즉시 fallback (env 검증 필요)',
+        'PROBLEM_SERVICE_URL 또는 PROBLEM_SERVICE_KEY 미설정 — getDeadline 즉시 fallback (env 검증 필요)',
       );
       return { isLate: false, weekNumber: null };
     }
