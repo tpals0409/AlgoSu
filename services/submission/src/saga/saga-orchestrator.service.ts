@@ -14,6 +14,7 @@ import { Submission, SagaStep, GitHubSyncStatus } from '../submission/submission
 import { MqPublisherService } from './mq-publisher.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 import { CircuitBreakerService } from '../common/circuit-breaker';
+import { buildHttpError } from '../common/circuit-breaker/circuit-breaker.constants';
 
 /**
  * Saga Orchestrator -- 제출 플로우 상태 관리
@@ -107,10 +108,21 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
     }
 
     // CB: AI Quota 체크에 Circuit Breaker 적용 (fetchAiQuota 메서드 위임)
+    //
+    // errorFilter override 이유 (Critic 1차 P1):
+    // `fetchAiQuota`는 고정 endpoint(`/quota/check`)만 호출하므로 404/410/422도
+    // resource-not-found 의미가 아닌 "AI Analysis Service 라우트 misconfig 또는 서비스 부재"
+    // 시그널이다. default 화이트리스트({404,410,422})를 그대로 적용하면 dead service에
+    // fetchAiQuota가 무한 호출되고 CB가 OPEN으로 보호되지 않아 알람이 발화하지 않는다.
+    // 따라서 `errorFilter: () => false`로 모든 비-2xx 에러를 CB failure로 카운트하여
+    // volumeThreshold 도달 시 OPEN → fallback `() => true`로 사용자 영향 0 + 알람 시그널 확보.
     this.cbService.createBreaker(
       'aiQuotaCheck',
       this.fetchAiQuota.bind(this),
-      { fallback: () => true },
+      {
+        fallback: () => true,
+        errorFilter: () => false,
+      },
     );
 
     // M3: 주기적 타임아웃 체크 시작 (미완료 Saga 유무와 관계없이 항상 등록)
@@ -316,7 +328,8 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
       },
     );
     if (!resp.ok) {
-      throw new Error(`AI quota check failed: status=${resp.status}`);
+      // status 첨부 — CB errorFilter(DEFAULT_ERROR_FILTER)가 화이트리스트(404/410/422) 여부 분기 (Sprint 135 D8)
+      throw buildHttpError(`AI quota check failed: status=${resp.status}`, resp.status);
     }
     const body = (await resp.json()) as {
       data: { allowed: boolean; used: number; limit: number };
