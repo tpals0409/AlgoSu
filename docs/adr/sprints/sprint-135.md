@@ -1,9 +1,9 @@
 ---
 sprint: 135
-title: "Circuit Breaker 단독 스프린트 — Wave A PoC (opossum + AI Quota Check)"
+title: "Circuit Breaker 단독 스프린트 — opossum 도입 + 5개 호스트 단일 CB + Grafana 대시보드"
 date: "2026-04-27"
-status: in-progress
-agents: [Oracle, Architect, Postman, Scribe]
+status: completed
+agents: [Oracle, Architect, Postman, Scribe, Critic]
 related_adrs: ["ADR-026"]
 ---
 
@@ -11,7 +11,40 @@ related_adrs: ["ADR-026"]
 
 ## Sprint Goal
 
-NestJS HTTP 호출부에 Circuit Breaker 패턴을 도입하여 외부 서비스 장애 전파를 차단한다. Wave A(PoC)에서 submission 서비스의 AI Quota Check 1곳에 opossum 기반 CB를 적용하고, Wave B~D에서 github-worker 7곳 + submission 2곳 + 메트릭/대시보드로 확대한다.
+NestJS HTTP 호출부에 Circuit Breaker 패턴을 도입하여 외부 서비스 장애 전파를 차단한다. Wave A(PoC) → Wave B(github-worker 확대) → Wave A 동기화(별건 PR) → Wave C(submission 추가) → Wave D(Grafana 대시보드) 순으로 단계 진행.
+
+## 최종 결과 요약 (Wave E 종합)
+
+| 항목 | 결과 |
+|------|------|
+| **머지된 PR** | 5건 (#167 / #168 / #169 / #170 / #171) |
+| **CB 인스턴스** | 5개 (호스트 단일 격리) |
+| **보호된 외부 서비스** | 4개 (AI Analysis / submission internal / Gateway / Problem Service) |
+| **신규 NestJS 모듈** | 2개 (`CircuitBreakerModule@Global`, `ProblemServiceClientModule`) |
+| **신규 라이브러리** | opossum v8 (Node.js TypeScript), 기존 Python `circuit_breaker.py` 유지 |
+| **누적 테스트** | submission 343 + github-worker 175 = **518 tests** |
+| **Critic 교차 리뷰** | 17 라운드 (PR별 3/4/3/5/3) — P1 8건 + P2 9건 모두 해결 후 머지 |
+| **Grafana 대시보드** | 1식 (12 panels, uid `algosu-cb`) |
+
+### 호스트 단일 CB 인스턴스
+
+| 서비스 | CB 이름 | 외부 호출 | fallback 정책 |
+|--------|---------|-----------|---------------|
+| submission | `aiQuotaCheck` | AI Analysis `/quota/check` | `() => true` (fail-open, `errorFilter: () => false` override — 고정 endpoint이므로 default 화이트리스트 무력화) |
+| submission | `problem-service-internal` | Problem Service (2 op via dispatcher) | op별 (`undefined` / `{isLate: false, weekNumber: null}`) |
+| github-worker | `submission-internal` | submission internal API (5 op via dispatcher) | throw 전파 (DLQ 처리) |
+| github-worker | `gateway-getUserGitHubInfo` | Gateway `/internal/users/.../github-encrypted-token` | throw 전파 |
+| github-worker | `problem-getProblemInfo` | Problem Service `/internal/{id}` | 기본값 + try/catch 안전망 |
+
+### PR 별 머지 commit
+
+| PR | Wave | Squash commit | 핵심 변경 |
+|----|------|---------------|----------|
+| [#167](https://github.com/tpals0409/AlgoSu/pull/167) | A | `459cd8a` | submission `aiQuotaCheck` PoC + opossum 도입 + Prometheus 메트릭 3종 |
+| [#168](https://github.com/tpals0409/AlgoSu/pull/168) | B | `c561488` | github-worker plain class 래퍼 + 호스트 단일 CB 3개 + errorFilter 화이트리스트 |
+| [#169](https://github.com/tpals0409/AlgoSu/pull/169) | A 동기화 | `1f40247` | Wave B 정책 동기화 + errorFilter wrapper + WeakSet 마커 (P2 정확 해결) |
+| [#170](https://github.com/tpals0409/AlgoSu/pull/170) | C | `7d4c539` | `ProblemServiceClient` + `CircuitBreakerModule@Global` + `isConfigReady` |
+| [#171](https://github.com/tpals0409/AlgoSu/pull/171) | D | `2c5d8e3` | Grafana CB 대시보드 (12 panels, TypeScript + Python schema 분리) |
 
 ## Decisions
 
@@ -189,14 +222,23 @@ NestJS HTTP 호출부에 Circuit Breaker 패턴을 도입하여 외부 서비스
   - **검증**: yaml.safe_load 통과 + json.loads 통과 + 12 panel IDs(100/1/7/101/2/3/102/4/8/103/5/6) 충돌 없음 + gridPos 행별 24폭 정합 (y:1 18+6 / y:17 18+6)
   - **Sprint 136+ 시드**: ai-analysis Python CB 메트릭 schema를 TypeScript와 통일 (state value 0/1/2 + `name` label + `failures_total` + `requests_total{result}`) → 단일 Grafana query regex로 통합 가능. `services/ai-analysis/src/metrics.py` + `circuit_breaker.py` 갱신 + 운영 알람 룰 동시 갱신 필요
 
-## Carryover (Wave E)
+## Carryover (Wave E 종합 — 모두 완료)
 
-- [x] Wave B: github-worker 7곳 CB 적용 (status-reporter 5 + worker.ts 2, 메서드별 별도 CB — 단일 host에 다양한 action 공존하므로 메서드별 분리가 reject/failure label 분리에 유리)
-- [x] Wave C: submission 2곳 추가 (fetchSourcePlatform + submission.service.checkLateSubmission) — D9
-- [x] Wave D: Grafana 대시보드 1식 — D10
-- [ ] Wave E: Sprint 135 ADR 종합 갱신 + sprint-window.md 최종 정리
-- [x] **Wave A 후속 정정 (D7 Critic 2차) → D8로 격상 완료**: `services/submission/src/common/circuit-breaker/circuit-breaker.service.ts`에 동일 정책 적용 — `FILTERED_BUSINESS_STATUS = {404, 410, 422}` 화이트리스트 errorFilter + success 핸들러 `result instanceof Error` 분기로 `filtered` 라벨 분리. fetchAiQuota throw 시 status 첨부. buildHttpError 헬퍼 추가
-- [ ] 별건 시드: CLAUDE.md L11 "ai-feedback" → 실제 "ai-analysis" 명명 불일치 (Sprint 136+)
-- [ ] 별건 시드: E2E 자동 PR CI 통합 (Sprint 134 이월)
-- [ ] **Sprint 136+ 시드**: Wave B(github-worker/circuit-breaker.ts)에 errorFilter wrapper + WeakSet 패턴 동기화 적용 (현재 `instanceof Error` 휴리스틱 → 정확한 분기로 갱신, Wave A와 일관성 회복)
-- [ ] **Sprint 136+ 시드**: ai-analysis Python CB 메트릭 schema 통일 (state 0/1/2 + name label + failures/requests 메트릭 추가) — 단일 Grafana query regex로 통합 + Wave B/C와 일관성 회복
+### Sprint 135 내부 작업 (전체 완료 ✅)
+
+- [x] **Wave A**: submission `aiQuotaCheck` PoC + opossum 도입 (D1~D5) — PR #167 `459cd8a`
+- [x] **Wave B**: github-worker 7곳 CB 적용 + 호스트 단일 CB 패턴 (D6~D7) — PR #168 `c561488`
+- [x] **Wave A 후속 정정 (별건 PR)**: errorFilter wrapper + WeakSet 마커로 P2 정확 해결 (D8) — PR #169 `1f40247`
+- [x] **Wave C**: submission 2곳 추가 (`ProblemServiceClient` + `CircuitBreakerModule@Global`) (D9) — PR #170 `7d4c539`
+- [x] **Wave D**: Grafana CB 대시보드 (TypeScript + Python schema 분리) (D10) — PR #171 `2c5d8e3`
+- [x] **Wave E**: Sprint 135 ADR 종합 갱신 + sprint-window.md 최종 정리 — 본 ADR `status: completed` 전환
+
+### Sprint 136+ 이월 시드
+
+#### CB 일관성 개선
+- [ ] **github-worker errorFilter wrapper 동기화**: `services/github-worker/src/circuit-breaker.ts`에 errorFilter wrapper + WeakSet 마커 패턴 적용 (현재 `instanceof Error` 휴리스틱 → Wave A와 동일한 정확 분기). 본 Sprint Wave A 동기화 PR #169에서 submission만 적용됨, 두 모듈 일관성 회복 필요
+- [ ] **ai-analysis Python CB 메트릭 schema 통일**: state value 0/1/2 + `name` label + `failures_total` + `requests_total{result}` 추가하여 TypeScript와 정합. `services/ai-analysis/src/metrics.py` + `circuit_breaker.py` + 운영 알람 룰 동시 갱신. 통일 후 Grafana 대시보드의 분리된 패널(Python schema)을 단일 query regex로 통합 가능
+
+#### 별건 시드 (CB 외)
+- [ ] **CLAUDE.md L11 명명 불일치 정정**: 문서상 "ai-feedback" → 실제 디렉토리 `services/ai-analysis/`. 본 Sprint Wave A 진행 중 발견된 메타 정합성 이슈
+- [ ] **E2E 자동 PR CI 통합** (Sprint 134 이월): `e2e-full.sh`(657줄)를 `.github/workflows/ci.yml`의 PR 트리거에 통합. 현재 workflow_dispatch 수동 실행만 가능
