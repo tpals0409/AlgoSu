@@ -59,11 +59,59 @@ NestJS HTTP 호출부에 Circuit Breaker 패턴을 도입하여 외부 서비스
 
 - sprint-window.md "github-worker 5곳" → "7곳 (status-reporter 5 + worker.ts 2)": 실제 `grep -n fetch services/github-worker/src/status-reporter.ts services/github-worker/src/worker.ts` 결과 7개 호출부 확인
 
-## Carryover (Wave B~E)
+### D6: github-worker CB 확대 — plain class 래퍼 (Wave B)
+- **Context**: github-worker는 NestJS 아닌 standalone TS. NestJS DI 패턴 미적용 환경에서 CB 도입 필요
+- **Choice**: `CircuitBreakerManager` plain class로 opossum 래핑. main.ts에서 인스턴스 1개 생성 → GitHubWorker/StatusReporter 생성자 주입
+- **호스트별 CB 인스턴스 3개 (Critic 3차 P1 통합 후)**: submission-internal 1개 (5개 메서드 통합 — generic dispatcher), gateway-internal 1개 (gateway-getUserGitHubInfo), problem-service 1개 (problem-getProblemInfo). 호스트 1개 = CB 1개 원칙으로 host-isolation 강화 (dead host 부하 증폭 차단)
+  - 초기 설계는 5개 메서드별 별도 CB였으나 같은 host를 공유하는 reporter들이 부하 분산 효과 없이 dead host hammering 위험만 증가시킨다는 Critic 3차 지적으로 호스트 단일 CB로 통합
+- **fallback 전략**: StatusReporter 5곳은 throw 전파 (DLQ/멱등성 처리), gateway-getUserGitHubInfo는 throw 전파 (token 없으면 push 불가), problem-getProblemInfo는 fallback으로 기본값 반환 + 외부 try/catch 안전망 유지 (기존 catch 동작 유지 → 회귀 0건)
+- **메트릭 prefix**: `algosu_github_worker_circuit_breaker_*` (서비스 prefix만 다르고 라벨/구조는 Wave A와 동일)
+- **Code Paths**: `services/github-worker/src/circuit-breaker.ts` (신규 + spec), `services/github-worker/src/main.ts`, `services/github-worker/src/worker.ts`, `services/github-worker/src/status-reporter.ts`, `services/github-worker/src/metrics.ts` (registry export)
 
-- [ ] Wave B: github-worker 7곳 CB 적용 (status-reporter 5 + worker.ts 2, 호스트별 CB 공유)
+### D7: errorFilter 정책 + 호스트 단일 CB (Wave B Critic 1~3차 통합)
+- **Context (1차)**: Critic 1차 리뷰 P1 2건 — 4xx 영구 에러(404 not found 등)가 CB failure로 카운트되어 회로 OPEN. 정상 메시지까지 reject되어 워커가 30초간 마비되는 광범위 outage 위험 (Critic 1차 P1)
+- **Context (2차)**: 1차 수정으로 모든 4xx(`>=400 && <500`)를 errorFilter로 제외했으나, 401/403까지 통과 → X-Internal-Key 회전/오설정으로 영구 401/403 발생 시 internal-auth outage 보호 실패. 또한 opossum errorFilter 통과 시 emit되는 `success` 이벤트 첫 인자가 Error 인스턴스(filtered된 에러 객체)인데 `result="success"` 라벨로 카운트 → 메트릭 부정확 (Critic 2차 P1+P2)
+- **Context (3차)**:
+  - status-reporter의 5개 메서드별 CB(`submission-getSubmission` 외 4개)가 같은 submission-service host를 공유. submission-service 장애 시 `submission-getSubmission`만 OPEN되고 다른 4개는 CLOSED 유지 → dead host에 계속 callback 호출 → host-isolation 목적 무력화 + 부하 증폭 (Critic 3차 P1)
+  - `FILTERED_BUSINESS_STATUS`에 400 포함 → DTO/contract regression(header missing, validation drift, schema mismatch) 발생 시 CB OPEN 안되어 dead dependency 무한 hammering (Critic 3차 P2)
+- **Choice (1·2차 유지)**:
+  - errorFilter 범위를 명시적 비즈니스 4xx 화이트리스트로 축소 — 401/403/408/429 등은 CB failure로 정상 카운트하여 인증/권한/timeout/overload outage 보호 유지
+  - opossum errorFilter 통과 시 emit되는 success 이벤트에서 result가 Error 인스턴스인 경우를 분기하여 `requests_total{result="filtered"}`로 분리 카운트 (메트릭 정확성)
+  - `result` 라벨 enum 확장: `success | failure | reject | timeout | filtered`
+- **Choice (3차)**:
+  - status-reporter를 **호스트 단일 CB(`submission-internal`)** 로 통합. generic dispatcher(`_dispatch` + `_resolveEndpoint`)로 5개 op(get/reportSuccess/reportFailed/reportTokenInvalid/reportSkipped) 공유. SubmissionRequest payload(`{ op, submissionId, body? }`) 1개로 호출 통일. host 경계에서 OPEN되면 5개 메서드 모두 동시 차단되어 dead host 보호.
+  - `FILTERED_BUSINESS_STATUS = {404, 410, 422}` — 400 제거. 400은 contract regression 시그널이므로 CB failure로 카운트하여 회로 OPEN + 알람 트리거.
+  - StatusReporter public API 시그니처 무변경 — 기존 호출부(worker.ts) 무영향
+- **Rationale**:
+  - host-isolation의 본질은 "장애 호스트에 계속 호출하지 않기" — 같은 호스트 내 메서드별 분리는 부하 증폭만 유발. 호스트 1개 = CB 1개 원칙으로 통합
+  - 400 Bad Request는 영구 비즈니스 에러처럼 보이지만 contract drift(header missing, schema mismatch) 일 수 있어 회로 보호 대상. 진짜 영구 비즈니스 에러는 404(없음)/410(영구 제거)/422(룰 위반)로 충분
+- **Code Paths**:
+  - `services/github-worker/src/status-reporter.ts` (5개 CB → 1개 host CB + dispatcher / `_dispatch` + `_resolveEndpoint` SRP 분리)
+  - `services/github-worker/src/circuit-breaker.ts` (`FILTERED_BUSINESS_STATUS`에서 400 제거)
+  - `services/github-worker/src/status-reporter.spec.ts` (호스트 단일 CB 검증 + `_resolveEndpoint`/`_dispatch` 단위 테스트 신규)
+  - `services/github-worker/src/circuit-breaker.spec.ts` (400 보호 OPEN 케이스 신규 + 화이트리스트 정의/단위 동작 갱신)
+  - `services/github-worker/src/worker.spec.ts` (5개 CB 등록 검증 → 1개 host CB 검증)
+- **테스트 갱신/추가 (3차)**: status-reporter.spec.ts 호스트 단일 CB 등록 검증 + `_resolveEndpoint` 5건(op별 endpoint 매핑) + `_dispatch` 4건(get/reportSuccess/reportFailed/non-ok status 첨부) + circuit-breaker.spec.ts 400 OPEN 전이 1건 신규. jest 169 → **175** (+6 net), coverage stmts 99.79% / branches 97.45% / functions 100% / lines 100% (threshold 98/92/100/98 충족)
+- **Wave A 호환**: `submission/circuit-breaker.service.ts`에도 동일 화이트리스트 정책(400 제외 포함) + filtered 메트릭 분리 시드 → Sprint 135 Wave C 또는 별건 PR. 현재 fetchAiQuota는 fallback `() => true`이므로 사용자 영향은 없으나, 일관성·메트릭 정확성·인증/contract 장애 보호를 위해 후속 정정 권장
+
+## Wave B 산출물
+
+| 항목 | 결과 |
+|------|------|
+| 브랜치 | feat/sprint-135-cb-worker |
+| CB 인스턴스 | 3개 (submission-internal / gateway-getUserGitHubInfo / problem-getProblemInfo) — Critic 3차 P1로 7개 → 3개 통합 |
+| 커밋 | 5 atomic (deps+manager → status-reporter → worker → tests → ADR) + 2 (1차 errorFilter fix + ADR D7) + 2 (Critic 2차 화이트리스트+filtered 라벨 fix + ADR D7 갱신) + 2~3 (Critic 3차 호스트 단일 CB + 400 제거 + ADR D7 갱신) |
+| 테스트 | 8 suites / 175 tests (Wave B 146 + D7 1차 +17 + Critic 2차 +6 + Critic 3차 +6 net: 호스트 단일 CB 검증 +2 / `_resolveEndpoint` op별 +5 / `_dispatch` 4건 / 400 OPEN 전이 +1 / 메서드별 CB 검증 5건 통합 후 -7 정도 — 자세한 diff는 코드 참조) |
+| coverage | stmts 99.79% / branches 97.45% / functions 100% / lines 100% (threshold 98/92/100/98 충족) |
+| typecheck | 0 errors |
+| lint | 0 errors |
+
+## Carryover (Wave C~E)
+
+- [x] Wave B: github-worker 7곳 CB 적용 (status-reporter 5 + worker.ts 2, 메서드별 별도 CB — 단일 host에 다양한 action 공존하므로 메서드별 분리가 reject/failure label 분리에 유리)
 - [ ] Wave C: submission 2곳 추가 (fetchSourcePlatform L257 + submission.service L504)
 - [ ] Wave D: Grafana 대시보드 1식
 - [ ] Wave E: Sprint 135 ADR 종합 갱신 + sprint-window.md 최종 정리
+- [ ] **Wave A 후속 정정 (D7 Critic 2차)**: `services/submission/src/common/circuit-breaker/circuit-breaker.service.ts`에 동일 정책 적용 — `FILTERED_BUSINESS_STATUS = {400, 404, 410, 422}` 화이트리스트 errorFilter + success 핸들러 `result instanceof Error` 분기로 `filtered` 라벨 분리. 현재 fetchAiQuota fallback이 fail-open이라 사용자 영향 없으나 일관성·메트릭 정확성·인증 장애 보호 위해 권장
 - [ ] 별건 시드: CLAUDE.md L11 "ai-feedback" → 실제 "ai-analysis" 명명 불일치 (Sprint 136+)
 - [ ] 별건 시드: E2E 자동 PR CI 통합 (Sprint 134 이월)
