@@ -45,9 +45,9 @@ DELETE FROM users WHERE id IN (
 
 INSERT INTO users (id, email, name, avatar_url, oauth_provider, github_connected, github_user_id, github_username, github_token, "publicId", profile_slug, is_profile_public, created_at, updated_at, deleted_at)
 VALUES
-  ('00000000-0000-4000-a000-000000000001', 'demo@algosu.kr',  '김알고', 'preset:avatar-1', 'google', false, NULL, NULL, NULL, '00000000-0000-4000-b000-000000000001', 'kim-algo',   true,  '2026-03-01 09:00:00+09', '2026-03-15 18:00:00+09', NULL),
-  ('00000000-0000-4000-a000-000000000002', 'demo2@algosu.kr', '이코딩', 'preset:avatar-2', 'naver',  false, NULL, NULL, NULL, '00000000-0000-4000-b000-000000000002', 'lee-coding',  true,  '2026-03-01 09:05:00+09', '2026-03-15 17:00:00+09', NULL),
-  ('00000000-0000-4000-a000-000000000003', 'demo3@algosu.kr', '박수학', 'preset:avatar-3', 'kakao',  false, NULL, NULL, NULL, '00000000-0000-4000-b000-000000000003', 'park-suhak', true,  '2026-03-01 09:10:00+09', '2026-03-14 20:00:00+09', NULL);
+  ('00000000-0000-4000-a000-000000000001', 'demo@algosu.kr',  '김알고', 'preset:tree',     'google', false, NULL, NULL, NULL, '00000000-0000-4000-b000-000000000001', 'kim-algo',   true,  '2026-03-01 09:00:00+09', '2026-03-15 18:00:00+09', NULL),
+  ('00000000-0000-4000-a000-000000000002', 'demo2@algosu.kr', '이코딩', 'preset:graph',    'naver',  false, NULL, NULL, NULL, '00000000-0000-4000-b000-000000000002', 'lee-coding',  true,  '2026-03-01 09:05:00+09', '2026-03-15 17:00:00+09', NULL),
+  ('00000000-0000-4000-a000-000000000003', 'demo3@algosu.kr', '박수학', 'preset:sort',     'kakao',  false, NULL, NULL, NULL, '00000000-0000-4000-b000-000000000003', 'park-suhak', true,  '2026-03-01 09:10:00+09', '2026-03-14 20:00:00+09', NULL);
 
 -- ---------- studies ----------
 INSERT INTO studies (id, name, description, created_by, github_repo, status, "groundRules", avatar_url, "publicId", created_at, updated_at)
