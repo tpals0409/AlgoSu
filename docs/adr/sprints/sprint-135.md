@@ -67,14 +67,22 @@ NestJS HTTP 호출부에 Circuit Breaker 패턴을 도입하여 외부 서비스
 - **메트릭 prefix**: `algosu_github_worker_circuit_breaker_*` (서비스 prefix만 다르고 라벨/구조는 Wave A와 동일)
 - **Code Paths**: `services/github-worker/src/circuit-breaker.ts` (신규 + spec), `services/github-worker/src/main.ts`, `services/github-worker/src/worker.ts`, `services/github-worker/src/status-reporter.ts`, `services/github-worker/src/metrics.ts` (registry export)
 
+### D7: errorFilter 정책 — 4xx 비즈니스 에러는 CB 제외 (Wave B 수정)
+- **Context**: Critic 1차 리뷰 P1 2건 — 4xx 영구 에러(404 not found, 401, 403 등)가 CB failure로 카운트되어 회로 OPEN. 정상 메시지까지 reject되어 워커가 30초간 마비되는 광범위 outage 위험. CB는 인프라 장애(5xx/timeout/network) 보호용이며 4xx 비즈니스 에러는 CB 대상 아님 (retry해도 결과 동일한 영구 에러)
+- **Choice**: opossum `errorFilter(err) => boolean` 옵션 도입. true 반환 시 해당 에러는 success 이벤트로 처리되어 failure counter 미증가 + OPEN 전이 미트리거. 에러 객체의 `status` 속성이 400~499 범위면 filtered 처리(failure 미카운트), 5xx/타임아웃/네트워크 에러(status 미첨부)만 CB failure로 카운트
+- **Rationale**: CB는 인프라 장애 보호용이며 4xx는 비즈니스 로직 실패(영구). retry해도 결과 동일하므로 CB 진입 부적절. 호출부에서 throw 시 `buildHttpError(message, res.status)` helper로 status 첨부 → CircuitBreakerManager의 default errorFilter가 분기. `CreateBreakerOptions.errorFilter`로 호출자 override도 가능
+- **Code Paths**: `services/github-worker/src/circuit-breaker.ts` (`DEFAULT_ERROR_FILTER` export + `DEFAULT_CB_OPTIONS.errorFilter` 등록 + `CreateBreakerOptions.errorFilter` 노출), `services/github-worker/src/status-reporter.ts` (5곳 throw에 `buildHttpError`로 status 첨부), `services/github-worker/src/worker.ts` (2곳 throw에 동일 helper 적용)
+- **테스트 추가**: `circuit-breaker.spec.ts` errorFilter 단위 동작 4건 + integration 4건(4xx CLOSED 유지 / 5xx OPEN / 네트워크 에러 OPEN / 호출자 override) + `status-reporter.spec.ts` 5곳 status 첨부 검증 + `worker.spec.ts` 2곳 status 첨부 검증(4xx/5xx 각각). jest 146 → **163** (+17), coverage stmts 99.8% / branches 97.36% / functions 100% / lines 100% (threshold 98/92/100/98 충족)
+- **Wave A 호환**: `submission/circuit-breaker.service.ts`에도 동일 정책 적용 시드 → Sprint 135 Wave C 또는 별건 PR. 현재 fetchAiQuota는 fallback `() => true`이므로 4xx OPEN의 사용자 영향은 없으나, 일관성 + 메트릭 정확성을 위해 후속 정정 권장
+
 ## Wave B 산출물
 
 | 항목 | 결과 |
 |------|------|
 | 브랜치 | feat/sprint-135-cb-worker |
-| 커밋 | 5 atomic (deps+manager → status-reporter → worker → tests → ADR) |
-| 테스트 | 8 suites / 146 tests (기존 113 + 신규 33: CB 16 + status-reporter +9 + worker +8) |
-| coverage | stmts 99.38% / branches 97.31% / functions 100% / lines 99.57% (threshold 92/100/98/98 충족) |
+| 커밋 | 5 atomic (deps+manager → status-reporter → worker → tests → ADR) + 2 (errorFilter fix + ADR D7) |
+| 테스트 | 8 suites / 163 tests (Wave B 146 + D7 신규 17: CB errorFilter +8 + status-reporter +5 + worker +4) |
+| coverage | stmts 99.8% / branches 97.36% / functions 100% / lines 100% (threshold 98/92/100/98 충족) |
 | typecheck | 0 errors |
 | lint | 0 errors |
 
