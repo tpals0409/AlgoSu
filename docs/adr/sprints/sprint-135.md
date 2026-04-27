@@ -131,13 +131,15 @@ NestJS HTTP 호출부에 Circuit Breaker 패턴을 도입하여 외부 서비스
   - `errorFilter: () => false`로 모든 비-2xx를 CB failure로 카운트하여 `volumeThreshold` 도달 시 OPEN → fallback `() => true`로 사용자 영향 0 + 알람 시그널 확보
   - **Code Paths**: `services/submission/src/saga/saga-orchestrator.service.ts:onModuleInit` createBreaker 호출
   - **테스트**: `saga-orchestrator.service.spec.ts`에 `errorFilter` option 검증 + override 동작 단위 검증 2건 신규
-- **P2 — `result instanceof Error` 분기 한계 명시 (JSDoc only)**:
-  - `result instanceof Error` 휴리스틱은 두 케이스에서 부정확:
-    1. action이 Error 인스턴스를 정상 resolve로 반환 → filtered로 오분류
-    2. errorFilter가 Error가 아닌 값(string, plain object 등) 통과 → success로 오분류
-  - 본 프로젝트의 모든 CB action은 Error를 throw로만 사용하므로 (1) 실용적 영향 0. (2)는 호출자 시그니처 준수 시 발생하지 않음
-  - **향후 개선 시드**: errorFilter wrapper 패턴(filterImpl 호출 시 사이드 이펙트로 카운트 증가)으로 분류 정확성 회복. Wave B(`services/github-worker/src/circuit-breaker.ts`)에 동일 한계 존재 → 두 모듈 동시 follow-up 권장 (Sprint 136+ 별건 PR)
-  - **Code Paths**: `services/submission/src/common/circuit-breaker/circuit-breaker.service.ts` success 핸들러 위 JSDoc
+- **P2 정확 해결 (Critic 2차)**:
+  - errorFilter wrapper + WeakSet 마커 패턴으로 정확한 success/filtered 분기 도입
+  - wrapper에서 filtered 시 (a) `requests_total{result="filtered"}` 카운트 + (b) WeakSet에 마커 추가
+  - success 핸들러에서 result가 객체이고 WeakSet에 마커 있으면 skip (중복 카운트 방지)
+  - 기존 `instanceof Error` 휴리스틱이 부정확했던 두 케이스(Error resolve / non-Error throw)를 모두 해결
+  - **남은 한계**: primitive(string/number) throw는 WeakSet 추가 불가 → primitive errorFilter 통과 시 success 1건 추가 카운트 (실용적 영향 0, 본 프로젝트는 Error/객체만 throw)
+  - **Code Paths**: `services/submission/src/common/circuit-breaker/circuit-breaker.service.ts` createBreaker(wrapper + WeakSet) + success 핸들러(마커 조회) + onModuleDestroy(WeakSet 정리)
+  - **테스트 추가**: plain object throw + filtered (1건) / WeakSet 재사용 안전성 (1건) / primitive 한계 명시 (1건) / 객체 resolve 회귀 방지 (1건) — 총 +4건
+  - **Sprint 136+ 시드 갱신**: Wave B(`services/github-worker/src/circuit-breaker.ts`)에 동일 wrapper 패턴 적용 (현재 `instanceof Error` 휴리스틱)
 
 ## Carryover (Wave C~E)
 
@@ -148,4 +150,4 @@ NestJS HTTP 호출부에 Circuit Breaker 패턴을 도입하여 외부 서비스
 - [x] **Wave A 후속 정정 (D7 Critic 2차) → D8로 격상 완료**: `services/submission/src/common/circuit-breaker/circuit-breaker.service.ts`에 동일 정책 적용 — `FILTERED_BUSINESS_STATUS = {404, 410, 422}` 화이트리스트 errorFilter + success 핸들러 `result instanceof Error` 분기로 `filtered` 라벨 분리. fetchAiQuota throw 시 status 첨부. buildHttpError 헬퍼 추가
 - [ ] 별건 시드: CLAUDE.md L11 "ai-feedback" → 실제 "ai-analysis" 명명 불일치 (Sprint 136+)
 - [ ] 별건 시드: E2E 자동 PR CI 통합 (Sprint 134 이월)
-- [ ] **Sprint 136+ 시드 (D8 P2 follow-up)**: CB filtered 분류 정확성 개선 — `services/submission/src/common/circuit-breaker/circuit-breaker.service.ts` + `services/github-worker/src/circuit-breaker.ts` 양 모듈에 errorFilter wrapper 패턴 도입 (`instanceof Error` 휴리스틱 대체)
+- [ ] **Sprint 136+ 시드**: Wave B(github-worker/circuit-breaker.ts)에 errorFilter wrapper + WeakSet 패턴 동기화 적용 (현재 `instanceof Error` 휴리스틱 → 정확한 분기로 갱신, Wave A와 일관성 회복)
