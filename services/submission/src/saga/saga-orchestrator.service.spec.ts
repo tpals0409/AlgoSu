@@ -6,6 +6,7 @@ import { SagaOrchestratorService } from './saga-orchestrator.service';
 import { Submission, SagaStep, GitHubSyncStatus } from '../submission/submission.entity';
 import { MqPublisherService } from './mq-publisher.service';
 import { CircuitBreakerService } from '../common/circuit-breaker';
+import { ProblemServiceClient } from '../common/problem-service-client';
 
 // ─── Mock 팩토리 ────────────────────────────────────────────────
 const mockSubmissionRepo = () => ({
@@ -28,6 +29,12 @@ const mockCircuitBreakerService = () => {
     _mockBreaker: mockBreaker,
   };
 };
+
+/** Sprint 135 D9 — ProblemServiceClient mock (CB는 client 내부에서 처리) */
+const mockProblemServiceClient = () => ({
+  getSourcePlatform: jest.fn().mockResolvedValue('baekjoon'),
+  getDeadline: jest.fn().mockResolvedValue({ isLate: false, weekNumber: null }),
+});
 
 // ─── 테스트 헬퍼 ────────────────────────────────────────────────
 const createMockSubmission = (overrides: Partial<Submission> = {}): Submission => ({
@@ -61,6 +68,7 @@ describe('SagaOrchestratorService', () => {
   let repo: jest.Mocked<Repository<Submission>>;
   let mqPublisher: jest.Mocked<MqPublisherService>;
   let cbService: ReturnType<typeof mockCircuitBreakerService>;
+  let problemClient: ReturnType<typeof mockProblemServiceClient>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -69,6 +77,7 @@ describe('SagaOrchestratorService', () => {
         { provide: getRepositoryToken(Submission), useFactory: mockSubmissionRepo },
         { provide: MqPublisherService, useFactory: mockMqPublisher },
         { provide: CircuitBreakerService, useFactory: mockCircuitBreakerService },
+        { provide: ProblemServiceClient, useFactory: mockProblemServiceClient },
         {
           provide: ConfigService,
           useValue: {
@@ -97,6 +106,7 @@ describe('SagaOrchestratorService', () => {
     repo = module.get(getRepositoryToken(Submission));
     mqPublisher = module.get(MqPublisherService);
     cbService = module.get(CircuitBreakerService);
+    problemClient = module.get(ProblemServiceClient);
   });
 
   afterEach(async () => {
@@ -880,7 +890,48 @@ describe('SagaOrchestratorService', () => {
     });
   });
 
-  // ─── 24. fetchAiQuota — CB action 본체 직접 검증 ────────────────
+  // ─── 24+. ProblemServiceClient 위임 (Sprint 135 D9 — Wave C) ───
+  describe('ProblemServiceClient 위임 (Wave C)', () => {
+    it('advanceToAiQueued — problemClient.getSourcePlatform을 호출해 sourcePlatform 전파', async () => {
+      const submission = createMockSubmission({ sagaStep: SagaStep.GITHUB_QUEUED });
+      repo.findOne.mockResolvedValue(submission);
+      repo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+      mqPublisher.publishAiAnalysis.mockResolvedValue(undefined);
+      problemClient.getSourcePlatform.mockResolvedValueOnce('leetcode');
+
+      await service.advanceToAiQueued('sub-uuid-1');
+
+      expect(problemClient.getSourcePlatform).toHaveBeenCalledWith(
+        'problem-uuid-1',
+        'study-uuid-1',
+        'user-1',
+      );
+      expect(mqPublisher.publishAiAnalysis).toHaveBeenCalledWith(
+        expect.objectContaining({ sourcePlatform: 'leetcode' }),
+      );
+    });
+
+    it('resumeSaga(AI_QUEUED) — problemClient.getSourcePlatform fallback undefined 시 publish 그대로 진행', async () => {
+      const aiQueued = createMockSubmission({
+        id: 'sub-resume-ai',
+        sagaStep: SagaStep.AI_QUEUED,
+        createdAt: new Date(),
+      });
+      repo.find.mockResolvedValue([aiQueued]);
+      repo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+      mqPublisher.publishAiAnalysis.mockResolvedValue(undefined);
+      problemClient.getSourcePlatform.mockResolvedValueOnce(undefined);
+
+      await service.onModuleInit();
+
+      expect(problemClient.getSourcePlatform).toHaveBeenCalled();
+      expect(mqPublisher.publishAiAnalysis).toHaveBeenCalledWith(
+        expect.objectContaining({ sourcePlatform: undefined }),
+      );
+    });
+  });
+
+  // ─── 25. fetchAiQuota — CB action 본체 직접 검증 ────────────────
   describe('fetchAiQuota (CB action 본체)', () => {
     it('200 OK + allowed=true 응답 시 true 반환', async () => {
       const fetchSpy = jest.spyOn(global, 'fetch' as never).mockResolvedValueOnce({

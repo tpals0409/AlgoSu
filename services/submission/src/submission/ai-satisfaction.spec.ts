@@ -6,13 +6,13 @@
  */
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { ConfigService } from '@nestjs/config';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { Repository, DataSource } from 'typeorm';
 import { SubmissionService } from './submission.service';
 import { Submission, SagaStep, GitHubSyncStatus } from './submission.entity';
 import { AiSatisfaction } from './ai-satisfaction.entity';
 import { SagaOrchestratorService } from '../saga/saga-orchestrator.service';
+import { ProblemServiceClient } from '../common/problem-service-client';
 import { CreateAiSatisfactionDto } from './dto/create-ai-satisfaction.dto';
 
 // ─── Mock QueryBuilder ──────────────────────────────────────────
@@ -55,16 +55,9 @@ const mockSagaOrchestrator = () => ({
   advanceToDone: jest.fn(),
 });
 
-const mockConfigService = () => ({
-  getOrThrow: jest.fn((key: string) => {
-    const map: Record<string, string> = {
-      GATEWAY_INTERNAL_URL: 'http://gateway:3000',
-      INTERNAL_KEY_GATEWAY: 'test-internal-key',
-      PROBLEM_SERVICE_URL: 'http://problem:3000',
-      PROBLEM_SERVICE_KEY: 'test-problem-key',
-    };
-    return map[key];
-  }),
+const mockProblemServiceClient = () => ({
+  getSourcePlatform: jest.fn().mockResolvedValue(undefined),
+  getDeadline: jest.fn().mockResolvedValue({ isLate: false, weekNumber: null }),
 });
 
 const mockDataSource = () => ({
@@ -122,8 +115,8 @@ describe('SubmissionService — AI 만족도', () => {
         { provide: getRepositoryToken(Submission), useFactory: mockSubmissionRepo },
         { provide: getRepositoryToken(AiSatisfaction), useFactory: mockSatisfactionRepo },
         { provide: SagaOrchestratorService, useFactory: mockSagaOrchestrator },
-        { provide: ConfigService, useFactory: mockConfigService },
         { provide: DataSource, useFactory: mockDataSource },
+        { provide: ProblemServiceClient, useFactory: mockProblemServiceClient },
       ],
     }).compile();
 

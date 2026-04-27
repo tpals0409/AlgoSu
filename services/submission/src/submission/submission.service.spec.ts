@@ -1,12 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { ConfigService } from '@nestjs/config';
 import { NotFoundException } from '@nestjs/common';
 import { Repository, DataSource } from 'typeorm';
 import { SubmissionService } from './submission.service';
 import { Submission, SagaStep, GitHubSyncStatus } from './submission.entity';
 import { AiSatisfaction } from './ai-satisfaction.entity';
 import { SagaOrchestratorService } from '../saga/saga-orchestrator.service';
+import { ProblemServiceClient } from '../common/problem-service-client';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { UpdateAiResultDto } from './dto/update-ai-result.dto';
 import { PaginationQueryDto } from './dto/pagination-query.dto';
@@ -51,15 +51,10 @@ const mockSagaOrchestrator = () => ({
   advanceToDone: jest.fn(),
 });
 
-const mockConfigService = () => ({
-  getOrThrow: jest.fn((key: string) => {
-    const map: Record<string, string> = {
-      GATEWAY_INTERNAL_URL: 'http://gateway:3000',
-      INTERNAL_KEY_GATEWAY: 'test-internal-key',
-      PROBLEM_SERVICE_URL: 'http://problem:3000',
-    };
-    return map[key];
-  }),
+/** Sprint 135 D9 — ProblemServiceClient mock (CB는 client 내부에서 처리) */
+const mockProblemServiceClient = () => ({
+  getSourcePlatform: jest.fn().mockResolvedValue(undefined),
+  getDeadline: jest.fn().mockResolvedValue({ isLate: false, weekNumber: null }),
 });
 
 const createMockTransactionRunner = () => ({
@@ -110,10 +105,7 @@ describe('SubmissionService', () => {
   let repo: jest.Mocked<Repository<Submission>>;
   let sagaOrchestrator: jest.Mocked<SagaOrchestratorService>;
   let dataSource: jest.Mocked<DataSource>;
-
-
-  // global.fetch 모킹
-  const originalFetch = global.fetch;
+  let problemClient: ReturnType<typeof mockProblemServiceClient>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -122,8 +114,8 @@ describe('SubmissionService', () => {
         { provide: getRepositoryToken(Submission), useFactory: mockSubmissionRepo },
         { provide: getRepositoryToken(AiSatisfaction), useFactory: mockSatisfactionRepo },
         { provide: SagaOrchestratorService, useFactory: mockSagaOrchestrator },
-        { provide: ConfigService, useFactory: mockConfigService },
         { provide: DataSource, useFactory: mockDataSource },
+        { provide: ProblemServiceClient, useFactory: mockProblemServiceClient },
       ],
     }).compile();
 
@@ -131,11 +123,10 @@ describe('SubmissionService', () => {
     repo = module.get(getRepositoryToken(Submission));
     sagaOrchestrator = module.get(SagaOrchestratorService);
     dataSource = module.get(DataSource);
-    module.get(ConfigService);
+    problemClient = module.get(ProblemServiceClient);
   });
 
   afterEach(() => {
-    global.fetch = originalFetch;
     jest.restoreAllMocks();
   });
 
@@ -1005,14 +996,10 @@ describe('SubmissionService', () => {
     });
   });
 
-  // ─── 14. create() — 지각 제출 (checkLateSubmission) ───────────
-  describe('create() — 지각 제출', () => {
-    it('마감 시간이 지났으면 isLate=true로 저장', async () => {
-      // checkLateSubmission — 마감 시간이 과거
-      global.fetch = jest.fn().mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ data: { deadline: '2020-01-01T00:00:00Z', status: 'active' } }),
-      });
+  // ─── 14. create() — 지각 제출 (checkLateSubmission via ProblemServiceClient) ─
+  describe('create() — 지각 제출 (Wave C — ProblemServiceClient 위임)', () => {
+    it('마감 시간이 지났으면 isLate=true로 저장 + client.getDeadline 호출', async () => {
+      problemClient.getDeadline.mockResolvedValueOnce({ isLate: true, weekNumber: '3월1주차' });
 
       const saved = createMockSubmission({ isLate: true });
       repo.findOne.mockResolvedValue(null);
@@ -1028,14 +1015,19 @@ describe('SubmissionService', () => {
 
       await service.create(dto, 'user-1', 'study-uuid-1');
 
+      expect(problemClient.getDeadline).toHaveBeenCalledWith(
+        'problem-uuid-1',
+        'study-uuid-1',
+        'user-1',
+      );
       expect(repo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ isLate: true }),
+        expect.objectContaining({ isLate: true, weekNumber: '3월1주차' }),
       );
     });
 
-    it('마감 시간 조회 실패 시 isLate=false', async () => {
-      // checkLateSubmission — 조회 실패
-      global.fetch = jest.fn().mockResolvedValueOnce({ ok: false, status: 500 });
+    it('client fallback({isLate:false, weekNumber:null}) 시 isLate=false로 저장', async () => {
+      // ProblemServiceClient 내부에서 CB OPEN/조회 실패 → fallback 처리됨
+      problemClient.getDeadline.mockResolvedValueOnce({ isLate: false, weekNumber: null });
 
       const saved = createMockSubmission({ isLate: false });
       repo.findOne.mockResolvedValue(null);
@@ -1052,54 +1044,7 @@ describe('SubmissionService', () => {
       await service.create(dto, 'user-1', 'study-uuid-1');
 
       expect(repo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ isLate: false }),
-      );
-    });
-
-    it('마감 시간 미설정(null)이면 isLate=false', async () => {
-      global.fetch = jest.fn().mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ data: { deadline: null, status: 'active' } }),
-      });
-
-      const saved = createMockSubmission({ isLate: false });
-      repo.findOne.mockResolvedValue(null);
-      repo.create.mockReturnValue(saved);
-      repo.save.mockResolvedValue(saved);
-      sagaOrchestrator.advanceToGitHubQueued.mockResolvedValue(undefined);
-
-      const dto: CreateSubmissionDto = {
-        problemId: 'problem-uuid-1',
-        language: 'python',
-        code: 'print("no-deadline")',
-      };
-
-      await service.create(dto, 'user-1', 'study-uuid-1');
-
-      expect(repo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ isLate: false }),
-      );
-    });
-
-    it('마감 시간 조회 중 네트워크 에러 시 isLate=false', async () => {
-      global.fetch = jest.fn().mockRejectedValueOnce(new Error('network error'));
-
-      const saved = createMockSubmission({ isLate: false });
-      repo.findOne.mockResolvedValue(null);
-      repo.create.mockReturnValue(saved);
-      repo.save.mockResolvedValue(saved);
-      sagaOrchestrator.advanceToGitHubQueued.mockResolvedValue(undefined);
-
-      const dto: CreateSubmissionDto = {
-        problemId: 'problem-uuid-1',
-        language: 'python',
-        code: 'print("error")',
-      };
-
-      await service.create(dto, 'user-1', 'study-uuid-1');
-
-      expect(repo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ isLate: false }),
+        expect.objectContaining({ isLate: false, weekNumber: null }),
       );
     });
   });
@@ -1157,15 +1102,10 @@ describe('SubmissionService', () => {
     });
   });
 
-  // ─── 17. create() — 마감 시간이 미래 (isLate=false) ─────────────
-  describe('create() — 마감 시간이 미래인 경우', () => {
-    it('마감 시간이 미래이면 isLate=false로 저장', async () => {
-      const futureDate = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString(); // 1주일 후
-
-      global.fetch = jest.fn().mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ data: { deadline: futureDate, status: 'active' } }),
-      });
+  // ─── 17. create() — 마감 시간이 미래 (isLate=false, Wave C) ─────
+  describe('create() — 마감 시간이 미래인 경우 (Wave C — client mock)', () => {
+    it('client.getDeadline이 isLate=false 반환 시 그대로 저장', async () => {
+      problemClient.getDeadline.mockResolvedValueOnce({ isLate: false, weekNumber: '3월2주차' });
 
       const saved = createMockSubmission({ isLate: false });
       repo.findOne.mockResolvedValue(null);
@@ -1182,7 +1122,7 @@ describe('SubmissionService', () => {
       await service.create(dto, 'user-1', 'study-uuid-1');
 
       expect(repo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ isLate: false }),
+        expect.objectContaining({ isLate: false, weekNumber: '3월2주차' }),
       );
     });
   });
