@@ -19,21 +19,25 @@ const OPOSSUM_TIMEOUT_CODE = 'ETIMEDOUT';
 const STATE_CODE = { closed: 0, halfOpen: 1, open: 2 } as const;
 
 /**
- * CB failure에서 제외할 비즈니스 의미 4xx 화이트리스트 (Sprint 135 D7 — Critic 2차 P1).
+ * CB failure에서 제외할 비즈니스 의미 4xx 화이트리스트 (Sprint 135 D7 — Critic 2차+3차).
  *
  * 정책: retry해도 결과 동일한 영구 비즈니스 에러만 제외. 401/403(인증 장애)·408(timeout)·
  * 429(rate limit)·기타는 CB failure로 카운트하여 internal-auth outage / overload 시
  * 회로 OPEN으로 보호.
  *
- * - 400 Bad Request — 요청 검증 실패 (영구)
  * - 404 Not Found — 삭제된/없는 리소스 (영구)
  * - 410 Gone — 영구 제거된 리소스
- * - 422 Unprocessable Entity — 비즈니스 룰 위반 (영구)
+ * - 422 Unprocessable Entity — 비즈니스 룰 위반 (validation은 클라이언트 측 정정 가능)
+ *
+ * **Critic 3차 P2 — 400 제거**: 400 Bad Request는 DTO/contract regression(header missing,
+ * validation drift, schema mismatch) 시그널일 수 있어 화이트리스트에서 제외. 이를 filtered
+ * 처리하면 dead dependency를 무한 hammering하게 되므로 CB failure로 카운트하여 회로 OPEN +
+ * 알람을 통해 contract drift 보호.
  *
  * 401/403은 X-Internal-Key 회전/오설정으로 영구 발생 시 CB OPEN을 통해 빠른 차단 +
  * 알람 트리거가 의도된 동작이므로 화이트리스트에서 제외.
  */
-export const FILTERED_BUSINESS_STATUS = new Set<number>([400, 404, 410, 422]);
+export const FILTERED_BUSINESS_STATUS = new Set<number>([404, 410, 422]);
 
 /**
  * 기본 errorFilter -- 비즈니스 의미 4xx 화이트리스트만 CB failure에서 제외.

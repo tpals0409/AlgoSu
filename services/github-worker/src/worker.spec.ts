@@ -1075,16 +1075,12 @@ describe('GitHubWorker', () => {
   });
 
   describe('Sprint 135 Wave B — CB 적용', () => {
-    it('CircuitBreakerManager 생성자 주입 시 worker 측 CB 2개 등록', () => {
+    it('CircuitBreakerManager 생성자 주입 시 호스트별 CB 3개 등록 (Critic 3차 P1)', () => {
       // GitHubWorker 생성자에서 등록되는 CB 이름 검증
       expect(cbManager.getBreaker('gateway-getUserGitHubInfo')).toBeDefined();
       expect(cbManager.getBreaker('problem-getProblemInfo')).toBeDefined();
-      // StatusReporter가 등록한 5개 CB도 함께 존재
-      expect(cbManager.getBreaker('submission-getSubmission')).toBeDefined();
-      expect(cbManager.getBreaker('submission-reportSuccess')).toBeDefined();
-      expect(cbManager.getBreaker('submission-reportFailed')).toBeDefined();
-      expect(cbManager.getBreaker('submission-reportTokenInvalid')).toBeDefined();
-      expect(cbManager.getBreaker('submission-reportSkipped')).toBeDefined();
+      // StatusReporter는 호스트 단일 CB(`submission-internal`)로 통합 (5 → 1)
+      expect(cbManager.getBreaker('submission-internal')).toBeDefined();
     });
 
     it('_doGetUserGitHubInfo 직접 호출 -- 정상 200', async () => {

@@ -402,13 +402,14 @@ describe('CircuitBreakerManager', () => {
     }
 
     describe('FILTERED_BUSINESS_STATUS 화이트리스트 정의', () => {
-      it('400/404/410/422만 포함하고 401/403/408/429는 제외한다', () => {
+      it('404/410/422만 포함하고 400/401/403/408/429는 제외한다', () => {
         // Critic 2차 P1: 인증/rate-limit/timeout은 CB 보호 대상 (회로 OPEN 트리거 유지)
-        expect(FILTERED_BUSINESS_STATUS.has(400)).toBe(true);
+        // Critic 3차 P2: 400은 DTO/contract regression 시그널 → CB 보호 대상
         expect(FILTERED_BUSINESS_STATUS.has(404)).toBe(true);
         expect(FILTERED_BUSINESS_STATUS.has(410)).toBe(true);
         expect(FILTERED_BUSINESS_STATUS.has(422)).toBe(true);
         // 보호 대상 (CB failure로 카운트되어야 함)
+        expect(FILTERED_BUSINESS_STATUS.has(400)).toBe(false);
         expect(FILTERED_BUSINESS_STATUS.has(401)).toBe(false);
         expect(FILTERED_BUSINESS_STATUS.has(403)).toBe(false);
         expect(FILTERED_BUSINESS_STATUS.has(408)).toBe(false);
@@ -417,15 +418,16 @@ describe('CircuitBreakerManager', () => {
     });
 
     describe('DEFAULT_ERROR_FILTER 단위 동작', () => {
-      it('화이트리스트 status(400/404/410/422)는 true 반환 (CB failure 제외)', () => {
-        expect(DEFAULT_ERROR_FILTER(httpError('bad req', 400))).toBe(true);
+      it('화이트리스트 status(404/410/422)는 true 반환 (CB failure 제외)', () => {
         expect(DEFAULT_ERROR_FILTER(httpError('not found', 404))).toBe(true);
         expect(DEFAULT_ERROR_FILTER(httpError('gone', 410))).toBe(true);
         expect(DEFAULT_ERROR_FILTER(httpError('unprocessable', 422))).toBe(true);
       });
 
-      it('화이트리스트 외 4xx(401/403/408/429)는 false 반환 (CB failure 카운트)', () => {
+      it('화이트리스트 외 4xx(400/401/403/408/429)는 false 반환 (CB failure 카운트)', () => {
         // Critic 2차 P1: 인증 outage / rate limit / timeout은 회로 보호 대상
+        // Critic 3차 P2: 400은 contract regression 보호 (dead dependency hammering 방지)
+        expect(DEFAULT_ERROR_FILTER(httpError('bad req', 400))).toBe(false);
         expect(DEFAULT_ERROR_FILTER(httpError('unauthorized', 401))).toBe(false);
         expect(DEFAULT_ERROR_FILTER(httpError('forbidden', 403))).toBe(false);
         expect(DEFAULT_ERROR_FILTER(httpError('req timeout', 408))).toBe(false);
@@ -497,6 +499,26 @@ describe('CircuitBreakerManager', () => {
       expect(filteredVal).toBe(5);
       expect(successVal).toBeUndefined();
       expect(failureVal).toBeUndefined();
+    });
+
+    it('400(화이트리스트 외) 영구 발생 시 OPEN 전이 — contract regression 보호', async () => {
+      // Critic 3차 P2: DTO/contract drift(header missing, validation drift) 시 dead dependency hammering 차단
+      const action = jest.fn().mockRejectedValue(httpError('bad request', 400));
+      manager.createBreaker('test-400-open', action, {
+        volumeThreshold: 1,
+        errorThresholdPercentage: 1,
+        resetTimeout: 30_000,
+        rollingCountTimeout: 10_000,
+        rollingCountBuckets: 1,
+        timeout: false,
+      });
+
+      const breaker = manager.getBreaker('test-400-open')!;
+      for (let i = 0; i < 3; i++) {
+        try { await breaker.fire(); } catch { /* expected */ }
+      }
+
+      expect(manager.getState('test-400-open')).toBe('OPEN');
     });
 
     it('401(화이트리스트 외) 영구 발생 시 OPEN 전이 — 인증 outage 보호', async () => {
