@@ -2,11 +2,13 @@
  * @file 상태 리포터 — Submission HTTP 콜백 + Redis Pub/Sub 브로드캐스트
  * @domain github
  * @layer service
- * @related worker.ts, sse.controller.ts (gateway)
+ * @related worker.ts, sse.controller.ts (gateway), circuit-breaker.ts
  */
 import Redis from 'ioredis';
+import type CircuitBreaker from 'opossum';
 import { logger } from './logger';
 import { config } from './config';
+import { CircuitBreakerManager } from './circuit-breaker';
 
 /**
  * 상태 리포터 — Submission Service 콜백 + Redis Pub/Sub
@@ -18,6 +20,10 @@ import { config } from './config';
  * 보안:
  * - Internal API Key 사용 (환경변수에서만 참조)
  * - 토큰/키 로그 출력 금지
+ *
+ * Sprint 135 Wave B:
+ * - 5개 fetch 호출부 모두 CircuitBreakerManager로 보호 (메서드별 별도 CB 인스턴스)
+ * - fallback 없음 — 실패 시 throw 전파 (큐가 nack/DLQ 처리)
  */
 
 interface SubmissionData {
@@ -33,16 +39,51 @@ export class StatusReporter {
   private readonly submissionUrl: string;
   private readonly submissionKey: string;
 
-  constructor() {
+  // Wave B: 메서드별 CB 인스턴스 (인자 없는 호출 패턴)
+  private readonly getSubmissionBreaker: CircuitBreaker<[string], SubmissionData>;
+  private readonly reportSuccessBreaker: CircuitBreaker<[string, string], void>;
+  private readonly reportFailedBreaker: CircuitBreaker<[string], void>;
+  private readonly reportTokenInvalidBreaker: CircuitBreaker<[string], void>;
+  private readonly reportSkippedBreaker: CircuitBreaker<[string], void>;
+
+  constructor(cbManager: CircuitBreakerManager) {
     this.redis = new Redis(config.redisUrl);
     this.submissionUrl = config.submissionServiceUrl;
     this.submissionKey = config.submissionServiceKey;
+
+    this.getSubmissionBreaker = cbManager.createBreaker(
+      'submission-getSubmission',
+      this._doGetSubmission.bind(this),
+    );
+    this.reportSuccessBreaker = cbManager.createBreaker(
+      'submission-reportSuccess',
+      this._doReportSuccess.bind(this),
+    );
+    this.reportFailedBreaker = cbManager.createBreaker(
+      'submission-reportFailed',
+      this._doReportFailed.bind(this),
+    );
+    this.reportTokenInvalidBreaker = cbManager.createBreaker(
+      'submission-reportTokenInvalid',
+      this._doReportTokenInvalid.bind(this),
+    );
+    this.reportSkippedBreaker = cbManager.createBreaker(
+      'submission-reportSkipped',
+      this._doReportSkipped.bind(this),
+    );
   }
 
   /**
-   * 제출 데이터 조회 (Submission Service 내부 HTTP)
+   * 제출 데이터 조회 — CB 보호
    */
   async getSubmission(submissionId: string): Promise<SubmissionData> {
+    return this.getSubmissionBreaker.fire(submissionId);
+  }
+
+  /**
+   * 제출 데이터 조회 fetch 본체 (CB action)
+   */
+  async _doGetSubmission(submissionId: string): Promise<SubmissionData> {
     const res = await fetch(`${this.submissionUrl}/internal/${submissionId}`, {
       headers: {
         'X-Internal-Key': this.submissionKey,
@@ -60,9 +101,16 @@ export class StatusReporter {
   }
 
   /**
-   * GitHub Push 성공 보고
+   * GitHub Push 성공 보고 — CB 보호
    */
   async reportSuccess(submissionId: string, filePath: string): Promise<void> {
+    await this.reportSuccessBreaker.fire(submissionId, filePath);
+  }
+
+  /**
+   * GitHub Push 성공 보고 fetch 본체 (CB action)
+   */
+  async _doReportSuccess(submissionId: string, filePath: string): Promise<void> {
     const resp = await fetch(`${this.submissionUrl}/internal/${submissionId}/github-success`, {
       method: 'POST',
       headers: {
@@ -79,9 +127,16 @@ export class StatusReporter {
   }
 
   /**
-   * GitHub Push 실패 보고
+   * GitHub Push 실패 보고 — CB 보호
    */
   async reportFailed(submissionId: string): Promise<void> {
+    await this.reportFailedBreaker.fire(submissionId);
+  }
+
+  /**
+   * GitHub Push 실패 보고 fetch 본체 (CB action)
+   */
+  async _doReportFailed(submissionId: string): Promise<void> {
     const resp = await fetch(`${this.submissionUrl}/internal/${submissionId}/github-failed`, {
       method: 'POST',
       headers: {
@@ -97,9 +152,16 @@ export class StatusReporter {
   }
 
   /**
-   * TOKEN_INVALID 보고
+   * TOKEN_INVALID 보고 — CB 보호
    */
   async reportTokenInvalid(submissionId: string): Promise<void> {
+    await this.reportTokenInvalidBreaker.fire(submissionId);
+  }
+
+  /**
+   * TOKEN_INVALID 보고 fetch 본체 (CB action)
+   */
+  async _doReportTokenInvalid(submissionId: string): Promise<void> {
     const resp = await fetch(`${this.submissionUrl}/internal/${submissionId}/github-token-invalid`, {
       method: 'POST',
       headers: {
@@ -115,10 +177,28 @@ export class StatusReporter {
   }
 
   /**
-   * SKIPPED 보고 — 스터디에 GitHub 레포가 연결되지 않은 경우
+   * SKIPPED 보고 + Redis Pub/Sub — CB 보호 (HTTP 호출만)
    * github_sync_status = SKIPPED 로 업데이트
    */
   async reportSkipped(submissionId: string): Promise<void> {
+    await this.reportSkippedBreaker.fire(submissionId);
+
+    await this.redis.publish(
+      `submission:status:${submissionId}`,
+      JSON.stringify({
+        submissionId,
+        status: 'github_skipped',
+        timestamp: new Date().toISOString(),
+      }),
+    );
+
+    logger.info('SKIPPED 보고 완료', { action: 'REPORT_SKIPPED' });
+  }
+
+  /**
+   * SKIPPED 보고 fetch 본체 (CB action)
+   */
+  async _doReportSkipped(submissionId: string): Promise<void> {
     const resp = await fetch(`${this.submissionUrl}/internal/${submissionId}/github-skipped`, {
       method: 'POST',
       headers: {
@@ -131,17 +211,6 @@ export class StatusReporter {
     if (!resp.ok) {
       throw new Error(`reportSkipped 실패: ${resp.status}`);
     }
-
-    await this.redis.publish(
-      `submission:status:${submissionId}`,
-      JSON.stringify({
-        submissionId,
-        status: 'github_skipped',
-        timestamp: new Date().toISOString(),
-      }),
-    );
-
-    logger.info('SKIPPED 보고 완료', { action: 'REPORT_SKIPPED' });
   }
 
   /**
