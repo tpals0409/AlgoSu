@@ -121,6 +121,11 @@ export class ProblemServiceClient implements OnModuleInit {
         studyId,
         userId,
       });
+      // 방어적: errorFilter 통과 케이스가 향후 opossum 동작 변경으로 Error를 resolve로 반환할 가능성 차단.
+      // 현재 opossum 8.x는 reject 호출하여 catch에서 처리되나, 명시적 검사로 비즈니스 로직 안전 보장 (Critic 3차 P1)
+      if (result instanceof Error) {
+        return undefined;
+      }
       return result as string | undefined;
     } catch (error: unknown) {
       this.logger.warn(
@@ -158,6 +163,11 @@ export class ProblemServiceClient implements OnModuleInit {
         studyId,
         userId,
       });
+      // 방어적: errorFilter 통과 케이스가 향후 opossum 동작 변경으로 Error를 resolve로 반환할 가능성 차단.
+      // 현재 opossum 8.x는 reject 호출하여 catch에서 처리되나, 명시적 검사로 비즈니스 로직 안전 보장 (Critic 3차 P1)
+      if (result instanceof Error) {
+        return { isLate: false, weekNumber: null };
+      }
       return result as DeadlineResult;
     } catch (error: unknown) {
       this.logger.warn(

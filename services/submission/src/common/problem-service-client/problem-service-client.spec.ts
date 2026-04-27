@@ -153,6 +153,37 @@ describe('ProblemServiceClient', () => {
     });
   });
 
+  // ─── 3.5. errorFilter 통과 시 Error resolve 방어 (Critic 3차 P1) ─
+  describe('errorFilter 통과 시 Error resolve 방어 (Critic 3차 P1)', () => {
+    beforeEach(() => service.onModuleInit());
+
+    it('getSourcePlatform: hostBreaker.fire가 Error를 resolve해도 undefined 반환', async () => {
+      // hostBreaker.fire mock이 Error 객체를 resolve로 반환하는 가상 시나리오
+      // (현재 opossum 8.x는 reject 호출하나, 향후 동작 변경 대비 defense in depth)
+      const errorAsResolve = new Error('AI 404 — errorFilter 통과') as Error & {
+        status: number;
+      };
+      errorAsResolve.status = 404;
+      cbService._mockBreaker.fire.mockResolvedValueOnce(errorAsResolve);
+
+      const result = await service.getSourcePlatform('p1', 's1', 'u1');
+
+      expect(result).toBeUndefined();
+    });
+
+    it('getDeadline: hostBreaker.fire가 Error를 resolve해도 기본값 반환', async () => {
+      const errorAsResolve = new Error('Problem 410 — errorFilter 통과') as Error & {
+        status: number;
+      };
+      errorAsResolve.status = 410;
+      cbService._mockBreaker.fire.mockResolvedValueOnce(errorAsResolve);
+
+      const result = await service.getDeadline('p1', 's1', 'u1');
+
+      expect(result).toEqual({ isLate: false, weekNumber: null });
+    });
+  });
+
   // ─── 4. _dispatch — op 분기 정확성 ──────────────────────────────
   describe('_dispatch()', () => {
     it('op === "getSourcePlatform"이면 _doGetSourcePlatform을 호출한다', async () => {
