@@ -180,6 +180,14 @@ NestJS HTTP 호출부에 Circuit Breaker 패턴을 도입하여 외부 서비스
   - `infra/k3s/monitoring/grafana.yaml` (projected sources 1줄 추가)
 - **운영 가치**: CB OPEN 시 즉시 시각 알람 + result 라벨로 인프라 장애(failure/timeout/reject)와 비즈니스 4xx(filtered) 분리 관찰
 - **검증**: yaml.safe_load 통과 + ConfigMap 안의 JSON `json.loads` 통과 + Deployment의 projected sources 3개(slo/service/cb) 정합
+- **Critic 1차 P2 후속 정정 — AI Analysis 추가 + schema 차이 인정**:
+  - 초기 D10 구현은 TypeScript CB 5개(submission 2 + github-worker 3)만 시각화 → Sprint 135 원본 참조 구현인 ai-analysis Python CB(`services/ai-analysis/src/circuit_breaker.py`, 메트릭 `algosu_ai_analysis_circuit_breaker_state`)가 운영 환경에서 동작하나 대시보드에 누락 → Claude API 장애 시 "모두 정상"으로 표시되는 관찰 누락
+  - **Schema 차이**: TypeScript(0=CLOSED/1=HALF_OPEN/2=OPEN, name label 있음, failures_total + requests_total{result} 존재) vs Python(0=CLOSED/0.5=HALF_OPEN/1=OPEN, name label 없음, state 메트릭만 노출) — 단순 regex 통합 불가
+  - **State Matrix 패널 분리**: 기존 Panel id=1 폭 24→18 (`Circuit Breaker State (TypeScript)`), 신규 Panel id=7 폭 6 (`AI Analysis CB State (Python)`, mappings 0/0.5/1, thresholds green→yellow at 0.5→red at 1)
+  - **State Timeline 분리**: 기존 Panel id=4 폭 24→18 (`Circuit Breaker State Timeline (TypeScript)`), 신규 Panel id=8 폭 6 (`AI Analysis CB Timeline (Python schema)`, 동일 0/0.5/1 mappings)
+  - **Request Rate / Failure Rate / Distribution / 통계 Table**: ai-analysis는 `failures_total`/`requests_total{result}` 메트릭 부재 → 변경 없이 description으로 안내 추가 ("AI Analysis Python CB는 ... 메트릭 부재 — Sprint 136+ schema 통일 시 추가 예정")
+  - **검증**: yaml.safe_load 통과 + json.loads 통과 + 12 panel IDs(100/1/7/101/2/3/102/4/8/103/5/6) 충돌 없음 + gridPos 행별 24폭 정합 (y:1 18+6 / y:17 18+6)
+  - **Sprint 136+ 시드**: ai-analysis Python CB 메트릭 schema를 TypeScript와 통일 (state value 0/1/2 + `name` label + `failures_total` + `requests_total{result}`) → 단일 Grafana query regex로 통합 가능. `services/ai-analysis/src/metrics.py` + `circuit_breaker.py` 갱신 + 운영 알람 룰 동시 갱신 필요
 
 ## Carryover (Wave E)
 
@@ -191,3 +199,4 @@ NestJS HTTP 호출부에 Circuit Breaker 패턴을 도입하여 외부 서비스
 - [ ] 별건 시드: CLAUDE.md L11 "ai-feedback" → 실제 "ai-analysis" 명명 불일치 (Sprint 136+)
 - [ ] 별건 시드: E2E 자동 PR CI 통합 (Sprint 134 이월)
 - [ ] **Sprint 136+ 시드**: Wave B(github-worker/circuit-breaker.ts)에 errorFilter wrapper + WeakSet 패턴 동기화 적용 (현재 `instanceof Error` 휴리스틱 → 정확한 분기로 갱신, Wave A와 일관성 회복)
+- [ ] **Sprint 136+ 시드**: ai-analysis Python CB 메트릭 schema 통일 (state 0/1/2 + name label + failures/requests 메트릭 추가) — 단일 Grafana query regex로 통합 + Wave B/C와 일관성 회복
