@@ -71,6 +71,13 @@ export class CircuitBreakerService implements OnModuleDestroy {
   private readonly logger: StructuredLoggerService;
   private readonly breakers = new Map<string, CircuitBreaker>();
 
+  /**
+   * 인스턴스별 errorFilter 통과 마커 — race condition 없는 정확한 success/filtered 분기용.
+   * WeakSet이므로 GC가 자연스럽게 정리, 메모리 누수 없음.
+   * Map<name, WeakSet>으로 CB별 분리 (다른 CB 간섭 차단)
+   */
+  private readonly filteredMarkers = new Map<string, WeakSet<object>>();
+
   private readonly stateGauge: Gauge<string>;
   private readonly failuresCounter: Counter<string>;
   private readonly requestsCounter: Counter<string>;
@@ -112,6 +119,15 @@ export class CircuitBreakerService implements OnModuleDestroy {
   /**
    * opossum CircuitBreaker 인스턴스 생성 및 등록
    *
+   * NOTE — primitive errorFilter 통과 케이스 한계:
+   *
+   * action이 string/number/null 등 primitive를 throw하고 errorFilter가 true를 반환하면
+   * WeakSet에 마커를 추가할 수 없으므로 success 핸들러가 'success'로 카운트한다.
+   * (errorFilter wrapper에서는 'filtered' 카운트가 정상 발생 → 중복 카운트는 아니지만 'success'도 +1)
+   *
+   * 본 프로젝트의 모든 CB action은 Error 또는 status를 가진 객체만 throw하므로
+   * primitive throw는 발생하지 않는다 (실용적 영향 0).
+   *
    * @param name 고유 이름 (메트릭 label)
    * @param action CB로 보호할 비동기 함수
    * @param options opossum 옵션 + fallback
@@ -122,13 +138,31 @@ export class CircuitBreakerService implements OnModuleDestroy {
     action: (...args: TI) => Promise<TR>,
     options?: CreateBreakerOptions,
   ): CircuitBreaker<TI, TR> {
-    const { fallback, ...cbOptions } = options ?? {};
+    const { fallback, errorFilter: userFilter, ...cbOptions } = options ?? {};
+
+    // CB별 마커 WeakSet 생성 — success 핸들러가 이미 카운트된 filtered 이벤트를 식별하기 위해 사용
+    const markers = new WeakSet<object>();
+    this.filteredMarkers.set(name, markers);
+
+    // errorFilter wrapper — 사용자/default filter를 감싸 filtered 카운트 + 마커 추가
+    // (Sprint 135 D8 P2 정확 해결: instanceof Error 휴리스틱 대체)
+    const filterImpl = userFilter ?? DEFAULT_ERROR_FILTER;
+    const wrappedFilter = (err: unknown): boolean => {
+      const filtered = filterImpl(err);
+      if (filtered) {
+        this.requestsCounter.inc({ name, result: 'filtered' });
+        // primitive(string/number/null/undefined)는 WeakSet에 추가 불가 → 무해 (success 핸들러도 객체만 조회)
+        if (err !== null && typeof err === 'object') {
+          markers.add(err);
+        }
+      }
+      return filtered;
+    };
 
     const breaker = new CircuitBreaker<TI, TR>(action, {
       ...DEFAULT_CB_OPTIONS,
-      // 기본 errorFilter — 호출자가 cbOptions로 override 가능 (spread 순서 유지)
-      errorFilter: DEFAULT_ERROR_FILTER,
       ...cbOptions,
+      errorFilter: wrappedFilter,
       name,
     });
 
@@ -192,29 +226,27 @@ export class CircuitBreakerService implements OnModuleDestroy {
     });
 
     /**
-     * NOTE — `result instanceof Error` 기반 filtered 분기 한계 (Critic 1차 P2):
+     * Sprint 135 D8 P2 정확 해결 — errorFilter wrapper + WeakSet 마커 패턴.
      *
-     * opossum은 errorFilter 통과 시 `circuit.emit('success', error, latency)`로 emit하므로
-     * 첫 인자가 Error 인스턴스인 경우를 filtered 케이스로 분기한다. 그러나 이 휴리스틱은
-     * 다음 두 케이스에서 부정확하다:
-     * 1. action이 Error 인스턴스를 정상 resolve로 반환 → filtered로 오분류
-     * 2. errorFilter가 Error가 아닌 값(string, plain object 등)을 통과시킴 → success로 오분류
+     * `createBreaker`에서 errorFilter를 wrapper로 감싸 filtered 통과 시 (a) 'filtered' 카운트
+     * + (b) WeakSet에 throw된 객체를 마커로 추가한다. 본 success 핸들러는 result가 객체이고
+     * WeakSet에 마커가 있으면 wrapper에서 이미 카운트한 것으로 간주하여 skip하고, 그렇지
+     * 않으면 'success'로 카운트한다.
      *
-     * 본 프로젝트에서는 모든 CB action이 Error를 throw로만 사용하고 resolve로는 비-Error
-     * 값만 반환하므로 (1)은 발생하지 않는다. (2)는 호출자가 errorFilter 시그니처를
-     * 준수하면 발생하지 않는다.
-     *
-     * 더 정확한 해결책(errorFilter wrapper로 사이드 이펙트 카운트)은 향후 follow-up
-     * 개선 사항. github-worker/circuit-breaker.ts에도 동일 한계 존재 — 두 모듈 동시
-     * follow-up 권장 (Sprint 136+ 별건 PR).
+     * 이 패턴은 기존 `instanceof Error` 휴리스틱이 부정확했던 두 케이스를 모두 해결한다:
+     * 1. action이 Error 인스턴스를 정상 resolve로 반환 → wrapper 미경유 → 'success' 정확
+     * 2. action이 plain object(예: {status: 404}) throw + errorFilter 통과 → wrapper에서
+     *    'filtered' + 마커 → success 핸들러는 마커 발견 후 skip → 정확
      */
     breaker.on('success', (result: unknown) => {
-      // opossum은 errorFilter 통과 시 `circuit.emit('success', error, latency)`로 emit하므로
-      // 첫 인자가 Error 인스턴스인 경우는 실제 성공이 아닌 filtered 케이스 (Sprint 135 D8 — Wave A 동기화).
-      // 메트릭 정확성을 위해 'filtered' 라벨로 분리 카운트하여 success 카운트 오염 방지.
-      if (result instanceof Error) {
-        this.requestsCounter.inc({ name, result: 'filtered' });
-        return;
+      // errorFilter wrapper가 이미 'filtered' 카운트했는지 WeakSet 마커로 확인
+      // (instanceof Error 휴리스틱 대체 — non-Error throw + errorFilter 통과 케이스도 정확히 분기)
+      if (result !== null && typeof result === 'object') {
+        const markers = this.filteredMarkers.get(name);
+        if (markers && markers.has(result)) {
+          markers.delete(result); // 마커 정리 (재사용 시 오분류 방지)
+          return;
+        }
       }
       this.requestsCounter.inc({ name, result: 'success' });
     });
@@ -254,6 +286,7 @@ export class CircuitBreakerService implements OnModuleDestroy {
       try {
         breaker.shutdown();
         this.breakers.delete(name);
+        this.filteredMarkers.delete(name); // WeakSet 자체 제거 (마커 GC 자연 정리)
         this.logger.log(`CircuitBreaker shutdown: name=${name}`);
       } catch (error: unknown) {
         this.logger.warn(

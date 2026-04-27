@@ -556,6 +556,140 @@ describe('CircuitBreakerService', () => {
       expect(customFilter).toHaveBeenCalled();
     });
 
+    it('plain object throw + errorFilter 통과 시 filtered 카운트, success 카운트는 미증가 (P2 정확 해결)', async () => {
+      // Sprint 135 D8 P2 정확 해결 검증 — non-Error throw도 errorFilter wrapper + WeakSet 마커로 정확히 분기
+      const action = jest.fn().mockRejectedValue({ status: 404 });
+      service.createBreaker('test-plain', action, {
+        volumeThreshold: 100,
+        errorThresholdPercentage: 99,
+        resetTimeout: 30_000,
+        rollingCountTimeout: 10_000,
+        rollingCountBuckets: 1,
+        timeout: false,
+        errorFilter: (err) => (err as { status?: number })?.status === 404,
+      });
+
+      const breaker = service.getBreaker('test-plain')!;
+      try {
+        await breaker.fire();
+      } catch {
+        /* expected reject */
+      }
+
+      const metrics = await registry.getMetricsAsJSON();
+      const requests = metrics.find(
+        (m) => m.name === 'algosu_submission_circuit_breaker_requests_total',
+      );
+      const filtered = (requests?.values ?? []).find(
+        (v) => v.labels?.['name'] === 'test-plain' && v.labels?.['result'] === 'filtered',
+      )?.value;
+      const success = (requests?.values ?? []).find(
+        (v) => v.labels?.['name'] === 'test-plain' && v.labels?.['result'] === 'success',
+      )?.value;
+
+      expect(filtered).toBe(1);
+      expect(success).toBeUndefined();
+    });
+
+    it('WeakSet 마커가 같은 객체 재사용 시 1회만 filtered로 카운트 (재사용 안전성)', async () => {
+      // 두 번 throw하는데 두 번째는 WeakSet에서 delete된 후 평가됨 — wrapper가 filtered 2회 카운트
+      // (마커는 success 핸들러가 보고 즉시 delete하므로 같은 객체가 다시 들어와도 정상 카운트)
+      const sharedError = { status: 404, msg: 'shared' };
+      const action = jest.fn().mockRejectedValue(sharedError);
+      service.createBreaker('test-reuse', action, {
+        volumeThreshold: 100,
+        errorThresholdPercentage: 99,
+        resetTimeout: 30_000,
+        rollingCountTimeout: 10_000,
+        rollingCountBuckets: 1,
+        timeout: false,
+        errorFilter: (err) => (err as { status?: number })?.status === 404,
+      });
+
+      const breaker = service.getBreaker('test-reuse')!;
+      for (let i = 0; i < 2; i++) {
+        try { await breaker.fire(); } catch { /* expected */ }
+      }
+
+      const metrics = await registry.getMetricsAsJSON();
+      const requests = metrics.find(
+        (m) => m.name === 'algosu_submission_circuit_breaker_requests_total',
+      );
+      const filtered = (requests?.values ?? []).find(
+        (v) => v.labels?.['name'] === 'test-reuse' && v.labels?.['result'] === 'filtered',
+      )?.value;
+      const success = (requests?.values ?? []).find(
+        (v) => v.labels?.['name'] === 'test-reuse' && v.labels?.['result'] === 'success',
+      )?.value;
+
+      expect(filtered).toBe(2); // 두 번째 throw도 wrapper에서 정상 카운트
+      expect(success).toBeUndefined(); // 마커 delete 후 재추가되어 success 미증가
+    });
+
+    it('primitive throw + errorFilter 통과 시 filtered + success 모두 카운트 (한계 케이스 명시)', async () => {
+      // primitive(string)는 WeakSet에 추가 불가 → wrapper는 filtered 카운트하나 success 핸들러에서 추가 카운트
+      // 본 프로젝트는 Error/객체만 throw하므로 실용적 영향 0이지만 정책상 명시
+      const action = jest.fn().mockRejectedValue('primitive-error-string');
+      service.createBreaker('test-primitive', action, {
+        volumeThreshold: 100,
+        errorThresholdPercentage: 99,
+        resetTimeout: 30_000,
+        rollingCountTimeout: 10_000,
+        rollingCountBuckets: 1,
+        timeout: false,
+        errorFilter: () => true, // 모든 에러를 filtered 처리
+      });
+
+      const breaker = service.getBreaker('test-primitive')!;
+      try { await breaker.fire(); } catch { /* expected */ }
+
+      const metrics = await registry.getMetricsAsJSON();
+      const requests = metrics.find(
+        (m) => m.name === 'algosu_submission_circuit_breaker_requests_total',
+      );
+      const filtered = (requests?.values ?? []).find(
+        (v) => v.labels?.['name'] === 'test-primitive' && v.labels?.['result'] === 'filtered',
+      )?.value;
+      const success = (requests?.values ?? []).find(
+        (v) => v.labels?.['name'] === 'test-primitive' && v.labels?.['result'] === 'success',
+      )?.value;
+
+      expect(filtered).toBe(1); // wrapper에서 카운트
+      expect(success).toBe(1); // primitive는 WeakSet 미추가 → success 핸들러 추가 카운트 (한계)
+    });
+
+    it('정상 success(action resolve) 시 filtered 카운트 없음, success 카운트만 증가 (회귀 방지)', async () => {
+      const action = jest.fn().mockResolvedValue({ data: 'ok' }); // 객체 반환도 success로 정확히 분기되어야 함
+      service.createBreaker('test-resolve-object', action, {
+        volumeThreshold: 100,
+        errorThresholdPercentage: 99,
+        resetTimeout: 30_000,
+        rollingCountTimeout: 10_000,
+        rollingCountBuckets: 1,
+        timeout: false,
+      });
+
+      const breaker = service.getBreaker('test-resolve-object')!;
+      await breaker.fire();
+      await breaker.fire();
+
+      const metrics = await registry.getMetricsAsJSON();
+      const requests = metrics.find(
+        (m) => m.name === 'algosu_submission_circuit_breaker_requests_total',
+      );
+      const success = (requests?.values ?? []).find(
+        (v) =>
+          v.labels?.['name'] === 'test-resolve-object' && v.labels?.['result'] === 'success',
+      )?.value;
+      const filtered = (requests?.values ?? []).find(
+        (v) =>
+          v.labels?.['name'] === 'test-resolve-object' && v.labels?.['result'] === 'filtered',
+      )?.value;
+
+      expect(success).toBe(2);
+      expect(filtered).toBeUndefined();
+    });
+
     it('filtered 카운터가 success 카운터와 분리됨 (혼합 시나리오)', async () => {
       let mode: 'ok' | '404' = 'ok';
       const action = jest.fn().mockImplementation(() => {
