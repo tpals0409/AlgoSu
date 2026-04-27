@@ -178,16 +178,19 @@ export class CircuitBreakerService implements OnModuleDestroy {
    * 타이머가 누수되어 프로세스 종료 지연 또는 인스턴스 누적이 발생할 수 있다
    */
   onModuleDestroy(): void {
+    // shutdown 성공한 인스턴스만 Map에서 제거.
+    // 실패한 인스턴스는 보존하여 호출자가 retry/force cleanup할 수 있도록 한다
+    // (Map.clear()로 참조를 잃으면 살아있는 timer를 정리할 방법이 사라짐)
     for (const [name, breaker] of this.breakers) {
       try {
         breaker.shutdown();
+        this.breakers.delete(name);
         this.logger.log(`CircuitBreaker shutdown: name=${name}`);
       } catch (error: unknown) {
         this.logger.warn(
-          `CircuitBreaker shutdown 실패: name=${name}, error=${(error as Error).message}`,
+          `CircuitBreaker shutdown 실패: name=${name}, error=${(error as Error).message} -- Map에 보존 (retry 가능)`,
         );
       }
     }
-    this.breakers.clear();
   }
 }

@@ -359,7 +359,7 @@ describe('CircuitBreakerService', () => {
       expect(service.getBreaker('shutdown-2')).toBeUndefined();
     });
 
-    it('shutdown 중 일부 실패해도 나머지는 정리된다', () => {
+    it('shutdown 실패한 breaker는 Map에 보존하고 성공한 것만 제거한다 (retry 가능)', () => {
       const action = jest.fn().mockResolvedValue('ok');
       service.createBreaker('shutdown-fail', action);
       service.createBreaker('shutdown-ok', action);
@@ -373,7 +373,10 @@ describe('CircuitBreakerService', () => {
 
       expect(() => service.onModuleDestroy()).not.toThrow();
       expect(spyOk).toHaveBeenCalledTimes(1);
+      // 성공한 것은 Map에서 제거
       expect(service.getBreaker('shutdown-ok')).toBeUndefined();
+      // 실패한 것은 Map에 보존 — 호출자가 retry할 수 있도록 참조 유지
+      expect(service.getBreaker('shutdown-fail')).toBe(bFail);
     });
   });
 });
