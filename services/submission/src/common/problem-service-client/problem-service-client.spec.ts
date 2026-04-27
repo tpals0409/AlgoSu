@@ -517,6 +517,36 @@ describe('ProblemServiceClient', () => {
     });
   });
 
+  // ─── 6.5. env 미설정 시 즉시 fallback (Critic 1차 P2) ────────────
+  describe('env 미설정 시 즉시 fallback (Critic 1차 P2)', () => {
+    beforeEach(() => service.onModuleInit());
+
+    it('getSourcePlatform: PROBLEM_SERVICE_KEY 미설정 시 fetch 미발생 + undefined 즉시 반환', async () => {
+      // 인스턴스 필드를 직접 비워 env miss 시뮬레이션 (테스트 격리: this 테스트 케이스 한정)
+      (service as unknown as { problemServiceKey: string }).problemServiceKey = '';
+      const fetchSpy = jest.spyOn(global, 'fetch' as never);
+
+      const result = await service.getSourcePlatform('p1', 's1', 'u1');
+
+      expect(result).toBeUndefined();
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(cbService._mockBreaker.fire).not.toHaveBeenCalled();
+      fetchSpy.mockRestore();
+    });
+
+    it('getDeadline: PROBLEM_SERVICE_KEY 미설정 시 fetch 미발생 + 기본값 즉시 반환', async () => {
+      (service as unknown as { problemServiceKey: string }).problemServiceKey = '';
+      const fetchSpy = jest.spyOn(global, 'fetch' as never);
+
+      const result = await service.getDeadline('p1', 's1');
+
+      expect(result).toEqual({ isLate: false, weekNumber: null });
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(cbService._mockBreaker.fire).not.toHaveBeenCalled();
+      fetchSpy.mockRestore();
+    });
+  });
+
   // ─── 7. _fallback — op별 반환 값 ────────────────────────────────
   describe('_fallback()', () => {
     it('op === "getSourcePlatform" → undefined', () => {

@@ -106,6 +106,14 @@ export class ProblemServiceClient implements OnModuleInit {
     studyId: string,
     userId: string,
   ): Promise<string | undefined> {
+    // env miss 시 즉시 fallback — fetch slow path 회피 (Critic 1차 P2).
+    // 기존 `submission.service.checkLateSubmission`의 `getOrThrow` 즉시 fallback 동작 보존.
+    if (!this.problemServiceKey) {
+      this.logger.warn(
+        'PROBLEM_SERVICE_KEY 미설정 — getSourcePlatform 즉시 fallback (env 검증 필요)',
+      );
+      return undefined;
+    }
     try {
       const result = await this.hostBreaker.fire({
         op: 'getSourcePlatform',
@@ -135,6 +143,14 @@ export class ProblemServiceClient implements OnModuleInit {
     studyId: string,
     userId?: string,
   ): Promise<DeadlineResult> {
+    // env miss 시 즉시 fallback — fetch slow path 회피 (Critic 1차 P2).
+    // 기존 `submission.service.checkLateSubmission`의 `getOrThrow` 즉시 fallback 동작 보존.
+    if (!this.problemServiceKey) {
+      this.logger.warn(
+        'PROBLEM_SERVICE_KEY 미설정 — getDeadline 즉시 fallback (env 검증 필요)',
+      );
+      return { isLate: false, weekNumber: null };
+    }
     try {
       const result = await this.hostBreaker.fire({
         op: 'getDeadline',
