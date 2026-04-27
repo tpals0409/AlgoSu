@@ -59,9 +59,28 @@ NestJS HTTP 호출부에 Circuit Breaker 패턴을 도입하여 외부 서비스
 
 - sprint-window.md "github-worker 5곳" → "7곳 (status-reporter 5 + worker.ts 2)": 실제 `grep -n fetch services/github-worker/src/status-reporter.ts services/github-worker/src/worker.ts` 결과 7개 호출부 확인
 
-## Carryover (Wave B~E)
+### D6: github-worker CB 확대 — plain class 래퍼 (Wave B)
+- **Context**: github-worker는 NestJS 아닌 standalone TS. NestJS DI 패턴 미적용 환경에서 CB 도입 필요
+- **Choice**: `CircuitBreakerManager` plain class로 opossum 래핑. main.ts에서 인스턴스 1개 생성 → GitHubWorker/StatusReporter 생성자 주입
+- **호스트별 CB 인스턴스 7개**: submission-internal API 5개 (각 메서드별 별도 CB — getSubmission/reportSuccess/reportFailed/reportTokenInvalid/reportSkipped), gateway-internal 1개 (gateway-getUserGitHubInfo), problem-service 1개 (problem-getProblemInfo). 총 7곳 보호
+- **fallback 전략**: StatusReporter 5곳은 throw 전파 (DLQ/멱등성 처리), gateway-getUserGitHubInfo는 throw 전파 (token 없으면 push 불가), problem-getProblemInfo는 fallback으로 기본값 반환 + 외부 try/catch 안전망 유지 (기존 catch 동작 유지 → 회귀 0건)
+- **메트릭 prefix**: `algosu_github_worker_circuit_breaker_*` (서비스 prefix만 다르고 라벨/구조는 Wave A와 동일)
+- **Code Paths**: `services/github-worker/src/circuit-breaker.ts` (신규 + spec), `services/github-worker/src/main.ts`, `services/github-worker/src/worker.ts`, `services/github-worker/src/status-reporter.ts`, `services/github-worker/src/metrics.ts` (registry export)
 
-- [ ] Wave B: github-worker 7곳 CB 적용 (status-reporter 5 + worker.ts 2, 호스트별 CB 공유)
+## Wave B 산출물
+
+| 항목 | 결과 |
+|------|------|
+| 브랜치 | feat/sprint-135-cb-worker |
+| 커밋 | 5 atomic (deps+manager → status-reporter → worker → tests → ADR) |
+| 테스트 | 8 suites / 146 tests (기존 113 + 신규 33: CB 16 + status-reporter +9 + worker +8) |
+| coverage | stmts 99.38% / branches 97.31% / functions 100% / lines 99.57% (threshold 92/100/98/98 충족) |
+| typecheck | 0 errors |
+| lint | 0 errors |
+
+## Carryover (Wave C~E)
+
+- [x] Wave B: github-worker 7곳 CB 적용 (status-reporter 5 + worker.ts 2, 메서드별 별도 CB — 단일 host에 다양한 action 공존하므로 메서드별 분리가 reject/failure label 분리에 유리)
 - [ ] Wave C: submission 2곳 추가 (fetchSourcePlatform L257 + submission.service L504)
 - [ ] Wave D: Grafana 대시보드 1식
 - [ ] Wave E: Sprint 135 ADR 종합 갱신 + sprint-window.md 최종 정리
