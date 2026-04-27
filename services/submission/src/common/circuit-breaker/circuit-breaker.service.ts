@@ -18,6 +18,38 @@ const OPOSSUM_TIMEOUT_CODE = 'ETIMEDOUT';
 /** CB 상태 코드 -- Prometheus Gauge 값 */
 const STATE_CODE = { closed: 0, halfOpen: 1, open: 2 } as const;
 
+/**
+ * CB failure에서 제외할 비즈니스 의미 4xx 화이트리스트 (Sprint 135 D8 — Wave A 동기화).
+ *
+ * 정책 (Wave B Critic 3차 P2 결정 — Wave A 동일 적용):
+ * - retry해도 결과 동일한 영구 비즈니스 에러만 제외
+ * - 400(Bad Request)는 DTO/contract regression(header missing, validation drift, schema
+ *   mismatch) 시그널일 수 있으므로 화이트리스트에서 제외 → CB failure 카운트 + OPEN 트리거
+ * - 401/403(인증/권한 outage), 408(timeout), 429(rate limit), 5xx도 CB failure로 카운트하여
+ *   internal-auth outage / overload 시 회로 OPEN으로 보호
+ *
+ * - 404 Not Found — 삭제된/없는 리소스 (영구)
+ * - 410 Gone — 영구 제거된 리소스
+ * - 422 Unprocessable Entity — 비즈니스 룰 위반 (validation은 클라이언트 측 정정 가능)
+ *
+ * @see services/github-worker/src/circuit-breaker.ts (참조 구현)
+ */
+export const FILTERED_BUSINESS_STATUS = new Set<number>([404, 410, 422]);
+
+/**
+ * 기본 errorFilter -- 비즈니스 의미 4xx 화이트리스트만 CB failure에서 제외.
+ *
+ * opossum `errorFilter`는 true 반환 시 success 이벤트로 처리되어 failure counter 미증가 +
+ * OPEN 전이 미트리거. CB는 인프라 장애(5xx/timeout/network)·인증 outage·rate limit 보호용.
+ *
+ * 호출부에서 fetch non-ok 응답 시 throw하는 Error에 `status` 필드를 첨부하면 본 필터가
+ * 분기. status 미첨부(네트워크 에러 등)는 false → CB failure 정상 카운트.
+ */
+export const DEFAULT_ERROR_FILTER = (err: unknown): boolean => {
+  const status = (err as { status?: number } | null)?.status;
+  return typeof status === 'number' && FILTERED_BUSINESS_STATUS.has(status);
+};
+
 /** CB 생성 시 전달 가능한 추가 옵션 */
 export interface CreateBreakerOptions {
   timeout?: number | false;
@@ -27,6 +59,11 @@ export interface CreateBreakerOptions {
   rollingCountBuckets?: number;
   volumeThreshold?: number;
   fallback?: (...args: unknown[]) => unknown;
+  /**
+   * opossum errorFilter override -- 미지정 시 DEFAULT_ERROR_FILTER 사용 (4xx 화이트리스트 제외).
+   * true 반환 시 해당 에러는 CB failure로 카운트되지 않는다.
+   */
+  errorFilter?: (err: unknown) => boolean;
 }
 
 @Injectable()
@@ -60,7 +97,13 @@ export class CircuitBreakerService implements OnModuleDestroy {
 
     this.requestsCounter = new Counter({
       name: 'algosu_submission_circuit_breaker_requests_total',
-      help: 'Total circuit breaker requests by result',
+      // result 라벨 enum: success | failure | reject | timeout | filtered
+      // - success: 정상 호출 성공
+      // - failure: action throw (CB failure로 카운트, OPEN 전이 후보)
+      // - reject: CB OPEN 상태에서 거부됨
+      // - timeout: opossum timeout 초과
+      // - filtered: errorFilter 화이트리스트(4xx 비즈니스) 통과 — failure 미카운트, success와 분리
+      help: 'Total CB requests by result (success|failure|reject|timeout|filtered)',
       labelNames: ['name', 'result'] as const,
       registers: [this.registry],
     });
@@ -83,6 +126,8 @@ export class CircuitBreakerService implements OnModuleDestroy {
 
     const breaker = new CircuitBreaker<TI, TR>(action, {
       ...DEFAULT_CB_OPTIONS,
+      // 기본 errorFilter — 호출자가 cbOptions로 override 가능 (spread 순서 유지)
+      errorFilter: DEFAULT_ERROR_FILTER,
       ...cbOptions,
       name,
     });
@@ -146,7 +191,14 @@ export class CircuitBreakerService implements OnModuleDestroy {
       this.logger.log(`CB CLOSED: name=${name}`);
     });
 
-    breaker.on('success', () => {
+    breaker.on('success', (result: unknown) => {
+      // opossum은 errorFilter 통과 시 `circuit.emit('success', error, latency)`로 emit하므로
+      // 첫 인자가 Error 인스턴스인 경우는 실제 성공이 아닌 filtered 케이스 (Sprint 135 D8 — Wave A 동기화).
+      // 메트릭 정확성을 위해 'filtered' 라벨로 분리 카운트하여 success 카운트 오염 방지.
+      if (result instanceof Error) {
+        this.requestsCounter.inc({ name, result: 'filtered' });
+        return;
+      }
       this.requestsCounter.inc({ name, result: 'success' });
     });
 
