@@ -853,4 +853,73 @@ describe('SagaOrchestratorService', () => {
       );
     });
   });
+
+  // ─── 24. fetchAiQuota — CB action 본체 직접 검증 ────────────────
+  describe('fetchAiQuota (CB action 본체)', () => {
+    it('200 OK + allowed=true 응답 시 true 반환', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch' as never).mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ data: { allowed: true, used: 1, limit: 10 } }),
+      } as never);
+
+      const result = await (
+        service as unknown as { fetchAiQuota: (u: string) => Promise<boolean> }
+      ).fetchAiQuota('user-1');
+
+      expect(result).toBe(true);
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.stringContaining('/quota/check?userId=user-1'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'X-Internal-Key': expect.any(String),
+          }),
+        }),
+      );
+      fetchSpy.mockRestore();
+    });
+
+    it('200 OK + allowed=false 응답 시 false 반환', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch' as never).mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ data: { allowed: false, used: 10, limit: 10 } }),
+      } as never);
+
+      const result = await (
+        service as unknown as { fetchAiQuota: (u: string) => Promise<boolean> }
+      ).fetchAiQuota('user-2');
+
+      expect(result).toBe(false);
+      fetchSpy.mockRestore();
+    });
+
+    it('non-2xx 응답 시 throw — CB가 failure로 기록 가능', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch' as never).mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+      } as never);
+
+      await expect(
+        (service as unknown as { fetchAiQuota: (u: string) => Promise<boolean> }).fetchAiQuota(
+          'user-3',
+        ),
+      ).rejects.toThrow('AI quota check failed: status=503');
+      fetchSpy.mockRestore();
+    });
+
+    it('fetch 자체 throw 시 그대로 전파 — CB가 failure로 기록 가능', async () => {
+      const fetchSpy = jest
+        .spyOn(global, 'fetch' as never)
+        .mockRejectedValueOnce(new Error('network down') as never);
+
+      await expect(
+        (service as unknown as { fetchAiQuota: (u: string) => Promise<boolean> }).fetchAiQuota(
+          'user-4',
+        ),
+      ).rejects.toThrow('network down');
+      fetchSpy.mockRestore();
+    });
+  });
 });

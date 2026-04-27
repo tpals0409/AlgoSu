@@ -106,29 +106,10 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
       this.logger.log('미완료 Saga 재개 완료');
     }
 
-    // CB: AI Quota 체크에 Circuit Breaker 적용
+    // CB: AI Quota 체크에 Circuit Breaker 적용 (fetchAiQuota 메서드 위임)
     this.cbService.createBreaker(
       'aiQuotaCheck',
-      async (userId: string) => {
-        const resp = await fetch(
-          `${this.aiAnalysisServiceUrl}/quota/check?userId=${encodeURIComponent(userId)}`,
-          {
-            method: 'POST',
-            headers: {
-              'X-Internal-Key': this.aiAnalysisInternalKey,
-              'Content-Type': 'application/json',
-            },
-            signal: AbortSignal.timeout(10_000),
-          },
-        );
-        if (!resp.ok) {
-          throw new Error(`AI quota check failed: status=${resp.status}`);
-        }
-        const body = (await resp.json()) as {
-          data: { allowed: boolean; used: number; limit: number };
-        };
-        return body.data.allowed;
-      },
+      this.fetchAiQuota.bind(this),
       { fallback: () => true },
     );
 
@@ -310,6 +291,37 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
       );
       return undefined;
     }
+  }
+
+  /**
+   * AI Analysis Service /quota/check 직접 호출 (CB action 본체)
+   *
+   * 실패 시 throw -- CB가 failure로 기록 → threshold 도달 시 OPEN 전이
+   * onModuleInit에서 createBreaker 인자로 binding됨
+   *
+   * @param userId 사용자 ID
+   * @returns true: 허용, false: 한도 초과
+   * @throws AI quota check failed (non-2xx) 또는 fetch error
+   */
+  private async fetchAiQuota(userId: string): Promise<boolean> {
+    const resp = await fetch(
+      `${this.aiAnalysisServiceUrl}/quota/check?userId=${encodeURIComponent(userId)}`,
+      {
+        method: 'POST',
+        headers: {
+          'X-Internal-Key': this.aiAnalysisInternalKey,
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(10_000),
+      },
+    );
+    if (!resp.ok) {
+      throw new Error(`AI quota check failed: status=${resp.status}`);
+    }
+    const body = (await resp.json()) as {
+      data: { allowed: boolean; used: number; limit: number };
+    };
+    return body.data.allowed;
   }
 
   /**
