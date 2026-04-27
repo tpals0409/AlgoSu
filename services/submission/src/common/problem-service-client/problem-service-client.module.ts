@@ -7,11 +7,11 @@
 
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { CircuitBreakerModule } from '../circuit-breaker';
 import { ProblemServiceClient } from './problem-service-client';
 
 @Module({
-  imports: [CircuitBreakerModule, ConfigModule],
+  // CircuitBreakerModule은 @Global() — AppModule/SubmissionModule에서 한 번 import되어 전역 사용 가능
+  imports: [ConfigModule],
   providers: [ProblemServiceClient],
   exports: [ProblemServiceClient],
 })
