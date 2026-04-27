@@ -849,8 +849,34 @@ describe('SagaOrchestratorService', () => {
       expect(cbService.createBreaker).toHaveBeenCalledWith(
         'aiQuotaCheck',
         expect.any(Function),
-        expect.objectContaining({ fallback: expect.any(Function) }),
+        expect.objectContaining({
+          fallback: expect.any(Function),
+          // Critic 1차 P1 — fixed endpoint(/quota/check)이므로 errorFilter override 필수
+          errorFilter: expect.any(Function),
+        }),
       );
+    });
+
+    it('aiQuotaCheck CB의 errorFilter override는 모든 에러를 failure로 카운트한다 (Critic 1차 P1)', async () => {
+      repo.find.mockResolvedValue([]);
+      await service.onModuleInit();
+
+      // createBreaker 호출 인자에서 errorFilter 추출
+      const lastCall = (cbService.createBreaker as jest.Mock).mock.calls.find(
+        (c) => c[0] === 'aiQuotaCheck',
+      );
+      expect(lastCall).toBeDefined();
+      const errorFilter = lastCall![2].errorFilter as (err: unknown) => boolean;
+
+      // default 화이트리스트(404/410/422)도 모두 false → CB failure 카운트 (dead service 보호)
+      expect(errorFilter(new Error('any'))).toBe(false);
+      expect(errorFilter({ status: 404 })).toBe(false);
+      expect(errorFilter({ status: 410 })).toBe(false);
+      expect(errorFilter({ status: 422 })).toBe(false);
+      expect(errorFilter({ status: 401 })).toBe(false);
+      expect(errorFilter({ status: 503 })).toBe(false);
+      expect(errorFilter(null)).toBe(false);
+      expect(errorFilter(undefined)).toBe(false);
     });
   });
 

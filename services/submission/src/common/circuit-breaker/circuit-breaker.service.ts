@@ -191,6 +191,23 @@ export class CircuitBreakerService implements OnModuleDestroy {
       this.logger.log(`CB CLOSED: name=${name}`);
     });
 
+    /**
+     * NOTE — `result instanceof Error` 기반 filtered 분기 한계 (Critic 1차 P2):
+     *
+     * opossum은 errorFilter 통과 시 `circuit.emit('success', error, latency)`로 emit하므로
+     * 첫 인자가 Error 인스턴스인 경우를 filtered 케이스로 분기한다. 그러나 이 휴리스틱은
+     * 다음 두 케이스에서 부정확하다:
+     * 1. action이 Error 인스턴스를 정상 resolve로 반환 → filtered로 오분류
+     * 2. errorFilter가 Error가 아닌 값(string, plain object 등)을 통과시킴 → success로 오분류
+     *
+     * 본 프로젝트에서는 모든 CB action이 Error를 throw로만 사용하고 resolve로는 비-Error
+     * 값만 반환하므로 (1)은 발생하지 않는다. (2)는 호출자가 errorFilter 시그니처를
+     * 준수하면 발생하지 않는다.
+     *
+     * 더 정확한 해결책(errorFilter wrapper로 사이드 이펙트 카운트)은 향후 follow-up
+     * 개선 사항. github-worker/circuit-breaker.ts에도 동일 한계 존재 — 두 모듈 동시
+     * follow-up 권장 (Sprint 136+ 별건 PR).
+     */
     breaker.on('success', (result: unknown) => {
       // opossum은 errorFilter 통과 시 `circuit.emit('success', error, latency)`로 emit하므로
       // 첫 인자가 Error 인스턴스인 경우는 실제 성공이 아닌 filtered 케이스 (Sprint 135 D8 — Wave A 동기화).
