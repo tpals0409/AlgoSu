@@ -1,0 +1,507 @@
+# AlgoSu — Circuit Breaker Dashboard ConfigMap (Sprint 135 Wave D)
+# 5개 TypeScript CB 인스턴스(submission 2 + github-worker 3) + AI Analysis Python CB 통합 시각화
+# - State Matrix(TS+Python 분리) / Request Rate / Failure Rate / State Timeline(TS+Python 분리) / Distribution + 통계 Table
+# - Schema 차이: TS schema 0=CLOSED/1=HALF_OPEN/2=OPEN, Python schema 0=CLOSED/0.5=HALF_OPEN/1=OPEN
+#   (Sprint 136+ 시드: ai-analysis Python schema를 TS와 통일 예정)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-cb-dashboard
+  namespace: algosu
+data:
+  algosu-cb.json: |
+    {
+      "annotations": { "list": [] },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "id": null,
+      "links": [
+        {
+          "asDropdown": false,
+          "icon": "dashboard",
+          "includeVars": false,
+          "keepTime": true,
+          "tags": [],
+          "targetBlank": false,
+          "title": "SLO Overview",
+          "tooltip": "SLO 대시보드로 이동",
+          "type": "link",
+          "url": "/d/algosu-slo/algosu-slo-dashboard"
+        },
+        {
+          "asDropdown": false,
+          "icon": "dashboard",
+          "includeVars": false,
+          "keepTime": true,
+          "tags": [],
+          "targetBlank": false,
+          "title": "Service Debug",
+          "tooltip": "서비스 디버그 대시보드로 이동",
+          "type": "link",
+          "url": "/d/algosu-service-debug/algosu-service-debug"
+        }
+      ],
+      "panels": [
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+          "id": 100,
+          "title": "Overview",
+          "type": "row"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "description": "TypeScript CB 인스턴스(submission 2 + github-worker 3)의 현재 상태 (0=CLOSED 녹색, 1=HALF_OPEN 노랑, 2=OPEN 빨강)",
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": { "color": "green", "text": "CLOSED" },
+                    "1": { "color": "yellow", "text": "HALF_OPEN" },
+                    "2": { "color": "red", "text": "OPEN" }
+                  }
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 1 },
+                  { "color": "red", "value": 2 }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 6, "w": 18, "x": 0, "y": 1 },
+          "id": 1,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "textMode": "value_and_name",
+            "reduceOptions": { "calcs": ["lastNotNull"] }
+          },
+          "title": "Circuit Breaker State (TypeScript)",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "algosu_submission_circuit_breaker_state{name=~\"$name\"}",
+              "legendFormat": "{{name}} (submission)"
+            },
+            {
+              "expr": "algosu_github_worker_circuit_breaker_state{name=~\"$name\"}",
+              "legendFormat": "{{name}} (github-worker)"
+            }
+          ]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "description": "AI Analysis Python CB 현재 상태. Python schema는 0=CLOSED / 0.5=HALF_OPEN / 1=OPEN (TypeScript 0/1/2와 다름 — Sprint 136+ 통일 시드)",
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": { "color": "green", "text": "CLOSED" },
+                    "0.5": { "color": "yellow", "text": "HALF_OPEN" },
+                    "1": { "color": "red", "text": "OPEN" }
+                  }
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 0.5 },
+                  { "color": "red", "value": 1 }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 6, "w": 6, "x": 18, "y": 1 },
+          "id": 7,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "textMode": "value_and_name",
+            "reduceOptions": { "calcs": ["lastNotNull"] }
+          },
+          "title": "AI Analysis CB State (Python)",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "algosu_ai_analysis_circuit_breaker_state",
+              "legendFormat": "ai-analysis (Claude)"
+            }
+          ]
+        },
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 },
+          "id": 101,
+          "title": "요청 처리량 (per CB)",
+          "type": "row"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "description": "TypeScript CB(submission, github-worker)의 요청 처리량을 result 라벨별로 분리 표시 (success/failure/reject/timeout/filtered). AI Analysis Python CB는 requests_total 메트릭 부재 — Sprint 136+ schema 통일 시 추가 예정",
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "custom": {
+                "axisBorderShow": false,
+                "drawStyle": "line",
+                "fillOpacity": 25,
+                "lineWidth": 2,
+                "pointSize": 5,
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": { "mode": "normal" }
+              },
+              "unit": "reqps"
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "id": 2,
+          "options": {
+            "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
+            "tooltip": { "mode": "multi", "sort": "desc" }
+          },
+          "title": "Request Rate by Result",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "sum by (name, result) (rate(algosu_submission_circuit_breaker_requests_total{name=~\"$name\"}[5m]))",
+              "legendFormat": "{{name}} · {{result}}"
+            },
+            {
+              "expr": "sum by (name, result) (rate(algosu_github_worker_circuit_breaker_requests_total{name=~\"$name\"}[5m]))",
+              "legendFormat": "{{name}} · {{result}}"
+            }
+          ]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "description": "TypeScript CB의 실패율 — 4xx 화이트리스트(filtered) 제외, 실제 인프라 장애만 카운트. AI Analysis Python CB는 failures_total 메트릭 부재 — Sprint 136+ schema 통일 시 추가 예정",
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "custom": {
+                "axisBorderShow": false,
+                "drawStyle": "line",
+                "fillOpacity": 15,
+                "lineWidth": 2,
+                "pointSize": 5,
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": { "mode": "none" }
+              },
+              "unit": "ops",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "orange", "value": 0.1 },
+                  { "color": "red", "value": 0.5 }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+          "id": 3,
+          "options": {
+            "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
+            "tooltip": { "mode": "multi", "sort": "desc" }
+          },
+          "title": "Failure Rate per CB (failures/sec)",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "sum by (name) (rate(algosu_submission_circuit_breaker_failures_total{name=~\"$name\"}[5m]))",
+              "legendFormat": "{{name}}"
+            },
+            {
+              "expr": "sum by (name) (rate(algosu_github_worker_circuit_breaker_failures_total{name=~\"$name\"}[5m]))",
+              "legendFormat": "{{name}}"
+            }
+          ]
+        },
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 },
+          "id": 102,
+          "title": "상태 전이 추이",
+          "type": "row"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "description": "TypeScript CB의 상태 변화 시간 추이 (0=CLOSED, 1=HALF_OPEN, 2=OPEN). AI Analysis Python CB는 별도 패널(아래) — schema 다름",
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "custom": {
+                "fillOpacity": 70,
+                "lineWidth": 0,
+                "spanNulls": false
+              },
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": { "color": "green", "text": "CLOSED" },
+                    "1": { "color": "yellow", "text": "HALF_OPEN" },
+                    "2": { "color": "red", "text": "OPEN" }
+                  }
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 1 },
+                  { "color": "red", "value": 2 }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 6, "w": 18, "x": 0, "y": 17 },
+          "id": 4,
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+            "tooltip": { "mode": "multi", "sort": "desc" },
+            "mergeValues": true,
+            "showValue": "auto",
+            "alignValue": "left",
+            "rowHeight": 0.9
+          },
+          "title": "Circuit Breaker State Timeline (TypeScript)",
+          "type": "state-timeline",
+          "targets": [
+            {
+              "expr": "algosu_submission_circuit_breaker_state{name=~\"$name\"}",
+              "legendFormat": "{{name}}"
+            },
+            {
+              "expr": "algosu_github_worker_circuit_breaker_state{name=~\"$name\"}",
+              "legendFormat": "{{name}}"
+            }
+          ]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "description": "AI Analysis Python CB 상태 변화 시간 추이 (0=CLOSED, 0.5=HALF_OPEN, 1=OPEN — TypeScript 0/1/2와 다름)",
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "custom": {
+                "fillOpacity": 70,
+                "lineWidth": 0,
+                "spanNulls": false
+              },
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": { "color": "green", "text": "CLOSED" },
+                    "0.5": { "color": "yellow", "text": "HALF_OPEN" },
+                    "1": { "color": "red", "text": "OPEN" }
+                  }
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 0.5 },
+                  { "color": "red", "value": 1 }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 6, "w": 6, "x": 18, "y": 17 },
+          "id": 8,
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+            "tooltip": { "mode": "multi", "sort": "desc" },
+            "mergeValues": true,
+            "showValue": "auto",
+            "alignValue": "left",
+            "rowHeight": 0.9
+          },
+          "title": "AI Analysis CB Timeline (Python schema)",
+          "type": "state-timeline",
+          "targets": [
+            {
+              "expr": "algosu_ai_analysis_circuit_breaker_state",
+              "legendFormat": "ai-analysis"
+            }
+          ]
+        },
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
+          "id": 103,
+          "title": "통계 (누적, 최근 1h)",
+          "type": "row"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "description": "TypeScript CB의 최근 1시간 result 라벨별 분포. AI Analysis Python CB는 requests_total 메트릭 부재 — Sprint 136+ schema 통일 시 추가 예정",
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "custom": {
+                "axisBorderShow": false,
+                "lineWidth": 1,
+                "fillOpacity": 80
+              },
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 6, "w": 12, "x": 0, "y": 24 },
+          "id": 5,
+          "options": {
+            "displayMode": "gradient",
+            "minVizWidth": 0,
+            "minVizHeight": 10,
+            "orientation": "horizontal",
+            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "showUnfilled": true,
+            "valueMode": "color",
+            "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
+          },
+          "title": "Request Distribution by Result (last 1h)",
+          "type": "bargauge",
+          "targets": [
+            {
+              "expr": "sum by (result) (increase(algosu_submission_circuit_breaker_requests_total{name=~\"$name\"}[1h]))",
+              "legendFormat": "submission · {{result}}"
+            },
+            {
+              "expr": "sum by (result) (increase(algosu_github_worker_circuit_breaker_requests_total{name=~\"$name\"}[1h]))",
+              "legendFormat": "github-worker · {{result}}"
+            }
+          ]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "description": "TypeScript CB의 success/failure/reject/timeout/filtered 누적 카운트. AI Analysis Python CB는 requests_total 메트릭 부재 — Sprint 136+ schema 통일 시 추가 예정",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "center",
+                "cellOptions": { "type": "auto" },
+                "inspect": false
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": [
+              {
+                "matcher": { "id": "byName", "options": "Value" },
+                "properties": [
+                  { "id": "custom.cellOptions", "value": { "type": "color-background", "mode": "gradient" } }
+                ]
+              }
+            ]
+          },
+          "gridPos": { "h": 6, "w": 12, "x": 12, "y": 24 },
+          "id": 6,
+          "options": {
+            "showHeader": true,
+            "cellHeight": "sm",
+            "footer": { "show": false, "reducer": ["sum"], "countRows": false, "fields": "" }
+          },
+          "title": "CB 통계 (누적, 최근 1h)",
+          "type": "table",
+          "targets": [
+            {
+              "expr": "sum by (name, result) (increase(algosu_submission_circuit_breaker_requests_total{name=~\"$name\"}[1h]))",
+              "legendFormat": "{{name}} · {{result}}",
+              "format": "table",
+              "instant": true,
+              "refId": "A"
+            },
+            {
+              "expr": "sum by (name, result) (increase(algosu_github_worker_circuit_breaker_requests_total{name=~\"$name\"}[1h]))",
+              "legendFormat": "{{name}} · {{result}}",
+              "format": "table",
+              "instant": true,
+              "refId": "B"
+            }
+          ],
+          "transformations": [
+            { "id": "merge", "options": {} },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true },
+                "indexByName": {},
+                "renameByName": {
+                  "name": "CB Name",
+                  "result": "Result",
+                  "Value": "Count"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "refresh": "30s",
+      "schemaVersion": 39,
+      "tags": ["algosu", "circuit-breaker", "reliability"],
+      "templating": {
+        "list": [
+          {
+            "current": { "selected": true, "text": ["All"], "value": ["$__all"] },
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "definition": "label_values({__name__=~\"algosu_(submission|github_worker)_circuit_breaker_state\"}, name)",
+            "hide": 0,
+            "includeAll": true,
+            "label": "CB Name",
+            "multi": true,
+            "name": "name",
+            "options": [],
+            "query": {
+              "query": "label_values({__name__=~\"algosu_(submission|github_worker)_circuit_breaker_state\"}, name)",
+              "refId": "PrometheusVariableQueryEditor-VariableQuery"
+            },
+            "refresh": 2,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 1,
+            "type": "query"
+          }
+        ]
+      },
+      "time": { "from": "now-1h", "to": "now" },
+      "timepicker": {},
+      "timezone": "Asia/Seoul",
+      "title": "AlgoSu — Circuit Breaker",
+      "uid": "algosu-cb",
+      "version": 1,
+      "weekStart": "monday"
+    }
