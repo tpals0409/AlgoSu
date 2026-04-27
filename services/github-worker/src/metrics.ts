@@ -16,7 +16,11 @@ import {
   collectDefaultMetrics,
 } from 'prom-client';
 
-const registry = new Registry();
+/**
+ * 전역 prom-client Registry — CircuitBreakerManager 등 다른 모듈과 공유
+ * @see circuit-breaker.ts
+ */
+export const registry = new Registry();
 const PREFIX = 'algosu_github_worker';
 
 collectDefaultMetrics({ register: registry, prefix: `${PREFIX}_` });
