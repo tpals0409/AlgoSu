@@ -2,7 +2,7 @@
 sprint: 134
 title: "이월 항목 처리 (계속) — revisionHistoryLimit 일괄 적용 + 메타 정정"
 date: "2026-04-27"
-status: in-progress
+status: completed
 agents: [Oracle, Scribe]
 related_adrs: ["ADR-026", "ADR-028"]
 ---
@@ -48,8 +48,9 @@ Sprint 133 이월 운영 부채 중 본 레포 실행 가능 항목 처리 + 메
 | lint | clean |
 | Critic | 생략 (인프라 yaml 단순 필드 추가, 신규 로직 0건 — Sprint 131/132/133 정책 동일) |
 | PR | [#166](https://github.com/tpals0409/AlgoSu/pull/166) `95d4bd8` |
-| CI | 대기 중 |
-| end_commit | `95d4bd8` |
+| CI | 36 checks SUCCESS/SKIPPED, 실패 0건, mergeStateStatus CLEAN |
+| 머지 | 2026-04-27 Squash merge `16794cd` |
+| end_commit | `16794cd` |
 
 ## Carryover (Sprint 135+)
 
