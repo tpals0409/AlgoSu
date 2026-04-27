@@ -296,4 +296,84 @@ describe('CircuitBreakerService', () => {
       expect(service.getState('nonexistent')).toBeUndefined();
     });
   });
+
+  // ─── 9. timeout 이벤트 메트릭 중복 방지 (P2) ──────────────────
+  describe('timeout 이벤트 메트릭 중복 방지', () => {
+    it('timeout 발생 시 requests_total은 timeout 1건만 증가하고 failure는 증가하지 않는다', async () => {
+      // opossum은 timeout 시 'timeout' + 'failure' 이벤트를 모두 emit함
+      // 실제 timeout을 유발하기 위해 timeout=10ms, action은 100ms 지연
+      const action = jest.fn().mockImplementation(
+        () => new Promise((resolve) => setTimeout(() => resolve('late'), 100)),
+      );
+      service.createBreaker('test-timeout', action, {
+        timeout: 10,
+        volumeThreshold: 100,
+        errorThresholdPercentage: 99,
+        resetTimeout: 30_000,
+        rollingCountTimeout: 10_000,
+        rollingCountBuckets: 1,
+      });
+
+      const breaker = service.getBreaker('test-timeout')!;
+
+      try {
+        await breaker.fire();
+      } catch {
+        /* 예상된 timeout */
+      }
+
+      // 메트릭 검증: requests_total{result="timeout"}는 1, result="failure"는 0
+      const metrics = await registry.getMetricsAsJSON();
+      const requestsMetric = metrics.find(
+        (m) => m.name === 'algosu_submission_circuit_breaker_requests_total',
+      );
+      const timeoutVal = (requestsMetric?.values ?? []).find(
+        (v) => v.labels?.['name'] === 'test-timeout' && v.labels?.['result'] === 'timeout',
+      )?.value;
+      const failureVal = (requestsMetric?.values ?? []).find(
+        (v) => v.labels?.['name'] === 'test-timeout' && v.labels?.['result'] === 'failure',
+      )?.value;
+
+      expect(timeoutVal).toBe(1);
+      expect(failureVal).toBeUndefined(); // failure는 카운트되지 않아야 함
+    });
+  });
+
+  // ─── 10. onModuleDestroy — 타이머 누수 방지 (P2) ────────────
+  describe('onModuleDestroy — 타이머 정리', () => {
+    it('등록된 모든 breaker.shutdown()을 호출하고 Map을 비운다', () => {
+      const action = jest.fn().mockResolvedValue('ok');
+      service.createBreaker('shutdown-1', action);
+      service.createBreaker('shutdown-2', action);
+
+      const b1 = service.getBreaker('shutdown-1')!;
+      const b2 = service.getBreaker('shutdown-2')!;
+      const spy1 = jest.spyOn(b1, 'shutdown');
+      const spy2 = jest.spyOn(b2, 'shutdown');
+
+      service.onModuleDestroy();
+
+      expect(spy1).toHaveBeenCalledTimes(1);
+      expect(spy2).toHaveBeenCalledTimes(1);
+      expect(service.getBreaker('shutdown-1')).toBeUndefined();
+      expect(service.getBreaker('shutdown-2')).toBeUndefined();
+    });
+
+    it('shutdown 중 일부 실패해도 나머지는 정리된다', () => {
+      const action = jest.fn().mockResolvedValue('ok');
+      service.createBreaker('shutdown-fail', action);
+      service.createBreaker('shutdown-ok', action);
+
+      const bFail = service.getBreaker('shutdown-fail')!;
+      const bOk = service.getBreaker('shutdown-ok')!;
+      jest.spyOn(bFail, 'shutdown').mockImplementation(() => {
+        throw new Error('shutdown boom');
+      });
+      const spyOk = jest.spyOn(bOk, 'shutdown');
+
+      expect(() => service.onModuleDestroy()).not.toThrow();
+      expect(spyOk).toHaveBeenCalledTimes(1);
+      expect(service.getBreaker('shutdown-ok')).toBeUndefined();
+    });
+  });
 });

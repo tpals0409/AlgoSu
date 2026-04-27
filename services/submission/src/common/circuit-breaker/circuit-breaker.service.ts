@@ -5,12 +5,15 @@
  * @related circuit-breaker.module.ts, circuit-breaker.constants.ts, metrics.service.ts
  */
 
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
 import * as CircuitBreaker from 'opossum';
 import { Registry, Gauge, Counter } from 'prom-client';
 import { StructuredLoggerService } from '../logger/structured-logger.service';
 import { METRICS_REGISTRY } from './circuit-breaker.constants';
 import { DEFAULT_CB_OPTIONS } from './circuit-breaker.constants';
+
+/** opossum timeout 에러 코드 — timeout/failure 이벤트 중복 카운트 방지용 */
+const OPOSSUM_TIMEOUT_CODE = 'ETIMEDOUT';
 
 /** CB 상태 코드 -- Prometheus Gauge 값 */
 const STATE_CODE = { closed: 0, halfOpen: 1, open: 2 } as const;
@@ -27,7 +30,7 @@ export interface CreateBreakerOptions {
 }
 
 @Injectable()
-export class CircuitBreakerService {
+export class CircuitBreakerService implements OnModuleDestroy {
   private readonly logger: StructuredLoggerService;
   private readonly breakers = new Map<string, CircuitBreaker>();
 
@@ -147,7 +150,13 @@ export class CircuitBreakerService {
       this.requestsCounter.inc({ name, result: 'success' });
     });
 
-    breaker.on('failure', () => {
+    breaker.on('failure', (error: unknown) => {
+      // opossum은 timeout 시 'timeout' + 'failure' 두 이벤트를 모두 emit하므로
+      // result 라벨이 mutually exclusive하도록 timeout 분기를 제외한다 (메트릭 중복 카운트 방지)
+      if ((error as { code?: string } | null)?.code === OPOSSUM_TIMEOUT_CODE) {
+        this.failuresCounter.inc({ name });
+        return;
+      }
       this.failuresCounter.inc({ name });
       this.requestsCounter.inc({ name, result: 'failure' });
     });
@@ -159,5 +168,26 @@ export class CircuitBreakerService {
     breaker.on('timeout', () => {
       this.requestsCounter.inc({ name, result: 'timeout' });
     });
+  }
+
+  /**
+   * 모듈 종료 시 등록된 모든 opossum CB의 내부 타이머(bucket rotation)를 정리
+   *
+   * opossum CircuitBreaker는 stats bucket 갱신용 setInterval을 보유하므로,
+   * Nest 앱 teardown(테스트/local reload/graceful restart) 시 명시적 shutdown이 없으면
+   * 타이머가 누수되어 프로세스 종료 지연 또는 인스턴스 누적이 발생할 수 있다
+   */
+  onModuleDestroy(): void {
+    for (const [name, breaker] of this.breakers) {
+      try {
+        breaker.shutdown();
+        this.logger.log(`CircuitBreaker shutdown: name=${name}`);
+      } catch (error: unknown) {
+        this.logger.warn(
+          `CircuitBreaker shutdown 실패: name=${name}, error=${(error as Error).message}`,
+        );
+      }
+    }
+    this.breakers.clear();
   }
 }
