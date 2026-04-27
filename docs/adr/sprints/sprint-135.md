@@ -166,11 +166,26 @@ NestJS HTTP 호출부에 Circuit Breaker 패턴을 도입하여 외부 서비스
 - **Critic 3차 P1 후속 정정 — 방어 코드 추가**: `getSourcePlatform`/`getDeadline`의 `hostBreaker.fire` 결과에 `instanceof Error` 검사 추가. 현재 opossum 8.x는 errorFilter 통과 시 `reject(error)` 호출되어 catch에서 fallback 반환되지만, 명시적 검사로 (1) 향후 opossum 동작 변경 대비 + (2) 코드 의도 명확화 + (3) Error 객체가 비즈니스 로직(`sourcePlatform: Error`, `isLate: Error`)에 도달하지 않도록 보장. defense in depth. 테스트 2건 신규(getSourcePlatform/getDeadline 각 1건 — Error를 resolve로 mock하여 fallback 반환 검증). 전체 336 → **338 tests** pass, problem-service-client.ts coverage stmts/branches/functions/lines 모두 100% 유지
 - **Critic 4차 P2 후속 정정 — URL 검증 추가**: 1차 P2 수정에서 `problemServiceKey`만 검증하고 `problemServiceUrl`은 default 값(`'http://problem-service:3002'`)으로 fallback되어 누락. URL 미설정 + KEY 설정 시 default 호스트로 fetch 5초 timeout → CB OPEN 회귀 가능. constructor에서 default 제거(`?? ''`로 빈 문자열 보존) + `isConfigReady()` private helper로 URL/KEY 둘 다 검증 + public 메서드(`getSourcePlatform`/`getDeadline`)의 가드를 `if (!this.problemServiceKey)` → `if (!this.isConfigReady())`로 통합. `getOrThrow` 미사용(boot 시점 throw 회귀 위험) — get + 빈 문자열 fallback 패턴 유지. 테스트 5건 신규(URL 미설정 / URL+KEY 둘 다 미설정 각 getSourcePlatform/getDeadline + ConfigService.get이 undefined 반환 시 default 미적용 검증). 전체 338 → **343 tests** pass, problem-service-client.ts stmts/branches/lines 100% 유지(functions 91.66%은 index.ts 빈 re-export 한정 — 본 파일 100%)
 
-## Carryover (Wave D~E)
+### D10: Wave D — Grafana CB 대시보드
+- **Context**: Sprint 135 Wave A/B/C로 5개 호스트 단일 CB가 운영 환경에 도입됨. CB 상태 변화/요청 처리량/실패율을 한눈에 파악할 운영 대시보드 부재
+- **Choice**:
+  - 신규 ConfigMap `grafana-cb-dashboard` (`infra/k3s/monitoring/grafana-cb-dashboard.yaml`) 생성
+  - `grafana.yaml`의 projected volume에 ConfigMap mount 추가 → 자동 provisioning
+  - 패널 5종: State Matrix(현재 상태) + Request Rate by Result(처리량) + Failure Rate(실패율) + State Timeline(상태 추이) + Distribution(누적 통계) + 통계 Table
+  - submission + github-worker 양쪽 메트릭 통합 (`algosu_submission_circuit_breaker_*` + `algosu_github_worker_circuit_breaker_*`)
+  - Template variable `name` (multi-select, includeAll) — `label_values({__name__=~"algosu_(submission|github_worker)_circuit_breaker_state"}, name)` 쿼리로 5개 CB 인스턴스 자동 노출 + 패널 필터링
+  - Dashboard uid: `algosu-cb`, refresh: 30s, schemaVersion: 39, links: SLO Overview / Service Debug
+- **Code Paths**:
+  - `infra/k3s/monitoring/grafana-cb-dashboard.yaml` (신규)
+  - `infra/k3s/monitoring/grafana.yaml` (projected sources 1줄 추가)
+- **운영 가치**: CB OPEN 시 즉시 시각 알람 + result 라벨로 인프라 장애(failure/timeout/reject)와 비즈니스 4xx(filtered) 분리 관찰
+- **검증**: yaml.safe_load 통과 + ConfigMap 안의 JSON `json.loads` 통과 + Deployment의 projected sources 3개(slo/service/cb) 정합
+
+## Carryover (Wave E)
 
 - [x] Wave B: github-worker 7곳 CB 적용 (status-reporter 5 + worker.ts 2, 메서드별 별도 CB — 단일 host에 다양한 action 공존하므로 메서드별 분리가 reject/failure label 분리에 유리)
 - [x] Wave C: submission 2곳 추가 (fetchSourcePlatform + submission.service.checkLateSubmission) — D9
-- [ ] Wave D: Grafana 대시보드 1식
+- [x] Wave D: Grafana 대시보드 1식 — D10
 - [ ] Wave E: Sprint 135 ADR 종합 갱신 + sprint-window.md 최종 정리
 - [x] **Wave A 후속 정정 (D7 Critic 2차) → D8로 격상 완료**: `services/submission/src/common/circuit-breaker/circuit-breaker.service.ts`에 동일 정책 적용 — `FILTERED_BUSINESS_STATUS = {404, 410, 422}` 화이트리스트 errorFilter + success 핸들러 `result instanceof Error` 분기로 `filtered` 라벨 분리. fetchAiQuota throw 시 status 첨부. buildHttpError 헬퍼 추가
 - [ ] 별건 시드: CLAUDE.md L11 "ai-feedback" → 실제 "ai-analysis" 명명 불일치 (Sprint 136+)
