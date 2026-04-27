@@ -1,5 +1,5 @@
 /**
- * status-reporter.ts 단위 테스트
+ * status-reporter.ts 단위 테스트 — CircuitBreakerManager 주입 + 메서드별 CB
  */
 
 // Redis 모킹
@@ -34,20 +34,38 @@ jest.mock('./config', () => ({
 const mockFetch = jest.fn();
 global.fetch = mockFetch as unknown as typeof fetch;
 
+// logger stdout 억제
+jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+import { Registry } from 'prom-client';
 import { StatusReporter } from './status-reporter';
+import { CircuitBreakerManager } from './circuit-breaker';
 
 describe('StatusReporter', () => {
   let reporter: StatusReporter;
+  let cbManager: CircuitBreakerManager;
+  let registry: Registry;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
-    reporter = new StatusReporter();
+    registry = new Registry();
+    cbManager = new CircuitBreakerManager(registry);
+    reporter = new StatusReporter(cbManager);
   });
 
   afterEach(async () => {
     await reporter.close();
-    (process.stdout.write as jest.Mock).mockRestore();
+    cbManager.shutdown();
+  });
+
+  describe('생성자 — CB 등록', () => {
+    it('5개 메서드 CB가 모두 등록된다', () => {
+      expect(cbManager.getBreaker('submission-getSubmission')).toBeDefined();
+      expect(cbManager.getBreaker('submission-reportSuccess')).toBeDefined();
+      expect(cbManager.getBreaker('submission-reportFailed')).toBeDefined();
+      expect(cbManager.getBreaker('submission-reportTokenInvalid')).toBeDefined();
+      expect(cbManager.getBreaker('submission-reportSkipped')).toBeDefined();
+    });
   });
 
   describe('getSubmission', () => {
@@ -88,6 +106,15 @@ describe('StatusReporter', () => {
         'Submission 조회 실패: 404',
       );
     });
+
+    it('_doGetSubmission 직접 호출 -- non-2xx throw', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
+
+      await expect(
+        (reporter as unknown as { _doGetSubmission(id: string): Promise<unknown> })
+          ._doGetSubmission('sub-x'),
+      ).rejects.toThrow('Submission 조회 실패: 500');
+    });
   });
 
   describe('reportSuccess', () => {
@@ -112,6 +139,15 @@ describe('StatusReporter', () => {
         reporter.reportSuccess('sub-001', 'submissions/prob-1/sub-001.py'),
       ).rejects.toThrow('reportSuccess 실패: 500');
     });
+
+    it('_doReportSuccess 직접 호출 -- 정상 200', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: true });
+
+      await expect(
+        (reporter as unknown as { _doReportSuccess(id: string, p: string): Promise<void> })
+          ._doReportSuccess('sub-y', '/path'),
+      ).resolves.toBeUndefined();
+    });
   });
 
   describe('reportFailed', () => {
@@ -133,6 +169,15 @@ describe('StatusReporter', () => {
         'reportFailed 실패: 502',
       );
     });
+
+    it('_doReportFailed 직접 호출 -- 정상 200', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: true });
+
+      await expect(
+        (reporter as unknown as { _doReportFailed(id: string): Promise<void> })
+          ._doReportFailed('sub-z'),
+      ).resolves.toBeUndefined();
+    });
   });
 
   describe('reportTokenInvalid', () => {
@@ -153,6 +198,15 @@ describe('StatusReporter', () => {
       await expect(reporter.reportTokenInvalid('sub-001')).rejects.toThrow(
         'reportTokenInvalid 실패: 503',
       );
+    });
+
+    it('_doReportTokenInvalid 직접 호출 -- 정상 200', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: true });
+
+      await expect(
+        (reporter as unknown as { _doReportTokenInvalid(id: string): Promise<void> })
+          ._doReportTokenInvalid('sub-w'),
+      ).resolves.toBeUndefined();
     });
   });
 
@@ -181,6 +235,15 @@ describe('StatusReporter', () => {
       );
 
       expect(mockRedisPublish).not.toHaveBeenCalled();
+    });
+
+    it('_doReportSkipped 직접 호출 -- 정상 200', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: true });
+
+      await expect(
+        (reporter as unknown as { _doReportSkipped(id: string): Promise<void> })
+          ._doReportSkipped('sub-v'),
+      ).resolves.toBeUndefined();
     });
   });
 

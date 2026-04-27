@@ -85,7 +85,9 @@ global.fetch = mockFetch as unknown as typeof fetch;
 // logger stdout 억제
 jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
 
+import { Registry } from 'prom-client';
 import { GitHubWorker } from './worker';
+import { CircuitBreakerManager } from './circuit-breaker';
 import * as crypto from 'crypto';
 
 // 암호화 헬퍼 (테스트 데이터 생성용)
@@ -98,17 +100,25 @@ function encryptToken(token: string): string {
   return `${iv.toString('hex')}:${encrypted.toString('hex')}:${tag.toString('hex')}`;
 }
 
+/** 테스트마다 새 CB manager 생성 (Registry 충돌 방지) */
+function createCbManager(): CircuitBreakerManager {
+  return new CircuitBreakerManager(new Registry());
+}
+
 describe('GitHubWorker', () => {
   let worker: GitHubWorker;
+  let cbManager: CircuitBreakerManager;
 
   beforeEach(() => {
     jest.clearAllMocks();
     consumeCallback = null;
-    worker = new GitHubWorker();
+    cbManager = createCbManager();
+    worker = new GitHubWorker(cbManager);
   });
 
   afterEach(async () => {
     await worker.stop();
+    cbManager.shutdown();
   });
 
   describe('start', () => {
@@ -590,7 +600,8 @@ describe('GitHubWorker', () => {
           close: mockConnectionClose,
         });
 
-      const newWorker = new GitHubWorker();
+      const newCbManager = createCbManager();
+      const newWorker = new GitHubWorker(newCbManager);
       await newWorker.start();
 
       // close 이벤트 트리거
@@ -603,6 +614,7 @@ describe('GitHubWorker', () => {
       expect(jest.getTimerCount()).toBeGreaterThan(0);
 
       await newWorker.stop();
+      newCbManager.shutdown();
       jest.useRealTimers();
     });
 
@@ -1059,6 +1071,105 @@ describe('GitHubWorker', () => {
       await consumeCallback!(msg);
 
       expect(mockNack).toHaveBeenCalledWith(msg, false, false);
+    });
+  });
+
+  describe('Sprint 135 Wave B — CB 적용', () => {
+    it('CircuitBreakerManager 생성자 주입 시 worker 측 CB 2개 등록', () => {
+      // GitHubWorker 생성자에서 등록되는 CB 이름 검증
+      expect(cbManager.getBreaker('gateway-getUserGitHubInfo')).toBeDefined();
+      expect(cbManager.getBreaker('problem-getProblemInfo')).toBeDefined();
+      // StatusReporter가 등록한 5개 CB도 함께 존재
+      expect(cbManager.getBreaker('submission-getSubmission')).toBeDefined();
+      expect(cbManager.getBreaker('submission-reportSuccess')).toBeDefined();
+      expect(cbManager.getBreaker('submission-reportFailed')).toBeDefined();
+      expect(cbManager.getBreaker('submission-reportTokenInvalid')).toBeDefined();
+      expect(cbManager.getBreaker('submission-reportSkipped')).toBeDefined();
+    });
+
+    it('_doGetUserGitHubInfo 직접 호출 -- 정상 200', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          github_username: 'u',
+          encrypted_token: null,
+        }),
+      });
+
+      const result = await (
+        worker as unknown as { _doGetUserGitHubInfo(id: string): Promise<unknown> }
+      )._doGetUserGitHubInfo('user-1');
+
+      expect(result).toEqual({ github_username: 'u', encrypted_token: null });
+    });
+
+    it('_doGetUserGitHubInfo 직접 호출 -- non-2xx throw', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
+
+      await expect(
+        (worker as unknown as { _doGetUserGitHubInfo(id: string): Promise<unknown> })
+          ._doGetUserGitHubInfo('user-1'),
+      ).rejects.toThrow('유저 GitHub 정보 조회 실패: 500');
+    });
+
+    it('_doGetProblemInfo 직접 호출 -- 정상 200, body 매핑', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            title: '문제',
+            weekNumber: '1주차',
+            sourcePlatform: 'baekjoon',
+            sourceUrl: 'https://acmicpc.net/problem/1',
+          },
+        }),
+      });
+
+      const result = await (
+        worker as unknown as {
+          _doGetProblemInfo(p: string, s: string, u: string): Promise<unknown>;
+        }
+      )._doGetProblemInfo('p-1', 's-1', 'u-1');
+
+      expect(result).toEqual({
+        title: '문제',
+        weekNumber: '1주차',
+        sourcePlatform: 'baekjoon',
+        sourceUrl: 'https://acmicpc.net/problem/1',
+      });
+    });
+
+    it('_doGetProblemInfo 직접 호출 -- body 누락 필드 fallback', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: { title: undefined, weekNumber: undefined, sourcePlatform: undefined, sourceUrl: undefined },
+        }),
+      });
+
+      const result = await (
+        worker as unknown as {
+          _doGetProblemInfo(p: string, s: string, u: string): Promise<unknown>;
+        }
+      )._doGetProblemInfo('p-2', 's-2', 'u-2');
+
+      // 누락 필드는 problemId / 빈 문자열로 대체
+      expect(result).toEqual({
+        title: 'p-2',
+        weekNumber: '',
+        sourcePlatform: '',
+        sourceUrl: '',
+      });
+    });
+
+    it('_doGetProblemInfo 직접 호출 -- non-2xx throw', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 503 });
+
+      await expect(
+        (worker as unknown as {
+          _doGetProblemInfo(p: string, s: string, u: string): Promise<unknown>;
+        })._doGetProblemInfo('p-x', 's-x', 'u-x'),
+      ).rejects.toThrow('Problem 정보 조회 실패: 503');
     });
   });
 });
