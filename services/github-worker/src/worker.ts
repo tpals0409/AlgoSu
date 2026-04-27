@@ -2,16 +2,26 @@
  * @file GitHub Worker — RabbitMQ 소비자 + 유저 토큰 기반 Push
  * @domain github
  * @layer service
- * @related github-push.service.ts, token-manager.ts, status-reporter.ts
+ * @related github-push.service.ts, token-manager.ts, status-reporter.ts, circuit-breaker.ts
  */
 import * as amqplib from 'amqplib';
 import Redis from 'ioredis';
+import type CircuitBreaker from 'opossum';
 import { GitHubPushService, GitHubRateLimitError } from './github-push.service';
 import { TokenManager } from './token-manager';
 import { StatusReporter } from './status-reporter';
 import { logger } from './logger';
 import { config } from './config';
 import { dlqMessagesTotal, mqMessagesProcessedTotal } from './metrics';
+import { CircuitBreakerManager } from './circuit-breaker';
+
+/** Problem Service 응답 (정상 + fallback 공통 타입) */
+interface ProblemInfo {
+  title: string;
+  weekNumber: string;
+  sourcePlatform: string;
+  sourceUrl: string;
+}
 
 /**
  * GitHub Worker — RabbitMQ 소비자 (유저 토큰 기반)
@@ -63,15 +73,38 @@ export class GitHubWorker {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private isShuttingDown = false;
 
-  constructor() {
+  // Sprint 135 Wave B: 외부 호출부 CB
+  private readonly getUserGitHubInfoBreaker: CircuitBreaker<[string], UserGitHubInfo>;
+  private readonly getProblemInfoBreaker: CircuitBreaker<[string, string, string], ProblemInfo>;
+
+  constructor(cbManager: CircuitBreakerManager) {
     this.tokenManager = new TokenManager();
     this.pushService = new GitHubPushService();
-    this.statusReporter = new StatusReporter();
+    this.statusReporter = new StatusReporter(cbManager);
     this.redis = new Redis(config.redisUrl);
     this.gatewayInternalUrl = config.gatewayInternalUrl;
     this.internalKeyGateway = config.internalKeyGateway;
     this.problemServiceUrl = config.problemServiceUrl;
     this.problemServiceKey = config.problemServiceKey;
+
+    this.getUserGitHubInfoBreaker = cbManager.createBreaker(
+      'gateway-getUserGitHubInfo',
+      this._doGetUserGitHubInfo.bind(this),
+    );
+
+    // problem CB는 fallback으로 기본값 반환 (기존 catch 블록과 동일 동작)
+    this.getProblemInfoBreaker = cbManager.createBreaker(
+      'problem-getProblemInfo',
+      this._doGetProblemInfo.bind(this),
+      {
+        fallback: ((problemId: string) => ({
+          title: problemId,
+          weekNumber: '',
+          sourcePlatform: '',
+          sourceUrl: '',
+        })) as (...args: unknown[]) => unknown,
+      },
+    );
   }
 
   /**
@@ -229,10 +262,17 @@ export class GitHubWorker {
   }
 
   /**
-   * Gateway Internal API로 유저 GitHub 토큰 정보 조회
+   * Gateway Internal API로 유저 GitHub 토큰 정보 조회 — CB 보호
    * 보안: X-Internal-Key 필수, 토큰 로그 출력 금지
    */
   private async getUserGitHubInfo(userId: string): Promise<UserGitHubInfo> {
+    return this.getUserGitHubInfoBreaker.fire(userId);
+  }
+
+  /**
+   * Gateway 호출 fetch 본체 (CB action). fallback 없음 — 실패 시 throw 전파.
+   */
+  async _doGetUserGitHubInfo(userId: string): Promise<UserGitHubInfo> {
     const res = await fetch(
       `${this.gatewayInternalUrl}/internal/users/${userId}/github-encrypted-token`,
       {
@@ -252,49 +292,62 @@ export class GitHubWorker {
   }
 
   /**
-   * Problem Service에서 문제 정보 조회 (제목, 주차)
+   * Problem Service에서 문제 정보 조회 (제목, 주차) — CB 보호
+   *
+   * fallback: CB OPEN/timeout/throw 시 기본값 반환 (기존 catch 동작 유지).
+   * non-2xx 응답은 _doGetProblemInfo가 throw → CB가 failure 카운트 → fallback 발동.
    */
   private async getProblemInfo(
     problemId: string,
     studyId: string,
     userId: string,
-  ): Promise<{ title: string; weekNumber: string; sourcePlatform: string; sourceUrl: string }> {
+  ): Promise<ProblemInfo> {
     try {
-      const res = await fetch(
-        `${this.problemServiceUrl}/internal/${problemId}`,
-        {
-          headers: {
-            'x-internal-key': this.problemServiceKey,
-            'x-study-id': studyId,
-            'x-user-id': userId,
-            'Content-Type': 'application/json',
-          },
-          signal: AbortSignal.timeout(10_000),
-        },
-      );
-
-      if (!res.ok) {
-        logger.warn(`Problem 정보 조회 실패 (${res.status}) — 기본값 사용`, {
-          tag: 'PROBLEM_FETCH',
-        });
-        return { title: problemId, weekNumber: '', sourcePlatform: '', sourceUrl: '' };
-      }
-
-      const body = (await res.json()) as {
-        data: { title: string; weekNumber: string; sourcePlatform: string; sourceUrl: string };
-      };
-      return {
-        title: body.data.title ?? problemId,
-        weekNumber: body.data.weekNumber ?? '',
-        sourcePlatform: body.data.sourcePlatform ?? '',
-        sourceUrl: body.data.sourceUrl ?? '',
-      };
+      return await this.getProblemInfoBreaker.fire(problemId, studyId, userId);
     } catch {
-      logger.warn('Problem 정보 조회 예외 — 기본값 사용', {
-        tag: 'PROBLEM_FETCH',
-      });
+      // 안전망: fallback이 등록돼 있으나 어떤 사유로든 throw가 새 나오면 기본값 사용
+      logger.warn('Problem 정보 조회 예외 — 기본값 사용', { tag: 'PROBLEM_FETCH' });
       return { title: problemId, weekNumber: '', sourcePlatform: '', sourceUrl: '' };
     }
+  }
+
+  /**
+   * Problem Service fetch 본체 (CB action). 실패 시 throw → CB failure + fallback.
+   */
+  async _doGetProblemInfo(
+    problemId: string,
+    studyId: string,
+    userId: string,
+  ): Promise<ProblemInfo> {
+    const res = await fetch(
+      `${this.problemServiceUrl}/internal/${problemId}`,
+      {
+        headers: {
+          'x-internal-key': this.problemServiceKey,
+          'x-study-id': studyId,
+          'x-user-id': userId,
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(10_000),
+      },
+    );
+
+    if (!res.ok) {
+      logger.warn(`Problem 정보 조회 실패 (${res.status}) — 기본값 사용`, {
+        tag: 'PROBLEM_FETCH',
+      });
+      throw new Error(`Problem 정보 조회 실패: ${res.status}`);
+    }
+
+    const body = (await res.json()) as {
+      data: ProblemInfo;
+    };
+    return {
+      title: body.data.title ?? problemId,
+      weekNumber: body.data.weekNumber ?? '',
+      sourcePlatform: body.data.sourcePlatform ?? '',
+      sourceUrl: body.data.sourceUrl ?? '',
+    };
   }
 
   private async processWithRetry(event: GitHubPushEvent): Promise<void> {
