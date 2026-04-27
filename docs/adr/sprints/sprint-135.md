@@ -67,21 +67,26 @@ NestJS HTTP 호출부에 Circuit Breaker 패턴을 도입하여 외부 서비스
 - **메트릭 prefix**: `algosu_github_worker_circuit_breaker_*` (서비스 prefix만 다르고 라벨/구조는 Wave A와 동일)
 - **Code Paths**: `services/github-worker/src/circuit-breaker.ts` (신규 + spec), `services/github-worker/src/main.ts`, `services/github-worker/src/worker.ts`, `services/github-worker/src/status-reporter.ts`, `services/github-worker/src/metrics.ts` (registry export)
 
-### D7: errorFilter 정책 — 4xx 비즈니스 에러는 CB 제외 (Wave B 수정)
-- **Context**: Critic 1차 리뷰 P1 2건 — 4xx 영구 에러(404 not found, 401, 403 등)가 CB failure로 카운트되어 회로 OPEN. 정상 메시지까지 reject되어 워커가 30초간 마비되는 광범위 outage 위험. CB는 인프라 장애(5xx/timeout/network) 보호용이며 4xx 비즈니스 에러는 CB 대상 아님 (retry해도 결과 동일한 영구 에러)
-- **Choice**: opossum `errorFilter(err) => boolean` 옵션 도입. true 반환 시 해당 에러는 success 이벤트로 처리되어 failure counter 미증가 + OPEN 전이 미트리거. 에러 객체의 `status` 속성이 400~499 범위면 filtered 처리(failure 미카운트), 5xx/타임아웃/네트워크 에러(status 미첨부)만 CB failure로 카운트
-- **Rationale**: CB는 인프라 장애 보호용이며 4xx는 비즈니스 로직 실패(영구). retry해도 결과 동일하므로 CB 진입 부적절. 호출부에서 throw 시 `buildHttpError(message, res.status)` helper로 status 첨부 → CircuitBreakerManager의 default errorFilter가 분기. `CreateBreakerOptions.errorFilter`로 호출자 override도 가능
-- **Code Paths**: `services/github-worker/src/circuit-breaker.ts` (`DEFAULT_ERROR_FILTER` export + `DEFAULT_CB_OPTIONS.errorFilter` 등록 + `CreateBreakerOptions.errorFilter` 노출), `services/github-worker/src/status-reporter.ts` (5곳 throw에 `buildHttpError`로 status 첨부), `services/github-worker/src/worker.ts` (2곳 throw에 동일 helper 적용)
-- **테스트 추가**: `circuit-breaker.spec.ts` errorFilter 단위 동작 4건 + integration 4건(4xx CLOSED 유지 / 5xx OPEN / 네트워크 에러 OPEN / 호출자 override) + `status-reporter.spec.ts` 5곳 status 첨부 검증 + `worker.spec.ts` 2곳 status 첨부 검증(4xx/5xx 각각). jest 146 → **163** (+17), coverage stmts 99.8% / branches 97.36% / functions 100% / lines 100% (threshold 98/92/100/98 충족)
-- **Wave A 호환**: `submission/circuit-breaker.service.ts`에도 동일 정책 적용 시드 → Sprint 135 Wave C 또는 별건 PR. 현재 fetchAiQuota는 fallback `() => true`이므로 4xx OPEN의 사용자 영향은 없으나, 일관성 + 메트릭 정확성을 위해 후속 정정 권장
+### D7: errorFilter 정책 — 비즈니스 4xx 화이트리스트만 CB 제외 (Wave B Critic 2차 수정)
+- **Context (1차)**: Critic 1차 리뷰 P1 2건 — 4xx 영구 에러(404 not found 등)가 CB failure로 카운트되어 회로 OPEN. 정상 메시지까지 reject되어 워커가 30초간 마비되는 광범위 outage 위험 (Critic 1차 P1)
+- **Context (2차)**: 1차 수정으로 모든 4xx(`>=400 && <500`)를 errorFilter로 제외했으나, 401/403까지 통과 → X-Internal-Key 회전/오설정으로 영구 401/403 발생 시 internal-auth outage 보호 실패. 또한 opossum errorFilter 통과 시 emit되는 `success` 이벤트 첫 인자가 Error 인스턴스(filtered된 에러 객체)인데 `result="success"` 라벨로 카운트 → 메트릭 부정확 (Critic 2차 P1+P2)
+- **Choice**:
+  - errorFilter 범위를 명시적 비즈니스 4xx 화이트리스트(`FILTERED_BUSINESS_STATUS = {400, 404, 410, 422}`)로 축소
+  - 401/403/408/429 등은 CB failure로 정상 카운트하여 인증/권한/timeout/overload outage 보호 유지
+  - opossum errorFilter 통과 시 emit되는 success 이벤트에서 result가 Error 인스턴스인 경우를 분기하여 `requests_total{result="filtered"}`로 분리 카운트 (메트릭 정확성)
+  - `result` 라벨 enum 확장: `success | failure | reject | timeout | filtered`
+- **Rationale**: 4xx 중 retry해도 결과 동일한 영구 비즈니스 에러(요청 검증 실패 / 리소스 부재 / 영구 제거 / 비즈니스 룰 위반)만 CB 제외. 인증/권한 장애는 X-Internal-Key 회전 사고처럼 운영 위험 신호 → CB OPEN으로 빠른 차단 + 알람 트리거가 의도된 동작. timeout/rate limit도 일시적 장애로 CB 보호 대상
+- **Code Paths**: `services/github-worker/src/circuit-breaker.ts` (`FILTERED_BUSINESS_STATUS` Set export + `DEFAULT_ERROR_FILTER` 화이트리스트 검사 + success 핸들러 `result instanceof Error` 분기), `services/github-worker/src/circuit-breaker.spec.ts` (테스트 갱신 + 신규)
+- **테스트 갱신/추가**: `circuit-breaker.spec.ts` errorFilter 단위 동작 5건(화이트리스트/외-4xx/5xx/status 미첨부/경계값) + `FILTERED_BUSINESS_STATUS` 정의 1건 + integration 7건(404 filtered 메트릭 / 401 OPEN / 403 OPEN / 429 OPEN / 5xx OPEN / 네트워크 OPEN / filtered-success 분리 / override) + 기존 status 첨부 검증 보존. jest 163 → **169** (+6 net), coverage stmts 99.8% / branches 97.36% / functions 100% / lines 100% (threshold 98/92/100/98 충족)
+- **Wave A 호환**: `submission/circuit-breaker.service.ts`에도 동일 화이트리스트 정책 + filtered 메트릭 분리 시드 → Sprint 135 Wave C 또는 별건 PR. 현재 fetchAiQuota는 fallback `() => true`이므로 사용자 영향은 없으나, 일관성·메트릭 정확성·인증 장애 보호를 위해 후속 정정 권장
 
 ## Wave B 산출물
 
 | 항목 | 결과 |
 |------|------|
 | 브랜치 | feat/sprint-135-cb-worker |
-| 커밋 | 5 atomic (deps+manager → status-reporter → worker → tests → ADR) + 2 (errorFilter fix + ADR D7) |
-| 테스트 | 8 suites / 163 tests (Wave B 146 + D7 신규 17: CB errorFilter +8 + status-reporter +5 + worker +4) |
+| 커밋 | 5 atomic (deps+manager → status-reporter → worker → tests → ADR) + 2 (1차 errorFilter fix + ADR D7) + 2 (Critic 2차 화이트리스트+filtered 라벨 fix + ADR D7 갱신) |
+| 테스트 | 8 suites / 169 tests (Wave B 146 + D7 1차 +17 + Critic 2차 +6 net: 화이트리스트 정의 +1 / 단위동작 +1 / 401·403·429 OPEN +3 / filtered-success 분리 +1 / 4xx CLOSED 갱신) |
 | coverage | stmts 99.8% / branches 97.36% / functions 100% / lines 100% (threshold 98/92/100/98 충족) |
 | typecheck | 0 errors |
 | lint | 0 errors |
@@ -92,5 +97,6 @@ NestJS HTTP 호출부에 Circuit Breaker 패턴을 도입하여 외부 서비스
 - [ ] Wave C: submission 2곳 추가 (fetchSourcePlatform L257 + submission.service L504)
 - [ ] Wave D: Grafana 대시보드 1식
 - [ ] Wave E: Sprint 135 ADR 종합 갱신 + sprint-window.md 최종 정리
+- [ ] **Wave A 후속 정정 (D7 Critic 2차)**: `services/submission/src/common/circuit-breaker/circuit-breaker.service.ts`에 동일 정책 적용 — `FILTERED_BUSINESS_STATUS = {400, 404, 410, 422}` 화이트리스트 errorFilter + success 핸들러 `result instanceof Error` 분기로 `filtered` 라벨 분리. 현재 fetchAiQuota fallback이 fail-open이라 사용자 영향 없으나 일관성·메트릭 정확성·인증 장애 보호 위해 권장
 - [ ] 별건 시드: CLAUDE.md L11 "ai-feedback" → 실제 "ai-analysis" 명명 불일치 (Sprint 136+)
 - [ ] 별건 시드: E2E 자동 PR CI 통합 (Sprint 134 이월)
