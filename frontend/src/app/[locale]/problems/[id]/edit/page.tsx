@@ -572,7 +572,10 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                   mode="single"
                   selected={form.deadline ? new Date(form.deadline) : undefined}
                   onSelect={(date) => {
-                    setForm((prev) => ({ ...prev, deadline: date ? date.toISOString() : '' }));
+                    const iso = date
+                      ? new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59).toISOString()
+                      : '';
+                    setForm((prev) => ({ ...prev, deadline: iso }));
                     setFieldErrors((prev) => ({ ...prev, deadline: undefined }));
                   }}
                   className={`rounded-badge border bg-input-bg ${fieldErrors.deadline ? 'border-error' : 'border-border'}`}

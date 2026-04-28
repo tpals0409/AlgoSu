@@ -590,7 +590,12 @@ export default function ProblemCreatePage(): ReactNode {
                     <Calendar
                       mode="single"
                       selected={field.value ? new Date(field.value) : undefined}
-                      onSelect={(date) => field.onChange(date ? date.toISOString() : '')}
+                      onSelect={(date) => {
+                        const iso = date
+                          ? new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59).toISOString()
+                          : '';
+                        field.onChange(iso);
+                      }}
                       className={`rounded-badge border bg-input-bg ${errors.deadline ? 'border-error' : 'border-border'}`}
                     />
                   )}
