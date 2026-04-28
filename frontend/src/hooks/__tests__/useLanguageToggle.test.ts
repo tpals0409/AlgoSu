@@ -10,7 +10,6 @@ const defaultForm: ProblemFormState = {
   title: '',
   description: '',
   difficulty: 'EASY',
-  weekNumber: '1',
   deadline: '',
   allowedLanguages: ['python', 'javascript'],
   sourceUrl: '',

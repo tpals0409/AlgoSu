@@ -13,10 +13,6 @@ export const problemCreateSchema = z.object({
     .min(1, 'validation.problem.titleRequired'),
   description: z.string().optional(),
   difficulty: z.string().optional(),
-  weekNumber: z
-    .string()
-    .trim()
-    .min(1, 'validation.problem.weekNumberRequired'),
   deadline: z
     .string()
     .min(1, 'validation.problem.deadlineRequired'),

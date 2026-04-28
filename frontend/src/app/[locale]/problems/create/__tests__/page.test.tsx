@@ -101,6 +101,22 @@ jest.mock('@/components/ui/Button', () => ({
   Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
     <button {...props}>{children}</button>
   ),
+  buttonVariants: () => '',
+}));
+
+jest.mock('@/components/ui/calendar', () => ({
+  Calendar: ({ selected, onSelect }: { selected?: Date; onSelect?: (date: Date | undefined) => void }) => (
+    <div data-testid="calendar-mock">
+      <button
+        type="button"
+        data-testid="calendar-pick-2026-04-15"
+        onClick={() => onSelect?.(new Date(2026, 3, 15))}
+      >
+        Pick 2026-04-15
+      </button>
+      {selected && <span data-testid="calendar-selected">{selected.toISOString()}</span>}
+    </div>
+  ),
 }));
 
 jest.mock('@/components/ui/Input', () => {
@@ -156,9 +172,6 @@ jest.mock('@/lib/problem-form-utils', () => ({
   labelClass: 'label-class',
   selectClass: 'select-class',
   textareaClass: 'textarea-class',
-  getCurrentWeekLabel: () => 'Week 1',
-  getWeekOptions: () => ['Week 1', 'Week 2'],
-  getWeekDates: () => [{ value: '2025-01-10', label: '금 (1/10)' }],
 }));
 
 jest.mock('@/lib/schemas/problem', () => ({

@@ -13,6 +13,7 @@ import { useTranslations } from 'next-intl';
 import { Search, ExternalLink, Trash2, FileText, Settings, X } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
+import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Alert } from '@/components/ui/Alert';
@@ -36,11 +37,9 @@ import {
   labelClass,
   selectClass,
   textareaClass,
-  getWeekOptions,
-  getWeekDates,
-  matchDeadlineToWeekDate,
   validateProblemForm,
 } from '@/lib/problem-form-utils';
+import { getCurrentWeekLabel } from '@/lib/utils';
 
 // ─── TYPES ────────────────────────────────
 
@@ -78,7 +77,6 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
     title: '',
     description: '',
     difficulty: '',
-    weekNumber: '',
     deadline: '',
     allowedLanguages: [...LANGUAGE_VALUES],
     sourceUrl: '',
@@ -146,15 +144,13 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
         const data = await problemApi.findById(problemId);
         if (cancelled) return;
         setProblem(data);
-        const weekNumber = String(data.weekNumber ?? '');
         const platform = (data.sourcePlatform as 'BOJ' | 'PROGRAMMERS') || 'BOJ';
         setActivePlatform(platform);
         setForm({
           title: data.title ?? '',
           description: data.description ?? '',
           difficulty: data.difficulty ?? '',
-          weekNumber,
-          deadline: data.deadline ? matchDeadlineToWeekDate(data.deadline, weekNumber) : '',
+          deadline: data.deadline ?? '',
           allowedLanguages: data.allowedLanguages?.length ? data.allowedLanguages : [...LANGUAGE_VALUES],
           sourceUrl: data.sourceUrl ?? '',
           sourcePlatform: platform,
@@ -181,21 +177,10 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
         setForm((prev) => ({
           ...prev,
           [field]: e.target.value,
-          ...(field === 'weekNumber' ? { deadline: '' } : {}),
         }));
         setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
       },
     [],
-  );
-
-  const handleBlur = useCallback(
-    (field: keyof ProblemFormErrors) => () => {
-      setFieldErrors((prev) => {
-        const errors = validateProblemForm(form);
-        return { ...prev, [field]: errors[field] };
-      });
-    },
-    [form],
   );
 
   const handleSubmit = useCallback(
@@ -227,10 +212,11 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
         if (form.title.trim() !== problem.title) data.title = form.title.trim();
         if (form.description.trim() !== (problem.description ?? '')) data.description = form.description.trim();
         if (form.difficulty !== (problem.difficulty ?? '')) data.difficulty = (form.difficulty || undefined) as UpdateProblemData['difficulty'];
-        if (form.weekNumber.trim() !== (problem.weekNumber ?? '')) data.weekNumber = form.weekNumber.trim();
         if (form.deadline) {
           const newDeadline = new Date(form.deadline).toISOString();
+          const newWeekNumber = getCurrentWeekLabel(new Date(form.deadline));
           if (newDeadline !== problem.deadline) data.deadline = newDeadline;
+          if (newWeekNumber !== (problem.weekNumber ?? '')) data.weekNumber = newWeekNumber;
         }
         if (JSON.stringify(form.allowedLanguages) !== JSON.stringify(problem.allowedLanguages ?? [])) {
           data.allowedLanguages = form.allowedLanguages;
@@ -554,44 +540,20 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="flex flex-col">
-                  <label htmlFor="edit-difficulty" className={labelClass}>{t('form.difficultyLabel')}</label>
-                  <select
-                    id="edit-difficulty"
-                    value={form.difficulty}
-                    onChange={handleChange('difficulty')}
-                    disabled={isSubmitting || bojApplied || programmersApplied}
-                    className={selectClass}
-                  >
-                    <option value="">{t('form.difficultyNone')}</option>
-                    {DIFFICULTIES.map((d) => (
-                      <option key={d} value={d}>{DIFFICULTY_LABELS[d]}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex flex-col">
-                  <label htmlFor="edit-weekNumber" className={labelClass}>
-                    {t('form.weekLabel')} <span className="text-error text-[11px]">{t('form.required')}</span>
-                  </label>
-                  <select
-                    id="edit-weekNumber"
-                    value={form.weekNumber}
-                    onChange={handleChange('weekNumber')}
-                    onBlur={handleBlur('weekNumber')}
-                    disabled={isSubmitting}
-                    aria-required
-                    className={`${selectClass} ${fieldErrors.weekNumber ? 'border-error' : ''}`}
-                  >
-                    {getWeekOptions().map((w) => (
-                      <option key={w} value={w}>{w}</option>
-                    ))}
-                  </select>
-                  {fieldErrors.weekNumber && (
-                    <p className="mt-1 text-[11px] text-error">{tErrors(fieldErrors.weekNumber)}</p>
-                  )}
-                </div>
+              <div className="flex flex-col">
+                <label htmlFor="edit-difficulty" className={labelClass}>{t('form.difficultyLabel')}</label>
+                <select
+                  id="edit-difficulty"
+                  value={form.difficulty}
+                  onChange={handleChange('difficulty')}
+                  disabled={isSubmitting || bojApplied || programmersApplied}
+                  className={selectClass}
+                >
+                  <option value="">{t('form.difficultyNone')}</option>
+                  {DIFFICULTIES.map((d) => (
+                    <option key={d} value={d}>{DIFFICULTY_LABELS[d]}</option>
+                  ))}
+                </select>
               </div>
 
               {/* 마감 & 상태 섹션 */}
@@ -603,23 +565,26 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
               </div>
 
               <div className="flex flex-col">
-                <label htmlFor="edit-deadline" className={labelClass}>
+                <label className={labelClass}>
                   {t('form.deadlineLabel')} <span className="text-error text-[11px]">{t('form.required')}</span>
                 </label>
-                <select
-                  id="edit-deadline"
-                  value={form.deadline}
-                  onChange={handleChange('deadline')}
-                  onBlur={handleBlur('deadline')}
-                  disabled={isSubmitting}
-                  aria-required
-                  className={`${selectClass} ${fieldErrors.deadline ? 'border-error' : ''}`}
-                >
-                  <option value="" disabled>{t('form.deadlinePlaceholder')}</option>
-                  {getWeekDates(form.weekNumber).map((d) => (
-                    <option key={d.value} value={d.value}>{d.label}</option>
-                  ))}
-                </select>
+                <Calendar
+                  mode="single"
+                  selected={form.deadline ? new Date(form.deadline) : undefined}
+                  onSelect={(date) => {
+                    const iso = date
+                      ? new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59).toISOString()
+                      : '';
+                    setForm((prev) => ({ ...prev, deadline: iso }));
+                    setFieldErrors((prev) => ({ ...prev, deadline: undefined }));
+                  }}
+                  className={`rounded-badge border bg-input-bg ${fieldErrors.deadline ? 'border-error' : 'border-border'}`}
+                />
+                {form.deadline && (
+                  <p className="mt-2 text-[11px] text-text-3" data-testid="edit-calculated-week">
+                    {t('form.calculatedWeek', { week: getCurrentWeekLabel(new Date(form.deadline)) })}
+                  </p>
+                )}
                 {fieldErrors.deadline && (
                   <p className="mt-1 text-[11px] text-error">{tErrors(fieldErrors.deadline)}</p>
                 )}

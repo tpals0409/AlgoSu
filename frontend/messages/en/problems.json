@@ -118,10 +118,9 @@
     "descriptionPlaceholder": "Enter a description for this problem",
     "difficultyLabel": "Difficulty",
     "difficultyNone": "None",
-    "weekLabel": "Week",
+    "calculatedWeek": "Auto-calculated: {week}",
     "required": "Required",
     "deadlineLabel": "Deadline",
-    "deadlinePlaceholder": "Select a day",
     "allowedLanguages": "Allowed Languages",
     "sourceUrl": "Source URL",
     "sourcePlatform": "Source Platform",
@@ -206,28 +205,13 @@
     },
     "confirm": {
       "back": "Back to search",
-      "weekLabel": "Week *",
-      "weekPlaceholder": "Select a week",
       "deadlineLabel": "Deadline *",
-      "deadlinePlaceholder": "Select a day",
-      "deadlinePlaceholderDisabled": "Select a week first",
+      "calculatedWeek": "Auto-calculated: {week}",
       "backButton": "Back",
       "adding": "Adding...",
-      "addButton": "Add Problem",
-      "weekFormat": "Month {month} Week {week}",
-      "dateFormat": "{dayName} ({month}/{day})"
-    },
-    "dayNames": {
-      "sun": "Sun",
-      "mon": "Mon",
-      "tue": "Tue",
-      "wed": "Wed",
-      "thu": "Thu",
-      "fri": "Fri",
-      "sat": "Sat"
+      "addButton": "Add Problem"
     },
     "validation": {
-      "weekRequired": "Please select a week.",
       "deadlineRequired": "Please select a deadline.",
       "deadlinePast": "Cannot select a past date."
     },

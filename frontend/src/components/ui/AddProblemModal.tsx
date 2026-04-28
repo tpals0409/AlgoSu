@@ -5,16 +5,18 @@
  * @related problemApi, solvedacApi, programmersApi, PROGRAMMERS_LEVEL_LABELS, CreateProblemData
  */
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import {
   Search, X, ArrowLeft, Plus, Loader2, ExternalLink, AlertCircle,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Btn, type Difficulty, DIFFICULTY_CONFIG } from './AlgosuUI';
+import { Calendar } from './calendar';
 import { problemApi, solvedacApi, programmersApi, studyApi, type CreateProblemData } from '@/lib/api';
 import { PROGRAMMERS_LEVEL_LABELS } from '@/lib/constants';
 import { useStudy } from '@/contexts/StudyContext';
+import { getCurrentWeekLabel } from '@/lib/utils';
 
 // ── solved.ac types ──────────────────────────────────────────────────────────
 // Gateway `/api/external/solvedac/search` returns flattened `string[]` with
@@ -109,84 +111,6 @@ async function searchProgrammers(query: string): Promise<SolvedProblem[]> {
     sourceUrl: item.sourceUrl,
     category: item.category,
   }));
-}
-
-// ── Week calculation (calendar-based) ────────────────────────────────────
-
-/** Day-of-week keys for i18n lookup */
-const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
-
-/** Structured week option (locale-independent) */
-interface WeekOption {
-  month: number;
-  week: number;
-  /** Stable key for select value (e.g. "4-1") */
-  key: string;
-}
-
-/**
- * Generate week options from current week onward (current month + next month week 1).
- *
- * Calendar-based week calculation:
- * - Week 1 starts from the week containing the 1st of the month (Sunday = week start).
- * - currentWeek = ceil((today + firstDayOfWeek) / 7)
- * - totalWeeks  = ceil((lastDay + firstDayOfWeek) / 7)
- */
-function generateWeekData(): WeekOption[] {
-  const now = new Date();
-  const month = now.getMonth() + 1;
-  const firstDayOfWeek = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
-  const currentWeek = Math.ceil((now.getDate() + firstDayOfWeek) / 7);
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const totalWeeks = Math.ceil((lastDay + firstDayOfWeek) / 7);
-  const options: WeekOption[] = [];
-  for (let w = currentWeek; w <= totalWeeks; w++) {
-    options.push({ month, week: w, key: `${month}-${w}` });
-  }
-  const nextMonth = month === 12 ? 1 : month + 1;
-  options.push({ month: nextMonth, week: 1, key: `${nextMonth}-1` });
-  return options;
-}
-
-/** Structured date option (locale-independent) */
-interface DateOption {
-  dayIndex: number;
-  month: number;
-  day: number;
-  value: string;
-}
-
-/**
- * Get date entries for a given week (calendar-based, KST 23:59:59).
- *
- * Week start/end accounts for the 1st day-of-week offset:
- * - rawStart = (week - 1) * 7 - firstDayOfWeek + 1
- * - rawEnd   = week * 7 - firstDayOfWeek
- * Clamped to month boundary (1 ~ daysInMonth).
- */
-function getWeekDateData(month: number, week: number): DateOption[] {
-  const now = new Date();
-  const year = now.getFullYear();
-  const adjustedYear = month < now.getMonth() + 1 && month === 1 ? year + 1 : year;
-  const firstDayOfWeek = new Date(adjustedYear, month - 1, 1).getDay();
-  const daysInMonth = new Date(adjustedYear, month, 0).getDate();
-
-  const rawStart = (week - 1) * 7 - firstDayOfWeek + 1;
-  const rawEnd = week * 7 - firstDayOfWeek;
-  const startDate = Math.max(1, rawStart);
-  const endDate = Math.min(daysInMonth, rawEnd);
-
-  const dates: DateOption[] = [];
-  for (let d = startDate; d <= endDate; d++) {
-    const date = new Date(adjustedYear, month - 1, d, 23, 59, 59);
-    dates.push({
-      dayIndex: date.getDay(),
-      month,
-      day: d,
-      value: date.toISOString(),
-    });
-  }
-  return dates;
 }
 
 // ── Field components ─────────────────────────────────────────────────────────
@@ -497,9 +421,8 @@ function ConfirmStep({
 }) {
   const t = useTranslations('problems');
   const tErrors = useTranslations('errors');
-  const [weekKey, setWeekKey] = useState('');
   const [deadline, setDeadline] = useState('');
-  const [errors, setErrors] = useState<{ weekNumber?: string; deadline?: string }>({});
+  const [errors, setErrors] = useState<{ deadline?: string }>({});
 
   const resolvedDiff = problem.difficulty ?? toOurDiff(problem.level).difficulty;
   const cfg = DIFFICULTY_CONFIG[resolvedDiff];
@@ -508,31 +431,11 @@ function ConfirmStep({
     : (PROGRAMMERS_LEVEL_LABELS[problem.level] ?? `Lv.${problem.level}`);
   const tags = problem.tags.slice(0, 5);
 
-  /** Week options (memoized) */
-  const weekOptions = useMemo(() => generateWeekData(), []);
-
-  /** Parsed month/week from selected key */
-  const selectedWeek = useMemo(() => {
-    if (!weekKey) return null;
-    const opt = weekOptions.find((w) => w.key === weekKey);
-    return opt ?? null;
-  }, [weekKey, weekOptions]);
-
-  /** Date options for the selected week */
-  const dateOptions = useMemo(() => {
-    if (!selectedWeek) return [];
-    return getWeekDateData(selectedWeek.month, selectedWeek.week).map((d) => {
-      const dayName = t(`addModal.dayNames.${DAY_KEYS[d.dayIndex]}`);
-      return {
-        label: t('addModal.confirm.dateFormat', { dayName, month: d.month, day: d.day }),
-        value: d.value,
-      };
-    });
-  }, [selectedWeek, t]);
+  /** Derived weekNumber — backend/dashboard regex expects "N월M주차" */
+  const weekNumber = deadline ? getCurrentWeekLabel(new Date(deadline)) : '';
 
   function validate() {
     const e: typeof errors = {};
-    if (!weekKey) e.weekNumber = t('addModal.validation.weekRequired');
     if (!deadline) {
       e.deadline = t('addModal.validation.deadlineRequired');
     } else if (new Date(deadline) < new Date()) {
@@ -544,10 +447,6 @@ function ConfirmStep({
 
   function handleAdd() {
     if (!validate()) return;
-    // Canonical DB format (locale-independent) — backend/dashboard regex expects "N월M주차"
-    const weekNumber = selectedWeek
-      ? `${selectedWeek.month}월${selectedWeek.week}주차`
-      : '';
     onAdd(weekNumber, deadline);
   }
 
@@ -630,54 +529,29 @@ function ConfirmStep({
           </div>
         </div>
 
-        {/* Week number */}
-        <div className="space-y-1.5">
-          <FieldLabel>{t('addModal.confirm.weekLabel')}</FieldLabel>
-          <select
-            value={weekKey}
-            onChange={(e) => { setWeekKey(e.target.value); setDeadline(''); setErrors((er) => ({ ...er, weekNumber: undefined })); }}
-            className="h-9 w-full rounded-btn border px-3 text-[13px] outline-none transition-[border-color] appearance-none bg-[length:16px] bg-[right_8px_center] bg-no-repeat"
-            style={{
-              borderColor: errors.weekNumber ? 'var(--error)' : 'var(--border)',
-              color: weekKey ? 'var(--text)' : 'var(--text-3)',
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E")`,
-            }}
-            onFocus={(e) => !errors.weekNumber && (e.currentTarget.style.borderColor = 'var(--primary)')}
-            onBlur={(e) => (e.currentTarget.style.borderColor = errors.weekNumber ? 'var(--error)' : 'var(--border)')}
-          >
-            <option value="" disabled>{t('addModal.confirm.weekPlaceholder')}</option>
-            {weekOptions.map((w) => (
-              <option key={w.key} value={w.key}>
-                {t('addModal.confirm.weekFormat', { month: w.month, week: w.week })}
-              </option>
-            ))}
-          </select>
-          {errors.weekNumber && (
-            <p className="text-[11px]" style={{ color: 'var(--error)' }}>{tErrors(errors.weekNumber)}</p>
-          )}
-        </div>
-
-        {/* Deadline */}
+        {/* Deadline (Calendar) */}
         <div className="space-y-1.5">
           <FieldLabel>{t('addModal.confirm.deadlineLabel')}</FieldLabel>
-          <select
-            value={deadline}
-            onChange={(e) => { setDeadline(e.target.value); setErrors((er) => ({ ...er, deadline: undefined })); }}
-            disabled={!weekKey}
-            className="h-9 w-full rounded-btn border px-3 text-[13px] outline-none transition-[border-color] appearance-none bg-[length:16px] bg-[right_8px_center] bg-no-repeat disabled:opacity-50"
-            style={{
-              borderColor: errors.deadline ? 'var(--error)' : 'var(--border)',
-              color: deadline ? 'var(--text)' : 'var(--text-3)',
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E")`,
-            }}
-            onFocus={(e) => !errors.deadline && (e.currentTarget.style.borderColor = 'var(--primary)')}
-            onBlur={(e) => (e.currentTarget.style.borderColor = errors.deadline ? 'var(--error)' : 'var(--border)')}
+          <div
+            className="rounded-btn border"
+            style={{ borderColor: errors.deadline ? 'var(--error)' : 'var(--border)' }}
           >
-            <option value="" disabled>{weekKey ? t('addModal.confirm.deadlinePlaceholder') : t('addModal.confirm.deadlinePlaceholderDisabled')}</option>
-            {dateOptions.map((d) => (
-              <option key={d.value} value={d.value}>{d.label}</option>
-            ))}
-          </select>
+            <Calendar
+              mode="single"
+              selected={deadline ? new Date(deadline) : undefined}
+              onSelect={(date) => {
+                const iso = date ? new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59).toISOString() : '';
+                setDeadline(iso);
+                setErrors((er) => ({ ...er, deadline: undefined }));
+              }}
+              data-testid="add-problem-modal-calendar"
+            />
+          </div>
+          {weekNumber && (
+            <p className="text-[11px]" style={{ color: 'var(--text-3)' }} data-testid="add-problem-modal-calculated-week">
+              {t('addModal.confirm.calculatedWeek', { week: weekNumber })}
+            </p>
+          )}
           {errors.deadline && (
             <p className="text-[11px]" style={{ color: 'var(--error)' }}>{tErrors(errors.deadline)}</p>
           )}

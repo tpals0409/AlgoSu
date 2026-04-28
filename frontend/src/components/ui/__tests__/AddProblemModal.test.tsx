@@ -37,6 +37,26 @@ jest.mock('@/contexts/StudyContext', () => ({
   useStudy: () => ({ currentStudyId: 'test-study' }),
 }));
 
+// ── Calendar mock — exposes a single button to pick a future date ──
+jest.mock('../calendar', () => ({
+  Calendar: ({ onSelect }: { selected?: Date; onSelect?: (date: Date | undefined) => void }) => (
+    <div data-testid="calendar-mock">
+      <button
+        type="button"
+        data-testid="calendar-pick-future"
+        onClick={() => {
+          // 30일 이후 미래 날짜를 선택 (deadlinePast 검증 회피)
+          const future = new Date();
+          future.setDate(future.getDate() + 30);
+          onSelect?.(future);
+        }}
+      >
+        Pick future date
+      </button>
+    </div>
+  ),
+}));
+
 import { problemApi } from '@/lib/api';
 import { AddProblemModal } from '../AddProblemModal';
 
@@ -187,25 +207,11 @@ describe('AddProblemModal — SQL badge', () => {
 });
 
 /**
- * Select week + deadline then click "Add Problem" helper.
- * Picks last options to avoid past-date validation rejection.
+ * 캘린더에서 미래 날짜 선택 후 "문제 추가" 버튼 클릭.
+ * weekNumber는 deadline에서 자동 계산됨 (Sprint 139 — 캘린더 기반 등록).
  */
 async function selectWeekAndSubmit() {
-  const selects = screen.getAllByRole('combobox');
-  const weekSelect = selects[0];
-  const weekOpts = weekSelect.querySelectorAll('option:not([disabled])');
-  const lastWeek = weekOpts[weekOpts.length - 1];
-  fireEvent.change(weekSelect, {
-    target: { value: lastWeek?.getAttribute('value') ?? '' },
-  });
-
-  const deadlineSelect = selects[1];
-  const dlOpts = deadlineSelect.querySelectorAll('option:not([disabled])');
-  const lastDl = dlOpts[dlOpts.length - 1];
-  fireEvent.change(deadlineSelect, {
-    target: { value: lastDl?.getAttribute('value') ?? '' },
-  });
-
+  fireEvent.click(screen.getByTestId('calendar-pick-future'));
   fireEvent.click(screen.getByRole('button', { name: /문제 추가/ }));
 
   await act(async () => {

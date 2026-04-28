@@ -15,7 +15,6 @@ const defaultForm: ProblemFormState = {
   title: '',
   description: '',
   difficulty: 'EASY',
-  weekNumber: '1',
   deadline: '',
   allowedLanguages: ['python'],
   sourceUrl: '',
@@ -24,7 +23,7 @@ const defaultForm: ProblemFormState = {
 
 function useTestHook() {
   const [form, setForm] = useState(defaultForm);
-  const [fieldErrors, setFieldErrors] = useState<{ title?: string; weekNumber?: string; deadline?: string }>({});
+  const [fieldErrors, setFieldErrors] = useState<{ title?: string; deadline?: string }>({});
   const boj = useBojSearch(setForm, setFieldErrors);
   return { form, fieldErrors, ...boj };
 }
