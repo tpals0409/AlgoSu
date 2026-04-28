@@ -15,6 +15,7 @@ import { useTranslations } from 'next-intl';
 import { CheckCircle2, Search, ExternalLink, Plus, FileText, Clock, X } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
+import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Alert } from '@/components/ui/Alert';
@@ -35,10 +36,8 @@ import {
   labelClass,
   selectClass,
   textareaClass,
-  getCurrentWeekLabel,
-  getWeekOptions,
-  getWeekDates,
 } from '@/lib/problem-form-utils';
+import { getCurrentWeekLabel } from '@/lib/utils';
 import { problemCreateSchema, type ProblemCreateFormData } from '@/lib/schemas/problem';
 
 // ─── RENDER ───────────────────────────────
@@ -72,7 +71,6 @@ export default function ProblemCreatePage(): ReactNode {
       title: '',
       description: '',
       difficulty: '',
-      weekNumber: getCurrentWeekLabel(),
       deadline: '',
       allowedLanguages: [...LANGUAGE_VALUES],
       sourceUrl: '',
@@ -80,8 +78,9 @@ export default function ProblemCreatePage(): ReactNode {
     },
   });
 
-  const weekNumber = watch('weekNumber');
+  const deadline = watch('deadline');
   const allowedLanguages = watch('allowedLanguages');
+  const weekNumber = deadline ? getCurrentWeekLabel(new Date(deadline)) : '';
 
   // ─── STATE (검색 등 비-폼 상태) ────────
 
@@ -91,7 +90,6 @@ export default function ProblemCreatePage(): ReactNode {
     title: '',
     description: '',
     difficulty: '',
-    weekNumber: getCurrentWeekLabel(),
     deadline: '',
     allowedLanguages: [...LANGUAGE_VALUES],
     sourceUrl: '',
@@ -180,7 +178,7 @@ export default function ProblemCreatePage(): ReactNode {
     try {
       const data: CreateProblemData = {
         title: formData.title.trim(),
-        weekNumber: formData.weekNumber.trim(),
+        weekNumber: getCurrentWeekLabel(new Date(formData.deadline)),
       };
       if (formData.description?.trim()) data.description = formData.description.trim();
       if (formData.difficulty) data.difficulty = formData.difficulty as CreateProblemData['difficulty'];
@@ -272,7 +270,6 @@ export default function ProblemCreatePage(): ReactNode {
                       title: '',
                       description: '',
                       difficulty: '',
-                      weekNumber: getCurrentWeekLabel(),
                       deadline: '',
                       allowedLanguages: [...LANGUAGE_VALUES],
                       sourceUrl: '',
@@ -282,7 +279,6 @@ export default function ProblemCreatePage(): ReactNode {
                       title: '',
                       description: '',
                       difficulty: '',
-                      weekNumber: getCurrentWeekLabel(),
                       deadline: '',
                       allowedLanguages: [...LANGUAGE_VALUES],
                       sourceUrl: '',
@@ -558,51 +554,19 @@ export default function ProblemCreatePage(): ReactNode {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="flex flex-col">
-                  <label htmlFor="create-difficulty" className={labelClass}>{t('form.difficultyLabel')}</label>
-                  <select
-                    id="create-difficulty"
-                    {...register('difficulty')}
-                    disabled={isSubmitting || bojApplied || programmersApplied}
-                    className={selectClass}
-                  >
-                    <option value="">{t('form.difficultyNone')}</option>
-                    {DIFFICULTIES.map((d) => (
-                      <option key={d} value={d}>{DIFFICULTY_LABELS[d]}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex flex-col">
-                  <label htmlFor="create-weekNumber" className={labelClass}>
-                    {t('form.weekLabel')} <span className="text-error text-[11px]">{t('form.required')}</span>
-                  </label>
-                  <Controller
-                    name="weekNumber"
-                    control={control}
-                    render={({ field }) => (
-                      <select
-                        id="create-weekNumber"
-                        {...field}
-                        onChange={(e) => {
-                          field.onChange(e);
-                          setValue('deadline', '');
-                        }}
-                        disabled={isSubmitting}
-                        aria-required
-                        className={`${selectClass} ${errors.weekNumber ? 'border-error' : ''}`}
-                      >
-                        {getWeekOptions().map((w) => (
-                          <option key={w} value={w}>{w}</option>
-                        ))}
-                      </select>
-                    )}
-                  />
-                  {errors.weekNumber?.message && (
-                    <p className="mt-1 text-[11px] text-error">{tErrors(errors.weekNumber.message)}</p>
-                  )}
-                </div>
+              <div className="flex flex-col">
+                <label htmlFor="create-difficulty" className={labelClass}>{t('form.difficultyLabel')}</label>
+                <select
+                  id="create-difficulty"
+                  {...register('difficulty')}
+                  disabled={isSubmitting || bojApplied || programmersApplied}
+                  className={selectClass}
+                >
+                  <option value="">{t('form.difficultyNone')}</option>
+                  {DIFFICULTIES.map((d) => (
+                    <option key={d} value={d}>{DIFFICULTY_LABELS[d]}</option>
+                  ))}
+                </select>
               </div>
             </CardContent>
 
@@ -616,21 +580,26 @@ export default function ProblemCreatePage(): ReactNode {
               </div>
 
               <div className="flex flex-col">
-                <label htmlFor="create-deadline" className={labelClass}>
+                <label className={labelClass}>
                   {t('form.deadlineLabel')} <span className="text-error text-[11px]">{t('form.required')}</span>
                 </label>
-                <select
-                  id="create-deadline"
-                  {...register('deadline')}
-                  disabled={isSubmitting}
-                  aria-required
-                  className={`${selectClass} ${errors.deadline ? 'border-error' : ''}`}
-                >
-                  <option value="" disabled>{t('form.deadlinePlaceholder')}</option>
-                  {getWeekDates(weekNumber).map((d) => (
-                    <option key={d.value} value={d.value}>{d.label}</option>
-                  ))}
-                </select>
+                <Controller
+                  name="deadline"
+                  control={control}
+                  render={({ field }) => (
+                    <Calendar
+                      mode="single"
+                      selected={field.value ? new Date(field.value) : undefined}
+                      onSelect={(date) => field.onChange(date ? date.toISOString() : '')}
+                      className={`rounded-badge border bg-input-bg ${errors.deadline ? 'border-error' : 'border-border'}`}
+                    />
+                  )}
+                />
+                {weekNumber && (
+                  <p className="mt-2 text-[11px] text-text-3" data-testid="create-calculated-week">
+                    {t('form.calculatedWeek', { week: weekNumber })}
+                  </p>
+                )}
                 {errors.deadline?.message && (
                   <p className="mt-1 text-[11px] text-error">{tErrors(errors.deadline.message)}</p>
                 )}

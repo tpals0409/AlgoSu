@@ -156,7 +156,6 @@ describe('validateProblemForm', () => {
     title: '테스트 문제',
     description: '설명',
     difficulty: 'GOLD',
-    weekNumber: '3월1주차',
     deadline: '2026-03-07T23:59:59.000Z',
     allowedLanguages: ['python'],
     sourceUrl: '',
@@ -178,20 +177,14 @@ describe('validateProblemForm', () => {
     expect(errors.title).toBeDefined();
   });
 
-  it('주차가 비어있으면 에러를 반환한다', () => {
-    const errors = validateProblemForm({ ...validForm, weekNumber: '' });
-    expect(errors.weekNumber).toBeDefined();
-  });
-
   it('마감일이 비어있으면 에러를 반환한다', () => {
     const errors = validateProblemForm({ ...validForm, deadline: '' });
     expect(errors.deadline).toBeDefined();
   });
 
   it('여러 에러를 동시에 반환한다', () => {
-    const errors = validateProblemForm({ ...validForm, title: '', weekNumber: '', deadline: '' });
+    const errors = validateProblemForm({ ...validForm, title: '', deadline: '' });
     expect(errors.title).toBeDefined();
-    expect(errors.weekNumber).toBeDefined();
     expect(errors.deadline).toBeDefined();
   });
 });

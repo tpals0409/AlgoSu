@@ -119,6 +119,7 @@
     "difficultyLabel": "Difficulty",
     "difficultyNone": "None",
     "weekLabel": "Week",
+    "calculatedWeek": "Auto-calculated: {week}",
     "required": "Required",
     "deadlineLabel": "Deadline",
     "deadlinePlaceholder": "Select a day",

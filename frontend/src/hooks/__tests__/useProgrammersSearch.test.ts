@@ -18,7 +18,6 @@ const defaultForm: ProblemFormState = {
   title: '',
   description: '',
   difficulty: 'EASY',
-  weekNumber: '1',
   deadline: '',
   allowedLanguages: ['python'],
   sourceUrl: '',
@@ -28,7 +27,7 @@ const defaultForm: ProblemFormState = {
 /** 훅을 테스트 가능한 형태로 감싸는 래퍼 */
 function useTestHook() {
   const [form, setForm] = useState(defaultForm);
-  const [fieldErrors, setFieldErrors] = useState<{ title?: string; weekNumber?: string; deadline?: string }>({});
+  const [fieldErrors, setFieldErrors] = useState<{ title?: string; deadline?: string }>({});
   const programmers = useProgrammersSearch(setForm, setFieldErrors);
   return { form, fieldErrors, ...programmers };
 }

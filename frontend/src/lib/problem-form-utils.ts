@@ -13,7 +13,6 @@ export interface ProblemFormState {
   title: string;
   description: string;
   difficulty: string;
-  weekNumber: string;
   deadline: string;
   allowedLanguages: string[];
   sourceUrl: string;
@@ -23,7 +22,6 @@ export interface ProblemFormState {
 
 export interface ProblemFormErrors {
   title?: string;
-  weekNumber?: string;
   deadline?: string;
 }
 
@@ -138,7 +136,6 @@ export function matchDeadlineToWeekDate(deadline: string, weekLabel: string): st
 export function validateProblemForm(form: ProblemFormState): ProblemFormErrors {
   const errors: ProblemFormErrors = {};
   if (!form.title.trim()) errors.title = 'validation.problem.titleRequired';
-  if (!form.weekNumber.trim()) errors.weekNumber = 'validation.problem.weekNumberRequired';
   if (!form.deadline) errors.deadline = 'validation.problem.deadlineRequired';
   return errors;
 }

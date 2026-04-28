@@ -119,6 +119,7 @@
     "difficultyLabel": "난이도",
     "difficultyNone": "선택 안 함",
     "weekLabel": "주차",
+    "calculatedWeek": "자동 계산: {week}",
     "required": "필수",
     "deadlineLabel": "마감일",
     "deadlinePlaceholder": "요일을 선택하세요",

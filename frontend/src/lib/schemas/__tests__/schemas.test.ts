@@ -68,7 +68,6 @@ describe('studyCreateSchema', () => {
 describe('problemCreateSchema', () => {
   const validProblem = {
     title: '두 수의 합',
-    weekNumber: 'W1',
     deadline: '2026-03-10',
     allowedLanguages: ['python', 'javascript'],
   };
@@ -76,14 +75,13 @@ describe('problemCreateSchema', () => {
   it('유효한 입력을 파싱한다', () => {
     const result = problemCreateSchema.parse(validProblem);
     expect(result.title).toBe('두 수의 합');
-    expect(result.weekNumber).toBe('W1');
+    expect(result.deadline).toBe('2026-03-10');
     expect(result.allowedLanguages).toEqual(['python', 'javascript']);
   });
 
   it('선택 필드 없이도 파싱한다', () => {
     const result = problemCreateSchema.parse({
       title: '두 수의 합',
-      weekNumber: 'W1',
       deadline: '2026-03-10',
       allowedLanguages: [],
     });
@@ -101,17 +99,6 @@ describe('problemCreateSchema', () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.issues[0].message).toBe('validation.problem.titleRequired');
-    }
-  });
-
-  it('weekNumber가 빈 문자열이면 실패한다', () => {
-    const result = problemCreateSchema.safeParse({
-      ...validProblem,
-      weekNumber: '',
-    });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.issues[0].message).toBe('validation.problem.weekNumberRequired');
     }
   });
 
