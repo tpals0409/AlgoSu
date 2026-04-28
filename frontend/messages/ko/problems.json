@@ -207,16 +207,11 @@
     },
     "confirm": {
       "back": "검색으로 돌아가기",
-      "weekLabel": "주차 *",
-      "weekPlaceholder": "주차를 선택하세요",
       "deadlineLabel": "마감일 *",
-      "deadlinePlaceholder": "요일을 선택하세요",
-      "deadlinePlaceholderDisabled": "주차를 먼저 선택하세요",
+      "calculatedWeek": "자동 계산: {week}",
       "backButton": "뒤로",
       "adding": "추가 중...",
-      "addButton": "문제 추가",
-      "weekFormat": "{month}월{week}주차",
-      "dateFormat": "{dayName}요일 ({month}/{day})"
+      "addButton": "문제 추가"
     },
     "dayNames": {
       "sun": "일",

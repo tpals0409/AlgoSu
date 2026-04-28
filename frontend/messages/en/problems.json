@@ -207,16 +207,11 @@
     },
     "confirm": {
       "back": "Back to search",
-      "weekLabel": "Week *",
-      "weekPlaceholder": "Select a week",
       "deadlineLabel": "Deadline *",
-      "deadlinePlaceholder": "Select a day",
-      "deadlinePlaceholderDisabled": "Select a week first",
+      "calculatedWeek": "Auto-calculated: {week}",
       "backButton": "Back",
       "adding": "Adding...",
-      "addButton": "Add Problem",
-      "weekFormat": "Month {month} Week {week}",
-      "dateFormat": "{dayName} ({month}/{day})"
+      "addButton": "Add Problem"
     },
     "dayNames": {
       "sun": "Sun",
