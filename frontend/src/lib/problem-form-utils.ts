@@ -27,8 +27,6 @@ export interface ProblemFormErrors {
 
 // ─── CONSTANTS ────────────────────────────
 
-export const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'] as const;
-
 /** 레이블 스타일 (text-text-2 = var(--text2), mb-[5px]) */
 export const labelClass = 'block text-[11px] font-medium text-text-2 mb-[5px]';
 
@@ -53,80 +51,6 @@ export const textareaClass =
  */
 export function getCurrentWeekLabel(date: Date = new Date()): string {
   return getCurrentWeekLabelShared(date);
-}
-
-/**
- * 선택 가능한 주차 목록 생성 (달력 기준).
- *
- * 현재 월의 1주차부터 마지막 주차까지 + 다음 달 1주차를 포함합니다.
- * 주차 총 개수는 `ceil((lastDay + firstDayOfWeek) / 7)`로 계산하여
- * 달력상 실제로 존재하는 주 수를 반영합니다.
- *
- * @domain problem
- */
-export function getWeekOptions(): string[] {
-  const now = new Date();
-  const month = now.getMonth() + 1;
-  const firstDayOfWeek = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const totalWeeks = Math.ceil((lastDay + firstDayOfWeek) / 7);
-  const options: string[] = [];
-  for (let w = 1; w <= totalWeeks; w++) {
-    options.push(`${month}월${w}주차`);
-  }
-  const nextMonth = month === 12 ? 1 : month + 1;
-  options.push(`${nextMonth}월1주차`);
-  return options;
-}
-
-/**
- * 주차 문자열에서 해당 주의 날짜 목록 반환 (달력 기준).
- *
- * 달력상 주는 일요일(0)부터 시작하며, 1주차는 해당 월 1일을 포함하는 주입니다.
- * - rawStart = (week - 1) * 7 - firstDayOfWeek + 1
- * - rawEnd   = week * 7 - firstDayOfWeek
- * 월의 경계를 넘지 않도록 1 ~ daysInMonth 범위로 clamp 합니다.
- *
- * @domain problem
- */
-export function getWeekDates(weekLabel: string): { label: string; value: string }[] {
-  const match = weekLabel.match(/^(\d+)월(\d+)주차$/);
-  if (!match) return [];
-  const month = Number(match[1]);
-  const week = Number(match[2]);
-  const now = new Date();
-  const year = now.getFullYear();
-  const adjustedYear = month < now.getMonth() + 1 && month === 1 ? year + 1 : year;
-
-  const firstDayOfWeek = new Date(adjustedYear, month - 1, 1).getDay();
-  const daysInMonth = new Date(adjustedYear, month, 0).getDate();
-  const rawStart = (week - 1) * 7 - firstDayOfWeek + 1;
-  const rawEnd = week * 7 - firstDayOfWeek;
-  const startDay = Math.max(1, rawStart);
-  const endDay = Math.min(daysInMonth, rawEnd);
-
-  const dates: { label: string; value: string }[] = [];
-  for (let d = startDay; d <= endDay; d++) {
-    const date = new Date(adjustedYear, month - 1, d, 23, 59, 59);
-    const dayName = DAY_NAMES[date.getDay()];
-    dates.push({
-      label: `${month}월 ${d}일 (${dayName})`,
-      value: date.toISOString(),
-    });
-  }
-  return dates;
-}
-
-/**
- * 마감일을 주차 날짜와 매칭
- * @domain problem
- */
-export function matchDeadlineToWeekDate(deadline: string, weekLabel: string): string {
-  const weekDates = getWeekDates(weekLabel);
-  const deadlineDate = new Date(deadline);
-  const deadlineDay = deadlineDate.getDate();
-  const matched = weekDates.find((d) => new Date(d.value).getDate() === deadlineDay);
-  return matched?.value ?? '';
 }
 
 /**

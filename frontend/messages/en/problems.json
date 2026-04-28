@@ -118,11 +118,9 @@
     "descriptionPlaceholder": "Enter a description for this problem",
     "difficultyLabel": "Difficulty",
     "difficultyNone": "None",
-    "weekLabel": "Week",
     "calculatedWeek": "Auto-calculated: {week}",
     "required": "Required",
     "deadlineLabel": "Deadline",
-    "deadlinePlaceholder": "Select a day",
     "allowedLanguages": "Allowed Languages",
     "sourceUrl": "Source URL",
     "sourcePlatform": "Source Platform",
@@ -213,17 +211,7 @@
       "adding": "Adding...",
       "addButton": "Add Problem"
     },
-    "dayNames": {
-      "sun": "Sun",
-      "mon": "Mon",
-      "tue": "Tue",
-      "wed": "Wed",
-      "thu": "Thu",
-      "fri": "Fri",
-      "sat": "Sat"
-    },
     "validation": {
-      "weekRequired": "Please select a week.",
       "deadlineRequired": "Please select a deadline.",
       "deadlinePast": "Cannot select a past date."
     },

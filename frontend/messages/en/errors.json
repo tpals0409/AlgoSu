@@ -75,7 +75,6 @@
     },
     "problem": {
       "titleRequired": "Please enter a problem title.",
-      "weekNumberRequired": "Please select a week.",
       "deadlineRequired": "Please select a deadline."
     },
     "feedback": {

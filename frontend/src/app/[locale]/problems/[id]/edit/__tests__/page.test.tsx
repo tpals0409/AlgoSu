@@ -188,9 +188,6 @@ jest.mock('@/lib/problem-form-utils', () => ({
   labelClass: 'label-class',
   selectClass: 'select-class',
   textareaClass: 'textarea-class',
-  getWeekOptions: () => ['1월1주차', '1월2주차'],
-  getWeekDates: () => [{ value: '2025-01-10', label: '금요일 (1/10)' }],
-  matchDeadlineToWeekDate: () => '2025-01-10',
   validateProblemForm: () => ({}),
 }));
 

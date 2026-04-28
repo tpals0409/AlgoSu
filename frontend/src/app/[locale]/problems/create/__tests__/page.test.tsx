@@ -172,9 +172,6 @@ jest.mock('@/lib/problem-form-utils', () => ({
   labelClass: 'label-class',
   selectClass: 'select-class',
   textareaClass: 'textarea-class',
-  getCurrentWeekLabel: () => 'Week 1',
-  getWeekOptions: () => ['Week 1', 'Week 2'],
-  getWeekDates: () => [{ value: '2025-01-10', label: '금 (1/10)' }],
 }));
 
 jest.mock('@/lib/schemas/problem', () => ({

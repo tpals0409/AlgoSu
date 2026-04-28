@@ -75,7 +75,6 @@
     },
     "problem": {
       "titleRequired": "문제 제목을 입력해주세요.",
-      "weekNumberRequired": "주차를 선택해주세요.",
       "deadlineRequired": "마감일을 선택해주세요."
     },
     "feedback": {
