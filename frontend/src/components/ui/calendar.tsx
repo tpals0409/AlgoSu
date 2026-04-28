@@ -1,70 +1,83 @@
-"use client";
+/**
+ * @file Calendar 래퍼 — react-day-picker v9 호환 + ko locale 기본값
+ * @domain common
+ * @layer component
+ * @related react-day-picker, AddProblemModal, problems/create, problems/[id]/edit
+ */
+'use client';
 
-import * as React from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { DayPicker } from "react-day-picker";
+import * as React from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { DayPicker } from 'react-day-picker';
+import { ko } from 'react-day-picker/locale';
 
 import { cn } from '@/lib/utils';
-import { buttonVariants } from "./Button";
+import { buttonVariants } from './Button';
 
+/**
+ * react-day-picker v9 캘린더 — AlgoSu 디자인 토큰 적용 + 한국어 로케일 기본값.
+ *
+ * v9는 v8 대비 className 키가 대거 변경되어 새 스키마로 매핑함:
+ * - caption → month_caption
+ * - nav_button_previous/next → button_previous/next
+ * - table → month_grid, head_row → weekdays, head_cell → weekday
+ * - row → week, cell → day, day → day_button
+ *
+ * `locale` prop 기본값은 한국어. 다른 언어로 사용 시 props.locale로 override.
+ */
 function Calendar({
   className,
   classNames,
   showOutsideDays = true,
+  locale = ko,
   ...props
 }: React.ComponentProps<typeof DayPicker>) {
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
-      className={cn("p-3", className)}
+      locale={locale}
+      className={cn('p-3 mx-auto w-fit', className)}
       classNames={{
-        months: "flex flex-col sm:flex-row gap-2",
-        month: "flex flex-col gap-4",
-        caption: "flex justify-center pt-1 relative items-center w-full",
-        caption_label: "text-sm font-medium",
-        nav: "flex items-center gap-1",
-        nav_button: cn(
-          buttonVariants({ variant: "outline" }),
-          "size-7 bg-transparent p-0 opacity-50 hover:opacity-100",
+        months: 'flex flex-col sm:flex-row gap-2',
+        month: 'flex flex-col gap-4',
+        month_caption: 'flex justify-center pt-1 relative items-center w-full',
+        caption_label: 'text-sm font-medium text-text',
+        nav: 'flex items-center gap-1 absolute inset-x-1 top-1 justify-between z-10',
+        button_previous: cn(
+          buttonVariants({ variant: 'ghost', size: 'sm' }),
+          'h-7 w-7 p-0 opacity-60 hover:opacity-100',
         ),
-        nav_button_previous: "absolute left-1",
-        nav_button_next: "absolute right-1",
-        table: "w-full border-collapse space-x-1",
-        head_row: "flex",
-        head_cell:
-          "text-muted-foreground rounded-md w-8 font-normal text-[0.8rem]",
-        row: "flex w-full mt-2",
-        cell: cn(
-          "relative p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected])]:bg-accent [&:has([aria-selected].day-range-end)]:rounded-r-md",
-          props.mode === "range"
-            ? "[&:has(>.day-range-end)]:rounded-r-md [&:has(>.day-range-start)]:rounded-l-md first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md"
-            : "[&:has([aria-selected])]:rounded-md",
+        button_next: cn(
+          buttonVariants({ variant: 'ghost', size: 'sm' }),
+          'h-7 w-7 p-0 opacity-60 hover:opacity-100',
         ),
-        day: cn(
-          buttonVariants({ variant: "ghost" }),
-          "size-8 p-0 font-normal aria-selected:opacity-100",
+        month_grid: 'w-full border-collapse',
+        weekdays: 'grid grid-cols-7',
+        weekday: 'h-8 text-[11px] font-normal text-text-3 flex items-center justify-center',
+        weeks: 'flex flex-col gap-1 mt-1',
+        week: 'grid grid-cols-7',
+        day: 'relative h-9 w-9 p-0 text-center text-[13px] flex items-center justify-center',
+        day_button: cn(
+          buttonVariants({ variant: 'ghost', size: 'sm' }),
+          'h-8 w-8 p-0 font-normal rounded-md',
+          'data-[selected-single=true]:bg-primary data-[selected-single=true]:text-bg-card data-[selected-single=true]:hover:bg-primary',
+          'data-[range-start=true]:bg-primary data-[range-start=true]:text-bg-card',
+          'data-[range-end=true]:bg-primary data-[range-end=true]:text-bg-card',
+          'data-[range-middle=true]:bg-primary-soft data-[range-middle=true]:text-text',
         ),
-        day_range_start:
-          "day-range-start aria-selected:bg-primary aria-selected:text-primary-foreground",
-        day_range_end:
-          "day-range-end aria-selected:bg-primary aria-selected:text-primary-foreground",
-        day_selected:
-          "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-        day_today: "bg-accent text-accent-foreground",
-        day_outside:
-          "day-outside text-muted-foreground aria-selected:text-muted-foreground",
-        day_disabled: "text-muted-foreground opacity-50",
-        day_range_middle:
-          "aria-selected:bg-accent aria-selected:text-accent-foreground",
-        day_hidden: "invisible",
+        selected: '',
+        today: 'font-semibold text-primary',
+        outside: 'text-text-3/50',
+        disabled: 'text-text-3 opacity-40 cursor-not-allowed',
+        hidden: 'invisible',
         ...classNames,
       }}
       components={{
         Chevron: ({ orientation, className: chevClassName, ...chevProps }) =>
-          orientation === "left" ? (
-            <ChevronLeft className={cn("size-4", chevClassName)} {...chevProps} />
+          orientation === 'left' ? (
+            <ChevronLeft className={cn('h-4 w-4', chevClassName)} {...chevProps} />
           ) : (
-            <ChevronRight className={cn("size-4", chevClassName)} {...chevProps} />
+            <ChevronRight className={cn('h-4 w-4', chevClassName)} {...chevProps} />
           ),
       }}
       {...props}
