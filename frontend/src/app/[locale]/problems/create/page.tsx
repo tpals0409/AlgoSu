@@ -82,6 +82,16 @@ export default function ProblemCreatePage(): ReactNode {
   const allowedLanguages = watch('allowedLanguages');
   const weekNumber = deadline ? getCurrentWeekLabel(new Date(deadline)) : '';
 
+  const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
+  const deadlineDate = deadline ? new Date(deadline) : null;
+  const selectedDateText = deadlineDate
+    ? t('form.selectedDate', {
+        month: deadlineDate.getMonth() + 1,
+        day: deadlineDate.getDate(),
+        dayName: t(`detail.dayNames.${DAY_KEYS[deadlineDate.getDay()]}`),
+      })
+    : '';
+
   // ─── STATE (검색 등 비-폼 상태) ────────
 
   const [activePlatform, setActivePlatform] = useState<'BOJ' | 'PROGRAMMERS'>('PROGRAMMERS');
@@ -600,8 +610,13 @@ export default function ProblemCreatePage(): ReactNode {
                     />
                   )}
                 />
+                {selectedDateText && (
+                  <p className="mt-2 text-[12px] font-medium text-primary" data-testid="create-selected-date">
+                    {selectedDateText}
+                  </p>
+                )}
                 {weekNumber && (
-                  <p className="mt-2 text-[11px] text-text-3" data-testid="create-calculated-week">
+                  <p className="mt-1 text-[11px] text-text-3" data-testid="create-calculated-week">
                     {t('form.calculatedWeek', { week: weekNumber })}
                   </p>
                 )}

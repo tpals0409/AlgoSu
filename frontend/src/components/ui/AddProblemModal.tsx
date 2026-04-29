@@ -434,6 +434,16 @@ function ConfirmStep({
   /** Derived weekNumber — backend/dashboard regex expects "N월M주차" */
   const weekNumber = deadline ? getCurrentWeekLabel(new Date(deadline)) : '';
 
+  const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
+  const deadlineDate = deadline ? new Date(deadline) : null;
+  const selectedDateText = deadlineDate
+    ? t('addModal.confirm.selectedDate', {
+        month: deadlineDate.getMonth() + 1,
+        day: deadlineDate.getDate(),
+        dayName: t(`detail.dayNames.${DAY_KEYS[deadlineDate.getDay()]}`),
+      })
+    : '';
+
   function validate() {
     const e: typeof errors = {};
     if (!deadline) {
@@ -547,6 +557,11 @@ function ConfirmStep({
               data-testid="add-problem-modal-calendar"
             />
           </div>
+          {selectedDateText && (
+            <p className="text-[12px] font-medium" style={{ color: 'var(--primary)' }} data-testid="add-problem-modal-selected-date">
+              {selectedDateText}
+            </p>
+          )}
           {weekNumber && (
             <p className="text-[11px]" style={{ color: 'var(--text-3)' }} data-testid="add-problem-modal-calculated-week">
               {t('addModal.confirm.calculatedWeek', { week: weekNumber })}
