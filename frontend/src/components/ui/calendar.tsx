@@ -36,13 +36,13 @@ function Calendar({
     <DayPicker
       showOutsideDays={showOutsideDays}
       locale={locale}
-      className={cn('p-3 mx-auto w-fit', className)}
+      className={cn('relative p-3 mx-auto w-fit', className)}
       classNames={{
         months: 'flex flex-col sm:flex-row gap-2',
         month: 'flex flex-col gap-4',
         month_caption: 'flex justify-center pt-1 relative items-center w-full',
         caption_label: 'text-sm font-medium text-text',
-        nav: 'flex items-center gap-1 absolute inset-x-1 top-1 justify-between z-10',
+        nav: 'flex items-center gap-1 absolute inset-x-3 top-3 justify-between z-10 pointer-events-none [&>button]:pointer-events-auto',
         button_previous: cn(
           buttonVariants({ variant: 'ghost', size: 'sm' }),
           'h-7 w-7 p-0 opacity-60 hover:opacity-100',
