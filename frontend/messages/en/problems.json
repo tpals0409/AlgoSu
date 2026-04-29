@@ -35,6 +35,7 @@
     "backToList": "Problems",
     "error": "Failed to load problem.",
     "notFound": "Problem not found.",
+    "editProblem": "Edit problem",
     "deleteProblem": "Delete problem",
     "deleteConfirm": {
       "title": "Delete this problem?",
@@ -119,6 +120,7 @@
     "difficultyLabel": "Difficulty",
     "difficultyNone": "None",
     "calculatedWeek": "Auto-calculated: {week}",
+    "selectedDate": "{month}/{day} ({dayName})",
     "required": "Required",
     "deadlineLabel": "Deadline",
     "allowedLanguages": "Allowed Languages",
@@ -206,6 +208,7 @@
     "confirm": {
       "back": "Back to search",
       "deadlineLabel": "Deadline *",
+      "selectedDate": "{month}/{day} ({dayName})",
       "calculatedWeek": "Auto-calculated: {week}",
       "backButton": "Back",
       "adding": "Adding...",

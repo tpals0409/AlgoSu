@@ -169,6 +169,16 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
     return () => { cancelled = true; };
   }, [isAuthenticated, currentStudyId, problemId, t]);
 
+  const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
+  const deadlineDate = form.deadline ? new Date(form.deadline) : null;
+  const selectedDateText = deadlineDate
+    ? t('form.selectedDate', {
+        month: deadlineDate.getMonth() + 1,
+        day: deadlineDate.getDate(),
+        dayName: t(`detail.dayNames.${DAY_KEYS[deadlineDate.getDay()]}`),
+      })
+    : '';
+
   // ─── HANDLERS ─────────────────────────────
 
   const handleChange = useCallback(
@@ -580,8 +590,13 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                   }}
                   className={`rounded-badge border bg-input-bg ${fieldErrors.deadline ? 'border-error' : 'border-border'}`}
                 />
+                {selectedDateText && (
+                  <p className="mt-2 text-[12px] font-medium text-primary" data-testid="edit-selected-date">
+                    {selectedDateText}
+                  </p>
+                )}
                 {form.deadline && (
-                  <p className="mt-2 text-[11px] text-text-3" data-testid="edit-calculated-week">
+                  <p className="mt-1 text-[11px] text-text-3" data-testid="edit-calculated-week">
                     {t('form.calculatedWeek', { week: getCurrentWeekLabel(new Date(form.deadline)) })}
                   </p>
                 )}

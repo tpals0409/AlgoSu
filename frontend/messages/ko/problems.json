@@ -35,6 +35,7 @@
     "backToList": "문제 목록",
     "error": "문제를 불러오는 데 실패했습니다.",
     "notFound": "문제를 찾을 수 없습니다.",
+    "editProblem": "문제 수정",
     "deleteProblem": "문제 삭제",
     "deleteConfirm": {
       "title": "문제를 삭제하시겠습니까?",
@@ -119,6 +120,7 @@
     "difficultyLabel": "난이도",
     "difficultyNone": "선택 안 함",
     "calculatedWeek": "자동 계산: {week}",
+    "selectedDate": "{month}월 {day}일 ({dayName})",
     "required": "필수",
     "deadlineLabel": "마감일",
     "allowedLanguages": "허용 언어",
@@ -206,6 +208,7 @@
     "confirm": {
       "back": "검색으로 돌아가기",
       "deadlineLabel": "마감일 *",
+      "selectedDate": "{month}월 {day}일 ({dayName})",
       "calculatedWeek": "자동 계산: {week}",
       "backButton": "뒤로",
       "adding": "추가 중...",

@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import {
   ArrowLeft,
   ExternalLink,
+  Pencil,
   Trash2,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -238,14 +239,24 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
           </button>
           <h1 className="flex-1 text-[22px] font-bold tracking-tight text-text">{problem.title}</h1>
           {isAdmin && (
-            <button
-              type="button"
-              onClick={() => setShowDeleteConfirm(true)}
-              className="flex items-center justify-center shrink-0 h-9 w-9 rounded-full transition-colors hover:bg-bg-alt"
-              aria-label={t('detail.deleteProblem')}
-            >
-              <Trash2 className="h-4 w-4" style={{ color: 'var(--text-3)' }} />
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => router.push(`/problems/${problemId}/edit`)}
+                className="flex items-center justify-center shrink-0 h-9 w-9 rounded-full transition-colors hover:bg-bg-alt"
+                aria-label={t('detail.editProblem')}
+              >
+                <Pencil className="h-4 w-4" style={{ color: 'var(--text-3)' }} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="flex items-center justify-center shrink-0 h-9 w-9 rounded-full transition-colors hover:bg-bg-alt"
+                aria-label={t('detail.deleteProblem')}
+              >
+                <Trash2 className="h-4 w-4" style={{ color: 'var(--text-3)' }} />
+              </button>
+            </>
           )}
         </div>
 
