@@ -668,6 +668,70 @@ describe('CircuitBreakerManager', () => {
       expect(failureVal).toBeUndefined();
     });
 
+    // ─── Sprint 141 — WeakSet 마커 패턴 정확 분류 (instanceof Error 휴리스틱 대체) ───
+    describe('WeakSet 마커 패턴 — Sprint 141 백포팅', () => {
+      it('plain object throw + errorFilter 통과 시 filtered만 카운트되고 success는 미증가', async () => {
+        // 이전 instanceof Error 휴리스틱은 plain object throw 시 success로 잘못 분류했다.
+        // WeakSet 마커 패턴은 wrapper에서 마커 추가 → success 핸들러가 마커 발견 후 skip.
+        const plainErr = { status: 404, message: 'not found' };
+        const action = jest.fn().mockRejectedValue(plainErr);
+
+        manager.createBreaker('test-plain-404', action, {
+          volumeThreshold: 1,
+          errorThresholdPercentage: 1,
+          resetTimeout: 30_000,
+          rollingCountTimeout: 10_000,
+          rollingCountBuckets: 1,
+          timeout: false,
+        });
+
+        const breaker = manager.getBreaker('test-plain-404')!;
+        for (let i = 0; i < 3; i++) {
+          try { await breaker.fire(); } catch { /* expected */ }
+        }
+
+        const metrics = await registry.getMetricsAsJSON();
+        const reqMetric = metrics.find(
+          (m) => m.name === 'algosu_github_worker_circuit_breaker_requests_total',
+        );
+        const filteredVal = (reqMetric?.values ?? []).find(
+          (v) => v.labels?.['name'] === 'test-plain-404' && v.labels?.['result'] === 'filtered',
+        )?.value;
+        const successVal = (reqMetric?.values ?? []).find(
+          (v) => v.labels?.['name'] === 'test-plain-404' && v.labels?.['result'] === 'success',
+        )?.value;
+
+        expect(filteredVal).toBe(3);
+        expect(successVal).toBeUndefined();
+      });
+
+      it('Error 인스턴스를 정상 resolve로 반환 시 success로 카운트됨', async () => {
+        // 이전 instanceof Error 휴리스틱은 이를 filtered로 잘못 분류했다.
+        // WeakSet 마커 패턴은 wrapper 미경유이므로 마커 부재 → success 정확.
+        const errorAsValue = new Error('this is a value, not a thrown error');
+        const action = jest.fn().mockResolvedValue(errorAsValue);
+
+        manager.createBreaker('test-error-as-value', action);
+        const breaker = manager.getBreaker('test-error-as-value')!;
+
+        await breaker.fire();
+
+        const metrics = await registry.getMetricsAsJSON();
+        const reqMetric = metrics.find(
+          (m) => m.name === 'algosu_github_worker_circuit_breaker_requests_total',
+        );
+        const successVal = (reqMetric?.values ?? []).find(
+          (v) => v.labels?.['name'] === 'test-error-as-value' && v.labels?.['result'] === 'success',
+        )?.value;
+        const filteredVal = (reqMetric?.values ?? []).find(
+          (v) => v.labels?.['name'] === 'test-error-as-value' && v.labels?.['result'] === 'filtered',
+        )?.value;
+
+        expect(successVal).toBe(1);
+        expect(filteredVal).toBeUndefined();
+      });
+    });
+
     it('호출자가 errorFilter override 시 default가 아닌 호출자 함수가 사용됨', async () => {
       // override: 모든 에러를 filtered (= CB failure 미카운트)
       const customFilter = jest.fn().mockReturnValue(true);
