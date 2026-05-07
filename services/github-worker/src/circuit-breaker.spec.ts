@@ -747,8 +747,8 @@ describe('CircuitBreakerManager', () => {
         )?.value;
 
         expect(filteredVal).toBe(1);
-        // markers.delete(result) 미동작 시 첫 resolve가 마커 hit → skip → successVal=1 (실패)
-        // 정상 동작 시 첫 resolve에서 마커 삭제 → success 카운트 + 두 번째 resolve도 success → 2
+        // markers.delete(result) 미동작 시: 동일 객체에 대한 두 resolve가 모두 마커 hit → skip → successVal=undefined (실패)
+        // 정상 동작 시: 첫 resolve에서 마커 삭제 → success 카운트, 두 번째 resolve도 success → 2
         expect(successVal).toBe(2);
       });
 
