@@ -244,7 +244,7 @@ data:
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "TypeScript CB의 상태 변화 시간 추이 (0=CLOSED, 1=HALF_OPEN, 2=OPEN). AI Analysis Python CB는 별도 패널(아래) — schema 다름",
+          "description": "TypeScript CB의 상태 변화 시간 추이 (0=CLOSED, 1=HALF_OPEN, 2=OPEN). Sprint 141 — Python CB도 동일 schema. AI Analysis는 단일 인스턴스라 별도 패널로 분리.",
           "fieldConfig": {
             "defaults": {
               "color": { "mode": "thresholds" },

@@ -524,7 +524,7 @@ data:
               "type": "stat",
               "targets": [
                 {
-                  "expr": "algosu_ai_analysis_circuit_breaker_state",
+                  "expr": "algosu_ai_analysis_circuit_breaker_state{name=~\".+\"}",
                   "legendFormat": "{{name}}"
                 }
               ]
