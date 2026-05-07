@@ -903,11 +903,11 @@ jobs:
           echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
   # ============================================================
-  # E2E: Programmers Full Flow — sourcePlatform 전달 검증 (PR 병렬)
+  # E2E: Programmers Full Flow — sourcePlatform 전달 검증 (PR 자동 실행)
   #
   # 범위: GitHub Worker 파일 경로 + MQ 이벤트 계약 + AI 프롬프트 맥락
   # 외부 의존: GitHub API(Octokit stub), Claude API(호출 없음) — 0건
-  # 실행: PR + push on main (path filter: tests/e2e/** | services/github-worker/** | services/ai-analysis/**)
+  # 실행: 모든 PR + push on main (Sprint 141 정합 — `github.event_name == 'pull_request'`로 PR 무조건 실행 보장)
   # Python 3.12 사용: str|None 유니언 문법 지원
   # ============================================================
 
@@ -994,16 +994,20 @@ jobs:
           retention-days: 7
 
   # ============================================================
-  # E2E Test — 전체 서비스 통합 테스트 (수동 트리거 전용)
+  # E2E Test — 전체 서비스 통합 테스트 (수동 트리거 + 라벨 트리거)
   #
-  # workflow_dispatch로만 실행 가능.
+  # 실행 조건 (Sprint 141 — 라벨 기반 PR 트리거 추가):
+  # 1. workflow_dispatch (rebuild_all 제외)
+  # 2. PR에 `run-e2e-full` 라벨 부착 시 자동 실행 (큰 변경에 한정 명시 트리거)
   # docker-compose 기반 인프라 + 전 서비스 기동 후 e2e-full.sh 실행.
-  # 향후 docker-compose 기반 통합 테스트 환경이 준비되면 활성화.
+  # PR마다 무조건 실행은 비용/시간 부담 → opt-in 정책.
   # ============================================================
 
   e2e-test:
     name: E2E Integration Test
-    if: github.event_name == 'workflow_dispatch' && inputs.rebuild_all != 'true'
+    if: |
+      (github.event_name == 'workflow_dispatch' && inputs.rebuild_all != 'true') ||
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'run-e2e-full'))
     needs:
       - test-node
       - test-ai-analysis
