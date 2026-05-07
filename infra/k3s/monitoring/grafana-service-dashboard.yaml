@@ -499,14 +499,14 @@ data:
                     "mode": "absolute",
                     "steps": [
                       { "color": "green", "value": null },
-                      { "color": "orange", "value": 0.5 },
-                      { "color": "red", "value": 1 }
+                      { "color": "orange", "value": 1 },
+                      { "color": "red", "value": 2 }
                     ]
                   },
                   "mappings": [
                     { "options": { "0": { "text": "CLOSED" } }, "type": "value" },
-                    { "options": { "0.5": { "text": "HALF_OPEN" } }, "type": "value" },
-                    { "options": { "1": { "text": "OPEN" } }, "type": "value" }
+                    { "options": { "1": { "text": "HALF_OPEN" } }, "type": "value" },
+                    { "options": { "2": { "text": "OPEN" } }, "type": "value" }
                   ]
                 },
                 "overrides": []
@@ -525,7 +525,7 @@ data:
               "targets": [
                 {
                   "expr": "algosu_ai_analysis_circuit_breaker_state",
-                  "legendFormat": "CB State"
+                  "legendFormat": "{{name}}"
                 }
               ]
             },

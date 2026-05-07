@@ -124,7 +124,8 @@ data:
       - name: algosu.circuit_breaker
         rules:
           - alert: CircuitBreakerOpen
-            expr: algosu_ai_analysis_circuit_breaker_state == 1
+            # Sprint 141 — TS와 schema 통일: OPEN=2 (이전 OPEN=1 → HALF_OPEN과 충돌 위험으로 변경됨)
+            expr: algosu_ai_analysis_circuit_breaker_state == 2
             for: 0m
             labels:
               severity: critical

@@ -71,6 +71,24 @@ class TestUpdateCircuitBreakerGauge:
         update_circuit_breaker_gauge("OPEN", name="test-cb")
         assert self._gauge_value("test-cb") == 2.0
 
+    def test_circuit_breaker_callback_wiring(self):
+        """
+        Sprint 141 P2 회귀 보호 (Critic 1차):
+        circuit_breaker.set_state_change_callback(update_circuit_breaker_gauge)
+        와 같은 wiring이 1-arg 시그니처 호환임을 직접 검증.
+        실제 CircuitBreaker 인스턴스를 사용하여 콜백 호출이 깨지지 않는지 확인.
+        """
+        from src.circuit_breaker import CircuitBreaker
+
+        cb = CircuitBreaker(failure_threshold=1, recovery_timeout=30)
+        cb.set_state_change_callback(update_circuit_breaker_gauge)
+
+        # 콜백이 1-arg 시그니처로 호출되어야 함 (default name 사용)
+        cb.record_failure()
+        assert cb.state.value == "OPEN"
+        # OPEN 상태가 default name(claude-api) 라벨로 Gauge에 반영
+        assert self._gauge_value("claude-api") == 2.0
+
 
 class TestCircuitStateValues:
     """CIRCUIT_STATE_VALUES 매핑 검증 — Sprint 141 TS schema 통일 (0/1/2)"""
