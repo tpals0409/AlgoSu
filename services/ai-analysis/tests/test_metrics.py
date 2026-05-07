@@ -8,9 +8,11 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from src.metrics import (
+    CB_NAME_CLAUDE_API,
     CIRCUIT_STATE_VALUES,
     PrometheusMiddleware,
     _normalize_path,
+    circuit_breaker_state,
     metrics_endpoint,
     update_circuit_breaker_gauge,
 )
@@ -35,29 +37,49 @@ class TestNormalizePath:
 
 
 class TestUpdateCircuitBreakerGauge:
-    """update_circuit_breaker_gauge() -- gauge 값 검증"""
+    """update_circuit_breaker_gauge() -- Sprint 141 TS schema 통일 (0/1/2 + name 라벨)"""
 
-    def test_closed_state(self):
+    def _gauge_value(self, name: str = CB_NAME_CLAUDE_API) -> float:
+        return circuit_breaker_state.labels(name=name)._value.get()
+
+    def test_closed_state_sets_gauge_zero(self):
         update_circuit_breaker_gauge("CLOSED")
-        # gauge 값은 직접 검증하기 어려우므로 호출 성공만 확인
+        assert self._gauge_value() == 0.0
 
-    def test_open_state(self):
-        update_circuit_breaker_gauge("OPEN")
-
-    def test_half_open_state(self):
+    def test_half_open_state_sets_gauge_one(self):
+        # Sprint 141: 0.5 → 1.0 (TS STATE_CODE.halfOpen=1과 일관)
         update_circuit_breaker_gauge("HALF_OPEN")
+        assert self._gauge_value() == 1.0
+
+    def test_open_state_sets_gauge_two(self):
+        # Sprint 141: 1.0 → 2.0 (TS STATE_CODE.open=2와 일관)
+        update_circuit_breaker_gauge("OPEN")
+        assert self._gauge_value() == 2.0
 
     def test_unknown_state_defaults_to_zero(self):
         update_circuit_breaker_gauge("UNKNOWN")
+        assert self._gauge_value() == 0.0
+
+    def test_default_name_is_claude_api(self):
+        update_circuit_breaker_gauge("CLOSED")
+        assert CB_NAME_CLAUDE_API == "claude-api"
+        # default name으로 호출 시 라벨이 정상 부착됨을 검증
+        assert self._gauge_value("claude-api") == 0.0
+
+    def test_custom_name_label(self):
+        # 미래 multi-CB 확장 대비: name 인자 전달 가능
+        update_circuit_breaker_gauge("OPEN", name="test-cb")
+        assert self._gauge_value("test-cb") == 2.0
 
 
 class TestCircuitStateValues:
-    """CIRCUIT_STATE_VALUES 매핑 검증"""
+    """CIRCUIT_STATE_VALUES 매핑 검증 — Sprint 141 TS schema 통일 (0/1/2)"""
 
     def test_values(self):
+        # submission/github-worker STATE_CODE와 일관: 0=CLOSED, 1=HALF_OPEN, 2=OPEN
         assert CIRCUIT_STATE_VALUES["CLOSED"] == 0.0
-        assert CIRCUIT_STATE_VALUES["HALF_OPEN"] == 0.5
-        assert CIRCUIT_STATE_VALUES["OPEN"] == 1.0
+        assert CIRCUIT_STATE_VALUES["HALF_OPEN"] == 1.0
+        assert CIRCUIT_STATE_VALUES["OPEN"] == 2.0
 
 
 class TestPrometheusMiddleware:

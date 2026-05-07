@@ -1,8 +1,8 @@
-# AlgoSu — Circuit Breaker Dashboard ConfigMap (Sprint 135 Wave D)
+# AlgoSu — Circuit Breaker Dashboard ConfigMap (Sprint 135 Wave D, Sprint 141 schema 통일)
 # 5개 TypeScript CB 인스턴스(submission 2 + github-worker 3) + AI Analysis Python CB 통합 시각화
 # - State Matrix(TS+Python 분리) / Request Rate / Failure Rate / State Timeline(TS+Python 분리) / Distribution + 통계 Table
-# - Schema 차이: TS schema 0=CLOSED/1=HALF_OPEN/2=OPEN, Python schema 0=CLOSED/0.5=HALF_OPEN/1=OPEN
-#   (Sprint 136+ 시드: ai-analysis Python schema를 TS와 통일 예정)
+# - Schema: 모든 서비스(TS + Python) 통일 — 0=CLOSED, 1=HALF_OPEN, 2=OPEN (Sprint 141)
+#   ai-analysis Python CB도 name 라벨 추가 + 0/1/2 매핑으로 TS와 정렬됨.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -100,7 +100,7 @@ data:
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "AI Analysis Python CB 현재 상태. Python schema는 0=CLOSED / 0.5=HALF_OPEN / 1=OPEN (TypeScript 0/1/2와 다름 — Sprint 136+ 통일 시드)",
+          "description": "AI Analysis Python CB 현재 상태. Sprint 141 — TS와 schema 통일: 0=CLOSED / 1=HALF_OPEN / 2=OPEN + name 라벨.",
           "fieldConfig": {
             "defaults": {
               "mappings": [
@@ -108,8 +108,8 @@ data:
                   "type": "value",
                   "options": {
                     "0": { "color": "green", "text": "CLOSED" },
-                    "0.5": { "color": "yellow", "text": "HALF_OPEN" },
-                    "1": { "color": "red", "text": "OPEN" }
+                    "1": { "color": "yellow", "text": "HALF_OPEN" },
+                    "2": { "color": "red", "text": "OPEN" }
                   }
                 }
               ],
@@ -117,8 +117,8 @@ data:
                 "mode": "absolute",
                 "steps": [
                   { "color": "green", "value": null },
-                  { "color": "yellow", "value": 0.5 },
-                  { "color": "red", "value": 1 }
+                  { "color": "yellow", "value": 1 },
+                  { "color": "red", "value": 2 }
                 ]
               }
             },
@@ -137,8 +137,8 @@ data:
           "type": "stat",
           "targets": [
             {
-              "expr": "algosu_ai_analysis_circuit_breaker_state",
-              "legendFormat": "ai-analysis (Claude)"
+              "expr": "algosu_ai_analysis_circuit_breaker_state{name=~\"$name\"}",
+              "legendFormat": "{{name}} (ai-analysis)"
             }
           ]
         },
@@ -299,7 +299,7 @@ data:
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "AI Analysis Python CB 상태 변화 시간 추이 (0=CLOSED, 0.5=HALF_OPEN, 1=OPEN — TypeScript 0/1/2와 다름)",
+          "description": "AI Analysis Python CB 상태 변화 시간 추이. Sprint 141 — TS와 schema 통일: 0=CLOSED, 1=HALF_OPEN, 2=OPEN + name 라벨.",
           "fieldConfig": {
             "defaults": {
               "color": { "mode": "thresholds" },
@@ -313,8 +313,8 @@ data:
                   "type": "value",
                   "options": {
                     "0": { "color": "green", "text": "CLOSED" },
-                    "0.5": { "color": "yellow", "text": "HALF_OPEN" },
-                    "1": { "color": "red", "text": "OPEN" }
+                    "1": { "color": "yellow", "text": "HALF_OPEN" },
+                    "2": { "color": "red", "text": "OPEN" }
                   }
                 }
               ],
@@ -322,8 +322,8 @@ data:
                 "mode": "absolute",
                 "steps": [
                   { "color": "green", "value": null },
-                  { "color": "yellow", "value": 0.5 },
-                  { "color": "red", "value": 1 }
+                  { "color": "yellow", "value": 1 },
+                  { "color": "red", "value": 2 }
                 ]
               }
             },
@@ -339,12 +339,12 @@ data:
             "alignValue": "left",
             "rowHeight": 0.9
           },
-          "title": "AI Analysis CB Timeline (Python schema)",
+          "title": "AI Analysis CB Timeline (Python)",
           "type": "state-timeline",
           "targets": [
             {
-              "expr": "algosu_ai_analysis_circuit_breaker_state",
-              "legendFormat": "ai-analysis"
+              "expr": "algosu_ai_analysis_circuit_breaker_state{name=~\"$name\"}",
+              "legendFormat": "{{name}}"
             }
           ]
         },
@@ -478,7 +478,7 @@ data:
           {
             "current": { "selected": true, "text": ["All"], "value": ["$__all"] },
             "datasource": { "type": "prometheus", "uid": "prometheus" },
-            "definition": "label_values({__name__=~\"algosu_(submission|github_worker)_circuit_breaker_state\"}, name)",
+            "definition": "label_values({__name__=~\"algosu_(submission|github_worker|ai_analysis)_circuit_breaker_state\"}, name)",
             "hide": 0,
             "includeAll": true,
             "label": "CB Name",
@@ -486,7 +486,7 @@ data:
             "name": "name",
             "options": [],
             "query": {
-              "query": "label_values({__name__=~\"algosu_(submission|github_worker)_circuit_breaker_state\"}, name)",
+              "query": "label_values({__name__=~\"algosu_(submission|github_worker|ai_analysis)_circuit_breaker_state\"}, name)",
               "refId": "PrometheusVariableQueryEditor-VariableQuery"
             },
             "refresh": 2,
