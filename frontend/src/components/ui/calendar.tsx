@@ -1,5 +1,5 @@
 /**
- * @file Calendar 래퍼 — react-day-picker v9 호환 + ko locale 기본값
+ * @file Calendar 래퍼 — react-day-picker v9 호환 + next-intl locale 동적 매핑
  * @domain common
  * @layer component
  * @related react-day-picker, AddProblemModal, problems/create, problems/[id]/edit
@@ -8,14 +8,25 @@
 
 import * as React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { DayPicker } from 'react-day-picker';
-import { ko } from 'react-day-picker/locale';
+import { DayPicker, type Locale as DayPickerLocale } from 'react-day-picker';
+import { enUS, ko } from 'react-day-picker/locale';
+import { useLocale } from 'next-intl';
 
 import { cn } from '@/lib/utils';
 import { buttonVariants } from './Button';
 
 /**
- * react-day-picker v9 캘린더 — AlgoSu 디자인 토큰 적용 + 한국어 로케일 기본값.
+ * next-intl AppLocale → react-day-picker locale 매핑.
+ * Sprint 141 — 미지원 locale은 ko fallback (defaultLocale 정책 일관).
+ * @see frontend/src/i18n/routing.ts
+ */
+const LOCALE_MAP: Record<string, DayPickerLocale> = {
+  ko,
+  en: enUS,
+};
+
+/**
+ * react-day-picker v9 캘린더 — AlgoSu 디자인 토큰 + 동적 locale.
  *
  * v9는 v8 대비 className 키가 대거 변경되어 새 스키마로 매핑함:
  * - caption → month_caption
@@ -23,19 +34,25 @@ import { buttonVariants } from './Button';
  * - table → month_grid, head_row → weekdays, head_cell → weekday
  * - row → week, cell → day, day → day_button
  *
- * `locale` prop 기본값은 한국어. 다른 언어로 사용 시 props.locale로 override.
+ * locale 우선순위 (Sprint 141):
+ * 1. props.locale (명시적 override)
+ * 2. next-intl useLocale() → LOCALE_MAP 매핑
+ * 3. ko fallback
  */
 function Calendar({
   className,
   classNames,
   showOutsideDays = true,
-  locale = ko,
+  locale: localeProp,
   ...props
 }: React.ComponentProps<typeof DayPicker>) {
+  const currentLocale = useLocale();
+  const resolvedLocale = localeProp ?? LOCALE_MAP[currentLocale] ?? ko;
+
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
-      locale={locale}
+      locale={resolvedLocale}
       className={cn('relative p-3 mx-auto w-fit', className)}
       classNames={{
         months: 'flex flex-col sm:flex-row gap-2',
