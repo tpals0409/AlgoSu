@@ -306,16 +306,25 @@ class TestBehaviorEquivalenceRules:
         assert "signaturePreserved" in SYSTEM_PROMPT
         assert "behaviorEquivalent" in SYSTEM_PROMPT
 
-    def test_sql_system_prompt_contains_optimized_code_meta_schema(self):
+    def test_sql_system_prompt_contains_behavior_equivalent_only(self):
+        """SQL은 시그니처 개념 없으므로 signaturePreserved 미포함, behaviorEquivalent만 (Critic R4 P2)"""
         assert "optimizedCodeMeta" in SQL_SYSTEM_PROMPT
-        assert "signaturePreserved" in SQL_SYSTEM_PROMPT
         assert "behaviorEquivalent" in SQL_SYSTEM_PROMPT
+        assert "signaturePreserved" not in SQL_SYSTEM_PROMPT
 
-    def test_correctness_rubric_evaluates_optimized_code(self):
-        assert "optimizedCode 모두 평가" in SYSTEM_PROMPT
+    def test_correctness_rubric_separates_score_from_optimized_code(self):
+        """correctness 점수는 제출된 코드만 평가 (Critic R4 P1 회귀 보호)
 
-    def test_sql_correctness_rubric_evaluates_optimized_code(self):
-        assert "optimizedCode 모두 평가" in SQL_SYSTEM_PROMPT
+        optimizedCode 자가 검증은 별도 optimizedCodeMeta가 담당.
+        LLM이 잘못된 optimizedCode를 제안해도 사용자 점수는 페널티 받지 않음.
+        """
+        assert "제출된 코드만 평가" in SYSTEM_PROMPT
+        assert "자가 검증 메타로 별도 처리" in SYSTEM_PROMPT
+
+    def test_sql_correctness_rubric_separates_score_from_optimized_code(self):
+        """SQL correctness 점수도 제출된 쿼리만 평가"""
+        assert "제출된 쿼리만 평가" in SQL_SYSTEM_PROMPT
+        assert "자가 검증 메타로 별도 처리" in SQL_SYSTEM_PROMPT
 
 
 class TestPlatformContextImperative:

@@ -23,7 +23,7 @@ SYSTEM_PROMPT = """당신은 알고리즘 스터디 3년차 멘토입니다.
 
 카테고리 및 점수 루브릭:
 
-1. correctness (정확성): 로직 오류, 엣지 케이스 처리 (제출된 코드와 optimizedCode 모두 평가)
+1. correctness (정확성): 로직 오류, 엣지 케이스 처리 (제출된 코드만 평가, optimizedCode는 자가 검증 메타로 별도 처리)
    - 90-100 (우수): 모든 일반/엣지 케이스를 정확히 처리하며 논리적 오류가 없음
    - 70-89 (양호): 일반 케이스는 정확하나 일부 엣지 케이스(빈 입력, 경계값 등) 미처리
    - 50-69 (보통): 핵심 로직은 맞지만 특정 입력 패턴에서 오답 가능성 있음
@@ -110,7 +110,7 @@ SQL_SYSTEM_PROMPT = """당신은 SQL 스터디 3년차 멘토입니다.
 
 카테고리 및 점수 루브릭:
 
-1. correctness (정확성): JOIN 정확성, NULL 처리, GROUP BY 완전성, WHERE 절 정밀성, 서브쿼리 논리 (제출된 쿼리와 optimizedCode 모두 평가)
+1. correctness (정확성): JOIN 정확성, NULL 처리, GROUP BY 완전성, WHERE 절 정밀성, 서브쿼리 논리 (제출된 쿼리만 평가, optimizedCode는 자가 검증 메타로 별도 처리)
    - 90-100 (우수): 모든 테이블 관계를 정확히 JOIN하고 NULL/빈 값을 올바르게 처리
    - 70-89 (양호): 기본 JOIN은 정확하나 NULL 처리나 GROUP BY 누락이 일부 존재
    - 50-69 (보통): 핵심 쿼리 구조는 맞지만 특정 데이터 조건에서 오답 가능
@@ -178,7 +178,6 @@ JSON 스키마:
   ],
   "optimizedCode": "최적화된 전체 SQL 쿼리",
   "optimizedCodeMeta": {
-    "signaturePreserved": true/false,
     "behaviorEquivalent": true/false,
     "changes": ["변경 사항 요약 (항목당 1문장, 최대 5개)"]
   }
