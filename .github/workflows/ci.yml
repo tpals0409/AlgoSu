@@ -232,6 +232,9 @@ jobs:
         if: steps.check.outputs.skip == 'false'
         working-directory: services/${{ matrix.service }}
         run: npx tsc --noEmit
+      - name: Check mock factory coverage
+        if: steps.check.outputs.skip == 'false' && matrix.service == 'submission'
+        run: node scripts/check-mock-coverage.mjs
 
   quality-python:
     name: Quality — ai-analysis
