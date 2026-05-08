@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 MODEL_ID = "claude-haiku-4-5-20251001"
 MAX_TOKENS = 8192
+CODE_LENGTH_THRESHOLD = 50000
 
 
 def _is_explicit_false(value: object) -> bool:
@@ -169,6 +170,16 @@ class ClaudeClient:
 
             raw_text = message.content[0].text if message.content else ""
             result = self._parse_response(raw_text, language=language)
+
+            if len(code) > CODE_LENGTH_THRESHOLD:
+                logger.warning(
+                    "코드 길이 초과 — optimizedCode 생성 보류",
+                    extra={
+                        "codeLength": len(code),
+                        "threshold": CODE_LENGTH_THRESHOLD,
+                    },
+                )
+                result["optimized_code"] = None
 
             code_preview = code[:50] + "..." if len(code) > 50 else code
             logger.info(
