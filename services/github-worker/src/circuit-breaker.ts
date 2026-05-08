@@ -93,6 +93,19 @@ export interface CreateBreakerOptions {
 export class CircuitBreakerManager {
   private readonly breakers = new Map<string, CircuitBreaker>();
 
+  /**
+   * 인스턴스별 errorFilter 통과 마커 — race condition 없는 정확한 success/filtered 분기용.
+   * WeakSet이므로 GC가 자연스럽게 정리, 메모리 누수 없음.
+   * Map<name, WeakSet>으로 CB별 분리 (다른 CB 간섭 차단).
+   *
+   * Sprint 141 — submission CircuitBreakerService와 동기화 (Sprint 135 D8 P2 패턴 백포팅).
+   * 기존 `instanceof Error` 휴리스틱이 부정확했던 두 케이스를 모두 해결한다:
+   *   1. action이 Error 인스턴스를 정상 resolve로 반환 → wrapper 미경유 → 'success' 정확
+   *   2. action이 plain object(예: {status: 404}) throw + errorFilter 통과 → wrapper에서
+   *      'filtered' + 마커 → success 핸들러는 마커 발견 후 skip → 정확
+   */
+  private readonly filteredMarkers = new Map<string, WeakSet<object>>();
+
   private readonly stateGauge: Gauge<string>;
   private readonly failuresCounter: Counter<string>;
   private readonly requestsCounter: Counter<string>;
@@ -139,11 +152,31 @@ export class CircuitBreakerManager {
     action: (...args: TI) => Promise<TR>,
     options?: CreateBreakerOptions,
   ): CircuitBreaker<TI, TR> {
-    const { fallback, ...cbOptions } = options ?? {};
+    const { fallback, errorFilter: userFilter, ...cbOptions } = options ?? {};
+
+    // CB별 마커 WeakSet 생성 — success 핸들러가 이미 카운트된 filtered 이벤트를 식별하기 위해 사용
+    const markers = new WeakSet<object>();
+    this.filteredMarkers.set(name, markers);
+
+    // errorFilter wrapper — 사용자/default filter를 감싸 filtered 카운트 + 마커 추가
+    // (Sprint 141 — submission Sprint 135 D8 P2 패턴 백포팅: instanceof Error 휴리스틱 대체)
+    const filterImpl = userFilter ?? DEFAULT_ERROR_FILTER;
+    const wrappedFilter = (err: unknown): boolean => {
+      const filtered = filterImpl(err);
+      if (filtered) {
+        this.requestsCounter.inc({ name, result: 'filtered' });
+        // primitive(string/number/null/undefined)는 WeakSet에 추가 불가 → 무해 (success 핸들러도 객체만 조회)
+        if (err !== null && typeof err === 'object') {
+          markers.add(err);
+        }
+      }
+      return filtered;
+    };
 
     const breaker = new CircuitBreaker<TI, TR>(action, {
       ...DEFAULT_CB_OPTIONS,
       ...cbOptions,
+      errorFilter: wrappedFilter,
       name,
     });
 
@@ -195,6 +228,7 @@ export class CircuitBreakerManager {
       try {
         breaker.shutdown();
         this.breakers.delete(name);
+        this.filteredMarkers.delete(name); // WeakSet 자체 제거 (마커 GC 자연 정리)
         logger.info('CircuitBreaker shutdown', { tag: 'CB_SHUTDOWN', action: name });
       } catch (error: unknown) {
         logger.warn('CircuitBreaker shutdown 실패 -- Map에 보존', {
@@ -226,12 +260,15 @@ export class CircuitBreakerManager {
     });
 
     breaker.on('success', (result: unknown) => {
-      // opossum은 errorFilter 통과 시 `circuit.emit('success', error, latency)`로 emit하므로
-      // 첫 인자가 Error 인스턴스인 경우는 실제 성공이 아닌 filtered 케이스 (Sprint 135 D7 Critic 2차 P2).
-      // 메트릭 정확성을 위해 'filtered' 라벨로 분리 카운트하여 success 카운트 오염 방지.
-      if (result instanceof Error) {
-        this.requestsCounter.inc({ name, result: 'filtered' });
-        return;
+      // Sprint 141 — submission Sprint 135 D8 P2 패턴 백포팅.
+      // errorFilter wrapper가 이미 'filtered' 카운트했는지 WeakSet 마커로 확인.
+      // (instanceof Error 휴리스틱 대체 — non-Error throw + errorFilter 통과 케이스도 정확히 분기)
+      if (result !== null && typeof result === 'object') {
+        const markers = this.filteredMarkers.get(name);
+        if (markers && markers.has(result)) {
+          markers.delete(result); // 마커 정리 (재사용 시 오분류 방지)
+          return;
+        }
       }
       this.requestsCounter.inc({ name, result: 'success' });
     });

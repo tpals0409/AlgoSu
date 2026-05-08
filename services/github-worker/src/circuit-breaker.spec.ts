@@ -668,6 +668,117 @@ describe('CircuitBreakerManager', () => {
       expect(failureVal).toBeUndefined();
     });
 
+    // ─── Sprint 141 — WeakSet 마커 패턴 정확 분류 (instanceof Error 휴리스틱 대체) ───
+    describe('WeakSet 마커 패턴 — Sprint 141 백포팅', () => {
+      it('plain object throw + errorFilter 통과 시 filtered만 카운트되고 success는 미증가', async () => {
+        // 이전 instanceof Error 휴리스틱은 plain object throw 시 success로 잘못 분류했다.
+        // WeakSet 마커 패턴은 wrapper에서 마커 추가 → success 핸들러가 마커 발견 후 skip.
+        const plainErr = { status: 404, message: 'not found' };
+        const action = jest.fn().mockRejectedValue(plainErr);
+
+        manager.createBreaker('test-plain-404', action, {
+          volumeThreshold: 1,
+          errorThresholdPercentage: 1,
+          resetTimeout: 30_000,
+          rollingCountTimeout: 10_000,
+          rollingCountBuckets: 1,
+          timeout: false,
+        });
+
+        const breaker = manager.getBreaker('test-plain-404')!;
+        for (let i = 0; i < 3; i++) {
+          try { await breaker.fire(); } catch { /* expected */ }
+        }
+
+        const metrics = await registry.getMetricsAsJSON();
+        const reqMetric = metrics.find(
+          (m) => m.name === 'algosu_github_worker_circuit_breaker_requests_total',
+        );
+        const filteredVal = (reqMetric?.values ?? []).find(
+          (v) => v.labels?.['name'] === 'test-plain-404' && v.labels?.['result'] === 'filtered',
+        )?.value;
+        const successVal = (reqMetric?.values ?? []).find(
+          (v) => v.labels?.['name'] === 'test-plain-404' && v.labels?.['result'] === 'success',
+        )?.value;
+
+        expect(filteredVal).toBe(3);
+        expect(successVal).toBeUndefined();
+      });
+
+      it('동일 객체가 filtered reject 후 정상 resolve로 재사용될 때 markers.delete로 success 정확 카운트', async () => {
+        // P2 회귀 보호 (Critic 1차) — markers.delete(result) 누락 시 동일 객체 재사용에서 success skip되는 회귀.
+        // 시나리오: 같은 plain object를 (1) filtered reject → 마커 추가, (2) 정상 resolve → 마커 삭제 + success 카운트
+        const sharedObj = { status: 404, ref: 'shared' };
+        let mode: 'reject' | 'resolve' = 'reject';
+        const action = jest.fn().mockImplementation(() => {
+          if (mode === 'reject') return Promise.reject(sharedObj);
+          return Promise.resolve(sharedObj);
+        });
+
+        manager.createBreaker('test-marker-delete', action, {
+          volumeThreshold: 100,
+          errorThresholdPercentage: 99,
+          resetTimeout: 30_000,
+          rollingCountTimeout: 10_000,
+          rollingCountBuckets: 1,
+          timeout: false,
+        });
+
+        const breaker = manager.getBreaker('test-marker-delete')!;
+
+        // 1) filtered reject — 마커 추가
+        try { await breaker.fire(); } catch { /* expected */ }
+
+        // 2) 정상 resolve로 같은 객체 반환 — markers.delete가 동작해야 success 카운트 정확
+        mode = 'resolve';
+        await breaker.fire();
+        // 3) 다시 정상 resolve — 마커 삭제 후이므로 또 success 카운트
+        await breaker.fire();
+
+        const metrics = await registry.getMetricsAsJSON();
+        const reqMetric = metrics.find(
+          (m) => m.name === 'algosu_github_worker_circuit_breaker_requests_total',
+        );
+        const filteredVal = (reqMetric?.values ?? []).find(
+          (v) => v.labels?.['name'] === 'test-marker-delete' && v.labels?.['result'] === 'filtered',
+        )?.value;
+        const successVal = (reqMetric?.values ?? []).find(
+          (v) => v.labels?.['name'] === 'test-marker-delete' && v.labels?.['result'] === 'success',
+        )?.value;
+
+        expect(filteredVal).toBe(1);
+        // markers.delete(result) 미동작 시: 동일 객체에 대한 두 resolve가 모두 마커 hit → skip → successVal=undefined (실패)
+        // 정상 동작 시: 첫 resolve에서 마커 삭제 → success 카운트, 두 번째 resolve도 success → 2
+        expect(successVal).toBe(2);
+      });
+
+      it('Error 인스턴스를 정상 resolve로 반환 시 success로 카운트됨', async () => {
+        // 이전 instanceof Error 휴리스틱은 이를 filtered로 잘못 분류했다.
+        // WeakSet 마커 패턴은 wrapper 미경유이므로 마커 부재 → success 정확.
+        const errorAsValue = new Error('this is a value, not a thrown error');
+        const action = jest.fn().mockResolvedValue(errorAsValue);
+
+        manager.createBreaker('test-error-as-value', action);
+        const breaker = manager.getBreaker('test-error-as-value')!;
+
+        await breaker.fire();
+
+        const metrics = await registry.getMetricsAsJSON();
+        const reqMetric = metrics.find(
+          (m) => m.name === 'algosu_github_worker_circuit_breaker_requests_total',
+        );
+        const successVal = (reqMetric?.values ?? []).find(
+          (v) => v.labels?.['name'] === 'test-error-as-value' && v.labels?.['result'] === 'success',
+        )?.value;
+        const filteredVal = (reqMetric?.values ?? []).find(
+          (v) => v.labels?.['name'] === 'test-error-as-value' && v.labels?.['result'] === 'filtered',
+        )?.value;
+
+        expect(successVal).toBe(1);
+        expect(filteredVal).toBeUndefined();
+      });
+    });
+
     it('호출자가 errorFilter override 시 default가 아닌 호출자 함수가 사용됨', async () => {
       // override: 모든 에러를 filtered (= CB failure 미카운트)
       const customFilter = jest.fn().mockReturnValue(true);

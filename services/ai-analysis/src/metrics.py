@@ -68,9 +68,15 @@ http_active_requests = Gauge(
     documentation="Number of active HTTP requests",
 )
 
+# Sprint 141 — TS(submission/github-worker) STATE_CODE와 schema 통일.
+# 기존 0/0.5/1 → 0/1/2 매핑 + `name` 라벨 추가로 Grafana 대시보드 단일 panel 통합 가능.
+# 단일 CB 싱글턴이지만 라벨 일관성을 위해 default name="claude-api"로 고정.
+CB_NAME_CLAUDE_API = "claude-api"
+
 circuit_breaker_state = Gauge(
     name="algosu_ai_analysis_circuit_breaker_state",
-    documentation="Circuit Breaker state (0=CLOSED, 0.5=HALF_OPEN, 1=OPEN)",
+    documentation="Circuit Breaker state (0=CLOSED, 1=HALF_OPEN, 2=OPEN)",
+    labelnames=["name"],
 )
 
 claude_requests_total = Counter(
@@ -97,16 +103,27 @@ mq_messages_processed_total = Counter(
     labelnames=["result"],  # ack, nack_dlq
 )
 
+# Sprint 141 — TS schema와 통일: 0=CLOSED, 1=HALF_OPEN, 2=OPEN
+# (기존 0/0.5/1 → submission/github-worker STATE_CODE와 정렬)
 CIRCUIT_STATE_VALUES: dict[str, float] = {
     "CLOSED": 0.0,
-    "HALF_OPEN": 0.5,
-    "OPEN": 1.0,
+    "HALF_OPEN": 1.0,
+    "OPEN": 2.0,
 }
 
 
-def update_circuit_breaker_gauge(state_value: str) -> None:
-    """Circuit Breaker 상태 변경 시 Gauge 업데이트."""
-    circuit_breaker_state.set(CIRCUIT_STATE_VALUES.get(state_value, 0.0))
+def update_circuit_breaker_gauge(
+    state_value: str,
+    name: str = CB_NAME_CLAUDE_API,
+) -> None:
+    """Circuit Breaker 상태 변경 시 Gauge 업데이트.
+
+    Sprint 141 — name 라벨 추가. 단일 CB 싱글턴은 default 사용.
+    UNKNOWN state는 안전하게 CLOSED(0.0)로 매핑.
+    """
+    circuit_breaker_state.labels(name=name).set(
+        CIRCUIT_STATE_VALUES.get(state_value, 0.0)
+    )
 
 
 # ---------------------------------------------------------------------------
