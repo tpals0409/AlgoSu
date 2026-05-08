@@ -13,7 +13,7 @@ import { CircuitBreakerService } from '../circuit-breaker';
 import { buildHttpError } from '../circuit-breaker/circuit-breaker.constants';
 
 /** Problem Service 호환 op 타입 */
-export type ProblemOp = 'getSourcePlatform' | 'getDeadline';
+export type ProblemOp = 'getSourcePlatform' | 'getDeadline' | 'getProblemInfo';
 
 /** 호스트 단일 CB로 전달되는 요청 페이로드 */
 export interface ProblemRequest {
@@ -37,6 +37,12 @@ interface DeadlineResponse {
 export interface DeadlineResult {
   isLate: boolean;
   weekNumber: string | null;
+}
+
+/** 문제 정보 조회 결과 */
+export interface ProblemInfoResult {
+  title: string;
+  description: string;
 }
 
 /** fetch timeout (ms) — Problem Service 응답 SLA 5초 */
@@ -186,6 +192,44 @@ export class ProblemServiceClient implements OnModuleInit {
   }
 
   /**
+   * 문제 정보(title/description) 조회 — CB 보호.
+   *
+   * @param problemId 문제 ID
+   * @param studyId 스터디 ID
+   * @param userId 사용자 ID (옵셔널)
+   * @returns 문제 제목/설명 (조회 실패 / CB OPEN 시 fallback `{title: '', description: ''}`)
+   */
+  async getProblemInfo(
+    problemId: string,
+    studyId: string,
+    userId?: string,
+  ): Promise<ProblemInfoResult> {
+    if (!this.isConfigReady()) {
+      this.logger.warn(
+        'PROBLEM_SERVICE_URL 또는 PROBLEM_SERVICE_KEY 미설정 — getProblemInfo 즉시 fallback',
+      );
+      return { title: '', description: '' };
+    }
+    try {
+      const result = await this.hostBreaker.fire({
+        op: 'getProblemInfo',
+        problemId,
+        studyId,
+        userId,
+      });
+      if (result instanceof Error) {
+        return { title: '', description: '' };
+      }
+      return result as ProblemInfoResult;
+    } catch (error: unknown) {
+      this.logger.warn(
+        `getProblemInfo 예외: problemId=${problemId}, error=${(error as Error).message}`,
+      );
+      return { title: '', description: '' };
+    }
+  }
+
+  /**
    * dispatcher — op별 endpoint 호출 (action 본체).
    */
   private async _dispatch(req: ProblemRequest): Promise<unknown> {
@@ -195,6 +239,9 @@ export class ProblemServiceClient implements OnModuleInit {
     }
     if (op === 'getDeadline') {
       return await this._doGetDeadline(req);
+    }
+    if (op === 'getProblemInfo') {
+      return await this._doGetProblemInfo(req);
     }
     throw new Error(`Unknown ProblemOp: ${op as string}`);
   }
@@ -256,6 +303,32 @@ export class ProblemServiceClient implements OnModuleInit {
   }
 
   /**
+   * 문제 정보 fetch 본체 — getSourcePlatform과 동일 endpoint, title/description 추출.
+   */
+  private async _doGetProblemInfo(req: ProblemRequest): Promise<ProblemInfoResult> {
+    const { problemId, studyId, userId } = req;
+    const headers = this._buildHeaders(studyId, userId);
+
+    const resp = await fetch(
+      `${this.problemServiceUrl}/internal/${problemId}`,
+      { headers, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) },
+    );
+
+    if (!resp.ok) {
+      throw buildHttpError(
+        `문제 정보 조회 실패: problemId=${problemId}, status=${resp.status}`,
+        resp.status,
+      );
+    }
+
+    const body = (await resp.json()) as { data: { title?: string; description?: string } };
+    return {
+      title: body.data.title ?? '',
+      description: body.data.description ?? '',
+    };
+  }
+
+  /**
    * 공용 헤더 빌더 — userId 옵셔널 분기 흡수.
    */
   private _buildHeaders(studyId: string, userId?: string): Record<string, string> {
@@ -274,6 +347,7 @@ export class ProblemServiceClient implements OnModuleInit {
   private _fallback(req: ProblemRequest): unknown {
     if (req.op === 'getSourcePlatform') return undefined;
     if (req.op === 'getDeadline') return { isLate: false, weekNumber: null };
+    if (req.op === 'getProblemInfo') return { title: '', description: '' };
     return null;
   }
 }

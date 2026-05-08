@@ -55,6 +55,7 @@ const mockSagaOrchestrator = () => ({
 const mockProblemServiceClient = () => ({
   getSourcePlatform: jest.fn().mockResolvedValue(undefined),
   getDeadline: jest.fn().mockResolvedValue({ isLate: false, weekNumber: null }),
+  getProblemInfo: jest.fn().mockResolvedValue({ title: '', description: '' }),
 });
 
 const createMockTransactionRunner = () => ({
@@ -79,6 +80,8 @@ const createMockSubmission = (overrides: Partial<Submission> = {}): Submission =
   studyId: 'study-uuid-1',
   userId: 'user-1',
   problemId: 'problem-uuid-1',
+  problemTitle: null,
+  problemDescription: null,
   language: 'python',
   code: 'print("hello world")',
   sagaStep: SagaStep.DB_SAVED,
