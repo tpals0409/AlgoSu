@@ -196,12 +196,12 @@ class TestSqlSystemPrompt:
         assert "GROUP BY" in SQL_SYSTEM_PROMPT
 
     def test_sql_system_prompt_weights(self):
-        """SQL 가중치 확인 (correctness 30%, efficiency 20%, bestPractice 20%)"""
-        assert "correctness 30%" in SQL_SYSTEM_PROMPT
-        assert "efficiency 20%" in SQL_SYSTEM_PROMPT
+        """SQL 가중치 확인 (correctness 40%, efficiency 15%, bestPractice 15%)"""
+        assert "correctness 40%" in SQL_SYSTEM_PROMPT
+        assert "efficiency 15%" in SQL_SYSTEM_PROMPT
         assert "readability 15%" in SQL_SYSTEM_PROMPT
         assert "structure 15%" in SQL_SYSTEM_PROMPT
-        assert "bestPractice 20%" in SQL_SYSTEM_PROMPT
+        assert "bestPractice 15%" in SQL_SYSTEM_PROMPT
 
     def test_sql_system_prompt_query_execution_context(self):
         """timeComplexity/spaceComplexity가 SQL 맥락으로 재해석 확인"""
@@ -273,12 +273,14 @@ class TestWeights:
     def test_get_weights_python(self):
         assert get_weights("python") is ALGORITHM_WEIGHTS
 
-    def test_sql_efficiency_differs_from_algorithm(self):
-        """D4: SQL과 알고리즘의 efficiency/bestPractice 가중치가 다른지 확인"""
-        assert SQL_WEIGHTS["efficiency"] == 0.20
-        assert ALGORITHM_WEIGHTS["efficiency"] == 0.25
-        assert SQL_WEIGHTS["bestPractice"] == 0.20
-        assert ALGORITHM_WEIGHTS["bestPractice"] == 0.15
+    def test_algorithm_and_sql_weight_values(self):
+        """correctness 40% 강화 후 구체 가중치 값 검증 (Sprint 143)"""
+        assert ALGORITHM_WEIGHTS["correctness"] == 0.40
+        assert ALGORITHM_WEIGHTS["efficiency"] == 0.20
+        assert ALGORITHM_WEIGHTS["bestPractice"] == 0.10
+        assert SQL_WEIGHTS["correctness"] == 0.40
+        assert SQL_WEIGHTS["efficiency"] == 0.15
+        assert SQL_WEIGHTS["bestPractice"] == 0.15
 
 
 class TestBehaviorEquivalenceRules:
