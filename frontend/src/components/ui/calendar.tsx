@@ -46,7 +46,12 @@ function Calendar({
   locale: localeProp,
   ...props
 }: React.ComponentProps<typeof DayPicker>) {
-  const currentLocale = useLocale();
+  let currentLocale = 'ko';
+  try {
+    currentLocale = useLocale();
+  } catch {
+    // NextIntlClientProvider 외부 사용 시 fallback (Storybook/테스트 환경)
+  }
   const resolvedLocale = localeProp ?? LOCALE_MAP[currentLocale] ?? ko;
 
   return (
