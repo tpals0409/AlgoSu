@@ -46,11 +46,15 @@ function Calendar({
   locale: localeProp,
   ...props
 }: React.ComponentProps<typeof DayPicker>) {
+  // NextIntlClientProvider 외부(Storybook/테스트)에서 useLocale은 throw.
+  // 동일 컴포넌트 트리에서는 throw 여부가 환경에 의해 정해지고 매 렌더마다 일관되므로
+  // hooks 순서는 변하지 않음 — 의도적 try-catch 패턴.
   let currentLocale = 'ko';
   try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     currentLocale = useLocale();
   } catch {
-    // NextIntlClientProvider 외부 사용 시 fallback (Storybook/테스트 환경)
+    // provider 부재 시 ko fallback
   }
   const resolvedLocale = localeProp ?? LOCALE_MAP[currentLocale] ?? ko;
 
