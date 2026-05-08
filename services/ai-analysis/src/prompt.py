@@ -7,9 +7,70 @@ AI 코드 분석 프롬프트 정의
 @related ClaudeClient, AIAnalysisWorker
 """
 
-# ─── CONSTANTS ────────────────────────────────
+# ─── WEIGHTS (SSOT — 프롬프트 본문 가중치 표기와 totalScore 재계산이 모두 이 dict를 참조) ──
 
-SYSTEM_PROMPT = """당신은 알고리즘 스터디 3년차 멘토입니다.
+ALGORITHM_WEIGHTS: dict[str, float] = {
+    "correctness": 0.40,
+    "efficiency": 0.20,
+    "readability": 0.15,
+    "structure": 0.15,
+    "bestPractice": 0.10,
+}
+
+SQL_WEIGHTS: dict[str, float] = {
+    "correctness": 0.40,
+    "efficiency": 0.15,
+    "readability": 0.15,
+    "structure": 0.15,
+    "bestPractice": 0.15,
+}
+
+
+def get_weights(language: str) -> dict[str, float]:
+    """
+    language에 따라 카테고리별 가중치 반환
+
+    @domain ai
+    @param language: 프로그래밍 언어
+    @returns: SQL이면 SQL_WEIGHTS, 그 외 ALGORITHM_WEIGHTS
+    """
+    if language.lower() == "sql":
+        return SQL_WEIGHTS
+    return ALGORITHM_WEIGHTS
+
+
+def _format_weights_inline(weights: dict[str, float]) -> str:
+    """
+    가중치 dict를 프롬프트 본문 inline 표기로 변환
+
+    예: {"correctness": 0.40, ...} -> "correctness 40%, efficiency 20%, ..."
+
+    @domain ai
+    @param weights: 카테고리 -> 가중치 비율(0~1) dict
+    @returns: 카테고리별 퍼센트 표기를 쉼표로 결합한 문자열
+    """
+    return ", ".join(f"{name} {round(ratio * 100)}%" for name, ratio in weights.items())
+
+
+def compute_total_score(category_scores: dict[str, int], language: str) -> int:
+    """
+    카테고리 점수 dict와 언어로부터 totalScore 가중 평균을 계산
+
+    @domain ai
+    @param category_scores: 카테고리명 -> 점수(0~100) dict
+    @param language: 프로그래밍 언어 (가중치 분기용)
+    @returns: 가중 평균 점수(round 적용된 int)
+    """
+    weights = get_weights(language)
+    weighted_sum = sum(
+        category_scores.get(name, 0) * ratio for name, ratio in weights.items()
+    )
+    return round(weighted_sum)
+
+
+# ─── SYSTEM PROMPTS ──
+
+_SYSTEM_PROMPT_TEMPLATE = """당신은 알고리즘 스터디 3년차 멘토입니다.
 코딩테스트를 꾸준히 준비해온 경험자로, 후배에게 실전에서 바로 쓸 수 있는 피드백을 주는 스타일입니다.
 친근하지만 핵심을 짚고, 이론보다는 실전 경험에 기반한 조언을 합니다.
 제출된 코드를 5개 카테고리로 분석하여 JSON으로 응답합니다.
@@ -62,7 +123,7 @@ SYSTEM_PROMPT = """당신은 알고리즘 스터디 3년차 멘토입니다.
 - 반드시 유효한 JSON만 출력 (마크다운 코드 블록 없이)
 - 모든 텍스트는 한국어 (코드는 원문 유지)
 - 각 카테고리 점수: 0-100
-- totalScore: 카테고리 점수의 가중 평균 (correctness 40%, efficiency 20%, readability 15%, structure 15%, bestPractice 10%)
+- totalScore: 카테고리 점수의 가중 평균 (<<<ALGORITHM_WEIGHTS_INLINE>>>)
 - highlight type: issue(개선 필요), suggestion(대안 제안), good(잘 작성)
 - 카테고리당 하이라이트 최대 3개
 - optimizedCode: 실제 코딩테스트에서 제출할 법한 현실적인 개선 코드. 과도한 최적화나 추상화를 피하고, 꾸준히 알고리즘을 공부해온 사람이 작성할 법한 수준으로 작성. 가독성과 실전성을 우선하며, 천재적 트릭보다는 이해하기 쉬운 정석 풀이를 지향할 것. 반드시 원본 코드의 함수 시그니처와 입출력 형식을 그대로 유지할 것.
@@ -97,7 +158,7 @@ JSON 스키마:
   }
 }"""
 
-SQL_SYSTEM_PROMPT = """당신은 SQL 스터디 3년차 멘토입니다.
+_SQL_SYSTEM_PROMPT_TEMPLATE = """당신은 SQL 스터디 3년차 멘토입니다.
 데이터베이스와 SQL을 꾸준히 학습해온 경험자로, 후배에게 실전에서 바로 쓸 수 있는 피드백을 주는 스타일입니다.
 친근하지만 핵심을 짚고, 이론보다는 실전 경험에 기반한 조언을 합니다.
 제출된 SQL 쿼리를 5개 카테고리로 분석하여 JSON으로 응답합니다.
@@ -149,7 +210,7 @@ SQL_SYSTEM_PROMPT = """당신은 SQL 스터디 3년차 멘토입니다.
 - 반드시 유효한 JSON만 출력 (마크다운 코드 블록 없이)
 - 모든 텍스트는 한국어 (코드는 원문 유지)
 - 각 카테고리 점수: 0-100
-- totalScore: 카테고리 점수의 가중 평균 (correctness 40%, efficiency 15%, readability 15%, structure 15%, bestPractice 15%)
+- totalScore: 카테고리 점수의 가중 평균 (<<<SQL_WEIGHTS_INLINE>>>)
 - highlight type: issue(개선 필요), suggestion(대안 제안), good(잘 작성)
 - 카테고리당 하이라이트 최대 3개
 - optimizedCode: 실제 코딩테스트에서 제출할 법한 현실적인 개선 SQL 쿼리. 과도한 최적화를 피하고, 꾸준히 SQL을 공부해온 사람이 작성할 법한 수준으로 작성. 가독성과 실전성을 우선하며, 트릭보다는 이해하기 쉬운 정석 쿼리를 지향할 것. 반드시 원본 쿼리의 결과 컬럼명, 컬럼 순서, 정렬 순서를 그대로 유지할 것.
@@ -183,36 +244,13 @@ JSON 스키마:
   }
 }"""
 
-# ─── WEIGHTS (SSOT — 프롬프트 본문 가중치와 일치해야 함) ──
-
-ALGORITHM_WEIGHTS: dict[str, float] = {
-    "correctness": 0.40,
-    "efficiency": 0.20,
-    "readability": 0.15,
-    "structure": 0.15,
-    "bestPractice": 0.10,
-}
-
-SQL_WEIGHTS: dict[str, float] = {
-    "correctness": 0.40,
-    "efficiency": 0.15,
-    "readability": 0.15,
-    "structure": 0.15,
-    "bestPractice": 0.15,
-}
-
-
-def get_weights(language: str) -> dict[str, float]:
-    """
-    language에 따라 카테고리별 가중치 반환
-
-    @domain ai
-    @param language: 프로그래밍 언어
-    @returns: SQL이면 SQL_WEIGHTS, 그 외 ALGORITHM_WEIGHTS
-    """
-    if language.lower() == "sql":
-        return SQL_WEIGHTS
-    return ALGORITHM_WEIGHTS
+# 모듈 로드 시 placeholder를 SSOT 가중치 표기로 1회 치환 — 이후 변경 불가
+SYSTEM_PROMPT = _SYSTEM_PROMPT_TEMPLATE.replace(
+    "<<<ALGORITHM_WEIGHTS_INLINE>>>", _format_weights_inline(ALGORITHM_WEIGHTS)
+)
+SQL_SYSTEM_PROMPT = _SQL_SYSTEM_PROMPT_TEMPLATE.replace(
+    "<<<SQL_WEIGHTS_INLINE>>>", _format_weights_inline(SQL_WEIGHTS)
+)
 
 
 def get_system_prompt(language: str) -> str:

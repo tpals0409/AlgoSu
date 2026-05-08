@@ -19,9 +19,9 @@ from .metrics import claude_requests_total
 from .prompt import (
     build_group_user_prompt,
     build_user_prompt,
+    compute_total_score,
     get_group_system_prompt,
     get_system_prompt,
-    get_weights,
 )
 
 logger = logging.getLogger(__name__)
@@ -293,13 +293,12 @@ class ClaudeClient:
                 logger.warning(
                     "totalScore=0이지만 카테고리 존재 -- 가중 평균으로 재계산"
                 )
-                weights = get_weights(language)
-                weighted_sum = sum(
-                    cat.get("score", 0) * weights.get(cat.get("name", ""), 0)
-                    for cat in categories
-                )
-                if weighted_sum > 0:
-                    score = round(weighted_sum)
+                category_scores = {
+                    cat.get("name", ""): cat.get("score", 0) for cat in categories
+                }
+                recomputed = compute_total_score(category_scores, language)
+                if recomputed > 0:
+                    score = recomputed
 
             return {
                 "feedback": json.dumps(parsed, ensure_ascii=False),

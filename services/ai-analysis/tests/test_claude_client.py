@@ -375,8 +375,17 @@ class TestParseResponseMarkdown:
         )
         result = c._parse_response(payload)
         assert result["status"] == "completed"
-        # 80*0.40 + 70*0.20 + 60*0.15 + 60*0.15 + 60*0.10 = 32+14+9+9+6 = 70
-        assert result["score"] == 70
+        # ALGORITHM_WEIGHTS SSOT 기반 가중 평균 — 가중치 변경 시 자동 정합
+        from src.prompt import compute_total_score
+
+        scores = {
+            "correctness": 80,
+            "efficiency": 70,
+            "readability": 60,
+            "structure": 60,
+            "bestPractice": 60,
+        }
+        assert result["score"] == compute_total_score(scores, "python")
 
 
 class TestParseResponseFallback:
@@ -489,8 +498,17 @@ class TestParseResponseFallback:
         )
         result = c._parse_response(raw)
         assert result["status"] == "completed"
-        # ALGORITHM_WEIGHTS: 80*0.40+70*0.20+60*0.15+50*0.15+40*0.10 = 32+14+9+7.5+4 = 66.5 → 66
-        assert result["score"] == 66
+        # ALGORITHM_WEIGHTS SSOT 기반 가중 평균 — 가중치 변경 시 자동 정합
+        from src.prompt import compute_total_score
+
+        scores = {
+            "correctness": 80,
+            "efficiency": 70,
+            "readability": 60,
+            "structure": 50,
+            "bestPractice": 40,
+        }
+        assert result["score"] == compute_total_score(scores, "python")
 
     def test_totalScore_zero_with_categories_sql_weights(self):
         """totalScore=0 + language='sql' → SQL_WEIGHTS 적용 가중 평균"""
@@ -539,8 +557,17 @@ class TestParseResponseFallback:
         )
         result = c._parse_response(raw, language="sql")
         assert result["status"] == "completed"
-        # SQL_WEIGHTS: 80*0.40+70*0.15+60*0.15+50*0.15+40*0.15 = 32+10.5+9+7.5+6 = 65
-        assert result["score"] == 65
+        # SQL_WEIGHTS SSOT 기반 가중 평균 — 가중치 변경 시 자동 정합
+        from src.prompt import compute_total_score
+
+        scores = {
+            "correctness": 80,
+            "efficiency": 70,
+            "readability": 60,
+            "structure": 50,
+            "bestPractice": 40,
+        }
+        assert result["score"] == compute_total_score(scores, "sql")
 
     def test_categories_is_string_falls_back_to_empty(self):
         """categories가 문자열인 경우 빈 리스트로 대체 — AttributeError 방지 (P1 fix)"""

@@ -283,6 +283,87 @@ class TestWeights:
         assert SQL_WEIGHTS["bestPractice"] == 0.15
 
 
+class TestWeightsSSOTSync:
+    """프롬프트 본문 가중치 표기와 WEIGHTS dict의 SSOT 동기화 검증 (Sprint 144)
+
+    Sprint 143 PR #198 후속 commit 회귀 차단 — 가중치를 변경하면
+    프롬프트 본문 표기와 SYSTEM_PROMPT가 자동으로 따라간다.
+    """
+
+    def test_algorithm_inline_weights_appear_in_system_prompt(self):
+        """SYSTEM_PROMPT에 ALGORITHM_WEIGHTS 표기가 그대로 포함되는지 검증"""
+        from src.prompt import _format_weights_inline
+
+        inline = _format_weights_inline(ALGORITHM_WEIGHTS)
+        assert inline in SYSTEM_PROMPT
+
+    def test_sql_inline_weights_appear_in_sql_system_prompt(self):
+        """SQL_SYSTEM_PROMPT에 SQL_WEIGHTS 표기가 그대로 포함되는지 검증"""
+        from src.prompt import _format_weights_inline
+
+        inline = _format_weights_inline(SQL_WEIGHTS)
+        assert inline in SQL_SYSTEM_PROMPT
+
+    def test_no_placeholder_leaks_in_system_prompt(self):
+        """SYSTEM_PROMPT에 placeholder 토큰이 남아있지 않아야 한다"""
+        assert "<<<ALGORITHM_WEIGHTS_INLINE>>>" not in SYSTEM_PROMPT
+        assert "<<<SQL_WEIGHTS_INLINE>>>" not in SYSTEM_PROMPT
+        assert "<<<ALGORITHM_WEIGHTS_INLINE>>>" not in SQL_SYSTEM_PROMPT
+        assert "<<<SQL_WEIGHTS_INLINE>>>" not in SQL_SYSTEM_PROMPT
+
+    def test_format_weights_inline_renders_percent_form(self):
+        """_format_weights_inline 출력은 'name N%, ...' 형식"""
+        from src.prompt import _format_weights_inline
+
+        inline = _format_weights_inline(ALGORITHM_WEIGHTS)
+        assert "correctness 40%" in inline
+        assert "efficiency 20%" in inline
+        assert "bestPractice 10%" in inline
+
+
+class TestComputeTotalScore:
+    """compute_total_score() 가중 평균 헬퍼 검증 (Sprint 144)"""
+
+    def test_compute_total_score_python_uses_algorithm_weights(self):
+        from src.prompt import compute_total_score
+
+        scores = {
+            "correctness": 80,
+            "efficiency": 70,
+            "readability": 60,
+            "structure": 50,
+            "bestPractice": 40,
+        }
+        # 가중 평균 직접 계산 — SSOT 가중치 dict 재사용
+        expected = round(
+            sum(scores[name] * ratio for name, ratio in ALGORITHM_WEIGHTS.items())
+        )
+        assert compute_total_score(scores, "python") == expected
+
+    def test_compute_total_score_sql_uses_sql_weights(self):
+        from src.prompt import compute_total_score
+
+        scores = {
+            "correctness": 80,
+            "efficiency": 70,
+            "readability": 60,
+            "structure": 50,
+            "bestPractice": 40,
+        }
+        expected = round(
+            sum(scores[name] * ratio for name, ratio in SQL_WEIGHTS.items())
+        )
+        assert compute_total_score(scores, "sql") == expected
+
+    def test_compute_total_score_missing_category_treated_as_zero(self):
+        """카테고리 점수가 누락되면 0점으로 취급"""
+        from src.prompt import compute_total_score
+
+        scores = {"correctness": 100}  # 다른 카테고리 누락
+        expected = round(100 * ALGORITHM_WEIGHTS["correctness"])
+        assert compute_total_score(scores, "python") == expected
+
+
 class TestBehaviorEquivalenceRules:
     """행동 동등성 규칙 검증 (Sprint 142)"""
 
