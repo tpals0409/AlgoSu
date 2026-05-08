@@ -87,9 +87,9 @@ class TestBuildUserPromptPlatformContext:
         # Given: BOJ 플랫폼 식별자와 Python 코드
         # When: build_user_prompt 호출 시
         result = build_user_prompt(code="x=1", language="python", source_platform="BOJ")
-        # Then: BOJ 플랫폼 맥락 문구가 포함되어야 함
-        assert "백준(BOJ) 플랫폼" in result
-        assert "표준 입출력" in result or "시간복잡도" in result
+        # Then: BOJ 플랫폼 맥락 문구 + 입출력 보존 명령이 포함되어야 함
+        assert "백준(BOJ)" in result
+        assert "절대 변경하지 마세요" in result
 
     def test_build_user_prompt_with_programmers_platform(self):
         # Given: PROGRAMMERS 플랫폼 식별자와 solution 함수 코드
@@ -99,9 +99,9 @@ class TestBuildUserPromptPlatformContext:
             language="python",
             source_platform="PROGRAMMERS",
         )
-        # Then: 프로그래머스 플랫폼 맥락 문구와 solution() 언급이 포함되어야 함
-        assert "프로그래머스 플랫폼" in result
-        assert "solution()" in result
+        # Then: 프로그래머스 플랫폼 맥락 + 시그니처 보존 명령이 포함되어야 함
+        assert "프로그래머스" in result
+        assert "절대 변경하지 마세요" in result
 
     def test_build_user_prompt_without_platform_backward_compat(self):
         # Given: source_platform 미지정 (None, 기존 호출 방식)
@@ -130,9 +130,9 @@ class TestBuildUserPromptPlatformContext:
             },
         ]
         result = build_group_user_prompt(snippets, source_platform="PROGRAMMERS")
-        # Then: 프로그래머스 플랫폼 맥락 문구와 solution() 언급이 포함되어야 함
-        assert "프로그래머스 플랫폼" in result
-        assert "solution()" in result
+        # Then: 프로그래머스 플랫폼 맥락 + 시그니처 보존 명령이 포함되어야 함
+        assert "프로그래머스" in result
+        assert "절대 변경하지 마세요" in result
 
 
 class TestBuildGroupUserPrompt:
@@ -279,3 +279,70 @@ class TestWeights:
         assert ALGORITHM_WEIGHTS["efficiency"] == 0.25
         assert SQL_WEIGHTS["bestPractice"] == 0.20
         assert ALGORITHM_WEIGHTS["bestPractice"] == 0.15
+
+
+class TestBehaviorEquivalenceRules:
+    """행동 동등성 규칙 검증 (Sprint 142)"""
+
+    def test_system_prompt_contains_behavior_equivalence_rule(self):
+        assert "행동 동등성" in SYSTEM_PROMPT
+        assert "동일한 입력" in SYSTEM_PROMPT
+        assert "동일한 출력" in SYSTEM_PROMPT
+
+    def test_system_prompt_forbids_signature_change(self):
+        assert "함수 시그니처" in SYSTEM_PROMPT
+        assert "절대 변경하지 마세요" in SYSTEM_PROMPT
+
+    def test_sql_system_prompt_contains_behavior_equivalence_rule(self):
+        assert "행동 동등성" in SQL_SYSTEM_PROMPT
+        assert "동일한 결과 집합" in SQL_SYSTEM_PROMPT
+
+    def test_sql_system_prompt_forbids_column_change(self):
+        assert "컬럼명" in SQL_SYSTEM_PROMPT
+        assert "컬럼 순서" in SQL_SYSTEM_PROMPT
+
+    def test_system_prompt_contains_optimized_code_meta_schema(self):
+        assert "optimizedCodeMeta" in SYSTEM_PROMPT
+        assert "signaturePreserved" in SYSTEM_PROMPT
+        assert "behaviorEquivalent" in SYSTEM_PROMPT
+
+    def test_sql_system_prompt_contains_optimized_code_meta_schema(self):
+        assert "optimizedCodeMeta" in SQL_SYSTEM_PROMPT
+        assert "signaturePreserved" in SQL_SYSTEM_PROMPT
+        assert "behaviorEquivalent" in SQL_SYSTEM_PROMPT
+
+    def test_correctness_rubric_evaluates_optimized_code(self):
+        assert "optimizedCode 모두 평가" in SYSTEM_PROMPT
+
+    def test_sql_correctness_rubric_evaluates_optimized_code(self):
+        assert "optimizedCode 모두 평가" in SQL_SYSTEM_PROMPT
+
+
+class TestPlatformContextImperative:
+    """플랫폼 컨텍스트 명령형 강화 검증 (Sprint 142)"""
+
+    def test_programmers_forbids_signature_change(self):
+        from src.prompt import _build_platform_context
+
+        result = _build_platform_context("PROGRAMMERS")
+        assert "절대 변경하지 마세요" in result
+        assert "채점이 실패합니다" in result
+        assert "함수명" in result
+
+    def test_boj_forbids_io_change(self):
+        from src.prompt import _build_platform_context
+
+        result = _build_platform_context("BOJ")
+        assert "절대 변경하지 마세요" in result
+        assert "채점이 실패합니다" in result
+        assert "입력 파싱" in result
+
+    def test_none_platform_returns_empty(self):
+        from src.prompt import _build_platform_context
+
+        assert _build_platform_context(None) == ""
+
+    def test_unknown_platform_returns_empty(self):
+        from src.prompt import _build_platform_context
+
+        assert _build_platform_context("LEETCODE") == ""

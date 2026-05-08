@@ -228,6 +228,22 @@ class ClaudeClient:
             categories = parsed.get("categories", [])
             optimized_code = parsed.get("optimizedCode")
 
+            # optimizedCodeMeta 자가 검증 — 시그니처/동작 비보존 시 안전 폴백
+            meta = parsed.get("optimizedCodeMeta")
+            if isinstance(meta, dict) and optimized_code:
+                sig = meta.get("signaturePreserved", True)
+                behav = meta.get("behaviorEquivalent", True)
+                if not sig or not behav:
+                    logger.warning(
+                        "optimizedCode 자가 검증 실패 — 원본 코드로 폴백",
+                        extra={
+                            "signaturePreserved": sig,
+                            "behaviorEquivalent": behav,
+                            "changes": meta.get("changes", []),
+                        },
+                    )
+                    optimized_code = None
+
             # categories 스키마 검증 — list[dict]가 아니면 안전 처리
             categories = _validate_categories(categories)
 

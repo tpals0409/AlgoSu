@@ -903,6 +903,122 @@ class TestGroupAnalyze:
         mock_circuit_breaker.record_failure.assert_called_once()
 
 
+class TestOptimizedCodeMetaFallback:
+    """optimizedCodeMeta 자가 검증 폴백 테스트 (Sprint 142)"""
+
+    def test_signature_not_preserved_falls_back_to_none(self):
+        """signaturePreserved=false → optimized_code를 None으로 폴백"""
+        c = _make_client()
+        raw = json.dumps({
+            "totalScore": 85,
+            "summary": "test",
+            "categories": [],
+            "optimizedCode": "def changed(): pass",
+            "optimizedCodeMeta": {
+                "signaturePreserved": False,
+                "behaviorEquivalent": True,
+                "changes": ["함수명 변경"],
+            },
+        })
+        result = c._parse_response(raw)
+        assert result["optimized_code"] is None
+        assert result["status"] == "completed"
+
+    def test_behavior_not_equivalent_falls_back_to_none(self):
+        """behaviorEquivalent=false → optimized_code를 None으로 폴백"""
+        c = _make_client()
+        raw = json.dumps({
+            "totalScore": 80,
+            "summary": "test",
+            "categories": [],
+            "optimizedCode": "def solution(): return 42",
+            "optimizedCodeMeta": {
+                "signaturePreserved": True,
+                "behaviorEquivalent": False,
+                "changes": ["로직 변경"],
+            },
+        })
+        result = c._parse_response(raw)
+        assert result["optimized_code"] is None
+
+    def test_both_true_preserves_optimized_code(self):
+        """signaturePreserved=true, behaviorEquivalent=true → optimized_code 유지"""
+        c = _make_client()
+        raw = json.dumps({
+            "totalScore": 90,
+            "summary": "test",
+            "categories": [],
+            "optimizedCode": "def solution(n): return n * 2",
+            "optimizedCodeMeta": {
+                "signaturePreserved": True,
+                "behaviorEquivalent": True,
+                "changes": ["변수명 개선"],
+            },
+        })
+        result = c._parse_response(raw)
+        assert result["optimized_code"] == "def solution(n): return n * 2"
+
+    def test_missing_meta_preserves_optimized_code(self):
+        """optimizedCodeMeta 필드 누락(하위호환) → optimized_code 유지"""
+        c = _make_client()
+        raw = json.dumps({
+            "totalScore": 85,
+            "summary": "test",
+            "categories": [],
+            "optimizedCode": "def solution(): pass",
+        })
+        result = c._parse_response(raw)
+        assert result["optimized_code"] == "def solution(): pass"
+
+    def test_meta_not_dict_preserves_optimized_code(self):
+        """optimizedCodeMeta가 dict가 아닌 경우 → optimized_code 유지"""
+        c = _make_client()
+        raw = json.dumps({
+            "totalScore": 85,
+            "summary": "test",
+            "categories": [],
+            "optimizedCode": "def solution(): pass",
+            "optimizedCodeMeta": "not a dict",
+        })
+        result = c._parse_response(raw)
+        assert result["optimized_code"] == "def solution(): pass"
+
+    def test_no_optimized_code_skips_meta_check(self):
+        """optimizedCode가 None이면 meta 체크 안 함"""
+        c = _make_client()
+        raw = json.dumps({
+            "totalScore": 85,
+            "summary": "test",
+            "categories": [],
+            "optimizedCode": None,
+            "optimizedCodeMeta": {
+                "signaturePreserved": False,
+                "behaviorEquivalent": False,
+                "changes": [],
+            },
+        })
+        result = c._parse_response(raw)
+        assert result["optimized_code"] is None
+        assert result["status"] == "completed"
+
+    def test_both_false_falls_back_to_none(self):
+        """signaturePreserved=false, behaviorEquivalent=false → 폴백"""
+        c = _make_client()
+        raw = json.dumps({
+            "totalScore": 75,
+            "summary": "test",
+            "categories": [],
+            "optimizedCode": "completely_different()",
+            "optimizedCodeMeta": {
+                "signaturePreserved": False,
+                "behaviorEquivalent": False,
+                "changes": ["전체 리팩토링"],
+            },
+        })
+        result = c._parse_response(raw)
+        assert result["optimized_code"] is None
+
+
 class TestSharedHelpers:
     """_strip_markdown_block() / _extract_first_json_object() 공유 헬퍼"""
 

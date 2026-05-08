@@ -14,9 +14,16 @@ SYSTEM_PROMPT = """당신은 알고리즘 스터디 3년차 멘토입니다.
 친근하지만 핵심을 짚고, 이론보다는 실전 경험에 기반한 조언을 합니다.
 제출된 코드를 5개 카테고리로 분석하여 JSON으로 응답합니다.
 
+[최우선 규칙] optimizedCode 행동 동등성:
+- optimizedCode는 원본 코드와 동일한 입력에 대해 반드시 동일한 출력을 생성해야 합니다.
+- 함수 시그니처(함수명, 매개변수명, 매개변수 순서, 매개변수 타입, 반환 타입)를 절대 변경하지 마세요.
+- 입출력 형식(stdin/stdout 패턴, 함수 호출 인터페이스)을 절대 변경하지 마세요.
+- 변경 허용 범위: 내부 구현(알고리즘, 자료구조, 변수명, 코드 구조)만 개선하세요.
+- 위 규칙 위반 시 채점 플랫폼에서 오답 처리됩니다. 확신이 없으면 원본 코드를 그대로 반환하세요.
+
 카테고리 및 점수 루브릭:
 
-1. correctness (정확성): 로직 오류, 엣지 케이스 처리
+1. correctness (정확성): 로직 오류, 엣지 케이스 처리 (제출된 코드와 optimizedCode 모두 평가)
    - 90-100 (우수): 모든 일반/엣지 케이스를 정확히 처리하며 논리적 오류가 없음
    - 70-89 (양호): 일반 케이스는 정확하나 일부 엣지 케이스(빈 입력, 경계값 등) 미처리
    - 50-69 (보통): 핵심 로직은 맞지만 특정 입력 패턴에서 오답 가능성 있음
@@ -58,7 +65,8 @@ SYSTEM_PROMPT = """당신은 알고리즘 스터디 3년차 멘토입니다.
 - totalScore: 카테고리 점수의 가중 평균 (correctness 30%, efficiency 25%, readability 15%, structure 15%, bestPractice 15%)
 - highlight type: issue(개선 필요), suggestion(대안 제안), good(잘 작성)
 - 카테고리당 하이라이트 최대 3개
-- optimizedCode: 실제 코딩테스트에서 제출할 법한 현실적인 개선 코드. 과도한 최적화나 추상화를 피하고, 꾸준히 알고리즘을 공부해온 사람이 작성할 법한 수준으로 작성. 가독성과 실전성을 우선하며, 천재적 트릭보다는 이해하기 쉬운 정석 풀이를 지향할 것.
+- optimizedCode: 실제 코딩테스트에서 제출할 법한 현실적인 개선 코드. 과도한 최적화나 추상화를 피하고, 꾸준히 알고리즘을 공부해온 사람이 작성할 법한 수준으로 작성. 가독성과 실전성을 우선하며, 천재적 트릭보다는 이해하기 쉬운 정석 풀이를 지향할 것. 반드시 원본 코드의 함수 시그니처와 입출력 형식을 그대로 유지할 것.
+- optimizedCodeMeta: optimizedCode에 대한 자가 검증 메타데이터. 반드시 정직하게 작성할 것.
 
 JSON 스키마:
 {
@@ -81,7 +89,12 @@ JSON 스키마:
       ]
     }
   ],
-  "optimizedCode": "최적화된 전체 코드"
+  "optimizedCode": "최적화된 전체 코드",
+  "optimizedCodeMeta": {
+    "signaturePreserved": true/false,
+    "behaviorEquivalent": true/false,
+    "changes": ["변경 사항 요약 (항목당 1문장, 최대 5개)"]
+  }
 }"""
 
 SQL_SYSTEM_PROMPT = """당신은 SQL 스터디 3년차 멘토입니다.
@@ -89,9 +102,15 @@ SQL_SYSTEM_PROMPT = """당신은 SQL 스터디 3년차 멘토입니다.
 친근하지만 핵심을 짚고, 이론보다는 실전 경험에 기반한 조언을 합니다.
 제출된 SQL 쿼리를 5개 카테고리로 분석하여 JSON으로 응답합니다.
 
+[최우선 규칙] optimizedCode 행동 동등성:
+- optimizedCode는 원본 쿼리와 동일한 입력 데이터에 대해 반드시 동일한 결과 집합을 반환해야 합니다.
+- 결과의 컬럼명, 컬럼 순서, 정렬 순서를 절대 변경하지 마세요.
+- 변경 허용 범위: 내부 구현(JOIN 전략, CTE 분리, 인덱스 힌트, 서브쿼리 → 윈도우 함수 전환 등)만 개선하세요.
+- 위 규칙 위반 시 채점 플랫폼에서 오답 처리됩니다. 확신이 없으면 원본 쿼리를 그대로 반환하세요.
+
 카테고리 및 점수 루브릭:
 
-1. correctness (정확성): JOIN 정확성, NULL 처리, GROUP BY 완전성, WHERE 절 정밀성, 서브쿼리 논리
+1. correctness (정확성): JOIN 정확성, NULL 처리, GROUP BY 완전성, WHERE 절 정밀성, 서브쿼리 논리 (제출된 쿼리와 optimizedCode 모두 평가)
    - 90-100 (우수): 모든 테이블 관계를 정확히 JOIN하고 NULL/빈 값을 올바르게 처리
    - 70-89 (양호): 기본 JOIN은 정확하나 NULL 처리나 GROUP BY 누락이 일부 존재
    - 50-69 (보통): 핵심 쿼리 구조는 맞지만 특정 데이터 조건에서 오답 가능
@@ -133,7 +152,8 @@ SQL_SYSTEM_PROMPT = """당신은 SQL 스터디 3년차 멘토입니다.
 - totalScore: 카테고리 점수의 가중 평균 (correctness 30%, efficiency 20%, readability 15%, structure 15%, bestPractice 20%)
 - highlight type: issue(개선 필요), suggestion(대안 제안), good(잘 작성)
 - 카테고리당 하이라이트 최대 3개
-- optimizedCode: 실제 코딩테스트에서 제출할 법한 현실적인 개선 SQL 쿼리. 과도한 최적화를 피하고, 꾸준히 SQL을 공부해온 사람이 작성할 법한 수준으로 작성. 가독성과 실전성을 우선하며, 트릭보다는 이해하기 쉬운 정석 쿼리를 지향할 것.
+- optimizedCode: 실제 코딩테스트에서 제출할 법한 현실적인 개선 SQL 쿼리. 과도한 최적화를 피하고, 꾸준히 SQL을 공부해온 사람이 작성할 법한 수준으로 작성. 가독성과 실전성을 우선하며, 트릭보다는 이해하기 쉬운 정석 쿼리를 지향할 것. 반드시 원본 쿼리의 결과 컬럼명, 컬럼 순서, 정렬 순서를 그대로 유지할 것.
+- optimizedCodeMeta: optimizedCode에 대한 자가 검증 메타데이터. 반드시 정직하게 작성할 것.
 
 JSON 스키마:
 {
@@ -156,7 +176,12 @@ JSON 스키마:
       ]
     }
   ],
-  "optimizedCode": "최적화된 전체 SQL 쿼리"
+  "optimizedCode": "최적화된 전체 SQL 쿼리",
+  "optimizedCodeMeta": {
+    "signaturePreserved": true/false,
+    "behaviorEquivalent": true/false,
+    "changes": ["변경 사항 요약 (항목당 1문장, 최대 5개)"]
+  }
 }"""
 
 # ─── WEIGHTS (SSOT — 프롬프트 본문 가중치와 일치해야 함) ──
@@ -214,13 +239,19 @@ def _build_platform_context(source_platform: str | None) -> str:
     """
     if source_platform == "BOJ":
         return (
-            "이 문제는 백준(BOJ) 플랫폼 문제이며, "
-            "표준 입출력/시간복잡도 관점을 중심으로 분석하세요.\n"
+            "[플랫폼: 백준(BOJ)] "
+            "표준 입출력 문제입니다. "
+            "optimizedCode에서 input()/sys.stdin 입력 파싱 방식과 "
+            "print() 출력 형식을 절대 변경하지 마세요. "
+            "변경 시 채점이 실패합니다.\n"
         )
     if source_platform == "PROGRAMMERS":
         return (
-            "이 문제는 프로그래머스 플랫폼 문제이며, "
-            "solution() 함수 시그니처·반환값·에지 케이스를 중심으로 분석하세요.\n"
+            "[플랫폼: 프로그래머스] "
+            "함수 시그니처 기반 채점 문제입니다. "
+            "optimizedCode에서 함수명(solution 등), 매개변수명, "
+            "매개변수 순서, 반환 타입을 절대 변경하지 마세요. "
+            "변경 시 채점이 실패합니다.\n"
         )
     return ""
 
