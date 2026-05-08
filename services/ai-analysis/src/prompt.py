@@ -62,7 +62,7 @@ SYSTEM_PROMPT = """당신은 알고리즘 스터디 3년차 멘토입니다.
 - 반드시 유효한 JSON만 출력 (마크다운 코드 블록 없이)
 - 모든 텍스트는 한국어 (코드는 원문 유지)
 - 각 카테고리 점수: 0-100
-- totalScore: 카테고리 점수의 가중 평균 (correctness 30%, efficiency 25%, readability 15%, structure 15%, bestPractice 15%)
+- totalScore: 카테고리 점수의 가중 평균 (correctness 40%, efficiency 20%, readability 15%, structure 15%, bestPractice 10%)
 - highlight type: issue(개선 필요), suggestion(대안 제안), good(잘 작성)
 - 카테고리당 하이라이트 최대 3개
 - optimizedCode: 실제 코딩테스트에서 제출할 법한 현실적인 개선 코드. 과도한 최적화나 추상화를 피하고, 꾸준히 알고리즘을 공부해온 사람이 작성할 법한 수준으로 작성. 가독성과 실전성을 우선하며, 천재적 트릭보다는 이해하기 쉬운 정석 풀이를 지향할 것. 반드시 원본 코드의 함수 시그니처와 입출력 형식을 그대로 유지할 것.
@@ -149,7 +149,7 @@ SQL_SYSTEM_PROMPT = """당신은 SQL 스터디 3년차 멘토입니다.
 - 반드시 유효한 JSON만 출력 (마크다운 코드 블록 없이)
 - 모든 텍스트는 한국어 (코드는 원문 유지)
 - 각 카테고리 점수: 0-100
-- totalScore: 카테고리 점수의 가중 평균 (correctness 30%, efficiency 20%, readability 15%, structure 15%, bestPractice 20%)
+- totalScore: 카테고리 점수의 가중 평균 (correctness 40%, efficiency 15%, readability 15%, structure 15%, bestPractice 15%)
 - highlight type: issue(개선 필요), suggestion(대안 제안), good(잘 작성)
 - 카테고리당 하이라이트 최대 3개
 - optimizedCode: 실제 코딩테스트에서 제출할 법한 현실적인 개선 SQL 쿼리. 과도한 최적화를 피하고, 꾸준히 SQL을 공부해온 사람이 작성할 법한 수준으로 작성. 가독성과 실전성을 우선하며, 트릭보다는 이해하기 쉬운 정석 쿼리를 지향할 것. 반드시 원본 쿼리의 결과 컬럼명, 컬럼 순서, 정렬 순서를 그대로 유지할 것.
@@ -186,19 +186,19 @@ JSON 스키마:
 # ─── WEIGHTS (SSOT — 프롬프트 본문 가중치와 일치해야 함) ──
 
 ALGORITHM_WEIGHTS: dict[str, float] = {
-    "correctness": 0.30,
-    "efficiency": 0.25,
-    "readability": 0.15,
-    "structure": 0.15,
-    "bestPractice": 0.15,
-}
-
-SQL_WEIGHTS: dict[str, float] = {
-    "correctness": 0.30,
+    "correctness": 0.40,
     "efficiency": 0.20,
     "readability": 0.15,
     "structure": 0.15,
-    "bestPractice": 0.20,
+    "bestPractice": 0.10,
+}
+
+SQL_WEIGHTS: dict[str, float] = {
+    "correctness": 0.40,
+    "efficiency": 0.15,
+    "readability": 0.15,
+    "structure": 0.15,
+    "bestPractice": 0.15,
 }
 
 
