@@ -1242,6 +1242,116 @@ class TestOnMessageSourcePlatform:
         mock_ch.basic_nack.assert_not_called()
 
 
+class TestProblemContextGuard:
+    """문제 컨텍스트 부재 시 optimizedCode 생성 보류 (Sprint 143 시드 #2)"""
+
+    def test_no_problem_context_nullifies_optimized_code(
+        self, worker, mock_dependencies, pika_mocks
+    ):
+        """problemTitle/Description 모두 빈 문자열 → optimized_code=None"""
+        mock_ch, mock_method, mock_properties = pika_mocks
+        deps = mock_dependencies
+
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {
+            "data": {"code": "def sol(): return 1", "language": "python"},
+        }
+        mock_resp.raise_for_status = MagicMock()
+        deps["http_client"].get.return_value = mock_resp
+
+        mock_patch_resp = MagicMock()
+        mock_patch_resp.raise_for_status = MagicMock()
+        deps["http_client"].patch.return_value = mock_patch_resp
+
+        deps["claude"].analyze_code = MagicMock(
+            return_value={
+                "feedback": "ok",
+                "optimized_code": "def sol(): return 2",
+                "score": 85,
+                "status": "completed",
+            }
+        )
+
+        body = json.dumps({"submissionId": "sub-no-ctx"}).encode()
+        worker._on_message(mock_ch, mock_method, mock_properties, body)
+
+        patch_payload = deps["http_client"].patch.call_args[1]["json"]
+        assert patch_payload["optimizedCode"] is None
+        mock_ch.basic_ack.assert_called_once()
+
+    def test_with_problem_title_preserves_optimized_code(
+        self, worker, mock_dependencies, pika_mocks
+    ):
+        """problemTitle 존재 → optimized_code 유지"""
+        mock_ch, mock_method, mock_properties = pika_mocks
+        deps = mock_dependencies
+
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {
+            "data": {
+                "code": "def sol(): return 1",
+                "language": "python",
+                "problemTitle": "Two Sum",
+            },
+        }
+        mock_resp.raise_for_status = MagicMock()
+        deps["http_client"].get.return_value = mock_resp
+
+        mock_patch_resp = MagicMock()
+        mock_patch_resp.raise_for_status = MagicMock()
+        deps["http_client"].patch.return_value = mock_patch_resp
+
+        deps["claude"].analyze_code = MagicMock(
+            return_value={
+                "feedback": "ok",
+                "optimized_code": "def sol(): return 2",
+                "score": 85,
+                "status": "completed",
+            }
+        )
+
+        body = json.dumps({"submissionId": "sub-with-ctx"}).encode()
+        worker._on_message(mock_ch, mock_method, mock_properties, body)
+
+        patch_payload = deps["http_client"].patch.call_args[1]["json"]
+        assert patch_payload["optimizedCode"] == "def sol(): return 2"
+        mock_ch.basic_ack.assert_called_once()
+
+    def test_no_context_but_no_optimized_code_skips_guard(
+        self, worker, mock_dependencies, pika_mocks
+    ):
+        """컨텍스트 부재 + optimized_code=None → 가드 미발동"""
+        mock_ch, mock_method, mock_properties = pika_mocks
+        deps = mock_dependencies
+
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {
+            "data": {"code": "def sol(): return 1", "language": "python"},
+        }
+        mock_resp.raise_for_status = MagicMock()
+        deps["http_client"].get.return_value = mock_resp
+
+        mock_patch_resp = MagicMock()
+        mock_patch_resp.raise_for_status = MagicMock()
+        deps["http_client"].patch.return_value = mock_patch_resp
+
+        deps["claude"].analyze_code = MagicMock(
+            return_value={
+                "feedback": "ok",
+                "optimized_code": None,
+                "score": 70,
+                "status": "completed",
+            }
+        )
+
+        body = json.dumps({"submissionId": "sub-no-opt"}).encode()
+        worker._on_message(mock_ch, mock_method, mock_properties, body)
+
+        patch_payload = deps["http_client"].patch.call_args[1]["json"]
+        assert patch_payload["optimizedCode"] is None
+        mock_ch.basic_ack.assert_called_once()
+
+
 class TestWorkerInitValidation:
     """Worker __init__() — RABBITMQ_URL 유효성 검증"""
 
