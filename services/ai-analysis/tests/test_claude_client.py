@@ -1018,6 +1018,117 @@ class TestOptimizedCodeMetaFallback:
         result = c._parse_response(raw)
         assert result["optimized_code"] is None
 
+    def test_string_false_signature_falls_back_to_none(self):
+        """signaturePreserved="false" (문자열) → 폴백 (Critic P2-1 회귀 보호)"""
+        c = _make_client()
+        raw = json.dumps({
+            "totalScore": 80,
+            "summary": "test",
+            "categories": [],
+            "optimizedCode": "def changed(): pass",
+            "optimizedCodeMeta": {
+                "signaturePreserved": "false",
+                "behaviorEquivalent": True,
+                "changes": ["함수명 변경"],
+            },
+        })
+        result = c._parse_response(raw)
+        assert result["optimized_code"] is None
+
+    def test_string_false_behavior_falls_back_to_none(self):
+        """behaviorEquivalent="False" (대소문자 무관 문자열) → 폴백"""
+        c = _make_client()
+        raw = json.dumps({
+            "totalScore": 80,
+            "summary": "test",
+            "categories": [],
+            "optimizedCode": "def solution(): return 999",
+            "optimizedCodeMeta": {
+                "signaturePreserved": True,
+                "behaviorEquivalent": "False",
+                "changes": ["로직 변경"],
+            },
+        })
+        result = c._parse_response(raw)
+        assert result["optimized_code"] is None
+
+    def test_string_true_preserves_optimized_code(self):
+        """signaturePreserved="true" (문자열) → 통과 (폴백 안 함)"""
+        c = _make_client()
+        raw = json.dumps({
+            "totalScore": 90,
+            "summary": "test",
+            "categories": [],
+            "optimizedCode": "def solution(n): return n * 2",
+            "optimizedCodeMeta": {
+                "signaturePreserved": "true",
+                "behaviorEquivalent": "true",
+                "changes": ["변수명 개선"],
+            },
+        })
+        result = c._parse_response(raw)
+        assert result["optimized_code"] == "def solution(n): return n * 2"
+
+    def test_invalid_meta_value_preserves_optimized_code(self):
+        """signaturePreserved=None/숫자/임의문자열 → 명시적 false 아니므로 통과"""
+        c = _make_client()
+        raw = json.dumps({
+            "totalScore": 85,
+            "summary": "test",
+            "categories": [],
+            "optimizedCode": "def solution(): pass",
+            "optimizedCodeMeta": {
+                "signaturePreserved": None,
+                "behaviorEquivalent": "yes",
+                "changes": [],
+            },
+        })
+        result = c._parse_response(raw)
+        # 명시적 false가 아니므로 통과 (누락 케이스와 동일 처리)
+        assert result["optimized_code"] == "def solution(): pass"
+
+
+class TestIsExplicitFalse:
+    """_is_explicit_false() 헬퍼 단위 테스트 (Sprint 142 P2-1)"""
+
+    def test_bool_false(self):
+        from src.claude_client import _is_explicit_false
+        assert _is_explicit_false(False) is True
+
+    def test_bool_true(self):
+        from src.claude_client import _is_explicit_false
+        assert _is_explicit_false(True) is False
+
+    def test_string_false_lowercase(self):
+        from src.claude_client import _is_explicit_false
+        assert _is_explicit_false("false") is True
+
+    def test_string_false_uppercase(self):
+        from src.claude_client import _is_explicit_false
+        assert _is_explicit_false("FALSE") is True
+
+    def test_string_false_with_whitespace(self):
+        from src.claude_client import _is_explicit_false
+        assert _is_explicit_false("  false  ") is True
+
+    def test_string_true(self):
+        from src.claude_client import _is_explicit_false
+        assert _is_explicit_false("true") is False
+
+    def test_none(self):
+        from src.claude_client import _is_explicit_false
+        assert _is_explicit_false(None) is False
+
+    def test_zero_int(self):
+        """정수 0은 falsy이지만 명시적 false 아님 → False 반환"""
+        from src.claude_client import _is_explicit_false
+        assert _is_explicit_false(0) is False
+
+    def test_empty_string(self):
+        """빈 문자열은 명시적 false 아님 → False 반환"""
+        from src.claude_client import _is_explicit_false
+        assert _is_explicit_false("") is False
+
 
 class TestSharedHelpers:
     """_strip_markdown_block() / _extract_first_json_object() 공유 헬퍼"""

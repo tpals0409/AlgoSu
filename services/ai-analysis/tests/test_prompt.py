@@ -335,7 +335,18 @@ class TestPlatformContextImperative:
         result = _build_platform_context("BOJ")
         assert "절대 변경하지 마세요" in result
         assert "채점이 실패합니다" in result
-        assert "입력 파싱" in result
+        assert "표준 입력" in result
+        assert "표준 출력" in result
+
+    def test_boj_is_language_neutral(self):
+        """BOJ 컨텍스트는 Python API를 하드코딩하지 않아야 함 (Critic P2-2 회귀 보호)"""
+        from src.prompt import _build_platform_context
+
+        result = _build_platform_context("BOJ")
+        # Java/C++/JS BOJ 제출도 받기 위해 Python 전용 API는 명시 금지
+        assert "input()" not in result
+        assert "sys.stdin" not in result
+        assert "print()" not in result
 
     def test_none_platform_returns_empty(self):
         from src.prompt import _build_platform_context

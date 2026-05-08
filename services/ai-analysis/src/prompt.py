@@ -241,8 +241,9 @@ def _build_platform_context(source_platform: str | None) -> str:
         return (
             "[플랫폼: 백준(BOJ)] "
             "표준 입출력 문제입니다. "
-            "optimizedCode에서 input()/sys.stdin 입력 파싱 방식과 "
-            "print() 출력 형식을 절대 변경하지 마세요. "
+            "optimizedCode에서 원본 코드의 표준 입력 파싱 방식과 "
+            "표준 출력 형식을 절대 변경하지 마세요 "
+            "(원본 언어의 stdin/stdout 관용구를 그대로 유지). "
             "변경 시 채점이 실패합니다.\n"
         )
     if source_platform == "PROGRAMMERS":
