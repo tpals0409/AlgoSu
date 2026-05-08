@@ -84,8 +84,10 @@ export class SubmissionService {
       idempotencyKey: dto.idempotencyKey ?? null,
       isLate,
       weekNumber,
-      problemTitle: problemTitle || null,
-      problemDescription: problemDescription || null,
+      // 빈 문자열로 정규화 (Critic R2 P2) — null로 저장하면 ai-analysis worker의
+      // dict.get이 None 반환 → prompt builder가 "설명: None" 문자열을 LLM에 직렬화
+      problemTitle: problemTitle ?? '',
+      problemDescription: problemDescription ?? '',
     });
 
     const saved = await this.submissionRepo.save(submission);
