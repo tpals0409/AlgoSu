@@ -55,6 +55,12 @@ export class Submission {
   @Column({ type: 'uuid', name: 'problem_id' })
   problemId!: string;
 
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'problem_title' })
+  problemTitle!: string | null;
+
+  @Column({ type: 'text', nullable: true, name: 'problem_description' })
+  problemDescription!: string | null;
+
   @Column({ type: 'varchar', length: 50 })
   language!: string;
 

@@ -65,8 +65,13 @@ export class SubmissionService {
       }
     }
 
-    // A3: 지각 제출 체크 — 마감 시간 초과 시 isLate=true (제출은 허용)
-    const { isLate, weekNumber } = await this.checkLateSubmission(studyId, dto.problemId, userId);
+    // 지각 체크 + 문제 정보 조회를 병렬화 — incident 시 직렬 호출로 timeout 2배 방지 (Critic R1 P2)
+    // 동일 호스트 단일 CB가 OPEN되면 둘 다 즉시 fallback이므로 병렬화는 안전
+    const [{ isLate, weekNumber }, { title: problemTitle, description: problemDescription }] =
+      await Promise.all([
+        this.checkLateSubmission(studyId, dto.problemId, userId),
+        this.problemClient.getProblemInfo(dto.problemId, studyId, userId),
+      ]);
 
     // DB 저장 (Step 1)
     const submission = this.submissionRepo.create({
@@ -79,6 +84,10 @@ export class SubmissionService {
       idempotencyKey: dto.idempotencyKey ?? null,
       isLate,
       weekNumber,
+      // 빈 문자열로 정규화 (Critic R2 P2) — null로 저장하면 ai-analysis worker의
+      // dict.get이 None 반환 → prompt builder가 "설명: None" 문자열을 LLM에 직렬화
+      problemTitle: problemTitle ?? '',
+      problemDescription: problemDescription ?? '',
     });
 
     const saved = await this.submissionRepo.save(submission);

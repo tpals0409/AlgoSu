@@ -34,6 +34,7 @@ const mockCircuitBreakerService = () => {
 const mockProblemServiceClient = () => ({
   getSourcePlatform: jest.fn().mockResolvedValue('baekjoon'),
   getDeadline: jest.fn().mockResolvedValue({ isLate: false, weekNumber: null }),
+  getProblemInfo: jest.fn().mockResolvedValue({ title: '', description: '' }),
 });
 
 // ─── 테스트 헬퍼 ────────────────────────────────────────────────
@@ -42,6 +43,8 @@ const createMockSubmission = (overrides: Partial<Submission> = {}): Submission =
   studyId: 'study-uuid-1',
   userId: 'user-1',
   problemId: 'problem-uuid-1',
+  problemTitle: null,
+  problemDescription: null,
   language: 'python',
   code: 'print("hello")',
   sagaStep: SagaStep.DB_SAVED,
