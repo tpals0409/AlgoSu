@@ -229,12 +229,19 @@ def get_system_prompt(language: str) -> str:
     return SYSTEM_PROMPT
 
 
-def _build_platform_context(source_platform: str | None) -> str:
+def _build_platform_context(
+    source_platform: str | None,
+    language: str = "python",
+) -> str:
     """
-    플랫폼 맥락 한 줄 문자열 반환 (BOJ/PROGRAMMERS 외 None)
+    플랫폼 맥락 문자열 반환 (BOJ/PROGRAMMERS 외 빈 문자열)
+
+    프로그래머스는 SQL 카테고리도 지원하므로 language=sql일 경우 결과셋 보존
+    규칙으로 분기. BOJ는 SQL을 지원하지 않으므로 단일 메시지.
 
     @domain ai
     @param source_platform: 문제 플랫폼 식별자 (예: 'BOJ', 'PROGRAMMERS')
+    @param language: 프로그래밍 언어 (PROGRAMMERS + SQL 분기용)
     @returns: 프롬프트 선두에 prepend할 플랫폼 맥락 문자열
     """
     if source_platform == "BOJ":
@@ -247,6 +254,14 @@ def _build_platform_context(source_platform: str | None) -> str:
             "변경 시 채점이 실패합니다.\n"
         )
     if source_platform == "PROGRAMMERS":
+        if language.lower() == "sql":
+            return (
+                "[플랫폼: 프로그래머스] "
+                "SQL 채점 문제입니다. "
+                "optimizedCode에서 결과의 컬럼명, 컬럼 순서, "
+                "정렬 순서를 절대 변경하지 마세요. "
+                "변경 시 채점이 실패합니다.\n"
+            )
         return (
             "[플랫폼: 프로그래머스] "
             "함수 시그니처 기반 채점 문제입니다. "
@@ -275,7 +290,7 @@ def build_user_prompt(
     @param source_platform: 문제 플랫폼 (예: 'BOJ', 'PROGRAMMERS') — 맥락 주입용
     @returns: 포맷팅된 유저 프롬프트
     """
-    platform_context = _build_platform_context(source_platform)
+    platform_context = _build_platform_context(source_platform, language)
 
     problem_section = ""
     if problem_title or problem_description:
@@ -350,7 +365,9 @@ def build_group_user_prompt(
     @param source_platform: 문제 플랫폼 (예: 'BOJ', 'PROGRAMMERS') — 맥락 주입용
     @returns: 포맷팅된 그룹 분석 프롬프트
     """
-    platform_context = _build_platform_context(source_platform)
+    # 그룹 분석은 동일 문제이므로 첫 스니펫의 language 사용 (PROGRAMMERS+SQL 분기용)
+    group_language = code_snippets[0]["language"] if code_snippets else "python"
+    platform_context = _build_platform_context(source_platform, group_language)
 
     parts = []
     for i, snippet in enumerate(code_snippets, 1):

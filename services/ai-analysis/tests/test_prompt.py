@@ -357,3 +357,44 @@ class TestPlatformContextImperative:
         from src.prompt import _build_platform_context
 
         assert _build_platform_context("LEETCODE") == ""
+
+    def test_programmers_sql_uses_resultset_rules(self):
+        """PROGRAMMERS + sql → 결과셋 보존 규칙 (Critic R3 P2 회귀 보호)
+
+        프로그래머스 SQL 카테고리는 함수 시그니처가 없으므로 결과 컬럼/순서 보존으로 분기.
+        """
+        from src.prompt import _build_platform_context
+
+        result = _build_platform_context("PROGRAMMERS", "sql")
+        assert "프로그래머스" in result
+        assert "SQL 채점" in result
+        assert "컬럼명" in result
+        assert "컬럼 순서" in result
+        # SQL에는 함수 시그니처 규칙 미주입
+        assert "함수명" not in result
+        assert "매개변수" not in result
+
+    def test_programmers_sql_case_insensitive(self):
+        """language='SQL' 대소문자 무관"""
+        from src.prompt import _build_platform_context
+
+        result = _build_platform_context("PROGRAMMERS", "SQL")
+        assert "컬럼명" in result
+        assert "함수명" not in result
+
+    def test_programmers_python_keeps_signature_rules(self):
+        """PROGRAMMERS + python → 함수 시그니처 규칙 유지 (회귀 보호)"""
+        from src.prompt import _build_platform_context
+
+        result = _build_platform_context("PROGRAMMERS", "python")
+        assert "함수명" in result
+        assert "매개변수" in result
+        # 알고리즘 분기에는 SQL 컬럼 규칙 미주입
+        assert "컬럼명" not in result
+
+    def test_programmers_default_language_keeps_signature_rules(self):
+        """PROGRAMMERS, language 미지정 → 기본 함수 시그니처 규칙 (하위 호환)"""
+        from src.prompt import _build_platform_context
+
+        result = _build_platform_context("PROGRAMMERS")
+        assert "함수명" in result
