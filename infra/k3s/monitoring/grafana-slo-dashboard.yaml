@@ -456,8 +456,8 @@ data:
                   "type": "value",
                   "options": {
                     "0": { "color": "green", "text": "CLOSED" },
-                    "0.5": { "color": "orange", "text": "HALF_OPEN" },
-                    "1": { "color": "red", "text": "OPEN" }
+                    "1": { "color": "orange", "text": "HALF_OPEN" },
+                    "2": { "color": "red", "text": "OPEN" }
                   }
                 }
               ],
@@ -465,8 +465,8 @@ data:
                 "mode": "absolute",
                 "steps": [
                   { "color": "green", "value": null },
-                  { "color": "orange", "value": 0.5 },
-                  { "color": "red", "value": 1 }
+                  { "color": "orange", "value": 1 },
+                  { "color": "red", "value": 2 }
                 ]
               }
             },
@@ -485,8 +485,8 @@ data:
           "type": "stat",
           "targets": [
             {
-              "expr": "algosu_ai_analysis_circuit_breaker_state",
-              "legendFormat": "CB State"
+              "expr": "algosu_ai_analysis_circuit_breaker_state{name=~\".+\"}",
+              "legendFormat": "{{name}}"
             }
           ]
         },
