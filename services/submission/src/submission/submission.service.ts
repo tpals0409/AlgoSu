@@ -68,6 +68,10 @@ export class SubmissionService {
     // A3: 지각 제출 체크 — 마감 시간 초과 시 isLate=true (제출은 허용)
     const { isLate, weekNumber } = await this.checkLateSubmission(studyId, dto.problemId, userId);
 
+    // 문제 정보 조회 — ai-analysis worker에 컨텍스트 제공 (Sprint 143 시드 #4)
+    const { title: problemTitle, description: problemDescription } =
+      await this.problemClient.getProblemInfo(dto.problemId, studyId, userId);
+
     // DB 저장 (Step 1)
     const submission = this.submissionRepo.create({
       studyId,
@@ -79,6 +83,8 @@ export class SubmissionService {
       idempotencyKey: dto.idempotencyKey ?? null,
       isLate,
       weekNumber,
+      problemTitle: problemTitle || null,
+      problemDescription: problemDescription || null,
     });
 
     const saved = await this.submissionRepo.save(submission);
