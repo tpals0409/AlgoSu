@@ -42,6 +42,8 @@ const createMockSubmission = (overrides: Partial<Submission> = {}): Submission =
   studyId: 'study-uuid-1',
   userId: 'user-1',
   problemId: 'problem-uuid-1',
+  problemTitle: null,
+  problemDescription: null,
   language: 'python',
   code: 'print("hello")',
   sagaStep: SagaStep.DB_SAVED,
