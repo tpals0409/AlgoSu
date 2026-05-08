@@ -375,8 +375,8 @@ class TestParseResponseMarkdown:
         )
         result = c._parse_response(payload)
         assert result["status"] == "completed"
-        # 80*0.3 + 70*0.25 + 60*0.15 + 60*0.15 + 60*0.15 = 24+17.5+9+9+9 = 68.5 → 68
-        assert result["score"] == 68
+        # 80*0.40 + 70*0.20 + 60*0.15 + 60*0.15 + 60*0.10 = 32+14+9+9+6 = 70
+        assert result["score"] == 70
 
 
 class TestParseResponseFallback:
@@ -489,8 +489,8 @@ class TestParseResponseFallback:
         )
         result = c._parse_response(raw)
         assert result["status"] == "completed"
-        # ALGORITHM_WEIGHTS: 80*0.30+70*0.25+60*0.15+50*0.15+40*0.15 = 64
-        assert result["score"] == 64
+        # ALGORITHM_WEIGHTS: 80*0.40+70*0.20+60*0.15+50*0.15+40*0.10 = 32+14+9+7.5+4 = 66.5 → 66
+        assert result["score"] == 66
 
     def test_totalScore_zero_with_categories_sql_weights(self):
         """totalScore=0 + language='sql' → SQL_WEIGHTS 적용 가중 평균"""
@@ -539,8 +539,8 @@ class TestParseResponseFallback:
         )
         result = c._parse_response(raw, language="sql")
         assert result["status"] == "completed"
-        # SQL_WEIGHTS: 80*0.30+70*0.20+60*0.15+50*0.15+40*0.20 = 62.5 → 62
-        assert result["score"] == 62
+        # SQL_WEIGHTS: 80*0.40+70*0.15+60*0.15+50*0.15+40*0.15 = 32+10.5+9+7.5+6 = 65
+        assert result["score"] == 65
 
     def test_categories_is_string_falls_back_to_empty(self):
         """categories가 문자열인 경우 빈 리스트로 대체 — AttributeError 방지 (P1 fix)"""
