@@ -16,3 +16,7 @@ CVE-2026-4926
 
 # picomatch CVE-2026-33671: override로 4.0.4 적용 (gateway)
 CVE-2026-33671
+
+# nghttp2-libs CVE-2026-27135: Alpine 3.21.5 base image 취약점 — 상위 패치 대기 (2026-05-08)
+# HTTP/2 DoS via malformed frames after session termination, fixed version 1.68.1
+CVE-2026-27135
