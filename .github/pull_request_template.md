@@ -49,3 +49,14 @@
 - [ ] Kustomize overlay 렌더링 확인
 - [ ] Sealed Secrets 적용 확인
 - [ ] CI 인프라 변경 PR인 경우 `workflow_dispatch(rebuild_all=true)` 실행 계획 포함 ([docs/runbook-ci-rebuild-all.md](../docs/runbook-ci-rebuild-all.md) 참조)
+
+## 의존성 변경 (해당 시 — 특히 major 버전)
+
+> Sprint 139/140에서 react-day-picker v8→v9 미대응으로 캘린더 회귀 5건 발생 → 본 체크리스트로 재발 차단
+
+- [ ] **major 버전 변경 시**: 직접 사용하는 wrapper 컴포넌트 점검 (className/props/API breaking change 매핑)
+- [ ] CHANGELOG / migration guide 검토 (breaking change 항목 vs 코드베이스 사용처 grep 비교)
+- [ ] wrapper 컴포넌트 사용처 시각 검증 (영향받는 페이지 1곳 이상 직접 확인)
+- [ ] 동적/runtime API 변경 시 — 단위 테스트 또는 e2e로 회귀 보호 확인
+- [ ] 타입 정의 변경 — `tsc --noEmit` clean 후에도 사용처 별 직접 확인
+- [ ] 상세 가이드: [docs/runbook-dependency-major-upgrade.md](../docs/runbook-dependency-major-upgrade.md)
