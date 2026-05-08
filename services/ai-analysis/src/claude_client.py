@@ -32,6 +32,23 @@ MODEL_ID = "claude-haiku-4-5-20251001"
 MAX_TOKENS = 8192
 
 
+def _is_explicit_false(value: object) -> bool:
+    """엄격 boolean 검증 — bool False 또는 'false' 문자열만 True 반환
+
+    optimizedCodeMeta 자가 검증에서 LLM이 string boolean을 반환해도 우회되지 않도록
+    명시적 false 케이스만 식별한다. 누락/None/타입 불일치는 False(폴백 안 함)로 취급.
+
+    @domain ai
+    @param value: 검사 대상 값
+    @returns: 명시적 false면 True, 그 외(True/누락/None/타입 불일치)면 False
+    """
+    if value is False:
+        return True
+    if isinstance(value, str) and value.strip().lower() == "false":
+        return True
+    return False
+
+
 def _validate_categories(categories: object) -> list[dict]:
     """categories 필드 스키마 검증 — list[dict]가 아니면 안전한 기본값으로 보정
 
@@ -227,6 +244,27 @@ class ClaudeClient:
             summary = parsed.get("summary", "")
             categories = parsed.get("categories", [])
             optimized_code = parsed.get("optimizedCode")
+
+            # optimizedCodeMeta 자가 검증 — 명시적 false 발견 시 안전 폴백
+            # bool False 또는 "false" 문자열만 폴백 트리거 (LLM 응답이 string boolean으로
+            # 직렬화되어도 우회되지 않도록 엄격 검증). 누락/None/타입 불일치는 폴백 안 함.
+            meta = parsed.get("optimizedCodeMeta")
+            if isinstance(meta, dict) and optimized_code:
+                sig = meta.get("signaturePreserved")
+                behav = meta.get("behaviorEquivalent")
+                if _is_explicit_false(sig) or _is_explicit_false(behav):
+                    logger.warning(
+                        "optimizedCode 자가 검증 실패 — 원본 코드로 폴백",
+                        extra={
+                            "signaturePreserved": sig,
+                            "behaviorEquivalent": behav,
+                            "changes": meta.get("changes", []),
+                        },
+                    )
+                    optimized_code = None
+                    # feedback JSON에서도 거부된 코드 제거 — frontend parseFeedback이
+                    # feedback.optimizedCode를 우선 사용하므로 양쪽 모두 정리해야 폴백이 유효함
+                    parsed["optimizedCode"] = None
 
             # categories 스키마 검증 — list[dict]가 아니면 안전 처리
             categories = _validate_categories(categories)

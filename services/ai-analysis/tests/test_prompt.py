@@ -87,9 +87,9 @@ class TestBuildUserPromptPlatformContext:
         # Given: BOJ 플랫폼 식별자와 Python 코드
         # When: build_user_prompt 호출 시
         result = build_user_prompt(code="x=1", language="python", source_platform="BOJ")
-        # Then: BOJ 플랫폼 맥락 문구가 포함되어야 함
-        assert "백준(BOJ) 플랫폼" in result
-        assert "표준 입출력" in result or "시간복잡도" in result
+        # Then: BOJ 플랫폼 맥락 문구 + 입출력 보존 명령이 포함되어야 함
+        assert "백준(BOJ)" in result
+        assert "절대 변경하지 마세요" in result
 
     def test_build_user_prompt_with_programmers_platform(self):
         # Given: PROGRAMMERS 플랫폼 식별자와 solution 함수 코드
@@ -99,9 +99,9 @@ class TestBuildUserPromptPlatformContext:
             language="python",
             source_platform="PROGRAMMERS",
         )
-        # Then: 프로그래머스 플랫폼 맥락 문구와 solution() 언급이 포함되어야 함
-        assert "프로그래머스 플랫폼" in result
-        assert "solution()" in result
+        # Then: 프로그래머스 플랫폼 맥락 + 시그니처 보존 명령이 포함되어야 함
+        assert "프로그래머스" in result
+        assert "절대 변경하지 마세요" in result
 
     def test_build_user_prompt_without_platform_backward_compat(self):
         # Given: source_platform 미지정 (None, 기존 호출 방식)
@@ -130,9 +130,9 @@ class TestBuildUserPromptPlatformContext:
             },
         ]
         result = build_group_user_prompt(snippets, source_platform="PROGRAMMERS")
-        # Then: 프로그래머스 플랫폼 맥락 문구와 solution() 언급이 포함되어야 함
-        assert "프로그래머스 플랫폼" in result
-        assert "solution()" in result
+        # Then: 프로그래머스 플랫폼 맥락 + 시그니처 보존 명령이 포함되어야 함
+        assert "프로그래머스" in result
+        assert "절대 변경하지 마세요" in result
 
 
 class TestBuildGroupUserPrompt:
@@ -279,3 +279,131 @@ class TestWeights:
         assert ALGORITHM_WEIGHTS["efficiency"] == 0.25
         assert SQL_WEIGHTS["bestPractice"] == 0.20
         assert ALGORITHM_WEIGHTS["bestPractice"] == 0.15
+
+
+class TestBehaviorEquivalenceRules:
+    """행동 동등성 규칙 검증 (Sprint 142)"""
+
+    def test_system_prompt_contains_behavior_equivalence_rule(self):
+        assert "행동 동등성" in SYSTEM_PROMPT
+        assert "동일한 입력" in SYSTEM_PROMPT
+        assert "동일한 출력" in SYSTEM_PROMPT
+
+    def test_system_prompt_forbids_signature_change(self):
+        assert "함수 시그니처" in SYSTEM_PROMPT
+        assert "절대 변경하지 마세요" in SYSTEM_PROMPT
+
+    def test_sql_system_prompt_contains_behavior_equivalence_rule(self):
+        assert "행동 동등성" in SQL_SYSTEM_PROMPT
+        assert "동일한 결과 집합" in SQL_SYSTEM_PROMPT
+
+    def test_sql_system_prompt_forbids_column_change(self):
+        assert "컬럼명" in SQL_SYSTEM_PROMPT
+        assert "컬럼 순서" in SQL_SYSTEM_PROMPT
+
+    def test_system_prompt_contains_optimized_code_meta_schema(self):
+        assert "optimizedCodeMeta" in SYSTEM_PROMPT
+        assert "signaturePreserved" in SYSTEM_PROMPT
+        assert "behaviorEquivalent" in SYSTEM_PROMPT
+
+    def test_sql_system_prompt_contains_behavior_equivalent_only(self):
+        """SQL은 시그니처 개념 없으므로 signaturePreserved 미포함, behaviorEquivalent만 (Critic R4 P2)"""
+        assert "optimizedCodeMeta" in SQL_SYSTEM_PROMPT
+        assert "behaviorEquivalent" in SQL_SYSTEM_PROMPT
+        assert "signaturePreserved" not in SQL_SYSTEM_PROMPT
+
+    def test_correctness_rubric_separates_score_from_optimized_code(self):
+        """correctness 점수는 제출된 코드만 평가 (Critic R4 P1 회귀 보호)
+
+        optimizedCode 자가 검증은 별도 optimizedCodeMeta가 담당.
+        LLM이 잘못된 optimizedCode를 제안해도 사용자 점수는 페널티 받지 않음.
+        """
+        assert "제출된 코드만 평가" in SYSTEM_PROMPT
+        assert "자가 검증 메타로 별도 처리" in SYSTEM_PROMPT
+
+    def test_sql_correctness_rubric_separates_score_from_optimized_code(self):
+        """SQL correctness 점수도 제출된 쿼리만 평가"""
+        assert "제출된 쿼리만 평가" in SQL_SYSTEM_PROMPT
+        assert "자가 검증 메타로 별도 처리" in SQL_SYSTEM_PROMPT
+
+
+class TestPlatformContextImperative:
+    """플랫폼 컨텍스트 명령형 강화 검증 (Sprint 142)"""
+
+    def test_programmers_forbids_signature_change(self):
+        from src.prompt import _build_platform_context
+
+        result = _build_platform_context("PROGRAMMERS")
+        assert "절대 변경하지 마세요" in result
+        assert "채점이 실패합니다" in result
+        assert "함수명" in result
+
+    def test_boj_forbids_io_change(self):
+        from src.prompt import _build_platform_context
+
+        result = _build_platform_context("BOJ")
+        assert "절대 변경하지 마세요" in result
+        assert "채점이 실패합니다" in result
+        assert "표준 입력" in result
+        assert "표준 출력" in result
+
+    def test_boj_is_language_neutral(self):
+        """BOJ 컨텍스트는 Python API를 하드코딩하지 않아야 함 (Critic P2-2 회귀 보호)"""
+        from src.prompt import _build_platform_context
+
+        result = _build_platform_context("BOJ")
+        # Java/C++/JS BOJ 제출도 받기 위해 Python 전용 API는 명시 금지
+        assert "input()" not in result
+        assert "sys.stdin" not in result
+        assert "print()" not in result
+
+    def test_none_platform_returns_empty(self):
+        from src.prompt import _build_platform_context
+
+        assert _build_platform_context(None) == ""
+
+    def test_unknown_platform_returns_empty(self):
+        from src.prompt import _build_platform_context
+
+        assert _build_platform_context("LEETCODE") == ""
+
+    def test_programmers_sql_uses_resultset_rules(self):
+        """PROGRAMMERS + sql → 결과셋 보존 규칙 (Critic R3 P2 회귀 보호)
+
+        프로그래머스 SQL 카테고리는 함수 시그니처가 없으므로 결과 컬럼/순서 보존으로 분기.
+        """
+        from src.prompt import _build_platform_context
+
+        result = _build_platform_context("PROGRAMMERS", "sql")
+        assert "프로그래머스" in result
+        assert "SQL 채점" in result
+        assert "컬럼명" in result
+        assert "컬럼 순서" in result
+        # SQL에는 함수 시그니처 규칙 미주입
+        assert "함수명" not in result
+        assert "매개변수" not in result
+
+    def test_programmers_sql_case_insensitive(self):
+        """language='SQL' 대소문자 무관"""
+        from src.prompt import _build_platform_context
+
+        result = _build_platform_context("PROGRAMMERS", "SQL")
+        assert "컬럼명" in result
+        assert "함수명" not in result
+
+    def test_programmers_python_keeps_signature_rules(self):
+        """PROGRAMMERS + python → 함수 시그니처 규칙 유지 (회귀 보호)"""
+        from src.prompt import _build_platform_context
+
+        result = _build_platform_context("PROGRAMMERS", "python")
+        assert "함수명" in result
+        assert "매개변수" in result
+        # 알고리즘 분기에는 SQL 컬럼 규칙 미주입
+        assert "컬럼명" not in result
+
+    def test_programmers_default_language_keeps_signature_rules(self):
+        """PROGRAMMERS, language 미지정 → 기본 함수 시그니처 규칙 (하위 호환)"""
+        from src.prompt import _build_platform_context
+
+        result = _build_platform_context("PROGRAMMERS")
+        assert "함수명" in result
