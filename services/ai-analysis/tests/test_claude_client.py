@@ -1069,6 +1069,33 @@ class TestOptimizedCodeMetaFallback:
         result = c._parse_response(raw)
         assert result["optimized_code"] == "def solution(n): return n * 2"
 
+    def test_fallback_clears_optimized_code_in_feedback_json(self):
+        """폴백 시 feedback JSON 내부 optimizedCode도 null로 직렬화 (Critic P1 회귀 보호)
+
+        frontend parseFeedback이 feedback.optimizedCode를 별도 optimizedCode 필드보다
+        우선 사용하므로, 폴백 시 양쪽 모두 정리해야 거부된 코드가 사용자에게 노출되지 않음.
+        """
+        c = _make_client()
+        raw = json.dumps({
+            "totalScore": 80,
+            "summary": "test",
+            "categories": [],
+            "optimizedCode": "def changed(): pass",
+            "optimizedCodeMeta": {
+                "signaturePreserved": False,
+                "behaviorEquivalent": True,
+                "changes": ["함수명 변경"],
+            },
+        })
+        result = c._parse_response(raw)
+
+        # 1) 별도 optimized_code 필드는 None
+        assert result["optimized_code"] is None
+
+        # 2) feedback JSON 내부 optimizedCode도 None (frontend 노출 방지)
+        feedback_parsed = json.loads(result["feedback"])
+        assert feedback_parsed["optimizedCode"] is None
+
     def test_invalid_meta_value_preserves_optimized_code(self):
         """signaturePreserved=None/숫자/임의문자열 → 명시적 false 아니므로 통과"""
         c = _make_client()

@@ -262,6 +262,9 @@ class ClaudeClient:
                         },
                     )
                     optimized_code = None
+                    # feedback JSON에서도 거부된 코드 제거 — frontend parseFeedback이
+                    # feedback.optimizedCode를 우선 사용하므로 양쪽 모두 정리해야 폴백이 유효함
+                    parsed["optimizedCode"] = None
 
             # categories 스키마 검증 — list[dict]가 아니면 안전 처리
             categories = _validate_categories(categories)
