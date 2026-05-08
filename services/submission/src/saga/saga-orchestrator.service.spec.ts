@@ -34,6 +34,7 @@ const mockCircuitBreakerService = () => {
 const mockProblemServiceClient = () => ({
   getSourcePlatform: jest.fn().mockResolvedValue('baekjoon'),
   getDeadline: jest.fn().mockResolvedValue({ isLate: false, weekNumber: null }),
+  getProblemInfo: jest.fn().mockResolvedValue({ title: '', description: '' }),
 });
 
 // ─── 테스트 헬퍼 ────────────────────────────────────────────────

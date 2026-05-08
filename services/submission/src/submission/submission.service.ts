@@ -65,12 +65,13 @@ export class SubmissionService {
       }
     }
 
-    // A3: 지각 제출 체크 — 마감 시간 초과 시 isLate=true (제출은 허용)
-    const { isLate, weekNumber } = await this.checkLateSubmission(studyId, dto.problemId, userId);
-
-    // 문제 정보 조회 — ai-analysis worker에 컨텍스트 제공 (Sprint 143 시드 #4)
-    const { title: problemTitle, description: problemDescription } =
-      await this.problemClient.getProblemInfo(dto.problemId, studyId, userId);
+    // 지각 체크 + 문제 정보 조회를 병렬화 — incident 시 직렬 호출로 timeout 2배 방지 (Critic R1 P2)
+    // 동일 호스트 단일 CB가 OPEN되면 둘 다 즉시 fallback이므로 병렬화는 안전
+    const [{ isLate, weekNumber }, { title: problemTitle, description: problemDescription }] =
+      await Promise.all([
+        this.checkLateSubmission(studyId, dto.problemId, userId),
+        this.problemClient.getProblemInfo(dto.problemId, studyId, userId),
+      ]);
 
     // DB 저장 (Step 1)
     const submission = this.submissionRepo.create({

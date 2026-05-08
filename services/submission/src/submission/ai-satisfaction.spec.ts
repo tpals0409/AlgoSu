@@ -58,6 +58,7 @@ const mockSagaOrchestrator = () => ({
 const mockProblemServiceClient = () => ({
   getSourcePlatform: jest.fn().mockResolvedValue(undefined),
   getDeadline: jest.fn().mockResolvedValue({ isLate: false, weekNumber: null }),
+  getProblemInfo: jest.fn().mockResolvedValue({ title: '', description: '' }),
 });
 
 const mockDataSource = () => ({
