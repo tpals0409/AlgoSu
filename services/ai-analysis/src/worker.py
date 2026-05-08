@@ -216,6 +216,16 @@ class AIAnalysisWorker:
                 submission, source_platform=source_platform
             )
 
+            # 문제 컨텍스트 부재 시 optimizedCode 생성 보류
+            problem_title = submission.get("problemTitle", "")
+            problem_desc = submission.get("problemDescription", "")
+            if not problem_title and not problem_desc and result.get("optimized_code"):
+                logger.warning(
+                    "문제 컨텍스트 부재 — optimizedCode 생성 보류",
+                    extra={"submissionId": submission_id},
+                )
+                result["optimized_code"] = None
+
             if result["status"] == "failed":
                 # 실패 시 Redis 카운터 차감 (비용 미차감)
                 if user_id:

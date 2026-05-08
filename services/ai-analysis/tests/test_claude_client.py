@@ -1115,6 +1115,81 @@ class TestOptimizedCodeMetaFallback:
         assert result["optimized_code"] == "def solution(): pass"
 
 
+class TestCodeLengthGuard:
+    """코드 길이 초과 시 optimizedCode 생성 보류 (Sprint 143 시드 #3)"""
+
+    def test_long_code_nullifies_optimized_code(
+        self, client, mock_anthropic, mock_circuit_breaker
+    ):
+        """CODE_LENGTH_THRESHOLD 초과 → optimized_code=None"""
+        _, mock_client = mock_anthropic
+
+        mock_content = MagicMock()
+        mock_content.text = json.dumps({
+            "totalScore": 80,
+            "summary": "분석 완료",
+            "categories": [],
+            "optimizedCode": "def solution(): pass",
+        })
+        mock_message = MagicMock()
+        mock_message.content = [mock_content]
+        mock_client.messages.create.return_value = mock_message
+
+        long_code = "x" * 50001
+
+        result = client.analyze_code(code=long_code, language="python")
+
+        assert result["status"] == "completed"
+        assert result["score"] == 80
+        assert result["optimized_code"] is None
+
+    def test_short_code_preserves_optimized_code(
+        self, client, mock_anthropic, mock_circuit_breaker
+    ):
+        """CODE_LENGTH_THRESHOLD 이하 → optimized_code 유지"""
+        _, mock_client = mock_anthropic
+
+        mock_content = MagicMock()
+        mock_content.text = json.dumps({
+            "totalScore": 85,
+            "summary": "분석 완료",
+            "categories": [],
+            "optimizedCode": "def solution(): pass",
+        })
+        mock_message = MagicMock()
+        mock_message.content = [mock_content]
+        mock_client.messages.create.return_value = mock_message
+
+        short_code = "x" * 50000
+
+        result = client.analyze_code(code=short_code, language="python")
+
+        assert result["optimized_code"] == "def solution(): pass"
+
+    def test_boundary_code_preserves_optimized_code(
+        self, client, mock_anthropic, mock_circuit_breaker
+    ):
+        """CODE_LENGTH_THRESHOLD 정확히 경계 → optimized_code 유지"""
+        _, mock_client = mock_anthropic
+
+        mock_content = MagicMock()
+        mock_content.text = json.dumps({
+            "totalScore": 90,
+            "summary": "분석 완료",
+            "categories": [],
+            "optimizedCode": "def solution(n): return n",
+        })
+        mock_message = MagicMock()
+        mock_message.content = [mock_content]
+        mock_client.messages.create.return_value = mock_message
+
+        boundary_code = "x" * 50000
+
+        result = client.analyze_code(code=boundary_code, language="python")
+
+        assert result["optimized_code"] == "def solution(n): return n"
+
+
 class TestIsExplicitFalse:
     """_is_explicit_false() 헬퍼 단위 테스트 (Sprint 142 P2-1)"""
 
