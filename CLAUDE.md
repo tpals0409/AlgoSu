@@ -11,7 +11,7 @@ services/
   submission/      NestJS 제출 관리 + Saga
   problem/         NestJS 문제 관리
   github-worker/   NestJS GitHub 동기화
-  ai-feedback/     FastAPI AI 분석
+  ai-analysis/     FastAPI AI 분석
 infra/             k3d/k3s 매니페스트, ArgoCD
 docs/              ADR, 런북, 규칙 문서
 blog/              기술 블로그

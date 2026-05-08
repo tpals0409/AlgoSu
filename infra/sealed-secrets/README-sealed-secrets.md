@@ -1,9 +1,13 @@
 # Sealed Secrets 운영 가이드
 
+> **SSoT**: 운영 SealedSecret manifest는 **aether-gitops** 레포 `algosu/base/sealed-secrets/`에서 관리합니다.
+> 이 디렉토리의 `generated/`는 Sprint 141에서 제거되었습니다 (outdated artifact, ArgoCD watch 대상 아님).
+> 템플릿과 이 가이드만 참조용으로 유지합니다.
+
 ## 구조 설명
 
-이 폴더에는 kubeseal로 암호화된 SealedSecret manifest만 커밋합니다.
-복호화된 원본 Secret manifest는 절대 커밋하지 않습니다 (.gitignore 적용).
+이 폴더에는 kubeseal 운영 템플릿과 가이드를 보관합니다.
+실제 SealedSecret manifest는 aether-gitops 레포에서 관리하며, 복호화된 원본 Secret manifest는 절대 커밋하지 않습니다 (.gitignore 적용).
 
 ## 사용법
 
