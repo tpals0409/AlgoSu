@@ -58,6 +58,16 @@ const DASHBOARDS = [
   { file: 'infra/k3s/monitoring/grafana-slo-dashboard.yaml',     key: 'algosu-slo' },
 ];
 
+const PROMETHEUS_RULES_FILE = 'infra/k3s/monitoring/prometheus-rules.yaml';
+
+/**
+ * `__name__=~"<pattern>"` regex 매칭에서 service prefix를 union으로 enumerate할 때 사용.
+ * NESTJS_HTTP_SERVICES + github_worker + ai_analysis (모두 underscore 형태).
+ */
+const KNOWN_SERVICE_PREFIXES = [
+  'gateway', 'identity', 'submission', 'problem', 'github_worker', 'ai_analysis',
+];
+
 /**
  * prom-client v15.x default metrics 목록.
  * collectDefaultMetrics 호출 시 service prefix가 자동 prepend됨.
@@ -89,16 +99,26 @@ addNestjsHttpServiceMetrics();
 addGithubWorkerMetrics();
 addAdditionalTsMetrics();
 addAiAnalysisMetrics();
+addPrometheusRecordingRules();
 
-const dashboardMetrics = collectDashboardMetrics();
-const missing = [...dashboardMetrics].filter((m) => !definedMetrics.has(m)).sort();
+const { strict, leastOneGroups } = collectDashboardMetrics();
+
+const missingStrict = [...strict].filter((m) => !definedMetrics.has(m)).sort();
+const missingLeastOne = leastOneGroups.filter((g) => !g.metrics.some((m) => definedMetrics.has(m)));
 
 console.log(`[OK]   defined metrics: ${definedMetrics.size}`);
-console.log(`[OK]   dashboard metrics: ${dashboardMetrics.size}`);
+console.log(`[OK]   dashboard strict metrics: ${strict.size}`);
+console.log(`[OK]   dashboard wildcard groups: ${leastOneGroups.length}`);
 
-if (missing.length > 0) {
-  console.error(`\n[FAIL] ${missing.length} dashboard metric(s) not defined in service code:`);
-  for (const m of missing) console.error(`  - ${m}`);
+if (missingStrict.length > 0 || missingLeastOne.length > 0) {
+  if (missingStrict.length > 0) {
+    console.error(`\n[FAIL] ${missingStrict.length} strict metric(s) not defined in service code:`);
+    for (const m of missingStrict) console.error(`  - ${m}`);
+  }
+  if (missingLeastOne.length > 0) {
+    console.error(`\n[FAIL] ${missingLeastOne.length} wildcard pattern(s) match no defined service:`);
+    for (const g of missingLeastOne) console.error(`  - pattern '${g.pattern}' (no match in any of: ${g.metrics.join(', ')})`);
+  }
   console.error('\nPossible causes:');
   console.error('  1. service code rename·metric 제거 후 dashboard 미갱신');
   console.error('  2. dashboard metric 이름 오타');
@@ -180,6 +200,17 @@ function addAiAnalysisMetrics() {
 }
 
 /**
+ * prometheus-rules.yaml의 recording rules(`record:` field) → algosu:* metric을 정의 set에 추가.
+ * 본 스크립트는 service code SSOT 원칙을 따르나, recording rule은 prometheus-rules.yaml이 정의 SSOT.
+ * dashboard가 recording rule을 참조해도 false positive가 발생하지 않도록 함.
+ */
+function addPrometheusRecordingRules() {
+  const content = readFileSync(resolve(ROOT, PROMETHEUS_RULES_FILE), 'utf-8');
+  const matches = content.matchAll(/^\s*-\s*record:\s*(\S+)\s*$/gm);
+  for (const m of matches) definedMetrics.add(m[1]);
+}
+
+/**
  * 'algosu_xxx' literal 패턴 추출 — Counter/Histogram/Gauge 컨텍스트 감지하여 suffix 처리.
  */
 function addLiteralMetrics(content, expectedPrefix) {
@@ -214,8 +245,18 @@ function checkHistogramContext(content, idx) {
 /**
  * 3개 dashboard YAML에서 ConfigMap inline JSON을 추출하여 algosu metric 수집.
  */
+/**
+ * dashboard에서 사용하는 metric 후보를 두 가지 모드로 수집.
+ *   - strict: 모두 정의되어야 함 (literal metric 참조 + exact __name__ + union __name__=~)
+ *   - leastOneGroups: 그룹 중 적어도 1개가 정의되면 OK (wildcard __name__=~"algosu_.+_xxx")
+ *
+ * wildcard pattern을 strict로 다루면 일부 service가 metric을 노출하지 않는 정상 케이스도
+ * fail 처리됨 (예: github-worker는 일반 HTTP 처리 안 함, ai-analysis는 Python이라 nodejs metric 없음).
+ * dashboard 의도("있는 service의 metric만 보여줘") 보존을 위해 least-one 모드 채택.
+ */
 function collectDashboardMetrics() {
-  const out = new Set();
+  const strict = new Set();
+  const leastOneGroups = [];
   for (const dash of DASHBOARDS) {
     const content = readFileSync(resolve(ROOT, dash.file), 'utf-8');
     const json = extractInlineBlock(content, `${dash.key}.json`);
@@ -227,12 +268,62 @@ function collectDashboardMetrics() {
     const exprs = [];
     walkExprs(obj, exprs);
     for (const expr of exprs) {
+      collectNameSelectorMetrics(expr, strict, leastOneGroups);
       const cleaned = expr.replace(/\{[^{}]*\}/g, '');
       const found = cleaned.match(/\balgosu[_:][a-zA-Z0-9_:]+/g) ?? [];
-      for (const m of found) out.add(m);
+      for (const m of found) strict.add(m);
     }
   }
-  return out;
+  return { strict, leastOneGroups };
+}
+
+/**
+ * `{__name__=<op>"<pattern>", ...}` selector를 처리하여 strict / leastOneGroups에 추가.
+ *   - exact `="x"` / `!="x"` → strict
+ *   - union `=~"algosu_(a|b|c)_xxx"` → 3개 모두 strict (모든 service가 metric을 노출해야 함)
+ *   - wildcard `=~"algosu_.+_xxx"` → leastOneGroup (1+ service만 노출하면 OK)
+ *   - 기타 정규식 패턴 → 무시 (false positive 회피)
+ */
+function collectNameSelectorMetrics(expr, strict, leastOneGroups) {
+  const matches = expr.matchAll(/__name__\s*(=~|!~|=|!=)\s*"([^"]+)"/g);
+  for (const m of matches) {
+    const op = m[1];
+    const pattern = m[2];
+    if (op === '=' || op === '!=') {
+      strict.add(pattern);
+      continue;
+    }
+    const expansion = expandRegexMetricPattern(pattern);
+    if (expansion.kind === 'union') {
+      for (const e of expansion.metrics) strict.add(e);
+    } else if (expansion.kind === 'wildcard') {
+      leastOneGroups.push({ pattern, metrics: expansion.metrics });
+    }
+  }
+}
+
+/**
+ * Prometheus regex metric 패턴을 service prefix로 expansion.
+ *   - `algosu_(a|b|c)_xxx` → kind='union', 3개 metric (모두 정의되어야 함)
+ *   - `algosu_.+_xxx` → kind='wildcard', KNOWN_SERVICE_PREFIXES 6개 (1+ 정의되면 OK)
+ *   - 기타 → kind='none', 빈 배열 (검증 skip)
+ */
+function expandRegexMetricPattern(pattern) {
+  const unionMatch = pattern.match(/^algosu_\(([a-z_|]+)\)_(.+)$/);
+  if (unionMatch) {
+    return {
+      kind: 'union',
+      metrics: unionMatch[1].split('|').map((s) => `algosu_${s}_${unionMatch[2]}`),
+    };
+  }
+  const wildcardMatch = pattern.match(/^algosu_\.\+_(.+)$/);
+  if (wildcardMatch) {
+    return {
+      kind: 'wildcard',
+      metrics: KNOWN_SERVICE_PREFIXES.map((s) => `algosu_${s}_${wildcardMatch[1]}`),
+    };
+  }
+  return { kind: 'none', metrics: [] };
 }
 
 /**
