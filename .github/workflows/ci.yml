@@ -134,6 +134,13 @@ jobs:
             monitoring:
               - 'infra/k3s/monitoring/**'
               - 'scripts/check-prometheus-rules.mjs'
+              - 'scripts/check-grafana-metrics.mjs'
+              - 'services/**/metrics.service.ts'
+              - 'services/**/metrics.ts'
+              - 'services/**/metrics.py'
+              - 'services/submission/src/common/circuit-breaker/circuit-breaker.service.ts'
+              - 'services/github-worker/src/circuit-breaker.ts'
+              - 'services/problem/src/database/dual-write.service.ts'
       - name: Apply rebuild_all override
         id: result
         run: |
@@ -290,6 +297,8 @@ jobs:
           promtool --version
       - name: Check prometheus rules syntax
         run: node scripts/check-prometheus-rules.mjs
+      - name: Check grafana dashboard metrics ↔ service code
+        run: node scripts/check-grafana-metrics.mjs
 
   quality-frontend:
     name: Quality — frontend
