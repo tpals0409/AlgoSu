@@ -106,6 +106,7 @@ jobs:
       ai-analysis:   ${{ steps.result.outputs.ai-analysis }}
       frontend:      ${{ steps.result.outputs.frontend }}
       blog:          ${{ steps.result.outputs.blog }}
+      monitoring:    ${{ steps.result.outputs.monitoring }}
     steps:
       - uses: actions/checkout@v6
       - name: Detect path changes
@@ -130,6 +131,9 @@ jobs:
             blog:
               - 'blog/**'
               - 'docs/adr/**'
+            monitoring:
+              - 'infra/k3s/monitoring/**'
+              - 'scripts/check-prometheus-rules.mjs'
       - name: Apply rebuild_all override
         id: result
         run: |
@@ -142,6 +146,7 @@ jobs:
             echo "ai-analysis=true" >> $GITHUB_OUTPUT
             echo "frontend=true" >> $GITHUB_OUTPUT
             echo "blog=true" >> $GITHUB_OUTPUT
+            echo "monitoring=true" >> $GITHUB_OUTPUT
           else
             echo "gateway=${{ steps.filter.outputs.gateway }}" >> $GITHUB_OUTPUT
             echo "identity=${{ steps.filter.outputs.identity }}" >> $GITHUB_OUTPUT
@@ -151,6 +156,7 @@ jobs:
             echo "ai-analysis=${{ steps.filter.outputs.ai-analysis }}" >> $GITHUB_OUTPUT
             echo "frontend=${{ steps.filter.outputs.frontend }}" >> $GITHUB_OUTPUT
             echo "blog=${{ steps.filter.outputs.blog }}" >> $GITHUB_OUTPUT
+            echo "monitoring=${{ steps.filter.outputs.monitoring }}" >> $GITHUB_OUTPUT
           fi
 
   # ============================================================
@@ -264,6 +270,26 @@ jobs:
       - name: ruff format check
         working-directory: services/ai-analysis
         run: ruff format --check src/
+
+  quality-monitoring:
+    name: Quality — monitoring
+    needs: detect-changes
+    if: needs.detect-changes.outputs.monitoring == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install promtool
+        run: |
+          PROM_VERSION=2.55.0
+          curl -sSfL "https://github.com/prometheus/prometheus/releases/download/v${PROM_VERSION}/prometheus-${PROM_VERSION}.linux-amd64.tar.gz" \
+            | tar xz
+          sudo mv "prometheus-${PROM_VERSION}.linux-amd64/promtool" /usr/local/bin/
+          rm -rf "prometheus-${PROM_VERSION}.linux-amd64"
+          promtool --version
+      - name: Check prometheus rules syntax
+        run: node scripts/check-prometheus-rules.mjs
 
   quality-frontend:
     name: Quality — frontend
