@@ -146,7 +146,7 @@ function addNestjsHttpServiceMetrics() {
       throw new Error(`SERVICE_NAME default mismatch in ${svc.file} (expected '${svc.name}')`);
     }
     const prefix = `algosu_${svc.name}`;
-    const httpMetricMatches = content.matchAll(/name:\s*`\$\{prefix\}_([a-z_]+)`/g);
+    const httpMetricMatches = content.matchAll(/name:\s*`\$\{prefix\}_([a-zA-Z0-9_]+)`/g);
     for (const m of httpMetricMatches) {
       addMetricWithHistogramSuffixes(`${prefix}_${m[1]}`, m[1]);
     }
@@ -166,7 +166,7 @@ function addGithubWorkerMetrics() {
   for (const file of GITHUB_WORKER_FILES) {
     const content = readFileSync(resolve(ROOT, file), 'utf-8');
     if (content.includes('collectDefaultMetrics')) hasDefaults = true;
-    const tplMatches = content.matchAll(/name:\s*`\$\{PREFIX\}_([a-z_]+)`/g);
+    const tplMatches = content.matchAll(/name:\s*`\$\{PREFIX\}_([a-zA-Z0-9_]+)`/g);
     for (const m of tplMatches) addMetricWithHistogramSuffixes(`${prefix}_${m[1]}`, m[1]);
     addLiteralMetrics(content, prefix);
   }
@@ -192,7 +192,7 @@ function addAdditionalTsMetrics() {
  */
 function addAiAnalysisMetrics() {
   const content = readFileSync(resolve(ROOT, AI_ANALYSIS_FILE), 'utf-8');
-  const matches = content.matchAll(/name=["'](algosu_[a-z_]+)["']/g);
+  const matches = content.matchAll(/name=["'](algosu_[a-zA-Z0-9_]+)["']/g);
   for (const m of matches) {
     const isHistogram = checkHistogramContext(content, m.index);
     addMetricWithHistogramSuffixes(m[1], isHistogram ? 'histogram' : '');
@@ -214,7 +214,7 @@ function addPrometheusRecordingRules() {
  * 'algosu_xxx' literal 패턴 추출 — Counter/Histogram/Gauge 컨텍스트 감지하여 suffix 처리.
  */
 function addLiteralMetrics(content, expectedPrefix) {
-  const matches = content.matchAll(/name:\s*['"](algosu_[a-z_]+)['"]/g);
+  const matches = content.matchAll(/name:\s*['"](algosu_[a-zA-Z0-9_]+)['"]/g);
   for (const m of matches) {
     if (expectedPrefix && !m[1].startsWith(expectedPrefix)) continue;
     const isHistogram = checkHistogramContext(content, m.index);
