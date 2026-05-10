@@ -94,19 +94,30 @@ const PROM_CLIENT_DEFAULTS = [
 const HISTOGRAM_SUFFIXES = ['_bucket', '_count', '_sum'];
 
 /**
- * Prometheus / kubernetes_sd / prom-client default metric에 자동 부여되는 라벨.
- * dashboard selector에서 이 라벨을 사용해도 source code 정의 검증 대상에서 제외.
+ * 모든 metric에 자동 부여되는 라벨 (Prometheus scrape + kubernetes_sd).
+ * 어느 metric에서 사용되어도 source code 정의 검증 대상에서 제외.
  *   - job/instance: prometheus.yml scrape config 부여
  *   - pod/namespace/node/container/service: kubernetes_sd 자동
- *   - le/quantile: Histogram/Summary 자동 차원
- *   - kind/version: prom-client default metric 자체 라벨
+ *   - kind/version: prom-client default metric 자체 라벨 (예: nodejs_version_info)
+ *   - __name__: metric 이름 selector (별도 처리, 라벨 검증 대상 외)
  */
-const AUTO_LABELS = new Set([
+const ALWAYS_AUTO_LABELS = new Set([
   '__name__', 'job', 'instance',
   'pod', 'namespace', 'node', 'container', 'service',
-  'le', 'quantile',
   'kind', 'version',
 ]);
+
+/**
+ * Histogram bucket series에만 자동 부여되는 라벨. metric 이름이 `_bucket`으로 끝날 때만 면제.
+ * 일반 metric에 `le=` selector 사용 시 정상 fail로 처리 (Critic R2 P2-1 회귀 차단).
+ */
+const HISTOGRAM_BUCKET_LABEL = 'le';
+
+/**
+ * Summary metric series에만 자동 부여되는 라벨. 본 프로젝트에 Summary 사용 사례가
+ * 없으므로 strict 처리 (어느 metric에 사용되어도 fail). Summary 도입 시 본 정책 재평가.
+ */
+const SUMMARY_QUANTILE_LABEL = 'quantile';
 
 const definedMetrics = new Set();
 /** source code 정의 metric → 등록된 라벨 set. prom-client default + recording rule은 등록 안 함. */
@@ -403,7 +414,7 @@ function checkLabelUsages(labelUsages) {
   const seen = new Set();
   const missing = [];
   for (const u of labelUsages) {
-    if (AUTO_LABELS.has(u.label)) continue;
+    if (isLabelExempt(u.metric, u.label)) continue;
     if (!metricLabels.has(u.metric)) continue;
     const defined = metricLabels.get(u.metric);
     if (defined.has(u.label)) continue;
@@ -416,23 +427,29 @@ function checkLabelUsages(labelUsages) {
 }
 
 /**
+ * 라벨 면제 판정 — 자동 라벨이지만 metric 종류에 따라 조건부 면제 (Critic R2 P2-1).
+ *   - ALWAYS_AUTO_LABELS: 모든 metric에서 면제
+ *   - le: `_bucket` suffix metric에서만 면제 (Histogram bucket 자동 차원)
+ *   - quantile: 본 프로젝트 Summary 미사용 → 항상 strict (false negative 차단)
+ */
+function isLabelExempt(metric, label) {
+  if (ALWAYS_AUTO_LABELS.has(label)) return true;
+  if (label === HISTOGRAM_BUCKET_LABEL && metric.endsWith('_bucket')) return true;
+  return false;
+}
+
+/**
  * source code 정의 metric에 라벨 set 등록.
  * Histogram의 `_bucket`/`_count`/`_sum` suffix metric에도 동일 라벨 등록 (Prometheus 시리즈 차원 일관).
  */
 function registerMetricLabels(metric, labels) {
-  if (labels.size === 0 && !metricLabels.has(metric)) {
-    metricLabels.set(metric, new Set());
-  }
-  if (labels.size > 0) {
-    if (!metricLabels.has(metric)) metricLabels.set(metric, new Set());
-    for (const l of labels) metricLabels.get(metric).add(l);
-    for (const sfx of HISTOGRAM_SUFFIXES) {
-      const suffixed = `${metric}${sfx}`;
-      if (definedMetrics.has(suffixed)) {
-        if (!metricLabels.has(suffixed)) metricLabels.set(suffixed, new Set());
-        for (const l of labels) metricLabels.get(suffixed).add(l);
-      }
-    }
+  if (!metricLabels.has(metric)) metricLabels.set(metric, new Set());
+  for (const l of labels) metricLabels.get(metric).add(l);
+  for (const sfx of HISTOGRAM_SUFFIXES) {
+    const suffixed = `${metric}${sfx}`;
+    if (!definedMetrics.has(suffixed)) continue;
+    if (!metricLabels.has(suffixed)) metricLabels.set(suffixed, new Set());
+    for (const l of labels) metricLabels.get(suffixed).add(l);
   }
 }
 
