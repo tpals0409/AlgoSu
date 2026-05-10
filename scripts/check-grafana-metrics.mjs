@@ -442,15 +442,21 @@ function registerMetricLabels(metric, labels) {
  * 추출 실패 시 빈 set 반환 (라벨 없는 metric, 예: Gauge 단일 차원).
  */
 /**
- * Grafana 변수 치환 토큰 `${var}`은 inner `}`가 `[^{}]*` 정규식 매칭을 잘라
- * `__name__` selector 추출이 누락된다 (false negative). 변수 토큰을 placeholder로
- * 치환한 뒤 selector 파싱하여 inner curly가 selector wrapper 경계를 침범하지 않도록 한다.
- *   - `{__name__=~"...", job="${service}", status_code=~"5.."}`  ← 원본
- *   - `{__name__=~"...", job="__GRAFANA_VAR__", status_code=~"5.."}` ← 치환
- * job/instance 등 자동 라벨이라도 본문은 placeholder로 보존 (값 검증 안 하므로 무해).
+ * Grafana 변수/PromQL regex quantifier가 selector wrapper 매칭 정규식 `[^{}]*`의
+ * 경계를 끊어 selector 추출이 누락되는 false negative를 차단한다 (Critic R1 P2):
+ *   - `${var}` Grafana variable의 inner `}` (예: `job="${service}"`)
+ *   - quoted regex value 내부 brace (예: `status_code=~"5[0-9]{2}"`)
+ *
+ * 두 케이스 모두 selector wrapper 외부 brace와 의미적으로 분리되어 있으므로
+ * placeholder/대체문자로 normalize 후 파싱한다. 라벨 name 추출은 따옴표 외부에서만
+ * 일어나므로 quoted value 내부의 brace를 `_`로 치환해도 검증 정확도 영향 없음.
+ *   - `{__name__=~"x", job="${svc}", status_code=~"5[0-9]{2}"}`  ← 원본
+ *   - `{__name__=~"x", job="__GRAFANA_VAR__", status_code=~"5[0-9]_2_"}` ← 치환
  */
 function normalizeExprForSelectorParse(expr) {
-  return expr.replace(/\$\{[^{}]+\}/g, '__GRAFANA_VAR__');
+  return expr
+    .replace(/\$\{[^{}]+\}/g, '__GRAFANA_VAR__')
+    .replace(/"([^"]*)"/g, (_match, inner) => `"${inner.replace(/[{}]/g, '_')}"`);
 }
 
 function extractLabelsFromBlock(content, startIdx, nextMetricIdx) {
