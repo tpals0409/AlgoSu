@@ -93,7 +93,24 @@ const PROM_CLIENT_DEFAULTS = [
 /** Prometheus Histogram이 자동 생성하는 suffix metric. */
 const HISTOGRAM_SUFFIXES = ['_bucket', '_count', '_sum'];
 
+/**
+ * Prometheus / kubernetes_sd / prom-client default metric에 자동 부여되는 라벨.
+ * dashboard selector에서 이 라벨을 사용해도 source code 정의 검증 대상에서 제외.
+ *   - job/instance: prometheus.yml scrape config 부여
+ *   - pod/namespace/node/container/service: kubernetes_sd 자동
+ *   - le/quantile: Histogram/Summary 자동 차원
+ *   - kind/version: prom-client default metric 자체 라벨
+ */
+const AUTO_LABELS = new Set([
+  '__name__', 'job', 'instance',
+  'pod', 'namespace', 'node', 'container', 'service',
+  'le', 'quantile',
+  'kind', 'version',
+]);
+
 const definedMetrics = new Set();
+/** source code 정의 metric → 등록된 라벨 set. prom-client default + recording rule은 등록 안 함. */
+const metricLabels = new Map();
 
 addNestjsHttpServiceMetrics();
 addGithubWorkerMetrics();
@@ -101,16 +118,18 @@ addAdditionalTsMetrics();
 addAiAnalysisMetrics();
 addPrometheusRecordingRules();
 
-const { strict, leastOneGroups } = collectDashboardMetrics();
+const { strict, leastOneGroups, labelUsages } = collectDashboardMetrics();
 
 const missingStrict = [...strict].filter((m) => !definedMetrics.has(m)).sort();
 const missingLeastOne = leastOneGroups.filter((g) => !g.metrics.some((m) => definedMetrics.has(m)));
+const missingLabels = checkLabelUsages(labelUsages);
 
 console.log(`[OK]   defined metrics: ${definedMetrics.size}`);
 console.log(`[OK]   dashboard strict metrics: ${strict.size}`);
 console.log(`[OK]   dashboard wildcard groups: ${leastOneGroups.length}`);
+console.log(`[OK]   dashboard label usages: ${labelUsages.length}`);
 
-if (missingStrict.length > 0 || missingLeastOne.length > 0) {
+if (missingStrict.length > 0 || missingLeastOne.length > 0 || missingLabels.length > 0) {
   if (missingStrict.length > 0) {
     console.error(`\n[FAIL] ${missingStrict.length} strict metric(s) not defined in service code:`);
     for (const m of missingStrict) console.error(`  - ${m}`);
@@ -119,15 +138,23 @@ if (missingStrict.length > 0 || missingLeastOne.length > 0) {
     console.error(`\n[FAIL] ${missingLeastOne.length} wildcard pattern(s) match no defined service:`);
     for (const g of missingLeastOne) console.error(`  - pattern '${g.pattern}' (no match in any of: ${g.metrics.join(', ')})`);
   }
+  if (missingLabels.length > 0) {
+    console.error(`\n[FAIL] ${missingLabels.length} dashboard selector(s) use label not registered on metric:`);
+    for (const u of missingLabels) {
+      console.error(`  - [${u.dashKey}] ${u.metric}{${u.label}=...} (selector: ${u.source}) — defined labels: [${[...(metricLabels.get(u.metric) ?? [])].join(', ') || '(none)'}]`);
+    }
+  }
   console.error('\nPossible causes:');
   console.error('  1. service code rename·metric 제거 후 dashboard 미갱신');
   console.error('  2. dashboard metric 이름 오타');
-  console.error('  3. 신규 default metric (prom-client/prometheus_client 버전 업)');
+  console.error('  3. service code에서 labelNames/labelnames 변경 후 dashboard selector 미갱신');
+  console.error('  4. 신규 default metric (prom-client/prometheus_client 버전 업)');
   console.error('     → 위 PROM_CLIENT_DEFAULTS 목록을 갱신');
+  console.error('  5. AUTO_LABELS skip list 갱신 필요 (Prometheus/k8s_sd/exporter 신규 자동 라벨)');
   process.exit(1);
 }
 
-console.log('\nAll dashboard metrics are defined in service code.');
+console.log('\nAll dashboard metrics + labels are defined in service code.');
 process.exit(0);
 
 // ──────────────────────────────────────────────────────────────────
@@ -146,9 +173,12 @@ function addNestjsHttpServiceMetrics() {
       throw new Error(`SERVICE_NAME default mismatch in ${svc.file} (expected '${svc.name}')`);
     }
     const prefix = `algosu_${svc.name}`;
-    const httpMetricMatches = content.matchAll(/name:\s*`\$\{prefix\}_([a-zA-Z0-9_]+)`/g);
-    for (const m of httpMetricMatches) {
-      addMetricWithHistogramSuffixes(`${prefix}_${m[1]}`, m[1]);
+    const httpMetricMatches = [...content.matchAll(/name:\s*`\$\{prefix\}_([a-zA-Z0-9_]+)`/g)];
+    for (let i = 0; i < httpMetricMatches.length; i++) {
+      const m = httpMetricMatches[i];
+      const metric = `${prefix}_${m[1]}`;
+      addMetricWithHistogramSuffixes(metric, m[1]);
+      registerMetricLabels(metric, extractLabelsFromBlock(content, m.index, httpMetricMatches[i + 1]?.index));
     }
     if (content.includes('collectDefaultMetrics')) {
       for (const dm of PROM_CLIENT_DEFAULTS) definedMetrics.add(`${prefix}_${dm}`);
@@ -166,8 +196,13 @@ function addGithubWorkerMetrics() {
   for (const file of GITHUB_WORKER_FILES) {
     const content = readFileSync(resolve(ROOT, file), 'utf-8');
     if (content.includes('collectDefaultMetrics')) hasDefaults = true;
-    const tplMatches = content.matchAll(/name:\s*`\$\{PREFIX\}_([a-zA-Z0-9_]+)`/g);
-    for (const m of tplMatches) addMetricWithHistogramSuffixes(`${prefix}_${m[1]}`, m[1]);
+    const tplMatches = [...content.matchAll(/name:\s*`\$\{PREFIX\}_([a-zA-Z0-9_]+)`/g)];
+    for (let i = 0; i < tplMatches.length; i++) {
+      const m = tplMatches[i];
+      const metric = `${prefix}_${m[1]}`;
+      addMetricWithHistogramSuffixes(metric, m[1]);
+      registerMetricLabels(metric, extractLabelsFromBlock(content, m.index, tplMatches[i + 1]?.index));
+    }
     addLiteralMetrics(content, prefix);
   }
   if (hasDefaults) {
@@ -192,10 +227,12 @@ function addAdditionalTsMetrics() {
  */
 function addAiAnalysisMetrics() {
   const content = readFileSync(resolve(ROOT, AI_ANALYSIS_FILE), 'utf-8');
-  const matches = content.matchAll(/name=["'](algosu_[a-zA-Z0-9_]+)["']/g);
-  for (const m of matches) {
+  const matches = [...content.matchAll(/name=["'](algosu_[a-zA-Z0-9_]+)["']/g)];
+  for (let i = 0; i < matches.length; i++) {
+    const m = matches[i];
     const isHistogram = checkHistogramContext(content, m.index);
     addMetricWithHistogramSuffixes(m[1], isHistogram ? 'histogram' : '');
+    registerMetricLabels(m[1], extractLabelsFromBlock(content, m.index, matches[i + 1]?.index));
   }
 }
 
@@ -214,11 +251,13 @@ function addPrometheusRecordingRules() {
  * 'algosu_xxx' literal 패턴 추출 — Counter/Histogram/Gauge 컨텍스트 감지하여 suffix 처리.
  */
 function addLiteralMetrics(content, expectedPrefix) {
-  const matches = content.matchAll(/name:\s*['"](algosu_[a-zA-Z0-9_]+)['"]/g);
-  for (const m of matches) {
+  const matches = [...content.matchAll(/name:\s*['"](algosu_[a-zA-Z0-9_]+)['"]/g)];
+  for (let i = 0; i < matches.length; i++) {
+    const m = matches[i];
     if (expectedPrefix && !m[1].startsWith(expectedPrefix)) continue;
     const isHistogram = checkHistogramContext(content, m.index);
     addMetricWithHistogramSuffixes(m[1], isHistogram ? 'histogram' : '');
+    registerMetricLabels(m[1], extractLabelsFromBlock(content, m.index, matches[i + 1]?.index));
   }
 }
 
@@ -257,6 +296,7 @@ function checkHistogramContext(content, idx) {
 function collectDashboardMetrics() {
   const strict = new Set();
   const leastOneGroups = [];
+  const labelUsages = [];
   for (const dash of DASHBOARDS) {
     const content = readFileSync(resolve(ROOT, dash.file), 'utf-8');
     const json = extractInlineBlock(content, `${dash.key}.json`);
@@ -268,13 +308,12 @@ function collectDashboardMetrics() {
     const exprs = [];
     walkExprs(obj, exprs);
     for (const expr of exprs) {
-      collectNameSelectorMetrics(expr, strict, leastOneGroups);
-      const cleaned = expr.replace(/\{[^{}]*\}/g, '');
-      const found = cleaned.match(/\balgosu[_:][a-zA-Z0-9_:]+/g) ?? [];
-      for (const m of found) strict.add(m);
+      const normalized = normalizeExprForSelectorParse(expr);
+      collectNameSelectorMetrics(normalized, strict, leastOneGroups, labelUsages, dash.key);
+      collectLiteralMetricsAndLabels(normalized, strict, labelUsages, dash.key);
     }
   }
-  return { strict, leastOneGroups };
+  return { strict, leastOneGroups, labelUsages };
 }
 
 /**
@@ -284,22 +323,148 @@ function collectDashboardMetrics() {
  *   - wildcard `=~"algosu_.+_xxx"` → leastOneGroup (1+ service만 노출하면 OK)
  *   - 기타 정규식 패턴 → 무시 (false positive 회피)
  */
-function collectNameSelectorMetrics(expr, strict, leastOneGroups) {
-  const matches = expr.matchAll(/__name__\s*(=~|!~|=|!=)\s*"([^"]+)"/g);
+function collectNameSelectorMetrics(expr, strict, leastOneGroups, labelUsages, dashKey) {
+  const matches = expr.matchAll(/\{([^{}]*__name__\s*(?:=~|!~|=|!=)\s*"[^"]+"[^{}]*)\}/g);
   for (const m of matches) {
-    const op = m[1];
-    const pattern = m[2];
+    const selectorBody = m[1];
+    const nameMatch = selectorBody.match(/__name__\s*(=~|!~|=|!=)\s*"([^"]+)"/);
+    if (!nameMatch) continue;
+    const op = nameMatch[1];
+    const pattern = nameMatch[2];
+
+    let referencedMetrics = [];
     if (op === '=' || op === '!=') {
       strict.add(pattern);
-      continue;
+      referencedMetrics = [pattern];
+    } else {
+      const expansion = expandRegexMetricPattern(pattern);
+      if (expansion.kind === 'union') {
+        for (const e of expansion.metrics) strict.add(e);
+        referencedMetrics = expansion.metrics;
+      } else if (expansion.kind === 'wildcard') {
+        leastOneGroups.push({ pattern, metrics: expansion.metrics });
+        referencedMetrics = expansion.metrics;
+      }
     }
-    const expansion = expandRegexMetricPattern(pattern);
-    if (expansion.kind === 'union') {
-      for (const e of expansion.metrics) strict.add(e);
-    } else if (expansion.kind === 'wildcard') {
-      leastOneGroups.push({ pattern, metrics: expansion.metrics });
+
+    const labels = extractSelectorLabels(selectorBody);
+    for (const metric of referencedMetrics) {
+      for (const label of labels) {
+        labelUsages.push({ metric, label, dashKey, source: `__name__${op}"${pattern}"` });
+      }
     }
   }
+}
+
+/**
+ * dashboard expr 안의 literal `algosu_xxx{labels}` (또는 라벨 없이 `algosu_xxx`) 패턴 수집.
+ * `__name__=~` selector 형태는 collectNameSelectorMetrics에서 처리하므로 본 함수는 literal만 처리.
+ *   - `algosu_xxx_total{name=~"$name"}` → strict=`algosu_xxx_total` + labelUsage{ metric, label='name' }
+ *   - `algosu_xxx_total` → strict=`algosu_xxx_total` (라벨 사용 0건)
+ */
+function collectLiteralMetricsAndLabels(expr, strict, labelUsages, dashKey) {
+  const matches = expr.matchAll(/\b(algosu[_:][a-zA-Z0-9_:]+)(\{([^{}]*)\})?/g);
+  for (const m of matches) {
+    const metric = m[1];
+    strict.add(metric);
+    if (!m[3]) continue;
+    if (m[3].includes('__name__')) continue;
+    const labels = extractSelectorLabels(m[3]);
+    for (const label of labels) {
+      labelUsages.push({ metric, label, dashKey, source: `${metric}{...}` });
+    }
+  }
+}
+
+/**
+ * Prometheus selector body에서 사용된 라벨 이름 set 추출.
+ *   - `name=~"$name", status_code=~"5..", job="gateway"` → ['name', 'status_code', 'job']
+ *   - `__name__=~"..."` 자체는 metric 이름 selector이므로 제외
+ *   - 연산자: `=`, `!=`, `=~`, `!~`
+ */
+function extractSelectorLabels(selectorBody) {
+  const labels = new Set();
+  const re = /\b([a-zA-Z_][a-zA-Z0-9_]*)\s*(=~|!~|=|!=)\s*"[^"]*"/g;
+  for (const m of selectorBody.matchAll(re)) {
+    if (m[1] === '__name__') continue;
+    labels.add(m[1]);
+  }
+  return labels;
+}
+
+/**
+ * dashboard label 사용 usage를 source code 정의 라벨과 cross-check.
+ *   - usage.metric이 metricLabels에 등록되어 있고 (즉 source code 정의 metric)
+ *   - usage.label이 metric의 등록 라벨 set에 없으며
+ *   - usage.label이 AUTO_LABELS skip list에도 없으면 → missing
+ * prom-client default metric(metricLabels 미등록) + recording rule + algosu prefix 외 metric은 검증 skip.
+ */
+function checkLabelUsages(labelUsages) {
+  const seen = new Set();
+  const missing = [];
+  for (const u of labelUsages) {
+    if (AUTO_LABELS.has(u.label)) continue;
+    if (!metricLabels.has(u.metric)) continue;
+    const defined = metricLabels.get(u.metric);
+    if (defined.has(u.label)) continue;
+    const dedupKey = `${u.metric}|${u.label}|${u.dashKey}`;
+    if (seen.has(dedupKey)) continue;
+    seen.add(dedupKey);
+    missing.push(u);
+  }
+  return missing;
+}
+
+/**
+ * source code 정의 metric에 라벨 set 등록.
+ * Histogram의 `_bucket`/`_count`/`_sum` suffix metric에도 동일 라벨 등록 (Prometheus 시리즈 차원 일관).
+ */
+function registerMetricLabels(metric, labels) {
+  if (labels.size === 0 && !metricLabels.has(metric)) {
+    metricLabels.set(metric, new Set());
+  }
+  if (labels.size > 0) {
+    if (!metricLabels.has(metric)) metricLabels.set(metric, new Set());
+    for (const l of labels) metricLabels.get(metric).add(l);
+    for (const sfx of HISTOGRAM_SUFFIXES) {
+      const suffixed = `${metric}${sfx}`;
+      if (definedMetrics.has(suffixed)) {
+        if (!metricLabels.has(suffixed)) metricLabels.set(suffixed, new Set());
+        for (const l of labels) metricLabels.get(suffixed).add(l);
+      }
+    }
+  }
+}
+
+/**
+ * metric `name:` 매치 위치부터 다음 metric 정의 시작 직전까지(또는 +800자) 슬라이스에서
+ * `labelNames: ['a', 'b']` (TS) / `labelnames=["a", "b"]` (Python) 추출.
+ * 추출 실패 시 빈 set 반환 (라벨 없는 metric, 예: Gauge 단일 차원).
+ */
+/**
+ * Grafana 변수 치환 토큰 `${var}`은 inner `}`가 `[^{}]*` 정규식 매칭을 잘라
+ * `__name__` selector 추출이 누락된다 (false negative). 변수 토큰을 placeholder로
+ * 치환한 뒤 selector 파싱하여 inner curly가 selector wrapper 경계를 침범하지 않도록 한다.
+ *   - `{__name__=~"...", job="${service}", status_code=~"5.."}`  ← 원본
+ *   - `{__name__=~"...", job="__GRAFANA_VAR__", status_code=~"5.."}` ← 치환
+ * job/instance 등 자동 라벨이라도 본문은 placeholder로 보존 (값 검증 안 하므로 무해).
+ */
+function normalizeExprForSelectorParse(expr) {
+  return expr.replace(/\$\{[^{}]+\}/g, '__GRAFANA_VAR__');
+}
+
+function extractLabelsFromBlock(content, startIdx, nextMetricIdx) {
+  const end = nextMetricIdx ?? Math.min(content.length, startIdx + 800);
+  const block = content.slice(startIdx, end);
+  const tsMatch = block.match(/labelNames\s*:\s*\[([^\]]*)\]/);
+  const pyMatch = block.match(/labelnames\s*=\s*\[([^\]]*)\]/);
+  const arrayBody = tsMatch?.[1] ?? pyMatch?.[1];
+  if (!arrayBody) return new Set();
+  const labels = new Set();
+  for (const m of arrayBody.matchAll(/['"]([a-zA-Z_][a-zA-Z0-9_]*)['"]/g)) {
+    labels.add(m[1]);
+  }
+  return labels;
 }
 
 /**
