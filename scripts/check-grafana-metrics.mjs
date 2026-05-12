@@ -164,6 +164,7 @@ addPrometheusRecordingRules();
 
 const { strict, leastOneGroups, labelUsages } = collectDashboardMetrics();
 const { violations: panelViolations, pairCount: panelPairCount } = collectPanelTitleViolations();
+const { violations: variableViolations, definedCount: varDefinedCount } = collectVariableUsageViolations();
 
 const missingStrict = [...strict].filter((m) => !definedMetrics.has(m)).sort();
 const missingLeastOne = leastOneGroups.filter((g) => !g.metrics.some((m) => definedMetrics.has(m)));
@@ -174,8 +175,9 @@ console.log(`[OK]   dashboard strict metrics: ${strict.size}`);
 console.log(`[OK]   dashboard wildcard groups: ${leastOneGroups.length}`);
 console.log(`[OK]   dashboard label usages: ${labelUsages.length}`);
 console.log(`[OK]   dashboard panel title pairs: ${panelPairCount}`);
+console.log(`[OK]   dashboard defined variables: ${varDefinedCount} / unused: ${variableViolations.length}`);
 
-if (missingStrict.length > 0 || missingLeastOne.length > 0 || missingLabels.length > 0 || panelViolations.length > 0) {
+if (missingStrict.length > 0 || missingLeastOne.length > 0 || missingLabels.length > 0 || panelViolations.length > 0 || variableViolations.length > 0) {
   if (missingStrict.length > 0) {
     console.error(`\n[FAIL] ${missingStrict.length} strict metric(s) not defined in service code:`);
     for (const m of missingStrict) console.error(`  - ${m}`);
@@ -199,6 +201,12 @@ if (missingStrict.length > 0 || missingLeastOne.length > 0 || missingLabels.leng
       );
     }
   }
+  if (variableViolations.length > 0) {
+    console.error(`\n[FAIL] ${variableViolations.length} variable(s) defined but never referenced in dashboard exprs:`);
+    for (const v of variableViolations) {
+      console.error(`  - dashboard "${v.path}" — variable "${v.name}" defined but never referenced`);
+    }
+  }
   console.error('\nPossible causes:');
   console.error('  1. service code rename·metric 제거 후 dashboard 미갱신');
   console.error('  2. dashboard metric 이름 오타');
@@ -208,11 +216,14 @@ if (missingStrict.length > 0 || missingLeastOne.length > 0 || missingLabels.leng
   console.error('  5. AUTO_LABELS skip list 갱신 필요 (Prometheus/k8s_sd/exporter 신규 자동 라벨)');
   console.error('  6. panel title 키워드와 실제 metric 도메인 불일치');
   console.error('     (panel title rename 또는 metric 이전 후 한쪽만 갱신된 경우)');
+  console.error('  7. dashboard template 변수 정의 후 expr에서 미참조');
+  console.error('     (변수 rename·삭제 후 templating.list와 expr 중 한쪽만 갱신된 경우)');
   process.exit(1);
 }
 
 console.log('\nAll dashboard metrics + labels are defined in service code.');
 console.log('All panel titles are aligned with their metric patterns.');
+console.log('All dashboard template variables are referenced in exprs.');
 process.exit(0);
 
 // ──────────────────────────────────────────────────────────────────
@@ -747,4 +758,78 @@ function extractMetricCandidatesFromExprs(exprs) {
     }
   }
   return [...candidates];
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Dashboard variable 미사용 검증 헬퍼 (Sprint 147 시드 #2)
+// ──────────────────────────────────────────────────────────────────
+
+/**
+ * Grafana dashboard JSON 객체에서 정의된 template 변수 이름 Set을 반환.
+ * dashObj.templating.list[].name 필드를 추출.
+ *
+ * @param {object} dashObj - 파싱된 Grafana dashboard JSON 객체
+ * @returns {Set<string>} 정의된 변수 이름 Set
+ */
+function collectDefinedVariables(dashObj) {
+  const vars = new Set();
+  const list = dashObj?.templating?.list ?? [];
+  for (const item of list) {
+    if (typeof item.name === 'string' && item.name.length > 0) {
+      vars.add(item.name);
+    }
+  }
+  return vars;
+}
+
+/**
+ * expr 문자열 배열에서 Grafana 변수 참조를 추출하여 Set 반환.
+ * 인식 패턴: `${var_name}` 및 `$var_name` (영문자 또는 언더스코어로 시작, 영숫자·언더스코어 구성).
+ *
+ * @param {string[]} exprs - walkExprs()로 수집된 expr/definition/query 문자열 배열
+ * @returns {Set<string>} 참조된 변수 이름 Set
+ */
+function extractVariableReferences(exprs) {
+  const refs = new Set();
+  const re = /\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}|\$([a-zA-Z_][a-zA-Z0-9_]*)/g;
+  for (const expr of exprs) {
+    for (const m of expr.matchAll(re)) {
+      refs.add(m[1] ?? m[2]);
+    }
+  }
+  return refs;
+}
+
+/**
+ * 3개 Grafana dashboard의 정의 변수 vs expr 참조 변수 gap을 검출하여 위반 목록 반환.
+ * 정의 변수 Set에서 참조 변수 Set을 차감하여 고아 변수(orphan)를 식별.
+ * 위반 메시지: `dashboard "{path}" — variable "{name}" defined but never referenced`
+ *
+ * @returns {{ violations: Array<{dashKey: string, path: string, name: string}>, definedCount: number }}
+ */
+function collectVariableUsageViolations() {
+  const violations = [];
+  let definedCount = 0;
+
+  for (const dash of DASHBOARDS) {
+    const content = readFileSync(resolve(ROOT, dash.file), 'utf-8');
+    const json = extractInlineBlock(content, `${dash.key}.json`);
+    if (!json) continue;
+
+    const obj = JSON.parse(json);
+    const defined = collectDefinedVariables(obj);
+    definedCount += defined.size;
+
+    const exprs = [];
+    walkExprs(obj, exprs);
+    const referenced = extractVariableReferences(exprs);
+
+    for (const name of defined) {
+      if (!referenced.has(name)) {
+        violations.push({ dashKey: dash.key, path: dash.file, name });
+      }
+    }
+  }
+
+  return { violations, definedCount };
 }
