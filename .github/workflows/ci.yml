@@ -135,6 +135,7 @@ jobs:
               - 'infra/k3s/monitoring/**'
               - 'scripts/check-prometheus-rules.mjs'
               - 'scripts/check-grafana-metrics.mjs'
+              - 'scripts/check-regex-robustness.mjs'
               - 'services/**/metrics.service.ts'
               - 'services/**/metrics.ts'
               - 'services/**/metrics.py'
@@ -299,6 +300,8 @@ jobs:
         run: node scripts/check-prometheus-rules.mjs
       - name: Check grafana dashboard metrics ↔ service code
         run: node scripts/check-grafana-metrics.mjs
+      - name: Check regex robustness in scripts
+        run: node scripts/check-regex-robustness.mjs
 
   quality-frontend:
     name: Quality — frontend
