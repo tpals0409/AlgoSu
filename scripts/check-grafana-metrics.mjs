@@ -1128,7 +1128,9 @@ function isPanelTargetsEmpty(panel) {
  * walkPanelsForTitleExpr() 패턴 답습 — collapsed row sub-panels 포함 재귀 처리.
  *
  * 차원별 적용 범위:
- *   - datasource 일관성: 비-row 일반 panel만 (row 자체는 datasource 없음)
+ *   - datasource 일관성: 비-row 일반 panel의 panel.datasource +
+ *                        각 target.datasource override (Critic R1 P2-1: 019e1c2c-cbef-79d3-b9a7-e6f5c60d9b91)
+ *                        Grafana target은 panel datasource를 override할 수 있으므로 target 개별 검사 필수.
  *   - 빈 panel:          비-row + 비-hidden panel만 (hidden panel은 의도적 비활성)
  *   - 중복 id:           row 포함 모든 panel (dashboard-local id namespace)
  *
@@ -1169,7 +1171,7 @@ function walkPanelsForStructural(panels, state) {
     // 일반 panel 카운트
     state.generalCount.value++;
 
-    // 차원 1: datasource 일관성
+    // 차원 1: datasource 일관성 — panel 레벨
     const dsCheck = checkDatasourceAllowed(panel.datasource);
     if (!dsCheck.ok) {
       state.datasourceViolations.push({
@@ -1177,6 +1179,25 @@ function walkPanelsForStructural(panels, state) {
         id: panelId ?? null,
         title: panel.title ?? '(untitled)',
         reason: dsCheck.reason,
+      });
+    }
+
+    // 차원 1: datasource 일관성 — target 레벨 override 개별 검사
+    // Critic R1 P2-1 (019e1c2c-cbef-79d3-b9a7-e6f5c60d9b91): Grafana target은 panel datasource를
+    // override할 수 있으므로 target.datasource 필드가 존재하면 개별 검증 필수.
+    // 회귀 시나리오: panel id=5 targets[0].datasource uid="prom-2" → exit(1) 기대.
+    if (Array.isArray(panel.targets)) {
+      panel.targets.forEach((target, targetIdx) => {
+        if (!Object.prototype.hasOwnProperty.call(target, 'datasource')) return;
+        const tDsCheck = checkDatasourceAllowed(target.datasource);
+        if (!tDsCheck.ok) {
+          state.datasourceViolations.push({
+            dashKey: state.dashKey,
+            id: panelId ?? null,
+            title: panel.title ?? '(untitled)',
+            reason: `target[${targetIdx}] datasource override: ${tDsCheck.reason}`,
+          });
+        }
       });
     }
 
@@ -1203,7 +1224,9 @@ function walkPanelsForStructural(panels, state) {
  *   - 허용: {type:"prometheus",uid:"prometheus"} 또는 {type:"loki",uid:"loki"}
  *   - Loki 면제: service-debug dashboard panel 18/19 baseline 보존
  *   - string/null/other uid → violation
+ *   - panel.targets[].datasource override 개별 검사 (Critic R1 P2-1: 019e1c2c-cbef-79d3-b9a7-e6f5c60d9b91)
  *   - templating.list[] variable: datasource 필드 존재 시만 검사 (custom 변수 등 미존재 → skip)
+ *     null datasource도 violation — query 변수 연결 끊김 감지 (Critic R1 P2-2: 019e1c2c-cbef-79d3-b9a7-e6f5c60d9b91)
  *
  * 빈 panel 정책:
  *   - row 타입 panel 제외 (targets 없는 것이 정상)
@@ -1260,10 +1283,13 @@ function collectDashboardStructuralViolations() {
     totalGeneralPanels += generalCount.value;
 
     // templating.list[] datasource 검사 (datasource 필드 존재 시만 — custom 변수 등 미존재 → skip)
+    // datasource 필드가 null인 경우도 검사 대상 (query 변수 datasource 연결 끊김 감지).
+    // Critic R1 P2-2 (019e1c2c-cbef-79d3-b9a7-e6f5c60d9b91): null skip → false negative 제거.
+    // `if (variable.datasource === null) continue;` 제거 — null도 checkDatasourceAllowed() 진입.
+    // 회귀 시나리오: variable.datasource=null → exit(1) 기대.
     const templateVars = obj.templating?.list ?? [];
     for (const variable of templateVars) {
       if (!Object.prototype.hasOwnProperty.call(variable, 'datasource')) continue;
-      if (variable.datasource === null) continue;
       const dsCheck = checkDatasourceAllowed(variable.datasource);
       if (!dsCheck.ok) {
         datasourceViolations.push({
