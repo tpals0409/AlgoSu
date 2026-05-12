@@ -864,13 +864,16 @@ function collectVariableUsageViolations() {
 
 /**
  * prometheus-rules.yaml ConfigMap inline YAML에서 recording/alert 규칙과 expr를 추출.
- * `expr: |` multi-line block 형식과 단일 라인 형식 모두 지원.
+ * `expr: |` / `expr: |-` / `expr: |+` / `expr: >` / `expr: >-` / `expr: >+`
+ * multi-line block 형식과 단일 라인 형식 모두 지원.
+ * YAML block scalar modifier (|, |-, |+, >, >-, >+) 전부 허용 — Critic R1 P2 (Sprint 148, 세션 019e1c19).
+ * PromQL은 단일 라인 expr 관례이므로 folded(>) vs literal(|) semantics 차이 무시 가능.
  *
  * ✓ 정규식 강건성 4 체크리스트 적용 — `docs/runbook-regex-robustness.md`
- *   (Sprint 145~147 R1 P2 누적 패턴: `|` 우선순위 / char class / quantifier / prefix anchoring)
+ *   (Sprint 145~148 R1 P2 누적 패턴: `|` 우선순위 / char class / quantifier / prefix anchoring)
  *   - 2.1: `(record|alert)` — 단일 그룹 내 얼터너티브, prefix 공유로 우선순위 이슈 없음
- *   - 2.2: `\S.*?` — Prometheus rule 이름 콜론 포함(algosu:http_error_rate:5m) 허용
- *   - 2.3: `\|\s*$` — literal 파이프 매칭 (alternation 아님, backslash 이스케이프)
+ *   - 2.2: `[|>][-+]?` — character class로 scalar indicator 통일, modifier 옵셔널 (`[-+]?`)
+ *   - 2.3: `\|\s*$` → `[|>][-+]?\s*$` — scalar indicator + modifier 확장 (Critic R1 P2 수정)
  *   - 2.4: `^(\s*)` indent 감지로 block 경계 anchoring
  *
  * @param {string} content - extractInlineBlock()으로 추출한 algosu-alerts.yml 본문
@@ -918,8 +921,12 @@ function extractRulesWithExpr(content) {
       continue;
     }
 
-    // multi-line expr 블록 시작: `expr: |`
-    const exprBlockStart = line.match(/^(\s+)expr:\s*\|\s*$/);
+    // multi-line expr 블록 시작: `expr: |`, `expr: |-`, `expr: |+`, `expr: >`, `expr: >-`, `expr: >+`
+    // YAML block scalar modifiers (|, |-, |+, >, >-, >+) 전부 허용.
+    // PromQL은 단일 라인 expr 관례이므로 folded(>) vs literal(|) semantics 차이 무시 가능
+    // (label selector 추출 목적에서 동일 처리).
+    // RUNBOOK 2.2 character class 일관성 + 2.4 prefix anchoring 적용.
+    const exprBlockStart = line.match(/^(\s+)expr:\s*[|>][-+]?\s*$/);
     if (exprBlockStart) {
       currentRule.expr = '';
       collectingExprBlock = true;
