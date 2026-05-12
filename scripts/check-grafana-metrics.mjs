@@ -119,6 +119,39 @@ const HISTOGRAM_BUCKET_LABEL = 'le';
  */
 const SUMMARY_QUANTILE_LABEL = 'quantile';
 
+/**
+ * Panel title 키워드 → 기대되는 metric 패턴 RegExp 맵.
+ * 각 항목: [keyword_phrase, regex].
+ *
+ * 정합성 판정 규칙:
+ *   - title → lowercase → 영숫자 외 공백 치환 → 단어 Set 구성 → 전 단어 포함 시 키워드 매칭
+ *   - keyword 0건 매칭 → silent skip (미등록 panel, 검증 대상 외)
+ *   - keyword 1건+ 매칭 → OR: 임의 1건의 regex가 expr metric에 일치하면 OK
+ *   - expr 내 algosu_* / algosu:* metric 후보 0건 → skip
+ *     (up{}, kube_*, container_* 같은 비-algosu metric만 사용하는 panel)
+ *
+ * regex는 metric 이름/패턴 문자열에 대한 부분 문자열 매치 (substring search).
+ * literal metric 이름 (`algosu_xxx_circuit_breaker_state`) 과
+ * __name__ selector 패턴 (`algosu_.+_circuit_breaker_state`) 양쪽에 적용.
+ *
+ * ⚠️  미등록 panel은 silent skip되며 검증 대상 외.
+ *     신규 panel 추가 시 본 맵을 명시적으로 확장해야 함.
+ */
+const PANEL_TITLE_KEYWORD_MAP = new Map([
+  ['circuit breaker', /circuit_breaker/],
+  ['http request',    /http_requests_total/],
+  ['request rate',    /requests_total/],
+  ['latency',         /(?:duration|latency)/],
+  ['p95',             /(?:duration|latency)/],
+  ['p99',             /(?:duration|latency)/],
+  ['error rate',      /(?:errors_total|failures_total|http_requests_total)/],
+  // sli/slo/availability: non-capturing group으로 두 alternative 모두 algosu prefix 필수
+  // (prefix 없는 `success_rate` 단독 매칭 → false negative 차단, Critic R1 P2-2)
+  ['sli',             /(?:algosu:[a-z_:]*availability|algosu[_:][a-z_:]*success_rate)/],
+  ['slo',             /(?:algosu:[a-z_:]*availability|algosu[_:][a-z_:]*success_rate)/],
+  ['availability',    /(?:algosu:[a-z_:]*availability|algosu[_:][a-z_:]*success_rate)/],
+]);
+
 const definedMetrics = new Set();
 /** source code 정의 metric → 등록된 라벨 set. prom-client default + recording rule은 등록 안 함. */
 const metricLabels = new Map();
@@ -130,6 +163,7 @@ addAiAnalysisMetrics();
 addPrometheusRecordingRules();
 
 const { strict, leastOneGroups, labelUsages } = collectDashboardMetrics();
+const { violations: panelViolations, pairCount: panelPairCount } = collectPanelTitleViolations();
 
 const missingStrict = [...strict].filter((m) => !definedMetrics.has(m)).sort();
 const missingLeastOne = leastOneGroups.filter((g) => !g.metrics.some((m) => definedMetrics.has(m)));
@@ -139,8 +173,9 @@ console.log(`[OK]   defined metrics: ${definedMetrics.size}`);
 console.log(`[OK]   dashboard strict metrics: ${strict.size}`);
 console.log(`[OK]   dashboard wildcard groups: ${leastOneGroups.length}`);
 console.log(`[OK]   dashboard label usages: ${labelUsages.length}`);
+console.log(`[OK]   dashboard panel title pairs: ${panelPairCount}`);
 
-if (missingStrict.length > 0 || missingLeastOne.length > 0 || missingLabels.length > 0) {
+if (missingStrict.length > 0 || missingLeastOne.length > 0 || missingLabels.length > 0 || panelViolations.length > 0) {
   if (missingStrict.length > 0) {
     console.error(`\n[FAIL] ${missingStrict.length} strict metric(s) not defined in service code:`);
     for (const m of missingStrict) console.error(`  - ${m}`);
@@ -155,6 +190,15 @@ if (missingStrict.length > 0 || missingLeastOne.length > 0 || missingLabels.leng
       console.error(`  - [${u.dashKey}] ${u.metric}{${u.label}=...} (selector: ${u.source}) — defined labels: [${[...(metricLabels.get(u.metric) ?? [])].join(', ') || '(none)'}]`);
     }
   }
+  if (panelViolations.length > 0) {
+    console.error(`\n[FAIL] ${panelViolations.length} panel title(s) ↔ metric 정합 위반:`);
+    for (const v of panelViolations) {
+      console.error(
+        `  - [${v.dashKey}] panel title "${v.title}" — expected metric pattern ${v.regexStr}` +
+        ` but found [${v.candidates.join(', ')}]`,
+      );
+    }
+  }
   console.error('\nPossible causes:');
   console.error('  1. service code rename·metric 제거 후 dashboard 미갱신');
   console.error('  2. dashboard metric 이름 오타');
@@ -162,10 +206,13 @@ if (missingStrict.length > 0 || missingLeastOne.length > 0 || missingLabels.leng
   console.error('  4. 신규 default metric (prom-client/prometheus_client 버전 업)');
   console.error('     → 위 PROM_CLIENT_DEFAULTS 목록을 갱신');
   console.error('  5. AUTO_LABELS skip list 갱신 필요 (Prometheus/k8s_sd/exporter 신규 자동 라벨)');
+  console.error('  6. panel title 키워드와 실제 metric 도메인 불일치');
+  console.error('     (panel title rename 또는 metric 이전 후 한쪽만 갱신된 경우)');
   process.exit(1);
 }
 
 console.log('\nAll dashboard metrics + labels are defined in service code.');
+console.log('All panel titles are aligned with their metric patterns.');
 process.exit(0);
 
 // ──────────────────────────────────────────────────────────────────
@@ -550,4 +597,154 @@ function walkExprs(node, out) {
       walkExprs(v, out);
     }
   }
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Panel title ↔ metric 정합 검증 헬퍼 (Sprint 147 시드 #1)
+// ──────────────────────────────────────────────────────────────────
+
+/**
+ * 3개 Grafana dashboard의 panel title ↔ metric 정합 위반을 수집.
+ * PANEL_TITLE_KEYWORD_MAP 키워드가 title에 있으면 expr metric 도메인과 검증.
+ *
+ * @returns {{ violations: Array<{dashKey, title, regexStr, candidates}>, pairCount: number }}
+ */
+function collectPanelTitleViolations() {
+  const violations = [];
+  let pairCount = 0;
+
+  for (const dash of DASHBOARDS) {
+    const content = readFileSync(resolve(ROOT, dash.file), 'utf-8');
+    const json = extractInlineBlock(content, `${dash.key}.json`);
+    if (!json) {
+      console.error(`[FAIL] could not extract ${dash.key}.json from ${dash.file}`);
+      process.exit(1);
+    }
+
+    const obj = JSON.parse(json);
+    const pairs = collectPanelTitleExprPairs(obj);
+    pairCount += pairs.length;
+
+    for (const { title, exprs } of pairs) {
+      const titleWords = normalizeTitleToWords(title);
+      const matchedKeywords = matchTitleKeywords(titleWords);
+      if (matchedKeywords.length === 0) continue;
+
+      const candidates = extractMetricCandidatesFromExprs(exprs);
+      // algosu_* / algosu:* metric이 없는 panel (up{}, kube_* 등) → skip
+      if (candidates.length === 0) continue;
+
+      // OR 의미론: 임의 1건의 keyword regex가 임의 1건의 candidate에 매칭되면 OK
+      const anyMatch = matchedKeywords.some(({ regex }) => candidates.some((m) => regex.test(m)));
+      if (!anyMatch) {
+        const regexStr = [...new Set(matchedKeywords.map(({ regex }) => regex.toString()))].join(' OR ');
+        violations.push({ dashKey: dash.key, title, regexStr, candidates });
+      }
+    }
+  }
+
+  return { violations, pairCount };
+}
+
+/**
+ * dashboard JSON 최상위 panels 배열에서 { title, exprs } 쌍 수집.
+ * - type === 'row' panel: title 있고 targets 없음 → 명시적 skip
+ *   단, collapsed row 내부 panels (sub-panels)는 재귀 처리
+ * - exprs가 없는 panel (targets 없음): skip
+ *
+ * @param {object} dashObj - 파싱된 Grafana dashboard JSON 객체
+ * @returns {Array<{title: string, exprs: string[]}>}
+ */
+function collectPanelTitleExprPairs(dashObj) {
+  const pairs = [];
+  walkPanelsForTitleExpr(dashObj.panels ?? [], pairs);
+  return pairs;
+}
+
+/**
+ * panels 배열을 재귀 워크하여 { title, exprs } 쌍 수집 내부 헬퍼.
+ * collapsed row의 sub-panels까지 재귀 탐색.
+ *
+ * @param {Array} panels - Grafana panel 객체 배열
+ * @param {Array} out    - 수집 결과 배열 (in-out)
+ */
+function walkPanelsForTitleExpr(panels, out) {
+  for (const panel of panels) {
+    if (panel.type === 'row') {
+      // row panel 자체는 skip. collapsed row의 sub-panels만 재귀 처리.
+      if (Array.isArray(panel.panels)) walkPanelsForTitleExpr(panel.panels, out);
+      continue;
+    }
+    const title = typeof panel.title === 'string' ? panel.title : null;
+    if (!title) continue;
+
+    const exprs = (panel.targets ?? [])
+      .filter((t) => typeof t.expr === 'string')
+      .map((t) => t.expr);
+
+    if (exprs.length > 0) out.push({ title, exprs });
+    // 방어적: 비-row panel의 nested panels도 재귀 처리
+    if (Array.isArray(panel.panels)) walkPanelsForTitleExpr(panel.panels, out);
+  }
+}
+
+/**
+ * panel title을 lowercase + 영숫자 외 공백 치환 → 단어 Set으로 정규화.
+ * 예: "Circuit Breaker State (TypeScript)" → Set{circuit, breaker, state, typescript}
+ *
+ * @param {string} title - panel title 원본 문자열
+ * @returns {Set<string>} 정규화된 단어 Set
+ */
+function normalizeTitleToWords(title) {
+  return new Set(
+    title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim()
+      .split(' ')
+      .filter((w) => w.length > 0),
+  );
+}
+
+/**
+ * 정규화된 title 단어 Set에서 PANEL_TITLE_KEYWORD_MAP 키워드 매칭.
+ * 멀티워드 키워드는 모든 단어가 titleWords에 있어야 매칭 (AND 조건).
+ *
+ * @param {Set<string>} titleWords - normalizeTitleToWords() 결과
+ * @returns {Array<{keyword: string, regex: RegExp}>} 매칭된 키워드 배열
+ */
+function matchTitleKeywords(titleWords) {
+  const matched = [];
+  for (const [keyword, regex] of PANEL_TITLE_KEYWORD_MAP) {
+    const kwWords = keyword.split(' ');
+    if (kwWords.every((w) => titleWords.has(w))) {
+      matched.push({ keyword, regex });
+    }
+  }
+  return matched;
+}
+
+/**
+ * expr 문자열 리스트에서 algosu_* / algosu:* metric 후보 문자열 추출.
+ *   1. literal `algosu_xxx` / `algosu:xxx` 참조 — expr 전체 text에서 직접 추출
+ *   2. `__name__=~"..."` / `__name__="..."` selector 값 — pattern string 자체를 후보로 등록
+ * normalizeExprForSelectorParse()를 먼저 적용하여 Grafana 변수 / brace placeholder 처리.
+ *
+ * @param {string[]} exprs - panel targets[].expr 문자열 배열
+ * @returns {string[]} 중복 제거된 metric 후보 문자열 배열
+ */
+function extractMetricCandidatesFromExprs(exprs) {
+  const candidates = new Set();
+  for (const expr of exprs) {
+    const normalized = normalizeExprForSelectorParse(expr);
+    // 1. literal algosu_* / algosu:* metric 참조
+    for (const m of normalized.matchAll(/\b(algosu[_:][a-zA-Z0-9_:]+)/g)) {
+      candidates.add(m[1]);
+    }
+    // 2. __name__ selector 내 algosu 패턴 문자열
+    for (const m of normalized.matchAll(/__name__\s*(?:=~|=)\s*"([^"]*)"/g)) {
+      if (m[1].startsWith('algosu')) candidates.add(m[1]);
+    }
+  }
+  return [...candidates];
 }
