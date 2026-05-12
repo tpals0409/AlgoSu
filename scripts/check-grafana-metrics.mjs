@@ -167,6 +167,13 @@ const { violations: ruleLabelViolations, ruleCount: rulePairCount, externalSkipC
 const { strict, leastOneGroups, labelUsages } = collectDashboardMetrics();
 const { violations: panelViolations, pairCount: panelPairCount } = collectPanelTitleViolations();
 const { violations: variableViolations, definedCount: varDefinedCount } = collectVariableUsageViolations();
+const {
+  datasourceViolations,
+  emptyPanelViolations,
+  duplicateIdViolations,
+  totalDashboards,
+  totalGeneralPanels,
+} = collectDashboardStructuralViolations();
 
 const missingStrict = [...strict].filter((m) => !definedMetrics.has(m)).sort();
 const missingLeastOne = leastOneGroups.filter((g) => !g.metrics.some((m) => definedMetrics.has(m)));
@@ -179,8 +186,21 @@ console.log(`[OK]   dashboard label usages: ${labelUsages.length}`);
 console.log(`[OK]   dashboard panel title pairs: ${panelPairCount}`);
 console.log(`[OK]   dashboard defined variables: ${varDefinedCount} / unused: ${variableViolations.length}`);
 console.log(`[OK]   prometheus rule expr label pairs: ${rulePairCount} (external skipped: ${externalSkipCount})`);
+console.log(`[OK]   dashboard datasource consistency: ${datasourceViolations.length === 0 ? 'pass' : 'FAIL'} (${totalGeneralPanels} panels, ${totalDashboards} dashboards)`);
+console.log(`[OK]   dashboard empty panels: ${emptyPanelViolations.length}`);
+console.log(`[OK]   dashboard duplicate ids: ${duplicateIdViolations.length}`);
 
-if (missingStrict.length > 0 || missingLeastOne.length > 0 || missingLabels.length > 0 || panelViolations.length > 0 || variableViolations.length > 0 || ruleLabelViolations.length > 0) {
+if (
+  missingStrict.length > 0 ||
+  missingLeastOne.length > 0 ||
+  missingLabels.length > 0 ||
+  panelViolations.length > 0 ||
+  variableViolations.length > 0 ||
+  ruleLabelViolations.length > 0 ||
+  datasourceViolations.length > 0 ||
+  emptyPanelViolations.length > 0 ||
+  duplicateIdViolations.length > 0
+) {
   if (missingStrict.length > 0) {
     console.error(`\n[FAIL] ${missingStrict.length} strict metric(s) not defined in service code:`);
     for (const m of missingStrict) console.error(`  - ${m}`);
@@ -216,6 +236,24 @@ if (missingStrict.length > 0 || missingLeastOne.length > 0 || missingLabels.leng
       console.error(`  - ${v.kind} rule "${v.rule}" expr uses undefined label "${v.label}" for metric ${v.metric}`);
     }
   }
+  if (datasourceViolations.length > 0) {
+    console.error(`\n[FAIL] ${datasourceViolations.length} panel(s)/variable(s) with non-standard datasource:`);
+    for (const v of datasourceViolations) {
+      console.error(`  - [${v.dashKey}] ${v.title} (id=${v.id ?? 'n/a'}) — ${v.reason}`);
+    }
+  }
+  if (emptyPanelViolations.length > 0) {
+    console.error(`\n[FAIL] ${emptyPanelViolations.length} panel(s) with empty targets:`);
+    for (const v of emptyPanelViolations) {
+      console.error(`  - [${v.dashKey}] panel id=${v.id ?? 'n/a'} title="${v.title}"`);
+    }
+  }
+  if (duplicateIdViolations.length > 0) {
+    console.error(`\n[FAIL] ${duplicateIdViolations.length} duplicate panel id(s) within same dashboard:`);
+    for (const v of duplicateIdViolations) {
+      console.error(`  - [${v.dashKey}] duplicate panel id=${v.id} title="${v.title}"`);
+    }
+  }
   console.error('\nPossible causes:');
   console.error('  1. service code rename·metric 제거 후 dashboard 미갱신');
   console.error('  2. dashboard metric 이름 오타');
@@ -229,12 +267,17 @@ if (missingStrict.length > 0 || missingLeastOne.length > 0 || missingLabels.leng
   console.error('     (변수 rename·삭제 후 templating.list와 expr 중 한쪽만 갱신된 경우)');
   console.error('  8. prometheus rule expr에서 service code에 미정의된 label selector 사용');
   console.error('     → prometheus-rules.yaml expr 수정 또는 service code에 label 추가');
+  console.error('  9. dashboard panel datasource 비표준 (prometheus/loki 외 uid 또는 string/null 형태)');
+  console.error('     → panel datasource를 {type:"prometheus",uid:"prometheus"} 또는 {type:"loki",uid:"loki"}로 수정');
+  console.error(' 10. 빈 targets panel — panel 신규 추가 후 expr 미입력 또는 panel 복사 시 targets 누락');
+  console.error(' 11. 중복 panel id — panel 복사 후 id 미변경 (Grafana는 dashboard-local unique id 요구)');
   process.exit(1);
 }
 
 console.log('\nAll dashboard metrics + labels are defined in service code.');
 console.log('All panel titles are aligned with their metric patterns.');
 console.log('All dashboard template variables are referenced in exprs.');
+console.log('All dashboard panels have standard datasource, non-empty targets, and unique ids.');
 process.exit(0);
 
 // ──────────────────────────────────────────────────────────────────
@@ -1026,5 +1069,218 @@ function collectRecordingRuleExprViolations() {
     violations: allViolations,
     ruleCount: rules.length,
     externalSkipCount,
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Dashboard 구조 검증 — datasource / 빈 panel / 중복 id (Sprint 148 시드 #12)
+// ──────────────────────────────────────────────────────────────────
+
+/**
+ * 일반 panel의 datasource 필드가 허용 datasource인지 확인.
+ * 허용 datasource:
+ *   - {type:"prometheus", uid:"prometheus"} — Prometheus (표준)
+ *   - {type:"loki",       uid:"loki"}       — Loki (service-debug panel 18/19 baseline 보존)
+ * string datasource (legacy) 또는 null/undefined 또는 허용되지 않은 uid → violation.
+ *
+ * ✓ 정규식 강건성 4 체크리스트 — `docs/runbook-regex-robustness.md`
+ *   본 함수는 정규식 미사용. 정책 일관성 참조로 명문화 (Sprint 145~148 누적 패턴).
+ *
+ * @param {*} datasource - panel.datasource 값 (object | string | null | undefined)
+ * @returns {{ ok: boolean, reason: string }}
+ */
+function checkDatasourceAllowed(datasource) {
+  if (datasource === null || datasource === undefined) {
+    return { ok: false, reason: `datasource is ${datasource === null ? 'null' : 'undefined'} (expected object {type, uid})` };
+  }
+  if (typeof datasource !== 'object') {
+    return { ok: false, reason: `datasource is string "${datasource}" (legacy format — use object {type, uid})` };
+  }
+  const { type, uid } = datasource;
+  if (type === 'prometheus' && uid === 'prometheus') return { ok: true, reason: '' };
+  if (type === 'loki' && uid === 'loki') return { ok: true, reason: '' };
+  return { ok: false, reason: `datasource type="${type}" uid="${uid}" (expected prometheus or loki)` };
+}
+
+/**
+ * panel의 targets 배열에서 비어있지 않은 query(expr/definition/query)가 있는지 확인.
+ * 비어있음 정의: targets 부재 OR [] OR 모든 target의 expr/definition/query 비어있음.
+ * query 형태: 문자열 직접 OR {query: string} 객체 형태 모두 처리 (walkExprs 동일 정책).
+ *
+ * @param {object} panel - Grafana panel 객체
+ * @returns {boolean} true이면 panel targets가 비어있음
+ */
+function isPanelTargetsEmpty(panel) {
+  const targets = panel.targets;
+  if (!Array.isArray(targets) || targets.length === 0) return true;
+  return targets.every((t) => {
+    const hasExpr = typeof t.expr === 'string' && t.expr.trim() !== '';
+    const hasDef = typeof t.definition === 'string' && t.definition.trim() !== '';
+    const hasQuery =
+      (typeof t.query === 'string' && t.query.trim() !== '') ||
+      (t.query != null && typeof t.query === 'object' && typeof t.query.query === 'string' && t.query.query.trim() !== '');
+    return !hasExpr && !hasDef && !hasQuery;
+  });
+}
+
+/**
+ * dashboard panels 배열을 재귀 워크하여 3 차원 구조 위반을 수집.
+ * walkPanelsForTitleExpr() 패턴 답습 — collapsed row sub-panels 포함 재귀 처리.
+ *
+ * 차원별 적용 범위:
+ *   - datasource 일관성: 비-row 일반 panel만 (row 자체는 datasource 없음)
+ *   - 빈 panel:          비-row + 비-hidden panel만 (hidden panel은 의도적 비활성)
+ *   - 중복 id:           row 포함 모든 panel (dashboard-local id namespace)
+ *
+ * @param {Array} panels - Grafana panel 배열
+ * @param {{
+ *   datasourceViolations: Array<{dashKey:string,id:number|null,title:string,reason:string}>,
+ *   emptyPanelViolations: Array<{dashKey:string,id:number|null,title:string}>,
+ *   duplicateIdViolations: Array<{dashKey:string,id:number,title:string}>,
+ *   seenIds: Set<number>,
+ *   dashKey: string,
+ *   generalCount: {value: number}
+ * }} state - 수집 상태 (in-out)
+ */
+function walkPanelsForStructural(panels, state) {
+  for (const panel of panels) {
+    const panelId = panel.id;
+    const isRow = panel.type === 'row';
+
+    // 중복 id 검사 (row 포함, null/undefined id 제외 — 패널이 아닌 dashboard 자체의 id)
+    if (typeof panelId === 'number') {
+      if (state.seenIds.has(panelId)) {
+        state.duplicateIdViolations.push({
+          dashKey: state.dashKey,
+          id: panelId,
+          title: panel.title ?? '(untitled)',
+        });
+      } else {
+        state.seenIds.add(panelId);
+      }
+    }
+
+    if (isRow) {
+      // row panel 자체는 datasource/empty 검사 skip. collapsed sub-panels만 재귀 처리.
+      if (Array.isArray(panel.panels)) walkPanelsForStructural(panel.panels, state);
+      continue;
+    }
+
+    // 일반 panel 카운트
+    state.generalCount.value++;
+
+    // 차원 1: datasource 일관성
+    const dsCheck = checkDatasourceAllowed(panel.datasource);
+    if (!dsCheck.ok) {
+      state.datasourceViolations.push({
+        dashKey: state.dashKey,
+        id: panelId ?? null,
+        title: panel.title ?? '(untitled)',
+        reason: dsCheck.reason,
+      });
+    }
+
+    // 차원 2: 빈 panel (hidden:true panel 제외 — 의도적 비활성)
+    if (!panel.hidden && isPanelTargetsEmpty(panel)) {
+      state.emptyPanelViolations.push({
+        dashKey: state.dashKey,
+        id: panelId ?? null,
+        title: panel.title ?? '(untitled)',
+      });
+    }
+
+    // 방어적: 비-row panel의 nested panels도 재귀 처리
+    if (Array.isArray(panel.panels)) walkPanelsForStructural(panel.panels, state);
+  }
+}
+
+/**
+ * 3개 Grafana dashboard의 datasource 일관성 + 빈 panel + 중복 panel id 위반을 수집.
+ * Sprint 145~147 누적 차원 확장 패턴 계승 — 단일 함수로 3 차원 동시 검증.
+ * (metric name(145) → label(146) → panel title+variable(147) → rule label+structure(148))
+ *
+ * datasource 정책:
+ *   - 허용: {type:"prometheus",uid:"prometheus"} 또는 {type:"loki",uid:"loki"}
+ *   - Loki 면제: service-debug dashboard panel 18/19 baseline 보존
+ *   - string/null/other uid → violation
+ *   - templating.list[] variable: datasource 필드 존재 시만 검사 (custom 변수 등 미존재 → skip)
+ *
+ * 빈 panel 정책:
+ *   - row 타입 panel 제외 (targets 없는 것이 정상)
+ *   - hidden:true panel 제외 (의도적 비활성)
+ *   - targets 부재 OR [] OR 모든 target의 expr/definition/query 비어있음 → violation
+ *
+ * 중복 id 정책:
+ *   - dashboard 단위 namespace (다른 dashboard 간 중복은 Grafana 사양상 허용)
+ *   - collapsed row sub-panel 포함 (row sub-panels도 dashboard id namespace 공유)
+ *   - null id 제외 (dashboard 최상위 id, panel id 아님)
+ *
+ * ⚠️  신규 dashboard 추가 시 DASHBOARDS 배열 동시 확장 의무
+ * ⚠️  신규 허용 datasource type 추가 시 checkDatasourceAllowed() 동시 수정 의무
+ *
+ * ✓ 정규식 강건성 4 체크리스트 — `docs/runbook-regex-robustness.md`
+ *   본 함수는 정규식 사용 적지만 정책 일관성 명문화 (Sprint 145~148 누적 패턴)
+ *
+ * @returns {{
+ *   datasourceViolations: Array<{dashKey:string, id:number|null, title:string, reason:string}>,
+ *   emptyPanelViolations: Array<{dashKey:string, id:number|null, title:string}>,
+ *   duplicateIdViolations: Array<{dashKey:string, id:number, title:string}>,
+ *   totalDashboards: number,
+ *   totalGeneralPanels: number
+ * }}
+ */
+function collectDashboardStructuralViolations() {
+  const datasourceViolations = [];
+  const emptyPanelViolations = [];
+  const duplicateIdViolations = [];
+  let totalGeneralPanels = 0;
+
+  for (const dash of DASHBOARDS) {
+    const content = readFileSync(resolve(ROOT, dash.file), 'utf-8');
+    const json = extractInlineBlock(content, `${dash.key}.json`);
+    if (!json) {
+      console.error(`[FAIL] could not extract ${dash.key}.json from ${dash.file}`);
+      process.exit(1);
+    }
+
+    const obj = JSON.parse(json);
+    const seenIds = new Set();
+    const generalCount = { value: 0 };
+
+    const state = {
+      datasourceViolations,
+      emptyPanelViolations,
+      duplicateIdViolations,
+      seenIds,
+      dashKey: dash.key,
+      generalCount,
+    };
+
+    walkPanelsForStructural(obj.panels ?? [], state);
+    totalGeneralPanels += generalCount.value;
+
+    // templating.list[] datasource 검사 (datasource 필드 존재 시만 — custom 변수 등 미존재 → skip)
+    const templateVars = obj.templating?.list ?? [];
+    for (const variable of templateVars) {
+      if (!Object.prototype.hasOwnProperty.call(variable, 'datasource')) continue;
+      if (variable.datasource === null) continue;
+      const dsCheck = checkDatasourceAllowed(variable.datasource);
+      if (!dsCheck.ok) {
+        datasourceViolations.push({
+          dashKey: dash.key,
+          id: null,
+          title: `variable "${variable.name ?? '(unnamed)'}"`,
+          reason: dsCheck.reason,
+        });
+      }
+    }
+  }
+
+  return {
+    datasourceViolations,
+    emptyPanelViolations,
+    duplicateIdViolations,
+    totalDashboards: DASHBOARDS.length,
+    totalGeneralPanels,
   };
 }
