@@ -208,12 +208,15 @@ R2 호출
 | Dashboard metric 정합 | `quality-monitoring` (check-grafana-metrics.mjs) | `scripts/check-grafana-metrics.mjs` | Architect |
 | Panel title ↔ metric 정합 | `quality-monitoring` | `PANEL_TITLE_KEYWORD_MAP` in mjs | Architect |
 | Dashboard variable 미사용 | `quality-monitoring` | mjs variable collector | Architect |
+| **Regex 강건성 정적 검증** | **`quality-monitoring` (check-regex-robustness.mjs)** | **`scripts/check-regex-robustness.mjs`** | **Architect** |
 
 ### SSOT 확장 의무
 
 - 신규 panel 추가 시 → `PANEL_TITLE_KEYWORD_MAP`에 keyword 등록 필수 (미등록 panel은 silent skip)
 - 신규 service 추가 시 → `KNOWN_SERVICE_PREFIXES` 배열 확장 필수
 - 신규 recording rule 추가 시 → `prometheus-rules.yaml` SSOT 자동 포함 (별도 작업 불필요)
+- 신규 `scripts/check-*.mjs` 추가 시 → `check-regex-robustness.mjs`의 `TARGET_FILES` 배열에 추가 (정적 검증 대상 포함)
+- 신규 metric name 컨텍스트 키워드 사용 시 → Rule 2의 컨텍스트 정규식 검토 (`metricNamePattern|metricPattern|__name__`)
 
 > **Sprint 147 P2-3 사례**: `request rate` keyword 미등록으로 SLO "Claude API Request Rate" panel 검증 누락.
 > 신규 panel 추가 시 SSOT 명시적 확장 의무를 해당 코드 JSDoc에 명문화되어 있음 — 반드시 준수.
@@ -236,6 +239,8 @@ R2 호출
 - `docs/adr/sprints/sprint-145.md` — character class P2 + SSOT 가정 검증 패턴
 - `docs/adr/sprints/sprint-146.md` — quantifier placeholder P2 + Critic 3 라운드 패턴
 - `docs/adr/sprints/sprint-147.md` — `|` 우선순위 + prefix anchoring P2 + DIRTY 동시 해소
+- `docs/adr/sprints/sprint-148.md` — YAML block scalar modifier P2 + rule label / dashboard structure 검증
+- `docs/adr/sprints/sprint-149.md` — Regex 강건성 lint 룰 자동화 (Sprint 145~148 P2 4건 누적 해소) + Critic 4 라운드 패턴
 
 ---
 
@@ -255,6 +260,48 @@ A: datasource type/uid 일관성 검증에서 Loki(uid=loki)는 면제. Promethe
 **Q: 체크리스트 항목 중 하나라도 불명확하면?**
 A: 진행보다 Oracle 보고 우선. Plan 가정 깨짐은 즉시 상위에 알린다 (Sprint 146 직접 적용 원칙).
 
-**Q: 향후 regex 강건성 lint 룰 자동화 시 이 RUNBOOK은?**
-A: lint 룰이 도입되면 섹션 5 매트릭스에 `eslint-plugin-regex-robustness` 항목 추가.
-현재는 수동 체크리스트 + Critic R1 검증으로 차단. Sprint 148 시드 #13 후보 트래킹 중.
+**Q: regex 강건성 lint 룰은 어떻게 자동화되었는가?**
+A: Sprint 149에서 `scripts/check-regex-robustness.mjs` 신설로 자동화 완료.
+RUNBOOK §2.1~2.4의 4종 체크리스트가 Rule 1~4로 정적 검증되며 `quality-monitoring` CI job에서 강제.
+ESLint custom rule이 아닌 독립 Node 스크립트로 구현 (Sprint 145~148 단일 entry point 누적 차원 확장 패턴 계승).
+면제는 라인 끝 `// regex-lint: allow-rule-N` 주석으로 가능.
+세부 룰 매핑은 §8 참조.
+
+---
+
+## 8. lint 룰 ↔ 체크리스트 매핑 (Sprint 149 자동화)
+
+`scripts/check-regex-robustness.mjs` 는 §2.1~2.4 체크리스트를 4종 룰로 정적 검증한다.
+
+### Rule 1 — `|` 우선순위 (§2.1 자동화)
+- **검출**: depth-0(그룹 외부)에서 `|` alternative 분리 후, anchor(`\b`/`^`/`\$`/`${`/`\{`/`(`/`(?:`) 없는 alternative 존재
+- **위반 예**: `/algosu:[a-z_:]*availability|success_rate/` — `success_rate` alternative anchor 없음
+- **회귀 시드**: Sprint 147 PR #218 R1 P2-2
+
+### Rule 2 — Character class 일관성 (§2.2 자동화)
+- **검출**: `metricNamePattern`/`metricPattern`/`__name__` 컨텍스트(현재 라인)에서 alpha-only character class 단독 또는 비-인접 digit class와 결합
+- **안전 조건**: Prometheus 명세 `[a-zA-Z_][a-zA-Z0-9_]*` 의 두 character class 인접 + 두 번째 class가 alphanumeric (alpha + digit 둘 다 포함)
+- **위반 예**:
+  - `/[a-z_]+/` (단독, digit 누락)
+  - `/algosu_[a-z_]+_status_[0-9]{3}/` (사이에 `_status_` 토큰 → 비-인접)
+  - `/algosu_[a-z_]+[0-9]{3}/` (직후 class digit-only → 명세 불일치)
+- **회귀 시드**: Sprint 145 PR #208 R2 P2 (+ Critic R1/R2/R3 P2 fix 3차 누적)
+
+### Rule 3 — Quantifier inner brace (§2.3 자동화)
+- **검출** (파일 레벨): `[^{}]*` selector wrapper 패턴 + `{N}` quantifier 패턴 동시 존재 + `normalizeExprForSelectorParse` / `__QUANTIFIER__` / `__GRAFANA_VAR__` 헬퍼 미존재
+- **위반 예**: `[^{}]*` 와 `{2}` 같은 quantifier 공존, normalize 없음
+- **회귀 시드**: Sprint 146 PR #209 R1 P2
+
+### Rule 4 — Prefix anchoring / format suffix (§2.4 자동화)
+- **Rule 4-A**: Grafana variable 추출 정규식 `\$\{(...)\}` 에 `(?::[^}]*)?` format suffix optional capture 누락 (단, `name:` 키워드가 같은 라인에 있으면 JS template literal로 간주하여 skip)
+- **Rule 4-B**: wildcard `.+` 패턴에 metric 컨텍스트(`metric`/`algosu`/`prometheus`/`dashboard`/`__name__`)에서 prefix anchor(`^algosu_`/`^`/`\b`) 없음
+- **회귀 시드**: Sprint 147 PR #218 R1 P2-2 + PR #219 R1 P2
+
+### 면제 메커니즘
+- 라인 끝에 `// regex-lint: allow-rule-N` 또는 `// regex-lint: allow-rule-1,2` 주석으로 라인별 면제
+- 면제 사유는 별도 인접 주석으로 명시 권장
+
+### 자체 검증 (regression fixtures)
+- `runRegressionFixtures()` 함수가 Sprint 145~148 P2 4건의 결함 패턴을 인라인으로 분석
+- 스크립트 시작 시 4개 fixture 모두 검출되지 않으면 exit 2 (self-test 실패)
+- baseline 변경 시 본 검증이 자동 보호망 역할
