@@ -207,13 +207,20 @@ function checkRule1(pattern) {
  * false positive 방지를 위해 컨텍스트를 명시적 Prometheus metric 이름 관련 식별자로 제한.
  */
 function checkRule2(pattern, lines, lineIdx) {
-  // alpha-only character class 존재 (digit 없음)
-  if (!/\[[a-zA-Z_-]+\]/.test(pattern)) return null;
-  if (/[0-9]/.test(pattern.match(/\[[^\]]+\]/)?.[0] ?? '')) return null; // digit 있으면 OK
+  // 패턴의 모든 character class를 수집하되 negated class([^...])는 검사 대상 외.
+  // negated class는 "특정 문자 제외"라 metric name spec과 무관 (예: [^{}]는 selector wrapper용).
+  // Prometheus 명세 [a-zA-Z_][a-zA-Z0-9_]* 처럼 leading anchor는 digit 없어도 valid이고
+  // tail class에 digit이 포함되면 전체적으로 안전. 따라서 alpha-only class 중 "모든" class에
+  // digit이 없을 때만 violation. (Critic R1 P2: 첫 class만 검사 시 valid Prometheus 패턴 false positive)
+  const alphaClasses = [...pattern.matchAll(/\[[^\]]+\]/g)]
+    .map((m) => m[0])
+    .filter((cls) => !cls.startsWith('[^')); // negated class 제외
+  if (alphaClasses.length === 0) return null;
+  if (alphaClasses.some((cls) => /[0-9]/.test(cls))) return null; // 하나라도 digit 포함 → 안전
 
   // 좁은 컨텍스트: 현재 라인에 명시적 Prometheus metric name 관련 식별자 존재 필수.
   // ±3라인 범위로 넓히면 __name__ 가드 코드(if m[1] === '__name__')가 있는 근처 라인에서
-  // label 추출 regex가 false positive로 검출됨 (Critic R1 P2 방지).
+  // label 추출 regex가 false positive로 검출됨.
   const currentLine = lines[lineIdx];
   if (!/metricNamePattern|metricPattern|__name__/.test(currentLine)) return null;
 
