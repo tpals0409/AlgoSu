@@ -133,17 +133,23 @@ const SUMMARY_QUANTILE_LABEL = 'quantile';
  * regex는 metric 이름/패턴 문자열에 대한 부분 문자열 매치 (substring search).
  * literal metric 이름 (`algosu_xxx_circuit_breaker_state`) 과
  * __name__ selector 패턴 (`algosu_.+_circuit_breaker_state`) 양쪽에 적용.
+ *
+ * ⚠️  미등록 panel은 silent skip되며 검증 대상 외.
+ *     신규 panel 추가 시 본 맵을 명시적으로 확장해야 함.
  */
 const PANEL_TITLE_KEYWORD_MAP = new Map([
   ['circuit breaker', /circuit_breaker/],
   ['http request',    /http_requests_total/],
+  ['request rate',    /requests_total/],
   ['latency',         /(?:duration|latency)/],
   ['p95',             /(?:duration|latency)/],
   ['p99',             /(?:duration|latency)/],
   ['error rate',      /(?:errors_total|failures_total|http_requests_total)/],
-  ['sli',             /algosu:[a-z_:]*availability|success_rate/],
-  ['slo',             /algosu:[a-z_:]*availability|success_rate/],
-  ['availability',    /algosu:[a-z_:]*availability|success_rate/],
+  // sli/slo/availability: non-capturing group으로 두 alternative 모두 algosu prefix 필수
+  // (prefix 없는 `success_rate` 단독 매칭 → false negative 차단, Critic R1 P2-2)
+  ['sli',             /(?:algosu:[a-z_:]*availability|algosu[_:][a-z_:]*success_rate)/],
+  ['slo',             /(?:algosu:[a-z_:]*availability|algosu[_:][a-z_:]*success_rate)/],
+  ['availability',    /(?:algosu:[a-z_:]*availability|algosu[_:][a-z_:]*success_rate)/],
 ]);
 
 const definedMetrics = new Set();
@@ -610,7 +616,10 @@ function collectPanelTitleViolations() {
   for (const dash of DASHBOARDS) {
     const content = readFileSync(resolve(ROOT, dash.file), 'utf-8');
     const json = extractInlineBlock(content, `${dash.key}.json`);
-    if (!json) continue;
+    if (!json) {
+      console.error(`[FAIL] could not extract ${dash.key}.json from ${dash.file}`);
+      process.exit(1);
+    }
 
     const obj = JSON.parse(json);
     const pairs = collectPanelTitleExprPairs(obj);
