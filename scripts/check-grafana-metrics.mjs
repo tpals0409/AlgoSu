@@ -1186,9 +1186,16 @@ function walkPanelsForStructural(panels, state) {
     // Critic R1 P2-1 (019e1c2c-cbef-79d3-b9a7-e6f5c60d9b91): Grafana target은 panel datasource를
     // override할 수 있으므로 target.datasource 필드가 존재하면 개별 검증 필수.
     // 회귀 시나리오: panel id=5 targets[0].datasource uid="prom-2" → exit(1) 기대.
+    //
+    // Critic R2 P2 (019e1c40-ad48-7003-9e60-2cbc95d32799): target.datasource === null은
+    // Grafana 표준 동작으로 panel datasource를 상속함 → violation 아님, skip.
+    // ※ variable.datasource === null과 정책이 다른 이유: target은 panel의 sub-element로
+    //   상속 semantics가 존재하지만, variable은 top-level이라 상속 개념이 없으므로 violation.
+    // 회귀 시나리오: panel id=5 targets[0].datasource=null → exit(0) 기대 (false positive 차단).
     if (Array.isArray(panel.targets)) {
       panel.targets.forEach((target, targetIdx) => {
         if (!Object.prototype.hasOwnProperty.call(target, 'datasource')) return;
+        if (target.datasource === null) return; // null = 패널 datasource 상속 (Grafana 표준 동작) — Critic R2 P2 false positive 차단
         const tDsCheck = checkDatasourceAllowed(target.datasource);
         if (!tDsCheck.ok) {
           state.datasourceViolations.push({
@@ -1225,8 +1232,10 @@ function walkPanelsForStructural(panels, state) {
  *   - Loki 면제: service-debug dashboard panel 18/19 baseline 보존
  *   - string/null/other uid → violation
  *   - panel.targets[].datasource override 개별 검사 (Critic R1 P2-1: 019e1c2c-cbef-79d3-b9a7-e6f5c60d9b91)
+ *     null target datasource = panel datasource 상속 → skip (Critic R2 P2: 019e1c40-ad48-7003-9e60-2cbc95d32799)
  *   - templating.list[] variable: datasource 필드 존재 시만 검사 (custom 변수 등 미존재 → skip)
  *     null datasource도 violation — query 변수 연결 끊김 감지 (Critic R1 P2-2: 019e1c2c-cbef-79d3-b9a7-e6f5c60d9b91)
+ *     ※ target과 정책 차이: variable은 top-level이라 상속 semantics 없음 → null = violation
  *
  * 빈 panel 정책:
  *   - row 타입 panel 제외 (targets 없는 것이 정상)
