@@ -224,8 +224,11 @@ function checkRule2(pattern, lines, lineIdx) {
   const next = allClasses[firstAlphaIdx + 1];
   if (next) {
     const between = pattern.slice(firstAlpha.index + firstAlpha[0].length, next.index);
-    // 사이에 quantifier 정도만 + 직후 class에 digit → Prometheus 명세 매칭 → 안전
-    if (/^[?*+]?$/.test(between) && /[0-9]/.test(next[0])) return null;
+    // 인접 + 직후 class가 alphanumeric (alpha 와 digit 동시 포함) → Prometheus 명세 매칭 → 안전.
+    // digit-only [0-9]는 명세 [a-zA-Z0-9_] 매칭 아님 → 여전히 metric-name continuation 미매칭 위험
+    // (Critic R3 P2: digit-only 직후 class도 면제 처리 시 /algosu_[a-z_]+[0-9]{3}/ false negative).
+    const isAlnumContinuation = /[a-zA-Z]/.test(next[0]) && /[0-9]/.test(next[0]);
+    if (/^[?*+]?$/.test(between) && isAlnumContinuation) return null;
   }
 
   // 좁은 컨텍스트: 현재 라인에 명시적 Prometheus metric name 관련 식별자 존재 필수.
