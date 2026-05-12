@@ -784,14 +784,21 @@ function collectDefinedVariables(dashObj) {
 
 /**
  * expr 문자열 배열에서 Grafana 변수 참조를 추출하여 Set 반환.
- * 인식 패턴: `${var_name}` 및 `$var_name` (영문자 또는 언더스코어로 시작, 영숫자·언더스코어 구성).
+ * 인식 패턴:
+ *   - `${var_name}` — 기본 형태
+ *   - `${var_name:format}` — Grafana 포맷 구문 (예: ${service:regex}, ${name:pipe}, ${name:csv})
+ *   - `$var_name` — shorthand 형태 (영문자 또는 언더스코어로 시작, 영숫자·언더스코어 구성)
+ *
+ * `(?::[^}]*)?` 로 colon + format specifier 부분을 optional 처리하여
+ * Grafana 포맷 구문이 포함된 변수 참조가 false negative로 누락되지 않도록 한다.
+ * (Critic R1 P2 회귀 차단)
  *
  * @param {string[]} exprs - walkExprs()로 수집된 expr/definition/query 문자열 배열
  * @returns {Set<string>} 참조된 변수 이름 Set
  */
 function extractVariableReferences(exprs) {
   const refs = new Set();
-  const re = /\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}|\$([a-zA-Z_][a-zA-Z0-9_]*)/g;
+  const re = /\$\{([a-zA-Z_][a-zA-Z0-9_]*)(?::[^}]*)?\}|\$([a-zA-Z_][a-zA-Z0-9_]*)/g;
   for (const expr of exprs) {
     for (const m of expr.matchAll(re)) {
       refs.add(m[1] ?? m[2]);
