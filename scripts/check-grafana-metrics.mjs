@@ -162,6 +162,8 @@ addAdditionalTsMetrics();
 addAiAnalysisMetrics();
 addPrometheusRecordingRules();
 
+const { violations: ruleLabelViolations, ruleCount: rulePairCount, externalSkipCount } = collectRecordingRuleExprViolations();
+
 const { strict, leastOneGroups, labelUsages } = collectDashboardMetrics();
 const { violations: panelViolations, pairCount: panelPairCount } = collectPanelTitleViolations();
 const { violations: variableViolations, definedCount: varDefinedCount } = collectVariableUsageViolations();
@@ -176,8 +178,9 @@ console.log(`[OK]   dashboard wildcard groups: ${leastOneGroups.length}`);
 console.log(`[OK]   dashboard label usages: ${labelUsages.length}`);
 console.log(`[OK]   dashboard panel title pairs: ${panelPairCount}`);
 console.log(`[OK]   dashboard defined variables: ${varDefinedCount} / unused: ${variableViolations.length}`);
+console.log(`[OK]   prometheus rule expr label pairs: ${rulePairCount} (external skipped: ${externalSkipCount})`);
 
-if (missingStrict.length > 0 || missingLeastOne.length > 0 || missingLabels.length > 0 || panelViolations.length > 0 || variableViolations.length > 0) {
+if (missingStrict.length > 0 || missingLeastOne.length > 0 || missingLabels.length > 0 || panelViolations.length > 0 || variableViolations.length > 0 || ruleLabelViolations.length > 0) {
   if (missingStrict.length > 0) {
     console.error(`\n[FAIL] ${missingStrict.length} strict metric(s) not defined in service code:`);
     for (const m of missingStrict) console.error(`  - ${m}`);
@@ -207,6 +210,12 @@ if (missingStrict.length > 0 || missingLeastOne.length > 0 || missingLabels.leng
       console.error(`  - dashboard "${v.path}" — variable "${v.name}" defined but never referenced`);
     }
   }
+  if (ruleLabelViolations.length > 0) {
+    console.error(`\n[FAIL] ${ruleLabelViolations.length} prometheus rule(s) use undefined label selector:`);
+    for (const v of ruleLabelViolations) {
+      console.error(`  - ${v.kind} rule "${v.rule}" expr uses undefined label "${v.label}" for metric ${v.metric}`);
+    }
+  }
   console.error('\nPossible causes:');
   console.error('  1. service code rename·metric 제거 후 dashboard 미갱신');
   console.error('  2. dashboard metric 이름 오타');
@@ -218,6 +227,8 @@ if (missingStrict.length > 0 || missingLeastOne.length > 0 || missingLabels.leng
   console.error('     (panel title rename 또는 metric 이전 후 한쪽만 갱신된 경우)');
   console.error('  7. dashboard template 변수 정의 후 expr에서 미참조');
   console.error('     (변수 rename·삭제 후 templating.list와 expr 중 한쪽만 갱신된 경우)');
+  console.error('  8. prometheus rule expr에서 service code에 미정의된 label selector 사용');
+  console.error('     → prometheus-rules.yaml expr 수정 또는 service code에 label 추가');
   process.exit(1);
 }
 
@@ -391,6 +402,9 @@ function collectDashboardMetrics() {
  *   - union `=~"algosu_(a|b|c)_xxx"` → 3개 모두 strict (모든 service가 metric을 노출해야 함)
  *   - wildcard `=~"algosu_.+_xxx"` → leastOneGroup (1+ service만 노출하면 OK)
  *   - 기타 정규식 패턴 → 무시 (false positive 회피)
+ *
+ * ✓ 정규식 강건성 4 체크리스트 적용 — `docs/runbook-regex-robustness.md`
+ *   (Sprint 145~147 R1 P2 누적 패턴: `|` 우선순위 / char class / quantifier / prefix anchoring)
  */
 function collectNameSelectorMetrics(expr, strict, leastOneGroups, labelUsages, dashKey) {
   const matches = expr.matchAll(/\{([^{}]*__name__\s*(?:=~|!~|=|!=)\s*"[^"]+"[^{}]*)\}/g);
@@ -553,6 +567,9 @@ function extractLabelsFromBlock(content, startIdx, nextMetricIdx) {
  *   - `algosu_(a|b|c)_xxx` → kind='union', 3개 metric (모두 정의되어야 함)
  *   - `algosu_.+_xxx` → kind='wildcard', KNOWN_SERVICE_PREFIXES 6개 (1+ 정의되면 OK)
  *   - 기타 → kind='none', 빈 배열 (검증 skip)
+ *
+ * ✓ 정규식 강건성 4 체크리스트 적용 — `docs/runbook-regex-robustness.md`
+ *   (Sprint 145~147 R1 P2 누적 패턴: `|` 우선순위 / char class / quantifier / prefix anchoring)
  */
 function expandRegexMetricPattern(pattern) {
   const unionMatch = pattern.match(/^algosu_\(([a-z_|]+)\)_(.+)$/);
@@ -839,4 +856,168 @@ function collectVariableUsageViolations() {
   }
 
   return { violations, definedCount };
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Prometheus rule expr ↔ metric label 정합 검증 헬퍼 (Sprint 148 시드 #11)
+// ──────────────────────────────────────────────────────────────────
+
+/**
+ * prometheus-rules.yaml ConfigMap inline YAML에서 recording/alert 규칙과 expr를 추출.
+ * `expr: |` multi-line block 형식과 단일 라인 형식 모두 지원.
+ *
+ * ✓ 정규식 강건성 4 체크리스트 적용 — `docs/runbook-regex-robustness.md`
+ *   (Sprint 145~147 R1 P2 누적 패턴: `|` 우선순위 / char class / quantifier / prefix anchoring)
+ *   - 2.1: `(record|alert)` — 단일 그룹 내 얼터너티브, prefix 공유로 우선순위 이슈 없음
+ *   - 2.2: `\S.*?` — Prometheus rule 이름 콜론 포함(algosu:http_error_rate:5m) 허용
+ *   - 2.3: `\|\s*$` — literal 파이프 매칭 (alternation 아님, backslash 이스케이프)
+ *   - 2.4: `^(\s*)` indent 감지로 block 경계 anchoring
+ *
+ * @param {string} content - extractInlineBlock()으로 추출한 algosu-alerts.yml 본문
+ * @returns {Array<{kind: 'record'|'alert', name: string, expr: string, lineNumber: number}>}
+ */
+function extractRulesWithExpr(content) {
+  const lines = content.split('\n');
+  const rules = [];
+  /** @type {{kind: string, name: string, expr: string, lineNumber: number}|null} */
+  let currentRule = null;
+  let collectingExprBlock = false;
+  /** multi-line block 내용의 최소 indent (첫 비어있지 않은 라인 기준) */
+  let exprBlockMinIndent = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // record 또는 alert 규칙 시작 감지
+    const ruleMatch = line.match(/^(\s*)-\s+(record|alert):\s+(\S.*?)\s*$/);
+    if (ruleMatch) {
+      if (currentRule !== null) rules.push(currentRule);
+      currentRule = {
+        kind: ruleMatch[2],
+        name: ruleMatch[3],
+        expr: '',
+        lineNumber: i + 1,
+      };
+      collectingExprBlock = false;
+      continue;
+    }
+
+    if (!currentRule) continue;
+
+    // multi-line expr 블록 수집 중
+    if (collectingExprBlock) {
+      if (line.trim() === '') continue;
+      const lineIndent = line.match(/^(\s*)/)[1].length;
+      if (lineIndent >= exprBlockMinIndent) {
+        currentRule.expr += (currentRule.expr ? '\n' : '') + line.slice(exprBlockMinIndent);
+      } else {
+        // 블록 종료 — 현재 라인 재처리 (신규 rule 시작일 수 있음)
+        collectingExprBlock = false;
+        i--;
+      }
+      continue;
+    }
+
+    // multi-line expr 블록 시작: `expr: |`
+    const exprBlockStart = line.match(/^(\s+)expr:\s*\|\s*$/);
+    if (exprBlockStart) {
+      currentRule.expr = '';
+      collectingExprBlock = true;
+      // 첫 번째 비어있지 않은 라인의 indent를 block 기준으로 설정
+      let j = i + 1;
+      while (j < lines.length && lines[j].trim() === '') j++;
+      exprBlockMinIndent = j < lines.length
+        ? lines[j].match(/^(\s*)/)[1].length
+        : exprBlockStart[1].length + 2;
+      continue;
+    }
+
+    // single-line expr: `expr: <value>`
+    const exprSingle = line.match(/^\s+expr:\s+(.+)$/);
+    if (exprSingle) {
+      currentRule.expr = exprSingle[1];
+    }
+  }
+
+  if (currentRule !== null) rules.push(currentRule);
+  return rules;
+}
+
+/**
+ * prometheus rule expr 안의 label selector가 service code 정의 metric 라벨과 일치하는지 검증.
+ * 기존 collectNameSelectorMetrics / collectLiteralMetricsAndLabels / checkLabelUsages 재사용으로
+ * dashboard 라벨 검증과 동일 정책 적용.
+ *
+ * 외부 metric만 사용하는 규칙(algosu prefix 없음: up, rabbitmq_*, kube_*, container_* 등)은
+ * 검증 skip + externalSkip=true 반환. (collectLiteralMetricsAndLabels/collectNameSelectorMetrics가
+ * algosu 미포함 metric을 무시하므로 strict/leastOneGroups 모두 비어있음으로 판별)
+ *
+ * ✓ 정규식 강건성 4 체크리스트 적용 — `docs/runbook-regex-robustness.md`
+ *   (Sprint 145~147 R1 P2 누적 패턴: `|` 우선순위 / char class / quantifier / prefix anchoring)
+ *   본 함수는 기존 helper 재사용으로 신규 정규식 없음 — 정책 일관성 참조로 명문화.
+ *
+ * @param {string} expr - rule expression 문자열 (multi-line 포함)
+ * @param {string} ruleName - rule 이름 (에러 메시지용)
+ * @param {'record'|'alert'} ruleKind - rule 종류 (에러 메시지용)
+ * @returns {{ violations: Array<{rule: string, kind: string, metric: string, label: string}>, externalSkip: boolean }}
+ */
+function validateRuleExprLabels(expr, ruleName, ruleKind) {
+  const strict = new Set();
+  const leastOneGroups = [];
+  const labelUsages = [];
+  const dashKey = `rule(${ruleKind}:${ruleName})`;
+
+  const normalized = normalizeExprForSelectorParse(expr);
+  collectNameSelectorMetrics(normalized, strict, leastOneGroups, labelUsages, dashKey);
+  collectLiteralMetricsAndLabels(normalized, strict, labelUsages, dashKey);
+
+  // algosu metric이 없는 규칙(외부 exporter 전용) → 검증 skip
+  if (strict.size === 0 && leastOneGroups.length === 0) {
+    return { violations: [], externalSkip: true };
+  }
+
+  const missingLabels = checkLabelUsages(labelUsages);
+  const violations = missingLabels.map((u) => ({
+    rule: ruleName,
+    kind: ruleKind,
+    metric: u.metric,
+    label: u.label,
+  }));
+
+  return { violations, externalSkip: false };
+}
+
+/**
+ * prometheus-rules.yaml 전체 rule(recording + alert)의 expr label 정합 위반을 수집.
+ * extractRulesWithExpr() → validateRuleExprLabels() 파이프라인으로 전체 15개 rule 검증.
+ *
+ * ⚠️  신규 service 추가 시 `KNOWN_SERVICE_PREFIXES` 배열 동시 확장 의무
+ *     (wildcard `algosu_.+_xxx` selector expansion에 영향)
+ *
+ * @returns {{ violations: Array<{rule: string, kind: string, metric: string, label: string}>, ruleCount: number, externalSkipCount: number }}
+ */
+function collectRecordingRuleExprViolations() {
+  const content = readFileSync(resolve(ROOT, PROMETHEUS_RULES_FILE), 'utf-8');
+  const yamlBlock = extractInlineBlock(content, 'algosu-alerts.yml');
+  if (!yamlBlock) {
+    console.error('[FAIL] could not extract algosu-alerts.yml block from prometheus-rules.yaml');
+    process.exit(1);
+  }
+
+  const rules = extractRulesWithExpr(yamlBlock);
+  const allViolations = [];
+  let externalSkipCount = 0;
+
+  for (const { kind, name, expr } of rules) {
+    if (!expr.trim()) continue;
+    const { violations, externalSkip } = validateRuleExprLabels(expr, name, kind);
+    allViolations.push(...violations);
+    if (externalSkip) externalSkipCount++;
+  }
+
+  return {
+    violations: allViolations,
+    ruleCount: rules.length,
+    externalSkipCount,
+  };
 }
