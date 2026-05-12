@@ -207,16 +207,26 @@ function checkRule1(pattern) {
  * false positive 방지를 위해 컨텍스트를 명시적 Prometheus metric 이름 관련 식별자로 제한.
  */
 function checkRule2(pattern, lines, lineIdx) {
-  // 패턴의 모든 character class를 수집하되 negated class([^...])는 검사 대상 외.
-  // negated class는 "특정 문자 제외"라 metric name spec과 무관 (예: [^{}]는 selector wrapper용).
-  // Prometheus 명세 [a-zA-Z_][a-zA-Z0-9_]* 처럼 leading anchor는 digit 없어도 valid이고
-  // tail class에 digit이 포함되면 전체적으로 안전. 따라서 alpha-only class 중 "모든" class에
-  // digit이 없을 때만 violation. (Critic R1 P2: 첫 class만 검사 시 valid Prometheus 패턴 false positive)
-  const alphaClasses = [...pattern.matchAll(/\[[^\]]+\]/g)]
-    .map((m) => m[0])
-    .filter((cls) => !cls.startsWith('[^')); // negated class 제외
-  if (alphaClasses.length === 0) return null;
-  if (alphaClasses.some((cls) => /[0-9]/.test(cls))) return null; // 하나라도 digit 포함 → 안전
+  // Prometheus metric name 명세 [a-zA-Z_][a-zA-Z0-9_]* 는 정확히 두 character class의
+  // **인접 결합** 패턴 (leading anchor + name continuation). 따라서:
+  //   - 첫 alpha-only class 직후가 quantifier(*/+/?)만 사이에 두고 digit class 인접 → 안전
+  //   - 그 외 alpha-only class 단독 또는 사이에 다른 토큰(_status_ 등)이 들어간 비-인접 형태 → 위반
+  // (Critic R1 P2 fix: 첫 class만 검사 시 valid 패턴 false positive 해소)
+  // (Critic R2 P2 fix: 무관 digit class로 면제 시 false negative — 예: /[a-z_]+_status_[0-9]{3}/)
+  const allClasses = [...pattern.matchAll(/\[[^\]]+\]/g)];
+  // negated class([^...])는 검사 대상 외 (예: [^{}]는 selector wrapper용)
+  const firstAlphaIdx = allClasses.findIndex(
+    (m) => !m[0].startsWith('[^') && !/[0-9]/.test(m[0]),
+  );
+  if (firstAlphaIdx === -1) return null; // alpha-only class 없음 → skip
+
+  const firstAlpha = allClasses[firstAlphaIdx];
+  const next = allClasses[firstAlphaIdx + 1];
+  if (next) {
+    const between = pattern.slice(firstAlpha.index + firstAlpha[0].length, next.index);
+    // 사이에 quantifier 정도만 + 직후 class에 digit → Prometheus 명세 매칭 → 안전
+    if (/^[?*+]?$/.test(between) && /[0-9]/.test(next[0])) return null;
+  }
 
   // 좁은 컨텍스트: 현재 라인에 명시적 Prometheus metric name 관련 식별자 존재 필수.
   // ±3라인 범위로 넓히면 __name__ 가드 코드(if m[1] === '__name__')가 있는 근처 라인에서
