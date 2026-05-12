@@ -135,6 +135,7 @@ jobs:
               - 'infra/k3s/monitoring/**'
               - 'scripts/check-prometheus-rules.mjs'
               - 'scripts/check-grafana-metrics.mjs'
+              - 'scripts/check-regex-robustness.mjs'
               - 'services/**/metrics.service.ts'
               - 'services/**/metrics.ts'
               - 'services/**/metrics.py'
