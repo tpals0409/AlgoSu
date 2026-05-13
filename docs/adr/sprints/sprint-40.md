@@ -1,3 +1,9 @@
+---
+sprint: 40
+title: "UI v3.0 Full Migration Plan"
+date: "2026-03-07"
+status: completed
+---
 # Sprint 40 -- UI v3.0 Full Migration Plan
 
 ## Oracle Verdict: APPROVED
