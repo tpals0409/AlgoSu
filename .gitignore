@@ -86,7 +86,15 @@ temp/
 *.tmp
 *.bak
 
-# ── Claude Code (로컬 세션/설정 전용, GitHub 제외) ─────────
-# CLAUDE.md는 팀 공유 프로젝트 규정 문서로 git 추적 (Oracle 판정)
-.claude/
-agents/
+# ── Claude Code ─────────────────────────────────────────────
+# CLAUDE.md       — 팀 공유 프로젝트 규정 문서 (tracked)
+# .claude/commands/* — 팀 공유 에이전트/명령 워크플로우 (Sprint 150 시드 #16, tracked)
+# .claude/{기타}     — 로컬 세션/설정 전용 (untracked)
+#   - settings.local.json: 로컬 세팅
+#   - scheduled_tasks.lock: 일시적 락 파일
+#   - cache/, logs/ 등: 로컬 캐시/로그
+.claude/*
+!.claude/commands/
+
+# Oracle 디스패치 도구 (로컬 전용, 별도 정리 예정)
+.claude-tools/
