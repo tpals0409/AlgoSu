@@ -33,6 +33,8 @@ export interface CreateProblemData {
   deadline?: string;
   allowedLanguages?: string[];
   tags?: string[];
+  /** Sprint 151 Wave 3 R2: SQL 문제 등록 시 category 전달 */
+  category?: 'ALGORITHM' | 'SQL';
 }
 
 export interface UpdateProblemData {
@@ -45,6 +47,8 @@ export interface UpdateProblemData {
   deadline?: string;
   allowedLanguages?: string[];
   status?: Problem['status'];
+  /** Sprint 151 Wave 3 R2: 편집 시 category 변경 허용 */
+  category?: 'ALGORITHM' | 'SQL';
 }
 
 export interface Submission {
