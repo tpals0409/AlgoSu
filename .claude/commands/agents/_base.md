@@ -20,10 +20,10 @@
 - ADR: `docs/adr/ADR-*.md`
 - 스프린트 기록: `docs/adr/sprints/sprint-*.md`
 - 런북: `docs/runbook/*.md`
-- 어노테이션 사전: `docs/annotation-dictionary.md`
-- 마이그레이션 규칙: `docs/migration-rules.md`
-- 모니터링 로그 규칙: `docs/monitoring-log-rules.md`
-- CI/CD 규칙: `docs/ci-cd-rules.md`
+- 어노테이션 사전: `docs/conventions/annotation-dictionary.md`
+- 마이그레이션 규칙: `docs/conventions/migration-naming.md`
+- 모니터링 로그 규칙: `docs/conventions/monitoring-logging.md`
+- CI/CD 규칙: `docs/conventions/ci-cd.md`
 
 ### 작업 흐름
 1. Oracle 작업 할당 수령

@@ -9,7 +9,7 @@
  * H10: Problem Service — Structured Logger
  *
  * JSON 구조화 로그 출력 (Loki/Promtail 호환)
- * 규칙 근거: /docs/monitoring-log-rules.md §1
+ * 규칙 근거: /docs/conventions/monitoring-logging.md §1
  */
 import { Injectable, LoggerService, LogLevel } from '@nestjs/common';
 

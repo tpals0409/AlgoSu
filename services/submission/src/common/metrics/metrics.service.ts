@@ -8,7 +8,7 @@
 /**
  * AlgoSu — Prometheus Metrics Service
  * ------------------------------------
- * 규칙 근거: /docs/monitoring-log-rules.md §9
+ * 규칙 근거: /docs/conventions/monitoring-logging.md §9
  *
  * 역할:
  * - prom-client Registry 관리

@@ -4,7 +4,7 @@
  * @layer middleware
  * @related structured-logger.service.ts, sanitize.ts
  *
- * 규칙 근거: /docs/monitoring-log-rules.md §1-4
+ * 규칙 근거: /docs/conventions/monitoring-logging.md §1-4
  *
  * 역할:
  * - 모든 HTTP 요청에 X-Request-Id, X-Trace-Id 헤더 부여

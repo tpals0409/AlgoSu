@@ -6,7 +6,7 @@
 
 AlgoSu AI Analysis Service — Prometheus Metrics
 -------------------------------------------------
-규칙 근거: /docs/monitoring-log-rules.md §9
+규칙 근거: /docs/conventions/monitoring-logging.md §9
 
 네이밍: algosu_{service}_{metric_name}_{unit}
 라벨 정책: method, path(정규화), status_code — userId/traceId 금지

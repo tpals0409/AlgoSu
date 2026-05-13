@@ -4,7 +4,7 @@
  * @layer util
  * @related sanitize.ts, request-id.middleware.ts
  *
- * 규칙 근거: /docs/monitoring-log-rules.md §1
+ * 규칙 근거: /docs/conventions/monitoring-logging.md §1
  *
  * NestJS LoggerService 인터페이스 구현.
  * 모든 로그를 JSON 구조화 포맷으로 stdout에 출력한다.

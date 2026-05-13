@@ -4,7 +4,7 @@
  * @layer util
  * @related worker.ts, metrics.ts
  *
- * 규칙 근거: /docs/monitoring-log-rules.md
+ * 규칙 근거: /docs/conventions/monitoring-logging.md
  *
  * 보안 요구사항:
  * - process.stdout.write() 직접 사용 (console.log 금지)
@@ -33,7 +33,7 @@ const CONTROL_CHAR_RE = /[\x00-\x1f\x7f]/g;
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-/** 공통 필수 필드 (monitoring-log-rules.md §1-1) */
+/** 공통 필수 필드 (monitoring-logging.md §1-1) */
 interface BaseLogEntry {
   ts: string;
   level: LogLevel;
@@ -45,7 +45,7 @@ interface BaseLogEntry {
   version: string;
 }
 
-/** RabbitMQ 확장 필드 (monitoring-log-rules.md §6) */
+/** RabbitMQ 확장 필드 (monitoring-logging.md §6) */
 interface MQFields {
   queue?: string;
   deliveryTag?: number;
@@ -60,7 +60,7 @@ interface MQFields {
   durationMs?: number;
 }
 
-/** 에러 확장 필드 (monitoring-log-rules.md §1-3) */
+/** 에러 확장 필드 (monitoring-logging.md §1-3) */
 interface ErrorFields {
   error?: {
     name: string;
@@ -71,7 +71,7 @@ interface ErrorFields {
   };
 }
 
-/** Saga 확장 필드 (monitoring-log-rules.md §5) */
+/** Saga 확장 필드 (monitoring-logging.md §5) */
 interface SagaFields {
   tag?: string;
   from?: string;
@@ -89,7 +89,7 @@ interface SagaFields {
 export interface LogContext extends MQFields, SagaFields {
   traceId?: string;
   err?: Error | unknown;
-  /** 에러 코드 (GHW_BIZ_001 등, monitoring-log-rules.md §7) */
+  /** 에러 코드 (GHW_BIZ_001 등, monitoring-logging.md §7) */
   code?: string;
   /** 재연결 대기 시간(ms) */
   delayMs?: number;
@@ -133,7 +133,7 @@ function serializeError(
       name: err.name,
       message: sanitizeStr(err.message, 500),
     };
-    // production에서 stack trace 제거 (monitoring-log-rules.md §1-3)
+    // production에서 stack trace 제거 (monitoring-logging.md §1-3)
     if (ENV !== 'production' && err.stack) {
       obj.stack = err.stack;
     }
@@ -201,7 +201,7 @@ function buildEntry(
   return entry;
 }
 
-/** JSON 한 줄 → stdout (console.log 금지, monitoring-log-rules.md §1) */
+/** JSON 한 줄 → stdout (console.log 금지, monitoring-logging.md §1) */
 function emit(entry: LogEntry): void {
   process.stdout.write(JSON.stringify(entry) + '\n');
 }
@@ -217,7 +217,7 @@ const LEVEL_PRIORITY: Record<LogLevel, number> = {
   error: 3,
 };
 
-/** 현재 환경의 최소 출력 레벨 결정 (monitoring-log-rules.md §2-2) */
+/** 현재 환경의 최소 출력 레벨 결정 (monitoring-logging.md §2-2) */
 const MIN_LEVEL: LogLevel = ENV === 'production' ? 'info' : 'debug';
 
 function shouldLog(level: LogLevel): boolean {
@@ -270,7 +270,7 @@ export const logger = {
 } as const;
 
 // ---------------------------------------------------------------------------
-// MQ 특화 로깅 헬퍼 (monitoring-log-rules.md §6)
+// MQ 특화 로깅 헬퍼 (monitoring-logging.md §6)
 // ---------------------------------------------------------------------------
 
 export interface MQConsumeOptions {
@@ -312,7 +312,7 @@ export function logMqConsumeDone(opts: MQConsumeDoneOptions): void {
   });
 }
 
-/** DLQ_RECEIVED 로그 (즉시 error, monitoring-log-rules.md §6-3) */
+/** DLQ_RECEIVED 로그 (즉시 error, monitoring-logging.md §6-3) */
 export function logDlqReceived(opts: {
   traceId: string;
   queue: string;
