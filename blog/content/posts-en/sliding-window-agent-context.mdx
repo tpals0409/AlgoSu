@@ -78,7 +78,7 @@ The more documents grew, the more often this happened.
 [MEMORY.md, 200 lines]
 [ADR sprint-62 ~ sprint-151, ~10KB each]
 [.claude/commands/agents/, 12 personas]
-[docs/runbook-*.md, many]
+[docs/runbook/*.md, many]
 [other domain documents]
 ─────────────────────────
 Total: half the context budget filled before work even starts
@@ -199,7 +199,7 @@ flowchart TB
 
     subgraph OUT["on-demand (only when needed)"]
         ADR["docs/adr/sprints/sprint-NNN.md<br/>permanent decision records"]
-        RB["docs/runbook-*.md<br/>operational manuals"]
+        RB["docs/runbook/*.md<br/>operational manuals"]
         OTHER["other domain docs"]
     end
 

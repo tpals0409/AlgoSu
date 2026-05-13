@@ -28,7 +28,7 @@ model: claude-sonnet-4-6
 - Loki: Promtail DaemonSet, 라벨 5개 이하, 72h 보존
 - SLO: 가용성 99.5%, 에러율 <5%, P95 <1s, P99 <3s
 - github-worker: HTTP 서버 없으므로 최소 HTTP 서버 추가 + `/metrics`
-- **monitoring 정규식 검증 추가/수정 시**: `docs/runbook-regex-robustness.md` 4 체크리스트 반영 의무 (Sprint 145~147 P2 누적 사례 기반)
+- **monitoring 정규식 검증 추가/수정 시**: `docs/runbook/regex-robustness.md` 4 체크리스트 반영 의무 (Sprint 145~147 P2 누적 사례 기반)
   - `|` 우선순위 / character class 일관성 / quantifier 처리 / prefix anchoring 4항목 self-review 필수
   - 신규 panel 추가 시 `PANEL_TITLE_KEYWORD_MAP` SSOT 동시 확장 의무 (미등록 → silent skip 위험)
   - 신규 service 추가 시 `KNOWN_SERVICE_PREFIXES` 배열 동시 확장 의무

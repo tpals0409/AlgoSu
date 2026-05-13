@@ -446,7 +446,7 @@ function collectDashboardMetrics() {
  *   - wildcard `=~"algosu_.+_xxx"` → leastOneGroup (1+ service만 노출하면 OK)
  *   - 기타 정규식 패턴 → 무시 (false positive 회피)
  *
- * ✓ 정규식 강건성 4 체크리스트 적용 — `docs/runbook-regex-robustness.md`
+ * ✓ 정규식 강건성 4 체크리스트 적용 — `docs/runbook/regex-robustness.md`
  *   (Sprint 145~147 R1 P2 누적 패턴: `|` 우선순위 / char class / quantifier / prefix anchoring)
  */
 function collectNameSelectorMetrics(expr, strict, leastOneGroups, labelUsages, dashKey) {
@@ -611,7 +611,7 @@ function extractLabelsFromBlock(content, startIdx, nextMetricIdx) {
  *   - `algosu_.+_xxx` → kind='wildcard', KNOWN_SERVICE_PREFIXES 6개 (1+ 정의되면 OK)
  *   - 기타 → kind='none', 빈 배열 (검증 skip)
  *
- * ✓ 정규식 강건성 4 체크리스트 적용 — `docs/runbook-regex-robustness.md`
+ * ✓ 정규식 강건성 4 체크리스트 적용 — `docs/runbook/regex-robustness.md`
  *   (Sprint 145~147 R1 P2 누적 패턴: `|` 우선순위 / char class / quantifier / prefix anchoring)
  */
 function expandRegexMetricPattern(pattern) {
@@ -939,7 +939,7 @@ function collectVariableUsageViolations() {
  * YAML block scalar modifier (|, |-, |+, >, >-, >+) 전부 허용 — Critic R1 P2 (Sprint 148, 세션 019e1c19).
  * PromQL은 단일 라인 expr 관례이므로 folded(>) vs literal(|) semantics 차이 무시 가능.
  *
- * ✓ 정규식 강건성 4 체크리스트 적용 — `docs/runbook-regex-robustness.md`
+ * ✓ 정규식 강건성 4 체크리스트 적용 — `docs/runbook/regex-robustness.md`
  *   (Sprint 145~148 R1 P2 누적 패턴: `|` 우선순위 / char class / quantifier / prefix anchoring)
  *   - 2.1: `(record|alert)` — 단일 그룹 내 얼터너티브, prefix 공유로 우선순위 이슈 없음
  *   - 2.2: `[|>][-+]?` — character class로 scalar indicator 통일, modifier 옵셔널 (`[-+]?`)
@@ -1029,7 +1029,7 @@ function extractRulesWithExpr(content) {
  * 검증 skip + externalSkip=true 반환. (collectLiteralMetricsAndLabels/collectNameSelectorMetrics가
  * algosu 미포함 metric을 무시하므로 strict/leastOneGroups 모두 비어있음으로 판별)
  *
- * ✓ 정규식 강건성 4 체크리스트 적용 — `docs/runbook-regex-robustness.md`
+ * ✓ 정규식 강건성 4 체크리스트 적용 — `docs/runbook/regex-robustness.md`
  *   (Sprint 145~147 R1 P2 누적 패턴: `|` 우선순위 / char class / quantifier / prefix anchoring)
  *   본 함수는 기존 helper 재사용으로 신규 정규식 없음 — 정책 일관성 참조로 명문화.
  *
@@ -1110,7 +1110,7 @@ function collectRecordingRuleExprViolations() {
  *   - {type:"loki",       uid:"loki"}       — Loki (service-debug panel 18/19 baseline 보존)
  * string datasource (legacy) 또는 null/undefined 또는 허용되지 않은 uid → violation.
  *
- * ✓ 정규식 강건성 4 체크리스트 — `docs/runbook-regex-robustness.md`
+ * ✓ 정규식 강건성 4 체크리스트 — `docs/runbook/regex-robustness.md`
  *   본 함수는 정규식 미사용. 정책 일관성 참조로 명문화 (Sprint 145~148 누적 패턴).
  *
  * @param {*} datasource - panel.datasource 값 (object | string | null | undefined)
@@ -1277,7 +1277,7 @@ function walkPanelsForStructural(panels, state) {
  * ⚠️  신규 dashboard 추가 시 DASHBOARDS 배열 동시 확장 의무
  * ⚠️  신규 허용 datasource type 추가 시 checkDatasourceAllowed() 동시 수정 의무
  *
- * ✓ 정규식 강건성 4 체크리스트 — `docs/runbook-regex-robustness.md`
+ * ✓ 정규식 강건성 4 체크리스트 — `docs/runbook/regex-robustness.md`
  *   본 함수는 정규식 사용 적지만 정책 일관성 명문화 (Sprint 145~148 누적 패턴)
  *
  * @returns {{

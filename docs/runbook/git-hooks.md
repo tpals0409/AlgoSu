@@ -128,5 +128,5 @@ const staticScopes = ['adr', 'blog', 'ci', 'deps', 'docs', 'e2e', 'frontend', 'i
 ## 관련 문서
 
 - `docs/ci-cd-rules.md` — CI Conventional Commits 정책
-- `docs/runbook-ci-rebuild-all.md` — CI 인프라 PR 표준 절차
+- `docs/runbook/ci-rebuild-all.md` — CI 인프라 PR 표준 절차
 - `memory/feedback-commitlint-scope.md` — 배경 피드백 기록
