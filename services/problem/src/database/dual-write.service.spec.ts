@@ -3,7 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DualWriteService } from './dual-write.service';
 import { ReconciliationService } from './reconciliation.service';
-import { Problem, ProblemStatus, Difficulty } from '../problem/problem.entity';
+import { Problem, ProblemStatus, Difficulty, ProblemCategory } from '../problem/problem.entity';
 import { NEW_DB_CONNECTION, DualWriteMode } from './dual-write.config';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 import { register } from 'prom-client';
@@ -36,6 +36,7 @@ describe('DualWriteService', () => {
     sourceUrl: null,
     sourcePlatform: null,
     status: ProblemStatus.ACTIVE,
+    category: ProblemCategory.ALGORITHM,
     deadline: null,
     allowedLanguages: null,
     tags: null,

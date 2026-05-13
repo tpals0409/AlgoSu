@@ -7,7 +7,7 @@
  * loadFromFile() 을 stub 경로로 호출하되, readFileSync 를 jest.mock 으로 대체.
  */
 import { NotFoundException } from '@nestjs/common';
-import { ProgrammersService } from './programmers.service';
+import { ProgrammersService, toProblemCategoryEnum } from './programmers.service';
 
 // readFileSync 모킹 — 실제 파일시스템 접근 방지
 const mockReadFileSync = jest.fn<string, [string, string]>();
@@ -438,6 +438,28 @@ describe('ProgrammersService', () => {
       const result = svc.fetchProblem(88888);
       expect(result.category).toBe('algorithm');
       expect(result.title).toBe('레거시 알고리즘 문제');
+    });
+  });
+
+  // Sprint 151 Wave 2 — toProblemCategoryEnum 매핑 회귀 차단 ────────────────
+
+  describe('toProblemCategoryEnum()', () => {
+    it("'algorithm' → 'ALGORITHM' 변환", () => {
+      expect(toProblemCategoryEnum('algorithm')).toBe('ALGORITHM');
+    });
+
+    it("'sql' → 'SQL' 변환", () => {
+      expect(toProblemCategoryEnum('sql')).toBe('SQL');
+    });
+
+    it('SQL 문제 fetchProblem 후 toProblemCategoryEnum 적용 — SQL 반환 (통합 흐름)', () => {
+      const info = service.fetchProblem(59034);
+      expect(toProblemCategoryEnum(info.category)).toBe('SQL');
+    });
+
+    it('알고리즘 문제 fetchProblem 후 toProblemCategoryEnum 적용 — ALGORITHM 반환 (통합 흐름)', () => {
+      const info = service.fetchProblem(42840);
+      expect(toProblemCategoryEnum(info.category)).toBe('ALGORITHM');
     });
   });
 });
