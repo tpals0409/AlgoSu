@@ -1,5 +1,5 @@
 /**
- * @file problem.entity.ts — Problem 엔티티 (난이도·상태 Enum 포함)
+ * @file problem.entity.ts — Problem 엔티티 (난이도·상태·카테고리 Enum 포함)
  * @domain problem
  * @layer entity
  * @related problem.service.ts, create-problem.dto.ts
@@ -30,6 +30,16 @@ export enum ProblemStatus {
   DELETED = 'DELETED',
 }
 
+/**
+ * 문제 카테고리 — 프로그래머스 SQL Kit 지원 (Sprint 151)
+ * ALGORITHM: 일반 알고리즘 문제 (기본값)
+ * SQL: SQL 카테고리 문제 (프로그래머스 SQL 고득점 Kit 등)
+ */
+export enum ProblemCategory {
+  ALGORITHM = 'ALGORITHM',
+  SQL = 'SQL',
+}
+
 @Entity('problems')
 export class Problem {
   @PrimaryGeneratedColumn('uuid')
@@ -58,6 +68,10 @@ export class Problem {
 
   @Column({ type: 'enum', enum: ProblemStatus, default: ProblemStatus.ACTIVE })
   status!: ProblemStatus;
+
+  /** 문제 카테고리 — 기본값 ALGORITHM, SQL Kit 문제는 SQL (Sprint 151) */
+  @Column({ type: 'enum', enum: ProblemCategory, default: ProblemCategory.ALGORITHM })
+  category!: ProblemCategory;
 
   @Column({ type: 'timestamptz', nullable: true })
   deadline!: Date | null;
