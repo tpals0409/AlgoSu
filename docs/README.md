@@ -11,7 +11,7 @@ domain: docs
 | 카테고리 | 위치 | 설명 |
 |----------|------|------|
 | 의사결정 기록 (ADR) | [`docs/adr/`](./adr/README.md) | 영구 ADR + sprint 회고형 ADR + 토픽 ADR |
-| 운영 런북 | `docs/runbook-*.md` | 시스템 운영·롤백·로테이션 절차 |
+| 운영 런북 | `docs/runbook/*.md` | 시스템 운영·롤백·로테이션 절차 |
 | 컨벤션 | `docs/conventions/` (3개) | 코드/DB/정책 규약 |
 | 패턴 | `docs/patterns/` (3개) | 도메인/아키텍처 패턴 |
 | 감사 산출물 | [`docs/audits/`](./audits/README.md) | 전수 감사 자동화 sprint별 산출물 |
@@ -23,12 +23,12 @@ domain: docs
 
 | 영역 | 런북 |
 |------|------|
-| **CI / 배포** | [runbook-ci-rebuild-all](./runbook-ci-rebuild-all.md) · [runbook-e2e-pr-label](./runbook-e2e-pr-label.md) · [runbook-gitops-migration](./runbook-gitops-migration.md) · [runbook-dependency-major-upgrade](./runbook-dependency-major-upgrade.md) |
-| **DB / 마이그레이션** | [runbook-db-migration](./runbook-db-migration.md) |
-| **GitHub / 인증** | [runbook-github-token-relink](./runbook-github-token-relink.md) · [runbook-pat-rotation](./runbook-pat-rotation.md) · [runbook-key-rotation](./runbook-key-rotation.md) · [runbook-admin-emails](./runbook-admin-emails.md) |
-| **로컬 개발 환경** | [runbook-git-hooks](./runbook-git-hooks.md) · [runbook-claude-commands](./runbook-claude-commands.md) · [runbook-oracle-tmux-path](./runbook-oracle-tmux-path.md) |
-| **도메인 파이프라인** | [runbook-programmers-pipeline](./runbook-programmers-pipeline.md) |
-| **품질 자동화** | [runbook-regex-robustness](./runbook-regex-robustness.md) |
+| **CI / 배포** | [ci-rebuild-all](./runbook/ci-rebuild-all.md) · [e2e-pr-label](./runbook/e2e-pr-label.md) · [gitops-migration](./runbook/gitops-migration.md) · [dependency-major-upgrade](./runbook/dependency-major-upgrade.md) |
+| **DB / 마이그레이션** | [db-migration](./runbook/db-migration.md) |
+| **GitHub / 인증** | [github-token-relink](./runbook/github-token-relink.md) · [pat-rotation](./runbook/pat-rotation.md) · [key-rotation](./runbook/key-rotation.md) · [admin-emails](./runbook/admin-emails.md) |
+| **로컬 개발 환경** | [git-hooks](./runbook/git-hooks.md) · [claude-commands](./runbook/claude-commands.md) · [oracle-tmux-path](./runbook/oracle-tmux-path.md) |
+| **도메인 파이프라인** | [programmers-pipeline](./runbook/programmers-pipeline.md) |
+| **품질 자동화** | [regex-robustness](./runbook/regex-robustness.md) |
 
 ## 컨벤션 (3개)
 
@@ -68,7 +68,7 @@ domain: docs
 
 1. **카테고리 결정**: 위 6 카테고리 중 하나 선택 (런북 / 컨벤션 / 패턴 / ADR / 감사 / 자산)
 2. **명명 규칙**:
-   - 런북: `runbook-{topic}.md` (kebab-case)
+   - 런북: `runbook/{topic}.md` (kebab-case)
    - 컨벤션: `conventions/{topic}.md`
    - 패턴: `patterns/{topic}.md`
    - ADR: `adr/ADR-{NNN}-{topic}.md` 또는 `adr/sprints/sprint-{NN}.md`
