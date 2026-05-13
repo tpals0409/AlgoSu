@@ -48,7 +48,7 @@
 
 - [ ] Kustomize overlay 렌더링 확인
 - [ ] Sealed Secrets 적용 확인
-- [ ] CI 인프라 변경 PR인 경우 `workflow_dispatch(rebuild_all=true)` 실행 계획 포함 ([docs/runbook-ci-rebuild-all.md](../docs/runbook-ci-rebuild-all.md) 참조)
+- [ ] CI 인프라 변경 PR인 경우 `workflow_dispatch(rebuild_all=true)` 실행 계획 포함 ([docs/runbook/ci-rebuild-all.md](../docs/runbook/ci-rebuild-all.md) 참조)
 
 ## 의존성 변경 (해당 시 — 특히 major 버전)
 
@@ -59,4 +59,4 @@
 - [ ] wrapper 컴포넌트 사용처 시각 검증 (영향받는 페이지 1곳 이상 직접 확인)
 - [ ] 동적/runtime API 변경 시 — 단위 테스트 또는 e2e로 회귀 보호 확인
 - [ ] 타입 정의 변경 — `tsc --noEmit` clean 후에도 사용처 별 직접 확인
-- [ ] 상세 가이드: [docs/runbook-dependency-major-upgrade.md](../docs/runbook-dependency-major-upgrade.md)
+- [ ] 상세 가이드: [docs/runbook/dependency-major-upgrade.md](../docs/runbook/dependency-major-upgrade.md)

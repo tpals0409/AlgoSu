@@ -138,7 +138,7 @@ Sprint 110은 이 이월 목록을 단일 세션에서 전수 처리하여 **기
 | `services/ai-analysis/src/main.py` | 수정 | W3 | `group_analyze` → `get_group_system_prompt` 파라미터 전달 |
 | `services/ai-analysis/tests/test_claude_client.py` | 수정 | W3 | TestParseResponseFallback 7건 추가 (3단계 fallback + totalScore=0 + SQL 가중치) |
 | `services/ai-analysis/tests/test_prompt.py` | 수정 | W3 | GROUP_SQL_SYSTEM_PROMPT + `get_group_system_prompt` 테스트 추가 |
-| `docs/runbook-programmers-pipeline.md` | 수정 | W3 | 문제 목록 크롤러 재크롤링 주기 섹션 추가 |
+| `docs/runbook/programmers-pipeline.md` | 수정 | W3 | 문제 목록 크롤러 재크롤링 주기 섹션 추가 |
 | `blog/src/lib/posts.ts` | 수정 | W4 | `PostMeta` series/seriesOrder 필드 + `getSeriesPosts()` + order 자동화 (slug alphabetical) |
 | `blog/src/components/post-page.tsx` | 수정 | W4 | 시리즈 aside 네비게이션 추가 |
 | `frontend/package.json` | 수정 | W5 | react-dnd(3건) + react-slick(1건) 의존성 제거 |

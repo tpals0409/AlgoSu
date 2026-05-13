@@ -3,7 +3,7 @@
  * @file scripts/check-regex-robustness.mjs
  * @domain ci
  * @layer script
- * @related docs/runbook-regex-robustness.md, scripts/check-grafana-metrics.mjs
+ * @related docs/runbook/regex-robustness.md, scripts/check-grafana-metrics.mjs
  *
  * RUNBOOK §2.1~2.4의 4종 regex 강건성 체크리스트를 정적 분석으로 자동화.
  * Sprint 145~148 Critic R1/R2 P2 4건 누적 패턴 회귀 차단.
@@ -52,7 +52,7 @@ if (allViolations.length > 0) {
     console.error(`  [${v.rule}] ${v.file}:${v.line} — ${v.message}`);
     console.error(`         ${v.detail}`);
   }
-  console.error('\nSee docs/runbook-regex-robustness.md for fix guidance.');
+  console.error('\nSee docs/runbook/regex-robustness.md for fix guidance.');
   process.exit(1);
 }
 

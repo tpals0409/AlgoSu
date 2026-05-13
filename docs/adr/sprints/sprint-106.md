@@ -424,7 +424,7 @@ host-side 빌드 전환이 L2 캐시(트랙 [B])·빌드 타이밍 측정(트랙
 - Sensei [B] L2 캐시 선자문 보고서: `~/.claude/oracle/inbox/sensei-task-20260421-143704.md`
 - Sensei [C] 빌드 최적화 선자문 보고서: `~/.claude/oracle/inbox/sensei-task-20260421-150311.md`
 - Architect 구현 보고서: `~/.claude/oracle/inbox/architect-task-20260421-135617.md`
-- rebuild_all 런북: `docs/runbook-ci-rebuild-all.md`
+- rebuild_all 런북: `docs/runbook/ci-rebuild-all.md`
 - 채널톡 CI 리팩토링: https://channel.io/ko/team/blog/articles/backend-ci-refactoring-73fca77d
 - PR #121 (A-1 테스트 보강): https://github.com/tpals0409/AlgoSu/pull/121
 - PR #122 (A-2 CI 게이트 70%): https://github.com/tpals0409/AlgoSu/pull/122

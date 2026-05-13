@@ -113,5 +113,5 @@ Oracle이 전문 에이전트에게 위임: `/agents:{name}` (conductor, gatekee
 
 - `.claude/commands/**` 는 **tracked** — 팀 공유 에이전트/명령 워크플로우 SSOT
 - `.claude/{settings.local.json, scheduled_tasks.lock, cache/, logs/}` 등은 **untracked** — 로컬 세션/설정 전용
-- 신규 agent/command 추가 시 `docs/runbook-claude-commands.md` §2 목록 갱신 + 본 섹션 12 에이전트 나열 갱신 의무
-- 보안 grep 체크리스트는 `docs/runbook-claude-commands.md` §4 참조
+- 신규 agent/command 추가 시 `docs/runbook/claude-commands.md` §2 목록 갱신 + 본 섹션 12 에이전트 나열 갱신 의무
+- 보안 grep 체크리스트는 `docs/runbook/claude-commands.md` §4 참조

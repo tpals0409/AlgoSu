@@ -19,7 +19,7 @@
 ### 참조 문서 (작업 시 해당 문서 Read)
 - ADR: `docs/adr/ADR-*.md`
 - 스프린트 기록: `docs/adr/sprints/sprint-*.md`
-- 런북: `docs/runbook-*.md`
+- 런북: `docs/runbook/*.md`
 - 어노테이션 사전: `docs/annotation-dictionary.md`
 - 마이그레이션 규칙: `docs/migration-rules.md`
 - 모니터링 로그 규칙: `docs/monitoring-log-rules.md`

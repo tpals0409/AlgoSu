@@ -276,7 +276,7 @@ Sprint 105 was the **closing sprint** of the four-sprint roadmap. Three tasks bu
 
 The fix for the Sprint 103/104 pitfall — infra PRs can't benchmark themselves — was already in ci.yml: `workflow_dispatch.inputs.rebuild_all=true`. It had been there since Sprint 103, but there was no protocol for when, by whom, and how to use it.
 
-The fix required **zero new code — just documenting the operational protocol**. I created `docs/runbook-ci-rebuild-all.md` and added a checkbox to `.github/pull_request_template.md`.
+The fix required **zero new code — just documenting the operational protocol**. I created `docs/runbook/ci-rebuild-all.md` and added a checkbox to `.github/pull_request_template.md`.
 
 Three trigger conditions were formalized:
 1. PRs that only change `.github/workflows/*.yml`

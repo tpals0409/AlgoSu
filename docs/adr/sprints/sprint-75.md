@@ -24,14 +24,14 @@ rotation 실행 시 `gh auth login --web` device flow가 classic PAT(`ghp_`) 대
 ### D1: PAT rotation 런북 신규 작성 + 사용처 전수 체크리스트 SSoT (75-1)
 
 - **Context**: Sprint 73 G5 재발 방지의 핵심은 "누락된 사용처를 구조적으로 방지하는 체크리스트". 기존 런북 2개(`runbook-github-token-relink.md`: 사용자 OAuth 토큰, `runbook-key-rotation.md`: GitHub App Private Key)는 스코프가 다름.
-- **Choice**: `docs/runbook-pat-rotation.md` 신규 414줄. 6축 사용처 전수 체크리스트:
+- **Choice**: `docs/runbook/pat-rotation.md` 신규 414줄. 6축 사용처 전수 체크리스트:
   - (a) `.git/config` — **find 동적 열거 필수** (하드코딩 금지, Sprint 73 G5 근본 원인)
   - (b) `~/.config/gh/hosts.yml` — 1파일 내 2엔트리 공존 케이스 명시
   - (c) `.github/workflows/*.yml` `secrets.*_TOKEN` grep
   - (d) `kubectl get secret -A` password/token 필드 jq 쿼리
   - (e) 파일시스템 `grep -r` (`.claude/`, `.npm/_cacache/` filter)
   - (f) 보조 사용처 부재 확인 (`.docker/`, `.netrc`, `.git-credentials`, systemd, K8s ConfigMap/SA)
-- **Code Paths**: `docs/runbook-pat-rotation.md` (신규, 3커밋에 걸쳐 완성)
+- **Code Paths**: `docs/runbook/pat-rotation.md` (신규, 3커밋에 걸쳐 완성)
 
 ### D2: Credential rotation 실행 — ghp_ classic PAT → gho_ gh CLI OAuth (75-2/75-3)
 
@@ -53,7 +53,7 @@ rotation 실행 시 `gh auth login --web` device flow가 classic PAT(`ghp_`) 대
 
 ### P1: 사용처 전수 체크리스트 — find 동적 열거 + 닫힘 증명 (75-1)
 
-- **Where**: `docs/runbook-pat-rotation.md` §1 + §3.4
+- **Where**: `docs/runbook/pat-rotation.md` §1 + §3.4
 - **When to Reuse**: 모든 credential rotation (PAT, SSH key, API key, encryption key). 6축 체크리스트의 구체적 grep 패턴만 교체하면 재사용 가능. 핵심 원칙 3가지: (1) **동적 열거** — 하드코딩된 경로 목록을 쓰지 말 것 (`find` 기반). Sprint 73 G5는 2개 레포 하드코딩이 근본 원인. (2) **rotation 전 + 후 2회 실행** — 전수조사를 rotation 전에만 돌리면 "rotation 과정에서 새로 생긴 평문" 누락. (3) **부재 확인도 확인** — "존재하지 않는 것"을 확인하는 것이 체크리스트의 핵심. absent/clean 판정이 "확인하지 않음"보다 정보량이 크다.
 
 ## Gotchas
@@ -94,7 +94,7 @@ rotation 실행 시 `gh auth login --web` device flow가 classic PAT(`ghp_`) 대
 - **Commits (aether-gitops)**: 1건 자동 (CI GitOps job blog 이미지 태그 bump)
 - **Files changed (AlgoSu)**: 2개
   - `docs/adr/sprints/sprint-74.md` (신규, Sprint 74 ADR 선행 커밋)
-  - `docs/runbook-pat-rotation.md` (신규 440줄, 3커밋에 걸쳐 완성)
+  - `docs/runbook/pat-rotation.md` (신규 440줄, 3커밋에 걸쳐 완성)
 - **서버 설정 변경 (tracked 아님)**:
   - `/root/AlgoSu/.git/config`: remote.origin.url 평문 PAT 제거
   - `/root/.config/gh/hosts.yml`: `ghp_` → `gho_` 2 엔트리 전환
@@ -110,4 +110,4 @@ rotation 실행 시 `gh auth login --web` device flow가 classic PAT(`ghp_`) 대
 
 - **Sprint 73 ADR** — G5 (retrofit 필요: Gatekeeper 실사용 위치 전수조사 누락)의 직접 해결. Sprint 73-1 credential helper 전환이 aether-gitops만 적용한 것이 75-0에서 최종 확인 + 정리.
 - **Sprint 74 ADR** — Sprint 75 시작 시점에 untracked 상태였던 Sprint 74 ADR(`490270e`)을 선행 커밋으로 위생 정리.
-- **`docs/runbook-pat-rotation.md`** — 본 스프린트의 주요 산출물이자 향후 모든 PAT/credential rotation의 SSoT. Gatekeeper 독립 검토 8개 패치 반영.
+- **`docs/runbook/pat-rotation.md`** — 본 스프린트의 주요 산출물이자 향후 모든 PAT/credential rotation의 SSoT. Gatekeeper 독립 검토 8개 패치 반영.

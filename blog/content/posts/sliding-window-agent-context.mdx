@@ -78,7 +78,7 @@ LLM의 컨텍스트 윈도우는 토큰 한도가 전부가 아닙니다. 한도
 [MEMORY.md 200줄]
 [ADR sprint-001 ~ sprint-152, 각 ~10KB]
 [.claude/commands/agents/ 12개 페르소나]
-[docs/runbook-*.md 다수]
+[docs/runbook/*.md 다수]
 [기타 도메인 문서들]
 ─────────────────────────
 총량: 컨텍스트 한도의 절반이 시작부터 채워짐
@@ -199,7 +199,7 @@ flowchart TB
 
     subgraph OUT["on-demand (필요할 때만)"]
         ADR["docs/adr/sprints/sprint-NNN.md<br/>영구 결정 기록"]
-        RB["docs/runbook-*.md<br/>운영 매뉴얼"]
+        RB["docs/runbook/*.md<br/>운영 매뉴얼"]
         OTHER["기타 도메인 문서"]
     end
 

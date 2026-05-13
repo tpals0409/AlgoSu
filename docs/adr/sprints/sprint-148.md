@@ -32,9 +32,9 @@ Sprint 145 metric → Sprint 146 label → Sprint 147 panel-title+variable → *
 
 ## PR 단위 요약
 
-### PR #220 — `docs/runbook-regex-robustness.md` 신규 (시드 #13)
+### PR #220 — `docs/runbook/regex-robustness.md` 신규 (시드 #13)
 
-- **변경**: `docs/runbook-regex-robustness.md` 신규 260라인 7섹션
+- **변경**: `docs/runbook/regex-robustness.md` 신규 260라인 7섹션
 - **내용**:
   - §1 배경: Sprint 145~147 regex P2 3건 누적 사례 분석
   - §2 체크리스트 4종: `|` 우선순위 / character class 일관성 / quantifier 처리 / prefix anchoring
@@ -183,4 +183,4 @@ Sprint 145~147 regex P2 3건 + Sprint 148 PR #221 R1 P2(block scalar modifier `|
 - Sprint 147 ADR: `docs/adr/sprints/sprint-147.md` (Panel title + Variable 직접 확장 원형)
 - Sprint 146 ADR: `docs/adr/sprints/sprint-146.md` (회귀 차단 자동화 — label 차원 원형)
 - Sprint 145 ADR: `docs/adr/sprints/sprint-145.md` (Prometheus/Grafana 검증 인프라 기반)
-- RUNBOOK: `docs/runbook-regex-robustness.md` (Sprint 148 신규)
+- RUNBOOK: `docs/runbook/regex-robustness.md` (Sprint 148 신규)

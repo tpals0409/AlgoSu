@@ -2,7 +2,7 @@
  * @file commitlint.config.mjs
  * @domain ci
  * @layer config
- * @related docs/ci-cd-rules.md, docs/runbook-git-hooks.md
+ * @related docs/ci-cd-rules.md, docs/runbook/git-hooks.md
  *
  * AlgoSu — Conventional Commits 강제 (ci-cd-rules.md §2)
  *
