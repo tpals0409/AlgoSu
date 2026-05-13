@@ -12,7 +12,8 @@ domain: docs
 |----------|------|------|
 | 의사결정 기록 (ADR) | [`docs/adr/`](./adr/README.md) | 영구 ADR + sprint 회고형 ADR + 토픽 ADR |
 | 운영 런북 | `docs/runbook-*.md` | 시스템 운영·롤백·로테이션 절차 |
-| 컨벤션 / 패턴 | `docs/{conventions,patterns}` (루트 산재 — 추후 통합 예정) | 코드/DB/도메인 패턴 |
+| 컨벤션 | `docs/conventions/` (3개) | 코드/DB/정책 규약 |
+| 패턴 | `docs/patterns/` (3개) | 도메인/아키텍처 패턴 |
 | 감사 산출물 | [`docs/audits/`](./audits/README.md) | 전수 감사 자동화 sprint별 산출물 |
 | 자산 | `docs/assets/` | 로고 등 정적 자원 |
 
@@ -29,20 +30,25 @@ domain: docs
 | **도메인 파이프라인** | [runbook-programmers-pipeline](./runbook-programmers-pipeline.md) |
 | **품질 자동화** | [runbook-regex-robustness](./runbook-regex-robustness.md) |
 
-## 컨벤션 / 패턴 (6개)
+## 컨벤션 (3개)
 
-코드/DB 컨벤션과 도메인 패턴.
+코드/DB/정책 규약.
 
 | 문서 | 한 줄 요약 |
 |------|------------|
-| [conventions-migration](./conventions-migration.md) | TypeORM Migration 파일명 규칙 |
-| [db-connection-pool](./db-connection-pool.md) | DB Connection Pool & DataSource 설정 현황 |
-| [gateway-middleware-pipeline](./gateway-middleware-pipeline.md) | Gateway 미들웨어 파이프라인 순서 |
-| [oauth-scopes](./oauth-scopes.md) | OAuth Scope 정의 |
-| [soft-delete-pattern](./soft-delete-pattern.md) | User Soft Delete 패턴 |
-| [token-expiry-policy](./token-expiry-policy.md) | JWT/Refresh 토큰 만료 정책 |
+| [conventions/migration-naming](./conventions/migration-naming.md) | TypeORM Migration 파일명 규칙 |
+| [conventions/oauth-scopes](./conventions/oauth-scopes.md) | OAuth Scope 정의 |
+| [conventions/token-expiry](./conventions/token-expiry.md) | JWT/Refresh 토큰 만료 정책 |
 
-> 추후 마이그레이션 스프린트에서 `docs/conventions/`, `docs/patterns/` 디렉토리로 분리 예정 (Sprint 153 범위 외).
+## 패턴 (3개)
+
+도메인/아키텍처 패턴.
+
+| 문서 | 한 줄 요약 |
+|------|------------|
+| [patterns/db-connection-pool](./patterns/db-connection-pool.md) | DB Connection Pool & DataSource 설정 현황 |
+| [patterns/gateway-middleware-pipeline](./patterns/gateway-middleware-pipeline.md) | Gateway 미들웨어 파이프라인 순서 |
+| [patterns/soft-delete](./patterns/soft-delete.md) | User Soft Delete 패턴 |
 
 ## 의사결정 기록 (ADR)
 
@@ -60,11 +66,12 @@ domain: docs
 
 ## 신규 문서 추가 시
 
-1. **카테고리 결정**: 위 5 카테고리 중 하나 선택 (런북 / 컨벤션 / ADR / 감사 / 자산)
+1. **카테고리 결정**: 위 6 카테고리 중 하나 선택 (런북 / 컨벤션 / 패턴 / ADR / 감사 / 자산)
 2. **명명 규칙**:
    - 런북: `runbook-{topic}.md` (kebab-case)
-   - ADR: `ADR-{NNN}-{topic}.md` 또는 `sprints/sprint-{NN}.md`
-   - 컨벤션/패턴: `{topic}-{kind}.md` (예: `soft-delete-pattern.md`)
+   - 컨벤션: `conventions/{topic}.md`
+   - 패턴: `patterns/{topic}.md`
+   - ADR: `adr/ADR-{NNN}-{topic}.md` 또는 `adr/sprints/sprint-{NN}.md`
 3. **본 README 갱신** — 카테고리 표에 추가
 4. **cross-ref 영향 범위 점검** — 디렉토리 변경 시 `grep -rn "docs/{old-path}" --include="*.md" ...` 필수
 
