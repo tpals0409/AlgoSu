@@ -1,3 +1,9 @@
+---
+sprint: 48
+title: "게스트 모드 & 퍼블릭 프로필"
+date: "2026-03-10"
+status: completed
+---
 # Sprint 48 — 게스트 모드 & 퍼블릭 프로필
 
 ## Oracle Verdict: APPROVED

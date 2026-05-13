@@ -1,3 +1,9 @@
+---
+sprint: 51
+title: "Gateway → Identity DB 분리"
+date: "2026-03-18"
+status: completed
+---
 # Sprint 51 — Gateway → Identity DB 분리
 
 ## 목표
