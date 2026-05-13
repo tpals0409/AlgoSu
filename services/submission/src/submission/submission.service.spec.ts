@@ -170,6 +170,78 @@ describe('SubmissionService', () => {
     });
   });
 
+  // ─── 1.5. create() — problem context null fallback ─────────────
+  // 회귀 차단: Sprint 143 Critic R2 P2 — `problemTitle ?? ''` / `problemDescription ?? ''` 누락 시
+  // null이 그대로 entity에 저장되어 ai-analysis prompt builder가 "설명: None" 문자열을
+  // LLM에 직렬화하는 회귀 발생. submission.service.ts L89~90 fallback의 회귀 차단 테스트.
+  describe('create() — problem context null fallback (회귀 차단: Sprint 143 시드 #2)', () => {
+    const baseDto: CreateSubmissionDto = {
+      problemId: 'problem-uuid-1',
+      language: 'python',
+      code: 'print("hello world")',
+    };
+
+    const setupCommon = () => {
+      const saved = createMockSubmission();
+      repo.findOne.mockResolvedValue(null);
+      repo.create.mockReturnValue(saved);
+      repo.save.mockResolvedValue(saved);
+      sagaOrchestrator.advanceToGitHubQueued.mockResolvedValue(undefined);
+      return saved;
+    };
+
+    it('getProblemInfo가 null title/description 반환 시 entity에 빈 문자열 저장', async () => {
+      setupCommon();
+      problemClient.getProblemInfo.mockResolvedValue({
+        title: null,
+        description: null,
+      });
+
+      await service.create(baseDto, 'user-1', 'study-uuid-1');
+
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          problemTitle: '',
+          problemDescription: '',
+        }),
+      );
+    });
+
+    it('getProblemInfo가 undefined title/description 반환 시 entity에 빈 문자열 저장', async () => {
+      setupCommon();
+      problemClient.getProblemInfo.mockResolvedValue({
+        title: undefined,
+        description: undefined,
+      });
+
+      await service.create(baseDto, 'user-1', 'study-uuid-1');
+
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          problemTitle: '',
+          problemDescription: '',
+        }),
+      );
+    });
+
+    it('getProblemInfo가 정상 title/description 반환 시 entity에 실제 값 저장', async () => {
+      setupCommon();
+      problemClient.getProblemInfo.mockResolvedValue({
+        title: 'Two Sum',
+        description: '주어진 정수 배열에서 두 수의 합이 target이 되는 인덱스를 반환',
+      });
+
+      await service.create(baseDto, 'user-1', 'study-uuid-1');
+
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          problemTitle: 'Two Sum',
+          problemDescription: '주어진 정수 배열에서 두 수의 합이 target이 되는 인덱스를 반환',
+        }),
+      );
+    });
+  });
+
   // ─── 2. create() — 멱등성 (중복 idempotencyKey) ──────────────
   describe('create() — 멱등성', () => {
     it('중복 idempotencyKey일 때 기존 제출을 반환한다', async () => {
