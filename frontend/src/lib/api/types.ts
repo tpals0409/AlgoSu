@@ -18,6 +18,8 @@ export interface Problem {
   allowedLanguages: string[];
   tags?: string[] | null;
   createdAt?: string;
+  /** Sprint 151: SQL 자동 언어 선택을 위한 카테고리 분류 */
+  category?: 'ALGORITHM' | 'SQL';
 }
 
 export interface CreateProblemData {
