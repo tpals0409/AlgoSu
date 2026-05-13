@@ -266,9 +266,10 @@ describe('AddProblemModal — SQL auto-tagging logic', () => {
     const createArg = mockCreate.mock.calls[0][0];
     expect(createArg.allowedLanguages).toEqual(['sql']);
     expect(createArg.tags).toContain('SQL');
+    expect(createArg.category).toBe('SQL');
   });
 
-  it('does not include allowedLanguages for algorithm category problems', async () => {
+  it('does not include category for algorithm category problems', async () => {
     mockSearchByQueryProgrammers.mockResolvedValue({
       items: [ALGO_ITEM],
     });
@@ -301,5 +302,6 @@ describe('AddProblemModal — SQL auto-tagging logic', () => {
     const createArg = mockCreate.mock.calls[0][0];
     expect(createArg.allowedLanguages).toBeUndefined();
     expect(createArg.tags).not.toContain('SQL');
+    expect(createArg.category).toBeUndefined();
   });
 });
