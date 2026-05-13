@@ -7,7 +7,7 @@
  * 번들된 JSON 스냅샷(data/programmers-problems.json)을 기동 시 로드하여
  * Map<problemId, ProgrammersProblemInfo> 형태로 캐싱한다.
  * 실시간 API 대신 사전 큐레이션 전략을 택해 외부 의존성 없이 검색/조회가 가능하다.
- * (ADR: docs/adr/sprint-95-programmers-dataset.md 참조)
+ * (ADR: docs/adr/topics/sprint-95-programmers-dataset.md 참조)
  */
 import {
   Injectable,

@@ -12,7 +12,8 @@ AlgoSu의 아키텍처/도메인 결정과 sprint 회고를 보관한다.
 docs/adr/
 ├─ README.md                              ← 본 문서
 ├─ ADR-{NNN}-{slug}.md                    ← 영구 ADR (8개)
-├─ sprint-95-programmers-dataset.md       ← 토픽 ADR (1개)
+├─ topics/
+│  └─ {topic-slug}.md                     ← 토픽 ADR (1개)
 └─ sprints/
    └─ sprint-{NN}.md                      ← 회고형 sprint ADR (89개, Sprint 62~152)
 ```
@@ -22,7 +23,7 @@ docs/adr/
 | 유형 | 명명 | 위치 | 용도 |
 |------|------|------|------|
 | **영구 ADR** | `ADR-{NNN}-{slug}.md` | `docs/adr/` | 아키텍처/플랫폼 차원 결정 — sprint 단위 회고 외 |
-| **토픽 ADR** | `{topic}-{slug}.md` | `docs/adr/` | 주제별 심화 문서 — sprint 회고와 별도 보존 |
+| **토픽 ADR** | `{topic-slug}.md` | `docs/adr/topics/` | 주제별 심화 문서 — sprint 회고와 별도 보존 |
 | **회고형 sprint ADR** | `sprint-{NN}.md` | `docs/adr/sprints/` | sprint 단위 결정/구현/검증/교훈 회고 |
 
 > **단발 sprint 노트의 통합 (Sprint 153)**: 과거 `docs/sprint-{40,48,51}-*.md`로 떠 있던 단발 노트는 `docs/adr/sprints/sprint-{40,48,51}.md`로 이전됨. Sprint 62부터는 매 sprint 회고형 ADR을 동일 컨벤션(`sprint`/`title`/`date`/`status` frontmatter)으로 작성.
@@ -46,7 +47,7 @@ docs/adr/
 
 | 문서 | 한 줄 요약 |
 |------|------------|
-| [sprint-95-programmers-dataset](./sprint-95-programmers-dataset.md) | 프로그래머스 데이터셋 번들링 + Gateway 외부 연동 (Sprint 95 심화 — `sprints/sprint-95.md`와 별개) |
+| [topics/sprint-95-programmers-dataset](./topics/sprint-95-programmers-dataset.md) | 프로그래머스 데이터셋 번들링 + Gateway 외부 연동 (Sprint 95 심화 — `sprints/sprint-95.md`와 별개) |
 
 ## 회고형 sprint ADR (89개)
 
