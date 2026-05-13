@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { DataSource, In, Not } from 'typeorm';
 import { ProblemService } from './problem.service';
-import { Problem, ProblemStatus, Difficulty } from './problem.entity';
+import { Problem, ProblemStatus, Difficulty, ProblemCategory } from './problem.entity';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
 import { DeadlineCacheService } from '../cache/deadline-cache.service';
 import { DualWriteService } from '../database/dual-write.service';
@@ -43,6 +43,7 @@ describe('ProblemService', () => {
     sourceUrl: 'https://leetcode.com/problems/two-sum',
     sourcePlatform: 'LeetCode',
     status: ProblemStatus.ACTIVE,
+    category: ProblemCategory.ALGORITHM,
     deadline: new Date('2026-03-07T23:59:59.000Z'),
     allowedLanguages: ['python', 'javascript'],
     tags: null,
@@ -164,7 +165,7 @@ describe('ProblemService', () => {
 
       const result = await service.create(dto, STUDY_ID, USER_ID);
 
-      // dualWrite.save 호출 확인 — studyId, createdBy 포함
+      // dualWrite.save 호출 확인 — studyId, createdBy, category 포함
       expect(dualWrite.save).toHaveBeenCalledWith({
         title: dto.title,
         description: dto.description,
@@ -177,6 +178,7 @@ describe('ProblemService', () => {
         allowedLanguages: dto.allowedLanguages,
         tags: null,
         status: ProblemStatus.ACTIVE,
+        category: ProblemCategory.ALGORITHM,
         studyId: STUDY_ID,
         createdBy: USER_ID,
       });
@@ -196,6 +198,39 @@ describe('ProblemService', () => {
 
       // 반환값
       expect(result).toEqual(mockProblem);
+    });
+
+    // Sprint 151 Wave 1 — category 회귀 차단
+    it('category 미지정 시 ALGORITHM 기본값으로 save 호출', async () => {
+      const dto: CreateProblemDto = { title: 'SQL 문제', weekNumber: '4월1주차' };
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      dualWrite.save.mockResolvedValue({ ...mockProblem, category: ProblemCategory.ALGORITHM } as Problem);
+      deadlineCache.setDeadline.mockResolvedValue(undefined);
+      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
+
+      await service.create(dto, STUDY_ID, USER_ID);
+
+      expect(dualWrite.save).toHaveBeenCalledWith(
+        expect.objectContaining({ category: ProblemCategory.ALGORITHM }),
+      );
+    });
+
+    it('category: SQL 전달 시 SQL 그대로 save 호출', async () => {
+      const dto: CreateProblemDto = {
+        title: 'SQL 고득점 Kit',
+        weekNumber: '4월1주차',
+        category: ProblemCategory.SQL,
+      };
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      dualWrite.save.mockResolvedValue({ ...mockProblem, category: ProblemCategory.SQL } as Problem);
+      deadlineCache.setDeadline.mockResolvedValue(undefined);
+      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
+
+      await service.create(dto, STUDY_ID, USER_ID);
+
+      expect(dualWrite.save).toHaveBeenCalledWith(
+        expect.objectContaining({ category: ProblemCategory.SQL }),
+      );
     });
   });
 

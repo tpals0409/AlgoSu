@@ -6,7 +6,7 @@
  */
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { DataSource, In, LessThanOrEqual, Not } from 'typeorm';
-import { Problem, ProblemStatus } from './problem.entity';
+import { Problem, ProblemCategory, ProblemStatus } from './problem.entity';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
 import { DeadlineCacheService } from '../cache/deadline-cache.service';
 import { DualWriteService } from '../database/dual-write.service';
@@ -64,6 +64,7 @@ export class ProblemService {
       allowedLanguages: dto.allowedLanguages ?? null,
       tags: dto.tags ?? null,
       status: ProblemStatus.ACTIVE,
+      category: dto.category ?? ProblemCategory.ALGORITHM,
       studyId,
       createdBy,
     });
@@ -211,6 +212,9 @@ export class ProblemService {
           );
         }
         problem.status = newStatus;
+      }
+      if (dto.category !== undefined) {
+        problem.category = dto.category;
       }
 
       const saved = await qr.manager.save(Problem, problem);

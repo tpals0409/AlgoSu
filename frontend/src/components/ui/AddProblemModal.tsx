@@ -672,7 +672,7 @@ export function AddProblemModal({ open, onClose, onAdd: onAddCallback }: AddProb
         tags: tagNames,
         sourceUrl,
         sourcePlatform: platform,
-        ...(sql && { allowedLanguages: ['sql'] }),
+        ...(sql && { allowedLanguages: ['sql'], category: 'SQL' as const }),
       };
 
       const created = await problemApi.create(data);

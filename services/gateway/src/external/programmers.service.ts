@@ -85,6 +85,22 @@ export interface ProgrammersSearchResult {
   items: ProgrammersSearchItem[];
 }
 
+/**
+ * 프로그래머스 카테고리(소문자)를 Problem 서비스 enum 값(대문자)으로 변환한다.
+ *
+ * Gateway JSON 스냅샷은 'algorithm' | 'sql' (소문자) 형식으로 저장되고,
+ * Problem 서비스의 ProblemCategory enum은 'ALGORITHM' | 'SQL' (대문자)를 요구한다.
+ * 프론트엔드 또는 내부 연동에서 문제 생성 시 이 헬퍼를 통해 변환해야 한다. (Sprint 151)
+ *
+ * @param category 프로그래머스 카테고리 소문자 값
+ * @returns Problem 서비스 ProblemCategory enum 값 (대문자)
+ */
+export function toProblemCategoryEnum(
+  category: 'algorithm' | 'sql',
+): 'ALGORITHM' | 'SQL' {
+  return category === 'sql' ? 'SQL' : 'ALGORITHM';
+}
+
 /** 페이지당 검색 결과 크기 */
 const PAGE_SIZE = 10;
 
