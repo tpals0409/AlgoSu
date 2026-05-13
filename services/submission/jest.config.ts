@@ -7,6 +7,7 @@ const config: Config = {
   transform: { '^.+\\.(t|j)s$': 'ts-jest' },
   collectCoverageFrom: [
     '**/*.(t|j)s',
+    '!**/*.spec.ts',
     '!**/*.module.ts',
     '!**/main.ts',
     '!**/*.entity.ts',

@@ -153,7 +153,84 @@ describe('ProblemServiceClient', () => {
     });
   });
 
-  // ─── 3.5. errorFilter 통과 시 Error resolve 방어 (Critic 3차 P1) ─
+  // ─── 4. getProblemInfo() — 정상 + fallback (Sprint 150 시드 #14) ───
+  describe('getProblemInfo()', () => {
+    beforeEach(() => service.onModuleInit());
+
+    it('CB fire 결과를 그대로 반환한다 (title/description 있음)', async () => {
+      cbService._mockBreaker.fire.mockResolvedValueOnce({
+        title: 'Two Sum',
+        description: '주어진 정수 배열에서 두 수의 합이 target이 되는 인덱스를 반환',
+      });
+
+      const result = await service.getProblemInfo('p1', 's1', 'u1');
+
+      expect(result).toEqual({
+        title: 'Two Sum',
+        description: '주어진 정수 배열에서 두 수의 합이 target이 되는 인덱스를 반환',
+      });
+      expect(cbService._mockBreaker.fire).toHaveBeenCalledWith({
+        op: 'getProblemInfo',
+        problemId: 'p1',
+        studyId: 's1',
+        userId: 'u1',
+      });
+    });
+
+    it('userId 미전달 시 op payload에서 userId가 undefined로 전달된다', async () => {
+      cbService._mockBreaker.fire.mockResolvedValueOnce({
+        title: '',
+        description: '',
+      });
+
+      await service.getProblemInfo('p1', 's1');
+
+      expect(cbService._mockBreaker.fire).toHaveBeenCalledWith({
+        op: 'getProblemInfo',
+        problemId: 'p1',
+        studyId: 's1',
+        userId: undefined,
+      });
+    });
+
+    it('CB fire가 throw하면 방어적 catch로 fallback 객체 반환', async () => {
+      cbService._mockBreaker.fire.mockRejectedValueOnce(new Error('CB error'));
+
+      const result = await service.getProblemInfo('p1', 's1', 'u1');
+
+      expect(result).toEqual({ title: '', description: '' });
+    });
+
+    it('CB fire가 Error 객체를 resolve해도 fallback 반환 (errorFilter 통과 방어)', async () => {
+      const errorAsResolve = new Error('Problem 410 — errorFilter 통과') as Error & {
+        status: number;
+      };
+      errorAsResolve.status = 410;
+      cbService._mockBreaker.fire.mockResolvedValueOnce(errorAsResolve);
+
+      const result = await service.getProblemInfo('p1', 's1', 'u1');
+
+      expect(result).toEqual({ title: '', description: '' });
+    });
+
+    it('PROBLEM_SERVICE_URL 미설정 시 즉시 fallback (CB fire 호출 안 함)', async () => {
+      // problemServiceUrl/Key는 constructor 시점에 set되는 readonly 멤버 → 직접 override.
+      // isConfigReady()는 두 값이 비어있으면 false → 즉시 fallback 반환.
+      const internal = service as unknown as {
+        problemServiceUrl: string;
+        problemServiceKey: string;
+      };
+      internal.problemServiceUrl = '';
+      internal.problemServiceKey = '';
+
+      const result = await service.getProblemInfo('p1', 's1', 'u1');
+
+      expect(result).toEqual({ title: '', description: '' });
+      expect(cbService._mockBreaker.fire).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── 4.5. errorFilter 통과 시 Error resolve 방어 (Critic 3차 P1) ─
   describe('errorFilter 통과 시 Error resolve 방어 (Critic 3차 P1)', () => {
     beforeEach(() => service.onModuleInit());
 
@@ -544,6 +621,83 @@ describe('ProblemServiceClient', () => {
       const headers = callArgs.headers as Record<string, string>;
       expect(headers['x-user-id']).toBeUndefined();
       expect(headers['x-study-id']).toBe('s1');
+      fetchSpy.mockRestore();
+    });
+  });
+
+  // ─── 6.4. _doGetProblemInfo — fetch 검증 (Sprint 150 시드 #14) ────
+  describe('_doGetProblemInfo()', () => {
+    it('200 응답 → title/description 반환', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch' as never).mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          data: {
+            title: 'Two Sum',
+            description: '두 수의 합이 target이 되는 인덱스를 반환',
+          },
+        }),
+      } as never);
+
+      const fn = (service as unknown as {
+        _doGetProblemInfo: (
+          req: ProblemRequest,
+        ) => Promise<{ title: string; description: string }>;
+      })._doGetProblemInfo.bind(service);
+
+      const result = await fn({
+        op: 'getProblemInfo',
+        problemId: 'p1',
+        studyId: 's1',
+        userId: 'u1',
+      });
+
+      expect(result).toEqual({
+        title: 'Two Sum',
+        description: '두 수의 합이 target이 되는 인덱스를 반환',
+      });
+      fetchSpy.mockRestore();
+    });
+
+    it('200 응답 + title/description 누락 → 빈 문자열 fallback', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch' as never).mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ data: {} }),
+      } as never);
+
+      const fn = (service as unknown as {
+        _doGetProblemInfo: (
+          req: ProblemRequest,
+        ) => Promise<{ title: string; description: string }>;
+      })._doGetProblemInfo.bind(service);
+
+      const result = await fn({
+        op: 'getProblemInfo',
+        problemId: 'p1',
+        studyId: 's1',
+        userId: 'u1',
+      });
+
+      expect(result).toEqual({ title: '', description: '' });
+      fetchSpy.mockRestore();
+    });
+
+    it('404 응답 → buildHttpError throw (HostBreaker가 처리)', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch' as never).mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+      } as never);
+
+      const fn = (service as unknown as {
+        _doGetProblemInfo: (
+          req: ProblemRequest,
+        ) => Promise<{ title: string; description: string }>;
+      })._doGetProblemInfo.bind(service);
+
+      await expect(
+        fn({ op: 'getProblemInfo', problemId: 'p1', studyId: 's1', userId: 'u1' }),
+      ).rejects.toThrow(/문제 정보 조회 실패/);
       fetchSpy.mockRestore();
     });
   });
