@@ -7,7 +7,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback, use, type ReactNode } from 'react';
+import React, { useState, useEffect, useCallback, useRef, use, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import {
   ArrowLeft,
@@ -76,6 +76,12 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  /**
+   * Sprint 151: SQL 카테고리 자동 언어 선택 ref guard.
+   * mount 당 1회만 적용 — 사용자 수동 변경 이후 재강제 방지.
+   */
+  const sqlAutoSelectedRef = useRef(false);
+
   useEffect(() => {
     const timer = setTimeout(() => setMounted(true), 50);
     return () => clearTimeout(timer);
@@ -128,6 +134,18 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- t는 stable ref; 데이터 재요청 트리거 불필요
   }, [isAuthenticated, currentStudyId, problemId]);
+
+  /**
+   * Sprint 151: SQL 카테고리 문제 진입 시 에디터 언어 자동 선택.
+   * mount 당 1회만 적용 (ref guard). ALGORITHM / undefined → 'python' 기본값 유지.
+   */
+  useEffect(() => {
+    if (!problem || sqlAutoSelectedRef.current) return;
+    if (problem.category === 'SQL') {
+      setLanguage('sql');
+      sqlAutoSelectedRef.current = true;
+    }
+  }, [problem]);
 
   // ─── HANDLERS ─────────────────────────────
 
