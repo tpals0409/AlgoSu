@@ -56,7 +56,7 @@ domain: docs
 
 - **영구 ADR** (8개): `ADR-{NNN}-{slug}.md` — 초기 아키텍처 + Sprint 124+ 주요 결정
 - **회고형 sprint ADR** (89개): `sprints/sprint-{NN}.md` — Sprint 62 이후 매 sprint 회고
-- **토픽 ADR** (1개): `sprint-95-programmers-dataset.md` — sprint별 회고 외 주제 심화
+- **토픽 ADR** (1개): `topics/sprint-95-programmers-dataset.md` — sprint별 회고 외 주제 심화
 
 ## 감사 산출물
 

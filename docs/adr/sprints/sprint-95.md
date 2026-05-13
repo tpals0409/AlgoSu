@@ -20,7 +20,7 @@ status: completed
 | 커밋 | 담당 | 내용 |
 |---|---|---|
 | `adad5cf` | architect | ProgrammersService/Controller 골격 + external.module.ts 등록 + DTO `@IsIn` 확장 |
-| `60b7925` | librarian | 데이터 번들링 결정 ADR (`docs/adr/sprint-95-programmers-dataset.md`) |
+| `60b7925` | librarian | 데이터 번들링 결정 ADR (`docs/adr/topics/sprint-95-programmers-dataset.md`) |
 | `e460b79` | postman | Playwright 기반 크롤러 스크립트 + 초기 데이터셋 373건 |
 | `18b3932` | curator | 데이터 품질 QA 리포트 (`PROGRAMMERS-QA.md`) |
 | `2578ae0` | gatekeeper | 검증 리포트 + 749 tests PASS + BOJ 회귀 무결성 |
