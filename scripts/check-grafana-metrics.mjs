@@ -633,11 +633,21 @@ function expandRegexMetricPattern(pattern) {
 }
 
 /**
- * ConfigMap data section의 `<key>: |` block에서 inline 본문(yaml/json)을 indent strip하여 반환.
+ * ConfigMap data section의 `<key>: <block-scalar-modifier>` block에서
+ * inline 본문(yaml/json)을 indent strip하여 반환.
+ *
+ * YAML block scalar modifiers (|, |-, |+, >, >-, >+) 6종 전부 인식.
+ *
+ * Sprint 148 시드 #15 비대칭 해소:
+ * - 이전: `${key}: |` 단일 modifier만 includes 매칭
+ * - 현재: 같은 파일의 `validateRuleExprLabels` 와 동일하게 6종 modifier 인식
+ *
+ * RUNBOOK §2.4 prefix anchoring (`^\s*<key>:\s*...$`) + §2.1 character class 일관성 적용.
  */
 function extractInlineBlock(content, key) {
   const lines = content.split('\n');
-  const startIdx = lines.findIndex((l) => l.includes(`${key}: |`));
+  const headerRegex = new RegExp(`^\\s*${escapeRegExpLiteral(key)}:\\s*[|>][-+]?\\s*$`);
+  const startIdx = lines.findIndex((l) => headerRegex.test(l));
   if (startIdx === -1) return null;
   const baseIndent = '    ';
   const out = [];
@@ -648,6 +658,13 @@ function extractInlineBlock(content, key) {
     else break;
   }
   return out.join('\n');
+}
+
+/**
+ * 정규식 메타문자를 literal로 escape — `algosu-alerts.yml` 의 `.` 등을 정확히 매칭.
+ */
+function escapeRegExpLiteral(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /**
