@@ -12,7 +12,7 @@ domain: docs
 |----------|------|------|
 | 의사결정 기록 (ADR) | [`docs/adr/`](./adr/README.md) | 영구 ADR + sprint 회고형 ADR + 토픽 ADR |
 | 운영 런북 | `docs/runbook/*.md` | 시스템 운영·롤백·로테이션 절차 |
-| 컨벤션 | `docs/conventions/` (3개) | 코드/DB/정책 규약 |
+| 컨벤션 | `docs/conventions/` (6개) | 코드/DB/정책/관측성 규약 |
 | 패턴 | `docs/patterns/` (3개) | 도메인/아키텍처 패턴 |
 | 감사 산출물 | [`docs/audits/`](./audits/README.md) | 전수 감사 자동화 sprint별 산출물 |
 | 자산 | `docs/assets/` | 로고 등 정적 자원 |
@@ -30,13 +30,16 @@ domain: docs
 | **도메인 파이프라인** | [programmers-pipeline](./runbook/programmers-pipeline.md) |
 | **품질 자동화** | [regex-robustness](./runbook/regex-robustness.md) |
 
-## 컨벤션 (3개)
+## 컨벤션 (6개)
 
-코드/DB/정책 규약.
+코드/DB/정책/관측성 규약.
 
 | 문서 | 한 줄 요약 |
 |------|------------|
+| [conventions/annotation-dictionary](./conventions/annotation-dictionary.md) | 코드 어노테이션(`@guard`/`@event`/`@domain`) 사전 |
+| [conventions/ci-cd](./conventions/ci-cd.md) | Conventional Commits / 브랜치 / PR / CI / 배포 정책 |
 | [conventions/migration-naming](./conventions/migration-naming.md) | TypeORM Migration 파일명 규칙 |
+| [conventions/monitoring-logging](./conventions/monitoring-logging.md) | 구조화 로깅 / 메트릭 / Alert rule 규칙 (§1~§11) |
 | [conventions/oauth-scopes](./conventions/oauth-scopes.md) | OAuth Scope 정의 |
 | [conventions/token-expiry](./conventions/token-expiry.md) | JWT/Refresh 토큰 만료 정책 |
 

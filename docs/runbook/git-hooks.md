@@ -1,6 +1,6 @@
 # Runbook: Git Hooks (commitlint pre-commit 자동화)
 
-> **관련**: `commitlint.config.mjs`, `.husky/commit-msg`, `docs/ci-cd-rules.md`
+> **관련**: `commitlint.config.mjs`, `.husky/commit-msg`, `docs/conventions/ci-cd.md`
 > **도입**: Sprint 105 [C] — scope-enum 동적 생성 + 로컬 조기 실패 자동화
 
 ---
@@ -127,6 +127,6 @@ const staticScopes = ['adr', 'blog', 'ci', 'deps', 'docs', 'e2e', 'frontend', 'i
 
 ## 관련 문서
 
-- `docs/ci-cd-rules.md` — CI Conventional Commits 정책
+- `docs/conventions/ci-cd.md` — CI Conventional Commits 정책
 - `docs/runbook/ci-rebuild-all.md` — CI 인프라 PR 표준 절차
 - `memory/feedback-commitlint-scope.md` — 배경 피드백 기록

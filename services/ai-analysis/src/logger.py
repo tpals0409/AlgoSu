@@ -6,7 +6,7 @@
 
 AlgoSu AI Analysis Service — Structured Logger
 -----------------------------------------------
-규칙 근거: /docs/monitoring-log-rules.md
+규칙 근거: /docs/conventions/monitoring-logging.md
 
 보안 요구사항:
 - claude_api_key, submission_service_key, internal_api_key 절대 로그 금지

@@ -1,5 +1,5 @@
 # AlgoSu — Prometheus Alert Rules
-# 참조: docs/monitoring-log-rules.md §11-2
+# 참조: docs/conventions/monitoring-logging.md §11-2
 apiVersion: v1
 kind: ConfigMap
 metadata:

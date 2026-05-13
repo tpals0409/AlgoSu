@@ -41,7 +41,7 @@ import { FeedbackModule } from './feedback/feedback.module';
         entities: [User, Study, StudyMember, StudyInvite, Notification, ShareLink, Feedback],
         synchronize: false, // 마이그레이션으로 관리
         logging: ['error', 'warn'],
-        maxQueryExecutionTime: 200, // 200ms 초과 쿼리 경고 로그 (monitoring-log-rules.md §8-1)
+        maxQueryExecutionTime: 200, // 200ms 초과 쿼리 경고 로그 (monitoring-logging.md §8-1)
         ssl:
           config.get<string>('DATABASE_SSL') === 'true'
             ? {

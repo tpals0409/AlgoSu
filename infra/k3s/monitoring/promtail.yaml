@@ -59,7 +59,7 @@ data:
         pipeline_stages:
           # CRI 포맷 파싱: <timestamp> <stream> <flags> <message>
           - cri: {}
-          # JSON 로그 파싱 (monitoring-log-rules.md §1-1)
+          # JSON 로그 파싱 (monitoring-logging.md §1-1)
           - json:
               expressions:
                 level: level

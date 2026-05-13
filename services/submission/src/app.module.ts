@@ -36,7 +36,7 @@ import { GatewayContextMiddleware } from './common/middleware/gateway-context.mi
         migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
         synchronize: false, // 프로덕션 절대 금지
         logging: ['error', 'warn'],
-        maxQueryExecutionTime: 200, // 200ms 초과 쿼리 경고 로그 (monitoring-log-rules.md §8-1)
+        maxQueryExecutionTime: 200, // 200ms 초과 쿼리 경고 로그 (monitoring-logging.md §8-1)
         ssl:
           configService.get<string>('DATABASE_SSL') === 'true'
             ? { rejectUnauthorized: false }

@@ -4,7 +4,7 @@
  * @layer util
  * @related structured-logger.service.ts, request-id.middleware.ts
  *
- * 규칙 근거: /docs/monitoring-log-rules.md §3
+ * 규칙 근거: /docs/conventions/monitoring-logging.md §3
  *
  * 보안 요구사항:
  * - Authorization, X-Internal-Key, Cookie 헤더 → [REDACTED]

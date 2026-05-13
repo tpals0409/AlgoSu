@@ -2,9 +2,9 @@
  * @file commitlint.config.mjs
  * @domain ci
  * @layer config
- * @related docs/ci-cd-rules.md, docs/runbook/git-hooks.md
+ * @related docs/conventions/ci-cd.md, docs/runbook/git-hooks.md
  *
- * AlgoSu — Conventional Commits 강제 (ci-cd-rules.md §2)
+ * AlgoSu — Conventional Commits 강제 (docs/conventions/ci-cd.md §1)
  *
  * scope-enum 동적 생성: services/ 하위 디렉토리를 런타임에 스캔하여
  * 서비스 추가/제거 시 수동 유지 비용을 제거한다. (Sprint 105 [C])

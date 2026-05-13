@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# AlgoSu — Layer 순차 배포 스크립트 (ci-cd-rules.md §7-2)
+# AlgoSu — Layer 순차 배포 스크립트 (docs/conventions/ci-cd.md §7-2)
 #
 # 사용법: DEPLOY_SHA=<sha> ./deploy.sh
 # 서버에서 실행 (appleboy/ssh-action 통해 호출)

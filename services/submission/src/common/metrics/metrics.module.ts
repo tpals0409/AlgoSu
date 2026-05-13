@@ -7,7 +7,7 @@
 
 /**
  * AlgoSu — Prometheus Metrics Module (Global)
- * 규칙 근거: /docs/monitoring-log-rules.md §9
+ * 규칙 근거: /docs/conventions/monitoring-logging.md §9
  *
  * 글로벌 모듈 — AppModule에 한 번만 import하면
  * 전체 앱에서 MetricsService를 DI 받아 사용 가능
