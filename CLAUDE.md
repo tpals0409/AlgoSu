@@ -108,3 +108,10 @@ Oracle이 전문 에이전트에게 위임: `/agents:{name}` (conductor, gatekee
 
 **Critic**은 Codex(gpt-5) 기반 2차 코드리뷰를 담당합니다. 머지 직전 최종 심사에 호출하세요.
 `merge-gate` 프리셋(`[critic]`)을 통해 단독 교차 리뷰를 실행합니다 — `.claude-team.json` 참조.
+
+### `.claude/commands/` tracked 정책 (Sprint 150 시드 #16)
+
+- `.claude/commands/**` 는 **tracked** — 팀 공유 에이전트/명령 워크플로우 SSOT
+- `.claude/{settings.local.json, scheduled_tasks.lock, cache/, logs/}` 등은 **untracked** — 로컬 세션/설정 전용
+- 신규 agent/command 추가 시 `docs/runbook-claude-commands.md` §2 목록 갱신 + 본 섹션 12 에이전트 나열 갱신 의무
+- 보안 grep 체크리스트는 `docs/runbook-claude-commands.md` §4 참조
