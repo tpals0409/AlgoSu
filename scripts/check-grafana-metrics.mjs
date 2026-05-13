@@ -636,17 +636,25 @@ function expandRegexMetricPattern(pattern) {
  * ConfigMap data section의 `<key>: <block-scalar-modifier>` block에서
  * inline 본문(yaml/json)을 indent strip하여 반환.
  *
- * YAML block scalar modifiers (|, |-, |+, >, >-, >+) 6종 전부 인식.
+ * YAML 1.2 block scalar header (https://yaml.org/spec/1.2.2/#chapter-8-block-style-productions):
+ * - indicator: `|` (literal) or `>` (folded)
+ * - chomping-indicator: `-` (strip) or `+` (keep), optional
+ * - indentation-indicator: `1`-`9`, optional
+ * - chomping/indentation 순서 임의 (`|2-` / `|-2` / `|+3` 모두 valid)
+ * - 라인 끝에 선택적 inline comment (`# ...`)
  *
- * Sprint 148 시드 #15 비대칭 해소:
+ * Sprint 148 시드 #15 비대칭 해소 (Sprint 150 PR #227 R1 P2 보완):
  * - 이전: `${key}: |` 단일 modifier만 includes 매칭
- * - 현재: 같은 파일의 `validateRuleExprLabels` 와 동일하게 6종 modifier 인식
+ * - 현재: 같은 파일의 `validateRuleExprLabels` 와 동일 modifier 6종 + indentation indicator + inline comment
  *
  * RUNBOOK §2.4 prefix anchoring (`^\s*<key>:\s*...$`) + §2.1 character class 일관성 적용.
  */
 function extractInlineBlock(content, key) {
   const lines = content.split('\n');
-  const headerRegex = new RegExp(`^\\s*${escapeRegExpLiteral(key)}:\\s*[|>][-+]?\\s*$`);
+  // [|>] indicator + (chomping ↔ indentation 임의 순서, 둘 다 optional) + optional whitespace + optional `# comment`
+  const headerRegex = new RegExp(
+    `^\\s*${escapeRegExpLiteral(key)}:\\s*[|>](?:[-+]?[1-9]?|[1-9]?[-+]?)\\s*(?:#.*)?$`
+  );
   const startIdx = lines.findIndex((l) => headerRegex.test(l));
   if (startIdx === -1) return null;
   const baseIndent = '    ';
