@@ -17,7 +17,7 @@ import {
   Max,
   MaxLength,
 } from 'class-validator';
-import { Difficulty, ProblemStatus } from '../problem.entity';
+import { Difficulty, ProblemCategory, ProblemStatus } from '../problem.entity';
 
 /** 지원하는 문제 출처 플랫폼 — 신규 플랫폼 추가 시 여기만 수정 */
 export const SOURCE_PLATFORMS = ['BOJ', 'PROGRAMMERS'] as const;
@@ -76,6 +76,14 @@ export class CreateProblemDto {
   @IsArray()
   @IsString({ each: true })
   tags?: string[];
+
+  /**
+   * 문제 카테고리.
+   * 허용값: 'ALGORITHM' | 'SQL' — 미지정 시 엔티티 기본값 ALGORITHM 적용 (Sprint 151)
+   */
+  @IsOptional()
+  @IsEnum(ProblemCategory)
+  category?: ProblemCategory;
 }
 
 export class UpdateProblemDto {
@@ -133,4 +141,12 @@ export class UpdateProblemDto {
   @IsOptional()
   @IsEnum(ProblemStatus)
   status?: ProblemStatus;
+
+  /**
+   * 문제 카테고리.
+   * 허용값: 'ALGORITHM' | 'SQL' — 미지정 시 엔티티 기본값 ALGORITHM 적용 (Sprint 151)
+   */
+  @IsOptional()
+  @IsEnum(ProblemCategory)
+  category?: ProblemCategory;
 }
