@@ -633,11 +633,31 @@ function expandRegexMetricPattern(pattern) {
 }
 
 /**
- * ConfigMap data section의 `<key>: |` block에서 inline 본문(yaml/json)을 indent strip하여 반환.
+ * ConfigMap data section의 `<key>: <block-scalar-modifier>` block에서
+ * inline 본문(yaml/json)을 indent strip하여 반환.
+ *
+ * YAML 1.2 block scalar header (https://yaml.org/spec/1.2.2/#chapter-8-block-style-productions):
+ * - indicator: `|` (literal) or `>` (folded)
+ * - chomping-indicator: `-` (strip) or `+` (keep), optional
+ * - 라인 끝에 선택적 inline comment (`# ...`)
+ *
+ * 의도적 미지원: explicit indentation indicator (`|1`/`|2`...). 우리 ConfigMap 운영 정책상 미사용이며,
+ * 본 함수의 `baseIndent = '    '` (4-space) 가정과 충돌할 경우 silent empty 추출 위험. 명시적 reject가 안전.
+ *
+ * Sprint 148 시드 #15 비대칭 해소 (Sprint 150 PR #227 R1+R2 P2 보완):
+ * - R1 적발: `'|- # comment'` 같은 inline comment 거부 → 본 fix에서 허용
+ * - R2 적발: `|1`/`|2` 같은 indentation indicator 허용 시 body indent 가정 깨짐 → 명시적 reject
+ *
+ * RUNBOOK §2.4 prefix anchoring (`^\s*<key>:\s*...$`) + §2.1 character class 일관성 적용.
  */
 function extractInlineBlock(content, key) {
   const lines = content.split('\n');
-  const startIdx = lines.findIndex((l) => l.includes(`${key}: |`));
+  // [|>] indicator + optional chomping([-+]) + optional whitespace + optional inline comment (#...)
+  // indentation indicator(1-9)는 의도적 미지원 — body indent 가정 보호.
+  const headerRegex = new RegExp(
+    `^\\s*${escapeRegExpLiteral(key)}:\\s*[|>][-+]?\\s*(?:#.*)?$`
+  );
+  const startIdx = lines.findIndex((l) => headerRegex.test(l));
   if (startIdx === -1) return null;
   const baseIndent = '    ';
   const out = [];
@@ -648,6 +668,13 @@ function extractInlineBlock(content, key) {
     else break;
   }
   return out.join('\n');
+}
+
+/**
+ * 정규식 메타문자를 literal로 escape — `algosu-alerts.yml` 의 `.` 등을 정확히 매칭.
+ */
+function escapeRegExpLiteral(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /**
