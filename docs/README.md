@@ -17,7 +17,7 @@ domain: docs
 | 감사 산출물 | [`docs/audits/`](./audits/README.md) | 전수 감사 자동화 sprint별 산출물 |
 | 자산 | `docs/assets/` | 로고 등 정적 자원 |
 
-## 운영 런북 (16개)
+## 운영 런북 (17개)
 
 운영 단계별 표준 절차 — 사고/롤백 시 즉시 참조.
 
@@ -26,7 +26,7 @@ domain: docs
 | **CI / 배포** | [ci-rebuild-all](./runbook/ci-rebuild-all.md) · [e2e-pr-label](./runbook/e2e-pr-label.md) · [gitops-migration](./runbook/gitops-migration.md) · [dependency-major-upgrade](./runbook/dependency-major-upgrade.md) |
 | **DB / 마이그레이션** | [db-migration](./runbook/db-migration.md) |
 | **GitHub / 인증** | [github-token-relink](./runbook/github-token-relink.md) · [pat-rotation](./runbook/pat-rotation.md) · [key-rotation](./runbook/key-rotation.md) · [admin-emails](./runbook/admin-emails.md) |
-| **로컬 개발 환경** | [git-hooks](./runbook/git-hooks.md) · [git-staging-checklist](./runbook/git-staging-checklist.md) · [claude-commands](./runbook/claude-commands.md) · [oracle-tmux-path](./runbook/oracle-tmux-path.md) |
+| **로컬 개발 환경** | [git-hooks](./runbook/git-hooks.md) · [git-staging-checklist](./runbook/git-staging-checklist.md) · [pre-push-check](./runbook/pre-push-check.md) · [claude-commands](./runbook/claude-commands.md) · [oracle-tmux-path](./runbook/oracle-tmux-path.md) |
 | **도메인 파이프라인** | [programmers-pipeline](./runbook/programmers-pipeline.md) |
 | **품질 자동화** | [regex-robustness](./runbook/regex-robustness.md) · [doc-ref-lint](./runbook/doc-ref-lint.md) |
 
@@ -58,7 +58,7 @@ domain: docs
 [`docs/adr/`](./adr/README.md) 참조.
 
 - **영구 ADR** (8개): `ADR-{NNN}-{slug}.md` — 초기 아키텍처 + Sprint 124+ 주요 결정
-- **회고형 sprint ADR** (89개): `sprints/sprint-{NN}.md` — Sprint 62 이후 매 sprint 회고
+- **회고형 sprint ADR** (90개): `sprints/sprint-{NN}.md` — Sprint 62 이후 매 sprint 회고
 - **토픽 ADR** (1개): `topics/sprint-95-programmers-dataset.md` — sprint별 회고 외 주제 심화
 
 ## 감사 산출물
