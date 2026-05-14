@@ -125,8 +125,45 @@ const staticScopes = ['adr', 'blog', 'ci', 'deps', 'docs', 'e2e', 'frontend', 'i
 
 ---
 
+---
+
+## § 2 — Pre-push Hook (staging 무결성 검증)
+
+> **도입**: Sprint 155 시드 #22 — Sprint 153 Phase A/E 사고(staged 누락 → main broken link) + Sprint 154 교훈 #4(untracked 파일의 lint 사각지대) 직접 보강
+> **상세**: `docs/runbook/pre-push-check.md` 참조
+
+### 2.1 도입 배경
+
+| Sprint | 사고 | 차단 목표 |
+|--------|------|-----------|
+| Sprint 153 Phase E | sed 결과 staged 누락 → main broken link 19건 | commit 전 unstaged 수정 검출 |
+| Sprint 154 PR #246 | untracked sprint-153.md home 경로 → commit 후 CI 첫 적발 | push 전 untracked .md broken ref 검출 |
+
+### 2.2 검증 항목 요약
+
+- **검증 1**: `git ls-files --others --exclude-standard "*.md"` → untracked .md broken ref 검사
+  - exit 2 (broken ref 존재 시 push 차단)
+  - 면제: `<!-- staging-check: ignore -->` 또는 `<!-- doc-ref-lint: ignore -->`
+- **검증 2**: `git status --porcelain` Y=M 라인 → staged 안 된 수정 파일 검출
+  - exit 1 (unstaged 수정 존재 시 push 차단 — 의도적이면 §2.3 우회)
+- **self-test**: Sprint 153 Phase E / Sprint 154 PR #246 regression fixture 2/2 → exit 2 실패
+
+> 전체 검증 항목, 면제 정책, FAQ 는 `docs/runbook/pre-push-check.md` 참조.
+
+### 2.3 우회 절차
+
+```bash
+# 의도적 push (WIP 스냅샷, 자동화 스크립트 등)
+git push --no-verify
+```
+
+> **주의**: PR 머지 전 hook 통과 또는 CI `quality-docs` 통과 확인 필요.
+
+---
+
 ## 관련 문서
 
 - `docs/conventions/ci-cd.md` — CI Conventional Commits 정책
 - `docs/runbook/ci-rebuild-all.md` — CI 인프라 PR 표준 절차
+- `docs/runbook/pre-push-check.md` — Pre-push 무결성 검증 상세 RUNBOOK
 - `memory/feedback-commitlint-scope.md` — 배경 피드백 기록

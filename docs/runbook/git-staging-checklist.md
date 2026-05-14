@@ -132,11 +132,22 @@ git checkout <stash-commit>^3 -- <untracked-file>
 3. plan 본문에 `**staging 절차**:` 섹션 명시
 4. 실행 후 §2.3 검증 의무
 
-### CI 자동화 (향후 확장 후보)
-- pre-push hook 또는 PR check 에서 `git diff origin/main --stat` 과 plan 명시 산출물 cross-check 가능 (Sprint 155+ 검토)
+### CI 자동화 — **Sprint 155 완료**
+
+**3단 안전망 완성** (Sprint 155 시드 #22):
+
+| 단계 | 도구 | 차단 대상 |
+|------|------|-----------|
+| **plan 단계** (본 RUNBOOK) | plan 작성 시 `**staging 절차**:` 섹션 명시 | 실행 전 사전 설계 누락 |
+| **pre-push 단계** | `.husky/pre-push` → `scripts/check-staging-integrity.mjs` | push 직전 untracked broken ref + unstaged 수정 |
+| **CI 단계** | `quality-docs` job → `scripts/check-doc-refs.mjs` | PR 단계 tracked .md broken ref |
+
+> **pre-push hook 상세**: `docs/runbook/pre-push-check.md` 참조
+> **ADR**: `docs/adr/sprints/sprint-155.md`
 
 ---
 
 ## 7. 이력
 
 - **2026-05-14** — Sprint 154 시드 #20: 본 RUNBOOK 신설. Sprint 153 Phase A/E 두 차례 재발 사례 기반 체크리스트 + `.claude/commands/agents/architect.md` + `scribe.md` 페르소나에 cross-ref 추가
+- **2026-05-14** — Sprint 155 시드 #22: §6 CI 자동화 항목 "Sprint 155 완료" 갱신 — pre-push hook 도입으로 3단 안전망 완성. `docs/runbook/pre-push-check.md` cross-ref 추가
