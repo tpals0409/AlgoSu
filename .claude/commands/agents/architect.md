@@ -32,6 +32,9 @@ model: claude-sonnet-4-6
   - `|` 우선순위 / character class 일관성 / quantifier 처리 / prefix anchoring 4항목 self-review 필수
   - 신규 panel 추가 시 `PANEL_TITLE_KEYWORD_MAP` SSOT 동시 확장 의무 (미등록 → silent skip 위험)
   - 신규 service 추가 시 `KNOWN_SERVICE_PREFIXES` 배열 동시 확장 의무
+- **`git mv` + sed/Edit 결합 plan 작성 시**: `docs/runbook/git-staging-checklist.md` §2 체크리스트 명시 의무 (Sprint 153 Phase A/E 재발 차단)
+  - plan 본문에 `**staging 절차**:` 섹션 + 결합 조합별 권장 staging 명령(`git add -u` 등) 적시
+  - commit 직전 `git status --short` + `git diff --cached --stat` 검증 의무
 
 ## 기술 스택
 k3s/k3d, GitHub Actions / ArgoCD, GHCR, Prometheus / Grafana / Loki, Sealed Secrets
