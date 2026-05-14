@@ -7,6 +7,8 @@
  *
  * 마크다운 cross-ref 무결성 정적 검증.
  * Sprint 153 Phase G에서 5종 슬러그 23회 broken ref 적발 → 정기 lint로 부채 누적 차단.
+ * Sprint 155: 함수 export + --include-untracked 옵션 + entry point guard 추가
+ *             (check-staging-integrity.mjs에서 validateRef 등 재사용).
  *
  * 검사 항목
  * - markdown link `[text](path)` 의 path 존재 여부
@@ -18,63 +20,95 @@
  * - 인라인 코드 `` `...` `` 내부 자동 skip
  * - 라인 끝 `<!-- doc-ref-lint: ignore -->` 디렉티브
  *
- * exit
+ * exit (직접 실행 시)
  * - 0: 모든 ref 정상
  * - 1: broken ref 존재
  * - 2: self-test fixture 실패
  *
- * 사용법: node scripts/check-doc-refs.mjs
+ * 사용법:
+ *   node scripts/check-doc-refs.mjs                    # tracked 전용 (CI 기본)
+ *   node scripts/check-doc-refs.mjs --include-untracked # tracked + untracked 합산
  */
 import { existsSync, readFileSync, statSync } from 'node:fs';
-import { dirname, resolve, relative, isAbsolute, posix } from 'node:path';
+import { dirname, resolve, relative, isAbsolute } from 'node:path';
 import { execSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(import.meta.dirname, '..');
 
-// ──────────────────────────────────────────────────────────────────
-// Main
-// ──────────────────────────────────────────────────────────────────
-
-const fixtureResult = runRegressionFixtures();
-if (!fixtureResult.ok) {
-  console.error(`[FAIL] Self-test failed: ${fixtureResult.message}`);
-  process.exit(2);
-}
-console.log(`[OK]   regression fixtures: ${fixtureResult.detected} / ${fixtureResult.expected} expected broken refs detected`);
-
-const trackedMd = collectTrackedMarkdown();
-const allViolations = [];
-for (const relPath of trackedMd) {
-  const violations = analyzeFile(relPath);
-  allViolations.push(...violations);
+/** 직접 실행 여부 (entry point guard) */
+const __selfPath = fileURLToPath(import.meta.url);
+if (process.argv[1] === __selfPath) {
+  runMain();
 }
 
-if (allViolations.length > 0) {
-  console.error(`\n[FAIL] ${allViolations.length} broken doc reference(s):`);
-  for (const v of allViolations) {
-    console.error(`  ${v.file}:${v.line} — ${v.kind}`);
-    console.error(`    target: ${v.target}`);
-    if (v.resolved) console.error(`    resolved: ${v.resolved}`);
+// ──────────────────────────────────────────────────────────────────
+// CLI entry point
+// ──────────────────────────────────────────────────────────────────
+
+/**
+ * 직접 실행 시 호출되는 메인 로직.
+ * `--include-untracked` 옵션으로 untracked .md 파일도 합산 검사.
+ */
+function runMain() {
+  const includeUntracked = process.argv.includes('--include-untracked');
+
+  const fixtureResult = runRegressionFixtures();
+  if (!fixtureResult.ok) {
+    console.error(`[FAIL] Self-test failed: ${fixtureResult.message}`);
+    process.exit(2);
   }
-  console.error('\nSee docs/runbook/doc-ref-lint.md for fix guidance.');
-  process.exit(1);
-}
+  console.log(
+    `[OK]   regression fixtures: ${fixtureResult.detected} / ${fixtureResult.expected} expected broken refs detected`,
+  );
 
-console.log(`[OK]   doc-ref-lint: ${trackedMd.length} files scanned, no broken refs`);
-process.exit(0);
+  const trackedMd = collectTrackedMarkdown();
+  const untrackedMd = includeUntracked ? collectUntrackedMarkdown() : [];
+  // 중복 제거 (tracked + untracked 합산 시)
+  const allFiles = [...new Set([...trackedMd, ...untrackedMd])];
+
+  const allViolations = [];
+  for (const relPath of allFiles) {
+    const violations = analyzeFile(relPath);
+    allViolations.push(...violations);
+  }
+
+  if (allViolations.length > 0) {
+    console.error(`\n[FAIL] ${allViolations.length} broken doc reference(s):`);
+    for (const v of allViolations) {
+      console.error(`  ${v.file}:${v.line} — ${v.kind}`);
+      console.error(`    target: ${v.target}`);
+      if (v.resolved) console.error(`    resolved: ${v.resolved}`);
+    }
+    console.error('\nSee docs/runbook/doc-ref-lint.md for fix guidance.');
+    process.exit(1);
+  }
+
+  const modeLabel =
+    includeUntracked && untrackedMd.length > 0 ? ` (+${untrackedMd.length} untracked)` : '';
+  console.log(`[OK]   doc-ref-lint: ${allFiles.length} files scanned${modeLabel}, no broken refs`);
+  process.exit(0);
+}
 
 // ──────────────────────────────────────────────────────────────────
 // File analyzer
 // ──────────────────────────────────────────────────────────────────
 
 /**
- * tracked .md 파일 한 개에서 broken ref 추출.
+ * .md 파일 한 개에서 broken ref 추출.
+ * tracked / untracked 모두 사용 가능 (relPath가 ROOT 기준이면 충분).
+ *
  * @param {string} relPath repo root 기준 상대 경로
  * @returns {Array<{file:string,line:number,kind:string,target:string,resolved?:string}>}
  */
-function analyzeFile(relPath) {
+export function analyzeFile(relPath) {
   const absPath = resolve(ROOT, relPath);
-  const content = readFileSync(absPath, 'utf-8');
+  let content;
+  try {
+    content = readFileSync(absPath, 'utf-8');
+  } catch {
+    return [];
+  }
   const lines = content.split('\n');
   const fileDir = dirname(absPath);
   const violations = [];
@@ -116,8 +150,15 @@ function analyzeFile(relPath) {
 /**
  * ref 대상 검증. 존재하면 null, broken이면 violation 반환.
  * 외부 URL / mailto / anchor-only / 절대 외부 경로는 skip (null).
+ *
+ * @param {string} rawTarget  링크 target 원본
+ * @param {string} fileDir    현재 파일의 디렉토리 절대 경로
+ * @param {string} relPath    현재 파일의 repo 기준 상대 경로 (보고용)
+ * @param {number} lineNo     라인 번호
+ * @param {string} kind       'markdown link' | 'bare doc path'
+ * @returns {object|null}
  */
-function validateRef(rawTarget, fileDir, relPath, lineNo, kind) {
+export function validateRef(rawTarget, fileDir, relPath, lineNo, kind) {
   const target = rawTarget.trim();
   if (!target) return null;
 
@@ -139,7 +180,16 @@ function validateRef(rawTarget, fileDir, relPath, lineNo, kind) {
   if (isAbsolute(decoded)) {
     // 절대경로: repo root 기준 (`/docs/...` → `docs/...`)
     resolved = resolve(ROOT, decoded.replace(/^\/+/, ''));
-  } else if (decoded.startsWith('docs/') || decoded.startsWith('scripts/') || decoded.startsWith('blog/') || decoded.startsWith('frontend/') || decoded.startsWith('services/') || decoded.startsWith('infra/') || decoded.startsWith('.claude/') || decoded.startsWith('.github/')) {
+  } else if (
+    decoded.startsWith('docs/') ||
+    decoded.startsWith('scripts/') ||
+    decoded.startsWith('blog/') ||
+    decoded.startsWith('frontend/') ||
+    decoded.startsWith('services/') ||
+    decoded.startsWith('infra/') ||
+    decoded.startsWith('.claude/') ||
+    decoded.startsWith('.github/')
+  ) {
     // repo root prefix
     resolved = resolve(ROOT, decoded);
   } else {
@@ -162,8 +212,12 @@ function validateRef(rawTarget, fileDir, relPath, lineNo, kind) {
 // Pattern extractors
 // ──────────────────────────────────────────────────────────────────
 
-/** `[text](path)` 또는 `[text](path "title")` 의 path 부분 추출 */
-function extractMarkdownLinks(line) {
+/**
+ * `[text](path)` 또는 `[text](path "title")` 의 path 부분 추출.
+ * @param {string} line
+ * @returns {string[]}
+ */
+export function extractMarkdownLinks(line) {
   const results = [];
   // [text](path) — text 안에 [], path 안에 () escape 미지원 (보수적)
   const re = /\[(?:[^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
@@ -174,8 +228,12 @@ function extractMarkdownLinks(line) {
   return results;
 }
 
-/** 텍스트 내 `docs/.../*.md` 또는 `scripts/...mjs` 등 bare path 참조 추출 */
-function extractBareDocPaths(line) {
+/**
+ * 텍스트 내 `docs/.../*.md` 또는 `scripts/...mjs` 등 bare path 참조 추출.
+ * @param {string} line
+ * @returns {string[]}
+ */
+export function extractBareDocPaths(line) {
   const results = [];
   // docs/foo/bar.md, docs/foo/bar.md#anchor — link 외부 노출
   const re = /(?<![[(\w/.-])(docs\/[\w./-]+\.md(?:#[\w-]+)?)/g;
@@ -186,16 +244,24 @@ function extractBareDocPaths(line) {
   return results;
 }
 
-/** 인라인 코드 `..` 영역을 공백으로 치환 (single-line) */
-function stripInlineCode(line) {
+/**
+ * 인라인 코드 `..` 영역을 공백으로 치환 (single-line).
+ * @param {string} line
+ * @returns {string}
+ */
+export function stripInlineCode(line) {
   return line.replace(/`[^`]*`/g, (s) => ' '.repeat(s.length));
 }
 
 // ──────────────────────────────────────────────────────────────────
-// Tracked file collector
+// File collectors
 // ──────────────────────────────────────────────────────────────────
 
-function collectTrackedMarkdown() {
+/**
+ * git tracked .md 파일 목록 수집 (root 기준 상대경로).
+ * @returns {string[]}
+ */
+export function collectTrackedMarkdown() {
   const out = execSync('git ls-files "*.md"', { cwd: ROOT, encoding: 'utf-8' });
   return out
     .split('\n')
@@ -211,6 +277,34 @@ function collectTrackedMarkdown() {
     });
 }
 
+/**
+ * git 미추적(untracked) .md 파일 목록 수집 (root 기준 상대경로).
+ * --include-untracked 옵션 또는 check-staging-integrity.mjs에서 활용.
+ * @returns {string[]}
+ */
+export function collectUntrackedMarkdown() {
+  try {
+    const out = execSync('git ls-files --others --exclude-standard "*.md"', {
+      cwd: ROOT,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    return out
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .filter((p) => {
+        try {
+          return statSync(resolve(ROOT, p)).isFile();
+        } catch {
+          return false;
+        }
+      });
+  } catch {
+    return [];
+  }
+}
+
 // ──────────────────────────────────────────────────────────────────
 // Self-test fixtures (Sprint 153 Phase G 5종 슬러그)
 // ──────────────────────────────────────────────────────────────────
@@ -218,8 +312,10 @@ function collectTrackedMarkdown() {
 /**
  * 해소 이전 형태의 5종 슬러그가 모두 검출되는지 inline fixture로 검증.
  * 어떤 룰이 너무 좁아지거나 면제가 과도해지면 self-test가 즉시 fail.
+ *
+ * @returns {{ok:boolean,detected:number,expected:number,message?:string}}
  */
-function runRegressionFixtures() {
+export function runRegressionFixtures() {
   const fixtures = [
     { target: 'docs/runbook-monitoring-log-rules.md', sprintSeed: 'Sprint 153 Phase G #1' },
     { target: 'docs/runbook-ci-cd-rules.md', sprintSeed: 'Sprint 153 Phase G #2' },
@@ -233,11 +329,13 @@ function runRegressionFixtures() {
     // markdown link fixture
     const mdLine = `참조: [문서](${f.target})`;
     const mdLinks = extractMarkdownLinks(mdLine);
-    const mdViolation = mdLinks.length > 0 && validateRef(mdLinks[0], ROOT, 'fixture.md', 0, 'markdown link');
+    const mdViolation =
+      mdLinks.length > 0 && validateRef(mdLinks[0], ROOT, 'fixture.md', 0, 'markdown link');
     // bare path fixture
     const bareLine = `참조 ${f.target} 갱신 필요`;
     const bareLinks = extractBareDocPaths(bareLine);
-    const bareViolation = bareLinks.length > 0 && validateRef(bareLinks[0], ROOT, 'fixture.md', 0, 'bare doc path');
+    const bareViolation =
+      bareLinks.length > 0 && validateRef(bareLinks[0], ROOT, 'fixture.md', 0, 'bare doc path');
 
     if (mdViolation && bareViolation) detected++;
   }
