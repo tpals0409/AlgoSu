@@ -116,5 +116,5 @@ related_memory: ["sprint-window"]
 
 ## 관련 메모리
 
-- [sprint-window.md](../../../.claude/projects/-Users-leokim-Desktop-leo-kim-AlgoSu/memory/sprint-window.md)
-- [feedback-blog-workflow](../../../.claude/projects/-Users-leokim-Desktop-leo-kim-AlgoSu/memory/feedback-blog-workflow.md) — 사용자 검증 사이클 패턴 직접 재확인
+- [sprint-window.md](../../../.claude/projects/-Users-leokim-Desktop-leo-kim-AlgoSu/memory/sprint-window.md) <!-- doc-ref-lint: ignore -->
+- [feedback-blog-workflow](../../../.claude/projects/-Users-leokim-Desktop-leo-kim-AlgoSu/memory/feedback-blog-workflow.md) — 사용자 검증 사이클 패턴 직접 재확인 <!-- doc-ref-lint: ignore -->
