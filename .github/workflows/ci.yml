@@ -107,6 +107,7 @@ jobs:
       frontend:      ${{ steps.result.outputs.frontend }}
       blog:          ${{ steps.result.outputs.blog }}
       monitoring:    ${{ steps.result.outputs.monitoring }}
+      docs:          ${{ steps.result.outputs.docs }}
     steps:
       - uses: actions/checkout@v6
       - name: Detect path changes
@@ -142,6 +143,12 @@ jobs:
               - 'services/submission/src/common/circuit-breaker/circuit-breaker.service.ts'
               - 'services/github-worker/src/circuit-breaker.ts'
               - 'services/problem/src/database/dual-write.service.ts'
+            docs:
+              - 'docs/**/*.md'
+              - '*.md'
+              - '.claude/commands/**/*.md'
+              - 'blog/content/**/*.mdx'
+              - 'scripts/check-doc-refs.mjs'
       - name: Apply rebuild_all override
         id: result
         run: |
@@ -155,6 +162,7 @@ jobs:
             echo "frontend=true" >> $GITHUB_OUTPUT
             echo "blog=true" >> $GITHUB_OUTPUT
             echo "monitoring=true" >> $GITHUB_OUTPUT
+            echo "docs=true" >> $GITHUB_OUTPUT
           else
             echo "gateway=${{ steps.filter.outputs.gateway }}" >> $GITHUB_OUTPUT
             echo "identity=${{ steps.filter.outputs.identity }}" >> $GITHUB_OUTPUT
@@ -165,6 +173,7 @@ jobs:
             echo "frontend=${{ steps.filter.outputs.frontend }}" >> $GITHUB_OUTPUT
             echo "blog=${{ steps.filter.outputs.blog }}" >> $GITHUB_OUTPUT
             echo "monitoring=${{ steps.filter.outputs.monitoring }}" >> $GITHUB_OUTPUT
+            echo "docs=${{ steps.filter.outputs.docs }}" >> $GITHUB_OUTPUT
           fi
 
   # ============================================================
@@ -302,6 +311,18 @@ jobs:
         run: node scripts/check-grafana-metrics.mjs
       - name: Check regex robustness in scripts
         run: node scripts/check-regex-robustness.mjs
+
+  quality-docs:
+    name: Quality — docs
+    needs: detect-changes
+    if: needs.detect-changes.outputs.docs == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check doc cross-refs
+        run: node scripts/check-doc-refs.mjs
 
   quality-frontend:
     name: Quality — frontend
