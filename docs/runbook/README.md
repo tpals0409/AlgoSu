@@ -39,10 +39,11 @@ domain: docs/runbook
 
 - [programmers-pipeline](./programmers-pipeline.md) — 프로그래머스 파이프라인 운영 절차
 
-### 품질 자동화 (2)
+### 품질 자동화 (3)
 
 - [regex-robustness](./regex-robustness.md) — 정규식 강건성 검증 체크리스트
 - [doc-ref-lint](./doc-ref-lint.md) — 마크다운 cross-ref 무결성 lint
+- [ci-full-validation](./ci-full-validation.md) — Weekly Full CI Validation (paths filter 우회 부채 정기 점검)
 
 ## 신규 런북 추가 시
 
