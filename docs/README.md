@@ -17,7 +17,7 @@ domain: docs
 | 감사 산출물 | [`docs/audits/`](./audits/README.md) | 전수 감사 자동화 sprint별 산출물 |
 | 자산 | `docs/assets/` | 로고 등 정적 자원 |
 
-## 운영 런북 (18개)
+## 운영 런북 (19개)
 
 운영 단계별 표준 절차 — 사고/롤백 시 즉시 참조.
 
