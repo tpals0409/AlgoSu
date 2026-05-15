@@ -26,12 +26,13 @@ domain: docs/runbook
 - [key-rotation](./key-rotation.md) — GitHub App Private Key 로테이션 절차
 - [admin-emails](./admin-emails.md) — ADMIN_EMAILS 갱신 절차
 
-### 로컬 개발 환경 (5)
+### 로컬 개발 환경 (6)
 
 - [git-hooks](./git-hooks.md) — Git Hooks (commitlint pre-commit + pre-push 무결성 검증) 자동화
 - [git-staging-checklist](./git-staging-checklist.md) — `git mv` + sed/Edit 결합 plan 의 staging 체크리스트
 - [pre-push-check](./pre-push-check.md) — Pre-push hook: untracked .md broken ref + unstaged 수정 검증
 - [claude-commands](./claude-commands.md) — `.claude/commands/` tracked 정책
+- [claude-tools](./claude-tools.md) — `.claude-tools/` 운영 정책 (deprecated/live 파일 분류 + 정리 로드맵)
 - [oracle-tmux-path](./oracle-tmux-path.md) — Oracle tmux dispatch claude 바이너리 PATH 문제 해결
 
 ### 도메인 파이프라인 (1)
