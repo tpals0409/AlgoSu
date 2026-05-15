@@ -1,0 +1,55 @@
+# ============================================================
+# AlgoSu — Weekly Full Validation (paths filter 우회 부채 정기 점검)
+#
+# Sprint 150 교훈 #1: paths filter로 변경 없는 서비스의 coverage
+# threshold 미달이 우회됨. 주 1회 전체 검증으로 silent skip 부채 노출.
+#
+# 동작: ci.yml의 workflow_dispatch를 rebuild_all=true로 trigger.
+# ============================================================
+
+name: Weekly Full Validation
+
+on:
+  schedule:
+    - cron: '0 18 * * 0'  # 매주 일요일 03:00 KST (18:00 UTC 토요일)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run — 로그만 출력, ci.yml 미 trigger'
+        required: false
+        default: 'false'
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  trigger-full-ci:
+    name: Trigger Full CI Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log trigger context
+        run: |
+          echo "trigger: ${{ github.event_name }}"
+          echo "dry_run: ${{ github.event.inputs.dry_run || 'false' }}"
+          echo "ref: ${{ github.ref }}"
+          echo "sha: ${{ github.sha }}"
+          date -u "+%Y-%m-%dT%H:%M:%SZ"
+
+      - name: Trigger ci.yml with rebuild_all=true
+        if: github.event.inputs.dry_run != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'ci.yml',
+              ref: 'main',
+              inputs: { rebuild_all: 'true' }
+            });
+            core.info('ci.yml triggered with rebuild_all=true');
+
+      - name: Dry run — skip trigger
+        if: github.event.inputs.dry_run == 'true'
+        run: echo "DRY RUN — ci.yml trigger skipped"

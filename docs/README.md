@@ -28,7 +28,7 @@ domain: docs
 | **GitHub / 인증** | [github-token-relink](./runbook/github-token-relink.md) · [pat-rotation](./runbook/pat-rotation.md) · [key-rotation](./runbook/key-rotation.md) · [admin-emails](./runbook/admin-emails.md) |
 | **로컬 개발 환경** | [git-hooks](./runbook/git-hooks.md) · [git-staging-checklist](./runbook/git-staging-checklist.md) · [pre-push-check](./runbook/pre-push-check.md) · [claude-commands](./runbook/claude-commands.md) · [claude-tools](./runbook/claude-tools.md) · [oracle-tmux-path](./runbook/oracle-tmux-path.md) |
 | **도메인 파이프라인** | [programmers-pipeline](./runbook/programmers-pipeline.md) |
-| **품질 자동화** | [regex-robustness](./runbook/regex-robustness.md) · [doc-ref-lint](./runbook/doc-ref-lint.md) |
+| **품질 자동화** | [regex-robustness](./runbook/regex-robustness.md) · [doc-ref-lint](./runbook/doc-ref-lint.md) · [ci-full-validation](./runbook/ci-full-validation.md) |
 
 ## 컨벤션 (6개)
 
