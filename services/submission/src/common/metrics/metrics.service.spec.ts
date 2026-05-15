@@ -10,8 +10,26 @@ describe('MetricsService', () => {
 
   describe('onModuleInit()', () => {
     it('defaultMetrics 수집을 시작한다', () => {
-      // onModuleInit 호출해도 에러 없이 완료
       expect(() => service.onModuleInit()).not.toThrow();
+    });
+
+    it('중복 호출 시 already registered 에러 발생 — @Global 싱글턴 방어 근거', () => {
+      service.onModuleInit();
+      expect(() => service.onModuleInit()).toThrow(/already been registered/i);
+    });
+
+    it('호출 후 registry에 nodejs_* default 메트릭이 등록된다', async () => {
+      service.onModuleInit();
+      const output = await service.getMetrics();
+      expect(output).toContain('nodejs_');
+    });
+  });
+
+  describe('duplicate registration defense (Sprint 135 Wave C P1)', () => {
+    it('동일 registry로 두 번째 MetricsService 생성 시 already registered 에러가 발생한다', () => {
+      const sharedRegistry = new Registry();
+      new MetricsService(sharedRegistry);
+      expect(() => new MetricsService(sharedRegistry)).toThrow(/already been registered/i);
     });
   });
 
