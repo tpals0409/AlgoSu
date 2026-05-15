@@ -132,6 +132,32 @@ Python (ai-analysis): `prometheus_client` Counter/Histogram/Gauge.
 
 `algosu_{service}_{snake_case}` prefix. 외부 exporter(`up`/`rabbitmq_*`/`kube_*`) 는 prefix 제외.
 
+### §9-3 Default Metric Stale 점검
+
+Container restart 또는 모듈 중복 import 시 prom-client default metric이 stale/duplicate 상태에 빠지는 4가지 케이스와 방어 패턴.
+
+| Case | 증상 | 원인 | 방어 |
+|------|------|------|------|
+| A (duplicate registration) | 부팅 실패, `Error: A metric with the name ... has already been registered` | 동일 Registry에 MetricsService 2회 인스턴스화 | `@Global()` 모듈로 싱글턴 보장 (Sprint 135 Wave C P1) |
+| B (label cardinality) | 메모리 누수, /metrics 응답 비대 | 동적 path 세그먼트가 라벨로 삽입 | `normalizePath()` UUID/숫자 → `:id` 치환 |
+| C (worker registry 혼입) | github-worker 메트릭 누락 | 별도 HTTP 서버(port 9100) 라이프사이클 불일치 | 독립 Registry + `startMetricsServer()` 격리 |
+| D (Python default 미활성) | ai-analysis에 `gc_*`/`process_*` 부재 | `prometheus_client` default 미호출 (의도적) | Node.js만 default 권장, Python은 명시적 메트릭만 |
+
+**점검 도구**: `scripts/check-prom-default-metrics.mjs`
+
+```bash
+# 로컬 전체 서비스 점검
+node scripts/check-prom-default-metrics.mjs
+
+# 특정 서비스만
+node scripts/check-prom-default-metrics.mjs --services gateway,submission
+
+# staging port-forward 환경
+node scripts/check-prom-default-metrics.mjs --base-url http://staging.internal
+```
+
+**회귀 차단 spec**: `services/submission/src/common/metrics/metrics.service.spec.ts` — `onModuleInit()` 중복 호출 + 동일 Registry 이중 생성 방어 (Case A 직접 검증).
+
 ## §11 Prometheus Alert Rule
 
 ### §11-2 Alert Rule 컨벤션
