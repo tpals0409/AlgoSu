@@ -733,8 +733,14 @@ jobs:
           cache-dependency-path: blog/package-lock.json
       - run: npm ci
         working-directory: blog
+      - name: ADR conversion self-test
+        working-directory: blog
+        run: node ../scripts/check-adr-conversion.mjs
       - run: npm run build
         working-directory: blog
+      - name: ADR link integrity
+        working-directory: blog
+        run: node ../scripts/check-adr-links.mjs out/adr
 
       # ---- Docker 이미지 빌드 (COPY only) ----
       - uses: docker/setup-qemu-action@v4
