@@ -19,7 +19,7 @@ export const dynamicParams = false;
 
 /** 빌드 시 영구 ADR id 목록을 생성한다. */
 export async function generateStaticParams() {
-  return getAllAdrs()
+  return getAllAdrs('en')
     .filter((d) => d.meta.kind === 'permanent')
     .map((d) => ({ id: d.meta.slug }));
 }
@@ -27,7 +27,7 @@ export async function generateStaticParams() {
 /** 영문 영구 ADR 상세 페이지를 렌더링한다. */
 export default async function EnPermanentDetailPage({ params }: Props) {
   const { id } = await params;
-  const docs = getAllAdrs();
+  const docs = getAllAdrs('en');
   const doc = docs.find(
     (d) => d.meta.kind === 'permanent' && d.meta.slug === id,
   );

@@ -42,13 +42,31 @@ sprint-window.md [2] 섹션과 git log를 기반으로 **초안을 자동 생성
 이어서 **다음 스프린트 정보만** 질문하세요:
 - 다음 스프린트 번호, 제목, 계획 작업 (또는 "미정")
 
-## 3단계: Sprint ADR 생성
+## 3단계: Sprint ADR 생성 (KR + EN 동시)
 
-아래 **템플릿**을 따라 `docs/adr/sprints/sprint-{N}.md` 파일을 생성하세요.
+아래 **템플릿**을 따라 `docs/adr/sprints/sprint-{N}.md` 파일을 생성하세요 (한국어 SSOT).
 
 > **컨텍스트 안내**: adr-sprint.md의 Step 1(데이터 수집)은 스킵하세요. 이미 1~2단계에서 수집 완료된 정보를 사용합니다. 종료 스프린트 정보는 sprint-window.md **[2] 섹션**(아직 갱신 전)에 있습니다.
 
 결정/패턴/교훈이 모두 없는 경우 "해당 없음"으로 최소 기록합니다.
+
+### 영문판 동시 작성 (Sprint 157 P10 — `docs/adr-en/sprints/sprint-{N}.md`)
+
+한국어 SSOT 작성 직후 같은 commit에서 영문판도 생성하세요. blog post `content/posts-en/` 패턴 계승.
+
+자동 번역(권장):
+```bash
+ANTHROPIC_API_KEY=sk-ant-... node scripts/translate-adr.mjs --target docs/adr/sprints/sprint-{N}.md
+```
+- 출력은 `docs/adr-en/sprints/sprint-{N}.md`에 저장됨
+- 코드 블록/표/mermaid 보존 여부를 1차 sampling 검증 후 commit
+
+수동 작성도 가능. 다만 `docs/adr-en/README.md`의 **번역 정책**(frontmatter 보존, 기술 용어 영문 유지, 마크다운 구조 동일)을 준수해야 합니다.
+
+검증:
+```bash
+node scripts/check-adr-en-coverage.mjs --lint   # 누락 시 WARN
+```
 
 ## 4단계: 슬라이딩 윈도우 갱신
 
@@ -99,12 +117,13 @@ status: active
 - 200줄 이내 유지 확인
 
 ### 일관성 검증
-다음 3개 파일이 일관적인지 확인하세요:
+다음 4개 파일이 일관적인지 확인하세요:
 1. `sprint-window.md` [1] 완료 섹션 → 방금 종료한 스프린트 정보 일치
-2. `docs/adr/sprints/sprint-{N}.md` → 파일 존재 + 스프린트 번호 일치
-3. `MEMORY.md` 테이블 → 최신 행이 방금 종료한 스프린트
+2. `docs/adr/sprints/sprint-{N}.md` → 파일 존재 + 스프린트 번호 일치 (KR SSOT)
+3. `docs/adr-en/sprints/sprint-{N}.md` → 파일 존재 + frontmatter `sprint` 값 일치 (EN, Sprint 157 P10 의무)
+4. `MEMORY.md` 테이블 → 최신 행이 방금 종료한 스프린트
 
-불일치 발견 시 수정하세요.
+불일치 발견 시 수정하세요. EN 누락 시 `node scripts/translate-adr.mjs --target docs/adr/sprints/sprint-{N}.md` 실행으로 즉시 생성.
 
 ### 상태 전환 (최종)
 모든 검증 통과 후 sprint-window.md frontmatter `status`를 `idle`로 변경하세요.
@@ -121,7 +140,8 @@ status: active
 | 종료 | Sprint {N} — {제목} ✅ |
 | 다음 | Sprint {N+1} — {제목} |
 | 윈도우 | sprint-window.md 갱신 완료 (status: idle) |
-| Sprint ADR | docs/adr/sprints/sprint-{N}.md 생성 완료 |
+| Sprint ADR (KR) | docs/adr/sprints/sprint-{N}.md 생성 완료 |
+| Sprint ADR (EN) | docs/adr-en/sprints/sprint-{N}.md 생성 완료 (Sprint 157 P10) |
 | MEMORY | 테이블 갱신 완료 ({현재 행 수}/6) |
 | 잔여 정리 | {제거한 항목 또는 "없음"} |
 ```

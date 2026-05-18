@@ -83,4 +83,11 @@ grep -l "{keyword}" docs/adr/sprints/*.md     # 키워드 검색
 ## 사람용 HTML 사이트
 
 - 한국어: `https://blog.algosu.dev/adr/`
-- English: `https://blog.algosu.dev/en/adr/` (UI only — content in Korean)
+- English: `https://blog.algosu.dev/en/adr/` — 영문판이 있는 ADR은 영문 본문 / 없는 ADR은 한국어 본문 + "Content in Korean" 배너 fallback
+
+## 영문 ADR 디렉토리
+
+- 영문판 SSOT: [`../adr-en/`](../adr-en/) — Sprint 157 P10에서 도입. blog `content/posts-en/` 패턴 계승.
+- 자동 번역기: `node scripts/translate-adr.mjs --target <kr-path>` (ANTHROPIC_API_KEY 필요)
+- 누락 점검: `node scripts/check-adr-en-coverage.mjs --lint`
+- 신규 ADR 작성 시 KR + EN 동시 작성 의무 — `.claude/commands/stop.md` 3단계 + `.claude/commands/agents/scribe.md` 참조

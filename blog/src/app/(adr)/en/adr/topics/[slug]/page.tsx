@@ -19,7 +19,7 @@ export const dynamicParams = false;
 
 /** 빌드 시 토픽 ADR slug 목록을 생성한다. */
 export async function generateStaticParams() {
-  return getAllAdrs()
+  return getAllAdrs('en')
     .filter((d) => d.meta.kind === 'topic')
     .map((d) => ({ slug: d.meta.slug }));
 }
@@ -27,7 +27,7 @@ export async function generateStaticParams() {
 /** 영문 토픽 ADR 상세 페이지를 렌더링한다. */
 export default async function EnTopicDetailPage({ params }: Props) {
   const { slug } = await params;
-  const docs = getAllAdrs();
+  const docs = getAllAdrs('en');
   const doc = docs.find(
     (d) => d.meta.kind === 'topic' && d.meta.slug === slug,
   );

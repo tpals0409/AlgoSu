@@ -12,7 +12,7 @@ import { AdrIndexView } from '@/components/adr/adr-index-view';
 
 /** 영문 ADR 인덱스 페이지를 렌더링한다. */
 export default function EnAdrIndexPage() {
-  const docs = getAllAdrs();
+  const docs = getAllAdrs('en');
   const index = buildAdrIndex(docs);
 
   return <AdrIndexView index={index} locale="en" />;
