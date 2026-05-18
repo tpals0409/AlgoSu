@@ -102,5 +102,5 @@ All 4 PRs used new branches + Squash merge, 0 direct commits to main (since Spri
 - [scripts/check-adr-conversion.mjs](../../../scripts/check-adr-conversion.mjs) — 10 fixture self-test
 - [scripts/check-adr-links.mjs](../../../scripts/check-adr-links.mjs) — Build output link integrity
 - [scripts/check-adr-en-coverage.mjs](../../../scripts/check-adr-en-coverage.mjs) — EN translation coverage lint
-- [sprint-152.md](./sprint-152.md) — Seed #19 (KR/EN dual mandate) established this sprint
-- [sprint-156.md](./sprint-156.md) — Previous sprint, this sprint's starting point (`9f1217a`)
+- [sprint-152.md (KR)](../../adr/sprints/sprint-152.md) — Seed #19 (KR/EN dual mandate) established this sprint (EN version pending translation in Sprint 158+)
+- [sprint-156.md (KR)](../../adr/sprints/sprint-156.md) — Previous sprint, this sprint's starting point (`9f1217a`) (EN version pending translation in Sprint 158+)
