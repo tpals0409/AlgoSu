@@ -2,13 +2,14 @@
  * @file       adr-meta-sidebar.tsx
  * @domain     blog / adr
  * @layer      ui
- * @related    src/lib/adr/types.ts, status-badge.tsx, impact-badge.tsx
+ * @related    src/lib/adr/types.ts, status-badge.tsx, impact-badge.tsx, related-adr-graph.tsx
  *
- * 상세 페이지 우측 메타사이드바 — 메타데이터, 에이전트, 관련 ADR, 네비게이션.
+ * 상세 페이지 우측 메타사이드바 — 메타데이터, 에이전트, 관련 ADR(미니 그래프 포함), 네비게이션.
  */
-import type { AdrDoc } from '@/lib/adr/types';
+import type { AdjacencyList, AdrDoc } from '@/lib/adr/types';
 import { StatusBadge } from './status-badge';
 import { ImpactBadge } from './impact-badge';
+import { RelatedAdrGraph } from './related-adr-graph';
 
 /** GitHub blob URL 베이스 */
 const GH_BLOB_BASE = 'https://github.com/tpals0409/AlgoSu/blob/main/docs/adr';
@@ -17,6 +18,7 @@ interface AdrMetaSidebarProps {
   doc: AdrDoc;
   prevSprint?: number;
   nextSprint?: number;
+  miniGraph?: AdjacencyList;
 }
 
 /** 메타 항목 행을 렌더링한다. */
@@ -100,6 +102,7 @@ export function AdrMetaSidebar({
   doc,
   prevSprint,
   nextSprint,
+  miniGraph,
 }: AdrMetaSidebarProps) {
   const { meta } = doc;
 
@@ -140,6 +143,25 @@ export function AdrMetaSidebar({
           ids={meta.relatedAdrs ?? []}
           label="관련 ADR"
         />
+
+        {/* 미니 관계 그래프 */}
+        {miniGraph && miniGraph.nodes.length > 0 && (
+          <div className="mt-3">
+            <h5 className="mb-1.5 text-xs font-semibold text-text-subtle">
+              관계 그래프
+            </h5>
+            <RelatedAdrGraph
+              adjacency={miniGraph}
+              focusId={meta.id}
+            />
+            <a
+              href="/adr/graph/"
+              className="mt-1 inline-block text-xs text-brand hover:underline"
+            >
+              전체 그래프 보기 &rarr;
+            </a>
+          </div>
+        )}
 
         {/* 관련 메모리 */}
         <RelatedLinks
