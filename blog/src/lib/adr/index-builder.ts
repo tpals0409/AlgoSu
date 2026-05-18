@@ -41,10 +41,10 @@ function toPlainText(markdown: string): string {
 /**
  * ADR 메타에서 URL 경로를 생성한다.
  */
-function buildUrl(meta: AdrMeta): string {
-  if (meta.kind === 'sprint') return `/adr/sprint/${meta.slug}`;
+export function buildUrl(meta: AdrMeta): string {
+  if (meta.kind === 'sprint') return `/adr/sprints/${meta.slug}`;
   if (meta.kind === 'permanent') return `/adr/permanent/${meta.slug}`;
-  return `/adr/topic/${meta.slug}`;
+  return `/adr/topics/${meta.slug}`;
 }
 
 /* ─── SearchDoc 생성 ─────────────────────────────── */
