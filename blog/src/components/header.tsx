@@ -11,16 +11,23 @@
 'use client';
 
 import type { Locale } from '@/lib/i18n';
-import { getBasePath } from '@/lib/i18n';
+import { getBasePath, t } from '@/lib/i18n';
 import { LocaleToggle } from '@/components/locale-toggle';
 
 interface HeaderProps {
   locale: Locale;
 }
 
-/** 사이트 글로벌 헤더를 렌더링한다. */
+/**
+ * 사이트 글로벌 헤더를 렌더링한다.
+ *
+ * 우측 네비:
+ *  - ADR 진입 링크 (`/adr/` for ko, `/en/adr/` for en, Sprint 157)
+ *  - LocaleToggle
+ */
 export function Header({ locale }: HeaderProps) {
   const brandHref = getBasePath(locale) || '/';
+  const adrHref = `${getBasePath(locale)}/adr/`;
 
   return (
     <header className="border-b border-border">
@@ -28,7 +35,15 @@ export function Header({ locale }: HeaderProps) {
         <a href={brandHref} className="text-xl font-bold text-brand">
           AlgoSu Tech
         </a>
-        <LocaleToggle />
+        <div className="flex items-center gap-5">
+          <a
+            href={adrHref}
+            className="text-sm font-medium text-text-muted hover:text-brand"
+          >
+            {t(locale, 'navAdr')}
+          </a>
+          <LocaleToggle />
+        </div>
       </nav>
     </header>
   );

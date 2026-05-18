@@ -21,11 +21,32 @@ interface HomePageProps {
 export function HomePage({ locale }: HomePageProps) {
   const posts = getAllPosts(locale);
   const basePath = getBasePath(locale);
+  const adrHref = `${basePath}/adr/`;
 
   return (
     <div>
       <h1 className="mb-2 text-3xl font-bold">{t(locale, 'siteTitle')}</h1>
       <p className="mb-6 text-text-muted">{t(locale, 'siteDescription')}</p>
+
+      {/* ADR 진입 CTA — Sprint 157. 블로그 글은 ADR을 인용하므로 SSOT로 안내. */}
+      <a
+        href={adrHref}
+        className="mb-8 block rounded-lg border border-border bg-surface-elevated p-5 transition-shadow hover:shadow-md"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="mb-1 text-lg font-semibold text-text">
+              {t(locale, 'homeAdrCtaTitle')}
+            </h2>
+            <p className="text-sm text-text-muted">
+              {t(locale, 'homeAdrCtaDescription')}
+            </p>
+          </div>
+          <span className="shrink-0 self-center text-sm font-medium text-brand">
+            {t(locale, 'homeAdrCtaButton')}
+          </span>
+        </div>
+      </a>
 
       {posts.length === 0 ? (
         <p className="text-text-subtle">{t(locale, 'noPosts')}</p>
