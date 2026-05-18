@@ -738,27 +738,11 @@ jobs:
         run: node ../scripts/check-adr-conversion.mjs
       - run: npm run build
         working-directory: blog
-      - name: ADR link integrity (with out/ location probe)
-        working-directory: blog
-        run: |
-          echo "::group::Probe — out/ location"
-          echo "PWD: $(pwd)"
-          echo "blog/out exists? $(test -d out && echo yes || echo no)"
-          echo "blog/out/adr exists? $(test -d out/adr && echo yes || echo no)"
-          echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
-          find "$GITHUB_WORKSPACE" -maxdepth 4 -name "out" -type d 2>/dev/null || true
-          echo "::endgroup::"
-          # blog/ 내부에 out/이 있으면 그대로, 아니면 repo root의 out/ 사용
-          if [ -d out/adr ]; then
-            TARGET=out/adr
-          elif [ -d "$GITHUB_WORKSPACE/out/adr" ]; then
-            TARGET="$GITHUB_WORKSPACE/out/adr"
-            echo "[INFO] out/ generated at repo root (outputFileTracingRoot fallback)"
-          else
-            echo "[FAIL] out/adr not found in any expected location"
-            exit 1
-          fi
-          node ../scripts/check-adr-links.mjs "$TARGET"
+      - name: ADR link integrity
+        # check-adr-links.mjs는 ROOT(=repo root) 기준으로 인자 경로를 resolve하므로
+        # working-directory: blog 안에서도 `blog/out/adr` 절대 segment를 명시해야 한다.
+        # (Sprint 157 hotfix #3 — 진짜 근본 원인이었음. #1/#2는 무관)
+        run: node scripts/check-adr-links.mjs blog/out/adr
 
       # ---- Docker 이미지 빌드 (COPY only) ----
       - uses: docker/setup-qemu-action@v4
