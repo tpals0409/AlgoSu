@@ -2,15 +2,19 @@
  * @file       search-box.tsx
  * @domain     blog / adr
  * @layer      ui
- * @related    src/lib/adr/types.ts, scripts/generate-search-index.mjs
+ * @related    src/lib/adr/types.ts, scripts/generate-search-index.mjs, src/lib/i18n.ts
  *
  * ADR 전문 검색 컴포넌트 — MiniSearch 기반 클라이언트 사이드 검색.
  * `/` 단축키 포커스, `Esc` 닫기, 결과 드롭다운.
+ * 현재 pathname이 `/en` 으로 시작하면 결과 URL에 `/en` prefix를 자동 추가한다.
+ * placeholder/aria-label 등 UI 문자열도 locale에 따라 토글한다.
  */
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import MiniSearch from 'minisearch';
+import { type Locale, t } from '@/lib/i18n';
 
 /* ─── 타입 ──────────────────────────────────────── */
 
@@ -57,10 +61,26 @@ function statusClass(status: string): string {
 /* ─── kind 라벨 ─────────────────────────────────── */
 
 /** kind + sprint에서 표시 라벨을 생성한다. */
-function kindLabel(kind: string, sprint?: number): string {
-  if (kind === 'sprint' && sprint != null) return `Sprint ${sprint}`;
-  if (kind === 'permanent') return 'Permanent';
-  return 'Topic';
+function kindLabel(kind: string, sprint: number | undefined, locale: Locale): string {
+  if (kind === 'sprint' && sprint != null) {
+    return `${t(locale, 'metaSprint')} ${sprint}`;
+  }
+  if (kind === 'permanent') return t(locale, 'kindPermanent');
+  return t(locale, 'kindTopic');
+}
+
+/* ─── URL locale prefix ─────────────────────────── */
+
+/**
+ * 검색 인덱스의 URL을 locale에 맞게 재작성한다.
+ * 인덱스는 `/adr/...` 한국어 경로를 기본으로 보관하므로
+ * locale='en'일 때 `/en` prefix를 prepend 한다.
+ */
+function localizeUrl(url: string, locale: Locale): string {
+  if (locale !== 'en') return url;
+  if (url.startsWith('/en/')) return url;
+  if (url.startsWith('/')) return `/en${url}`;
+  return url;
 }
 
 /* ─── MiniSearch 생성 ───────────────────────────── */
@@ -97,6 +117,12 @@ async function createSearchEngine(): Promise<{
 
 /** ADR 검색 박스를 렌더링한다. */
 export function SearchBox() {
+  const pathname = usePathname();
+  const locale: Locale = useMemo(
+    () => (pathname?.startsWith('/en') ? 'en' : 'ko'),
+    [pathname],
+  );
+
   const inputRef = useRef<HTMLInputElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState('');
@@ -131,7 +157,7 @@ export function SearchBox() {
       setResults(
         hits.map((h) => ({
           id: h.id as string,
-          url: (h as unknown as SearchResult).url,
+          url: localizeUrl((h as unknown as SearchResult).url, locale),
           title: (h as unknown as SearchResult).title,
           sprint: (h as unknown as SearchResult).sprint,
           status: (h as unknown as SearchResult).status,
@@ -139,7 +165,7 @@ export function SearchBox() {
         })),
       );
     },
-    [ensureEngine],
+    [ensureEngine, locale],
   );
 
   /* ── 키보드 단축키: `/` 포커스, `Esc` 닫기 ─── */
@@ -191,8 +217,8 @@ export function SearchBox() {
           value={query}
           onChange={handleChange}
           onFocus={() => setOpen(true)}
-          placeholder="ADR 검색... ( / )"
-          aria-label="ADR 검색"
+          placeholder={t(locale, 'searchPlaceholder')}
+          aria-label={t(locale, 'searchAriaLabel')}
           className="w-40 rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-text placeholder-text-subtle transition-all focus:w-56 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand sm:w-48"
         />
         {loading && (
@@ -212,7 +238,7 @@ export function SearchBox() {
                 className="flex items-start gap-2 px-3 py-2 text-sm transition-colors hover:bg-surface-muted"
               >
                 <span className="shrink-0 rounded bg-brand-soft px-1.5 py-0.5 text-xs font-medium text-brand-strong">
-                  {kindLabel(r.kind, r.sprint)}
+                  {kindLabel(r.kind, r.sprint, locale)}
                 </span>
                 <span className="min-w-0 flex-1 truncate text-text">
                   {r.title}
@@ -231,7 +257,7 @@ export function SearchBox() {
       {/* 빈 결과 */}
       {open && query.trim().length >= 2 && results.length === 0 && !loading && (
         <div className="absolute right-0 top-full z-50 mt-1 w-80 rounded-lg border border-border bg-surface-elevated p-4 text-center text-sm text-text-muted shadow-lg">
-          검색 결과가 없습니다.
+          {t(locale, 'searchEmpty')}
         </div>
       )}
     </div>

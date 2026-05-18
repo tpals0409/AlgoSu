@@ -5,8 +5,10 @@
  * @related    src/lib/adr/types.ts, status-badge.tsx, impact-badge.tsx, related-adr-graph.tsx
  *
  * 상세 페이지 우측 메타사이드바 — 메타데이터, 에이전트, 관련 ADR(미니 그래프 포함), 네비게이션.
+ * locale prop으로 라벨/링크 KR/EN 토글.
  */
 import type { AdjacencyList, AdrDoc } from '@/lib/adr/types';
+import { type Locale, t, tf } from '@/lib/i18n';
 import { StatusBadge } from './status-badge';
 import { ImpactBadge } from './impact-badge';
 import { RelatedAdrGraph } from './related-adr-graph';
@@ -19,10 +21,17 @@ interface AdrMetaSidebarProps {
   prevSprint?: number;
   nextSprint?: number;
   miniGraph?: AdjacencyList;
+  locale?: Locale;
 }
 
 /** 메타 항목 행을 렌더링한다. */
-function MetaRow({ label, children }: { label: string; children: React.ReactNode }) {
+function MetaRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex items-start justify-between gap-2 py-1.5 text-sm">
       <span className="shrink-0 text-text-subtle">{label}</span>
@@ -68,27 +77,37 @@ function RelatedLinks({ ids, label }: { ids: string[]; label: string }) {
 }
 
 /** Sprint 이전/다음 네비게이션을 렌더링한다. */
-function SprintNav({ prev, next }: { prev?: number; next?: number }) {
+function SprintNav({
+  prev,
+  next,
+  locale,
+}: {
+  prev?: number;
+  next?: number;
+  locale: Locale;
+}) {
   if (prev == null && next == null) return null;
+
+  const prefix = locale === 'en' ? '/en' : '';
 
   return (
     <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
       {prev != null ? (
         <a
-          href={`/adr/sprints/${prev}/`}
+          href={`${prefix}/adr/sprints/${prev}/`}
           className="text-xs text-brand hover:underline"
         >
-          Sprint {prev}
+          {t(locale, 'prevAdr')} {t(locale, 'metaSprint')} {prev}
         </a>
       ) : (
         <span />
       )}
       {next != null ? (
         <a
-          href={`/adr/sprints/${next}/`}
+          href={`${prefix}/adr/sprints/${next}/`}
           className="text-xs text-brand hover:underline"
         >
-          Sprint {next} &rarr;
+          {t(locale, 'metaSprint')} {next} {t(locale, 'nextAdr')}
         </a>
       ) : (
         <span />
@@ -103,8 +122,10 @@ export function AdrMetaSidebar({
   prevSprint,
   nextSprint,
   miniGraph,
+  locale = 'ko',
 }: AdrMetaSidebarProps) {
   const { meta } = doc;
+  const prefix = locale === 'en' ? '/en' : '';
 
   return (
     <aside className="sticky top-24 hidden w-70 shrink-0 xl:block">
@@ -112,27 +133,33 @@ export function AdrMetaSidebar({
         {/* 메타 항목 */}
         <div className="divide-y divide-border">
           {meta.sprint != null && (
-            <MetaRow label="Sprint">{meta.sprint}</MetaRow>
+            <MetaRow label={t(locale, 'metaSprint')}>{meta.sprint}</MetaRow>
           )}
           {meta.date && (
-            <MetaRow label="날짜">
+            <MetaRow label={t(locale, 'metaDate')}>
               <time dateTime={meta.date}>{meta.date}</time>
             </MetaRow>
           )}
-          <MetaRow label="상태">
-            <StatusBadge status={meta.status} rawStatus={meta.rawStatus} />
+          <MetaRow label={t(locale, 'metaStatus')}>
+            <StatusBadge
+              status={meta.status}
+              rawStatus={meta.rawStatus}
+              locale={locale}
+            />
           </MetaRow>
-          <MetaRow label="영향도">
-            <ImpactBadge impact={meta.impact} />
+          <MetaRow label={t(locale, 'metaImpact')}>
+            <ImpactBadge impact={meta.impact} locale={locale} />
           </MetaRow>
-          <MetaRow label="읽기 시간">{meta.readingTimeMin}분</MetaRow>
+          <MetaRow label={t(locale, 'metaReadingTime')}>
+            {tf(locale, 'metaReadingMin', { n: meta.readingTimeMin })}
+          </MetaRow>
         </div>
 
         {/* 에이전트 */}
         {meta.agents && meta.agents.length > 0 && (
           <div className="mt-4">
             <h5 className="mb-1.5 text-xs font-semibold text-text-subtle">
-              에이전트
+              {t(locale, 'metaAgents')}
             </h5>
             <AgentList agents={meta.agents} />
           </div>
@@ -141,24 +168,25 @@ export function AdrMetaSidebar({
         {/* 관련 ADR */}
         <RelatedLinks
           ids={meta.relatedAdrs ?? []}
-          label="관련 ADR"
+          label={t(locale, 'metaRelatedAdrs')}
         />
 
         {/* 미니 관계 그래프 */}
         {miniGraph && miniGraph.nodes.length > 0 && (
           <div className="mt-3">
             <h5 className="mb-1.5 text-xs font-semibold text-text-subtle">
-              관계 그래프
+              {t(locale, 'metaGraphSection')}
             </h5>
             <RelatedAdrGraph
               adjacency={miniGraph}
               focusId={meta.id}
+              locale={locale}
             />
             <a
-              href="/adr/graph/"
+              href={`${prefix}/adr/graph/`}
               className="mt-1 inline-block text-xs text-brand hover:underline"
             >
-              전체 그래프 보기 &rarr;
+              {t(locale, 'viewFullGraph')}
             </a>
           </div>
         )}
@@ -166,7 +194,7 @@ export function AdrMetaSidebar({
         {/* 관련 메모리 */}
         <RelatedLinks
           ids={meta.relatedMemory ?? []}
-          label="관련 Memory"
+          label={t(locale, 'metaRelatedMemory')}
         />
 
         {/* GitHub 링크 */}
@@ -177,12 +205,12 @@ export function AdrMetaSidebar({
             rel="noopener noreferrer"
             className="text-xs text-brand hover:underline"
           >
-            GitHub에서 보기 &rarr;
+            {t(locale, 'viewSource')}
           </a>
         </div>
 
         {/* Sprint 네비게이션 */}
-        <SprintNav prev={prevSprint} next={nextSprint} />
+        <SprintNav prev={prevSprint} next={nextSprint} locale={locale} />
       </div>
     </aside>
   );

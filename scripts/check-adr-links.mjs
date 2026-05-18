@@ -9,13 +9,13 @@
  * HTML 파일의 href="/adr/..." 내부 링크가 대응하는 index.html로 해소되는지 검증.
  *
  * 검사 항목
- * - *.html 내 href="/adr/..." 패턴의 내부 링크 → 빌드 산출물 index.html 존재 여부
- * - search-index.json 존재 + entry count sanity check
+ * - *.html 내 href="/adr/..." 또는 href="/en/adr/..." 패턴의 내부 링크 → 빌드 산출물 index.html 존재 여부
+ * - search-index.json 존재 + entry count sanity check (한국어 경로 검사 시에만)
  *
  * 면제
  * - 외부 URL (https://, http://, mailto:, tel:, ftp://, file:///) 자동 skip
  * - anchor-only (#...) 자동 skip
- * - /adr/ 접두어가 없는 내부 링크 자동 skip (다른 도메인)
+ * - /adr/ 또는 /en/adr/ 접두어가 없는 내부 링크 자동 skip (다른 도메인)
  *
  * exit (직접 실행 시)
  *   0: 모든 내부 링크 정상
@@ -55,8 +55,11 @@ function runMain() {
     process.exit(1);
   }
 
-  /* out/ 루트 — /adr/ 링크 해소 시 blog/out 기준 */
-  const outRoot = resolve(targetDir, '..');
+  /* out/ 루트 — /adr/ 또는 /en/adr/ 링크는 항상 사이트 root (blog/out) 기준으로 해소된다.
+   * - targetArg=blog/out/adr     → outRoot=blog/out
+   * - targetArg=blog/out/en/adr  → outRoot=blog/out (en은 prefix이지 별도 root 아님)
+   * targetDir에서 마지막 `/adr` 세그먼트를 찾아 그 부모를 site root로 사용한다. */
+  const outRoot = deriveOutRoot(targetDir);
 
   console.log(`[INFO] ADR link integrity check — scanning ${targetArg}/`);
 
@@ -81,13 +84,20 @@ function runMain() {
     console.log('[OK]   All internal links resolved');
   }
 
-  // 3. search-index.json sanity check
-  const searchResult = checkSearchIndex(targetDir);
-  if (searchResult.error) {
-    console.error(`[FAIL] ${searchResult.error}`);
-    process.exit(2);
+  /* 3. search-index.json sanity check — KR 경로(out/adr)에서만 수행.
+   * EN 경로(out/en/adr)는 search-index.json을 별도 호스팅하지 않고
+   * 클라이언트가 /adr/search-index.json을 fetch하여 locale prefix만 재작성한다. */
+  const isEnPath = /(?:^|\/)en\/adr\/?$/.test(targetArg.replace(/\/+$/, ''));
+  if (!isEnPath) {
+    const searchResult = checkSearchIndex(targetDir);
+    if (searchResult.error) {
+      console.error(`[FAIL] ${searchResult.error}`);
+      process.exit(2);
+    }
+    console.log(`[OK]   search-index.json: ${searchResult.count} entries`);
+  } else {
+    console.log('[SKIP] search-index.json check (EN path — index served from /adr/)');
   }
-  console.log(`[OK]   search-index.json: ${searchResult.count} entries`);
 
   // 4. 결과 요약
   const warnings = 0;
@@ -102,6 +112,29 @@ function runMain() {
 // ──────────────────────────────────────────────────────────────────
 // 내부 함수
 // ──────────────────────────────────────────────────────────────────
+
+/**
+ * targetDir에서 사이트 web root를 도출한다.
+ *
+ * `/adr/...` 또는 `/en/adr/...` 링크는 사이트 root(blog/out) 기준으로 해소되어야 하므로
+ * targetDir 경로의 마지막 `/adr` 세그먼트를 찾고, 그 위가 `en`이면 한 단계 더 위를 root로 본다.
+ *
+ * @param {string} targetDir - 절대 경로
+ * @returns {string} 사이트 web root 절대 경로
+ */
+function deriveOutRoot(targetDir) {
+  const norm = targetDir.replace(/\/+$/, '');
+  const segments = norm.split('/');
+  /* 마지막 'adr' 세그먼트 위치 찾기 */
+  const adrIdx = segments.lastIndexOf('adr');
+  if (adrIdx <= 0) {
+    /* fallback: 부모 디렉토리 */
+    return resolve(targetDir, '..');
+  }
+  /* /en/adr 형태면 en도 잘라낸다 */
+  const parentIdx = segments[adrIdx - 1] === 'en' ? adrIdx - 1 : adrIdx;
+  return segments.slice(0, parentIdx).join('/') || '/';
+}
 
 /**
  * 디렉토리 재귀 순회 → *.html 파일 절대 경로 수집.
@@ -139,7 +172,8 @@ function isExternalOrAnchor(href) {
  * @returns {{ totalLinks: number, broken: Array<{ source: string, href: string, expected: string }> }}
  */
 function checkInternalLinks(htmlFiles, outRoot, targetArg) {
-  const hrefPattern = /href="(\/adr\/[^"#]*)(?:#[^"]*)?"/g;
+  /* /adr/... 또는 /en/adr/... 패턴 둘 다 매칭 */
+  const hrefPattern = /href="((?:\/en)?\/adr\/[^"#]*)(?:#[^"]*)?"/g;
   let totalLinks = 0;
   const broken = [];
   /** 이미 검증한 href 캐시 (중복 해소 효율화) */
