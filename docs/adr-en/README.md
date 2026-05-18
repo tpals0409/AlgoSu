@@ -68,7 +68,7 @@ The `/stop` workflow (`.claude/commands/stop.md`) enforces this in step 3 (Sprin
 
 ## Coverage tracking
 
-`scripts/check-adr-en-coverage.mjs --lint` reports which KR ADRs are missing an English translation. The check is currently advisory (warning-only) and will be promoted to a CI hard gate once the back-catalog translation push is complete (target: Sprint 158+).
+`scripts/check-adr-en-coverage.mjs --lint` reports which KR ADRs are missing an English translation. Since Sprint 158, the check runs as a **CI hard gate** (`--strict` mode in the `quality-docs` job) — any new KR ADR without an EN counterpart will fail the CI pipeline.
 
 ## Site
 
