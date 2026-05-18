@@ -1,4 +1,9 @@
 import type { NextConfig } from 'next';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// __dirname 대체 (ESM 호환). monorepo lockfile 충돌 시 workspace root 추론 위험.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
   output: 'export',
@@ -6,9 +11,10 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
-  // ADR md(`../docs/adr/**/*.md`)는 build-time에 fs.readFile로 읽어 정적 HTML로 export.
-  // `outputFileTracingIncludes`는 `output: 'export'`와 결합 시 `out/` 생성을 silently skip
-  // (Sprint 157 P10 hotfix). 정적 export는 런타임 파일 access가 없어 trace include 불필요.
+  // workspace root을 blog/로 고정 (Sprint 157 hotfix #2).
+  // 미설정 시 monorepo 환경에서 repo root으로 추론되어 `out/`이 repo root에 생성됨.
+  // CI에서 `working-directory: blog`로 실행되는 link integrity step이 `out/adr` not found 에러.
+  outputFileTracingRoot: __dirname,
 };
 
 export default nextConfig;
