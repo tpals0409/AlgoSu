@@ -5,7 +5,8 @@
  * @related    src/lib/adr/types.ts, adr-toc.tsx, adr-meta-sidebar.tsx
  *
  * ADR 상세 3-column 레이아웃 — 좌 TOC / 중앙 본문 / 우 메타사이드바(미니 그래프 포함).
- * locale='en'일 때 본문 위에 "Content in Korean" 배너 + 한국어 원문 링크 표시.
+ * locale='en' + !meta.hasEnTranslation 일 때만 "Content in Korean" 배너 + 한국어 원문 링크 표시.
+ * 영문판 본문이 존재하는 ADR(docs/adr-en/<path> 있음)은 배너 없이 영문 본문만 렌더.
  */
 import type { AdjacencyList, AdrDoc, AdrMeta } from '@/lib/adr/types';
 import { renderAdrMdx } from '@/lib/adr/markdown';
@@ -57,7 +58,9 @@ export async function AdrDetailView({
       {/* 중앙 본문 */}
       <article className="min-w-0 max-w-3xl flex-1">
         <h1 className="mb-6 text-3xl font-bold text-text">{doc.meta.title}</h1>
-        {locale === 'en' && <KoreanOnlyBanner meta={doc.meta} />}
+        {locale === 'en' && !doc.meta.hasEnTranslation && (
+          <KoreanOnlyBanner meta={doc.meta} />
+        )}
         <div className="prose max-w-none">{content}</div>
       </article>
 

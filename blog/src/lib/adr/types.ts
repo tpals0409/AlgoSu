@@ -59,6 +59,14 @@ export interface AdrMeta {
   hasFrontmatter: boolean;
   impact: Impact;
   readingTimeMin: number;
+  /**
+   * 영문 ADR 본문 존재 여부 — locale='en'일 때 loader에서 설정.
+   * true면 docs/adr-en/<path>의 영문판이 로드되었음을 의미하며,
+   * false면 docs/adr/<path>의 한국어 원본이 fallback으로 로드됨.
+   * locale='ko'일 때는 항상 false (영문 디렉토리 미참조).
+   * Sprint 157 P10에서 도입.
+   */
+  hasEnTranslation?: boolean;
 }
 
 /** H2/H3 섹션 파싱 결과 */

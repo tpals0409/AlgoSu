@@ -19,7 +19,7 @@ export const dynamicParams = false;
 
 /** 빌드 시 sprint ADR slug 목록을 생성한다. */
 export async function generateStaticParams() {
-  return getAllAdrs()
+  return getAllAdrs('en')
     .filter((d) => d.meta.kind === 'sprint')
     .map((d) => ({ num: d.meta.slug }));
 }
@@ -41,7 +41,7 @@ function findAdjacentSprints(
 /** 영문 Sprint ADR 상세 페이지를 렌더링한다. */
 export default async function EnSprintDetailPage({ params }: Props) {
   const { num } = await params;
-  const docs = getAllAdrs();
+  const docs = getAllAdrs('en');
   const doc = docs.find(
     (d) => d.meta.kind === 'sprint' && d.meta.slug === num,
   );

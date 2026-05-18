@@ -11,7 +11,7 @@ import { SprintsList } from '@/components/adr/sprints-list';
 
 /** 영문 Sprint 전체 목록 페이지를 렌더링한다. */
 export default function EnSprintsListPage() {
-  const docs = getAllAdrs();
+  const docs = getAllAdrs('en');
   const sprints = docs
     .filter((d) => d.meta.kind === 'sprint')
     .map((d) => d.meta)

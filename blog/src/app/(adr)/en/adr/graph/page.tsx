@@ -21,7 +21,7 @@ export function generateMetadata() {
 
 /** 영문 ADR 그래프 풀스크린 페이지를 렌더링한다. */
 export default function EnAdrGraphPage() {
-  const docs = getAllAdrs();
+  const docs = getAllAdrs('en');
   const index = buildAdrIndex(docs);
 
   return <AdrGraphView adjacency={index.graph} locale="en" />;
