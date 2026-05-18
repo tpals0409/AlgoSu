@@ -29,6 +29,12 @@ const DICTIONARY = {
     categoryAll: '전체',
     categoryJourney: '프로젝트 여정',
     categoryChallenge: '기술 챌린지',
+    /* ─── 블로그 → ADR 진입 (Sprint 157) ──────────── */
+    navAdr: 'ADR',
+    homeAdrCtaTitle: '아키텍처 결정 기록 (ADR)',
+    homeAdrCtaDescription:
+      '블로그 글이 인용하는 결정·구현·검증의 단일 SSOT — 105개 ADR 시각화',
+    homeAdrCtaButton: 'ADR 살펴보기 →',
 
     /* ─── ADR 공통 ─────────────────────────────────── */
     adrTitle: 'AlgoSu ADR',
@@ -132,6 +138,12 @@ const DICTIONARY = {
     categoryAll: 'All',
     categoryJourney: 'Project Journey',
     categoryChallenge: 'Tech Challenge',
+    /* ─── Blog → ADR entry (Sprint 157) ────────────── */
+    navAdr: 'ADR',
+    homeAdrCtaTitle: 'Architecture Decision Records (ADR)',
+    homeAdrCtaDescription:
+      'The single SSOT of decisions, implementations, and verifications cited by every blog post — 105 ADRs visualized',
+    homeAdrCtaButton: 'Browse ADRs →',
 
     /* ─── ADR common ───────────────────────────────── */
     adrTitle: 'AlgoSu ADR',
