@@ -5,21 +5,24 @@
  * @related    src/lib/adr/types.ts, status-badge.tsx, impact-badge.tsx
  *
  * ADR 인덱스 카드 — 제목, 상태/영향도 뱃지, 날짜, 에이전트 미리보기.
+ * locale prop으로 KR/EN UI 토글 + href에 locale prefix 적용.
  */
 import type { AdrMeta, AdrKind } from '@/lib/adr/types';
 import { buildUrl } from '@/lib/adr/index-builder';
+import { type Locale, t, type DictKey } from '@/lib/i18n';
 import { StatusBadge } from './status-badge';
 import { ImpactBadge } from './impact-badge';
 
 interface AdrCardProps {
   meta: AdrMeta;
+  locale?: Locale;
 }
 
-/** Kind 라벨 매핑 */
-const KIND_LABEL: Record<AdrKind, string> = {
-  permanent: 'Permanent',
-  topic: 'Topic',
-  sprint: 'Sprint',
+/** Kind 사전 키 매핑 */
+const KIND_LABEL_KEY: Record<AdrKind, DictKey> = {
+  permanent: 'kindPermanent',
+  topic: 'kindTopic',
+  sprint: 'kindSprint',
 };
 
 /** Kind 뱃지 스타일 매핑 */
@@ -54,8 +57,9 @@ function AgentPreview({ agents }: { agents?: string[] }) {
 }
 
 /** ADR 인덱스 카드를 렌더링한다. */
-export function AdrCard({ meta }: AdrCardProps) {
-  const href = buildUrl(meta);
+export function AdrCard({ meta, locale = 'ko' }: AdrCardProps) {
+  const href = buildUrl(meta, locale);
+  const sprintLabel = t(locale, 'metaSprint');
 
   return (
     <a
@@ -66,7 +70,7 @@ export function AdrCard({ meta }: AdrCardProps) {
       <span
         className={`mb-2 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${KIND_STYLES[meta.kind]}`}
       >
-        {KIND_LABEL[meta.kind]}
+        {t(locale, KIND_LABEL_KEY[meta.kind])}
       </span>
 
       {/* 제목 */}
@@ -76,14 +80,22 @@ export function AdrCard({ meta }: AdrCardProps) {
 
       {/* 뱃지 행 */}
       <div className="mb-2 flex flex-wrap gap-1.5">
-        <StatusBadge status={meta.status} rawStatus={meta.rawStatus} />
-        <ImpactBadge impact={meta.impact} />
+        <StatusBadge
+          status={meta.status}
+          rawStatus={meta.rawStatus}
+          locale={locale}
+        />
+        <ImpactBadge impact={meta.impact} locale={locale} />
       </div>
 
       {/* 메타 행 */}
       <div className="mb-2 flex items-center gap-2 text-xs text-text-muted">
         {meta.date && <time dateTime={meta.date}>{meta.date}</time>}
-        {meta.sprint != null && <span>Sprint {meta.sprint}</span>}
+        {meta.sprint != null && (
+          <span>
+            {sprintLabel} {meta.sprint}
+          </span>
+        )}
       </div>
 
       {/* 에이전트 미리보기 */}

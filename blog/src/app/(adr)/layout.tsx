@@ -2,47 +2,22 @@
  * @file       layout.tsx
  * @domain     blog / adr
  * @layer      app
- * @related    src/app/(ko)/layout.tsx, src/components/adr/search-box.tsx
+ * @related    src/app/(ko)/layout.tsx, src/components/adr/search-box.tsx, src/components/adr/adr-header.tsx
  *
- * ADR 전용 레이아웃 — 네비게이션 헤더(검색 포함) + 넓은 max-w-7xl 본문.
+ * ADR 전용 레이아웃 — 네비게이션 헤더(검색/로케일 토글 포함) + 넓은 max-w-7xl 본문.
+ * KR(/adr/...) + EN(/en/adr/...) 두 라우팅 공통 적용.
  */
 import type { Metadata } from 'next';
-import { SearchBox } from '@/components/adr/search-box';
+import { AdrHeader } from '@/components/adr/adr-header';
 
 export const metadata: Metadata = {
   title: 'AlgoSu ADR',
-  description: 'Architecture Decision Records — AlgoSu 프로젝트의 아키텍처 결정 기록.',
+  description:
+    'Architecture Decision Records — AlgoSu 프로젝트의 아키텍처 결정 기록.',
+  alternates: {
+    languages: { ko: '/adr', en: '/en/adr' },
+  },
 };
-
-/** ADR 전용 헤더를 렌더링한다. */
-function AdrHeader() {
-  return (
-    <header className="border-b border-border">
-      <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        <div className="flex items-center gap-4">
-          <a href="/adr/" className="text-lg font-bold text-brand">
-            AlgoSu ADR
-          </a>
-          <a
-            href="/adr/graph/"
-            className="hidden text-sm text-text-muted transition-colors hover:text-brand sm:inline"
-          >
-            그래프
-          </a>
-        </div>
-        <div className="flex items-center gap-4">
-          <SearchBox />
-          <a
-            href="/"
-            className="text-sm text-text-muted transition-colors hover:text-brand"
-          >
-            블로그
-          </a>
-        </div>
-      </nav>
-    </header>
-  );
-}
 
 /** ADR 라우트 그룹 레이아웃을 렌더링한다. */
 export default function AdrLayout({ children }: { children: React.ReactNode }) {

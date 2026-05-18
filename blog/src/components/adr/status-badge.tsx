@@ -2,15 +2,18 @@
  * @file       status-badge.tsx
  * @domain     blog / adr
  * @layer      ui
- * @related    src/lib/adr/types.ts
+ * @related    src/lib/adr/types.ts, src/lib/i18n.ts
  *
  * ADR 상태 pill 뱃지 — status 값에 따라 callout 토큰 색상을 매핑한다.
+ * locale prop으로 라벨 KR/EN 토글 (라벨 없으면 status 값 그대로).
  */
 import type { AdrStatus } from '@/lib/adr/types';
+import { type Locale, t, type DictKey } from '@/lib/i18n';
 
 interface StatusBadgeProps {
   status: AdrStatus;
   rawStatus?: string;
+  locale?: Locale;
 }
 
 /** status -> Tailwind 클래스 매핑 */
@@ -30,16 +33,33 @@ const STATUS_STYLES: Record<AdrStatus, string> = {
   unknown: 'border-dashed border-border text-text-subtle',
 };
 
+/** status -> i18n 사전 키 매핑 */
+const STATUS_LABEL_KEY: Record<AdrStatus, DictKey> = {
+  completed: 'statusCompleted',
+  implemented: 'statusImplemented',
+  accepted: 'statusAccepted',
+  proposed: 'statusProposed',
+  deferred: 'statusDeferred',
+  partial: 'statusPartial',
+  rejected: 'statusRejected',
+  unknown: 'statusUnknown',
+};
+
 /** ADR 상태를 pill 형태로 렌더링한다. */
-export function StatusBadge({ status, rawStatus }: StatusBadgeProps) {
+export function StatusBadge({
+  status,
+  rawStatus,
+  locale = 'ko',
+}: StatusBadgeProps) {
   const style = STATUS_STYLES[status];
+  const label = t(locale, STATUS_LABEL_KEY[status]);
 
   return (
     <span
-      title={rawStatus ?? status}
+      title={rawStatus ?? label}
       className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${style}`}
     >
-      {status}
+      {label}
     </span>
   );
 }

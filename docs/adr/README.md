@@ -79,3 +79,8 @@ grep -l "{keyword}" docs/adr/sprints/*.md     # 키워드 검색
 - [docs/README.md](../README.md) — 전체 문서 인덱스
 - [CLAUDE.md](../../CLAUDE.md) — 프로젝트 컨벤션
 - [memory/](../../../.claude/projects/-Users-leokim-Desktop-leo-kim-AlgoSu/memory/) — Sprint 메모리 (개인 슬라이딩 윈도우)
+
+## 사람용 HTML 사이트
+
+- 한국어: `https://blog.algosu.dev/adr/`
+- English: `https://blog.algosu.dev/en/adr/` (UI only — content in Korean)

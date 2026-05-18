@@ -7,6 +7,7 @@
  * AdrDoc[] -> AdrIndex 구축.
  * byKind 분류, bySprint 매핑, AdjacencyList 그래프, SearchDoc 플레인텍스트 인덱스.
  */
+import type { Locale } from '../i18n';
 import type {
   AdjacencyList,
   AdrDoc,
@@ -40,11 +41,17 @@ function toPlainText(markdown: string): string {
 
 /**
  * ADR 메타에서 URL 경로를 생성한다.
+ *
+ * locale='en' 일 때 `/en/adr/...` prefix를 반환한다. 기본값 'ko' 는 prefix 없음.
+ *
+ * @param meta   - ADR 메타
+ * @param locale - 'ko' (기본) | 'en'
  */
-export function buildUrl(meta: AdrMeta): string {
-  if (meta.kind === 'sprint') return `/adr/sprints/${meta.slug}`;
-  if (meta.kind === 'permanent') return `/adr/permanent/${meta.slug}`;
-  return `/adr/topics/${meta.slug}`;
+export function buildUrl(meta: AdrMeta, locale: Locale = 'ko'): string {
+  const prefix = locale === 'en' ? '/en' : '';
+  if (meta.kind === 'sprint') return `${prefix}/adr/sprints/${meta.slug}`;
+  if (meta.kind === 'permanent') return `${prefix}/adr/permanent/${meta.slug}`;
+  return `${prefix}/adr/topics/${meta.slug}`;
 }
 
 /* ─── SearchDoc 생성 ─────────────────────────────── */

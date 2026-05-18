@@ -5,8 +5,10 @@
  * @related    src/lib/adr/types.ts, sprint-timeline.tsx, adr-card.tsx
  *
  * ADR 인덱스 메인 뷰 — 통계 헤더, 카테고리 탭, 타임라인, 카드 그리드.
+ * locale prop으로 KR/EN UI 토글 + 카드 href에 locale prefix 전파.
  */
 import type { AdrIndex, AdrMeta } from '@/lib/adr/types';
+import { type Locale, t, tf } from '@/lib/i18n';
 import { AdrCategoryTabs } from './adr-category-tabs';
 import { SprintTimeline } from './sprint-timeline';
 import { AdrCard } from './adr-card';
@@ -14,6 +16,7 @@ import { AgentChips } from './agent-chips';
 
 interface AdrIndexViewProps {
   index: AdrIndex;
+  locale?: Locale;
 }
 
 /** 최근 sprint 12개를 내림차순으로 추출한다. */
@@ -55,14 +58,26 @@ function lastUpdated(items: AdrMeta[]): string {
 }
 
 /** 통계 헤더 카드를 렌더링한다. */
-function StatsHeader({ index }: { index: AdrIndex }) {
+function StatsHeader({
+  index,
+  locale,
+}: {
+  index: AdrIndex;
+  locale: Locale;
+}) {
   return (
     <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-      <StatCard label="전체 ADR" value={index.all.length} />
-      <StatCard label="Sprint 범위" value={sprintRange(index.all)} />
-      <StatCard label="마지막 갱신" value={lastUpdated(index.all)} />
+      <StatCard label={t(locale, 'statsTotal')} value={index.all.length} />
       <StatCard
-        label="종류"
+        label={t(locale, 'statsSprintRange')}
+        value={sprintRange(index.all)}
+      />
+      <StatCard
+        label={t(locale, 'statsLastUpdate')}
+        value={lastUpdated(index.all)}
+      />
+      <StatCard
+        label={t(locale, 'statsKind')}
         value={`P${index.byKind.permanent.length} / T${index.byKind.topic.length} / S${index.byKind.sprint.length}`}
       />
     </div>
@@ -80,14 +95,15 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
 }
 
 /** ADR 인덱스 메인 뷰를 렌더링한다. */
-export function AdrIndexView({ index }: AdrIndexViewProps) {
+export function AdrIndexView({ index, locale = 'ko' }: AdrIndexViewProps) {
   const recentSprints = getRecentSprints(index.all);
   const agents = aggregateAgents(index.all);
+  const prefix = locale === 'en' ? '/en' : '';
 
   return (
     <div className="space-y-8">
       {/* 통계 헤더 */}
-      <StatsHeader index={index} />
+      <StatsHeader index={index} locale={locale} />
 
       {/* 카테고리 탭 */}
       <AdrCategoryTabs
@@ -96,27 +112,28 @@ export function AdrIndexView({ index }: AdrIndexViewProps) {
           topic: index.byKind.topic.length,
           sprint: index.byKind.sprint.length,
         }}
+        locale={locale}
       />
 
       {/* Sprint 타임라인 */}
       <section>
         <h2 className="mb-3 text-lg font-semibold text-text">
-          Sprint 타임라인
+          {t(locale, 'sectionTimeline')}
         </h2>
-        <SprintTimeline items={index.all} />
+        <SprintTimeline items={index.all} locale={locale} />
       </section>
 
       {/* 영구 ADR */}
       <section id="permanent">
         <h2 className="mb-4 text-lg font-semibold text-text">
-          영구 ADR
+          {t(locale, 'sectionPermanent')}
           <span className="ml-1 text-sm font-normal text-text-muted">
-            ({index.byKind.permanent.length})
+            {tf(locale, 'countOfTotal', { n: index.byKind.permanent.length })}
           </span>
         </h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {index.byKind.permanent.map((m) => (
-            <AdrCard key={m.id} meta={m} />
+            <AdrCard key={m.id} meta={m} locale={locale} />
           ))}
         </div>
       </section>
@@ -124,14 +141,14 @@ export function AdrIndexView({ index }: AdrIndexViewProps) {
       {/* 토픽 ADR */}
       <section id="topics">
         <h2 className="mb-4 text-lg font-semibold text-text">
-          토픽 ADR
+          {t(locale, 'sectionTopic')}
           <span className="ml-1 text-sm font-normal text-text-muted">
-            ({index.byKind.topic.length})
+            {tf(locale, 'countOfTotal', { n: index.byKind.topic.length })}
           </span>
         </h2>
         <div className="grid gap-4">
           {index.byKind.topic.map((m) => (
-            <AdrCard key={m.id} meta={m} />
+            <AdrCard key={m.id} meta={m} locale={locale} />
           ))}
         </div>
       </section>
@@ -139,23 +156,26 @@ export function AdrIndexView({ index }: AdrIndexViewProps) {
       {/* Sprint ADR — 최근 12개 */}
       <section id="sprints">
         <h2 className="mb-4 text-lg font-semibold text-text">
-          Sprint ADR
+          {t(locale, 'sectionSprint')}
           <span className="ml-1 text-sm font-normal text-text-muted">
-            (최근 12개 / 전체 {index.byKind.sprint.length})
+            {tf(locale, 'recentNofTotal', {
+              n: recentSprints.length,
+              total: index.byKind.sprint.length,
+            })}
           </span>
         </h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {recentSprints.map((m) => (
-            <AdrCard key={m.id} meta={m} />
+            <AdrCard key={m.id} meta={m} locale={locale} />
           ))}
         </div>
         {index.byKind.sprint.length > 12 && (
           <div className="mt-4 text-center">
             <a
-              href="/adr/sprints/"
+              href={`${prefix}/adr/sprints/`}
               className="text-sm font-medium text-brand hover:underline"
             >
-              전체 보기 &rarr;
+              {t(locale, 'viewAll')}
             </a>
           </div>
         )}
@@ -165,7 +185,7 @@ export function AdrIndexView({ index }: AdrIndexViewProps) {
       {agents.size > 0 && (
         <section>
           <h2 className="mb-3 text-lg font-semibold text-text">
-            에이전트 분포
+            {t(locale, 'sectionAgentDist')}
           </h2>
           <AgentChips agents={agents} />
         </section>

@@ -2,15 +2,17 @@
  * @file       related-adr-graph.tsx
  * @domain     blog / adr
  * @layer      ui
- * @related    src/lib/adr/types.ts, src/components/blog/mermaid.tsx
+ * @related    src/lib/adr/types.ts, src/components/blog/mermaid.tsx, src/lib/i18n.ts
  *
  * Related ADR 그래프 — AdjacencyList를 mermaid graph LR로 시각화한다.
  * 별도 mermaid 인스턴스(securityLevel:loose)를 사용하여 기존 blog mermaid에 영향 없음.
  * focusId 노드 강조 + resolved=false edge 점선 표시.
+ * locale prop으로 노드 링크 prefix 토글.
  */
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
+import type { Locale } from '@/lib/i18n';
 
 /* ─── 타입 ──────────────────────────────────────── */
 
@@ -36,6 +38,7 @@ interface RelatedAdrGraphProps {
   adjacency: AdjacencyList;
   focusId?: string;
   caption?: string;
+  locale?: Locale;
 }
 
 /* ─── 노드 라벨 ─────────────────────────────────── */
@@ -60,7 +63,7 @@ function safeId(id: string): string {
 
 /** AdjacencyList에서 mermaid graph LR 문자열을 생성한다. */
 function buildChart(adj: AdjacencyList, focusId?: string): string {
-  if (adj.nodes.length === 0) return 'graph LR\n  empty["관련 ADR 없음"]';
+  if (adj.nodes.length === 0) return 'graph LR\n  empty["(no related ADRs)"]';
 
   const lines: string[] = ['graph LR'];
 
@@ -99,16 +102,17 @@ function buildChart(adj: AdjacencyList, focusId?: string): string {
 
 /* ─── 노드 링크 목록 ────────────────────────────── */
 
-/** URL 경로를 생성한다. */
-function nodeUrl(node: GraphNode): string {
+/** locale 기반 URL 경로를 생성한다. */
+function nodeUrl(node: GraphNode, locale: Locale): string {
+  const prefix = locale === 'en' ? '/en' : '';
   if (node.kind === 'sprint' && node.sprint != null) {
-    return `/adr/sprints/${node.sprint}/`;
+    return `${prefix}/adr/sprints/${node.sprint}/`;
   }
   if (node.id.startsWith('ADR-')) {
     const num = node.id.replace('ADR-', '');
-    return `/adr/permanent/${num}/`;
+    return `${prefix}/adr/permanent/${num}/`;
   }
-  return `/adr/topics/${node.id}/`;
+  return `${prefix}/adr/topics/${node.id}/`;
 }
 
 /* ─── 컴포넌트 ──────────────────────────────────── */
@@ -118,6 +122,7 @@ export function RelatedAdrGraph({
   adjacency,
   focusId,
   caption,
+  locale = 'ko',
 }: RelatedAdrGraphProps) {
   const uid = useId().replace(/[:]/g, '');
   const ref = useRef<HTMLDivElement>(null);
@@ -184,7 +189,7 @@ export function RelatedAdrGraph({
           {adjacency.nodes.map((node) => (
             <li key={node.id}>
               <a
-                href={nodeUrl(node)}
+                href={nodeUrl(node, locale)}
                 className={`inline-block rounded-md border px-2 py-1 text-xs transition-colors hover:border-brand hover:text-brand ${
                   node.id === focusId
                     ? 'border-brand bg-brand-soft font-medium text-brand-strong'

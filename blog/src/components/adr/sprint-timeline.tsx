@@ -2,15 +2,18 @@
  * @file       sprint-timeline.tsx
  * @domain     blog / adr
  * @layer      ui
- * @related    src/lib/adr/types.ts
+ * @related    src/lib/adr/types.ts, src/lib/i18n.ts
  *
  * 가로 스크롤 SVG 막대 그래프 — sprint별 영향도를 시각화한다.
+ * locale prop으로 aria-label/링크 prefix 토글.
  */
 import type { AdrMeta, Impact } from '@/lib/adr/types';
+import { type Locale, t } from '@/lib/i18n';
 
 interface SprintTimelineProps {
   items: AdrMeta[];
   activeSprint?: number;
+  locale?: Locale;
 }
 
 /** Impact -> 막대 높이 매핑 */
@@ -36,7 +39,11 @@ const SVG_PADDING = 8;
 const SVG_HEIGHT = 100;
 
 /** sprint 막대 그래프를 SVG로 렌더링한다. */
-export function SprintTimeline({ items, activeSprint }: SprintTimelineProps) {
+export function SprintTimeline({
+  items,
+  activeSprint,
+  locale = 'ko',
+}: SprintTimelineProps) {
   const sprints = items
     .filter((m) => m.kind === 'sprint' && m.sprint != null)
     .sort((a, b) => (a.sprint ?? 0) - (b.sprint ?? 0));
@@ -45,6 +52,8 @@ export function SprintTimeline({ items, activeSprint }: SprintTimelineProps) {
 
   const totalWidth =
     sprints.length * (BAR_WIDTH + BAR_GAP) - BAR_GAP + SVG_PADDING * 2;
+  const prefix = locale === 'en' ? '/en' : '';
+  const sprintLabel = t(locale, 'metaSprint');
 
   return (
     <div className="overflow-x-auto rounded-lg border border-border bg-surface-muted p-2">
@@ -53,7 +62,7 @@ export function SprintTimeline({ items, activeSprint }: SprintTimelineProps) {
         height={SVG_HEIGHT}
         viewBox={`0 0 ${totalWidth} ${SVG_HEIGHT}`}
         role="img"
-        aria-label="Sprint timeline bar chart"
+        aria-label={t(locale, 'timelineAriaLabel')}
       >
         {sprints.map((m, i) => {
           const x = SVG_PADDING + i * (BAR_WIDTH + BAR_GAP);
@@ -63,9 +72,9 @@ export function SprintTimeline({ items, activeSprint }: SprintTimelineProps) {
           const fill = isActive ? 'var(--brand)' : IMPACT_FILL[m.impact];
 
           return (
-            <a key={m.id} href={`/adr/sprints/${m.slug}/`}>
+            <a key={m.id} href={`${prefix}/adr/sprints/${m.slug}/`}>
               <title>
-                Sprint {m.sprint}: {m.title}
+                {sprintLabel} {m.sprint}: {m.title}
               </title>
               <rect
                 x={x}
