@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 3100",
+    "prebuild": "node scripts/generate-search-index.mjs",
     "build": "next build",
     "start": "npx serve out -l 3100"
   },

@@ -41,10 +41,10 @@ function toPlainText(markdown: string): string {
 /**
  * ADR 메타에서 URL 경로를 생성한다.
  */
-function buildUrl(meta: AdrMeta): string {
-  if (meta.kind === 'sprint') return `/adr/sprint/${meta.slug}`;
+export function buildUrl(meta: AdrMeta): string {
+  if (meta.kind === 'sprint') return `/adr/sprints/${meta.slug}`;
   if (meta.kind === 'permanent') return `/adr/permanent/${meta.slug}`;
-  return `/adr/topic/${meta.slug}`;
+  return `/adr/topics/${meta.slug}`;
 }
 
 /* ─── SearchDoc 생성 ─────────────────────────────── */
@@ -139,6 +139,32 @@ function mapBySprint(metas: AdrMeta[]): Map<number, AdrMeta> {
     }
   }
   return map;
+}
+
+/* ─── 서브그래프 추출 ────────────────────────────── */
+
+/**
+ * 특정 노드를 중심으로 1-hop 서브그래프를 추출한다.
+ * @param full    - 전체 AdjacencyList
+ * @param focusId - 중심 노드 ID
+ */
+export function getSubgraph(
+  full: AdjacencyList,
+  focusId: string,
+): AdjacencyList {
+  const neighborIds = new Set<string>([focusId]);
+
+  for (const e of full.edges) {
+    if (e.from === focusId) neighborIds.add(e.to);
+    if (e.to === focusId) neighborIds.add(e.from);
+  }
+
+  const nodes = full.nodes.filter((n) => neighborIds.has(n.id));
+  const edges = full.edges.filter(
+    (e) => neighborIds.has(e.from) && neighborIds.has(e.to),
+  );
+
+  return { nodes, edges };
 }
 
 /* ─── 메인 빌더 ──────────────────────────────────── */

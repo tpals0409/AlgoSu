@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+  outputFileTracingIncludes: {
+    '/adr': ['../docs/adr/**/*.md'],
+  },
 };
 
 export default nextConfig;

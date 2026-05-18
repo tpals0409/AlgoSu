@@ -2,3 +2,6 @@ node_modules/
 .next/
 out/
 *.tsbuildinfo
+
+# 빌드 시 생성되는 검색 인덱스
+public/adr/search-index.json
