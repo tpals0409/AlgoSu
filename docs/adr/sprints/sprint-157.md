@@ -23,7 +23,7 @@ related_memory: ["sprint-window"]
 - **i18n 차원 1 (UI)**: 사용자 직접 지적("ADR이 영문/한국어 둘 다 안 되는 거 같다") → P9 hotfix 즉시 추가. blog 기존 `(ko)/`+`en/` 패턴 ADR에도 적용. `/adr/` ↔ `/en/adr/` 라우팅 + LocaleToggle + 사전 50키
 - **i18n 차원 2 (콘텐츠)**: 사용자 명시 요구 → P10 추가. `docs/adr-en/` 별도 디렉토리 (blog `content/posts-en/` 패턴) + loader locale 확장 + Claude API 자동 번역기 + `/stop` 워크플로우 EN 의무
 
-## 구현 (4 PR squash merge, origin/main `9f1217a` → **`7d0fedf`**)
+## 구현 (10 PR squash merge, origin/main `9f1217a` → **`1ba57d6` + PR #262**)
 
 | PR | Phase | 담당 | 변경 | 라인 |
 |----|-------|------|------|------|
@@ -31,6 +31,12 @@ related_memory: ["sprint-window"]
 | [#254](https://github.com/tpals0409/AlgoSu/pull/254) | P2~P8 | architect | `scripts/check-adr-{conversion,links}.mjs` + `(adr)/` 6 라우팅 페이지 + 12 시각화 컴포넌트 + minisearch 검색 + mermaid Related ADR 그래프 + ci.yml step 2개 | +3,620 |
 | [#255](https://github.com/tpals0409/AlgoSu/pull/255) | P9 | architect | UI i18n: `/en/adr/` 6 라우팅 + LocaleToggle 통합 헤더 + i18n 사전 ~50키 + 12 컴포넌트 `locale` prop 전파 + KoreanOnlyBanner | +926 −203 |
 | [#256](https://github.com/tpals0409/AlgoSu/pull/256) | P10 | architect | 콘텐츠 i18n 인프라: `docs/adr-en/` + `getAllAdrs(locale)` 확장 + `hasEnTranslation` 플래그 + `scripts/translate-adr.mjs` Claude API 자동 번역기 + `/stop` 워크플로우 + Scribe 페르소나 EN 의무 | +771 −44 |
+| [#257](https://github.com/tpals0409/AlgoSu/pull/257) | ADR + hotfix #1 | scribe+architect | sprint-157 KR+EN ADR + `next.config.ts` `outputFileTracingIncludes` 제거 (out skip 가설) | +215 −3 |
+| [#258](https://github.com/tpals0409/AlgoSu/pull/258) | hotfix #2 | architect | `outputFileTracingRoot: __dirname` 명시 (workspace root warning 해소) + EN ADR broken ref (sprint-152/156 → KR SSOT 링크) | +11 −5 |
+| [#259](https://github.com/tpals0409/AlgoSu/pull/259) | hotfix probe | architect | ci.yml `Build Blog` step에 out/ location probe + fallback (디버그 단계). probe 로그가 결정적 진단 | +20 −2 |
+| [#260](https://github.com/tpals0409/AlgoSu/pull/260) | chore + trigger | scribe | docs/adr/README.md sprint count 보정 (89→97개) + paths filter로 build-blog 강제 실행 → probe 결과 노출 | +3 −3 |
+| [#261](https://github.com/tpals0409/AlgoSu/pull/261) | hotfix #3 **진짜 fix** | architect | ci.yml `node ../scripts/check-adr-links.mjs out/adr` → `node scripts/check-adr-links.mjs blog/out/adr` 절대 segment 명시. check-adr-links.mjs:33 ROOT=repo root 의존성이 진짜 원인이었음 | +5 −21 |
+| [#262](https://github.com/tpals0409/AlgoSu/pull/262) | UX 추가 | architect | 블로그 → ADR 진입 보강: header.tsx 우측 네비 'ADR' 링크 + home-page.tsx CTA 카드 + i18n 사전 4키 (사용자 "기존 블로그에서 ADR로 넘어갈 버튼 없음" 지적 즉시 보강) | +51 −3 |
 
 ## 검증
 

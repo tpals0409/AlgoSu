@@ -23,7 +23,7 @@ related_memory: ["sprint-window"]
 - **i18n dimension 1 (UI)**: User direct feedback ("ADR doesn't seem to work for both English and Korean") → P9 hotfix added immediately. Apply existing blog `(ko)/`+`en/` pattern to ADR. `/adr/` ↔ `/en/adr/` routing + LocaleToggle + 50 dictionary keys
 - **i18n dimension 2 (Content)**: Explicit user requirement → P10 added. `docs/adr-en/` separate directory (blog `content/posts-en/` pattern) + loader locale extension + Claude API auto-translator + `/stop` workflow EN mandate
 
-## Implementation (4 PRs squash merge, origin/main `9f1217a` → **`7d0fedf`**)
+## Implementation (10 PRs squash merge, origin/main `9f1217a` → **`1ba57d6` + PR #262**)
 
 | PR | Phase | Owner | Changes | Lines |
 |----|-------|-------|---------|-------|
@@ -31,6 +31,12 @@ related_memory: ["sprint-window"]
 | [#254](https://github.com/tpals0409/AlgoSu/pull/254) | P2~P8 | architect | `scripts/check-adr-{conversion,links}.mjs` + `(adr)/` 6 routing pages + 12 visualization components + minisearch search + mermaid Related ADR graph + ci.yml 2 steps | +3,620 |
 | [#255](https://github.com/tpals0409/AlgoSu/pull/255) | P9 | architect | UI i18n: `/en/adr/` 6 routes + LocaleToggle integrated header + i18n dictionary ~50 keys + 12 components `locale` prop propagation + KoreanOnlyBanner | +926 −203 |
 | [#256](https://github.com/tpals0409/AlgoSu/pull/256) | P10 | architect | Content i18n infra: `docs/adr-en/` + `getAllAdrs(locale)` extension + `hasEnTranslation` flag + `scripts/translate-adr.mjs` Claude API auto-translator + `/stop` workflow + Scribe persona EN mandate | +771 −44 |
+| [#257](https://github.com/tpals0409/AlgoSu/pull/257) | ADR + hotfix #1 | scribe+architect | sprint-157 KR+EN ADR + `next.config.ts` `outputFileTracingIncludes` removal (out skip hypothesis) | +215 −3 |
+| [#258](https://github.com/tpals0409/AlgoSu/pull/258) | hotfix #2 | architect | `outputFileTracingRoot: __dirname` explicit (workspace root warning silenced) + EN ADR broken refs (sprint-152/156 → KR SSOT links) | +11 −5 |
+| [#259](https://github.com/tpals0409/AlgoSu/pull/259) | hotfix probe | architect | ci.yml `Build Blog` step out/ location probe + fallback (debug stage). Probe log became the decisive diagnostic | +20 −2 |
+| [#260](https://github.com/tpals0409/AlgoSu/pull/260) | chore + trigger | scribe | docs/adr/README.md sprint count fix (89→97) + paths filter triggered build-blog → probe results revealed | +3 −3 |
+| [#261](https://github.com/tpals0409/AlgoSu/pull/261) | hotfix #3 **real fix** | architect | ci.yml `node ../scripts/check-adr-links.mjs out/adr` → `node scripts/check-adr-links.mjs blog/out/adr` absolute segment. check-adr-links.mjs:33 ROOT=repo root dependency was the real cause | +5 −21 |
+| [#262](https://github.com/tpals0409/AlgoSu/pull/262) | UX addition | architect | Blog → ADR entry navigation: header.tsx right nav 'ADR' link + home-page.tsx CTA card + i18n dictionary 4 keys (user feedback "no button to navigate from existing blog to ADR" addressed immediately) | +51 −3 |
 
 ## Verification
 
