@@ -313,22 +313,22 @@ class ClaudeClient:
             # 항상 유효 JSON envelope 으로 감싸 DB에 저장.
             # 근거: dh4m 제출 사례에서 catch-all 폴백이 raw 마크다운/JSON을 노출 →
             # 프론트 parseFeedback catch 블록이 summary=raw 로 표시.
-            # PII/잠재 비밀이 raw 에 포함될 수 있으므로 raw 는 logger 만 노출.
-            raw_excerpt = raw_text.strip()[:200]
-            logger.warning(
-                "Claude 응답 파싱 실패 -- envelope fallback 사용",
-                extra={"error": str(e)[:100], "raw_excerpt": raw_excerpt},
-            )
+            # PII/잠재 비밀이 raw 에 포함될 수 있으므로 raw 는 로그에도 노출 금지 (Critic P2).
 
             # 원본 텍스트에서 totalScore 추출 시도 (정규식 fallback)
             score = 0
             score_match = re.search(r'"totalScore"\s*:\s*(\d+)', raw_text)
             if score_match:
                 score = int(score_match.group(1))
-                logger.info(
-                    "파싱 실패 fallback -- totalScore 정규식 추출",
-                    extra={"score": score},
-                )
+
+            logger.warning(
+                "Claude 응답 파싱 실패 -- envelope fallback 사용",
+                extra={
+                    "error": str(e)[:100],
+                    "score_extracted": score,
+                    "raw_length": len(raw_text),
+                },
+            )
 
             # score가 추출되면 분석 자체는 성공 — JSON 파싱만 실패한 것
             status = "completed" if score > 0 else "failed"

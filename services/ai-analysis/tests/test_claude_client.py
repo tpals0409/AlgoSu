@@ -509,6 +509,64 @@ class TestParseResponseFallback:
         assert "# 분석 결과" not in result["feedback"]
         assert "잘못된 JSON" not in result["feedback"]
 
+    def test_fallback_does_not_leak_raw_text_to_logs(self, caplog):
+        """catch-all 폴백 경로의 logger 에 raw 텍스트가 노출되지 않음 (Sprint 159 Critic P2).
+
+        - raw 응답에는 PII/사용자 코드/잠재 비밀이 포함될 수 있으므로 로그에도 노출 금지.
+        - logger extra 에는 메타데이터(error/score_extracted/raw_length)만 허용.
+        """
+        import logging
+
+        c = _make_client()
+
+        # 민감 정보를 포함한 가상의 raw 응답 (사용자 코드 + 잠재 비밀)
+        sensitive_raw = (
+            "# 분석 결과\n"
+            "def secret_function():\n"
+            "    api_key = 'sk-leaked-secret-token-xyz'\n"
+            "    return api_key\n"
+            '잘못된 JSON {"totalScore": 80, ...'
+        )
+
+        with caplog.at_level(logging.WARNING, logger="src.claude_client"):
+            result = c._parse_response(sensitive_raw)
+
+        # envelope 자체에도 raw 가 노출되지 않음 (기존 검증 재확인)
+        assert "sk-leaked-secret-token-xyz" not in result["feedback"]
+        assert "secret_function" not in result["feedback"]
+
+        # logger 메시지/extra 어디에도 raw 텍스트의 민감 부분이 포함되지 않음
+        full_log_text = "\n".join(
+            f"{r.getMessage()} {getattr(r, 'raw_excerpt', '')}"
+            f" {getattr(r, 'raw_text', '')}"
+            for r in caplog.records
+        )
+        assert "sk-leaked-secret-token-xyz" not in full_log_text
+        assert "secret_function" not in full_log_text
+        assert "api_key" not in full_log_text
+        assert "# 분석 결과" not in full_log_text
+        assert "잘못된 JSON" not in full_log_text
+
+        # extra 필드는 메타데이터만 허용 — raw_excerpt/raw_text 가 어느 record 에도 없어야 함
+        for record in caplog.records:
+            assert not hasattr(record, "raw_excerpt"), (
+                "raw_excerpt 가 logger extra 에 포함됨 (Critic P2 위반)"
+            )
+            assert not hasattr(record, "raw_text"), (
+                "raw_text 가 logger extra 에 포함됨 (Critic P2 위반)"
+            )
+
+        # 메타데이터 필드는 envelope fallback warning 에 포함되어야 함
+        warning_records = [
+            r for r in caplog.records if "envelope fallback" in r.getMessage()
+        ]
+        assert len(warning_records) >= 1
+        warn = warning_records[0]
+        assert hasattr(warn, "score_extracted")
+        assert hasattr(warn, "raw_length")
+        assert warn.score_extracted == 80
+        assert warn.raw_length == len(sensitive_raw)
+
     def test_totalScore_zero_with_categories_recalculated(self):
         """totalScore=0 + categories 존재 → ALGORITHM_WEIGHTS 가중 평균 재계산"""
         c = _make_client()
