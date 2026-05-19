@@ -67,6 +67,8 @@ export interface AdrMeta {
    * Sprint 157 P10에서 도입.
    */
   hasEnTranslation?: boolean;
+  /** Hero 영역 TL;DR 텍스트 — frontmatter tldr 또는 목표 섹션 자동 추출 */
+  tldr?: string;
 }
 
 /** H2/H3 섹션 파싱 결과 */
@@ -100,6 +102,22 @@ export interface ParseWarning {
   detail: string;
 }
 
+/** 결정 항목 (decisions 섹션에서 추출) */
+export interface AdrDecision {
+  title: string;
+  description: string;
+}
+
+/** Phase 항목 (implementation 섹션 PR 표에서 추출) */
+export interface AdrPhaseEntry {
+  phase: string;
+  prNumber?: string;
+  prUrl?: string;
+  owner: string;
+  summary: string;
+  lines?: string;
+}
+
 /** 단일 ADR 파싱 완료 객체 */
 export interface AdrDoc {
   meta: AdrMeta;
@@ -107,6 +125,8 @@ export interface AdrDoc {
   bodyMarkdown: string;
   outgoingLinks: string[];
   warnings: ParseWarning[];
+  decisions?: AdrDecision[];
+  phases?: AdrPhaseEntry[];
 }
 
 /** 그래프 인접 리스트 */

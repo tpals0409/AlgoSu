@@ -10,9 +10,11 @@
 import matter from 'gray-matter';
 
 import type {
+  AdrDecision,
   AdrDoc,
   AdrKind,
   AdrMeta,
+  AdrPhaseEntry,
   AdrSection,
   AdrStatus,
   Impact,
@@ -259,6 +261,127 @@ function tokenizeSections(
   return sections;
 }
 
+/* ─── TL;DR / 결정 / Phase 추출 ─────────────────── */
+
+/** 마크다운 서식(bold, link, code)을 제거하여 평문 텍스트로 변환한다. */
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\*{1,2}([^*]+)\*{1,2}/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .trim();
+}
+
+/**
+ * Hero 영역 TL;DR 텍스트를 추출한다.
+ * frontmatter tldr > 목표 섹션 첫 번째 list item fallback.
+ */
+export function extractTldr(
+  fm: Record<string, unknown>,
+  sections: AdrSection[],
+): string | undefined {
+  if (typeof fm.tldr === 'string' && fm.tldr.length > 0) {
+    return fm.tldr;
+  }
+
+  const goalsSection = sections.find((s) => s.canonical === 'goals');
+  if (!goalsSection) return undefined;
+
+  const listMatch = goalsSection.rawMarkdown.match(/^-\s+(.+)/m);
+  if (!listMatch) return undefined;
+
+  return stripMarkdown(listMatch[1]);
+}
+
+/**
+ * decisions 섹션에서 `- **제목**: 설명` 패턴의 결정 항목을 추출한다.
+ */
+export function extractDecisionItems(
+  sections: AdrSection[],
+): AdrDecision[] | undefined {
+  const section = sections.find((s) => s.canonical === 'decisions');
+  if (!section) return undefined;
+
+  const items: AdrDecision[] = [];
+  const re = /^-\s+\*{2}([^*]+)\*{2}\s*:\s*(.+)/gm;
+  let match: RegExpExecArray | null;
+
+  while ((match = re.exec(section.rawMarkdown)) !== null) {
+    items.push({
+      title: match[1].trim(),
+      description: stripMarkdown(match[2]),
+    });
+  }
+
+  return items.length > 0 ? items : undefined;
+}
+
+/**
+ * implementation 섹션의 PR 표에서 Phase 엔트리를 추출한다.
+ * 표 헤더 열에서 Phase/Owner/Lines/변경 내용 열 인덱스를 동적 탐색한다.
+ */
+export function extractPhaseEntries(
+  sections: AdrSection[],
+): AdrPhaseEntry[] | undefined {
+  const implSection = sections.find(
+    (s) => s.canonical === 'implementation' && s.prTable,
+  );
+  if (!implSection?.prTable) return undefined;
+
+  const headerMatch = implSection.rawMarkdown.match(
+    /^(\|[^\n]+)/m,
+  );
+  if (!headerMatch) return undefined;
+
+  const headers = splitTableRow(headerMatch[0]).map((h) =>
+    h.toLowerCase(),
+  );
+  const phaseCol = findColIndex(headers, ['phase']);
+  const ownerCol = findColIndex(headers, ['owner']);
+  const summaryCol = findColIndex(headers, ['변경 내용', '변경내용', 'summary', 'description']);
+  const linesCol = findColIndex(headers, ['lines']);
+
+  const entries: AdrPhaseEntry[] = [];
+
+  for (const row of implSection.prTable) {
+    const cells = row.rawCells;
+    const prUrl = extractPrUrl(cells);
+
+    entries.push({
+      phase: safeCell(cells, phaseCol) || row.title || '',
+      prNumber: row.prNumber,
+      prUrl,
+      owner: safeCell(cells, ownerCol) || '',
+      summary: stripMarkdown(safeCell(cells, summaryCol) || row.title),
+      lines: safeCell(cells, linesCol) || undefined,
+    });
+  }
+
+  return entries.length > 0 ? entries : undefined;
+}
+
+/** 헤더 배열에서 후보 키워드 중 첫 매치 인덱스를 반환한다. */
+function findColIndex(headers: string[], candidates: string[]): number {
+  return headers.findIndex((h) =>
+    candidates.some((c) => h.includes(c)),
+  );
+}
+
+/** rawCells에서 안전하게 셀 값을 가져온다. */
+function safeCell(cells: string[], idx: number): string {
+  if (idx < 0 || idx >= cells.length) return '';
+  return cells[idx].trim();
+}
+
+/** rawCells에서 markdown 링크 URL을 추출한다. */
+function extractPrUrl(cells: string[]): string | undefined {
+  for (const cell of cells) {
+    const match = cell.match(/\[#?\d+\]\(([^)]+)\)/);
+    if (match) return match[1];
+  }
+  return undefined;
+}
+
 /* ─── 메인 파싱 ──────────────────────────────────── */
 
 /**
@@ -311,6 +434,10 @@ export function parseAdr(
   const readingTimeMin = calcReadingTime(raw);
   const outgoingLinks = extractOutgoingLinks(body);
 
+  const tldr = extractTldr(fm, sections);
+  const decisions = extractDecisionItems(sections);
+  const phases = extractPhaseEntries(sections);
+
   const meta: AdrMeta = {
     kind,
     id,
@@ -327,9 +454,18 @@ export function parseAdr(
     hasFrontmatter,
     impact,
     readingTimeMin,
+    tldr,
   };
 
-  return { meta, sections, bodyMarkdown: body, outgoingLinks, warnings };
+  return {
+    meta,
+    sections,
+    bodyMarkdown: body,
+    outgoingLinks,
+    warnings,
+    decisions,
+    phases,
+  };
 }
 
 /* ─── 필드 추출 헬퍼 ─────────────────────────────── */
