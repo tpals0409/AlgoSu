@@ -59,8 +59,9 @@ export async function AdrDetailView({
   const proseSource = doc.bodyMarkdownForProse ?? doc.bodyMarkdown;
   const content = await renderAdrMdx(proseSource, locale);
 
-  // TOC에서 callout으로 들어낸 섹션의 anchor를 제거하여 404 anchor 방지(Sprint 163 R2 P2-1).
-  // 동시에 callout root <aside id={anchorId}>로 H2 anchorId 이어받아 TOC 링크 동작 유지.
+  // 들어낸 섹션의 anchor 정리(Sprint 163 R2/R3 P2):
+  //  - H2 anchorId는 callout root <aside id={...}>로 이어받아 TOC 점프 유지(R3 P2 해소)
+  //  - H3 sub-section indices만 TOC에서 제거 (callout 안에 시각적으로 흡수됨)
   const lessonsIndices =
     doc.lessons && doc.lessons.length > 0
       ? getCanonicalSectionIndices(doc.sections, 'lessons')
@@ -70,16 +71,18 @@ export async function AdrDetailView({
       ? getCanonicalSectionIndices(doc.sections, 'carryover')
       : undefined;
 
-  const strippedIndexSet = new Set<number>([
-    ...(lessonsIndices ?? []),
-    ...(carryoverIndices ?? []),
-  ]);
+  const strippedH3IndexSet = new Set<number>(
+    [...(lessonsIndices ?? []), ...(carryoverIndices ?? [])].filter(
+      (i) => doc.sections[i].level === 3,
+    ),
+  );
   const visibleSections =
-    strippedIndexSet.size > 0
-      ? doc.sections.filter((_, i) => !strippedIndexSet.has(i))
+    strippedH3IndexSet.size > 0
+      ? doc.sections.filter((_, i) => !strippedH3IndexSet.has(i))
       : doc.sections;
 
-  // callout root에 부여할 H2 anchorId (H3 sub-section의 anchor는 callout 안에 흡수)
+  // callout root에 부여할 H2 anchorId (sectionIndices 첫 값은 H2 — collectCanonicalSectionMarkdown
+  // 가 level=2 H2 시작에서만 그룹을 시작하므로 첫 index는 항상 H2 보장).
   const lessonsAnchorId =
     lessonsIndices !== undefined
       ? doc.sections[lessonsIndices[0]].anchorId
