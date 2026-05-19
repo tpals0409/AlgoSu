@@ -128,6 +128,15 @@ const DICTIONARY = {
     codeBlockCopy: '복사',
     codeBlockCopied: '복사됨',
     codeBlockCopyAriaLabel: '코드 복사',
+
+    /* ─── ADR Hero / 결정 카드 / Phase strip ──────── */
+    heroTldr: '요약',
+    heroPrCount: 'PR',
+    heroLines: '변경 라인',
+    heroDate: '날짜',
+    heroImpact: '영향도',
+    decisionsTitle: '주요 결정',
+    phaseStripTitle: '구현 Phase',
   },
   en: {
     /* ─── 기존 블로그 사전 ─────────────────────────── */
@@ -242,6 +251,15 @@ const DICTIONARY = {
     codeBlockCopy: 'Copy',
     codeBlockCopied: 'Copied',
     codeBlockCopyAriaLabel: 'Copy code',
+
+    /* ─── ADR Hero / Decision cards / Phase strip ─── */
+    heroTldr: 'Summary',
+    heroPrCount: 'PRs',
+    heroLines: 'Lines changed',
+    heroDate: 'Date',
+    heroImpact: 'Impact',
+    decisionsTitle: 'Key Decisions',
+    phaseStripTitle: 'Implementation Phases',
   },
 } as const;
 

@@ -14,6 +14,9 @@ import { buildUrl } from '@/lib/adr/index-builder';
 import { type Locale, t } from '@/lib/i18n';
 import { AdrToc } from './adr-toc';
 import { AdrMetaSidebar } from './adr-meta-sidebar';
+import { AdrHero } from './adr-hero';
+import { AdrPhaseStrip } from './adr-phase-strip';
+import { AdrDecisionsGrid } from './adr-decisions-grid';
 
 interface AdrDetailViewProps {
   doc: AdrDoc;
@@ -61,6 +64,9 @@ export async function AdrDetailView({
         {locale === 'en' && !doc.meta.hasEnTranslation && (
           <KoreanOnlyBanner meta={doc.meta} />
         )}
+        <AdrHero doc={doc} locale={locale} />
+        <AdrPhaseStrip phases={doc.phases} locale={locale} />
+        <AdrDecisionsGrid decisions={doc.decisions} locale={locale} />
         <div className="prose max-w-none">{content}</div>
       </article>
 
