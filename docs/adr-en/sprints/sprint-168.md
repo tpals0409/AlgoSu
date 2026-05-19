@@ -85,7 +85,18 @@ Measurement data (run #26097517834, workflow_dispatch + rebuild_all=true, head S
 - Actual changed services list not specified → "all services updated to head SHA" misinterpretation possible
 - Follow-up: commit message to specify actual changed service name + new tag (Sprint 169 deferred)
 
-## Implementation (1 PR, 36 sprints continuous branch discipline target)
+### D7. Phase F GHCR retry guard recovered within this sprint (Seed #168-1 → "Zero carryover" Strengthening)
+
+- Right after PR #293 squash merge, main push CI (run #26099776944) Build Submission Service also hit same GHCR `/v2/` `Client.Timeout` — Build Gateway (force-build) + Build Submission (main push) consecutive 2 cases
+- Decision: recover Sprint 169 deferred seed #168-1 by extending this sprint scope (Phase F) — "zero carryover" spirit strengthening
+- User option A adopted (among 3 options): **nick-fields/retry@v3** external action (1.9k stars, 4M+ DL/month trust) — `command:` wraps shell-level docker login + `max_attempts: 3` + `retry_wait_seconds: 10` + `timeout_minutes: 5`
+- Option comparison:
+  - A (adopted): nick-fields/retry — standard retry action, +1 external dependency (dependabot github-actions filter auto-updates)
+  - B: shell-level docker login + custom retry loop (`scripts/ci/ghcr-login-with-retry.sh`) — zero external dependency but +1 helper
+  - C: continue-on-error + verify step + workflow-level rerun — simplest (1 line) but post-fail manual rerun needed (not essential fix)
+- docker/login-action replacement — env passes `GITHUB_TOKEN`/`REGISTRY`/`ACTOR` → log mask automatic (best practice). Post-step logout absence is harmless on ephemeral runners
+
+## Implementation (2 PRs, 36 sprints continuous branch discipline target)
 
 Branch: `feat/sprint-168-zstd-adoption-decision` (new from main `500b954`)
 
@@ -138,10 +149,34 @@ outputs: |
 
 build-frontend / build-blog also same pattern (matrix vs hardcoded only difference).
 
-### Phase D — ADR Documentation (this commit)
+### Phase D — ADR Documentation (commit `3ab5138` + post-R2 fix `0e0e553`)
 
 - `docs/adr/sprints/sprint-168.md` (KR) + `docs/adr-en/sprints/sprint-168.md` (EN 1:1 mapping)
 - `docs/adr/README.md` count 107→108, range 62~167→62~168 (lines 18/52/54)
+
+### Phase F — GHCR transient timeout retry guard (commit `3604bf3`, separate PR)
+
+Branch: `feat/sprint-168-ghcr-retry-guard` (new from main `6a7f56e`, after PR #293 squash merge)
+
+`.github/workflows/ci.yml` 3 build jobs (build-services matrix + build-frontend + build-blog) all `docker/login-action@v4` steps removed → `nick-fields/retry@v3` introduced:
+
+```yaml
+- name: Login to GHCR (with retry)
+  if: steps.check.outputs.skip == 'false'  # build-services only (frontend/blog has no guard)
+  uses: nick-fields/retry@v3
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    REGISTRY: ${{ env.REGISTRY }}
+    ACTOR: ${{ github.actor }}
+  with:
+    timeout_minutes: 5
+    max_attempts: 3
+    retry_wait_seconds: 10
+    command: |
+      echo "$GITHUB_TOKEN" | docker login "$REGISTRY" -u "$ACTOR" --password-stdin
+```
+
+ci.yml +39 -12 (3 locations identical pattern, build-services only adds `if: steps.check.outputs.skip == 'false'` guard). dependabot github-actions filter auto-updates.
 
 ## Critic Cycle
 
@@ -205,18 +240,23 @@ build-frontend / build-blog also same pattern (matrix vs hardcoded only differen
 
 ## Result
 
-Changed files 5 (4 commits):
-- Modified 1: `.github/workflows/ci.yml` (Phase C -84 net + R2 P2 fix +8, build-services + frontend + blog outputs bulk zstd + helper call shortening + detect-changes filter helper path addition)
+Changed files 5 (2 PRs, 6 commits total):
+- Modified 1: `.github/workflows/ci.yml` (Phase C -84 net + R2 P2 fix +8 + Phase F +39 -12, build-services + frontend + blog outputs bulk zstd + helper call shortening + detect-changes filter helper path addition + GHCR retry guard)
 - New 1: `scripts/ci/report-build-metrics.sh` (+75 + R1 P2 fix +3, seed #167-3 helper + graceful fallback)
 - New 2: `docs/adr/sprints/sprint-168.md` (KR) + `docs/adr-en/sprints/sprint-168.md` (EN 1:1 mapping)
 - Modified 1: `docs/adr/README.md` (lines 18/52/54 — count 107→108, range 62~167→62~168)
 
-Commits (PR #293):
+Commits — PR #293 (5 commits squash `6a7f56e`):
 - `7c982c9` feat(ci): Sprint 168 — zstd full adoption + Report metrics helper (seeds #167-1/#167-3)
 - `3ab5138` docs(adr): Sprint 168 ADR (KR + EN) + README update
 - `dccfccd` fix(ci): Sprint 168 R1 P2 — buildx du pipeline graceful fallback restoration
-- `<TBD-R2-FIX>` fix(ci): Sprint 168 R2 P2 — add helper path to detect-changes filter
-- Squash merge: `<TBD-MERGE-SHA>` (PR #293)
+- `82621ce` fix(ci): Sprint 168 R2 P2 — add helper path to detect-changes filter
+- `0e0e553` docs(adr): Sprint 168 — Critic R1/R2 cycle + commits documentation (KR + EN)
+
+Commits — PR `<TBD-PR-PHASE-F>` (Phase F, separate PR):
+- `3604bf3` feat(ci): Sprint 168 Phase F — GHCR retry guard (seed #168-1)
+- `<TBD-ADR-PHASE-F>` docs(adr): Sprint 168 Phase F — GHCR retry guard ADR update
+- Squash merge: `<TBD-PHASE-F-MERGE-SHA>`
 
 ## New Patterns
 
@@ -228,6 +268,8 @@ Commits (PR #293):
 - **`set -euo pipefail` and graceful fallback compatibility = `|| true` pipeline isolation (R1 P2 fix pattern)** — Within helpers, isolate nice-to-have telemetry (`docker buildx du`) failures with `pipeline || true` so they cannot fail the entire build job. fail-fast (argument validation) + graceful fallback (telemetry) coexist within the same script. Sprint 168 R1 P2 → Sprint 169+ standard pattern for shell helper authoring
 - **Helper Path = Cross-Cutting CI Dependency → Register in All detect-changes filter Image Build Branches Simultaneously (R2 P2 fix pattern)** — Helper extraction side-effect: PR changing only helper passes silently with all build jobs skipped. Add helper path to all 8 image build filters → helper changes get actual runtime verification. Cross-cutting helper introduction obligates simultaneous detect-changes update
 - **Critic R1 + R2 Cumulative 2-Round Detection + All Same-PR forward-fix (Zero Carryover Achievement)** — R1 P2 (helper fallback) + R2 P2 (filter registration) both fixed same-PR same-day. This sprint's "no carryover" goal + Sprint 164/167 self-fix policy cumulative strengthening = single-sprint completeness priority policy established
+- **Phase F = post-merge main push CI failure recovered within this sprint (Zero Carryover Strengthening)** — Right after PR #293 squash merge, main push CI Build Submission GHCR timeout occurred → recovered Sprint 169 deferred seed #168-1 (GHCR retry guard) as separate PR (Phase F) within this sprint. True spirit of "zero carryover" = post-sprint-close consequences also handled within this sprint. Sprint scope extension policy established (post-close cross-sprint impact is essentially part of this sprint)
+- **External retry action introduction = Standard Pattern for Transient Infra Failure Cause Blocking** — nick-fields/retry@v3 (1.9k stars, 4M+ DL/month) is de facto standard. shell-level docker login + env-passed token (auto log mask) + max_attempts/retry_wait_seconds/timeout_minutes standard interface. docker/login-action replacement — post-step logout absence harmless in ephemeral runner environment. Same pattern applicable to all external registry logins (GHCR/Docker Hub/GCR)
 
 ## Lessons
 
@@ -240,7 +282,7 @@ Commits (PR #293):
 ## Deferred Items (Sprint 169+)
 
 ### Sprint 168 New Deferred Seeds
-- **Seed #168-1**: GHCR transient timeout auto-retry guard — `docker/login-action@v4` + `docker/build-push-action@v7` with `retry` or `continue-on-error` + rerun logic. Cause-block Sprint 168 force-build Build Gateway timeout case
+- ~~**Seed #168-1**: GHCR transient timeout auto-retry guard~~ → **Recovered within this sprint as Phase F** ✅ (nick-fields/retry@v3 introduced, applied to all 3 build jobs)
 - **Seed #168-2**: aether-gitops "Update GitOps manifests" commit message specify actual changed services list. Currently displays only head SHA → misinterpretation risk (Sprint 168 D6 analysis)
 - **Seed #168-3**: Accumulate zstd compression measurement data for 7 services + frontend + blog beyond ai-analysis + ADR data documentation (Sprint 168 measurement was ai-analysis only, other services zstd measurement auto-accumulated from Sprint 169 first merge run)
 - **Seed #168-4**: Helper script unit test (`tests/ci/report-build-metrics.bats` or `tests/ci/report_build_metrics_test.sh`) — argument validation + zstd branch / not-passed branch / GITHUB_STEP_SUMMARY fallback

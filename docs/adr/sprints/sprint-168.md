@@ -85,7 +85,18 @@ related_memory: ["sprint-window"]
 - 실제 변경 서비스 list 미명시 → "모든 서비스가 head SHA 로 갱신됨" 오해 가능
 - 후속: commit message 에 실제 변경된 서비스 name + new tag 표시 (Sprint 169 이월)
 
-## 구현 (1 PR, 36 스프린트 연속 브랜치 규율 준수 목표)
+### D7. Phase F GHCR retry guard 본 sprint 내 회수 (시드 #168-1 → "이월 zero" 강화)
+
+- 본 sprint PR #293 squash merge 직후 main push CI (run #26099776944) 에서 Build Submission Service 도 동일 GHCR `/v2/` `Client.Timeout` 발생 — Build Gateway (force-build) + Build Submission (main push) 연속 2 사례
+- Sprint 169 이월 시드 #168-1 를 본 sprint scope 확장 (Phase F) 으로 즉시 회수 결정 — "이월 zero" 정신 강화
+- 사용자 옵션 A 채택 (3 옵션 중): **nick-fields/retry@v3** 외부 action 도입 (1.9k stars, 4M+ DL/month 신뢰도) — `command:` 안에 shell-level docker login + `max_attempts: 3` + `retry_wait_seconds: 10` + `timeout_minutes: 5`
+- 옵션 비교:
+  - A (채택): nick-fields/retry — 표준 retry action, 외부 의존성 1개 추가 (dependabot github-actions filter 자동 갱신)
+  - B: shell-level docker login + custom retry loop (`scripts/ci/ghcr-login-with-retry.sh`) — 외부 의존성 zero 이나 헬퍼 1개 추가
+  - C: continue-on-error + verify step + workflow-level rerun — 가장 단순 (1줄) 이나 fail 후 수동 rerun 필요 (본질 해결 아님)
+- docker/login-action 대체 — env 로 `GITHUB_TOKEN`/`REGISTRY`/`ACTOR` 전달 → log mask 자동 (best practice). post-step logout 부재는 ephemeral runner 라 무해
+
+## 구현 (2 PR, 36 스프린트 연속 브랜치 규율 준수 목표)
 
 브랜치: `feat/sprint-168-zstd-adoption-decision` (main `500b954` 기준 신규)
 
@@ -138,10 +149,34 @@ outputs: |
 
 build-frontend / build-blog 도 동일 패턴 (matrix vs 하드코딩만 차이).
 
-### Phase D — ADR 기록 (본 commit)
+### Phase D — ADR 기록 (commit `3ab5138` + R2 fix 후 `0e0e553`)
 
 - `docs/adr/sprints/sprint-168.md` (KR) + `docs/adr-en/sprints/sprint-168.md` (EN 1:1 매핑)
 - `docs/adr/README.md` count 107→108, range 62~167→62~168 (라인 18/52/54)
+
+### Phase F — GHCR transient timeout retry guard (commit `3604bf3`, 별도 PR)
+
+브랜치: `feat/sprint-168-ghcr-retry-guard` (main `6a7f56e` 기준 신규, PR #293 squash merge 후)
+
+`.github/workflows/ci.yml` 3 build job (build-services matrix + build-frontend + build-blog) 의 `docker/login-action@v4` step 모두 제거 → `nick-fields/retry@v3` 도입:
+
+```yaml
+- name: Login to GHCR (with retry)
+  if: steps.check.outputs.skip == 'false'  # build-services 만 (frontend/blog 는 가드 없음)
+  uses: nick-fields/retry@v3
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    REGISTRY: ${{ env.REGISTRY }}
+    ACTOR: ${{ github.actor }}
+  with:
+    timeout_minutes: 5
+    max_attempts: 3
+    retry_wait_seconds: 10
+    command: |
+      echo "$GITHUB_TOKEN" | docker login "$REGISTRY" -u "$ACTOR" --password-stdin
+```
+
+ci.yml +39 -12 (3 위치 동일 패턴, build-services 만 `if: steps.check.outputs.skip == 'false'` 가드 추가). dependabot github-actions filter 가 자동 갱신.
 
 ## Critic 사이클
 
@@ -205,18 +240,23 @@ build-frontend / build-blog 도 동일 패턴 (matrix vs 하드코딩만 차이)
 
 ## 결과
 
-변경 파일 5건 (4 commits):
-- 수정 1개: `.github/workflows/ci.yml` (Phase C -84 net + R2 P2 fix +8, build-services + frontend + blog outputs 일괄 zstd + 헬퍼 호출 단축 + detect-changes filter 헬퍼 path 추가)
+변경 파일 5건 (2 PR 총 6 commits):
+- 수정 1개: `.github/workflows/ci.yml` (Phase C -84 net + R2 P2 fix +8 + Phase F +39 -12, build-services + frontend + blog outputs 일괄 zstd + 헬퍼 호출 단축 + detect-changes filter 헬퍼 path 추가 + GHCR retry guard)
 - 신규 1개: `scripts/ci/report-build-metrics.sh` (+75 + R1 P2 fix +3, 시드 #167-3 헬퍼 + graceful fallback)
 - 신규 2개: `docs/adr/sprints/sprint-168.md` (KR) + `docs/adr-en/sprints/sprint-168.md` (EN 1:1 매핑)
 - 수정 1개: `docs/adr/README.md` (라인 18/52/54 — count 107→108, range 62~167→62~168)
 
-Commits (PR #293):
+Commits — PR #293 (5 commit squash `6a7f56e`):
 - `7c982c9` feat(ci): Sprint 168 — zstd 전면 적용 + Report metrics 헬퍼 (시드 #167-1/#167-3)
 - `3ab5138` docs(adr): Sprint 168 ADR (KR + EN) + README 갱신
 - `dccfccd` fix(ci): Sprint 168 R1 P2 — buildx du pipeline graceful fallback 복원
-- `<TBD-R2-FIX>` fix(ci): Sprint 168 R2 P2 — detect-changes filter 에 헬퍼 path 추가
-- Squash merge: `<TBD-MERGE-SHA>` (PR #293)
+- `82621ce` fix(ci): Sprint 168 R2 P2 — detect-changes filter 에 헬퍼 path 추가
+- `0e0e553` docs(adr): Sprint 168 — Critic R1/R2 사이클 + commits 명문화 (KR + EN)
+
+Commits — PR `<TBD-PR-PHASE-F>` (Phase F, 별도 PR):
+- `3604bf3` feat(ci): Sprint 168 Phase F — GHCR retry guard (시드 #168-1)
+- `<TBD-ADR-PHASE-F>` docs(adr): Sprint 168 Phase F — GHCR retry guard ADR 갱신
+- Squash merge: `<TBD-PHASE-F-MERGE-SHA>`
 
 ## 신규 패턴
 
@@ -228,6 +268,8 @@ Commits (PR #293):
 - **`set -euo pipefail` 와 graceful fallback 의 양립 = `|| true` pipeline 격리 (R1 P2 fix 패턴)** — 헬퍼 안에서 nice-to-have telemetry (`docker buildx du`) 의 fail 이 build job 전체 fail 유발하지 않도록 `pipeline || true` 로 격리. fail-fast (인자 검증) + graceful fallback (telemetry) 가 동일 script 안에 양립 가능. Sprint 168 R1 P2 → Sprint 169+ shell helper 작성 시 표준 패턴 정착
 - **헬퍼 path = cross-cutting CI dependency → detect-changes filter 모든 image build 분기 동시 등록 (R2 P2 fix 패턴)** — 헬퍼 추출의 부작용으로 헬퍼만 변경된 PR 이 모든 build job skip 으로 silent 통과 가능. 8 image build filter 모두에 헬퍼 path 추가 → 헬퍼 변경 시 실제 runtime 검증. cross-cutting 헬퍼 도입 시 detect-changes 도 동시 갱신 의무 정착
 - **Critic R1 + R2 누적 2회전 검출 + 동일 PR 모두 forward-fix (이월 zero 달성)** — R1 P2 (heleper fallback) + R2 P2 (filter 등록) 모두 동일 PR 동일 일자 fix. 본 sprint "이월 없음" 목표 + Sprint 164/167 자체 fix 정책 누적 강화 = 단일 sprint 완결성 우선 정책 정착
+- **Phase F = 머지 직후 main push CI 실패의 sprint 내 회수 (이월 zero 강화)** — PR #293 squash merge 직후 main push CI Build Submission GHCR timeout 발생 → Sprint 169 시드 #168-1 (GHCR retry guard) 를 본 sprint 의 별도 PR (Phase F) 로 즉시 회수. "이월 zero" 의 진정한 정신 = sprint 마감 후 발생한 후속 영향까지 본 sprint 내 처리. sprint scope 확장 정책 정착 (마감 직후 cross-sprint 영향은 본 sprint 의 본질적 일부)
+- **외부 retry action 도입 = transient infra 장애의 표준 인과 차단 패턴** — nick-fields/retry@v3 (1.9k stars, 4M+ DL/month) 가 사실상 표준. shell-level docker login + env 로 token 전달 (log mask 자동) + max_attempts/retry_wait_seconds/timeout_minutes 표준 인터페이스. docker/login-action 대체 — post-step logout 부재는 ephemeral runner 환경에서 무해. 모든 외부 registry login (GHCR/Docker Hub/GCR) 에 동일 패턴 적용 가능
 
 ## 교훈
 
@@ -240,7 +282,7 @@ Commits (PR #293):
 ## 이월 항목 (Sprint 169+)
 
 ### Sprint 168 신규 이월 시드
-- **시드 #168-1**: GHCR transient timeout 자동 retry guard — `docker/login-action@v4` + `docker/build-push-action@v7` 에 `retry` 또는 `continue-on-error` + rerun 로직. Sprint 168 force-build 의 Build Gateway timeout 사례 인과 차단
+- ~~**시드 #168-1**: GHCR transient timeout 자동 retry guard~~ → **Phase F 에서 본 sprint 내 회수 완료** ✅ (nick-fields/retry@v3 도입, 3 build job 모두 적용)
 - **시드 #168-2**: aether-gitops "Update GitOps manifests" commit message 에 실제 변경 서비스 list 명시. 현재 head SHA 만 표시 → 오해 소지 (Sprint 168 D6 분석)
 - **시드 #168-3**: ai-analysis 외 7 서비스 + frontend + blog 의 zstd 압축률 측정 데이터 누적 + ADR 데이터 명문화 (Sprint 168 실측은 ai-analysis 1개만, 다른 서비스 zstd 실측은 Sprint 169 첫 머지 run 에서 자동 누적)
 - **시드 #168-4**: 헬퍼 스크립트 단위 테스트 (`tests/ci/report-build-metrics.bats` 또는 `tests/ci/report_build_metrics_test.sh`) — 인자 검증 + zstd 분기 / 미전달 분기 / GITHUB_STEP_SUMMARY fallback
