@@ -23,6 +23,7 @@ import { renderAdrMdx } from '@/lib/adr/markdown';
 import { buildUrl } from '@/lib/adr/index-builder';
 import {
   getCanonicalSectionIndices,
+  hasTopLevelListItem,
   stripPrTableLines,
 } from '@/lib/adr/parser';
 import { type Locale, t } from '@/lib/i18n';
@@ -64,6 +65,27 @@ function KoreanOnlyBanner({ meta }: { meta: AdrMeta }) {
  * lessons/carryover H2 만나면 prose 누적 flush 후 callout을 그 위치에 삽입한다.
  * implementation H2의 PR 표는 stripPrTableLines로 정밀 제거(PhaseStrip 중복 차단).
  */
+/**
+ * H3 sub-section 중 callout에 흡수 가능한 것만 골라낸다.
+ * list item이 1개 이상 있는 H3만 callout이 entries로 렌더 → 흡수해도 정보 손실 없음.
+ * prose-only H3(sprint-141 `### 7 스프린트 연속 브랜치 규율 준수` 등)는 prose 유지(Sprint 163 R6 P2).
+ */
+function buildAbsorbedH3Set(
+  sections: AdrSection[],
+  indices: number[] | undefined,
+): Set<number> {
+  const result = new Set<number>();
+  if (!indices) return result;
+  for (const i of indices) {
+    const sec = sections[i];
+    if (sec.level !== 3) continue;
+    if (hasTopLevelListItem(sec.rawMarkdown)) {
+      result.add(i);
+    }
+  }
+  return result;
+}
+
 async function renderSectionChunks(
   doc: AdrDoc,
   locale: Locale,
@@ -75,8 +97,8 @@ async function renderSectionChunks(
   const chunks: ReactNode[] = [];
   let proseBuffer: string[] = [];
 
-  const lessonsIdxSet = new Set(lessonsIndices ?? []);
-  const carryoverIdxSet = new Set(carryoverIndices ?? []);
+  const absorbedLessonsH3 = buildAbsorbedH3Set(doc.sections, lessonsIndices);
+  const absorbedCarryoverH3 = buildAbsorbedH3Set(doc.sections, carryoverIndices);
   const hasLessons = doc.lessons && doc.lessons.length > 0;
   const hasCarryover = doc.carryover && doc.carryover.length > 0;
 
@@ -131,7 +153,7 @@ async function renderSectionChunks(
       );
       continue;
     }
-    if (sec.level === 3 && hasLessons && lessonsIdxSet.has(i)) continue;
+    if (sec.level === 3 && hasLessons && absorbedLessonsH3.has(i)) continue;
 
     // carryover H2 — callout으로 대체. 인접 H3 sub-section은 skip
     if (sec.level === 2 && sec.canonical === 'carryover' && hasCarryover) {
@@ -146,7 +168,7 @@ async function renderSectionChunks(
       );
       continue;
     }
-    if (sec.level === 3 && hasCarryover && carryoverIdxSet.has(i)) continue;
+    if (sec.level === 3 && hasCarryover && absorbedCarryoverH3.has(i)) continue;
 
     // implementation H2 — PR 표 라인 strip(PhaseStrip 카드 중복 차단)
     if (
@@ -166,19 +188,21 @@ async function renderSectionChunks(
   return chunks;
 }
 
-/** TOC에서 callout으로 흡수된 H3 sub-section 만 제거(H2는 anchor 매칭으로 callout 점프). */
+/**
+ * TOC에서 callout으로 흡수된 H3 sub-section 만 제거(H2는 anchor 매칭으로 callout 점프).
+ * list item이 있는 H3만 흡수 대상 — prose-only H3는 TOC와 본문 양쪽 모두에 유지(R6 P2).
+ */
 function filterTocSections(
   sections: AdrSection[],
   lessonsIndices: number[] | undefined,
   carryoverIndices: number[] | undefined,
 ): AdrSection[] {
-  const strippedH3 = new Set<number>(
-    [...(lessonsIndices ?? []), ...(carryoverIndices ?? [])].filter(
-      (i) => sections[i].level === 3,
-    ),
-  );
-  if (strippedH3.size === 0) return sections;
-  return sections.filter((_, i) => !strippedH3.has(i));
+  const absorbed = new Set<number>([
+    ...buildAbsorbedH3Set(sections, lessonsIndices),
+    ...buildAbsorbedH3Set(sections, carryoverIndices),
+  ]);
+  if (absorbed.size === 0) return sections;
+  return sections.filter((_, i) => !absorbed.has(i));
 }
 
 /** ADR 상세 3-column 레이아웃을 렌더링한다. */

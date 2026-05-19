@@ -510,6 +510,16 @@ export function getCanonicalSectionIndices(
 }
 
 /**
+ * 섹션 rawMarkdown에 top-level list item(`-` 또는 `1.`)이 1개 이상 있는지 검사한다.
+ * detail-view 가 H3 sub-section을 callout으로 흡수할지(list 있음) prose 유지할지(list 없음)
+ * 결정할 때 사용한다(Sprint 163 R6 P2).
+ */
+export function hasTopLevelListItem(rawMarkdown: string): boolean {
+  const stripped = rawMarkdown.replace(/^#{2,3}\s+.+$/gm, '');
+  return /^(?:-|\d+\.)\s+/m.test(stripped);
+}
+
+/**
  * canonical H2 섹션 + 그 다음 H2 직전까지의 모든 H3 sub-section rawMarkdown을 결합한다.
  *
  * 이월 섹션이 `## Sprint N+1 이월\n### Sprint M 이월 (...)` 형태로 H3 sub-section을
