@@ -665,15 +665,24 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      # Sprint 167 시드 #165-2 + Sprint 166 D1: build duration 측정용 시작 시각 기록.
+      # docker buildx du 와 결합되어 cache 가시성 신호로 통합 출력된다.
+      - name: Record build start time
+        if: steps.check.outputs.skip == 'false'
+        run: echo "BUILD_START=$(date +%s)" >> "$GITHUB_ENV"
       - uses: docker/build-push-action@v7
         if: steps.check.outputs.skip == 'false'
         with:
           context: ${{ matrix.context }}
           platforms: linux/arm64
           # Sprint 165 옵션 C: multi-output (main 푸시 + 항상 tarball)
+          # Sprint 167 시드 #165-2: ai-analysis 만 zstd 압축 tarball 추가 A/B 측정.
+          # buildx multi-output 동시 지원으로 build 1회에 두 형식 모두 생성된다.
+          # 다른 서비스는 빈 줄이 evaluate 되어 buildx 파서가 무시 (회귀 zero).
           outputs: |
             type=image,push=${{ github.ref == 'refs/heads/main' }},name=${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:main-${{ github.sha }}
             type=docker,dest=/tmp/image-${{ matrix.service }}.tar
+            ${{ matrix.service == 'ai-analysis' && format('type=oci,compression=zstd,dest=/tmp/image-{0}-zstd.tar', matrix.service) || '' }}
           build-args: APK_CACHE_BUST=${{ env.APK_BUST_VALUE }}
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
@@ -684,20 +693,48 @@ jobs:
           name: image-tar-${{ matrix.service }}
           path: /tmp/image-${{ matrix.service }}.tar
           retention-days: 1
-      # Sprint 166 시드 #165-1: tarball 크기 가시성 — Sprint 165 옵션 C(buildx tarball
-      # + Trivy --input) 운영 모니터링. PR 단계 build artifact 비용 정량화 + 향후
-      # zstd 압축(시드 #165-2) 비교 baseline.
-      - name: Report tarball size
+      # Sprint 166 시드 #165-1: tarball 크기 가시성 (baseline).
+      # Sprint 167 시드 #165-2 + D1 회수: build duration + buildx du cache 신호 통합.
+      # ai-analysis 는 zstd 압축 분기 추가 (compression saving % 자동 계산).
+      - name: Report build artifact metrics
         if: steps.check.outputs.skip == 'false'
         run: |
           TARBALL=/tmp/image-${{ matrix.service }}.tar
           SIZE_BYTES=$(stat -c %s "$TARBALL")
           SIZE_MB=$(awk -v b="$SIZE_BYTES" 'BEGIN {printf "%.1f", b/1024/1024}')
+
+          BUILD_END=$(date +%s)
+          BUILD_DURATION=$((BUILD_END - BUILD_START))
+          DURATION_FMT=$(awk -v s="$BUILD_DURATION" 'BEGIN {printf "%dm %ds", int(s/60), s%60}')
+
+          CACHE_DU=$(docker buildx du --verbose 2>/dev/null | awk '/^Total:/ {print $2, $3; exit}')
+          [ -z "$CACHE_DU" ] && CACHE_DU="N/A"
+          # Sprint 167 Critic R1 P3 fix: docker buildx du footer (Shared/Private/
+          # Reclaimable/Total)를 entry 로 오분류하지 않도록 헤더 + footer 라인 명시 제외.
+          CACHE_ENTRIES=$(docker buildx du 2>/dev/null | awk 'NR > 1 && !/^(ID|Reclaimable|Shared|Private|Total):/ && NF > 0 {count++} END {print count+0}')
+          [ -z "$CACHE_ENTRIES" ] && CACHE_ENTRIES="0"
+
           {
             echo "### 📦 ${{ matrix.service }} build artifact"
-            echo "- tarball size: **${SIZE_MB} MB** (${SIZE_BYTES} bytes)"
+            echo "- tarball size (docker): **${SIZE_MB} MB** (${SIZE_BYTES} bytes)"
+            echo "- build duration: **${DURATION_FMT}** (${BUILD_DURATION}s)"
+            echo "- cache size: **${CACHE_DU}**"
+            echo "- cache entries: **${CACHE_ENTRIES}**"
             echo "- path: \`$TARBALL\`"
             echo "- retention: 1 day"
+
+            if [ "${{ matrix.service }}" = "ai-analysis" ]; then
+              ZSTD_TARBALL=/tmp/image-${{ matrix.service }}-zstd.tar
+              if [ -f "$ZSTD_TARBALL" ]; then
+                ZSTD_BYTES=$(stat -c %s "$ZSTD_TARBALL")
+                ZSTD_MB=$(awk -v b="$ZSTD_BYTES" 'BEGIN {printf "%.1f", b/1024/1024}')
+                SAVE_PCT=$(awk -v d="$SIZE_BYTES" -v z="$ZSTD_BYTES" 'BEGIN {printf "%.1f", (1 - z/d) * 100}')
+                echo "- tarball size (oci+zstd): **${ZSTD_MB} MB** (${ZSTD_BYTES} bytes)"
+                echo "- compression saving: **-${SAVE_PCT}%** (zstd vs docker)"
+              else
+                echo "- tarball size (oci+zstd): N/A (file not produced)"
+              fi
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
   build-frontend:
@@ -724,6 +761,9 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      # Sprint 167 시드 #165-2 + Sprint 166 D1: build duration 측정용 시작 시각 기록.
+      - name: Record build start time
+        run: echo "BUILD_START=$(date +%s)" >> "$GITHUB_ENV"
       - uses: docker/build-push-action@v7
         with:
           context: ./frontend
@@ -741,16 +781,31 @@ jobs:
           name: image-tar-frontend
           path: /tmp/image-frontend.tar
           retention-days: 1
-      # Sprint 166 시드 #165-1: tarball 크기 가시성 — frontend (Sprint 165 옵션 C
-      # 운영 모니터링. build-services 와 동일 패턴, path/label 만 하드코딩).
-      - name: Report tarball size
+      # Sprint 166 시드 #165-1: tarball 크기 가시성 — frontend.
+      # Sprint 167 D1 회수: build duration + buildx du cache 신호 통합 (services 와 동일).
+      - name: Report build artifact metrics
         run: |
           TARBALL=/tmp/image-frontend.tar
           SIZE_BYTES=$(stat -c %s "$TARBALL")
           SIZE_MB=$(awk -v b="$SIZE_BYTES" 'BEGIN {printf "%.1f", b/1024/1024}')
+
+          BUILD_END=$(date +%s)
+          BUILD_DURATION=$((BUILD_END - BUILD_START))
+          DURATION_FMT=$(awk -v s="$BUILD_DURATION" 'BEGIN {printf "%dm %ds", int(s/60), s%60}')
+
+          CACHE_DU=$(docker buildx du --verbose 2>/dev/null | awk '/^Total:/ {print $2, $3; exit}')
+          [ -z "$CACHE_DU" ] && CACHE_DU="N/A"
+          # Sprint 167 Critic R1 P3 fix: docker buildx du footer (Shared/Private/
+          # Reclaimable/Total)를 entry 로 오분류하지 않도록 헤더 + footer 라인 명시 제외.
+          CACHE_ENTRIES=$(docker buildx du 2>/dev/null | awk 'NR > 1 && !/^(ID|Reclaimable|Shared|Private|Total):/ && NF > 0 {count++} END {print count+0}')
+          [ -z "$CACHE_ENTRIES" ] && CACHE_ENTRIES="0"
+
           {
             echo "### 📦 frontend build artifact"
-            echo "- tarball size: **${SIZE_MB} MB** (${SIZE_BYTES} bytes)"
+            echo "- tarball size (docker): **${SIZE_MB} MB** (${SIZE_BYTES} bytes)"
+            echo "- build duration: **${DURATION_FMT}** (${BUILD_DURATION}s)"
+            echo "- cache size: **${CACHE_DU}**"
+            echo "- cache entries: **${CACHE_ENTRIES}**"
             echo "- path: \`$TARBALL\`"
             echo "- retention: 1 day"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -802,6 +857,9 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      # Sprint 167 시드 #165-2 + Sprint 166 D1: build duration 측정용 시작 시각 기록.
+      - name: Record build start time
+        run: echo "BUILD_START=$(date +%s)" >> "$GITHUB_ENV"
       - uses: docker/build-push-action@v7
         with:
           context: ./blog
@@ -819,16 +877,31 @@ jobs:
           name: image-tar-blog
           path: /tmp/image-blog.tar
           retention-days: 1
-      # Sprint 166 시드 #165-1: tarball 크기 가시성 — blog (Sprint 165 옵션 C
-      # 운영 모니터링. build-services 와 동일 패턴, path/label 만 하드코딩).
-      - name: Report tarball size
+      # Sprint 166 시드 #165-1: tarball 크기 가시성 — blog.
+      # Sprint 167 D1 회수: build duration + buildx du cache 신호 통합 (services 와 동일).
+      - name: Report build artifact metrics
         run: |
           TARBALL=/tmp/image-blog.tar
           SIZE_BYTES=$(stat -c %s "$TARBALL")
           SIZE_MB=$(awk -v b="$SIZE_BYTES" 'BEGIN {printf "%.1f", b/1024/1024}')
+
+          BUILD_END=$(date +%s)
+          BUILD_DURATION=$((BUILD_END - BUILD_START))
+          DURATION_FMT=$(awk -v s="$BUILD_DURATION" 'BEGIN {printf "%dm %ds", int(s/60), s%60}')
+
+          CACHE_DU=$(docker buildx du --verbose 2>/dev/null | awk '/^Total:/ {print $2, $3; exit}')
+          [ -z "$CACHE_DU" ] && CACHE_DU="N/A"
+          # Sprint 167 Critic R1 P3 fix: docker buildx du footer (Shared/Private/
+          # Reclaimable/Total)를 entry 로 오분류하지 않도록 헤더 + footer 라인 명시 제외.
+          CACHE_ENTRIES=$(docker buildx du 2>/dev/null | awk 'NR > 1 && !/^(ID|Reclaimable|Shared|Private|Total):/ && NF > 0 {count++} END {print count+0}')
+          [ -z "$CACHE_ENTRIES" ] && CACHE_ENTRIES="0"
+
           {
             echo "### 📦 blog build artifact"
-            echo "- tarball size: **${SIZE_MB} MB** (${SIZE_BYTES} bytes)"
+            echo "- tarball size (docker): **${SIZE_MB} MB** (${SIZE_BYTES} bytes)"
+            echo "- build duration: **${DURATION_FMT}** (${BUILD_DURATION}s)"
+            echo "- cache size: **${CACHE_DU}**"
+            echo "- cache entries: **${CACHE_ENTRIES}**"
             echo "- path: \`$TARBALL\`"
             echo "- retention: 1 day"
           } >> "$GITHUB_STEP_SUMMARY"
