@@ -31,7 +31,16 @@ const ALIAS_MAP: ReadonlyArray<[CanonicalSection, ReadonlyArray<string>]> = [
   ['lessons', ['교훈', 'lessons', 'lessons learned', 'gotchas']],
   [
     'carryover',
-    ['이월', 'carryover', '후속', '다음 sprint', '이월 항목'],
+    [
+      '이월',
+      '이월 항목',
+      '후속',
+      '다음 sprint',
+      'carryover',
+      'carry-over',
+      'carry over',
+      'carry-over maintained',
+    ],
   ],
   [
     'related-docs',
@@ -52,10 +61,17 @@ for (const [canonical, aliases] of ALIAS_MAP) {
 }
 
 /**
- * "Sprint NNN 이월" 또는 "Sprint NNN 이월 시드" 패턴 정규식.
- * `\b`는 한국어 글자에서 word boundary가 false라 ASCII 의존 — 공백/끝/한국어 후속 명시.
+ * Carryover 섹션 헤딩 정규식 — KR + EN i18n 양면 지원.
+ *
+ * 매치 대상 패턴:
+ *  - KR: `이월`, `Sprint NNN 이월 시드`, `Sprint NNN 이월 항목`
+ *  - EN: `carryover`, `carry-over`, `Sprint NNN Carry-Over Seeds`,
+ *        `Sprint 159 carry-over (3 maintained)`, `Carry-over maintained`
+ *
+ * `\b`는 한국어 글자에서 word boundary가 false라 ASCII 의존 — 공백/끝/한국어 후속/괄호 명시.
  */
-const CARRYOVER_RE = /^(sprint\s+\d+\s+)?이월(?:\s|$|시드|항목)/i;
+const CARRYOVER_RE =
+  /^(?:sprint\s+\d+\s+)?(?:이월|carry[-\s]?over)(?:\s|$|시드|항목|\()/i;
 
 /**
  * 섹션 제목 텍스트를 canonical 키로 매핑한다.
