@@ -684,6 +684,21 @@ jobs:
           name: image-tar-${{ matrix.service }}
           path: /tmp/image-${{ matrix.service }}.tar
           retention-days: 1
+      # Sprint 166 시드 #165-1: tarball 크기 가시성 — Sprint 165 옵션 C(buildx tarball
+      # + Trivy --input) 운영 모니터링. PR 단계 build artifact 비용 정량화 + 향후
+      # zstd 압축(시드 #165-2) 비교 baseline.
+      - name: Report tarball size
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          TARBALL=/tmp/image-${{ matrix.service }}.tar
+          SIZE_BYTES=$(stat -c %s "$TARBALL")
+          SIZE_MB=$(awk -v b="$SIZE_BYTES" 'BEGIN {printf "%.1f", b/1024/1024}')
+          {
+            echo "### 📦 ${{ matrix.service }} build artifact"
+            echo "- tarball size: **${SIZE_MB} MB** (${SIZE_BYTES} bytes)"
+            echo "- path: \`$TARBALL\`"
+            echo "- retention: 1 day"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   build-frontend:
     name: Build Frontend (Next.js)
@@ -726,6 +741,19 @@ jobs:
           name: image-tar-frontend
           path: /tmp/image-frontend.tar
           retention-days: 1
+      # Sprint 166 시드 #165-1: tarball 크기 가시성 — frontend (Sprint 165 옵션 C
+      # 운영 모니터링. build-services 와 동일 패턴, path/label 만 하드코딩).
+      - name: Report tarball size
+        run: |
+          TARBALL=/tmp/image-frontend.tar
+          SIZE_BYTES=$(stat -c %s "$TARBALL")
+          SIZE_MB=$(awk -v b="$SIZE_BYTES" 'BEGIN {printf "%.1f", b/1024/1024}')
+          {
+            echo "### 📦 frontend build artifact"
+            echo "- tarball size: **${SIZE_MB} MB** (${SIZE_BYTES} bytes)"
+            echo "- path: \`$TARBALL\`"
+            echo "- retention: 1 day"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # ============================================================
   # Build Blog — 기술 블로그 정적 사이트 (Next.js SSG + nginx)
@@ -791,6 +819,19 @@ jobs:
           name: image-tar-blog
           path: /tmp/image-blog.tar
           retention-days: 1
+      # Sprint 166 시드 #165-1: tarball 크기 가시성 — blog (Sprint 165 옵션 C
+      # 운영 모니터링. build-services 와 동일 패턴, path/label 만 하드코딩).
+      - name: Report tarball size
+        run: |
+          TARBALL=/tmp/image-blog.tar
+          SIZE_BYTES=$(stat -c %s "$TARBALL")
+          SIZE_MB=$(awk -v b="$SIZE_BYTES" 'BEGIN {printf "%.1f", b/1024/1024}')
+          {
+            echo "### 📦 blog build artifact"
+            echo "- tarball size: **${SIZE_MB} MB** (${SIZE_BYTES} bytes)"
+            echo "- path: \`$TARBALL\`"
+            echo "- retention: 1 day"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # ============================================================
   # Trivy — 이미지 취약점 스캔 (main push 후, deploy 전)
