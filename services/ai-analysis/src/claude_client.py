@@ -346,10 +346,7 @@ class ClaudeClient:
                     "점수만 확인하실 수 있습니다."
                 )
                 if score > 0
-                else (
-                    "AI 분석 결과를 표시할 수 없습니다. "
-                    "잠시 후 다시 시도해주세요."
-                ),
+                else ("AI 분석 결과를 표시할 수 없습니다. 잠시 후 다시 시도해주세요."),
                 "categories": [],
                 "optimizedCode": None,
             }
