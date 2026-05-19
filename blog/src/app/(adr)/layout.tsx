@@ -13,7 +13,7 @@ import { AdrHeader } from '@/components/adr/adr-header';
 export const metadata: Metadata = {
   title: 'AlgoSu ADR',
   description:
-    'Architecture Decision Records — AlgoSu 프로젝트의 아키텍처 결정 기록.',
+    'Architecture Decision Records — AlgoSu architecture decisions and sprint retrospectives.',
   alternates: {
     languages: { ko: '/adr', en: '/en/adr' },
   },
