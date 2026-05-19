@@ -117,21 +117,29 @@ jobs:
           filters: |
             gateway:
               - 'services/gateway/**'
+              - 'scripts/ci/report-build-metrics.sh'
             identity:
               - 'services/identity/**'
+              - 'scripts/ci/report-build-metrics.sh'
             submission:
               - 'services/submission/**'
+              - 'scripts/ci/report-build-metrics.sh'
             problem:
               - 'services/problem/**'
+              - 'scripts/ci/report-build-metrics.sh'
             github-worker:
               - 'services/github-worker/**'
+              - 'scripts/ci/report-build-metrics.sh'
             ai-analysis:
               - 'services/ai-analysis/**'
+              - 'scripts/ci/report-build-metrics.sh'
             frontend:
               - 'frontend/**'
+              - 'scripts/ci/report-build-metrics.sh'
             blog:
               - 'blog/**'
               - 'docs/adr/**'
+              - 'scripts/ci/report-build-metrics.sh'
             monitoring:
               - 'infra/k3s/monitoring/**'
               - 'scripts/check-prometheus-rules.mjs'
@@ -675,14 +683,14 @@ jobs:
         with:
           context: ${{ matrix.context }}
           platforms: linux/arm64
-          # Sprint 165 옵션 C: multi-output (main 푸시 + 항상 tarball)
-          # Sprint 167 시드 #165-2: ai-analysis 만 zstd 압축 tarball 추가 A/B 측정.
-          # buildx multi-output 동시 지원으로 build 1회에 두 형식 모두 생성된다.
-          # 다른 서비스는 빈 줄이 evaluate 되어 buildx 파서가 무시 (회귀 zero).
+          # Sprint 165 옵션 C: multi-output (main 푸시 + 항상 docker tarball)
+          # Sprint 168 시드 #167-1 채택: zstd 전면 적용 (Sprint 167 측정 — compression saving 63.7%,
+          # build duration 회귀 -44.6% 통과). 6 services 모두 zstd 무조건 생성.
+          # Trivy scan job 은 docker tarball `--input` 만 사용 → 호환성 회귀 zero.
           outputs: |
             type=image,push=${{ github.ref == 'refs/heads/main' }},name=${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:main-${{ github.sha }}
             type=docker,dest=/tmp/image-${{ matrix.service }}.tar
-            ${{ matrix.service == 'ai-analysis' && format('type=oci,compression=zstd,dest=/tmp/image-{0}-zstd.tar', matrix.service) || '' }}
+            type=oci,compression=zstd,dest=/tmp/image-${{ matrix.service }}-zstd.tar
           build-args: APK_CACHE_BUST=${{ env.APK_BUST_VALUE }}
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
@@ -693,49 +701,11 @@ jobs:
           name: image-tar-${{ matrix.service }}
           path: /tmp/image-${{ matrix.service }}.tar
           retention-days: 1
-      # Sprint 166 시드 #165-1: tarball 크기 가시성 (baseline).
-      # Sprint 167 시드 #165-2 + D1 회수: build duration + buildx du cache 신호 통합.
-      # ai-analysis 는 zstd 압축 분기 추가 (compression saving % 자동 계산).
+      # Sprint 168 시드 #167-3: 3 build job 의 중복 약 30줄 × 3 = 90줄 을 단일 헬퍼로 통합.
+      # 호출 인자: <label> <docker_tarball> [zstd_tarball]. BUILD_START env 의존.
       - name: Report build artifact metrics
         if: steps.check.outputs.skip == 'false'
-        run: |
-          TARBALL=/tmp/image-${{ matrix.service }}.tar
-          SIZE_BYTES=$(stat -c %s "$TARBALL")
-          SIZE_MB=$(awk -v b="$SIZE_BYTES" 'BEGIN {printf "%.1f", b/1024/1024}')
-
-          BUILD_END=$(date +%s)
-          BUILD_DURATION=$((BUILD_END - BUILD_START))
-          DURATION_FMT=$(awk -v s="$BUILD_DURATION" 'BEGIN {printf "%dm %ds", int(s/60), s%60}')
-
-          CACHE_DU=$(docker buildx du --verbose 2>/dev/null | awk '/^Total:/ {print $2, $3; exit}')
-          [ -z "$CACHE_DU" ] && CACHE_DU="N/A"
-          # Sprint 167 Critic R1 P3 fix: docker buildx du footer (Shared/Private/
-          # Reclaimable/Total)를 entry 로 오분류하지 않도록 헤더 + footer 라인 명시 제외.
-          CACHE_ENTRIES=$(docker buildx du 2>/dev/null | awk 'NR > 1 && !/^(ID|Reclaimable|Shared|Private|Total):/ && NF > 0 {count++} END {print count+0}')
-          [ -z "$CACHE_ENTRIES" ] && CACHE_ENTRIES="0"
-
-          {
-            echo "### 📦 ${{ matrix.service }} build artifact"
-            echo "- tarball size (docker): **${SIZE_MB} MB** (${SIZE_BYTES} bytes)"
-            echo "- build duration: **${DURATION_FMT}** (${BUILD_DURATION}s)"
-            echo "- cache size: **${CACHE_DU}**"
-            echo "- cache entries: **${CACHE_ENTRIES}**"
-            echo "- path: \`$TARBALL\`"
-            echo "- retention: 1 day"
-
-            if [ "${{ matrix.service }}" = "ai-analysis" ]; then
-              ZSTD_TARBALL=/tmp/image-${{ matrix.service }}-zstd.tar
-              if [ -f "$ZSTD_TARBALL" ]; then
-                ZSTD_BYTES=$(stat -c %s "$ZSTD_TARBALL")
-                ZSTD_MB=$(awk -v b="$ZSTD_BYTES" 'BEGIN {printf "%.1f", b/1024/1024}')
-                SAVE_PCT=$(awk -v d="$SIZE_BYTES" -v z="$ZSTD_BYTES" 'BEGIN {printf "%.1f", (1 - z/d) * 100}')
-                echo "- tarball size (oci+zstd): **${ZSTD_MB} MB** (${ZSTD_BYTES} bytes)"
-                echo "- compression saving: **-${SAVE_PCT}%** (zstd vs docker)"
-              else
-                echo "- tarball size (oci+zstd): N/A (file not produced)"
-              fi
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
+        run: bash scripts/ci/report-build-metrics.sh "${{ matrix.service }}" "/tmp/image-${{ matrix.service }}.tar" "/tmp/image-${{ matrix.service }}-zstd.tar"
 
   build-frontend:
     name: Build Frontend (Next.js)
@@ -768,10 +738,12 @@ jobs:
         with:
           context: ./frontend
           platforms: linux/arm64
-          # Sprint 165 옵션 C: multi-output (main 푸시 + 항상 tarball)
+          # Sprint 165 옵션 C: multi-output (main 푸시 + 항상 docker tarball)
+          # Sprint 168 시드 #167-1 채택: zstd 전면 적용 (frontend 포함)
           outputs: |
             type=image,push=${{ github.ref == 'refs/heads/main' }},name=${{ env.IMAGE_PREFIX }}-frontend:main-${{ github.sha }}
             type=docker,dest=/tmp/image-frontend.tar
+            type=oci,compression=zstd,dest=/tmp/image-frontend-zstd.tar
           build-args: APK_CACHE_BUST=${{ env.APK_BUST_VALUE }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
@@ -781,34 +753,9 @@ jobs:
           name: image-tar-frontend
           path: /tmp/image-frontend.tar
           retention-days: 1
-      # Sprint 166 시드 #165-1: tarball 크기 가시성 — frontend.
-      # Sprint 167 D1 회수: build duration + buildx du cache 신호 통합 (services 와 동일).
+      # Sprint 168 시드 #167-3: 3 build job 의 중복을 단일 헬퍼로 통합 (services 와 동일).
       - name: Report build artifact metrics
-        run: |
-          TARBALL=/tmp/image-frontend.tar
-          SIZE_BYTES=$(stat -c %s "$TARBALL")
-          SIZE_MB=$(awk -v b="$SIZE_BYTES" 'BEGIN {printf "%.1f", b/1024/1024}')
-
-          BUILD_END=$(date +%s)
-          BUILD_DURATION=$((BUILD_END - BUILD_START))
-          DURATION_FMT=$(awk -v s="$BUILD_DURATION" 'BEGIN {printf "%dm %ds", int(s/60), s%60}')
-
-          CACHE_DU=$(docker buildx du --verbose 2>/dev/null | awk '/^Total:/ {print $2, $3; exit}')
-          [ -z "$CACHE_DU" ] && CACHE_DU="N/A"
-          # Sprint 167 Critic R1 P3 fix: docker buildx du footer (Shared/Private/
-          # Reclaimable/Total)를 entry 로 오분류하지 않도록 헤더 + footer 라인 명시 제외.
-          CACHE_ENTRIES=$(docker buildx du 2>/dev/null | awk 'NR > 1 && !/^(ID|Reclaimable|Shared|Private|Total):/ && NF > 0 {count++} END {print count+0}')
-          [ -z "$CACHE_ENTRIES" ] && CACHE_ENTRIES="0"
-
-          {
-            echo "### 📦 frontend build artifact"
-            echo "- tarball size (docker): **${SIZE_MB} MB** (${SIZE_BYTES} bytes)"
-            echo "- build duration: **${DURATION_FMT}** (${BUILD_DURATION}s)"
-            echo "- cache size: **${CACHE_DU}**"
-            echo "- cache entries: **${CACHE_ENTRIES}**"
-            echo "- path: \`$TARBALL\`"
-            echo "- retention: 1 day"
-          } >> "$GITHUB_STEP_SUMMARY"
+        run: bash scripts/ci/report-build-metrics.sh "frontend" "/tmp/image-frontend.tar" "/tmp/image-frontend-zstd.tar"
 
   # ============================================================
   # Build Blog — 기술 블로그 정적 사이트 (Next.js SSG + nginx)
@@ -864,10 +811,12 @@ jobs:
         with:
           context: ./blog
           platforms: linux/arm64
-          # Sprint 165 옵션 C: multi-output (main 푸시 + 항상 tarball)
+          # Sprint 165 옵션 C: multi-output (main 푸시 + 항상 docker tarball)
+          # Sprint 168 시드 #167-1 채택: zstd 전면 적용 (blog 포함)
           outputs: |
             type=image,push=${{ github.ref == 'refs/heads/main' }},name=${{ env.IMAGE_PREFIX }}-blog:main-${{ github.sha }}
             type=docker,dest=/tmp/image-blog.tar
+            type=oci,compression=zstd,dest=/tmp/image-blog-zstd.tar
           build-args: APK_CACHE_BUST=${{ env.APK_BUST_VALUE }}
           cache-from: type=gha,scope=blog
           cache-to: type=gha,mode=max,scope=blog
@@ -877,34 +826,9 @@ jobs:
           name: image-tar-blog
           path: /tmp/image-blog.tar
           retention-days: 1
-      # Sprint 166 시드 #165-1: tarball 크기 가시성 — blog.
-      # Sprint 167 D1 회수: build duration + buildx du cache 신호 통합 (services 와 동일).
+      # Sprint 168 시드 #167-3: 3 build job 의 중복을 단일 헬퍼로 통합 (services 와 동일).
       - name: Report build artifact metrics
-        run: |
-          TARBALL=/tmp/image-blog.tar
-          SIZE_BYTES=$(stat -c %s "$TARBALL")
-          SIZE_MB=$(awk -v b="$SIZE_BYTES" 'BEGIN {printf "%.1f", b/1024/1024}')
-
-          BUILD_END=$(date +%s)
-          BUILD_DURATION=$((BUILD_END - BUILD_START))
-          DURATION_FMT=$(awk -v s="$BUILD_DURATION" 'BEGIN {printf "%dm %ds", int(s/60), s%60}')
-
-          CACHE_DU=$(docker buildx du --verbose 2>/dev/null | awk '/^Total:/ {print $2, $3; exit}')
-          [ -z "$CACHE_DU" ] && CACHE_DU="N/A"
-          # Sprint 167 Critic R1 P3 fix: docker buildx du footer (Shared/Private/
-          # Reclaimable/Total)를 entry 로 오분류하지 않도록 헤더 + footer 라인 명시 제외.
-          CACHE_ENTRIES=$(docker buildx du 2>/dev/null | awk 'NR > 1 && !/^(ID|Reclaimable|Shared|Private|Total):/ && NF > 0 {count++} END {print count+0}')
-          [ -z "$CACHE_ENTRIES" ] && CACHE_ENTRIES="0"
-
-          {
-            echo "### 📦 blog build artifact"
-            echo "- tarball size (docker): **${SIZE_MB} MB** (${SIZE_BYTES} bytes)"
-            echo "- build duration: **${DURATION_FMT}** (${BUILD_DURATION}s)"
-            echo "- cache size: **${CACHE_DU}**"
-            echo "- cache entries: **${CACHE_ENTRIES}**"
-            echo "- path: \`$TARBALL\`"
-            echo "- retention: 1 day"
-          } >> "$GITHUB_STEP_SUMMARY"
+        run: bash scripts/ci/report-build-metrics.sh "blog" "/tmp/image-blog.tar" "/tmp/image-blog-zstd.tar"
 
   # ============================================================
   # Trivy — 이미지 취약점 스캔 (main push 후, deploy 전)
