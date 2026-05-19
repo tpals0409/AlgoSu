@@ -839,6 +839,7 @@ jobs:
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
             | sh -s -- -b /usr/local/bin v0.69.2
       - name: Trivy scan (table)
+        id: trivy_table
         if: steps.check.outputs.skip == 'false'
         run: |
           trivy image \
@@ -872,6 +873,24 @@ jobs:
         with:
           sarif_file: trivy-results.sarif
           category: trivy-${{ matrix.service }}
+      # Sprint 160 Phase B: deploy 가 service 별 trivy 결과를 lookup 할 수 있도록 artifact 기록
+      # (Sprint 159 회귀: ai-analysis Trivy 1건 fail 이 frontend GitOps update 까지 전체 SKIP 시킨 본질 차단)
+      - name: Record Trivy result for deploy gate
+        if: always() && steps.check.outputs.skip == 'false'
+        run: |
+          mkdir -p trivy-status
+          if [ "${{ steps.trivy_table.outcome }}" = "success" ]; then
+            echo "pass" > trivy-status/${{ matrix.service }}.txt
+          else
+            echo "fail" > trivy-status/${{ matrix.service }}.txt
+          fi
+      - name: Upload Trivy status artifact
+        if: always() && steps.check.outputs.skip == 'false'
+        uses: actions/upload-artifact@v6
+        with:
+          name: trivy-status-${{ matrix.service }}
+          path: trivy-status/
+          retention-days: 1
 
   # ============================================================
   # Deploy — aether-gitops 이미지 태그 업데이트 (ArgoCD 자동 sync)
@@ -887,10 +906,12 @@ jobs:
       - build-frontend
       - build-blog
     # main 브랜치 + 하나 이상의 서비스 빌드 성공 시에만 실행
+    # Sprint 160 Phase B: trivy-scan aggregated result 가드 제거 (Sprint 159 회귀 차단).
+    # 한 service Trivy fail 이 전 service GitOps update 를 막지 않도록, 가드는 build job 결과만 확인.
+    # 실제 service 별 Trivy 결과는 아래 "Filter Trivy-failed services" step 에서 artifact 로 lookup.
     if: |
       github.ref == 'refs/heads/main' && !cancelled() &&
       needs.secret-scan.result == 'success' &&
-      needs.trivy-scan.result != 'failure' &&
       (needs.build-services.result == 'success' ||
        needs.build-frontend.result == 'success' ||
        needs.build-blog.result == 'success')
@@ -906,26 +927,62 @@ jobs:
           git config user.name "algosu-ci"
           git config user.email "ci@algosu.dev"
 
+      # Sprint 160 Phase B: trivy-scan matrix 의 service 별 결과를 artifact 로 수집
+      # (pattern + merge-multiple 로 한 디렉토리에 평탄화 — `trivy-status/<service>.txt`)
+      - name: Download Trivy status artifacts
+        uses: actions/download-artifact@v6
+        with:
+          pattern: trivy-status-*
+          path: trivy-status
+          merge-multiple: true
+
+      - name: Probe Trivy status artifacts (Sprint 157 시드 #29)
+        run: |
+          echo "::group::trivy-status directory"
+          ls -la trivy-status/ 2>/dev/null || echo "(empty — no service was scanned)"
+          for f in trivy-status/*.txt; do
+            [ -f "$f" ] && echo "  $(basename "$f" .txt): $(cat "$f")"
+          done
+          echo "::endgroup::"
+
       - name: Update image tags for changed services
+        id: update_tags
         run: |
           cd aether-gitops/algosu/overlays/prod
           SHA="${{ github.sha }}"
+          STATUS_DIR="$GITHUB_WORKSPACE/trivy-status"
+          CANDIDATES=""
           UPDATED=""
+          SKIPPED_TRIVY=""
 
-          # build-services는 matrix이므로 개별 결과를 알 수 없음
-          # detect-changes로 변경 감지된 서비스 중 build-services가 성공한 경우만
+          # build job 성공 + detect-changes 가 활성화된 서비스를 후보로 수집
           if [ "${{ needs.build-services.result }}" = "success" ]; then
-            [ "${{ needs.detect-changes.outputs.gateway }}" = "true" ] && UPDATED="${UPDATED} gateway"
-            [ "${{ needs.detect-changes.outputs.identity }}" = "true" ] && UPDATED="${UPDATED} identity"
-            [ "${{ needs.detect-changes.outputs.submission }}" = "true" ] && UPDATED="${UPDATED} submission"
-            [ "${{ needs.detect-changes.outputs.problem }}" = "true" ] && UPDATED="${UPDATED} problem"
-            [ "${{ needs.detect-changes.outputs.github-worker }}" = "true" ] && UPDATED="${UPDATED} github-worker"
-            [ "${{ needs.detect-changes.outputs.ai-analysis }}" = "true" ] && UPDATED="${UPDATED} ai-analysis"
+            [ "${{ needs.detect-changes.outputs.gateway }}" = "true" ] && CANDIDATES="${CANDIDATES} gateway"
+            [ "${{ needs.detect-changes.outputs.identity }}" = "true" ] && CANDIDATES="${CANDIDATES} identity"
+            [ "${{ needs.detect-changes.outputs.submission }}" = "true" ] && CANDIDATES="${CANDIDATES} submission"
+            [ "${{ needs.detect-changes.outputs.problem }}" = "true" ] && CANDIDATES="${CANDIDATES} problem"
+            [ "${{ needs.detect-changes.outputs.github-worker }}" = "true" ] && CANDIDATES="${CANDIDATES} github-worker"
+            [ "${{ needs.detect-changes.outputs.ai-analysis }}" = "true" ] && CANDIDATES="${CANDIDATES} ai-analysis"
           fi
-          [ "${{ needs.build-frontend.result }}" = "success" ] && UPDATED="${UPDATED} frontend"
-          [ "${{ needs.build-blog.result }}" = "success" ] && UPDATED="${UPDATED} blog"
+          [ "${{ needs.build-frontend.result }}" = "success" ] && CANDIDATES="${CANDIDATES} frontend"
+          [ "${{ needs.build-blog.result }}" = "success" ] && CANDIDATES="${CANDIDATES} blog"
 
-          # 변경된 서비스만 이미지 태그 업데이트 (python3 + PyYAML)
+          # service 별 Trivy 결과 lookup → 명시적 "pass" 만 통과 (fail-closed security gate)
+          # (Sprint 159 회귀 차단: 한 service Trivy fail 이 다른 service GitOps update 를 막지 않음)
+          # Critic R1 P1 해소: status file 누락(infra fail / artifact upload 실패 등) 케이스도 SKIPPED 분류 —
+          # missing/fail/기타 = 모두 차단, "pass" 만 deploy. security gate 우회 방지.
+          for SVC in $CANDIDATES; do
+            STATUS_FILE="${STATUS_DIR}/${SVC}.txt"
+            STATUS=$(cat "$STATUS_FILE" 2>/dev/null || echo "missing")
+            if [ "$STATUS" != "pass" ]; then
+              SKIPPED_TRIVY="${SKIPPED_TRIVY} ${SVC}"
+              echo "  ⚠ algosu-${SVC} SKIPPED (Trivy status: ${STATUS} — service-scoped security gate, 다른 service 는 정상 진행)"
+              continue
+            fi
+            UPDATED="${UPDATED} ${SVC}"
+          done
+
+          # 통과한 service 만 이미지 태그 업데이트 (python3 + PyYAML)
           for SVC in $UPDATED; do
             python3 -c "
           import yaml
@@ -941,6 +998,10 @@ jobs:
           done
 
           echo "Updated services:${UPDATED}"
+          echo "Skipped (Trivy fail):${SKIPPED_TRIVY}"
+          # Phase C 알림 강화용 outputs
+          echo "updated=${UPDATED}" >> $GITHUB_OUTPUT
+          echo "skipped_trivy=${SKIPPED_TRIVY}" >> $GITHUB_OUTPUT
           cat kustomization.yaml
 
       - name: Commit and push to aether-gitops
