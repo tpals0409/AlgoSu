@@ -208,7 +208,13 @@ class TestParseResponseMarkdown:
         assert result["status"] == "completed"
         assert result["score"] == 75
 
-    def test_parse_invalid_json_returns_raw(self):
+    def test_parse_invalid_json_returns_envelope(self):
+        """Sprint 159 핫픽스 — 유효하지 않은 JSON 응답은 raw 노출 대신 envelope 저장.
+
+        dh4m 제출 사례: catch-all 폴백이 raw 마크다운/JSON을 feedback 에 그대로
+        저장 → 프론트 parseFeedback catch 블록이 summary=raw 로 렌더링.
+        본 테스트는 raw 텍스트가 envelope 에 절대 노출되지 않음을 검증.
+        """
         from src.claude_client import ClaudeClient
 
         with (
@@ -222,7 +228,12 @@ class TestParseResponseMarkdown:
         result = c._parse_response("not valid json {{{")
         assert result["status"] == "failed"
         assert result["score"] == 0
-        assert result["feedback"] == "not valid json {{{"
+        # feedback 은 유효 JSON envelope (raw 텍스트 미노출)
+        envelope = json.loads(result["feedback"])
+        assert isinstance(envelope, dict)
+        assert envelope["totalScore"] == 0
+        assert "not valid json" not in result["feedback"]
+        assert "다시 시도" in envelope["summary"]
 
     def test_parse_plain_json_no_backticks(self):
         """마크다운 없이 순수 JSON 파싱"""
@@ -434,7 +445,7 @@ class TestParseResponseFallback:
         assert result["score"] == 60
 
     def test_fallback_total_failure_regex_score(self):
-        """전체 파싱 실패 → totalScore regex 추출 성공"""
+        """전체 파싱 실패 → totalScore regex 추출 성공 + envelope JSON 저장 (Sprint 159)"""
         c = _make_client()
 
         raw = 'broken{json "totalScore": 90 more broken'
@@ -442,14 +453,119 @@ class TestParseResponseFallback:
         assert result["status"] == "completed"
         assert result["score"] == 90
 
+        # Sprint 159 핫픽스 — feedback 은 항상 유효 JSON envelope
+        envelope = json.loads(result["feedback"])
+        assert isinstance(envelope, dict)
+        assert envelope["totalScore"] == 90
+        # raw 텍스트("broken{json", "more broken")가 envelope 에 절대 노출되지 않음
+        assert "broken" not in envelope["summary"]
+        assert "more broken" not in result["feedback"]
+        # 사용자 친화 메시지 (점수만 확인 가능 안내)
+        assert "점수만" in envelope["summary"]
+        assert envelope["categories"] == []
+        assert envelope["optimizedCode"] is None
+
     def test_fallback_total_failure_no_score(self):
-        """전체 파싱 실패 + totalScore 없음 → score=0, failed"""
+        """전체 파싱 실패 + totalScore 없음 → score=0, failed + envelope JSON (Sprint 159)"""
         c = _make_client()
 
         raw = "completely broken response"
         result = c._parse_response(raw)
         assert result["status"] == "failed"
         assert result["score"] == 0
+
+        # Sprint 159 핫픽스 — feedback 은 항상 유효 JSON envelope
+        envelope = json.loads(result["feedback"])
+        assert isinstance(envelope, dict)
+        assert envelope["totalScore"] == 0
+        # raw 텍스트가 envelope 에 노출되지 않음
+        assert "completely broken" not in result["feedback"]
+        # 사용자 친화 메시지 (재시도 안내)
+        assert "다시 시도" in envelope["summary"]
+        assert envelope["categories"] == []
+        assert envelope["optimizedCode"] is None
+
+    def test_fallback_envelope_is_valid_json(self):
+        """catch-all 폴백 경로의 feedback 은 항상 valid JSON (Sprint 159 신규)"""
+        c = _make_client()
+
+        # Claude 응답에 raw 마크다운 + JSON 단편이 섞인 dh4m 제출 유사 사례
+        raw = (
+            "# 분석 결과\n"
+            "여기에 코드 분석 내용이 있습니다.\n"
+            '잘못된 JSON {"totalScore": 75, "summary": "...'
+        )
+        result = c._parse_response(raw)
+
+        # feedback 은 반드시 dict 로 파싱되는 valid JSON 이어야 함
+        envelope = json.loads(result["feedback"])
+        assert isinstance(envelope, dict)
+        assert "totalScore" in envelope
+        assert "summary" in envelope
+        assert "categories" in envelope
+        assert "optimizedCode" in envelope
+
+        # raw 텍스트가 DB 저장 형태(feedback)에 포함되지 않음 — PII/비밀 보호
+        assert "# 분석 결과" not in result["feedback"]
+        assert "잘못된 JSON" not in result["feedback"]
+
+    def test_fallback_does_not_leak_raw_text_to_logs(self, caplog):
+        """catch-all 폴백 경로의 logger 에 raw 텍스트가 노출되지 않음 (Sprint 159 Critic P2).
+
+        - raw 응답에는 PII/사용자 코드/잠재 비밀이 포함될 수 있으므로 로그에도 노출 금지.
+        - logger extra 에는 메타데이터(error/score_extracted/raw_length)만 허용.
+        """
+        import logging
+
+        c = _make_client()
+
+        # 민감 정보를 포함한 가상의 raw 응답 (사용자 코드 + 잠재 비밀)
+        sensitive_raw = (
+            "# 분석 결과\n"
+            "def secret_function():\n"
+            "    api_key = 'sk-leaked-secret-token-xyz'\n"
+            "    return api_key\n"
+            '잘못된 JSON {"totalScore": 80, ...'
+        )
+
+        with caplog.at_level(logging.WARNING, logger="src.claude_client"):
+            result = c._parse_response(sensitive_raw)
+
+        # envelope 자체에도 raw 가 노출되지 않음 (기존 검증 재확인)
+        assert "sk-leaked-secret-token-xyz" not in result["feedback"]
+        assert "secret_function" not in result["feedback"]
+
+        # logger 메시지/extra 어디에도 raw 텍스트의 민감 부분이 포함되지 않음
+        full_log_text = "\n".join(
+            f"{r.getMessage()} {getattr(r, 'raw_excerpt', '')}"
+            f" {getattr(r, 'raw_text', '')}"
+            for r in caplog.records
+        )
+        assert "sk-leaked-secret-token-xyz" not in full_log_text
+        assert "secret_function" not in full_log_text
+        assert "api_key" not in full_log_text
+        assert "# 분석 결과" not in full_log_text
+        assert "잘못된 JSON" not in full_log_text
+
+        # extra 필드는 메타데이터만 허용 — raw_excerpt/raw_text 가 어느 record 에도 없어야 함
+        for record in caplog.records:
+            assert not hasattr(record, "raw_excerpt"), (
+                "raw_excerpt 가 logger extra 에 포함됨 (Critic P2 위반)"
+            )
+            assert not hasattr(record, "raw_text"), (
+                "raw_text 가 logger extra 에 포함됨 (Critic P2 위반)"
+            )
+
+        # 메타데이터 필드는 envelope fallback warning 에 포함되어야 함
+        warning_records = [
+            r for r in caplog.records if "envelope fallback" in r.getMessage()
+        ]
+        assert len(warning_records) >= 1
+        warn = warning_records[0]
+        assert hasattr(warn, "score_extracted")
+        assert hasattr(warn, "raw_length")
+        assert warn.score_extracted == 80
+        assert warn.raw_length == len(sensitive_raw)
 
     def test_totalScore_zero_with_categories_recalculated(self):
         """totalScore=0 + categories 존재 → ALGORITHM_WEIGHTS 가중 평균 재계산"""
