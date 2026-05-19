@@ -58,19 +58,55 @@ function AgentList({ agents }: { agents?: string[] }) {
   );
 }
 
+/**
+ * ADR ID를 locale 기반 URL로 변환한다.
+ * sprint-NNN / ADR-NNN 패턴만 지원. 미지원 형식은 null 반환(span fallback).
+ */
+function resolveAdrUrl(id: string, locale: Locale): string | null {
+  const prefix = locale === 'en' ? '/en' : '';
+
+  const sprintMatch = id.match(/^sprint-(\d+)$/i);
+  if (sprintMatch) return `${prefix}/adr/sprints/${sprintMatch[1]}/`;
+
+  const adrMatch = id.match(/^ADR-(\d+)$/i);
+  if (adrMatch) return `${prefix}/adr/permanent/${adrMatch[1]}/`;
+
+  return null;
+}
+
 /** 관련 ADR 링크 리스트를 렌더링한다. */
-function RelatedLinks({ ids, label }: { ids: string[]; label: string }) {
+function RelatedLinks({
+  ids,
+  label,
+  locale,
+}: {
+  ids: string[];
+  label: string;
+  locale: Locale;
+}) {
   if (ids.length === 0) return null;
 
   return (
     <div className="mt-3">
       <h5 className="mb-1 text-xs font-semibold text-text-subtle">{label}</h5>
       <ul className="space-y-0.5">
-        {ids.map((id) => (
-          <li key={id}>
-            <span className="text-xs text-text-muted">{id}</span>
-          </li>
-        ))}
+        {ids.map((id) => {
+          const url = resolveAdrUrl(id, locale);
+          return (
+            <li key={id}>
+              {url ? (
+                <a
+                  href={url}
+                  className="text-xs text-brand hover:underline"
+                >
+                  {id}
+                </a>
+              ) : (
+                <span className="text-xs text-text-muted">{id}</span>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
@@ -169,6 +205,7 @@ export function AdrMetaSidebar({
         <RelatedLinks
           ids={meta.relatedAdrs ?? []}
           label={t(locale, 'metaRelatedAdrs')}
+          locale={locale}
         />
 
         {/* 미니 관계 그래프 */}
@@ -195,6 +232,7 @@ export function AdrMetaSidebar({
         <RelatedLinks
           ids={meta.relatedMemory ?? []}
           label={t(locale, 'metaRelatedMemory')}
+          locale={locale}
         />
 
         {/* GitHub 링크 */}
