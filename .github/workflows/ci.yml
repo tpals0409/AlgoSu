@@ -803,7 +803,8 @@ jobs:
       - build-services
       - build-frontend
       - build-blog
-    if: github.ref == 'refs/heads/main' && !cancelled()
+    # Sprint 165 옵션 C: PR 단계에서도 Trivy 스캔 (tarball + --input)
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -858,6 +859,13 @@ jobs:
         with:
           sparse-checkout: .trivyignore
           sparse-checkout-cone-mode: false
+      # Sprint 165 옵션 C: build job 이 업로드한 docker tarball 을 받아서 local scan
+      - name: Download image tarball
+        if: steps.check.outputs.skip == 'false'
+        uses: actions/download-artifact@v6
+        with:
+          name: image-tar-${{ matrix.service }}
+          path: /tmp
       - name: Install Trivy
         if: steps.check.outputs.skip == 'false'
         run: |
@@ -868,30 +876,22 @@ jobs:
         if: steps.check.outputs.skip == 'false'
         run: |
           trivy image \
-            --platform linux/arm64 \
             --severity CRITICAL,HIGH \
             --exit-code 1 \
             --ignore-unfixed \
             --ignorefile .trivyignore \
             --format table \
-            "${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:main-${{ github.sha }}"
-        env:
-          TRIVY_USERNAME: ${{ github.actor }}
-          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+            --input /tmp/image-${{ matrix.service }}.tar
       - name: Trivy scan (SARIF)
         if: always() && steps.check.outputs.skip == 'false'
         run: |
           trivy image \
-            --platform linux/arm64 \
             --severity CRITICAL,HIGH \
             --ignore-unfixed \
             --ignorefile .trivyignore \
             --format sarif \
             --output trivy-results.sarif \
-            "${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:main-${{ github.sha }}"
-        env:
-          TRIVY_USERNAME: ${{ github.actor }}
-          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+            --input /tmp/image-${{ matrix.service }}.tar
       - name: Upload Trivy SARIF
         uses: github/codeql-action/upload-sarif@v4
         if: always() && steps.check.outputs.skip == 'false'
