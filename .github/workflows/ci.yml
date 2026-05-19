@@ -117,21 +117,29 @@ jobs:
           filters: |
             gateway:
               - 'services/gateway/**'
+              - 'scripts/ci/report-build-metrics.sh'
             identity:
               - 'services/identity/**'
+              - 'scripts/ci/report-build-metrics.sh'
             submission:
               - 'services/submission/**'
+              - 'scripts/ci/report-build-metrics.sh'
             problem:
               - 'services/problem/**'
+              - 'scripts/ci/report-build-metrics.sh'
             github-worker:
               - 'services/github-worker/**'
+              - 'scripts/ci/report-build-metrics.sh'
             ai-analysis:
               - 'services/ai-analysis/**'
+              - 'scripts/ci/report-build-metrics.sh'
             frontend:
               - 'frontend/**'
+              - 'scripts/ci/report-build-metrics.sh'
             blog:
               - 'blog/**'
               - 'docs/adr/**'
+              - 'scripts/ci/report-build-metrics.sh'
             monitoring:
               - 'infra/k3s/monitoring/**'
               - 'scripts/check-prometheus-rules.mjs'
