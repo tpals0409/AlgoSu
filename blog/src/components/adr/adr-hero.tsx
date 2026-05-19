@@ -36,8 +36,9 @@ function sumLines(doc: AdrDoc): string | undefined {
 
   for (const phase of doc.phases) {
     if (!phase.lines) continue;
-    const addMatch = phase.lines.match(/\+(\d+)/);
-    const delMatch = phase.lines.match(/-(\d+)|−(\d+)/);
+    const normalized = phase.lines.replace(/,/g, '');
+    const addMatch = normalized.match(/\+(\d+)/);
+    const delMatch = normalized.match(/-(\d+)|−(\d+)/);
     if (addMatch) { additions += parseInt(addMatch[1], 10); hasData = true; }
     if (delMatch) {
       const val = delMatch[1] ?? delMatch[2];
