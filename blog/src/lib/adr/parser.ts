@@ -10,9 +10,11 @@
 import matter from 'gray-matter';
 
 import type {
+  AdrCarryoverEntry,
   AdrDecision,
   AdrDoc,
   AdrKind,
+  AdrLessonEntry,
   AdrMeta,
   AdrPhaseEntry,
   AdrSection,
@@ -386,6 +388,261 @@ function extractPrUrl(cells: string[]): string | undefined {
   return undefined;
 }
 
+/* ─── Lessons / Carryover 추출 ──────────────────── */
+
+/** "Sprint NNN" 패턴을 title에서 감지하여 sprint 번호 문자열을 반환한다. */
+function extractSprintTag(title: string): string | undefined {
+  const match = title.match(/sprint\s+(\d+)/i);
+  return match ? match[1] : undefined;
+}
+
+/**
+ * 섹션 rawMarkdown에서 top-level list item을 추출한다.
+ * 지원 패턴:
+ *  - `- **bold**: text` → { title, description }
+ *  - `- 일반 텍스트` → { description }
+ *  - `1. **bold** — text` / `1. 일반 텍스트` (숫자 list, ADR-160 등에서 사용)
+ * 들여쓰기된 sub-list(`  -`/`  1.`)는 현재 item 본문에 통합한다.
+ */
+function extractListItems(
+  rawMarkdown: string,
+): { title?: string; description: string }[] {
+  // H2/H3 header 라인은 결과에서 제외 (gm 플래그로 전체 매치)
+  const body = rawMarkdown.replace(/^#{2,3}\s+.+$/gm, '');
+  const lines = body.split('\n');
+  const items: { title?: string; description: string }[] = [];
+
+  let currentTitle: string | undefined;
+  let currentBody: string[] = [];
+  let active = false;
+
+  const flush = () => {
+    if (!active) return;
+    const joined = currentBody.join(' ').trim();
+    if (joined.length === 0 && !currentTitle) return;
+    items.push({
+      title: currentTitle,
+      description: stripMarkdown(joined),
+    });
+    currentTitle = undefined;
+    currentBody = [];
+    active = false;
+  };
+
+  // top-level list item: `-` 또는 `1.` 시작
+  const TOP_LIST_RE = /^(?:-|\d+\.)\s+(.+)$/;
+  // sub-list (2+ 공백 들여쓰기)
+  const SUB_LIST_RE = /^\s{2,}(?:-|\d+\.)\s+(.+)$/;
+  // `- **bold**: text` 또는 `1. **bold** — text` 같은 bold-title 패턴
+  // : 또는 — (em-dash) 또는 - (hyphen, 공백 양옆) 구분자 허용
+  const BOLD_TITLE_RE = /^\*{2}([^*]+)\*{2}\s*(?::|—|–|\s-\s)\s*(.+)$/;
+
+  for (const line of lines) {
+    const topMatch = line.match(TOP_LIST_RE);
+    if (topMatch) {
+      flush();
+      active = true;
+      const text = topMatch[1];
+      const boldMatch = text.match(BOLD_TITLE_RE);
+      if (boldMatch) {
+        currentTitle = boldMatch[1].trim();
+        currentBody = [boldMatch[2]];
+      } else {
+        currentTitle = undefined;
+        currentBody = [text];
+      }
+      continue;
+    }
+
+    const subMatch = line.match(SUB_LIST_RE);
+    if (subMatch && active) {
+      currentBody.push(subMatch[1]);
+      continue;
+    }
+
+    if (line.trim() === '') {
+      flush();
+      continue;
+    }
+    if (active) currentBody.push(line.trim());
+  }
+  flush();
+
+  return items;
+}
+
+/**
+ * canonical H2 섹션 + 그 다음 H2 직전까지의 모든 H3 sub-section rawMarkdown을 결합한다.
+ *
+ * 이월 섹션이 `## Sprint N+1 이월\n### Sprint M 이월 (...)` 형태로 H3 sub-section을
+ * 가질 때(ADR sprint-160 등), H2 section.rawMarkdown 만으로는 list item을 놓치므로
+ * 인접 H3 들의 rawMarkdown 도 같이 합쳐서 반환한다.
+ */
+function collectCanonicalSectionMarkdown(
+  sections: AdrSection[],
+  canonical: AdrSection['canonical'],
+): { combined: string; sectionIndices: number[] } | undefined {
+  const startIdx = sections.findIndex(
+    (s) => s.canonical === canonical && s.level === 2,
+  );
+  if (startIdx < 0) return undefined;
+
+  const indices = [startIdx];
+  const parts = [sections[startIdx].rawMarkdown];
+
+  for (let j = startIdx + 1; j < sections.length; j++) {
+    if (sections[j].level === 2) break; // 다음 H2 도달 → 그룹 종료
+    indices.push(j);
+    parts.push(sections[j].rawMarkdown);
+  }
+
+  return { combined: parts.join('\n\n'), sectionIndices: indices };
+}
+
+/**
+ * lessons 섹션에서 교훈 항목을 추출한다.
+ * `- **bold**: text` / `1. **bold** — text` / 일반 list item 모두 지원.
+ */
+export function extractLessons(
+  sections: AdrSection[],
+): AdrLessonEntry[] | undefined {
+  const collected = collectCanonicalSectionMarkdown(sections, 'lessons');
+  if (!collected) return undefined;
+
+  const items = extractListItems(collected.combined);
+  return items.length > 0 ? items : undefined;
+}
+
+/**
+ * carryover 섹션에서 이월 항목을 추출한다.
+ * title 또는 H3 sub-section heading에 "Sprint NNN" 포함 시 sprint 필드를 채운다.
+ * H2/H3 sub-section 별로 분리 처리하여 각 항목의 sprint 컨텍스트를 정확히 매핑한다.
+ */
+export function extractCarryover(
+  sections: AdrSection[],
+): AdrCarryoverEntry[] | undefined {
+  const collected = collectCanonicalSectionMarkdown(sections, 'carryover');
+  if (!collected) return undefined;
+
+  const results: AdrCarryoverEntry[] = [];
+
+  for (const idx of collected.sectionIndices) {
+    const section = sections[idx];
+    const sprintFromHeading = extractSprintTag(section.heading);
+    const items = extractListItems(section.rawMarkdown);
+
+    for (const item of items) {
+      const sprintFromTitle = item.title
+        ? extractSprintTag(item.title)
+        : undefined;
+      results.push({
+        ...item,
+        sprint: sprintFromTitle ?? sprintFromHeading,
+      });
+    }
+  }
+
+  return results.length > 0 ? results : undefined;
+}
+
+/* ─── 본문 prose 영역 strip ─────────────────────── */
+
+/**
+ * 본문에서 implementation 섹션 내 PR 표(헤더 + separator + 데이터 라인)만 정밀 strip한다.
+ * 본문에서 implementation 섹션 자체는 유지하고, 표 라인 범위만 제거한다.
+ */
+function stripPrTableLines(rawMarkdown: string): string {
+  const lines = rawMarkdown.split('\n');
+  const headerIdx = lines.findIndex(
+    (l) => /\|/.test(l) && /pr|pull\s*request/i.test(l),
+  );
+  if (headerIdx < 0) return rawMarkdown;
+  // separator 검증 (`| --- | ...`)
+  const sepIdx = headerIdx + 1;
+  if (
+    sepIdx >= lines.length ||
+    !/^\s*\|?\s*[:\-\s|]+\|?\s*$/.test(lines[sepIdx])
+  ) {
+    return rawMarkdown;
+  }
+
+  let endIdx = sepIdx;
+  for (let i = sepIdx + 1; i < lines.length; i++) {
+    if (!lines[i].includes('|')) break;
+    endIdx = i;
+  }
+
+  const before = lines.slice(0, headerIdx);
+  const after = lines.slice(endIdx + 1);
+  // 표 제거 후 연속된 빈 줄 정리
+  const merged = [...before, ...after].join('\n');
+  return merged.replace(/\n{3,}/g, '\n\n');
+}
+
+/**
+ * canonical H2 섹션 + 그 다음 H2 직전까지의 H3 sub-section rawMarkdown 을 본문에서 제거한다.
+ * H2 + H3 인접 그룹 전체를 단일 단위로 strip하여 callout으로 대체 가능하게 만든다.
+ */
+function stripCanonicalSectionGroup(
+  body: string,
+  sections: AdrSection[],
+  canonical: AdrSection['canonical'],
+): string {
+  const collected = collectCanonicalSectionMarkdown(sections, canonical);
+  if (!collected) return body;
+
+  let result = body;
+  for (const idx of collected.sectionIndices) {
+    result = result.replace(sections[idx].rawMarkdown, '');
+  }
+  return result;
+}
+
+/**
+ * detail-view prose 영역 전용 본문을 생성한다.
+ *
+ * 1. phases 추출 성공 → implementation 섹션 PR 표 라인 strip
+ * 2. lessons 추출 성공 → lessons H2 + 인접 H3 sub-section 전체 제거
+ * 3. carryover 추출 성공 → carryover H2 + 인접 H3 sub-section 전체 제거
+ *
+ * graceful degradation: 추출 실패 시 해당 strip skip → 본문 prose에 자연 fallback.
+ */
+export function buildBodyMarkdownForProse(
+  bodyMarkdown: string,
+  sections: AdrSection[],
+  phases?: AdrPhaseEntry[],
+  lessons?: AdrLessonEntry[],
+  carryover?: AdrCarryoverEntry[],
+): string {
+  let result = bodyMarkdown;
+
+  // (1) implementation PR 표 strip — 정밀: 표 라인 범위만 제거
+  if (phases && phases.length > 0) {
+    const implSection = sections.find(
+      (s) => s.canonical === 'implementation' && s.prTable,
+    );
+    if (implSection) {
+      const stripped = stripPrTableLines(implSection.rawMarkdown);
+      if (stripped !== implSection.rawMarkdown) {
+        result = result.replace(implSection.rawMarkdown, stripped);
+      }
+    }
+  }
+
+  // (2) lessons 섹션 그룹 strip (H2 + 인접 H3 sub-section)
+  if (lessons && lessons.length > 0) {
+    result = stripCanonicalSectionGroup(result, sections, 'lessons');
+  }
+
+  // (3) carryover 섹션 그룹 strip (H2 + 인접 H3 sub-section)
+  if (carryover && carryover.length > 0) {
+    result = stripCanonicalSectionGroup(result, sections, 'carryover');
+  }
+
+  // 연속된 빈 줄 정리
+  return result.replace(/\n{3,}/g, '\n\n').trim();
+}
+
 /* ─── 메인 파싱 ──────────────────────────────────── */
 
 /**
@@ -441,6 +698,15 @@ export function parseAdr(
   const tldr = extractTldr(fm, sections);
   const decisions = extractDecisionItems(sections);
   const phases = extractPhaseEntries(sections);
+  const lessons = extractLessons(sections);
+  const carryover = extractCarryover(sections);
+  const bodyMarkdownForProse = buildBodyMarkdownForProse(
+    body,
+    sections,
+    phases,
+    lessons,
+    carryover,
+  );
 
   const meta: AdrMeta = {
     kind,
@@ -465,10 +731,13 @@ export function parseAdr(
     meta,
     sections,
     bodyMarkdown: body,
+    bodyMarkdownForProse,
     outgoingLinks,
     warnings,
     decisions,
     phases,
+    lessons,
+    carryover,
   };
 }
 

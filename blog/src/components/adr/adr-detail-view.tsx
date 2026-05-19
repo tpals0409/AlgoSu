@@ -17,6 +17,8 @@ import { AdrMetaSidebar } from './adr-meta-sidebar';
 import { AdrHero } from './adr-hero';
 import { AdrPhaseStrip } from './adr-phase-strip';
 import { AdrDecisionsGrid } from './adr-decisions-grid';
+import { AdrLessonsCallout } from './adr-lessons-callout';
+import { AdrCarryoverCallout } from './adr-carryover-callout';
 
 interface AdrDetailViewProps {
   doc: AdrDoc;
@@ -51,7 +53,10 @@ export async function AdrDetailView({
   miniGraph,
   locale = 'ko',
 }: AdrDetailViewProps) {
-  const content = await renderAdrMdx(doc.bodyMarkdown, locale);
+  // strip된 본문 우선 — lessons/carryover/PR 표 중복 차단.
+  // graceful degradation: parser가 strip 실패 시 bodyMarkdownForProse === bodyMarkdown.
+  const proseSource = doc.bodyMarkdownForProse ?? doc.bodyMarkdown;
+  const content = await renderAdrMdx(proseSource, locale);
 
   return (
     <div className="flex gap-8">
@@ -68,6 +73,8 @@ export async function AdrDetailView({
         <AdrPhaseStrip phases={doc.phases} locale={locale} />
         <AdrDecisionsGrid decisions={doc.decisions} locale={locale} />
         <div className="prose max-w-none">{content}</div>
+        <AdrLessonsCallout lessons={doc.lessons} locale={locale} />
+        <AdrCarryoverCallout carryover={doc.carryover} locale={locale} />
       </article>
 
       {/* 우측 메타사이드바 */}
