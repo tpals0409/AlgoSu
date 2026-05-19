@@ -6,11 +6,11 @@
  *
  * ADR 상세 3-column 레이아웃 — 좌 TOC / 중앙 본문 / 우 메타사이드바(미니 그래프 포함).
  * locale='en' + !meta.hasEnTranslation 일 때만 "Content in Korean" 배너 + 한국어 원문 링크 표시.
- * 영문판 본문이 존재하는 ADR(docs/adr-en/<path> 있음)은 배너 없이 영문 본문만 렌더.
  *
  * 본문 렌더는 sections 단위 chunk 방식 — lessons/carryover canonical을 만나면
- * prose 누적분을 flush 후 callout을 in-place 삽입하여 본문 순서와 시각 순서를 일치시킨다
- * (Sprint 163 R4 P2 해소).
+ * prose 누적분을 flush 후 callout wrapper를 in-place 삽입한다(Sprint 163 R4 P2).
+ * callout 안에는 해당 H2 그룹의 raw markdown(H2 헤딩 제거 + 인접 H3 포함)을 prose로
+ * 렌더하여 본문 content 100% 보존(Sprint 163 R7 P2 — list 외 prose/H3 mixed 차단).
  */
 import type { ReactNode } from 'react';
 import type {
@@ -23,7 +23,6 @@ import { renderAdrMdx } from '@/lib/adr/markdown';
 import { buildUrl } from '@/lib/adr/index-builder';
 import {
   getCanonicalSectionIndices,
-  hasTopLevelListItem,
   stripPrTableLines,
 } from '@/lib/adr/parser';
 import { type Locale, t } from '@/lib/i18n';
@@ -61,31 +60,31 @@ function KoreanOnlyBanner({ meta }: { meta: AdrMeta }) {
 }
 
 /**
- * 본문을 sections 단위 chunk로 렌더한다.
- * lessons/carryover H2 만나면 prose 누적 flush 후 callout을 그 위치에 삽입한다.
- * implementation H2의 PR 표는 stripPrTableLines로 정밀 제거(PhaseStrip 중복 차단).
+ * canonical 그룹의 raw markdown 을 결합하되 H2 헤딩 라인은 제거한다.
+ * callout wrapper가 자체 heading(`💡 교훈` / `📋 이월`) 을 그리므로 H2 중복 회피.
  */
-/**
- * H3 sub-section 중 callout에 흡수 가능한 것만 골라낸다.
- * list item이 1개 이상 있는 H3만 callout이 entries로 렌더 → 흡수해도 정보 손실 없음.
- * prose-only H3(sprint-141 `### 7 스프린트 연속 브랜치 규율 준수` 등)는 prose 유지(Sprint 163 R6 P2).
- */
-function buildAbsorbedH3Set(
+function buildCalloutMarkdown(
   sections: AdrSection[],
-  indices: number[] | undefined,
-): Set<number> {
-  const result = new Set<number>();
-  if (!indices) return result;
-  for (const i of indices) {
-    const sec = sections[i];
-    if (sec.level !== 3) continue;
-    if (hasTopLevelListItem(sec.rawMarkdown)) {
-      result.add(i);
-    }
-  }
-  return result;
+  indices: number[],
+): string {
+  return indices
+    .map((idx, pos) => {
+      const sec = sections[idx];
+      if (pos === 0 && sec.level === 2) {
+        // 첫 H2 의 heading 라인만 제거
+        return sec.rawMarkdown.replace(/^##\s+.+$/m, '').trim();
+      }
+      return sec.rawMarkdown;
+    })
+    .filter((s) => s.length > 0)
+    .join('\n\n');
 }
 
+/**
+ * 본문을 sections 단위 chunk로 렌더한다.
+ * lessons/carryover H2 만나면 prose 누적 flush 후 callout wrapper를 그 위치에 삽입한다.
+ * implementation H2의 PR 표는 stripPrTableLines로 정밀 제거(PhaseStrip 중복 차단).
+ */
 async function renderSectionChunks(
   doc: AdrDoc,
   locale: Locale,
@@ -97,8 +96,8 @@ async function renderSectionChunks(
   const chunks: ReactNode[] = [];
   let proseBuffer: string[] = [];
 
-  const absorbedLessonsH3 = buildAbsorbedH3Set(doc.sections, lessonsIndices);
-  const absorbedCarryoverH3 = buildAbsorbedH3Set(doc.sections, carryoverIndices);
+  const lessonsIdxSet = new Set(lessonsIndices ?? []);
+  const carryoverIdxSet = new Set(carryoverIndices ?? []);
   const hasLessons = doc.lessons && doc.lessons.length > 0;
   const hasCarryover = doc.carryover && doc.carryover.length > 0;
 
@@ -118,21 +117,20 @@ async function renderSectionChunks(
     );
   };
 
-  // sections에 포함되지 않는 preamble(첫 H2 직전, 보통 frontmatter-less ADR의 H1 + dash-list 메타)
-  // 을 첫 prose chunk에 seed한다. H1은 detail-view 상단에서 별도로 렌더되므로 본문에서는 제거(Sprint 163 R5 P2).
+  // preamble seed — 첫 H2 직전(보통 frontmatter-less ADR의 H1 + dash-list 메타)
+  // H1은 상단에서 별도 렌더되므로 본문에서는 제거(R5 P2).
   if (doc.sections.length > 0) {
     const firstH2Idx = doc.bodyMarkdown.search(/^##\s+/m);
     if (firstH2Idx > 0) {
       const preamble = doc.bodyMarkdown
         .slice(0, firstH2Idx)
-        .replace(/^#\s+.+$/m, '') // detail-view 상단 H1과 중복 차단
+        .replace(/^#\s+.+$/m, '')
         .trim();
       if (preamble.length > 0) {
         proseBuffer.push(preamble);
       }
     }
   } else {
-    // sections 0개(H2 없음) — 본문 전체를 H1만 제거 후 단일 prose chunk
     const cleaned = doc.bodyMarkdown.replace(/^#\s+.+$/m, '').trim();
     if (cleaned.length > 0) proseBuffer.push(cleaned);
   }
@@ -140,35 +138,41 @@ async function renderSectionChunks(
   for (let i = 0; i < doc.sections.length; i++) {
     const sec = doc.sections[i];
 
-    // lessons H2 — callout으로 대체. 인접 H3 sub-section은 skip(callout 흡수)
+    // lessons H2 — callout wrapper로 대체. 인접 H3 sub-section은 wrapper 안에 흡수
     if (sec.level === 2 && sec.canonical === 'lessons' && hasLessons) {
       await flushProse();
+      const md = buildCalloutMarkdown(doc.sections, lessonsIndices ?? [i]);
+      const content = md.length > 0 ? await renderAdrMdx(md, locale) : null;
       chunks.push(
         <AdrLessonsCallout
           key={`lessons-${i}`}
-          lessons={doc.lessons}
           anchorId={lessonsAnchorId}
           locale={locale}
-        />,
+        >
+          {content}
+        </AdrLessonsCallout>,
       );
       continue;
     }
-    if (sec.level === 3 && hasLessons && absorbedLessonsH3.has(i)) continue;
+    if (sec.level === 3 && hasLessons && lessonsIdxSet.has(i)) continue;
 
-    // carryover H2 — callout으로 대체. 인접 H3 sub-section은 skip
+    // carryover H2 — callout wrapper로 대체. 인접 H3 sub-section도 wrapper 안에 흡수
     if (sec.level === 2 && sec.canonical === 'carryover' && hasCarryover) {
       await flushProse();
+      const md = buildCalloutMarkdown(doc.sections, carryoverIndices ?? [i]);
+      const content = md.length > 0 ? await renderAdrMdx(md, locale) : null;
       chunks.push(
         <AdrCarryoverCallout
           key={`carryover-${i}`}
-          carryover={doc.carryover}
           anchorId={carryoverAnchorId}
           locale={locale}
-        />,
+        >
+          {content}
+        </AdrCarryoverCallout>,
       );
       continue;
     }
-    if (sec.level === 3 && hasCarryover && absorbedCarryoverH3.has(i)) continue;
+    if (sec.level === 3 && hasCarryover && carryoverIdxSet.has(i)) continue;
 
     // implementation H2 — PR 표 라인 strip(PhaseStrip 카드 중복 차단)
     if (
@@ -190,19 +194,21 @@ async function renderSectionChunks(
 
 /**
  * TOC에서 callout으로 흡수된 H3 sub-section 만 제거(H2는 anchor 매칭으로 callout 점프).
- * list item이 있는 H3만 흡수 대상 — prose-only H3는 TOC와 본문 양쪽 모두에 유지(R6 P2).
+ * wrapper callout이 H3 raw markdown 까지 흡수하므로 callout 내부 anchor는 prose chunk에서
+ * 자연 rehypeSlug 처리됨 → TOC에서는 중복 회피를 위해 흡수된 H3 indices 모두 제거.
  */
 function filterTocSections(
   sections: AdrSection[],
   lessonsIndices: number[] | undefined,
   carryoverIndices: number[] | undefined,
 ): AdrSection[] {
-  const absorbed = new Set<number>([
-    ...buildAbsorbedH3Set(sections, lessonsIndices),
-    ...buildAbsorbedH3Set(sections, carryoverIndices),
-  ]);
-  if (absorbed.size === 0) return sections;
-  return sections.filter((_, i) => !absorbed.has(i));
+  const strippedH3 = new Set<number>(
+    [...(lessonsIndices ?? []), ...(carryoverIndices ?? [])].filter(
+      (i) => sections[i].level === 3,
+    ),
+  );
+  if (strippedH3.size === 0) return sections;
+  return sections.filter((_, i) => !strippedH3.has(i));
 }
 
 /** ADR 상세 3-column 레이아웃을 렌더링한다. */

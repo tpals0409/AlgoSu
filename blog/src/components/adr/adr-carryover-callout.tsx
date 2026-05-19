@@ -4,57 +4,28 @@
  * @layer      ui
  * @related    src/lib/adr/types.ts, src/lib/i18n.ts
  *
- * ADR 이월 callout — carryover 섹션의 list item을 info 톤 박스로 강조 렌더.
- * Sprint NNN 태그를 chip으로 우측 분리하여 라벨 가독성을 높인다.
+ * ADR 이월 wrapper callout — carryover 섹션 raw markdown(H2 제거 + 인접 H3 포함)을
+ * info 톤 박스에 감싸 시각 강조. content 100% 보존을 위해 list-entry 변환 대신
+ * 본문 prose 그대로 렌더(Sprint 163 R7 P2 결정).
  */
-import type { AdrCarryoverEntry } from '@/lib/adr/types';
+import type { ReactNode } from 'react';
 import { type Locale, t } from '@/lib/i18n';
 
 interface AdrCarryoverCalloutProps {
-  carryover?: AdrCarryoverEntry[];
-  /** TOC anchor 호환 — strip 된 carryover H2 anchorId 를 callout root id로 부여 */
+  /** carryover 섹션 raw markdown 을 renderAdrMdx로 컴파일한 ReactNode */
+  children?: ReactNode;
+  /** TOC anchor 호환 — strip된 carryover H2 anchorId */
   anchorId?: string;
   locale?: Locale;
 }
 
-/** Sprint NNN 라벨 chip을 렌더링한다. */
-function SprintChip({ sprint, locale }: { sprint: string; locale: Locale }) {
-  return (
-    <span className="ml-2 inline-flex items-center rounded-md border border-callout-info-border bg-callout-info-bg px-1.5 py-0.5 text-[10px] font-mono font-semibold text-callout-info-fg">
-      {t(locale, 'carryoverSprintPrefix')} {sprint}
-    </span>
-  );
-}
-
-/** 개별 이월 항목을 렌더링한다. */
-function CarryoverItem({
-  entry,
-  locale,
-}: {
-  entry: AdrCarryoverEntry;
-  locale: Locale;
-}) {
-  return (
-    <li className="leading-relaxed">
-      {entry.title && (
-        <span className="font-semibold text-callout-info-fg">
-          {entry.title}
-          {entry.sprint && <SprintChip sprint={entry.sprint} locale={locale} />}
-          <span aria-hidden="true">: </span>
-        </span>
-      )}
-      <span className="text-callout-info-fg/90">{entry.description}</span>
-    </li>
-  );
-}
-
-/** ADR 이월 callout 박스를 렌더링한다. */
+/** ADR 이월 callout wrapper를 렌더링한다. */
 export function AdrCarryoverCallout({
-  carryover,
+  children,
   anchorId,
   locale = 'ko',
 }: AdrCarryoverCalloutProps) {
-  if (!carryover || carryover.length === 0) return null;
+  if (!children) return null;
 
   return (
     <aside
@@ -67,11 +38,9 @@ export function AdrCarryoverCallout({
         <span aria-hidden="true">📋</span>
         <span>{t(locale, 'carryoverTitle')}</span>
       </div>
-      <ul className="ml-1 list-disc space-y-2 pl-4 text-sm">
-        {carryover.map((entry, i) => (
-          <CarryoverItem key={i} entry={entry} locale={locale} />
-        ))}
-      </ul>
+      <div className="prose max-w-none prose-headings:text-callout-info-fg prose-p:text-callout-info-fg/90 prose-li:text-callout-info-fg/90 prose-strong:text-callout-info-fg">
+        {children}
+      </div>
     </aside>
   );
 }

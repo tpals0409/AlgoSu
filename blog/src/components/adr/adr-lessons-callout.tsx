@@ -4,41 +4,28 @@
  * @layer      ui
  * @related    src/lib/adr/types.ts, src/lib/i18n.ts
  *
- * ADR 교훈 callout — lessons 섹션의 list item을 warn 톤 박스로 강조 렌더.
- * 본문 prose에서 strip된 항목을 시각 카드로 대체한다.
+ * ADR 교훈 wrapper callout — lessons 섹션 raw markdown(H2 제거 + 인접 H3 포함)을
+ * warn 톤 박스에 감싸 시각 강조. content 100% 보존을 위해 list-entry 변환 대신
+ * 본문 prose 그대로 렌더(Sprint 163 R7 P2 결정).
  */
-import type { AdrLessonEntry } from '@/lib/adr/types';
+import type { ReactNode } from 'react';
 import { type Locale, t } from '@/lib/i18n';
 
 interface AdrLessonsCalloutProps {
-  lessons?: AdrLessonEntry[];
-  /** TOC anchor 호환 — strip 된 lessons H2 anchorId 를 callout root id로 부여 */
+  /** lessons 섹션 raw markdown 을 renderAdrMdx로 컴파일한 ReactNode */
+  children?: ReactNode;
+  /** TOC anchor 호환 — strip된 lessons H2 anchorId */
   anchorId?: string;
   locale?: Locale;
 }
 
-/** 개별 교훈 항목을 렌더링한다. */
-function LessonItem({ entry }: { entry: AdrLessonEntry }) {
-  return (
-    <li className="leading-relaxed">
-      {entry.title && (
-        <span className="font-semibold text-callout-warn-fg">
-          {entry.title}
-          <span aria-hidden="true">: </span>
-        </span>
-      )}
-      <span className="text-callout-warn-fg/90">{entry.description}</span>
-    </li>
-  );
-}
-
-/** ADR 교훈 callout 박스를 렌더링한다. */
+/** ADR 교훈 callout wrapper를 렌더링한다. */
 export function AdrLessonsCallout({
-  lessons,
+  children,
   anchorId,
   locale = 'ko',
 }: AdrLessonsCalloutProps) {
-  if (!lessons || lessons.length === 0) return null;
+  if (!children) return null;
 
   return (
     <aside
@@ -51,11 +38,9 @@ export function AdrLessonsCallout({
         <span aria-hidden="true">💡</span>
         <span>{t(locale, 'lessonsTitle')}</span>
       </div>
-      <ul className="ml-1 list-disc space-y-2 pl-4 text-sm">
-        {lessons.map((entry, i) => (
-          <LessonItem key={i} entry={entry} />
-        ))}
-      </ul>
+      <div className="prose max-w-none prose-headings:text-callout-warn-fg prose-p:text-callout-warn-fg/90 prose-li:text-callout-warn-fg/90 prose-strong:text-callout-warn-fg">
+        {children}
+      </div>
     </aside>
   );
 }
