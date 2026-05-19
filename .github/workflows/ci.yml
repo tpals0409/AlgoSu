@@ -709,7 +709,9 @@ jobs:
 
           CACHE_DU=$(docker buildx du --verbose 2>/dev/null | awk '/^Total:/ {print $2, $3; exit}')
           [ -z "$CACHE_DU" ] && CACHE_DU="N/A"
-          CACHE_ENTRIES=$(docker buildx du 2>/dev/null | tail -n +2 | wc -l | tr -d ' ')
+          # Sprint 167 Critic R1 P3 fix: docker buildx du footer (Shared/Private/
+          # Reclaimable/Total)를 entry 로 오분류하지 않도록 헤더 + footer 라인 명시 제외.
+          CACHE_ENTRIES=$(docker buildx du 2>/dev/null | awk 'NR > 1 && !/^(ID|Reclaimable|Shared|Private|Total):/ && NF > 0 {count++} END {print count+0}')
           [ -z "$CACHE_ENTRIES" ] && CACHE_ENTRIES="0"
 
           {
@@ -793,7 +795,9 @@ jobs:
 
           CACHE_DU=$(docker buildx du --verbose 2>/dev/null | awk '/^Total:/ {print $2, $3; exit}')
           [ -z "$CACHE_DU" ] && CACHE_DU="N/A"
-          CACHE_ENTRIES=$(docker buildx du 2>/dev/null | tail -n +2 | wc -l | tr -d ' ')
+          # Sprint 167 Critic R1 P3 fix: docker buildx du footer (Shared/Private/
+          # Reclaimable/Total)를 entry 로 오분류하지 않도록 헤더 + footer 라인 명시 제외.
+          CACHE_ENTRIES=$(docker buildx du 2>/dev/null | awk 'NR > 1 && !/^(ID|Reclaimable|Shared|Private|Total):/ && NF > 0 {count++} END {print count+0}')
           [ -z "$CACHE_ENTRIES" ] && CACHE_ENTRIES="0"
 
           {
@@ -887,7 +891,9 @@ jobs:
 
           CACHE_DU=$(docker buildx du --verbose 2>/dev/null | awk '/^Total:/ {print $2, $3; exit}')
           [ -z "$CACHE_DU" ] && CACHE_DU="N/A"
-          CACHE_ENTRIES=$(docker buildx du 2>/dev/null | tail -n +2 | wc -l | tr -d ' ')
+          # Sprint 167 Critic R1 P3 fix: docker buildx du footer (Shared/Private/
+          # Reclaimable/Total)를 entry 로 오분류하지 않도록 헤더 + footer 라인 명시 제외.
+          CACHE_ENTRIES=$(docker buildx du 2>/dev/null | awk 'NR > 1 && !/^(ID|Reclaimable|Shared|Private|Total):/ && NF > 0 {count++} END {print count+0}')
           [ -z "$CACHE_ENTRIES" ] && CACHE_ENTRIES="0"
 
           {
