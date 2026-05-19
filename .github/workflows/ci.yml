@@ -670,11 +670,20 @@ jobs:
         with:
           context: ${{ matrix.context }}
           platforms: linux/arm64
-          push: ${{ github.ref == 'refs/heads/main' }}
-          tags: ${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:main-${{ github.sha }}
+          # Sprint 165 옵션 C: multi-output (main 푸시 + 항상 tarball)
+          outputs: |
+            type=image,push=${{ github.ref == 'refs/heads/main' }},name=${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:main-${{ github.sha }}
+            type=docker,dest=/tmp/image-${{ matrix.service }}.tar
           build-args: APK_CACHE_BUST=${{ env.APK_BUST_VALUE }}
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+      - name: Upload image tarball for Trivy scan
+        if: steps.check.outputs.skip == 'false'
+        uses: actions/upload-artifact@v6
+        with:
+          name: image-tar-${{ matrix.service }}
+          path: /tmp/image-${{ matrix.service }}.tar
+          retention-days: 1
 
   build-frontend:
     name: Build Frontend (Next.js)
@@ -704,11 +713,19 @@ jobs:
         with:
           context: ./frontend
           platforms: linux/arm64
-          push: ${{ github.ref == 'refs/heads/main' }}
-          tags: ${{ env.IMAGE_PREFIX }}-frontend:main-${{ github.sha }}
+          # Sprint 165 옵션 C: multi-output (main 푸시 + 항상 tarball)
+          outputs: |
+            type=image,push=${{ github.ref == 'refs/heads/main' }},name=${{ env.IMAGE_PREFIX }}-frontend:main-${{ github.sha }}
+            type=docker,dest=/tmp/image-frontend.tar
           build-args: APK_CACHE_BUST=${{ env.APK_BUST_VALUE }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
+      - name: Upload image tarball for Trivy scan
+        uses: actions/upload-artifact@v6
+        with:
+          name: image-tar-frontend
+          path: /tmp/image-frontend.tar
+          retention-days: 1
 
   # ============================================================
   # Build Blog — 기술 블로그 정적 사이트 (Next.js SSG + nginx)
@@ -761,11 +778,19 @@ jobs:
         with:
           context: ./blog
           platforms: linux/arm64
-          push: ${{ github.ref == 'refs/heads/main' }}
-          tags: ${{ env.IMAGE_PREFIX }}-blog:main-${{ github.sha }}
+          # Sprint 165 옵션 C: multi-output (main 푸시 + 항상 tarball)
+          outputs: |
+            type=image,push=${{ github.ref == 'refs/heads/main' }},name=${{ env.IMAGE_PREFIX }}-blog:main-${{ github.sha }}
+            type=docker,dest=/tmp/image-blog.tar
           build-args: APK_CACHE_BUST=${{ env.APK_BUST_VALUE }}
           cache-from: type=gha,scope=blog
           cache-to: type=gha,mode=max,scope=blog
+      - name: Upload image tarball for Trivy scan
+        uses: actions/upload-artifact@v6
+        with:
+          name: image-tar-blog
+          path: /tmp/image-blog.tar
+          retention-days: 1
 
   # ============================================================
   # Trivy — 이미지 취약점 스캔 (main push 후, deploy 전)
