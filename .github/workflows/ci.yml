@@ -1010,6 +1010,7 @@ jobs:
           cat kustomization.yaml
 
       - name: Commit and push to aether-gitops
+        id: push_gitops
         run: |
           cd aether-gitops
           if git diff --quiet; then
@@ -1022,19 +1023,32 @@ jobs:
 
       # Sprint 160 Phase C: deploy 결과를 GitHub Step Summary 에 markdown 으로 노출
       # (시드 #신규4: "git merge 성공" 후에도 일부 service 가 SKIPPED 된 경우 한 페이지에서 가시화)
+      # Critic R1 P2 해소: push fail 시 "Deployed services" 거짓 성공 출력 차단 —
+      # steps.push_gitops.outcome 기준으로 "Deployed" vs "candidates (push failed)" 분기
       - name: Surface deploy summary
         if: always()
         run: |
           UPDATED="${{ steps.update_tags.outputs.updated }}"
           SKIPPED="${{ steps.update_tags.outputs.skipped_trivy }}"
+          PUSH_OUTCOME="${{ steps.push_gitops.outcome }}"
           {
             echo "## Deploy summary — commit \`${{ github.sha }}\`"
             echo ""
             if [ -n "$UPDATED" ]; then
-              echo "### ✅ Deployed services"
-              for SVC in $UPDATED; do
-                echo "- \`$SVC\` → \`main-${{ github.sha }}\`"
-              done
+              if [ "$PUSH_OUTCOME" = "success" ]; then
+                echo "### ✅ Deployed services"
+                for SVC in $UPDATED; do
+                  echo "- \`$SVC\` → \`main-${{ github.sha }}\`"
+                done
+              else
+                echo "### 🚫 GitOps push failed (push step outcome: \`${PUSH_OUTCOME}\`)"
+                echo "Tags were edited in the local clone but **NOT propagated to aether-gitops**. The following services are *candidates only* — production is unchanged:"
+                for SVC in $UPDATED; do
+                  echo "- \`$SVC\` — intended tag: \`main-${{ github.sha }}\` (NOT applied)"
+                done
+                echo ""
+                echo "> ⚠️ Investigate \`Commit and push to aether-gitops\` step + GITOPS_TOKEN scope. Manual aether-gitops PR may be required as forward-fix."
+              fi
             else
               echo "### ⚠️ No services were deployed (no candidate matched build + detect-changes)"
             fi
