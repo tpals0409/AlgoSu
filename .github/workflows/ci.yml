@@ -967,13 +967,16 @@ jobs:
           [ "${{ needs.build-frontend.result }}" = "success" ] && CANDIDATES="${CANDIDATES} frontend"
           [ "${{ needs.build-blog.result }}" = "success" ] && CANDIDATES="${CANDIDATES} blog"
 
-          # service 별 Trivy 결과 lookup → fail 인 service 만 제외
+          # service 별 Trivy 결과 lookup → 명시적 "pass" 만 통과 (fail-closed security gate)
           # (Sprint 159 회귀 차단: 한 service Trivy fail 이 다른 service GitOps update 를 막지 않음)
+          # Critic R1 P1 해소: status file 누락(infra fail / artifact upload 실패 등) 케이스도 SKIPPED 분류 —
+          # missing/fail/기타 = 모두 차단, "pass" 만 deploy. security gate 우회 방지.
           for SVC in $CANDIDATES; do
             STATUS_FILE="${STATUS_DIR}/${SVC}.txt"
-            if [ -f "$STATUS_FILE" ] && [ "$(cat "$STATUS_FILE")" = "fail" ]; then
+            STATUS=$(cat "$STATUS_FILE" 2>/dev/null || echo "missing")
+            if [ "$STATUS" != "pass" ]; then
               SKIPPED_TRIVY="${SKIPPED_TRIVY} ${SVC}"
-              echo "  ⚠ algosu-${SVC} SKIPPED (Trivy fail — service-scoped, 다른 service 는 정상 진행)"
+              echo "  ⚠ algosu-${SVC} SKIPPED (Trivy status: ${STATUS} — service-scoped security gate, 다른 service 는 정상 진행)"
               continue
             fi
             UPDATED="${UPDATED} ${SVC}"
