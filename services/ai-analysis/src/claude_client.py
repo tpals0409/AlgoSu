@@ -474,15 +474,24 @@ class ClaudeClient:
             }
 
         except (json.JSONDecodeError, ValueError, KeyError) as e:
-            logger.warning("그룹 분석 응답 파싱 실패", extra={"error": str(e)[:100]})
-            fallback = raw_text.strip()
-            if fallback.startswith("```"):
-                fallback = fallback.split("\n", 1)[-1]
-                if fallback.rstrip().endswith("```"):
-                    fallback = fallback.rstrip()[:-3].rstrip()
+            # Sprint 164 시드 #신규3 — Sprint 159 single 분석 envelope 패턴을 group 측 회수.
+            # 기존 fallback 은 raw_text 를 comparison 에 50000자까지 노출 → PII/잠재 secret 노출 위험.
+            # 본문 노출 0 + raw_length 만 로깅 + user-facing 안전 문구 envelope 반환.
+            logger.warning(
+                "그룹 분석 Claude 응답 파싱 실패 -- envelope fallback 사용",
+                extra={
+                    "error": str(e)[:100],
+                    "raw_length": len(raw_text),
+                },
+            )
 
+            # group 은 single 의 score 정규식 추출 패턴 없음 → 항상 status="failed".
+            # 유효 JSON 구조 envelope — 프론트가 즉시 구조화 렌더링 가능.
             return {
-                "comparison": fallback[:50000],
+                "comparison": (
+                    "AI 그룹 분석 결과 파싱에 일시적 오류가 발생했습니다. "
+                    "잠시 후 다시 시도해주세요."
+                ),
                 "bestApproach": None,
                 "optimizedCode": None,
                 "learningPoints": [],
