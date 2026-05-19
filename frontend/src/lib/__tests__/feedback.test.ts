@@ -151,15 +151,45 @@ describe('parseFeedback', () => {
     expect(result!.spaceComplexity).toBe('O(1)');
   });
 
-  it('파싱 실패 시 fallback 구조를 반환한다', () => {
+  it('파싱 실패 시 사용자 친화 fallback 메시지를 반환한다 (Sprint 159)', () => {
     const result = parseFeedback('invalid json }{', 75, 'code here');
     expect(result).not.toBeNull();
     expect(result!.totalScore).toBe(75);
-    expect(result!.summary).toBe('invalid json }{');
+    // Sprint 159 핫픽스 — raw 텍스트가 summary 에 노출되지 않음
+    expect(result!.summary).not.toContain('invalid json');
+    expect(result!.summary).toContain('다시 시도');
     expect(result!.categories).toHaveLength(0);
     expect(result!.optimizedCode).toBe('code here');
     expect(result!.timeComplexity).toBeNull();
     expect(result!.spaceComplexity).toBeNull();
+  });
+
+  it('cleanAndExtractJson handles braces inside string values (Sprint 159)', () => {
+    // 문자열 내부 중괄호(`{1,2}`) 가 brace counter 를 오작동시키지 않음
+    const feedback =
+      '{"totalScore":88,"summary":"문자열 내부 중괄호 테스트",' +
+      '"categories":[],"optimizedCode":"def f(): return {1,2}"} trailing garbage';
+    const result = parseFeedback(feedback, null, null);
+    expect(result).not.toBeNull();
+    expect(result!.totalScore).toBe(88);
+    expect(result!.summary).toBe('문자열 내부 중괄호 테스트');
+    expect(result!.optimizedCode).toBe('def f(): return {1,2}');
+  });
+
+  it('parseFeedback fallback shows friendly message not raw dump (Sprint 159)', () => {
+    // dh4m 제출 사례 — raw 마크다운 텍스트가 feedback 으로 들어와도 노출 안 함
+    const rawDump =
+      '# Markdown Header\n점수: 90\n자세한 내용은 ...\n잠재 비밀: SECRET_KEY_HERE';
+    const result = parseFeedback(rawDump, 90, null);
+    expect(result).not.toBeNull();
+    expect(result!.totalScore).toBe(90);
+    // raw 텍스트가 summary 에 절대 노출되지 않음 (PII/비밀 보호)
+    expect(result!.summary).not.toContain('Markdown Header');
+    expect(result!.summary).not.toContain('SECRET_KEY_HERE');
+    expect(result!.summary).not.toContain('잠재 비밀');
+    expect(result!.summary).not.toContain('점수: 90');
+    expect(result!.summary).toContain('다시 시도');
+    expect(result!.categories).toHaveLength(0);
   });
 
   it('totalScore 없을 때 score 파라미터를 사용한다', () => {

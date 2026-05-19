@@ -75,6 +75,47 @@ function countCodeLines(code: string | null): number | null {
 }
 
 /**
+ * 텍스트에서 첫 번째 유효 JSON 객체의 끝 인덱스를 찾는다 (string-aware).
+ *
+ * 백엔드 `_extract_first_json_object` (services/ai-analysis/src/claude_client.py:497~534)
+ * 의 in_string + escape 추적 로직과 1:1 매핑.
+ *
+ * Sprint 159 핫픽스 — 문자열 내부 중괄호(예: `"optimizedCode": "def f(): return {1,2}"`)
+ * 를 카운트하지 않도록 한다. 종전 단순 brace counter 는 백엔드와 robustness 불일치.
+ *
+ * @param text - JSON 객체가 시작되는 텍스트
+ * @param start - 첫 `{` 의 인덱스
+ * @returns 매칭되는 `}` 의 인덱스 (없으면 -1)
+ */
+function findJsonObjectEnd(text: string, start: number): number {
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (ch === '\\') {
+      escape = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+/**
  * JSON 문자열에서 Claude hallucination 대응 + 첫 유효 JSON 객체 추출
  */
 function cleanAndExtractJson(raw: string): Record<string, unknown> {
@@ -92,11 +133,7 @@ function cleanAndExtractJson(raw: string): Record<string, unknown> {
     // JSON 뒤에 추가 텍스트가 있을 수 있음 — 첫 번째 유효 JSON 객체 추출
     const start = cleaned.indexOf('{');
     if (start === -1) throw new Error('No JSON found');
-    let depth = 0, end = -1;
-    for (let i = start; i < cleaned.length; i++) {
-      if (cleaned[i] === '{') depth++;
-      else if (cleaned[i] === '}') { depth--; if (depth === 0) { end = i; break; } }
-    }
+    const end = findJsonObjectEnd(cleaned, start);
     if (end === -1) throw new Error('No matching brace');
     return JSON.parse(cleaned.substring(start, end + 1)) as Record<string, unknown>;
   }
@@ -133,9 +170,13 @@ export function parseFeedback(
       codeLines: (parsed.codeLines as number | null) ?? countCodeLines(resolvedOptimizedCode),
     };
   } catch {
+    // Sprint 159 핫픽스 — raw feedback 텍스트를 summary 에 노출하지 않는다.
+    // 근거: dh4m 제출 사례에서 백엔드 catch-all 폴백이 raw 마크다운/JSON 을
+    // feedback 으로 저장 → 본 catch 블록이 summary=raw 로 그대로 렌더링.
+    // 백엔드 envelope 핫픽스와 함께 2중 방어선을 구성한다.
     return {
       totalScore: score ?? 0,
-      summary: feedback,
+      summary: 'AI 분석 결과를 표시할 수 없습니다. 잠시 후 다시 시도해주세요.',
       categories: [],
       optimizedCode: optimizedCode ?? null,
       timeComplexity: null,
