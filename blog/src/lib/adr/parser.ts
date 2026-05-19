@@ -161,13 +161,16 @@ function parsePrTable(markdown: string): PrTableRow[] | undefined {
 
 /**
  * 파이프 구분 GFM 행을 셀 배열로 분리한다.
+ * escaped pipe(`\|`)를 placeholder로 치환하여 의도치 않은 셀 분리를 방지한다.
  */
 function splitTableRow(line: string): string[] {
+  const PLACEHOLDER = '\x00PIPE\x00';
   return line
     .replace(/^\|/, '')
     .replace(/\|$/, '')
+    .replace(/\\\|/g, PLACEHOLDER)
     .split('|')
-    .map((c) => c.trim());
+    .map((c) => c.replace(/\x00PIPE\x00/g, '|').trim());
 }
 
 /**
