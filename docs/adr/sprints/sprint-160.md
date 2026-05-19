@@ -25,6 +25,17 @@ related_memory: ["sprint-window"]
 - **deploy summary push outcome 분기 (Critic R1 P2 해소)**: Phase C `Surface deploy summary` step 의 `always()` 조건이 GitOps push fail 시에도 "✅ Deployed services" 거짓 성공 메시지 출력 가능 — sprint 목표(정확한 알림) 자기 모순. `steps.push_gitops.outcome` 으로 분기 → `success` 외 모두 "candidates only (NOT applied)" 분리. Sprint 155 패턴(Critic 1차 통과 후 자기 모순 검출) 재현
 - **GitHub-native 만 사용**: Phase C 알림 강화는 `$GITHUB_STEP_SUMMARY` markdown + `::warning::` workflow command 만 활용. Discord/Slack webhook 통합은 secrets/채널 결정 필요 → 별도 sprint 범위 분리
 
+## 워크플로우
+
+```mermaid
+graph LR
+  A[Phase A<br/>GitOps hotfix] --> B[Phase B<br/>Per-service Trivy gate]
+  B --> C[Phase C<br/>Deploy 알림 강화]
+  C --> D[Phase D<br/>Critic R1/R2]
+  D --> E[Phase E<br/>ADR 작성]
+  E --> F[PR squash merge]
+```
+
 ## 구현 (3 PR squash merge + 1 aether-gitops PR, origin/main `2ec3747` → **`b385343`**)
 
 | Repo | PR | Phase | Owner | 변경 내용 | Lines |

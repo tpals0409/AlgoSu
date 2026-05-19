@@ -4,7 +4,7 @@ title: "기술 블로그 포스트 추가 + GitOps 동기화"
 date: "2026-04-09"
 status: completed
 agents: [Scribe, Conductor]
-related_adrs: [ADR-004, ADR-005]
+related_adrs: []
 ---
 
 # Sprint 67: 기술 블로그 포스트 추가 + GitOps 동기화

@@ -19,6 +19,7 @@ import {
 } from 'react';
 import { usePathname } from 'next/navigation';
 import { t } from '@/lib/i18n';
+import { Mermaid } from './mermaid';
 
 /** 언어 표시명 매핑 (필요 시 확장) */
 const LANG_LABELS: Record<string, string> = {
@@ -77,6 +78,13 @@ export function CodeBlock({ children, ...rest }: CodeBlockProps) {
   const pathname = usePathname();
   const locale = pathname?.startsWith('/en') ? 'en' : 'ko';
   const lang = extractLanguage(children);
+
+  // mermaid 코드 펜스는 Mermaid 컴포넌트로 분기
+  if (lang === 'mermaid') {
+    const chartSource = extractText(children);
+    return <Mermaid chart={chartSource} />;
+  }
+
   const label = lang ? (LANG_LABELS[lang] ?? lang) : null;
 
   const handleCopy = useCallback(() => {

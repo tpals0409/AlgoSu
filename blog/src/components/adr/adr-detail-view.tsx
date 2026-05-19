@@ -51,7 +51,7 @@ export async function AdrDetailView({
   miniGraph,
   locale = 'ko',
 }: AdrDetailViewProps) {
-  const content = await renderAdrMdx(doc.bodyMarkdown);
+  const content = await renderAdrMdx(doc.bodyMarkdown, locale);
 
   return (
     <div className="flex gap-8">

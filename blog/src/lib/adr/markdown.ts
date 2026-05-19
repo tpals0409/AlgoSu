@@ -13,7 +13,9 @@ import remarkGfm from 'remark-gfm';
 import rehypeSlug from 'rehype-slug';
 import rehypeHighlight from 'rehype-highlight';
 
+import { type Locale } from '@/lib/i18n';
 import { mdxComponents } from '@/components/mdx-components';
+import { rehypeAdrLinkRewrite } from './rehype-adr-link-rewrite';
 
 /**
  * ADR 마크다운을 렌더링한다.
@@ -22,7 +24,10 @@ import { mdxComponents } from '@/components/mdx-components';
  * @param source - ADR 본문 마크다운 (frontmatter 제거 후)
  * @returns React 컴포넌트 트리
  */
-export async function renderAdrMdx(source: string) {
+export async function renderAdrMdx(
+  source: string,
+  locale: Locale = 'ko',
+) {
   const { content } = await compileMDX({
     source,
     components: mdxComponents,
@@ -30,7 +35,11 @@ export async function renderAdrMdx(source: string) {
       mdxOptions: {
         format: 'md',
         remarkPlugins: [remarkGfm],
-        rehypePlugins: [rehypeSlug, rehypeHighlight],
+        rehypePlugins: [
+          rehypeSlug,
+          [rehypeAdrLinkRewrite, { locale }],
+          rehypeHighlight,
+        ],
       },
     },
   });
