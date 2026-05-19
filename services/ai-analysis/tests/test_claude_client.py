@@ -920,12 +920,21 @@ class TestParseGroupResponse:
         assert result["learningPoints"] == []
 
     def test_parse_group_response_invalid_json(self):
-        """잘못된 JSON 시 fallback 반환"""
+        """Sprint 164 시드 #신규3 — 잘못된 JSON 시 envelope 반환 (raw 노출 차단).
+
+        Sprint 159 single 분석 envelope 패턴을 group 측 회수.
+        본 테스트는 raw_text 가 comparison 에 절대 노출되지 않음을 검증.
+        """
         c = _make_client()
 
-        result = c._parse_group_response("not valid json at all")
+        raw = "not valid json at all"
+        result = c._parse_group_response(raw)
         assert result["status"] == "failed"
-        assert result["comparison"] == "not valid json at all"
+        # envelope: raw_text 미노출 + 사용자 친화 안전 문구
+        assert raw not in result["comparison"]
+        assert "다시 시도" in result["comparison"]
+        assert result["bestApproach"] is None
+        assert result["optimizedCode"] is None
         assert result["learningPoints"] == []
 
     def test_parse_group_response_learning_points_not_list(self):
@@ -962,11 +971,15 @@ class TestParseGroupResponse:
         assert result["comparison"] == "비교 분석"
 
     def test_parse_group_response_empty_string(self):
-        """빈 문자열 입력 시 fallback"""
+        """빈 문자열 입력 시 envelope fallback (Sprint 164)"""
         c = _make_client()
 
         result = c._parse_group_response("")
         assert result["status"] == "failed"
+        # envelope: 사용자 친화 안전 문구
+        assert "다시 시도" in result["comparison"]
+        assert result["bestApproach"] is None
+        assert result["learningPoints"] == []
 
 
 class TestGroupAnalyze:
@@ -1451,24 +1464,58 @@ class TestParseResponseFallbackNewBranches:
 
 
 class TestParseGroupResponseFallbackNewBranches:
-    """_parse_group_response() 추가 커버리지 — lines 417-419"""
+    """_parse_group_response() fallback envelope 검증 (Sprint 164 시드 #신규3 회수).
+
+    Sprint 159 single envelope 패턴 적용 후 raw 처리 로직(strip backtick)은 제거됨.
+    두 테스트는 raw_text 가 envelope 에 절대 노출되지 않음을 검증하는 형태로 전환.
+    """
 
     def test_group_response_fallback_backtick_no_closing(self):
-        """그룹 분석 fallback: ``` 시작이지만 닫는 ``` 없음 (lines 417-418)"""
+        """fallback: ``` 시작 raw 도 envelope 으로 차단"""
         c = _make_client()
         raw = "```json\nbroken group json without closing backtick"
         result = c._parse_group_response(raw)
-        # 파싱 실패 → fallback, status=failed
         assert result["status"] == "failed"
-        # split 후 내용이 fallback에 포함됨
-        assert "broken group json" in result["comparison"]
+        # envelope: raw_text 미노출 (PII/secret 노출 차단)
+        assert "broken group json" not in result["comparison"]
+        assert "```" not in result["comparison"]
+        assert "다시 시도" in result["comparison"]
 
     def test_group_response_fallback_backtick_with_closing(self):
-        """그룹 분석 fallback: ``` 시작 + 닫는 ``` 있음 → 닫는 ``` 제거 (line 419)"""
+        """fallback: ``` 시작 + 닫는 ``` 있는 raw 도 envelope 으로 차단"""
         c = _make_client()
-        # 닫는 ``` 있지만 JSON은 invalid → fallback 진입 → line 419 실행
         raw = "```json\nbroken group json\n```"
         result = c._parse_group_response(raw)
         assert result["status"] == "failed"
-        # 닫는 ``` 이 제거되어야 함
+        # envelope: raw_text 및 backtick 미노출
+        assert "broken group json" not in result["comparison"]
         assert "```" not in result["comparison"]
+        assert "다시 시도" in result["comparison"]
+
+    def test_group_response_fallback_no_raw_exposure(self):
+        """Sprint 164 신규 — invalid JSON 입력 시 반환 dict 모든 문자열 값에 raw 부분 문자열 미포함.
+
+        잠재적 PII/secret 회피: raw_text 의 어떤 토큰도 envelope 의 string 필드에 노출되어선 안 됨.
+        """
+        c = _make_client()
+        # PII/secret 모의 raw (실제로는 절대 노출 금지)
+        raw = (
+            "user_id=42 password=hunter2 ssn=123-45-6789 "
+            "api_key=sk-abc123def456 \"comparison\": broken"
+        )
+        result = c._parse_group_response(raw)
+        assert result["status"] == "failed"
+
+        # envelope 의 모든 string 값에 raw 의 어떤 토큰도 노출 안 됨
+        sensitive_tokens = ["hunter2", "123-45-6789", "sk-abc123def456", "user_id=42"]
+        string_fields = [v for v in result.values() if isinstance(v, str)]
+        for field in string_fields:
+            for token in sensitive_tokens:
+                assert token not in field, (
+                    f"raw_text token '{token}' leaked into envelope field: {field!r}"
+                )
+
+        # envelope 구조 보장
+        assert result["bestApproach"] is None
+        assert result["optimizedCode"] is None
+        assert result["learningPoints"] == []
