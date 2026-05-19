@@ -15,7 +15,7 @@ docs/adr/
 ├─ topics/
 │  └─ {topic-slug}.md                     ← 토픽 ADR (1개)
 └─ sprints/
-   └─ sprint-{NN}.md                      ← 회고형 sprint ADR (104개, Sprint 62~164)
+   └─ sprint-{NN}.md                      ← 회고형 sprint ADR (105개, Sprint 62~165)
 ```
 
 ## 분류 기준
