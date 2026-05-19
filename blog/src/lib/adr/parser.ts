@@ -541,14 +541,12 @@ function collectCanonicalSectionMarkdown(
  * lessons 섹션에서 교훈 항목을 추출한다.
  * `- **bold**: text` / `1. **bold** — text` / 일반 list item 모두 지원.
  *
- * Terminal 검사 통과(뒤에 의미 있는 H2 없음)한 경우에만 결과 반환 — non-terminal일 때
- * callout으로 추출하면 본문 순서가 회귀하므로 본문 prose에 자연 유지시킨다(Sprint 163 R2 P2).
+ * detail-view는 sections 단위 chunk 렌더로 callout을 in-place 삽입하므로(R4 P2 해소)
+ * terminal 검사 없이 추출 가능한 모든 ADR에서 결과를 반환한다.
  */
 export function extractLessons(
   sections: AdrSection[],
 ): AdrLessonEntry[] | undefined {
-  if (!isCanonicalTerminal(sections, 'lessons')) return undefined;
-
   const collected = collectCanonicalSectionMarkdown(sections, 'lessons');
   if (!collected) return undefined;
 
@@ -560,14 +558,10 @@ export function extractLessons(
  * carryover 섹션에서 이월 항목을 추출한다.
  * title 또는 H3 sub-section heading에 "Sprint NNN" 포함 시 sprint 필드를 채운다.
  * H2/H3 sub-section 별로 분리 처리하여 각 항목의 sprint 컨텍스트를 정확히 매핑한다.
- *
- * Terminal 검사 통과한 경우에만 결과 반환 — Sprint 163 R2 P2 회귀 차단.
  */
 export function extractCarryover(
   sections: AdrSection[],
 ): AdrCarryoverEntry[] | undefined {
-  if (!isCanonicalTerminal(sections, 'carryover')) return undefined;
-
   const collected = collectCanonicalSectionMarkdown(sections, 'carryover');
   if (!collected) return undefined;
 
@@ -595,10 +589,11 @@ export function extractCarryover(
 /* ─── 본문 prose 영역 strip ─────────────────────── */
 
 /**
- * 본문에서 implementation 섹션 내 PR 표(헤더 + separator + 데이터 라인)만 정밀 strip한다.
- * 본문에서 implementation 섹션 자체는 유지하고, 표 라인 범위만 제거한다.
+ * implementation 섹션 rawMarkdown에서 PR 표(헤더 + separator + 데이터 라인)만 정밀 strip한다.
+ * 섹션 본문(prose)은 유지하고 표 라인 범위만 제거 — PhaseStrip 카드와 중복 차단.
+ * detail-view chunk 렌더가 implementation chunk 생성 시 호출한다.
  */
-function stripPrTableLines(rawMarkdown: string): string {
+export function stripPrTableLines(rawMarkdown: string): string {
   const lines = rawMarkdown.split('\n');
   const headerIdx = lines.findIndex(
     (l) => /\|/.test(l) && /pr|pull\s*request/i.test(l),

@@ -75,16 +75,20 @@ const CARRYOVER_RE =
 
 /**
  * 섹션 제목 텍스트를 canonical 키로 매핑한다.
+ * 숫자 prefix(`## 9. Sprint 152 이월 시드`, `## 7. Sprint 153 Carryover Seeds` 등)는
+ * 정규화 시 제거하여 numbered + 일반 H2 모두 동일 alias로 처리한다(Sprint 163 R4 P3).
+ *
  * @param heading - H2/H3 텍스트 (## 기호 제거 후)
  * @returns 매핑된 canonical 키 또는 'other'
  */
 export function resolveCanonical(heading: string): CanonicalSection {
-  const normalized = heading.trim().toLowerCase();
+  const stripped = heading.trim().replace(/^\d+\.\s+/, '');
+  const normalized = stripped.toLowerCase();
 
   const direct = normalizedMap.get(normalized);
   if (direct) return direct;
 
-  if (CARRYOVER_RE.test(heading.trim())) return 'carryover';
+  if (CARRYOVER_RE.test(stripped)) return 'carryover';
 
   return 'other';
 }

@@ -7,11 +7,24 @@
  * ADR 상세 3-column 레이아웃 — 좌 TOC / 중앙 본문 / 우 메타사이드바(미니 그래프 포함).
  * locale='en' + !meta.hasEnTranslation 일 때만 "Content in Korean" 배너 + 한국어 원문 링크 표시.
  * 영문판 본문이 존재하는 ADR(docs/adr-en/<path> 있음)은 배너 없이 영문 본문만 렌더.
+ *
+ * 본문 렌더는 sections 단위 chunk 방식 — lessons/carryover canonical을 만나면
+ * prose 누적분을 flush 후 callout을 in-place 삽입하여 본문 순서와 시각 순서를 일치시킨다
+ * (Sprint 163 R4 P2 해소).
  */
-import type { AdjacencyList, AdrDoc, AdrMeta } from '@/lib/adr/types';
+import type { ReactNode } from 'react';
+import type {
+  AdjacencyList,
+  AdrDoc,
+  AdrMeta,
+  AdrSection,
+} from '@/lib/adr/types';
 import { renderAdrMdx } from '@/lib/adr/markdown';
 import { buildUrl } from '@/lib/adr/index-builder';
-import { getCanonicalSectionIndices } from '@/lib/adr/parser';
+import {
+  getCanonicalSectionIndices,
+  stripPrTableLines,
+} from '@/lib/adr/parser';
 import { type Locale, t } from '@/lib/i18n';
 import { AdrToc } from './adr-toc';
 import { AdrMetaSidebar } from './adr-meta-sidebar';
@@ -46,6 +59,109 @@ function KoreanOnlyBanner({ meta }: { meta: AdrMeta }) {
   );
 }
 
+/**
+ * 본문을 sections 단위 chunk로 렌더한다.
+ * lessons/carryover H2 만나면 prose 누적 flush 후 callout을 그 위치에 삽입한다.
+ * implementation H2의 PR 표는 stripPrTableLines로 정밀 제거(PhaseStrip 중복 차단).
+ */
+async function renderSectionChunks(
+  doc: AdrDoc,
+  locale: Locale,
+  lessonsIndices: number[] | undefined,
+  carryoverIndices: number[] | undefined,
+  lessonsAnchorId: string | undefined,
+  carryoverAnchorId: string | undefined,
+): Promise<ReactNode[]> {
+  const chunks: ReactNode[] = [];
+  let proseBuffer: string[] = [];
+
+  const lessonsIdxSet = new Set(lessonsIndices ?? []);
+  const carryoverIdxSet = new Set(carryoverIndices ?? []);
+  const hasLessons = doc.lessons && doc.lessons.length > 0;
+  const hasCarryover = doc.carryover && doc.carryover.length > 0;
+
+  const flushProse = async () => {
+    if (proseBuffer.length === 0) return;
+    const md = proseBuffer.join('\n\n').trim();
+    proseBuffer = [];
+    if (md.length === 0) return;
+    const content = await renderAdrMdx(md, locale);
+    chunks.push(
+      <div
+        key={`prose-${chunks.length}`}
+        className="prose max-w-none"
+      >
+        {content}
+      </div>,
+    );
+  };
+
+  for (let i = 0; i < doc.sections.length; i++) {
+    const sec = doc.sections[i];
+
+    // lessons H2 — callout으로 대체. 인접 H3 sub-section은 skip(callout 흡수)
+    if (sec.level === 2 && sec.canonical === 'lessons' && hasLessons) {
+      await flushProse();
+      chunks.push(
+        <AdrLessonsCallout
+          key={`lessons-${i}`}
+          lessons={doc.lessons}
+          anchorId={lessonsAnchorId}
+          locale={locale}
+        />,
+      );
+      continue;
+    }
+    if (sec.level === 3 && hasLessons && lessonsIdxSet.has(i)) continue;
+
+    // carryover H2 — callout으로 대체. 인접 H3 sub-section은 skip
+    if (sec.level === 2 && sec.canonical === 'carryover' && hasCarryover) {
+      await flushProse();
+      chunks.push(
+        <AdrCarryoverCallout
+          key={`carryover-${i}`}
+          carryover={doc.carryover}
+          anchorId={carryoverAnchorId}
+          locale={locale}
+        />,
+      );
+      continue;
+    }
+    if (sec.level === 3 && hasCarryover && carryoverIdxSet.has(i)) continue;
+
+    // implementation H2 — PR 표 라인 strip(PhaseStrip 카드 중복 차단)
+    if (
+      sec.level === 2 &&
+      sec.canonical === 'implementation' &&
+      doc.phases &&
+      doc.phases.length > 0
+    ) {
+      proseBuffer.push(stripPrTableLines(sec.rawMarkdown));
+      continue;
+    }
+
+    proseBuffer.push(sec.rawMarkdown);
+  }
+
+  await flushProse();
+  return chunks;
+}
+
+/** TOC에서 callout으로 흡수된 H3 sub-section 만 제거(H2는 anchor 매칭으로 callout 점프). */
+function filterTocSections(
+  sections: AdrSection[],
+  lessonsIndices: number[] | undefined,
+  carryoverIndices: number[] | undefined,
+): AdrSection[] {
+  const strippedH3 = new Set<number>(
+    [...(lessonsIndices ?? []), ...(carryoverIndices ?? [])].filter(
+      (i) => sections[i].level === 3,
+    ),
+  );
+  if (strippedH3.size === 0) return sections;
+  return sections.filter((_, i) => !strippedH3.has(i));
+}
+
 /** ADR 상세 3-column 레이아웃을 렌더링한다. */
 export async function AdrDetailView({
   doc,
@@ -54,14 +170,6 @@ export async function AdrDetailView({
   miniGraph,
   locale = 'ko',
 }: AdrDetailViewProps) {
-  // strip된 본문 우선 — lessons/carryover/PR 표 중복 차단.
-  // graceful degradation: parser가 strip 실패 시 bodyMarkdownForProse === bodyMarkdown.
-  const proseSource = doc.bodyMarkdownForProse ?? doc.bodyMarkdown;
-  const content = await renderAdrMdx(proseSource, locale);
-
-  // 들어낸 섹션의 anchor 정리(Sprint 163 R2/R3 P2):
-  //  - H2 anchorId는 callout root <aside id={...}>로 이어받아 TOC 점프 유지(R3 P2 해소)
-  //  - H3 sub-section indices만 TOC에서 제거 (callout 안에 시각적으로 흡수됨)
   const lessonsIndices =
     doc.lessons && doc.lessons.length > 0
       ? getCanonicalSectionIndices(doc.sections, 'lessons')
@@ -71,26 +179,26 @@ export async function AdrDetailView({
       ? getCanonicalSectionIndices(doc.sections, 'carryover')
       : undefined;
 
-  const strippedH3IndexSet = new Set<number>(
-    [...(lessonsIndices ?? []), ...(carryoverIndices ?? [])].filter(
-      (i) => doc.sections[i].level === 3,
-    ),
-  );
-  const visibleSections =
-    strippedH3IndexSet.size > 0
-      ? doc.sections.filter((_, i) => !strippedH3IndexSet.has(i))
-      : doc.sections;
+  const lessonsAnchorId = lessonsIndices
+    ? doc.sections[lessonsIndices[0]].anchorId
+    : undefined;
+  const carryoverAnchorId = carryoverIndices
+    ? doc.sections[carryoverIndices[0]].anchorId
+    : undefined;
 
-  // callout root에 부여할 H2 anchorId (sectionIndices 첫 값은 H2 — collectCanonicalSectionMarkdown
-  // 가 level=2 H2 시작에서만 그룹을 시작하므로 첫 index는 항상 H2 보장).
-  const lessonsAnchorId =
-    lessonsIndices !== undefined
-      ? doc.sections[lessonsIndices[0]].anchorId
-      : undefined;
-  const carryoverAnchorId =
-    carryoverIndices !== undefined
-      ? doc.sections[carryoverIndices[0]].anchorId
-      : undefined;
+  const chunks = await renderSectionChunks(
+    doc,
+    locale,
+    lessonsIndices,
+    carryoverIndices,
+    lessonsAnchorId,
+    carryoverAnchorId,
+  );
+  const visibleSections = filterTocSections(
+    doc.sections,
+    lessonsIndices,
+    carryoverIndices,
+  );
 
   return (
     <div className="flex gap-8">
@@ -106,17 +214,7 @@ export async function AdrDetailView({
         <AdrHero doc={doc} locale={locale} />
         <AdrPhaseStrip phases={doc.phases} locale={locale} />
         <AdrDecisionsGrid decisions={doc.decisions} locale={locale} />
-        <div className="prose max-w-none">{content}</div>
-        <AdrLessonsCallout
-          lessons={doc.lessons}
-          anchorId={lessonsAnchorId}
-          locale={locale}
-        />
-        <AdrCarryoverCallout
-          carryover={doc.carryover}
-          anchorId={carryoverAnchorId}
-          locale={locale}
-        />
+        {chunks}
       </article>
 
       {/* 우측 메타사이드바 */}
