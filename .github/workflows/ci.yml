@@ -670,11 +670,20 @@ jobs:
         with:
           context: ${{ matrix.context }}
           platforms: linux/arm64
-          push: ${{ github.ref == 'refs/heads/main' }}
-          tags: ${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:main-${{ github.sha }}
+          # Sprint 165 옵션 C: multi-output (main 푸시 + 항상 tarball)
+          outputs: |
+            type=image,push=${{ github.ref == 'refs/heads/main' }},name=${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:main-${{ github.sha }}
+            type=docker,dest=/tmp/image-${{ matrix.service }}.tar
           build-args: APK_CACHE_BUST=${{ env.APK_BUST_VALUE }}
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+      - name: Upload image tarball for Trivy scan
+        if: steps.check.outputs.skip == 'false'
+        uses: actions/upload-artifact@v6
+        with:
+          name: image-tar-${{ matrix.service }}
+          path: /tmp/image-${{ matrix.service }}.tar
+          retention-days: 1
 
   build-frontend:
     name: Build Frontend (Next.js)
@@ -704,11 +713,19 @@ jobs:
         with:
           context: ./frontend
           platforms: linux/arm64
-          push: ${{ github.ref == 'refs/heads/main' }}
-          tags: ${{ env.IMAGE_PREFIX }}-frontend:main-${{ github.sha }}
+          # Sprint 165 옵션 C: multi-output (main 푸시 + 항상 tarball)
+          outputs: |
+            type=image,push=${{ github.ref == 'refs/heads/main' }},name=${{ env.IMAGE_PREFIX }}-frontend:main-${{ github.sha }}
+            type=docker,dest=/tmp/image-frontend.tar
           build-args: APK_CACHE_BUST=${{ env.APK_BUST_VALUE }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
+      - name: Upload image tarball for Trivy scan
+        uses: actions/upload-artifact@v6
+        with:
+          name: image-tar-frontend
+          path: /tmp/image-frontend.tar
+          retention-days: 1
 
   # ============================================================
   # Build Blog — 기술 블로그 정적 사이트 (Next.js SSG + nginx)
@@ -761,11 +778,19 @@ jobs:
         with:
           context: ./blog
           platforms: linux/arm64
-          push: ${{ github.ref == 'refs/heads/main' }}
-          tags: ${{ env.IMAGE_PREFIX }}-blog:main-${{ github.sha }}
+          # Sprint 165 옵션 C: multi-output (main 푸시 + 항상 tarball)
+          outputs: |
+            type=image,push=${{ github.ref == 'refs/heads/main' }},name=${{ env.IMAGE_PREFIX }}-blog:main-${{ github.sha }}
+            type=docker,dest=/tmp/image-blog.tar
           build-args: APK_CACHE_BUST=${{ env.APK_BUST_VALUE }}
           cache-from: type=gha,scope=blog
           cache-to: type=gha,mode=max,scope=blog
+      - name: Upload image tarball for Trivy scan
+        uses: actions/upload-artifact@v6
+        with:
+          name: image-tar-blog
+          path: /tmp/image-blog.tar
+          retention-days: 1
 
   # ============================================================
   # Trivy — 이미지 취약점 스캔 (main push 후, deploy 전)
@@ -778,7 +803,8 @@ jobs:
       - build-services
       - build-frontend
       - build-blog
-    if: github.ref == 'refs/heads/main' && !cancelled()
+    # Sprint 165 옵션 C: PR 단계에서도 Trivy 스캔 (tarball + --input)
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -833,6 +859,13 @@ jobs:
         with:
           sparse-checkout: .trivyignore
           sparse-checkout-cone-mode: false
+      # Sprint 165 옵션 C: build job 이 업로드한 docker tarball 을 받아서 local scan
+      - name: Download image tarball
+        if: steps.check.outputs.skip == 'false'
+        uses: actions/download-artifact@v6
+        with:
+          name: image-tar-${{ matrix.service }}
+          path: /tmp
       - name: Install Trivy
         if: steps.check.outputs.skip == 'false'
         run: |
@@ -843,33 +876,35 @@ jobs:
         if: steps.check.outputs.skip == 'false'
         run: |
           trivy image \
-            --platform linux/arm64 \
             --severity CRITICAL,HIGH \
             --exit-code 1 \
             --ignore-unfixed \
             --ignorefile .trivyignore \
             --format table \
-            "${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:main-${{ github.sha }}"
-        env:
-          TRIVY_USERNAME: ${{ github.actor }}
-          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+            --input /tmp/image-${{ matrix.service }}.tar
       - name: Trivy scan (SARIF)
         if: always() && steps.check.outputs.skip == 'false'
         run: |
           trivy image \
-            --platform linux/arm64 \
             --severity CRITICAL,HIGH \
             --ignore-unfixed \
             --ignorefile .trivyignore \
             --format sarif \
             --output trivy-results.sarif \
-            "${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:main-${{ github.sha }}"
-        env:
-          TRIVY_USERNAME: ${{ github.actor }}
-          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+            --input /tmp/image-${{ matrix.service }}.tar
+      # Sprint 165 Critic R1 P2 + R2 P2 fix: fork PR + same-repo Dependabot PR
+      # 모두 GITHUB_TOKEN 이 read-only 라 security-events:write 차단됨 →
+      # SARIF 업로드 실패 시 보안 게이트와 무관한 CI red 양산 (Sprint 164
+      # noisy red 패턴 재발 차단). GitHub Docs "Dependabot on GitHub Actions"
+      # 참고 — same-repo Dependabot PR 도 fork PR 과 동일 권한 제약.
       - name: Upload Trivy SARIF
         uses: github/codeql-action/upload-sarif@v4
-        if: always() && steps.check.outputs.skip == 'false'
+        if: >
+          always() &&
+          steps.check.outputs.skip == 'false' &&
+          (github.event_name != 'pull_request' ||
+           (github.event.pull_request.head.repo.full_name == github.repository &&
+            github.event.pull_request.user.login != 'dependabot[bot]'))
         with:
           sarif_file: trivy-results.sarif
           category: trivy-${{ matrix.service }}
