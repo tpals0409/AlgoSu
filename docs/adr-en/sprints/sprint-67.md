@@ -4,7 +4,7 @@ title: "Tech Blog Post Addition + GitOps Synchronization"
 date: "2026-04-09"
 status: completed
 agents: [Scribe, Conductor]
-related_adrs: [ADR-004, ADR-005]
+related_adrs: []
 ---
 
 # Sprint 67: Tech Blog Post Addition + GitOps Synchronization
