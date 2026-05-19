@@ -252,3 +252,18 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+
+  # Critic R1 P2 fix (Sprint 164): blog Dockerfile 도 CI 빌드 + Trivy scan 대상 → docker 등록 필수
+  # (블로그 nginx base tag 노후화 시 동일 회귀 모드 재현 차단)
+  - package-ecosystem: "docker"
+    directory: "/blog"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      timezone: "Asia/Seoul"
+    labels: ["dependencies", "docker"]
+    commit-message:
+      prefix: "chore(docker)"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
