@@ -337,9 +337,10 @@ export function extractPhaseEntries(
     h.toLowerCase(),
   );
   const phaseCol = findColIndex(headers, ['phase']);
-  const ownerCol = findColIndex(headers, ['owner']);
-  const summaryCol = findColIndex(headers, ['변경 내용', '변경내용', 'summary', 'description']);
-  const linesCol = findColIndex(headers, ['lines']);
+  if (phaseCol < 0) return undefined; // Phase 열 없으면 PR 표가 아님 — bogus 카드 차단
+  const ownerCol = findColIndex(headers, ['owner', '담당']);
+  const summaryCol = findColIndex(headers, ['변경 내용', '변경내용', '변경', 'summary', 'description']);
+  const linesCol = findColIndex(headers, ['lines', '라인']);
 
   const entries: AdrPhaseEntry[] = [];
 
