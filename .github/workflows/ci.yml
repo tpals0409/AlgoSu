@@ -892,9 +892,16 @@ jobs:
             --format sarif \
             --output trivy-results.sarif \
             --input /tmp/image-${{ matrix.service }}.tar
+      # Sprint 165 Critic R1 P2 fix: fork/Dependabot PR 은 GITHUB_TOKEN 이
+      # read-only 라 security-events:write 가 차단됨 → SARIF 업로드 실패 시
+      # 보안 게이트와 무관한 CI red 양산 (Sprint 164 noisy red 패턴 재발 차단)
       - name: Upload Trivy SARIF
         uses: github/codeql-action/upload-sarif@v4
-        if: always() && steps.check.outputs.skip == 'false'
+        if: >
+          always() &&
+          steps.check.outputs.skip == 'false' &&
+          (github.event_name != 'pull_request' ||
+           github.event.pull_request.head.repo.full_name == github.repository)
         with:
           sarif_file: trivy-results.sarif
           category: trivy-${{ matrix.service }}
