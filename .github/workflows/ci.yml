@@ -778,7 +778,10 @@ jobs:
       - build-services
       - build-frontend
       - build-blog
-    if: github.ref == 'refs/heads/main' && !cancelled()
+    # Sprint 164 시드 #신규1: PR 단계에서도 Trivy SARIF 업로드 활성화
+    # (기존: main 브랜치에서만 → 변경: PR + main 양쪽)
+    # deploy job은 이미 별도 'if: github.ref == 'refs/heads/main'' 가드 존재 → deploy 위험 0
+    if: "!cancelled()"
     runs-on: ubuntu-latest
     permissions:
       contents: read
