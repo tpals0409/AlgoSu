@@ -96,6 +96,25 @@ async function renderSectionChunks(
     );
   };
 
+  // sections에 포함되지 않는 preamble(첫 H2 직전, 보통 frontmatter-less ADR의 H1 + dash-list 메타)
+  // 을 첫 prose chunk에 seed한다. H1은 detail-view 상단에서 별도로 렌더되므로 본문에서는 제거(Sprint 163 R5 P2).
+  if (doc.sections.length > 0) {
+    const firstH2Idx = doc.bodyMarkdown.search(/^##\s+/m);
+    if (firstH2Idx > 0) {
+      const preamble = doc.bodyMarkdown
+        .slice(0, firstH2Idx)
+        .replace(/^#\s+.+$/m, '') // detail-view 상단 H1과 중복 차단
+        .trim();
+      if (preamble.length > 0) {
+        proseBuffer.push(preamble);
+      }
+    }
+  } else {
+    // sections 0개(H2 없음) — 본문 전체를 H1만 제거 후 단일 prose chunk
+    const cleaned = doc.bodyMarkdown.replace(/^#\s+.+$/m, '').trim();
+    if (cleaned.length > 0) proseBuffer.push(cleaned);
+  }
+
   for (let i = 0; i < doc.sections.length; i++) {
     const sec = doc.sections[i];
 
