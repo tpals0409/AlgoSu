@@ -71,7 +71,7 @@ for (const [canonical, aliases] of ALIAS_MAP) {
  * `\b`는 한국어 글자에서 word boundary가 false라 ASCII 의존 — 공백/끝/한국어 후속/괄호 명시.
  */
 const CARRYOVER_RE =
-  /^(?:sprint\s+\d+\s+)?(?:이월|carry[-\s]?over)(?:\s|$|시드|항목|\()/i;
+  /^(?:sprint\s+\d+\+?\s+)?(?:이월|carry[-\s]?over)(?:\s|$|시드|항목|\()/i;
 
 /**
  * 섹션 제목 텍스트를 canonical 키로 매핑한다.
