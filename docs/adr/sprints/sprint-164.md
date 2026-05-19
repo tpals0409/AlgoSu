@@ -31,7 +31,7 @@ related_memory: ["sprint-window"]
 |----|-------|--------|------|
 | [#280](https://github.com/tpals0409/AlgoSu/pull/280) | A — PR Trivy 활성화 | `chore/sprint-164-pr-trivy-enable` | ❌ **Close** (Critic R1 P1 본질 결함 → Sprint 165 재설계) |
 | [#281](https://github.com/tpals0409/AlgoSu/pull/281) | B — dependabot docker 6건 | `chore/sprint-164-dependabot-docker` | ✅ Squash merge `b13e6c5` |
-| [#282](https://github.com/tpals0409/AlgoSu/pull/282) | C — group envelope | `fix/sprint-164-ai-analysis-group-envelope` | ✅ Squash merge (TBD) |
+| [#282](https://github.com/tpals0409/AlgoSu/pull/282) | C — group envelope | `fix/sprint-164-ai-analysis-group-envelope` | ✅ Squash merge `12eb347` |
 | [#TBD](https://github.com/tpals0409/AlgoSu/pulls) | D — Sprint 164 ADR | `docs/sprint-164-adr` | 본 PR (architect + scribe) |
 
 ### Phase A — PR 단계 Trivy scan 활성화 시도 (close)
