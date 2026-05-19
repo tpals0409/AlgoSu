@@ -38,6 +38,28 @@ related_memory: ["sprint-window"]
 | [#261](https://github.com/tpals0409/AlgoSu/pull/261) | hotfix #3 **real fix** | architect | ci.yml `node ../scripts/check-adr-links.mjs out/adr` → `node scripts/check-adr-links.mjs blog/out/adr` absolute segment. check-adr-links.mjs:33 ROOT=repo root dependency was the real cause | +5 −21 |
 | [#262](https://github.com/tpals0409/AlgoSu/pull/262) | UX addition | architect | Blog → ADR entry navigation: header.tsx right nav 'ADR' link + home-page.tsx CTA card + i18n dictionary 4 keys (user feedback "no button to navigate from existing blog to ADR" addressed immediately) | +51 −3 |
 
+### Workflow
+
+```mermaid
+flowchart TD
+    P1["P1 infra<br/>parser·types·loader<br/>#253"] --> P2["P2~P8 routing·visualization<br/>#254"]
+    P2 --> P9["P9 UI i18n<br/>#255"]
+    P9 --> P10["P10 content i18n infra<br/>#256"]
+    P10 --> ADR["ADR + hotfix #1<br/>outputFileTracingIncludes removed<br/>#257"]
+    ADR --> H2["hotfix #2<br/>outputFileTracingRoot explicit<br/>#258"]
+    H2 --> Probe["hotfix probe<br/>out/ location<br/>#259"]
+    Probe --> Trigger["chore trigger<br/>build-blog forced<br/>#260"]
+    Trigger --> H3["hotfix #3 real fix<br/>check-adr-links path<br/>#261"]
+    H3 --> UX["UX addition<br/>blog → ADR nav/CTA<br/>#262"]
+
+    classDef phase fill:#e0e7ff,stroke:#6366f1,color:#1e1b4b
+    classDef hotfix fill:#fef3c7,stroke:#f59e0b,color:#78350f
+    classDef realfix fill:#dcfce7,stroke:#16a34a,color:#14532d
+    class P1,P2,P9,P10 phase
+    class ADR,H2,Probe,Trigger hotfix
+    class H3,UX realfix
+```
+
 ## Verification
 
 - **All 4 PRs CI fail 0, mergeStateStatus CLEAN ✅** (auto-merge flow)
