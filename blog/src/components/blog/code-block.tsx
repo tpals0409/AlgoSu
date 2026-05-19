@@ -17,6 +17,8 @@ import {
   useCallback,
   useState,
 } from 'react';
+import { usePathname } from 'next/navigation';
+import { t } from '@/lib/i18n';
 
 /** 언어 표시명 매핑 (필요 시 확장) */
 const LANG_LABELS: Record<string, string> = {
@@ -72,6 +74,8 @@ function extractText(node: ReactNode): string {
 
 export function CodeBlock({ children, ...rest }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
+  const pathname = usePathname();
+  const locale = pathname?.startsWith('/en') ? 'en' : 'ko';
   const lang = extractLanguage(children);
   const label = lang ? (LANG_LABELS[lang] ?? lang) : null;
 
@@ -94,18 +98,18 @@ export function CodeBlock({ children, ...rest }: CodeBlockProps) {
           <button
             type="button"
             onClick={handleCopy}
-            aria-label="코드 복사"
+            aria-label={t(locale, 'codeBlockCopyAriaLabel')}
             className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs text-text-muted transition-colors hover:bg-brand-soft hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             {copied ? (
               <>
                 <CheckIcon />
-                <span>복사됨</span>
+                <span>{t(locale, 'codeBlockCopied')}</span>
               </>
             ) : (
               <>
                 <CopyIcon />
-                <span>복사</span>
+                <span>{t(locale, 'codeBlockCopy')}</span>
               </>
             )}
           </button>

@@ -123,6 +123,11 @@ const DICTIONARY = {
 
     /* ─── 타임라인 ─────────────────────────────────── */
     timelineAriaLabel: 'Sprint 타임라인 막대 그래프',
+
+    /* ─── 코드 블록 ────────────────────────────────── */
+    codeBlockCopy: '복사',
+    codeBlockCopied: '복사됨',
+    codeBlockCopyAriaLabel: '코드 복사',
   },
   en: {
     /* ─── 기존 블로그 사전 ─────────────────────────── */
@@ -232,6 +237,11 @@ const DICTIONARY = {
 
     /* ─── Timeline ─────────────────────────────────── */
     timelineAriaLabel: 'Sprint timeline bar chart',
+
+    /* ─── Code block ───────────────────────────────── */
+    codeBlockCopy: 'Copy',
+    codeBlockCopied: 'Copied',
+    codeBlockCopyAriaLabel: 'Copy code',
   },
 } as const;
 

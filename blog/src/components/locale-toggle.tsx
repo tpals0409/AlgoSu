@@ -25,8 +25,8 @@ export function LocaleToggle() {
   return (
     <a
       href={targetHref}
-      aria-label={isEn ? '한국어로 전환' : 'Switch to English'}
-      title={isEn ? '한국어로 전환' : 'Switch to English'}
+      aria-label={isEn ? 'Switch to Korean' : '영어로 전환'}
+      title={isEn ? 'Switch to Korean' : '영어로 전환'}
       className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-xs font-bold text-text-muted hover:text-brand"
     >
       {targetLabel}
