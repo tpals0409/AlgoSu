@@ -100,17 +100,19 @@ Tarball is `linux/arm64` single manifest, so `--platform` option is meaningless.
   - Recommended action: extend `if` of SARIF upload step with same-repo PR guard
 - **Focused Checks 5 items all OK**: buildx multi-output compatibility / Trivy `--input` + arm64 tarball / deploy gate regression / registry auth removal / PR-commit description consistency
 
-**Phase C P2 fix** (commit `<TBD>`):
-- `.github/workflows/ci.yml:895` "Upload Trivy SARIF" step `if` condition extension:
+**Phase C P2 fix** (commit `8068806` + R2 forward-fix `<TBD-FORWARDFIX-SHA>`):
+- `.github/workflows/ci.yml:895` "Upload Trivy SARIF" step `if` condition extension (R1 + R2 P2 combined):
   ```yaml
   if: >
     always() &&
     steps.check.outputs.skip == 'false' &&
     (github.event_name != 'pull_request' ||
-     github.event.pull_request.head.repo.full_name == github.repository)
+     (github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]'))
   ```
 - table scan (PR gate) preserved as-is → security gate effect 100% preserved
-- SARIF upload limited to same-repo PR + main only → blocks fork/Dependabot noisy red
+- SARIF upload limited to same-repo non-Dependabot PR + main only → blocks fork/Dependabot noisy red
+- R2 P2 detection: GitHub Docs "Dependabot on GitHub Actions" notes that same-repo Dependabot PRs also receive read-only `GITHUB_TOKEN` → original `head.repo.full_name == repository` guard alone is partial. Combined with `pull_request.user.login != 'dependabot[bot]'`
 
 **Measurement results (PR #290 run 26087105241, ci.yml + sprint-165.md change PR)**:
 - detect-changes: 6 services changed=false (no code change), blog/docs changed=true (`docs/adr/**` match)
@@ -166,8 +168,8 @@ Tarball is `linux/arm64` single manifest, so `--platform` option is meaningless.
 
 ## Results
 
-- **origin/main**: `ecfe954` → **`<TBD>`** (after PR #290 squash merge, sprint-window.md update)
-- **commits**: Phase A `b8c6918` + Phase B `1f9c364` + Phase C `<TBD>` + Phase D `<TBD>` (4 commits total → squash merge)
+- **origin/main**: `ecfe954` → **`<TBD-MERGE-SHA>`** (after PR #290 squash merge, sprint-window.md update)
+- **commits**: Phase A `b8c6918` + Phase B `1f9c364` + Phase C `8068806` + Phase D `de38d62` + R2 P2/P3 forward-fix `<TBD-FORWARDFIX-SHA>` (5 commits total → squash merge)
 - **ci.yml cumulative change**: +50 -18 (3 build jobs multi-output + trivy --input + SARIF fork guard)
 
 ## New Patterns
