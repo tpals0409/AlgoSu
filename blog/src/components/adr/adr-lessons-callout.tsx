@@ -12,6 +12,8 @@ import { type Locale, t } from '@/lib/i18n';
 
 interface AdrLessonsCalloutProps {
   lessons?: AdrLessonEntry[];
+  /** TOC anchor 호환 — strip 된 lessons H2 anchorId 를 callout root id로 부여 */
+  anchorId?: string;
   locale?: Locale;
 }
 
@@ -33,15 +35,17 @@ function LessonItem({ entry }: { entry: AdrLessonEntry }) {
 /** ADR 교훈 callout 박스를 렌더링한다. */
 export function AdrLessonsCallout({
   lessons,
+  anchorId,
   locale = 'ko',
 }: AdrLessonsCalloutProps) {
   if (!lessons || lessons.length === 0) return null;
 
   return (
     <aside
+      id={anchorId}
       role="note"
       aria-label={t(locale, 'lessonsTitle')}
-      className="mb-6 rounded-lg border border-callout-warn-border bg-callout-warn-bg p-4"
+      className="mb-6 rounded-lg border border-callout-warn-border bg-callout-warn-bg p-4 scroll-mt-24"
     >
       <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-callout-warn-fg">
         <span aria-hidden="true">💡</span>

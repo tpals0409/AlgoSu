@@ -472,6 +472,44 @@ function extractListItems(
 }
 
 /**
+ * canonical H2 섹션이 본문에서 "terminal" 위치(뒤에 의미 있는 H2 없음)인지 검사한다.
+ *
+ * 본문 순서가 `... → carryover → verification` 같은 경우 carryover만 callout으로
+ * 들어내면 verification이 carryover 자리로 올라와 순서 회귀가 발생한다(Critic Sprint 163 R2 P2).
+ * Terminal 검사로 회귀 회피: terminal일 때만 strip + callout 적용, 그 외에는 본문 prose에 유지.
+ *
+ * `allowedAfter` 에 포함된 canonical(`related-docs` 등)은 "뒤에 와도 무방한 마무리 섹션"으로
+ * 간주하여 terminal 판정을 통과시킨다.
+ */
+export function isCanonicalTerminal(
+  sections: AdrSection[],
+  canonical: AdrSection['canonical'],
+  allowedAfter: ReadonlySet<AdrSection['canonical']> = new Set(['related-docs']),
+): boolean {
+  const collected = collectCanonicalSectionMarkdown(sections, canonical);
+  if (!collected) return false;
+
+  const lastIdx = Math.max(...collected.sectionIndices);
+  for (let i = lastIdx + 1; i < sections.length; i++) {
+    if (sections[i].level === 2 && !allowedAfter.has(sections[i].canonical)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * canonical H2 + 인접 H3 그룹에 속한 모든 section index 를 반환한다.
+ * detail-view가 TOC filter 시 활용한다.
+ */
+export function getCanonicalSectionIndices(
+  sections: AdrSection[],
+  canonical: AdrSection['canonical'],
+): number[] | undefined {
+  return collectCanonicalSectionMarkdown(sections, canonical)?.sectionIndices;
+}
+
+/**
  * canonical H2 섹션 + 그 다음 H2 직전까지의 모든 H3 sub-section rawMarkdown을 결합한다.
  *
  * 이월 섹션이 `## Sprint N+1 이월\n### Sprint M 이월 (...)` 형태로 H3 sub-section을
@@ -502,10 +540,15 @@ function collectCanonicalSectionMarkdown(
 /**
  * lessons 섹션에서 교훈 항목을 추출한다.
  * `- **bold**: text` / `1. **bold** — text` / 일반 list item 모두 지원.
+ *
+ * Terminal 검사 통과(뒤에 의미 있는 H2 없음)한 경우에만 결과 반환 — non-terminal일 때
+ * callout으로 추출하면 본문 순서가 회귀하므로 본문 prose에 자연 유지시킨다(Sprint 163 R2 P2).
  */
 export function extractLessons(
   sections: AdrSection[],
 ): AdrLessonEntry[] | undefined {
+  if (!isCanonicalTerminal(sections, 'lessons')) return undefined;
+
   const collected = collectCanonicalSectionMarkdown(sections, 'lessons');
   if (!collected) return undefined;
 
@@ -517,10 +560,14 @@ export function extractLessons(
  * carryover 섹션에서 이월 항목을 추출한다.
  * title 또는 H3 sub-section heading에 "Sprint NNN" 포함 시 sprint 필드를 채운다.
  * H2/H3 sub-section 별로 분리 처리하여 각 항목의 sprint 컨텍스트를 정확히 매핑한다.
+ *
+ * Terminal 검사 통과한 경우에만 결과 반환 — Sprint 163 R2 P2 회귀 차단.
  */
 export function extractCarryover(
   sections: AdrSection[],
 ): AdrCarryoverEntry[] | undefined {
+  if (!isCanonicalTerminal(sections, 'carryover')) return undefined;
+
   const collected = collectCanonicalSectionMarkdown(sections, 'carryover');
   if (!collected) return undefined;
 

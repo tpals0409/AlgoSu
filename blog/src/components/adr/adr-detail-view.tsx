@@ -11,6 +11,7 @@
 import type { AdjacencyList, AdrDoc, AdrMeta } from '@/lib/adr/types';
 import { renderAdrMdx } from '@/lib/adr/markdown';
 import { buildUrl } from '@/lib/adr/index-builder';
+import { getCanonicalSectionIndices } from '@/lib/adr/parser';
 import { type Locale, t } from '@/lib/i18n';
 import { AdrToc } from './adr-toc';
 import { AdrMetaSidebar } from './adr-meta-sidebar';
@@ -58,10 +59,40 @@ export async function AdrDetailView({
   const proseSource = doc.bodyMarkdownForProse ?? doc.bodyMarkdown;
   const content = await renderAdrMdx(proseSource, locale);
 
+  // TOC에서 callout으로 들어낸 섹션의 anchor를 제거하여 404 anchor 방지(Sprint 163 R2 P2-1).
+  // 동시에 callout root <aside id={anchorId}>로 H2 anchorId 이어받아 TOC 링크 동작 유지.
+  const lessonsIndices =
+    doc.lessons && doc.lessons.length > 0
+      ? getCanonicalSectionIndices(doc.sections, 'lessons')
+      : undefined;
+  const carryoverIndices =
+    doc.carryover && doc.carryover.length > 0
+      ? getCanonicalSectionIndices(doc.sections, 'carryover')
+      : undefined;
+
+  const strippedIndexSet = new Set<number>([
+    ...(lessonsIndices ?? []),
+    ...(carryoverIndices ?? []),
+  ]);
+  const visibleSections =
+    strippedIndexSet.size > 0
+      ? doc.sections.filter((_, i) => !strippedIndexSet.has(i))
+      : doc.sections;
+
+  // callout root에 부여할 H2 anchorId (H3 sub-section의 anchor는 callout 안에 흡수)
+  const lessonsAnchorId =
+    lessonsIndices !== undefined
+      ? doc.sections[lessonsIndices[0]].anchorId
+      : undefined;
+  const carryoverAnchorId =
+    carryoverIndices !== undefined
+      ? doc.sections[carryoverIndices[0]].anchorId
+      : undefined;
+
   return (
     <div className="flex gap-8">
       {/* 좌측 TOC */}
-      <AdrToc sections={doc.sections} locale={locale} />
+      <AdrToc sections={visibleSections} locale={locale} />
 
       {/* 중앙 본문 */}
       <article className="min-w-0 max-w-3xl flex-1">
@@ -73,8 +104,16 @@ export async function AdrDetailView({
         <AdrPhaseStrip phases={doc.phases} locale={locale} />
         <AdrDecisionsGrid decisions={doc.decisions} locale={locale} />
         <div className="prose max-w-none">{content}</div>
-        <AdrLessonsCallout lessons={doc.lessons} locale={locale} />
-        <AdrCarryoverCallout carryover={doc.carryover} locale={locale} />
+        <AdrLessonsCallout
+          lessons={doc.lessons}
+          anchorId={lessonsAnchorId}
+          locale={locale}
+        />
+        <AdrCarryoverCallout
+          carryover={doc.carryover}
+          anchorId={carryoverAnchorId}
+          locale={locale}
+        />
       </article>
 
       {/* 우측 메타사이드바 */}
