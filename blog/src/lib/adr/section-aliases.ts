@@ -74,6 +74,16 @@ const CARRYOVER_RE =
   /^(?:sprint\s+\d+\+?\s+)?(?:이월|carry[-\s]?over)(?:\s|$|시드|항목|\()/i;
 
 /**
+ * Lessons 섹션 헤딩 정규식 — 변형 헤딩 tolerant 매치(Sprint 163 R9 P2).
+ *
+ * 매치 대상:
+ *  - KR: `교훈`, `주요 교훈`, `교훈 (Sprint NNN 이관)`, `교훈 항목`
+ *  - EN: `lessons`, `lessons learned`, `key lessons`, `lessons (...)`
+ */
+const LESSONS_RE =
+  /^(?:주요\s+|key\s+|major\s+)?(?:교훈|lessons)(?:\s+learned)?(?:\s|$|\(|항목)/i;
+
+/**
  * 섹션 제목 텍스트를 canonical 키로 매핑한다.
  * 숫자 prefix(`## 9. Sprint 152 이월 시드`, `## 7. Sprint 153 Carryover Seeds` 등)는
  * 정규화 시 제거하여 numbered + 일반 H2 모두 동일 alias로 처리한다(Sprint 163 R4 P3).
@@ -89,6 +99,7 @@ export function resolveCanonical(heading: string): CanonicalSection {
   if (direct) return direct;
 
   if (CARRYOVER_RE.test(stripped)) return 'carryover';
+  if (LESSONS_RE.test(stripped)) return 'lessons';
 
   return 'other';
 }
