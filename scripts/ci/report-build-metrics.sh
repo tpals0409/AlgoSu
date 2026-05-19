@@ -47,11 +47,14 @@ BUILD_END=$(date +%s)
 BUILD_DURATION=$((BUILD_END - ${BUILD_START:-$BUILD_END}))
 DURATION_FMT=$(awk -v s="$BUILD_DURATION" 'BEGIN {printf "%dm %ds", int(s/60), s%60}')
 
-CACHE_DU=$(docker buildx du --verbose 2>/dev/null | awk '/^Total:/ {print $2, $3; exit}')
+# Critic R1 P2 fix: pipefail + set -e 조합으로 `docker buildx du` 실패 시
+# fallback 실행 전 script 종료되던 회귀 차단. graceful fallback 약속 보존 위해
+# pipeline 전체를 `|| true` 로 격리 — telemetry 부재가 build job fail 유발 금지.
+CACHE_DU=$(docker buildx du --verbose 2>/dev/null | awk '/^Total:/ {print $2, $3; exit}' || true)
 [ -z "$CACHE_DU" ] && CACHE_DU="N/A"
 
 CACHE_ENTRIES=$(docker buildx du 2>/dev/null \
-  | awk 'NR > 1 && !/^(ID|Reclaimable|Shared|Private|Total):/ && NF > 0 {count++} END {print count+0}')
+  | awk 'NR > 1 && !/^(ID|Reclaimable|Shared|Private|Total):/ && NF > 0 {count++} END {print count+0}' || true)
 [ -z "$CACHE_ENTRIES" ] && CACHE_ENTRIES="0"
 
 {
