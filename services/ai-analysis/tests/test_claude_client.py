@@ -208,7 +208,13 @@ class TestParseResponseMarkdown:
         assert result["status"] == "completed"
         assert result["score"] == 75
 
-    def test_parse_invalid_json_returns_raw(self):
+    def test_parse_invalid_json_returns_envelope(self):
+        """Sprint 159 핫픽스 — 유효하지 않은 JSON 응답은 raw 노출 대신 envelope 저장.
+
+        dh4m 제출 사례: catch-all 폴백이 raw 마크다운/JSON을 feedback 에 그대로
+        저장 → 프론트 parseFeedback catch 블록이 summary=raw 로 렌더링.
+        본 테스트는 raw 텍스트가 envelope 에 절대 노출되지 않음을 검증.
+        """
         from src.claude_client import ClaudeClient
 
         with (
@@ -222,7 +228,12 @@ class TestParseResponseMarkdown:
         result = c._parse_response("not valid json {{{")
         assert result["status"] == "failed"
         assert result["score"] == 0
-        assert result["feedback"] == "not valid json {{{"
+        # feedback 은 유효 JSON envelope (raw 텍스트 미노출)
+        envelope = json.loads(result["feedback"])
+        assert isinstance(envelope, dict)
+        assert envelope["totalScore"] == 0
+        assert "not valid json" not in result["feedback"]
+        assert "다시 시도" in envelope["summary"]
 
     def test_parse_plain_json_no_backticks(self):
         """마크다운 없이 순수 JSON 파싱"""
@@ -434,7 +445,7 @@ class TestParseResponseFallback:
         assert result["score"] == 60
 
     def test_fallback_total_failure_regex_score(self):
-        """전체 파싱 실패 → totalScore regex 추출 성공"""
+        """전체 파싱 실패 → totalScore regex 추출 성공 + envelope JSON 저장 (Sprint 159)"""
         c = _make_client()
 
         raw = 'broken{json "totalScore": 90 more broken'
@@ -442,14 +453,61 @@ class TestParseResponseFallback:
         assert result["status"] == "completed"
         assert result["score"] == 90
 
+        # Sprint 159 핫픽스 — feedback 은 항상 유효 JSON envelope
+        envelope = json.loads(result["feedback"])
+        assert isinstance(envelope, dict)
+        assert envelope["totalScore"] == 90
+        # raw 텍스트("broken{json", "more broken")가 envelope 에 절대 노출되지 않음
+        assert "broken" not in envelope["summary"]
+        assert "more broken" not in result["feedback"]
+        # 사용자 친화 메시지 (점수만 확인 가능 안내)
+        assert "점수만" in envelope["summary"]
+        assert envelope["categories"] == []
+        assert envelope["optimizedCode"] is None
+
     def test_fallback_total_failure_no_score(self):
-        """전체 파싱 실패 + totalScore 없음 → score=0, failed"""
+        """전체 파싱 실패 + totalScore 없음 → score=0, failed + envelope JSON (Sprint 159)"""
         c = _make_client()
 
         raw = "completely broken response"
         result = c._parse_response(raw)
         assert result["status"] == "failed"
         assert result["score"] == 0
+
+        # Sprint 159 핫픽스 — feedback 은 항상 유효 JSON envelope
+        envelope = json.loads(result["feedback"])
+        assert isinstance(envelope, dict)
+        assert envelope["totalScore"] == 0
+        # raw 텍스트가 envelope 에 노출되지 않음
+        assert "completely broken" not in result["feedback"]
+        # 사용자 친화 메시지 (재시도 안내)
+        assert "다시 시도" in envelope["summary"]
+        assert envelope["categories"] == []
+        assert envelope["optimizedCode"] is None
+
+    def test_fallback_envelope_is_valid_json(self):
+        """catch-all 폴백 경로의 feedback 은 항상 valid JSON (Sprint 159 신규)"""
+        c = _make_client()
+
+        # Claude 응답에 raw 마크다운 + JSON 단편이 섞인 dh4m 제출 유사 사례
+        raw = (
+            "# 분석 결과\n"
+            "여기에 코드 분석 내용이 있습니다.\n"
+            '잘못된 JSON {"totalScore": 75, "summary": "...'
+        )
+        result = c._parse_response(raw)
+
+        # feedback 은 반드시 dict 로 파싱되는 valid JSON 이어야 함
+        envelope = json.loads(result["feedback"])
+        assert isinstance(envelope, dict)
+        assert "totalScore" in envelope
+        assert "summary" in envelope
+        assert "categories" in envelope
+        assert "optimizedCode" in envelope
+
+        # raw 텍스트가 DB 저장 형태(feedback)에 포함되지 않음 — PII/비밀 보호
+        assert "# 분석 결과" not in result["feedback"]
+        assert "잘못된 JSON" not in result["feedback"]
 
     def test_totalScore_zero_with_categories_recalculated(self):
         """totalScore=0 + categories 존재 → ALGORITHM_WEIGHTS 가중 평균 재계산"""

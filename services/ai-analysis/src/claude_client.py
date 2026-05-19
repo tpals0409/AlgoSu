@@ -309,13 +309,16 @@ class ClaudeClient:
             }
 
         except (json.JSONDecodeError, ValueError, KeyError) as e:
-            logger.warning("Claude 응답 파싱 실패", extra={"error": str(e)[:100]})
-            # 파싱 실패 시에도 마크다운 블록 strip 후 저장
-            fallback = raw_text.strip()
-            if fallback.startswith("```"):
-                fallback = fallback.split("\n", 1)[-1]  # 첫 줄 제거
-                if fallback.rstrip().endswith("```"):
-                    fallback = fallback.rstrip()[:-3].rstrip()
+            # Sprint 159 핫픽스 — raw 텍스트를 feedback 필드에 그대로 저장하지 않고,
+            # 항상 유효 JSON envelope 으로 감싸 DB에 저장.
+            # 근거: dh4m 제출 사례에서 catch-all 폴백이 raw 마크다운/JSON을 노출 →
+            # 프론트 parseFeedback catch 블록이 summary=raw 로 표시.
+            # PII/잠재 비밀이 raw 에 포함될 수 있으므로 raw 는 logger 만 노출.
+            raw_excerpt = raw_text.strip()[:200]
+            logger.warning(
+                "Claude 응답 파싱 실패 -- envelope fallback 사용",
+                extra={"error": str(e)[:100], "raw_excerpt": raw_excerpt},
+            )
 
             # 원본 텍스트에서 totalScore 추출 시도 (정규식 fallback)
             score = 0
@@ -335,8 +338,23 @@ class ClaudeClient:
                     extra={"score": score},
                 )
 
+            # 유효 JSON envelope — 프론트에서 즉시 구조화 렌더링 가능
+            envelope = {
+                "totalScore": score,
+                "summary": (
+                    "AI 분석 결과 파싱에 일시적 오류가 발생했습니다. "
+                    "점수만 확인하실 수 있습니다."
+                )
+                if score > 0
+                else (
+                    "AI 분석 결과를 표시할 수 없습니다. "
+                    "잠시 후 다시 시도해주세요."
+                ),
+                "categories": [],
+                "optimizedCode": None,
+            }
             return {
-                "feedback": fallback[:50000],
+                "feedback": json.dumps(envelope, ensure_ascii=False),
                 "optimized_code": None,
                 "score": score,
                 "status": status,
