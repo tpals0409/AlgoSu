@@ -145,11 +145,19 @@ build-frontend / build-blog also same pattern (matrix vs hardcoded only differen
 
 ## Critic Cycle
 
-**R1** (codex review --base 500b954, this commit `<TBD>`):
+**R1** (codex review --base 500b954, this commit `7c982c9` + `3ab5138`):
 
-- Result `<TBD-R1-RESULT>`
-- Self-contradiction detection priority — Sprint 168 goal "full zstd adoption" ↔ Trivy `--input` docker tarball usage consistency (zstd is measurement/storage only)
-- P0/P1 0 cases target, P2/P3 detection triggers same-PR forward-fix (Sprint 164/167 policy inheritance)
+- **Result**: P0 0 / P1 0 / **P2 1** / P3 0
+- **P2 detected**: `scripts/ci/report-build-metrics.sh` runs under `set -euo pipefail`, so `docker buildx du` nonzero exit terminates the script before the fallback (`[ -z "$CACHE_DU" ] && CACHE_DU="N/A"`) → violates prior inline workflow's graceful fallback promise → buildx cache inspection blip can fail the build job
+- **forward-fix**: `dccfccd` same-PR same-day — add `|| true` to both pipelines (`CACHE_DU` + `CACHE_ENTRIES`) so telemetry absence cannot fail the build job
+- **CI verification**: run #26099215601 — 37 SUCCESS + 9 SKIPPED + 0 FAILURE, mergeStateStatus CLEAN ✅
+
+**R2** (codex review --base 500b954, after fix commit `dccfccd`):
+
+- **Result**: R1 P2 resolution confirmed ✅, **new P2 1** detected
+- **P2 detected**: `scripts/ci/report-build-metrics.sh` not included in `detect-changes` paths filter → a future PR changing only the helper passes CI with all build jobs skipped → helper defects never exposed
+- **forward-fix**: `<TBD-R2-FIX>` same PR — add helper path to all 8 filters (gateway/identity/submission/problem/github-worker/ai-analysis/frontend/blog). Helper changes trigger all build jobs → actual runtime verification
+- Self-contradiction detection: this sprint goal "full zstd adoption" ↔ Trivy `--input` docker tarball usage consistency OK (zstd is measurement/storage only)
 
 ## Risk / Regression Blocking
 
@@ -197,16 +205,18 @@ build-frontend / build-blog also same pattern (matrix vs hardcoded only differen
 
 ## Result
 
-Changed files 5:
-- Modified 1: `.github/workflows/ci.yml` (-102 +18, build-services + frontend + blog outputs bulk zstd + helper call shortening)
-- New 1: `scripts/ci/report-build-metrics.sh` (+75, seed #167-3 helper)
+Changed files 5 (4 commits):
+- Modified 1: `.github/workflows/ci.yml` (Phase C -84 net + R2 P2 fix +8, build-services + frontend + blog outputs bulk zstd + helper call shortening + detect-changes filter helper path addition)
+- New 1: `scripts/ci/report-build-metrics.sh` (+75 + R1 P2 fix +3, seed #167-3 helper + graceful fallback)
 - New 2: `docs/adr/sprints/sprint-168.md` (KR) + `docs/adr-en/sprints/sprint-168.md` (EN 1:1 mapping)
 - Modified 1: `docs/adr/README.md` (lines 18/52/54 — count 107→108, range 62~167→62~168)
 
-Commits:
-- `564b5e1` feat(ci): Sprint 168 — full zstd adoption across 8 services + Report metrics helper extraction
-- `<TBD>` docs(adr): Sprint 168 ADR (KR + EN)
-- Squash merge: `<TBD-MERGE-SHA>` (PR `<TBD-PR-NUM>`)
+Commits (PR #293):
+- `7c982c9` feat(ci): Sprint 168 — zstd full adoption + Report metrics helper (seeds #167-1/#167-3)
+- `3ab5138` docs(adr): Sprint 168 ADR (KR + EN) + README update
+- `dccfccd` fix(ci): Sprint 168 R1 P2 — buildx du pipeline graceful fallback restoration
+- `<TBD-R2-FIX>` fix(ci): Sprint 168 R2 P2 — add helper path to detect-changes filter
+- Squash merge: `<TBD-MERGE-SHA>` (PR #293)
 
 ## New Patterns
 
@@ -215,6 +225,9 @@ Commits:
 - **Artifact Auto-Download + Step Timing API Extraction = Measurement Automation Pattern** — Minimize user input dependency. `gh run download` (docker tarball measurement) + `gh api .../jobs` step `started_at`/`completed_at` diff (each service build duration) → Python auto-calculate regression ratio
 - **Sprint 160 Deploy Gate Transient Infra Failure Isolation Verification** — When Build Gateway GHCR timeout occurred, aether-gitops gateway tag update skip confirmed. Sprint 160 (deploy gate Trivy-based service-scoped blocking) exact operation = 1 service fail does not regress other services' deploy. Infrastructure failure isolation value verified
 - **`set -euo pipefail` + `?:` Argument Validation = Shell Helper Standard Pattern** — `LABEL="${1:?usage: ...}"` pattern enables immediate fail + clear error on missing argument. Combined with caller simplification (helper call 1 line) = safety + readability dual achievement
+- **`set -euo pipefail` and graceful fallback compatibility = `|| true` pipeline isolation (R1 P2 fix pattern)** — Within helpers, isolate nice-to-have telemetry (`docker buildx du`) failures with `pipeline || true` so they cannot fail the entire build job. fail-fast (argument validation) + graceful fallback (telemetry) coexist within the same script. Sprint 168 R1 P2 → Sprint 169+ standard pattern for shell helper authoring
+- **Helper Path = Cross-Cutting CI Dependency → Register in All detect-changes filter Image Build Branches Simultaneously (R2 P2 fix pattern)** — Helper extraction side-effect: PR changing only helper passes silently with all build jobs skipped. Add helper path to all 8 image build filters → helper changes get actual runtime verification. Cross-cutting helper introduction obligates simultaneous detect-changes update
+- **Critic R1 + R2 Cumulative 2-Round Detection + All Same-PR forward-fix (Zero Carryover Achievement)** — R1 P2 (helper fallback) + R2 P2 (filter registration) both fixed same-PR same-day. This sprint's "no carryover" goal + Sprint 164/167 self-fix policy cumulative strengthening = single-sprint completeness priority policy established
 
 ## Lessons
 

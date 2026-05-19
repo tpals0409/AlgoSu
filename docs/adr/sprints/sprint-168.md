@@ -145,11 +145,19 @@ build-frontend / build-blog 도 동일 패턴 (matrix vs 하드코딩만 차이)
 
 ## Critic 사이클
 
-**R1** (codex review --base 500b954, 본 commit `<TBD>`):
+**R1** (codex review --base 500b954, 본 commit `7c982c9` + `3ab5138`):
 
-- 결과 `<TBD-R1-RESULT>`
-- 자기 모순 검출 우선 점검 — Sprint 168 목표 "zstd 전면 채택" ↔ Trivy `--input` docker tarball 사용 일관성 (zstd 는 측정/저장 전용)
-- P0/P1 0건 목표, P2/P3 검출 시 동일 PR forward-fix (Sprint 164/167 정책 계승)
+- **결과**: P0 0건 / P1 0건 / **P2 1건** / P3 0건
+- **P2 검출**: `scripts/ci/report-build-metrics.sh` 가 `set -euo pipefail` 로 실행되는데 `docker buildx du` 가 nonzero exit 시 fallback (`[ -z "$CACHE_DU" ] && CACHE_DU="N/A"`) 도달 전 script 종료 → 이전 inline workflow 의 graceful fallback 약속 위반 → buildx cache 검사 blip 이 build job fail 유발 가능
+- **forward-fix**: `dccfccd` 동일 PR 동일 일자 — 두 pipeline (`CACHE_DU` + `CACHE_ENTRIES`) 에 `|| true` 추가하여 telemetry 부재가 build job fail 유발 금지
+- **CI 검증**: run #26099215601 — 37 SUCCESS + 9 SKIPPED + 0 FAILURE, mergeStateStatus CLEAN ✅
+
+**R2** (codex review --base 500b954, fix commit `dccfccd` 적용 후):
+
+- **결과**: R1 P2 해소 확인 ✅, **신규 P2 1건** 검출
+- **P2 검출**: `scripts/ci/report-build-metrics.sh` 가 `detect-changes` paths filter 에 미포함 → 헬퍼만 변경된 future PR 이 모든 build job skip 으로 silent 통과 → 헬퍼의 결함이 CI 에 노출 안 됨
+- **forward-fix**: `<TBD-R2-FIX>` 동일 PR — 8 filter (gateway/identity/submission/problem/github-worker/ai-analysis/frontend/blog) 모두에 헬퍼 path 추가. 헬퍼 변경 시 모든 build job trigger → 실제 runtime 검증
+- 자기 모순 검출: 본 sprint 목표 "zstd 전면 채택" ↔ Trivy `--input` docker tarball 사용 일관성 OK (zstd 는 측정/저장 전용)
 
 ## 위험/회귀 차단
 
@@ -197,16 +205,18 @@ build-frontend / build-blog 도 동일 패턴 (matrix vs 하드코딩만 차이)
 
 ## 결과
 
-변경 파일 5건:
-- 수정 1개: `.github/workflows/ci.yml` (-102 +18, build-services + frontend + blog outputs 일괄 zstd + 헬퍼 호출 단축)
-- 신규 1개: `scripts/ci/report-build-metrics.sh` (+75, 시드 #167-3 헬퍼)
+변경 파일 5건 (4 commits):
+- 수정 1개: `.github/workflows/ci.yml` (Phase C -84 net + R2 P2 fix +8, build-services + frontend + blog outputs 일괄 zstd + 헬퍼 호출 단축 + detect-changes filter 헬퍼 path 추가)
+- 신규 1개: `scripts/ci/report-build-metrics.sh` (+75 + R1 P2 fix +3, 시드 #167-3 헬퍼 + graceful fallback)
 - 신규 2개: `docs/adr/sprints/sprint-168.md` (KR) + `docs/adr-en/sprints/sprint-168.md` (EN 1:1 매핑)
 - 수정 1개: `docs/adr/README.md` (라인 18/52/54 — count 107→108, range 62~167→62~168)
 
-Commit:
-- `564b5e1` feat(ci): Sprint 168 — zstd 8 서비스 전면 채택 + Report metrics 헬퍼 추출
-- `<TBD>` docs(adr): Sprint 168 ADR (KR + EN)
-- Squash merge: `<TBD-MERGE-SHA>` (PR `<TBD-PR-NUM>`)
+Commits (PR #293):
+- `7c982c9` feat(ci): Sprint 168 — zstd 전면 적용 + Report metrics 헬퍼 (시드 #167-1/#167-3)
+- `3ab5138` docs(adr): Sprint 168 ADR (KR + EN) + README 갱신
+- `dccfccd` fix(ci): Sprint 168 R1 P2 — buildx du pipeline graceful fallback 복원
+- `<TBD-R2-FIX>` fix(ci): Sprint 168 R2 P2 — detect-changes filter 에 헬퍼 path 추가
+- Squash merge: `<TBD-MERGE-SHA>` (PR #293)
 
 ## 신규 패턴
 
@@ -215,6 +225,9 @@ Commit:
 - **artifact 자동 다운로드 + step timing API 추출 = 측정 자동화 패턴** — 사용자 입력 의존 최소화. `gh run download` (docker tarball 실측) + `gh api .../jobs` 의 step `started_at`/`completed_at` 차이 (각 서비스 build duration) → Python 으로 회귀 비율 자동 계산
 - **Sprint 160 deploy gate 의 transient infra 장애 격리 검증** — Build Gateway GHCR timeout 발생 시 aether-gitops gateway tag 갱신 skip 확인. Sprint 160 (deploy gate Trivy 기반 service-scoped 차단) 의 정확한 작동 = 1 서비스 fail 이 다른 서비스 deploy 회귀 차단 안 함. 인프라 장애 격리 가치 검증
 - **`set -euo pipefail` + `?:` 인자 검증 = shell helper 표준 패턴** — `LABEL="${1:?usage: ...}"` 패턴이 인자 미전달 시 즉시 fail + 명확한 에러. 호출 sites 의 단순화 (헬퍼 호출 1줄) 와 결합 = 안전성 + 가독성 양립
+- **`set -euo pipefail` 와 graceful fallback 의 양립 = `|| true` pipeline 격리 (R1 P2 fix 패턴)** — 헬퍼 안에서 nice-to-have telemetry (`docker buildx du`) 의 fail 이 build job 전체 fail 유발하지 않도록 `pipeline || true` 로 격리. fail-fast (인자 검증) + graceful fallback (telemetry) 가 동일 script 안에 양립 가능. Sprint 168 R1 P2 → Sprint 169+ shell helper 작성 시 표준 패턴 정착
+- **헬퍼 path = cross-cutting CI dependency → detect-changes filter 모든 image build 분기 동시 등록 (R2 P2 fix 패턴)** — 헬퍼 추출의 부작용으로 헬퍼만 변경된 PR 이 모든 build job skip 으로 silent 통과 가능. 8 image build filter 모두에 헬퍼 path 추가 → 헬퍼 변경 시 실제 runtime 검증. cross-cutting 헬퍼 도입 시 detect-changes 도 동시 갱신 의무 정착
+- **Critic R1 + R2 누적 2회전 검출 + 동일 PR 모두 forward-fix (이월 zero 달성)** — R1 P2 (heleper fallback) + R2 P2 (filter 등록) 모두 동일 PR 동일 일자 fix. 본 sprint "이월 없음" 목표 + Sprint 164/167 자체 fix 정책 누적 강화 = 단일 sprint 완결성 우선 정책 정착
 
 ## 교훈
 
