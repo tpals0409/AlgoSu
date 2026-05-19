@@ -118,15 +118,42 @@ export interface AdrPhaseEntry {
   lines?: string;
 }
 
+/** 교훈 항목 (lessons 섹션 list item에서 추출) */
+export interface AdrLessonEntry {
+  /** `- **bold**: text` 패턴의 bold 부분. 없으면 undefined */
+  title?: string;
+  /** stripMarkdown 적용된 평문 본문 */
+  description: string;
+}
+
+/** 이월 항목 (carryover 섹션 list item에서 추출) */
+export interface AdrCarryoverEntry {
+  /** `- **bold**: text` 패턴의 bold 부분. 없으면 undefined */
+  title?: string;
+  /** stripMarkdown 적용된 평문 본문 */
+  description: string;
+  /** title에서 "Sprint NNN" 패턴이 감지되면 추출 */
+  sprint?: string;
+}
+
 /** 단일 ADR 파싱 완료 객체 */
 export interface AdrDoc {
   meta: AdrMeta;
   sections: AdrSection[];
+  /** 원본 마크다운 (frontmatter 제거 후) — 메타데이터/외부 링크 추출 등 SSOT */
   bodyMarkdown: string;
+  /**
+   * detail-view prose 영역 전용 본문. lessons/carryover 섹션 raw 마크다운 +
+   * implementation PR 표 라인을 제거한 결과 — Hero/Strip/Grid/Callout 와의 중복 차단.
+   * graceful degradation: 해당 섹션/표 검출 실패 시 bodyMarkdown과 동일.
+   */
+  bodyMarkdownForProse: string;
   outgoingLinks: string[];
   warnings: ParseWarning[];
   decisions?: AdrDecision[];
   phases?: AdrPhaseEntry[];
+  lessons?: AdrLessonEntry[];
+  carryover?: AdrCarryoverEntry[];
 }
 
 /** 그래프 인접 리스트 */

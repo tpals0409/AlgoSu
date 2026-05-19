@@ -137,6 +137,11 @@ const DICTIONARY = {
     heroImpact: '영향도',
     decisionsTitle: '주요 결정',
     phaseStripTitle: '구현 Phase',
+
+    /* ─── ADR Lessons / Carryover callout ─────────── */
+    lessonsTitle: '교훈',
+    carryoverTitle: '이월 항목',
+    carryoverSprintPrefix: 'Sprint',
   },
   en: {
     /* ─── 기존 블로그 사전 ─────────────────────────── */
@@ -260,6 +265,11 @@ const DICTIONARY = {
     heroImpact: 'Impact',
     decisionsTitle: 'Key Decisions',
     phaseStripTitle: 'Implementation Phases',
+
+    /* ─── ADR Lessons / Carryover callout ─────────── */
+    lessonsTitle: 'Lessons Learned',
+    carryoverTitle: 'Carryover',
+    carryoverSprintPrefix: 'Sprint',
   },
 } as const;
 

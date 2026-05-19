@@ -38,6 +38,28 @@ related_memory: ["sprint-window"]
 | [#261](https://github.com/tpals0409/AlgoSu/pull/261) | hotfix #3 **진짜 fix** | architect | ci.yml `node ../scripts/check-adr-links.mjs out/adr` → `node scripts/check-adr-links.mjs blog/out/adr` 절대 segment 명시. check-adr-links.mjs:33 ROOT=repo root 의존성이 진짜 원인이었음 | +5 −21 |
 | [#262](https://github.com/tpals0409/AlgoSu/pull/262) | UX 추가 | architect | 블로그 → ADR 진입 보강: header.tsx 우측 네비 'ADR' 링크 + home-page.tsx CTA 카드 + i18n 사전 4키 (사용자 "기존 블로그에서 ADR로 넘어갈 버튼 없음" 지적 즉시 보강) | +51 −3 |
 
+### 작업 흐름
+
+```mermaid
+flowchart TD
+    P1["P1 인프라<br/>parser·types·loader<br/>#253"] --> P2["P2~P8 라우팅·시각화<br/>#254"]
+    P2 --> P9["P9 UI i18n<br/>#255"]
+    P9 --> P10["P10 콘텐츠 i18n 인프라<br/>#256"]
+    P10 --> ADR["ADR + hotfix #1<br/>outputFileTracingIncludes 제거<br/>#257"]
+    ADR --> H2["hotfix #2<br/>outputFileTracingRoot 명시<br/>#258"]
+    H2 --> Probe["hotfix probe<br/>out/ location<br/>#259"]
+    Probe --> Trigger["chore trigger<br/>build-blog 강제 실행<br/>#260"]
+    Trigger --> H3["hotfix #3 진짜 fix<br/>check-adr-links 경로<br/>#261"]
+    H3 --> UX["UX 보강<br/>블로그 → ADR 네비/CTA<br/>#262"]
+
+    classDef phase fill:#e0e7ff,stroke:#6366f1,color:#1e1b4b
+    classDef hotfix fill:#fef3c7,stroke:#f59e0b,color:#78350f
+    classDef realfix fill:#dcfce7,stroke:#16a34a,color:#14532d
+    class P1,P2,P9,P10 phase
+    class ADR,H2,Probe,Trigger hotfix
+    class H3,UX realfix
+```
+
 ## 검증
 
 - **4 PR 모두 CI fail 0, mergeStateStatus CLEAN ✅** (auto-merge 흐름)

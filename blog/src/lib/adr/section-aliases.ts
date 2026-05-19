@@ -31,7 +31,16 @@ const ALIAS_MAP: ReadonlyArray<[CanonicalSection, ReadonlyArray<string>]> = [
   ['lessons', ['교훈', 'lessons', 'lessons learned', 'gotchas']],
   [
     'carryover',
-    ['이월', 'carryover', '후속', '다음 sprint', '이월 항목'],
+    [
+      '이월',
+      '이월 항목',
+      '후속',
+      '다음 sprint',
+      'carryover',
+      'carry-over',
+      'carry over',
+      'carry-over maintained',
+    ],
   ],
   [
     'related-docs',
@@ -51,21 +60,46 @@ for (const [canonical, aliases] of ALIAS_MAP) {
   }
 }
 
-/** "Sprint NNN 이월" 패턴 정규식 */
-const CARRYOVER_RE = /^(sprint\s+\d+\s+)?이월\b/i;
+/**
+ * Carryover 섹션 헤딩 정규식 — KR + EN i18n 양면 지원.
+ *
+ * 매치 대상 패턴:
+ *  - KR: `이월`, `Sprint NNN 이월 시드`, `Sprint NNN 이월 항목`
+ *  - EN: `carryover`, `carry-over`, `Sprint NNN Carry-Over Seeds`,
+ *        `Sprint 159 carry-over (3 maintained)`, `Carry-over maintained`
+ *
+ * `\b`는 한국어 글자에서 word boundary가 false라 ASCII 의존 — 공백/끝/한국어 후속/괄호 명시.
+ */
+const CARRYOVER_RE =
+  /^(?:sprint\s+\d+\+?\s+)?(?:이월|carry[-\s]?over)(?:\s|$|시드|항목|\()/i;
+
+/**
+ * Lessons 섹션 헤딩 정규식 — 변형 헤딩 tolerant 매치(Sprint 163 R9 P2).
+ *
+ * 매치 대상:
+ *  - KR: `교훈`, `주요 교훈`, `교훈 (Sprint NNN 이관)`, `교훈 항목`
+ *  - EN: `lessons`, `lessons learned`, `key lessons`, `lessons (...)`
+ */
+const LESSONS_RE =
+  /^(?:주요\s+|key\s+|major\s+)?(?:교훈|lessons)(?:\s+learned)?(?:\s|$|\(|항목)/i;
 
 /**
  * 섹션 제목 텍스트를 canonical 키로 매핑한다.
+ * 숫자 prefix(`## 9. Sprint 152 이월 시드`, `## 7. Sprint 153 Carryover Seeds` 등)는
+ * 정규화 시 제거하여 numbered + 일반 H2 모두 동일 alias로 처리한다(Sprint 163 R4 P3).
+ *
  * @param heading - H2/H3 텍스트 (## 기호 제거 후)
  * @returns 매핑된 canonical 키 또는 'other'
  */
 export function resolveCanonical(heading: string): CanonicalSection {
-  const normalized = heading.trim().toLowerCase();
+  const stripped = heading.trim().replace(/^\d+\.\s+/, '');
+  const normalized = stripped.toLowerCase();
 
   const direct = normalizedMap.get(normalized);
   if (direct) return direct;
 
-  if (CARRYOVER_RE.test(heading.trim())) return 'carryover';
+  if (CARRYOVER_RE.test(stripped)) return 'carryover';
+  if (LESSONS_RE.test(stripped)) return 'lessons';
 
   return 'other';
 }
