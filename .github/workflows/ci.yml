@@ -919,6 +919,11 @@ jobs:
     permissions:
       contents: read
     environment: production
+    # Sprint 160 Phase C: notify job 이 service 별 deploy/skip 결과를 활용할 수 있도록 노출
+    # (시드 #신규4: "git merge 성공 + 일부 service deploy 차단" 케이스 명시적 분리)
+    outputs:
+      updated: ${{ steps.update_tags.outputs.updated }}
+      skipped_trivy: ${{ steps.update_tags.outputs.skipped_trivy }}
     steps:
       - name: Clone aether-gitops
         run: |
@@ -1005,6 +1010,7 @@ jobs:
           cat kustomization.yaml
 
       - name: Commit and push to aether-gitops
+        id: push_gitops
         run: |
           cd aether-gitops
           if git diff --quiet; then
@@ -1014,6 +1020,48 @@ jobs:
           git add -A
           git commit -m "deploy(algosu): update image tags → main-${{ github.sha }}"
           git push
+
+      # Sprint 160 Phase C: deploy 결과를 GitHub Step Summary 에 markdown 으로 노출
+      # (시드 #신규4: "git merge 성공" 후에도 일부 service 가 SKIPPED 된 경우 한 페이지에서 가시화)
+      # Critic R1 P2 해소: push fail 시 "Deployed services" 거짓 성공 출력 차단 —
+      # steps.push_gitops.outcome 기준으로 "Deployed" vs "candidates (push failed)" 분기
+      - name: Surface deploy summary
+        if: always()
+        run: |
+          UPDATED="${{ steps.update_tags.outputs.updated }}"
+          SKIPPED="${{ steps.update_tags.outputs.skipped_trivy }}"
+          PUSH_OUTCOME="${{ steps.push_gitops.outcome }}"
+          {
+            echo "## Deploy summary — commit \`${{ github.sha }}\`"
+            echo ""
+            if [ -n "$UPDATED" ]; then
+              if [ "$PUSH_OUTCOME" = "success" ]; then
+                echo "### ✅ Deployed services"
+                for SVC in $UPDATED; do
+                  echo "- \`$SVC\` → \`main-${{ github.sha }}\`"
+                done
+              else
+                echo "### 🚫 GitOps push failed (push step outcome: \`${PUSH_OUTCOME}\`)"
+                echo "Tags were edited in the local clone but **NOT propagated to aether-gitops**. The following services are *candidates only* — production is unchanged:"
+                for SVC in $UPDATED; do
+                  echo "- \`$SVC\` — intended tag: \`main-${{ github.sha }}\` (NOT applied)"
+                done
+                echo ""
+                echo "> ⚠️ Investigate \`Commit and push to aether-gitops\` step + GITOPS_TOKEN scope. Manual aether-gitops PR may be required as forward-fix."
+              fi
+            else
+              echo "### ⚠️ No services were deployed (no candidate matched build + detect-changes)"
+            fi
+            if [ -n "$SKIPPED" ]; then
+              echo ""
+              echo "### 🚫 SKIPPED (Trivy fail or status missing)"
+              for SVC in $SKIPPED; do
+                echo "- \`$SVC\` — production tag NOT advanced. Investigate \`Trivy Scan — $SVC\` job + base image / dependency CVEs."
+              done
+              echo ""
+              echo "> ⚠️ **\"git merge 성공\" ≠ \"deploy 성공\"** — Sprint 159 회귀 시나리오 재발 방지 알림. forward-fix 또는 base image 패치 PR 필요."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # ============================================================
   # Notify — 배포 결과 Grafana Annotation
@@ -1035,6 +1083,16 @@ jobs:
           echo "Grafana annotation will be created by ArgoCD post-sync hook"
           echo "Deploy SHA: ${{ github.sha }}"
           echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+      # Sprint 160 Phase C: Trivy fail/missing 으로 SKIPPED 된 service 가 있을 때 명시적 warning
+      # (Sprint 159 시드 #신규4: deploy pipeline 차단 알림 강화)
+      - name: Warn on Trivy-skipped services
+        if: needs.deploy.outputs.skipped_trivy != ''
+        run: |
+          SKIPPED="${{ needs.deploy.outputs.skipped_trivy }}"
+          echo "::warning::Deploy 부분 차단 — Trivy fail/missing 으로 SKIPPED 된 service:$SKIPPED"
+          echo "::warning::production 의 해당 service 이미지는 \`main-${{ github.sha }}\` 으로 advance 되지 않았습니다."
+          echo "::warning::Sprint 159 재발 방지 — '메인 머지 성공' 메시지만 보고 deploy 완료로 가정하지 마세요. 사후 forward-fix 필요."
 
   # ============================================================
   # E2E: Programmers Full Flow — sourcePlatform 전달 검증 (PR 자동 실행)
