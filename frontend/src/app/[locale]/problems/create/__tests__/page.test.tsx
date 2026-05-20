@@ -1,6 +1,7 @@
-import { screen } from '@testing-library/react';
+import { screen, fireEvent, act, waitFor } from '@testing-library/react';
 import { renderWithI18n } from '@/test-utils/i18n';
 import ProblemCreatePage from '../page';
+import { problemApi } from '@/lib/api';
 
 jest.mock('@/i18n/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
@@ -34,6 +35,7 @@ jest.mock('@/contexts/StudyContext', () => ({
     studies: [{ id: 'study-1', name: 'Test Study' }],
     setCurrentStudy: jest.fn(),
     studiesLoaded: true,
+    incrementProblemsVersion: jest.fn(),
   }),
 }));
 
@@ -182,7 +184,8 @@ jest.mock('@/lib/schemas/problem', () => ({
 }));
 
 jest.mock('@hookform/resolvers/zod', () => ({
-  zodResolver: () => jest.fn(),
+  // RHF resolver 계약 준수: { values, errors } 반환 (검증 통과 → onSubmit 진입)
+  zodResolver: () => (values: Record<string, unknown>) => ({ values, errors: {} }),
 }));
 
 jest.mock('@/lib/avatars', () => ({
@@ -249,37 +252,117 @@ describe('ProblemCreatePage', () => {
   });
 });
 
-describe('ProblemCreatePage - Programmers 검색 적용', () => {
-  it('프로그래머스 검색 적용 시 카테고리 select가 비활성화된다', () => {
+describe('ProblemCreatePage - Programmers 검색 적용 (category 전파)', () => {
+  // page가 useProgrammersSearch(setFormAndSync, ...)로 넘기는 setForm을 캡처한다.
+  let capturedSetForm: ((updater: unknown) => void) | null = null;
+
+  beforeEach(() => {
+    (problemApi.create as jest.Mock).mockClear();
+    capturedSetForm = null;
+  });
+
+  /**
+   * page의 setFormAndSync에 직접 접근할 수 없으므로, useProgrammersSearch mock이
+   * 첫 인자(setForm)를 캡처하도록 한 뒤 검색 결과를 시뮬레이션한다.
+   */
+  function overrideProgrammersHook(category: 'ALGORITHM' | 'SQL') {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const programmersHook = require('@/hooks/useProgrammersSearch');
     const original = programmersHook.useProgrammersSearch;
-    programmersHook.useProgrammersSearch = () => ({
-      programmersQuery: '',
-      setProgrammersQuery: jest.fn(),
-      programmersSearching: false,
-      programmersError: null,
-      setProgrammersError: jest.fn(),
-      programmersResult: {
-        problemId: 12117,
-        title: '있었는데요 없었습니다',
-        difficulty: 'SILVER',
-        level: 2,
-        sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/12117',
-        tags: ['sql'],
-        category: 'sql',
-      },
-      programmersApplied: true,
-      handleProgrammersSearch: jest.fn(),
-      handleProgrammersKeyDown: jest.fn(),
-      handleProgrammersReset: jest.fn(),
-    });
+    programmersHook.useProgrammersSearch = (setForm: (u: unknown) => void) => {
+      capturedSetForm = setForm;
+      return {
+        programmersQuery: '',
+        setProgrammersQuery: jest.fn(),
+        programmersSearching: false,
+        programmersError: null,
+        setProgrammersError: jest.fn(),
+        programmersResult: {
+          problemId: 12117,
+          title: '검색된 문제',
+          difficulty: 'SILVER',
+          level: 2,
+          sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/12117',
+          tags: [],
+          category: category === 'SQL' ? 'sql' : 'algorithm',
+        },
+        programmersApplied: true,
+        handleProgrammersSearch: jest.fn(),
+        handleProgrammersKeyDown: jest.fn(),
+        handleProgrammersReset: jest.fn(),
+      };
+    };
+    return () => { programmersHook.useProgrammersSearch = original; };
+  }
 
+  it('프로그래머스 검색 적용 시 카테고리 select는 편집 가능(enabled)하다', () => {
+    const restore = overrideProgrammersHook('SQL');
     renderWithI18n(<ProblemCreatePage />);
     const categorySelect = screen.getByLabelText('카테고리') as HTMLSelectElement;
-    expect(categorySelect).toBeDisabled();
+    expect(categorySelect).not.toBeDisabled();
+    restore();
+  });
 
-    programmersHook.useProgrammersSearch = original;
+  it('P1: SQL 검색 적용 후 제출 시 category=SQL 포함해 create가 호출된다', async () => {
+    const restore = overrideProgrammersHook('SQL');
+    renderWithI18n(<ProblemCreatePage />);
+
+    // 검색 결과가 setForm(setFormAndSync)으로 category=SQL을 RHF에 전파하도록 시뮬레이션
+    act(() => {
+      capturedSetForm?.((prev: Record<string, unknown>) => ({
+        ...prev,
+        title: '검색된 문제',
+        difficulty: 'SILVER',
+        category: 'SQL',
+        sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/12117',
+        sourcePlatform: 'PROGRAMMERS',
+      }));
+    });
+
+    const categorySelect = screen.getByLabelText('카테고리') as HTMLSelectElement;
+    expect(categorySelect.value).toBe('SQL');
+
+    fireEvent.click(screen.getByText('문제 생성'));
+
+    await waitFor(() => {
+      expect(problemApi.create as jest.Mock).toHaveBeenCalled();
+    });
+    const arg = (problemApi.create as jest.Mock).mock.calls[0][0];
+    expect(arg.category).toBe('SQL');
+    restore();
+  });
+
+  it('P2: 수동 SQL 선택 후 algorithm 검색 적용 시 최종 category=ALGORITHM (stale 방지)', async () => {
+    const restore = overrideProgrammersHook('ALGORITHM');
+    renderWithI18n(<ProblemCreatePage />);
+
+    const categorySelect = screen.getByLabelText('카테고리') as HTMLSelectElement;
+
+    // 1) 검색 전 수동으로 SQL 선택 → RHF=SQL, 프록시는 초기 ALGORITHM 유지
+    fireEvent.change(categorySelect, { target: { value: 'SQL' } });
+    expect(categorySelect.value).toBe('SQL');
+
+    // 2) algorithm Programmers 검색 적용 → setFormAndSync가 무조건 ALGORITHM 동기화
+    act(() => {
+      capturedSetForm?.((prev: Record<string, unknown>) => ({
+        ...prev,
+        title: '검색된 문제',
+        difficulty: 'SILVER',
+        category: 'ALGORITHM',
+        sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/12117',
+        sourcePlatform: 'PROGRAMMERS',
+      }));
+    });
+
+    expect(categorySelect.value).toBe('ALGORITHM');
+
+    fireEvent.click(screen.getByText('문제 생성'));
+    await waitFor(() => {
+      expect(problemApi.create as jest.Mock).toHaveBeenCalled();
+    });
+    const arg = (problemApi.create as jest.Mock).mock.calls[0][0];
+    expect(arg.category).toBe('ALGORITHM');
+    restore();
   });
 });
 

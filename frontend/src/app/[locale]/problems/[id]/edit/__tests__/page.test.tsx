@@ -249,7 +249,7 @@ describe('ProblemEditPage', () => {
     expect(categorySelect).not.toBeDisabled();
   });
 
-  it('프로그래머스 SQL 검색 적용 시 기존 카테고리를 SQL로 덮어쓰고 select를 비활성화한다', async () => {
+  it('프로그래머스 SQL 검색 적용 시 기존 카테고리를 SQL로 덮어쓰되 select는 편집 가능하다', async () => {
     mockProgrammersSearch.mockResolvedValue({
       problemId: 12117,
       title: '있었는데요 없었습니다',
@@ -273,10 +273,11 @@ describe('ProblemEditPage', () => {
     fireEvent.change(searchInput, { target: { value: '12117' } });
     fireEvent.click(screen.getByRole('button', { name: '검색' }));
 
+    // 검색이 category를 SQL로 auto-fill (스마트 기본값), 사용자가 교정할 수 있도록 enabled 유지
     await waitFor(() => {
       expect(categorySelect.value).toBe('SQL');
     });
-    expect(categorySelect).toBeDisabled();
+    expect(categorySelect).not.toBeDisabled();
   });
 });
 

@@ -575,7 +575,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                   id="edit-category"
                   value={form.category}
                   onChange={handleChange('category')}
-                  disabled={isSubmitting || bojApplied || programmersApplied}
+                  disabled={isSubmitting}
                   className={selectClass}
                 >
                   {PROBLEM_CATEGORIES.map((c) => (

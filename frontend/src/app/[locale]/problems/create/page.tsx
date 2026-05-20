@@ -118,7 +118,9 @@ export default function ProblemCreatePage(): ReactNode {
         const next = typeof updater === 'function' ? updater(prev) : updater;
         if (next.title !== prev.title) setValue('title', next.title);
         if (next.difficulty !== prev.difficulty) setValue('difficulty', next.difficulty);
-        if (next.category !== prev.category) setValue('category', next.category as ProblemCategory);
+        // category는 무조건 동기화: 검색 apply/reset이 항상 권위있게 덮어쓴다.
+        // (검색 전 수동 선택한 SQL이 비-SQL 검색 적용 후 잔존하는 stale 값 방지)
+        setValue('category', next.category as ProblemCategory);
         if (next.sourceUrl !== prev.sourceUrl) setValue('sourceUrl', next.sourceUrl);
         if (next.sourcePlatform !== prev.sourcePlatform) setValue('sourcePlatform', next.sourcePlatform);
         return next;
@@ -138,7 +140,6 @@ export default function ProblemCreatePage(): ReactNode {
     originalBojReset();
     setValue('title', '');
     setValue('difficulty', '');
-    setValue('category', 'ALGORITHM');
     setValue('sourceUrl', '');
     setValue('sourcePlatform', 'BOJ');
   }, [originalBojReset, setValue]);
@@ -155,7 +156,6 @@ export default function ProblemCreatePage(): ReactNode {
     originalProgrammersReset();
     setValue('title', '');
     setValue('difficulty', '');
-    setValue('category', 'ALGORITHM');
     setValue('sourceUrl', '');
     setValue('sourcePlatform', 'PROGRAMMERS');
   }, [originalProgrammersReset, setValue]);
@@ -592,7 +592,7 @@ export default function ProblemCreatePage(): ReactNode {
                 <select
                   id="create-category"
                   {...register('category')}
-                  disabled={isSubmitting || bojApplied || programmersApplied}
+                  disabled={isSubmitting}
                   className={selectClass}
                 >
                   {PROBLEM_CATEGORIES.map((c) => (
