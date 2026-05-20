@@ -147,6 +147,13 @@ jobs:
               - 'docs/adr/ADR-*.md'
               - 'docs/adr/sprints/**'
               - 'docs/adr/topics/**'
+              # Sprint 176: EN 단독 재번역(docs/adr-en/**) 시에도 blog /en 페이지 재빌드.
+              # 소비처 blog/src/lib/adr/loader.ts(ADR_EN_BASE = ../docs/adr-en)가 EN ADR을
+              # KR과 동일 구조(루트 ADR-*.md + sprints/ + topics/)로 read → 동일 positive narrowing 적용.
+              # README.md(인덱스)는 ADR-*.md 글롭에 미매칭으로 자연 제외 (KR과 동일 원칙).
+              - 'docs/adr-en/ADR-*.md'
+              - 'docs/adr-en/sprints/**'
+              - 'docs/adr-en/topics/**'
               - 'scripts/ci/report-build-metrics.sh'
             monitoring:
               - 'infra/k3s/monitoring/**'
