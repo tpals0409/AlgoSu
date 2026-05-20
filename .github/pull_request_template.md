@@ -60,3 +60,18 @@
 - [ ] 동적/runtime API 변경 시 — 단위 테스트 또는 e2e로 회귀 보호 확인
 - [ ] 타입 정의 변경 — `tsc --noEmit` clean 후에도 사용처 별 직접 확인
 - [ ] 상세 가이드: [docs/runbook/dependency-major-upgrade.md](../docs/runbook/dependency-major-upgrade.md)
+
+## 문서/ADR 변경 (해당 시)
+
+> Sprint 157 #24: ADR/sprint 문서는 KR+EN 양면 SSOT. en-coverage CI(`scripts/check-adr-en-coverage.mjs --strict`)가 누락을 차단한다.
+> Sprint 157 #23: rebase/머지 과정에서 누적 카운트가 어긋나 README 인덱스가 실제 파일 수와 불일치하는 사례 방지.
+
+- [ ] ADR/sprint 문서 변경 시 `docs/adr/`(KR) + `docs/adr-en/`(EN) 양면 갱신
+- [ ] rebase/머지 후 README 누적 카운트(ADR count 등)가 실제 파일 수와 일치하는지 재확인
+
+## 신규 산출물 (해당 시 — 채택 ≠ 소비)
+
+> Sprint 171 교훈: zstd OCI export를 채택했으나 어디서도 소비하지 않아 제거. 신규 산출물은 반드시 소비처가 있어야 한다.
+
+- [ ] 신규 스크립트/헬퍼/설정/아티팩트 추가 시 **소비처(호출·사용 지점)** 를 동시에 명시
+- [ ] 소비처가 아직 없으면 추가를 보류하거나, 후속 PR 계획을 본문에 기재
