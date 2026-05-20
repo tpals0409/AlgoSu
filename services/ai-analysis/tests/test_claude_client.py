@@ -1721,3 +1721,21 @@ class TestParseGroupResponsePartialRecovery:
 
         # '{' 직후 값 자체가 깨져 어떤 prefix 도 json.loads 불가
         assert ClaudeClient._recover_partial_json_object("{garbage no colon") is None
+
+    def test_partial_recovery_unterminated_fence_no_newline_safe(self):
+        """개행 없는 미종결 펜스도 예외 없이 안전 failed envelope 반환 (P2 회귀)"""
+        c = _make_client()
+        # _strip_markdown_block 의 .index('\n') ValueError 가 복구 헬퍼 밖으로 전파되면 안 됨
+        for raw in ["```", "```json"]:
+            result = c._parse_group_response(raw)
+            assert result["status"] == "failed", f"raw={raw!r}"
+            assert "다시 시도" in result["comparison"]
+            assert result["bestApproach"] is None
+            assert result["optimizedCode"] is None
+            assert result["learningPoints"] == []
+
+    def test_recover_partial_returns_none_on_unterminated_fence(self):
+        """헬퍼 직접: 개행 없는 미종결 펜스는 ValueError 방어 → None (P2)"""
+        from src.claude_client import ClaudeClient
+
+        assert ClaudeClient._recover_partial_json_object("```") is None

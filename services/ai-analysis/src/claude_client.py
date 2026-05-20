@@ -608,7 +608,13 @@ class ClaudeClient:
         @param text: Claude 원본 응답 텍스트(절단/손상 가능)
         @returns: 복구된 dict (키 1개 이상). 복구 불가 시 None.
         """
-        cleaned = ClaudeClient._strip_markdown_block(text)
+        # _strip_markdown_block 은 개행 없는 미종결 펜스(예: "```")에서 ValueError 발생.
+        # 복구 헬퍼는 절대 raise 하지 않는 total 함수여야 함 (Path B 안전 envelope 보장).
+        # 루트 원인(.index)은 Path A→B 라우팅이 의존하므로 건드리지 않고 여기서만 방어.
+        try:
+            cleaned = ClaudeClient._strip_markdown_block(text)
+        except (ValueError, IndexError):
+            return None
         start = cleaned.find("{")
         if start == -1:
             return None
