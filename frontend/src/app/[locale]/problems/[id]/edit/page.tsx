@@ -49,7 +49,6 @@ interface PageProps {
 
 interface EditFormState extends ProblemFormState {
   status: string;
-  category: string;
 }
 
 // ─── RENDER ───────────────────────────────

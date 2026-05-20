@@ -30,6 +30,8 @@ jest.mock('@/lib/api', () => ({
   programmersApi: { searchByQuery: (...args: unknown[]) => mockSearchByQueryProgrammers(...args) },
   problemApi: { create: jest.fn() },
   studyApi: { notifyProblemCreated: jest.fn() },
+  // SSOT 헬퍼는 실제 구현을 사용 (dual-check 로직 drift 방지)
+  isProgrammersSqlProblem: jest.requireActual('@/lib/api/external').isProgrammersSqlProblem,
 }));
 
 // ── StudyContext mock ──────────────────────────────

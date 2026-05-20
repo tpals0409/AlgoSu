@@ -13,7 +13,7 @@ import {
 import { useTranslations } from 'next-intl';
 import { Btn, type Difficulty, DIFFICULTY_CONFIG } from './AlgosuUI';
 import { Calendar } from './calendar';
-import { problemApi, solvedacApi, programmersApi, studyApi, type CreateProblemData } from '@/lib/api';
+import { problemApi, solvedacApi, programmersApi, studyApi, isProgrammersSqlProblem, type CreateProblemData } from '@/lib/api';
 import { PROGRAMMERS_LEVEL_LABELS } from '@/lib/constants';
 import { useStudy } from '@/contexts/StudyContext';
 import { getCurrentWeekLabel } from '@/lib/utils';
@@ -47,11 +47,10 @@ function toOurDiff(solvedLevel: number): { difficulty: Difficulty; level: number
 
 /**
  * Determine if a Programmers problem is SQL-based.
- * Dual check via category or tags.
+ * Dual check via category or tags — shared SSOT helper (`isProgrammersSqlProblem`).
  */
 function isSqlProblem(p: SolvedProblem): boolean {
-  if (p.category === 'sql') return true;
-  return (p.tags ?? []).some((t) => t.toUpperCase() === 'SQL');
+  return isProgrammersSqlProblem(p);
 }
 
 /**

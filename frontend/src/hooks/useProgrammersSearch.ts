@@ -8,7 +8,7 @@
 'use client';
 
 import { useState, useCallback, type KeyboardEvent } from 'react';
-import { programmersApi, type ProgrammersProblemInfo } from '@/lib/api';
+import { programmersApi, isProgrammersSqlProblem, type ProgrammersProblemInfo } from '@/lib/api';
 import type { ProblemFormState } from '@/lib/problem-form-utils';
 
 // ─── TYPES ────────────────────────────────
@@ -59,6 +59,7 @@ export function useProgrammersSearch(
         ...prev,
         title: info.title,
         difficulty: info.difficulty ?? '',
+        category: isProgrammersSqlProblem(info) ? 'SQL' : 'ALGORITHM',
         sourceUrl: info.sourceUrl,
         sourcePlatform: 'PROGRAMMERS',
       }));
@@ -90,6 +91,7 @@ export function useProgrammersSearch(
       ...prev,
       title: '',
       difficulty: '',
+      category: 'ALGORITHM',
       sourceUrl: '',
     }));
   }, [setForm]);

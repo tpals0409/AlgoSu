@@ -30,7 +30,7 @@ import { useBojSearch } from '@/hooks/useBojSearch';
 import { useProgrammersSearch } from '@/hooks/useProgrammersSearch';
 import { problemApi, studyApi, type CreateProblemData } from '@/lib/api';
 import { DIFFICULTIES, DIFFICULTY_LABELS, LANGUAGES, LANGUAGE_VALUES, PROBLEM_CATEGORIES } from '@/lib/constants';
-import type { Difficulty } from '@/lib/constants';
+import type { Difficulty, ProblemCategory } from '@/lib/constants';
 import {
   type ProblemFormState,
   labelClass,
@@ -101,6 +101,7 @@ export default function ProblemCreatePage(): ReactNode {
     title: '',
     description: '',
     difficulty: '',
+    category: 'ALGORITHM',
     deadline: '',
     allowedLanguages: [...LANGUAGE_VALUES],
     sourceUrl: '',
@@ -117,6 +118,9 @@ export default function ProblemCreatePage(): ReactNode {
         const next = typeof updater === 'function' ? updater(prev) : updater;
         if (next.title !== prev.title) setValue('title', next.title);
         if (next.difficulty !== prev.difficulty) setValue('difficulty', next.difficulty);
+        // category는 무조건 동기화: 검색 apply/reset이 항상 권위있게 덮어쓴다.
+        // (검색 전 수동 선택한 SQL이 비-SQL 검색 적용 후 잔존하는 stale 값 방지)
+        setValue('category', next.category as ProblemCategory);
         if (next.sourceUrl !== prev.sourceUrl) setValue('sourceUrl', next.sourceUrl);
         if (next.sourcePlatform !== prev.sourcePlatform) setValue('sourcePlatform', next.sourcePlatform);
         return next;
@@ -292,6 +296,7 @@ export default function ProblemCreatePage(): ReactNode {
                       title: '',
                       description: '',
                       difficulty: '',
+                      category: 'ALGORITHM',
                       deadline: '',
                       allowedLanguages: [...LANGUAGE_VALUES],
                       sourceUrl: '',
