@@ -19,6 +19,7 @@ const defaultForm: ProblemFormState = {
   allowedLanguages: ['python'],
   sourceUrl: '',
   sourcePlatform: '',
+  category: 'SQL',
 };
 
 function useTestHook() {
@@ -122,6 +123,7 @@ describe('useBojSearch', () => {
     expect(result.current.bojSearching).toBe(false);
     expect(result.current.form.title).toBe('A+B');
     expect(result.current.form.difficulty).toBe('BRONZE');
+    expect(result.current.form.category).toBe('ALGORITHM');
     expect(result.current.form.sourceUrl).toBe('https://boj.kr/1000');
     expect(result.current.form.sourcePlatform).toBe('BOJ');
   });
@@ -258,6 +260,7 @@ describe('useBojSearch', () => {
     expect(result.current.bojApplied).toBe(false);
     expect(result.current.form.title).toBe('');
     expect(result.current.form.difficulty).toBe('');
+    expect(result.current.form.category).toBe('ALGORITHM');
     expect(result.current.form.sourceUrl).toBe('');
   });
 

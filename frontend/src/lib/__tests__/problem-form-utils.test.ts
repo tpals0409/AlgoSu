@@ -32,6 +32,7 @@ describe('validateProblemForm', () => {
     allowedLanguages: ['python'],
     sourceUrl: '',
     sourcePlatform: '',
+    category: 'ALGORITHM',
   };
 
   it('유효한 폼은 에러가 없다', () => {

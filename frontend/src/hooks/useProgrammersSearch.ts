@@ -59,6 +59,7 @@ export function useProgrammersSearch(
         ...prev,
         title: info.title,
         difficulty: info.difficulty ?? '',
+        category: info.category === 'sql' ? 'SQL' : 'ALGORITHM',
         sourceUrl: info.sourceUrl,
         sourcePlatform: 'PROGRAMMERS',
       }));
@@ -90,6 +91,7 @@ export function useProgrammersSearch(
       ...prev,
       title: '',
       difficulty: '',
+      category: 'ALGORITHM',
       sourceUrl: '',
     }));
   }, [setForm]);

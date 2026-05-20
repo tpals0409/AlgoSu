@@ -55,6 +55,8 @@ export interface ProgrammersProblemInfo {
   difficulty: 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND' | null;
   tags: string[];
   sourceUrl: string;
+  /** Sprint 108: 문제 카테고리 (algorithm | sql) */
+  category: 'algorithm' | 'sql';
 }
 
 export interface ProgrammersSearchItem {

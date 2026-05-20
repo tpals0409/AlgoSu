@@ -59,6 +59,7 @@ export function useBojSearch(
         ...prev,
         title: info.title,
         difficulty: info.difficulty ?? '',
+        category: 'ALGORITHM',
         sourceUrl: info.sourceUrl,
         sourcePlatform: 'BOJ',
       }));
@@ -90,6 +91,7 @@ export function useBojSearch(
       ...prev,
       title: '',
       difficulty: '',
+      category: 'ALGORITHM',
       sourceUrl: '',
     }));
   }, [setForm]);

@@ -241,6 +241,46 @@ describe('ProblemCreatePage', () => {
     expect(screen.getByRole('option', { name: '알고리즘' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'SQL' })).toBeInTheDocument();
   });
+
+  it('검색 미적용 시 카테고리 select가 활성화되어 있다', () => {
+    renderWithI18n(<ProblemCreatePage />);
+    const categorySelect = screen.getByLabelText('카테고리') as HTMLSelectElement;
+    expect(categorySelect).not.toBeDisabled();
+  });
+});
+
+describe('ProblemCreatePage - Programmers 검색 적용', () => {
+  it('프로그래머스 검색 적용 시 카테고리 select가 비활성화된다', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const programmersHook = require('@/hooks/useProgrammersSearch');
+    const original = programmersHook.useProgrammersSearch;
+    programmersHook.useProgrammersSearch = () => ({
+      programmersQuery: '',
+      setProgrammersQuery: jest.fn(),
+      programmersSearching: false,
+      programmersError: null,
+      setProgrammersError: jest.fn(),
+      programmersResult: {
+        problemId: 12117,
+        title: '있었는데요 없었습니다',
+        difficulty: 'SILVER',
+        level: 2,
+        sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/12117',
+        tags: ['sql'],
+        category: 'sql',
+      },
+      programmersApplied: true,
+      handleProgrammersSearch: jest.fn(),
+      handleProgrammersKeyDown: jest.fn(),
+      handleProgrammersReset: jest.fn(),
+    });
+
+    renderWithI18n(<ProblemCreatePage />);
+    const categorySelect = screen.getByLabelText('카테고리') as HTMLSelectElement;
+    expect(categorySelect).toBeDisabled();
+
+    programmersHook.useProgrammersSearch = original;
+  });
 });
 
 describe('ProblemCreatePage - Non-ADMIN', () => {

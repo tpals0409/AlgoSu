@@ -22,6 +22,7 @@ const defaultForm: ProblemFormState = {
   allowedLanguages: ['python'],
   sourceUrl: '',
   sourcePlatform: '',
+  category: 'ALGORITHM',
 };
 
 /** 훅을 테스트 가능한 형태로 감싸는 래퍼 */
@@ -100,7 +101,7 @@ describe('useProgrammersSearch', () => {
     expect(result.current.programmersError).toBe('유효한 문제 번호를 입력해주세요.');
   });
 
-  it('검색 성공 시 form을 업데이트한다', async () => {
+  it('검색 성공 시 form을 업데이트한다 (algorithm 결과)', async () => {
     const info = {
       problemId: 1845,
       title: '폰켓몬',
@@ -108,6 +109,7 @@ describe('useProgrammersSearch', () => {
       level: 1,
       sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/1845',
       tags: ['hash'],
+      category: 'algorithm' as const,
     };
     mockSearch.mockResolvedValue(info);
 
@@ -126,10 +128,36 @@ describe('useProgrammersSearch', () => {
     expect(result.current.programmersSearching).toBe(false);
     expect(result.current.form.title).toBe('폰켓몬');
     expect(result.current.form.difficulty).toBe('BRONZE');
+    expect(result.current.form.category).toBe('ALGORITHM');
     expect(result.current.form.sourceUrl).toBe(
       'https://school.programmers.co.kr/learn/courses/30/lessons/1845',
     );
     expect(result.current.form.sourcePlatform).toBe('PROGRAMMERS');
+  });
+
+  it('SQL 카테고리 결과 시 form.category를 SQL로 설정한다', async () => {
+    const info = {
+      problemId: 12117,
+      title: '있었는데요 없었습니다',
+      difficulty: 'SILVER' as const,
+      level: 2,
+      sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/12117',
+      tags: ['sql'],
+      category: 'sql' as const,
+    };
+    mockSearch.mockResolvedValue(info);
+
+    const { result } = renderHook(() => useTestHook());
+
+    act(() => {
+      result.current.setProgrammersQuery('12117');
+    });
+
+    await act(async () => {
+      await result.current.handleProgrammersSearch();
+    });
+
+    expect(result.current.form.category).toBe('SQL');
   });
 
   it('difficulty가 null이면 빈 문자열로 설정한다', async () => {
@@ -140,6 +168,7 @@ describe('useProgrammersSearch', () => {
       level: 0,
       sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/1845',
       tags: [],
+      category: 'algorithm' as const,
     };
     mockSearch.mockResolvedValue(info);
 
@@ -197,6 +226,7 @@ describe('useProgrammersSearch', () => {
       level: 1,
       sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/1845',
       tags: [],
+      category: 'algorithm',
     });
 
     const { result } = renderHook(() => useTestHook());
@@ -236,23 +266,26 @@ describe('useProgrammersSearch', () => {
 
   it('리셋 시 상태를 초기화한다', async () => {
     mockSearch.mockResolvedValue({
-      problemId: 1845,
-      title: '폰켓몬',
-      difficulty: 'BRONZE',
-      level: 1,
-      sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/1845',
+      problemId: 12117,
+      title: '있었는데요 없었습니다',
+      difficulty: 'SILVER',
+      level: 2,
+      sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/12117',
       tags: [],
+      category: 'sql',
     });
 
     const { result } = renderHook(() => useTestHook());
 
     act(() => {
-      result.current.setProgrammersQuery('1845');
+      result.current.setProgrammersQuery('12117');
     });
 
     await act(async () => {
       await result.current.handleProgrammersSearch();
     });
+
+    expect(result.current.form.category).toBe('SQL');
 
     act(() => {
       result.current.handleProgrammersReset();
@@ -264,6 +297,7 @@ describe('useProgrammersSearch', () => {
     expect(result.current.programmersApplied).toBe(false);
     expect(result.current.form.title).toBe('');
     expect(result.current.form.difficulty).toBe('');
+    expect(result.current.form.category).toBe('ALGORITHM');
     expect(result.current.form.sourceUrl).toBe('');
   });
 

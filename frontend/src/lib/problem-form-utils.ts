@@ -18,6 +18,8 @@ export interface ProblemFormState {
   sourceUrl: string;
   /** 출처 플랫폼 -- 폼 초기값 빈 문자열 허용, 제출 시 'BOJ' | 'PROGRAMMERS'로 좁혀짐 */
   sourcePlatform: string;
+  /** 문제 카테고리 -- 폼 초기값 'ALGORITHM', 제출 시 'ALGORITHM' | 'SQL'로 좁혀짐 */
+  category: string;
 }
 
 export interface ProblemFormErrors {

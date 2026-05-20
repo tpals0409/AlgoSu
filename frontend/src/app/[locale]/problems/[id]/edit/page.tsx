@@ -49,7 +49,6 @@ interface PageProps {
 
 interface EditFormState extends ProblemFormState {
   status: string;
-  category: string;
 }
 
 // ─── RENDER ───────────────────────────────
@@ -576,7 +575,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                   id="edit-category"
                   value={form.category}
                   onChange={handleChange('category')}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || bojApplied || programmersApplied}
                   className={selectClass}
                 >
                   {PROBLEM_CATEGORIES.map((c) => (

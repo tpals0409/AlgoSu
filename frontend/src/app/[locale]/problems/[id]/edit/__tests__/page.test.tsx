@@ -1,6 +1,8 @@
-import { screen } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { renderWithI18n } from '@/test-utils/i18n';
 import ProblemEditPage from '../page';
+
+const mockProgrammersSearch = jest.fn();
 
 jest.mock('@/i18n/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
@@ -166,10 +168,13 @@ jest.mock('@/lib/api', () => ({
       sourceUrl: 'https://boj.kr/1000',
       sourcePlatform: 'BOJ',
       status: 'ACTIVE',
-      category: 'SQL',
+      category: 'ALGORITHM',
     }),
     update: jest.fn().mockResolvedValue({}),
     delete: jest.fn().mockResolvedValue({}),
+  },
+  programmersApi: {
+    search: (id: number) => mockProgrammersSearch(id),
   },
 }));
 
@@ -205,6 +210,10 @@ jest.mock('lucide-react', () => {
 describe('ProblemEditPage', () => {
   const defaultParams = makeParams({ id: 'prob-1' });
 
+  beforeEach(() => {
+    mockProgrammersSearch.mockReset();
+  });
+
   it('ADMIN일 때 문제 수정 페이지가 렌더링된다', async () => {
     renderWithI18n(<ProblemEditPage params={defaultParams} />);
     expect(await screen.findByText('문제 수정')).toBeInTheDocument();
@@ -230,11 +239,42 @@ describe('ProblemEditPage', () => {
     expect(await screen.findByText('삭제')).toBeInTheDocument();
   });
 
-  it('카테고리 select가 표시되고 기존 값(SQL)이 prefill된다', async () => {
+  it('카테고리 select가 표시되고 기존 값(ALGORITHM)이 prefill된다', async () => {
     renderWithI18n(<ProblemEditPage params={defaultParams} />);
     const categorySelect = (await screen.findByLabelText('카테고리')) as HTMLSelectElement;
     expect(categorySelect).toBeInTheDocument();
-    expect(categorySelect.value).toBe('SQL');
+    expect(categorySelect.value).toBe('ALGORITHM');
+    expect(categorySelect).not.toBeDisabled();
+  });
+
+  it('프로그래머스 SQL 검색 적용 시 기존 카테고리를 SQL로 덮어쓰고 select를 비활성화한다', async () => {
+    mockProgrammersSearch.mockResolvedValue({
+      problemId: 12117,
+      title: '있었는데요 없었습니다',
+      difficulty: 'SILVER',
+      level: 2,
+      sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/12117',
+      tags: ['sql'],
+      category: 'sql',
+    });
+
+    const params = makeParams({ id: 'prob-1' });
+    renderWithI18n(<ProblemEditPage params={params} />);
+
+    const categorySelect = (await screen.findByLabelText('카테고리')) as HTMLSelectElement;
+    expect(categorySelect.value).toBe('ALGORITHM');
+
+    // 기본 활성 플랫폼은 BOJ(로드된 sourcePlatform) → 프로그래머스 탭으로 전환
+    fireEvent.click(screen.getByRole('tab', { name: '프로그래머스' }));
+
+    const searchInput = screen.getByPlaceholderText('문제 번호 (예: 42839)');
+    fireEvent.change(searchInput, { target: { value: '12117' } });
+    fireEvent.click(screen.getByRole('button', { name: '검색' }));
+
+    await waitFor(() => {
+      expect(categorySelect.value).toBe('SQL');
+    });
+    expect(categorySelect).toBeDisabled();
   });
 });
 

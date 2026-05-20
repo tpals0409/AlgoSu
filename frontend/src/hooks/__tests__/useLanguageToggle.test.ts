@@ -14,6 +14,7 @@ const defaultForm: ProblemFormState = {
   allowedLanguages: ['python', 'javascript'],
   sourceUrl: '',
   sourcePlatform: '',
+  category: 'ALGORITHM',
 };
 
 /** setForm + useLanguageToggle를 결합한 래퍼 */
