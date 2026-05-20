@@ -12,6 +12,8 @@ import type { ProblemFormState } from '@/lib/problem-form-utils';
 const mockSearch = jest.fn();
 jest.mock('@/lib/api', () => ({
   programmersApi: { search: (id: number) => mockSearch(id) },
+  // SSOT 헬퍼는 실제 구현을 사용 (dual-check 로직 drift 방지)
+  isProgrammersSqlProblem: jest.requireActual('@/lib/api/external').isProgrammersSqlProblem,
 }));
 
 const defaultForm: ProblemFormState = {
@@ -151,6 +153,32 @@ describe('useProgrammersSearch', () => {
 
     act(() => {
       result.current.setProgrammersQuery('12117');
+    });
+
+    await act(async () => {
+      await result.current.handleProgrammersSearch();
+    });
+
+    expect(result.current.form.category).toBe('SQL');
+  });
+
+  it('category가 algorithm이어도 tags에 SQL이 있으면 form.category를 SQL로 설정한다', async () => {
+    // legacy 항목: gateway가 category를 'algorithm'으로 default하지만 태그로 SQL 식별
+    const info = {
+      problemId: 59413,
+      title: '입양 시각 구하기(1)',
+      difficulty: 'SILVER' as const,
+      level: 2,
+      sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/59413',
+      tags: ['SQL'],
+      category: 'algorithm' as const,
+    };
+    mockSearch.mockResolvedValue(info);
+
+    const { result } = renderHook(() => useTestHook());
+
+    act(() => {
+      result.current.setProgrammersQuery('59413');
     });
 
     await act(async () => {

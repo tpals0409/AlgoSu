@@ -75,6 +75,19 @@ export interface ProgrammersSearchResult {
   items: ProgrammersSearchItem[];
 }
 
+/**
+ * Programmers 문제가 SQL 카테고리인지 판정한다.
+ * category 또는 'SQL' 태그를 dual-check (legacy 항목은 category가 'algorithm'으로 defaulted되어도 태그로 식별).
+ * @domain external
+ */
+export function isProgrammersSqlProblem(item: {
+  category?: 'algorithm' | 'sql';
+  tags?: string[];
+}): boolean {
+  if (item.category === 'sql') return true;
+  return (item.tags ?? []).some((t) => t.toUpperCase() === 'SQL');
+}
+
 export const programmersApi = {
   /** 프로그래머스 문제 번호로 단일 문제 조회 */
   search: (problemId: number): Promise<ProgrammersProblemInfo> =>

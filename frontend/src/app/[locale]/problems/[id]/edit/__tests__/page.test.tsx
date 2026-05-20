@@ -176,6 +176,8 @@ jest.mock('@/lib/api', () => ({
   programmersApi: {
     search: (id: number) => mockProgrammersSearch(id),
   },
+  // SSOT 헬퍼는 실제 구현을 사용 (dual-check 로직 drift 방지)
+  isProgrammersSqlProblem: jest.requireActual('@/lib/api/external').isProgrammersSqlProblem,
 }));
 
 jest.mock('@/lib/constants', () => ({

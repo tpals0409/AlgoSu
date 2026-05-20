@@ -36,7 +36,7 @@ export { problemApi } from './problem';
 export { submissionApi, draftApi, aiQuotaApi } from './submission';
 export type { AiQuota } from './submission';
 
-export { solvedacApi, programmersApi } from './external';
+export { solvedacApi, programmersApi, isProgrammersSqlProblem } from './external';
 export type {
   SolvedacProblemInfo,
   SolvedacSearchItem,
