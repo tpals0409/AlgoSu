@@ -133,7 +133,13 @@ git commit -m "$MSG"
 
 ## Critic 사이클
 
-**R1** (codex review --base 7ec560c): `<TBD-CRITIC-R1>`
+**R1** (codex review --base 7ec560c, 세션 `019e4380-1826-7271-89c6-bc059a1b1d90`):
+
+- **결과**: P0/P1/P2/P3 **0건 PASS** ✅
+- **codex 판정**: "focused CI helper test job 추가 + path filtering 배선 + GitOps commit message 조정에 기능 회귀 없음. 문서 업데이트는 신규 sprint ADR 와 일관."
+- codex 가 직접 검증: `python3 yaml.safe_load(ci.yml)` 파싱 OK + `bash tests/ci/report-build-metrics-test.sh` 실행 → macOS BSD stat 환경에서 SKIP 가드 정상 동작 확인 (exit 0)
+- 자기 모순 검출 0 — sprint 목표(관측/검증/회귀차단 3종 정착) ↔ 구현 일치
+- 단일 회전 PASS (Sprint 167/168 정상 패턴 재현, codex hang 없음)
 
 ## 위험/회귀 차단
 
@@ -182,7 +188,8 @@ git commit -m "$MSG"
 
 Commits (PR #295):
 - `6a34a28` feat(ci): Sprint 169 시드 #168-2/#168-4 — GitOps message 서비스 명시 + 헬퍼 단위 테스트
-- `<TBD-ADR>` docs(adr): Sprint 169 ADR (KR + EN) + README 갱신
+- `e2841d8` docs(adr): Sprint 169 ADR (KR + EN) + README 갱신
+- `<TBD-CRITIC-DOC>` docs(adr): Sprint 169 Critic R1 사이클 명문화 (KR + EN)
 - Squash merge: `<TBD-MERGE-SHA>`
 
 ## 신규 패턴
