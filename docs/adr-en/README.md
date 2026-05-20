@@ -74,3 +74,20 @@ The `/stop` workflow (`.claude/commands/stop.md`) enforces this in step 3 (Sprin
 
 - Korean: `https://blog.algosu.dev/adr/`
 - English: `https://blog.algosu.dev/en/adr/` — pages with a translated body render natively; pages without one display the Korean body with a "Content in Korean" callout
+
+## i18n quality layers (Sprint 175 #30/#31)
+
+ADR internationalisation is gated in three layers, each enforced in the `quality-docs` CI job:
+
+| Layer | Question | Gate |
+|-------|----------|------|
+| 1 — Source of truth | Does the Korean original exist? | `docs/adr/` is the SSOT (authored first) |
+| 2 — Existence | Does an English counterpart file exist? | `scripts/check-adr-en-coverage.mjs --strict` |
+| 3 — Translation quality | Is the English file actually translated (no untranslated Korean body)? | `scripts/check-i18n-residue.mjs --strict` |
+
+Layer 3 closes the gap where an English file exists (passing layer 2) but is still a Korean stub. It measures the Hangul ratio of each `docs/adr-en/**/*.md` **prose** region — code fences (``` ``` ```) and inline code (`` `…` ``) are excluded, so Korean log/commit examples inside code stay legal. A file fails only when its prose Hangul ratio exceeds the threshold (default 8%, current corpus max ≈ 2.2%) **and** has at least 10 Hangul characters, which cleanly separates genuine stubs (30–60%) from incidental proper nouns. Because the blog `/en` ADR body is rendered verbatim from `docs/adr-en/` (`blog/src/lib/adr/loader.ts`), gating the source also keeps the build artifact (`out/en/**`) Korean-free (shift-left).
+
+```bash
+node scripts/check-i18n-residue.mjs            # stats only
+node scripts/check-i18n-residue.mjs --strict   # fail on residue (CI gate)
+```
