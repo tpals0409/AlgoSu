@@ -119,6 +119,11 @@
     "descriptionPlaceholder": "Enter a description for this problem",
     "difficultyLabel": "Difficulty",
     "difficultyNone": "None",
+    "categoryLabel": "Category",
+    "category": {
+      "ALGORITHM": "Algorithm",
+      "SQL": "SQL"
+    },
     "calculatedWeek": "Auto-calculated: {week}",
     "selectedDate": "{month}/{day} ({dayName})",
     "required": "Required",

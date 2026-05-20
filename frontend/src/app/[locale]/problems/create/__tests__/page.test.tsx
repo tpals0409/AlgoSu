@@ -166,6 +166,7 @@ jest.mock('@/lib/constants', () => ({
     { value: 'javascript', label: 'JavaScript' },
   ],
   LANGUAGE_VALUES: ['python', 'javascript'],
+  PROBLEM_CATEGORIES: ['ALGORITHM', 'SQL'],
 }));
 
 jest.mock('@/lib/problem-form-utils', () => ({
@@ -230,6 +231,15 @@ describe('ProblemCreatePage', () => {
   it('뒤로가기 버튼이 표시된다', () => {
     renderWithI18n(<ProblemCreatePage />);
     expect(screen.getByText('문제 목록')).toBeInTheDocument();
+  });
+
+  it('카테고리 select와 옵션(알고리즘/SQL)이 기본 ALGORITHM으로 표시된다', () => {
+    renderWithI18n(<ProblemCreatePage />);
+    const categorySelect = screen.getByLabelText('카테고리') as HTMLSelectElement;
+    expect(categorySelect).toBeInTheDocument();
+    expect(categorySelect.value).toBe('ALGORITHM');
+    expect(screen.getByRole('option', { name: '알고리즘' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'SQL' })).toBeInTheDocument();
   });
 });
 

@@ -29,7 +29,7 @@ import { useRequireStudy } from '@/hooks/useRequireStudy';
 import { useBojSearch } from '@/hooks/useBojSearch';
 import { useProgrammersSearch } from '@/hooks/useProgrammersSearch';
 import { problemApi, studyApi, type CreateProblemData } from '@/lib/api';
-import { DIFFICULTIES, DIFFICULTY_LABELS, LANGUAGES, LANGUAGE_VALUES } from '@/lib/constants';
+import { DIFFICULTIES, DIFFICULTY_LABELS, LANGUAGES, LANGUAGE_VALUES, PROBLEM_CATEGORIES } from '@/lib/constants';
 import type { Difficulty } from '@/lib/constants';
 import {
   type ProblemFormState,
@@ -71,6 +71,7 @@ export default function ProblemCreatePage(): ReactNode {
       title: '',
       description: '',
       difficulty: '',
+      category: 'ALGORITHM',
       deadline: '',
       allowedLanguages: [...LANGUAGE_VALUES],
       sourceUrl: '',
@@ -192,6 +193,7 @@ export default function ProblemCreatePage(): ReactNode {
       };
       if (formData.description?.trim()) data.description = formData.description.trim();
       if (formData.difficulty) data.difficulty = formData.difficulty as CreateProblemData['difficulty'];
+      if (formData.category) data.category = formData.category;
       if (activeResult?.level) data.level = activeResult.level;
       if (formData.deadline) data.deadline = new Date(formData.deadline).toISOString();
       if (formData.allowedLanguages.length > 0) data.allowedLanguages = formData.allowedLanguages;
@@ -280,6 +282,7 @@ export default function ProblemCreatePage(): ReactNode {
                       title: '',
                       description: '',
                       difficulty: '',
+                      category: 'ALGORITHM',
                       deadline: '',
                       allowedLanguages: [...LANGUAGE_VALUES],
                       sourceUrl: '',
@@ -575,6 +578,20 @@ export default function ProblemCreatePage(): ReactNode {
                   <option value="">{t('form.difficultyNone')}</option>
                   {DIFFICULTIES.map((d) => (
                     <option key={d} value={d}>{DIFFICULTY_LABELS[d]}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col">
+                <label htmlFor="create-category" className={labelClass}>{t('form.categoryLabel')}</label>
+                <select
+                  id="create-category"
+                  {...register('category')}
+                  disabled={isSubmitting}
+                  className={selectClass}
+                >
+                  {PROBLEM_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>{t(`form.category.${c}`)}</option>
                   ))}
                 </select>
               </div>
