@@ -108,6 +108,7 @@ jobs:
       blog:          ${{ steps.result.outputs.blog }}
       monitoring:    ${{ steps.result.outputs.monitoring }}
       docs:          ${{ steps.result.outputs.docs }}
+      ci-scripts:    ${{ steps.result.outputs.ci-scripts }}
     steps:
       - uses: actions/checkout@v6
       - name: Detect path changes
@@ -158,6 +159,9 @@ jobs:
               - 'blog/content/**/*.mdx'
               - 'scripts/check-doc-refs.mjs'
               - 'scripts/check-adr-en-coverage.mjs'
+            ci-scripts:
+              - 'scripts/ci/**'
+              - 'tests/ci/**'
       - name: Apply rebuild_all override
         id: result
         run: |
@@ -172,6 +176,7 @@ jobs:
             echo "blog=true" >> $GITHUB_OUTPUT
             echo "monitoring=true" >> $GITHUB_OUTPUT
             echo "docs=true" >> $GITHUB_OUTPUT
+            echo "ci-scripts=true" >> $GITHUB_OUTPUT
           else
             echo "gateway=${{ steps.filter.outputs.gateway }}" >> $GITHUB_OUTPUT
             echo "identity=${{ steps.filter.outputs.identity }}" >> $GITHUB_OUTPUT
@@ -183,6 +188,7 @@ jobs:
             echo "blog=${{ steps.filter.outputs.blog }}" >> $GITHUB_OUTPUT
             echo "monitoring=${{ steps.filter.outputs.monitoring }}" >> $GITHUB_OUTPUT
             echo "docs=${{ steps.filter.outputs.docs }}" >> $GITHUB_OUTPUT
+            echo "ci-scripts=${{ steps.filter.outputs.ci-scripts }}" >> $GITHUB_OUTPUT
           fi
 
   # ============================================================
@@ -334,6 +340,23 @@ jobs:
         run: node scripts/check-doc-refs.mjs
       - name: Check ADR EN coverage (strict)
         run: node scripts/check-adr-en-coverage.mjs --strict
+
+  # ============================================================
+  # Quality — CI shell helper 단위 테스트 (Sprint 169 시드 #168-4)
+  # scripts/ci/** 또는 tests/ci/** 변경 시 report-build-metrics.sh 회귀 차단
+  # ============================================================
+
+  quality-ci-scripts:
+    name: Quality — ci-scripts
+    needs: detect-changes
+    if: needs.detect-changes.outputs.ci-scripts == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - name: Run report-build-metrics.sh unit tests
+        run: bash tests/ci/report-build-metrics-test.sh
 
   quality-frontend:
     name: Quality — frontend
@@ -1117,8 +1140,22 @@ jobs:
             echo "No changes to commit"
             exit 0
           fi
+          # Sprint 169 시드 #168-2: 실제 갱신된 서비스 + Trivy skip 목록을 commit
+          # message 에 명시 (이전: head SHA 만 표기 → 어떤 서비스가 배포됐는지 불명확).
+          # 모든 서비스가 동일 SHA 를 공유하므로 서비스별 SHA 반복 대신 단일 SHA 표기.
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          UPDATED_CSV=$(echo "${{ steps.update_tags.outputs.updated }}" | xargs | sed 's/ /, /g')
+          SKIPPED_CSV=$(echo "${{ steps.update_tags.outputs.skipped_trivy }}" | xargs | sed 's/ /, /g')
+          if [ -n "$UPDATED_CSV" ]; then
+            MSG="deploy(algosu): update image tags → ${UPDATED_CSV} @ main-${SHORT_SHA}"
+          else
+            MSG="deploy(algosu): update image tags @ main-${SHORT_SHA}"
+          fi
+          if [ -n "$SKIPPED_CSV" ]; then
+            MSG="${MSG} (skipped: ${SKIPPED_CSV})"
+          fi
           git add -A
-          git commit -m "deploy(algosu): update image tags → main-${{ github.sha }}"
+          git commit -m "$MSG"
           git push
 
       # Sprint 160 Phase C: deploy 결과를 GitHub Step Summary 에 markdown 으로 노출
