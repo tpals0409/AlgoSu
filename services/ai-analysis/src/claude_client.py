@@ -477,6 +477,37 @@ class ClaudeClient:
             # Sprint 164 시드 #신규3 — Sprint 159 single 분석 envelope 패턴을 group 측 회수.
             # 기존 fallback 은 raw_text 를 comparison 에 50000자까지 노출 → PII/잠재 secret 노출 위험.
             # 본문 노출 0 + raw_length 만 로깅 + user-facing 안전 문구 envelope 반환.
+
+            # Sprint 174 #신규7 — 실패 envelope 반환 전에 부분 복구 시도.
+            # 모델이 완전히 종결한 top-level 필드만 회수 (절단/trailing comma 등).
+            # 미종결 문자열 필드는 절대 복구하지 않음 → Sprint 164 보안 경계 보존.
+            recovered = self._recover_partial_json_object(raw_text)
+            if (
+                isinstance(recovered, dict)
+                and isinstance(recovered.get("comparison"), str)
+                and recovered["comparison"]
+            ):
+                learning_points = recovered.get("learningPoints", [])
+                if not isinstance(learning_points, list):
+                    learning_points = (
+                        [str(learning_points)] if learning_points else []
+                    )
+                logger.info(
+                    "그룹 분석 부분 복구 성공",
+                    extra={
+                        "raw_length": len(raw_text),
+                        "recovered_fields": len(recovered),
+                    },
+                )
+                return {
+                    "comparison": recovered["comparison"],
+                    "bestApproach": recovered.get("bestApproach") or None,
+                    "optimizedCode": recovered.get("optimizedCode"),
+                    "learningPoints": learning_points,
+                    "status": "completed",
+                    "raw": json.dumps(recovered, ensure_ascii=False),
+                }
+
             logger.warning(
                 "그룹 분석 Claude 응답 파싱 실패 -- envelope fallback 사용",
                 extra={
@@ -556,6 +587,77 @@ class ClaudeClient:
         if end == -1:
             raise json.JSONDecodeError("Unclosed JSON object", text, start)
         return json.loads(text[start : end + 1])
+
+    @staticmethod
+    def _recover_partial_json_object(text: str) -> dict | None:
+        """절단/손상된 JSON 에서 모델이 완전히 종결한 top-level 필드만 복구.
+
+        Sprint 174 #신규7 — 그룹 분석 fallback 부분 회수용. prefix-at-comma-boundary
+        전략: root object 내부에서 깊이 1(=top-level)·문자열 밖에서 만난 콤마 직전까지는
+        완전히 종결된 key:value 쌍들이므로 안전한 복구 후보(cut point)다. 후보 prefix 의
+        끝 trailing comma/whitespace 를 제거하고 열려있는 컨테이너만큼 닫는 괄호를 붙여
+        json.loads 로 검증한 결과만 반환한다.
+
+        보안 불변식 (Sprint 164 경계 보존):
+        - raw_text(또는 substring)를 json.loads 없이 반환하지 않음.
+        - EOF 시점 in_string==True(미종결 문자열)면 EOF 후보 사용 금지 →
+          절단된 마지막 필드(echoed secret/PII 노출 지점)를 절대 복구하지 않음.
+        - re.search 텍스트 span 추출 금지 — 오직 종결된 prefix 의 json.loads 결과만.
+
+        @domain ai
+        @param text: Claude 원본 응답 텍스트(절단/손상 가능)
+        @returns: 복구된 dict (키 1개 이상). 복구 불가 시 None.
+        """
+        cleaned = ClaudeClient._strip_markdown_block(text)
+        start = cleaned.find("{")
+        if start == -1:
+            return None
+
+        # walk: 문자열/이스케이프/컨테이너 깊이 추적.
+        # candidates[i] = (prefix_end_exclusive, stack_after) — 해당 콤마 직전까지 닫으면
+        # 종결된 쌍들만 남는 cut point. stack 은 prefix 시점에 열려있는 컨테이너 종류.
+        candidates: list[tuple[int, list[str]]] = []
+        stack: list[str] = []
+        in_string = False
+        escape = False
+        for i, ch in enumerate(cleaned[start:], start):
+            if escape:
+                escape = False
+                continue
+            if ch == "\\":
+                escape = True
+                continue
+            if ch == '"':
+                in_string = not in_string
+                continue
+            if in_string:
+                continue
+            if ch in "{[":
+                stack.append(ch)
+            elif ch in "}]":
+                if stack:
+                    stack.pop()
+            elif ch == "," and len(stack) == 1 and stack[0] == "{":
+                # root object 내부 top-level 콤마 → 직전까지 종결된 쌍들.
+                candidates.append((i, list(stack)))
+
+        # EOF 후보: 미종결 문자열이 없을 때만 추가 (절단된 마지막 필드 차단).
+        if not in_string and stack:
+            candidates.append((len(cleaned), list(stack)))
+
+        # 가장 뒤(가장 많이 회수) 후보부터 시도.
+        for prefix_end, prefix_stack in reversed(candidates):
+            prefix = cleaned[start:prefix_end].rstrip()
+            prefix = prefix.rstrip(",").rstrip()
+            # 열려있는 컨테이너를 역순으로 닫음.
+            closing = "".join("}" if opener == "{" else "]" for opener in reversed(prefix_stack))
+            try:
+                parsed = json.loads(prefix + closing)
+            except (json.JSONDecodeError, ValueError):
+                continue
+            if isinstance(parsed, dict) and parsed:
+                return parsed
+        return None
 
     @staticmethod
     def _fallback_result() -> dict:
