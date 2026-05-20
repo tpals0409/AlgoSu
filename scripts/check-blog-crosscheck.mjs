@@ -328,12 +328,16 @@ export function checkFrontmatter(posts, locale) {
         detail: `category 값 무효: ${fmt(meta.category)} (허용: journey|challenge)`,
       });
     }
-    if (typeof meta.date === 'string' && !DATE_RE.test(meta.date)) {
+    // date 가 존재하면 문자열 + YYYY-MM-DD 형식이어야 한다.
+    // (undefined 는 위 필수필드 검사가 처리하므로 여기선 present 한정.)
+    // 경량 파서가 따옴표 없는 숫자(date: 20260409)를 number 로 파싱하면
+    // 형식 검증이 우회되던 false-negative 를 막는다.
+    if (meta.date !== undefined && (typeof meta.date !== 'string' || !DATE_RE.test(meta.date))) {
       out.push({
         axis: 'schema',
         slug,
         locale,
-        detail: `date 형식 무효: ${meta.date} (기대 YYYY-MM-DD)`,
+        detail: `date 형식 무효: ${fmt(meta.date)} (${typeof meta.date}, 기대 문자열 YYYY-MM-DD)`,
       });
     }
     if (meta.order !== undefined) {
@@ -379,7 +383,7 @@ export function checkLinks(posts, locale) {
   const out = [];
   for (const { slug, body } of posts) {
     for (const href of extractLinks(stripCode(body))) {
-      const violation = classifyLink(href);
+      const violation = classifyLink(href, locale);
       if (violation) out.push({ axis: 'link', slug, locale, detail: violation });
     }
   }
@@ -419,9 +423,10 @@ export function extractLinks(body) {
  * 링크 타깃 하나를 분류해 위반 사유 문자열을 반환한다(정상이면 null).
  *
  * @param {string} href
+ * @param {string} locale  링크를 담은 글의 locale ('ko' | 'en')
  * @returns {string|null}
  */
-function classifyLink(href) {
+function classifyLink(href, locale) {
   // 통과: 외부 링크 / 앵커
   if (/^(https?:|mailto:)/.test(href)) return null;
   if (href.startsWith('#')) return null;
@@ -434,23 +439,33 @@ function classifyLink(href) {
     return `OS 절대 경로 (배포 사이트 404): ${href}`;
   }
 
-  // 검증: 내부 post 라우트 → 대상 글 존재
-  return checkPostRoute(href);
+  // 검증: 내부 post 라우트 → 자기 locale 라우트 + 대상 글 존재
+  return checkPostRoute(href, locale);
 }
 
 /**
- * /posts/<slug> · /en/posts/<slug> 라우트 대상 글 존재를 확인한다.
+ * post 라우트 링크를 locale-aware 로 검증한다.
+ * 글은 자기 locale 의 post 라우트로만 링크해야 한다(교차-locale 누수 차단):
+ *   - KO 글: `/posts/<slug>` → KO_DIR 대상 존재. `/en/posts/<slug>` 는 누수 위반.
+ *   - EN 글: `/en/posts/<slug>` → EN_DIR 대상 존재. bare `/posts/<slug>` 는 누수 위반.
  * 그 외 루트 절대 링크(/adr/... 등)는 본 게이트 범위 밖이라 통과(null).
  *
  * @param {string} href
+ * @param {string} locale  링크를 담은 글의 locale ('ko' | 'en')
  * @returns {string|null}
  */
-function checkPostRoute(href) {
+function checkPostRoute(href, locale) {
   const en = href.match(/^\/en\/posts\/([^/#?]+)\/?$/);
-  if (en) return existsSync(join(EN_DIR, `${en[1]}.mdx`)) ? null : `EN post 대상 없음: ${href}`;
+  if (en) {
+    if (locale !== 'en') return `KO 글은 /posts/ 라우트를 써야 함 (locale 누수): ${href}`;
+    return existsSync(join(EN_DIR, `${en[1]}.mdx`)) ? null : `EN post 대상 없음: ${href}`;
+  }
 
   const ko = href.match(/^\/posts\/([^/#?]+)\/?$/);
-  if (ko) return existsSync(join(KO_DIR, `${ko[1]}.mdx`)) ? null : `KR post 대상 없음: ${href}`;
+  if (ko) {
+    if (locale !== 'ko') return `EN 글은 /en/posts/ 라우트를 써야 함 (locale 누수): ${href}`;
+    return existsSync(join(KO_DIR, `${ko[1]}.mdx`)) ? null : `KR post 대상 없음: ${href}`;
+  }
 
   return null;
 }
