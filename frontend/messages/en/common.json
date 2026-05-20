@@ -42,9 +42,6 @@
     "default": "No items to display.",
     "noResults": "No results found."
   },
-  "ad": {
-    "devPlaceholder": "Ad Area (Development Mode)"
-  },
   "guestNav": {
     "themeToggle": "Toggle theme",
     "homeAria": "AlgoSu guest home",

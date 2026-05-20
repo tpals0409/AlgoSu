@@ -19,8 +19,7 @@
       "item1": "User identification and authentication",
       "item2": "Core service delivery including code submission, AI analysis, and GitHub sync",
       "item3": "Study group management and learning statistics",
-      "item4": "Service improvement and error resolution",
-      "item5": "Advertisement display (Google AdSense)"
+      "item4": "Service improvement and error resolution"
     },
     "section3": {
       "title": "3. Retention and Usage Period",
@@ -31,13 +30,12 @@
     "section4": {
       "title": "4. Disclosure to Third Parties",
       "body": "The Service does not provide personal information to third parties without user consent in principle. However, the following cases are exceptions.",
-      "adsense": "Google AdSense: Non-identifiable cookie-based information may be transmitted to Google for ad serving.",
       "github": "GitHub: When the user sets up GitHub integration, code submission data is synchronized to the user's GitHub repository.",
       "legal": "When required by law"
     },
     "section5": {
       "title": "5. Cookie Policy",
-      "body": "The Service uses essential cookies to maintain authentication sessions, and third-party cookies may be used for Google AdSense ad delivery. Users may reject cookie storage through browser settings, but this may limit service functionality."
+      "body": "The Service uses essential cookies to maintain authentication sessions. Users may reject cookie storage through browser settings, but this may limit service functionality."
     },
     "section6": {
       "title": "6. User Rights",

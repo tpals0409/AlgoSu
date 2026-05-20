@@ -23,8 +23,6 @@ import { DIFFICULTIES, DIFFICULTY_LABELS, DIFF_DOT_STYLE, DIFF_BADGE_STYLE, PLAT
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
 import { AddProblemModal, type NewProblemData } from '@/components/ui/AddProblemModal';
-import { AdBanner } from '@/components/ad/AdBanner';
-import { AD_SLOTS } from '@/lib/constants/adSlots';
 
 // ─── TYPES ────────────────────────────────
 
@@ -348,9 +346,6 @@ export default function ProblemsPage(): ReactNode {
           </div>
         )}
       </div>
-
-      {/* ── AD ── */}
-      <AdBanner slot={AD_SLOTS.PROBLEMS_LIST} />
 
       {/* 플로팅 문제 추가 버튼 + 모달 */}
       {isAdmin && (
