@@ -455,13 +455,18 @@ function classifyLink(href, locale) {
  * @returns {string|null}
  */
 function checkPostRoute(href, locale) {
-  const en = href.match(/^\/en\/posts\/([^/#?]+)\/?$/);
+  // fragment(#...)·query(?...) suffix 를 먼저 잘라 슬러그를 검증한다.
+  // `$` 앵커 정규식이 `/posts/missing#sec` 류를 미매칭→통과시켜 깨진 in-page
+  // 내부 링크가 우회되던 false-negative 를 차단한다(빈 슬러그는 자연 미매칭).
+  const path = href.split(/[#?]/)[0];
+
+  const en = path.match(/^\/en\/posts\/([^/]+)\/?$/);
   if (en) {
     if (locale !== 'en') return `KO 글은 /posts/ 라우트를 써야 함 (locale 누수): ${href}`;
     return existsSync(join(EN_DIR, `${en[1]}.mdx`)) ? null : `EN post 대상 없음: ${href}`;
   }
 
-  const ko = href.match(/^\/posts\/([^/#?]+)\/?$/);
+  const ko = path.match(/^\/posts\/([^/]+)\/?$/);
   if (ko) {
     if (locale !== 'ko') return `EN 글은 /en/posts/ 라우트를 써야 함 (locale 누수): ${href}`;
     return existsSync(join(KO_DIR, `${ko[1]}.mdx`)) ? null : `KR post 대상 없음: ${href}`;
