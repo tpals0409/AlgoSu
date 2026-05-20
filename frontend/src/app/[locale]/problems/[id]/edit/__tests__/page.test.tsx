@@ -166,6 +166,7 @@ jest.mock('@/lib/api', () => ({
       sourceUrl: 'https://boj.kr/1000',
       sourcePlatform: 'BOJ',
       status: 'ACTIVE',
+      category: 'SQL',
     }),
     update: jest.fn().mockResolvedValue({}),
     delete: jest.fn().mockResolvedValue({}),
@@ -182,6 +183,7 @@ jest.mock('@/lib/constants', () => ({
   LANGUAGE_VALUES: ['python', 'javascript'],
   PROBLEM_STATUSES: ['DRAFT', 'ACTIVE', 'CLOSED'],
   PROBLEM_STATUS_LABELS: { DRAFT: '초안', ACTIVE: '활성', CLOSED: '종료' },
+  PROBLEM_CATEGORIES: ['ALGORITHM', 'SQL'],
 }));
 
 jest.mock('@/lib/problem-form-utils', () => ({
@@ -226,6 +228,13 @@ describe('ProblemEditPage', () => {
   it('삭제 버튼이 표시된다', async () => {
     renderWithI18n(<ProblemEditPage params={defaultParams} />);
     expect(await screen.findByText('삭제')).toBeInTheDocument();
+  });
+
+  it('카테고리 select가 표시되고 기존 값(SQL)이 prefill된다', async () => {
+    renderWithI18n(<ProblemEditPage params={defaultParams} />);
+    const categorySelect = (await screen.findByLabelText('카테고리')) as HTMLSelectElement;
+    expect(categorySelect).toBeInTheDocument();
+    expect(categorySelect.value).toBe('SQL');
   });
 });
 

@@ -121,6 +121,17 @@ export const PROBLEM_STATUS_LABELS: Record<ProblemStatus, string> = {
   DRAFT: '초안',
 };
 
+// ── Problem Category ──
+
+/**
+ * 폼 옵션/Zod enum SSOT — 백엔드 `services/problem` `ProblemCategory`와 1:1 매칭.
+ * 라벨은 난이도(고유명사)와 달리 번역 대상이므로 i18n(`problems.form.category.*`)에서 가져온다.
+ */
+export const PROBLEM_CATEGORIES = ['ALGORITHM', 'SQL'] as const;
+
+/** 백엔드 호환 카테고리 enum — 기본값 ALGORITHM */
+export type ProblemCategory = (typeof PROBLEM_CATEGORIES)[number];
+
 // ── Saga Step ──
 
 export type SagaStep = 'DB_SAVED' | 'GITHUB_QUEUED' | 'AI_QUEUED' | 'DONE' | 'FAILED';

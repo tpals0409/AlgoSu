@@ -29,7 +29,7 @@ import { useBojSearch } from '@/hooks/useBojSearch';
 import { useProgrammersSearch } from '@/hooks/useProgrammersSearch';
 import { useLanguageToggle } from '@/hooks/useLanguageToggle';
 import { problemApi, type Problem, type UpdateProblemData } from '@/lib/api';
-import { DIFFICULTIES, DIFFICULTY_LABELS, LANGUAGES, LANGUAGE_VALUES, PROBLEM_STATUSES, PROBLEM_STATUS_LABELS } from '@/lib/constants';
+import { DIFFICULTIES, DIFFICULTY_LABELS, LANGUAGES, LANGUAGE_VALUES, PROBLEM_STATUSES, PROBLEM_STATUS_LABELS, PROBLEM_CATEGORIES } from '@/lib/constants';
 import type { Difficulty } from '@/lib/constants';
 import {
   type ProblemFormState,
@@ -49,6 +49,7 @@ interface PageProps {
 
 interface EditFormState extends ProblemFormState {
   status: string;
+  category: string;
 }
 
 // ─── RENDER ───────────────────────────────
@@ -82,6 +83,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
     sourceUrl: '',
     sourcePlatform: 'BOJ',
     status: '',
+    category: 'ALGORITHM',
   });
   const [fieldErrors, setFieldErrors] = useState<ProblemFormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -155,6 +157,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
           sourceUrl: data.sourceUrl ?? '',
           sourcePlatform: platform,
           status: data.status ?? 'ACTIVE',
+          category: data.category ?? 'ALGORITHM',
         });
       } catch (err: unknown) {
         if (!cancelled) {
@@ -234,6 +237,7 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
         if (form.sourceUrl.trim() !== (problem.sourceUrl ?? '')) data.sourceUrl = form.sourceUrl.trim();
         if (form.sourcePlatform.trim() !== (problem.sourcePlatform ?? '')) data.sourcePlatform = form.sourcePlatform.trim() as UpdateProblemData['sourcePlatform'];
         if (form.status !== problem.status) data.status = form.status as UpdateProblemData['status'];
+        if (form.category !== (problem.category ?? 'ALGORITHM')) data.category = form.category as UpdateProblemData['category'];
 
         await problemApi.update(problemId, data);
         router.push(`/problems/${problemId}`);
@@ -562,6 +566,21 @@ export default function ProblemEditPage({ params }: PageProps): ReactNode {
                   <option value="">{t('form.difficultyNone')}</option>
                   {DIFFICULTIES.map((d) => (
                     <option key={d} value={d}>{DIFFICULTY_LABELS[d]}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col">
+                <label htmlFor="edit-category" className={labelClass}>{t('form.categoryLabel')}</label>
+                <select
+                  id="edit-category"
+                  value={form.category}
+                  onChange={handleChange('category')}
+                  disabled={isSubmitting}
+                  className={selectClass}
+                >
+                  {PROBLEM_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>{t(`form.category.${c}`)}</option>
                   ))}
                 </select>
               </div>

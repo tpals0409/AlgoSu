@@ -6,6 +6,8 @@
 
 import { z } from 'zod';
 
+import { PROBLEM_CATEGORIES } from '@/lib/constants';
+
 export const problemCreateSchema = z.object({
   title: z
     .string()
@@ -13,6 +15,7 @@ export const problemCreateSchema = z.object({
     .min(1, 'validation.problem.titleRequired'),
   description: z.string().optional(),
   difficulty: z.string().optional(),
+  category: z.enum(PROBLEM_CATEGORIES),
   deadline: z
     .string()
     .min(1, 'validation.problem.deadlineRequired'),

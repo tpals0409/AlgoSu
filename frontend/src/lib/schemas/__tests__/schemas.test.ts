@@ -70,6 +70,7 @@ describe('problemCreateSchema', () => {
     title: '두 수의 합',
     deadline: '2026-03-10',
     allowedLanguages: ['python', 'javascript'],
+    category: 'ALGORITHM',
   };
 
   it('유효한 입력을 파싱한다', () => {
@@ -77,6 +78,7 @@ describe('problemCreateSchema', () => {
     expect(result.title).toBe('두 수의 합');
     expect(result.deadline).toBe('2026-03-10');
     expect(result.allowedLanguages).toEqual(['python', 'javascript']);
+    expect(result.category).toBe('ALGORITHM');
   });
 
   it('선택 필드 없이도 파싱한다', () => {
@@ -84,11 +86,20 @@ describe('problemCreateSchema', () => {
       title: '두 수의 합',
       deadline: '2026-03-10',
       allowedLanguages: [],
+      category: 'ALGORITHM',
     });
     expect(result.description).toBeUndefined();
     expect(result.difficulty).toBeUndefined();
     expect(result.sourceUrl).toBeUndefined();
     expect(result.sourcePlatform).toBeUndefined();
+  });
+
+  it('category가 무효한 값이면 실패한다', () => {
+    const result = problemCreateSchema.safeParse({
+      ...validProblem,
+      category: 'INVALID',
+    });
+    expect(result.success).toBe(false);
   });
 
   it('title이 빈 문자열이면 실패한다', () => {
@@ -126,11 +137,13 @@ describe('problemCreateSchema', () => {
       ...validProblem,
       description: '기본 문제',
       difficulty: 'EASY',
+      category: 'SQL',
       sourceUrl: 'https://boj.kr/1000',
       sourcePlatform: 'BOJ',
     });
     expect(result.description).toBe('기본 문제');
     expect(result.difficulty).toBe('EASY');
+    expect(result.category).toBe('SQL');
     expect(result.sourceUrl).toBe('https://boj.kr/1000');
     expect(result.sourcePlatform).toBe('BOJ');
   });

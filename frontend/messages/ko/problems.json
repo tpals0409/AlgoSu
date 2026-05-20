@@ -119,6 +119,11 @@
     "descriptionPlaceholder": "문제에 대한 설명을 입력하세요",
     "difficultyLabel": "난이도",
     "difficultyNone": "선택 안 함",
+    "categoryLabel": "카테고리",
+    "category": {
+      "ALGORITHM": "알고리즘",
+      "SQL": "SQL"
+    },
     "calculatedWeek": "자동 계산: {week}",
     "selectedDate": "{month}월 {day}일 ({dayName})",
     "required": "필수",
