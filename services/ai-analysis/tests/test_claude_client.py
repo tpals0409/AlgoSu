@@ -985,9 +985,7 @@ class TestParseGroupResponse:
 class TestGroupAnalyze:
     """group_analyze() -- 그룹 분석 전체 흐름"""
 
-    def test_group_analyze_success(
-        self, client, mock_anthropic, mock_circuit_breaker
-    ):
+    def test_group_analyze_success(self, client, mock_anthropic, mock_circuit_breaker):
         """정상 그룹 분석 호출"""
         _, mock_client = mock_anthropic
 
@@ -1065,17 +1063,19 @@ class TestOptimizedCodeMetaFallback:
     def test_signature_not_preserved_falls_back_to_none(self):
         """signaturePreserved=false → optimized_code를 None으로 폴백"""
         c = _make_client()
-        raw = json.dumps({
-            "totalScore": 85,
-            "summary": "test",
-            "categories": [],
-            "optimizedCode": "def changed(): pass",
-            "optimizedCodeMeta": {
-                "signaturePreserved": False,
-                "behaviorEquivalent": True,
-                "changes": ["함수명 변경"],
-            },
-        })
+        raw = json.dumps(
+            {
+                "totalScore": 85,
+                "summary": "test",
+                "categories": [],
+                "optimizedCode": "def changed(): pass",
+                "optimizedCodeMeta": {
+                    "signaturePreserved": False,
+                    "behaviorEquivalent": True,
+                    "changes": ["함수명 변경"],
+                },
+            }
+        )
         result = c._parse_response(raw)
         assert result["optimized_code"] is None
         assert result["status"] == "completed"
@@ -1083,76 +1083,86 @@ class TestOptimizedCodeMetaFallback:
     def test_behavior_not_equivalent_falls_back_to_none(self):
         """behaviorEquivalent=false → optimized_code를 None으로 폴백"""
         c = _make_client()
-        raw = json.dumps({
-            "totalScore": 80,
-            "summary": "test",
-            "categories": [],
-            "optimizedCode": "def solution(): return 42",
-            "optimizedCodeMeta": {
-                "signaturePreserved": True,
-                "behaviorEquivalent": False,
-                "changes": ["로직 변경"],
-            },
-        })
+        raw = json.dumps(
+            {
+                "totalScore": 80,
+                "summary": "test",
+                "categories": [],
+                "optimizedCode": "def solution(): return 42",
+                "optimizedCodeMeta": {
+                    "signaturePreserved": True,
+                    "behaviorEquivalent": False,
+                    "changes": ["로직 변경"],
+                },
+            }
+        )
         result = c._parse_response(raw)
         assert result["optimized_code"] is None
 
     def test_both_true_preserves_optimized_code(self):
         """signaturePreserved=true, behaviorEquivalent=true → optimized_code 유지"""
         c = _make_client()
-        raw = json.dumps({
-            "totalScore": 90,
-            "summary": "test",
-            "categories": [],
-            "optimizedCode": "def solution(n): return n * 2",
-            "optimizedCodeMeta": {
-                "signaturePreserved": True,
-                "behaviorEquivalent": True,
-                "changes": ["변수명 개선"],
-            },
-        })
+        raw = json.dumps(
+            {
+                "totalScore": 90,
+                "summary": "test",
+                "categories": [],
+                "optimizedCode": "def solution(n): return n * 2",
+                "optimizedCodeMeta": {
+                    "signaturePreserved": True,
+                    "behaviorEquivalent": True,
+                    "changes": ["변수명 개선"],
+                },
+            }
+        )
         result = c._parse_response(raw)
         assert result["optimized_code"] == "def solution(n): return n * 2"
 
     def test_missing_meta_preserves_optimized_code(self):
         """optimizedCodeMeta 필드 누락(하위호환) → optimized_code 유지"""
         c = _make_client()
-        raw = json.dumps({
-            "totalScore": 85,
-            "summary": "test",
-            "categories": [],
-            "optimizedCode": "def solution(): pass",
-        })
+        raw = json.dumps(
+            {
+                "totalScore": 85,
+                "summary": "test",
+                "categories": [],
+                "optimizedCode": "def solution(): pass",
+            }
+        )
         result = c._parse_response(raw)
         assert result["optimized_code"] == "def solution(): pass"
 
     def test_meta_not_dict_preserves_optimized_code(self):
         """optimizedCodeMeta가 dict가 아닌 경우 → optimized_code 유지"""
         c = _make_client()
-        raw = json.dumps({
-            "totalScore": 85,
-            "summary": "test",
-            "categories": [],
-            "optimizedCode": "def solution(): pass",
-            "optimizedCodeMeta": "not a dict",
-        })
+        raw = json.dumps(
+            {
+                "totalScore": 85,
+                "summary": "test",
+                "categories": [],
+                "optimizedCode": "def solution(): pass",
+                "optimizedCodeMeta": "not a dict",
+            }
+        )
         result = c._parse_response(raw)
         assert result["optimized_code"] == "def solution(): pass"
 
     def test_no_optimized_code_skips_meta_check(self):
         """optimizedCode가 None이면 meta 체크 안 함"""
         c = _make_client()
-        raw = json.dumps({
-            "totalScore": 85,
-            "summary": "test",
-            "categories": [],
-            "optimizedCode": None,
-            "optimizedCodeMeta": {
-                "signaturePreserved": False,
-                "behaviorEquivalent": False,
-                "changes": [],
-            },
-        })
+        raw = json.dumps(
+            {
+                "totalScore": 85,
+                "summary": "test",
+                "categories": [],
+                "optimizedCode": None,
+                "optimizedCodeMeta": {
+                    "signaturePreserved": False,
+                    "behaviorEquivalent": False,
+                    "changes": [],
+                },
+            }
+        )
         result = c._parse_response(raw)
         assert result["optimized_code"] is None
         assert result["status"] == "completed"
@@ -1160,68 +1170,76 @@ class TestOptimizedCodeMetaFallback:
     def test_both_false_falls_back_to_none(self):
         """signaturePreserved=false, behaviorEquivalent=false → 폴백"""
         c = _make_client()
-        raw = json.dumps({
-            "totalScore": 75,
-            "summary": "test",
-            "categories": [],
-            "optimizedCode": "completely_different()",
-            "optimizedCodeMeta": {
-                "signaturePreserved": False,
-                "behaviorEquivalent": False,
-                "changes": ["전체 리팩토링"],
-            },
-        })
+        raw = json.dumps(
+            {
+                "totalScore": 75,
+                "summary": "test",
+                "categories": [],
+                "optimizedCode": "completely_different()",
+                "optimizedCodeMeta": {
+                    "signaturePreserved": False,
+                    "behaviorEquivalent": False,
+                    "changes": ["전체 리팩토링"],
+                },
+            }
+        )
         result = c._parse_response(raw)
         assert result["optimized_code"] is None
 
     def test_string_false_signature_falls_back_to_none(self):
         """signaturePreserved="false" (문자열) → 폴백 (Critic P2-1 회귀 보호)"""
         c = _make_client()
-        raw = json.dumps({
-            "totalScore": 80,
-            "summary": "test",
-            "categories": [],
-            "optimizedCode": "def changed(): pass",
-            "optimizedCodeMeta": {
-                "signaturePreserved": "false",
-                "behaviorEquivalent": True,
-                "changes": ["함수명 변경"],
-            },
-        })
+        raw = json.dumps(
+            {
+                "totalScore": 80,
+                "summary": "test",
+                "categories": [],
+                "optimizedCode": "def changed(): pass",
+                "optimizedCodeMeta": {
+                    "signaturePreserved": "false",
+                    "behaviorEquivalent": True,
+                    "changes": ["함수명 변경"],
+                },
+            }
+        )
         result = c._parse_response(raw)
         assert result["optimized_code"] is None
 
     def test_string_false_behavior_falls_back_to_none(self):
         """behaviorEquivalent="False" (대소문자 무관 문자열) → 폴백"""
         c = _make_client()
-        raw = json.dumps({
-            "totalScore": 80,
-            "summary": "test",
-            "categories": [],
-            "optimizedCode": "def solution(): return 999",
-            "optimizedCodeMeta": {
-                "signaturePreserved": True,
-                "behaviorEquivalent": "False",
-                "changes": ["로직 변경"],
-            },
-        })
+        raw = json.dumps(
+            {
+                "totalScore": 80,
+                "summary": "test",
+                "categories": [],
+                "optimizedCode": "def solution(): return 999",
+                "optimizedCodeMeta": {
+                    "signaturePreserved": True,
+                    "behaviorEquivalent": "False",
+                    "changes": ["로직 변경"],
+                },
+            }
+        )
         result = c._parse_response(raw)
         assert result["optimized_code"] is None
 
     def test_string_true_preserves_optimized_code(self):
         """signaturePreserved="true" (문자열) → 통과 (폴백 안 함)"""
         c = _make_client()
-        raw = json.dumps({
-            "totalScore": 90,
-            "summary": "test",
-            "categories": [],
-            "optimizedCode": "def solution(n): return n * 2",
-            "optimizedCodeMeta": {
-                "signaturePreserved": "true",
-                "behaviorEquivalent": "true",
-                "changes": ["변수명 개선"],
-            },
-        })
+        raw = json.dumps(
+            {
+                "totalScore": 90,
+                "summary": "test",
+                "categories": [],
+                "optimizedCode": "def solution(n): return n * 2",
+                "optimizedCodeMeta": {
+                    "signaturePreserved": "true",
+                    "behaviorEquivalent": "true",
+                    "changes": ["변수명 개선"],
+                },
+            }
+        )
         result = c._parse_response(raw)
         assert result["optimized_code"] == "def solution(n): return n * 2"
 
@@ -1232,17 +1250,19 @@ class TestOptimizedCodeMetaFallback:
         우선 사용하므로, 폴백 시 양쪽 모두 정리해야 거부된 코드가 사용자에게 노출되지 않음.
         """
         c = _make_client()
-        raw = json.dumps({
-            "totalScore": 80,
-            "summary": "test",
-            "categories": [],
-            "optimizedCode": "def changed(): pass",
-            "optimizedCodeMeta": {
-                "signaturePreserved": False,
-                "behaviorEquivalent": True,
-                "changes": ["함수명 변경"],
-            },
-        })
+        raw = json.dumps(
+            {
+                "totalScore": 80,
+                "summary": "test",
+                "categories": [],
+                "optimizedCode": "def changed(): pass",
+                "optimizedCodeMeta": {
+                    "signaturePreserved": False,
+                    "behaviorEquivalent": True,
+                    "changes": ["함수명 변경"],
+                },
+            }
+        )
         result = c._parse_response(raw)
 
         # 1) 별도 optimized_code 필드는 None
@@ -1255,17 +1275,19 @@ class TestOptimizedCodeMetaFallback:
     def test_invalid_meta_value_preserves_optimized_code(self):
         """signaturePreserved=None/숫자/임의문자열 → 명시적 false 아니므로 통과"""
         c = _make_client()
-        raw = json.dumps({
-            "totalScore": 85,
-            "summary": "test",
-            "categories": [],
-            "optimizedCode": "def solution(): pass",
-            "optimizedCodeMeta": {
-                "signaturePreserved": None,
-                "behaviorEquivalent": "yes",
-                "changes": [],
-            },
-        })
+        raw = json.dumps(
+            {
+                "totalScore": 85,
+                "summary": "test",
+                "categories": [],
+                "optimizedCode": "def solution(): pass",
+                "optimizedCodeMeta": {
+                    "signaturePreserved": None,
+                    "behaviorEquivalent": "yes",
+                    "changes": [],
+                },
+            }
+        )
         result = c._parse_response(raw)
         # 명시적 false가 아니므로 통과 (누락 케이스와 동일 처리)
         assert result["optimized_code"] == "def solution(): pass"
@@ -1281,12 +1303,14 @@ class TestCodeLengthGuard:
         _, mock_client = mock_anthropic
 
         mock_content = MagicMock()
-        mock_content.text = json.dumps({
-            "totalScore": 80,
-            "summary": "분석 완료",
-            "categories": [],
-            "optimizedCode": "def solution(): pass",
-        })
+        mock_content.text = json.dumps(
+            {
+                "totalScore": 80,
+                "summary": "분석 완료",
+                "categories": [],
+                "optimizedCode": "def solution(): pass",
+            }
+        )
         mock_message = MagicMock()
         mock_message.content = [mock_content]
         mock_client.messages.create.return_value = mock_message
@@ -1306,12 +1330,14 @@ class TestCodeLengthGuard:
         _, mock_client = mock_anthropic
 
         mock_content = MagicMock()
-        mock_content.text = json.dumps({
-            "totalScore": 85,
-            "summary": "분석 완료",
-            "categories": [],
-            "optimizedCode": "def solution(): pass",
-        })
+        mock_content.text = json.dumps(
+            {
+                "totalScore": 85,
+                "summary": "분석 완료",
+                "categories": [],
+                "optimizedCode": "def solution(): pass",
+            }
+        )
         mock_message = MagicMock()
         mock_message.content = [mock_content]
         mock_client.messages.create.return_value = mock_message
@@ -1329,12 +1355,14 @@ class TestCodeLengthGuard:
         _, mock_client = mock_anthropic
 
         mock_content = MagicMock()
-        mock_content.text = json.dumps({
-            "totalScore": 90,
-            "summary": "분석 완료",
-            "categories": [],
-            "optimizedCode": "def solution(n): return n",
-        })
+        mock_content.text = json.dumps(
+            {
+                "totalScore": 90,
+                "summary": "분석 완료",
+                "categories": [],
+                "optimizedCode": "def solution(n): return n",
+            }
+        )
         mock_message = MagicMock()
         mock_message.content = [mock_content]
         mock_client.messages.create.return_value = mock_message
@@ -1351,40 +1379,49 @@ class TestIsExplicitFalse:
 
     def test_bool_false(self):
         from src.claude_client import _is_explicit_false
+
         assert _is_explicit_false(False) is True
 
     def test_bool_true(self):
         from src.claude_client import _is_explicit_false
+
         assert _is_explicit_false(True) is False
 
     def test_string_false_lowercase(self):
         from src.claude_client import _is_explicit_false
+
         assert _is_explicit_false("false") is True
 
     def test_string_false_uppercase(self):
         from src.claude_client import _is_explicit_false
+
         assert _is_explicit_false("FALSE") is True
 
     def test_string_false_with_whitespace(self):
         from src.claude_client import _is_explicit_false
+
         assert _is_explicit_false("  false  ") is True
 
     def test_string_true(self):
         from src.claude_client import _is_explicit_false
+
         assert _is_explicit_false("true") is False
 
     def test_none(self):
         from src.claude_client import _is_explicit_false
+
         assert _is_explicit_false(None) is False
 
     def test_zero_int(self):
         """정수 0은 falsy이지만 명시적 false 아님 → False 반환"""
         from src.claude_client import _is_explicit_false
+
         assert _is_explicit_false(0) is False
 
     def test_empty_string(self):
         """빈 문자열은 명시적 false 아님 → False 반환"""
         from src.claude_client import _is_explicit_false
+
         assert _is_explicit_false("") is False
 
 
@@ -1501,7 +1538,7 @@ class TestParseGroupResponseFallbackNewBranches:
         # PII/secret 모의 raw (실제로는 절대 노출 금지)
         raw = (
             "user_id=42 password=hunter2 ssn=123-45-6789 "
-            "api_key=sk-abc123def456 \"comparison\": broken"
+            'api_key=sk-abc123def456 "comparison": broken'
         )
         result = c._parse_group_response(raw)
         assert result["status"] == "failed"
@@ -1645,10 +1682,7 @@ class TestParseGroupResponsePartialRecovery:
     def test_recovered_includes_raw_of_recovered_only(self):
         """raw 필드는 복구된 dict 의 json.dumps 결과만 포함 (절단 원문 미포함)"""
         c = _make_client()
-        raw = (
-            '{"comparison": "안전 비교", '
-            '"optimizedCode": "LEAK_secret_abc 미종결'
-        )
+        raw = '{"comparison": "안전 비교", "optimizedCode": "LEAK_secret_abc 미종결'
         result = c._parse_group_response(raw)
         assert result["status"] == "completed"
         assert "raw" in result

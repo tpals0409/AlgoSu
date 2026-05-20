@@ -489,9 +489,7 @@ class ClaudeClient:
             ):
                 learning_points = recovered.get("learningPoints", [])
                 if not isinstance(learning_points, list):
-                    learning_points = (
-                        [str(learning_points)] if learning_points else []
-                    )
+                    learning_points = [str(learning_points)] if learning_points else []
                 logger.info(
                     "그룹 분석 부분 복구 성공",
                     extra={
@@ -659,7 +657,9 @@ class ClaudeClient:
             prefix = cleaned[start:prefix_end].rstrip()
             prefix = prefix.rstrip(",").rstrip()
             # 열려있는 컨테이너를 역순으로 닫음.
-            closing = "".join("}" if opener == "{" else "]" for opener in reversed(prefix_stack))
+            closing = "".join(
+                "}" if opener == "{" else "]" for opener in reversed(prefix_stack)
+            )
             try:
                 parsed = json.loads(prefix + closing)
             except (json.JSONDecodeError, ValueError):
