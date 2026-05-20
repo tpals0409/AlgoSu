@@ -9,14 +9,12 @@
 # 순수 bash 단위 테스트 (외부 의존성 0 — bats 미사용).
 # CI 의 quality-ci-scripts job 에서 scripts/ci/** 또는 tests/ci/** 변경 시 실행.
 #
-# 검증 케이스:
+# 검증 케이스 (Sprint 171 시드 #170-1: zstd 사이클 종결 — zstd saving/ZSTD-METRIC 케이스 제거):
 #   1. 인자 미전달 fail-fast (${1:?} / ${2:?})
-#   2. zstd 분기 compression saving % 계산
-#   3. zstd 미전달 분기 (oci+zstd 라인 미출력)
-#   4. GITHUB_STEP_SUMMARY 미설정 → /dev/stdout fallback + ::warning::
-#   5. docker buildx du 실패 → graceful N/A / 0 fallback (build job fail 금지)
-#   6. docker buildx du 정상 → cache size/entries 파싱
-#   7. stdout ZSTD-METRIC 마커 (수집용 greppable 라인 + Summary 미혼입 + zstd 미전달 시 부재)
+#   2. docker tarball 보고 (oci+zstd 라인 미출력 — zstd export 제거 후 정규 경로)
+#   3. GITHUB_STEP_SUMMARY 미설정 → /dev/stdout fallback + ::warning::
+#   4. docker buildx du 실패 → graceful N/A / 0 fallback (build job fail 금지)
+#   5. docker buildx du 정상 → cache size/entries 파싱
 #
 # 환경 의존:
 #   - GNU coreutils (stat -c %s) — 헬퍼가 ubuntu-latest 를 전제. 비-GNU(예: macOS
@@ -79,69 +77,40 @@ if [ "$rc" -ne 0 ]; then pass "no args → exit ${rc} (nonzero)"; else fail "no 
 STUB_DOCKER_MODE=fail bash "$HELPER" "label-only" >/dev/null 2>&1; rc=$?
 if [ "$rc" -ne 0 ]; then pass "missing docker tarball arg → exit ${rc}"; else fail "missing \$2 should fail" "got exit 0"; fi
 
-# === Case 2: zstd 분기 compression saving % ===
-echo "[Case 2] zstd 분기 compression saving %"
-ZSTD_TAR="${WORKDIR}/image-zstd.tar"
-mk_file 250 "$ZSTD_TAR"
+# === Case 2: docker tarball 보고 (zstd export 제거 후 정규 경로) ===
+echo "[Case 2] docker tarball 보고 (oci+zstd 라인 미출력)"
 OUT="${WORKDIR}/summary2.md"
 GITHUB_STEP_SUMMARY="$OUT" STUB_DOCKER_MODE=fail BUILD_START=$(( $(date +%s) - 65 )) \
-  bash "$HELPER" "ai-analysis" "$DOCKER_TAR" "$ZSTD_TAR"; rc=$?
-if [ "$rc" -eq 0 ]; then pass "exit 0"; else fail "should exit 0" "got ${rc}"; fi
-if grep -qF -- "-75.0%" "$OUT"; then pass "compression saving -75.0% (1000→250)"; else fail "saving % wrong" "$(grep -i saving "$OUT" || true)"; fi
-if grep -qF -- "(250 bytes)" "$OUT"; then pass "zstd bytes shown"; else fail "zstd bytes missing"; fi
-if grep -qF -- "### 📦 ai-analysis build artifact" "$OUT"; then pass "H3 label header"; else fail "header missing"; fi
-
-# === Case 3: zstd 미전달 분기 ===
-echo "[Case 3] zstd 미전달 분기"
-OUT="${WORKDIR}/summary3.md"
-GITHUB_STEP_SUMMARY="$OUT" STUB_DOCKER_MODE=fail bash "$HELPER" "frontend" "$DOCKER_TAR"; rc=$?
+  bash "$HELPER" "ai-analysis" "$DOCKER_TAR"; rc=$?
 if [ "$rc" -eq 0 ]; then pass "exit 0"; else fail "should exit 0" "got ${rc}"; fi
 if grep -qF -- "(1000 bytes)" "$OUT"; then pass "docker bytes shown"; else fail "docker bytes missing"; fi
-if ! grep -qF -- "oci+zstd" "$OUT"; then pass "no oci+zstd line (arg 미전달)"; else fail "oci+zstd should be absent"; fi
+if grep -qF -- "### 📦 ai-analysis build artifact" "$OUT"; then pass "H3 label header"; else fail "header missing"; fi
+if ! grep -qF -- "oci+zstd" "$OUT"; then pass "no oci+zstd line (zstd export 제거)"; else fail "oci+zstd should be absent"; fi
+if ! grep -qF -- "compression saving" "$OUT"; then pass "no compression saving line"; else fail "compression saving should be absent"; fi
 
-# === Case 4: GITHUB_STEP_SUMMARY 미설정 → stdout fallback ===
-echo "[Case 4] GITHUB_STEP_SUMMARY 미설정 → stdout fallback"
+# === Case 3: GITHUB_STEP_SUMMARY 미설정 → stdout fallback ===
+echo "[Case 3] GITHUB_STEP_SUMMARY 미설정 → stdout fallback"
 OUT="${WORKDIR}/stdout4.txt"
 ( unset GITHUB_STEP_SUMMARY; STUB_DOCKER_MODE=fail bash "$HELPER" "blog" "$DOCKER_TAR" ) > "$OUT" 2>&1; rc=$?
 if [ "$rc" -eq 0 ]; then pass "exit 0"; else fail "should exit 0" "got ${rc}"; fi
 if grep -qF -- "::warning::GITHUB_STEP_SUMMARY is not set" "$OUT"; then pass "warning emitted"; else fail "warning missing"; fi
 if grep -qF -- "### 📦 blog build artifact" "$OUT"; then pass "summary to stdout"; else fail "stdout summary missing"; fi
 
-# === Case 5: docker buildx du 실패 → graceful fallback ===
-echo "[Case 5] docker buildx du 실패 → N/A / 0 graceful fallback"
+# === Case 4: docker buildx du 실패 → graceful fallback ===
+echo "[Case 4] docker buildx du 실패 → N/A / 0 graceful fallback"
 OUT="${WORKDIR}/summary5.md"
 GITHUB_STEP_SUMMARY="$OUT" STUB_DOCKER_MODE=fail bash "$HELPER" "gateway" "$DOCKER_TAR"; rc=$?
 if [ "$rc" -eq 0 ]; then pass "exit 0 (telemetry 실패가 build job fail 유발 안 함)"; else fail "should exit 0" "got ${rc}"; fi
 if grep -qF -- "cache size: **N/A**" "$OUT"; then pass "cache size N/A fallback"; else fail "cache size fallback missing" "$(grep -i 'cache size' "$OUT" || true)"; fi
 if grep -qF -- "cache entries: **0**" "$OUT"; then pass "cache entries 0 fallback"; else fail "cache entries fallback missing"; fi
 
-# === Case 6: docker buildx du 정상 → cache 파싱 ===
-echo "[Case 6] docker buildx du 정상 → cache size/entries 파싱"
+# === Case 5: docker buildx du 정상 → cache 파싱 ===
+echo "[Case 5] docker buildx du 정상 → cache size/entries 파싱"
 OUT="${WORKDIR}/summary6.md"
 GITHUB_STEP_SUMMARY="$OUT" STUB_DOCKER_MODE=ok bash "$HELPER" "submission" "$DOCKER_TAR"; rc=$?
 if [ "$rc" -eq 0 ]; then pass "exit 0"; else fail "should exit 0" "got ${rc}"; fi
 if grep -qF -- "cache size: **123MB 100MB**" "$OUT"; then pass "cache size parsed"; else fail "cache size parse wrong" "$(grep -i 'cache size' "$OUT" || true)"; fi
 if grep -qF -- "cache entries: **2**" "$OUT"; then pass "cache entries counted (2)"; else fail "cache entries wrong" "$(grep -i 'cache entries' "$OUT" || true)"; fi
-
-# === Case 7: stdout ZSTD-METRIC 마커 (Sprint 170 시드 #169-1) ===
-# 헬퍼가 절감률을 Summary 외에 stdout(job 로그)에도 greppable 1줄로 출력하는지 검증.
-# 측정 dispatch 후 `gh run view --log | grep ZSTD-METRIC` 자동 수집의 회귀 차단.
-echo "[Case 7] stdout ZSTD-METRIC 마커"
-OUT="${WORKDIR}/summary7.md"
-STDOUT_CAP="${WORKDIR}/stdout7.txt"
-GITHUB_STEP_SUMMARY="$OUT" STUB_DOCKER_MODE=fail \
-  bash "$HELPER" "ai-analysis" "$DOCKER_TAR" "$ZSTD_TAR" > "$STDOUT_CAP" 2>&1; rc=$?
-if [ "$rc" -eq 0 ]; then pass "exit 0"; else fail "should exit 0" "got ${rc}"; fi
-if grep -qE -- 'ZSTD-METRIC service=ai-analysis docker_bytes=1000 zstd_bytes=250 saving_pct=-75\.0' "$STDOUT_CAP"; then
-  pass "stdout 마커 값 정확 (docker=1000 zstd=250 saving=-75.0)"
-else
-  fail "stdout 마커 누락/오값" "$(grep -i zstd-metric "$STDOUT_CAP" || true)"
-fi
-if ! grep -qF -- "ZSTD-METRIC" "$OUT"; then pass "마커가 Summary 파일에 미혼입 (stdout 분리)"; else fail "마커가 Summary 로 샘"; fi
-# zstd 미전달 → 마커 없음
-STDOUT_CAP2="${WORKDIR}/stdout7b.txt"
-GITHUB_STEP_SUMMARY="$OUT" STUB_DOCKER_MODE=fail bash "$HELPER" "frontend" "$DOCKER_TAR" > "$STDOUT_CAP2" 2>&1
-if ! grep -qF -- "ZSTD-METRIC" "$STDOUT_CAP2"; then pass "zstd 미전달 → 마커 없음"; else fail "zstd 없는데 마커 출력됨"; fi
 
 # === 결과 ===
 echo ""
