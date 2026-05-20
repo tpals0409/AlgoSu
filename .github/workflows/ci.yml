@@ -139,7 +139,14 @@ jobs:
               - 'scripts/ci/report-build-metrics.sh'
             blog:
               - 'blog/**'
-              - 'docs/adr/**'
+              # Sprint 175 #26: blog SSG 가 실제 소비하는 ADR 소스만 트리거 (소비처 일치 원칙).
+              # loader.ts(DIR_KIND_MAP) + generate-search-index.mjs 는 루트 ADR-*.md + sprints/ + topics/ 만
+              # 읽고 docs/adr/README.md(인덱스)는 명시적 제외 → README 단독 변경 시 불필요한 blog 재빌드 회피.
+              # dorny/paths-filter 는 predicate-quantifier:some(OR) 이라 '!' 부정 패턴이 무력화되므로
+              # 부정 대신 positive glob narrowing 으로 README 를 트리거 집합에서 제외한다.
+              - 'docs/adr/ADR-*.md'
+              - 'docs/adr/sprints/**'
+              - 'docs/adr/topics/**'
               - 'scripts/ci/report-build-metrics.sh'
             monitoring:
               - 'infra/k3s/monitoring/**'
@@ -830,6 +837,18 @@ jobs:
         run: node ../scripts/check-adr-conversion.mjs
       - run: npm run build
         working-directory: blog
+      # Sprint 175 #27: SSG 산출물(out/) 존재·비어있지 않음을 명시적으로 검증.
+      # next build(output:export) 가 무음 실패하면 빈 out/ 가 그대로 Docker COPY 되어
+      # 빈 사이트가 배포될 수 있으므로, 링크 검사 이전에 fail-fast 가드를 둔다.
+      - name: Verify SSG output (out/)
+        working-directory: blog
+        run: |
+          if [ ! -d out ] || [ -z "$(ls -A out 2>/dev/null)" ]; then
+            echo "::error::blog SSG 산출물(out/)이 비어 있거나 존재하지 않습니다 — next build 무음 실패 의심"
+            exit 1
+          fi
+          echo "blog/out/ 산출물 확인: $(find out -type f | wc -l | tr -d ' ') files"
+          ls -la out | head
       - name: ADR link integrity
         # check-adr-links.mjs는 ROOT(=repo root) 기준으로 인자 경로를 resolve하므로
         # working-directory: blog 안에서도 `blog/out/adr` 절대 segment를 명시해야 한다.
