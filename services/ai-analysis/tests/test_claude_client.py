@@ -1655,6 +1655,31 @@ class TestParseGroupResponsePartialRecovery:
         assert "LEAK_secret_abc" not in result["raw"]
         assert "안전 비교" in result["raw"]
 
+    def test_unterminated_nested_array_field_discarded(self):
+        """미종결 중첩 array 필드(secret 포함)는 EOF 합성으로 살리지 않고 폐기 (P1 회귀)"""
+        c = _make_client()
+        raw = '{"comparison":"안전 비교","optimizedCode":["SECRET_arr_xyz"'
+        result = c._parse_group_response(raw)
+        assert result["status"] == "completed"
+        assert result["comparison"] == "안전 비교"
+        # 미종결 array 는 EOF 후보에서 제외 → comma-boundary 폴백으로 폐기
+        assert result["optimizedCode"] is None
+        for value in result.values():
+            if isinstance(value, str):
+                assert "SECRET_arr_xyz" not in value
+
+    def test_unterminated_nested_object_field_discarded(self):
+        """미종결 중첩 object 필드(secret 포함)는 EOF 합성으로 살리지 않고 폐기 (P1 회귀)"""
+        c = _make_client()
+        raw = '{"comparison":"비교","meta":{"k":"LEAK_obj_abc"'
+        result = c._parse_group_response(raw)
+        assert result["status"] == "completed"
+        assert result["comparison"] == "비교"
+        # raw 포함 모든 str 값에 미종결 object 콘텐츠 미노출
+        for value in result.values():
+            if isinstance(value, str):
+                assert "LEAK_obj_abc" not in value
+
     def test_recovery_handles_escaped_quote_in_string(self):
         """이스케이프된 따옴표(\\")가 문자열 내부에 있어도 깊이 추적 정확 → 복구"""
         c = _make_client()

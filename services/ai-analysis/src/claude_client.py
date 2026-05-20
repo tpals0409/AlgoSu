@@ -641,8 +641,11 @@ class ClaudeClient:
                 # root object 내부 top-level 콤마 → 직전까지 종결된 쌍들.
                 candidates.append((i, list(stack)))
 
-        # EOF 후보: 미종결 문자열이 없을 때만 추가 (절단된 마지막 필드 차단).
-        if not in_string and stack:
+        # EOF 후보: 미종결 문자열·미종결 중첩 컨테이너가 없을 때만 추가 (root 만 열림).
+        # in_string==True(문자열 절단) 또는 len(stack)>1(중첩 array/object 절단)이면
+        # 마지막 필드가 미종결이므로 EOF 후보를 만들지 않고 comma-boundary 후보로 폴백
+        # → 절단된 필드(echoed secret/PII)는 어떤 후보에도 포함되지 않아 폐기됨.
+        if not in_string and len(stack) == 1 and stack[0] == "{":
             candidates.append((len(cleaned), list(stack)))
 
         # 가장 뒤(가장 많이 회수) 후보부터 시도.
