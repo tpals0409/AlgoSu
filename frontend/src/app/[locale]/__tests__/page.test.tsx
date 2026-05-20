@@ -52,10 +52,6 @@ jest.mock('lucide-react', () => {
   return { Sun: Icon, Moon: Icon };
 });
 
-jest.mock('@/components/ad/AdBanner', () => ({
-  AdBanner: () => <div data-testid="ad-banner" />,
-}));
-
 describe('LandingPage (LandingContent)', () => {
   it('랜딩 페이지가 렌더링된다', () => {
     renderWithI18n(<LandingContent />);

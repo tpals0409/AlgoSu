@@ -74,7 +74,6 @@ export default async function PrivacyPage({ params }: PageProps) {
           <li>{t('privacy.section2.item2')}</li>
           <li>{t('privacy.section2.item3')}</li>
           <li>{t('privacy.section2.item4')}</li>
-          <li>{t('privacy.section2.item5')}</li>
         </ul>
 
         <SectionTitle>{t('privacy.section3.title')}</SectionTitle>
@@ -87,7 +86,6 @@ export default async function PrivacyPage({ params }: PageProps) {
         <SectionTitle>{t('privacy.section4.title')}</SectionTitle>
         <p>{t('privacy.section4.body')}</p>
         <ul className="list-disc space-y-1 pl-5">
-          <li><strong>{t('privacy.section4.adsense')}</strong></li>
           <li><strong>{t('privacy.section4.github')}</strong></li>
           <li>{t('privacy.section4.legal')}</li>
         </ul>

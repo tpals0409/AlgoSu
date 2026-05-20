@@ -22,8 +22,6 @@ import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { CodeEditor } from '@/components/submission/CodeEditor';
-import { AdBanner } from '@/components/ad/AdBanner';
-import { AD_SLOTS } from '@/lib/constants/adSlots';
 import { problemApi, submissionApi, type Problem, type Submission } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudy } from '@/contexts/StudyContext';
@@ -507,9 +505,6 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
                 </div>
               )}
             </div>
-
-            {/* 사이드바 하단 광고 */}
-            <AdBanner slot={AD_SLOTS.PROBLEM_DETAIL} />
           </div>
         </div>
       </div>

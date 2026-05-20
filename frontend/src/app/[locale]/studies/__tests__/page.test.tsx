@@ -136,10 +136,6 @@ jest.mock('@/lib/schemas/study', () => ({
   studyCreateSchema: {},
 }));
 
-jest.mock('@/components/ad/AdBanner', () => ({
-  AdBanner: () => <div data-testid="ad-banner" />,
-}));
-
 jest.mock('lucide-react', () => {
   const Icon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />;
   return { Users: Icon, Plus: Icon, ArrowRight: Icon, Crown: Icon, Settings: Icon };

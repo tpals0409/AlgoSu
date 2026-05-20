@@ -113,14 +113,6 @@ jest.mock('@/components/ui/LoadingSpinner', () => ({
   LoadingSpinner: () => <div data-testid="loading-spinner" />,
 }));
 
-jest.mock('@/components/ad/AdBanner', () => ({
-  AdBanner: () => <div data-testid="ad-banner" />,
-}));
-
-jest.mock('@/lib/constants/adSlots', () => ({
-  AD_SLOTS: { ANALYSIS_BOTTOM: 'analysis-bottom' },
-}));
-
 jest.mock('@/components/submission/AiSatisfactionButton', () => ({
   AiSatisfactionButton: () => <div data-testid="ai-satisfaction" />,
 }));

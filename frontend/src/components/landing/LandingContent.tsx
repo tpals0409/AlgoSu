@@ -21,8 +21,6 @@ import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
 import { HomeRedirect } from '@/components/landing/HomeRedirect';
 import { HeroButtons } from '@/components/landing/HeroButtons';
 import { FeatureCards } from '@/components/landing/FeatureCards';
-import { AdBanner } from '@/components/ad/AdBanner';
-import { AD_SLOTS } from '@/lib/constants/adSlots';
 import { useInView } from '@/hooks/useInView';
 
 // ─── CONSTANTS ────────────────────────────
@@ -193,11 +191,6 @@ export function LandingContent(): ReactNode {
           </p>
         </div>
       </section>
-
-      {/* ── AD ── */}
-      <div className="mx-auto max-w-container px-6">
-        <AdBanner slot={AD_SLOTS.LANDING_BOTTOM} className="mb-6" />
-      </div>
 
       {/* ── FOOTER ── */}
       <footer className="border-t border-border py-8 text-center">

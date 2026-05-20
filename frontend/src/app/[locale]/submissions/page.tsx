@@ -12,8 +12,6 @@ import { useTranslations, useLocale } from 'next-intl';
 import { FileText, Search, Loader2 } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { AdBanner } from '@/components/ad/AdBanner';
-import { AD_SLOTS } from '@/lib/constants/adSlots';
 import { Alert } from '@/components/ui/Alert';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -355,9 +353,6 @@ export default function SubmissionsPage(): ReactNode {
             })}
           </div>
         )}
-
-        {/* 목록 하단 광고 */}
-        <AdBanner slot={AD_SLOTS.SUBMISSIONS_LIST} className="mt-6" />
       </div>
     </AppLayout>
   );

@@ -29,8 +29,6 @@ import { relativeTime } from '@/lib/date';
 import { useStudy } from '@/contexts/StudyContext';
 import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
 import type { Difficulty } from '@/lib/constants';
-import { AdBanner } from '@/components/ad/AdBanner';
-import { AD_SLOTS } from '@/lib/constants/adSlots';
 import { AiSatisfactionButton } from '@/components/submission/AiSatisfactionButton';
 
 // ─── HELPERS ──────────────────────────────
@@ -549,8 +547,6 @@ export default function AnalysisPage(): ReactNode {
             </div>
           </div>
         )}
-        {/* ── AD ── */}
-        <AdBanner slot={AD_SLOTS.ANALYSIS_BOTTOM} />
       </div>
     </AppLayout>
   );

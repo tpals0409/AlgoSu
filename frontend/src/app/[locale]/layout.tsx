@@ -7,12 +7,11 @@
  * [locale] 세그먼트를 루트로 하는 레이아웃.
  * - NextIntlClientProvider: 클라이언트 컴포넌트에서 useTranslations() 사용 가능
  * - 기존 프로바이더(ThemeProvider, AuthProvider 등) 모두 이 레이아웃에서 제공
- * - Skip navigation, AdSense Script 포함
+ * - Skip navigation 포함
  */
 
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import Script from 'next/script';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations } from 'next-intl/server';
 import { routing } from '@/i18n/routing';
@@ -23,9 +22,6 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { StudyProvider } from '@/contexts/StudyContext';
 import { SWRProvider } from '@/components/providers/SWRProvider';
 import { notFound } from 'next/navigation';
-
-const adsenseEnabled = process.env.NEXT_PUBLIC_ADSENSE_ENABLED === 'true';
-const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID ?? '';
 
 /**
  * metadataBase: 상대 경로 OG/트위터 이미지 URL 자동 보완.
@@ -74,13 +70,6 @@ export default async function LocaleLayout({
       >
         {t('nav.skipNav')}
       </a>
-      {adsenseEnabled && adsenseClientId && (
-        <Script
-          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClientId}`}
-          strategy="afterInteractive"
-          crossOrigin="anonymous"
-        />
-      )}
       <ThemeProvider
         attribute="class"
         defaultTheme="system"

@@ -124,14 +124,6 @@ jest.mock('@/components/ui/Skeleton', () => ({
   Skeleton: () => <div data-testid="skeleton" />,
 }));
 
-jest.mock('@/components/ad/AdBanner', () => ({
-  AdBanner: () => <div data-testid="ad-banner" />,
-}));
-
-jest.mock('@/lib/constants/adSlots', () => ({
-  AD_SLOTS: { PROBLEM_DETAIL: 'test-slot' },
-}));
-
 /**
  * CodeEditor mock — language prop을 data-language 속성으로 노출하여 테스트 검증 가능.
  * onLanguageChange 콜백도 button으로 노출하여 사용자 수동 변경 시나리오 테스트.

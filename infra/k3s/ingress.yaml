@@ -13,7 +13,7 @@ metadata:
 spec:
   headers:
     # ── CSP (Content-Security-Policy) ──
-    contentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://api.algo-su.com; frame-ancestors 'none'"
+    contentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://api.algo-su.com; frame-ancestors 'none'"
     # ── HSTS (Strict-Transport-Security) ──
     stsSeconds: 31536000
     stsIncludeSubdomains: true
