@@ -53,14 +53,14 @@ Branch: `feat/sprint-171-zstd-export-removal` → single PR squash merge.
 - **`scripts/ci/report-build-metrics.sh`**: Remove the zstd branch block + ZSTD-METRIC stdout marker block + `ZSTD_TARBALL` argument + usage/header comments → 2-arg helper. `bash -n` syntax PASS.
 - **`tests/ci/report-build-metrics-test.sh`**: Remove Case 2/7, promote Case 3 (add neg assertions), renumber 4/5/6→3/4/5, update header case list.
 
-### Phase B — ADR recording (Scribe, commit `<TBD-SCRIBE-SHA>`)
+### Phase B — ADR recording (Scribe, commit `6026e22`)
 
 - `docs/adr/sprints/sprint-171.md` (KR) + `docs/adr-en/sprints/sprint-171.md` (EN 1:1)
 - `docs/adr/README.md` count 110→111, range 62~170→62~171 (lines 18/52/54)
 
 ## Critic cycle
 
-- **R1** (codex review --base bd60329): Trivy docker tarball path unchanged / zero zstd remnants / deploy gate unchanged — `<TBD-CRITIC-R1>`
+- **R1** (codex exec --base bd60329, codex-cli 0.130.0): **0 P0/P1/P2/P3 findings, PASS** ✅ — Trivy `--input` docker tarball path unchanged (969/979) / docker tarballs still produced & uploaded (only `type=oci` removed) / deploy push path + gate unchanged / 0 live references to `ZSTD_TARBALL`/`ZSTD-METRIC`/`compression=zstd`/`image-*-zstd` / helper consistently 2-arg + tests renumbered 1-5. Single-pass PASS, no codex hang.
 
 ## Risk / regression guard
 
@@ -82,16 +82,16 @@ The `quality-ci-scripts` job runs unit tests on `scripts/ci/**`/`tests/ci/**` ch
 - zstd remnant grep: 0 in code (comments only, intentional)
 
 ### CI
-- PR CI run `<TBD-RUN>`: 8 build jobs + quality-ci-scripts + 8-matrix Trivy scan all expected success
-- check-adr-en-coverage --strict: `<TBD>` PASS
-- check-doc-refs: `<TBD>` PASS
+- PR #297 CI: quality-ci-scripts (unit tests) confirmed success → 8 build jobs + 8-matrix Trivy scan expected green
+- check-adr-en-coverage --strict: 120/120 (100.0%) PASS
+- check-doc-refs: 305 files 0 broken refs PASS
 
 ### New UAT (Sprint 171)
 - Visually confirm the 8-matrix Trivy scan in the PR Checks tab stays SUCCESS after the zstd export removal
 
 ## Result
 
-- **Merge**: origin/main `bd60329` → `<TBD-MERGE-SHA>` (PR `<TBD-PR>`, squash merge)
+- **Merge**: origin/main `bd60329` → `<TBD-MERGE-SHA>` (PR #297, squash merge)
 - **Net change**: -84 +32 (zstd export + dead-code removal dominant)
 - Conclusion of the Sprint 165~170 zstd cycle: security tarball (165) → visibility (166) → measurement (167) → zstd adoption (168) → observation (169) → measurement automation (170) → **redundant-step removal (171)**.
 
