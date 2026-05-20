@@ -300,12 +300,18 @@ function fmt(v) {
  * 한 locale 글들의 frontmatter 스키마를 검증한다.
  * 필수 필드 존재 / category enum / date 형식 / order 유일성.
  *
+ * order 유일성은 locale 전역이 아니라 "동일 date 내"로 한정한다.
+ * getAllPosts(blog/src/lib/posts.ts)가 date 내림차순 우선 정렬 후 동일 date
+ * 안에서만 order 를 tiebreaker 로 사용하므로, 서로 다른 date 의 글이 같은
+ * order 값을 재사용하는 것은 정상이다(전역 유일성 검사 시 false-positive).
+ *
  * @param {Array<{slug:string, meta:Record<string,unknown>}>} posts
  * @param {string} locale
  * @returns {Array<{axis:string, slug:string, locale:string, detail:string}>}
  */
 export function checkFrontmatter(posts, locale) {
   const out = [];
+  // 중복 판정 키: `${date}::${order}` — 같은 date AND 같은 order 일 때만 충돌.
   const orders = new Map();
 
   for (const { slug, meta } of posts) {
@@ -331,16 +337,17 @@ export function checkFrontmatter(posts, locale) {
       });
     }
     if (meta.order !== undefined) {
-      const dup = orders.get(meta.order);
+      const key = `${meta.date}::${meta.order}`;
+      const dup = orders.get(key);
       if (dup !== undefined) {
         out.push({
           axis: 'schema',
           slug,
           locale,
-          detail: `order 중복: ${fmt(meta.order)} (이미 ${dup})`,
+          detail: `order 중복: ${fmt(meta.order)} (date ${fmt(meta.date)}에서 이미 ${dup})`,
         });
       } else {
-        orders.set(meta.order, slug);
+        orders.set(key, slug);
       }
     }
   }
@@ -371,12 +378,30 @@ const WIN_DRIVE_RE = /^[A-Za-z]:[\\/]/;
 export function checkLinks(posts, locale) {
   const out = [];
   for (const { slug, body } of posts) {
-    for (const href of extractLinks(body)) {
+    for (const href of extractLinks(stripCode(body))) {
       const violation = classifyLink(href);
       if (violation) out.push({ axis: 'link', slug, locale, detail: violation });
     }
   }
   return out;
+}
+
+/**
+ * 본문에서 코드 영역(펜스드 블록 + 인라인 코드 스팬)을 공백으로 치환한다.
+ * 코드 블록 안의 텍스트는 렌더되는 앵커가 아니라 예시 텍스트이므로 배포 사이트
+ * 404 를 만들 수 없다 → 링크 무결성 검사에서 제외해 false-positive 를 막는다.
+ * (예: MEMORY.md 인덱스 형식을 보여주는 ```markdown 펜스 내부의 상대경로.)
+ *
+ * @param {string} body
+ * @returns {string}
+ */
+export function stripCode(body) {
+  return body
+    // 펜스드 코드 블록: ``` 또는 ~~~ (info string 포함), 라인 시작 기준.
+    .replace(/^[ \t]*(`{3,}|~{3,})[^\n]*\n[\s\S]*?^[ \t]*\1[ \t]*$/gm, ' ')
+    // 인라인 코드 스팬: 멀티 백틱(`` ``...`` ``)을 1개 백틱보다 먼저 제거.
+    .replace(/``[\s\S]*?``/g, ' ')
+    .replace(/`[^`\n]*`/g, ' ');
 }
 
 /**
