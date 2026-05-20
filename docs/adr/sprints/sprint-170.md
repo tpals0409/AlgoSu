@@ -95,16 +95,19 @@ fi
 
 - PR #296 CI run #26140657480 (8 build job success) → `gh run view --log | grep ZSTD-METRIC` 로 8 서비스 raw bytes 자동 수집 → D3 정적 테이블 완성
 
-### Phase D — ADR 기록 (commit `<TBD-ADR>`)
+### Phase D — ADR 기록 (commit `ffc0861`)
 
 - `docs/adr/sprints/sprint-170.md` (KR) + `docs/adr-en/sprints/sprint-170.md` (EN 1:1 매핑)
 - `docs/adr/README.md` count 109→110, range 62~169→62~170 (라인 18/52/54)
 
 ## Critic 사이클
 
-**R1** (codex review --base c8f6cb6, 세션 `<TBD-SESSION>`):
+**R1** (codex review --base c8f6cb6, 세션 `019e439a-203a-7dc0-b144-9f6eb1cf5b69`):
 
-- **결과**: `<TBD>`
+- **결과**: P0/P1/P2/P3 **0건 PASS** ✅
+- **codex 판정**: "The change adds a stdout marker for existing zstd metrics and a regression test covering the new behavior. I did not find a discrete issue in the diff that would break existing functionality or CI."
+- codex 가 직접 확인: 헬퍼/테스트/ci.yml grep 으로 마커 추가 + Case 7 회귀 테스트 커버리지 검증. 마커 stdout 출력이 기존 build/Summary 동작 무변경
+- 자기 모순 검출 0 — sprint 목표(자동 측정 + 발견 명문화) ↔ 구현 일치. 단일 회전 PASS (Sprint 169 정상 패턴 재현, codex hang 없음)
 
 ## 위험/회귀 차단
 
@@ -144,7 +147,8 @@ fi
 
 Commits (PR #296):
 - `12b3535` feat(ci): zstd 절감률 stdout greppable 마커 + 단위 테스트 Case 7 (시드 #169-1)
-- `<TBD-ADR>` docs(adr): Sprint 170 ADR (KR + EN) + README 갱신
+- `ffc0861` docs(adr): Sprint 170 ADR (KR + EN) + README 갱신
+- `<TBD-CRITIC-DOC>` docs(adr): Sprint 170 Critic R1 사이클 명문화 (KR + EN)
 - Squash merge: `<TBD-MERGE-SHA>`
 
 ## 신규 패턴

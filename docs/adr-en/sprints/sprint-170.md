@@ -95,16 +95,19 @@ fi
 
 - PR #296 CI run #26140657480 (8 build jobs success) → `gh run view --log | grep ZSTD-METRIC` auto-collected the 8-service raw bytes → completed the D3 static table
 
-### Phase D — ADR recording (commit `<TBD-ADR>`)
+### Phase D — ADR recording (commit `ffc0861`)
 
 - `docs/adr/sprints/sprint-170.md` (KR) + `docs/adr-en/sprints/sprint-170.md` (EN 1:1 mapping)
 - `docs/adr/README.md` count 109→110, range 62~169→62~170 (lines 18/52/54)
 
 ## Critic cycle
 
-**R1** (codex review --base c8f6cb6, session `<TBD-SESSION>`):
+**R1** (codex review --base c8f6cb6, session `019e439a-203a-7dc0-b144-9f6eb1cf5b69`):
 
-- **Result**: `<TBD>`
+- **Result**: P0/P1/P2/P3 **0 findings, PASS** ✅
+- **codex verdict**: "The change adds a stdout marker for existing zstd metrics and a regression test covering the new behavior. I did not find a discrete issue in the diff that would break existing functionality or CI."
+- codex directly checked: grepped helper/test/ci.yml to verify the marker addition + Case 7 regression-test coverage. The stdout marker output leaves existing build/Summary behavior unchanged
+- Zero self-contradiction detected — sprint goal (auto-measurement + documenting the finding) ↔ implementation aligned. Single-pass PASS (Sprint 169 normal pattern reproduced, no codex hang)
 
 ## Risk / regression guard
 
@@ -144,7 +147,8 @@ Changed files (PR #296):
 
 Commits (PR #296):
 - `12b3535` feat(ci): zstd saving stdout greppable marker + unit test Case 7 (seed #169-1)
-- `<TBD-ADR>` docs(adr): Sprint 170 ADR (KR + EN) + README update
+- `ffc0861` docs(adr): Sprint 170 ADR (KR + EN) + README update
+- `<TBD-CRITIC-DOC>` docs(adr): document Sprint 170 Critic R1 cycle (KR + EN)
 - Squash merge: `<TBD-MERGE-SHA>`
 
 ## New patterns
