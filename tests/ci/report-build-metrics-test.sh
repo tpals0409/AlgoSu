@@ -16,6 +16,7 @@
 #   4. GITHUB_STEP_SUMMARY 미설정 → /dev/stdout fallback + ::warning::
 #   5. docker buildx du 실패 → graceful N/A / 0 fallback (build job fail 금지)
 #   6. docker buildx du 정상 → cache size/entries 파싱
+#   7. stdout ZSTD-METRIC 마커 (수집용 greppable 라인 + Summary 미혼입 + zstd 미전달 시 부재)
 #
 # 환경 의존:
 #   - GNU coreutils (stat -c %s) — 헬퍼가 ubuntu-latest 를 전제. 비-GNU(예: macOS
@@ -121,6 +122,26 @@ GITHUB_STEP_SUMMARY="$OUT" STUB_DOCKER_MODE=ok bash "$HELPER" "submission" "$DOC
 if [ "$rc" -eq 0 ]; then pass "exit 0"; else fail "should exit 0" "got ${rc}"; fi
 if grep -qF -- "cache size: **123MB 100MB**" "$OUT"; then pass "cache size parsed"; else fail "cache size parse wrong" "$(grep -i 'cache size' "$OUT" || true)"; fi
 if grep -qF -- "cache entries: **2**" "$OUT"; then pass "cache entries counted (2)"; else fail "cache entries wrong" "$(grep -i 'cache entries' "$OUT" || true)"; fi
+
+# === Case 7: stdout ZSTD-METRIC 마커 (Sprint 170 시드 #169-1) ===
+# 헬퍼가 절감률을 Summary 외에 stdout(job 로그)에도 greppable 1줄로 출력하는지 검증.
+# 측정 dispatch 후 `gh run view --log | grep ZSTD-METRIC` 자동 수집의 회귀 차단.
+echo "[Case 7] stdout ZSTD-METRIC 마커"
+OUT="${WORKDIR}/summary7.md"
+STDOUT_CAP="${WORKDIR}/stdout7.txt"
+GITHUB_STEP_SUMMARY="$OUT" STUB_DOCKER_MODE=fail \
+  bash "$HELPER" "ai-analysis" "$DOCKER_TAR" "$ZSTD_TAR" > "$STDOUT_CAP" 2>&1; rc=$?
+if [ "$rc" -eq 0 ]; then pass "exit 0"; else fail "should exit 0" "got ${rc}"; fi
+if grep -qE -- 'ZSTD-METRIC service=ai-analysis docker_bytes=1000 zstd_bytes=250 saving_pct=-75\.0' "$STDOUT_CAP"; then
+  pass "stdout 마커 값 정확 (docker=1000 zstd=250 saving=-75.0)"
+else
+  fail "stdout 마커 누락/오값" "$(grep -i zstd-metric "$STDOUT_CAP" || true)"
+fi
+if ! grep -qF -- "ZSTD-METRIC" "$OUT"; then pass "마커가 Summary 파일에 미혼입 (stdout 분리)"; else fail "마커가 Summary 로 샘"; fi
+# zstd 미전달 → 마커 없음
+STDOUT_CAP2="${WORKDIR}/stdout7b.txt"
+GITHUB_STEP_SUMMARY="$OUT" STUB_DOCKER_MODE=fail bash "$HELPER" "frontend" "$DOCKER_TAR" > "$STDOUT_CAP2" 2>&1
+if ! grep -qF -- "ZSTD-METRIC" "$STDOUT_CAP2"; then pass "zstd 미전달 → 마커 없음"; else fail "zstd 없는데 마커 출력됨"; fi
 
 # === 결과 ===
 echo ""

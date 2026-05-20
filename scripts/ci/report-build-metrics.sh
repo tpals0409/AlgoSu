@@ -76,3 +76,11 @@ CACHE_ENTRIES=$(docker buildx du 2>/dev/null \
     echo "- tarball size (oci+zstd): N/A (file not produced at ${ZSTD_TARBALL})"
   fi
 } >> "$GITHUB_STEP_SUMMARY"
+
+# Sprint 170 시드 #169-1: zstd 절감률을 stdout(job 로그)에도 greppable 마커로 출력.
+# Step Summary 는 gh API/`gh run view --log` 에 미노출 → 측정 dispatch 후
+# `gh run view <id> --log | grep ZSTD-METRIC` 로 8 서비스 saving % 자동 수집용.
+# 그룹 명령({ })은 서브셸이 아니므로 위 블록에서 설정한 ZSTD_BYTES/SAVE_PCT 가 유효하다.
+if [ -n "$ZSTD_TARBALL" ] && [ -f "$ZSTD_TARBALL" ]; then
+  echo "ZSTD-METRIC service=${LABEL} docker_bytes=${SIZE_BYTES} zstd_bytes=${ZSTD_BYTES} saving_pct=-${SAVE_PCT}"
+fi
