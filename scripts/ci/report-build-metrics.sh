@@ -9,15 +9,16 @@
 # 중복(약 30줄 × 3 = 90줄) 을 단일 헬퍼로 통합. ci.yml 의 호출은 1줄로 단축.
 #
 # Sprint 165 옵션 C (보안) → Sprint 166 baseline (가시성) → Sprint 167 실측 →
-# Sprint 168 zstd 전면 채택 (compression saving 63.7%) 사이클의 운영 통합 단계.
+# Sprint 168 zstd 채택 → Sprint 170 측정 자동화 → Sprint 171 zstd 사이클 종결.
+# Sprint 171 시드 #170-1: zstd OCI export 가 warm cache ~0% 절감 + 미소비(Trivy 는
+# docker tarball 만 사용) 로 판정되어 제거됨. 본 헬퍼는 docker tarball metrics 만 보고.
 #
 # 사용법:
-#   bash scripts/ci/report-build-metrics.sh <label> <docker_tarball> [zstd_tarball]
+#   bash scripts/ci/report-build-metrics.sh <label> <docker_tarball>
 #
 # 인자:
 #   $1 label          섹션 제목용 식별자 (예: ai-analysis, frontend, blog)
 #   $2 docker_tarball docker tarball 경로 (예: /tmp/image-ai-analysis.tar)
-#   $3 zstd_tarball   (optional) zstd tarball 경로. 존재 시 compression saving % 출력
 #
 # 의존 환경변수:
 #   BUILD_START         build step 직전 epoch (date +%s, ci.yml "Record build start time")
@@ -31,9 +32,8 @@
 # ============================================================
 set -euo pipefail
 
-LABEL="${1:?usage: $0 <label> <docker_tarball> [zstd_tarball]}"
-DOCKER_TARBALL="${2:?usage: $0 <label> <docker_tarball> [zstd_tarball]}"
-ZSTD_TARBALL="${3:-}"
+LABEL="${1:?usage: $0 <label> <docker_tarball>}"
+DOCKER_TARBALL="${2:?usage: $0 <label> <docker_tarball>}"
 
 if [ -z "${GITHUB_STEP_SUMMARY:-}" ]; then
   echo "::warning::GITHUB_STEP_SUMMARY is not set — running outside GitHub Actions, output to stdout instead"
@@ -65,22 +65,4 @@ CACHE_ENTRIES=$(docker buildx du 2>/dev/null \
   echo "- cache entries: **${CACHE_ENTRIES}**"
   echo "- path: \`${DOCKER_TARBALL}\`"
   echo "- retention: 1 day"
-
-  if [ -n "$ZSTD_TARBALL" ] && [ -f "$ZSTD_TARBALL" ]; then
-    ZSTD_BYTES=$(stat -c %s "$ZSTD_TARBALL")
-    ZSTD_MB=$(awk -v b="$ZSTD_BYTES" 'BEGIN {printf "%.1f", b/1024/1024}')
-    SAVE_PCT=$(awk -v d="$SIZE_BYTES" -v z="$ZSTD_BYTES" 'BEGIN {printf "%.1f", (1 - z/d) * 100}')
-    echo "- tarball size (oci+zstd): **${ZSTD_MB} MB** (${ZSTD_BYTES} bytes)"
-    echo "- compression saving: **-${SAVE_PCT}%** (zstd vs docker)"
-  elif [ -n "$ZSTD_TARBALL" ]; then
-    echo "- tarball size (oci+zstd): N/A (file not produced at ${ZSTD_TARBALL})"
-  fi
 } >> "$GITHUB_STEP_SUMMARY"
-
-# Sprint 170 시드 #169-1: zstd 절감률을 stdout(job 로그)에도 greppable 마커로 출력.
-# Step Summary 는 gh API/`gh run view --log` 에 미노출 → 측정 dispatch 후
-# `gh run view <id> --log | grep ZSTD-METRIC` 로 8 서비스 saving % 자동 수집용.
-# 그룹 명령({ })은 서브셸이 아니므로 위 블록에서 설정한 ZSTD_BYTES/SAVE_PCT 가 유효하다.
-if [ -n "$ZSTD_TARBALL" ] && [ -f "$ZSTD_TARBALL" ]; then
-  echo "ZSTD-METRIC service=${LABEL} docker_bytes=${SIZE_BYTES} zstd_bytes=${ZSTD_BYTES} saving_pct=-${SAVE_PCT}"
-fi

@@ -718,13 +718,12 @@ jobs:
           context: ${{ matrix.context }}
           platforms: linux/arm64
           # Sprint 165 옵션 C: multi-output (main 푸시 + 항상 docker tarball)
-          # Sprint 168 시드 #167-1 채택: zstd 전면 적용 (Sprint 167 측정 — compression saving 63.7%,
-          # build duration 회귀 -44.6% 통과). 6 services 모두 zstd 무조건 생성.
-          # Trivy scan job 은 docker tarball `--input` 만 사용 → 호환성 회귀 zero.
+          # Sprint 171 시드 #170-1: zstd OCI export 제거. Sprint 170 실측 결과 warm cache 에서
+          # zstd 절감 ~0% + zstd tarball 미소비(Trivy 는 docker tarball `--input` 만 사용,
+          # 업로드/스캔/푸시 어디서도 안 씀) → 잉여 step 으로 판정, Sprint 165~170 zstd 사이클 종결.
           outputs: |
             type=image,push=${{ github.ref == 'refs/heads/main' }},name=${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:main-${{ github.sha }}
             type=docker,dest=/tmp/image-${{ matrix.service }}.tar
-            type=oci,compression=zstd,dest=/tmp/image-${{ matrix.service }}-zstd.tar
           build-args: APK_CACHE_BUST=${{ env.APK_BUST_VALUE }}
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
@@ -736,10 +735,10 @@ jobs:
           path: /tmp/image-${{ matrix.service }}.tar
           retention-days: 1
       # Sprint 168 시드 #167-3: 3 build job 의 중복 약 30줄 × 3 = 90줄 을 단일 헬퍼로 통합.
-      # 호출 인자: <label> <docker_tarball> [zstd_tarball]. BUILD_START env 의존.
+      # 호출 인자: <label> <docker_tarball>. BUILD_START env 의존 (Sprint 171: zstd 인자 제거).
       - name: Report build artifact metrics
         if: steps.check.outputs.skip == 'false'
-        run: bash scripts/ci/report-build-metrics.sh "${{ matrix.service }}" "/tmp/image-${{ matrix.service }}.tar" "/tmp/image-${{ matrix.service }}-zstd.tar"
+        run: bash scripts/ci/report-build-metrics.sh "${{ matrix.service }}" "/tmp/image-${{ matrix.service }}.tar"
 
   build-frontend:
     name: Build Frontend (Next.js)
@@ -781,11 +780,10 @@ jobs:
           context: ./frontend
           platforms: linux/arm64
           # Sprint 165 옵션 C: multi-output (main 푸시 + 항상 docker tarball)
-          # Sprint 168 시드 #167-1 채택: zstd 전면 적용 (frontend 포함)
+          # Sprint 171 시드 #170-1: zstd OCI export 제거 (warm cache ~0% + 미소비). build-services 와 동일.
           outputs: |
             type=image,push=${{ github.ref == 'refs/heads/main' }},name=${{ env.IMAGE_PREFIX }}-frontend:main-${{ github.sha }}
             type=docker,dest=/tmp/image-frontend.tar
-            type=oci,compression=zstd,dest=/tmp/image-frontend-zstd.tar
           build-args: APK_CACHE_BUST=${{ env.APK_BUST_VALUE }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
@@ -797,7 +795,7 @@ jobs:
           retention-days: 1
       # Sprint 168 시드 #167-3: 3 build job 의 중복을 단일 헬퍼로 통합 (services 와 동일).
       - name: Report build artifact metrics
-        run: bash scripts/ci/report-build-metrics.sh "frontend" "/tmp/image-frontend.tar" "/tmp/image-frontend-zstd.tar"
+        run: bash scripts/ci/report-build-metrics.sh "frontend" "/tmp/image-frontend.tar"
 
   # ============================================================
   # Build Blog — 기술 블로그 정적 사이트 (Next.js SSG + nginx)
@@ -862,11 +860,10 @@ jobs:
           context: ./blog
           platforms: linux/arm64
           # Sprint 165 옵션 C: multi-output (main 푸시 + 항상 docker tarball)
-          # Sprint 168 시드 #167-1 채택: zstd 전면 적용 (blog 포함)
+          # Sprint 171 시드 #170-1: zstd OCI export 제거 (warm cache ~0% + 미소비). build-services 와 동일.
           outputs: |
             type=image,push=${{ github.ref == 'refs/heads/main' }},name=${{ env.IMAGE_PREFIX }}-blog:main-${{ github.sha }}
             type=docker,dest=/tmp/image-blog.tar
-            type=oci,compression=zstd,dest=/tmp/image-blog-zstd.tar
           build-args: APK_CACHE_BUST=${{ env.APK_BUST_VALUE }}
           cache-from: type=gha,scope=blog
           cache-to: type=gha,mode=max,scope=blog
@@ -878,7 +875,7 @@ jobs:
           retention-days: 1
       # Sprint 168 시드 #167-3: 3 build job 의 중복을 단일 헬퍼로 통합 (services 와 동일).
       - name: Report build artifact metrics
-        run: bash scripts/ci/report-build-metrics.sh "blog" "/tmp/image-blog.tar" "/tmp/image-blog-zstd.tar"
+        run: bash scripts/ci/report-build-metrics.sh "blog" "/tmp/image-blog.tar"
 
   # ============================================================
   # Trivy — 이미지 취약점 스캔 (main push 후, deploy 전)
