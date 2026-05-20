@@ -174,6 +174,7 @@ jobs:
               - 'scripts/check-doc-refs.mjs'
               - 'scripts/check-adr-en-coverage.mjs'
               - 'scripts/check-i18n-residue.mjs'
+              - 'scripts/check-adr-index-count.mjs'
             ci-scripts:
               - 'scripts/ci/**'
               - 'tests/ci/**'
@@ -358,6 +359,10 @@ jobs:
       # Sprint 175 #30/#31: i18n 계층 3 — 영문판이 실제로 번역되었는지(한국어 잔재 부재) 게이트.
       - name: Check ADR EN i18n residue (strict)
         run: node scripts/check-i18n-residue.mjs --strict
+      # Sprint 176 #3: README 인덱스 선언 카운트 = 실제 ADR 파일 수 정합 게이트.
+      # rebase/머지 중 누적 카운트 드리프트(Sprint 157 #23) 자동 차단.
+      - name: Check ADR index count (strict)
+        run: node scripts/check-adr-index-count.mjs --strict
 
   # ============================================================
   # Quality — CI shell helper 단위 테스트 (Sprint 169 시드 #168-4)

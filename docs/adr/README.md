@@ -18,6 +18,8 @@ docs/adr/
    └─ sprint-{NN}.md                      ← 회고형 sprint ADR (114개, Sprint 62~175)
 ```
 
+> **카운트 정합 (Sprint 176)**: 위 "(N개)" 표기는 실제 파일 수와 일치해야 한다. CI(`scripts/check-adr-index-count.mjs --strict`, quality-docs 잡)가 rebase/머지 중 발생하는 누적 카운트 드리프트를 차단하므로, ADR 추가/삭제 시 본 인덱스의 모든 "(N개)" 표기를 함께 갱신할 것.
+
 ## 분류 기준
 
 | 유형 | 명명 | 위치 | 용도 |
