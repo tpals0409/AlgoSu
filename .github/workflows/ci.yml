@@ -175,6 +175,7 @@ jobs:
               - 'scripts/check-adr-en-coverage.mjs'
               - 'scripts/check-i18n-residue.mjs'
               - 'scripts/check-adr-index-count.mjs'
+              - 'scripts/check-blog-crosscheck.mjs'
             ci-scripts:
               - 'scripts/ci/**'
               - 'tests/ci/**'
@@ -363,6 +364,9 @@ jobs:
       # rebase/머지 중 누적 카운트 드리프트(Sprint 157 #23) 자동 차단.
       - name: Check ADR index count (strict)
         run: node scripts/check-adr-index-count.mjs --strict
+      # Sprint 177 #18: 블로그 글 KR↔EN 정합·frontmatter 스키마·내부 링크 무결성 게이트.
+      - name: Check blog cross-refs (strict)
+        run: node scripts/check-blog-crosscheck.mjs --strict
 
   # ============================================================
   # Quality — CI shell helper 단위 테스트 (Sprint 169 시드 #168-4)
