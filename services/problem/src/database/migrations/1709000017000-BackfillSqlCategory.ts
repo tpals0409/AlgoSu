@@ -17,7 +17,10 @@
  *   tags는 simple-json(JSON 텍스트 `["SQL",...]`)으로 저장되므로 ILIKE '%"sql"%'로
  *   배열 원소 `"SQL"`/`"sql"` 등을 case-insensitive 정확 매칭한다
  *   (`"NoSQL"`·`"SQL injection"` 같은 부분문자열은 매칭되지 않아 exact 의미를 보존).
- *   보수적 가드: SQL Kit 출처는 Programmers뿐이므로 source_platform = programmers로 한정.
+ *   보수적 가드: SQL Kit 출처는 Programmers뿐이므로 Programmers 행으로 한정한다.
+ *   단, source_platform은 optional이라 레거시 행에 누락될 수 있으므로
+ *   source_platform = programmers **또는** source_url(programmers.co.kr) 중 하나로 식별
+ *   (Critic R1 P2: platform 누락 + URL만 있는 레거시 SQL 문제 누락 방지).
  *
  * Expand-Contract: 데이터 보정만 수행, 스키마 변경 없음.
  */
@@ -30,8 +33,11 @@ export class BackfillSqlCategory1709000017000 implements MigrationInterface {
       SET category = 'SQL',
           updated_at = now()
       WHERE category = 'ALGORITHM'
-        AND LOWER(source_platform) = 'programmers'
         AND tags ILIKE '%"sql"%'
+        AND (
+          LOWER(source_platform) = 'programmers'
+          OR source_url ILIKE '%programmers.co.kr%'
+        )
     `);
   }
 
@@ -45,8 +51,11 @@ export class BackfillSqlCategory1709000017000 implements MigrationInterface {
       SET category = 'ALGORITHM',
           updated_at = now()
       WHERE category = 'SQL'
-        AND LOWER(source_platform) = 'programmers'
         AND tags ILIKE '%"sql"%'
+        AND (
+          LOWER(source_platform) = 'programmers'
+          OR source_url ILIKE '%programmers.co.kr%'
+        )
     `);
   }
 }
