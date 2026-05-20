@@ -16,8 +16,9 @@
  *   - 토픽 ADR:        docs/adr/topics/*.md      (README.md 제외)
  *   - 회고형 sprint ADR: docs/adr/sprints/*.md    (README.md 제외, 표준/비표준 .md 전체)
  *
- * README 선언은 6곳(ASCII 트리 3 + 섹션 헤더 3)에 등장하며, 모든 선언값이 실제값과
- * 일치해야 PASS 한다. 1곳이라도 어긋나면 --strict 에서 차단한다.
+ * README 선언은 6곳(ASCII 트리 3 + 섹션 헤더 3)에 등장하며, 카테고리별로 정확히 2곳
+ * (ASCII 트리 + 섹션 헤더)이 존재하고 모든 선언값이 실제값과 일치해야 PASS 한다.
+ * 일부 선언이 누락되거나(부분 삭제) 값이 어긋나면 --strict 에서 차단한다.
  *
  * - 기본 모드: 통계만 출력하고 exit 0 (자료 수집용)
  * - --lint 모드: 불일치를 WARN으로 나열 (fail 아님)
@@ -46,6 +47,17 @@ const CATEGORY_LABELS = {
   permanent: '영구 ADR',
   topic: '토픽 ADR',
   sprint: '회고형 sprint ADR',
+};
+
+/**
+ * 카테고리별 README 내 "(N개)" 선언이 등장해야 하는 횟수.
+ * 각 카테고리는 ASCII 디렉토리 트리 1곳 + 섹션 헤더 1곳 = 2곳에 선언된다.
+ * 일부만 삭제되는 부분 드리프트를 잡기 위해 등장 횟수 자체를 강제한다.
+ */
+const EXPECTED_OCCURRENCES = {
+  permanent: 2,
+  topic: 2,
+  sprint: 2,
 };
 
 /** 직접 실행 여부 (entry point guard) */
@@ -91,9 +103,9 @@ function runMain() {
     console.log(`[${level}] ${mismatches.length}건 카운트 불일치:`);
     for (const m of mismatches) {
       const label = CATEGORY_LABELS[m.category];
-      if (m.kind === 'missing') {
+      if (m.kind === 'occurrences') {
         console.log(
-          `       - ${label}: README에 "(N개)" 선언이 없음 (실제 ${m.actual}개)`,
+          `       - ${label}: "(N개)" 선언이 ${m.found}곳 (기대 ${m.expected}곳 = ASCII 트리 + 섹션 헤더, 실제 ${m.actual}개)`,
         );
       } else {
         console.log(
@@ -206,19 +218,29 @@ export function parseDeclaredCounts(readmeText) {
 
 /**
  * 실제 카운트와 선언 카운트를 비교해 불일치 목록을 만든다.
- * 카테고리별 선언이 하나도 없으면 missing, 선언값 중 실제와 다른 것이 있으면 mismatch.
+ * 카테고리별로 (1) 선언 등장 횟수가 기대치와 다르면 occurrences,
+ * (2) 선언값 중 실제와 다른 것이 있으면 mismatch 를 보고한다.
+ * 등장 횟수 검사는 일부 선언만 삭제되는 부분 드리프트(예: 섹션 헤더 카운트만
+ * 제거하고 ASCII 트리 카운트는 유지)까지 차단한다.
  *
  * @param {{permanent:number, topic:number, sprint:number}} actual
  * @param {{permanent:number[], topic:number[], sprint:number[]}} declared
- * @returns {Array<{category:string, kind:'missing'|'mismatch', declared?:number, actual:number}>}
+ * @param {{permanent:number, topic:number, sprint:number}} [expected]  카테고리별 기대 등장 횟수
+ * @returns {Array<{category:string, kind:'occurrences'|'mismatch', declared?:number, found?:number, expected?:number, actual:number}>}
  */
-export function diffCounts(actual, declared) {
+export function diffCounts(actual, declared, expected = EXPECTED_OCCURRENCES) {
   const mismatches = [];
   for (const category of Object.keys(CATEGORY_LABELS)) {
-    const decls = declared[category];
-    if (!decls || decls.length === 0) {
-      mismatches.push({ category, kind: 'missing', actual: actual[category] });
-      continue;
+    const decls = declared[category] ?? [];
+    const want = expected[category];
+    if (decls.length !== want) {
+      mismatches.push({
+        category,
+        kind: 'occurrences',
+        found: decls.length,
+        expected: want,
+        actual: actual[category],
+      });
     }
     for (const d of decls) {
       if (d !== actual[category]) {
