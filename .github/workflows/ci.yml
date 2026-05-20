@@ -166,6 +166,7 @@ jobs:
               - 'blog/content/**/*.mdx'
               - 'scripts/check-doc-refs.mjs'
               - 'scripts/check-adr-en-coverage.mjs'
+              - 'scripts/check-i18n-residue.mjs'
             ci-scripts:
               - 'scripts/ci/**'
               - 'tests/ci/**'
@@ -347,6 +348,9 @@ jobs:
         run: node scripts/check-doc-refs.mjs
       - name: Check ADR EN coverage (strict)
         run: node scripts/check-adr-en-coverage.mjs --strict
+      # Sprint 175 #30/#31: i18n 계층 3 — 영문판이 실제로 번역되었는지(한국어 잔재 부재) 게이트.
+      - name: Check ADR EN i18n residue (strict)
+        run: node scripts/check-i18n-residue.mjs --strict
 
   # ============================================================
   # Quality — CI shell helper 단위 테스트 (Sprint 169 시드 #168-4)
