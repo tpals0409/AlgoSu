@@ -1,3 +1,8 @@
+---
+topics:
+  - operations
+  - security
+---
 # ADR-003: Redis/RabbitMQ ACL 분리 설계
 
 - **상태**: 보류 (Deferred)

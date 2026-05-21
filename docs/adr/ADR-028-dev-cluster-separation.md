@@ -1,3 +1,7 @@
+---
+topics:
+  - cicd
+---
 # ADR-028: 개발 서버(k3d/별도 dev cluster) 분리 — 운영 직접 수정 차단 구조
 
 - **상태**: 부분 적용됨 (Accepted-Partial) — 옵션 A(로컬 k3d) Kustomize overlay 분리 완료, kubeconfig read-only 분리 + Claude Code 실행 환경 이전은 미확정

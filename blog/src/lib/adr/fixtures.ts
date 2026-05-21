@@ -4,9 +4,10 @@
  * @layer      lib (test)
  * @related    parser.ts, loader.ts, index-builder.ts, types.ts
  *
- * 10개 regression fixture — 파싱/인덱스 정합성 검증.
- * P2에서 CI self-test 스크립트가 이 함수를 호출한다.
+ * 12개 regression fixture — 파싱/인덱스 정합성 검증.
+ * Sprint 189 D2: F1/F2 hasFrontmatter 갱신 + F11/F12 topics/filterAdrsByTopic 추가.
  */
+import { filterAdrsByTopic } from './index-builder';
 import type { AdrDoc, AdrIndex } from './types';
 
 interface FixtureResult {
@@ -36,12 +37,13 @@ function findMeta(index: AdrIndex, id: string) {
 
 const FIXTURES: ReadonlyArray<Fixture> = [
   {
-    name: 'F1: ADR-001 frontmatter 없음, H2 상태 패턴, status=completed',
+    // Sprint 189 D2: topics frontmatter 추가 → hasFrontmatter=true, status는 H2 fallback 유지
+    name: 'F1: ADR-001 topics frontmatter, H2 상태 fallback, status=completed',
     run: (docs) => {
       const doc = findDoc(docs, 'ADR-001');
       if (!doc) return false;
       return (
-        !doc.meta.hasFrontmatter &&
+        doc.meta.hasFrontmatter &&
         doc.meta.status === 'completed' &&
         doc.meta.title.includes('Gateway') &&
         doc.meta.kind === 'permanent'
@@ -49,11 +51,12 @@ const FIXTURES: ReadonlyArray<Fixture> = [
     },
   },
   {
-    name: 'F2: ADR-002 dash-list 상태, status=deferred',
+    // Sprint 189 D2: topics frontmatter 추가 → hasFrontmatter=true, dash-list status 여전히 동작
+    name: 'F2: ADR-002 topics frontmatter, dash-list 상태, status=deferred',
     run: (docs) => {
       const doc = findDoc(docs, 'ADR-002');
       if (!doc) return false;
-      return !doc.meta.hasFrontmatter && doc.meta.status === 'deferred';
+      return doc.meta.hasFrontmatter && doc.meta.status === 'deferred';
     },
   },
   {
@@ -123,6 +126,25 @@ const FIXTURES: ReadonlyArray<Fixture> = [
     name: 'F10: sprint-40 bySprint 존재',
     run: (_docs, index) => {
       return index.bySprint.has(40);
+    },
+  },
+  {
+    // Sprint 189 D2: filterAdrsByTopic — operations 주제로 ADR-026 포함 검증
+    name: 'F11: filterAdrsByTopic(operations) → ADR-026 포함',
+    run: (_docs, index) => {
+      const members = filterAdrsByTopic(index.all, 'operations');
+      return members.some((m) => m.id === 'ADR-026');
+    },
+  },
+  {
+    // Sprint 189 D2: filterAdrsByTopic — 다중 주제(ADR-003 = operations + security) 검증
+    name: 'F12: filterAdrsByTopic(security) → ADR-003 포함(multi-topic)',
+    run: (_docs, index) => {
+      const byOps = filterAdrsByTopic(index.all, 'operations');
+      const bySec = filterAdrsByTopic(index.all, 'security');
+      const adr003InOps = byOps.some((m) => m.id === 'ADR-003');
+      const adr003InSec = bySec.some((m) => m.id === 'ADR-003');
+      return adr003InOps && adr003InSec;
     },
   },
 ];

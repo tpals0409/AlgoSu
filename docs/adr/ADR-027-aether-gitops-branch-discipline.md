@@ -1,3 +1,7 @@
+---
+topics:
+  - cicd
+---
 # ADR-027: aether-gitops 브랜치 규율 — 작업 브랜치 + PR 강제
 
 - **상태**: 제안됨 (Proposed)

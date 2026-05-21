@@ -174,6 +174,27 @@ export function getSubgraph(
   return { nodes, edges };
 }
 
+/* ─── 토픽 필터 ──────────────────────────────────── */
+
+/**
+ * topicId에 해당하는 ADR 메타 목록을 반환한다.
+ * meta.topics 배열에 topicId가 포함된 항목만 선별하고,
+ * date 내림차순으로 정렬한다(동률·미정은 id 사전순 오름차순).
+ *
+ * @param metas   - 필터 대상 AdrMeta 배열
+ * @param topicId - 조회할 주제 id (ADR_TOPICS[].id)
+ */
+export function filterAdrsByTopic(metas: AdrMeta[], topicId: string): AdrMeta[] {
+  return metas
+    .filter((m) => m.topics?.includes(topicId))
+    .sort((a, b) => {
+      const dateA = a.date ?? '';
+      const dateB = b.date ?? '';
+      if (dateA !== dateB) return dateB.localeCompare(dateA);
+      return a.id.localeCompare(b.id);
+    });
+}
+
 /* ─── 메인 빌더 ──────────────────────────────────── */
 
 /**

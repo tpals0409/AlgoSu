@@ -5,6 +5,8 @@ period: "2026-04-22"
 status: complete
 start_commit: e4f0641
 end_commit: 84e044e
+topics:
+  - agents
 ---
 
 # Sprint 114 — Critic 에이전트 신설 (Codex 기반 교차 코드리뷰)

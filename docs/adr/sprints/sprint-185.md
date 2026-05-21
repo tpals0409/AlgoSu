@@ -6,6 +6,8 @@ status: completed
 agents: [Oracle, Palette, Herald, Architect, Critic, Scribe]
 related_adrs: ["sprint-184", "sprint-179", "sprint-157"]
 related_memory: ["sprint-window"]
+topics:
+  - product
 ---
 # Sprint 185 — 블로그 홈 랜딩 포트폴리오 개편 + Engineering Editorial 디자인 시스템 (Phase 1)
 

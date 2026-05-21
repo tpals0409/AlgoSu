@@ -6,6 +6,8 @@ status: completed
 scope: "rebuild_all 운영 규약 [A] + github-worker 실측 [B] + commitlint pre-commit 자동화 [C]"
 start_commit: e520bb9
 end_commit: 745fbbc
+topics:
+  - cicd
 ---
 
 # Sprint 105 — CI 실측 데이터 확보 + 운영 규약 표준화 + 커밋 게이트 자동화

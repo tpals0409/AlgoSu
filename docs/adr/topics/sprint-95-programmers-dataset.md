@@ -6,6 +6,9 @@ status: proposed
 agents: [Oracle, Scout, Architect, Postman, Curator, Gatekeeper, Librarian]
 related_adrs: ["sprint-83"]
 related_memory: ["project-programmers-migration"]
+topics:
+  - data
+  - product
 ---
 
 # Sprint 95 — 프로그래머스 데이터셋 번들링 + Gateway 외부 연동

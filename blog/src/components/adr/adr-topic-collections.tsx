@@ -2,11 +2,14 @@
  * @file       adr-topic-collections.tsx
  * @domain     blog / adr
  * @layer      ui
- * @related    src/lib/site-content.ts, src/components/adr/adr-card.tsx, src/components/adr/adr-landing-view.tsx
+ * @related    src/lib/site-content.ts, src/lib/adr/index-builder.ts,
+ *             src/components/adr/adr-card.tsx, src/components/adr/adr-landing-view.tsx
  *
- * 주제별 ADR 컬렉션 — ADR_TOPICS 4주제, 각 멤버를 AdrCard로 렌더링.
- * 멤버 조회는 id 맵으로, 조회 실패 id는 graceful skip(빈 주제는 미렌더).
+ * 주제별 ADR 컬렉션 — ADR_TOPICS 6주제, 각 멤버를 AdrCard로 렌더링.
+ * Sprint 189 D2: 멤버 집계를 하드코딩 adrIds → frontmatter topics 기반 filterAdrsByTopic으로 전환.
+ * 조회 결과가 없는 주제는 graceful skip(빈 주제는 미렌더).
  */
+import { filterAdrsByTopic } from '@/lib/adr/index-builder';
 import type { AdrMeta } from '@/lib/adr/types';
 import { type Locale, t } from '@/lib/i18n';
 import { ADR_TOPICS } from '@/lib/site-content';
@@ -32,9 +35,7 @@ export function AdrTopicCollections({ adrById, locale }: AdrTopicCollectionsProp
       </div>
 
       {ADR_TOPICS.map((topic) => {
-        const members = topic.adrIds
-          .map((id) => adrById.get(id))
-          .filter((m): m is AdrMeta => m != null);
+        const members = filterAdrsByTopic([...adrById.values()], topic.id);
         if (members.length === 0) return null;
 
         return (

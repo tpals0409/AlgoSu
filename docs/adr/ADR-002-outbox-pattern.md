@@ -1,3 +1,7 @@
+---
+topics:
+  - data
+---
 # ADR-002: Outbox 패턴 도입 검토
 
 - **상태**: 보류 (Deferred)

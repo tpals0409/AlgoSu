@@ -157,7 +157,8 @@ export const FEATURED_ADRS: readonly FeaturedAdr[] = [
 
 /**
  * 주제별 ADR 컬렉션 1종 — 관심 주제로 ADR 진입.
- * 멤버는 AdrMeta.id로 참조(permanent/sprint/topic 혼합 가능).
+ * 멤버는 frontmatter topics 필드 기반 빌드타임 자동 집계로 결정한다.
+ * Sprint 186 4주제 → Sprint 189 frontmatter 자동분류 6주제.
  */
 export interface AdrTopic {
   /** 안정 식별자 (key/anchor 용). */
@@ -166,37 +167,42 @@ export interface AdrTopic {
   titleKey: DictKey;
   /** i18n 주제 설명 키. */
   descKey: DictKey;
-  /** 멤버 ADR id 목록 (AdrMeta.id). */
-  adrIds: readonly string[];
 }
 
 /**
- * 핵심 4주제 ADR 컬렉션 (Sprint 186 사용자 확정).
- * Security·Product 세분화·자동 분류는 Phase 5로 이월.
+ * ADR 주제 카탈로그 6종 (Sprint 189 D2 frontmatter 자동분류).
+ * 각 주제의 멤버는 KR ADR frontmatter topics 필드로 결정하며,
+ * 소비처에서 filterAdrsByTopic()으로 빌드타임 집계한다.
  */
 export const ADR_TOPICS: readonly AdrTopic[] = [
   {
     id: 'operations',
     titleKey: 'adrTopicOpsTitle',
     descKey: 'adrTopicOpsDesc',
-    adrIds: ['ADR-026', 'sprint-130', 'ADR-003', 'ADR-025'],
   },
   {
     id: 'agents',
     titleKey: 'adrTopicAgentsTitle',
     descKey: 'adrTopicAgentsDesc',
-    adrIds: ['sprint-82', 'sprint-114', 'sprint-116'],
   },
   {
     id: 'cicd',
     titleKey: 'adrTopicCicdTitle',
     descKey: 'adrTopicCicdDesc',
-    adrIds: ['ADR-027', 'ADR-028', 'sprint-105'],
   },
   {
     id: 'data',
     titleKey: 'adrTopicDataTitle',
     descKey: 'adrTopicDataDesc',
-    adrIds: ['sprint-95-programmers-dataset', 'ADR-001', 'ADR-002'],
+  },
+  {
+    id: 'security',
+    titleKey: 'adrTopicSecurityTitle',
+    descKey: 'adrTopicSecurityDesc',
+  },
+  {
+    id: 'product',
+    titleKey: 'adrTopicProductTitle',
+    descKey: 'adrTopicProductDesc',
   },
 ] as const;
