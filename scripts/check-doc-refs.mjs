@@ -36,6 +36,23 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(import.meta.dirname, '..');
 
+/**
+ * repo root 기준으로 resolve 하는 prefix SSOT.
+ * validateRef 의 경로 resolve 분기와 extractBareDocPaths 의 bare 매칭 정규식이
+ * **동일 출처**를 공유하여 prefix 비대칭(한쪽만 docs/ 만 매칭하던 갭)을 구조적으로 차단.
+ * 신규 top-level 디렉토리 추가 시 본 배열만 갱신하면 양쪽 룰에 동시 반영.
+ */
+export const REPO_ROOT_PREFIXES = [
+  'docs',
+  'scripts',
+  'blog',
+  'frontend',
+  'services',
+  'infra',
+  '.claude',
+  '.github',
+];
+
 /** 직접 실행 여부 (entry point guard) */
 const __selfPath = fileURLToPath(import.meta.url);
 if (process.argv[1] === __selfPath) {
@@ -180,17 +197,8 @@ export function validateRef(rawTarget, fileDir, relPath, lineNo, kind) {
   if (isAbsolute(decoded)) {
     // 절대경로: repo root 기준 (`/docs/...` → `docs/...`)
     resolved = resolve(ROOT, decoded.replace(/^\/+/, ''));
-  } else if (
-    decoded.startsWith('docs/') ||
-    decoded.startsWith('scripts/') ||
-    decoded.startsWith('blog/') ||
-    decoded.startsWith('frontend/') ||
-    decoded.startsWith('services/') ||
-    decoded.startsWith('infra/') ||
-    decoded.startsWith('.claude/') ||
-    decoded.startsWith('.github/')
-  ) {
-    // repo root prefix
+  } else if (REPO_ROOT_PREFIXES.some((p) => decoded.startsWith(`${p}/`))) {
+    // repo root prefix (REPO_ROOT_PREFIXES SSOT)
     resolved = resolve(ROOT, decoded);
   } else {
     // 상대경로 (현재 파일 기준)
@@ -229,14 +237,18 @@ export function extractMarkdownLinks(line) {
 }
 
 /**
- * 텍스트 내 `docs/.../*.md` 또는 `scripts/...mjs` 등 bare path 참조 추출.
+ * 텍스트 내 bare repo-path `.md` 참조 추출 (markdown link 외부 노출 형태).
+ * REPO_ROOT_PREFIXES 의 8개 top-level prefix 를 모두 매칭 — 이전엔 `docs/` 만
+ * 매칭하여 frontend/services/infra 등 bare 참조가 깨져도 미검출되던 비대칭을 해소.
+ * validateRef 가 검증하는 범위(`.md` 또는 docs/)와 정렬되도록 확장자는 `.md` 로 한정.
  * @param {string} line
  * @returns {string[]}
  */
 export function extractBareDocPaths(line) {
   const results = [];
-  // docs/foo/bar.md, docs/foo/bar.md#anchor — link 외부 노출
-  const re = /(?<![[(\w/.-])(docs\/[\w./-]+\.md(?:#[\w-]+)?)/g;
+  // 예: docs/foo/bar.md, frontend/README.md#anchor, .github/pull_request_template.md
+  const alt = REPO_ROOT_PREFIXES.map((p) => p.replace(/\./g, '\\.')).join('|');
+  const re = new RegExp(`(?<![[(\\w/.-])((?:${alt})\\/[\\w./-]+\\.md(?:#[\\w-]+)?)`, 'g');
   let m;
   while ((m = re.exec(line)) !== null) {
     results.push(m[1]);
@@ -306,12 +318,13 @@ export function collectUntrackedMarkdown() {
 }
 
 // ──────────────────────────────────────────────────────────────────
-// Self-test fixtures (Sprint 153 Phase G 5종 슬러그)
+// Self-test fixtures (Sprint 153 Phase G 5종 슬러그 + Sprint 182 non-docs prefix)
 // ──────────────────────────────────────────────────────────────────
 
 /**
- * 해소 이전 형태의 5종 슬러그가 모두 검출되는지 inline fixture로 검증.
+ * 해소 이전 형태의 슬러그가 모두 검출되는지 inline fixture로 검증.
  * 어떤 룰이 너무 좁아지거나 면제가 과도해지면 self-test가 즉시 fail.
+ * Sprint 182: docs/ 외 top-level prefix 의 bare .md 깨진 참조도 잡는지 dogfood.
  *
  * @returns {{ok:boolean,detected:number,expected:number,message?:string}}
  */
@@ -322,6 +335,10 @@ export function runRegressionFixtures() {
     { target: 'docs/runbook-annotation-dictionary.md', sprintSeed: 'Sprint 153 Phase G #3' },
     { target: 'docs/runbook-migration-rules.md', sprintSeed: 'Sprint 153 Phase G #4' },
     { target: 'docs/runbook-work-progress-guide.md', sprintSeed: 'Sprint 153 Phase G #5' },
+    // Sprint 182 — bare-path 비대칭 보강: docs/ 외 prefix 의 bare .md 도 검출되어야 함.
+    { target: 'frontend/__nonexistent-doc-ref__.md', sprintSeed: 'Sprint 182 broadened prefix (frontend)' },
+    { target: 'services/gateway/__nonexistent-doc-ref__.md', sprintSeed: 'Sprint 182 broadened prefix (services)' },
+    { target: '.github/__nonexistent-doc-ref__.md', sprintSeed: 'Sprint 182 broadened prefix (.github)' },
   ];
 
   let detected = 0;
@@ -343,7 +360,7 @@ export function runRegressionFixtures() {
   if (detected !== fixtures.length) {
     return {
       ok: false,
-      message: `expected ${fixtures.length} broken refs from Sprint 153 Phase G slugs, detected ${detected}`,
+      message: `expected ${fixtures.length} broken refs from regression fixtures, detected ${detected}`,
       detected,
       expected: fixtures.length,
     };
