@@ -84,9 +84,24 @@ const LESSONS_RE =
   /^(?:주요\s+|key\s+|major\s+)?(?:교훈|lessons)(?:\s+learned)?(?:\s|$|\(|항목)/i;
 
 /**
+ * Implementation 섹션 헤딩 정규식 — 괄호/접미사 tolerant 매치(Sprint 184).
+ *
+ * 매치 대상:
+ *  - KR: `구현`, `구현 흐름`, `구현 내역`, `구현 (8 PR squash merge, ...)`
+ *  - EN: `implementation`, `implementation (single PR, ...)`, `execution`
+ *
+ * 키워드 직후가 공백/끝/`(` 일 때만 매치 → `구현체`(비공백 후속)는 미매칭(보수적).
+ * Phase 카드 생성은 PR 표 + Phase 컬럼이 있어야 하는 다운스트림 가드(extractPhaseEntries)가
+ * 별도로 막으므로, PR 표 없는 섹션이 'implementation'으로 분류돼도 bogus 카드는 생성되지 않는다.
+ */
+const IMPLEMENTATION_RE =
+  /^(?:구현|implementation|execution)(?:\s|$|\()/i;
+
+/**
  * 섹션 제목 텍스트를 canonical 키로 매핑한다.
  * 숫자 prefix(`## 9. Sprint 152 이월 시드`, `## 7. Sprint 153 Carryover Seeds` 등)는
  * 정규화 시 제거하여 numbered + 일반 H2 모두 동일 alias로 처리한다(Sprint 163 R4 P3).
+ * exact alias 미스 시 carryover/lessons/implementation 순으로 tolerant 정규식 fallback.
  *
  * @param heading - H2/H3 텍스트 (## 기호 제거 후)
  * @returns 매핑된 canonical 키 또는 'other'
@@ -100,6 +115,7 @@ export function resolveCanonical(heading: string): CanonicalSection {
 
   if (CARRYOVER_RE.test(stripped)) return 'carryover';
   if (LESSONS_RE.test(stripped)) return 'lessons';
+  if (IMPLEMENTATION_RE.test(stripped)) return 'implementation';
 
   return 'other';
 }
