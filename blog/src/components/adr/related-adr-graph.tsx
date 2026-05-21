@@ -41,6 +41,31 @@ interface RelatedAdrGraphProps {
   locale?: Locale;
 }
 
+/* ─── 노드 종류별 색상 (Engineering Editorial 토큰 유래) ─── */
+
+/**
+ * 노드 kind별 mermaid fill/text/stroke 색상 상수.
+ *
+ * mermaid `style` 디렉티브는 CSS variable이 아닌 리터럴 hex만 지원하므로
+ * JS 상수로 정의하되, 각 값은 Engineering Editorial 토큰에서 유래한다.
+ *
+ * WCAG AA 텍스트 대비(4.5:1+, 흰 텍스트 #fff 고정):
+ *   permanent — fill #2347e6 (brand cobalt), 흰 텍스트 대비 6.75:1 ✓
+ *   sprint    — fill #0e7490 (cyan-700, --accent-2에서 WCAG AA 4.5:1 위해 darken), 흰 텍스트 대비 5.35:1 ✓
+ *   topic     — fill #7c3aed (violet-600, --accent-6에서 WCAG AA 4.5:1 위해 darken), 흰 텍스트 대비 5.71:1 ✓
+ */
+export const KIND_COLORS: Record<string, { fill: string; color: string; stroke: string }> = {
+  /** brand cobalt — globals.css --brand (#2347e6), 흰 텍스트 대비 6.75:1 */
+  permanent: { fill: '#2347e6', color: '#ffffff', stroke: '#1b37b8' },
+  /** cyan-700 — globals.css --accent-2에서 WCAG AA 위해 darken (#0e7490), 흰 텍스트 대비 5.35:1 */
+  sprint:    { fill: '#0e7490', color: '#ffffff', stroke: '#155e75' },
+  /** violet-600 — globals.css --accent-6에서 WCAG AA 위해 darken (#7c3aed), 흰 텍스트 대비 5.71:1 */
+  topic:     { fill: '#7c3aed', color: '#ffffff', stroke: '#6d28d9' },
+} as const;
+
+/** focus 노드 강조 — brand cobalt (기존 #715DA8 → brand 정렬) */
+const FOCUS_STYLE = { fill: '#1b37b8', color: '#ffffff', stroke: '#152a8a' };
+
 /* ─── 노드 라벨 ─────────────────────────────────── */
 
 /** 노드 ID에서 짧은 라벨을 생성한다. */
@@ -88,9 +113,17 @@ function buildChart(adj: AdjacencyList, focusId?: string): string {
     edgeIdx++;
   }
 
-  if (focusId) {
-    const sid = safeId(focusId);
-    lines.push(`  style ${sid} fill:#715DA8,color:#fff,stroke:#715DA8`);
+  /* kind별 노드 색상 적용 */
+  for (const node of adj.nodes) {
+    const sid = safeId(node.id);
+    if (focusId && node.id === focusId) {
+      lines.push(`  style ${sid} fill:${FOCUS_STYLE.fill},color:${FOCUS_STYLE.color},stroke:${FOCUS_STYLE.stroke}`);
+    } else {
+      const kc = KIND_COLORS[node.kind];
+      if (kc) {
+        lines.push(`  style ${sid} fill:${kc.fill},color:${kc.color},stroke:${kc.stroke}`);
+      }
+    }
   }
 
   for (const idx of unresolvedIndices) {

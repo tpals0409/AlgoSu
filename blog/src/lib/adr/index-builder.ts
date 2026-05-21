@@ -174,6 +174,72 @@ export function getSubgraph(
   return { nodes, edges };
 }
 
+/* ─── 토픽 필터 ──────────────────────────────────── */
+
+/**
+ * topicId에 해당하는 ADR 메타 목록을 반환한다.
+ * meta.topics 배열에 topicId가 포함된 항목만 선별하고,
+ * date 내림차순으로 정렬한다(동률·미정은 id 사전순 오름차순).
+ *
+ * @param metas   - 필터 대상 AdrMeta 배열
+ * @param topicId - 조회할 주제 id (ADR_TOPICS[].id)
+ */
+export function filterAdrsByTopic(metas: AdrMeta[], topicId: string): AdrMeta[] {
+  return metas
+    .filter((m) => m.topics?.includes(topicId))
+    .sort((a, b) => {
+      const dateA = a.date ?? '';
+      const dateB = b.date ?? '';
+      if (dateA !== dateB) return dateB.localeCompare(dateA);
+      return a.id.localeCompare(b.id);
+    });
+}
+
+/* ─── 그래프 필터 ────────────────────────────────── */
+
+/** filterAdjacency 옵션 */
+interface FilterAdjacencyOpts {
+  /** 포함할 노드 종류 (이 Set에 포함된 kind만 잔존) */
+  readonly kinds: ReadonlySet<AdrKind>;
+  /** true면 resolved edge 유지 */
+  readonly showResolved: boolean;
+  /** true면 unresolved edge 유지 */
+  readonly showUnresolved: boolean;
+}
+
+/**
+ * AdjacencyList를 노드 종류(kind)와 엣지 resolved 상태로 필터링한다.
+ *
+ * - nodes: `opts.kinds`에 포함된 kind만 잔존한다.
+ * - edges: resolved 여부에 따라 showResolved/showUnresolved 플래그 적용 후,
+ *   from 노드가 잔존 노드일 때만 유지한다.
+ *   unresolved 엣지는 to가 비존재 참조이므로 from만 검사한다.
+ *   resolved 엣지는 from·to 양쪽 모두 잔존 노드여야 유지한다.
+ *
+ * 순수 함수 — 원본 AdjacencyList를 변경하지 않는다.
+ *
+ * @param adj  - 필터 대상 AdjacencyList
+ * @param opts - 필터 옵션 (kinds, showResolved, showUnresolved)
+ * @returns 필터링된 새 AdjacencyList
+ */
+export function filterAdjacency(
+  adj: AdjacencyList,
+  opts: FilterAdjacencyOpts,
+): AdjacencyList {
+  const nodes = adj.nodes.filter((n) => opts.kinds.has(n.kind));
+  const nodeIds = new Set(nodes.map((n) => n.id));
+
+  const edges = adj.edges.filter((e) => {
+    const passType = e.resolved ? opts.showResolved : opts.showUnresolved;
+    const fromOk = nodeIds.has(e.from);
+    /* unresolved 엣지는 to가 비존재 참조이므로 from만 검사 */
+    const toOk = e.resolved ? nodeIds.has(e.to) : true;
+    return passType && fromOk && toOk;
+  });
+
+  return { nodes, edges };
+}
+
 /* ─── 메인 빌더 ──────────────────────────────────── */
 
 /**

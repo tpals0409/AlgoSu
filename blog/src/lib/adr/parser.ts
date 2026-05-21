@@ -739,6 +739,7 @@ export function parseAdr(
   const date = resolveDate(fm);
   const sprint = resolveSprint(fm, kind, slug);
   const agents = resolveAgents(fm);
+  const topics = resolveTopics(fm);
   const relatedAdrs = resolveRelatedAdrs(fm, warnings);
   const relatedMemory = resolveRelatedMemory(fm);
   const id = buildId(kind, slug);
@@ -787,6 +788,7 @@ export function parseAdr(
     impact,
     readingTimeMin,
     tldr,
+    topics: topics.length > 0 ? topics : undefined,
   };
 
   return {
@@ -849,6 +851,19 @@ function resolveSprint(
 function resolveAgents(fm: Record<string, unknown>): string[] {
   if (Array.isArray(fm.agents)) {
     return fm.agents.filter((a): a is string => typeof a === 'string');
+  }
+  return [];
+}
+
+/**
+ * frontmatter topics 배열 추출 + 정규화.
+ * fm.topics가 string[] 이면 string 항목만 필터링하여 반환하고,
+ * 그 외(미정의·비배열)이면 빈 배열을 반환한다.
+ * resolveAgents와 동일한 패턴을 따른다.
+ */
+function resolveTopics(fm: Record<string, unknown>): string[] {
+  if (Array.isArray(fm.topics)) {
+    return fm.topics.filter((t): t is string => typeof t === 'string');
   }
   return [];
 }

@@ -5,6 +5,8 @@ period: "2026-04-22"
 status: complete
 start_commit: 8871e12
 end_commit: TBD
+topics:
+  - agents
 ---
 
 # Sprint 116 — 오라클 디스패치 및 에이전트 워크플로우 개선

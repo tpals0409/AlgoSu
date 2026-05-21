@@ -5,28 +5,43 @@
  * @related    src/lib/i18n.ts, content/posts/, content/posts-en/
  *
  * MDX 포스트 파일시스템 읽기 — locale별 콘텐츠 디렉토리 분기.
- * Category union type: 'journey' (성장/여정) | 'challenge' (문제해결/삽질)
+ * Category union type: 7분류 주제형 체계 (ai-agent/cicd/architecture/backend/platform/frontend/retrospective)
  */
 import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
 import type { Locale } from '@/lib/i18n';
 
-/** 포스트 분류 카테고리 — 2분류 체계 */
-export type Category = 'journey' | 'challenge';
+/** 포스트 분류 카테고리 — 7분류 주제형 체계 */
+export type Category =
+  | 'ai-agent'
+  | 'cicd'
+  | 'architecture'
+  | 'backend'
+  | 'platform'
+  | 'frontend'
+  | 'retrospective';
 
 /** 유효한 Category 값 집합 — 타입 가드에 활용 */
-const VALID_CATEGORIES: ReadonlySet<string> = new Set<Category>(['journey', 'challenge']);
+const VALID_CATEGORIES: ReadonlySet<string> = new Set<Category>([
+  'ai-agent',
+  'cicd',
+  'architecture',
+  'backend',
+  'platform',
+  'frontend',
+  'retrospective',
+]);
 
 /**
  * frontmatter의 category 값을 안전하게 파싱한다.
- * 유효하지 않은 값은 fallback('journey')으로 치환한다.
+ * 유효하지 않은 값은 fallback('ai-agent')으로 치환한다.
  */
 function parseCategory(raw: unknown): Category {
   if (typeof raw === 'string' && VALID_CATEGORIES.has(raw)) {
     return raw as Category;
   }
-  return 'journey';
+  return 'ai-agent';
 }
 
 const CONTENT_DIR = path.join(process.cwd(), 'content');
@@ -43,7 +58,7 @@ export interface PostMeta {
   date: string;
   excerpt: string;
   tags: string[];
-  /** 포스트 카테고리 — 성장 여정(journey) 또는 문제 해결(challenge) */
+  /** 포스트 카테고리 — 7분류 주제형 체계 */
   category: Category;
   source?: string;
   // 동일 date 내에서 표시 순서를 결정하는 보조 필드.

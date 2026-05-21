@@ -5,6 +5,8 @@ date: "2026-04-13"
 status: completed
 agents: [Oracle]
 related_adrs: []
+topics:
+  - agents
 ---
 
 # Sprint 82: Oracle tmux 자동 디스패치 파이프라인

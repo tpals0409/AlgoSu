@@ -69,6 +69,12 @@ export interface AdrMeta {
   hasEnTranslation?: boolean;
   /** Hero 영역 TL;DR 텍스트 — frontmatter tldr 또는 목표 섹션 자동 추출 */
   tldr?: string;
+  /**
+   * frontmatter topics — ADR 주제 분류 id 목록, KR SSOT.
+   * EN locale의 경우 loader가 KR topics를 주입한다(EN frontmatter에 topics를 넣지 않음).
+   * Sprint 189 D2에서 도입 — 6주제: operations, agents, cicd, data, security, product.
+   */
+  topics?: string[];
 }
 
 /** H2/H3 섹션 파싱 결과 */

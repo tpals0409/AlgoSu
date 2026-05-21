@@ -1,3 +1,8 @@
+---
+topics:
+  - operations
+  - security
+---
 # ADR-025: Gateway OAuth 에러 코드 정규화
 
 - **상태**: 수용됨 (Accepted)

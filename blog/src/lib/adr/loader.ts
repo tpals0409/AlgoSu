@@ -187,6 +187,22 @@ export function getAllAdrs(locale: Locale = 'ko'): AdrDoc[] {
     return doc;
   });
 
+  // EN locale: KR SSOT의 topics를 EN doc.meta에 주입한다.
+  // EN frontmatter에 topics를 직접 넣지 않으므로 중복/드리프트가 발생하지 않는다.
+  // ko 캐시는 별도 변수로 분리되어 있어 재귀 호출 위험이 없다.
+  if (locale === 'en') {
+    const krDocs = getAllAdrs('ko');
+    const krTopicsById = new Map<string, string[] | undefined>(
+      krDocs.map((d) => [d.meta.id, d.meta.topics]),
+    );
+    for (const doc of docs) {
+      const krTopics = krTopicsById.get(doc.meta.id);
+      if (krTopics && krTopics.length > 0) {
+        doc.meta.topics = krTopics;
+      }
+    }
+  }
+
   if (locale === 'ko') cacheKo = docs;
   else cacheEn = docs;
 

@@ -3,7 +3,7 @@ title: "Why Does My Session Keep Dropping? — Debugging 4 Layers of Desynchroni
 date: "2026-04-10"
 excerpt: "JWT TTL is 2 hours, but users get logged out after 1 hour. Cookie maxAge, sliding refresh, frontend timer — 4 layers each had their own clock. Here's how we unified them into a single source of truth."
 tags: ["session", "jwt", "cookie", "debugging", "nestjs", "challenge"]
-category: challenge
+category: backend
 order: 6
 tldr: "The \"session is too short\" bug came down to four clocks scattered across four layers. A record of fixing it by unifying the SSoT — a structural shift, not a constant swap."
 relatedAdrs: ["sprint-71", "sprint-65"]

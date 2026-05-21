@@ -301,19 +301,21 @@ export function runFixtures() {
     }
   }
 
-  /* F1: ADR-001 frontmatter 없음, ## 상태 fallback */
+  /* F1: ADR-001 topics frontmatter 존재, ## 상태 H2 fallback 동작 — Sprint 189 D2 이후 */
   check('F1', () => {
     const f = join(adrRoot, 'ADR-001-gateway-identity-db-separation.md');
     const r = parseAdrFile(f);
-    return r.ok && !r.hasFrontmatter && typeof r.status === 'string' && r.status.length > 0;
-  }, 'ADR-001 frontmatter fallback (H2 상태)');
+    // Sprint 189 D2: topics frontmatter 추가 → hasFrontmatter=true, status는 여전히 H2 body fallback
+    return r.ok && r.hasFrontmatter && typeof r.status === 'string' && r.status.length > 0;
+  }, 'ADR-001 topics frontmatter (H2 status fallback still works)');
 
-  /* F2: ADR-002 dash-list 상태 추출 */
+  /* F2: ADR-002 topics frontmatter 존재, dash-list 상태 추출 — Sprint 189 D2 이후 */
   check('F2', () => {
     const f = join(adrRoot, 'ADR-002-outbox-pattern.md');
     const r = parseAdrFile(f);
-    return r.ok && !r.hasFrontmatter && typeof r.status === 'string' && /보류|deferred/i.test(r.status);
-  }, 'ADR-002 dash-list status (보류/Deferred)');
+    // Sprint 189 D2: topics frontmatter 추가 → hasFrontmatter=true, dash-list status 여전히 동작
+    return r.ok && r.hasFrontmatter && typeof r.status === 'string' && /보류|deferred/i.test(r.status);
+  }, 'ADR-002 topics frontmatter (dash-list status fallback still works)');
 
   /* F3: ADR-028 복합 상태 문자열 존재 */
   check('F3', () => {
@@ -370,6 +372,27 @@ export function runFixtures() {
     const r = parseAdrFile(f);
     return r.ok && r.sprint === 40 && r.hasFrontmatter === true;
   }, 'sprint-40 lowest sprint (sprint=40)');
+
+  /* F11: Sprint 189 D2 — ADR topics frontmatter 백필 검증 */
+  check('F11', () => {
+    // operations 주제: ADR-026 topics 배열에 'operations' 포함
+    const f = join(adrRoot, 'ADR-026-sprint-130-incident-stuck-rollouts-and-sealed-secrets-debt.md');
+    const r = parseAdrFile(f);
+    const parsed = matter(readFileSync(f, 'utf-8'));
+    return r.ok && Array.isArray(parsed.data.topics) && parsed.data.topics.includes('operations');
+  }, 'ADR-026 topics includes operations');
+
+  /* F12: Sprint 189 D2 — 다중 주제 ADR 검증 */
+  check('F12', () => {
+    // ADR-003: operations + security 다중 주제
+    const f = join(adrRoot, 'ADR-003-redis-rabbitmq-acl.md');
+    const parsed = matter(readFileSync(f, 'utf-8'));
+    return (
+      Array.isArray(parsed.data.topics) &&
+      parsed.data.topics.includes('operations') &&
+      parsed.data.topics.includes('security')
+    );
+  }, 'ADR-003 topics includes operations + security (multi-topic)');
 
   return { ok: fail === 0, pass, fail, errors };
 }

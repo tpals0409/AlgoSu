@@ -1,3 +1,7 @@
+---
+topics:
+  - data
+---
 # ADR-001: Gateway → Identity DB 분리
 
 ## 상태

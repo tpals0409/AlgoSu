@@ -6,6 +6,8 @@ status: completed
 agents: [Oracle, Architect]
 related_adrs: ["ADR-026", "ADR-027", "ADR-028"]
 naming_correction: "PR/브랜치/commit message에 'sprint-93'이 박혔으나 실제는 Sprint 130. 메모리 윈도우 9일 미갱신으로 인한 명명 오류 — ADR-026 명명 오류 매핑 표 참조"
+topics:
+  - operations
 ---
 
 # Sprint 130: 운영 인시던트 회복 + 부채 해소

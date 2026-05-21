@@ -1,3 +1,7 @@
+---
+topics:
+  - security
+---
 # ADR-024: Admin 서버사이드 권한 가드 — CSR → Server Component 전환
 
 - **상태**: 수락됨 (Accepted)

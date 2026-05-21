@@ -1,3 +1,7 @@
+---
+topics:
+  - operations
+---
 # ADR-026: Sprint 130 운영 인시던트 — 롤아웃 stuck 6일 방치 + SealedSecret 컨트롤러 키 mismatch 부채
 
 - **상태**: 수용됨 (Accepted)
