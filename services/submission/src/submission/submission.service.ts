@@ -30,6 +30,21 @@ const SUBMISSION_LIST_FIELDS: (keyof Submission)[] = [
   'aiSkipped', 'isLate', 'createdAt', 'updatedAt',
 ];
 
+/** getStudyStats 반환 타입 — Redis 캐시 직렬화/역직렬화 대상 */
+export interface StudyStatsResult {
+  totalSubmissions: number;
+  uniqueSubmissions: number;
+  uniqueAnalyzed: number;
+  byWeek: { week: string; count: number }[];
+  byWeekPerUser: { userId: string; week: string; count: number }[];
+  byMember: { userId: string; count: number; doneCount: number; uniqueProblemCount: number; uniqueDoneCount: number }[];
+  byMemberWeek: { userId: string; count: number }[] | null;
+  recentSubmissions: { id: string; userId: string; problemId: string; language: string; sagaStep: string; aiScore: number | null; createdAt: Date }[];
+  solvedProblemIds: string[] | null;
+  userSubmissions: { problemId: string; aiScore: number | null; createdAt: Date }[] | null;
+  submitterCountByProblem: { problemId: string; count: number; analyzedCount: number }[];
+}
+
 @Injectable()
 export class SubmissionService {
   private readonly logger: StructuredLoggerService;
@@ -293,19 +308,7 @@ export class SubmissionService {
    * 스터디 통계 조회 — 내부 API 전용
    * Gateway에서 GET /api/studies/:id/stats 호출 시 사용
    */
-  async getStudyStats(studyId: string, weekNumber?: string, userId?: string, activeProblemIds?: string[]): Promise<{
-    totalSubmissions: number;
-    uniqueSubmissions: number;
-    uniqueAnalyzed: number;
-    byWeek: { week: string; count: number }[];
-    byWeekPerUser: { userId: string; week: string; count: number }[];
-    byMember: { userId: string; count: number; doneCount: number; uniqueProblemCount: number; uniqueDoneCount: number }[];
-    byMemberWeek: { userId: string; count: number }[] | null;
-    recentSubmissions: { id: string; userId: string; problemId: string; language: string; sagaStep: string; aiScore: number | null; createdAt: Date }[];
-    solvedProblemIds: string[] | null;
-    userSubmissions: { problemId: string; aiScore: number | null; createdAt: Date }[] | null;
-    submitterCountByProblem: { problemId: string; count: number; analyzedCount: number }[];
-  }> {
+  async getStudyStats(studyId: string, weekNumber?: string, userId?: string, activeProblemIds?: string[]): Promise<StudyStatsResult> {
     // activeProblemIds가 빈 배열이면 ACTIVE 문제가 없으므로 즉시 빈 결과 반환 (캐시 전 — Critic P2)
     if (activeProblemIds && activeProblemIds.length === 0) {
       return {
@@ -325,7 +328,7 @@ export class SubmissionService {
 
     // Cache-Aside: 캐시 조회 (activeProblemIds fingerprint 포함)
     const cached = await this.statsCache.get(studyId, weekNumber, userId, activeProblemIds);
-    if (cached !== null) return cached as any;
+    if (cached !== null) return cached as StudyStatsResult;
 
     // 헬퍼: QueryBuilder에 activeProblemIds 필터 추가
     const applyProblemFilter = (qb: { andWhere: (condition: string, params?: Record<string, unknown>) => unknown }) => {
