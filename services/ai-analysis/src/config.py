@@ -8,7 +8,7 @@ AI Analysis Service 설정
 """
 
 from pydantic import field_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     - API 키는 환경변수에서만 주입, 로그 노출 금지
     - internal_api_key는 기본값이 없는 필수 설정 — 미설정·빈 값 시 서비스 시작 즉시 실패
     """
+
+    model_config = SettingsConfigDict(env_file=".env")
 
     rabbitmq_url: str = "amqp://guest:guest@localhost:5672"
     redis_url: str = "redis://localhost:6379"
@@ -50,9 +52,6 @@ class Settings(BaseSettings):
                 "X-Internal-Key 인증이 무력화될 수 있으므로 서비스 시작을 중단합니다."
             )
         return v
-
-    class Config:
-        env_file = ".env"
 
 
 settings = Settings()
