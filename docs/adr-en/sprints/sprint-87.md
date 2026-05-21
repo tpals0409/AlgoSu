@@ -72,7 +72,7 @@ Performed parallel agent orchestration with 3-wave dispatch (Scribe → Herald/P
 | Filter UI + HomePage integration | `6464497` | Herald |
 | Sprint 87 ADR | `4467788` → updated | Scribe → Oracle |
 
-### Carryover Items
+## Carryover Items
 
 - Post 4 (cicd-ai-guardrails) title/conclusion adjustment + MDX → Markdown conversion (`<PhaseTimeline>` removal)
 

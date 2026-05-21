@@ -49,7 +49,7 @@ related_adrs: []
 - Post 5 "67번의 스프린트를 돌아보며" — 완료 (264줄→105줄 압축)
 - 전체: 7편 → 6편, 총 -2,227줄 감소
 
-### 이월 항목
+## 이월 항목
 - Post 4 (cicd-ai-guardrails) 제목/결론 조정
 - Post 6 (session-policy-sync) 시리즈 제거 + AI 맥락 추가
 - 영문 포스트 동기화 + 최종 빌드 검증
