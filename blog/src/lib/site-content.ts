@@ -3,12 +3,14 @@
  * @domain     blog
  * @layer      lib
  * @related    src/lib/i18n.ts, src/components/home/metric-card.tsx,
- *             src/components/home/start-here-section.tsx, src/components/home/home-hero.tsx
+ *             src/components/home/start-here-section.tsx, src/components/home/home-hero.tsx,
+ *             src/components/adr/adr-landing-view.tsx
  *
- * 홈 랜딩 큐레이션 SSOT (Sprint 185 Phase 1).
- * 성과 지표·StartHere 추천 글·외부 링크를 한곳에서 관리한다.
+ * 홈 랜딩 + ADR 랜딩 큐레이션 SSOT (Sprint 185 Phase 1 / Sprint 186 Phase 2).
+ * 성과 지표·StartHere 추천 글·외부 링크·대표 ADR·주제 컬렉션을 한곳에서 관리한다.
  * 표시 텍스트(라벨/설명/why-read)는 i18n DICTIONARY 키로만 참조해
  * ko/en 동시 현지화를 보장한다. 수치 값은 실데이터 확인분만 사용한다(과장 금지).
+ * ADR 참조는 AdrMeta.id로 한다(permanent: 'ADR-001', sprint: 'sprint-130', topic: slug).
  */
 import type { DictKey } from '@/lib/i18n';
 
@@ -59,4 +61,94 @@ export const START_HERE_POSTS: readonly StartHerePost[] = [
   { slug: 'cicd-ai-guardrails', whyKey: 'startHereWhy2' },
   { slug: 'sliding-window-agent-context', whyKey: 'startHereWhy3' },
   { slug: 'toward-model-agnostic-harness', whyKey: 'startHereWhy4' },
+] as const;
+
+/* ─── ADR 랜딩 큐레이션 (Sprint 186 Phase 2) ──────────────── */
+
+/**
+ * "ADR 읽는 법" 단계 1종 — 문제 → 선택지 → 결정 → 검증 프레임.
+ * 제목/설명은 i18n 키로만 참조.
+ */
+export interface AdrReadingStep {
+  /** i18n 단계 제목 키. */
+  titleKey: DictKey;
+  /** i18n 단계 설명 키. */
+  descKey: DictKey;
+}
+
+/** ADR 읽는 법 4단계 (Sprint 186) — Hero 하단 안내. */
+export const ADR_READING_STEPS: readonly AdrReadingStep[] = [
+  { titleKey: 'adrStep1Title', descKey: 'adrStep1Desc' },
+  { titleKey: 'adrStep2Title', descKey: 'adrStep2Desc' },
+  { titleKey: 'adrStep3Title', descKey: 'adrStep3Desc' },
+  { titleKey: 'adrStep4Title', descKey: 'adrStep4Desc' },
+] as const;
+
+/**
+ * 대표 ADR 1종 — 큐레이션 진입점 상단 강조.
+ * 제목·한 줄 요약은 AdrMeta(title/tldr)로 조회, "왜 읽어야 하나"만 i18n.
+ */
+export interface FeaturedAdr {
+  /** AdrMeta.id (permanent: 'ADR-001'). */
+  id: string;
+  /** i18n "왜 읽어야 하나" 한 줄 키. */
+  whyKey: DictKey;
+}
+
+/**
+ * 대표 ADR 5종 (Sprint 186 사용자 확정) — AlgoSu 시스템 진화의 핵심 결정.
+ * 첫 방문자가 전체 목록 없이 대표 ADR로 진입하도록 큐레이션.
+ */
+export const FEATURED_ADRS: readonly FeaturedAdr[] = [
+  { id: 'ADR-001', whyKey: 'adrFeaturedWhy1' },
+  { id: 'ADR-002', whyKey: 'adrFeaturedWhy2' },
+  { id: 'ADR-026', whyKey: 'adrFeaturedWhy3' },
+  { id: 'ADR-027', whyKey: 'adrFeaturedWhy4' },
+  { id: 'ADR-028', whyKey: 'adrFeaturedWhy5' },
+] as const;
+
+/**
+ * 주제별 ADR 컬렉션 1종 — 관심 주제로 ADR 진입.
+ * 멤버는 AdrMeta.id로 참조(permanent/sprint/topic 혼합 가능).
+ */
+export interface AdrTopic {
+  /** 안정 식별자 (key/anchor 용). */
+  id: string;
+  /** i18n 주제 제목 키. */
+  titleKey: DictKey;
+  /** i18n 주제 설명 키. */
+  descKey: DictKey;
+  /** 멤버 ADR id 목록 (AdrMeta.id). */
+  adrIds: readonly string[];
+}
+
+/**
+ * 핵심 4주제 ADR 컬렉션 (Sprint 186 사용자 확정).
+ * Security·Product 세분화·자동 분류는 Phase 5로 이월.
+ */
+export const ADR_TOPICS: readonly AdrTopic[] = [
+  {
+    id: 'operations',
+    titleKey: 'adrTopicOpsTitle',
+    descKey: 'adrTopicOpsDesc',
+    adrIds: ['ADR-026', 'sprint-130', 'ADR-003', 'ADR-025'],
+  },
+  {
+    id: 'agents',
+    titleKey: 'adrTopicAgentsTitle',
+    descKey: 'adrTopicAgentsDesc',
+    adrIds: ['sprint-82', 'sprint-114', 'sprint-116'],
+  },
+  {
+    id: 'cicd',
+    titleKey: 'adrTopicCicdTitle',
+    descKey: 'adrTopicCicdDesc',
+    adrIds: ['ADR-027', 'ADR-028', 'sprint-105'],
+  },
+  {
+    id: 'data',
+    titleKey: 'adrTopicDataTitle',
+    descKey: 'adrTopicDataDesc',
+    adrIds: ['sprint-95-programmers-dataset', 'ADR-001', 'ADR-002'],
+  },
 ] as const;
