@@ -2,16 +2,15 @@
  * @file       adr-meta-sidebar.tsx
  * @domain     blog / adr
  * @layer      ui
- * @related    src/lib/adr/types.ts, status-badge.tsx, impact-badge.tsx, related-adr-graph.tsx
+ * @related    src/lib/adr/types.ts, status-badge.tsx, impact-badge.tsx
  *
- * 상세 페이지 우측 메타사이드바 — 메타데이터, 에이전트, 관련 ADR(미니 그래프 포함), 네비게이션.
+ * 상세 페이지 우측 메타사이드바 — 메타데이터, 에이전트, 관련 ADR, 네비게이션.
  * locale prop으로 라벨/링크 KR/EN 토글.
  */
-import type { AdjacencyList, AdrDoc } from '@/lib/adr/types';
+import type { AdrDoc } from '@/lib/adr/types';
 import { type Locale, t, tf } from '@/lib/i18n';
 import { StatusBadge } from './status-badge';
 import { ImpactBadge } from './impact-badge';
-import { RelatedAdrGraph } from './related-adr-graph';
 
 /** GitHub blob URL 베이스 */
 const GH_BLOB_BASE = 'https://github.com/tpals0409/AlgoSu/blob/main/docs/adr';
@@ -20,7 +19,6 @@ interface AdrMetaSidebarProps {
   doc: AdrDoc;
   prevSprint?: number;
   nextSprint?: number;
-  miniGraph?: AdjacencyList;
   locale?: Locale;
 }
 
@@ -157,11 +155,9 @@ export function AdrMetaSidebar({
   doc,
   prevSprint,
   nextSprint,
-  miniGraph,
   locale = 'ko',
 }: AdrMetaSidebarProps) {
   const { meta } = doc;
-  const prefix = locale === 'en' ? '/en' : '';
 
   return (
     <aside className="sticky top-24 hidden w-70 shrink-0 xl:block">
@@ -207,26 +203,6 @@ export function AdrMetaSidebar({
           label={t(locale, 'metaRelatedAdrs')}
           locale={locale}
         />
-
-        {/* 미니 관계 그래프 */}
-        {miniGraph && miniGraph.nodes.length > 0 && (
-          <div className="mt-3">
-            <h5 className="mb-1.5 text-xs font-semibold text-text-subtle">
-              {t(locale, 'metaGraphSection')}
-            </h5>
-            <RelatedAdrGraph
-              adjacency={miniGraph}
-              focusId={meta.id}
-              locale={locale}
-            />
-            <a
-              href={`${prefix}/adr/graph/`}
-              className="mt-1 inline-block text-xs text-brand hover:underline"
-            >
-              {t(locale, 'viewFullGraph')}
-            </a>
-          </div>
-        )}
 
         {/* 관련 메모리 */}
         <RelatedLinks

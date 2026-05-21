@@ -49,10 +49,6 @@ const STATUS_MAP: ReadonlyMap<string, AdrStatus> = new Map([
 
 const CRITICAL_KEYWORDS = /incident|rollback|hard\s*block/i;
 
-/* ─── 외부 링크 추출 정규식 ──────────────────────── */
-
-const ADR_LINK_RE = /\[([^\]]*)\]\(([^)]*(?:docs\/adr|sprint-\d+)[^)]*)\)/g;
-
 /* ─── 헬퍼 함수들 ────────────────────────────────── */
 
 /**
@@ -185,21 +181,6 @@ function splitTableRow(line: string): string[] {
     .replace(/\\\|/g, PLACEHOLDER)
     .split('|')
     .map((c) => c.replace(/\x00PIPE\x00/g, '|').trim());
-}
-
-/**
- * 본문에서 outgoing ADR 링크를 추출한다.
- */
-function extractOutgoingLinks(body: string): string[] {
-  const links: string[] = [];
-  let match: RegExpExecArray | null;
-  ADR_LINK_RE.lastIndex = 0;
-
-  while ((match = ADR_LINK_RE.exec(body)) !== null) {
-    links.push(normalizeAdrId(match[2]));
-  }
-
-  return [...new Set(links)];
 }
 
 /**
@@ -756,7 +737,6 @@ export function parseAdr(
   const prRowCount = countPrRows(sections);
   const impact = calcImpact(body, prRowCount);
   const readingTimeMin = calcReadingTime(raw);
-  const outgoingLinks = extractOutgoingLinks(body);
 
   const tldr = extractTldr(fm, sections);
   const decisions = extractDecisionItems(sections);
@@ -796,7 +776,6 @@ export function parseAdr(
     sections,
     bodyMarkdown: body,
     bodyMarkdownForProse,
-    outgoingLinks,
     warnings,
     decisions,
     phases,

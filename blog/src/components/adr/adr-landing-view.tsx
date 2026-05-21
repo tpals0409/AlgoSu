@@ -3,9 +3,9 @@
  * @domain     blog / adr
  * @layer      ui
  * @related    src/lib/adr/types.ts, adr-landing-hero.tsx, featured-adr-section.tsx,
- *             adr-topic-collections.tsx, adr-graph-cta.tsx
+ *             adr-topic-collections.tsx
  *
- * ADR 큐레이션 랜딩(/adr) — Hero → 대표 ADR → 주제별 → 그래프 CTA → 아카이브 CTA.
+ * ADR 큐레이션 랜딩(/adr) — Hero → 대표 ADR → 주제별 → 아카이브 CTA.
  * 전체 목록(통계·타임라인·전수)은 /adr/archive(AdrIndexView)로 분리.
  * locale prop으로 KR/EN 동시 렌더 + 링크 prefix 전파.
  */
@@ -14,7 +14,6 @@ import { type Locale, t, tf, getBasePath } from '@/lib/i18n';
 import { AdrLandingHero } from './adr-landing-hero';
 import { FeaturedAdrSection } from './featured-adr-section';
 import { AdrTopicCollections } from './adr-topic-collections';
-import { AdrGraphCta } from './adr-graph-cta';
 
 interface AdrLandingViewProps {
   index: AdrIndex;
@@ -40,7 +39,6 @@ export function AdrLandingView({ index, locale = 'ko' }: AdrLandingViewProps) {
       <AdrLandingHero locale={locale} />
       <FeaturedAdrSection adrById={adrById} locale={locale} />
       <AdrTopicCollections adrById={adrById} locale={locale} />
-      <AdrGraphCta locale={locale} />
 
       {/* 전체 아카이브 진입 */}
       <a

@@ -4,7 +4,7 @@
  * @layer      ui
  * @related    src/lib/adr/types.ts, adr-toc.tsx, adr-meta-sidebar.tsx
  *
- * ADR 상세 3-column 레이아웃 — 좌 TOC / 중앙 본문 / 우 메타사이드바(미니 그래프 포함).
+ * ADR 상세 3-column 레이아웃 — 좌 TOC / 중앙 본문 / 우 메타사이드바.
  * locale='en' + !meta.hasEnTranslation 일 때만 "Content in Korean" 배너 + 한국어 원문 링크 표시.
  *
  * 본문 렌더는 sections 단위 chunk 방식 — lessons/carryover canonical을 만나면
@@ -14,7 +14,6 @@
  */
 import type { ReactNode } from 'react';
 import type {
-  AdjacencyList,
   AdrDoc,
   AdrMeta,
   AdrSection,
@@ -38,7 +37,6 @@ interface AdrDetailViewProps {
   doc: AdrDoc;
   prevSprint?: number;
   nextSprint?: number;
-  miniGraph?: AdjacencyList;
   locale?: Locale;
 }
 
@@ -216,7 +214,6 @@ export async function AdrDetailView({
   doc,
   prevSprint,
   nextSprint,
-  miniGraph,
   locale = 'ko',
 }: AdrDetailViewProps) {
   const lessonsIndices =
@@ -271,7 +268,6 @@ export async function AdrDetailView({
         doc={doc}
         prevSprint={prevSprint}
         nextSprint={nextSprint}
-        miniGraph={miniGraph}
         locale={locale}
       />
     </div>

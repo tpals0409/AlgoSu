@@ -4,8 +4,10 @@
  * @layer      lib (test)
  * @related    parser.ts, loader.ts, index-builder.ts, types.ts
  *
- * 12개 regression fixture — 파싱/인덱스 정합성 검증.
+ * 10개 regression fixture — 파싱/인덱스 정합성 검증.
  * Sprint 189 D2: F1/F2 hasFrontmatter 갱신 + F11/F12 topics/filterAdrsByTopic 추가.
+ * Sprint 193: ADR 그래프 기능 삭제로 F7/F8(index.graph.edges 검증) 제거.
+ *   ADR 관계 회귀는 F6(relatedAdrs 비어있지 않음)이 계속 커버.
  */
 import { filterAdrsByTopic } from './index-builder';
 import type { AdrDoc, AdrIndex } from './types';
@@ -92,28 +94,6 @@ const FIXTURES: ReadonlyArray<Fixture> = [
         doc.meta.relatedAdrs !== undefined &&
         doc.meta.relatedAdrs.length > 0
       );
-    },
-  },
-  {
-    name: 'F7: topics/sprint-95 kind=topic, related_adrs edge resolved',
-    run: (docs, index) => {
-      const doc = findDoc(docs, 'sprint-95-programmers-dataset');
-      if (!doc) return false;
-      if (doc.meta.kind !== 'topic') return false;
-
-      const edges = index.graph.edges.filter(
-        (e) => e.from === doc.meta.id,
-      );
-      return edges.some((e) => e.resolved);
-    },
-  },
-  {
-    name: 'F8: sprint-9999 가상 참조 resolved=false',
-    run: (_docs, index) => {
-      const edges = index.graph.edges.filter(
-        (e) => e.to === 'sprint-9999',
-      );
-      return edges.length === 0 || edges.every((e) => !e.resolved);
     },
   },
   {
