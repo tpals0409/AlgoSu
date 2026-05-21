@@ -2,22 +2,30 @@
  * @file       category-tabs.tsx
  * @domain     blog
  * @layer      ui
- * @related    src/lib/i18n.ts, src/lib/posts.ts, src/components/home-page.tsx
+ * @related    src/lib/i18n.ts, src/lib/posts.ts, src/components/post-list-with-filter.tsx
  *
- * 토스 스타일 수평 카테고리 탭 — 활성 탭 하단에 brand 2px bar 인디케이터.
- * 전체 / 성장 여정 / 문제 해결 3개 탭을 렌더링한다.
+ * 수평 카테고리 탭 — 활성 탭 하단에 brand 2px bar 인디케이터.
+ * 글이 1편 이상 존재하는 카테고리만 동적으로 탭에 표시한다(graceful skip).
+ * 7분류 카탈로그(CATEGORY_CATALOG)를 기반으로 탭 순서를 보장한다.
  */
 'use client';
 
 import type { Category } from '@/lib/posts';
-import type { Locale } from '@/lib/i18n';
+import type { DictKey, Locale } from '@/lib/i18n';
 import { t } from '@/lib/i18n';
 
-/** 탭 항목 정의 — value와 i18n 사전 키를 연결한다. */
-const TAB_ITEMS: readonly { value: Category | 'all'; labelKey: 'categoryAll' | 'categoryJourney' | 'categoryChallenge' }[] = [
-  { value: 'all', labelKey: 'categoryAll' },
-  { value: 'journey', labelKey: 'categoryJourney' },
-  { value: 'challenge', labelKey: 'categoryChallenge' },
+/**
+ * 7분류 카테고리 카탈로그 — value + i18n labelKey 매핑.
+ * 순서가 탭 표시 순서를 결정한다.
+ */
+const CATEGORY_CATALOG: readonly { value: Category; labelKey: DictKey }[] = [
+  { value: 'ai-agent', labelKey: 'categoryAiAgent' },
+  { value: 'cicd', labelKey: 'categoryCicd' },
+  { value: 'architecture', labelKey: 'categoryArchitecture' },
+  { value: 'backend', labelKey: 'categoryBackend' },
+  { value: 'platform', labelKey: 'categoryPlatform' },
+  { value: 'frontend', labelKey: 'categoryFrontend' },
+  { value: 'retrospective', labelKey: 'categoryRetrospective' },
 ] as const;
 
 interface CategoryTabsProps {
@@ -27,18 +35,51 @@ interface CategoryTabsProps {
   onCategoryChange: (category: Category | 'all') => void;
   /** 현재 locale */
   locale: Locale;
+  /** 글이 1편 이상 존재하는 카테고리 집합 — 이 집합에 없는 카테고리는 탭 미표시 */
+  availableCategories: ReadonlySet<Category>;
 }
 
 /**
  * 수평 카테고리 탭을 렌더링한다.
+ * 'all' 탭은 항상 표시하고, 나머지는 availableCategories에 포함된 것만 표시한다.
  * 활성 탭 하단에 brand 색상 2px bar 인디케이터를 표시한다.
  */
-export function CategoryTabs({ activeCategory, onCategoryChange, locale }: CategoryTabsProps) {
+export function CategoryTabs({
+  activeCategory,
+  onCategoryChange,
+  locale,
+  availableCategories,
+}: CategoryTabsProps) {
+  /** 표시할 탭 목록 — 'all' 고정 선행 + 존재하는 카테고리만 */
+  const visibleTabs = CATEGORY_CATALOG.filter(({ value }) =>
+    availableCategories.has(value),
+  );
+
   return (
     <div role="tablist" aria-label={t(locale, 'categoryAll')} className="flex gap-1 border-b border-border">
-      {TAB_ITEMS.map(({ value, labelKey }) => {
-        const isActive = activeCategory === value;
+      {/* 전체 탭 — 항상 표시 */}
+      <button
+        role="tab"
+        aria-selected={activeCategory === 'all'}
+        tabIndex={activeCategory === 'all' ? 0 : -1}
+        onClick={() => onCategoryChange('all')}
+        className={[
+          'relative px-4 py-2.5 text-sm font-medium transition-colors duration-150',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
+          activeCategory === 'all'
+            ? 'text-brand'
+            : 'text-text-muted hover:text-text',
+        ].join(' ')}
+      >
+        {t(locale, 'categoryAll')}
+        {activeCategory === 'all' && (
+          <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-0.5 bg-brand" />
+        )}
+      </button>
 
+      {/* 존재하는 카테고리 탭만 렌더 */}
+      {visibleTabs.map(({ value, labelKey }) => {
+        const isActive = activeCategory === value;
         return (
           <button
             key={value}

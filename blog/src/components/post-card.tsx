@@ -5,7 +5,7 @@
  * @related    src/components/home-page.tsx, src/components/post-list-with-filter.tsx
  *
  * 포스트 목록에서 단일 포스트를 카드 형태로 표시하는 컴포넌트.
- * 날짜 옆 카테고리 뱃지(journey/challenge)를 렌더링한다.
+ * 날짜 옆 카테고리 뱃지(7분류 주제형)를 렌더링한다.
  */
 import type { Category } from '@/lib/posts';
 import type { Locale } from '@/lib/i18n';
@@ -16,17 +16,36 @@ import { t } from '@/lib/i18n';
  * 완전한 문자열로 정의 — 동적 조합 시 Tailwind 퍼징 누락 방지.
  */
 const CATEGORY_BADGE_CLASS: Record<Category, string> = {
-  journey: 'bg-brand-soft text-brand',
-  challenge: 'bg-amber-50 text-amber-700',
+  'ai-agent': 'bg-brand-soft text-brand',
+  cicd: 'bg-amber-50 text-amber-700',
+  architecture: 'bg-emerald-50 text-emerald-700',
+  backend: 'bg-sky-50 text-sky-700',
+  platform: 'bg-violet-50 text-violet-700',
+  frontend: 'bg-pink-50 text-pink-700',
+  retrospective: 'bg-orange-50 text-orange-700',
 };
 
 /**
  * 카테고리별 뱃지 레이블 i18n 키 맵.
  * t() 호출을 카드 내부에서 결정론적으로 선택한다.
  */
-const CATEGORY_LABEL_KEY: Record<Category, 'categoryJourney' | 'categoryChallenge'> = {
-  journey: 'categoryJourney',
-  challenge: 'categoryChallenge',
+const CATEGORY_LABEL_KEY: Record<
+  Category,
+  | 'categoryAiAgent'
+  | 'categoryCicd'
+  | 'categoryArchitecture'
+  | 'categoryBackend'
+  | 'categoryPlatform'
+  | 'categoryFrontend'
+  | 'categoryRetrospective'
+> = {
+  'ai-agent': 'categoryAiAgent',
+  cicd: 'categoryCicd',
+  architecture: 'categoryArchitecture',
+  backend: 'categoryBackend',
+  platform: 'categoryPlatform',
+  frontend: 'categoryFrontend',
+  retrospective: 'categoryRetrospective',
 };
 
 interface PostCardProps {

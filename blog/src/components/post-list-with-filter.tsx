@@ -10,7 +10,7 @@
  */
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Category, PostMeta } from '@/lib/posts';
 import type { Locale } from '@/lib/i18n';
 import { t } from '@/lib/i18n';
@@ -29,9 +29,16 @@ interface PostListWithFilterProps {
 /**
  * 카테고리 탭 필터와 포스트 카드 목록을 렌더링한다.
  * 활성 카테고리가 'all'이면 전체 포스트를, 아니면 해당 카테고리만 표시한다.
+ * posts 배열에서 사용 중인 카테고리만 탭에 표시한다(graceful skip).
  */
 export function PostListWithFilter({ posts, basePath, locale }: PostListWithFilterProps) {
   const [activeCategory, setActiveCategory] = useState<Category | 'all'>('all');
+
+  /** 글이 1편 이상 존재하는 카테고리 집합 — 탭 표시 여부 결정에 사용 */
+  const availableCategories = useMemo(
+    () => new Set(posts.map((p) => p.category)),
+    [posts],
+  );
 
   const filteredPosts =
     activeCategory === 'all'
@@ -45,6 +52,7 @@ export function PostListWithFilter({ posts, basePath, locale }: PostListWithFilt
           activeCategory={activeCategory}
           onCategoryChange={setActiveCategory}
           locale={locale}
+          availableCategories={availableCategories}
         />
       </div>
 

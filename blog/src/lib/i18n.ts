@@ -27,8 +27,13 @@ const DICTIONARY = {
     navPostLabel: '포스트 네비게이션',
     /** 카테고리 탭 레이블 */
     categoryAll: '전체',
-    categoryJourney: '프로젝트 여정',
-    categoryChallenge: '기술 챌린지',
+    categoryAiAgent: 'AI 에이전트',
+    categoryCicd: 'CI/CD',
+    categoryArchitecture: '아키텍처',
+    categoryBackend: '백엔드',
+    categoryPlatform: '플랫폼',
+    categoryFrontend: '프론트엔드',
+    categoryRetrospective: '회고',
     /* ─── 블로그 → ADR 진입 (Sprint 157) ──────────── */
     navAdr: 'ADR',
     homeAdrCtaTitle: '아키텍처 결정 기록 (ADR)',
@@ -254,8 +259,13 @@ const DICTIONARY = {
     navPostLabel: 'Post navigation',
     /** Category tab labels */
     categoryAll: 'All',
-    categoryJourney: 'Project Journey',
-    categoryChallenge: 'Tech Challenge',
+    categoryAiAgent: 'AI Agent',
+    categoryCicd: 'CI/CD',
+    categoryArchitecture: 'Architecture',
+    categoryBackend: 'Backend',
+    categoryPlatform: 'Platform',
+    categoryFrontend: 'Frontend',
+    categoryRetrospective: 'Retrospective',
     /* ─── Blog → ADR entry (Sprint 157) ────────────── */
     navAdr: 'ADR',
     homeAdrCtaTitle: 'Architecture Decision Records (ADR)',
