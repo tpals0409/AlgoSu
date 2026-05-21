@@ -5,7 +5,13 @@ excerpt: "A hands-on record of MSA design where humans make architectural decisi
 tags: ["ai-dev", "architecture", "msa", "kubernetes"]
 category: journey
 order: 2
+tldr: "Why AlgoSu was split into an MSA, and who decided the service boundaries, communication, auth, and deployment. A look at the whole architecture through the journey of a single submission."
+relatedAdrs: ["ADR-001", "ADR-002", "ADR-003"]
 ---
+
+<Problem label="Problem">
+Why split a solo-built service into many pieces at all — the starting point of MSA.
+</Problem>
 
 ## Why MSA?
 
@@ -16,6 +22,10 @@ With a monolith, a single agent would need to understand the entire codebase. Fi
 What if, instead, we split services into small units? The narrower the domain an AI manages, the clearer its role becomes, and the more accurate its decisions within a single service. Gatekeeper handles only the Gateway, Librarian handles only DB schemas, Conductor handles only Submission. Aligning agent responsibility boundaries with service boundaries — that was the core reason for choosing MSA.
 
 Of course, MSA is complex. Inter-service communication, distributed transactions, deployment pipelines — problems you'd never have to worry about in a monolith. But if AI agents can share that complexity, the tradeoff holds up.
+
+<Decision label="Decision">
+Service boundaries, communication, auth, and deployment — humans decided, AI executed.
+</Decision>
 
 ## How We Split the Services
 
@@ -153,6 +163,10 @@ The remaining architectural decisions follow the same pattern. Humans set the di
 **Deployment**: Choosing GitOps was a human decision. When you push to main, GitHub Actions builds ARM aarch64 images, pushes them to GHCR with `main-{git-sha}` tags, and ArgoCD auto-deploys to the k3s cluster. Never using `latest` tags, guaranteeing zero-downtime deployment with `maxUnavailable: 0` in RollingUpdate, running DB migrations via initContainer before the app starts — these decisions were designed by Architect following infrastructure principles.
 
 Resource allocation on OCI ARM Free Tier follows the same pattern. Within the constraints of 24GB RAM and 4 OCPU, Architect determined how to distribute request/limit for each service. AI Analysis is the only service with a 2Gi memory limit — a decision based on measured data showing that parsing Claude API responses requires significant memory.
+
+<Result label="Result">
+The boundaries of design — what humans set, and what was left to AI.
+</Result>
 
 ## The Boundaries of Design
 

@@ -5,6 +5,8 @@ excerpt: "Starting from a Channel.io blog post — auto-merge, composite actions
 tags: ["ci-cd", "github-actions", "ai-dev", "refactoring"]
 category: journey
 order: 8
+tldr: "After only reading a Channel.io CI reference, I refactored our CI myself across four sprints — auto-merge, composite actions, and a measurement protocol. A record of closing the gap between reading and doing."
+relatedAdrs: ["sprint-105", "sprint-107", "ADR-027"]
 ---
 
 ## From Reading a Reference to Doing It Myself
@@ -14,6 +16,10 @@ The first time I read [Channel.io's Backend CI Refactoring post](https://channel
 But I couldn't follow it directly. AlgoSu is different from Channel.io. **A solo developer running an AI agent orchestration setup**, a Docker-only build pipeline, and an Oracle-dispatch workflow for handing off tasks to agents. I could borrow the underlying principles — but I still had to **translate those principles into AlgoSu's context**.
 
 This isn't a post introducing a finished CI architecture. It's a record of five sprints — Sprint 102 through 106 — of reading a reference, experimenting, and sometimes abandoning the plan. The focus is on two moments where a sprint closed with **zero lines of implementation**, and why those weren't failures but wins.
+
+<Problem label="Problem">
+There were plenty of great CI references, but none fit our pipeline as-is.
+</Problem>
 
 ## Why I Needed a Reference
 
@@ -41,6 +47,10 @@ Three principles I borrowed from the Channel.io post:
 There were also principles I deliberately **didn't** borrow. Channel.io's S3-polling prepare overlapping and dynamic queue test distribution would have been overengineering for AlgoSu. GHA artifacts were enough, and the test volume didn't justify the distribution overhead. Choosing what *not* to carry over is part of translating a reference.
 
 One more difference: AlgoSu runs on an Oracle-dispatch structure — Oracle assigns work to agents. I could apply the "pilot then expand" principle at the sprint level, but I also had to re-verify **agent-to-role matching** before each sprint kicked off. In Sprint 102, I initially assigned CI work to Gatekeeper, then had to rebalance to Architect. In an agent orchestration setup, validating role boundaries matters as much as writing the code.
+
+<Decision label="Decision">
+I committed to a 4-sprint roadmap, applying everything from auto-merge to a measurement protocol step by step.
+</Decision>
 
 ## The 4-Sprint Roadmap — The Full Picture
 
@@ -440,6 +450,10 @@ Conclusion: all three options inapplicable or already the default. Zero code cha
 <Callout type="info" title="Pre-Consultation Elevated from 'How' to 'Whether'">
 In Sprint 105, pre-consultation was an **optimization tool** — reducing the post-sample count. In Sprint 106 [B] and [C], it became a **necessity gate** — confirming whether implementation was needed at all. If you write explicit stopping conditions into your plan ("if redundant, gain = 0 → stop"), the pre-consultation step has a clear decision criterion. Zero-line implementation is still a conclusion.
 </Callout>
+
+<Result label="Result">
+Four principles in hindsight — the distance traveled from reference to reality.
+</Result>
 
 ## Four Principles in Hindsight
 

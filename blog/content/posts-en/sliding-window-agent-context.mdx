@@ -5,6 +5,8 @@ excerpt: "Across 152 sprints, the ADRs, MEMORY, and CLAUDE.md all swelled togeth
 tags: ["agent", "documentation", "sliding-window", "context-optimization", "claude-code"]
 category: challenge
 order: 10
+tldr: "Across 152 sprints, the ADRs, MEMORY, and CLAUDE.md swelled together and ate into context. A record of optimizing agent context with the sliding window algorithm — and hitting seven sprints in a row without regression."
+relatedAdrs: ["sprint-82", "sprint-116"]
 ---
 
 ## The 152nd Sprint, and the ADRs Stacked Behind It
@@ -51,6 +53,10 @@ That's what documentation gave us. Operating without re-catching a lesson alread
 
 ---
 
+<Problem label="Problem">
+The growing pile of docs began eating the agent's context every session — like pouring water into an already-full bucket.
+</Problem>
+
 ## And Then — The Documents Themselves Started Becoming the Enemy
 
 That was the happy part. The trouble began afterward.
@@ -95,6 +101,10 @@ Don't write documents and the agent repeats the same mistakes. Hand over all the
 </Callout>
 
 ---
+
+<Decision label="Decision">
+I decided to trim context with a simple rule borrowed from the sliding window algorithm.
+</Decision>
 
 ## The Sliding Window Algorithm — Back to Algorithm Class
 
@@ -255,6 +265,10 @@ In return, what doesn't change costs little to keep in-context permanently. The 
 The [`.claude/commands/agents/`](https://github.com/tpals0409/AlgoSu/tree/main/.claude/commands/agents) directory in particular **switched to tracked** in Sprint 150. Before that it was local-only and gitignored. Out-of-sync drift across machines piled up as debt, and we eventually pulled it up into a team-shared SSoT — so all 12 personas live in one source of truth.
 
 ---
+
+<Result label="Result">
+A 4-layer storage structure delivered seven sprints in a row without regression.
+</Result>
 
 ## The Result — Seven Sprints in a Row Without Regression
 

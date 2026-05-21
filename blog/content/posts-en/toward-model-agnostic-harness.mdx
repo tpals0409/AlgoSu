@@ -5,6 +5,8 @@ excerpt: "I brought in Codex — as an addition, not a replacement. After 17 rou
 tags: ["challenge", "multi-model", "codex", "critic", "harness"]
 category: challenge
 order: 9
+tldr: "I placed a Codex-based Critic as an addition, not a replacement, in the pre-merge seat. Across 17 rounds of cross-review I even found bias in the harness itself — a record of moving toward a model-agnostic harness."
+relatedAdrs: ["sprint-114", "sprint-117", "sprint-136"]
 ---
 
 I updated four lines of ADR text. Changed the status to completed and tidied up two or three more lines. Then I committed directly to main and pushed.
@@ -17,6 +19,10 @@ The frequency of workflow violations was clearly rising. The same model was repe
 
 Around that time, I started hearing that OpenAI Codex was making strides in coding.
 
+<Problem label="Problem">
+A harness leaning on a single model needed another perspective — but what to bring in, and how, was the question.
+</Problem>
+
 ## Why Add, Not Replace
 
 I never considered a full replacement.
@@ -24,6 +30,10 @@ I never considered a full replacement.
 The 12 agents had already settled into their roles. Each had a stable persona, SSoT, and communication channel. There was no reason to tear that down. Besides, switching from one model family to another wasn't guaranteed to be the answer either. That's just changing the target of dependency.
 
 Instead, I decided to **add**. Keep the existing 12 in place, and create one new seat — for a different model family.
+
+<Decision label="Decision">
+I decided to add a Codex-based Critic — not as a replacement — in the pre-merge seat.
+</Decision>
 
 ## Why the Pre-Merge Seat?
 
@@ -80,6 +90,10 @@ In Sprint 95~97, I cut Baekjoon Online Judge dependency and migrated to Programm
 This time was similar. The target of dependency had simply shifted from external service to **AI model**, but the pattern was the same. When a system is bound to one family, it shakes when that family shakes.
 
 The same lesson came back, just at a different layer.
+
+<Result label="Result">
+Finding the limits of the Critic and bias in the harness itself, arriving at a model-agnostic harness.
+</Result>
 
 ## And So — Toward a Model-Agnostic Harness
 

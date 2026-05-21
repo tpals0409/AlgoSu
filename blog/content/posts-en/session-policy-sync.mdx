@@ -5,6 +5,8 @@ excerpt: "JWT TTL is 2 hours, but users get logged out after 1 hour. Cookie maxA
 tags: ["session", "jwt", "cookie", "debugging", "nestjs", "challenge"]
 category: challenge
 order: 6
+tldr: "The \"session is too short\" bug came down to four clocks scattered across four layers. A record of fixing it by unifying the SSoT — a structural shift, not a constant swap."
+relatedAdrs: ["sprint-71", "sprint-65"]
 ---
 
 ## "The Session Is Too Short"
@@ -18,6 +20,10 @@ The designed JWT lifetime was **2 hours**, and a **sliding session** that auto-r
 We started investigating. Long story short, **4 layers were each running on different clocks.** With 12 AI agents each owning a different layer, this kind of distributed state desync was exactly the type of bug that slips through unless someone looks at the whole picture at once.
 
 ---
+
+<Problem label="Problem">
+JWT TTL is 2 hours, yet logout hits at 1 hour — four layers each kept their own clock.
+</Problem>
 
 ## Four Clocks, Four Truths
 
@@ -96,6 +102,10 @@ flowchart TB
 Four places were independently managing the same semantic value of "session lifetime." Change one env, and the other three don't follow. **That was the seed of the next bug.**
 
 ---
+
+<Decision label="Decision">
+I decided to unify the four scattered clocks into a single SSoT.
+</Decision>
 
 ## The Fix: Unifying to a Single Clock
 
@@ -228,6 +238,10 @@ The frontend makes a single `GET /auth/session-policy` call at app boot. Hardcod
 The DEFAULT fallback is **intentionally shorter** than the server default (2h). If the fetch fails, early expiration prevents unexpected 401s — a safety mechanism.
 
 ---
+
+<Result label="Result">
+The change seen Before/After — the result of a structural shift, not a constant swap.
+</Result>
 
 ## Before / After
 
