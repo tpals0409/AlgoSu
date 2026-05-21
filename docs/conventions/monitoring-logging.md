@@ -141,7 +141,7 @@ Container restart 또는 모듈 중복 import 시 prom-client default metric이 
 | A (duplicate registration) | 부팅 실패, `Error: A metric with the name ... has already been registered` | 동일 Registry에 MetricsService 2회 인스턴스화 | `@Global()` 모듈로 싱글턴 보장 (Sprint 135 Wave C P1) |
 | B (label cardinality) | 메모리 누수, /metrics 응답 비대 | 동적 path 세그먼트가 라벨로 삽입 | `normalizePath()` UUID/숫자 → `:id` 치환 |
 | C (worker registry 혼입) | github-worker 메트릭 누락 | 별도 HTTP 서버(port 9100) 라이프사이클 불일치 | 독립 Registry + `startMetricsServer()` 격리 |
-| D (Python default 미활성) | ai-analysis에 `gc_*`/`process_*` 부재 | `prometheus_client` default 미호출 (의도적) | Node.js만 default 권장, Python은 명시적 메트릭만 |
+| D (Python default 정책) | Node-style default block 부재 (단 `python_gc_*`/`python_info`는 자동 노출, `process_*`는 Linux) | Node-style `collectDefaultMetrics` 미호출 (의도적) | Python은 명시적 `algosu_ai_analysis_*` 메트릭 위주 — prometheus_client 기본 GC/platform collector는 자동 등록됨 |
 
 **점검 도구**: `scripts/check-prom-default-metrics.mjs`
 
@@ -156,7 +156,12 @@ node scripts/check-prom-default-metrics.mjs --services gateway,submission
 node scripts/check-prom-default-metrics.mjs --base-url http://staging.internal
 ```
 
-**회귀 차단 spec**: `services/submission/src/common/metrics/metrics.service.spec.ts` — `onModuleInit()` 중복 호출 + 동일 Registry 이중 생성 방어 (Case A 직접 검증).
+**회귀 차단 spec** (Case별 자동 검증 — Sprint 191 보강):
+
+- **A** (duplicate registration): `services/submission/src/common/metrics/metrics.service.spec.ts` — `onModuleInit()` 중복 호출 + 동일 Registry 이중 생성 방어
+- **B** (label cardinality): 전 NestJS 서비스 `metrics.service.spec.ts` `normalizePath()` (UUID/숫자 → `:id`) + ai-analysis `tests/test_metrics.py` `_normalize_path`
+- **C** (worker registry 격리): `services/github-worker/src/metrics.spec.ts` — 격리 registry 출력에 prefix된 `nodejs_`/`process_` default metric 포함 검증
+- **D** (Python explicit metric): `services/ai-analysis/tests/test_metrics.py` `TestCaseDExplicitMetrics` — 명시 `algosu_ai_analysis_*` 메트릭 노출 검증
 
 ## §11 Prometheus Alert Rule
 

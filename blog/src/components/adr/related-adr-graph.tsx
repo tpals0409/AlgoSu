@@ -6,7 +6,7 @@
  *
  * Related ADR 그래프 — AdjacencyList를 mermaid graph LR로 시각화한다.
  * 별도 mermaid 인스턴스(securityLevel:loose)를 사용하여 기존 blog mermaid에 영향 없음.
- * focusId 노드 강조 + resolved=false edge 점선 표시.
+ * focusId 노드 강조. 선언된 노드 사이의 엣지만 그려 암묵 노드 생성을 막는다.
  * locale prop으로 노드 링크 prefix 토글.
  */
 'use client';
@@ -98,19 +98,12 @@ function buildChart(adj: AdjacencyList, focusId?: string): string {
     lines.push(`  ${sid}["${label}"]`);
   }
 
-  const unresolvedIndices: number[] = [];
-  let edgeIdx = 0;
+  const nodeIds = new Set(adj.nodes.map((n) => n.id));
 
   for (const edge of adj.edges) {
-    const from = safeId(edge.from);
-    const to = safeId(edge.to);
-    if (edge.resolved) {
-      lines.push(`  ${from} --> ${to}`);
-    } else {
-      lines.push(`  ${from} -.-> ${to}`);
-    }
-    if (!edge.resolved) unresolvedIndices.push(edgeIdx);
-    edgeIdx++;
+    /* 선언된 노드 사이의 엣지만 그린다 — 미존재 to로의 mermaid 암묵 노드 생성 차단 */
+    if (!nodeIds.has(edge.from) || !nodeIds.has(edge.to)) continue;
+    lines.push(`  ${safeId(edge.from)} --> ${safeId(edge.to)}`);
   }
 
   /* kind별 노드 색상 적용 */
@@ -124,10 +117,6 @@ function buildChart(adj: AdjacencyList, focusId?: string): string {
         lines.push(`  style ${sid} fill:${kc.fill},color:${kc.color},stroke:${kc.stroke}`);
       }
     }
-  }
-
-  for (const idx of unresolvedIndices) {
-    lines.push(`  linkStyle ${idx} stroke-dasharray:5`);
   }
 
   return lines.join('\n');

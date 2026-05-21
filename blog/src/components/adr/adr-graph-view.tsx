@@ -5,7 +5,7 @@
  * @related    related-adr-graph.tsx, src/lib/i18n.ts, src/lib/adr/index-builder.ts
  *
  * 전체 ADR 관계 그래프 페이지 본문 — 헤더 + 필터 + 그래프 + 범례.
- * 클라이언트 컴포넌트: useState로 필터 상태(노드 종류·엣지 타입)를 관리한다.
+ * 클라이언트 컴포넌트: useState로 필터 상태(노드 종류·엣지 표시)를 관리한다.
  * locale prop으로 KR/EN UI 토글.
  */
 'use client';
@@ -42,13 +42,12 @@ export function AdrGraphView({ adjacency, locale = 'ko' }: AdrGraphViewProps) {
   const [activeKinds, setActiveKinds] = useState<Set<AdrKind>>(
     () => new Set(ALL_KINDS),
   );
-  const [showResolved, setShowResolved] = useState(true);
-  const [showUnresolved, setShowUnresolved] = useState(true);
+  const [showEdges, setShowEdges] = useState(true);
 
   /* 필터 적용 — kinds/edge 상태 변경 시 재계산 */
   const filtered = useMemo(
-    () => filterAdjacency(adjacency, { kinds: activeKinds, showResolved, showUnresolved }),
-    [adjacency, activeKinds, showResolved, showUnresolved],
+    () => filterAdjacency(adjacency, { kinds: activeKinds, showEdges }),
+    [adjacency, activeKinds, showEdges],
   );
 
   /** kind 토글 핸들러 */
@@ -82,11 +81,9 @@ export function AdrGraphView({ adjacency, locale = 'ko' }: AdrGraphViewProps) {
       <FilterControls
         locale={locale}
         activeKinds={activeKinds}
-        showResolved={showResolved}
-        showUnresolved={showUnresolved}
+        showEdges={showEdges}
         onToggleKind={toggleKind}
-        onToggleResolved={() => setShowResolved((v) => !v)}
-        onToggleUnresolved={() => setShowUnresolved((v) => !v)}
+        onToggleEdges={() => setShowEdges((v) => !v)}
       />
 
       {/* 그래프 */}
@@ -109,22 +106,18 @@ export function AdrGraphView({ adjacency, locale = 'ko' }: AdrGraphViewProps) {
 interface FilterControlsProps {
   locale: Locale;
   activeKinds: Set<AdrKind>;
-  showResolved: boolean;
-  showUnresolved: boolean;
+  showEdges: boolean;
   onToggleKind: (kind: AdrKind) => void;
-  onToggleResolved: () => void;
-  onToggleUnresolved: () => void;
+  onToggleEdges: () => void;
 }
 
-/** 노드 종류·엣지 타입 토글 필터 UI */
+/** 노드 종류·엣지 표시 토글 필터 UI */
 function FilterControls({
   locale,
   activeKinds,
-  showResolved,
-  showUnresolved,
+  showEdges,
   onToggleKind,
-  onToggleResolved,
-  onToggleUnresolved,
+  onToggleEdges,
 }: FilterControlsProps) {
   return (
     <div className="flex flex-wrap items-start gap-6 rounded-lg border border-border bg-surface-muted px-4 py-3">
@@ -164,7 +157,7 @@ function FilterControls({
         </div>
       </div>
 
-      {/* 엣지 타입 필터 */}
+      {/* 엣지 표시 필터 */}
       <div className="space-y-1.5">
         <span className="text-xs font-medium text-text-muted">
           {t(locale, 'graphFilterEdgeLabel')}
@@ -173,33 +166,17 @@ function FilterControls({
           <button
             type="button"
             role="checkbox"
-            aria-checked={showResolved}
-            aria-label={t(locale, 'graphEdgeResolved')}
-            onClick={onToggleResolved}
+            aria-checked={showEdges}
+            aria-label={t(locale, 'graphEdgeShow')}
+            onClick={onToggleEdges}
             className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
-              showResolved
+              showEdges
                 ? 'border-border-strong bg-surface-elevated text-text shadow-sm'
                 : 'border-border bg-surface text-text-subtle opacity-60'
             }`}
           >
             <span className="inline-block h-px w-4 border-t-2 border-solid border-text-muted" aria-hidden="true" />
-            {t(locale, 'graphEdgeResolved')}
-          </button>
-
-          <button
-            type="button"
-            role="checkbox"
-            aria-checked={showUnresolved}
-            aria-label={t(locale, 'graphEdgeUnresolved')}
-            onClick={onToggleUnresolved}
-            className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
-              showUnresolved
-                ? 'border-border-strong bg-surface-elevated text-text shadow-sm'
-                : 'border-border bg-surface text-text-subtle opacity-60'
-            }`}
-          >
-            <span className="inline-block h-px w-4 border-t-2 border-dashed border-text-muted" aria-hidden="true" />
-            {t(locale, 'graphEdgeUnresolved')}
+            {t(locale, 'graphEdgeShow')}
           </button>
         </div>
       </div>
@@ -209,7 +186,7 @@ function FilterControls({
 
 /* ─── 범례 ───────────────────────────────────────── */
 
-/** 그래프 범례 — kind 색상 스와치 + 엣지 실선/점선 + 의미 설명 */
+/** 그래프 범례 — kind 색상 스와치 + 엣지 실선 + 의미 설명 */
 function GraphLegend({ locale }: { locale: Locale }) {
   return (
     <div className="space-y-3 rounded-lg border border-border bg-surface-muted px-4 py-3">
@@ -244,11 +221,7 @@ function GraphLegend({ locale }: { locale: Locale }) {
       <div className="flex flex-wrap items-center gap-5 text-xs text-text-muted">
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-px w-6 border-t-2 border-solid border-text-muted" aria-hidden="true" />
-          {t(locale, 'graphEdgeResolved')}
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-px w-6 border-t-2 border-dashed border-text-muted" aria-hidden="true" />
-          {t(locale, 'graphEdgeUnresolved')}
+          {t(locale, 'graphEdgeShow')}
         </span>
       </div>
 

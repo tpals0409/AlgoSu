@@ -2,7 +2,7 @@
  * metrics.ts 단위 테스트
  */
 
-import { dlqMessagesTotal, mqMessagesProcessedTotal, startMetricsServer } from './metrics';
+import { dlqMessagesTotal, mqMessagesProcessedTotal, registry, startMetricsServer } from './metrics';
 import http from 'http';
 
 describe('metrics', () => {
@@ -18,6 +18,18 @@ describe('metrics', () => {
       mqMessagesProcessedTotal.inc({ result: 'nack_dlq' });
       mqMessagesProcessedTotal.inc({ result: 'skipped' });
       expect(mqMessagesProcessedTotal).toBeDefined();
+    });
+  });
+
+  // 회귀 차단: monitoring-logging.md §9-3 Case C (worker registry 격리)
+  describe('Case C — 격리 registry default metric 포함 (Sprint 191)', () => {
+    it('격리된 registry 출력에 prefix된 nodejs_/process_ default metric이 포함된다', async () => {
+      // github-worker는 별도 HTTP 서버(port 9100) + 독립 Registry를 쓴다.
+      // collectDefaultMetrics가 이 격리 registry에 등록되어 default metric이
+      // 누락되지 않음을 검증 — Case C 증상("worker 메트릭 누락") 방어 근거.
+      const output = await registry.metrics();
+      expect(output).toContain('algosu_github_worker_nodejs_');
+      expect(output).toContain('algosu_github_worker_process_');
     });
   });
 
