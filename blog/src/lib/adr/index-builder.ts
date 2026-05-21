@@ -212,9 +212,10 @@ interface FilterAdjacencyOpts {
  *
  * - nodes: `opts.kinds`에 포함된 kind만 잔존한다.
  * - edges: resolved 여부에 따라 showResolved/showUnresolved 플래그 적용 후,
- *   from 노드가 잔존 노드일 때만 유지한다.
- *   unresolved 엣지는 to가 비존재 참조이므로 from만 검사한다.
- *   resolved 엣지는 from·to 양쪽 모두 잔존 노드여야 유지한다.
+ *   from·to 양쪽 모두 잔존 노드일 때만 유지한다.
+ *   to가 잔존 노드가 아니면(unresolved 비존재 참조 포함) 제외하여,
+ *   mermaid 렌더 시 정의되지 않은 to에 대한 암묵 노드 생성과
+ *   그로 인한 노드 카운트 불일치를 구조적으로 차단한다.
  *
  * 순수 함수 — 원본 AdjacencyList를 변경하지 않는다.
  *
@@ -232,8 +233,8 @@ export function filterAdjacency(
   const edges = adj.edges.filter((e) => {
     const passType = e.resolved ? opts.showResolved : opts.showUnresolved;
     const fromOk = nodeIds.has(e.from);
-    /* unresolved 엣지는 to가 비존재 참조이므로 from만 검사 */
-    const toOk = e.resolved ? nodeIds.has(e.to) : true;
+    /* from·to 양쪽 모두 잔존 노드여야 유지 — to 비존재 시 mermaid 암묵 노드 차단 */
+    const toOk = nodeIds.has(e.to);
     return passType && fromOk && toOk;
   });
 
