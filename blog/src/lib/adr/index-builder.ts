@@ -201,26 +201,23 @@ export function filterAdrsByTopic(metas: AdrMeta[], topicId: string): AdrMeta[] 
 interface FilterAdjacencyOpts {
   /** 포함할 노드 종류 (이 Set에 포함된 kind만 잔존) */
   readonly kinds: ReadonlySet<AdrKind>;
-  /** true면 resolved edge 유지 */
-  readonly showResolved: boolean;
-  /** true면 unresolved edge 유지 */
-  readonly showUnresolved: boolean;
+  /** false면 모든 엣지를 숨긴다 */
+  readonly showEdges: boolean;
 }
 
 /**
- * AdjacencyList를 노드 종류(kind)와 엣지 resolved 상태로 필터링한다.
+ * AdjacencyList를 노드 종류(kind)와 엣지 표시 여부로 필터링한다.
  *
  * - nodes: `opts.kinds`에 포함된 kind만 잔존한다.
- * - edges: resolved 여부에 따라 showResolved/showUnresolved 플래그 적용 후,
- *   from·to 양쪽 모두 잔존 노드일 때만 유지한다.
- *   to가 잔존 노드가 아니면(unresolved 비존재 참조 포함) 제외하여,
+ * - edges: `showEdges`가 true이고 from·to 양쪽 모두 잔존 노드일 때만 유지한다.
+ *   to가 잔존 노드가 아니면(존재하지 않는 참조 포함) 제외하여,
  *   mermaid 렌더 시 정의되지 않은 to에 대한 암묵 노드 생성과
  *   그로 인한 노드 카운트 불일치를 구조적으로 차단한다.
  *
  * 순수 함수 — 원본 AdjacencyList를 변경하지 않는다.
  *
  * @param adj  - 필터 대상 AdjacencyList
- * @param opts - 필터 옵션 (kinds, showResolved, showUnresolved)
+ * @param opts - 필터 옵션 (kinds, showEdges)
  * @returns 필터링된 새 AdjacencyList
  */
 export function filterAdjacency(
@@ -230,13 +227,9 @@ export function filterAdjacency(
   const nodes = adj.nodes.filter((n) => opts.kinds.has(n.kind));
   const nodeIds = new Set(nodes.map((n) => n.id));
 
-  const edges = adj.edges.filter((e) => {
-    const passType = e.resolved ? opts.showResolved : opts.showUnresolved;
-    const fromOk = nodeIds.has(e.from);
-    /* from·to 양쪽 모두 잔존 노드여야 유지 — to 비존재 시 mermaid 암묵 노드 차단 */
-    const toOk = nodeIds.has(e.to);
-    return passType && fromOk && toOk;
-  });
+  const edges = opts.showEdges
+    ? adj.edges.filter((e) => nodeIds.has(e.from) && nodeIds.has(e.to))
+    : [];
 
   return { nodes, edges };
 }

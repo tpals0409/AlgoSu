@@ -194,9 +194,8 @@ const DICTIONARY = {
     graphPageTitle: 'ADR 관계 그래프',
     graphMetaDescription: 'ADR 간의 관계를 시각화한 그래프.',
     graphNodeHighlight: '강조 노드',
-    graphEdgeResolved: '확인된 연결',
-    graphEdgeUnresolved: '미확인 연결',
-    graphCaption: '전체 ADR 관계 그래프 — 점선은 미확인(unresolved) 연결',
+    graphEdgeShow: '연결 표시',
+    graphCaption: '전체 ADR 관계 그래프',
     graphNodeCount: '{n}개 노드',
     graphEdgeCount: '{n}개 연결',
     graphFiltersTitle: '필터',
@@ -207,8 +206,7 @@ const DICTIONARY = {
     graphFilterEdgeLabel: '연결',
     graphLegendTitle: '범례',
     graphNodeMeaning: '노드 = ADR 문서 (종류별 색상)',
-    graphEdgeMeaning:
-      '엣지 = ADR 간 참조 — 실선은 대상 존재, 점선은 미해결 참조',
+    graphEdgeMeaning: '엣지 = ADR 간 참조 (실선)',
 
     /* ─── 카테고리 탭 aria ────────────────────────── */
     adrCategoryAriaLabel: 'ADR 카테고리',
@@ -442,9 +440,8 @@ const DICTIONARY = {
     graphPageTitle: 'ADR Relationship Graph',
     graphMetaDescription: 'Visualization of relationships between ADRs.',
     graphNodeHighlight: 'Highlighted node',
-    graphEdgeResolved: 'Resolved edge',
-    graphEdgeUnresolved: 'Unresolved edge',
-    graphCaption: 'Full ADR relationship graph — dashed lines are unresolved',
+    graphEdgeShow: 'Show edges',
+    graphCaption: 'Full ADR relationship graph',
     graphNodeCount: '{n} nodes',
     graphEdgeCount: '{n} edges',
     graphFiltersTitle: 'Filters',
@@ -455,8 +452,7 @@ const DICTIONARY = {
     graphFilterEdgeLabel: 'Edges',
     graphLegendTitle: 'Legend',
     graphNodeMeaning: 'Node = an ADR document (colored by type)',
-    graphEdgeMeaning:
-      'Edge = a reference between ADRs — solid means the target exists, dashed means unresolved',
+    graphEdgeMeaning: 'Edge = a reference between ADRs (solid line)',
 
     /* ─── Category tabs aria ───────────────────────── */
     adrCategoryAriaLabel: 'ADR Categories',
