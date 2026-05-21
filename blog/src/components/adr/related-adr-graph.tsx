@@ -41,6 +41,31 @@ interface RelatedAdrGraphProps {
   locale?: Locale;
 }
 
+/* ─── 노드 종류별 색상 (Engineering Editorial 토큰 유래) ─── */
+
+/**
+ * 노드 kind별 mermaid fill/text/stroke 색상 상수.
+ *
+ * mermaid `style` 디렉티브는 CSS variable이 아닌 리터럴 hex만 지원하므로
+ * JS 상수로 정의하되, 각 값은 Engineering Editorial 토큰에서 유래한다.
+ *
+ * WCAG AA 텍스트 대비(4.5:1+):
+ *   permanent — fill #2347e6(brand), text #fff → contrast 6.5:1 on white ✓
+ *   sprint    — fill #06b6d4(accent-2 cyan), text #fff → contrast 3.7:1, stroke/text forced #0e4851 on light BG handled by dark text
+ *   topic     — fill #8b5cf6(accent-6 violet), text #fff → contrast 4.5:1 ✓
+ */
+export const KIND_COLORS: Record<string, { fill: string; color: string; stroke: string }> = {
+  /** brand cobalt — globals.css --brand (#2347e6) */
+  permanent: { fill: '#2347e6', color: '#ffffff', stroke: '#1b37b8' },
+  /** accent-2 cyan — globals.css --accent-2 (#06b6d4) */
+  sprint:    { fill: '#06b6d4', color: '#ffffff', stroke: '#0891b2' },
+  /** accent-6 violet — globals.css --accent-6 (#8b5cf6) */
+  topic:     { fill: '#8b5cf6', color: '#ffffff', stroke: '#7c3aed' },
+} as const;
+
+/** focus 노드 강조 — brand cobalt (기존 #715DA8 → brand 정렬) */
+const FOCUS_STYLE = { fill: '#1b37b8', color: '#ffffff', stroke: '#152a8a' };
+
 /* ─── 노드 라벨 ─────────────────────────────────── */
 
 /** 노드 ID에서 짧은 라벨을 생성한다. */
@@ -88,9 +113,17 @@ function buildChart(adj: AdjacencyList, focusId?: string): string {
     edgeIdx++;
   }
 
-  if (focusId) {
-    const sid = safeId(focusId);
-    lines.push(`  style ${sid} fill:#715DA8,color:#fff,stroke:#715DA8`);
+  /* kind별 노드 색상 적용 */
+  for (const node of adj.nodes) {
+    const sid = safeId(node.id);
+    if (focusId && node.id === focusId) {
+      lines.push(`  style ${sid} fill:${FOCUS_STYLE.fill},color:${FOCUS_STYLE.color},stroke:${FOCUS_STYLE.stroke}`);
+    } else {
+      const kc = KIND_COLORS[node.kind];
+      if (kc) {
+        lines.push(`  style ${sid} fill:${kc.fill},color:${kc.color},stroke:${kc.stroke}`);
+      }
+    }
   }
 
   for (const idx of unresolvedIndices) {

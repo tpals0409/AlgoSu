@@ -195,6 +195,46 @@ export function filterAdrsByTopic(metas: AdrMeta[], topicId: string): AdrMeta[] 
     });
 }
 
+/* ─── 그래프 필터 ────────────────────────────────── */
+
+/** filterAdjacency 옵션 */
+interface FilterAdjacencyOpts {
+  /** 포함할 노드 종류 (이 Set에 포함된 kind만 잔존) */
+  readonly kinds: ReadonlySet<AdrKind>;
+  /** true면 resolved edge 유지 */
+  readonly showResolved: boolean;
+  /** true면 unresolved edge 유지 */
+  readonly showUnresolved: boolean;
+}
+
+/**
+ * AdjacencyList를 노드 종류(kind)와 엣지 resolved 상태로 필터링한다.
+ *
+ * - nodes: `opts.kinds`에 포함된 kind만 잔존한다.
+ * - edges: resolved 여부에 따라 showResolved/showUnresolved 플래그 적용 후,
+ *   from·to 양쪽 노드가 모두 잔존 노드일 때만 유지한다.
+ *
+ * 순수 함수 — 원본 AdjacencyList를 변경하지 않는다.
+ *
+ * @param adj  - 필터 대상 AdjacencyList
+ * @param opts - 필터 옵션 (kinds, showResolved, showUnresolved)
+ * @returns 필터링된 새 AdjacencyList
+ */
+export function filterAdjacency(
+  adj: AdjacencyList,
+  opts: FilterAdjacencyOpts,
+): AdjacencyList {
+  const nodes = adj.nodes.filter((n) => opts.kinds.has(n.kind));
+  const nodeIds = new Set(nodes.map((n) => n.id));
+
+  const edges = adj.edges.filter((e) => {
+    const passType = e.resolved ? opts.showResolved : opts.showUnresolved;
+    return passType && nodeIds.has(e.from) && nodeIds.has(e.to);
+  });
+
+  return { nodes, edges };
+}
+
 /* ─── 메인 빌더 ──────────────────────────────────── */
 
 /**

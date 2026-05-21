@@ -200,6 +200,16 @@ const DICTIONARY = {
     graphCaption: '전체 ADR 관계 그래프 — 점선은 미확인(unresolved) 연결',
     graphNodeCount: '{n}개 노드',
     graphEdgeCount: '{n}개 연결',
+    graphFiltersTitle: '필터',
+    graphFilterKindLabel: '노드 종류',
+    graphKindPermanent: '영구 ADR',
+    graphKindSprint: 'Sprint ADR',
+    graphKindTopic: '주제 ADR',
+    graphFilterEdgeLabel: '연결',
+    graphLegendTitle: '범례',
+    graphNodeMeaning: '노드 = ADR 문서 (종류별 색상)',
+    graphEdgeMeaning:
+      '엣지 = ADR 간 참조 — 실선은 대상 존재, 점선은 미해결 참조',
 
     /* ─── 카테고리 탭 aria ────────────────────────── */
     adrCategoryAriaLabel: 'ADR 카테고리',
@@ -439,6 +449,16 @@ const DICTIONARY = {
     graphCaption: 'Full ADR relationship graph — dashed lines are unresolved',
     graphNodeCount: '{n} nodes',
     graphEdgeCount: '{n} edges',
+    graphFiltersTitle: 'Filters',
+    graphFilterKindLabel: 'Node type',
+    graphKindPermanent: 'Permanent',
+    graphKindSprint: 'Sprint',
+    graphKindTopic: 'Topic',
+    graphFilterEdgeLabel: 'Edges',
+    graphLegendTitle: 'Legend',
+    graphNodeMeaning: 'Node = an ADR document (colored by type)',
+    graphEdgeMeaning:
+      'Edge = a reference between ADRs — solid means the target exists, dashed means unresolved',
 
     /* ─── Category tabs aria ───────────────────────── */
     adrCategoryAriaLabel: 'ADR Categories',
