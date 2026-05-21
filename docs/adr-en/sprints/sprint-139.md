@@ -155,7 +155,7 @@ react-day-picker **v9.14.0** is installed but `frontend/src/components/ui/calend
 - CI 30 SUCCESS / 8 SKIPPED / 0 FAILURE
 - Critic not invoked (UI className update, low code correctness risk)
 
-### Lessons
+## Lessons
 **Dependency wrapper component compatibility check was missing from PR pre-flight checklist for major version changes.** This case involved react-day-picker being upgraded from v8 → v9 at some point, but the wrapper (`calendar.tsx`) was not updated, and the regression surfaced when first actually used in Sprint 139. **Sprint 140 seed**: Add "check wrapper compatibility when major dependency upgrade" item to PR pre-flight checklist.
 
 ## Sprint 140 Carryover

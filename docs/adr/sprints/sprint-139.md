@@ -155,7 +155,7 @@ react-day-picker **v9.14.0**이 설치되어 있으나 `frontend/src/components/
 - CI 30 SUCCESS / 8 SKIPPED / 0 FAILURE
 - Critic 미호출 (UI className 갱신, 코드 정확성 위험 낮음)
 
-### 교훈
+## 교훈
 **의존성 메이저 버전 변경 시 wrapper 컴포넌트 호환성 점검**이 PR pre-flight checklist에 빠져 있었음. 본 사례는 react-day-picker가 어느 시점에 v8 → v9로 업그레이드되었으나 wrapper(`calendar.tsx`)는 갱신되지 않은 채 남아있다가, Sprint 139에서 처음 실사용되며 회귀가 표면화. **Sprint 140 시드**: PR pre-flight checklist에 "주요 의존성 major 업그레이드 시 wrapper 호환성 점검" 항목 추가.
 
 ## Sprint 140 이월

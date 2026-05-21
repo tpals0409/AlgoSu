@@ -49,7 +49,7 @@ Also renamed the directory from `content/adr/` → `content/posts/` to reflect t
 - Post 5 "Looking Back on 67 Sprints" — Completed (264 lines → 105 lines compressed)
 - Overall: 7 posts → 6 posts, total -2,227 lines reduced
 
-### Carryover Items
+## Carryover Items
 - Post 4 (cicd-ai-guardrails) title/conclusion adjustment
 - Post 6 (session-policy-sync) series removal + AI context added
 - English post synchronization + final build verification

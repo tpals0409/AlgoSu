@@ -33,6 +33,17 @@ const DIR_KIND_MAP: ReadonlyArray<[string, AdrKind]> = [
   ['topics', 'topic'],
 ];
 
+/**
+ * 파일명이 해당 kind의 ADR 문서인지 판정한다.
+ * sprint ADR은 정확히 `sprint-NNN.md`만 인정 — `sprint-NNN-plan.md` 같은 비-ADR 파일이
+ * deriveSlug의 `sprint-(\d+)` 추출에서 동일 슬러그로 충돌해 ADR 라우트를 덮어쓰는 것을 차단한다(Sprint 183).
+ */
+function isAdrFile(filename: string, kind: AdrKind): boolean {
+  if (!filename.endsWith('.md') || filename === 'README.md') return false;
+  if (kind === 'sprint') return /^sprint-\d+\.md$/.test(filename);
+  return true;
+}
+
 /* ─── 파일 읽기 ──────────────────────────────────── */
 
 /**
@@ -59,7 +70,7 @@ function readAdrFiles(
 
   return fs
     .readdirSync(dir)
-    .filter((f) => f.endsWith('.md') && f !== 'README.md')
+    .filter((f) => isAdrFile(f, kind))
     .map((filename) => {
       const koAbsPath = path.join(dir, filename);
       const filePath = path.relative(ADR_BASE, koAbsPath);

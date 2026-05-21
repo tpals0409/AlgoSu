@@ -72,7 +72,7 @@ Sprint 86 이월 항목(Post 6 리프레이밍) + 카테고리 시스템 신규 
 | 필터 UI + HomePage 연결 | `6464497` | Herald |
 | Sprint 87 ADR | `4467788` → 갱신 | Scribe → Oracle |
 
-### 이월 항목
+## 이월 항목
 
 - Post 4 (cicd-ai-guardrails) 제목/결론 조정 + MDX→Markdown 전환 (`<PhaseTimeline>` 제거)
 
