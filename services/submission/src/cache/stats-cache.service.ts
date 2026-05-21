@@ -5,6 +5,7 @@
  * @related cache.module.ts, submission.service.ts
  */
 import { Injectable, Inject } from '@nestjs/common';
+import { createHash } from 'crypto';
 import Redis from 'ioredis';
 import { REDIS_CLIENT } from './cache.module';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
@@ -37,9 +38,9 @@ export class StatsCacheService {
    * 통계 캐시 조회 (Fail-Open: 에러 → null)
    * @returns 캐시 히트 시 파싱된 데이터, 미스/에러 시 null
    */
-  async get(studyId: string, weekNumber?: string, userId?: string): Promise<unknown | null> {
+  async get(studyId: string, weekNumber?: string, userId?: string, activeProblemIds?: string[]): Promise<unknown | null> {
     try {
-      const key = this.buildKey(studyId, weekNumber, userId);
+      const key = this.buildKey(studyId, weekNumber, userId, activeProblemIds);
       const cached = await this.redis.get(key);
       if (cached === null) return null;
       this.logger.debug(`캐시 히트: ${key}`);
@@ -53,9 +54,9 @@ export class StatsCacheService {
   /**
    * 통계 캐시 설정 (Fail-Open: 에러 → 무시)
    */
-  async set(studyId: string, data: unknown, weekNumber?: string, userId?: string): Promise<void> {
+  async set(studyId: string, data: unknown, weekNumber?: string, userId?: string, activeProblemIds?: string[]): Promise<void> {
     try {
-      const key = this.buildKey(studyId, weekNumber, userId);
+      const key = this.buildKey(studyId, weekNumber, userId, activeProblemIds);
       await this.redis.set(key, JSON.stringify(data), 'EX', this.TTL_SECONDS);
     } catch (error: unknown) {
       this.logger.warn(`캐시 설정 실패: ${(error as Error).message}`);
@@ -97,11 +98,22 @@ export class StatsCacheService {
 
   /**
    * 캐시 키 빌더
-   * 형식: `stats:{studyId}:w={weekNumber|'-'}:u={userId|'-'}`
+   * 형식: `stats:{studyId}:w={weekNumber|'-'}:u={userId|'-'}:p={fingerprint|'-'}`
+   * activeProblemIds → 정렬 후 SHA-256 8자 fingerprint (키 안정성 보장)
    */
-  private buildKey(studyId: string, weekNumber?: string, userId?: string): string {
+  private buildKey(studyId: string, weekNumber?: string, userId?: string, activeProblemIds?: string[]): string {
     const w = weekNumber ?? '-';
     const u = userId ?? '-';
-    return `${this.KEY_PREFIX}${studyId}:w=${w}:u=${u}`;
+    const p = this.buildProblemFingerprint(activeProblemIds);
+    return `${this.KEY_PREFIX}${studyId}:w=${w}:u=${u}:p=${p}`;
+  }
+
+  /**
+   * activeProblemIds fingerprint 생성 — 정렬 후 SHA-256 앞 8자
+   */
+  private buildProblemFingerprint(activeProblemIds?: string[]): string {
+    if (!activeProblemIds || activeProblemIds.length === 0) return '-';
+    const sorted = [...activeProblemIds].sort().join(',');
+    return createHash('sha256').update(sorted).digest('hex').slice(0, 8);
   }
 }

@@ -306,8 +306,8 @@ export class SubmissionService {
     userSubmissions: { problemId: string; aiScore: number | null; createdAt: Date }[] | null;
     submitterCountByProblem: { problemId: string; count: number; analyzedCount: number }[];
   }> {
-    // Cache-Aside: 캐시 조회 (activeProblemIds는 키에 포함하지 않음 — 확정 설계)
-    const cached = await this.statsCache.get(studyId, weekNumber, userId);
+    // Cache-Aside: 캐시 조회 (activeProblemIds fingerprint 포함 — Critic P2 해소)
+    const cached = await this.statsCache.get(studyId, weekNumber, userId, activeProblemIds);
     if (cached !== null) return cached as any;
 
     // activeProblemIds가 빈 배열이면 ACTIVE 문제가 없으므로 즉시 빈 결과 반환
@@ -495,8 +495,8 @@ export class SubmissionService {
 
     const result = { totalSubmissions, uniqueSubmissions: Number(uniqueSubmissions), uniqueAnalyzed: Number(uniqueAnalyzed), byWeek, byWeekPerUser, byMember, byMemberWeek, recentSubmissions, solvedProblemIds, userSubmissions, submitterCountByProblem };
 
-    // Cache-Aside: 집계 결과 캐싱
-    await this.statsCache.set(studyId, result, weekNumber, userId);
+    // Cache-Aside: 집계 결과 캐싱 (activeProblemIds fingerprint 포함)
+    await this.statsCache.set(studyId, result, weekNumber, userId, activeProblemIds);
 
     return result;
   }

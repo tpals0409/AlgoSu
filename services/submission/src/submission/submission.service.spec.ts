@@ -1230,7 +1230,7 @@ describe('SubmissionService', () => {
         const result = await service.getStudyStats('study-uuid-1', '3월1주차', 'user-1');
 
         expect(result).toEqual(cachedData);
-        expect(statsCache.get).toHaveBeenCalledWith('study-uuid-1', '3월1주차', 'user-1');
+        expect(statsCache.get).toHaveBeenCalledWith('study-uuid-1', '3월1주차', 'user-1', undefined);
         expect(repo.count).not.toHaveBeenCalled();
         expect(repo.createQueryBuilder).not.toHaveBeenCalled();
         expect(repo.find).not.toHaveBeenCalled();
@@ -1250,11 +1250,12 @@ describe('SubmissionService', () => {
 
         await service.getStudyStats('study-uuid-1');
 
-        expect(statsCache.get).toHaveBeenCalledWith('study-uuid-1', undefined, undefined);
+        expect(statsCache.get).toHaveBeenCalledWith('study-uuid-1', undefined, undefined, undefined);
         expect(repo.count).toHaveBeenCalled();
         expect(statsCache.set).toHaveBeenCalledWith(
           'study-uuid-1',
           expect.objectContaining({ totalSubmissions: 10 }),
+          undefined,
           undefined,
           undefined,
         );

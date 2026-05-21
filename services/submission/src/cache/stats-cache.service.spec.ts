@@ -46,7 +46,7 @@ describe('StatsCacheService', () => {
       const result = await service.get('study-1', '3월1주차', 'user-1');
 
       expect(result).toEqual(data);
-      expect(redis.get).toHaveBeenCalledWith('stats:study-1:w=3월1주차:u=user-1');
+      expect(redis.get).toHaveBeenCalledWith('stats:study-1:w=3월1주차:u=user-1:p=-');
     });
 
     it('캐시 미스 시 null을 반환한다', async () => {
@@ -55,7 +55,7 @@ describe('StatsCacheService', () => {
       const result = await service.get('study-1');
 
       expect(result).toBeNull();
-      expect(redis.get).toHaveBeenCalledWith('stats:study-1:w=-:u=-');
+      expect(redis.get).toHaveBeenCalledWith('stats:study-1:w=-:u=-:p=-');
     });
 
     it('weekNumber만 지정 시 userId는 - 로 키 생성', async () => {
@@ -63,7 +63,7 @@ describe('StatsCacheService', () => {
 
       await service.get('study-1', '3월1주차');
 
-      expect(redis.get).toHaveBeenCalledWith('stats:study-1:w=3월1주차:u=-');
+      expect(redis.get).toHaveBeenCalledWith('stats:study-1:w=3월1주차:u=-:p=-');
     });
 
     it('userId만 지정 시 weekNumber는 - 로 키 생성', async () => {
@@ -71,7 +71,28 @@ describe('StatsCacheService', () => {
 
       await service.get('study-1', undefined, 'user-1');
 
-      expect(redis.get).toHaveBeenCalledWith('stats:study-1:w=-:u=user-1');
+      expect(redis.get).toHaveBeenCalledWith('stats:study-1:w=-:u=user-1:p=-');
+    });
+
+    it('activeProblemIds 지정 시 SHA-256 fingerprint로 키 생성', async () => {
+      redis.get.mockResolvedValue(null);
+
+      await service.get('study-1', undefined, undefined, ['p2', 'p1', 'p3']);
+
+      // 정렬 후 'p1,p2,p3' → SHA-256 앞 8자
+      const { createHash } = require('crypto');
+      const expected = createHash('sha256').update('p1,p2,p3').digest('hex').slice(0, 8);
+      expect(redis.get).toHaveBeenCalledWith(`stats:study-1:w=-:u=-:p=${expected}`);
+    });
+
+    it('activeProblemIds 순서가 달라도 같은 fingerprint 생성', async () => {
+      redis.get.mockResolvedValue(null);
+
+      await service.get('study-1', undefined, undefined, ['p3', 'p1', 'p2']);
+
+      const { createHash } = require('crypto');
+      const expected = createHash('sha256').update('p1,p2,p3').digest('hex').slice(0, 8);
+      expect(redis.get).toHaveBeenCalledWith(`stats:study-1:w=-:u=-:p=${expected}`);
     });
 
     it('Fail-Open: Redis 에러 시 null 반환, 예외 전파 없음', async () => {
@@ -92,7 +113,7 @@ describe('StatsCacheService', () => {
       await service.set('study-1', data, '3월1주차', 'user-1');
 
       expect(redis.set).toHaveBeenCalledWith(
-        'stats:study-1:w=3월1주차:u=user-1',
+        'stats:study-1:w=3월1주차:u=user-1:p=-',
         JSON.stringify(data),
         'EX',
         300,
@@ -105,8 +126,23 @@ describe('StatsCacheService', () => {
       await service.set('study-1', { count: 5 });
 
       expect(redis.set).toHaveBeenCalledWith(
-        'stats:study-1:w=-:u=-',
+        'stats:study-1:w=-:u=-:p=-',
         JSON.stringify({ count: 5 }),
+        'EX',
+        300,
+      );
+    });
+
+    it('activeProblemIds 지정 시 fingerprint로 키 생성', async () => {
+      redis.set.mockResolvedValue('OK');
+      const { createHash } = require('crypto');
+      const fp = createHash('sha256').update('p1,p2').digest('hex').slice(0, 8);
+
+      await service.set('study-1', { x: 1 }, undefined, undefined, ['p2', 'p1']);
+
+      expect(redis.set).toHaveBeenCalledWith(
+        `stats:study-1:w=-:u=-:p=${fp}`,
+        JSON.stringify({ x: 1 }),
         'EX',
         300,
       );
@@ -122,11 +158,11 @@ describe('StatsCacheService', () => {
   // ─── invalidate() ───────────────────────────────────────────────
   describe('invalidate()', () => {
     it('SCAN + DEL로 패턴 키를 배치 삭제한다', async () => {
-      // 첫 SCAN: cursor=42, keys=['stats:study-1:w=-:u=-']
-      // 두 번째 SCAN: cursor=0 (종료), keys=['stats:study-1:w=3월1주차:u=user-1']
+      // 첫 SCAN: cursor=42, keys=['stats:study-1:w=-:u=-:p=-']
+      // 두 번째 SCAN: cursor=0 (종료), keys=['stats:study-1:w=3월1주차:u=user-1:p=-']
       redis.scan
-        .mockResolvedValueOnce(['42', ['stats:study-1:w=-:u=-']])
-        .mockResolvedValueOnce(['0', ['stats:study-1:w=3월1주차:u=user-1']]);
+        .mockResolvedValueOnce(['42', ['stats:study-1:w=-:u=-:p=-']])
+        .mockResolvedValueOnce(['0', ['stats:study-1:w=3월1주차:u=user-1:p=-']]);
       redis.del.mockResolvedValue(1);
 
       await service.invalidate('study-1');
@@ -135,8 +171,8 @@ describe('StatsCacheService', () => {
       expect(redis.scan).toHaveBeenCalledWith('0', 'MATCH', 'stats:study-1:*', 'COUNT', 100);
       expect(redis.scan).toHaveBeenCalledWith('42', 'MATCH', 'stats:study-1:*', 'COUNT', 100);
       expect(redis.del).toHaveBeenCalledTimes(2);
-      expect(redis.del).toHaveBeenCalledWith('stats:study-1:w=-:u=-');
-      expect(redis.del).toHaveBeenCalledWith('stats:study-1:w=3월1주차:u=user-1');
+      expect(redis.del).toHaveBeenCalledWith('stats:study-1:w=-:u=-:p=-');
+      expect(redis.del).toHaveBeenCalledWith('stats:study-1:w=3월1주차:u=user-1:p=-');
     });
 
     it('SCAN 결과가 빈 키 배열이면 DEL 호출하지 않는다', async () => {
