@@ -5,7 +5,13 @@ excerpt: "As AI agents multiplied, control became the problem. An arbiter, a 3-e
 tags: ["ai-dev", "agent", "governance"]
 category: journey
 order: 3
+tldr: "To govern 12 AI agents, I built a governance structure: a single Oracle channel, a 3-Echelon hierarchy, and persona-base.md as the SSoT. It delivered consistent code quality — but context cost and the Oracle bottleneck remained as trade-offs."
+relatedAdrs: ["sprint-82", "sprint-116", "sprint-114"]
 ---
+
+<Problem label="Problem">
+Running 12 agents as a team broke down without control. Who verifies whose code, who mediates conflicts, and how do shared rules stay consistent?
+</Problem>
 
 ## Turning 12 Agents into a Team
 
@@ -14,6 +20,10 @@ Calling agents one by one wasn't hard. The problem surfaced when I tried to run 
 Three questions kept coming up. Who verifies whose code? Who mediates when conflicts arise? How do you maintain shared rules?
 
 Without control, each agent churned out code independently — and technical debt piled up faster than any human could create it. When 12 agents wrote code based on their own judgment, style, quality, and direction all diverged. The very advantage of "fast output" was becoming a risk.
+
+<Decision label="Decision">
+Narrow the channel to one, split agents into priority tiers, and gather shared rules into a single file — a single Oracle channel, a 3-Echelon hierarchy, and persona-base.md as SSoT.
+</Decision>
 
 ## One Communication Channel — Oracle and Unidirectional Flow
 
@@ -91,6 +101,10 @@ The file contained several key rules.
 **Code writing rules** — Single responsibility per function, 20 lines max, DRY, SOLID. File header annotations mandatory. Inline hardcoding prohibited. These rules applied identically across all 12 agents. Whether code was written by Conductor or Herald, it followed the same style and the same quality standards.
 
 Modifying `persona-base.md` changed the behavior of all 12 agents at once. That was the core of control.
+
+<Result label="Result">
+What 67 sprints under this structure gained — and lost: consistent quality, but context cost and an Oracle bottleneck remained.
+</Result>
 
 ## What This Structure Gave — and What It Couldn't
 

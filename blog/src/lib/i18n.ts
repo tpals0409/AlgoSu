@@ -216,6 +216,12 @@ const DICTIONARY = {
     lessonsTitle: '교훈',
     carryoverTitle: '이월 항목',
     carryoverSprintPrefix: 'Sprint',
+
+    /* ─── 글 상세 포트폴리오화 (Sprint 187 Phase 3) ── */
+    postTldrLabel: 'TL;DR',
+    relatedAdrsTitle: '관련 ADR',
+    relatedAdrsSubtitle: '이 글의 결정이 기록된 의사결정 문서',
+    relatedPostsTitle: '관련 글',
   },
   en: {
     /* ─── 기존 블로그 사전 ─────────────────────────── */
@@ -421,6 +427,12 @@ const DICTIONARY = {
     lessonsTitle: 'Lessons Learned',
     carryoverTitle: 'Carryover',
     carryoverSprintPrefix: 'Sprint',
+
+    /* ─── Post detail portfolio (Sprint 187 Phase 3) ── */
+    postTldrLabel: 'TL;DR',
+    relatedAdrsTitle: 'Related ADRs',
+    relatedAdrsSubtitle: 'Decision records behind this post',
+    relatedPostsTitle: 'Related Posts',
   },
 } as const;
 

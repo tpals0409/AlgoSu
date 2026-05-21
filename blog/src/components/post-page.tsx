@@ -2,15 +2,22 @@
  * @file       post-page.tsx
  * @domain     blog
  * @layer      ui
- * @related    src/lib/i18n.ts, src/lib/posts.ts, src/lib/mdx.ts
+ * @related    src/lib/i18n.ts, src/lib/posts.ts, src/lib/mdx.ts,
+ *             src/components/post/related-adrs.tsx, src/components/post/related-posts.tsx
  *
  * 단일 포스트 상세 페이지의 공유 UI — locale에 따라 네비게이션 문자열을 분기한다.
+ * TL;DR 블록 + 관련 ADR/관련 글 섹션으로 포트폴리오형 구조를 제공한다(Sprint 187).
  */
 import { notFound } from 'next/navigation';
 import type { Locale } from '@/lib/i18n';
 import { t, getBasePath } from '@/lib/i18n';
-import { getAllPosts, getPostBySlug, getSeriesPosts } from '@/lib/posts';
+import { getAllPosts, getPostBySlug, getSeriesPosts, getRelatedPosts } from '@/lib/posts';
 import { renderMdx } from '@/lib/mdx';
+import type { AdrMeta } from '@/lib/adr/types';
+import { getAllAdrs } from '@/lib/adr/loader';
+import { buildAdrIndex } from '@/lib/adr/index-builder';
+import { RelatedAdrs } from '@/components/post/related-adrs';
+import { RelatedPosts } from '@/components/post/related-posts';
 
 interface PostPageProps {
   locale: Locale;
@@ -43,6 +50,14 @@ export async function PostPage({ locale, slug }: PostPageProps) {
     ? seriesPosts[seriesIndex + 1]
     : null;
 
+  // 관련 글 (시리즈/태그 기반) + 관련 ADR (frontmatter relatedAdrs)
+  const relatedPosts = getRelatedPosts(slug, locale);
+  const relatedAdrIds = post.meta.relatedAdrs ?? [];
+  const adrById: Map<string, AdrMeta> =
+    relatedAdrIds.length > 0
+      ? new Map(buildAdrIndex(getAllAdrs(locale)).all.map((m) => [m.id, m]))
+      : new Map();
+
   return (
     <article>
       <header className="mb-10 border-b border-border pb-8">
@@ -63,9 +78,25 @@ export async function PostPage({ locale, slug }: PostPageProps) {
           </div>
         )}
       </header>
+
+      {post.meta.tldr && (
+        <aside
+          className="mb-10 rounded-card border-l-4 border-brand bg-brand-soft px-5 py-4"
+          role="note"
+        >
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-brand-strong">
+            {t(locale, 'postTldrLabel')}
+          </p>
+          <p className="text-base leading-relaxed text-text">{post.meta.tldr}</p>
+        </aside>
+      )}
+
       <div className="prose prose-gray max-w-none">
         {content}
       </div>
+
+      <RelatedAdrs ids={relatedAdrIds} adrById={adrById} locale={locale} />
+      <RelatedPosts posts={relatedPosts} locale={locale} />
 
       {seriesPosts.length > 1 && (
         <aside className="mt-12 rounded-lg border border-border bg-surface p-5">

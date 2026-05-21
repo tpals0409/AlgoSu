@@ -53,6 +53,10 @@ export interface PostMeta {
   series?: string;
   /** 시리즈 내 순서 (1-based) — 누락 시 date 기반 자동 정렬 */
   seriesOrder?: number;
+  /** 포트폴리오형 한 줄 요약 — 글 상단 TL;DR 블록에 렌더 (Sprint 187 Phase 3) */
+  tldr?: string;
+  /** 관련 ADR id 목록 (AdrMeta.id) — 글 하단 "관련 ADR" 섹션에 카드로 렌더 */
+  relatedAdrs?: string[];
 }
 
 /**
@@ -98,6 +102,10 @@ export function getAllPosts(locale: Locale = 'ko'): PostMeta[] {
       order: typeof data.order === 'number' ? (data.order as number) : undefined,
       series: typeof data.series === 'string' ? data.series : undefined,
       seriesOrder: typeof data.seriesOrder === 'number' ? data.seriesOrder : undefined,
+      tldr: typeof data.tldr === 'string' ? data.tldr : undefined,
+      relatedAdrs: Array.isArray(data.relatedAdrs)
+        ? (data.relatedAdrs as string[])
+        : undefined,
     }))
     .sort((a, b) => {
       if (a.date !== b.date) return a.date > b.date ? -1 : 1;
@@ -117,6 +125,36 @@ export function getSeriesPosts(series: string, locale: Locale = 'ko'): PostMeta[
   return getAllPosts(locale)
     .filter((p) => p.series === series)
     .sort((a, b) => (a.seriesOrder ?? 0) - (b.seriesOrder ?? 0));
+}
+
+/**
+ * 현재 글과 연관도가 높은 다른 글을 반환한다(같은 시리즈 우선 → 공유 태그 수).
+ * 연관 점수: 같은 시리즈 +3, 공유 태그 1개당 +1. 점수 0은 제외한다.
+ *
+ * @param slug   - 기준 포스트 슬러그
+ * @param locale - 대상 언어 (기본값: 'ko')
+ * @param limit  - 최대 반환 개수 (기본값: 3)
+ */
+export function getRelatedPosts(
+  slug: string,
+  locale: Locale = 'ko',
+  limit = 3,
+): PostMeta[] {
+  const all = getAllPosts(locale);
+  const current = all.find((p) => p.slug === slug);
+  if (!current) return [];
+
+  return all
+    .filter((p) => p.slug !== slug)
+    .map((p) => {
+      const sharedTags = p.tags.filter((tag) => current.tags.includes(tag)).length;
+      const seriesBonus = current.series && p.series === current.series ? 3 : 0;
+      return { post: p, score: sharedTags + seriesBonus };
+    })
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score || (a.post.date > b.post.date ? -1 : 1))
+    .slice(0, limit)
+    .map(({ post }) => post);
 }
 
 /**

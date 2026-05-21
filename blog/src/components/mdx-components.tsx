@@ -33,6 +33,8 @@ import {
 import { HierarchyTree, HierarchyNode } from '@/components/blog/hierarchy-tree';
 import { PhaseTimeline, PhaseMilestone } from '@/components/blog/phase-timeline';
 import { DecisionBridge } from '@/components/blog/decision-bridge';
+import { Problem, Decision, Result } from '@/components/blog/pdr';
+import { ResultCallout } from '@/components/blog/result-callout';
 
 export const mdxComponents: MDXComponents = {
   // 외부 링크 — 새 탭, 안전 속성
@@ -85,4 +87,9 @@ export const mdxComponents: MDXComponents = {
   PhaseTimeline,
   PhaseMilestone,
   DecisionBridge,
+  // 포트폴리오형 글 본문 구조 (Sprint 187 Phase 3)
+  Problem,
+  Decision,
+  Result,
+  ResultCallout,
 };
