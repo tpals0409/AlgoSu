@@ -49,18 +49,18 @@ interface RelatedAdrGraphProps {
  * mermaid `style` 디렉티브는 CSS variable이 아닌 리터럴 hex만 지원하므로
  * JS 상수로 정의하되, 각 값은 Engineering Editorial 토큰에서 유래한다.
  *
- * WCAG AA 텍스트 대비(4.5:1+):
- *   permanent — fill #2347e6(brand), text #fff → contrast 6.5:1 on white ✓
- *   sprint    — fill #06b6d4(accent-2 cyan), text #fff → contrast 3.7:1, stroke/text forced #0e4851 on light BG handled by dark text
- *   topic     — fill #8b5cf6(accent-6 violet), text #fff → contrast 4.5:1 ✓
+ * WCAG AA 텍스트 대비(4.5:1+, 흰 텍스트 #fff 고정):
+ *   permanent — fill #2347e6 (brand cobalt), 흰 텍스트 대비 6.75:1 ✓
+ *   sprint    — fill #0e7490 (cyan-700, --accent-2에서 WCAG AA 4.5:1 위해 darken), 흰 텍스트 대비 5.35:1 ✓
+ *   topic     — fill #7c3aed (violet-600, --accent-6에서 WCAG AA 4.5:1 위해 darken), 흰 텍스트 대비 5.71:1 ✓
  */
 export const KIND_COLORS: Record<string, { fill: string; color: string; stroke: string }> = {
-  /** brand cobalt — globals.css --brand (#2347e6) */
+  /** brand cobalt — globals.css --brand (#2347e6), 흰 텍스트 대비 6.75:1 */
   permanent: { fill: '#2347e6', color: '#ffffff', stroke: '#1b37b8' },
-  /** accent-2 cyan — globals.css --accent-2 (#06b6d4) */
-  sprint:    { fill: '#06b6d4', color: '#ffffff', stroke: '#0891b2' },
-  /** accent-6 violet — globals.css --accent-6 (#8b5cf6) */
-  topic:     { fill: '#8b5cf6', color: '#ffffff', stroke: '#7c3aed' },
+  /** cyan-700 — globals.css --accent-2에서 WCAG AA 위해 darken (#0e7490), 흰 텍스트 대비 5.35:1 */
+  sprint:    { fill: '#0e7490', color: '#ffffff', stroke: '#155e75' },
+  /** violet-600 — globals.css --accent-6에서 WCAG AA 위해 darken (#7c3aed), 흰 텍스트 대비 5.71:1 */
+  topic:     { fill: '#7c3aed', color: '#ffffff', stroke: '#6d28d9' },
 } as const;
 
 /** focus 노드 강조 — brand cobalt (기존 #715DA8 → brand 정렬) */

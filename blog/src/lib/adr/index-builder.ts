@@ -212,7 +212,9 @@ interface FilterAdjacencyOpts {
  *
  * - nodes: `opts.kinds`에 포함된 kind만 잔존한다.
  * - edges: resolved 여부에 따라 showResolved/showUnresolved 플래그 적용 후,
- *   from·to 양쪽 노드가 모두 잔존 노드일 때만 유지한다.
+ *   from 노드가 잔존 노드일 때만 유지한다.
+ *   unresolved 엣지는 to가 비존재 참조이므로 from만 검사한다.
+ *   resolved 엣지는 from·to 양쪽 모두 잔존 노드여야 유지한다.
  *
  * 순수 함수 — 원본 AdjacencyList를 변경하지 않는다.
  *
@@ -229,7 +231,10 @@ export function filterAdjacency(
 
   const edges = adj.edges.filter((e) => {
     const passType = e.resolved ? opts.showResolved : opts.showUnresolved;
-    return passType && nodeIds.has(e.from) && nodeIds.has(e.to);
+    const fromOk = nodeIds.has(e.from);
+    /* unresolved 엣지는 to가 비존재 참조이므로 from만 검사 */
+    const toOk = e.resolved ? nodeIds.has(e.to) : true;
+    return passType && fromOk && toOk;
   });
 
   return { nodes, edges };
