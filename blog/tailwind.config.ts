@@ -15,6 +15,19 @@ const config: Config = {
   content: ['./src/**/*.{js,ts,jsx,tsx,mdx}'],
   theme: {
     extend: {
+      fontFamily: {
+        // 본문(라틴 Inter + 한글 Noto Sans KR), 헤딩(Space Grotesk), 코드(JetBrains Mono)
+        sans: ['var(--font-sans)', 'var(--font-sans-kr)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        heading: ['var(--font-heading)', 'var(--font-sans-kr)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-mono)', 'ui-monospace', 'monospace'],
+      },
+      borderRadius: {
+        card: 'var(--radius-card)',
+      },
+      boxShadow: {
+        soft: 'var(--shadow-soft)',
+        lift: 'var(--shadow-lift)',
+      },
       colors: {
         // 표면/보더/텍스트
         surface: 'var(--surface)',
@@ -28,16 +41,16 @@ const config: Config = {
         'text-muted': 'var(--text-muted)',
         'text-subtle': 'var(--text-subtle)',
 
-        // 브랜드 (기존 brand-50/500/700/900 호환 유지)
+        // 브랜드 — Cobalt (기존 brand-50/500/700/900 스케일 cobalt 정렬)
         brand: {
           DEFAULT: 'var(--brand)',
           strong: 'var(--brand-strong)',
           soft: 'var(--brand-soft)',
-          50: '#eef2ff',
-          500: '#6366f1',
-          600: '#4f46e5',
-          700: '#4338ca',
-          900: '#312e81',
+          50: '#eef1fe',
+          500: '#2347e6',
+          600: '#1d3ccc',
+          700: '#1b37b8',
+          900: '#152a8a',
         },
 
         // Callout 4종

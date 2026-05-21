@@ -14,26 +14,31 @@
  */
 @layer base {
   :root {
-    /* 표면(surface) 계층 — 배경/카드/다이어그램 */
-    --surface: #ffffff;
-    --surface-muted: #f8fafc;        /* slate-50 */
-    --surface-elevated: #ffffff;
-    --diagram-bg: #f8fafc;           /* slate-50 — 다이어그램 캔버스 */
-    --diagram-grid: #e2e8f0;         /* slate-200 */
+    /*
+     * AlgoSu Tech Blog — "Engineering Editorial" 프리미엄 토큰 (Sprint 185)
+     * 따뜻한 페이퍼 중립색 + Cobalt 강조색. 라이트 우선(다크 확장 가능 구조).
+     */
 
-    /* 보더 */
-    --border: #e2e8f0;               /* slate-200 */
-    --border-strong: #cbd5e1;        /* slate-300 */
+    /* 표면(surface) 계층 — 배경/카드/다이어그램 (warm neutral) */
+    --surface: #fbfaf9;              /* paper — 따뜻한 오프화이트 페이지 배경 */
+    --surface-muted: #f4f2ef;        /* 코드/통계 박스 */
+    --surface-elevated: #ffffff;     /* 카드 — 페이퍼 위에서 떠 보이게 순백 */
+    --diagram-bg: #f4f2ef;           /* 다이어그램 캔버스 */
+    --diagram-grid: #e7e3dd;         /* 다이어그램 그리드 */
 
-    /* 텍스트 */
-    --text: #0f172a;                 /* slate-900 */
-    --text-muted: #475569;           /* slate-600 */
-    --text-subtle: #94a3b8;          /* slate-400 */
+    /* 보더 (warm) */
+    --border: #e7e3dd;
+    --border-strong: #d6d1c8;
 
-    /* 브랜드 */
-    --brand: #6366f1;                /* indigo-500 */
-    --brand-strong: #4338ca;         /* indigo-700 */
-    --brand-soft: #eef2ff;           /* indigo-50 */
+    /* 텍스트 (warm ink) */
+    --text: #17161a;                 /* 본문 — 웜 니어블랙 */
+    --text-muted: #57545e;           /* 보조 */
+    --text-subtle: #8a8693;          /* 메타/날짜 */
+
+    /* 브랜드 — Cobalt */
+    --brand: #2347e6;                /* cobalt */
+    --brand-strong: #1b37b8;         /* 텍스트/hover — AA 6.5:1 on white */
+    --brand-soft: #eef1fe;           /* 배지/pill 배경 */
 
     /* Callout — info */
     --callout-info-bg: #eff6ff;      /* blue-50 */
@@ -55,18 +60,33 @@
     --callout-danger-border: #fca5a5;/* red-300 */
     --callout-danger-fg: #991b1b;    /* red-800 */
 
-    /* 서비스 카드 액센트 (Pipeline/ServiceGrid 등) */
-    --accent-1: #6366f1;             /* indigo */
+    /* 서비스 카드 액센트 (Pipeline/ServiceGrid 등) — accent-1은 brand(cobalt)와 정렬 */
+    --accent-1: #2347e6;             /* cobalt (brand 정렬) */
     --accent-2: #06b6d4;             /* cyan */
     --accent-3: #10b981;             /* emerald */
     --accent-4: #f59e0b;             /* amber */
     --accent-5: #ec4899;             /* pink */
     --accent-6: #8b5cf6;             /* violet */
+
+    /* 형태 스케일 — 프리미엄 라운드/섀도 (warm tint) */
+    --radius-card: 1rem;             /* 16px — 카드 라운드 */
+    --shadow-soft: 0 1px 3px rgba(23, 22, 26, 0.06), 0 1px 2px rgba(23, 22, 26, 0.04);
+    --shadow-lift: 0 8px 24px rgba(23, 22, 26, 0.10), 0 2px 6px rgba(23, 22, 26, 0.06);
+
+    /* 폰트 폴백 체인 — Latin(Inter/Space Grotesk) + 한글(Noto Sans KR) */
+    --font-body: var(--font-sans), var(--font-sans-kr), ui-sans-serif, system-ui, sans-serif;
+    --font-display: var(--font-heading), var(--font-sans-kr), ui-sans-serif, system-ui, sans-serif;
   }
 
   body {
     background-color: var(--surface);
     color: var(--text);
+    font-family: var(--font-body);
+  }
+
+  /* 헤딩·디스플레이는 Space Grotesk(라틴) + Noto Sans KR(한글) */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
   }
 
   /* 전역 인터랙션 base layer — 링크/버튼 트랜지션 + focus-visible ring */
