@@ -5,11 +5,10 @@
  * @related    types.ts, loader.ts, parser.ts
  *
  * AdrDoc[] -> AdrIndex 구축.
- * byKind 분류, bySprint 매핑, AdjacencyList 그래프, SearchDoc 플레인텍스트 인덱스.
+ * byKind 분류, bySprint 매핑, SearchDoc 플레인텍스트 인덱스.
  */
 import type { Locale } from '../i18n';
 import type {
-  AdjacencyList,
   AdrDoc,
   AdrIndex,
   AdrKind,
@@ -72,50 +71,6 @@ function toSearchDoc(doc: AdrDoc): SearchDoc {
   };
 }
 
-/* ─── 그래프 구축 ────────────────────────────────── */
-
-/**
- * AdrDoc[]에서 AdjacencyList를 구축한다.
- * 각 문서의 relatedAdrs + outgoingLinks를 edge로 변환한다.
- */
-function buildGraph(docs: AdrDoc[]): AdjacencyList {
-  const idSet = new Set(docs.map((d) => d.meta.id));
-
-  const nodes = docs.map((d) => ({
-    id: d.meta.id,
-    label: d.meta.title,
-    kind: d.meta.kind,
-    sprint: d.meta.sprint,
-  }));
-
-  const edgeSet = new Set<string>();
-  const edges: AdjacencyList['edges'] = [];
-
-  for (const doc of docs) {
-    const targets = mergeTargets(doc);
-    for (const to of targets) {
-      const key = `${doc.meta.id}->${to}`;
-      if (edgeSet.has(key)) continue;
-      edgeSet.add(key);
-      edges.push({ from: doc.meta.id, to, resolved: idSet.has(to) });
-    }
-  }
-
-  return { nodes, edges };
-}
-
-/**
- * relatedAdrs + outgoingLinks를 중복 제거하여 병합한다.
- */
-function mergeTargets(doc: AdrDoc): string[] {
-  const set = new Set<string>();
-  if (doc.meta.relatedAdrs) {
-    for (const r of doc.meta.relatedAdrs) set.add(r);
-  }
-  for (const l of doc.outgoingLinks) set.add(l);
-  return [...set];
-}
-
 /* ─── byKind 분류 ────────────────────────────────── */
 
 /**
@@ -148,32 +103,6 @@ function mapBySprint(metas: AdrMeta[]): Map<number, AdrMeta> {
   return map;
 }
 
-/* ─── 서브그래프 추출 ────────────────────────────── */
-
-/**
- * 특정 노드를 중심으로 1-hop 서브그래프를 추출한다.
- * @param full    - 전체 AdjacencyList
- * @param focusId - 중심 노드 ID
- */
-export function getSubgraph(
-  full: AdjacencyList,
-  focusId: string,
-): AdjacencyList {
-  const neighborIds = new Set<string>([focusId]);
-
-  for (const e of full.edges) {
-    if (e.from === focusId) neighborIds.add(e.to);
-    if (e.to === focusId) neighborIds.add(e.from);
-  }
-
-  const nodes = full.nodes.filter((n) => neighborIds.has(n.id));
-  const edges = full.edges.filter(
-    (e) => neighborIds.has(e.from) && neighborIds.has(e.to),
-  );
-
-  return { nodes, edges };
-}
-
 /* ─── 토픽 필터 ──────────────────────────────────── */
 
 /**
@@ -195,45 +124,6 @@ export function filterAdrsByTopic(metas: AdrMeta[], topicId: string): AdrMeta[] 
     });
 }
 
-/* ─── 그래프 필터 ────────────────────────────────── */
-
-/** filterAdjacency 옵션 */
-interface FilterAdjacencyOpts {
-  /** 포함할 노드 종류 (이 Set에 포함된 kind만 잔존) */
-  readonly kinds: ReadonlySet<AdrKind>;
-  /** false면 모든 엣지를 숨긴다 */
-  readonly showEdges: boolean;
-}
-
-/**
- * AdjacencyList를 노드 종류(kind)와 엣지 표시 여부로 필터링한다.
- *
- * - nodes: `opts.kinds`에 포함된 kind만 잔존한다.
- * - edges: `showEdges`가 true이고 from·to 양쪽 모두 잔존 노드일 때만 유지한다.
- *   to가 잔존 노드가 아니면(존재하지 않는 참조 포함) 제외하여,
- *   mermaid 렌더 시 정의되지 않은 to에 대한 암묵 노드 생성과
- *   그로 인한 노드 카운트 불일치를 구조적으로 차단한다.
- *
- * 순수 함수 — 원본 AdjacencyList를 변경하지 않는다.
- *
- * @param adj  - 필터 대상 AdjacencyList
- * @param opts - 필터 옵션 (kinds, showEdges)
- * @returns 필터링된 새 AdjacencyList
- */
-export function filterAdjacency(
-  adj: AdjacencyList,
-  opts: FilterAdjacencyOpts,
-): AdjacencyList {
-  const nodes = adj.nodes.filter((n) => opts.kinds.has(n.kind));
-  const nodeIds = new Set(nodes.map((n) => n.id));
-
-  const edges = opts.showEdges
-    ? adj.edges.filter((e) => nodeIds.has(e.from) && nodeIds.has(e.to))
-    : [];
-
-  return { nodes, edges };
-}
-
 /* ─── 메인 빌더 ──────────────────────────────────── */
 
 /**
@@ -247,7 +137,6 @@ export function buildAdrIndex(docs: AdrDoc[]): AdrIndex {
     all,
     byKind: groupByKind(all),
     bySprint: mapBySprint(all),
-    graph: buildGraph(docs),
     searchDocs: docs.map(toSearchDoc),
   };
 }

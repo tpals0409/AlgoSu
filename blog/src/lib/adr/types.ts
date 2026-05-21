@@ -154,18 +154,11 @@ export interface AdrDoc {
    * graceful degradation: 해당 섹션/표 검출 실패 시 bodyMarkdown과 동일.
    */
   bodyMarkdownForProse: string;
-  outgoingLinks: string[];
   warnings: ParseWarning[];
   decisions?: AdrDecision[];
   phases?: AdrPhaseEntry[];
   lessons?: AdrLessonEntry[];
   carryover?: AdrCarryoverEntry[];
-}
-
-/** 그래프 인접 리스트 */
-export interface AdjacencyList {
-  nodes: { id: string; label: string; kind: AdrKind; sprint?: number }[];
-  edges: { from: string; to: string; resolved: boolean }[];
 }
 
 /** 검색 인덱스용 문서 */
@@ -185,6 +178,5 @@ export interface AdrIndex {
   all: AdrMeta[];
   byKind: Record<AdrKind, AdrMeta[]>;
   bySprint: Map<number, AdrMeta>;
-  graph: AdjacencyList;
   searchDocs: SearchDoc[];
 }

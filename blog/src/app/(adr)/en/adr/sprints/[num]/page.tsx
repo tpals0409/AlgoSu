@@ -8,7 +8,6 @@
  */
 import { notFound } from 'next/navigation';
 import { getAllAdrs } from '@/lib/adr/loader';
-import { buildAdrIndex, getSubgraph } from '@/lib/adr/index-builder';
 import { AdrDetailView } from '@/components/adr/adr-detail-view';
 
 interface Props {
@@ -57,15 +56,11 @@ export default async function EnSprintDetailPage({ params }: Props) {
     allSprintNums,
   );
 
-  const fullGraph = buildAdrIndex(docs).graph;
-  const miniGraph = getSubgraph(fullGraph, doc.meta.id);
-
   return (
     <AdrDetailView
       doc={doc}
       prevSprint={prev}
       nextSprint={next}
-      miniGraph={miniGraph}
       locale="en"
     />
   );
