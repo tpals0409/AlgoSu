@@ -222,6 +222,25 @@ const DICTIONARY = {
     relatedAdrsTitle: '관련 ADR',
     relatedAdrsSubtitle: '이 글의 결정이 기록된 의사결정 문서',
     relatedPostsTitle: '관련 글',
+
+    /* ─── About 페이지 + Footer (Sprint 188 Phase 4) ── */
+    navAbout: '소개',
+    aboutName: '김세민',
+    aboutRole: 'Agentic AI Engineer & Builder',
+    aboutTagline: '방관자가 아닌 실행자입니다',
+    aboutIntro1:
+      '트렌드를 관찰하는 데 그치지 않고 직접 만들며 배웁니다. 실제 사용자가 있는 서비스를 1인으로 설계·개발·운영하면서 마주친 문제와 의사결정을 기록으로 남깁니다.',
+    aboutIntro2:
+      'AI 에이전트 기반 end-to-end 프로덕션 시스템, 리소스 제약 환경에서의 아키텍처 설계 결정, DevOps·CI/CD 자동화에 깊은 관심이 있습니다. 대표 작업물 AlgoSu는 AI 코드 리뷰·12개 에이전트 페르소나·자동화된 CI/CD 파이프라인을 갖춘 알고리즘 스터디 플랫폼입니다.',
+    aboutSkillsTitle: '핵심 역량',
+    aboutSkillBackend: 'Backend',
+    aboutSkillAi: 'AI & LLM',
+    aboutSkillInfra: 'Infrastructure',
+    aboutSkillData: 'Data',
+    aboutSkillFrontend: 'Frontend',
+    aboutCtaGithub: 'GitHub 프로필',
+    footerCopyright: '© {year} 김세민 · AlgoSu Tech',
+    footerService: 'AlgoSu 서비스',
   },
   en: {
     /* ─── 기존 블로그 사전 ─────────────────────────── */
@@ -433,6 +452,25 @@ const DICTIONARY = {
     relatedAdrsTitle: 'Related ADRs',
     relatedAdrsSubtitle: 'Decision records behind this post',
     relatedPostsTitle: 'Related Posts',
+
+    /* ─── About page + Footer (Sprint 188 Phase 4) ── */
+    navAbout: 'About',
+    aboutName: 'Semin Kim',
+    aboutRole: 'Agentic AI Engineer & Builder',
+    aboutTagline: 'Not an observer, but a doer',
+    aboutIntro1:
+      'I learn by building, not just watching trends. As a solo developer, I design, build, and operate a service with real users — and document the problems and decisions I meet along the way.',
+    aboutIntro2:
+      'I care deeply about end-to-end production systems powered by AI agents, architecture decisions under tight resource constraints, and DevOps/CI-CD automation. My flagship project, AlgoSu, is an algorithm-study platform with AI code review, 12 agent personas, and an automated CI/CD pipeline.',
+    aboutSkillsTitle: 'Core Skills',
+    aboutSkillBackend: 'Backend',
+    aboutSkillAi: 'AI & LLM',
+    aboutSkillInfra: 'Infrastructure',
+    aboutSkillData: 'Data',
+    aboutSkillFrontend: 'Frontend',
+    aboutCtaGithub: 'GitHub Profile',
+    footerCopyright: '© {year} Semin Kim · AlgoSu Tech',
+    footerService: 'AlgoSu Service',
   },
 } as const;
 
