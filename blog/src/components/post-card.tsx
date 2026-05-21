@@ -59,7 +59,7 @@ export function PostCard({
   return (
     <a
       href={`${basePath}/posts/${slug}`}
-      className="group block rounded-lg border border-border bg-surface p-6 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-brand hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+      className="group block rounded-card border border-border bg-surface-elevated p-6 shadow-soft transition-all duration-200 hover:-translate-y-0.5 hover:border-brand hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
     >
       {/* 날짜 + 카테고리 뱃지 행 */}
       <div className="mb-2 flex items-center gap-2">
@@ -71,7 +71,7 @@ export function PostCard({
         </span>
       </div>
 
-      <h2 className="mb-3 text-xl font-bold leading-snug transition-colors group-hover:text-brand">
+      <h2 className="mb-3 font-heading text-xl font-bold leading-snug transition-colors group-hover:text-brand">
         {title}
       </h2>
 
