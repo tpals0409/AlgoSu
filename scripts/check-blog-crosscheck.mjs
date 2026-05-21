@@ -47,9 +47,9 @@ const EN_DIR = join(CONTENT_ROOT, 'posts-en');
 
 /**
  * 유효한 category 값 집합.
- * SSOT: blog/src/lib/posts.ts VALID_CATEGORIES (Category union type).
+ * SSOT: blog/src/lib/posts.ts Category union — 변경 시 동기화 필수.
  */
-const VALID_CATEGORIES = new Set(['journey', 'challenge']);
+const VALID_CATEGORIES = new Set(['ai-agent', 'cicd', 'architecture', 'backend', 'platform', 'frontend', 'retrospective']);
 
 /** date 필드 형식 (YYYY-MM-DD). */
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -325,7 +325,7 @@ export function checkFrontmatter(posts, locale) {
         axis: 'schema',
         slug,
         locale,
-        detail: `category 값 무효: ${fmt(meta.category)} (허용: journey|challenge)`,
+        detail: `category 값 무효: ${fmt(meta.category)} (허용: ai-agent|cicd|architecture|backend|platform|frontend|retrospective)`,
       });
     }
     // date 가 존재하면 문자열 + YYYY-MM-DD 형식이어야 한다.
