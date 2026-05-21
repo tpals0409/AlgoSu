@@ -18,6 +18,7 @@ import { UpdateAiResultDto } from './dto/update-ai-result.dto';
 import { CreateAiSatisfactionDto } from './dto/create-ai-satisfaction.dto';
 import { PaginationQueryDto, PaginatedResult } from './dto/pagination-query.dto';
 import { SagaOrchestratorService } from '../saga/saga-orchestrator.service';
+import { StatsCacheService } from '../cache/stats-cache.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 import { ProblemServiceClient } from '../common/problem-service-client';
 
@@ -28,6 +29,21 @@ const SUBMISSION_LIST_FIELDS: (keyof Submission)[] = [
   'weekNumber', 'idempotencyKey', 'aiScore', 'aiAnalysisStatus',
   'aiSkipped', 'isLate', 'createdAt', 'updatedAt',
 ];
+
+/** getStudyStats 반환 타입 — Redis 캐시 직렬화/역직렬화 대상 */
+export interface StudyStatsResult {
+  totalSubmissions: number;
+  uniqueSubmissions: number;
+  uniqueAnalyzed: number;
+  byWeek: { week: string; count: number }[];
+  byWeekPerUser: { userId: string; week: string; count: number }[];
+  byMember: { userId: string; count: number; doneCount: number; uniqueProblemCount: number; uniqueDoneCount: number }[];
+  byMemberWeek: { userId: string; count: number }[] | null;
+  recentSubmissions: { id: string; userId: string; problemId: string; language: string; sagaStep: string; aiScore: number | null; createdAt: Date }[];
+  solvedProblemIds: string[] | null;
+  userSubmissions: { problemId: string; aiScore: number | null; createdAt: Date }[] | null;
+  submitterCountByProblem: { problemId: string; count: number; analyzedCount: number }[];
+}
 
 @Injectable()
 export class SubmissionService {
@@ -41,6 +57,7 @@ export class SubmissionService {
     private readonly sagaOrchestrator: SagaOrchestratorService,
     private readonly dataSource: DataSource,
     private readonly problemClient: ProblemServiceClient,
+    private readonly statsCache: StatsCacheService,
   ) {
     this.logger = new StructuredLoggerService();
     this.logger.setContext(SubmissionService.name);
@@ -92,6 +109,9 @@ export class SubmissionService {
 
     const saved = await this.submissionRepo.save(submission);
     this.logger.log(`제출 저장: submissionId=${saved.id}, studyId=${studyId}, saga_step=DB_SAVED`);
+
+    // 통계 캐시 무효화 — 제출 생성으로 통계 변경
+    await this.statsCache.invalidate(studyId);
 
     // Saga 진행 (비동기 — DB 업데이트 먼저, MQ 발행 나중)
     try {
@@ -259,6 +279,9 @@ export class SubmissionService {
         await this.sagaOrchestrator.advanceToDone(id, qr);
         await qr.commitTransaction();
 
+        // 통계 캐시 무효화 — AI 분석 완료로 통계 변경
+        await this.statsCache.invalidate(submission.studyId);
+
         this.logger.log(
           `AI 결과 업데이트: submissionId=${id}, status=${dto.analysisStatus}, score=${dto.score}`,
         );
@@ -285,20 +308,8 @@ export class SubmissionService {
    * 스터디 통계 조회 — 내부 API 전용
    * Gateway에서 GET /api/studies/:id/stats 호출 시 사용
    */
-  async getStudyStats(studyId: string, weekNumber?: string, userId?: string, activeProblemIds?: string[]): Promise<{
-    totalSubmissions: number;
-    uniqueSubmissions: number;
-    uniqueAnalyzed: number;
-    byWeek: { week: string; count: number }[];
-    byWeekPerUser: { userId: string; week: string; count: number }[];
-    byMember: { userId: string; count: number; doneCount: number; uniqueProblemCount: number; uniqueDoneCount: number }[];
-    byMemberWeek: { userId: string; count: number }[] | null;
-    recentSubmissions: { id: string; userId: string; problemId: string; language: string; sagaStep: string; aiScore: number | null; createdAt: Date }[];
-    solvedProblemIds: string[] | null;
-    userSubmissions: { problemId: string; aiScore: number | null; createdAt: Date }[] | null;
-    submitterCountByProblem: { problemId: string; count: number; analyzedCount: number }[];
-  }> {
-    // activeProblemIds가 빈 배열이면 ACTIVE 문제가 없으므로 즉시 빈 결과 반환
+  async getStudyStats(studyId: string, weekNumber?: string, userId?: string, activeProblemIds?: string[]): Promise<StudyStatsResult> {
+    // activeProblemIds가 빈 배열이면 ACTIVE 문제가 없으므로 즉시 빈 결과 반환 (캐시 전 — Critic P2)
     if (activeProblemIds && activeProblemIds.length === 0) {
       return {
         totalSubmissions: 0,
@@ -314,6 +325,10 @@ export class SubmissionService {
         submitterCountByProblem: [],
       };
     }
+
+    // Cache-Aside: 캐시 조회 (activeProblemIds fingerprint 포함)
+    const cached = await this.statsCache.get(studyId, weekNumber, userId, activeProblemIds);
+    if (cached !== null) return cached as StudyStatsResult;
 
     // 헬퍼: QueryBuilder에 activeProblemIds 필터 추가
     const applyProblemFilter = (qb: { andWhere: (condition: string, params?: Record<string, unknown>) => unknown }) => {
@@ -481,7 +496,12 @@ export class SubmissionService {
       });
     }
 
-    return { totalSubmissions, uniqueSubmissions: Number(uniqueSubmissions), uniqueAnalyzed: Number(uniqueAnalyzed), byWeek, byWeekPerUser, byMember, byMemberWeek, recentSubmissions, solvedProblemIds, userSubmissions, submitterCountByProblem };
+    const result = { totalSubmissions, uniqueSubmissions: Number(uniqueSubmissions), uniqueAnalyzed: Number(uniqueAnalyzed), byWeek, byWeekPerUser, byMember, byMemberWeek, recentSubmissions, solvedProblemIds, userSubmissions, submitterCountByProblem };
+
+    // Cache-Aside: 집계 결과 캐싱 (activeProblemIds fingerprint 포함)
+    await this.statsCache.set(studyId, result, weekNumber, userId, activeProblemIds);
+
+    return result;
   }
 
   /**

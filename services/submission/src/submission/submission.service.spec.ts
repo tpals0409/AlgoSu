@@ -6,6 +6,7 @@ import { SubmissionService } from './submission.service';
 import { Submission, SagaStep, GitHubSyncStatus } from './submission.entity';
 import { AiSatisfaction } from './ai-satisfaction.entity';
 import { SagaOrchestratorService } from '../saga/saga-orchestrator.service';
+import { StatsCacheService } from '../cache/stats-cache.service';
 import { ProblemServiceClient } from '../common/problem-service-client';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { UpdateAiResultDto } from './dto/update-ai-result.dto';
@@ -56,6 +57,13 @@ const mockProblemServiceClient = () => ({
   getSourcePlatform: jest.fn().mockResolvedValue(undefined),
   getDeadline: jest.fn().mockResolvedValue({ isLate: false, weekNumber: null }),
   getProblemInfo: jest.fn().mockResolvedValue({ title: '', description: '' }),
+});
+
+/** Sprint 194 — StatsCacheService mock (Fail-Open 캐시) */
+const mockStatsCacheService = () => ({
+  get: jest.fn().mockResolvedValue(null),
+  set: jest.fn().mockResolvedValue(undefined),
+  invalidate: jest.fn().mockResolvedValue(undefined),
 });
 
 const createMockTransactionRunner = () => ({
@@ -109,6 +117,7 @@ describe('SubmissionService', () => {
   let sagaOrchestrator: jest.Mocked<SagaOrchestratorService>;
   let dataSource: jest.Mocked<DataSource>;
   let problemClient: ReturnType<typeof mockProblemServiceClient>;
+  let statsCache: ReturnType<typeof mockStatsCacheService>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -119,6 +128,7 @@ describe('SubmissionService', () => {
         { provide: SagaOrchestratorService, useFactory: mockSagaOrchestrator },
         { provide: DataSource, useFactory: mockDataSource },
         { provide: ProblemServiceClient, useFactory: mockProblemServiceClient },
+        { provide: StatsCacheService, useFactory: mockStatsCacheService },
       ],
     }).compile();
 
@@ -127,6 +137,7 @@ describe('SubmissionService', () => {
     sagaOrchestrator = module.get(SagaOrchestratorService);
     dataSource = module.get(DataSource);
     problemClient = module.get(ProblemServiceClient);
+    statsCache = module.get(StatsCacheService);
   });
 
   afterEach(() => {
@@ -1199,6 +1210,115 @@ describe('SubmissionService', () => {
       expect(repo.create).toHaveBeenCalledWith(
         expect.objectContaining({ isLate: false, weekNumber: '3월2주차' }),
       );
+    });
+  });
+
+  // ─── 20. Redis 통계 캐시 통합 (Sprint 194) ─────────────────────
+  describe('Redis 통계 캐시 (Sprint 194)', () => {
+    describe('getStudyStats() — cache-aside', () => {
+      let mockQb: ReturnType<typeof createMockQueryBuilder>;
+
+      beforeEach(() => {
+        mockQb = createMockQueryBuilder();
+        repo.createQueryBuilder.mockReturnValue(mockQb as any);
+      });
+
+      it('캐시 히트 시 DB 쿼리를 호출하지 않고 캐시 데이터를 반환한다', async () => {
+        const cachedData = { totalSubmissions: 42, uniqueSubmissions: 30, uniqueAnalyzed: 25, byWeek: [], byWeekPerUser: [], byMember: [], byMemberWeek: null, recentSubmissions: [], solvedProblemIds: null, userSubmissions: null, submitterCountByProblem: [] };
+        statsCache.get.mockResolvedValue(cachedData);
+
+        const result = await service.getStudyStats('study-uuid-1', '3월1주차', 'user-1');
+
+        expect(result).toEqual(cachedData);
+        expect(statsCache.get).toHaveBeenCalledWith('study-uuid-1', '3월1주차', 'user-1', undefined);
+        expect(repo.count).not.toHaveBeenCalled();
+        expect(repo.createQueryBuilder).not.toHaveBeenCalled();
+        expect(repo.find).not.toHaveBeenCalled();
+      });
+
+      it('캐시 미스 시 DB 쿼리 실행 후 set을 호출한다', async () => {
+        statsCache.get.mockResolvedValue(null);
+        repo.count.mockResolvedValue(10);
+        mockQb.getRawMany
+          .mockResolvedValueOnce([{ cnt: 5 }])
+          .mockResolvedValueOnce([{ cnt: 3 }])
+          .mockResolvedValueOnce([])
+          .mockResolvedValueOnce([])
+          .mockResolvedValueOnce([])
+          .mockResolvedValueOnce([]);
+        repo.find.mockResolvedValue([]);
+
+        await service.getStudyStats('study-uuid-1');
+
+        expect(statsCache.get).toHaveBeenCalledWith('study-uuid-1', undefined, undefined, undefined);
+        expect(repo.count).toHaveBeenCalled();
+        expect(statsCache.set).toHaveBeenCalledWith(
+          'study-uuid-1',
+          expect.objectContaining({ totalSubmissions: 10 }),
+          undefined,
+          undefined,
+          undefined,
+        );
+      });
+    });
+
+    describe('create() — invalidate 호출', () => {
+      it('제출 저장 성공 후 statsCache.invalidate를 호출한다', async () => {
+        const saved = createMockSubmission();
+        repo.findOne.mockResolvedValue(null);
+        repo.create.mockReturnValue(saved);
+        repo.save.mockResolvedValue(saved);
+        sagaOrchestrator.advanceToGitHubQueued.mockResolvedValue(undefined);
+
+        const dto: CreateSubmissionDto = {
+          problemId: 'problem-uuid-1',
+          language: 'python',
+          code: 'print("hello")',
+        };
+
+        await service.create(dto, 'user-1', 'study-uuid-1');
+
+        expect(statsCache.invalidate).toHaveBeenCalledWith('study-uuid-1');
+      });
+    });
+
+    describe('updateAiResult() — invalidate 호출', () => {
+      it('AI 분석 completed 시 statsCache.invalidate를 호출한다', async () => {
+        const submission = createMockSubmission();
+        const savedSubmission = createMockSubmission({ aiAnalysisStatus: 'completed', aiScore: 85 });
+        repo.findOne.mockResolvedValue(submission);
+
+        const mockQr = createMockTransactionRunner();
+        mockQr.manager.save.mockResolvedValue(savedSubmission);
+        (dataSource.createQueryRunner as jest.Mock).mockReturnValue(mockQr);
+        sagaOrchestrator.advanceToDone.mockResolvedValue(undefined);
+
+        const dto: UpdateAiResultDto = {
+          feedback: '좋은 코드',
+          score: 85,
+          analysisStatus: 'completed',
+        };
+
+        await service.updateAiResult('sub-uuid-1', dto);
+
+        expect(statsCache.invalidate).toHaveBeenCalledWith('study-uuid-1');
+      });
+
+      it('AI 분석 delayed 시 statsCache.invalidate를 호출하지 않는다', async () => {
+        const submission = createMockSubmission();
+        repo.findOne.mockResolvedValue(submission);
+        repo.save.mockResolvedValue(createMockSubmission({ aiAnalysisStatus: 'delayed' }));
+
+        const dto: UpdateAiResultDto = {
+          feedback: '대기중',
+          score: 0,
+          analysisStatus: 'delayed',
+        };
+
+        await service.updateAiResult('sub-uuid-1', dto);
+
+        expect(statsCache.invalidate).not.toHaveBeenCalled();
+      });
     });
   });
 });

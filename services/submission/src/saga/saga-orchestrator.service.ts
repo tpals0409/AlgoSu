@@ -16,6 +16,7 @@ import { StructuredLoggerService } from '../common/logger/structured-logger.serv
 import { CircuitBreakerService } from '../common/circuit-breaker';
 import { buildHttpError } from '../common/circuit-breaker/circuit-breaker.constants';
 import { ProblemServiceClient } from '../common/problem-service-client';
+import { StatsCacheService } from '../cache/stats-cache.service';
 
 /**
  * Saga Orchestrator -- 제출 플로우 상태 관리
@@ -56,6 +57,7 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
     private readonly configService: ConfigService,
     private readonly cbService: CircuitBreakerService,
     private readonly problemClient: ProblemServiceClient,
+    private readonly statsCache: StatsCacheService,
   ) {
     this.logger = new StructuredLoggerService();
     this.logger.setContext(SagaOrchestratorService.name);
@@ -213,6 +215,9 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
         );
         return;
       }
+
+      // 통계 캐시 무효화 — DONE 전환으로 통계 변경
+      await this.statsCache.invalidate(submission.studyId);
 
       this.logger.log(
         `AI 한도 초과 -> DONE(aiSkipped): submissionId=${submissionId}, userId=${submission.userId}`,
@@ -376,6 +381,11 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
         aiAnalysisStatus: 'skipped',
         aiSkipped: true,
       });
+
+      // 통계 캐시 무효화 — DONE 전환으로 통계 변경
+      const tokenInvalidSub = await this.submissionRepo.findOne({ where: { id: submissionId }, select: ['studyId'] });
+      if (tokenInvalidSub) await this.statsCache.invalidate(tokenInvalidSub.studyId);
+
       this.logger.warn(
         `GitHub TOKEN_INVALID -- AI 분석 스킵, DONE 처리: submissionId=${submissionId}`,
       );
@@ -399,6 +409,10 @@ export class SagaOrchestratorService implements OnModuleInit, OnModuleDestroy {
       );
       return;
     }
+
+    // 통계 캐시 무효화 — DONE 전환으로 통계 변경
+    const aiFailedSub = await this.submissionRepo.findOne({ where: { id: submissionId }, select: ['studyId'] });
+    if (aiFailedSub) await this.statsCache.invalidate(aiFailedSub.studyId);
 
     this.logger.warn(`AI 분석 실패 -- 제출은 DONE 처리: submissionId=${submissionId}`);
   }
