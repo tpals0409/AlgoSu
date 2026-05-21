@@ -10,7 +10,8 @@ related:
 `.claude-tools/` 디렉토리의 현재 상태, 파일별 분류, 운영 정책을 명문화합니다.
 
 > Sprint 150 이후 Oracle dispatch 인프라가 `~/.claude/oracle/bin/` 스택으로 전환되어,
-> `.claude-tools/` 7개 스크립트는 대부분 deprecated/dormant 상태입니다.
+> `.claude-tools/` 스크립트는 대부분 deprecated/dormant 상태입니다.
+> Sprint 191에서 deprecated 2파일(`claude-team.sh`, `discord-receiver.sh`)을 삭제(Phase 2 완료)했습니다.
 
 ## 1. 디렉토리 상태
 
@@ -22,9 +23,7 @@ related:
 
 | 파일 | 상태 | 용도 | 비고 |
 |------|------|------|------|
-| `claude-team.sh` | **deprecated** | 범용 tmux Agent Teams CLI | Sprint 82 ADR 산출물, `oracle-spawn.sh`로 대체 |
 | `oracle-respond.sh` | **dormant** | Discord PM 수신 시 Oracle 자동 응답 | trigger path 불명, 2026-02-28 이후 inactive |
-| `discord-receiver.sh` | **deprecated** | Discord polling (Bash) | `.py` 버전과 기능 중복 |
 | `discord-receiver.py` | **dormant** | Discord polling (Python) | polling trigger 미확인 |
 | `discord-send.sh` | **live** | Oracle -> Discord 전송 (4채널) | `_base.md` 금지 정책 있으나 호출 가능, 제거 금지 |
 | `oracle-system-prompt.md` | **reference** | Oracle 역할 정의 | `.claude/commands/algosu-oracle.md`가 SSOT |
@@ -44,16 +43,16 @@ related:
 
 ### 신규 dispatch 작업
 
-| 용도 | 사용할 도구 | 금지 도구 |
-|------|-----------|----------|
-| Task 생성 | `~/.claude/oracle/bin/oracle-create-task.sh` | `.claude-tools/claude-team.sh` |
-| Agent spawn | `~/.claude/oracle/bin/oracle-spawn.sh` | `.claude-tools/claude-team.sh` |
-| 상태 확인 | `~/.claude/oracle/bin/oracle-status.sh` | 없음 |
-| 결과 수거 | `~/.claude/oracle/bin/oracle-reap.sh` | 없음 |
+| 용도 | 사용할 도구 | 비고 |
+|------|-----------|------|
+| Task 생성 | `~/.claude/oracle/bin/oracle-create-task.sh` | 구 `claude-team.sh` Sprint 191 삭제 |
+| Agent spawn | `~/.claude/oracle/bin/oracle-spawn.sh` | 구 `claude-team.sh` Sprint 191 삭제 |
+| 상태 확인 | `~/.claude/oracle/bin/oracle-status.sh` | — |
+| 결과 수거 | `~/.claude/oracle/bin/oracle-reap.sh` | — |
 
 ### 보안 주의
 
-- `discord-receiver.sh`와 `discord-send.sh`에 Discord BOT_TOKEN 평문 포함
+- `discord-send.sh`(및 dormant `discord-receiver.py`)에 Discord BOT_TOKEN 평문 포함
 - `.gitignore`로 repo 미노출 상태 유지 중
 - 이 파일들을 tracked으로 전환하거나 내용을 다른 문서에 복사하는 것은 **금지**
 
@@ -67,7 +66,7 @@ related:
 | 단계 | 범위 | 선행 조건 |
 |------|------|----------|
 | Phase 1 (Sprint 156) | 운영 정책 RUNBOOK 명문화 | 없음 (본 문서) |
-| Phase 2 (미정) | deprecated 파일 삭제 (`claude-team.sh`, `discord-receiver.sh`) | trigger path 검증 완료 |
+| Phase 2 (Sprint 191 ✅) | deprecated 파일 삭제 (`claude-team.sh`, `discord-receiver.sh`) | trigger path 검증 완료 — live caller 0건 확인 후 삭제 |
 | Phase 3 (미정) | dormant 파일 결정 (재활성화 또는 삭제) | Discord 운영 방향 결정 |
 | Phase 4 (미정) | `discord-send.sh` 정책 재검토 | Agent 간 통신 아키텍처 확정 |
 
@@ -79,3 +78,4 @@ related:
 | Sprint 125~126 | Discord 수신/송신 스크립트 추가, Oracle 자동 응답 파이프라인 구축 |
 | Sprint 150 | `~/.claude/oracle/bin/` SSOT 전환 결정 (시드 #16) |
 | Sprint 156 | 본 RUNBOOK 작성 — 운영 정책 명문화 |
+| Sprint 191 | Phase 2 실행 — deprecated `claude-team.sh`·`discord-receiver.sh` 삭제 (trigger path 검증: oracle bin·내부 live caller 0건) |
