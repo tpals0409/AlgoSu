@@ -23,11 +23,13 @@ interface HeaderProps {
  *
  * 우측 네비:
  *  - ADR 진입 링크 (`/adr/` for ko, `/en/adr/` for en, Sprint 157)
+ *  - About 진입 링크 (`/about/`, Sprint 188)
  *  - LocaleToggle
  */
 export function Header({ locale }: HeaderProps) {
   const brandHref = getBasePath(locale) || '/';
   const adrHref = `${getBasePath(locale)}/adr/`;
+  const aboutHref = `${getBasePath(locale)}/about/`;
 
   return (
     <header className="border-b border-border">
@@ -41,6 +43,12 @@ export function Header({ locale }: HeaderProps) {
             className="text-sm font-medium text-text-muted hover:text-brand"
           >
             {t(locale, 'navAdr')}
+          </a>
+          <a
+            href={aboutHref}
+            className="text-sm font-medium text-text-muted hover:text-brand"
+          >
+            {t(locale, 'navAbout')}
           </a>
           <LocaleToggle />
         </div>

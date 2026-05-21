@@ -17,6 +17,54 @@ import type { DictKey } from '@/lib/i18n';
 /** AlgoSu 운영 서비스 진입 URL — Hero CTA. */
 export const ALGOSU_SERVICE_URL = 'https://algo-su.com/';
 
+/** AlgoSu 운영자 GitHub 프로필 — About/Footer 외부 링크 (Sprint 188 Phase 4). */
+export const GITHUB_URL = 'https://github.com/tpals0409';
+
+/**
+ * About 핵심 역량 그룹 1종.
+ * 그룹 라벨은 i18n 키로 참조하고, 기술명은 제품/프레임워크 고유명사라
+ * locale 무관 plain 배열로 둔다(번역 대상 아님).
+ */
+export interface AboutSkillGroup {
+  id: string;
+  /** i18n 그룹 라벨 키 (Backend / AI & LLM 등). */
+  labelKey: DictKey;
+  /** 기술명 목록 — 고유명사라 ko/en 공통 표기. */
+  items: readonly string[];
+}
+
+/**
+ * About 핵심 역량 5종 (Sprint 188 Phase 4, portfolio.leo0409.work 기준).
+ * 기술명은 고유명사라 번역하지 않고 그대로 표기한다.
+ */
+export const ABOUT_SKILL_GROUPS: readonly AboutSkillGroup[] = [
+  {
+    id: 'backend',
+    labelKey: 'aboutSkillBackend',
+    items: ['FastAPI', 'NestJS', 'Saga Pattern', 'Circuit Breaker', 'MSA'],
+  },
+  {
+    id: 'ai',
+    labelKey: 'aboutSkillAi',
+    items: ['AI Agent', 'AI Orchestration', 'Prompt Engineering', 'LoRA', 'LLM Evaluation'],
+  },
+  {
+    id: 'infra',
+    labelKey: 'aboutSkillInfra',
+    items: ['Docker', 'ArgoCD', 'GitHub Actions', 'n8n', 'k3s', 'Prometheus', 'Grafana', 'Loki'],
+  },
+  {
+    id: 'data',
+    labelKey: 'aboutSkillData',
+    items: ['PostgreSQL', 'Redis', 'RabbitMQ'],
+  },
+  {
+    id: 'frontend',
+    labelKey: 'aboutSkillFrontend',
+    items: ['Next.js', 'React', 'Tailwind CSS'],
+  },
+] as const;
+
 /**
  * 홈 성과 지표 카드 1종.
  * `value`가 null이면 동적 계산(예: ADR 총 개수)을 소비처에서 주입한다.

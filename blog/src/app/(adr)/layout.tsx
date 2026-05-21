@@ -9,6 +9,7 @@
  */
 import type { Metadata } from 'next';
 import { AdrHeader } from '@/components/adr/adr-header';
+import { Footer } from '@/components/footer';
 
 export const metadata: Metadata = {
   title: 'AlgoSu ADR',
@@ -25,9 +26,7 @@ export default function AdrLayout({ children }: { children: React.ReactNode }) {
     <>
       <AdrHeader />
       <main className="mx-auto max-w-7xl px-6 py-10">{children}</main>
-      <footer className="border-t border-border py-8 text-center text-sm text-text-muted">
-        AlgoSu Team
-      </footer>
+      <Footer />
     </>
   );
 }

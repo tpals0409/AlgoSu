@@ -9,6 +9,7 @@
  */
 import type { Metadata } from 'next';
 import { Header } from '@/components/header';
+import { Footer } from '@/components/footer';
 
 export const metadata: Metadata = {
   title: 'AlgoSu Tech Blog',
@@ -28,9 +29,7 @@ export default function EnLayout({ children }: { children: React.ReactNode }) {
       />
       <Header locale="en" />
       <main className="mx-auto max-w-4xl px-6 py-10">{children}</main>
-      <footer className="border-t border-border py-8 text-center text-sm text-text-muted">
-        AlgoSu Team
-      </footer>
+      <Footer />
     </>
   );
 }
