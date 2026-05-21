@@ -128,11 +128,18 @@ function calcImpact(body: string, prRowCount: number): Impact {
 
 /**
  * GFM 표에서 PR 헤더를 감지하고 PrTableRow[]를 추출한다.
+ *
+ * 헤더는 반드시 구분자(`|---|`) 직전 라인이어야 한다 — "PR" 문자열을 포함한 데이터 행
+ * (예: sprint-163의 `| A — PR 표 strip 기반 | ... |`)이 헤더로 오인되는 것을 차단한다(Sprint 184).
  */
 function parsePrTable(markdown: string): PrTableRow[] | undefined {
   const lines = markdown.split('\n');
   const headerIdx = lines.findIndex(
-    (l) => /\|/.test(l) && /pr|pull\s*request/i.test(l),
+    (l, i) =>
+      /\|/.test(l) &&
+      /pr|pull\s*request/i.test(l) &&
+      i + 1 < lines.length &&
+      isTableSeparatorRow(lines[i + 1]),
   );
   if (headerIdx < 0) return undefined;
 
@@ -159,6 +166,11 @@ function parsePrTable(markdown: string): PrTableRow[] | undefined {
   }
 
   return rows.length > 0 ? rows : undefined;
+}
+
+/** GFM 표 구분자 행(`| --- | :--: |` 등)인지 검사한다. */
+function isTableSeparatorRow(line: string): boolean {
+  return /^\s*\|?\s*[:\-\s|]+\|?\s*$/.test(line) && line.includes('-');
 }
 
 /**
@@ -605,19 +617,17 @@ export function extractCarryover(
  */
 export function stripPrTableLines(rawMarkdown: string): string {
   const lines = rawMarkdown.split('\n');
+  // 헤더는 구분자 직전 라인이어야 한다 — 데이터 행의 "PR" 오인 차단(parsePrTable과 동일 규칙).
   const headerIdx = lines.findIndex(
-    (l) => /\|/.test(l) && /pr|pull\s*request/i.test(l),
+    (l, i) =>
+      /\|/.test(l) &&
+      /pr|pull\s*request/i.test(l) &&
+      i + 1 < lines.length &&
+      isTableSeparatorRow(lines[i + 1]),
   );
   if (headerIdx < 0) return rawMarkdown;
-  // separator 검증 (`| --- | ...`)
-  const sepIdx = headerIdx + 1;
-  if (
-    sepIdx >= lines.length ||
-    !/^\s*\|?\s*[:\-\s|]+\|?\s*$/.test(lines[sepIdx])
-  ) {
-    return rawMarkdown;
-  }
 
+  const sepIdx = headerIdx + 1;
   let endIdx = sepIdx;
   for (let i = sepIdx + 1; i < lines.length; i++) {
     if (!lines[i].includes('|')) break;
