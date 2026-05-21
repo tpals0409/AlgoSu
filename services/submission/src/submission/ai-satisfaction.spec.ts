@@ -12,6 +12,7 @@ import { SubmissionService } from './submission.service';
 import { Submission, SagaStep, GitHubSyncStatus } from './submission.entity';
 import { AiSatisfaction } from './ai-satisfaction.entity';
 import { SagaOrchestratorService } from '../saga/saga-orchestrator.service';
+import { StatsCacheService } from '../cache/stats-cache.service';
 import { ProblemServiceClient } from '../common/problem-service-client';
 import { CreateAiSatisfactionDto } from './dto/create-ai-satisfaction.dto';
 
@@ -59,6 +60,12 @@ const mockProblemServiceClient = () => ({
   getSourcePlatform: jest.fn().mockResolvedValue(undefined),
   getDeadline: jest.fn().mockResolvedValue({ isLate: false, weekNumber: null }),
   getProblemInfo: jest.fn().mockResolvedValue({ title: '', description: '' }),
+});
+
+const mockStatsCacheService = () => ({
+  get: jest.fn().mockResolvedValue(null),
+  set: jest.fn().mockResolvedValue(undefined),
+  invalidate: jest.fn().mockResolvedValue(undefined),
 });
 
 const mockDataSource = () => ({
@@ -120,6 +127,7 @@ describe('SubmissionService — AI 만족도', () => {
         { provide: SagaOrchestratorService, useFactory: mockSagaOrchestrator },
         { provide: DataSource, useFactory: mockDataSource },
         { provide: ProblemServiceClient, useFactory: mockProblemServiceClient },
+        { provide: StatsCacheService, useFactory: mockStatsCacheService },
       ],
     }).compile();
 

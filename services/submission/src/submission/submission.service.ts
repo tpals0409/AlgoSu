@@ -18,6 +18,7 @@ import { UpdateAiResultDto } from './dto/update-ai-result.dto';
 import { CreateAiSatisfactionDto } from './dto/create-ai-satisfaction.dto';
 import { PaginationQueryDto, PaginatedResult } from './dto/pagination-query.dto';
 import { SagaOrchestratorService } from '../saga/saga-orchestrator.service';
+import { StatsCacheService } from '../cache/stats-cache.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 import { ProblemServiceClient } from '../common/problem-service-client';
 
@@ -41,6 +42,7 @@ export class SubmissionService {
     private readonly sagaOrchestrator: SagaOrchestratorService,
     private readonly dataSource: DataSource,
     private readonly problemClient: ProblemServiceClient,
+    private readonly statsCache: StatsCacheService,
   ) {
     this.logger = new StructuredLoggerService();
     this.logger.setContext(SubmissionService.name);
@@ -92,6 +94,9 @@ export class SubmissionService {
 
     const saved = await this.submissionRepo.save(submission);
     this.logger.log(`제출 저장: submissionId=${saved.id}, studyId=${studyId}, saga_step=DB_SAVED`);
+
+    // 통계 캐시 무효화 — 제출 생성으로 통계 변경
+    await this.statsCache.invalidate(studyId);
 
     // Saga 진행 (비동기 — DB 업데이트 먼저, MQ 발행 나중)
     try {
@@ -259,6 +264,9 @@ export class SubmissionService {
         await this.sagaOrchestrator.advanceToDone(id, qr);
         await qr.commitTransaction();
 
+        // 통계 캐시 무효화 — AI 분석 완료로 통계 변경
+        await this.statsCache.invalidate(submission.studyId);
+
         this.logger.log(
           `AI 결과 업데이트: submissionId=${id}, status=${dto.analysisStatus}, score=${dto.score}`,
         );
@@ -298,6 +306,10 @@ export class SubmissionService {
     userSubmissions: { problemId: string; aiScore: number | null; createdAt: Date }[] | null;
     submitterCountByProblem: { problemId: string; count: number; analyzedCount: number }[];
   }> {
+    // Cache-Aside: 캐시 조회 (activeProblemIds는 키에 포함하지 않음 — 확정 설계)
+    const cached = await this.statsCache.get(studyId, weekNumber, userId);
+    if (cached !== null) return cached as any;
+
     // activeProblemIds가 빈 배열이면 ACTIVE 문제가 없으므로 즉시 빈 결과 반환
     if (activeProblemIds && activeProblemIds.length === 0) {
       return {
@@ -481,7 +493,12 @@ export class SubmissionService {
       });
     }
 
-    return { totalSubmissions, uniqueSubmissions: Number(uniqueSubmissions), uniqueAnalyzed: Number(uniqueAnalyzed), byWeek, byWeekPerUser, byMember, byMemberWeek, recentSubmissions, solvedProblemIds, userSubmissions, submitterCountByProblem };
+    const result = { totalSubmissions, uniqueSubmissions: Number(uniqueSubmissions), uniqueAnalyzed: Number(uniqueAnalyzed), byWeek, byWeekPerUser, byMember, byMemberWeek, recentSubmissions, solvedProblemIds, userSubmissions, submitterCountByProblem };
+
+    // Cache-Aside: 집계 결과 캐싱
+    await this.statsCache.set(studyId, result, weekNumber, userId);
+
+    return result;
   }
 
   /**

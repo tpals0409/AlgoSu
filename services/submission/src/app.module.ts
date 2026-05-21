@@ -11,6 +11,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { SubmissionModule } from './submission/submission.module';
 import { ReviewModule } from './review/review.module';
 import { StudyNoteModule } from './study-note/study-note.module';
+import { CacheModule } from './cache/cache.module';
 import { MetricsModule } from './common/metrics/metrics.module';
 import { LoggerModule } from './common/logger/logger.module';
 import { HealthController } from './health.controller';
@@ -51,6 +52,7 @@ import { GatewayContextMiddleware } from './common/middleware/gateway-context.mi
     }),
     ScheduleModule.forRoot(),
     LoggerModule,
+    CacheModule,
     MetricsModule,
     ReviewModule,
     StudyNoteModule,
