@@ -177,3 +177,30 @@ class TestMetricsEndpoint:
         response = await metrics_endpoint()
         assert response.status_code == 200
         assert b"algosu" in response.body or len(response.body) > 0
+
+
+class TestCaseDExplicitMetrics:
+    """Case D (monitoring-logging.md §9-3) — Python explicit 메트릭 등록/노출 회귀 보호.
+
+    ai-analysis는 Node-style collectDefaultMetrics를 호출하지 않고 명시적
+    algosu_ai_analysis_* 메트릭만 정의한다. 명시 메트릭이 /metrics 출력에
+    실제로 등록·노출되는지(explicit metrics only 방어) 검증한다.
+
+    참고: Python prometheus_client는 GC/platform collector(process collector는
+    Linux)를 기본 REGISTRY에 자동 등록하므로 python_gc_*/python_info는 노출된다.
+    따라서 default 부재가 아니라 'Node-style default 미호출'이 Case D의 본질이며,
+    여기서는 명시 메트릭 노출만 회귀 보호한다(default 부재는 단정하지 않음).
+    """
+
+    @pytest.mark.asyncio
+    async def test_explicit_metrics_exposed(self):
+        """명시적 algosu_ai_analysis_* 메트릭이 /metrics 출력에 노출된다."""
+        # 명시 Gauge 샘플 1건 생성 (라벨 부착 후 노출 보장)
+        update_circuit_breaker_gauge("OPEN")
+
+        response = await metrics_endpoint()
+        body = response.body.decode()
+
+        assert "algosu_ai_analysis_circuit_breaker_state" in body
+        assert "algosu_ai_analysis_claude_requests_total" in body
+        assert "algosu_ai_analysis_http_requests_total" in body
