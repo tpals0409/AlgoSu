@@ -306,11 +306,7 @@ export class SubmissionService {
     userSubmissions: { problemId: string; aiScore: number | null; createdAt: Date }[] | null;
     submitterCountByProblem: { problemId: string; count: number; analyzedCount: number }[];
   }> {
-    // Cache-Aside: 캐시 조회 (activeProblemIds fingerprint 포함 — Critic P2 해소)
-    const cached = await this.statsCache.get(studyId, weekNumber, userId, activeProblemIds);
-    if (cached !== null) return cached as any;
-
-    // activeProblemIds가 빈 배열이면 ACTIVE 문제가 없으므로 즉시 빈 결과 반환
+    // activeProblemIds가 빈 배열이면 ACTIVE 문제가 없으므로 즉시 빈 결과 반환 (캐시 전 — Critic P2)
     if (activeProblemIds && activeProblemIds.length === 0) {
       return {
         totalSubmissions: 0,
@@ -326,6 +322,10 @@ export class SubmissionService {
         submitterCountByProblem: [],
       };
     }
+
+    // Cache-Aside: 캐시 조회 (activeProblemIds fingerprint 포함)
+    const cached = await this.statsCache.get(studyId, weekNumber, userId, activeProblemIds);
+    if (cached !== null) return cached as any;
 
     // 헬퍼: QueryBuilder에 activeProblemIds 필터 추가
     const applyProblemFilter = (qb: { andWhere: (condition: string, params?: Record<string, unknown>) => unknown }) => {

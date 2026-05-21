@@ -7,6 +7,7 @@ import { Submission, SagaStep, GitHubSyncStatus } from '../submission/submission
 import { MqPublisherService } from './mq-publisher.service';
 import { CircuitBreakerService } from '../common/circuit-breaker';
 import { ProblemServiceClient } from '../common/problem-service-client';
+import { StatsCacheService } from '../cache/stats-cache.service';
 
 // ─── Mock 팩토리 ────────────────────────────────────────────────
 const mockSubmissionRepo = () => ({
@@ -81,6 +82,7 @@ describe('SagaOrchestratorService', () => {
         { provide: MqPublisherService, useFactory: mockMqPublisher },
         { provide: CircuitBreakerService, useFactory: mockCircuitBreakerService },
         { provide: ProblemServiceClient, useFactory: mockProblemServiceClient },
+        { provide: StatsCacheService, useValue: { invalidate: jest.fn().mockResolvedValue(undefined) } },
         {
           provide: ConfigService,
           useValue: {
