@@ -544,7 +544,7 @@ class TestStartupShutdownEvents:
         main_mod.worker_thread = None
         main_mod.redis_client = None
 
-        asyncio.get_event_loop().run_until_complete(main_mod.startup_event())
+        asyncio.run(main_mod.startup_event())
 
         # Worker가 생성되었는지 확인
         assert main_mod.worker_instance is not None
@@ -562,7 +562,7 @@ class TestStartupShutdownEvents:
         main_mod.worker_instance = mock_worker
         main_mod.redis_client = mock_redis
 
-        asyncio.get_event_loop().run_until_complete(main_mod.shutdown_event())
+        asyncio.run(main_mod.shutdown_event())
 
         mock_worker.stop.assert_called_once()
         mock_redis.close.assert_called_once()
@@ -577,7 +577,7 @@ class TestStartupShutdownEvents:
         mock_redis = MagicMock()
         main_mod.redis_client = mock_redis
 
-        asyncio.get_event_loop().run_until_complete(main_mod.shutdown_event())
+        asyncio.run(main_mod.shutdown_event())
         mock_redis.close.assert_called_once()
 
     def test_shutdown_with_no_redis(self, mock_app_deps):
@@ -590,7 +590,7 @@ class TestStartupShutdownEvents:
         main_mod.worker_instance = mock_worker
         main_mod.redis_client = None
 
-        asyncio.get_event_loop().run_until_complete(main_mod.shutdown_event())
+        asyncio.run(main_mod.shutdown_event())
         mock_worker.stop.assert_called_once()
 
 
