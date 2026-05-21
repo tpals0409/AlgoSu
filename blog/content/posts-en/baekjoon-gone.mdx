@@ -5,6 +5,8 @@ excerpt: "On the day I saw Baekjoon's shutdown notice, migrating AlgoSu's proble
 tags: ["retrospective", "external-api", "platform-migration"]
 category: challenge
 order: 7
+tldr: "When Baekjoon — an external dependency — became unavailable, I migrated AlgoSu's problem source to Programmers over three sprints. It left lessons every externally-dependent service should remember."
+relatedAdrs: ["sprint-95", "sprint-97"]
 ---
 
 ## The Day "Algorithms Means Baekjoon" Broke
@@ -14,6 +16,10 @@ The first feeling I had when I saw the notice wasn't shock — it was something 
 AlgoSu was built on Baekjoon (BOJ). Problem metadata, difficulty badges, the submission pipeline, GitHub sync, AI feedback — BOJ was woven into every flow. After reading the notice, I didn't have to face a code problem. I had to face an assumption I'd been carrying without noticing it.
 
 ---
+
+<Problem label="Problem">
+AlgoSu leaned on an external platform for its problems — and the day that dependency broke arrived.
+</Problem>
 
 ## I Knew About the Dependency
 
@@ -41,6 +47,10 @@ That was the one-line lesson of this migration. Technically, there wasn't much I
 
 ---
 
+<Decision label="Decision">
+I decided to migrate the problem source to Programmers over three sprints.
+</Decision>
+
 ## A Migration in Three Sprints
 
 My first instinct was to cram the entire migration into one sprint. Data + backend + frontend + submissions + docs — all at once. I stopped myself while drafting the plan. The regression risk was too high. So I broke it into a three-sprint roadmap.
@@ -54,6 +64,10 @@ Looking back, the decision I'm most grateful for is choosing **pre-curated JSON 
 And the existing BOJ data? I didn't delete it. I kept it — zero migration, coexistence strategy. Every problem a user had solved on BOJ remained in their history, even after the shutdown notice. Platforms can disappear, but what users built on top of them should stay alive inside our service.
 
 ---
+
+<Result label="Result">
+What the migration achieved, and what externally-dependent services must never forget.
+</Result>
 
 ## The Outcome
 

@@ -5,6 +5,8 @@ excerpt: "JWT TTL은 2시간인데 1시간 만에 로그아웃됩니다. Cookie 
 tags: ["session", "jwt", "cookie", "debugging", "nestjs", "challenge"]
 category: challenge
 order: 6
+tldr: "\"세션이 너무 짧다\"는 버그의 핵심은 4개 레이어에 흩어진 4개의 시계였다. SSoT를 하나로 통일해 상수 교체가 아닌 구조 전환으로 해결한 기록."
+relatedAdrs: ["sprint-71", "sprint-65"]
 ---
 
 ## "세션이 너무 짧아요"
@@ -18,6 +20,10 @@ order: 6
 진단을 시작했습니다. 결론부터 말하면, **4개 레이어가 각자 다른 시계를 쓰고 있었습니다.** AI 에이전트 12명이 각 레이어를 나눠 작업하는 구조다 보니, 이런 분산 상태 불일치는 전체를 한눈에 보지 않으면 잡기 어려운 버그였습니다.
 
 ---
+
+<Problem label="문제">
+JWT TTL은 2시간인데 1시간 만에 로그아웃 — 4개 레이어가 각자의 시계를 갖고 있었다.
+</Problem>
 
 ## 4개의 시계, 4개의 진실
 
@@ -96,6 +102,10 @@ flowchart TB
 4곳이 각자 "세션 수명"이라는 같은 의미의 값을 독립적으로 관리하고 있었습니다. env 하나를 바꿔도 나머지 3곳이 따라오지 않는 구조. **이게 다음 버그의 씨앗**이었어요.
 
 ---
+
+<Decision label="결정">
+흩어진 4개의 시계를 하나의 SSoT로 통일하기로 했다.
+</Decision>
 
 ## 해결: 하나의 시계로 통일
 
@@ -228,6 +238,10 @@ export async function fetchSessionPolicy(): Promise<ClientSessionPolicy> {
 DEFAULT fallback은 서버 기본값(2h)보다 **일부러 짧게** 설정했습니다. fetch가 실패하면 조기 만료로 돌발 401을 방지하는 안전장치입니다.
 
 ---
+
+<Result label="결과">
+Before/After로 본 변화 — 상수 교체가 아닌 구조 전환의 결과.
+</Result>
 
 ## Before / After
 

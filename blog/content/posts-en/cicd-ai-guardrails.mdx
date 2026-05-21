@@ -5,6 +5,8 @@ excerpt: "The faster AI wrote code, the tighter the verification had to be. A ha
 tags: ["ai-dev", "ci-cd", "github-actions", "gitops"]
 category: journey
 order: 4
+tldr: "The faster AI wrote code, the tighter verification had to be. A hands-on account of building a safety net for AI-generated code with 15 CI jobs — from security to quality, tests, builds, and GitOps locks."
+relatedAdrs: ["ADR-027", "ADR-028", "sprint-105"]
 ---
 
 ## What Happens If You Deploy AI-Written Code Directly?
@@ -14,6 +16,10 @@ Once, I committed AI-generated code and hit git push. The code itself was fine. 
 CI ran, but **nothing got built.** Files had clearly changed, yet CI determined there were "no changes." `dorny/paths-filter` couldn't properly detect the diff from a force-pushed commit. When the first gate of the deployment pipeline — change detection — is breached, every subsequent check doesn't even execute.
 
 After this incident, force-push (amend) was banned across the entire project. And I learned just how dangerous the mindset of "AI generates code quickly, so CI can be sloppy" really is. The faster AI generates code, the tighter the verification pipeline needs to be.
+
+<Problem label="Problem">
+What happens if you ship AI-written code as-is? The speed of generation turned the verification gap into risk.
+</Problem>
 
 ## The Full CI 15-Job Map
 
@@ -33,6 +39,10 @@ AlgoSu's CI pipeline is composed of 15 jobs. These jobs don't run independently 
 <Callout type="info" title="DAG Dependency Rule">
 This pipeline is not a simple linear sequence — it's a **DAG**. It flows only from top to bottom, and no job can skip the stage above it. For example, `build-services` only executes when `test-node` + `audit-npm` + `secret-scan` have **all** succeeded. If any one fails, the build itself is blocked.
 </Callout>
+
+<Decision label="Decision">
+I stacked the safety net step by step — 8 phases, 15 jobs, from security to a GitOps lock.
+</Decision>
 
 ## Phase 1: Security Check — secret-scan
 
@@ -267,6 +277,10 @@ When ArgoCD syncs the manifests, `deploy.sh` performs a layer-by-layer sequentia
 </PhaseTimeline>
 
 Each layer only starts after the previous layer's rollout is complete. If a service fails, automatic rollback (`kubectl rollout undo`) is triggered. Infrastructure (Layer 0) cannot be rolled back, so a warning requiring manual intervention is printed on failure.
+
+<Result label="Result">
+The real incidents we hit, and the balance found between AI and CI.
+</Result>
 
 ## Lessons: Real Incidents We Experienced
 

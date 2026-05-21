@@ -5,6 +5,8 @@ excerpt: "A hands-on account of building an MSA solo while growing 12 AI agents 
 tags: ["ai-dev", "agent", "orchestration", "claude-code"]
 category: journey
 order: 1
+tldr: "Building an MSA solo, I scaled AI agents from 8 to 12 and orchestrated them. The biggest takeaway was the difference between actually doing it and not."
+relatedAdrs: ["sprint-82", "sprint-116", "sprint-117"]
 ---
 
 ## I Wanted to Build It Myself
@@ -14,6 +16,10 @@ Running an algorithm study group, there were recurring frustrations. Problem ass
 Around that time, I came across the concept of AI agent orchestration. The idea of assigning different roles to multiple AI agents and having them collaborate as a single system. The more I read about it, the more curious I became: "What would happen if I applied this to building an actual service?"
 
 I couldn't just sit around thinking about it. I decided to try it myself. Build an MSA-based study platform solo, while running AI agents like team members.
+
+<Problem label="Problem">
+Building alone is fast, but juggling 6 services left me without enough hands to keep productivity and consistency at once.
+</Problem>
 
 ## The Walls You Hit When Building Alone
 
@@ -51,6 +57,10 @@ In the end, I extracted the shared rules into a single file. `persona-base.md` �
 
 There was a context optimization benefit too. With shorter agent prompts, they followed core instructions better. And with shared rules in one place, updates only needed to be made once.
 
+<Decision label="Decision">
+I scaled the agents from 8 to 12 and specialized their roles — shared rules in persona-base.md as SSoT, domain knowledge with each agent.
+</Decision>
+
 ## From 8 to 12
 
 Running the 8-agent system, gaps started to appear.
@@ -85,6 +95,10 @@ Finally, **Scout** (Recon). There was no role to verify agents' output from the 
 </EchelonMatrix>
 
 I (the PM) only talk to Oracle. Oracle analyzes tasks and delegates to the appropriate agent, then consolidates and reports the results. Agents don't communicate directly with each other — when conflicts arise, Oracle mediates.
+
+<Result label="Result">
+Where this structure shone in practice (preventing a DB incident, catching security residue, preserving context) — and where it hit its limits.
+</Result>
 
 ## Moments I Felt It in Practice
 
