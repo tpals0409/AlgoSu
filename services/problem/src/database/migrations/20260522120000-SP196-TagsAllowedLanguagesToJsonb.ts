@@ -9,12 +9,15 @@
  * - allowed_languages: 타입 전환만, 인덱스 불필요(필터 대상 아님)
  *
  * 주의사항:
- * - ALTER TYPE은 테이블 rewrite 유발 → SET LOCAL statement_timeout=0 설정 필수
+ * - ALTER TYPE은 테이블 rewrite 유발 → 트랜잭션 내 SET LOCAL statement_timeout=0 설정 필수
  * - CREATE INDEX CONCURRENTLY는 트랜잭션 외부 실행(COMMIT/BEGIN 패턴, AddPublicIdToProblems 선례)
+ *   SET LOCAL은 COMMIT 시 소멸 → CONCURRENTLY 인덱스 빌드 보호 위해 COMMIT 직후 세션 레벨 재설정 필수
+ *   (SET statement_timeout = 0, LOCAL 없이 — 세션 전체에 적용, CONCURRENTLY 완료 후 BEGIN으로 트랜잭션 재진입)
  * - 순수 DDL (데이터 보정 없음 — 현 seed는 NULL 또는 유효 JSON뿐이라 안전)
  * - BackfillSqlCategory(1709000017000)는 varchar 시점에 이미 실행 → 순서 안전
  *
  * down(): best-effort — jsonb::text 정규화로 500자 초과 가능 (BackfillSqlCategory.down 스타일 계승)
+ *         DROP INDEX는 빠름(비-CONCURRENTLY) + 트랜잭션 내 ALTER TYPE → SET LOCAL으로 충분
  */
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
@@ -39,6 +42,9 @@ export class TagsAllowedLanguagesToJsonb20260522120000 implements MigrationInter
 
     // GIN 인덱스는 CONCURRENTLY → 트랜잭션 외부 실행 (AddPublicIdToProblems 패턴 답습)
     await queryRunner.query('COMMIT');
+    // SET LOCAL은 COMMIT 시 소멸 → CONCURRENTLY 인덱스 빌드가 프로덕션 200ms timeout으로
+    // 취소되지 않도록 세션 레벨(LOCAL 없이)로 재설정. BEGIN 재진입 후에도 세션값 유지.
+    await queryRunner.query(`SET statement_timeout = 0`);
     await queryRunner.query(`
       CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_problems_tags_gin
         ON problems USING GIN (tags jsonb_path_ops)
