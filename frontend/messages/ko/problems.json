@@ -14,6 +14,8 @@
       "finished": "종료"
     },
     "difficultyAll": "전체",
+    "tagFilterAll": "전체",
+    "tagFilterLabel": "태그",
     "empty": {
       "title": "등록된 문제가 없습니다",
       "description": "곧 새로운 문제가 추가될 예정입니다."
