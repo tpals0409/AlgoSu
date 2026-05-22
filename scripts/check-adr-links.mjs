@@ -10,7 +10,6 @@
  *
  * 검사 항목
  * - *.html 내 href="/adr/..." 또는 href="/en/adr/..." 패턴의 내부 링크 → 빌드 산출물 index.html 존재 여부
- * - search-index.json 존재 + entry count sanity check (한국어 경로 검사 시에만)
  *
  * 면제
  * - 외부 URL (https://, http://, mailto:, tel:, ftp://, file:///) 자동 skip
@@ -20,7 +19,6 @@
  * exit (직접 실행 시)
  *   0: 모든 내부 링크 정상
  *   1: broken link 존재
- *   2: search-index.json 누락 또는 비정상
  *
  * 사용법:
  *   node scripts/check-adr-links.mjs                 # 기본: blog/out/adr
@@ -84,22 +82,7 @@ function runMain() {
     console.log('[OK]   All internal links resolved');
   }
 
-  /* 3. search-index.json sanity check — KR 경로(out/adr)에서만 수행.
-   * EN 경로(out/en/adr)는 search-index.json을 별도 호스팅하지 않고
-   * 클라이언트가 /adr/search-index.json을 fetch하여 locale prefix만 재작성한다. */
-  const isEnPath = /(?:^|\/)en\/adr\/?$/.test(targetArg.replace(/\/+$/, ''));
-  if (!isEnPath) {
-    const searchResult = checkSearchIndex(targetDir);
-    if (searchResult.error) {
-      console.error(`[FAIL] ${searchResult.error}`);
-      process.exit(2);
-    }
-    console.log(`[OK]   search-index.json: ${searchResult.count} entries`);
-  } else {
-    console.log('[SKIP] search-index.json check (EN path — index served from /adr/)');
-  }
-
-  // 4. 결과 요약
+  // 3. 결과 요약
   const warnings = 0;
   console.log(`[INFO] ${broken.length} broken, ${warnings} warnings`);
 
@@ -227,36 +210,6 @@ function expectedPath(href, outRoot) {
   return relative(ROOT, join(outRoot, normalizedHref, 'index.html'));
 }
 
-/**
- * search-index.json 존재 + entry count 검증.
- * @param {string} targetDir - adr 빌드 산출물 디렉토리 절대 경로
- * @returns {{ count?: number, error?: string }}
- */
-function checkSearchIndex(targetDir) {
-  const indexPath = join(targetDir, 'search-index.json');
-
-  if (!existsSync(indexPath)) {
-    return { error: 'search-index.json not found' };
-  }
-
-  try {
-    const raw = readFileSync(indexPath, 'utf-8');
-    const data = JSON.parse(raw);
-
-    if (!Array.isArray(data)) {
-      return { error: `search-index.json is not an array (got ${typeof data})` };
-    }
-
-    if (data.length === 0) {
-      return { error: 'search-index.json is empty (0 entries)' };
-    }
-
-    return { count: data.length };
-  } catch (err) {
-    return { error: `search-index.json parse error: ${err.message}` };
-  }
-}
-
 // ──────────────────────────────────────────────────────────────────
 // Exports (라이브러리 재사용용)
 // ──────────────────────────────────────────────────────────────────
@@ -265,5 +218,4 @@ export {
   collectHtmlFiles,
   isExternalOrAnchor,
   checkInternalLinks,
-  checkSearchIndex,
 };

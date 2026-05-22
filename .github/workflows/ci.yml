@@ -140,8 +140,9 @@ jobs:
             blog:
               - 'blog/**'
               # Sprint 175 #26: blog SSG 가 실제 소비하는 ADR 소스만 트리거 (소비처 일치 원칙).
-              # loader.ts(DIR_KIND_MAP) + generate-search-index.mjs 는 루트 ADR-*.md + sprints/ + topics/ 만
+              # loader.ts(DIR_KIND_MAP) 는 루트 ADR-*.md + sprints/ + topics/ 만
               # 읽고 docs/adr/README.md(인덱스)는 명시적 제외 → README 단독 변경 시 불필요한 blog 재빌드 회피.
+              # (Sprint 201: ADR 검색 삭제로 generate-search-index.mjs 제거됨)
               # dorny/paths-filter 는 predicate-quantifier:some(OR) 이라 '!' 부정 패턴이 무력화되므로
               # 부정 대신 positive glob narrowing 으로 README 를 트리거 집합에서 제외한다.
               - 'docs/adr/ADR-*.md'
