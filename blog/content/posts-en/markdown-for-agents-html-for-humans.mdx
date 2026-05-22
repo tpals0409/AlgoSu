@@ -1,0 +1,198 @@
+---
+title: "I Chose to Spend More Tokens — Building an ADR View for Humans"
+date: "2026-05-22"
+excerpt: "What I learned by separating Markdown ADRs for agents from HTML ADRs for humans."
+tags: ["agentic-system", "adr", "context-engineering", "documentation", "llm"]
+category: retrospective
+tldr: "I separated Markdown ADRs as the agents' memory from HTML ADRs as the humans' review surface. Token costs go up, but if a person can re-read the system's memory, that's an investment in maintainability."
+---
+
+Recently I saw Andrej Karpathy make a point along the lines of "for LLM output, HTML may serve people better than Markdown."
+
+The reactions split roughly into two camps.
+
+One saw it as a good direction. The view was that LLM output could go beyond plain text and become a UI that people can read, understand, and manipulate directly.
+
+The other was a concern about token cost. HTML has more tags than Markdown, the output volume grows, and that can drive up both cost and latency.
+
+At first, I too saw this debate as simply a question of output format.
+
+Markdown or HTML. Conciseness or readability. Token efficiency or user experience.
+
+But thinking about AlgoSu's ADR documents, I realized this very problem was already happening inside my own project.
+
+## The ADRs Existed, But I Wasn't Reading Them
+
+ADRs keep piling up in AlgoSu.
+
+As I build features, change structures, hit failures, and fix them again, I've recorded important decisions as ADRs.
+
+These documents were never meant to be records for humans alone. If anything, the bigger goal was to keep the various agents from losing the project's context.
+
+Which decision was made and why, which structure we decided to stop using, which constraint must be honored in the next task.
+
+This kind of information matters when agents continue the next piece of work.
+
+So Markdown was a pretty good fit.
+
+- It's text-based, so it's easy to manage in Git.
+- The diffs are clean.
+- There's little unnecessary decoration for an agent to read.
+- It's more token-efficient than HTML.
+- It's easy to keep as a structured document.
+
+But there was a problem. I had stopped reading those documents almost entirely.
+
+The ADRs were clearly accumulating. The reasons behind decisions remained. The agents could reference those documents.
+
+Yet the operator — me — rarely opened the Markdown ADRs when I needed to retrace the project's flow.
+
+It wasn't because the documents didn't exist. It was because they weren't being read.
+
+## A Document Existing and a Document Being Read Are Different Things
+
+Markdown is a good format.
+
+It's especially familiar to developers, easy to put in a repository, and fits well with the code review flow. I've recorded most of my notes in Markdown too.
+
+But over time, the ADRs kept getting longer.
+
+As sprints accumulated, decisions piled up, and past context grew, opening a single Markdown document to follow the flow became a burden.
+
+The document clearly existed, but it wasn't in a shape that was good to re-read from a person's perspective.
+
+The important decisions, the background, the scope of impact, and the follow-up work were all mixed together in the text. It was a structure an agent could read just fine, but for a person to skim and judge quickly, it was tiring.
+
+Here I had to admit one thing.
+
+> A document being stored and a person being able to re-read that document are two different problems.
+
+The purpose of an ADR isn't simply "to leave a record." You have to be able to re-read it later, recover the reasoning behind the decision, and connect it to your current judgment.
+
+Otherwise, the document remains in the repository but, in practice during maintenance, it's nearly as good as gone.
+
+## Documents for Agents and Documents for Humans Are Different
+
+After living through this problem, the question of whether Markdown or HTML is better started to look a little different.
+
+What mattered wasn't the format itself. It was who consumes the document.
+
+AlgoSu's ADRs were playing two roles at once.
+
+The first is agent memory. It's a memory device that lets the various agents reference prior decisions and constraints so they don't repeat the same mistakes.
+
+The second is a human review surface. It's the review screen the operator — me — uses to re-read the project's flow and understand why the current structure ended up this way.
+
+The problem is that these two consumers want different document shapes.
+
+For agents, Markdown is good.
+
+- It's concise.
+- The token cost is low.
+- It's easy to parse.
+- It fits well with Git-based workflows.
+- Tracking changes through diffs is easy.
+
+For people, on the other hand, Markdown alone is sometimes not enough.
+
+- The visual hierarchy of a long document is weak.
+- The important decisions don't stand out at a glance.
+- It's hard to follow the flow across multiple ADRs.
+- It easily becomes a "document you should read but don't."
+
+So the conclusion wasn't to abandon Markdown and switch entirely to HTML. I had to separate the document's consumers.
+
+## So I Split the ADRs into Two Surfaces
+
+I didn't fully convert AlgoSu's ADRs to HTML.
+
+Instead, I changed things so that the same decision record is generated in two forms.
+
+- Markdown ADRs for agents
+- HTML ADRs for humans
+
+The Markdown ADRs remain as agent memory.
+
+This is so the agents can read prior decisions, constraints, regression-prevention rules, and follow-up work to continue the next task. In this area, conciseness and token efficiency still matter.
+
+The HTML ADRs, on the other hand, serve as a review surface for people to read.
+
+They break a long ADR into cards, sections, emphasis, and visual hierarchy to make it easy to re-read. They let you grasp the important decisions, background, impact, and follow-up work at a glance.
+
+In other words, I split one record into two views.
+
+Markdown stays with the agents, and HTML is provided to humans.
+
+This change wasn't a switch to HTML. It was a separation of the document's consumers.
+
+## Token Costs Go Up
+
+Of course, this approach has a cost.
+
+The output volume grows compared to generating Markdown alone. Since the HTML tags and structure have to be generated as well, it uses more tokens too.
+
+In an LLM-based system, tokens are cost. As output tokens grow, cost rises, and in some cases the response time can lengthen as well.
+
+This concern is valid. I knew this change would use more tokens than before.
+
+Even so, I chose this approach.
+
+Because I judged that this cost is not mere waste, but an investment in maintainability.
+
+## Not Every Token You Save Is a Good Optimization
+
+When you build LLM systems, reducing tokens becomes important.
+
+You have to cut unnecessary context, remove repeated output, keep only the information the agent needs to read, and manage cost and latency.
+
+But not every token you save is always a good optimization.
+
+<Callout type="warn" title="The two faces of a token">
+Some tokens are waste. But some tokens are the cost of reducing operational risk.
+</Callout>
+
+When people stop reading the ADRs, the documents may exist but the project's context disappears.
+
+Why this structure was chosen, why that approach was abandoned, which constraint was added to prevent which failure, which decision influenced the later structure.
+
+If a person can't recover this context, the later debugging, refactoring, and feature changes get more expensive.
+
+You saved the tokens, but if a person loses the system's memory, that may not be a real optimization.
+
+The reason I added the HTML ADRs wasn't to make good-looking documents. It was to make a maintainable surface for memory.
+
+## Documents Are Not Storage, They Are an Interface
+
+Making this change led me to rethink what a document is.
+
+A document is not mere storage.
+
+In an agentic system especially, a document is closer to an interface that carries the project's memory between people and agents.
+
+The agent reads prior context through the document, and the person recovers the system's flow through the document.
+
+If that's the case, there's no need to force the same document shape on both consumers.
+
+Agents need an efficient document. People need a readable document.
+
+Markdown and HTML may not be competitors, but rather different surfaces.
+
+## Conclusion
+
+At first, it looked like a question of whether Markdown or HTML is better.
+
+But looking again at AlgoSu's ADRs, the more important question for me was different.
+
+> Who does this document exist for?
+
+A document for agents should be concise and efficient. A document for people should be re-readable.
+
+So I didn't abandon Markdown. Instead, I added HTML.
+
+Markdown remains as the agents' memory, and HTML is provided as the humans' review screen.
+
+Token costs go up. But if a person can re-read the system's memory, I think that cost is an investment in maintainability.
+
+<Callout type="success">
+When a document's purpose differs, its surface should differ too.
+</Callout>
