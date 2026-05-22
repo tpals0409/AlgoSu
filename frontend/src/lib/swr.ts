@@ -22,7 +22,15 @@ export async function swrFetcher<T>(key: string | readonly [string, ...unknown[]
  */
 export const cacheKeys = {
   problems: {
-    all: () => '/api/problems/all' as const,
+    /**
+     * 문제 목록 캐시 키
+     * - params 없거나 tags 빈 경우 → `/api/problems/all` (기존 경로 유지)
+     * - tags 있는 경우 → `/api/problems/search/tags?tags=...` (서버사이드 필터)
+     */
+    all: (params?: URLSearchParams) => {
+      const qs = params?.toString();
+      return (qs ? `/api/problems/search/tags?${qs}` : '/api/problems/all') as string;
+    },
     byId: (id: string) => `/api/problems/${id}` as const,
   },
   submissions: {

@@ -38,6 +38,7 @@ const mockProblem: Problem = {
   description: '두 수를 더하시오.',
   weekNumber: '1',
   allowedLanguages: ['python'],
+  tags: ['DP', '그래프'],
 };
 
 describe('useProblems', () => {
@@ -45,64 +46,154 @@ describe('useProblems', () => {
     jest.clearAllMocks();
   });
 
-  it('studyId가 있을 때 문제 목록을 조회하고 데이터를 반환한다', async () => {
-    mockFetcher.mockResolvedValue([mockProblem]);
+  describe('no-tags 경로 (기존 동작 보존)', () => {
+    it('studyId가 있을 때 문제 목록을 조회하고 데이터를 반환한다', async () => {
+      mockFetcher.mockResolvedValue([mockProblem]);
 
-    const { result } = renderHook(() => useProblems('study-1'), { wrapper });
+      const { result } = renderHook(() => useProblems('study-1'), { wrapper });
 
-    // 초기 로딩 상태 검증
-    expect(result.current.isLoading).toBe(true);
-    expect(result.current.problems).toEqual([]);
+      // 초기 로딩 상태 검증
+      expect(result.current.isLoading).toBe(true);
+      expect(result.current.problems).toEqual([]);
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.problems).toEqual([mockProblem]);
+      expect(result.current.error).toBeNull();
+      // no-tags 경로: /api/problems/all (기존 SWR 키 동일성 보장)
+      expect(mockFetcher).toHaveBeenCalledWith(['/api/problems/all', 'study-1']);
     });
 
-    expect(result.current.problems).toEqual([mockProblem]);
-    expect(result.current.error).toBeNull();
-    expect(mockFetcher).toHaveBeenCalledWith(['/api/problems/all', 'study-1']);
-  });
+    it('빈 tags 배열은 no-tags 경로와 동일 SWR 키를 사용한다', async () => {
+      mockFetcher.mockResolvedValue([mockProblem]);
 
-  it('studyId가 null이면 요청을 스킵하고 빈 배열을 반환한다', () => {
-    const { result } = renderHook(() => useProblems(null), { wrapper });
+      const { result } = renderHook(() => useProblems('study-1', { tags: [] }), { wrapper });
 
-    // fetcher 미호출 검증
-    expect(mockFetcher).not.toHaveBeenCalled();
-    expect(result.current.problems).toEqual([]);
-    expect(result.current.isLoading).toBe(false);
-    expect(result.current.error).toBeNull();
-  });
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
 
-  it('fetch 실패 시 error를 반환하고 problems는 빈 배열이다', async () => {
-    const fetchError = new Error('네트워크 오류');
-    mockFetcher.mockRejectedValue(fetchError);
-
-    const { result } = renderHook(() => useProblems('study-1'), { wrapper });
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
+      // 빈 배열 → /api/problems/all (기존 경로 유지)
+      expect(mockFetcher).toHaveBeenCalledWith(['/api/problems/all', 'study-1']);
     });
 
-    expect(result.current.error).toBe(fetchError);
-    expect(result.current.problems).toEqual([]);
-  });
+    it('params 생략 시 no-tags 경로와 동일하다', async () => {
+      mockFetcher.mockResolvedValue([]);
 
-  it('mutate 함수가 노출된다', () => {
-    const { result } = renderHook(() => useProblems('study-1'), { wrapper });
+      const { result } = renderHook(() => useProblems('study-1', undefined), { wrapper });
 
-    expect(typeof result.current.mutate).toBe('function');
-  });
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
 
-  it('빈 배열 응답 시 problems가 빈 배열이다', async () => {
-    mockFetcher.mockResolvedValue([]);
-
-    const { result } = renderHook(() => useProblems('study-1'), { wrapper });
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
+      expect(mockFetcher).toHaveBeenCalledWith(['/api/problems/all', 'study-1']);
     });
 
-    expect(result.current.problems).toEqual([]);
-    expect(result.current.error).toBeNull();
+    it('studyId가 null이면 요청을 스킵하고 빈 배열을 반환한다', () => {
+      const { result } = renderHook(() => useProblems(null), { wrapper });
+
+      // fetcher 미호출 검증
+      expect(mockFetcher).not.toHaveBeenCalled();
+      expect(result.current.problems).toEqual([]);
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.error).toBeNull();
+    });
+
+    it('fetch 실패 시 error를 반환하고 problems는 빈 배열이다', async () => {
+      const fetchError = new Error('네트워크 오류');
+      mockFetcher.mockRejectedValue(fetchError);
+
+      const { result } = renderHook(() => useProblems('study-1'), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.error).toBe(fetchError);
+      expect(result.current.problems).toEqual([]);
+    });
+
+    it('mutate 함수가 노출된다', () => {
+      const { result } = renderHook(() => useProblems('study-1'), { wrapper });
+
+      expect(typeof result.current.mutate).toBe('function');
+    });
+
+    it('빈 배열 응답 시 problems가 빈 배열이다', async () => {
+      mockFetcher.mockResolvedValue([]);
+
+      const { result } = renderHook(() => useProblems('study-1'), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.problems).toEqual([]);
+      expect(result.current.error).toBeNull();
+    });
+  });
+
+  describe('tags 필터 경로 (서버사이드 필터)', () => {
+    it('단일 태그 지정 시 /search/tags?tags=dp 경로로 요청한다', async () => {
+      mockFetcher.mockResolvedValue([mockProblem]);
+
+      const { result } = renderHook(() => useProblems('study-1', { tags: ['dp'] }), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(mockFetcher).toHaveBeenCalledWith([
+        '/api/problems/search/tags?tags=dp',
+        'study-1',
+      ]);
+      expect(result.current.problems).toEqual([mockProblem]);
+    });
+
+    it('복수 태그는 반복 ?tags=a&tags=b 패턴으로 인코딩된다', async () => {
+      mockFetcher.mockResolvedValue([mockProblem]);
+
+      const { result } = renderHook(
+        () => useProblems('study-1', { tags: ['DP', '그래프'] }),
+        { wrapper },
+      );
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(mockFetcher).toHaveBeenCalledWith([
+        '/api/problems/search/tags?tags=DP&tags=%EA%B7%B8%EB%9E%98%ED%94%84',
+        'study-1',
+      ]);
+    });
+
+    it('태그 필터 결과가 없을 때 빈 배열을 반환한다', async () => {
+      mockFetcher.mockResolvedValue([]);
+
+      const { result } = renderHook(
+        () => useProblems('study-1', { tags: ['없는태그'] }),
+        { wrapper },
+      );
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.problems).toEqual([]);
+      expect(result.current.error).toBeNull();
+    });
+
+    it('studyId null + tags 지정 시 요청을 스킵한다', () => {
+      const { result } = renderHook(
+        () => useProblems(null, { tags: ['DP'] }),
+        { wrapper },
+      );
+
+      expect(mockFetcher).not.toHaveBeenCalled();
+      expect(result.current.problems).toEqual([]);
+    });
   });
 });
