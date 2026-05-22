@@ -161,22 +161,9 @@ export interface AdrDoc {
   carryover?: AdrCarryoverEntry[];
 }
 
-/** 검색 인덱스용 문서 */
-export interface SearchDoc {
-  id: string;
-  url: string;
-  title: string;
-  sprint?: number;
-  status: AdrStatus;
-  kind: AdrKind;
-  body: string;
-  agents: string[];
-}
-
 /** 전체 ADR 인덱스 */
 export interface AdrIndex {
   all: AdrMeta[];
   byKind: Record<AdrKind, AdrMeta[]>;
   bySprint: Map<number, AdrMeta>;
-  searchDocs: SearchDoc[];
 }

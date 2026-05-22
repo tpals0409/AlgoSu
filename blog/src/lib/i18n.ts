@@ -120,9 +120,6 @@ const DICTIONARY = {
     adrTitle: 'AlgoSu ADR',
     adrSubtitle: 'AlgoSu 아키텍처 결정 기록',
     navBlog: '블로그',
-    searchPlaceholder: 'ADR 검색... ( / )',
-    searchAriaLabel: 'ADR 검색',
-    searchEmpty: '검색 결과 없음',
 
     /* ─── 인덱스 통계 ──────────────────────────────── */
     statsTotal: '전체 ADR',
@@ -344,9 +341,6 @@ const DICTIONARY = {
     adrTitle: 'AlgoSu ADR',
     adrSubtitle: 'AlgoSu Architecture Decision Records',
     navBlog: 'Blog',
-    searchPlaceholder: 'Search ADR... ( / )',
-    searchAriaLabel: 'Search ADR',
-    searchEmpty: 'No results',
 
     /* ─── Index stats ──────────────────────────────── */
     statsTotal: 'Total ADRs',

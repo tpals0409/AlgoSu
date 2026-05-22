@@ -2,9 +2,9 @@
  * @file       adr-header.tsx
  * @domain     blog / adr
  * @layer      ui
- * @related    src/app/(adr)/layout.tsx, src/components/adr/search-box.tsx, src/components/locale-toggle.tsx
+ * @related    src/app/(adr)/layout.tsx, src/components/locale-toggle.tsx
  *
- * ADR 사이트 전용 헤더 — 브랜드 링크, SearchBox, Blog 링크, LocaleToggle.
+ * ADR 사이트 전용 헤더 — 브랜드 링크, Blog 링크, LocaleToggle.
  * 현재 pathname이 `/en`으로 시작하면 ADR 사이트의 locale을 'en'으로 판별한다.
  * locale에 따라 모든 네비게이션 링크 prefix를 자동 조정한다.
  */
@@ -13,7 +13,6 @@
 import { usePathname } from 'next/navigation';
 import type { Locale } from '@/lib/i18n';
 import { t } from '@/lib/i18n';
-import { SearchBox } from '@/components/adr/search-box';
 import { LocaleToggle } from '@/components/locale-toggle';
 
 /** pathname → locale 판별 ('en' 접두사 여부). */
@@ -39,7 +38,6 @@ export function AdrHeader() {
           </a>
         </div>
         <div className="flex items-center gap-4">
-          <SearchBox />
           <a
             href={blogHref}
             className="text-sm text-text-muted transition-colors hover:text-brand"
