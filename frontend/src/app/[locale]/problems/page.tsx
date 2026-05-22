@@ -92,7 +92,7 @@ export default function ProblemsPage(): ReactNode {
    * 전체 문제 조회 — 항상 태그 없이 로드해 태그 칩 목록 도출에 사용.
    * selectedTags가 비어있을 때는 `problems`와 동일한 SWR 키 → 네트워크 요청 1회로 dedup.
    */
-  const { problems: allProblems } = useProblems(activeSid);
+  const { problems: allProblems, mutate: mutateAllProblems } = useProblems(activeSid);
 
   // ─── 태그 필터 상태 ─────────────────────────
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -162,8 +162,9 @@ export default function ProblemsPage(): ReactNode {
 
   const handleAddProblem = useCallback((_newProblem: NewProblemData) => {
     mutateProblems();
+    mutateAllProblems();
     incrementProblemsVersion();
-  }, [mutateProblems, incrementProblemsVersion]);
+  }, [mutateProblems, mutateAllProblems, incrementProblemsVersion]);
 
   // ─── FILTERING ──────────────────────────
 
