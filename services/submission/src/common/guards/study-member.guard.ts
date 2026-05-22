@@ -12,11 +12,13 @@
 import {
   CanActivate,
   ExecutionContext,
+  Inject,
   Injectable,
   ForbiddenException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
+import { REDIS_CLIENT } from '../../cache/cache.constants';
 import { StructuredLoggerService } from '../logger/structured-logger.service';
 import { GatewayRequest } from '../middleware/gateway-context.middleware';
 
@@ -44,17 +46,14 @@ const ALLOWED_ROLES = new Set(['ADMIN', 'MEMBER']);
 @Injectable()
 export class StudyMemberGuard implements CanActivate {
   private readonly logger: StructuredLoggerService;
-  private readonly redis: Redis;
   private static readonly CACHE_TTL_SECONDS = 300; // 5분 — 통일 규격
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    @Inject(REDIS_CLIENT) private readonly redis: Redis,
+  ) {
     this.logger = new StructuredLoggerService();
     this.logger.setContext(StudyMemberGuard.name);
-    const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
-    this.redis = new Redis(redisUrl);
-    this.redis.on('error', (err: Error) => {
-      this.logger.error(`Redis 연결 오류: ${err.message}`);
-    });
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {

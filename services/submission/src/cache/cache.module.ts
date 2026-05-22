@@ -9,8 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 import { StatsCacheService } from './stats-cache.service';
-
-export const REDIS_CLIENT = 'REDIS_CLIENT';
+import { REDIS_CLIENT } from './cache.constants';
 
 /**
  * Redis 캐시 모듈 — 대시보드 통계 캐싱

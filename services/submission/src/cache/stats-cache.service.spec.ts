@@ -6,7 +6,7 @@
  */
 import { Test, TestingModule } from '@nestjs/testing';
 import { StatsCacheService } from './stats-cache.service';
-import { REDIS_CLIENT } from './cache.module';
+import { REDIS_CLIENT } from './cache.constants';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 const mockRedis = () => ({

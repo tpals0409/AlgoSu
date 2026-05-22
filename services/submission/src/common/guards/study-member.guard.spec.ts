@@ -12,17 +12,11 @@ import { ConfigService } from '@nestjs/config';
 import { StudyMemberGuard } from './study-member.guard';
 import { GatewayRequest } from '../middleware/gateway-context.middleware';
 
-// --- ioredis 모듈 모킹 ---
+// --- Redis mock (CacheModule REDIS_CLIENT DI 시뮬레이션) ---
 const mockRedis = {
   get: jest.fn(),
   set: jest.fn(),
-  on: jest.fn(),
 };
-
-jest.mock('ioredis', () => {
-  const MockRedis = jest.fn().mockImplementation(() => mockRedis);
-  return { __esModule: true, default: MockRedis };
-});
 
 // --- StructuredLoggerService 모킹 ---
 jest.mock('../logger/structured-logger.service', () => ({
@@ -93,7 +87,7 @@ describe('StudyMemberGuard', () => {
       }),
     } as unknown as ConfigService;
 
-    guard = new StudyMemberGuard(configService);
+    guard = new StudyMemberGuard(configService, mockRedis as any);
   });
 
   // ──────────────────────────────────────────────

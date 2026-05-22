@@ -7,7 +7,7 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { createHash } from 'crypto';
 import Redis from 'ioredis';
-import { REDIS_CLIENT } from './cache.module';
+import { REDIS_CLIENT } from './cache.constants';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 
 /** SCAN 배치 크기 — 프로덕션 블로킹 최소화 */
