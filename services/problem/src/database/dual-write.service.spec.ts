@@ -317,12 +317,12 @@ describe('DualWriteService', () => {
       expect(result).toEqual([mockProblem]);
     });
 
-    it('정렬: weekNumber DESC, createdAt ASC', async () => {
+    it('정렬: weekNumber ASC, createdAt ASC (findAllByStudy /all 대체 정합)', async () => {
       mockQb.getMany.mockResolvedValue([]);
 
       await service.findByTagsContaining('study-001', ['스택'], 'or', [ProblemStatus.ACTIVE]);
 
-      expect(mockQb.orderBy).toHaveBeenCalledWith('problem.weekNumber', 'DESC');
+      expect(mockQb.orderBy).toHaveBeenCalledWith('problem.weekNumber', 'ASC');
       expect(mockQb.addOrderBy).toHaveBeenCalledWith('problem.createdAt', 'ASC');
     });
 

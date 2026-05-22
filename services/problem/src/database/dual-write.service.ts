@@ -131,6 +131,9 @@ export class DualWriteService implements OnModuleInit {
    * AND: 모든 태그를 포함하는 문제 (단일 @> 조건, GIN 인덱스 최대 활용)
    * OR: 임의 태그를 하나 이상 포함하는 문제 (Brackets로 OR 조건 묶음)
    *
+   * 정렬: weekNumber ASC, createdAt ASC — findAllByStudy(/all 엔드포인트)와 동일 정합성 유지.
+   * 태그 토글 시 목록 재정렬 없이 /all 대체 가능.
+   *
    * @param studyId  스터디 ID (스코핑)
    * @param tags     검색 태그 배열 (비어있지 않음)
    * @param mode     'and' | 'or' — 태그 일치 방식
@@ -169,7 +172,7 @@ export class DualWriteService implements OnModuleInit {
     }
 
     return qb
-      .orderBy('problem.weekNumber', 'DESC')
+      .orderBy('problem.weekNumber', 'ASC')
       .addOrderBy('problem.createdAt', 'ASC')
       .getMany();
   }
