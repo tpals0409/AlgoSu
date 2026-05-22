@@ -94,6 +94,68 @@ curl -s http://localhost:3000/health/ready
      psql -U algosu_admin -d <db_name> < backup_YYYYMMDD_HHMMSS.sql
    ```
 
+## Dual-Write 활성 시 신 DB 마이그레이션 절차
+
+> **현재 상태**: `DUAL_WRITE_MODE=off` (2026-05-22 기준) — 신 DB가 구 DB와 동일 인스턴스이므로
+> 아래 절차는 향후 DUAL_WRITE_MODE=EXPAND 또는 SWITCH_READ 전환 시 적용한다.
+
+### 배경
+
+`DualWriteService`는 구 DB(`problem_db`)와 신 DB(`NEW_DATABASE_*`)에 이중 쓰기를 수행한다.
+TypeORM 마이그레이션은 기본적으로 **구 DB(data-source.ts의 기본 연결)에만 적용**된다.
+Dual-Write가 활성화된 경우, 신 DB 스키마가 구 DB와 달라지면 쓰기 실패가 발생한다.
+
+### 절차
+
+1. **마이그레이션 파일 적용 대상 확인**
+
+   ```bash
+   # 구 DB 최신 마이그레이션 확인
+   kubectl exec -n algosu pod/postgres-problem-<hash> -- \
+     psql -U problem_user -d problem_db -c \
+     "SELECT name FROM migrations ORDER BY timestamp DESC LIMIT 5;"
+   ```
+
+2. **신 DB에 동일 마이그레이션 적용**
+
+   신 DB는 별도 `NEW_DATABASE_*` 환경변수로 접속한다:
+
+   ```bash
+   # 신 DB 접속 (NEW_DATABASE_HOST, NEW_DATABASE_PORT 참조)
+   kubectl exec -it -n algosu pod/postgres-problem-<new-hash> -- \
+     psql -U problem_user -d new_problem_db
+
+   # statement_timeout 해제 (ALTER TYPE 등 rewrite 유발 마이그레이션 대비)
+   SET statement_timeout = 0;
+
+   # 마이그레이션 SQL 적용 (dist/ 빌드 후 수동 실행 또는 data-source override)
+   \i /tmp/migration.sql
+   ```
+
+3. **schema 정합성 검증**
+
+   ```sql
+   -- 양쪽 DB의 컬럼 타입 비교
+   SELECT column_name, data_type, udt_name
+   FROM information_schema.columns
+   WHERE table_name = 'problems'
+   ORDER BY ordinal_position;
+   ```
+
+4. **DualWriteService 쓰기 정합성 확인**
+
+   ```bash
+   # algosu_problem_dual_write_total{result="failure"} 메트릭 확인
+   kubectl exec -n algosu pod/problem-service-<hash> -- \
+     curl -s http://localhost:3002/metrics | grep dual_write_total
+   ```
+
+### 주의사항
+
+- GIN 인덱스(`CREATE INDEX CONCURRENTLY`)는 신 DB에서도 CONCURRENTLY 적용
+- `DUAL_WRITE_MODE` 전환 전 양쪽 DB 스키마 정합성 검증 필수
+- 신 DB 마이그레이션 실패 시 DUAL_WRITE_MODE를 OFF로 유지하고 조사 후 재시도
+
 ## 참고
 
 - `statement_timeout` 설정 위치: `infra/k3s/postgres.yaml` args 라인 31-32

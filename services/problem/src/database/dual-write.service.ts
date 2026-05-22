@@ -6,8 +6,8 @@
  */
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOneOptions, FindManyOptions, DeepPartial } from 'typeorm';
-import { Problem } from '../problem/problem.entity';
+import { Repository, FindOneOptions, FindManyOptions, DeepPartial, Brackets } from 'typeorm';
+import { Problem, ProblemStatus } from '../problem/problem.entity';
 import { DualWriteMode, getDualWriteMode, NEW_DB_CONNECTION } from './dual-write.config';
 import { ReconciliationService } from './reconciliation.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
@@ -122,6 +122,56 @@ export class DualWriteService implements OnModuleInit {
     }
 
     return saved;
+  }
+
+  /**
+   * 태그 포함 검색 — jsonb @> containment 쿼리
+   *
+   * readRepo getter 경유 → switch-read 모드 전환 자동 적용(직접 dataSource QueryBuilder 금지)
+   * AND: 모든 태그를 포함하는 문제 (단일 @> 조건, GIN 인덱스 최대 활용)
+   * OR: 임의 태그를 하나 이상 포함하는 문제 (Brackets로 OR 조건 묶음)
+   *
+   * @param studyId  스터디 ID (스코핑)
+   * @param tags     검색 태그 배열 (비어있지 않음)
+   * @param mode     'and' | 'or' — 태그 일치 방식
+   * @param statuses 대상 상태 목록 (예: [ProblemStatus.ACTIVE])
+   */
+  async findByTagsContaining(
+    studyId: string,
+    tags: string[],
+    mode: 'and' | 'or',
+    statuses: ProblemStatus[],
+  ): Promise<Problem[]> {
+    const qb = this.readRepo
+      .createQueryBuilder('problem')
+      .where('problem.studyId = :studyId', { studyId })
+      .andWhere('problem.status IN (:...statuses)', { statuses });
+
+    if (mode === 'and') {
+      // AND: 단일 @> 조건 — GIN jsonb_path_ops 인덱스 활용
+      qb.andWhere('problem.tags @> :tags::jsonb', { tags: JSON.stringify(tags) });
+    } else {
+      // OR: 각 태그별 단일 원소 배열 @> 조건을 Brackets로 묶음
+      qb.andWhere(
+        new Brackets((subQb) => {
+          tags.forEach((tag, idx) => {
+            const paramName = `tag${idx}`;
+            const condition = `problem.tags @> :${paramName}::jsonb`;
+            const params: Record<string, string> = { [paramName]: JSON.stringify([tag]) };
+            if (idx === 0) {
+              subQb.where(condition, params);
+            } else {
+              subQb.orWhere(condition, params);
+            }
+          });
+        }),
+      );
+    }
+
+    return qb
+      .orderBy('problem.weekNumber', 'DESC')
+      .addOrderBy('problem.createdAt', 'ASC')
+      .getMany();
   }
 
   /** 신 DB에 fire-and-forget 쓰기 — H8: 메트릭 계측 */

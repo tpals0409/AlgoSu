@@ -76,10 +76,10 @@ export class Problem {
   @Column({ type: 'timestamptz', nullable: true })
   deadline!: Date | null;
 
-  @Column({ type: 'simple-json', nullable: true, name: 'allowed_languages' })
+  @Column({ type: 'jsonb', nullable: true, name: 'allowed_languages' })
   allowedLanguages!: string[] | null;
 
-  @Column({ type: 'simple-json', nullable: true })
+  @Column({ type: 'jsonb', nullable: true })
   tags!: string[] | null;
 
   @Column({ type: 'uuid', name: 'study_id' })

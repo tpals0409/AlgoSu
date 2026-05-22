@@ -253,6 +253,90 @@ describe('DualWriteService', () => {
   });
 
   // ──────────────────────────────────────────────
+  // findByTagsContaining
+  // ──────────────────────────────────────────────
+  describe('findByTagsContaining()', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let mockQb: Record<string, jest.Mock | any>;
+
+    beforeEach(() => {
+      mockQb = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        addOrderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn(),
+      };
+      oldRepo.createQueryBuilder = jest.fn().mockReturnValue(mockQb);
+    });
+
+    it('AND 모드: createQueryBuilder 호출 + 결과 반환', async () => {
+      mockQb.getMany.mockResolvedValue([mockProblem]);
+
+      const result = await service.findByTagsContaining(
+        'study-001',
+        ['DP', '이진탐색'],
+        'and',
+        [ProblemStatus.ACTIVE],
+      );
+
+      expect(oldRepo.createQueryBuilder).toHaveBeenCalledWith('problem');
+      // studyId + status 조건 설정 확인
+      expect(mockQb.where).toHaveBeenCalledWith(
+        'problem.studyId = :studyId',
+        { studyId: 'study-001' },
+      );
+      expect(mockQb.andWhere).toHaveBeenCalledWith(
+        'problem.status IN (:...statuses)',
+        { statuses: [ProblemStatus.ACTIVE] },
+      );
+      // AND 태그 조건 — 단일 @> 조건
+      expect(mockQb.andWhere).toHaveBeenCalledWith(
+        'problem.tags @> :tags::jsonb',
+        { tags: JSON.stringify(['DP', '이진탐색']) },
+      );
+      expect(mockQb.getMany).toHaveBeenCalled();
+      expect(result).toEqual([mockProblem]);
+    });
+
+    it('OR 모드: Brackets 콜백 + getMany 호출', async () => {
+      mockQb.getMany.mockResolvedValue([mockProblem]);
+
+      const result = await service.findByTagsContaining(
+        'study-001',
+        ['DP', '해시'],
+        'or',
+        [ProblemStatus.ACTIVE],
+      );
+
+      // OR 모드에서 andWhere가 Brackets 객체로 호출됨
+      const andWhereCalls = mockQb.andWhere.mock.calls;
+      // 최소 2회: status IN + Brackets
+      expect(andWhereCalls.length).toBeGreaterThanOrEqual(2);
+      expect(mockQb.getMany).toHaveBeenCalled();
+      expect(result).toEqual([mockProblem]);
+    });
+
+    it('정렬: weekNumber DESC, createdAt ASC', async () => {
+      mockQb.getMany.mockResolvedValue([]);
+
+      await service.findByTagsContaining('study-001', ['스택'], 'or', [ProblemStatus.ACTIVE]);
+
+      expect(mockQb.orderBy).toHaveBeenCalledWith('problem.weekNumber', 'DESC');
+      expect(mockQb.addOrderBy).toHaveBeenCalledWith('problem.createdAt', 'ASC');
+    });
+
+    it('OFF 모드: oldRepo(구 DB) createQueryBuilder 사용', async () => {
+      mockQb.getMany.mockResolvedValue([]);
+      // OFF 모드 — 기본값이므로 별도 설정 불필요
+
+      await service.findByTagsContaining('study-001', ['BFS'], 'or', [ProblemStatus.ACTIVE]);
+
+      expect(oldRepo.createQueryBuilder).toHaveBeenCalledWith('problem');
+    });
+  });
+
+  // ──────────────────────────────────────────────
   // saveExisting
   // ──────────────────────────────────────────────
   describe('saveExisting()', () => {
