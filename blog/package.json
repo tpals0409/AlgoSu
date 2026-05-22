@@ -4,7 +4,6 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 3100",
-    "prebuild": "node scripts/generate-search-index.mjs",
     "build": "next build",
     "start": "npx serve out -l 3100"
   },
@@ -12,7 +11,6 @@
     "gray-matter": "^4.0.3",
     "lucide-react": "^1.8.0",
     "mermaid": "^11.14.0",
-    "minisearch": "^7.2.0",
     "next": "^15.3.3",
     "next-mdx-remote": "^6.0.0",
     "next-themes": "^0.4.6",
