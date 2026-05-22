@@ -56,13 +56,15 @@ describe('AppModule (부트스트랩 스모크)', () => {
 
   beforeAll(() => {
     // app.module + dual-write.module(OFF 분기)의 getOrThrow가 요구하는 구 DB env.
-    // DUAL_WRITE_MODE는 의도적으로 미설정 → OFF 분기로 NEW_DATABASE_* 불필요.
+    // DUAL_WRITE_MODE는 'off'를 명시 — spread만으로는 환경/로컬 .env의
+    // expand·switch-read 값이 남아 active 분기(NEW_DATABASE_* 요구)로 새기 때문.
     process.env = {
       ...ORIGINAL_ENV,
       DATABASE_HOST: 'localhost',
       DATABASE_NAME: 'test',
       DATABASE_USER: 'test',
       DATABASE_PASSWORD: 'test',
+      DUAL_WRITE_MODE: 'off',
     };
   });
 
