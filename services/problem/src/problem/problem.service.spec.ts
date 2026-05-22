@@ -873,7 +873,7 @@ describe('ProblemService', () => {
       expect(dualWrite.findByTagsContaining).not.toHaveBeenCalled();
     });
 
-    it('OR 기본: dualWrite.findByTagsContaining에 or 모드 + ACTIVE 상태로 위임', async () => {
+    it('OR 기본: dualWrite.findByTagsContaining에 or 모드 + ACTIVE+CLOSED 상태로 위임', async () => {
       dualWrite.findByTagsContaining.mockResolvedValue([mockProblem]);
 
       const result = await service.findByTags(STUDY_ID, ['DP', '해시'], 'or');
@@ -882,7 +882,7 @@ describe('ProblemService', () => {
         STUDY_ID,
         ['DP', '해시'],
         'or',
-        [ProblemStatus.ACTIVE],
+        [ProblemStatus.ACTIVE, ProblemStatus.CLOSED],
       );
       expect(result).toEqual([mockProblem]);
     });
@@ -896,7 +896,7 @@ describe('ProblemService', () => {
         STUDY_ID,
         ['DP', '이진탐색'],
         'and',
-        [ProblemStatus.ACTIVE],
+        [ProblemStatus.ACTIVE, ProblemStatus.CLOSED],
       );
       expect(result).toEqual([mockProblem]);
     });
@@ -910,7 +910,7 @@ describe('ProblemService', () => {
         STUDY_ID,
         ['BFS'],
         'or',
-        [ProblemStatus.ACTIVE],
+        [ProblemStatus.ACTIVE, ProblemStatus.CLOSED],
       );
     });
 
