@@ -98,6 +98,16 @@ export default function ProblemsPage(): ReactNode {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   /**
+   * 스터디 전환 시 태그 필터 초기화.
+   * activeSid가 바뀌면 selectedTags를 즉시 리셋해
+   * 이전 스터디의 stale 태그가 새 스터디 서버 요청에 전달되는 것을 차단한다.
+   * (activeSid null→실제ID 최초 세팅 시에도 이미 빈 배열이므로 무해)
+   */
+  useEffect(() => {
+    setSelectedTags([]);
+  }, [activeSid]);
+
+  /**
    * 서버사이드 태그 필터 결과.
    * tags 없으면 no-tags 경로 유지(allProblems와 동일 SWR 키 → 캐시 히트).
    */
