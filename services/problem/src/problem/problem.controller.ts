@@ -11,6 +11,7 @@ import {
   Patch,
   Delete,
   Param,
+  Query,
   Body,
   Headers,
   UseGuards,
@@ -23,6 +24,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ProblemService } from './problem.service';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
+import { FindByTagsQueryDto } from './dto/query-problem.dto';
 import { InternalKeyGuard } from '../common/guards/internal-key.guard';
 import { StudyMemberGuard } from '../common/guards/study-member.guard';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
@@ -103,6 +105,24 @@ export class ProblemController {
   @Get('active')
   async findActive(@Headers('x-study-id') studyId: string) {
     const problems = await this.problemService.findActiveByStudy(studyId);
+    return { data: problems };
+  }
+
+  /**
+   * GET /search/tags — 태그 기반 문제 검색 (ACTIVE 상태, studyId 스코핑)
+   *
+   * 선언 위치: @Get(':id') 앞 필수 — NestJS 선언순 매칭으로 'search' 리터럴이 UUID 파싱 400 방지
+   * 쿼리 파라미터: ?tags=DP&tags=그래프&mode=and (반복 파라미터, URL 인코딩)
+   */
+  @ApiOperation({ summary: '태그 기반 문제 검색 (OR 기본, AND 지원)' })
+  @ApiResponse({ status: 200, description: '태그 일치 문제 목록' })
+  @ApiResponse({ status: 400, description: 'studyId 누락 또는 tags 비어있음' })
+  @Get('search/tags')
+  async searchByTags(
+    @Query() query: FindByTagsQueryDto,
+    @Headers('x-study-id') studyId: string,
+  ) {
+    const problems = await this.problemService.findByTags(studyId, query.tags, query.mode);
     return { data: problems };
   }
 

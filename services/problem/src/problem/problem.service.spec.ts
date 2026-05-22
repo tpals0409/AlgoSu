@@ -63,6 +63,7 @@ describe('ProblemService', () => {
       find: jest.fn(),
       create: jest.fn(),
       isActive: false,
+      findByTagsContaining: jest.fn(),
     };
 
     deadlineCache = {
@@ -852,6 +853,73 @@ describe('ProblemService', () => {
       });
       expect(result).toEqual(problems);
       expect(result).toHaveLength(1);
+    });
+  });
+
+  // ──────────────────────────────────────────────
+  // 13b. findByTags()
+  // ──────────────────────────────────────────────
+  describe('findByTags()', () => {
+    it('studyId 누락 (빈 문자열): BadRequestException — cross-study 방어', async () => {
+      await expect(service.findByTags('', ['DP'], 'or')).rejects.toThrow(BadRequestException);
+      await expect(service.findByTags('', ['DP'], 'or')).rejects.toThrow('studyId가 필요합니다');
+      expect(dualWrite.findByTagsContaining).not.toHaveBeenCalled();
+    });
+
+    it('studyId 누락 (undefined): BadRequestException', async () => {
+      await expect(
+        service.findByTags(undefined as unknown as string, ['DP'], 'or'),
+      ).rejects.toThrow(BadRequestException);
+      expect(dualWrite.findByTagsContaining).not.toHaveBeenCalled();
+    });
+
+    it('OR 기본: dualWrite.findByTagsContaining에 or 모드 + ACTIVE+CLOSED 상태로 위임', async () => {
+      dualWrite.findByTagsContaining.mockResolvedValue([mockProblem]);
+
+      const result = await service.findByTags(STUDY_ID, ['DP', '해시'], 'or');
+
+      expect(dualWrite.findByTagsContaining).toHaveBeenCalledWith(
+        STUDY_ID,
+        ['DP', '해시'],
+        'or',
+        [ProblemStatus.ACTIVE, ProblemStatus.CLOSED],
+      );
+      expect(result).toEqual([mockProblem]);
+    });
+
+    it('AND 명시: dualWrite.findByTagsContaining에 and 모드 위임', async () => {
+      dualWrite.findByTagsContaining.mockResolvedValue([mockProblem]);
+
+      const result = await service.findByTags(STUDY_ID, ['DP', '이진탐색'], 'and');
+
+      expect(dualWrite.findByTagsContaining).toHaveBeenCalledWith(
+        STUDY_ID,
+        ['DP', '이진탐색'],
+        'and',
+        [ProblemStatus.ACTIVE, ProblemStatus.CLOSED],
+      );
+      expect(result).toEqual([mockProblem]);
+    });
+
+    it('mode 인자 없음: 기본값 or 사용', async () => {
+      dualWrite.findByTagsContaining.mockResolvedValue([]);
+
+      await service.findByTags(STUDY_ID, ['BFS']);
+
+      expect(dualWrite.findByTagsContaining).toHaveBeenCalledWith(
+        STUDY_ID,
+        ['BFS'],
+        'or',
+        [ProblemStatus.ACTIVE, ProblemStatus.CLOSED],
+      );
+    });
+
+    it('빈 결과: 빈 배열 반환', async () => {
+      dualWrite.findByTagsContaining.mockResolvedValue([]);
+
+      const result = await service.findByTags(STUDY_ID, ['없는태그']);
+
+      expect(result).toEqual([]);
     });
   });
 

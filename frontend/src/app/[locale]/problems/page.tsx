@@ -56,6 +56,13 @@ function getDdayDisplay(
   return { label: `D-${days}`, color: 'var(--error)' };
 }
 
+/** 로드된 문제들에서 고유 태그 목록 추출 (알파벳순 정렬) */
+function deriveUniqueTags(problems: { tags?: string[] | null }[]): string[] {
+  const tagSet = new Set<string>();
+  problems.forEach((p) => p.tags?.forEach((t) => tagSet.add(t)));
+  return Array.from(tagSet).sort();
+}
+
 // ─── RENDER ───────────────────────────────
 
 /**
@@ -80,7 +87,38 @@ export default function ProblemsPage(): ReactNode {
   // ─── SWR DATA ──────────────────────────────
 
   const activeSid = isAuthenticated ? currentStudyId : null;
-  const { problems, isLoading: problemsLoading, error: problemsError, mutate: mutateProblems } = useProblems(activeSid);
+
+  /**
+   * 전체 문제 조회 — 항상 태그 없이 로드해 태그 칩 목록 도출에 사용.
+   * selectedTags가 비어있을 때는 `problems`와 동일한 SWR 키 → 네트워크 요청 1회로 dedup.
+   */
+  const { problems: allProblems, mutate: mutateAllProblems } = useProblems(activeSid);
+
+  // ─── 태그 필터 상태 ─────────────────────────
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
+  /**
+   * 스터디 전환 시 태그 필터 초기화.
+   * activeSid가 바뀌면 selectedTags를 즉시 리셋해
+   * 이전 스터디의 stale 태그가 새 스터디 서버 요청에 전달되는 것을 차단한다.
+   * (activeSid null→실제ID 최초 세팅 시에도 이미 빈 배열이므로 무해)
+   */
+  useEffect(() => {
+    setSelectedTags([]);
+  }, [activeSid]);
+
+  /**
+   * 서버사이드 태그 필터 결과.
+   * tags 없으면 no-tags 경로 유지(allProblems와 동일 SWR 키 → 캐시 히트).
+   */
+  const tagsParam = selectedTags.length > 0 ? { tags: selectedTags } : undefined;
+  const {
+    problems,
+    isLoading: problemsLoading,
+    error: problemsError,
+    mutate: mutateProblems,
+  } = useProblems(activeSid, tagsParam);
+
   const { stats } = useStudyStats(activeSid);
   const solvedIds = useMemo(
     () => new Set(stats?.solvedProblemIds ?? []),
@@ -103,6 +141,9 @@ export default function ProblemsPage(): ReactNode {
     transition: `opacity .5s cubic-bezier(.16,1,.3,1) ${delay}s, transform .5s cubic-bezier(.16,1,.3,1) ${delay}s`,
   });
 
+  /** 전체 로드된 문제에서 태그 칩 목록 도출 */
+  const availableTags = useMemo(() => deriveUniqueTags(allProblems), [allProblems]);
+
   // ─── HANDLERS ─────────────────────────────
 
   const handleProblemClick = useCallback(
@@ -116,20 +157,38 @@ export default function ProblemsPage(): ReactNode {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
+  /** 태그 칩 토글 — 이미 선택된 태그면 해제, 없으면 추가 */
+  const handleTagToggle = useCallback((tag: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
+    );
+  }, []);
+
+  /** 전체 필터 초기화 (난이도·상태·태그 모두 해제) */
+  const handleResetFilters = useCallback(() => {
+    setFilters(INITIAL_FILTERS);
+    setSelectedTags([]);
+  }, []);
+
   const handleAddProblem = useCallback((_newProblem: NewProblemData) => {
     mutateProblems();
+    mutateAllProblems();
     incrementProblemsVersion();
-  }, [mutateProblems, incrementProblemsVersion]);
+  }, [mutateProblems, mutateAllProblems, incrementProblemsVersion]);
 
   // ─── FILTERING ──────────────────────────
 
+  /**
+   * 클라이언트 추가 필터 (검색창·난이도·상태).
+   * 태그 필터는 서버에서 처리 — 교집합으로 동작.
+   */
   const filteredProblems = useMemo(() => {
     const filtered = problems.filter((p) => {
       if (filters.search) {
         const q = filters.search.toLowerCase();
         const matchTitle = p.title.toLowerCase().includes(q);
         const matchUrl = p.sourceUrl?.toLowerCase().includes(q) ?? false;
-        const matchTags = p.tags?.some(t => t.toLowerCase().includes(q)) ?? false;
+        const matchTags = p.tags?.some((tag) => tag.toLowerCase().includes(q)) ?? false;
         if (!matchTitle && !matchUrl && !matchTags) return false;
       }
       if (filters.difficulty && p.difficulty !== filters.difficulty) {
@@ -222,6 +281,46 @@ export default function ProblemsPage(): ReactNode {
           })}
         </div>
 
+        {/* 태그 필터 칩 — availableTags가 있을 때만 표시 */}
+        {availableTags.length > 0 && (
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide" style={fade(0.12)}>
+            <span className="shrink-0 text-[11px] font-semibold" style={{ color: 'var(--text-3)' }}>
+              {t('list.tagFilterLabel')}
+            </span>
+            <button
+              type="button"
+              onClick={() => setSelectedTags([])}
+              className={`inline-flex items-center shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-[12px] font-medium transition-all hover:shadow-sm hover:brightness-95 hover:scale-105${selectedTags.length === 0 ? ' text-white' : ''}`}
+              style={
+                selectedTags.length === 0
+                  ? { backgroundColor: 'var(--primary)' }
+                  : { backgroundColor: 'var(--bg-card)', color: 'var(--text-2)', border: '1px solid var(--border)' }
+              }
+            >
+              {t('list.tagFilterAll')}
+            </button>
+            {availableTags.map((tag) => {
+              const isActive = selectedTags.includes(tag);
+              return (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => handleTagToggle(tag)}
+                  className={`inline-flex items-center shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-[12px] font-medium transition-all hover:shadow-sm hover:brightness-95 hover:scale-105${isActive ? ' text-white' : ''}`}
+                  style={
+                    isActive
+                      ? { backgroundColor: 'var(--accent)', color: 'var(--primary-dark, var(--primary))' }
+                      : { backgroundColor: 'var(--bg-card)', color: 'var(--text-2)', border: '1px solid var(--border)' }
+                  }
+                  aria-pressed={isActive}
+                >
+                  {tag}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* 에러 */}
         {errorMessage && (
           <Alert variant="error" onClose={() => mutateProblems()}>
@@ -259,7 +358,7 @@ export default function ProblemsPage(): ReactNode {
             icon={Search}
             title={t('list.noResults.title')}
             description={t('list.noResults.description')}
-            action={{ label: t('list.noResults.resetFilter'), onClick: () => setFilters(INITIAL_FILTERS) }}
+            action={{ label: t('list.noResults.resetFilter'), onClick: handleResetFilters }}
             size="sm"
           />
         )}

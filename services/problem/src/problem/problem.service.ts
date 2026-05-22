@@ -317,6 +317,30 @@ export class ProblemService {
   }
 
   /**
+   * 태그 기반 문제 필터 — studyId 스코핑 + ACTIVE+CLOSED 상태
+   *
+   * findAllByStudy와 동일한 status 집합(ACTIVE+CLOSED)을 반환해 태그 필터가
+   * /all 엔드포인트를 대체해도 CLOSED 문제가 사라지지 않도록 정합성 유지.
+   * 캐싱 안 함: 태그 조합 무한 → 키 폭발 위험 (findByWeekAndStudy 캐시만 유지)
+   * readRepo 경유: DualWriteService.findByTagsContaining으로 위임 (switch-read 우회 금지)
+   *
+   * @throws BadRequestException studyId가 falsy인 경우 (cross-study 접근 차단)
+   */
+  async findByTags(
+    studyId: string,
+    tags: string[],
+    mode: 'and' | 'or' = 'or',
+  ): Promise<Problem[]> {
+    if (!studyId) {
+      throw new BadRequestException('studyId가 필요합니다 — cross-study 접근 차단');
+    }
+    return this.dualWrite.findByTagsContaining(studyId, tags, mode, [
+      ProblemStatus.ACTIVE,
+      ProblemStatus.CLOSED,
+    ]);
+  }
+
+  /**
    * 만료된 ACTIVE 문제를 CLOSED로 일괄 전환 — DeadlineSchedulerService에서 호출
    * 조건: status=ACTIVE AND deadline IS NOT NULL AND deadline <= NOW()
    * 캐시 무효화: 각 문제의 deadline + weekProblems 캐시 무효화

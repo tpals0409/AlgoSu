@@ -14,6 +14,8 @@
       "finished": "Closed"
     },
     "difficultyAll": "All",
+    "tagFilterAll": "All",
+    "tagFilterLabel": "Tags",
     "empty": {
       "title": "No problems found",
       "description": "New problems will be added soon."

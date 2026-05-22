@@ -8,6 +8,7 @@ import { StudyMemberGuard } from '../common/guards/study-member.guard';
 import { ConfigService } from '@nestjs/config';
 import { REDIS_CLIENT } from '../cache/cache.module';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
+import { FindByTagsQueryDto } from './dto/query-problem.dto';
 import { Difficulty } from './problem.entity';
 
 describe('ProblemController', () => {
@@ -42,6 +43,7 @@ describe('ProblemController', () => {
       findAllByStudy: jest.fn(),
       findActiveByStudy: jest.fn(),
       findById: jest.fn(),
+      findByTags: jest.fn(),
       delete: jest.fn(),
       update: jest.fn(),
     };
@@ -136,6 +138,40 @@ describe('ProblemController', () => {
 
       expect(service.findActiveByStudy).toHaveBeenCalledWith(STUDY_ID);
       expect(result).toEqual({ data: [mockProblem] });
+    });
+  });
+
+  // ──────────────────────────────────────────────
+  // GET /search/tags
+  // ──────────────────────────────────────────────
+  describe('searchByTags()', () => {
+    it('태그 + mode=and: service.findByTags 위임 + {data} 래핑', async () => {
+      service.findByTags.mockResolvedValue([mockProblem]);
+      const query: FindByTagsQueryDto = { tags: ['DP', '그래프'], mode: 'and' };
+
+      const result = await controller.searchByTags(query, STUDY_ID);
+
+      expect(service.findByTags).toHaveBeenCalledWith(STUDY_ID, ['DP', '그래프'], 'and');
+      expect(result).toEqual({ data: [mockProblem] });
+    });
+
+    it('mode 미지정: service.findByTags에 undefined 전달 (서비스 내 기본값 or 사용)', async () => {
+      service.findByTags.mockResolvedValue([mockProblem]);
+      const query: FindByTagsQueryDto = { tags: ['스택'] };
+
+      const result = await controller.searchByTags(query, STUDY_ID);
+
+      expect(service.findByTags).toHaveBeenCalledWith(STUDY_ID, ['스택'], undefined);
+      expect(result).toEqual({ data: [mockProblem] });
+    });
+
+    it('빈 결과: {data: []} 래핑 반환', async () => {
+      service.findByTags.mockResolvedValue([]);
+      const query: FindByTagsQueryDto = { tags: ['없는태그'], mode: 'or' };
+
+      const result = await controller.searchByTags(query, STUDY_ID);
+
+      expect(result).toEqual({ data: [] });
     });
   });
 
