@@ -133,6 +133,14 @@ Even setting changes that cannot be traced through `git blame` or PR history bec
 2. **Efficiency of resolving small carry-over items simultaneously** — commitlint oracle scope (3-sprint cumulative carry-over, 1-line patch) and Build Blog (SSG) required check (1-sprint carry-over, 1 API call) are both very small changes. Bundling them into an operations follow-up sprint resolves them without a dedicated sprint.
 3. **Branch protection changes do not produce git commits** — the `gh api` call modifies GitHub settings with 0 git diff. Persisting the before/after contexts array + API command + verification command in the ADR §Phase D ensures auditability. This pattern is reusable for future branch protection changes.
 
+## Critic Rounds
+
+- **R1** `019e6b9c-2fb4-7030-b74d-797449a8a33b` — Critical/High **0** + P2 **2** + P3 **0**
+  - P2-1: `_base.md:51` ban clause removed prematurely — `discord-send.sh` may still exist on other machines/CI checkouts after the Sprint 204 repo-side deletion, and the BOT_TOKEN is still valid while revoke is deferred. The agent suppression guard was absent.
+  - P2-2: `claude-tools.md:65` Phase 4 row — the phrase "secret exposure risk fully terminated" contradicts Sprint 205 ADR §D0·D1 where (a) is deferred and (b) is incomplete.
+  - Both items resolved in this commit: `_base.md:51` ban clause restored (conditional — remove after other-machine cleanup confirmed complete + token revoke confirmed complete) + `claude-tools.md:65` updated to "secret exposure risk termination **incomplete**" for tense alignment.
+- **Placeholder-regression prevention adhered to** (Sprint 204 R4): Critic block frozen at R1 in this ADR. R2+ results recorded in sprint-window/memory only — additional ADR commits avoided.
+
 ## Carry-over
 
 - **Phase 3 external work (re-verify at Sprint 206)**:
