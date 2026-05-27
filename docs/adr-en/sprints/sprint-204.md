@@ -127,7 +127,8 @@ Pre-merge gates:
 
 - **R1** session `019e693c-ddd5-7570-96d7-d208bc0da81a` — Critical/High **0** + **High 1** (BOT_TOKEN revoke tense overstatement — ADR/RUNBOOK declared "reclamation complete," but the action is actually pending Phase 3 user-direct execution) + **Medium 1** (`git grep -n "discord-send" -- ':!docs/adr/' ':!docs/adr-en/'` verification command was false because RUNBOOK historical hits were not excluded). Resolved in commit `727dc3e` — tense softened to "guided/being decommissioned (repo-side complete, external revoke pending Phase 3)"; the discord-send grep exclusion now includes `':!docs/runbook/claude-tools.md'`.
 - **R2** session `019e6943-5fe2-7263-b7ef-88df981fe0c8` — Critical/High **0** + **P2 1** (BOT_TOKEN grep has the same pattern — ADR/RUNBOOK historical hits remain, so "0 hits" recording was false) + **P3 1** (Critic placeholder still present in this §Verification block). Resolved in this commit — BOT_TOKEN grep exclusion now adds `':!docs/adr/' ':!docs/adr-en/' ':!docs/runbook/'`; the Critic block is backfilled with R1·R2 results and session IDs.
-- **R3** — (run after this commit is pushed to confirm CLEAN. The result is persisted separately in sprint-window/memory.)
+- **R3** session `019e6948-2b2b-78b1-8db5-235cdb127b59` — Critical/High **0** + **P2 1** (the New Patterns §2 Phase 4 summary "external token revoke" combined with the ✅ marker implied completion — at this sprint's close, the external revoke is still on the Phase 3 user-direct track and pending). Resolved in this commit — softened to "external token revoke guidance (split into the Phase 3 user-direct track, re-verified at Sprint 205 start)". KR+EN updated together.
+- **R4** — (run after this commit is pushed to confirm CLEAN. The result is persisted separately in sprint-window/memory.)
 
 ## New Patterns
 
@@ -150,7 +151,7 @@ Sprint 156 (codification) → Sprint 191 (deprecated deletion) → Sprint 202 (p
 - Phase 1 (Sprint 156): RUNBOOK codification itself.
 - Phase 2 (Sprint 191 ✅): deprecated 2-file deletion.
 - Phase 3 (Sprint 202 ✅): partial dormant deletion + 1-file reclassification.
-- Phase 4 (Sprint 204 ✅): complete dormant deletion + external token revoke.
+- Phase 4 (Sprint 204 ✅): complete dormant deletion + external token revoke guidance (split into the Phase 3 user-direct track, pending user action at this sprint's close — re-verified at Sprint 205 start).
 
 This pattern is the standard for assets that cannot be cleaned up in one shot (e.g., external token revoke pending, integration direction under review). The RUNBOOK §cleanup roadmap table is the progress SSOT, enabling immediate context recovery in subsequent sprints.
 
