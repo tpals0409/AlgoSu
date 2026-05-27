@@ -13,7 +13,7 @@ tldr: "Sprint 156에서 명문화한 `.claude-tools/` 정리 로드맵의 마지
 
 ## 목표
 
-- `.claude-tools/`에 dormant 상태로 잔존하던 Discord 통합 자산 3종을 처분하여 평문 BOT_TOKEN 노출 위험을 종결.
+- `.claude-tools/`에 dormant 상태로 잔존하던 Discord 통합 자산 3종을 repo·로컬 파일 측에서 처분 (외부 BOT_TOKEN revoke는 Phase 3 사용자 직접 트랙 — Sprint 205 재확인 후 평문 BOT_TOKEN 노출 위험 완전 종결).
 - Sprint 156(RUNBOOK 명문화) → Sprint 191(deprecated 삭제) → Sprint 202(dormant 일부 삭제 + 재분류)로 이어진 4-스프린트 정리 파이프라인 종결.
 - 외부 시스템(Discord 측) 토큰 회수와 repo 작업의 트랙 분리를 패턴으로 영속화.
 
@@ -128,7 +128,8 @@ PR 머지 후 사용자에게 다음 안내:
 - **R1** 세션 `019e693c-ddd5-7570-96d7-d208bc0da81a` — Critical/High **0** + **High 1건**(BOT_TOKEN revoke 시제 과장 — ADR/RUNBOOK이 "회수 완료"로 단언하나 실제는 Phase 3 사용자 직접 진행 대기) + **Medium 1건**(`git grep -n "discord-send" -- ':!docs/adr/' ':!docs/adr-en/'` 검증 명령이 RUNBOOK historical hits 미배제로 false). 커밋 `727dc3e`에서 해소 — 시제를 "안내/being decommissioned (repo-side complete, external revoke pending Phase 3)"로 정합 + discord-send grep exclusion에 `':!docs/runbook/claude-tools.md'` 추가.
 - **R2** 세션 `019e6943-5fe2-7263-b7ef-88df981fe0c8` — Critical/High **0** + **P2 1건**(BOT_TOKEN grep도 동일 패턴으로 ADR/RUNBOOK historical hits 잔존, 0 hits 기록 false) + **P3 1건**(본 §검증 line의 Critic placeholder 잔존). 본 커밋에서 해소 — BOT_TOKEN grep exclusion에 `':!docs/adr/' ':!docs/adr-en/' ':!docs/runbook/'` 추가 + Critic 영역에 R1·R2 결과 + 세션 ID 영속화.
 - **R3** 세션 `019e6948-2b2b-78b1-8db5-235cdb127b59` — Critical/High **0** + **P2 1건**(신규 패턴 §2 Phase 4 요약 "외부 토큰 회수/external token revoke" 표현이 ✅ 마킹과 결합해 완료를 함의 — 본 sprint 시점 외부 revoke는 Phase 3 사용자 트랙으로 미완). 본 커밋에서 해소 — "외부 토큰 revoke 안내 (Phase 3 사용자 트랙, Sprint 205 재확인)"로 시제 정합. KR+EN 동시.
-- **R4** — (본 커밋 푸시 후 실행해 CLEAN 확인. 결과는 sprint-window/메모리에 별도 영속화.)
+- **R4** 세션 `019e694b-b494-7e73-91b5-17f3b2fbc758` — Critical/High **0** + **P2 1건**(목표·로드맵 표·신규 패턴의 "시크릿 노출 위험 종결" 표현이 외부 token revoke 완료 함의 — 3 위치) + **P3 1건**(R4 placeholder 잔존). 본 커밋에서 해소 — "종결" 시제를 "repo·로컬 파일 측 평문 토큰 보유 경로 종결 + 외부 revoke는 Phase 3 사용자 트랙 — Sprint 205 재확인 후 위험 완전 종결"로 정합 (claude-tools.md §4·sprint-204.md §목표 KR+EN 3 위치) + R4 결과 backfill.
+- Critic 라운드는 본 커밋 시점 R4까지로 영속화. 머지 직전 R5 실행 결과는 sprint-window/메모리에 별도 기록(ADR 추가 commit 회피 — placeholder 무한 회귀 방지).
 
 ## 신규 패턴
 

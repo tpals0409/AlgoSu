@@ -13,7 +13,7 @@ tldr: "Executed the final stage (Phase 4) of the `.claude-tools/` cleanup roadma
 
 ## Goal
 
-- Dispose of the dormant Discord integration assets remaining in `.claude-tools/` to terminate the plaintext BOT_TOKEN exposure risk.
+- Dispose of the dormant Discord integration assets remaining in `.claude-tools/` on the repo/local-file side (external BOT_TOKEN revoke is on the Phase 3 user-direct track — full plaintext BOT_TOKEN exposure-risk termination is gated on the Sprint 205 re-verification).
 - Close the 4-sprint cleanup pipeline that began with Sprint 156 (codification) → Sprint 191 (deprecated deletion) → Sprint 202 (partial dormant deletion + reclassification).
 - Persist the separation between external-system token revocation and repo work as a formal pattern.
 
@@ -128,7 +128,8 @@ Pre-merge gates:
 - **R1** session `019e693c-ddd5-7570-96d7-d208bc0da81a` — Critical/High **0** + **High 1** (BOT_TOKEN revoke tense overstatement — ADR/RUNBOOK declared "reclamation complete," but the action is actually pending Phase 3 user-direct execution) + **Medium 1** (`git grep -n "discord-send" -- ':!docs/adr/' ':!docs/adr-en/'` verification command was false because RUNBOOK historical hits were not excluded). Resolved in commit `727dc3e` — tense softened to "guided/being decommissioned (repo-side complete, external revoke pending Phase 3)"; the discord-send grep exclusion now includes `':!docs/runbook/claude-tools.md'`.
 - **R2** session `019e6943-5fe2-7263-b7ef-88df981fe0c8` — Critical/High **0** + **P2 1** (BOT_TOKEN grep has the same pattern — ADR/RUNBOOK historical hits remain, so "0 hits" recording was false) + **P3 1** (Critic placeholder still present in this §Verification block). Resolved in this commit — BOT_TOKEN grep exclusion now adds `':!docs/adr/' ':!docs/adr-en/' ':!docs/runbook/'`; the Critic block is backfilled with R1·R2 results and session IDs.
 - **R3** session `019e6948-2b2b-78b1-8db5-235cdb127b59` — Critical/High **0** + **P2 1** (the New Patterns §2 Phase 4 summary "external token revoke" combined with the ✅ marker implied completion — at this sprint's close, the external revoke is still on the Phase 3 user-direct track and pending). Resolved in this commit — softened to "external token revoke guidance (split into the Phase 3 user-direct track, re-verified at Sprint 205 start)". KR+EN updated together.
-- **R4** — (run after this commit is pushed to confirm CLEAN. The result is persisted separately in sprint-window/memory.)
+- **R4** session `019e694b-b494-7e73-91b5-17f3b2fbc758` — Critical/High **0** + **P2 1** (the Goal, the roadmap row, and the New Patterns "secret exposure risk terminated" phrasing implied that the external token revoke was complete — 3 sites) + **P3 1** (R4 placeholder still present). Resolved in this commit — softened to "repo/local-file plaintext-token-holding path terminated + external revoke on Phase 3 user-direct track — full risk termination gated on the Sprint 205 re-verification" (claude-tools.md §4 + sprint-204.md Goal KR+EN, 3 sites) + R4 result backfill.
+- The Critic round log is frozen at R4 in this commit. Any R5 run just before merge is recorded in sprint-window/memory only (no additional ADR commit — breaks the placeholder-regress loop).
 
 ## New Patterns
 

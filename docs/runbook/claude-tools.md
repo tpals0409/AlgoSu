@@ -62,7 +62,7 @@ Sprint 204 Phase 4에서 Discord 통합 자산(`discord-send.sh` 등)을 repo에
 | Phase 1 (Sprint 156) | 운영 정책 RUNBOOK 명문화 | 없음 (본 문서) |
 | Phase 2 (Sprint 191 ✅) | deprecated 파일 삭제 (`claude-team.sh`, `discord-receiver.sh`) | trigger path 검증 완료 — live caller 0건 확인 후 삭제 |
 | Phase 3 (Sprint 202 ✅) | dormant 파일 삭제 (`oracle-respond.sh`, `discord-receiver.py`, `discord-last-id`) | live caller 0건 확인(`grep -r` repo + `~/.claude/oracle/bin/`) 후 로컬 삭제. 본 RUNBOOK §2 표 정리 + `discord-send.sh`를 live → dormant 재분류 |
-| Phase 4 (Sprint 204 ✅) | dormant 3파일(`discord-send.sh`, `oracle-system-prompt.md`, `discord-inbox.md`) 로컬 삭제 + BOT_TOKEN 회수 안내 | live caller 0건 사전 검증 + 3개월 무활성(2026-02-28 마지막 입력) → Agent↔Discord 폐기 결정. dormant 자산 시크릿 노출 위험 종결 |
+| Phase 4 (Sprint 204 ✅) | dormant 3파일(`discord-send.sh`, `oracle-system-prompt.md`, `discord-inbox.md`) 로컬 삭제 + BOT_TOKEN 회수 안내 | live caller 0건 사전 검증 + 3개월 무활성(2026-02-28 마지막 입력) → Agent↔Discord 폐기 결정. repo·로컬 파일 측 평문 토큰 보유 경로 종결 (외부 BOT_TOKEN revoke는 Phase 3 사용자 트랙 — Sprint 205 재확인 후 시크릿 노출 위험 완전 종결) |
 
 ## 5. 이력
 
