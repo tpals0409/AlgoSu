@@ -40,13 +40,14 @@ get_model() {
 
 ```bash
 get_model() {
-  # Sprint 202 — .claude-team.json agents[].model을 SSOT로 사용. jq 미설치 또는 JSON 누락 시 fallback case 적용.
+  # Sprint 202 — .claude-team.json agents[].model을 SSOT로 사용. jq 미설치 또는 JSON 누락/손상 시 fallback case 적용.
+  # Sprint 202 R1 P2 (Codex) — oracle-spawn.sh가 `set -euo pipefail`이라 jq 실패가 spawn 자체를 abort시킬 수 있음 → `|| m=""` 가드로 fallback 보장.
   local agent="$1"
   local team_file
   team_file="$(detect_project_dir)/.claude-team.json"
   if [[ -f "$team_file" ]] && command -v jq >/dev/null 2>&1; then
-    local m
-    m=$(jq -r --arg n "$agent" '.agents[] | select(.name == $n) | .model // empty' "$team_file" 2>/dev/null)
+    local m=""
+    m=$(jq -r --arg n "$agent" '.agents[] | select(.name == $n) | .model // empty' "$team_file" 2>/dev/null) || m=""
     if [[ -n "$m" && "$m" != "null" ]]; then
       echo "$m"
       return
@@ -61,10 +62,11 @@ get_model() {
 
 ### 작동 원리
 
-1. `detect_project_dir()` (라인 52~65)를 재사용해 `.claude-team.json` 경로를 결정.
+1. `detect_project_dir()` (라인 64~78)를 재사용해 `.claude-team.json` 경로를 결정.
 2. JSON 존재 + jq 가용 시 `.agents[] | select(.name == "<agent>") | .model` 로 모델 ID lookup.
-3. lookup 실패(빈 문자열/null) 또는 사전 조건 미충족 시 fallback case 적용.
-4. fallback의 opus도 4-7로 동기 갱신해 JSON 손상 시에도 최신 모델 사용 보장.
+3. **jq가 malformed JSON 등으로 non-zero exit하면 `|| m=""` 가드가 m을 빈 문자열로 설정해 `set -e` abort를 회피** (Sprint 202 R1 P2 해소).
+4. lookup 실패(빈 문자열/null) 또는 사전 조건 미충족 시 fallback case 적용.
+5. fallback의 opus도 4-7로 동기 갱신해 JSON 손상 시에도 최신 모델 사용 보장.
 
 ### 효과
 
