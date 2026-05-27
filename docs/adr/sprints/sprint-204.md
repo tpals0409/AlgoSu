@@ -7,7 +7,7 @@ agents: [Oracle, Architect, Scribe, Critic]
 related_adrs: ["sprint-156", "sprint-191", "sprint-202"]
 related_memory: ["sprint-window"]
 topics: ["security", "operations", "cleanup"]
-tldr: "Sprint 156에서 명문화한 `.claude-tools/` 정리 로드맵의 마지막 단계(Phase 4)를 실행. dormant 3파일(`discord-send.sh`·`oracle-system-prompt.md`·`discord-inbox.md`)을 로컬 삭제하고, BOT_TOKEN을 사용자가 Discord Developer Portal에서 revoke. 3개월 무활성(2026-02-28 마지막 입력) + live caller 0건 검증 + git history 노출 0(`.gitignore` 등록) 조건 충족으로 Agent↔Discord 통합 완전 폐기. Sprint 191→202→204의 4-스프린트 점진 정리 파이프라인 종결. 신규 패턴 3건(dormant 자산 시크릿 노출 처분 / 정리 파이프라인 마무리 / 외부 시스템 트랙 분리) 영속화."
+tldr: "Sprint 156에서 명문화한 `.claude-tools/` 정리 로드맵의 마지막 단계(Phase 4)를 실행. dormant 3파일(`discord-send.sh`·`oracle-system-prompt.md`·`discord-inbox.md`)을 로컬 삭제(repo 측 정리 완료). BOT_TOKEN은 사용자에게 Discord Developer Portal에서 revoke하도록 안내(Phase 3 외부 트랙 — 머지 후 사용자 직접 진행, Sprint 205 시작 시점 재확인). 3개월 무활성(2026-02-28 마지막 입력) + live caller 0건 검증 + git history 노출 0(`.gitignore` 등록) 조건 충족으로 Agent↔Discord 통합 폐기 결정. Sprint 191→202→204의 4-스프린트 점진 정리 파이프라인 종결. 신규 패턴 3건(dormant 자산 시크릿 노출 처분 / 정리 파이프라인 마무리 / 외부 시스템 트랙 분리) 영속화."
 ---
 # Sprint 204 — Discord 처분 + BOT_TOKEN 회수 — `.claude-tools/` 정리 파이프라인 종결
 
@@ -89,7 +89,7 @@ rm .claude-tools/oracle-system-prompt.md
 5개 섹션 갱신을 단일 커밋에 포함:
 
 - 헤더: Sprint 204 정리 이력 추가 (Sprint 191→202→204 흐름 명시).
-- §1 Git 정책: "민감 정보(BOT_TOKEN) 보호" → "로컬 dispatch 산출물 격리용 (BOT_TOKEN 회수 완료, Sprint 204)".
+- §1 Git 정책: "민감 정보(BOT_TOKEN) 보호" → "로컬 dispatch 산출물 격리용 (Sprint 204 Phase 4에서 dormant 자산 repo 제거 완료, 외부 BOT_TOKEN revoke는 사용자 직접 트랙으로 분리 — Sprint 205 시작 시점 재확인)".
 - §2 파일별 상태 분류 표: 3행(`discord-send.sh`·`oracle-system-prompt.md`·`discord-inbox.md`) 모두 제거 → "현재 추적 대상 산출물 없음" 한 줄로 대체. 상태 정의 섹션은 신규 산출물 분류 기준으로 보존.
 - §3 보안 주의: 평문 BOT_TOKEN 보유 파일 부재 반영. 신규 산출물은 Secret-store 경유 필수로 정책 일반화.
 - §3 Discord 관련 정책: Phase 4 폐기 결과 명시 + 향후 재개 시 Secret-store 기반 재설계 가이드.
@@ -115,7 +115,7 @@ PR 머지 후 사용자에게 다음 안내:
 머지 전 게이트:
 
 - `git grep -n "BOT_TOKEN" -- ':!.gitignore'` — **0건** (.gitignore 외 tracked 잔존 없음).
-- `git grep -n "discord-send" -- ':!docs/adr/' ':!docs/adr-en/'` — ADR 역사 기록 외 **0건** (RUNBOOK·`_base.md` 정리 후).
+- `git grep -n "discord-send" -- ':!docs/adr/' ':!docs/adr-en/' ':!docs/runbook/claude-tools.md'` — **0건** (`_base.md` 정리 후). RUNBOOK `docs/runbook/claude-tools.md`는 Sprint 204 처분 결과(헤더·§2·§3·§4·§5)를 기술하므로 의도된 historical reference로 제외 — `git grep -n "discord-send" docs/runbook/claude-tools.md`는 Sprint 204 결과 기술 hits 5건 잔존이 정상.
 - `ls .claude-tools/` — 빈 결과 (3 파일 모두 부재, 디렉토리 보존).
 - `scripts/check-adr-index-count.mjs --strict` — 영구 8 / 토픽 1 / sprint **142** 일치.
 - `scripts/check-adr-en-coverage.mjs --lint` — **151/151** (100%).

@@ -7,7 +7,7 @@ agents: [Oracle, Architect, Scribe, Critic]
 related_adrs: ["sprint-156", "sprint-191", "sprint-202"]
 related_memory: ["sprint-window"]
 topics: ["security", "operations", "cleanup"]
-tldr: "Executed the final stage (Phase 4) of the `.claude-tools/` cleanup roadmap codified in Sprint 156. Locally deleted three dormant files (`discord-send.sh`·`oracle-system-prompt.md`·`discord-inbox.md`) and had the user revoke the BOT_TOKEN in the Discord Developer Portal. Triggered by three converging conditions: 3-month inactivity (last input 2026-02-28), 0 live callers verified, and 0 git-history exposure (registered in `.gitignore`). Agent↔Discord integration is fully decommissioned. Closes the 4-sprint progressive cleanup pipeline (Sprint 191→202→204). Three new patterns are persisted: dormant-asset secret disposal, cleanup-pipeline finalisation, and external-system track separation."
+tldr: "Executed the final stage (Phase 4) of the `.claude-tools/` cleanup roadmap codified in Sprint 156. Locally deleted three dormant files (`discord-send.sh`·`oracle-system-prompt.md`·`discord-inbox.md`) — repo-side cleanup complete. The BOT_TOKEN is to be revoked by the user in the Discord Developer Portal (Phase 3 external track — user-direct action after merge, re-verified at the start of Sprint 205). Triggered by three converging conditions: 3-month inactivity (last input 2026-02-28), 0 live callers verified, and 0 git-history exposure (registered in `.gitignore`). Agent↔Discord integration is being decommissioned (repo-side complete, external token revoke pending Phase 3). Closes the 4-sprint progressive cleanup pipeline (Sprint 191→202→204). Three new patterns are persisted: dormant-asset secret disposal, cleanup-pipeline finalisation, and external-system track separation."
 ---
 # Sprint 204 — Discord Decommission + BOT_TOKEN Reclamation — Closing the `.claude-tools/` Cleanup Pipeline
 
@@ -89,7 +89,7 @@ After:
 Five sections updated in a single commit:
 
 - Header: Sprint 204 cleanup history added (Sprint 191→202→204 lineage made explicit).
-- §1 Git policy: "sensitive info (BOT_TOKEN) protection" → "local dispatch artefact isolation (BOT_TOKEN reclaimed in Sprint 204)".
+- §1 Git policy: "sensitive info (BOT_TOKEN) protection" → "local dispatch artefact isolation (Sprint 204 Phase 4 finished the repo-side dormant cleanup; external BOT_TOKEN revoke is on a separate user-direct track — re-verified at the start of Sprint 205)".
 - §2 File classification table: three rows (`discord-send.sh`·`oracle-system-prompt.md`·`discord-inbox.md`) removed → replaced with "No tracked artefacts currently". The state-definition subsection is preserved as the classification baseline for new artefacts.
 - §3 Security note: plaintext-BOT_TOKEN file absence reflected. The policy is generalised: new artefacts must route through a Secret-store.
 - §3 Discord policy: Phase 4 decommission stated, with future-resumption guidance pointing to Secret-store-based redesign from scratch.
@@ -115,7 +115,7 @@ After PR merge, guide the user:
 Pre-merge gates:
 
 - `git grep -n "BOT_TOKEN" -- ':!.gitignore'` — **0 hits** (no tracked residue outside `.gitignore`).
-- `git grep -n "discord-send" -- ':!docs/adr/' ':!docs/adr-en/'` — **0 hits** outside ADR historical records (after RUNBOOK·`_base.md` cleanup).
+- `git grep -n "discord-send" -- ':!docs/adr/' ':!docs/adr-en/' ':!docs/runbook/claude-tools.md'` — **0 hits** (after `_base.md` cleanup). The RUNBOOK `docs/runbook/claude-tools.md` documents the Sprint 204 disposal outcome across the header / §2 / §3 / §4 / §5, so those hits are intended historical references and are excluded — `git grep -n "discord-send" docs/runbook/claude-tools.md` returns 5 hits as the expected outcome-narration.
 - `ls .claude-tools/` — empty (all three files absent, directory preserved).
 - `scripts/check-adr-index-count.mjs --strict` — permanent 8 / topic 1 / sprint **142** aligned.
 - `scripts/check-adr-en-coverage.mjs --lint` — **151/151** (100%).
