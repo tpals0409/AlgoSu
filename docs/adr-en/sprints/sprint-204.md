@@ -104,11 +104,12 @@ This ADR (KR+EN) + `docs/adr/README.md` retrospective sprint-ADR count 141→142
 
 After PR merge, guide the user:
 
-- Visit Discord Developer Portal (https://discord.com/developers/applications).
+- **Discord Developer Portal** (https://discord.com/developers/applications) — visit.
 - For the target bot application, **Reset** the BOT_TOKEN (immediate invalidation) or delete the application entirely.
 - The 4 channels (`CHANNEL_ORACLE_CHAT`/`CHANNEL_WORK_REPORT`/`CHANNEL_WORK_APPROVAL`/`CHANNEL_EMERGENCY_ALERT`) are kept or removed at the user's discretion.
+- **Manual cleanup on other machines/checkouts** — `.claude-tools/` is in `.gitignore`, so this sprint's deletion does not propagate via git. On any other workstation or CI checkout that uses this repo, run `rm .claude-tools/{discord-send.sh,oracle-system-prompt.md,discord-inbox.md}` manually (mirroring the Sprint 202 pattern).
 
-> This step is on the external system (Discord), so it runs asynchronously to the repo work. The ADR §carry-over flags re-verification in the next sprint if Phase 3 is not yet completed.
+> This step covers an external system (Discord) plus other machines' local files, so it runs asynchronously to the repo work. The ADR §carry-over flags re-verification in the next sprint if Phase 3 is not yet completed.
 
 ## Verification
 
@@ -175,7 +176,7 @@ Separation principles:
 
 ## Carry-over
 
-- **Re-verify Phase 3 completion next sprint** — confirm at Sprint 205 start that the user revoked the BOT_TOKEN in the Discord Developer Portal. If not, re-issue the guidance.
+- **Re-verify Phase 3 completion next sprint** — confirm at Sprint 205 start that the user (a) revoked the BOT_TOKEN in the Discord Developer Portal and (b) manually deleted the three dormant files under `.claude-tools/` on every other workstation/checkout of this repo. If anything is incomplete, re-issue the guidance.
 - **Operational Sprint 196 migration execution + redeploy** (user/operations).
 - (Optional) Add `oracle` to `commitlint` `scope-enum` (carry-over from Sprint 202·203).
 - (Optional) CI PYTHON 3.12 → 3.13.

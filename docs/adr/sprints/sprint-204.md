@@ -104,11 +104,12 @@ rm .claude-tools/oracle-system-prompt.md
 
 PR 머지 후 사용자에게 다음 안내:
 
-- Discord Developer Portal(https://discord.com/developers/applications) 접속.
+- **Discord Developer Portal**(https://discord.com/developers/applications) 접속.
 - 대상 봇 애플리케이션의 BOT_TOKEN **Reset** (기존 토큰 즉시 무효화) 또는 애플리케이션 자체 삭제.
 - 채널 4종(`CHANNEL_ORACLE_CHAT`/`CHANNEL_WORK_REPORT`/`CHANNEL_WORK_APPROVAL`/`CHANNEL_EMERGENCY_ALERT`)은 사용자 재량으로 보존/삭제.
+- **다른 머신/체크아웃 수동 정리** — `.claude-tools/`는 `.gitignore`라 본 sprint의 deletion이 git으로 전파되지 않음. 동일 repo를 사용하는 다른 워크스테이션·CI 체크아웃에서 `rm .claude-tools/{discord-send.sh,oracle-system-prompt.md,discord-inbox.md}` 수동 실행 (Sprint 202 패턴 그대로).
 
-> 이 단계는 외부 시스템(Discord 측)이므로 repo 작업과 비동기 진행. ADR §이월에 미완료 시 후속 sprint 재확인 항목으로 명시.
+> 이 단계는 외부 시스템(Discord 측) + 다른 머신의 로컬 파일이므로 repo 작업과 비동기 진행. ADR §이월에 미완료 시 후속 sprint 재확인 항목으로 명시.
 
 ## 검증
 
@@ -177,7 +178,7 @@ repo 작업(코드/문서 정리, PR)과 외부 시스템 작업(Discord BOT_TOK
 
 ## 이월
 
-- **Phase 3 미완료 시 후속 sprint 재확인** — 사용자가 Discord Developer Portal에서 BOT_TOKEN을 revoke했는지 다음 sprint 시작 시점에 확인. 미완료라면 안내 재전달.
+- **Phase 3 미완료 시 후속 sprint 재확인** — 사용자가 (a) Discord Developer Portal에서 BOT_TOKEN을 revoke했는지 + (b) 동일 repo의 다른 머신·체크아웃에서 `.claude-tools/`의 3 dormant 파일을 수동 삭제했는지 다음 sprint 시작 시점에 확인. 미완료라면 안내 재전달.
 - **운영 측 Sprint 196 마이그레이션 실행 + 재배포** (사용자/운영 담당).
 - (선택) `commitlint` scope-enum에 `oracle` 추가 (Sprint 202·203 이월).
 - (선택) CI PYTHON 3.12 → 3.13.
