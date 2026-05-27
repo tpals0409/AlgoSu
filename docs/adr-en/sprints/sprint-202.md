@@ -133,7 +133,7 @@ export PATH="/Applications/cmux.app/Contents/Resources/bin:/opt/homebrew/bin:/op
 ### Lifecycle / model-lookup dry-run
 
 - Cmux Opus 4.7 compatibility: `claude --model claude-opus-4-7 -p "ping"` → `pong`, exit 0.
-- Direct call of the `get_model()` function: `sed -n '17,77p' ~/.claude/oracle/bin/oracle-spawn.sh > /tmp/sp202-fns.sh; bash -c 'source /tmp/sp202-fns.sh; ...'` → the 12-agent mapping matches the `.claude-team.json` SSOT (conductor/gatekeeper/librarian/palette → `claude-opus-4-7`, the other 8 → `claude-sonnet-4-6`). This proves the jq lookup actually reads the SSOT.
+- Direct call of the `get_model()` function: `sed -n '17,79p' ~/.claude/oracle/bin/oracle-spawn.sh > /tmp/sp202-fns.sh; bash -c 'source /tmp/sp202-fns.sh; ...'` (R2 P2 fix — extends to 17,79 to include the closing brace of `detect_project_dir()` at line 78) → the 12-agent mapping matches the `.claude-team.json` SSOT (conductor/gatekeeper/librarian/palette → `claude-opus-4-7`, the other 8 → `claude-sonnet-4-6`). This proves the jq lookup actually reads the SSOT.
 
 ### Document gates
 

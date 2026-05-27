@@ -133,7 +133,7 @@ export PATH="/Applications/cmux.app/Contents/Resources/bin:/opt/homebrew/bin:/op
 ### 라이프사이클·모델 lookup dry-run
 
 - Cmux Opus 4.7 호환성: `claude --model claude-opus-4-7 -p "ping"` → `pong`, exit 0.
-- `get_model()` 함수 추출 호출: `sed -n '17,77p' ~/.claude/oracle/bin/oracle-spawn.sh > /tmp/sp202-fns.sh; bash -c 'source /tmp/sp202-fns.sh; ...'` → 12 에이전트 모델 매핑이 `.claude-team.json` SSOT와 일치(conductor/gatekeeper/librarian/palette → `claude-opus-4-7`, 나머지 8개 → `claude-sonnet-4-6`). jq lookup이 실제 SSOT를 읽음을 입증.
+- `get_model()` 함수 추출 호출: `sed -n '17,79p' ~/.claude/oracle/bin/oracle-spawn.sh > /tmp/sp202-fns.sh; bash -c 'source /tmp/sp202-fns.sh; ...'` (R2 P2 해소 — `detect_project_dir()`의 닫는 brace 라인 78 포함을 위해 17,79까지 추출) → 12 에이전트 모델 매핑이 `.claude-team.json` SSOT와 일치(conductor/gatekeeper/librarian/palette → `claude-opus-4-7`, 나머지 8개 → `claude-sonnet-4-6`). jq lookup이 실제 SSOT를 읽음을 입증.
 
 ### 문서 게이트
 
