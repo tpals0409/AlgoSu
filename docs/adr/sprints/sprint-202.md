@@ -144,7 +144,7 @@ export PATH="/Applications/cmux.app/Contents/Resources/bin:/opt/homebrew/bin:/op
 
 ### Critic 머지 게이트
 
-- `codex review --base main` (Codex) — Critical/High **0건** + 세션 ID `<sprint 종료 시 갱신>` 기록.
+- `codex review --base main` (Codex) — **5 라운드** R1~R5 — R1 P2 1건(jq 실패 시 `set -e` abort 가드, 세션 `019e68ea-f7d5-7640-988a-2c0dffd91b00`) → R2 P2 2건(command 페르소나 .md 4-7 동기 + RUNBOOK §6 sed 범위 17,79, 세션 `019e68f2-e148-78e0-8510-809804c85beb`) → R3 Critical/High 0건 + 추가 P2 0건(머지 게이트 통과 신호, algosu-oracle.md 동반 갱신은 일관성 보강) → R4 P3 1건(ADR sed 범위 17,77 stale, RUNBOOK과 정합) → **R5 Critical/High 0건 + P2 0건 + P3 0건 — CLEAN** (세션 `019e68f8-2869-7be2-9558-b0a3716b9d35`, "no discrete introduced issue that would break existing functionality or CI").
 
 ### CI
 

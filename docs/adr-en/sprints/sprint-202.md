@@ -144,7 +144,7 @@ export PATH="/Applications/cmux.app/Contents/Resources/bin:/opt/homebrew/bin:/op
 
 ### Critic merge gate
 
-- `codex review --base main` (Codex) — Critical/High **0** + session ID `<to be filled at sprint close>` recorded.
+- `codex review --base main` (Codex) — **5 rounds** R1~R5 — R1 P2 1 (jq failure `set -e` abort guard, session `019e68ea-f7d5-7640-988a-2c0dffd91b00`) → R2 P2 2 (command persona .md sync to 4-7 + RUNBOOK §6 sed range 17,79, session `019e68f2-e148-78e0-8510-809804c85beb`) → R3 Critical/High 0 + additional P2 0 (merge gate pass signal, algosu-oracle.md is brought along for consistency) → R4 P3 1 (ADR sed range 17,77 stale, aligned with RUNBOOK) → **R5 Critical/High 0 + P2 0 + P3 0 — CLEAN** (session `019e68f8-2869-7be2-9558-b0a3716b9d35`, "no discrete introduced issue that would break existing functionality or CI").
 
 ### CI
 
