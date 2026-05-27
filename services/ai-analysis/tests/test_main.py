@@ -676,3 +676,36 @@ class TestLifespan:
         with TestClient(app) as c:
             resp = c.get("/health")
             assert resp.status_code == 200
+
+
+class TestLifespanNegative:
+    """lifespan-runtime 음성검증 — startup 첫 단계 throw 시 lifespan context 진입 reject"""
+
+    def test_lifespan_rejects_when_startup_step_throws(self, monkeypatch):
+        """startup_event 첫 단계 throw → lifespan context 진입 reject 검증
+
+        throw 지점: circuit_breaker.set_state_change_callback
+        이유: redis.from_url / AIAnalysisWorker() 생성 이전 단계라
+        worker_thread.start() 누수 없음.
+        (github-worker의 startMetricsServer throw 지점 원리와 동일 — SP200_NEGATIVE_CHECK)
+        """
+        import src.main as main_mod
+        from src.main import app
+
+        # startup 첫 단계를 RuntimeError throw로 교체
+        monkeypatch.setattr(
+            "src.main.circuit_breaker.set_state_change_callback",
+            lambda *a, **kw: (_ for _ in ()).throw(
+                RuntimeError("SP203_NEGATIVE_CHECK: startup 첫 단계 실패")
+            ),
+        )
+
+        try:
+            with pytest.raises(RuntimeError, match="SP203_NEGATIVE_CHECK"):
+                with TestClient(app) as c:
+                    pass
+        finally:
+            # 전역 상태 초기화 — 이후 테스트 fixture 오염 방지
+            main_mod.worker_instance = None
+            main_mod.worker_thread = None
+            main_mod.redis_client = None
