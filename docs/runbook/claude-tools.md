@@ -53,7 +53,7 @@ related:
 
 ### Discord 관련 정책
 
-Sprint 204 Phase 4에서 Discord 통합 자산(`discord-send.sh` 등)을 repo에서 제거했습니다. 외부 BOT_TOKEN revoke는 사용자 직접 트랙(머지 후 Discord Developer Portal → Sprint 205 시작 시점 재확인). 향후 Agent↔Discord 또는 유사 외부 채널 통합 재개 시 처음부터 Secret-store 기반으로 재설계하세요(평문 토큰 파일 보유 패턴 금지).
+Sprint 204 Phase 4에서 Discord 통합 자산(`discord-send.sh` 등)을 repo에서 제거했습니다. 외부 BOT_TOKEN revoke는 Sprint 205 재확인 결과 **보류** — Discord 통합 운영 방향(재활성화 vs 완전 폐기) 미확정으로 Discord Developer Portal 토큰 revoke 미실행. 운영 방향이 확정되면 그 시점에 일괄 처리 (ADR sprint-205 §D0 참조). 향후 Agent↔Discord 또는 유사 외부 채널 통합 재개 시 처음부터 Secret-store 기반으로 재설계하세요(평문 토큰 파일 보유 패턴 금지).
 
 ## 4. 정리 로드맵
 
@@ -75,3 +75,4 @@ Sprint 204 Phase 4에서 Discord 통합 자산(`discord-send.sh` 등)을 repo에
 | Sprint 191 | Phase 2 실행 — deprecated `claude-team.sh`·`discord-receiver.sh` 삭제 (trigger path 검증: oracle bin·내부 live caller 0건) |
 | Sprint 202 | Phase 3 실행 — dormant `oracle-respond.sh`·`discord-receiver.py`·`discord-last-id` 로컬 삭제 (gitignored, git diff 0). `discord-send.sh` live → dormant 재분류 (oracle-respond.sh가 유일 caller였음). 다른 머신 동기화는 `rm .claude-tools/{oracle-respond.sh,discord-receiver.py,discord-last-id}` 수동 실행. 하네스 정기점검(Sprint 202 ADR 참조) 일환. |
 | Sprint 204 | Phase 4 실행 — dormant `discord-send.sh`·`oracle-system-prompt.md`·`discord-inbox.md` 로컬 삭제 (gitignored, git diff 0). **다른 머신/체크아웃 동기화는 `rm .claude-tools/{discord-send.sh,oracle-system-prompt.md,discord-inbox.md}` 수동 실행** (Sprint 202 패턴 그대로 — `.gitignore`라 deletion이 git으로 전파되지 않음). BOT_TOKEN은 사용자에게 Discord Developer Portal에서 revoke하도록 안내 (외부 시스템 트랙, repo 작업과 분리, Sprint 205 시작 시점 재확인). 3개월 무활성(2026-02-28 마지막 입력) + live caller 0건(`~/.claude/oracle/bin/` 17 스크립트·repo grep) → Agent↔Discord 통합 폐기 결정 (repo 측 정리 완료, 다른 머신 정리 + 외부 revoke는 Phase 3 사용자 트랙). Sprint 156 명문화→Sprint 191→202→204의 4-스프린트 정리 파이프라인 종결. |
+| Sprint 205 | Phase 3 외부 작업 재확인 — (a) BOT_TOKEN revoke **보류** (Discord 통합 운영 방향 미확정 — 운영 결정 명시 시점에 종결 조건 명문화, ADR sprint-205 §D0 참조) + (b) 다른 머신 정리 **미완료** (본 머신 `ls .claude-tools/` empty 확인, 사용자 직접 점검 후 보고 필요). 무한 이월 방지 조건 명문화 — 미정 지속 시 sprint-window/메모리 추적만, ADR 추가 commit 없음. |
