@@ -115,8 +115,9 @@ PR 머지 후 사용자에게 다음 안내:
 
 머지 전 게이트:
 
-- `git grep -n "BOT_TOKEN" -- ':!.gitignore' ':!docs/adr/' ':!docs/adr-en/' ':!docs/runbook/'` — **0건**. ADR/RUNBOOK는 Sprint 204 처분 결과·이력·신규 패턴(시크릿 노출 처분 표준)을 기술하는 의도된 historical reference로 제외 (단독 grep 시 `docs/runbook/claude-tools.md` 5건 / `docs/adr/sprints/sprint-204.md` 다수 잔존이 정상).
-- `git grep -n "discord-send" -- ':!docs/adr/' ':!docs/adr-en/' ':!docs/runbook/claude-tools.md'` — **0건** (`_base.md` 정리 후). RUNBOOK `docs/runbook/claude-tools.md`는 Sprint 204 처분 결과(헤더·§2·§3·§4·§5)를 기술하므로 의도된 historical reference로 제외 — `git grep -n "discord-send" docs/runbook/claude-tools.md`는 Sprint 204 결과 기술 hits 5건 잔존이 정상.
+- `git grep -n "BOT_TOKEN" -- ':!.gitignore' ':!docs/adr/' ':!docs/adr-en/' ':!docs/runbook/' ':!.claude/commands/agents/'` — **0건**. ADR/RUNBOOK는 Sprint 204 처분 결과·이력·신규 패턴(시크릿 노출 처분 표준)을 기술하는 의도된 historical reference로 제외 (단독 grep 시 `docs/runbook/claude-tools.md` 5건 / `docs/adr/sprints/sprint-204.md` 다수 잔존이 정상).
+- `git grep -n "discord-send" -- ':!docs/adr/' ':!docs/adr-en/' ':!docs/runbook/claude-tools.md' ':!.claude/commands/agents/'` — **0건** (`_base.md` 정리 후). RUNBOOK `docs/runbook/claude-tools.md`는 Sprint 204 처분 결과(헤더·§2·§3·§4·§5)를 기술하므로 의도된 historical reference로 제외 — `git grep -n "discord-send" docs/runbook/claude-tools.md`는 Sprint 204 결과 기술 hits 5건 잔존이 정상.
+- _(Sprint 205 R1 해소로 `_base.md:51` `discord-send.sh` 직접 호출 금지 조항 조건부 복원 — 위 두 grep에 `':!.claude/commands/agents/'` 제외 추가로 정합 유지)_
 - `ls .claude-tools/` — 빈 결과 (3 파일 모두 부재, 디렉토리 보존).
 - `scripts/check-adr-index-count.mjs --strict` — 영구 8 / 토픽 1 / sprint **142** 일치.
 - `scripts/check-adr-en-coverage.mjs --lint` — **151/151** (100%).

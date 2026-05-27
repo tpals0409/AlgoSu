@@ -115,8 +115,9 @@ After PR merge, guide the user:
 
 Pre-merge gates:
 
-- `git grep -n "BOT_TOKEN" -- ':!.gitignore' ':!docs/adr/' ':!docs/adr-en/' ':!docs/runbook/'` — **0 hits**. ADR/RUNBOOK files document the Sprint 204 disposal outcome, history, and the new patterns (secret-exposure disposal standard), so those hits are intended historical references and are excluded (standalone grep returns 5 hits in `docs/runbook/claude-tools.md` / many in `docs/adr/sprints/sprint-204.md` as the expected outcome-narration).
-- `git grep -n "discord-send" -- ':!docs/adr/' ':!docs/adr-en/' ':!docs/runbook/claude-tools.md'` — **0 hits** (after `_base.md` cleanup). The RUNBOOK `docs/runbook/claude-tools.md` documents the Sprint 204 disposal outcome across the header / §2 / §3 / §4 / §5, so those hits are intended historical references and are excluded — `git grep -n "discord-send" docs/runbook/claude-tools.md` returns 5 hits as the expected outcome-narration.
+- `git grep -n "BOT_TOKEN" -- ':!.gitignore' ':!docs/adr/' ':!docs/adr-en/' ':!docs/runbook/' ':!.claude/commands/agents/'` — **0 hits**. ADR/RUNBOOK files document the Sprint 204 disposal outcome, history, and the new patterns (secret-exposure disposal standard), so those hits are intended historical references and are excluded (standalone grep returns 5 hits in `docs/runbook/claude-tools.md` / many in `docs/adr/sprints/sprint-204.md` as the expected outcome-narration).
+- `git grep -n "discord-send" -- ':!docs/adr/' ':!docs/adr-en/' ':!docs/runbook/claude-tools.md' ':!.claude/commands/agents/'` — **0 hits** (after `_base.md` cleanup). The RUNBOOK `docs/runbook/claude-tools.md` documents the Sprint 204 disposal outcome across the header / §2 / §3 / §4 / §5, so those hits are intended historical references and are excluded — `git grep -n "discord-send" docs/runbook/claude-tools.md` returns 5 hits as the expected outcome-narration.
+- _(Sprint 205 R1 resolution restored the `_base.md:51` `discord-send.sh` direct-call prohibition (with the conditional caveat) — the `':!.claude/commands/agents/'` exclusion added to both greps above restores their correctness)_
 - `ls .claude-tools/` — empty (all three files absent, directory preserved).
 - `scripts/check-adr-index-count.mjs --strict` — permanent 8 / topic 1 / sprint **142** aligned.
 - `scripts/check-adr-en-coverage.mjs --lint` — **151/151** (100%).
