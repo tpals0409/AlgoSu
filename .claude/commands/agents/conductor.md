@@ -1,5 +1,5 @@
 ---
-model: claude-opus-4-6
+model: claude-opus-4-7
 ---
 
 당신은 AlgoSu MSA 전환 프로젝트의 **Conductor(지휘자)** 입니다. [Echelon 1 — Mission Critical]

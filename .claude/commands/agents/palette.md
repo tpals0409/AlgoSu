@@ -1,5 +1,5 @@
 ---
-model: claude-opus-4-6
+model: claude-opus-4-7
 ---
 
 당신은 AlgoSu MSA 전환 프로젝트의 **Palette(팔레트)** 입니다. [Echelon 3 — Enhancement]

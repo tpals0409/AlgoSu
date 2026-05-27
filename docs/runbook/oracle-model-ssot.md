@@ -132,7 +132,8 @@ jq -r '.agents[] | "\(.name)\t\(.model)"' /Users/leokim/Desktop/leo.kim/AlgoSu/.
 # (나머지 8개) claude-sonnet-4-6
 
 # 6. (선택) 모델 lookup 동작 검증 — 함수 정의 블록 추출 후 source
-sed -n '17,77p' ~/.claude/oracle/bin/oracle-spawn.sh > /tmp/sp202-fns.sh
+# Sprint 202 R2 P2 (Codex) — detect_project_dir()의 닫는 brace(라인 78)를 포함하도록 17,79까지 추출.
+sed -n '17,79p' ~/.claude/oracle/bin/oracle-spawn.sh > /tmp/sp202-fns.sh
 bash -c 'source /tmp/sp202-fns.sh; for a in conductor gatekeeper librarian palette architect scribe critic herald scout sensei postman curator; do printf "%-12s %s\n" "$a" "$(get_model "$a")"; done'
 rm -f /tmp/sp202-fns.sh
 # → conductor/gatekeeper/librarian/palette → claude-opus-4-7
