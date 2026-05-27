@@ -10,25 +10,22 @@ related:
 `.claude-tools/` 디렉토리의 현재 상태, 파일별 분류, 운영 정책을 명문화합니다.
 
 > Sprint 150 이후 Oracle dispatch 인프라가 `~/.claude/oracle/bin/` 스택으로 전환되어,
-> `.claude-tools/` 스크립트는 대부분 deprecated/dormant 상태입니다.
-> Sprint 191에서 deprecated 2파일(`claude-team.sh`, `discord-receiver.sh`)을 삭제(Phase 2 완료)했고,
-> Sprint 202에서 dormant 3파일(`oracle-respond.sh`, `discord-receiver.py`, `discord-last-id`)을 삭제(Phase 3 완료)했습니다.
+> `.claude-tools/` 스크립트는 단계적으로 정리되어 왔습니다.
+> Sprint 191에서 deprecated 2파일(`claude-team.sh`, `discord-receiver.sh`)을 삭제(Phase 2 완료),
+> Sprint 202에서 dormant 3파일(`oracle-respond.sh`, `discord-receiver.py`, `discord-last-id`)을 삭제(Phase 3 완료),
+> Sprint 204에서 dormant 3파일(`discord-send.sh`, `oracle-system-prompt.md`, `discord-inbox.md`)을 삭제(Phase 4 완료)했습니다.
 
 ## 1. 디렉토리 상태
 
 - **위치**: 프로젝트 루트 `.claude-tools/`
-- **Git 정책**: `.gitignore` 에 포함 (untracked) -- 민감 정보(BOT_TOKEN) 보호
+- **Git 정책**: `.gitignore` 에 포함 (untracked) — 로컬 dispatch 산출물 격리용 (BOT_TOKEN 회수 완료, Sprint 204)
 - **현재 SSOT**: `~/.claude/oracle/bin/oracle-*.sh` (17개 스크립트)
 
 ## 2. 파일별 상태 분류
 
-| 파일 | 상태 | 용도 | 비고 |
-|------|------|------|------|
-| `discord-send.sh` | **dormant** | Oracle -> Discord 전송 (4채널) | Sprint 202에서 oracle-respond.sh 삭제로 caller 0건 확인 → live → dormant 재분류. BOT_TOKEN 평문 보존 중이라 단순 삭제 보류, Discord 운영 방향 결정 후 처분 |
-| `oracle-system-prompt.md` | **reference** | Oracle 역할 정의 | `.claude/commands/algosu-oracle.md`가 SSOT |
-| `discord-inbox.md` | **log** | Discord PM 메시지 로그 | append-only, 자동 갱신 (수신 trigger 부재라 사실상 freeze 상태) |
+**현재 상태**: 추적 대상 산출물 없음 (Sprint 204 Phase 4 완료로 dormant 파일 3종[`discord-send.sh`, `oracle-system-prompt.md`, `discord-inbox.md`] 모두 삭제). 디렉토리는 향후 신규 dispatch 산출물 대비로 `.gitignore` 등록 상태로 보존.
 
-### 상태 정의
+### 상태 정의 (신규 산출물 분류 기준)
 
 - **deprecated**: 대체 수단이 존재하며 신규 사용 금지. 향후 삭제 후보.
 - **dormant**: 설계되었으나 trigger/호출 경로가 비활성화됨. 향후 검증 후 삭제 또는 재활성화 결정.
@@ -50,14 +47,13 @@ related:
 
 ### 보안 주의
 
-- `discord-send.sh`(및 dormant `discord-receiver.py`)에 Discord BOT_TOKEN 평문 포함
-- `.gitignore`로 repo 미노출 상태 유지 중
-- 이 파일들을 tracked으로 전환하거나 내용을 다른 문서에 복사하는 것은 **금지**
+- `.gitignore`로 repo 미노출 상태 유지 (로컬 dispatch 산출물 격리)
+- 신규 산출물에 평문 시크릿/토큰 보유 **금지** — Secret-store(macOS Keychain, SealedSecret 등) 경유 필수
+- 이 디렉토리 파일을 tracked으로 전환하거나 내용을 다른 문서에 복사하는 것은 **금지**
 
 ### Discord 관련 정책
 
-- `_base.md` 독립 실행 모드에서 `discord-send.sh` 직접 호출 **금지**
-- Discord 메시지 전송이 필요하면 Oracle 경유 (보고 체계 위반 방지)
+Sprint 204 Phase 4에서 Discord 통합(`discord-send.sh`, BOT_TOKEN)을 폐기했습니다. 향후 Agent↔Discord 또는 유사 외부 채널 통합 재개 시 처음부터 Secret-store 기반으로 재설계하세요(평문 토큰 파일 보유 패턴 금지).
 
 ## 4. 정리 로드맵
 
@@ -66,7 +62,7 @@ related:
 | Phase 1 (Sprint 156) | 운영 정책 RUNBOOK 명문화 | 없음 (본 문서) |
 | Phase 2 (Sprint 191 ✅) | deprecated 파일 삭제 (`claude-team.sh`, `discord-receiver.sh`) | trigger path 검증 완료 — live caller 0건 확인 후 삭제 |
 | Phase 3 (Sprint 202 ✅) | dormant 파일 삭제 (`oracle-respond.sh`, `discord-receiver.py`, `discord-last-id`) | live caller 0건 확인(`grep -r` repo + `~/.claude/oracle/bin/`) 후 로컬 삭제. 본 RUNBOOK §2 표 정리 + `discord-send.sh`를 live → dormant 재분류 |
-| Phase 4 (미정) | `discord-send.sh` 처분 결정 (재활성화 / 삭제 / BOT_TOKEN 회수) | Agent 간 통신 아키텍처 확정 — BOT_TOKEN 평문 노출 위험 잔존 |
+| Phase 4 (Sprint 204 ✅) | dormant 3파일(`discord-send.sh`, `oracle-system-prompt.md`, `discord-inbox.md`) 로컬 삭제 + BOT_TOKEN 회수 안내 | live caller 0건 사전 검증 + 3개월 무활성(2026-02-28 마지막 입력) → Agent↔Discord 폐기 결정. dormant 자산 시크릿 노출 위험 종결 |
 
 ## 5. 이력
 
@@ -78,3 +74,4 @@ related:
 | Sprint 156 | 본 RUNBOOK 작성 — 운영 정책 명문화 |
 | Sprint 191 | Phase 2 실행 — deprecated `claude-team.sh`·`discord-receiver.sh` 삭제 (trigger path 검증: oracle bin·내부 live caller 0건) |
 | Sprint 202 | Phase 3 실행 — dormant `oracle-respond.sh`·`discord-receiver.py`·`discord-last-id` 로컬 삭제 (gitignored, git diff 0). `discord-send.sh` live → dormant 재분류 (oracle-respond.sh가 유일 caller였음). 다른 머신 동기화는 `rm .claude-tools/{oracle-respond.sh,discord-receiver.py,discord-last-id}` 수동 실행. 하네스 정기점검(Sprint 202 ADR 참조) 일환. |
+| Sprint 204 | Phase 4 실행 — dormant `discord-send.sh`·`oracle-system-prompt.md`·`discord-inbox.md` 로컬 삭제 (gitignored, git diff 0). BOT_TOKEN은 사용자가 Discord Developer Portal에서 revoke (외부 시스템 트랙, repo 작업과 분리). 3개월 무활성(2026-02-28 마지막 입력) + live caller 0건(`~/.claude/oracle/bin/` 17 스크립트·repo grep) → Agent↔Discord 통합 완전 폐기. Sprint 156 명문화→Sprint 191→202→204의 4-스프린트 정리 파이프라인 종결. |

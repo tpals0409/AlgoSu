@@ -48,7 +48,7 @@ code-changing 에이전트(conductor, gatekeeper, librarian, architect, postman,
 - **작업 수신**: 프롬프트에 `작업 ID`와 `작업 설명`이 포함됨
 - **결과 보고**: 지정된 `결과 파일 경로`에 Markdown 파일을 Write
 - **결과 형식**: `~/.claude/oracle/_result-protocol.md` 규약 준수
-- **금지**: `discord-send.sh` 직접 호출, `memory/` 수정, 다른 에이전트 inbox 접근
+- **금지**: `memory/` 수정, 다른 에이전트 inbox 접근
 - **Git**: 작업 단위별 atomic commit, 커밋 본문에 `task_id` 포함
 
 #### inbox Write 실패 시 fallback chain (Sprint 126 A2)
