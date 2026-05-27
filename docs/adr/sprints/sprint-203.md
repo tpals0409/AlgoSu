@@ -49,7 +49,7 @@ Postman 위임. `services/ai-analysis/tests/test_main.py` 끝에 `TestLifespanNe
 
 **finally 블록**: 전역 상태(`worker_instance` / `worker_thread` / `redis_client`) = `None`으로 초기화해 다른 테스트와의 격리 보장.
 
-**Python lambda throw 관용구**: `mocker.patch`의 `side_effect=lambda *a, **k: (_ for _ in ()).throw(RuntimeError("SP203_NEGATIVE_CHECK"))` — 비직관적이나 테스트 격리를 위해 허용.
+**Python lambda throw 관용구**: `monkeypatch.setattr("src.main.circuit_breaker.set_state_change_callback", lambda *a, **kw: (_ for _ in ()).throw(RuntimeError("SP203_NEGATIVE_CHECK: startup 첫 단계 실패")))` — pytest 내장 `monkeypatch` 직접 할당 패턴 (pytest-mock의 `mocker.patch` + `side_effect=` 패턴과 구분). 비직관적이나 테스트 격리를 위해 허용.
 
 ## 검증
 

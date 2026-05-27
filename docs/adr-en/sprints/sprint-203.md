@@ -49,7 +49,7 @@ Delegated to Postman. Appended `TestLifespanNegative` class to `services/ai-anal
 
 **`finally` block**: resets global state (`worker_instance` / `worker_thread` / `redis_client`) to `None` to ensure isolation from other tests.
 
-**Python lambda throw idiom**: `side_effect=lambda *a, **k: (_ for _ in ()).throw(RuntimeError("SP203_NEGATIVE_CHECK"))` — unconventional but accepted for test isolation.
+**Python lambda throw idiom**: `monkeypatch.setattr("src.main.circuit_breaker.set_state_change_callback", lambda *a, **kw: (_ for _ in ()).throw(RuntimeError("SP203_NEGATIVE_CHECK")))` — pytest builtin `monkeypatch` direct assignment (NOT pytest-mock `mocker.patch` + `side_effect=`). Unconventional but accepted for test isolation.
 
 ## Verification
 
