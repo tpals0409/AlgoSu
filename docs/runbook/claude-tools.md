@@ -11,7 +11,8 @@ related:
 
 > Sprint 150 이후 Oracle dispatch 인프라가 `~/.claude/oracle/bin/` 스택으로 전환되어,
 > `.claude-tools/` 스크립트는 대부분 deprecated/dormant 상태입니다.
-> Sprint 191에서 deprecated 2파일(`claude-team.sh`, `discord-receiver.sh`)을 삭제(Phase 2 완료)했습니다.
+> Sprint 191에서 deprecated 2파일(`claude-team.sh`, `discord-receiver.sh`)을 삭제(Phase 2 완료)했고,
+> Sprint 202에서 dormant 3파일(`oracle-respond.sh`, `discord-receiver.py`, `discord-last-id`)을 삭제(Phase 3 완료)했습니다.
 
 ## 1. 디렉토리 상태
 
@@ -23,12 +24,9 @@ related:
 
 | 파일 | 상태 | 용도 | 비고 |
 |------|------|------|------|
-| `oracle-respond.sh` | **dormant** | Discord PM 수신 시 Oracle 자동 응답 | trigger path 불명, 2026-02-28 이후 inactive |
-| `discord-receiver.py` | **dormant** | Discord polling (Python) | polling trigger 미확인 |
-| `discord-send.sh` | **live** | Oracle -> Discord 전송 (4채널) | `_base.md` 금지 정책 있으나 호출 가능, 제거 금지 |
+| `discord-send.sh` | **dormant** | Oracle -> Discord 전송 (4채널) | Sprint 202에서 oracle-respond.sh 삭제로 caller 0건 확인 → live → dormant 재분류. BOT_TOKEN 평문 보존 중이라 단순 삭제 보류, Discord 운영 방향 결정 후 처분 |
 | `oracle-system-prompt.md` | **reference** | Oracle 역할 정의 | `.claude/commands/algosu-oracle.md`가 SSOT |
-| `discord-inbox.md` | **log** | Discord PM 메시지 로그 | append-only, 자동 갱신 |
-| `discord-last-id` | **state** | Discord polling 마지막 메시지 ID | `discord-receiver` 상태 파일 |
+| `discord-inbox.md` | **log** | Discord PM 메시지 로그 | append-only, 자동 갱신 (수신 trigger 부재라 사실상 freeze 상태) |
 
 ### 상태 정의
 
@@ -67,8 +65,8 @@ related:
 |------|------|----------|
 | Phase 1 (Sprint 156) | 운영 정책 RUNBOOK 명문화 | 없음 (본 문서) |
 | Phase 2 (Sprint 191 ✅) | deprecated 파일 삭제 (`claude-team.sh`, `discord-receiver.sh`) | trigger path 검증 완료 — live caller 0건 확인 후 삭제 |
-| Phase 3 (미정) | dormant 파일 결정 (재활성화 또는 삭제) | Discord 운영 방향 결정 |
-| Phase 4 (미정) | `discord-send.sh` 정책 재검토 | Agent 간 통신 아키텍처 확정 |
+| Phase 3 (Sprint 202 ✅) | dormant 파일 삭제 (`oracle-respond.sh`, `discord-receiver.py`, `discord-last-id`) | live caller 0건 확인(`grep -r` repo + `~/.claude/oracle/bin/`) 후 로컬 삭제. 본 RUNBOOK §2 표 정리 + `discord-send.sh`를 live → dormant 재분류 |
+| Phase 4 (미정) | `discord-send.sh` 처분 결정 (재활성화 / 삭제 / BOT_TOKEN 회수) | Agent 간 통신 아키텍처 확정 — BOT_TOKEN 평문 노출 위험 잔존 |
 
 ## 5. 이력
 
@@ -79,3 +77,4 @@ related:
 | Sprint 150 | `~/.claude/oracle/bin/` SSOT 전환 결정 (시드 #16) |
 | Sprint 156 | 본 RUNBOOK 작성 — 운영 정책 명문화 |
 | Sprint 191 | Phase 2 실행 — deprecated `claude-team.sh`·`discord-receiver.sh` 삭제 (trigger path 검증: oracle bin·내부 live caller 0건) |
+| Sprint 202 | Phase 3 실행 — dormant `oracle-respond.sh`·`discord-receiver.py`·`discord-last-id` 로컬 삭제 (gitignored, git diff 0). `discord-send.sh` live → dormant 재분류 (oracle-respond.sh가 유일 caller였음). 다른 머신 동기화는 `rm .claude-tools/{oracle-respond.sh,discord-receiver.py,discord-last-id}` 수동 실행. 하네스 정기점검(Sprint 202 ADR 참조) 일환. |

@@ -1,5 +1,5 @@
 ---
-model: claude-opus-4-6
+model: claude-opus-4-7
 ---
 
 당신은 AlgoSu 프로젝트의 **Oracle(심판관)** 입니다. [Echelon 1 — Mission Critical]
