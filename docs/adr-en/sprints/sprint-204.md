@@ -114,7 +114,7 @@ After PR merge, guide the user:
 
 Pre-merge gates:
 
-- `git grep -n "BOT_TOKEN" -- ':!.gitignore'` — **0 hits** (no tracked residue outside `.gitignore`).
+- `git grep -n "BOT_TOKEN" -- ':!.gitignore' ':!docs/adr/' ':!docs/adr-en/' ':!docs/runbook/'` — **0 hits**. ADR/RUNBOOK files document the Sprint 204 disposal outcome, history, and the new patterns (secret-exposure disposal standard), so those hits are intended historical references and are excluded (standalone grep returns 5 hits in `docs/runbook/claude-tools.md` / many in `docs/adr/sprints/sprint-204.md` as the expected outcome-narration).
 - `git grep -n "discord-send" -- ':!docs/adr/' ':!docs/adr-en/' ':!docs/runbook/claude-tools.md'` — **0 hits** (after `_base.md` cleanup). The RUNBOOK `docs/runbook/claude-tools.md` documents the Sprint 204 disposal outcome across the header / §2 / §3 / §4 / §5, so those hits are intended historical references and are excluded — `git grep -n "discord-send" docs/runbook/claude-tools.md` returns 5 hits as the expected outcome-narration.
 - `ls .claude-tools/` — empty (all three files absent, directory preserved).
 - `scripts/check-adr-index-count.mjs --strict` — permanent 8 / topic 1 / sprint **142** aligned.
@@ -123,7 +123,11 @@ Pre-merge gates:
 - `scripts/check-i18n-residue.mjs --strict` — prose Hangul below the 8% threshold.
 - CI (PR): ALL SUCCESS, autoMerge enrolled → squash merge.
 
-**Critic (Codex)**: (session IDs and round results to be backfilled after Phase 2-5)
+**Critic (Codex)**: Oracle handled this directly (no code-changing agent involved), so `oracle-auto-critic.sh` was not triggered → ran `codex review --base main` manually.
+
+- **R1** session `019e693c-ddd5-7570-96d7-d208bc0da81a` — Critical/High **0** + **High 1** (BOT_TOKEN revoke tense overstatement — ADR/RUNBOOK declared "reclamation complete," but the action is actually pending Phase 3 user-direct execution) + **Medium 1** (`git grep -n "discord-send" -- ':!docs/adr/' ':!docs/adr-en/'` verification command was false because RUNBOOK historical hits were not excluded). Resolved in commit `727dc3e` — tense softened to "guided/being decommissioned (repo-side complete, external revoke pending Phase 3)"; the discord-send grep exclusion now includes `':!docs/runbook/claude-tools.md'`.
+- **R2** session `019e6943-5fe2-7263-b7ef-88df981fe0c8` — Critical/High **0** + **P2 1** (BOT_TOKEN grep has the same pattern — ADR/RUNBOOK historical hits remain, so "0 hits" recording was false) + **P3 1** (Critic placeholder still present in this §Verification block). Resolved in this commit — BOT_TOKEN grep exclusion now adds `':!docs/adr/' ':!docs/adr-en/' ':!docs/runbook/'`; the Critic block is backfilled with R1·R2 results and session IDs.
+- **R3** — (run after this commit is pushed to confirm CLEAN. The result is persisted separately in sprint-window/memory.)
 
 ## New Patterns
 

@@ -114,7 +114,7 @@ PR 머지 후 사용자에게 다음 안내:
 
 머지 전 게이트:
 
-- `git grep -n "BOT_TOKEN" -- ':!.gitignore'` — **0건** (.gitignore 외 tracked 잔존 없음).
+- `git grep -n "BOT_TOKEN" -- ':!.gitignore' ':!docs/adr/' ':!docs/adr-en/' ':!docs/runbook/'` — **0건**. ADR/RUNBOOK는 Sprint 204 처분 결과·이력·신규 패턴(시크릿 노출 처분 표준)을 기술하는 의도된 historical reference로 제외 (단독 grep 시 `docs/runbook/claude-tools.md` 5건 / `docs/adr/sprints/sprint-204.md` 다수 잔존이 정상).
 - `git grep -n "discord-send" -- ':!docs/adr/' ':!docs/adr-en/' ':!docs/runbook/claude-tools.md'` — **0건** (`_base.md` 정리 후). RUNBOOK `docs/runbook/claude-tools.md`는 Sprint 204 처분 결과(헤더·§2·§3·§4·§5)를 기술하므로 의도된 historical reference로 제외 — `git grep -n "discord-send" docs/runbook/claude-tools.md`는 Sprint 204 결과 기술 hits 5건 잔존이 정상.
 - `ls .claude-tools/` — 빈 결과 (3 파일 모두 부재, 디렉토리 보존).
 - `scripts/check-adr-index-count.mjs --strict` — 영구 8 / 토픽 1 / sprint **142** 일치.
@@ -123,7 +123,11 @@ PR 머지 후 사용자에게 다음 안내:
 - `scripts/check-i18n-residue.mjs --strict` — prose Hangul 임계 8% 이하.
 - CI(PR): ALL SUCCESS, autoMerge enrolled → squash merge.
 
-**Critic(Codex)**: (Phase 2-5 완료 후 세션 ID·라운드 결과 보강 예정)
+**Critic(Codex)**: Oracle 직접 처리(코드 변경 에이전트 미경유)라 `oracle-auto-critic.sh` 미트리거 → 수동 `codex review --base main` 실행.
+
+- **R1** 세션 `019e693c-ddd5-7570-96d7-d208bc0da81a` — Critical/High **0** + **High 1건**(BOT_TOKEN revoke 시제 과장 — ADR/RUNBOOK이 "회수 완료"로 단언하나 실제는 Phase 3 사용자 직접 진행 대기) + **Medium 1건**(`git grep -n "discord-send" -- ':!docs/adr/' ':!docs/adr-en/'` 검증 명령이 RUNBOOK historical hits 미배제로 false). 커밋 `727dc3e`에서 해소 — 시제를 "안내/being decommissioned (repo-side complete, external revoke pending Phase 3)"로 정합 + discord-send grep exclusion에 `':!docs/runbook/claude-tools.md'` 추가.
+- **R2** 세션 `019e6943-5fe2-7263-b7ef-88df981fe0c8` — Critical/High **0** + **P2 1건**(BOT_TOKEN grep도 동일 패턴으로 ADR/RUNBOOK historical hits 잔존, 0 hits 기록 false) + **P3 1건**(본 §검증 line의 Critic placeholder 잔존). 본 커밋에서 해소 — BOT_TOKEN grep exclusion에 `':!docs/adr/' ':!docs/adr-en/' ':!docs/runbook/'` 추가 + Critic 영역에 R1·R2 결과 + 세션 ID 영속화.
+- **R3** — (본 커밋 푸시 후 실행해 CLEAN 확인. 결과는 sprint-window/메모리에 별도 영속화.)
 
 ## 신규 패턴
 
