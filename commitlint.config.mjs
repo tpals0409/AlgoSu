@@ -25,7 +25,7 @@ const services = readdirSync('./services', { withFileTypes: true })
  */
 const staticScopes = [
   'adr', 'blog', 'ci', 'deps', 'docs',
-  'e2e', 'frontend', 'infra', 'runbook', 'security',
+  'e2e', 'frontend', 'infra', 'oracle', 'runbook', 'security',
 ];
 
 export default {
