@@ -113,6 +113,11 @@ Restored `@testing-library/dom` devDependency (collateral damage from the initia
 - **`npm install --package-lock-only` + `npm ci` verification pattern for dependency additions** — When adding new npm packages, update only the lockfile with `npm install --package-lock-only` (node_modules unchanged), then verify `npm ci` EXIT=0. Using `npm install` alone carries the risk of lockfile pruning.
 - **Sentry no-op inheritance pattern** — For environment-variable-based optional third-party integrations, return `null` (no-op) from the component when `!!ENV_VAR` is falsy. Generalized from `sentry.client.config.ts`'s `enabled: !!NEXT_PUBLIC_SENTRY_DSN` to the `GoogleAnalytics` component.
 
+## Critic Cross-Review
+
+- **R1 CLEAN ✅** (Codex `codex review --base 02018fc`, model gpt-5.5, session `019e6d5d-5dfb-7e23-9aa7-f26ad2bdc863`): "The GA4 integration is conditionally enabled, wired into the root layout, and the CSP/dependency updates appear consistent with the new third-party script usage. I did not identify any discrete regression introduced by the diff."
+- Findings: Critical/High/Medium/Low all **0**. The Critic directly inspected the `@next/third-parties/google` GA implementation source, CSP, and dependencies. R2+ unnecessary — complying with the placeholder regression-prevention decision, only R1 is persisted.
+
 ## Sprint 211+ Carryover
 
 - **Production GA4 measurement ID (G-XXXXXXX) provisioning + frontend Dockerfile ENV/ARG injection** (operations/user track, following the Sentry DSN precedent).

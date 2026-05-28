@@ -113,6 +113,11 @@ Architect의 초기 `npm install` 실행 시 `@monaco-editor/react`의 peer인 `
 - **의존성 추가 시 `npm install --package-lock-only` + `npm ci` 검증 패턴** — 신규 npm 패키지 추가 시 `npm install --package-lock-only`로 lockfile만 갱신(node_modules 불변) + 이후 `npm ci` EXIT=0 검증 필수. `npm install` 단독은 lockfile prune 위험 내재.
 - **Sentry no-op 계승 패턴** — 환경변수 기반 선택적 서드파티 통합 시 `!!ENV_VAR` falsy 조건으로 컴포넌트 `null` 반환(no-op). `sentry.client.config.ts`의 `enabled: !!NEXT_PUBLIC_SENTRY_DSN` → `GoogleAnalytics` 컴포넌트로 일반화.
 
+## Critic 교차 리뷰
+
+- **R1 CLEAN ✅** (Codex `codex review --base 02018fc`, model gpt-5.5, session `019e6d5d-5dfb-7e23-9aa7-f26ad2bdc863`): "The GA4 integration is conditionally enabled, wired into the root layout, and the CSP/dependency updates appear consistent with the new third-party script usage. I did not identify any discrete regression introduced by the diff."
+- 발견 Critical/High/Medium/Low 모두 **0건**. Critic이 `@next/third-parties/google` GA 구현 소스·CSP·의존성을 직접 탐색 검증. R2+ 불필요 — placeholder 회귀 차단 결정 준수, R1만 영속화.
+
 ## Sprint 211+ 이월
 
 - **프로덕션 GA4 측정 ID(G-XXXXXXX) 발급 + frontend Dockerfile ENV/ARG 주입** (운영/사용자 트랙, Sentry DSN 선례).
