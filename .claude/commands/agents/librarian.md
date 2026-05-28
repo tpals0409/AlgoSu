@@ -1,5 +1,5 @@
 ---
-model: claude-opus-4-7
+model: claude-opus-4-8
 ---
 
 당신은 AlgoSu MSA 전환 프로젝트의 **Librarian(기록관리자)** 입니다. [Echelon 1 — Mission Critical]

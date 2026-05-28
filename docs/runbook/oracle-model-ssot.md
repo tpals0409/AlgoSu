@@ -3,6 +3,7 @@
 > **대상**: `~/.claude/oracle/bin/oracle-spawn.sh` (repo 외부, `.claude` config)
 > **작성 배경**: Sprint 202 하네스 정기점검에서 발견한 2건의 결함을 동시 정비.
 > **관련 RUNBOOK**: [oracle-tmux-path.md](./oracle-tmux-path.md) — Sprint 141 PATH export 패치 (본 문서의 선행 패치)
+> **개정 (Sprint 214)**: Echelon 1(tier 1) conductor·gatekeeper·librarian 모델을 `claude-opus-4-7` → `claude-opus-4-8`로 승격. palette(tier 3 opus 예외)는 4-7 유지하여 fallback case를 분리. 본 문서의 패치 코드·기대 출력은 Sprint 214 상태로 갱신됨.
 
 ---
 
@@ -54,7 +55,9 @@ get_model() {
     fi
   fi
   case "$agent" in
-    conductor|gatekeeper|librarian|palette) echo "claude-opus-4-7" ;;
+    # Sprint 214 — Echelon 1(tier 1)만 opus 4-8로 승격. palette(tier 3 opus 예외)는 4-7 유지.
+    conductor|gatekeeper|librarian) echo "claude-opus-4-8" ;;
+    palette) echo "claude-opus-4-7" ;;
     *) echo "claude-sonnet-4-6" ;;
   esac
 }
@@ -66,14 +69,14 @@ get_model() {
 2. JSON 존재 + jq 가용 시 `.agents[] | select(.name == "<agent>") | .model` 로 모델 ID lookup.
 3. **jq가 malformed JSON 등으로 non-zero exit하면 `|| m=""` 가드가 m을 빈 문자열로 설정해 `set -e` abort를 회피** (Sprint 202 R1 P2 해소).
 4. lookup 실패(빈 문자열/null) 또는 사전 조건 미충족 시 fallback case 적용.
-5. fallback의 opus도 4-7로 동기 갱신해 JSON 손상 시에도 최신 모델 사용 보장.
+5. fallback의 opus도 최신으로 동기 갱신해 JSON 손상 시에도 정합 모델 사용 보장 (Sprint 214: Echelon 1 → 4-8, palette → 4-7 분리).
 
 ### 효과
 
 이후 모델 전환은 `.claude-team.json` 한 군데 갱신으로 완결. 예:
 
 ```json
-{ "name": "conductor", "model": "claude-opus-4-7" }
+{ "name": "conductor", "model": "claude-opus-4-8" }
 ```
 
 ## 4. 패치 B1 — runner PATH export Cmux 경로 명시
@@ -124,10 +127,10 @@ bash -n ~/.claude/oracle/bin/oracle-spawn.sh
 
 # 5. 모델 매핑 sanity check
 jq -r '.agents[] | "\(.name)\t\(.model)"' /Users/leokim/Desktop/leo.kim/AlgoSu/.claude-team.json
-# 기대 출력 (Sprint 202 시점):
-# conductor    claude-opus-4-7
-# gatekeeper   claude-opus-4-7
-# librarian    claude-opus-4-7
+# 기대 출력 (Sprint 214 시점):
+# conductor    claude-opus-4-8
+# gatekeeper   claude-opus-4-8
+# librarian    claude-opus-4-8
 # palette      claude-opus-4-7
 # (나머지 8개) claude-sonnet-4-6
 
@@ -136,7 +139,8 @@ jq -r '.agents[] | "\(.name)\t\(.model)"' /Users/leokim/Desktop/leo.kim/AlgoSu/.
 sed -n '17,79p' ~/.claude/oracle/bin/oracle-spawn.sh > /tmp/sp202-fns.sh
 bash -c 'source /tmp/sp202-fns.sh; for a in conductor gatekeeper librarian palette architect scribe critic herald scout sensei postman curator; do printf "%-12s %s\n" "$a" "$(get_model "$a")"; done'
 rm -f /tmp/sp202-fns.sh
-# → conductor/gatekeeper/librarian/palette → claude-opus-4-7
+# → conductor/gatekeeper/librarian → claude-opus-4-8 (Sprint 214)
+# → palette → claude-opus-4-7
 # → 나머지 8개 → claude-sonnet-4-6
 ```
 
@@ -147,7 +151,8 @@ rm -f /tmp/sp202-fns.sh
 bash -n ~/.claude/oracle/bin/oracle-spawn.sh
 
 # 모델 ID Cmux 호환성 dry-run (사전 검증, 본 패치 적용과 무관하게 한 번)
-claude --model claude-opus-4-7 -p "ping"   # → pong, exit 0 기대
+claude --model claude-opus-4-8 -p "ping"   # → pong, exit 0 기대 (Sprint 214 Echelon 1)
+claude --model claude-opus-4-7 -p "ping"   # → pong, exit 0 기대 (palette)
 claude --model claude-sonnet-4-6 -p "ping" # → pong, exit 0 기대
 
 # 라이프사이클 dry-run (tmux 세션 필요)
