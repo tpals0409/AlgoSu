@@ -35,7 +35,7 @@ env:
   REGISTRY: ghcr.io
   IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/algosu
   NODE_VERSION: '20'
-  PYTHON_VERSION: '3.12'
+  PYTHON_VERSION: '3.13'
   APK_BUST_VALUE: ${{ github.event.inputs.apk_bust == 'true' && github.run_id || 'stable' }}
 
 jobs:
