@@ -51,11 +51,12 @@ const nextConfig: NextConfig = {
               // unsafe-inline: Next.js App Router가 런타임에 <script>/<style> 태그를
               // 인라인 삽입하며, 정적 headers()에서는 nonce를 동적 생성할 수 없어 필수.
               // Next.js가 nonce 기반 CSP를 middleware에서 지원하면 전환 검토.
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net blob:",
+              // GA4 도메인: @next/third-parties/google 로드 스크립트(gtag.js) 허용
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://www.googletagmanager.com blob:",
               "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com",
-              `img-src 'self' blob: data: ${minioUrl}`.trim(),
+              `img-src 'self' blob: data: ${minioUrl} https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com`.trim(),
               "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com",
-              `connect-src 'self' ${apiBaseUrl} https://cdn.jsdelivr.net`.trim(),
+              `connect-src 'self' ${apiBaseUrl} https://cdn.jsdelivr.net https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com`.trim(),
               "worker-src 'self' blob:",
               "frame-ancestors 'none'",
               "base-uri 'self'",
