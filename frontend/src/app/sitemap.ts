@@ -11,7 +11,7 @@
 import type { MetadataRoute } from 'next';
 
 /** 서비스 공개 기본 URL */
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://algosu.kr';
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://algo-su.com';
 
 /**
  * 페이지 정의 목록.

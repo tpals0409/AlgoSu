@@ -29,7 +29,7 @@ import { notFound } from 'next/navigation';
  */
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_BASE_URL ?? 'https://algosu.kr',
+    process.env.NEXT_PUBLIC_BASE_URL ?? 'https://algo-su.com',
   ),
 };
 

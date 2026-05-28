@@ -17,6 +17,9 @@ ENV NEXT_PUBLIC_DEMO_ENABLED=true
 # Google Analytics 4 — 측정 ID는 공개값(클라이언트 노출), 빌드 타임 번들 인라인 필수
 ENV NEXT_PUBLIC_GA_MEASUREMENT_ID=G-NMNVNCKW37
 
+# 서비스 공개 기본 URL — SEO(sitemap/robots/canonical/hreflang/OG) 기준 도메인, 빌드 타임 번들 인라인 필수
+ENV NEXT_PUBLIC_BASE_URL=https://algo-su.com
+
 RUN npm run build
 
 FROM node:22-alpine AS runner
