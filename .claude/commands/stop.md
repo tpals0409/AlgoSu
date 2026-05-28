@@ -10,6 +10,7 @@
    - 디렉토리가 없으면 스킵
 
 > **참고**: MEMORY.md는 시스템 자동 주입이므로 별도 읽기 불필요.
+> **하네스 점검 권장 (Sprint 209)**: sprint마감 시점에 `scripts/harness-checkup.sh --full` 1회 실행을 권장합니다 — unique 모델 ID retirement(Cmux.app 업데이트 등)를 사전 감지. 비블로킹 권장 사항이며 oracle 세션/CLI 부재 환경에서는 degrade(WARN) 처리됩니다. 상세: `docs/runbook/harness-checkup.md §3`.
 
 ### 상태 가드
 - `status: active` → 정상, 2단계로 진행.
