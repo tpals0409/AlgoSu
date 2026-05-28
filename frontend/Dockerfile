@@ -14,6 +14,9 @@ ENV NEXT_PUBLIC_ADSENSE_CLIENT_ID=ca-pub-4088760185957474
 # 데모 체험 모드 — 로그인/회원가입 페이지에 "데모 체험하기" 버튼 노출
 ENV NEXT_PUBLIC_DEMO_ENABLED=true
 
+# Google Analytics 4 — 측정 ID는 공개값(클라이언트 노출), 빌드 타임 번들 인라인 필수
+ENV NEXT_PUBLIC_GA_MEASUREMENT_ID=G-NMNVNCKW37
+
 RUN npm run build
 
 FROM node:22-alpine AS runner
