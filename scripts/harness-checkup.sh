@@ -36,6 +36,11 @@ report_fail() { printf '%b[FAIL]%b %s\n' "$RED"   "$RESET" "$1"; FAIL_COUNT=$((F
 report_warn() { printf '%b[WARN]%b %s\n' "$YELLOW" "$RESET" "$1"; WARN_COUNT=$((WARN_COUNT + 1)); }
 report_info() { printf '%b[INFO]%b %s\n' "$BLUE" "$RESET" "$1"; }
 
+# 공백/쉼표 구분 에이전트 목록(stdin)을 정렬된 단일 라인으로 정규화 (Item 5 3-way 비교용 SSOT 공통 헬퍼)
+normalize_agent_list() {
+  tr ' ,' '\n' | grep -v '^$' | sort | tr '\n' ' ' | sed 's/ $//'
+}
+
 # Item 1: CLI 백엔드 가용성 (claude, codex, tmux)
 check_item_1_cli_availability() {
   report_info "Item 1/6 — CLI 백엔드 가용성"
@@ -203,39 +208,78 @@ check_item_4_dispatch_traces() {
   fi
 }
 
-# Item 5: autoCritic 동기화 (oracle-auto-critic.sh CODE_CHANGING_AGENTS ↔ .claude-team.json codeChangingAgents)
+# Item 5: autoCritic 동기화 3-way (Sprint 209)
+# .claude-team.json codeChangingAgents ↔ oracle-auto-critic.sh CODE_CHANGING_AGENTS ↔ _base.md §자동 Critic 리뷰
 check_item_5_autocritic_sync() {
-  report_info "Item 5/6 — autoCritic 동기화 (.claude-team.json codeChangingAgents ↔ oracle-auto-critic.sh CODE_CHANGING_AGENTS)"
+  report_info "Item 5/6 — autoCritic 동기화 3-way (.claude-team.json ↔ oracle-auto-critic.sh ↔ _base.md)"
+  local base_md="${REPO_ROOT}/.claude/commands/agents/_base.md"
   if [[ $DRY_RUN -eq 1 ]]; then
-    report_info "  [dry-run] jq -r '.dispatch.codeChangingAgents | sort | join(\" \")' ${TEAM_JSON}"
-    report_info "  [dry-run] grep '^CODE_CHANGING_AGENTS=' ${ORACLE_BIN}/oracle-auto-critic.sh"
+    report_info "  [dry-run] jq -r '.dispatch.codeChangingAgents[]' ${TEAM_JSON} | normalize"
+    report_info "  [dry-run] grep '^CODE_CHANGING_AGENTS=' ${ORACLE_BIN}/oracle-auto-critic.sh | normalize"
+    report_info "  [dry-run] grep 'code-changing 에이전트(...)' ${base_md} | normalize"
     return 0
   fi
-  if [[ ! -f "$TEAM_JSON" || ! -f "${ORACLE_BIN}/oracle-auto-critic.sh" ]]; then
-    report_fail "Item 5 — SSOT 파일 미발견"
+  if ! command -v jq >/dev/null 2>&1; then
+    report_fail "Item 5 — jq 미설치 (brew install jq)"
     return
   fi
+  if [[ ! -f "$TEAM_JSON" ]]; then
+    report_fail "Item 5 — .claude-team.json 미발견: $TEAM_JSON"
+    return
+  fi
+  if [[ ! -f "$base_md" ]]; then
+    report_fail "Item 5 — _base.md 미발견: $base_md"
+    return
+  fi
+  # SSOT 1 (.claude-team.json, git tracked) — 필수
   local json_list
-  json_list=$(jq -r '.dispatch.codeChangingAgents | sort | join(" ")' "$TEAM_JSON" 2>/dev/null)
+  json_list=$(jq -r '.dispatch.codeChangingAgents[]' "$TEAM_JSON" 2>/dev/null | normalize_agent_list)
+  if [[ -z "$json_list" ]]; then
+    report_fail "Item 5 — .dispatch.codeChangingAgents 비어있거나 파싱 실패"
+    return
+  fi
+  # SSOT 3 (_base.md §자동 Critic 리뷰, git tracked) — 필수
+  # "code-changing 에이전트(a, b, c)가 커밋을 남기면" 괄호 안 목록 추출
+  local base_list
+  base_list=$(grep -oE 'code-changing 에이전트\([^)]*\)' "$base_md" | head -1 | sed -E 's/.*\(([^)]*)\).*/\1/' | normalize_agent_list)
+  if [[ -z "$base_list" ]]; then
+    report_fail "Item 5 — _base.md §자동 Critic 리뷰 에이전트 목록 파싱 실패"
+    return
+  fi
+  # tracked SSOT 2종(json ↔ _base.md)은 항상 비교 가능 — CI/다른 머신 포함 portable
+  if [[ "$json_list" != "$base_list" ]]; then
+    report_fail "Item 5 — json ↔ _base.md 불일치: JSON='$json_list' vs BASE='$base_list'"
+    return
+  fi
+  # SSOT 2 (oracle-auto-critic.sh, git 외부) — 부재 시 degrade WARN (Sprint 208 Item 2 패턴 계승)
+  if [[ ! -f "${ORACLE_BIN}/oracle-auto-critic.sh" ]]; then
+    report_warn "Item 5 — json ↔ _base.md 정합 ($json_list). oracle-auto-critic.sh 미발견(git 외부) — 3-way 중 2-way만 검증, CI/다른 머신 정상"
+    return
+  fi
   local sh_list
-  sh_list=$(grep -E '^CODE_CHANGING_AGENTS=' "${ORACLE_BIN}/oracle-auto-critic.sh" | sed -E 's/^CODE_CHANGING_AGENTS="([^"]*)"$/\1/' | tr ' ' '\n' | sort | tr '\n' ' ' | sed 's/ $//')
+  sh_list=$(grep -E '^CODE_CHANGING_AGENTS=' "${ORACLE_BIN}/oracle-auto-critic.sh" | sed -E 's/^CODE_CHANGING_AGENTS="([^"]*)"$/\1/' | normalize_agent_list)
   if [[ "$json_list" == "$sh_list" ]]; then
-    report_pass "Item 5 — codeChangingAgents 정합 ($json_list)"
+    report_pass "Item 5 — codeChangingAgents 3-way 정합 ($json_list)"
   else
-    report_fail "Item 5 — 불일치: JSON='$json_list' vs SH='$sh_list'"
+    report_fail "Item 5 — json ↔ oracle-auto-critic.sh 불일치: JSON='$json_list' vs SH='$sh_list' (base='$base_list')"
   fi
 }
 
-# Item 6: dormant 잔재 live caller 검증 (Sprint 206 이후 0건 보장)
+# Item 6: dormant 잔재 + 정리 로드맵 진행 점검 (Sprint 206 시드, Sprint 209 심화)
 check_item_6_dormant_residue() {
-  report_info "Item 6/6 — dormant 잔재 live caller 검증 (git grep)"
+  report_info "Item 6/6 — dormant 잔재 + 정리 로드맵 진행 점검 (git grep + claude-tools.md §4)"
   # 패턴 문자열을 변수로 분리 (자기 매칭 회피: 본 스크립트 자체가 패턴을 literal로 포함)
   local pattern='dis''cord-send|or''acle-respond|dis''cord-receiver'
+  local roadmap_md="${REPO_ROOT}/docs/runbook/claude-tools.md"
   if [[ $DRY_RUN -eq 1 ]]; then
     report_info "  [dry-run] git grep -n -E '${pattern}' -- ':!docs/' ':!.claude/commands/agents/_base.md' ':!scripts/harness-checkup.sh'"
+    report_info "  [dry-run] git ls-files .claude-tools/ | wc -l (tracked 잔재 0건 기대)"
+    report_info "  [dry-run] awk §4~§5 표에서 '삭제' Phase 행 중 ✅ 누락 검출 (${roadmap_md})"
     return 0
   fi
   cd "$REPO_ROOT" || { report_fail "Item 6 — REPO_ROOT cd 실패"; return; }
+
+  # (1) dormant 키워드 live caller 잔재 검증 (Sprint 206)
   local hits
   hits=$(git grep -n -E "$pattern" -- ':!docs/' ':!.claude/commands/agents/_base.md' ':!scripts/harness-checkup.sh' 2>/dev/null | wc -l | tr -d ' ')
   if [[ "$hits" -eq 0 ]]; then
@@ -243,6 +287,30 @@ check_item_6_dormant_residue() {
   else
     report_fail "Item 6 — dormant 키워드 ${hits}건 잔존"
     git grep -n -E "$pattern" -- ':!docs/' ':!.claude/commands/agents/_base.md' ':!scripts/harness-checkup.sh' 2>/dev/null | head -5
+  fi
+
+  # (2) .claude-tools/ git-tracked 잔재 0건 검증 (Sprint 209 — gitignore 정책상 untracked여야 함)
+  local tracked_residue
+  tracked_residue=$(git ls-files .claude-tools/ 2>/dev/null | wc -l | tr -d ' ')
+  if [[ "$tracked_residue" -eq 0 ]]; then
+    report_pass "Item 6 — .claude-tools/ git-tracked 잔재 0건"
+  else
+    report_warn "Item 6 — .claude-tools/ git-tracked 잔재 ${tracked_residue}건 (gitignore 정책상 untracked여야 함, claude-tools.md §1 참조)"
+  fi
+
+  # (3) 정리 로드맵 §4 진행 점검 (Sprint 209) — '삭제'(deletion) 작업 Phase 행은 모두 ✅ 완료 표기여야 함
+  # 명문화 단계(Phase 1)는 '삭제' 미포함이라 자연 제외 — 미완료 cleanup phase 잔존 시에만 WARN.
+  if [[ ! -f "$roadmap_md" ]]; then
+    report_warn "Item 6 — claude-tools.md 미발견, 정리 로드맵 점검 스킵"
+    return
+  fi
+  local incomplete
+  incomplete=$(awk '/^## 4\./{f=1} /^## 5\./{f=0} f && /\| *Phase / && /삭제/ && !/✅/' "$roadmap_md")
+  if [[ -z "$incomplete" ]]; then
+    report_pass "Item 6 — §4 정리 로드맵 삭제 작업 Phase 전체 ✅ 완료"
+  else
+    report_warn "Item 6 — §4 정리 로드맵 미완료(삭제 작업 ✅ 누락) Phase 행 존재:"
+    printf '%s\n' "$incomplete" | head -3
   fi
 }
 
@@ -263,4 +331,7 @@ main() {
   exit 0
 }
 
-main "$@"
+# 직접 실행 시에만 main 호출. test에서 source 시 함수만 로드 (Sprint 209 A2 소스 가드).
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi
