@@ -131,4 +131,8 @@ Oracle 직접 검증 (`npm ci` 기반 CI 환경 재현):
 
 ## Critic 교차 리뷰
 
-Critic 교차 리뷰 결과 — Oracle 영속화 예정
+**R1 — CLEAN** (Codex `gpt-5.5`, `codex review --base bbfbc2a`, session `019e6dbd-50ba-7d40-ba5f-fee30c9c7845`)
+
+> "No discrete correctness issues were identified in the GA route-tracking changes or accompanying tests/docs. The implementation is consistent with the stated App Router soft-navigation tracking approach."
+
+발견 Critical / High / Medium / Low **모두 0건**. 라우트 트래커·테스트·ADR 변경 전반에서 회귀 미발견. R1 CLEAN으로 추가 라운드 불필요(Critic placeholder 회귀 차단 결정 준수 — R1만 영속화).
