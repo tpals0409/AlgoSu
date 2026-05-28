@@ -2,10 +2,11 @@
  * @file GoogleAnalytics 서버 컴포넌트 래퍼 단위 테스트
  * @domain analytics
  * @layer component
- * @related src/components/analytics/GoogleAnalytics.tsx, sentry.client.config.ts
+ * @related src/components/analytics/GoogleAnalytics.tsx, src/components/analytics/GoogleAnalyticsRouteTracker.tsx, sentry.client.config.ts
  *
  * 주요 분기:
  *   - NEXT_PUBLIC_GA_MEASUREMENT_ID 설정 시 GA 스크립트가 gaId prop과 함께 렌더됨
+ *   - 설정 시 GoogleAnalyticsRouteTracker도 함께 렌더됨 (Suspense 경계 포함)
  *   - 미설정(undefined) 시 아무것도 렌더 안 됨(null)
  *   - 빈 문자열 시 아무것도 렌더 안 됨(null)
  */
@@ -22,6 +23,22 @@ const MockNextGoogleAnalytics = jest.fn(
 
 jest.mock('@next/third-parties/google', () => ({
   GoogleAnalytics: (props: { gaId: string }) => MockNextGoogleAnalytics(props),
+}));
+
+// ── GoogleAnalyticsRouteTracker 모킹 ─────────────────────────────────────────
+
+const MockRouteTracker = jest.fn(() => null);
+
+jest.mock('../GoogleAnalyticsRouteTracker', () => ({
+  __esModule: true,
+  default: () => MockRouteTracker(),
+}));
+
+// ── next/navigation 모킹 (Suspense 내 useSearchParams 의존성) ────────────────
+
+jest.mock('next/navigation', () => ({
+  usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(''),
 }));
 
 // ── 환경변수 헬퍼 ─────────────────────────────────────────────────────────────
@@ -76,6 +93,13 @@ describe('GoogleAnalytics — 측정 ID 설정 시', () => {
       expect(MockNextGoogleAnalytics).toHaveBeenCalledTimes(1);
     });
   });
+
+  it('측정 ID 설정 시 GoogleAnalyticsRouteTracker를 렌더링한다', () => {
+    withMeasurementId('G-TESTID1234', () => {
+      render(<GoogleAnalytics />);
+      expect(MockRouteTracker).toHaveBeenCalled();
+    });
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -112,6 +136,13 @@ describe('GoogleAnalytics — 측정 ID 미설정 시', () => {
     withMeasurementId('', () => {
       render(<GoogleAnalytics />);
       expect(MockNextGoogleAnalytics).not.toHaveBeenCalled();
+    });
+  });
+
+  it('측정 ID 미설정 시 GoogleAnalyticsRouteTracker를 렌더링하지 않는다', () => {
+    withMeasurementId(undefined, () => {
+      render(<GoogleAnalytics />);
+      expect(MockRouteTracker).not.toHaveBeenCalled();
     });
   });
 });
