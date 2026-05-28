@@ -29,13 +29,13 @@ describe('buildLocaleAlternates', () => {
 
     it('ko locale 기본 경로("/")에서 canonical은 루트 URL', () => {
       const result = buildLocaleAlternates('ko', '/');
-      expect(result?.canonical).toBe('https://algosu.kr/');
+      expect(result?.canonical).toBe('https://algo-su.com/');
     });
 
     it('x-default는 항상 ko URL', () => {
       const result = buildLocaleAlternates('en', '/problems');
       expect((result?.languages as Record<string, string>)?.['x-default']).toBe(
-        'https://algosu.kr/problems',
+        'https://algo-su.com/problems',
       );
     });
   });

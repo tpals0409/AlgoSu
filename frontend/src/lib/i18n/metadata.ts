@@ -24,11 +24,11 @@ import type { Metadata } from 'next';
  * @example
  * buildLocaleAlternates('ko', '/problems')
  * // {
- * //   canonical: 'https://algosu.kr/problems',
+ * //   canonical: 'https://algo-su.com/problems',
  * //   languages: {
- * //     ko: 'https://algosu.kr/problems',
- * //     en: 'https://algosu.kr/en/problems',
- * //     'x-default': 'https://algosu.kr/problems',
+ * //     ko: 'https://algo-su.com/problems',
+ * //     en: 'https://algo-su.com/en/problems',
+ * //     'x-default': 'https://algo-su.com/problems',
  * //   }
  * // }
  */
@@ -37,7 +37,7 @@ export function buildLocaleAlternates(
   path: string,
 ): Metadata['alternates'] {
   /** 호출 시점에 평가 — 테스트에서 env override 가능 */
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://algosu.kr';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://algo-su.com';
 
   const koUrl = `${baseUrl}${path}`;
   const enUrl = `${baseUrl}/en${path}`;
