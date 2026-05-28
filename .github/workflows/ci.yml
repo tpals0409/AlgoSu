@@ -180,6 +180,7 @@ jobs:
             ci-scripts:
               - 'scripts/ci/**'
               - 'tests/ci/**'
+              - 'scripts/harness-checkup.sh'
       - name: Apply rebuild_all override
         id: result
         run: |
@@ -387,6 +388,8 @@ jobs:
         run: bash tests/ci/report-build-metrics-test.sh
       - name: Run compute-deploy-gate.sh unit tests
         run: bash tests/ci/compute-deploy-gate-test.sh
+      - name: Run harness-checkup.sh unit tests
+        run: bash tests/ci/harness-checkup-test.sh
 
   quality-frontend:
     name: Quality — frontend
