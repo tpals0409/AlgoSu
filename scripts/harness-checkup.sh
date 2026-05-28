@@ -93,8 +93,17 @@ check_item_2_ssot_alignment() {
 
   # Sprint 208 D' — 자동 매핑 정합 검증: .claude-team.json agents[].model ↔ oracle-spawn.sh get_model() 12 에이전트 전체 비교.
   # oracle-spawn.sh --show-model <agent> 비파괴 서브커맨드(lock/tmux/runner 회피)로 get_model() 출력만 취득.
-  if [[ ! -x "${ORACLE_BIN}/oracle-spawn.sh" ]] && [[ ! -f "${ORACLE_BIN}/oracle-spawn.sh" ]]; then
+  if [[ ! -f "${ORACLE_BIN}/oracle-spawn.sh" ]]; then
     report_warn "Item 2 — oracle-spawn.sh 미발견, 매핑 비교 스킵 (agents ${agents_count}개만 확인)"
+    return
+  fi
+  # Sprint 208 R1 (Codex P2) — oracle-spawn.sh는 git 외부 파일이라 다른 머신/CI에서 Sprint 208 미적용 구버전일 수 있다.
+  # 구버전은 --show-model을 일반 spawn 인자로 처리하여 빈 출력/에러를 반환 → 모든 에이전트 mismatch 오탐.
+  # 알려진 에이전트로 feature-detect: 결과가 모델 ID 형식(claude-…)이 아니면 매핑 비교를 건너뛰고 count-only PASS로 degrade.
+  local probe
+  probe=$(bash "${ORACLE_BIN}/oracle-spawn.sh" --show-model architect 2>/dev/null || echo "")
+  if [[ ! "$probe" =~ ^claude- ]]; then
+    report_pass "Item 2 — agents ${agents_count}개 발견 (oracle-spawn.sh --show-model 미지원 구버전 — 매핑 비교 스킵, Sprint 208 미적용 환경)"
     return
   fi
   local mismatches="" team_model spawn_model agent

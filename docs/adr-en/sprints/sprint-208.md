@@ -166,8 +166,10 @@ After each dispatch, `panes.json` reaped to the empty object `{}` normally. In C
 
 ## Critic (Codex)
 
-- **R1** (`codex review --base 95b5e3a`) — (recorded in Phase F)
-- **Compliance with the Critic placeholder regression-blocking decision** — persist up to R1 in this §Critic section; R{N≥2} recorded only in sprint-window/memory.
+- **R1** (`codex review --base 95b5e3a`, non-interactive — session ID not emitted) — **1 P2 found → resolved**
+  - Finding: `scripts/harness-checkup.sh:103` Item 2 depends on the git-external `oracle-spawn.sh`'s `--show-model` subcommand. On another machine/CI with a pre-Sprint-208 oracle-spawn.sh, `--show-model` is treated as a normal spawn argument and returns empty output/exit 1 → all 12 agents falsely reported as mismatch → `harness-checkup.sh` FAILs.
+  - Resolution: added feature-detect — probe with a known agent (architect); if the result is not in model-ID form (`^claude-`), skip the mapping comparison and degrade to count-only PASS. The new version proceeds with the mapping comparison; old version/missing file degrades safely. Critical/High **0**, 1 P2 resolved.
+- **Compliance with the Critic placeholder regression-blocking decision** — persist up to R1 in this §Critic section; R{N≥2} (post-resolution CLEAN re-confirmation) recorded only in sprint-window/memory.
 - **Among this sprint's code changes, `~/.claude/oracle/bin/oracle-spawn.sh` (git-external) is not in the codex diff**. The git-tracked changes are `scripts/harness-checkup.sh` (Item 2·3·4 + `--full`) + ADR + README + RUNBOOK. The SSOT for the oracle-spawn.sh change is the §Phase B1·B2·D' diff in this ADR, so codex performs fact verification based on the ADR content.
 
 ## Lessons
