@@ -2,7 +2,7 @@
  * @file Root Layout — html/body 기반 최소 래퍼
  * @domain i18n
  * @layer layout
- * @related src/app/[locale]/layout.tsx, src/i18n/routing.ts
+ * @related src/app/[locale]/layout.tsx, src/i18n/routing.ts, components/analytics/GoogleAnalytics
  *
  * Next.js App Router가 요구하는 루트 레이아웃.
  * getLocale()로 현재 locale을 읽어 <html lang> 속성을 동적으로 설정한다.
@@ -13,6 +13,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { getLocale } from 'next-intl/server';
 import '@/app/globals.css';
+import GoogleAnalytics from '@/components/analytics/GoogleAnalytics';
 
 export const metadata: Metadata = {
   title: {
@@ -44,7 +45,10 @@ export default async function RootLayout({
   const locale = await getLocale();
   return (
     <html lang={locale} suppressHydrationWarning>
-      <body className="font-sans">{children}</body>
+      <body className="font-sans">
+        {children}
+        <GoogleAnalytics />
+      </body>
     </html>
   );
 }
