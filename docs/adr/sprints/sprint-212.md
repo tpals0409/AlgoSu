@@ -75,6 +75,12 @@ JSON-LD 구조화 데이터와 명시적 og:image는 코드에 없어 본 작업
 - `.env.example:5` — `NEXT_PUBLIC_BASE_URL=https://algo-su.com`
 - `Dockerfile` — GA4 ENV 블록 다음에 `ENV NEXT_PUBLIC_BASE_URL=https://algo-su.com` 추가 (빌드 타임 번들 인라인)
 
+### Phase D — Critic R1 후속: 법무 연락처 이메일 정합
+
+초기 SEO grep은 `src`·`.env.example`·`Dockerfile`만 점검해 `messages/` 디렉토리를 놓쳤다. Critic R1(Codex)이 `messages/ko/legal.json:50`·`messages/en/legal.json:50`의 개인정보처리방침 §7 연락처가 죽은 도메인 `privacy@algosu.kr`(메일 수신 불가)을 그대로 노출하고 있음을 포착했다. 이는 내부 식별자가 아닌 **사용자 노출 법무 연락처**이므로 도메인 정합 범위에 해당한다.
+
+사용자 결정에 따라 단순 도메인 치환(`privacy@algo-su.com`)이 아닌 실 운영 이메일 `tpalsdlapfnd@gmail.com`으로 교체했다 (메일박스 존재가 보장된 주소 — 도메인 일치보다 실제 수신 가능성 우선). 내부 dev/demo 목 이메일 2건은 D1대로 범위 제외.
+
 ## 검증
 
 Oracle 직접 검증 (`npm ci` 기반 CI 환경 재현):
@@ -98,7 +104,7 @@ Oracle 직접 검증 (`npm ci` 기반 CI 환경 재현):
 ```
 
 - SEO 산출물(sitemap/robots)에서 `algosu.kr` 잔존 **0건**, 모두 `algo-su.com`
-- `frontend` 전체에서 `algosu.kr` 잔존은 dev/demo 목 이메일 2건만(D1 의도적 제외)
+- 초기 grep은 SEO 코드만 점검했으나 Critic R1이 `messages/{ko,en}/legal.json`의 사용자 노출 법무 연락처를 추가 포착 → Phase D에서 정합. **최종적으로** `frontend` 내 `algosu.kr` 잔존은 dev/demo 목 이메일 2건만(D1 의도적 제외)
 
 ### ADR 인덱스 게이트
 
@@ -131,4 +137,14 @@ Oracle 직접 검증 (`npm ci` 기반 CI 환경 재현):
 
 ## Critic 교차 리뷰
 
-(Critic R1 결과는 코드+ADR 변경 후 Codex 교차 리뷰에서 영속화)
+**R1 — P3 1건** (Codex, `codex review --base ae25f51`)
+
+> "[P3] Correct the remaining algosu.kr inventory — `docs/adr/sprints/sprint-212.md:101`. This verification note is inaccurate: `frontend/messages/en/legal.json` and `frontend/messages/ko/legal.json` still contain the user-facing `privacy@algosu.kr` contact address, so the remaining frontend occurrences are not limited to the two dev/demo mock emails."
+
+런타임 코드/설정 변경은 의도(도메인 전환)와 일관됨(no blocking). 유일한 지적은 SEO 코드 grep이 놓친 `messages/{ko,en}/legal.json`의 사용자 노출 법무 연락처가 죽은 도메인을 유지한다는 **비블로킹 P3** 1건. → **Phase D에서 근본 해소**(사용자 지정 운영 이메일로 교체) + 본 ADR 인벤토리 정정.
+
+**R2 — CLEAN** (Codex, `codex review --base ae25f51`, Phase D 반영 후 재검토)
+
+> "The changes consistently update the public base URL fallbacks, Docker build-time environment, examples, and tests to the new domain. I did not find a discrete regression or blocking issue in the modified lines."
+
+발견 Critical / High / Medium / Low **모두 0건**. R1 P3가 Phase D에서 해소됨을 확인.

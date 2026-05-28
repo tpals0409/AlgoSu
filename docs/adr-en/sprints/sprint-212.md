@@ -75,6 +75,12 @@ This work is only string-literal corrections + one Dockerfile ENV line; there ar
 - `.env.example:5` — `NEXT_PUBLIC_BASE_URL=https://algo-su.com`
 - `Dockerfile` — add `ENV NEXT_PUBLIC_BASE_URL=https://algo-su.com` after the GA4 ENV block (build-time bundle inlining)
 
+### Phase D — Critic R1 follow-up: legal contact email alignment
+
+The initial SEO grep only checked `src` / `.env.example` / `Dockerfile` and missed the `messages/` directory. Critic R1 (Codex) caught that the privacy-policy §7 contact in `messages/ko/legal.json:50` / `messages/en/legal.json:50` still exposed the dead domain `privacy@algosu.kr` (cannot receive mail). This is a **user-facing legal contact**, not an internal identifier, so it falls within the domain-alignment scope.
+
+Per the user's decision, rather than a plain domain substitution (`privacy@algo-su.com`) we replaced it with the operational email `tpalsdlapfnd@gmail.com` (an address with a guaranteed mailbox — actual deliverability prioritized over domain matching). The two internal dev/demo mock emails remain out of scope per D1.
+
 ## Verification
 
 Oracle verified directly (CI environment reproduced via `npm ci`):
@@ -98,7 +104,7 @@ Oracle verified directly (CI environment reproduced via `npm ci`):
 ```
 
 - **0** remaining `algosu.kr` occurrences in the SEO artifacts (sitemap/robots); all are `algo-su.com`
-- Across the whole `frontend`, the only remaining `algosu.kr` occurrences are the 2 dev/demo mock emails (intentionally excluded per D1)
+- The initial grep only checked SEO code, but Critic R1 additionally caught the user-facing legal contact in `messages/{ko,en}/legal.json` → aligned in Phase D. **Finally**, the only remaining `algosu.kr` occurrences across `frontend` are the 2 dev/demo mock emails (intentionally excluded per D1)
 
 ### ADR index gates
 
@@ -131,4 +137,14 @@ Oracle verified directly (CI environment reproduced via `npm ci`):
 
 ## Critic cross-review
 
-(The Critic R1 result is persisted after the code+ADR changes, from the Codex cross-review.)
+**R1 — 1 × P3** (Codex, `codex review --base ae25f51`)
+
+> "[P3] Correct the remaining algosu.kr inventory — `docs/adr/sprints/sprint-212.md:101`. This verification note is inaccurate: `frontend/messages/en/legal.json` and `frontend/messages/ko/legal.json` still contain the user-facing `privacy@algosu.kr` contact address, so the remaining frontend occurrences are not limited to the two dev/demo mock emails."
+
+The runtime code/config changes are consistent with the intent (domain switch) and non-blocking. The sole finding is a **non-blocking P3**: the user-facing legal contact in `messages/{ko,en}/legal.json`, missed by the SEO code grep, still pointed at the dead domain. → **Resolved at the root in Phase D** (replaced with a user-specified operational email) + this ADR's inventory corrected.
+
+**R2 — CLEAN** (Codex, `codex review --base ae25f51`, re-reviewed after Phase D)
+
+> "The changes consistently update the public base URL fallbacks, Docker build-time environment, examples, and tests to the new domain. I did not find a discrete regression or blocking issue in the modified lines."
+
+Findings Critical / High / Medium / Low **all 0**. Confirmed that the R1 P3 was resolved in Phase D.
