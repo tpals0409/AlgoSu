@@ -164,6 +164,15 @@ tier1(scribe, 빠른 응답) + tier2(architect, 무거운 응답) 양쪽 dispatc
 - `node scripts/check-doc-refs.mjs` → 0 broken
 - `node scripts/check-i18n-residue.mjs --strict` → prose Hangul max ≤8%
 
+## Critic (Codex)
+
+- **R1** (`codex review --base cb5fa43`, 비대화형 — session ID 미출력) — **CLEAN ✅**
+  - 결과 메시지: "The change only adds the Sprint 207 ADR translations and updates the ADR index count. The relevant ADR count, English coverage, doc reference, i18n residue, and diff whitespace checks pass, and no actionable regression was found."
+  - 발견 사항: Critical/High/Medium/Low 모두 **0건**
+  - 결정: R2+ 진행 불필요. R1 CLEAN으로 종결.
+- **Critic placeholder 회귀 차단 결정 준수** — R1까지 본 §Critic 섹션에 영속화, R{N≥2}는 sprint-window/메모리에만 기록.
+- **본 sprint 핵심 변경은 `~/.claude/oracle/bin/oracle-spawn.sh`(git 외부)이므로 codex review --base가 보는 diff는 ADR 변경만**. ADR 본문이 변경 전/후 diff + 격리 매트릭스 + 검증 결과를 모두 영속화한 SSOT라, codex가 ADR 내용을 기반으로 사실 검증 수행 + 발견 0건.
+
 ## 교훈
 
 1. **격리 매트릭스가 black-box 원인 확정에 충분** — zsh source 추적 없이도 8케이스 실험만으로 "실재 파일 경로 포함" 조건을 단독 원인으로 좁힐 수 있었다. 재현 조건이 명확하면 내부 메커니즘 미규명이어도 안전한 우회 설계가 가능하다.

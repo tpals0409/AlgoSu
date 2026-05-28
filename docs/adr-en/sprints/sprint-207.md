@@ -166,6 +166,15 @@ Both tier1 (scribe, respawn-pane branch) and tier2 (architect, split-window bran
 - `node scripts/check-doc-refs.mjs` → 0 broken
 - `node scripts/check-i18n-residue.mjs --strict` → prose Hangul max ≤8%
 
+## Critic (Codex)
+
+- **R1** (`codex review --base cb5fa43`, non-interactive — session ID not emitted) — **CLEAN ✅**
+  - Result message: "The change only adds the Sprint 207 ADR translations and updates the ADR index count. The relevant ADR count, English coverage, doc reference, i18n residue, and diff whitespace checks pass, and no actionable regression was found."
+  - Findings: Critical/High/Medium/Low all **0**
+  - Decision: No R2+ needed. Terminated with R1 CLEAN.
+- **Critic placeholder regression containment decision compliance** — only R1 persisted in this §Critic section; R{N≥2} recorded only in sprint-window/memory.
+- **The core change in this sprint is `~/.claude/oracle/bin/oracle-spawn.sh` (outside git), so the diff seen by `codex review --base` is only the ADR change**. The ADR body persists the before/after diff + isolation matrix + verification results as the SSOT, so codex performs fact-checking against the ADR content + finds 0 findings.
+
 ## Lessons
 
 1. **Isolation matrix is sufficient to confirm black-box root cause** — Without zsh source tracing, 8 experimental cases narrowed the root cause to the single condition "real file path included in the first argument." When a reproduction condition is precise, safe workarounds can be designed without knowing the internal mechanism.
