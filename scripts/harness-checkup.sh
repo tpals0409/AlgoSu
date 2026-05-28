@@ -69,10 +69,8 @@ check_item_2_ssot_alignment() {
     report_fail "Item 2 — .claude-team.json 미발견: $TEAM_JSON"
     return
   fi
-  if [[ ! -f "${ORACLE_BIN}/oracle-spawn.sh" ]]; then
-    report_fail "Item 2 — oracle-spawn.sh 미발견: ${ORACLE_BIN}/oracle-spawn.sh"
-    return
-  fi
+  # Sprint 208 R2 (Codex P2) — oracle-spawn.sh 미발견을 여기서 fatal 처리하면 아래 degrade 경로가 도달 불가.
+  # git 외부 파일이라 다른 머신/CI에서 부재가 정상일 수 있으므로, 미발견·구버전 처리는 agents_count 계산 이후 degrade 분기로 일원화.
   if ! command -v jq >/dev/null 2>&1; then
     report_fail "Item 2 — jq 미설치 (brew install jq)"
     return
