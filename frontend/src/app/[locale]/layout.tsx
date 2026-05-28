@@ -22,15 +22,15 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { StudyProvider } from '@/contexts/StudyContext';
 import { SWRProvider } from '@/components/providers/SWRProvider';
 import { notFound } from 'next/navigation';
+import { getBaseUrl } from '@/lib/site-url';
 
 /**
  * metadataBase: 상대 경로 OG/트위터 이미지 URL 자동 보완.
  * 하위 페이지의 generateMetadata에서 canonical/alternates를 상대 경로로 쓸 수 있게 한다.
+ * 기본 URL 폴백은 getBaseUrl SSOT에서 정의 (import-time 평가).
  */
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_BASE_URL ?? 'https://algo-su.com',
-  ),
+  metadataBase: new URL(getBaseUrl()),
 };
 
 interface LocaleLayoutProps {

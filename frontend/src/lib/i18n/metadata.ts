@@ -10,12 +10,13 @@
  */
 
 import type { Metadata } from 'next';
+import { getBaseUrl } from '@/lib/site-url';
 
 /**
  * 주어진 locale과 경로(path)에 대한 hreflang alternates 메타데이터를 생성한다.
  *
- * BASE_URL은 호출 시점의 NEXT_PUBLIC_BASE_URL 환경 변수를 읽으므로
- * 테스트·SSR 환경 모두에서 동적으로 반영된다.
+ * baseUrl은 getBaseUrl()로 위임되며, getBaseUrl은 호출 시점의
+ * NEXT_PUBLIC_BASE_URL 환경 변수를 읽으므로 테스트·SSR 환경 모두에서 동적으로 반영된다.
  *
  * @param locale - 현재 페이지의 locale ('ko' | 'en')
  * @param path   - 루트 기준 경로 (예: '/', '/problems', '/dashboard')
@@ -36,8 +37,8 @@ export function buildLocaleAlternates(
   locale: string,
   path: string,
 ): Metadata['alternates'] {
-  /** 호출 시점에 평가 — 테스트에서 env override 가능 */
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://algo-su.com';
+  /** getBaseUrl로 위임 — 호출 시점에 평가, 테스트에서 env override 가능 */
+  const baseUrl = getBaseUrl();
 
   const koUrl = `${baseUrl}${path}`;
   const enUrl = `${baseUrl}/en${path}`;

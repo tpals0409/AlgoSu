@@ -8,9 +8,10 @@
  */
 
 import type { MetadataRoute } from 'next';
+import { getBaseUrl } from '@/lib/site-url';
 
-/** 서비스 공개 기본 URL */
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://algo-su.com';
+/** 서비스 공개 기본 URL — 폴백은 getBaseUrl SSOT에서 정의 (import-time 평가) */
+const BASE_URL = getBaseUrl();
 
 /**
  * robots.txt 생성 함수.
