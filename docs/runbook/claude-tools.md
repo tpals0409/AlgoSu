@@ -13,12 +13,13 @@ related:
 > `.claude-tools/` 스크립트는 단계적으로 정리되어 왔습니다.
 > Sprint 191에서 deprecated 2파일(`claude-team.sh`, `discord-receiver.sh`)을 삭제(Phase 2 완료),
 > Sprint 202에서 dormant 3파일(`oracle-respond.sh`, `discord-receiver.py`, `discord-last-id`)을 삭제(Phase 3 완료),
-> Sprint 204에서 dormant 3파일(`discord-send.sh`, `oracle-system-prompt.md`, `discord-inbox.md`)을 삭제(Phase 4 완료)했습니다.
+> Sprint 204에서 dormant 3파일(`discord-send.sh`, `oracle-system-prompt.md`, `discord-inbox.md`)을 삭제했으며(repo-side 정리),
+> Sprint 206에서 외부 트랙(BOT_TOKEN Delete App + 다른 머신 정리)을 종결하여 Phase 4 완전 마감했습니다.
 
 ## 1. 디렉토리 상태
 
 - **위치**: 프로젝트 루트 `.claude-tools/`
-- **Git 정책**: `.gitignore` 에 포함 (untracked) — 로컬 dispatch 산출물 격리용 (Sprint 204 Phase 4에서 dormant 자산 repo 제거 완료, 외부 BOT_TOKEN revoke는 사용자 직접 트랙으로 분리 — Sprint 205 시작 시점 재확인)
+- **Git 정책**: `.gitignore` 에 포함 (untracked) — 로컬 dispatch 산출물 격리용 (Sprint 204 Phase 4에서 dormant 자산 repo 제거 완료, Sprint 206에서 외부 트랙 종결 — BOT_TOKEN Delete App 완료 + 다른 머신 없음 확정)
 - **현재 SSOT**: `~/.claude/oracle/bin/oracle-*.sh` (17개 스크립트)
 
 ## 2. 파일별 상태 분류
@@ -53,7 +54,7 @@ related:
 
 ### Discord 관련 정책
 
-Sprint 204 Phase 4에서 Discord 통합 자산(`discord-send.sh` 등)을 repo에서 제거했습니다. 외부 BOT_TOKEN revoke는 Sprint 205 재확인 결과 **보류** — Discord 통합 운영 방향(재활성화 vs 완전 폐기) 미확정으로 Discord Developer Portal 토큰 revoke 미실행. 운영 방향이 확정되면 그 시점에 일괄 처리 (ADR sprint-205 §D0 참조). 향후 Agent↔Discord 또는 유사 외부 채널 통합 재개 시 처음부터 Secret-store 기반으로 재설계하세요(평문 토큰 파일 보유 패턴 금지).
+Sprint 204 Phase 4에서 Discord 통합 자산(`discord-send.sh` 등)을 repo에서 제거했고, Sprint 206에서 외부 트랙을 완전 종결했습니다 — Discord 통합 완전 폐기 결정에 따라 Discord Developer Portal에서 **Delete App 실행** (봇 영구 삭제, 재활성화 불가) + 다른 머신 없음 확정으로 평문 BOT_TOKEN 잔존 경로 완전 차단. 4-스프린트 정리 파이프라인(Sprint 156 명문화 → 191 → 202 → 204 → 206) 외부 트랙까지 완전 마감. 향후 Agent↔Discord 또는 유사 외부 채널 통합 재개 시 처음부터 Secret-store 기반으로 재설계하세요(평문 토큰 파일 보유 패턴 금지).
 
 ## 4. 정리 로드맵
 
@@ -62,7 +63,7 @@ Sprint 204 Phase 4에서 Discord 통합 자산(`discord-send.sh` 등)을 repo에
 | Phase 1 (Sprint 156) | 운영 정책 RUNBOOK 명문화 | 없음 (본 문서) |
 | Phase 2 (Sprint 191 ✅) | deprecated 파일 삭제 (`claude-team.sh`, `discord-receiver.sh`) | trigger path 검증 완료 — live caller 0건 확인 후 삭제 |
 | Phase 3 (Sprint 202 ✅) | dormant 파일 삭제 (`oracle-respond.sh`, `discord-receiver.py`, `discord-last-id`) | live caller 0건 확인(`grep -r` repo + `~/.claude/oracle/bin/`) 후 로컬 삭제. 본 RUNBOOK §2 표 정리 + `discord-send.sh`를 live → dormant 재분류 |
-| Phase 4 (Sprint 204 ✅) | dormant 3파일(`discord-send.sh`, `oracle-system-prompt.md`, `discord-inbox.md`) 로컬 삭제 + BOT_TOKEN 회수 안내 | live caller 0건 사전 검증 + 3개월 무활성(2026-02-28 마지막 입력) → Agent↔Discord 폐기 결정. repo·로컬 파일 측 평문 토큰 보유 경로 종결 (외부 BOT_TOKEN revoke는 Phase 3 사용자 트랙 — Sprint 205 재확인 결과 시크릿 노출 위험 종결 **미완료** — (a) BOT_TOKEN revoke 보류, (b) 다른 머신/CI 체크아웃 dormant 파일 정리 미완료. ADR sprint-205 §D0·D1 참조. Sprint 206+ 재확인 + 운영 결정 명시 후 종결) |
+| Phase 4 (Sprint 204·206 ✅) | dormant 3파일(`discord-send.sh`, `oracle-system-prompt.md`, `discord-inbox.md`) 로컬 삭제(Sprint 204) + 외부 BOT_TOKEN revoke + 다른 머신 정리(Sprint 206) | live caller 0건 사전 검증 + 3개월 무활성(2026-02-28 마지막 입력) → Agent↔Discord 폐기 결정. **Sprint 206에서 시크릿 노출 위험 완전 종결** — (a) BOT_TOKEN Delete App 완료(봇 영구 삭제, 재활성화 불가), (b) 다른 머신 없음 확정(본 머신 단독 사용). 4-스프린트 정리 파이프라인 외부 트랙 완전 마감 (ADR sprint-206 §Phase D 참조) |
 
 ## 5. 이력
 
@@ -76,3 +77,4 @@ Sprint 204 Phase 4에서 Discord 통합 자산(`discord-send.sh` 등)을 repo에
 | Sprint 202 | Phase 3 실행 — dormant `oracle-respond.sh`·`discord-receiver.py`·`discord-last-id` 로컬 삭제 (gitignored, git diff 0). `discord-send.sh` live → dormant 재분류 (oracle-respond.sh가 유일 caller였음). 다른 머신 동기화는 `rm .claude-tools/{oracle-respond.sh,discord-receiver.py,discord-last-id}` 수동 실행. 하네스 정기점검(Sprint 202 ADR 참조) 일환. |
 | Sprint 204 | Phase 4 실행 — dormant `discord-send.sh`·`oracle-system-prompt.md`·`discord-inbox.md` 로컬 삭제 (gitignored, git diff 0). **다른 머신/체크아웃 동기화는 `rm .claude-tools/{discord-send.sh,oracle-system-prompt.md,discord-inbox.md}` 수동 실행** (Sprint 202 패턴 그대로 — `.gitignore`라 deletion이 git으로 전파되지 않음). BOT_TOKEN은 사용자에게 Discord Developer Portal에서 revoke하도록 안내 (외부 시스템 트랙, repo 작업과 분리, Sprint 205 시작 시점 재확인). 3개월 무활성(2026-02-28 마지막 입력) + live caller 0건(`~/.claude/oracle/bin/` 17 스크립트·repo grep) → Agent↔Discord 통합 폐기 결정 (repo 측 정리 완료, 다른 머신 정리 + 외부 revoke는 Phase 3 사용자 트랙). Sprint 156 명문화→Sprint 191→202→204의 4-스프린트 정리 파이프라인 종결. |
 | Sprint 205 | Phase 3 외부 작업 재확인 — (a) BOT_TOKEN revoke **보류** (Discord 통합 운영 방향 미확정 — 운영 결정 명시 시점에 종결 조건 명문화, ADR sprint-205 §D0 참조) + (b) 다른 머신 정리 **미완료** (본 머신 `ls .claude-tools/` empty 확인, 사용자 직접 점검 후 보고 필요). 무한 이월 방지 조건 명문화 — 미정 지속 시 sprint-window/메모리 추적만, ADR 추가 commit 없음. |
+| Sprint 206 | Phase 4 완전 종결 — (a) **Discord 통합 완전 폐기 결정** + BOT_TOKEN Delete App 완료(봇 영구 삭제) + (b) 다른 머신 없음 확정(본 머신 단독 사용) + CI는 GitHub-hosted runner라 검증 대상 아님. `_base.md:51` `discord-send.sh` 금지 placeholder는 플랜 §결정사항 1에 따라 **보존** — Sprint 204 명시 제거 조건(다른 머신 정리 + 토큰 revoke) 둘 다 충족되었으나 보수적 운영 관점에서 회귀 차단 + 우발 commit 차단 목적(사용자 명시 요청 시 제거). 4-스프린트 정리 파이프라인(Sprint 156→191→202→204→206) 외부 트랙까지 완전 마감. 무한 이월 방지 결정 트리거 첫 실증(Sprint 205 신규 패턴). |

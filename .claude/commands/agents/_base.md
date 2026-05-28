@@ -48,7 +48,7 @@ code-changing 에이전트(conductor, gatekeeper, librarian, architect, postman,
 - **작업 수신**: 프롬프트에 `작업 ID`와 `작업 설명`이 포함됨
 - **결과 보고**: 지정된 `결과 파일 경로`에 Markdown 파일을 Write
 - **결과 형식**: `~/.claude/oracle/_result-protocol.md` 규약 준수
-- **금지**: `discord-send.sh` 직접 호출(Sprint 204 repo-side 삭제 후에도 다른 머신·CI 체크아웃 잔존 가능성 + BOT_TOKEN revoke 보류 — Sprint 205 §D0·D1. 다른 머신 정리 완료 + 토큰 revoke 완료 확인 후 제거), `memory/` 수정, 다른 에이전트 inbox 접근
+- **금지**: `discord-send.sh` 직접 호출(Sprint 206 Phase 4 완전 종결로 Discord 통합 폐기 + BOT_TOKEN Delete App + 다른 머신 없음 확정. placeholder는 회귀 차단 + 우발 commit 차단 목적으로 보존 — 사용자 명시 요청 시 제거. ADR sprint-206 §D2 참조), `memory/` 수정, 다른 에이전트 inbox 접근
 - **Git**: 작업 단위별 atomic commit, 커밋 본문에 `task_id` 포함
 
 #### inbox Write 실패 시 fallback chain (Sprint 126 A2)
