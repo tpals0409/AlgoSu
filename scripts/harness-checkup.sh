@@ -67,14 +67,23 @@ check_item_2_ssot_alignment() {
     report_fail "Item 2 — oracle-spawn.sh 미발견: ${ORACLE_BIN}/oracle-spawn.sh"
     return
   fi
-  local team_models
-  team_models=$(jq -r '.agents[] | "\(.name) \(.model)"' "$TEAM_JSON" 2>/dev/null | sort)
-  local agents_count
-  agents_count=$(echo "$team_models" | wc -l | tr -d ' ')
-  if [[ "$agents_count" -lt 1 ]]; then
-    report_fail "Item 2 — agents 배열 파싱 실패"
+  if ! command -v jq >/dev/null 2>&1; then
+    report_fail "Item 2 — jq 미설치 (brew install jq)"
     return
   fi
+  local team_models jq_exit
+  team_models=$(jq -r '.agents[] | "\(.name) \(.model)"' "$TEAM_JSON" 2>/dev/null)
+  jq_exit=$?
+  if [[ $jq_exit -ne 0 ]]; then
+    report_fail "Item 2 — jq 파싱 실패 (exit=${jq_exit}, .claude-team.json malformed?)"
+    return
+  fi
+  if [[ -z "$team_models" ]]; then
+    report_fail "Item 2 — .agents 배열 비어있거나 필드 누락 (jq 결과 empty)"
+    return
+  fi
+  local agents_count
+  agents_count=$(printf '%s\n' "$team_models" | wc -l | tr -d ' ')
   report_pass "Item 2 — agents ${agents_count}개 발견 (모델 매핑은 시드 단계 — 다음 sprint에서 spawn.sh get_model() 정합 자동 비교 추가)"
 }
 
