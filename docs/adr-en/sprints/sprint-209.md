@@ -129,7 +129,11 @@ This ADR (KR+EN) + `docs/adr/README.md`·`docs/adr-en/README.md` count 146→147
 
 ## Critic (Codex)
 
-- (Persist the result of `codex review --base 24f4b55` performed just before merge. Honoring the Critic placeholder regression-prevention decision — persist up to R1 in this §Critic, record R{N≥2} only in sprint-window/memory.)
+- **R1** (`codex review --base 24f4b55`, non-interactive — session ID not emitted) — **CLEAN ✅**
+  - Result: "The added harness checkup logic and CI test appear consistent with the stated local-only/full-mode decision, and the new tests pass in the inspected environment. No actionable correctness issues were identified."
+  - Findings Critical/High/Medium/Low all **0**. No R2+ needed.
+- **Honoring the Critic placeholder regression-prevention decision** — persist up to R1 in this §Critic, record R{N≥2} only in sprint-window/memory.
+- **Among this sprint's code changes, `~/.claude/oracle/bin/oracle-auto-critic.sh` (git-external) is not in the codex diff**. Only git-tracked changes (`scripts/harness-checkup.sh` Item 5/6 + source guard, `tests/ci/harness-checkup-test.sh`, `ci.yml`, `stop.md`, RUNBOOK, ADR) were reviewed. Item 5's `oracle-auto-critic.sh` dependency is handled by degrade WARN on absence, so codex found no regression on this diff.
 
 ## Lessons
 

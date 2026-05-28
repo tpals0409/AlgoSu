@@ -129,7 +129,11 @@ API/`~/.claude/oracle/` 불요 — CI portable. degrade 경로 검증이 핵심(
 
 ## Critic (Codex)
 
-- (머지 직전 `codex review --base 24f4b55` 수행 결과를 영속화. Critic placeholder 회귀 차단 결정 준수 — R1까지 본 §Critic에 영속화, R{N≥2}는 sprint-window/메모리에만 기록.)
+- **R1** (`codex review --base 24f4b55`, 비대화형 — session ID 미출력) — **CLEAN ✅**
+  - 결과: "The added harness checkup logic and CI test appear consistent with the stated local-only/full-mode decision, and the new tests pass in the inspected environment. No actionable correctness issues were identified."
+  - 발견 Critical/High/Medium/Low 모두 **0건**. R2+ 진행 불필요.
+- **Critic placeholder 회귀 차단 결정 준수** — R1까지 본 §Critic에 영속화, R{N≥2}는 sprint-window/메모리에만 기록.
+- **본 sprint 코드 변경 중 `~/.claude/oracle/bin/oracle-auto-critic.sh`(git 외부)는 codex diff에 없음**. git tracked 변경(`scripts/harness-checkup.sh` Item 5/6 + 소스 가드, `tests/ci/harness-checkup-test.sh`, `ci.yml`, `stop.md`, RUNBOOK, ADR)만 리뷰 대상. Item 5의 `oracle-auto-critic.sh` 의존은 부재 시 degrade WARN으로 처리되어 codex가 본 diff 기준 회귀 미발견.
 
 ## 교훈
 
