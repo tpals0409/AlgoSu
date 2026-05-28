@@ -139,18 +139,20 @@ check_item_5_autocritic_sync() {
 # Item 6: dormant 잔재 live caller 검증 (Sprint 206 이후 0건 보장)
 check_item_6_dormant_residue() {
   report_info "Item 6/6 — dormant 잔재 live caller 검증 (git grep)"
+  # 패턴 문자열을 변수로 분리 (자기 매칭 회피: 본 스크립트 자체가 패턴을 literal로 포함)
+  local pattern='dis''cord-send|or''acle-respond|dis''cord-receiver'
   if [[ $DRY_RUN -eq 1 ]]; then
-    report_info "  [dry-run] git grep -n 'discord-send\\|oracle-respond\\|discord-receiver' -- ':!docs/' ':!.claude/commands/agents/_base.md'"
+    report_info "  [dry-run] git grep -n -E '${pattern}' -- ':!docs/' ':!.claude/commands/agents/_base.md' ':!scripts/harness-checkup.sh'"
     return 0
   fi
   cd "$REPO_ROOT" || { report_fail "Item 6 — REPO_ROOT cd 실패"; return; }
   local hits
-  hits=$(git grep -n -E 'discord-send|oracle-respond|discord-receiver' -- ':!docs/' ':!.claude/commands/agents/_base.md' 2>/dev/null | wc -l | tr -d ' ')
+  hits=$(git grep -n -E "$pattern" -- ':!docs/' ':!.claude/commands/agents/_base.md' ':!scripts/harness-checkup.sh' 2>/dev/null | wc -l | tr -d ' ')
   if [[ "$hits" -eq 0 ]]; then
     report_pass "Item 6 — dormant 키워드 잔재 0건"
   else
     report_fail "Item 6 — dormant 키워드 ${hits}건 잔존"
-    git grep -n -E 'discord-send|oracle-respond|discord-receiver' -- ':!docs/' ':!.claude/commands/agents/_base.md' 2>/dev/null | head -5
+    git grep -n -E "$pattern" -- ':!docs/' ':!.claude/commands/agents/_base.md' ':!scripts/harness-checkup.sh' 2>/dev/null | head -5
   fi
 }
 

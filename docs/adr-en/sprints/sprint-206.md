@@ -121,7 +121,14 @@ Actual run this sprint: PASS=5 / WARN=1 (Item 3 seed) / FAIL=0. Item 6 = 0 hits 
 
 ## Critic (Codex) Rounds
 
-Auto-critic R1 will fire as codex review after Phase G commit. R1 results to be persisted in this ADR via follow-up commit (placeholder regression prevention decision preserved — R1 only in ADR §Critic, R2+ in sprint-window/memory only).
+`codex review --base c26b4b4 --title "Sprint 206 Critic R1"` invoked (non-interactive mode — session ID not emitted). Phase D~G 4 atomic commits reviewed in one batch.
+
+**R1 — Critical/High 0 + P2 x1**:
+- `scripts/harness-checkup.sh:148` Item 6 self-match — normal execution `git grep` always matched this script's own pattern literals, always returning FAIL. Pre-commit run had PASS because the script wasn't yet git-tracked. Post-commit normal execution broken.
+- Fix: pattern string extracted into a variable (`'dis''cord-send|...'` form avoiding literal) + explicit `':!scripts/harness-checkup.sh'` exclusion added to `git grep` pathspec.
+- Verification: `git grep -nE 'discord-send|oracle-respond|discord-receiver' -- 'scripts/harness-checkup.sh'` → 0 hits, actual run PASS=5/WARN=1/FAIL=0 (exit 0) restored.
+
+R2+ results persisted in sprint-window/memory only per placeholder regression prevention decision (Sprint 204 pattern).
 
 ## Lessons
 

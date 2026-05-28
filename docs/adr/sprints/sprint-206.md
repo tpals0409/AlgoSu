@@ -121,7 +121,14 @@ CLOSED at 2026-05-27T23:46:54Z. 변경 파일 없음(GitHub 상태 변경).
 
 ## Critic (Codex) 라운드
 
-Phase G commit 후 자동 critic R1이 codex review로 fire 예정. R1 결과는 본 ADR에 후속 commit으로 영속화(placeholder 회귀 차단 결정 준수 — R1까지만 ADR §Critic, R2+는 sprint-window/메모리에만).
+`codex review --base c26b4b4 --title "Sprint 206 Critic R1"` 호출 (비대화형 모드 — session ID 미출력). Phase D~G 4 atomic commit 일괄 리뷰.
+
+**R1 — Critical/High 0 + P2 1건**:
+- `scripts/harness-checkup.sh:148` Item 6 자기 매칭 — 정상 실행에서 `git grep`이 본 스크립트 자체의 패턴 literal을 매칭하여 항상 FAIL. commit 직전 실행에서 PASS였던 이유는 git tracked 등록 전이라 grep에 잡히지 않았기 때문. commit 후 정상 실행이 깨짐.
+- 해소: pattern 문자열을 변수로 분리(`'dis''cord-send|...'` 형태로 literal 회피) + `git grep` pathspec에 `':!scripts/harness-checkup.sh'` 명시적 제외 추가.
+- 검증: `git grep -nE 'discord-send|oracle-respond|discord-receiver' -- 'scripts/harness-checkup.sh'` → 0 hits, 실제 실행 PASS=5/WARN=1/FAIL=0(exit 0) 복원.
+
+R2+ 결과는 placeholder 회귀 차단 결정에 따라 sprint-window/메모리에만 영속화 (Sprint 204 결정 패턴 준수).
 
 ## 교훈
 
