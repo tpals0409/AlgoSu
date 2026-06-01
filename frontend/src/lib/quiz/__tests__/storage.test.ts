@@ -87,4 +87,20 @@ describe('createLocalStorageQuizStore', () => {
     const store = createLocalStorageQuizStore();
     expect(store.getAllBest()).toEqual({});
   });
+
+  it('does not throw when localStorage.setItem throws (best-effort persistence)', () => {
+    const setItemSpy = jest
+      .spyOn(window.localStorage.__proto__, 'setItem')
+      .mockImplementation(() => {
+        throw new DOMException('QuotaExceededError');
+      });
+    try {
+      const store = createLocalStorageQuizStore();
+      expect(() => store.saveResult(makeResult({ scorePercent: 80 }))).not.toThrow();
+      // setItem이 throw해도 읽기 경로는 정상 동작한다 (영속화 실패 무영향)
+      expect(store.getBest('ALGORITHM')).toBeNull();
+    } finally {
+      setItemSpy.mockRestore();
+    }
+  });
 });

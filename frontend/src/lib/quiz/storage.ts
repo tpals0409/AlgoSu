@@ -62,12 +62,22 @@ function readMap(): RecordMap {
   }
 }
 
-/** 기록 맵을 localStorage에 직렬화해 저장한다 (SSR 시 no-op). */
+/**
+ * 기록 맵을 localStorage에 직렬화해 저장한다 (SSR 시 no-op).
+ *
+ * setItem은 Safari 프라이빗 모드·스토리지 비활성·쿼터 초과(QuotaExceededError)
+ * 시 throw할 수 있다. 영속화는 결과 표시에 부수적(best-effort)이므로
+ * 실패해도 조용히 무시한다 (readMap 폴백 패턴과 일관).
+ */
 function writeMap(map: RecordMap): void {
   if (typeof window === 'undefined') {
     return;
   }
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    // best-effort 영속화 — setItem throw 시 조용히 무시
+  }
 }
 
 /**
