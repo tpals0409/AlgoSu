@@ -1,0 +1,69 @@
+/**
+ * @file 채점 피드백 — 정답/오답 + 해설 + 다음 버튼
+ * @domain quiz
+ * @layer component
+ * @related QuizPlay, src/lib/quiz/grade.ts
+ */
+
+'use client';
+
+import type { ReactElement } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
+import { CheckCircle2, XCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import type { QuizQuestion } from '@/data/quiz';
+
+interface QuizFeedbackProps {
+  /** 방금 푼 문항 */
+  readonly question: QuizQuestion;
+  /** 사용자 입력 답안 */
+  readonly answer: string;
+  /** 정답 여부 */
+  readonly isCorrect: boolean;
+  /** 마지막 문항 여부 — 버튼 라벨 분기 */
+  readonly isLast: boolean;
+  /** 다음 문항/결과로 진행 */
+  readonly onNext: () => void;
+}
+
+/**
+ * 채점 결과 배지·해설·입력 답안을 표시하고 다음 단계로 진행하는 버튼을 제공한다.
+ */
+export function QuizFeedback({
+  question,
+  answer,
+  isCorrect,
+  isLast,
+  onNext,
+}: QuizFeedbackProps): ReactElement {
+  const t = useTranslations('quiz');
+  const locale = useLocale();
+  const explanation = locale === 'en' ? question.explanation.en : question.explanation.ko;
+
+  return (
+    <div className="space-y-4" role="status">
+      <div className="flex items-center gap-2">
+        {isCorrect ? (
+          <CheckCircle2 className="h-5 w-5 text-success" aria-hidden />
+        ) : (
+          <XCircle className="h-5 w-5 text-error" aria-hidden />
+        )}
+        <Badge variant={isCorrect ? 'success' : 'error'}>
+          {isCorrect ? t('feedback.correct') : t('feedback.incorrect')}
+        </Badge>
+      </div>
+
+      <p className="text-xs text-text-3">{t('feedback.yourAnswer', { answer })}</p>
+
+      <div className="space-y-1 rounded-card border border-border bg-bg-alt p-4">
+        <p className="text-xs font-medium text-text-2">{t('feedback.explanationLabel')}</p>
+        <p className="text-sm leading-relaxed text-text">{explanation}</p>
+      </div>
+
+      <Button variant="primary" size="md" className="w-full" onClick={onNext}>
+        {isLast ? t('play.finish') : t('play.next')}
+      </Button>
+    </div>
+  );
+}
