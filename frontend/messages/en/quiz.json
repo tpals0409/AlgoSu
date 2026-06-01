@@ -1,0 +1,46 @@
+{
+  "meta": {
+    "title": "CS Quiz",
+    "description": "Test your CS knowledge with short-answer data structure and algorithm quizzes."
+  },
+  "start": {
+    "title": "CS Quiz Minigame",
+    "subtitle": "Pick a category and number of questions to begin.",
+    "categoryLabel": "Select Category",
+    "countLabel": "Questions",
+    "startButton": "Start",
+    "empty": "No questions available",
+    "emptyDesc": "There are no quiz questions registered right now. Please try again later."
+  },
+  "play": {
+    "progress": "{current} / {total}",
+    "answerPlaceholder": "Type your answer",
+    "answerLabel": "Answer",
+    "submit": "Submit",
+    "next": "Next Question",
+    "finish": "View Results"
+  },
+  "feedback": {
+    "correct": "Correct!",
+    "incorrect": "Incorrect",
+    "explanationLabel": "Explanation",
+    "yourAnswer": "Your answer: {answer}"
+  },
+  "result": {
+    "title": "Quiz Complete",
+    "score": "Score",
+    "accuracy": "Accuracy",
+    "correctCount": "{correct} / {total} correct",
+    "best": "Best Record",
+    "bestScore": "{score}%",
+    "newBest": "New best record!",
+    "retry": "Play Again"
+  },
+  "categories": {
+    "DATA_STRUCTURE": "Data Structures",
+    "ALGORITHM": "Algorithms",
+    "NETWORK": "Networking",
+    "OS": "Operating Systems",
+    "DATABASE": "Databases"
+  }
+}
