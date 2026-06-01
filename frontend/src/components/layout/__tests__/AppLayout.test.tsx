@@ -33,6 +33,7 @@ jest.mock('lucide-react', () => {
     FileText: Icon,
     MessagesSquare: Icon,
     BarChart3: Icon,
+    Brain: Icon,
     LogOut: Icon,
     Settings: Icon,
     Shield: Icon,

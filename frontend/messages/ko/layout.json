@@ -6,7 +6,8 @@
       "problems": "문제 목록",
       "submissions": "제출 이력",
       "studyRoom": "스터디룸",
-      "analytics": "통계"
+      "analytics": "통계",
+      "quiz": "CS 퀴즈"
     },
     "selectStudy": "스터디 선택",
     "switchStudy": "스터디 전환",
