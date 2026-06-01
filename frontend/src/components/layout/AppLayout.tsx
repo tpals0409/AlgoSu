@@ -22,6 +22,7 @@ import {
   FileText,
   MessagesSquare,
   BarChart3,
+  Brain,
   Settings,
   User,
   Sun,
@@ -55,6 +56,7 @@ const NAV_ITEMS = [
   { labelKey: 'submissions', icon: FileText, href: '/submissions' },
   { labelKey: 'studyRoom', icon: MessagesSquare, href: '/study-room' },
   { labelKey: 'analytics', icon: BarChart3, href: '/analytics' },
+  { labelKey: 'quiz', icon: Brain, href: '/quiz' },
 ] as const;
 
 // ─── HELPERS ─────────────────────────────────

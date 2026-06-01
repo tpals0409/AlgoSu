@@ -1,0 +1,46 @@
+{
+  "meta": {
+    "title": "CS 퀴즈",
+    "description": "자료구조·알고리즘 단답형 퀴즈로 CS 지식을 점검하세요."
+  },
+  "start": {
+    "title": "CS 퀴즈 미니게임",
+    "subtitle": "분야와 문항 수를 선택하고 도전해보세요.",
+    "categoryLabel": "분야 선택",
+    "countLabel": "문항 수",
+    "startButton": "시작하기",
+    "empty": "출제 가능한 문항이 없습니다",
+    "emptyDesc": "현재 등록된 퀴즈 문항이 없습니다. 잠시 후 다시 시도해주세요."
+  },
+  "play": {
+    "progress": "{current} / {total}",
+    "answerPlaceholder": "정답을 입력하세요",
+    "answerLabel": "답안",
+    "submit": "제출",
+    "next": "다음 문항",
+    "finish": "결과 보기"
+  },
+  "feedback": {
+    "correct": "정답입니다!",
+    "incorrect": "오답입니다",
+    "explanationLabel": "해설",
+    "yourAnswer": "입력한 답: {answer}"
+  },
+  "result": {
+    "title": "퀴즈 완료",
+    "score": "점수",
+    "accuracy": "정답률",
+    "correctCount": "{correct} / {total} 문제 정답",
+    "best": "최고 기록",
+    "bestScore": "{score}%",
+    "newBest": "최고 기록 갱신!",
+    "retry": "다시하기"
+  },
+  "categories": {
+    "DATA_STRUCTURE": "자료구조",
+    "ALGORITHM": "알고리즘",
+    "NETWORK": "네트워크",
+    "OS": "운영체제",
+    "DATABASE": "데이터베이스"
+  }
+}
