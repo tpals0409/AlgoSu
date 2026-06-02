@@ -11,7 +11,14 @@ import { QuizStart } from '../QuizStart';
 
 jest.mock('@/data/quiz', () => {
   const actual = jest.requireActual('@/data/quiz');
-  return { ...actual, QUIZ_CATEGORIES: [actual.QuizCategory.DATA_STRUCTURE, actual.QuizCategory.ALGORITHM] };
+  return {
+    ...actual,
+    QUIZ_CATEGORIES: [
+      actual.QuizCategory.DATA_STRUCTURE,
+      actual.QuizCategory.ALGORITHM,
+      actual.QuizCategory.NETWORK,
+    ],
+  };
 });
 
 describe('QuizStart', () => {
@@ -34,9 +41,47 @@ describe('QuizStart', () => {
     renderWithI18n(<QuizStart onStart={onStart} />);
     fireEvent.click(screen.getByRole('button', { name: '알고리즘' }));
     fireEvent.click(screen.getByRole('button', { name: '10' }));
+    fireEvent.click(screen.getByRole('button', { name: '시작하기' }));
+    expect(onStart).toHaveBeenCalledWith(QuizCategory.ALGORITHM, 10, 'ALL');
+  });
+
+  it('shows both count options when the filtered pool is large enough', () => {
+    renderWithI18n(<QuizStart onStart={jest.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: '전체' }));
+    expect(screen.getByRole('button', { name: '5' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '10' })).toBeInTheDocument();
+  });
+
+  it('hides the 10 option when the filtered pool is below 10', () => {
+    renderWithI18n(<QuizStart onStart={jest.fn()} />);
+    // 알고리즘 + 어려움 = 9문항 (< 10) → [5]만 노출
+    fireEvent.click(screen.getByRole('button', { name: '알고리즘' }));
+    fireEvent.click(screen.getByRole('button', { name: '어려움' }));
+    expect(screen.getByRole('button', { name: '5' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '10' })).not.toBeInTheDocument();
+  });
+
+  it('clamps the selected count to the available pool when difficulty narrows it', () => {
+    const onStart = jest.fn();
+    renderWithI18n(<QuizStart onStart={onStart} />);
+    // 10 선택 후 풀이 작은 난이도로 좁히면 onStart count는 가용 이하로 클램프
+    fireEvent.click(screen.getByRole('button', { name: '알고리즘' }));
+    fireEvent.click(screen.getByRole('button', { name: '10' }));
     fireEvent.click(screen.getByRole('button', { name: '어려움' }));
     fireEvent.click(screen.getByRole('button', { name: '시작하기' }));
-    expect(onStart).toHaveBeenCalledWith(QuizCategory.ALGORITHM, 10, 'HARD');
+    expect(onStart).toHaveBeenCalledWith(QuizCategory.ALGORITHM, 5, 'HARD');
+  });
+
+  it('offers the whole pool as a single option when fewer than 5 questions exist', () => {
+    const onStart = jest.fn();
+    renderWithI18n(<QuizStart onStart={onStart} />);
+    // 네트워크 + 어려움 = 4문항 (< 5) → 단일 옵션 [4]
+    fireEvent.click(screen.getByRole('button', { name: '네트워크' }));
+    fireEvent.click(screen.getByRole('button', { name: '어려움' }));
+    expect(screen.getByRole('button', { name: '4' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '5' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '시작하기' }));
+    expect(onStart).toHaveBeenCalledWith(QuizCategory.NETWORK, 4, 'HARD');
   });
 
   it('renders difficulty options with ALL selected by default', () => {
