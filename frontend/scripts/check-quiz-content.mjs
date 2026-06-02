@@ -279,7 +279,7 @@ function matchAcceptedAnswers(block) {
 // ──────────────────────────────────────────────────────────────────
 
 /**
- * grade.ts の normalizeAnswer と同一のロジックを JS で実装したヘルパー.
+ * grade.ts의 normalizeAnswer와 동일한 로직을 JS로 구현한 헬퍼.
  * acceptedAnswers 내 중복(규칙 8)·빈 문자열(규칙 9) 검사에 사용한다.
  *
  * 절차: NFKC 정규화 → 소문자화 → 한글·영문·숫자 외 문자를 공백으로 치환 →
