@@ -486,6 +486,48 @@ describe('IdentityClientService', () => {
   });
 
   // ═══════════════════════════════════════════════════════
+  // QuizRecord API
+  // ═══════════════════════════════════════════════════════
+
+  describe('QuizRecord API', () => {
+    const USER_ID = '550e8400-e29b-41d4-a716-446655440000';
+
+    describe('saveQuizRecord', () => {
+      it('퀴즈 기록 저장 — POST /api/quiz-records (userId를 body에 병합)', async () => {
+        const record = { id: 'rec-1', best_score_percent: 90 };
+        httpService.request.mockReturnValue(okResponse(record));
+        const data = {
+          category: 'ALGORITHM',
+          difficulty: 'ALL',
+          scorePercent: 90,
+          playedAt: '2026-06-02T00:00:00.000Z',
+        };
+
+        const result = await service.saveQuizRecord(USER_ID, data);
+
+        expect(result).toEqual(record);
+        expectRequestCall('POST', '/api/quiz-records');
+        expectInternalKeyHeader();
+        const callArg = httpService.request.mock.calls[0][0];
+        expect(callArg.data).toEqual({ userId: USER_ID, ...data });
+      });
+    });
+
+    describe('findQuizRecordsByUserId', () => {
+      it('사용자 best 목록 조회 — GET /api/quiz-records/by-user/:userId', async () => {
+        const records = [{ id: 'rec-1' }];
+        httpService.request.mockReturnValue(okResponse(records));
+
+        const result = await service.findQuizRecordsByUserId(USER_ID);
+
+        expect(result).toEqual(records);
+        expectRequestCall('GET', `/api/quiz-records/by-user/${USER_ID}`);
+        expectInternalKeyHeader();
+      });
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════
   // GET 재시도 로직
   // ═══════════════════════════════════════════════════════
 

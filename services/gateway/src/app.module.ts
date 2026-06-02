@@ -33,6 +33,7 @@ import { StudyNoteProxyModule } from './study-note/study-note.module';
 import { IdentityClientModule } from './identity-client/identity-client.module';
 import { EventLogModule } from './event-log/event-log.module';
 import { FeedbackModule } from './feedback/feedback.module';
+import { QuizRecordModule } from './quiz-record/quiz-record.module';
 import { DemoWriteGuard } from './common/guards/demo-write.guard';
 import { HealthController } from './health.controller';
 
@@ -69,6 +70,7 @@ import { HealthController } from './health.controller';
     IdentityClientModule,
     EventLogModule,
     FeedbackModule,
+    QuizRecordModule,
     LoggerModule,
     ProxyModule, // CatchAllController(@All('*')) 포함 — 반드시 마지막 import
   ],

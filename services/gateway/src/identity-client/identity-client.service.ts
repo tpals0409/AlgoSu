@@ -101,6 +101,15 @@ export interface CreateShareLinkData {
   expires_at?: string;
 }
 
+// ─── QuizRecord API ──────────────────────────────────
+
+export interface SaveQuizRecordData {
+  category: string;
+  difficulty: string;
+  scorePercent: number;
+  playedAt: string;
+}
+
 // ─── Feedback API ────────────────────────────────────
 
 export interface CreateFeedbackData {
@@ -452,6 +461,23 @@ export class IdentityClientService {
     token: string,
   ): Promise<Record<string, unknown> | null> {
     return this.request('GET', `/api/share-links/by-token/${token}`);
+  }
+
+  // ─── QuizRecord API ────────────────────────────────────
+
+  /** 퀴즈 최고 기록 upsert (userId는 body에 포함하여 Identity로 전달) */
+  async saveQuizRecord(
+    userId: string,
+    data: SaveQuizRecordData,
+  ): Promise<Record<string, unknown>> {
+    return this.request('POST', '/api/quiz-records', { userId, ...data });
+  }
+
+  /** 사용자의 전체 퀴즈 best 목록 조회 */
+  async findQuizRecordsByUserId(
+    userId: string,
+  ): Promise<Record<string, unknown>[]> {
+    return this.request('GET', `/api/quiz-records/by-user/${userId}`);
   }
 
   // ─── 내부 유틸리티 ────────────────────────────────────
