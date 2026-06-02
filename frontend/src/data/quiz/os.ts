@@ -29,7 +29,7 @@ export const OS_QUESTIONS: readonly QuizQuestion[] = [
       ko: 'CPU가 실행하던 프로세스를 멈추고 다른 프로세스로 전환하며 상태를 저장·복원하는 작업은?',
       en: 'What is the operation of saving and restoring state when the CPU switches from one process to another?',
     },
-    acceptedAnswers: ['컨텍스트스위칭', '컨텍스트 스위칭', '문맥교환', '문맥 교환', 'context switch', 'context switching'],
+    acceptedAnswers: ['컨텍스트스위칭', '컨텍스트 스위칭', '문맥교환', '문맥 교환', '문맥전환', 'context switch', 'context switching'],
     explanation: {
       ko: '컨텍스트 스위칭은 현재 프로세스의 컨텍스트를 PCB에 저장하고 다음 프로세스의 컨텍스트를 복원하는 과정입니다.',
       en: 'Context switching saves the current process’s context into its PCB and restores the next process’s context.',
@@ -281,7 +281,7 @@ export const OS_QUESTIONS: readonly QuizQuestion[] = [
       ko: '가장 오래 전에 사용된 페이지를 먼저 교체하는 페이지 교체 알고리즘은?',
       en: 'Which page replacement algorithm evicts the page that was used least recently?',
     },
-    acceptedAnswers: ['LRU', 'least recently used'],
+    acceptedAnswers: ['LRU', 'least recently used', '엘알유'],
     explanation: {
       ko: 'LRU(Least Recently Used)는 가장 오랫동안 참조되지 않은 페이지를 교체 대상으로 선택합니다.',
       en: 'LRU (Least Recently Used) evicts the page that has not been referenced for the longest time.',

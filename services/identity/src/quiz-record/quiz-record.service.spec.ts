@@ -87,6 +87,27 @@ describe('QuizRecordService', () => {
 
       expect(result.best_score_percent).toBe(90);
     });
+
+    it('동일 점수 재제출 시 played_at을 갱신하지 않는다 (WHERE < EXCLUDED 경계)', async () => {
+      // Gap: 기존 테스트는 낮은 점수(70<90)만 커버; 동점(90=90)의 played_at 미갱신 경계 미검증.
+      // SQL WHERE best_score_percent < EXCLUDED → 등호 미포함 → UPDATE 미발생
+      // → played_at은 기존 값 유지.
+      const originalDate = new Date('2026-06-01T00:00:00.000Z');
+      const existing = mockRecord({ best_score_percent: 90, played_at: originalDate });
+      (repo.query as jest.Mock).mockResolvedValue(undefined);
+      (repo.findOneOrFail as jest.Mock).mockResolvedValue(existing);
+
+      const equalDto: UpsertQuizRecordDto = {
+        ...dto,
+        scorePercent: 90,
+        playedAt: '2026-06-02T00:00:00.000Z', // 더 최근 시각
+      };
+      const result = await service.upsertBest(equalDto);
+
+      expect(result.best_score_percent).toBe(90);
+      // played_at은 기존 값 — 동점 재제출로 갱신되지 않음
+      expect(result.played_at).toEqual(originalDate);
+    });
   });
 
   describe('findByUser', () => {

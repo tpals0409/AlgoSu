@@ -9,8 +9,9 @@
  *
  * 문항 데이터는 TypeScript 소스라 .mjs 에서 직접 import 할 수 없으므로
  * (tsx/ts-node 미보장), 각 분야 .ts 파일을 텍스트로 읽어 객체 리터럴을
- * 파싱한 뒤 다음 7가지 무결성 규칙을 검사한다.
+ * 파싱한 뒤 다음 9가지 규칙을 검사한다.
  *
+ * [오류 규칙 — --strict 에서 exit 1 트리거]
  *   1. 중복 id            — 전체 문항에서 id 유일성
  *   2. id 네이밍          — `{prefix}-{NN}` (2자리 숫자, prefix ∈ ds/algo/net/os/db)
  *   3. acceptedAnswers    — 최소 1개 이상 (빈/누락 금지)
@@ -19,8 +20,14 @@
  *   6. difficulty 허용값  — EASY / MEDIUM / HARD 중 하나
  *   7. 분야별 최소 문항 수 — 각 분야 최소 MIN_PER_CATEGORY(30)개
  *
- * - 기본(비-strict) 모드: 위반을 WARN으로 나열하되 exit 0 (자료 수집/로컬 점검용)
- * - --strict 모드: 위반이 1건이라도 있으면 exit 1 (CI hard gate 용)
+ * [경고 전용 규칙 — --strict 에서도 exit 0 (CI 차단 없음)]
+ *   8. acceptedAnswers 정규화 중복 — normalizeAnswer 후 동일한 문자열이 된 항목 WARN
+ *      (예: ["stack","Stack"] → 정규화 후 동일 → 중복, 그러나 채점에 영향 없음)
+ *   9. acceptedAnswers 정규화 빈 문자열 — normalizeAnswer 결과가 빈 문자열인 항목 WARN
+ *      (특수문자만으로 구성된 항목은 절대 매칭 안 됨)
+ *
+ * - 기본(비-strict) 모드: 오류·경고 모두 나열하되 exit 0 (자료 수집/로컬 점검용)
+ * - --strict 모드: 규칙 1~7 위반이 1건이라도 있으면 exit 1 (규칙 8~9는 WARN 출력만)
  *
  * exit
  *   0: 점검 완료 (--strict 외에는 항상 0 / strict 에서 위반 없음)
@@ -96,15 +103,26 @@ function runMain() {
   const { questions, violations } = collectQuestions(CATEGORY_FILES, QUIZ_DIR);
   violations.push(...validateQuestions(questions, CATEGORY_FILES));
 
+  // 경고 전용 규칙(8·9) — --strict 에서도 exit 0
+  const warnOnly = checkWarnOnlyRules(questions);
+
   printSummary(questions, CATEGORY_FILES);
 
+  // 경고 전용 먼저 출력 (CI 차단 없음)
+  if (warnOnly.length > 0) {
+    console.log(`[WARN] ${warnOnly.length}건 콘텐츠 경고 (CI 차단 없음 — 중복·빈 정규화):`);
+    for (const w of warnOnly) {
+      console.log(`       - ${w}`);
+    }
+  }
+
   if (violations.length === 0) {
-    console.log('[OK]   모든 퀴즈 문항이 콘텐츠 품질 규칙을 통과했습니다.');
+    console.log('[OK]   모든 퀴즈 문항이 콘텐츠 품질 규칙(1~7)을 통과했습니다.');
     process.exit(0);
   }
 
   const level = args.strict ? 'FAIL' : 'WARN';
-  console.log(`[${level}] ${violations.length}건 콘텐츠 품질 위반:`);
+  console.log(`[${level}] ${violations.length}건 콘텐츠 품질 위반(규칙 1~7):`);
   for (const v of violations) {
     console.log(`       - ${v}`);
   }
@@ -257,6 +275,29 @@ function matchAcceptedAnswers(block) {
 }
 
 // ──────────────────────────────────────────────────────────────────
+// Answer normalisation (mirrors grade.ts normalizeAnswer)
+// ──────────────────────────────────────────────────────────────────
+
+/**
+ * grade.ts의 normalizeAnswer와 동일한 로직을 JS로 구현한 헬퍼.
+ * acceptedAnswers 내 중복(규칙 8)·빈 문자열(규칙 9) 검사에 사용한다.
+ *
+ * 절차: NFKC 정규화 → 소문자화 → 한글·영문·숫자 외 문자를 공백으로 치환 →
+ * 양끝 공백 제거 → 남은 공백 제거.
+ *
+ * @param {string} raw 원본 답안 문자열
+ * @returns {string} 정규화된 비교 키 (한글/영문/숫자만)
+ */
+export function normalizeAnswerJs(raw) {
+  return raw
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[^a-z0-9가-힣]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, '');
+}
+
+// ──────────────────────────────────────────────────────────────────
 // Validation
 // ──────────────────────────────────────────────────────────────────
 
@@ -372,6 +413,76 @@ function checkMinPerCategory(questions, categoryFiles) {
  */
 function isBlank(value) {
   return value == null || value.trim().length === 0;
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Warn-only rules (8~9) — --strict 에서도 exit 1 미트리거
+// ──────────────────────────────────────────────────────────────────
+
+/**
+ * 규칙 8 — acceptedAnswers 내부에 normalizeAnswer 후 중복되는 항목이 있으면 WARN.
+ * 예: ["stack","Stack"] 은 정규화 후 동일 → 중복. 채점에는 영향 없으나 불필요한 중복.
+ *
+ * @param {Array<object>} questions
+ * @returns {string[]} 경고 메시지 목록
+ */
+export function checkNormalizedDuplicates(questions) {
+  const warnList = [];
+  for (const q of questions) {
+    /** @type {Map<string, string[]>} */
+    const seen = new Map();
+    for (const answer of q.acceptedAnswers) {
+      const key = normalizeAnswerJs(answer);
+      if (!seen.has(key)) seen.set(key, []);
+      seen.get(key).push(answer);
+    }
+    for (const [key, dupes] of seen.entries()) {
+      if (dupes.length > 1) {
+        const where = `${q.file} (id: ${q.id})`;
+        warnList.push(
+          `${where}: [규칙 8] acceptedAnswers 정규화 중복 — ` +
+            `[${dupes.map((a) => `'${a}'`).join(', ')}] 모두 '${key}'로 정규화됨`,
+        );
+      }
+    }
+  }
+  return warnList;
+}
+
+/**
+ * 규칙 9 — acceptedAnswers 중 normalizeAnswer 결과가 빈 문자열이 되는 항목을 WARN.
+ * 특수문자만으로 구성된 항목은 그레이드 엔진에서 절대 매칭되지 않는다.
+ *
+ * @param {Array<object>} questions
+ * @returns {string[]} 경고 메시지 목록
+ */
+export function checkEmptyNormalized(questions) {
+  const warnList = [];
+  for (const q of questions) {
+    for (const answer of q.acceptedAnswers) {
+      if (normalizeAnswerJs(answer) === '') {
+        const where = `${q.file} (id: ${q.id})`;
+        warnList.push(
+          `${where}: [규칙 9] acceptedAnswers '${answer}' 이(가) 정규화 후 빈 문자열 — 절대 매칭 안 됨`,
+        );
+      }
+    }
+  }
+  return warnList;
+}
+
+/**
+ * 경고 전용 규칙(규칙 8·9)을 일괄 실행한다.
+ * --strict 모드에서도 exit 1을 트리거하지 않는다.
+ *
+ * @param {Array<object>} questions
+ * @returns {string[]} 경고 메시지 목록
+ */
+export function checkWarnOnlyRules(questions) {
+  return [
+    ...checkNormalizedDuplicates(questions),
+    ...checkEmptyNormalized(questions),
+  ];
 }
 
 // ──────────────────────────────────────────────────────────────────
