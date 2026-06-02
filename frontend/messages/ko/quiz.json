@@ -7,6 +7,7 @@
     "title": "CS 퀴즈 미니게임",
     "subtitle": "분야와 문항 수를 선택하고 도전해보세요.",
     "categoryLabel": "분야 선택",
+    "difficultyLabel": "난이도",
     "countLabel": "문항 수",
     "startButton": "시작하기",
     "empty": "출제 가능한 문항이 없습니다",
@@ -42,5 +43,11 @@
     "NETWORK": "네트워크",
     "OS": "운영체제",
     "DATABASE": "데이터베이스"
+  },
+  "difficulties": {
+    "ALL": "전체",
+    "EASY": "쉬움",
+    "MEDIUM": "보통",
+    "HARD": "어려움"
   }
 }

@@ -11,15 +11,21 @@ const NON_ALNUM_KO = /[^a-z0-9가-힣]+/g;
 /**
  * 채점 비교를 위해 답안 문자열을 정규화한다.
  *
- * 절차: 소문자화 → 한글/영문/숫자 외 문자를 공백으로 치환 →
- * 연속 공백 단일화 → 양끝 공백 제거 → 남은 공백 제거.
+ * 절차: 유니코드 NFKC 정규화 → 소문자화 → 한글/영문/숫자 외 문자를
+ * 공백으로 치환 → 연속 공백 단일화 → 양끝 공백 제거 → 남은 공백 제거.
  * 결과적으로 한글·영문·숫자만 이어 붙은 비교 키를 만든다.
+ *
+ * NFKC 단계는 전각(full-width) 영숫자·기호·공백(예 `ＳＱＬ`, `Ｏ（ｌｏｇ　ｎ）`)을
+ * 반각으로 폴딩하고 호환·결합 문자를 정준화한다. 이를 toLowerCase보다 먼저
+ * 수행해 전각 대문자가 반각 대문자를 거쳐 소문자화되도록 한다. 일반 ASCII와
+ * 완성형 한글은 NFKC 영향을 받지 않으므로 기존 동작은 무회귀로 유지된다.
  *
  * @param raw 원본 답안 문자열
  * @returns 정규화된 비교 키 (한글/영문/숫자만)
  */
 export function normalizeAnswer(raw: string): string {
   return raw
+    .normalize('NFKC')
     .toLowerCase()
     .replace(NON_ALNUM_KO, ' ')
     .trim()

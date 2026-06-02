@@ -7,6 +7,7 @@
     "title": "CS Quiz Minigame",
     "subtitle": "Pick a category and number of questions to begin.",
     "categoryLabel": "Select Category",
+    "difficultyLabel": "Difficulty",
     "countLabel": "Questions",
     "startButton": "Start",
     "empty": "No questions available",
@@ -42,5 +43,11 @@
     "NETWORK": "Networking",
     "OS": "Operating Systems",
     "DATABASE": "Databases"
+  },
+  "difficulties": {
+    "ALL": "All",
+    "EASY": "Easy",
+    "MEDIUM": "Medium",
+    "HARD": "Hard"
   }
 }
