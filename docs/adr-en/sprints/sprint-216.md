@@ -113,17 +113,18 @@ Per-category difficulty distribution:
 | `51230d9` | Wave B — difficulty filter UX (getQuestionsByFilter, QuizStart fieldset, page.tsx, i18n) + test updates |
 | `680d4af` | Wave C — check-quiz-content.mjs content lint + ci.yml quality-frontend step |
 | `7197d0b` | Wave D — grade.ts NFKC normalization + regression tests |
+| `f2bdafd` | Critic R1 P2 fix — cap count options to the available pool (QuizStart) |
 
 ## Verification
 
-Oracle direct verification:
+Oracle direct verification (after the Critic R1 P2 fix):
 
 - `tsc --noEmit` → 0
 - `next lint` → 0 errors / 0 warnings
 - `node frontend/scripts/check-quiz-content.mjs --strict` → **150 questions PASS (exit 0)**, 30 per category confirmed
-- `jest --coverage` → **1470 tests PASS / 0 fail** (JEST EXIT 0, clears the thresholds), global lines **87.44%** · branches **78.86%** (clears the 83% / 71% gate)
+- `jest --coverage` → **146 suites · 1474 tests PASS / 0 fail** (JEST EXIT 0, clears the thresholds), global lines **87.47%** · branches **78.9%** (clears the 83% / 71% gate)
 - **The 5 quiz components, `grade`, `storage`, and the `data/quiz` index all at 100% coverage**
-- `next build` → ✓ Compiled 8.1s, `ƒ /[locale]/quiz` 36.8kB (up from 215's 12.4kB, reflecting the 150 questions)
+- `next build` → ✓ Compiled, `ƒ /[locale]/quiz` 36.9kB (up from 215's 12.4kB, reflecting the 150 questions)
 
 ## Lessons
 
@@ -146,6 +147,17 @@ Oracle direct verification:
 
 ## Critic Cross-Review
 
-**R1 — pending** (Codex, `codex review --base d431dcf`)
+**R1 — 1 P2** (Codex, `codex review --base d431dcf`, codex-cli 0.130.0)
 
-The Critic cross-review will run at the merge gate via `codex review --base d431dcf`. As of this ADR's authoring it has not yet run; Oracle fills in the R1 result (finding severities · actions) in this section after the merge gate passes.
+> With the difficulty filter, the strict content gate can pass even when a selectable category/difficulty pool cannot satisfy the smallest UI count, because it only checks per-category totals. E.g. `NETWORK` has only 4 `HARD` questions, so Network + Hard + 5 starts a 4-question quiz despite the user selecting 5. Enforce a per-category/per-difficulty minimum matching the UI options, or adjust/disable count choices for undersized pools.
+
+- **Action**: Forcing 10 questions per `(category,difficulty)` would distort the difficulty distribution (HARD is naturally scarcer), so this was resolved on the **UX side** instead. Author fix `f2bdafd` — QuizStart computes the available pool size via `getQuestionsByFilter(category, difficulty).length` and caps the count options dynamically (`available>=10`→[5,10] / `5~9`→[5] / `<5`→single [available]). A derived clamp always passes a count ≤ available to `onStart`, and the start button has a defensive guard. 4 regression tests added, `QuizStart.tsx` stays at 100% coverage. Content, storage, and i18n unchanged.
+- Critical / High **0**.
+
+**R2 — CLEAN** (Codex, `codex review --base d431dcf`, re-review)
+
+> The changes appear internally consistent: the new quiz categories and difficulty filter are wired through data, UI, tests, and CI content validation without an evident breaking issue.
+
+- P0 / P1 / P2 / P3 **0**.
+
+**Final — CLEAN**. No regression after the R1 P2 fix (`f2bdafd`).
