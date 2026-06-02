@@ -8,6 +8,7 @@
  * @related src/lib/quiz/storage.ts
  *
  * Node 환경에서 실행해 window가 없는 SSR 상황의 no-op/빈 반환을 검증한다.
+ * Sprint 217: async 인터페이스(Promise 반환)로 업데이트.
  */
 import {
   createLocalStorageQuizStore,
@@ -16,6 +17,7 @@ import {
 
 const ssrResult: QuizPlayResult = {
   category: 'ALGORITHM',
+  difficulty: 'ALL',
   total: 10,
   correct: 8,
   scorePercent: 80,
@@ -23,15 +25,15 @@ const ssrResult: QuizPlayResult = {
 };
 
 describe('createLocalStorageQuizStore in SSR (window undefined)', () => {
-  it('getBest returns null', () => {
-    expect(createLocalStorageQuizStore().getBest('ALGORITHM')).toBeNull();
+  it('getBest returns null', async () => {
+    expect(await createLocalStorageQuizStore().getBest('ALGORITHM', 'ALL')).toBeNull();
   });
 
-  it('getAllBest returns an empty map', () => {
-    expect(createLocalStorageQuizStore().getAllBest()).toEqual({});
+  it('getAllBest returns an empty map', async () => {
+    expect(await createLocalStorageQuizStore().getAllBest()).toEqual({});
   });
 
-  it('saveResult is a safe no-op', () => {
-    expect(() => createLocalStorageQuizStore().saveResult(ssrResult)).not.toThrow();
+  it('saveResult is a safe no-op', async () => {
+    await expect(createLocalStorageQuizStore().saveResult(ssrResult)).resolves.toBeUndefined();
   });
 });
