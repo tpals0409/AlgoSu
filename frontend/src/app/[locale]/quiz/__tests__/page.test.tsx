@@ -3,8 +3,10 @@
  * @domain quiz
  * @layer page
  * @related quiz/page.tsx
+ *
+ * Sprint 217: useAuth 모킹 추가, async finish(waitFor), 게스트 분기 검증.
  */
-import { screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { renderWithI18n } from '@/test-utils/i18n';
 import { QuizCategory, type QuizQuestion } from '@/data/quiz';
 import QuizPage from '../page';
@@ -17,6 +19,15 @@ jest.mock('@/components/layout/AppLayout', () => ({
 
 jest.mock('@/hooks/useAnimVal', () => ({
   useAnimVal: (value: number) => [{ current: null }, value],
+}));
+
+/** 기본: 미인증 게스트 — localStorage 저장소 사용 경로 */
+jest.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({
+    isAuthenticated: false,
+    isLoading: false,
+    user: null,
+  }),
 }));
 
 const MOCK_QUESTIONS: QuizQuestion[] = [
@@ -86,23 +97,26 @@ describe('QuizPage flow', () => {
     expect(screen.getByText('오답입니다')).toBeInTheDocument();
   });
 
-  it('completes the full flow and shows the result with a perfect score', () => {
+  it('completes the full flow and shows the result with a perfect score', async () => {
     startGame();
     answerCurrent('스택');
     fireEvent.click(screen.getByRole('button', { name: '다음 문항' }));
     answerCurrent('큐');
     fireEvent.click(screen.getByRole('button', { name: '결과 보기' }));
-    expect(screen.getByText('퀴즈 완료')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('퀴즈 완료')).toBeInTheDocument();
+    });
     expect(screen.getByText('2 / 2 문제 정답')).toBeInTheDocument();
     expect(screen.getByText('최고 기록 갱신!')).toBeInTheDocument();
   });
 
-  it('returns to the start screen when retry is clicked', () => {
+  it('returns to the start screen when retry is clicked', async () => {
     startGame();
     answerCurrent('스택');
     fireEvent.click(screen.getByRole('button', { name: '다음 문항' }));
     answerCurrent('큐');
     fireEvent.click(screen.getByRole('button', { name: '결과 보기' }));
+    await waitFor(() => expect(screen.getByText('퀴즈 완료')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: '다시하기' }));
     expect(screen.getByText('CS 퀴즈 미니게임')).toBeInTheDocument();
   });
