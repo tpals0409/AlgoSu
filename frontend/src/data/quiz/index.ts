@@ -9,10 +9,13 @@ import { DATABASE_QUESTIONS } from './database';
 import { DATA_STRUCTURE_QUESTIONS } from './data-structure';
 import { NETWORK_QUESTIONS } from './network';
 import { OS_QUESTIONS } from './os';
-import { QuizCategory, type QuizQuestion } from './types';
+import { QuizCategory, type QuizDifficulty, type QuizQuestion } from './types';
 
 export { QuizCategory } from './types';
 export type { QuizDifficulty, LocalizedText, QuizQuestion } from './types';
+
+/** 난이도 필터 옵션 — 'ALL'(전체) + 3단계 난이도. */
+export const QUIZ_DIFFICULTIES = ['ALL', 'EASY', 'MEDIUM', 'HARD'] as const;
 
 /** 전 분야 문항을 합산한 전체 목록. */
 export const ALL_QUESTIONS: readonly QuizQuestion[] = [
@@ -39,6 +42,22 @@ export function getQuestionsByCategory(category: QuizCategory): QuizQuestion[] {
 }
 
 /**
+ * 카테고리로 거른 뒤, 난이도가 'ALL'이 아니면 난이도까지 필터링해 반환한다.
+ *
+ * @param category 조회할 CS 분야
+ * @param difficulty 난이도 필터 ('ALL'이면 난이도 무관 전체)
+ * @returns 조건을 만족하는 문항 배열 (없으면 빈 배열)
+ */
+export function getQuestionsByFilter(
+  category: QuizCategory,
+  difficulty: QuizDifficulty | 'ALL',
+): QuizQuestion[] {
+  const byCategory = getQuestionsByCategory(category);
+  if (difficulty === 'ALL') return byCategory;
+  return byCategory.filter((question) => question.difficulty === difficulty);
+}
+
+/**
  * 배열을 Fisher-Yates 알고리즘으로 셔플한 새 배열을 반환한다 (원본 불변).
  *
  * @param items 셔플 대상 배열
@@ -55,19 +74,21 @@ function shuffle<T>(items: readonly T[], rng: () => number = Math.random): T[] {
 }
 
 /**
- * 카테고리에서 무작위로 최대 `count`개 문항을 뽑아 반환한다.
+ * 카테고리·난이도 조건에서 무작위로 최대 `count`개 문항을 뽑아 반환한다.
  * 가용 문항이 `count`보다 적으면 전체(셔플본)를 반환한다.
  *
  * @param category 조회할 CS 분야
  * @param count 뽑을 문항 수
+ * @param difficulty 난이도 필터 ('ALL'이면 난이도 무관, 기본 'ALL')
  * @param rng 난수 생성기 (기본 Math.random, 테스트 결정성용 주입 가능)
  * @returns 무작위 문항 배열 (최대 count개)
  */
 export function getRandomQuestions(
   category: QuizCategory,
   count: number,
+  difficulty: QuizDifficulty | 'ALL' = 'ALL',
   rng: () => number = Math.random,
 ): QuizQuestion[] {
-  const pool = getQuestionsByCategory(category);
+  const pool = getQuestionsByFilter(category, difficulty);
   return shuffle(pool, rng).slice(0, Math.max(0, count));
 }

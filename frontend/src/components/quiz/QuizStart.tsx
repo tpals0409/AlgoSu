@@ -14,14 +14,23 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { cn } from '@/lib/utils';
-import { QUIZ_CATEGORIES, type QuizCategory } from '@/data/quiz';
+import {
+  QUIZ_CATEGORIES,
+  QUIZ_DIFFICULTIES,
+  type QuizCategory,
+  type QuizDifficulty,
+} from '@/data/quiz';
 
 /** 선택 가능한 문항 수 옵션. */
 const COUNT_OPTIONS = [5, 10] as const;
 
 interface QuizStartProps {
-  /** 사용자가 분야·문항 수를 확정하고 시작할 때 호출 */
-  readonly onStart: (category: QuizCategory, count: number) => void;
+  /** 사용자가 분야·문항 수·난이도를 확정하고 시작할 때 호출 */
+  readonly onStart: (
+    category: QuizCategory,
+    count: number,
+    difficulty: QuizDifficulty | 'ALL',
+  ) => void;
 }
 
 /**
@@ -32,6 +41,7 @@ export function QuizStart({ onStart }: QuizStartProps): ReactElement {
   const t = useTranslations('quiz');
   const [category, setCategory] = useState<QuizCategory>(QUIZ_CATEGORIES[0]);
   const [count, setCount] = useState<number>(COUNT_OPTIONS[0]);
+  const [difficulty, setDifficulty] = useState<QuizDifficulty | 'ALL'>('ALL');
 
   if (QUIZ_CATEGORIES.length === 0) {
     return (
@@ -69,6 +79,28 @@ export function QuizStart({ onStart }: QuizStartProps): ReactElement {
       </fieldset>
 
       <fieldset className="space-y-2">
+        <legend className="text-xs font-medium text-text-2">{t('start.difficultyLabel')}</legend>
+        <div className="flex flex-wrap gap-2">
+          {QUIZ_DIFFICULTIES.map((option) => (
+            <button
+              key={option}
+              type="button"
+              aria-pressed={difficulty === option}
+              onClick={() => setDifficulty(option)}
+              className={cn(
+                'rounded-badge border px-3 py-1.5 text-xs font-medium transition-colors',
+                difficulty === option
+                  ? 'border-primary bg-primary-soft text-primary'
+                  : 'border-border text-text-3 hover:bg-bg-alt hover:text-text',
+              )}
+            >
+              {t(`difficulties.${option}`)}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+
+      <fieldset className="space-y-2">
         <legend className="text-xs font-medium text-text-2">{t('start.countLabel')}</legend>
         <div className="flex flex-wrap gap-2">
           {COUNT_OPTIONS.map((option) => (
@@ -90,7 +122,12 @@ export function QuizStart({ onStart }: QuizStartProps): ReactElement {
         </div>
       </fieldset>
 
-      <Button variant="primary" size="lg" className="w-full" onClick={() => onStart(category, count)}>
+      <Button
+        variant="primary"
+        size="lg"
+        className="w-full"
+        onClick={() => onStart(category, count, difficulty)}
+      >
         {t('start.startButton')}
       </Button>
     </Card>

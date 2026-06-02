@@ -7,10 +7,20 @@
 import {
   ALL_QUESTIONS,
   getQuestionsByCategory,
+  getQuestionsByFilter,
   getRandomQuestions,
   QuizCategory,
   QUIZ_CATEGORIES,
 } from '../index';
+
+/** 출제 분야 5종 — 각 분야는 30문항을 보유한다 (Wave A 기준). */
+const ALL_CATEGORIES = [
+  QuizCategory.DATA_STRUCTURE,
+  QuizCategory.ALGORITHM,
+  QuizCategory.NETWORK,
+  QuizCategory.OS,
+  QuizCategory.DATABASE,
+] as const;
 
 describe('getQuestionsByCategory', () => {
   it('returns only questions of the requested category', () => {
@@ -19,8 +29,30 @@ describe('getQuestionsByCategory', () => {
     expect(result.every((q) => q.category === QuizCategory.DATA_STRUCTURE)).toBe(true);
   });
 
-  it('returns an empty array for a category with no questions', () => {
-    expect(getQuestionsByCategory(QuizCategory.OS)).toEqual([]);
+  it('returns questions for every populated category', () => {
+    for (const category of ALL_CATEGORIES) {
+      const result = getQuestionsByCategory(category);
+      expect(result.length).toBeGreaterThan(0);
+      expect(result.every((q) => q.category === category)).toBe(true);
+    }
+  });
+});
+
+describe('getQuestionsByFilter', () => {
+  it('returns the full category pool when difficulty is ALL', () => {
+    expect(getQuestionsByFilter(QuizCategory.ALGORITHM, 'ALL')).toEqual(
+      getQuestionsByCategory(QuizCategory.ALGORITHM),
+    );
+  });
+
+  it('returns only questions matching the requested difficulty', () => {
+    const result = getQuestionsByFilter(QuizCategory.ALGORITHM, 'EASY');
+    expect(result.length).toBeGreaterThan(0);
+    expect(
+      result.every(
+        (q) => q.category === QuizCategory.ALGORITHM && q.difficulty === 'EASY',
+      ),
+    ).toBe(true);
   });
 });
 
@@ -44,8 +76,8 @@ describe('getRandomQuestions', () => {
   it('is deterministic with an injected rng and does not mutate the pool', () => {
     const pool = getQuestionsByCategory(QuizCategory.ALGORITHM);
     const rng = () => 0;
-    const first = getRandomQuestions(QuizCategory.ALGORITHM, 3, rng);
-    const second = getRandomQuestions(QuizCategory.ALGORITHM, 3, rng);
+    const first = getRandomQuestions(QuizCategory.ALGORITHM, 3, 'ALL', rng);
+    const second = getRandomQuestions(QuizCategory.ALGORITHM, 3, 'ALL', rng);
     expect(first.map((q) => q.id)).toEqual(second.map((q) => q.id));
     expect(getQuestionsByCategory(QuizCategory.ALGORITHM)).toEqual(pool);
   });
@@ -53,6 +85,16 @@ describe('getRandomQuestions', () => {
   it('selects only questions belonging to the category', () => {
     const result = getRandomQuestions(QuizCategory.DATA_STRUCTURE, 4);
     expect(result.every((q) => q.category === QuizCategory.DATA_STRUCTURE)).toBe(true);
+  });
+
+  it('restricts the pool to the requested difficulty', () => {
+    const result = getRandomQuestions(QuizCategory.DATA_STRUCTURE, 4, 'HARD');
+    expect(result.length).toBeGreaterThan(0);
+    expect(
+      result.every(
+        (q) => q.category === QuizCategory.DATA_STRUCTURE && q.difficulty === 'HARD',
+      ),
+    ).toBe(true);
   });
 });
 
@@ -75,15 +117,13 @@ describe('ALL_QUESTIONS integrity', () => {
     }
   });
 
-  it('provides 12 questions per PoC category', () => {
-    expect(getQuestionsByCategory(QuizCategory.DATA_STRUCTURE)).toHaveLength(12);
-    expect(getQuestionsByCategory(QuizCategory.ALGORITHM)).toHaveLength(12);
+  it('provides 30 questions per category', () => {
+    for (const category of ALL_CATEGORIES) {
+      expect(getQuestionsByCategory(category)).toHaveLength(30);
+    }
   });
 
-  it('lists only categories that actually have questions', () => {
-    expect(QUIZ_CATEGORIES).toEqual([
-      QuizCategory.DATA_STRUCTURE,
-      QuizCategory.ALGORITHM,
-    ]);
+  it('lists every populated category in declaration order', () => {
+    expect(QUIZ_CATEGORIES).toEqual([...ALL_CATEGORIES]);
   });
 });

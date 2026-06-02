@@ -22,20 +22,29 @@ describe('QuizStart', () => {
     expect(screen.getByRole('button', { name: '알고리즘' })).toBeInTheDocument();
   });
 
-  it('starts with the default category and count', () => {
+  it('starts with the default category, count, and difficulty', () => {
     const onStart = jest.fn();
     renderWithI18n(<QuizStart onStart={onStart} />);
     fireEvent.click(screen.getByRole('button', { name: '시작하기' }));
-    expect(onStart).toHaveBeenCalledWith(QuizCategory.DATA_STRUCTURE, 5);
+    expect(onStart).toHaveBeenCalledWith(QuizCategory.DATA_STRUCTURE, 5, 'ALL');
   });
 
-  it('reflects the selected category and count', () => {
+  it('reflects the selected category, count, and difficulty', () => {
     const onStart = jest.fn();
     renderWithI18n(<QuizStart onStart={onStart} />);
     fireEvent.click(screen.getByRole('button', { name: '알고리즘' }));
     fireEvent.click(screen.getByRole('button', { name: '10' }));
+    fireEvent.click(screen.getByRole('button', { name: '어려움' }));
     fireEvent.click(screen.getByRole('button', { name: '시작하기' }));
-    expect(onStart).toHaveBeenCalledWith(QuizCategory.ALGORITHM, 10);
+    expect(onStart).toHaveBeenCalledWith(QuizCategory.ALGORITHM, 10, 'HARD');
+  });
+
+  it('renders difficulty options with ALL selected by default', () => {
+    renderWithI18n(<QuizStart onStart={jest.fn()} />);
+    expect(screen.getByRole('button', { name: '전체' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: '쉬움' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: '보통' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '어려움' })).toBeInTheDocument();
   });
 
   it('marks the active category with aria-pressed', () => {

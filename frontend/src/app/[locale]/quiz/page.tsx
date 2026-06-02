@@ -12,7 +12,12 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { QuizStart } from '@/components/quiz/QuizStart';
 import { QuizPlay } from '@/components/quiz/QuizPlay';
 import { QuizResult } from '@/components/quiz/QuizResult';
-import { getRandomQuestions, type QuizCategory, type QuizQuestion } from '@/data/quiz';
+import {
+  getRandomQuestions,
+  type QuizCategory,
+  type QuizDifficulty,
+  type QuizQuestion,
+} from '@/data/quiz';
 import { gradeAnswer } from '@/lib/quiz/grade';
 import {
   createLocalStorageQuizStore,
@@ -25,6 +30,7 @@ type Phase = 'idle' | 'playing' | 'result';
 /** 한 판의 진행 상태 스냅샷. */
 interface Session {
   readonly category: QuizCategory;
+  readonly difficulty: QuizDifficulty | 'ALL';
   readonly questions: readonly QuizQuestion[];
   readonly index: number;
   readonly correct: number;
@@ -44,10 +50,15 @@ export default function QuizPage(): ReactNode {
   const [bestScore, setBestScore] = useState<number | null>(null);
   const [isNewBest, setIsNewBest] = useState(false);
 
-  const start = (category: QuizCategory, count: number): void => {
-    const questions = getRandomQuestions(category, count);
+  const start = (
+    category: QuizCategory,
+    count: number,
+    difficulty: QuizDifficulty | 'ALL',
+  ): void => {
+    const questions = getRandomQuestions(category, count, difficulty);
     setSession({
       category,
+      difficulty,
       questions,
       index: 0,
       correct: 0,
