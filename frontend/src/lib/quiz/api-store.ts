@@ -62,13 +62,14 @@ function rawToRecord(raw: RawQuizRecord): QuizBestRecord {
  * @returns QuizRecordStore 구현체
  */
 export function createApiQuizStore(): QuizRecordStore {
-  /** GET 결과 메모리 캐시 — null이면 미취득, {}는 빈 기록 또는 실패 폴백. */
+  /** GET 결과 메모리 캐시 — null이면 미취득 또는 실패(재시도 허용). */
   let cache: RecordMap | null = null;
 
   /**
    * 서버에서 전체 best 기록을 취득해 캐시에 저장한다.
    * 이미 캐시가 있으면 즉시 반환한다.
-   * 네트워크 실패 시 빈 맵을 캐시에 저장하고 반환한다 (best-effort).
+   * 네트워크 실패 시 캐시를 기록하지 않고 빈 맵을 반환한다.
+   * → 다음 호출 시 서버 재조회를 재시도한다 (best-effort, Sprint 217 P2).
    */
   async function fetchAllBest(): Promise<RecordMap> {
     if (cache !== null) return cache;
@@ -79,11 +80,12 @@ export function createApiQuizStore(): QuizRecordStore {
         map[toCompositeKey(raw.category, raw.difficulty)] = rawToRecord(raw);
       }
       cache = map;
+      return cache;
     } catch {
-      // 네트워크 실패 시 빈 맵으로 폴백 (best-effort)
-      cache = {};
+      // 네트워크 실패 시 cache는 null 유지 — 다음 호출 시 재시도 가능
+      // best-effort: 결과 화면 차단 없이 빈 맵 반환
+      return {};
     }
-    return cache;
   }
 
   return {

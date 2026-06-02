@@ -144,4 +144,24 @@ describe('createApiQuizStore', () => {
       }),
     ).resolves.toBeUndefined();
   });
+
+  it('getAllBest retries server after transient failure — does not cache error state', async () => {
+    // 첫 번째 호출: 네트워크 실패 → 빈 맵 반환, cache 미기록
+    mockFetchApi.mockRejectedValueOnce(new Error('Network error'));
+    const store = createApiQuizStore();
+    const firstResult = await store.getAllBest();
+    expect(firstResult).toEqual({});
+    // 첫 번째 실패 후 fetchApi는 1회만 호출됨
+    expect(mockFetchApi).toHaveBeenCalledTimes(1);
+
+    // 두 번째 호출: 서버 복구 → 재조회(재시도) 성공해 실제 데이터 반환
+    mockFetchApi.mockResolvedValueOnce(MOCK_RECORDS);
+    const secondResult = await store.getAllBest();
+    expect(secondResult).toEqual({
+      'ALGORITHM::ALL': { scorePercent: 80, playedAt: '2026-06-01T00:00:00.000Z' },
+      'NETWORK::HARD': { scorePercent: 60, playedAt: '2026-06-02T00:00:00.000Z' },
+    });
+    // 두 번째 호출에서 fetchApi 추가 1회 — 재조회가 이루어진 것을 검증
+    expect(mockFetchApi).toHaveBeenCalledTimes(2);
+  });
 });
