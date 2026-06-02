@@ -2,10 +2,13 @@
  * @file CS 퀴즈 문항 집계 및 조회 헬퍼 (공개 진입점)
  * @domain quiz
  * @layer data
- * @related src/data/quiz/types.ts, src/data/quiz/data-structure.ts, src/data/quiz/algorithm.ts
+ * @related src/data/quiz/types.ts, src/data/quiz/data-structure.ts, src/data/quiz/algorithm.ts, src/data/quiz/network.ts, src/data/quiz/os.ts, src/data/quiz/database.ts
  */
 import { ALGORITHM_QUESTIONS } from './algorithm';
+import { DATABASE_QUESTIONS } from './database';
 import { DATA_STRUCTURE_QUESTIONS } from './data-structure';
+import { NETWORK_QUESTIONS } from './network';
+import { OS_QUESTIONS } from './os';
 import { QuizCategory, type QuizQuestion } from './types';
 
 export { QuizCategory } from './types';
@@ -15,6 +18,9 @@ export type { QuizDifficulty, LocalizedText, QuizQuestion } from './types';
 export const ALL_QUESTIONS: readonly QuizQuestion[] = [
   ...DATA_STRUCTURE_QUESTIONS,
   ...ALGORITHM_QUESTIONS,
+  ...NETWORK_QUESTIONS,
+  ...OS_QUESTIONS,
+  ...DATABASE_QUESTIONS,
 ];
 
 /** 실제 문항이 존재하는 카테고리 목록 (중복 제거, 등장 순서 유지). */
