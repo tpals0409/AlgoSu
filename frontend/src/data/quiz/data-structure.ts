@@ -421,7 +421,7 @@ export const DATA_STRUCTURE_QUESTIONS: readonly QuizQuestion[] = [
       ko: '부모를 인덱스 i, 두 자식을 2i+1·2i+2로 배열에 저장하는 완전 이진 트리의 표현 방식은?',
       en: 'Which representation stores a complete binary tree in an array with parent i and children 2i+1 and 2i+2?',
     },
-    acceptedAnswers: ['배열표현', '배열 표현', 'arrayrepresentation', 'array representation', '배열기반', '암시적표현'],
+    acceptedAnswers: ['배열표현', '배열 표현', 'arrayrepresentation', 'array representation', '배열기반', '암시적표현', '순차표현'],
     explanation: {
       ko: '완전 이진 트리는 포인터 없이 배열로 표현할 수 있으며, 인덱스 i의 자식은 2i+1과 2i+2에 위치합니다(0-기반).',
       en: 'A complete binary tree can be stored in an array without pointers, where node i’s children sit at 2i+1 and 2i+2 (0-based).',
