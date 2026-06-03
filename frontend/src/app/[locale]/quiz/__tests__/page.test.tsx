@@ -214,11 +214,16 @@ describe('QuizPage — authenticated (apiStore) path', () => {
     expect(screen.getByText('2 / 2 문제 정답')).toBeInTheDocument();
     // 이전 기록 없음(GET → []) → prevBest=null → isNewBest=true → 배지 표시
     expect(screen.getByText('최고 기록 갱신!')).toBeInTheDocument();
-    // 서버 저장 호출 확인 (POST)
-    expect(mockFetchApi).toHaveBeenCalledWith(
+    // finish() 호출 순서·캐시 단언: getBest(GET) → saveResult(POST).
+    // 1번째 = 옵션 없는 GET(getBest→fetchAllBest), 2번째 = POST(saveResult).
+    expect(mockFetchApi).toHaveBeenNthCalledWith(1, '/api/quiz-records');
+    expect(mockFetchApi).toHaveBeenNthCalledWith(
+      2,
       '/api/quiz-records',
       expect.objectContaining({ method: 'POST' }),
     );
+    // GET 결과가 메모리 캐시되어 결과 화면 렌더 중 재-GET 없음 → 정확히 2회만 호출.
+    expect(mockFetchApi).toHaveBeenCalledTimes(2);
   });
 
   /**

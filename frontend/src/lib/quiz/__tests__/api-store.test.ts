@@ -69,6 +69,14 @@ describe('createApiQuizStore', () => {
     expect(best).toEqual({ scorePercent: 80, playedAt: '2026-06-01T00:00:00.000Z' });
   });
 
+  it('getBest caches the fetch — repeated getBest calls do not re-fetch', async () => {
+    mockFetchApi.mockResolvedValueOnce(MOCK_RECORDS);
+    const store = createApiQuizStore();
+    await store.getBest('ALGORITHM', 'ALL');
+    await store.getBest('NETWORK', 'HARD'); // 다른 키여도 캐시된 맵에서 조회 → 재-GET 없음
+    expect(mockFetchApi).toHaveBeenCalledTimes(1);
+  });
+
   it('getBest returns null for unknown category/difficulty', async () => {
     mockFetchApi.mockResolvedValueOnce(MOCK_RECORDS);
     const store = createApiQuizStore();

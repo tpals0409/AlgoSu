@@ -309,7 +309,7 @@ export const DATABASE_QUESTIONS: readonly QuizQuestion[] = [
       ko: '락을 확장 단계에서 획득만, 수축 단계에서 해제만 하도록 규정하는 직렬성 보장 프로토콜은?',
       en: 'Which serializability protocol acquires locks only in a growing phase and releases only in a shrinking phase?',
     },
-    acceptedAnswers: ['2PL', '2단계락킹', '2단계 락킹', 'two phase locking', '2pl', '이단계락킹'],
+    acceptedAnswers: ['2PL', '2단계락킹', '2단계 락킹', 'two phase locking', '이단계락킹'],
     explanation: {
       ko: '2단계 락킹(2PL)은 확장 단계에서 락 획득만, 수축 단계에서 락 해제만 허용하여 직렬 가능성을 보장합니다.',
       en: 'Two-phase locking (2PL) only acquires locks in the growing phase and only releases them in the shrinking phase to ensure serializability.',
