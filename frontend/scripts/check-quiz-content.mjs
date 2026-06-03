@@ -21,8 +21,10 @@
  *   7. 분야별 최소 문항 수 — 각 분야 최소 MIN_PER_CATEGORY(30)개
  *
  * [경고 전용 규칙 — --strict 에서도 exit 0 (CI 차단 없음)]
- *   8. acceptedAnswers 정규화 중복 — normalizeAnswer 후 동일한 문자열이 된 항목 WARN
- *      (예: ["stack","Stack"] → 정규화 후 동일 → 중복, 그러나 채점에 영향 없음)
+ *   8. acceptedAnswers 표기 중복 — 대소문자·앞뒤 공백만 다른 동일 표기 항목 WARN
+ *      (예: ["stack","Stack"] → 대소문자만 차이 → 중복. 채점에는 영향 없으나 불필요한 중복.
+ *       단 ["연결리스트","연결 리스트"]·["btree","b tree","b-tree"] 처럼 공백/하이픈 유무가
+ *       다른 의도적 표기 변형은 서로 다른 표기로 보고 통과 — 의도적 동의어 다양성 보존)
  *   9. acceptedAnswers 정규화 빈 문자열 — normalizeAnswer 결과가 빈 문자열인 항목 WARN
  *      (특수문자만으로 구성된 항목은 절대 매칭 안 됨)
  *
@@ -110,7 +112,7 @@ function runMain() {
 
   // 경고 전용 먼저 출력 (CI 차단 없음)
   if (warnOnly.length > 0) {
-    console.log(`[WARN] ${warnOnly.length}건 콘텐츠 경고 (CI 차단 없음 — 중복·빈 정규화):`);
+    console.log(`[WARN] ${warnOnly.length}건 콘텐츠 경고 (CI 차단 없음 — 표기 중복·빈 정규화):`);
     for (const w of warnOnly) {
       console.log(`       - ${w}`);
     }
@@ -297,6 +299,20 @@ export function normalizeAnswerJs(raw) {
     .replace(/\s+/g, '');
 }
 
+/**
+ * 규칙 8(표기 중복) 전용 비교 키 — 대소문자와 앞뒤 공백만 폴딩한다.
+ * normalizeAnswerJs 와 달리 내부 공백·하이픈·구두점을 보존하므로,
+ * 'stack'/'Stack' 같은 대소문자-only 중복만 동일 키가 되고
+ * '연결리스트'/'연결 리스트'·'btree'/'b tree'/'b-tree' 같은 의도적 표기 변형은
+ * 서로 다른 키로 남아 정상 통과한다.
+ *
+ * @param {string} raw 원본 답안 문자열
+ * @returns {string} 대소문자·앞뒤 공백만 폴딩한 비교 키
+ */
+export function caseFoldKey(raw) {
+  return raw.normalize('NFKC').toLowerCase().trim();
+}
+
 // ──────────────────────────────────────────────────────────────────
 // Validation
 // ──────────────────────────────────────────────────────────────────
@@ -420,19 +436,20 @@ function isBlank(value) {
 // ──────────────────────────────────────────────────────────────────
 
 /**
- * 규칙 8 — acceptedAnswers 내부에 normalizeAnswer 후 중복되는 항목이 있으면 WARN.
- * 예: ["stack","Stack"] 은 정규화 후 동일 → 중복. 채점에는 영향 없으나 불필요한 중복.
+ * 규칙 8 — acceptedAnswers 내부에 대소문자·앞뒤 공백만 다른 중복 표기가 있으면 WARN.
+ * caseFoldKey(대소문자/앞뒤 공백만 폴딩)로 그룹핑하므로 공백·하이픈 유무가 다른
+ * 의도적 표기 변형은 통과하고, 'stack'/'Stack' 같은 대소문자-only 중복만 잡는다.
  *
  * @param {Array<object>} questions
  * @returns {string[]} 경고 메시지 목록
  */
-export function checkNormalizedDuplicates(questions) {
+export function checkCaseFoldedDuplicates(questions) {
   const warnList = [];
   for (const q of questions) {
     /** @type {Map<string, string[]>} */
     const seen = new Map();
     for (const answer of q.acceptedAnswers) {
-      const key = normalizeAnswerJs(answer);
+      const key = caseFoldKey(answer);
       if (!seen.has(key)) seen.set(key, []);
       seen.get(key).push(answer);
     }
@@ -440,8 +457,8 @@ export function checkNormalizedDuplicates(questions) {
       if (dupes.length > 1) {
         const where = `${q.file} (id: ${q.id})`;
         warnList.push(
-          `${where}: [규칙 8] acceptedAnswers 정규화 중복 — ` +
-            `[${dupes.map((a) => `'${a}'`).join(', ')}] 모두 '${key}'로 정규화됨`,
+          `${where}: [규칙 8] acceptedAnswers 표기 중복 — ` +
+            `[${dupes.map((a) => `'${a}'`).join(', ')}] 이(가) 대소문자/앞뒤 공백만 다른 동일 표기('${key}')`,
         );
       }
     }
@@ -480,7 +497,7 @@ export function checkEmptyNormalized(questions) {
  */
 export function checkWarnOnlyRules(questions) {
   return [
-    ...checkNormalizedDuplicates(questions),
+    ...checkCaseFoldedDuplicates(questions),
     ...checkEmptyNormalized(questions),
   ];
 }
