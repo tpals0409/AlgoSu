@@ -52,4 +52,10 @@ describe('QuizPlay', () => {
     );
     expect(screen.getByRole('button', { name: '결과 보기' })).toBeInTheDocument();
   });
+
+  it('renders the category chip for the current question', () => {
+    renderWithI18n(<QuizPlay {...baseProps()} answered={false} />);
+    // DATA_STRUCTURE 분야 칩이 진행 헤더에 라벨로 표시된다.
+    expect(screen.getByText('자료구조')).toBeInTheDocument();
+  });
 });

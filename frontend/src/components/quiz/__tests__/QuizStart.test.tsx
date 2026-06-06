@@ -97,4 +97,19 @@ describe('QuizStart', () => {
     expect(screen.getByRole('button', { name: '자료구조' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: '알고리즘' })).toHaveAttribute('aria-pressed', 'false');
   });
+
+  it('renders a category icon that is hidden from the accessible name', () => {
+    renderWithI18n(<QuizStart onStart={jest.fn()} />);
+    // 아이콘이 있어도 accessible name은 라벨 텍스트만 유지되어야 한다 (aria-hidden).
+    const button = screen.getByRole('button', { name: '자료구조' });
+    const icon = button.querySelector('svg');
+    expect(icon).toBeInTheDocument();
+    expect(icon).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('applies the category accent color to the active category pill', () => {
+    renderWithI18n(<QuizStart onStart={jest.fn()} />);
+    const active = screen.getByRole('button', { name: '자료구조' });
+    expect(active).toHaveStyle({ color: 'var(--quiz-cat-data-structure-color)' });
+  });
 });
