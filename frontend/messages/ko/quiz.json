@@ -15,6 +15,7 @@
   },
   "play": {
     "progress": "{current} / {total}",
+    "progressAria": "퀴즈 진행률",
     "answerPlaceholder": "정답을 입력하세요",
     "answerLabel": "답안",
     "submit": "제출",
@@ -35,6 +36,8 @@
     "best": "최고 기록",
     "bestScore": "{score}%",
     "newBest": "최고 기록 갱신!",
+    "announceDone": "퀴즈 완료, 정답률 {score}퍼센트입니다.",
+    "announceNewBest": "퀴즈 완료, 정답률 {score}퍼센트, 최고 기록을 갱신했습니다.",
     "retry": "다시하기"
   },
   "categories": {

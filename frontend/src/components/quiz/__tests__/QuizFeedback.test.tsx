@@ -65,4 +65,20 @@ describe('QuizFeedback', () => {
     );
     expect(screen.getByText('stack explanation')).toBeInTheDocument();
   });
+
+  // a11y 회귀(Sprint 222): 피드백 단계 진입 시 주요 액션 버튼으로 포커스가 이동해
+  // 키보드 사용자가 Tab으로 흐름을 다시 탐색하지 않도록 한다.
+  it('focuses the "next" button on mount when not the last question', () => {
+    renderWithI18n(
+      <QuizFeedback question={QUESTION} answer="스택" isCorrect isLast={false} onNext={jest.fn()} />,
+    );
+    expect(screen.getByRole('button', { name: '다음 문항' })).toHaveFocus();
+  });
+
+  it('focuses the "finish" button on mount when it is the last question', () => {
+    renderWithI18n(
+      <QuizFeedback question={QUESTION} answer="스택" isCorrect isLast onNext={jest.fn()} />,
+    );
+    expect(screen.getByRole('button', { name: '결과 보기' })).toHaveFocus();
+  });
 });

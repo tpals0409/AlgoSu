@@ -4,7 +4,7 @@
  * @layer component
  * @related QuizResult
  */
-import { screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { renderWithI18n } from '@/test-utils/i18n';
 import { QuizResult } from '../QuizResult';
 
@@ -51,5 +51,30 @@ describe('QuizResult', () => {
     renderWithI18n(<QuizResult {...baseProps()} onRetry={onRetry} />);
     fireEvent.click(screen.getByRole('button', { name: '다시하기' }));
     expect(onRetry).toHaveBeenCalled();
+  });
+
+  // a11y 회귀(Sprint 222): 결과 단계 진입 시 다시하기 버튼으로 포커스를 옮긴다.
+  it('focuses the retry button on mount', () => {
+    renderWithI18n(<QuizResult {...baseProps()} />);
+    expect(screen.getByRole('button', { name: '다시하기' })).toHaveFocus();
+  });
+
+  // a11y 회귀(Sprint 222, Critic P2): 전용 sr-only 라이브 영역(role="status")이 빈 채로
+  // 먼저 마운트된 뒤 effect로 신기록 공지 문장을 주입한다 ("존재 후 변경" 정석 패턴).
+  it('injects the new-best announcement into the sr-only live region after mount', async () => {
+    renderWithI18n(<QuizResult {...baseProps()} isNewBest scorePercent={80} />);
+    const liveRegion = screen.getByRole('status');
+    await waitFor(() =>
+      expect(liveRegion).toHaveTextContent('퀴즈 완료, 정답률 80퍼센트, 최고 기록을 갱신했습니다.'),
+    );
+  });
+
+  // a11y 회귀(Sprint 222, Critic P2): 신기록이 아닐 때도 라이브 영역에 완료 공지를 주입한다.
+  it('injects the done announcement into the live region when not a new best', async () => {
+    renderWithI18n(<QuizResult {...baseProps()} isNewBest={false} scorePercent={80} />);
+    const liveRegion = screen.getByRole('status');
+    await waitFor(() =>
+      expect(liveRegion).toHaveTextContent('퀴즈 완료, 정답률 80퍼센트입니다.'),
+    );
   });
 });

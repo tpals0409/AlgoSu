@@ -7,7 +7,7 @@
 
 'use client';
 
-import type { ReactElement } from 'react';
+import { useEffect, useRef, type ReactElement } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
@@ -42,6 +42,14 @@ export function QuizFeedback({
   const t = useTranslations('quiz');
   const locale = useLocale();
   const explanation = locale === 'en' ? question.explanation.en : question.explanation.ko;
+  const nextButtonRef = useRef<HTMLButtonElement>(null);
+
+  // 피드백 단계 진입 시(fresh mount) 주요 액션으로 포커스를 옮겨 키보드 사용자의
+  // 흐름 유실을 막는다. native autoFocus 대신 ref+effect로 lint(no-autofocus)를 회피한다.
+  useEffect(() => {
+    /* istanbul ignore next -- ref always attached when mount effect runs */
+    nextButtonRef.current?.focus();
+  }, []);
 
   return (
     <div
@@ -69,7 +77,7 @@ export function QuizFeedback({
         <p className="text-sm leading-relaxed text-text">{explanation}</p>
       </div>
 
-      <Button variant="primary" size="md" className="w-full" onClick={onNext}>
+      <Button ref={nextButtonRef} variant="primary" size="md" className="w-full" onClick={onNext}>
         {isLast ? t('play.finish') : t('play.next')}
       </Button>
     </div>

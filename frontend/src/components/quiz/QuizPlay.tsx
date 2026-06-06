@@ -68,7 +68,12 @@ export function QuizPlay({
             {t('play.progress', { current: index, total })}
           </p>
         </div>
-        <Progress value={percent} />
+        <Progress
+          value={percent}
+          aria-label={t('play.progressAria')}
+          aria-valuenow={percent}
+          aria-valuetext={t('play.progress', { current: index, total })}
+        />
       </div>
 
       {answered ? (

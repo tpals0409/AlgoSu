@@ -58,4 +58,15 @@ describe('QuizPlay', () => {
     // DATA_STRUCTURE 분야 칩이 진행 헤더에 라벨로 표시된다.
     expect(screen.getByText('자료구조')).toBeInTheDocument();
   });
+
+  // a11y 회귀(Sprint 222): 진행률 바가 접근 가능 이름·numeric value·진행 상태 텍스트를 노출한다.
+  // aria-valuenow는 Critic P2 회귀 — Radix Root에 numeric value를 명시 전달해야 노출된다.
+  it('exposes an accessible name, value, and value text on the progress bar', () => {
+    renderWithI18n(<QuizPlay {...baseProps()} index={1} total={3} answered={false} />);
+    const progressbar = screen.getByRole('progressbar');
+    expect(progressbar).toHaveAttribute('aria-label', '퀴즈 진행률');
+    // index=1/total=3 → Math.round(33.33) = 33
+    expect(progressbar).toHaveAttribute('aria-valuenow', '33');
+    expect(progressbar).toHaveAttribute('aria-valuetext', '1 / 3');
+  });
 });
