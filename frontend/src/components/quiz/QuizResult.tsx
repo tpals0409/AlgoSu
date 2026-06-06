@@ -7,7 +7,7 @@
 
 'use client';
 
-import { type CSSProperties, type ReactElement } from 'react';
+import { useEffect, useRef, type CSSProperties, type ReactElement } from 'react';
 import { useTranslations } from 'next-intl';
 import { Trophy } from 'lucide-react';
 import { ScoreGauge } from '@/components/ui/ScoreGauge';
@@ -49,6 +49,13 @@ export function QuizResult({
   onRetry,
 }: QuizResultProps): ReactElement {
   const t = useTranslations('quiz');
+  const retryButtonRef = useRef<HTMLButtonElement>(null);
+
+  // 결과 단계 진입 시(fresh mount) 다시하기 버튼으로 포커스를 옮겨 키보드 사용자가
+  // Tab으로 액션을 다시 탐색하지 않도록 한다. ref+effect로 lint(no-autofocus)를 회피한다.
+  useEffect(() => {
+    retryButtonRef.current?.focus();
+  }, []);
 
   return (
     <Card className="animate-fade-in flex flex-col items-center gap-5 p-6 text-center">
@@ -73,7 +80,7 @@ export function QuizResult({
         )
       )}
 
-      <Button variant="primary" size="lg" className="w-full" onClick={onRetry}>
+      <Button ref={retryButtonRef} variant="primary" size="lg" className="w-full" onClick={onRetry}>
         {t('result.retry')}
       </Button>
     </Card>
