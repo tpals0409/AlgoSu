@@ -105,4 +105,8 @@ New pattern: none (global canonicalization of the existing headless-wrapper/Radi
 ## Critic Cross-Review
 
 - **Tool**: Codex codex-cli 0.130.0, `codex review --base 33155d7 -c model=gpt-5.5`
-- **Rounds**: (not yet run at authoring time — performed just before merge, this section then updated)
+- **Rounds**: 1
+
+**R1 — CLEAN** (0 Critical/High/Medium/Low): *"The change correctly forwards the destructured Progress value to the Radix root, allowing Radix to emit progressbar ARIA attributes, and the removed QuizPlay aria-valuenow is covered by that forwarding. The added tests align with the intended behavior and no regressions are evident from the diff."*
+
+**Verdict**: ✅ mergeable — the wrapper's `value`→`Root` forwarding emits Radix progressbar ARIA correctly, the `aria-valuenow` removed from QuizPlay is covered by that forwarding, and the added tests align with the intent. Single-round CLEAN, 0 fixes.
