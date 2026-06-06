@@ -1,13 +1,13 @@
 /**
- * @file 퀴즈 시작 화면 — 분야·문항 수 선택
+ * @file 퀴즈 시작 화면 — 분야·난이도·문항 수 선택
  * @domain quiz
  * @layer component
- * @related QuizPlay, QuizResult, src/data/quiz/index.ts
+ * @related QuizPlay, QuizResult, src/data/quiz/index.ts, src/data/quiz/category-meta.ts
  */
 
 'use client';
 
-import { useState, type ReactElement } from 'react';
+import { useState, type CSSProperties, type ReactElement } from 'react';
 import { useTranslations } from 'next-intl';
 import { Brain } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
@@ -16,6 +16,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { cn } from '@/lib/utils';
 import {
   getQuestionsByFilter,
+  getQuizCategoryMeta,
   QUIZ_CATEGORIES,
   QUIZ_DIFFICULTIES,
   type QuizCategory,
@@ -24,6 +25,21 @@ import {
 
 /** 선택 가능한 문항 수 옵션. */
 const COUNT_OPTIONS = [5, 10] as const;
+
+/** 난이도별 선택(활성) 상태 톤 — semantic 토큰 재사용 (EASY=success/MEDIUM=warning/HARD=error/ALL=primary). */
+const DIFFICULTY_TONE: Record<QuizDifficulty | 'ALL', string> = {
+  ALL: 'border-primary bg-primary-soft text-primary',
+  EASY: 'border-success bg-success-soft text-success',
+  MEDIUM: 'border-warning bg-warning-soft text-warning',
+  HARD: 'border-error bg-error-soft text-error',
+};
+
+/** 비활성 pill 공통 톤. */
+const INACTIVE_PILL = 'border-border text-text-3 hover:bg-bg-alt hover:text-text';
+
+/** pill 버튼 공통 형태 클래스. */
+const PILL_BASE =
+  'inline-flex items-center gap-1.5 rounded-badge border px-3 py-1.5 text-xs font-medium transition-colors';
 
 /**
  * 가용 풀 크기에 맞는 문항 수 옵션을 산출한다.
@@ -49,6 +65,7 @@ interface QuizStartProps {
 /**
  * 퀴즈 시작 화면.
  * 출제 가능한 카테고리가 없으면 EmptyState를, 있으면 선택 UI를 렌더한다.
+ * 분야 pill은 전용 accent 색·아이콘으로, 난이도 pill은 semantic 톤으로 구분한다.
  */
 export function QuizStart({ onStart }: QuizStartProps): ReactElement {
   const t = useTranslations('quiz');
@@ -70,53 +87,61 @@ export function QuizStart({ onStart }: QuizStartProps): ReactElement {
   }
 
   return (
-    <Card className="space-y-6 p-6">
-      <div className="space-y-1">
-        <h1 className="text-xl font-bold text-text">{t('start.title')}</h1>
-        <p className="text-sm text-text-3">{t('start.subtitle')}</p>
+    <Card className="animate-fade-in space-y-6 p-6">
+      <div className="flex items-center gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-card bg-primary-soft text-primary">
+          <Brain className="size-5" aria-hidden />
+        </span>
+        <div className="space-y-0.5">
+          <h1 className="text-xl font-bold text-text">{t('start.title')}</h1>
+          <p className="text-sm text-text-3">{t('start.subtitle')}</p>
+        </div>
       </div>
 
       <fieldset className="space-y-2">
         <legend className="text-xs font-medium text-text-2">{t('start.categoryLabel')}</legend>
         <div className="flex flex-wrap gap-2">
-          {QUIZ_CATEGORIES.map((option) => (
-            <button
-              key={option}
-              type="button"
-              aria-pressed={category === option}
-              onClick={() => setCategory(option)}
-              className={cn(
-                'rounded-badge border px-3 py-1.5 text-xs font-medium transition-colors',
-                category === option
-                  ? 'border-primary bg-primary-soft text-primary'
-                  : 'border-border text-text-3 hover:bg-bg-alt hover:text-text',
-              )}
-            >
-              {t(`categories.${option}`)}
-            </button>
-          ))}
+          {QUIZ_CATEGORIES.map((option) => {
+            const meta = getQuizCategoryMeta(option);
+            const Icon = meta.icon;
+            const active = category === option;
+            const activeStyle: CSSProperties | undefined = active
+              ? { color: meta.colorVar, backgroundColor: meta.bgVar, borderColor: meta.colorVar }
+              : undefined;
+            return (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setCategory(option)}
+                style={activeStyle}
+                className={cn(PILL_BASE, !active && INACTIVE_PILL)}
+              >
+                <Icon className="size-3.5" aria-hidden />
+                {t(`categories.${option}`)}
+              </button>
+            );
+          })}
         </div>
       </fieldset>
 
       <fieldset className="space-y-2">
         <legend className="text-xs font-medium text-text-2">{t('start.difficultyLabel')}</legend>
         <div className="flex flex-wrap gap-2">
-          {QUIZ_DIFFICULTIES.map((option) => (
-            <button
-              key={option}
-              type="button"
-              aria-pressed={difficulty === option}
-              onClick={() => setDifficulty(option)}
-              className={cn(
-                'rounded-badge border px-3 py-1.5 text-xs font-medium transition-colors',
-                difficulty === option
-                  ? 'border-primary bg-primary-soft text-primary'
-                  : 'border-border text-text-3 hover:bg-bg-alt hover:text-text',
-              )}
-            >
-              {t(`difficulties.${option}`)}
-            </button>
-          ))}
+          {QUIZ_DIFFICULTIES.map((option) => {
+            const active = difficulty === option;
+            return (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setDifficulty(option)}
+                className={cn(PILL_BASE, active ? DIFFICULTY_TONE[option] : INACTIVE_PILL)}
+              >
+                {t(`difficulties.${option}`)}
+              </button>
+            );
+          })}
         </div>
       </fieldset>
 
@@ -130,10 +155,10 @@ export function QuizStart({ onStart }: QuizStartProps): ReactElement {
               aria-pressed={selectedCount === option}
               onClick={() => setCount(option)}
               className={cn(
-                'rounded-badge border px-3 py-1.5 text-xs font-medium transition-colors',
+                PILL_BASE,
                 selectedCount === option
                   ? 'border-primary bg-primary-soft text-primary'
-                  : 'border-border text-text-3 hover:bg-bg-alt hover:text-text',
+                  : INACTIVE_PILL,
               )}
             >
               {option}

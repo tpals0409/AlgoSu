@@ -13,6 +13,8 @@ import { QuizCategory, type QuizDifficulty, type QuizQuestion } from './types';
 
 export { QuizCategory } from './types';
 export type { QuizDifficulty, LocalizedText, QuizQuestion } from './types';
+export { QUIZ_CATEGORY_META, getQuizCategoryMeta } from './category-meta';
+export type { QuizCategoryMeta } from './category-meta';
 
 /** 난이도 필터 옵션 — 'ALL'(전체) + 3단계 난이도. */
 export const QUIZ_DIFFICULTIES = ['ALL', 'EASY', 'MEDIUM', 'HARD'] as const;

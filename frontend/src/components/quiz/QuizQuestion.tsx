@@ -39,7 +39,9 @@ export function QuizQuestion({ question, onSubmit }: QuizQuestionProps): ReactEl
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <p className="text-base font-semibold leading-relaxed text-text">{prompt}</p>
+      <div className="rounded-card border border-border bg-bg-alt p-4">
+        <p className="text-base font-semibold leading-relaxed text-text">{prompt}</p>
+      </div>
       <Input
         label={t('play.answerLabel')}
         placeholder={t('play.answerPlaceholder')}
