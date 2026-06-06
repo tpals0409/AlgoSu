@@ -65,20 +65,26 @@ export function QuizResult({
         <ScoreGauge score={scorePercent} label={t('result.accuracy')} />
       </div>
 
-      <p className="text-sm text-text-2">{t('result.correctCount', { correct, total })}</p>
+      {/*
+       * 라이브 영역: 항상 DOM에 존재하고 내부 텍스트만 조건부로 둬서 결과 전환 시
+       * 점수·신기록 여부가 스크린리더에 polite하게 공지되도록 한다.
+       */}
+      <div role="status" aria-live="polite" className="flex flex-col items-center gap-5">
+        <p className="text-sm text-text-2">{t('result.correctCount', { correct, total })}</p>
 
-      {isNewBest ? (
-        <Badge variant="success" className="gap-1.5 px-3 py-1 text-xs">
-          <Trophy className="size-4" aria-hidden />
-          {t('result.newBest')}
-        </Badge>
-      ) : (
-        bestScore !== null && (
-          <p className="text-xs text-text-3">
-            {t('result.best')}: {t('result.bestScore', { score: bestScore })}
-          </p>
-        )
-      )}
+        {isNewBest ? (
+          <Badge variant="success" className="gap-1.5 px-3 py-1 text-xs">
+            <Trophy className="size-4" aria-hidden />
+            {t('result.newBest')}
+          </Badge>
+        ) : (
+          bestScore !== null && (
+            <p className="text-xs text-text-3">
+              {t('result.best')}: {t('result.bestScore', { score: bestScore })}
+            </p>
+          )
+        )}
+      </div>
 
       <Button ref={retryButtonRef} variant="primary" size="lg" className="w-full" onClick={onRetry}>
         {t('result.retry')}

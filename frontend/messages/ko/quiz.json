@@ -15,6 +15,7 @@
   },
   "play": {
     "progress": "{current} / {total}",
+    "progressAria": "퀴즈 진행률",
     "answerPlaceholder": "정답을 입력하세요",
     "answerLabel": "답안",
     "submit": "제출",

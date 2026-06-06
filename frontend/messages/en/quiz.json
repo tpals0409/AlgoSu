@@ -15,6 +15,7 @@
   },
   "play": {
     "progress": "{current} / {total}",
+    "progressAria": "Quiz progress",
     "answerPlaceholder": "Type your answer",
     "answerLabel": "Answer",
     "submit": "Submit",
