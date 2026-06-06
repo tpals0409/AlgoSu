@@ -99,6 +99,19 @@
   --lang-go-bg:     rgba(0,   173, 216, 0.12);
   --lang-rust-bg:   rgba(222, 165, 132, 0.12);
 
+  /* ── Quiz category accent colors (WCAG AA on --bg #FAFAF8, 4.5:1+) ── */
+  --quiz-cat-data-structure-color: #2563EB;
+  --quiz-cat-algorithm-color:      #7C3AED;
+  --quiz-cat-network-color:        #0E7490;
+  --quiz-cat-os-color:             #A21CAF;
+  --quiz-cat-database-color:       #047857;
+
+  --quiz-cat-data-structure-bg: rgba(37,  99,  235, 0.10);
+  --quiz-cat-algorithm-bg:      rgba(124, 58,  237, 0.10);
+  --quiz-cat-network-bg:        rgba(14,  116, 144, 0.10);
+  --quiz-cat-os-bg:             rgba(162, 28,  175, 0.10);
+  --quiz-cat-database-bg:       rgba(4,   120, 87,  0.10);
+
   /* ── Code highlight colors ── */
   --hl-success-bg:     rgba(34,  197,  94, 0.12);
   --hl-warning-bg:     rgba(234, 179,   8, 0.12);
@@ -238,6 +251,19 @@
   --lang-kotlin-bg: rgba(191, 160, 255, 0.14);
   --lang-go-bg:     rgba(41,  200, 237, 0.14);
   --lang-rust-bg:   rgba(232, 191, 160, 0.14);
+
+  /* ── Quiz category accent colors (dark — brighter hues, WCAG AA on --bg #0F0F12, 4.5:1+) ── */
+  --quiz-cat-data-structure-color: #60A5FA;
+  --quiz-cat-algorithm-color:      #A78BFA;
+  --quiz-cat-network-color:        #22D3EE;
+  --quiz-cat-os-color:             #E879F9;
+  --quiz-cat-database-color:       #34D399;
+
+  --quiz-cat-data-structure-bg: rgba(96,  165, 250, 0.14);
+  --quiz-cat-algorithm-bg:      rgba(167, 139, 250, 0.14);
+  --quiz-cat-network-bg:        rgba(34,  211, 238, 0.14);
+  --quiz-cat-os-bg:             rgba(232, 121, 249, 0.14);
+  --quiz-cat-database-bg:       rgba(52,  211, 153, 0.14);
 
   /* ── Code highlight colors (dark) ── */
   --hl-success-bg:     rgba(34,  197,  94, 0.15);
