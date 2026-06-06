@@ -36,6 +36,8 @@
     "best": "Best Record",
     "bestScore": "{score}%",
     "newBest": "New best record!",
+    "announceDone": "Quiz complete, accuracy {score} percent.",
+    "announceNewBest": "Quiz complete, accuracy {score} percent, new best record.",
     "retry": "Play Again"
   },
   "categories": {
