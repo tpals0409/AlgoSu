@@ -54,6 +54,7 @@ export function QuizResult({
   // 결과 단계 진입 시(fresh mount) 다시하기 버튼으로 포커스를 옮겨 키보드 사용자가
   // Tab으로 액션을 다시 탐색하지 않도록 한다. ref+effect로 lint(no-autofocus)를 회피한다.
   useEffect(() => {
+    /* istanbul ignore next -- ref always attached when mount effect runs */
     retryButtonRef.current?.focus();
   }, []);
 

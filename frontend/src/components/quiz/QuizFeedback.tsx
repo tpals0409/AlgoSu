@@ -47,6 +47,7 @@ export function QuizFeedback({
   // 피드백 단계 진입 시(fresh mount) 주요 액션으로 포커스를 옮겨 키보드 사용자의
   // 흐름 유실을 막는다. native autoFocus 대신 ref+effect로 lint(no-autofocus)를 회피한다.
   useEffect(() => {
+    /* istanbul ignore next -- ref always attached when mount effect runs */
     nextButtonRef.current?.focus();
   }, []);
 

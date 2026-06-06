@@ -4,7 +4,7 @@
  * @layer component
  * @related QuizResult
  */
-import { screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent, within } from '@testing-library/react';
 import { renderWithI18n } from '@/test-utils/i18n';
 import { QuizResult } from '../QuizResult';
 
@@ -51,5 +51,19 @@ describe('QuizResult', () => {
     renderWithI18n(<QuizResult {...baseProps()} onRetry={onRetry} />);
     fireEvent.click(screen.getByRole('button', { name: '다시하기' }));
     expect(onRetry).toHaveBeenCalled();
+  });
+
+  // a11y 회귀(Sprint 222): 결과 단계 진입 시 다시하기 버튼으로 포커스를 옮긴다.
+  it('focuses the retry button on mount', () => {
+    renderWithI18n(<QuizResult {...baseProps()} />);
+    expect(screen.getByRole('button', { name: '다시하기' })).toHaveFocus();
+  });
+
+  // a11y 회귀(Sprint 222): 신기록 갱신 문구가 polite 라이브 영역(role="status") 안에
+  // 포함돼 결과 전환 시 스크린리더에 공지되도록 한다.
+  it('announces the new-best message inside the live region', () => {
+    renderWithI18n(<QuizResult {...baseProps()} isNewBest />);
+    const liveRegion = screen.getByRole('status');
+    expect(within(liveRegion).getByText('최고 기록 갱신!')).toBeInTheDocument();
   });
 });
