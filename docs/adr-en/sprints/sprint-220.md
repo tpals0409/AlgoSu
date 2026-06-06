@@ -96,4 +96,14 @@ New pattern: none (applies the existing runbook-authoring pattern).
 
 ## Critic Cross-Review
 
-(The Codex cross-review result is recorded in this section in Wave C.)
+- **Target**: 5 files under `docs/` (base `d529db6`..HEAD, docs-only)
+- **Codex command**: `codex review --base d529db6 -c model=gpt-5.5`
+- **Session ID**: `019e9af1-0e30-7411-b54b-7e54efd36c57`
+
+**R1 — 0 Critical/High, 1 P2 + 2 P3 (all addressed)**:
+
+1. **[P2] Use the per-service last-built SHA, not the latest `origin/main` SHA** — after a docs-only merge, `origin/main` does not change service paths, and the CI path filter only builds/pushes changed services, so a `main-<docs-sha>` service image may not exist. An operator rolling that out would chase a non-existent tag. → Rewrote §1.1 to "find each service's latest GHCR `main-<sha>` (= the merge SHA that last changed that service) via `crane ls`/`git log -- <path>`, and force a rebuild via `ci-rebuild-all.md` if missing." §3.1/§4 rollout now state "use the per-service SHA from §1.1."
+2. **[P3] Stale range in README** — the header was updated to 158/62~220 but the sentence just below still said `Sprint 62 ~ 219`, leaving an internal inconsistency. → Corrected to `62 ~ 220`.
+3. **[P3] merge-up reopen expectation** — §6.5 claimed "no re-upload on same-session reopen," but `mergedUpRef` is a component-local useRef that resets on reload/remount, causing a re-POST (harmless due to higher-only). The "0 POST" expectation would produce a false failure. → Scoped the expectation to "guards only same-mount re-renders; a reload may re-POST, but the verification point is the idempotent outcome (best unchanged), not the POST count."
+
+**Verdict**: ✅ Mergeable — all findings strengthen runbook accuracy (preventing operator misreads) and are docs-only. The 4 ADR gates pass again after the fixes.

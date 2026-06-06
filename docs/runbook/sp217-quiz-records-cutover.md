@@ -69,21 +69,33 @@ CREATE INDEX idx_quiz_records_user_id ON quiz_records (user_id);
 
 ## 1. 사전 조건 확인
 
-### 1.1 기능이 main에 머지되어 이미지가 빌드되었는지
+### 1.1 각 서비스의 "마지막으로 빌드된 이미지 SHA"를 찾는다 (⚠️ origin/main SHA 아님)
 
-SP217(`4c8d3b7`)~219(`d529db6`)는 main에 머지 완료. CI가 세 서비스 이미지를 GHCR에 푸시했는지 확인한다:
+> **중요**: 롤아웃에 쓸 이미지 태그는 **`origin/main`의 최신 SHA가 아니다.** CI(`ci.yml`)는 **경로 필터**로 변경된 서비스만 빌드·푸시한다(`docker/build-push-action` + `detect-changes`). 따라서 docs-only 스프린트(예: Sprint 220, 218/219의 일부)나 다른 서비스만 바꾼 머지의 SHA로는 해당 서비스 이미지가 **존재하지 않을 수 있다.** 각 서비스는 **그 서비스 경로를 마지막으로 변경한 머지의 SHA**로 이미지가 빌드된다.
+
+각 서비스의 GHCR 최신 `main-<sha>` 태그(= 그 서비스를 마지막으로 빌드한 SHA)를 확인한다:
 
 ```bash
-# 최신 main SHA 확인
-git fetch origin && git rev-parse --short origin/main
-
-# 해당 SHA 이미지가 GHCR에 있는지(예: identity)
-# (ops 환경에서 레지스트리 권한으로 확인 — crane/docker 등)
-crane ls ghcr.io/tpals0409/algosu-identity 2>/dev/null | grep "main-<sha>" || \
-  echo "이미지 확인은 레지스트리 접근 권한으로 수행"
+# 서비스별 GHCR 최신 태그 — ops 환경의 레지스트리 권한으로
+for svc in identity gateway frontend; do
+  echo "== $svc =="
+  crane ls "ghcr.io/tpals0409/algosu-$svc" 2>/dev/null | grep '^main-' | tail -3
+done
+# (crane 미설치 시 GitHub Packages UI 또는 `gh api`로 태그 목록 확인)
 ```
 
-> identity 이미지에 마이그레이션 파일이 포함되었는지는 빌드된 `dist/src/database/migrations/20260602000000-SP217-CreateQuizRecords.js` 존재로 보장된다(소스가 main에 있으므로 빌드에 포함됨).
+각 서비스가 마지막으로 변경된 머지 SHA는 git으로도 교차 확인할 수 있다:
+
+```bash
+git log -1 --format='%h %s' origin/main -- services/identity   # identity 이미지 SHA 후보
+git log -1 --format='%h %s' origin/main -- services/gateway    # gateway 이미지 SHA 후보
+git log -1 --format='%h %s' origin/main -- frontend            # frontend 이미지 SHA 후보
+```
+
+> 참고: 퀴즈 기능 기준 — identity·gateway의 `quiz-record`는 SP217(`4c8d3b7`)에서 신설되었고, frontend는 SP217~219에서 이어 변경되었다. **확정 태그는 위 `crane ls`/`git log` 결과로 판정**하고, 추정 SHA를 그대로 쓰지 않는다.
+> 만약 원하는 SHA의 이미지가 없으면(docs-only 등으로 미빌드), 해당 서비스에 대해 **CI 강제 재빌드**(런북 [`ci-rebuild-all.md`](./ci-rebuild-all.md))로 최신 이미지를 만든 뒤 그 SHA를 사용한다.
+
+> identity 이미지에 마이그레이션 파일이 포함되었는지는 빌드된 `dist/src/database/migrations/20260602000000-SP217-CreateQuizRecords.js` 존재로 보장된다(SP217 SHA의 소스에 포함되므로 빌드에 포함됨).
 
 ### 1.2 운영 클러스터 컨텍스트 확인
 
@@ -120,7 +132,7 @@ kubectl exec -n algosu pod/postgres-<hash> -- \
 
 ### 3.1 새 이미지로 롤아웃
 
-운영 ops 환경의 매니페스트(aether-gitops 또는 ops 오버레이)에서 identity 이미지 태그를 새 `main-<sha>`로 갱신하고 적용한다. 적용 직후 `db-migrate` initContainer가 먼저 기동되어 `migration:run`을 실행한다.
+운영 ops 환경의 매니페스트(aether-gitops 또는 ops 오버레이)에서 identity 이미지 태그를 새 `main-<sha>`로 갱신하고 적용한다(여기서 `<sha>`는 **§1.1에서 확인한 identity 서비스의 마지막 빌드 SHA** — `origin/main` 최신 SHA가 아님). 적용 직후 `db-migrate` initContainer가 먼저 기동되어 `migration:run`을 실행한다.
 
 ```bash
 # (ops가 image 태그를 갱신하는 방식에 맞춰 수행 — 예시)
@@ -179,7 +191,7 @@ kubectl exec -n algosu <identity-pod> -c identity-service -- \
 
 ## 4. gateway + frontend 롤아웃
 
-identity 스키마/API가 준비된 뒤 BFF와 UI를 롤아웃한다.
+identity 스키마/API가 준비된 뒤 BFF와 UI를 롤아웃한다. 아래 `<sha>`도 **§1.1에서 확인한 gateway·frontend 각각의 마지막 빌드 SHA**를 사용한다(서비스마다 SHA가 다를 수 있음).
 
 ```bash
 # gateway (BFF /api/quiz-records) — Deployment·컨테이너 모두 'gateway'
@@ -277,8 +289,9 @@ API 계약 요약(검증 시 네트워크 탭/DevTools로 확인):
 > 시나리오: 비로그인 상태에서 먼저 플레이해 localStorage(`algosu.quiz.records.v2`)에 기록이 쌓인 사용자가 로그인하는 경우. (라이브에서 `/quiz`는 인증 게이트이므로 이 경로는 주로 **로그인 직후 첫 진입 시 잔존 localStorage**가 있을 때 발생.)
 
 1. (재현) DevTools로 `localStorage['algosu.quiz.records.v2']`에 임의 best를 심거나, 직전 비로그인 세션의 잔존 데이터 사용.
-2. 로그인 후 `/quiz` 첫 진입 → **1회** merge-up: localStorage best가 서버로 `POST`(higher-only, 멱등).
-   - 같은 세션에서 페이지를 다시 열어도 **재업로드 없음**(`mergedUpRef` 세션 1회 가드).
+2. 로그인 후 `/quiz` 첫 진입 → **1회** merge-up: localStorage best가 서버로 `POST`(higher-only).
+   - **같은 마운트 내**(네비게이션 내 리렌더·상태 변화)에서는 **재업로드 없음**(`mergedUpRef`는 컴포넌트 로컬 가드).
+   - ⚠️ **페이지 새로고침/재마운트는 가드가 리셋되어 재-POST가 발생할 수 있다**(`mergedUpRef`는 세션 영속이 아님, localStorage도 비우지 않음). 단 **higher-only upsert라 무해**(같은/낮은 값은 best를 덮지 않음). 따라서 "새로고침 후 POST 0회"를 기대하지 말 것 — 검증 포인트는 *멱등 결과*(best 불변)이지 *POST 횟수*가 아니다.
 3. 서버 best가 localStorage 값 이상으로 동기화(낮으면 서버 값 유지).
 
 ### ✅ 6.6 best-effort 폴백 (장애 격리)

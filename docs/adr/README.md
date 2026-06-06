@@ -53,7 +53,7 @@ docs/adr/
 
 ## 회고형 sprint ADR (158개)
 
-`sprints/sprint-{NN}.md` — Sprint 62 ~ 219 매 sprint 회고. 신규 sprint 종료 시 `/stop` 워크플로우가 자동 생성/갱신 (KR + EN 동시 작성).
+`sprints/sprint-{NN}.md` — Sprint 62 ~ 220 매 sprint 회고. 신규 sprint 종료 시 `/stop` 워크플로우가 자동 생성/갱신 (KR + EN 동시 작성).
 
 각 sprint ADR의 표준 구조:
 - frontmatter: `sprint`, `title`, `date`, `status` (+ 선택: `agents`, `related_adrs`, `related_memory`)

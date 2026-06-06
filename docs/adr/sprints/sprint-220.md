@@ -96,4 +96,14 @@ initContainers:
 
 ## Critic 교차 리뷰
 
-(Wave C에서 Codex 교차 리뷰 결과를 본 절에 기록한다.)
+- **대상**: `docs/` 5파일 (base `d529db6`..HEAD, docs-only)
+- **Codex 명령**: `codex review --base d529db6 -c model=gpt-5.5`
+- **세션 ID**: `019e9af1-0e30-7411-b54b-7e54efd36c57`
+
+**R1 — Critical/High 0건, P2 1건 + P3 2건 (모두 수정 반영)**:
+
+1. **[P2] 이미지 태그를 `origin/main` 최신 SHA가 아닌 서비스별 마지막 빌드 SHA로** — docs-only 머지 후 `origin/main`은 서비스 경로를 변경하지 않고, CI 경로 필터가 변경된 서비스만 빌드·푸시하므로 `main-<docs-sha>` 서비스 이미지가 존재하지 않을 수 있다. 운영자가 이를 롤아웃하면 없는 태그를 찾게 된다. → §1.1을 "각 서비스의 GHCR 최신 `main-<sha>`(= 그 서비스를 마지막으로 변경한 머지 SHA)를 `crane ls`/`git log -- <path>`로 확인, 없으면 `ci-rebuild-all.md`로 강제 재빌드"로 재작성. §3.1·§4 롤아웃에 "§1.1의 서비스별 SHA 사용" 명시.
+2. **[P3] README 잔존 범위** — 헤더는 158/62~220으로 갱신했으나 바로 아래 문장이 `Sprint 62 ~ 219`로 남아 내부 불일치. → `62 ~ 220`으로 정정.
+3. **[P3] merge-up 재진입 기대** — §6.5가 "같은 세션 재진입 시 재업로드 없음"이라 했으나 `mergedUpRef`는 컴포넌트 로컬 useRef라 새로고침/재마운트 시 리셋되어 재-POST 발생(higher-only라 무해). "POST 0회" 기대는 거짓 실패 유발. → 기대를 "같은 마운트 내 리렌더만 가드, 새로고침은 재-POST 가능하나 멱등 결과(best 불변)가 검증 포인트"로 한정.
+
+**종합 판정**: ✅ 머지 가능 — 모든 지적은 런북 정확성(운영자 오인 방지) 보강이며 docs-only. 수정 후 ADR 게이트 4종 재통과.
