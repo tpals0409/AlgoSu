@@ -12,6 +12,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { cn } from '@/lib/utils';
 import type { QuizQuestion } from '@/data/quiz';
 
 interface QuizFeedbackProps {
@@ -29,6 +30,7 @@ interface QuizFeedbackProps {
 
 /**
  * 채점 결과 배지·해설·입력 답안을 표시하고 다음 단계로 진행하는 버튼을 제공한다.
+ * 정답/오답에 따라 컨테이너 톤(success/error soft + 좌측 accent)을 달리한다.
  */
 export function QuizFeedback({
   question,
@@ -42,7 +44,13 @@ export function QuizFeedback({
   const explanation = locale === 'en' ? question.explanation.en : question.explanation.ko;
 
   return (
-    <div className="space-y-4" role="status">
+    <div
+      className={cn(
+        'animate-fade-in space-y-4 rounded-card border-l-4 p-4',
+        isCorrect ? 'border-l-success bg-success-soft' : 'border-l-error bg-error-soft',
+      )}
+      role="status"
+    >
       <div className="flex items-center gap-2">
         {isCorrect ? (
           <CheckCircle2 className="h-5 w-5 text-success" aria-hidden />
@@ -56,7 +64,7 @@ export function QuizFeedback({
 
       <p className="text-xs text-text-3">{t('feedback.yourAnswer', { answer })}</p>
 
-      <div className="space-y-1 rounded-card border border-border bg-bg-alt p-4">
+      <div className="space-y-1 rounded-card border border-border bg-bg-card p-4">
         <p className="text-xs font-medium text-text-2">{t('feedback.explanationLabel')}</p>
         <p className="text-sm leading-relaxed text-text">{explanation}</p>
       </div>

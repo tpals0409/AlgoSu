@@ -7,8 +7,9 @@
 
 'use client';
 
-import type { ReactElement } from 'react';
+import { type CSSProperties, type ReactElement } from 'react';
 import { useTranslations } from 'next-intl';
+import { Trophy } from 'lucide-react';
 import { ScoreGauge } from '@/components/ui/ScoreGauge';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -29,8 +30,15 @@ interface QuizResultProps {
   readonly onRetry: () => void;
 }
 
+/** 신기록 시 게이지 래퍼에 적용하는 펄스 글로우 (1회성 아님 — 은은한 무한 반복). */
+const NEW_BEST_GLOW: CSSProperties = {
+  animation: 'glow-pulse 2.6s ease-in-out infinite',
+  borderRadius: '9999px',
+};
+
 /**
  * 점수 게이지와 정답률·최고 기록을 표시하고 다시하기 버튼을 제공한다.
+ * 최고 기록 갱신 시 게이지에 글로우 펄스와 트로피 배지로 축하 연출을 더한다.
  */
 export function QuizResult({
   correct,
@@ -43,15 +51,20 @@ export function QuizResult({
   const t = useTranslations('quiz');
 
   return (
-    <Card className="flex flex-col items-center gap-5 p-6 text-center">
+    <Card className="animate-fade-in flex flex-col items-center gap-5 p-6 text-center">
       <h1 className="text-xl font-bold text-text">{t('result.title')}</h1>
 
-      <ScoreGauge score={scorePercent} label={t('result.accuracy')} />
+      <div style={isNewBest ? NEW_BEST_GLOW : undefined}>
+        <ScoreGauge score={scorePercent} label={t('result.accuracy')} />
+      </div>
 
       <p className="text-sm text-text-2">{t('result.correctCount', { correct, total })}</p>
 
       {isNewBest ? (
-        <Badge variant="success">{t('result.newBest')}</Badge>
+        <Badge variant="success" className="gap-1.5 px-3 py-1 text-xs">
+          <Trophy className="size-4" aria-hidden />
+          {t('result.newBest')}
+        </Badge>
       ) : (
         bestScore !== null && (
           <p className="text-xs text-text-3">
