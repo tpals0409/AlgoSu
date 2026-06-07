@@ -9,7 +9,7 @@
 
 import { useState, type CSSProperties, type ReactElement } from 'react';
 import { useTranslations } from 'next-intl';
-import { Brain } from 'lucide-react';
+import { Brain, Shuffle } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -56,10 +56,13 @@ function resolveCountOptions(available: number): number[] {
   return withinPool.length > 0 ? withinPool : [Math.max(0, available)];
 }
 
+/** 분야 선택 옵션 — 'ALL'(전체) 을 맨 앞에 추가한 목록. */
+const CATEGORY_OPTIONS: readonly (QuizCategory | 'ALL')[] = ['ALL', ...QUIZ_CATEGORIES];
+
 interface QuizStartProps {
   /** 사용자가 분야·문항 수·난이도를 확정하고 시작할 때 호출 */
   readonly onStart: (
-    category: QuizCategory,
+    category: QuizCategory | 'ALL',
     count: number,
     difficulty: QuizDifficulty | 'ALL',
   ) => void;
@@ -74,7 +77,7 @@ interface QuizStartProps {
  */
 export function QuizStart({ onStart, stats = [] }: QuizStartProps): ReactElement {
   const t = useTranslations('quiz');
-  const [category, setCategory] = useState<QuizCategory>(QUIZ_CATEGORIES[0]);
+  const [category, setCategory] = useState<QuizCategory | 'ALL'>('ALL');
   const [count, setCount] = useState<number>(COUNT_OPTIONS[0]);
   const [difficulty, setDifficulty] = useState<QuizDifficulty | 'ALL'>('ALL');
 
@@ -105,17 +108,34 @@ export function QuizStart({ onStart, stats = [] }: QuizStartProps): ReactElement
 
       <PillRadioGroup
         legend={t('start.categoryLabel')}
-        options={QUIZ_CATEGORIES}
+        options={CATEGORY_OPTIONS}
         value={category}
         onChange={setCategory}
         getOptionKey={(option) => option}
-        getOptionClassName={(_option, active) => cn(PILL_BASE, !active && INACTIVE_PILL)}
+        getOptionClassName={(option, active) =>
+          cn(
+            PILL_BASE,
+            !active
+              ? INACTIVE_PILL
+              : option === 'ALL'
+                ? 'border-primary bg-primary-soft text-primary'
+                : '',
+          )
+        }
         getOptionStyle={(option, active): CSSProperties | undefined => {
-          if (!active) return undefined;
+          if (!active || option === 'ALL') return undefined;
           const meta = getQuizCategoryMeta(option);
           return { color: meta.colorVar, backgroundColor: meta.bgVar, borderColor: meta.colorVar };
         }}
         renderOption={(option) => {
+          if (option === 'ALL') {
+            return (
+              <>
+                <Shuffle className="size-3.5" aria-hidden />
+                {t('categories.ALL')}
+              </>
+            );
+          }
           const Icon = getQuizCategoryMeta(option).icon;
           return (
             <>

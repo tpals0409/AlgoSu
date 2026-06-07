@@ -35,7 +35,7 @@ type Phase = 'idle' | 'playing' | 'result';
 
 /** 한 판의 진행 상태 스냅샷. */
 interface Session {
-  readonly category: QuizCategory;
+  readonly category: QuizCategory | 'ALL';
   readonly difficulty: QuizDifficulty | 'ALL';
   readonly questions: readonly QuizQuestion[];
   readonly index: number;
@@ -140,7 +140,7 @@ export default function QuizPage(): ReactNode {
   }, [phase, store, isAuthenticated, mergeUpDone]);
 
   const start = (
-    category: QuizCategory,
+    category: QuizCategory | 'ALL',
     count: number,
     difficulty: QuizDifficulty | 'ALL',
   ): void => {

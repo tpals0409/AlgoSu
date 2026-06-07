@@ -8,11 +8,15 @@ import { IsIn, IsInt, IsISO8601, IsUUID, Max, Min } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import {
   QuizRecordCategory,
+  type QuizRecordCategoryValue,
   QuizRecordDifficulty,
 } from '../quiz-record.entity';
 
-/** 허용 카테고리 5종 — 엔티티 enum과 동기화 */
-const ALLOWED_CATEGORIES = Object.values(QuizRecordCategory);
+/** 허용 분야 — 실제 10분야(엔티티 enum) + 'ALL'(전 분야 메타) */
+const ALLOWED_CATEGORIES: QuizRecordCategoryValue[] = [
+  ...Object.values(QuizRecordCategory),
+  'ALL',
+];
 
 /** 허용 난이도 4종 — 'ALL' 포함 */
 const ALLOWED_DIFFICULTIES: QuizRecordDifficulty[] = [
@@ -27,9 +31,9 @@ export class UpsertQuizRecordDto {
   @IsUUID()
   userId!: string;
 
-  @ApiProperty({ description: '퀴즈 분야', enum: QuizRecordCategory })
+  @ApiProperty({ description: '퀴즈 분야 (실제 10분야 + ALL)', enum: ALLOWED_CATEGORIES })
   @IsIn(ALLOWED_CATEGORIES, { message: '허용되지 않은 category 값입니다.' })
-  category!: QuizRecordCategory;
+  category!: QuizRecordCategoryValue;
 
   @ApiProperty({ description: '난이도', enum: ['ALL', 'EASY', 'MEDIUM', 'HARD'] })
   @IsIn(ALLOWED_DIFFICULTIES, { message: '허용되지 않은 difficulty 값입니다.' })

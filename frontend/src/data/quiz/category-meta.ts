@@ -4,7 +4,7 @@
  * @layer data
  * @related src/data/quiz/types.ts, src/data/quiz/index.ts, src/components/quiz/QuizStart.tsx, src/components/quiz/QuizPlay.tsx
  */
-import { Boxes, GitBranch, Network, Cpu, Database, type LucideIcon } from 'lucide-react';
+import { Boxes, GitBranch, Network, Cpu, Database, CircuitBoard, Shapes, Globe, ShieldCheck, BrainCircuit, type LucideIcon } from 'lucide-react';
 import { QuizCategory } from './types';
 
 /**
@@ -47,6 +47,31 @@ export const QUIZ_CATEGORY_META: Record<QuizCategory, QuizCategoryMeta> = {
     icon: Database,
     colorVar: 'var(--quiz-cat-database-color)',
     bgVar: 'var(--quiz-cat-database-bg)',
+  },
+  [QuizCategory.COMPUTER_ARCHITECTURE]: {
+    icon: CircuitBoard,
+    colorVar: 'var(--quiz-cat-computer-architecture-color)',
+    bgVar: 'var(--quiz-cat-computer-architecture-bg)',
+  },
+  [QuizCategory.DESIGN_PATTERN]: {
+    icon: Shapes,
+    colorVar: 'var(--quiz-cat-design-pattern-color)',
+    bgVar: 'var(--quiz-cat-design-pattern-bg)',
+  },
+  [QuizCategory.WEB]: {
+    icon: Globe,
+    colorVar: 'var(--quiz-cat-web-color)',
+    bgVar: 'var(--quiz-cat-web-bg)',
+  },
+  [QuizCategory.SECURITY]: {
+    icon: ShieldCheck,
+    colorVar: 'var(--quiz-cat-security-color)',
+    bgVar: 'var(--quiz-cat-security-bg)',
+  },
+  [QuizCategory.AI]: {
+    icon: BrainCircuit,
+    colorVar: 'var(--quiz-cat-ai-color)',
+    bgVar: 'var(--quiz-cat-ai-bg)',
   },
 };
 

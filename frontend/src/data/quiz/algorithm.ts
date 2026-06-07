@@ -1,5 +1,5 @@
 /**
- * @file 알고리즘 분야 CS 퀴즈 문항 (30문항)
+ * @file 알고리즘 분야 CS 퀴즈 문항 (50문항)
  * @domain quiz
  * @layer data
  * @related src/data/quiz/types.ts, src/data/quiz/index.ts
@@ -425,6 +425,286 @@ export const ALGORITHM_QUESTIONS: readonly QuizQuestion[] = [
     explanation: {
       ko: '분할 상환 분석은 비용이 큰 연산이 드물게 발생할 때 연산 시퀀스 전체의 평균 비용을 평가하는 기법입니다(예: 동적 배열 append 평균 O(1)).',
       en: 'Amortized analysis averages cost over a sequence of operations when expensive ones are rare (e.g., dynamic array append is O(1) amortized).',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'algo-31',
+    category: QuizCategory.ALGORITHM,
+    prompt: {
+      ko: '배열의 i번째 원소까지의 합을 미리 계산해 두어 구간 합 쿼리를 O(1)에 답하는 기법은?',
+      en: 'Which technique precomputes cumulative sums so range-sum queries are answered in O(1)?',
+    },
+    acceptedAnswers: ['누적합', 'prefix sum', 'prefixsum', '구간합', '전처리합', 'cumulative sum'],
+    explanation: {
+      ko: '누적합(prefix sum) 배열을 만들어 두면 임의 구간 [l, r]의 합을 prefix[r] − prefix[l-1]로 O(1)에 구할 수 있습니다.',
+      en: 'A prefix sum array lets you answer any range sum [l,r] in O(1) as prefix[r] − prefix[l-1].',
+    },
+    difficulty: 'EASY',
+  },
+  {
+    id: 'algo-32',
+    category: QuizCategory.ALGORITHM,
+    prompt: {
+      ko: '병합 정렬과 힙 정렬의 최악·평균 시간 복잡도는? (빅오)',
+      en: 'What is the worst-case and average-case time complexity of merge sort and heap sort? (Big-O)',
+    },
+    acceptedAnswers: ['O(n log n)', 'onlogn', 'n log n', 'nlogn'],
+    explanation: {
+      ko: '병합 정렬과 힙 정렬은 입력에 관계없이 항상 O(n log n)의 시간 복잡도를 보장합니다.',
+      en: 'Merge sort and heap sort both guarantee O(n log n) time in the worst case regardless of input.',
+    },
+    difficulty: 'EASY',
+  },
+  {
+    id: 'algo-33',
+    category: QuizCategory.ALGORITHM,
+    prompt: {
+      ko: '값의 범위를 버킷으로 나눠 각 버킷을 별도로 정렬한 뒤 합치는 정렬 알고리즘은?',
+      en: 'Which sorting algorithm divides values into buckets, sorts each separately, and then concatenates?',
+    },
+    acceptedAnswers: ['버킷정렬', '버킷 정렬', 'bucket sort', 'bucketsort'],
+    explanation: {
+      ko: '버킷 정렬은 입력을 균등 분포로 가정해 버킷에 배분하고 각 버킷을 삽입 정렬 등으로 정렬 후 합쳐 평균 O(n)을 달성합니다.',
+      en: 'Bucket sort distributes input into buckets, sorts each bucket (e.g., insertion sort), and concatenates for average O(n).',
+    },
+    difficulty: 'EASY',
+  },
+  {
+    id: 'algo-34',
+    category: QuizCategory.ALGORITHM,
+    prompt: {
+      ko: '두 문자열에서 가장 긴 공통 부분 수열(연속 아니어도 됨)의 길이를 구하는 문제의 영문 약자는?',
+      en: 'What is the abbreviation for the problem of finding the longest common subsequence of two strings?',
+    },
+    acceptedAnswers: ['LCS', 'longest common subsequence'],
+    explanation: {
+      ko: 'LCS(Longest Common Subsequence)는 두 문자열에서 순서를 유지하되 연속할 필요 없는 공통 부분 수열 중 가장 긴 것을 구하는 DP 문제입니다.',
+      en: 'LCS (Longest Common Subsequence) finds the longest subsequence common to both strings preserving order, solved with O(mn) DP.',
+    },
+    difficulty: 'EASY',
+  },
+  {
+    id: 'algo-35',
+    category: QuizCategory.ALGORITHM,
+    prompt: {
+      ko: '무게 제한이 있는 가방에 물건을 담아 가치를 최대화하는 조합 최적화 문제의 이름은?',
+      en: 'Which combinatorial optimization problem maximizes value by selecting items subject to a weight capacity?',
+    },
+    acceptedAnswers: ['배낭문제', '배낭 문제', 'knapsack', 'knapsack problem', '냅색'],
+    explanation: {
+      ko: '배낭 문제(Knapsack Problem)는 용량 제한 내에서 가치 합을 최대화하는 NP-완전(0/1형) 문제로, DP로 의사다항 시간에 풀 수 있습니다.',
+      en: 'The Knapsack Problem maximizes value within a weight limit; the 0/1 variant is NP-complete but solvable in pseudo-polynomial time with DP.',
+    },
+    difficulty: 'EASY',
+  },
+  {
+    id: 'algo-36',
+    category: QuizCategory.ALGORITHM,
+    prompt: {
+      ko: '값의 범위가 클 때, 값들을 순위(rank)로 치환해 배열 크기를 줄이는 전처리 기법은?',
+      en: 'Which preprocessing technique replaces large-range values with their rank to reduce array size?',
+    },
+    acceptedAnswers: ['좌표압축', '좌표 압축', 'coordinate compression', 'coordinatecompression', '값압축'],
+    explanation: {
+      ko: '좌표 압축은 값을 정렬 후 순위(0, 1, 2, …)로 대체해 값 범위를 O(n)으로 줄이고 세그먼트 트리·계수 정렬 등에 활용합니다.',
+      en: 'Coordinate compression maps values to their sorted rank (0,1,2,…), reducing the value range to O(n) for use in segment trees or counting sort.',
+    },
+    difficulty: 'EASY',
+  },
+  {
+    id: 'algo-37',
+    category: QuizCategory.ALGORITHM,
+    prompt: {
+      ko: '입력 크기 n에 비례해 실행 시간이 증가하는, 배열 순회 등에 해당하는 시간 복잡도는? (빅오)',
+      en: 'What is the time complexity of algorithms whose runtime grows proportionally to input size, such as a single array traversal? (Big-O)',
+    },
+    acceptedAnswers: ['O(n)', 'on', 'n', '선형시간', 'linear', 'linear time'],
+    explanation: {
+      ko: 'O(n)은 입력 크기 n에 정비례하는 선형 시간 복잡도로, 배열 전체를 한 번 순회하는 연산이 대표 예입니다.',
+      en: 'O(n) is linear time, growing proportionally to input size; a single array scan is a canonical example.',
+    },
+    difficulty: 'EASY',
+  },
+  {
+    id: 'algo-38',
+    category: QuizCategory.ALGORITHM,
+    prompt: {
+      ko: '해시 함수로 패턴의 해시값과 텍스트 부분 문자열의 해시값을 비교해 평균 O(n+m)에 문자열을 매칭하는 알고리즘은?',
+      en: 'Which string matching algorithm uses rolling hashes to compare pattern and text substrings in average O(n+m)?',
+    },
+    acceptedAnswers: ['라빈카프', '라빈-카프', '라빈 카프', 'rabin karp', 'rabinkarp', 'rabin-karp'],
+    explanation: {
+      ko: '라빈-카프 알고리즘은 롤링 해시로 텍스트의 각 부분 문자열 해시를 O(1)에 갱신하며 패턴 해시와 비교해 평균 O(n+m)에 매칭합니다.',
+      en: "Rabin-Karp uses a rolling hash to update substring hashes in O(1) each step, comparing with the pattern hash for average O(n+m) matching.",
+    },
+    difficulty: 'MEDIUM',
+  },
+  {
+    id: 'algo-39',
+    category: QuizCategory.ALGORITHM,
+    prompt: {
+      ko: '작은 부분 문제부터 테이블에 채워 올라가는 상향식(Bottom-Up) DP 기법을 무엇이라 하는가?',
+      en: 'What is the name of the bottom-up DP technique that fills a table starting from the smallest subproblems?',
+    },
+    acceptedAnswers: ['타뷸레이션', 'tabulation', '표화', '테이블채우기', 'bottom-up dp', 'bottom up dp'],
+    explanation: {
+      ko: '타뷸레이션(Tabulation)은 가장 작은 부분 문제부터 순서대로 테이블을 채워 올라가는 상향식 DP로, 재귀 오버헤드 없이 공간 최적화가 용이합니다.',
+      en: 'Tabulation fills a DP table bottom-up from base cases, avoiding recursion overhead and enabling straightforward space optimization.',
+    },
+    difficulty: 'MEDIUM',
+  },
+  {
+    id: 'algo-40',
+    category: QuizCategory.ALGORITHM,
+    prompt: {
+      ko: '겹치지 않는 구간의 수를 최대화하기 위해 종료 시간 기준으로 그리디 선택을 하는 문제는?',
+      en: 'Which classic greedy problem maximizes the number of non-overlapping intervals by selecting by earliest finish time?',
+    },
+    acceptedAnswers: ['활동선택문제', '활동 선택 문제', 'activity selection', 'activity selection problem', '구간스케줄링'],
+    explanation: {
+      ko: '활동 선택 문제는 종료 시간이 빠른 활동을 먼저 선택하는 그리디로 최대 비겹침 활동 수를 O(n log n)에 구합니다.',
+      en: 'The activity selection problem greedily picks the activity with the earliest finish time, maximizing non-overlapping count in O(n log n).',
+    },
+    difficulty: 'MEDIUM',
+  },
+  {
+    id: 'algo-41',
+    category: QuizCategory.ALGORITHM,
+    prompt: {
+      ko: '상태를 비트 집합으로 표현해 부분 집합의 방문 여부를 정수 하나에 저장하고 DP에 활용하는 기법은?',
+      en: 'Which technique represents states as bit sets, storing subset membership in a single integer for use in DP?',
+    },
+    acceptedAnswers: ['비트마스킹', '비트 마스킹', 'bitmask', 'bitmask dp', '비트마스크dp', '비트마스크 dp'],
+    explanation: {
+      ko: '비트마스킹 DP는 방문한 정점 집합 등을 정수 비트로 표현해 2^n 상태를 다루며 외판원 문제(TSP) 등에 쓰입니다.',
+      en: 'Bitmask DP encodes subsets as integer bits to handle 2^n states compactly, used in problems like the Travelling Salesman Problem.',
+    },
+    difficulty: 'MEDIUM',
+  },
+  {
+    id: 'algo-42',
+    category: QuizCategory.ALGORITHM,
+    prompt: {
+      ko: '방향 그래프에서 모든 정점 쌍이 서로 도달 가능한 최대 부분 그래프를 무엇이라 하는가?',
+      en: 'What is the maximal subgraph of a directed graph in which every vertex is reachable from every other vertex?',
+    },
+    acceptedAnswers: ['강연결요소', '강한연결요소', 'SCC', 'strongly connected component', 'stronglyconnectedcomponent'],
+    explanation: {
+      ko: '강연결요소(SCC)는 방향 그래프에서 모든 정점 쌍이 상호 도달 가능한 최대 부분 그래프로, 타잔·코사라주 알고리즘이 O(V+E)에 구합니다.',
+      en: 'A Strongly Connected Component (SCC) is a maximal subgraph where all vertices can reach each other; Tarjan or Kosaraju finds all SCCs in O(V+E).',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'algo-43',
+    category: QuizCategory.ALGORITHM,
+    prompt: {
+      ko: '이분 탐색을 "답의 범위"에 적용해 최적값을 찾는 기법을 흔히 무엇이라 부르는가?',
+      en: 'What is the common name for the technique that applies binary search over the "answer space" to find the optimal value?',
+    },
+    acceptedAnswers: ['매개변수탐색', '매개변수 탐색', 'parametric search', 'parametricsearch', '이분탐색 최적화', 'binary search on answer'],
+    explanation: {
+      ko: '매개변수 탐색(Parametric Search)은 답 자체를 이분 탐색 범위로 삼아 판별 함수의 참·거짓 경계를 O(log N · f(N))에 찾는 기법입니다.',
+      en: 'Parametric search applies binary search over the answer space, using a decision function to find the boundary in O(log N · f(N)).',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'algo-44',
+    category: QuizCategory.ALGORITHM,
+    prompt: {
+      ko: '두 문자열 사이의 삽입·삭제·교체 연산 최소 횟수를 구하는 DP 문제의 이름은?',
+      en: 'What is the name of the DP problem that finds the minimum number of insert, delete, and replace operations to transform one string into another?',
+    },
+    acceptedAnswers: ['편집거리', '편집 거리', 'edit distance', 'editdistance', 'levenshtein', 'levenshtein distance'],
+    explanation: {
+      ko: '편집 거리(Edit Distance, Levenshtein Distance)는 삽입·삭제·교체 세 연산으로 한 문자열을 다른 문자열로 변환하는 최소 비용을 O(mn) DP로 구합니다.',
+      en: 'Edit Distance (Levenshtein Distance) is the minimum number of insertions, deletions, and substitutions to transform one string to another, solved by O(mn) DP.',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'algo-45',
+    category: QuizCategory.ALGORITHM,
+    prompt: {
+      ko: '빈도가 높은 기호에 짧은 코드를 배정해 무손실 압축을 달성하는 그리디 기반 최적 접두사 코드 알고리즘은?',
+      en: 'Which greedy algorithm assigns shorter codes to more frequent symbols to achieve optimal lossless prefix coding?',
+    },
+    acceptedAnswers: ['허프만코딩', '허프만 코딩', '허프만 부호화', 'huffman coding', 'huffmancoding', 'huffman'],
+    explanation: {
+      ko: '허프만 코딩은 최소 힙으로 빈도가 낮은 기호 두 개를 반복 병합해 평균 코드 길이를 최소화하는 그리디 최적 접두사 코드를 만듭니다.',
+      en: 'Huffman coding uses a min-heap to repeatedly merge the two least-frequent symbols, building an optimal prefix code that minimizes average code length.',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'algo-46',
+    category: QuizCategory.ALGORITHM,
+    prompt: {
+      ko: 'NP에 속하면서 NP의 모든 문제를 다항 시간에 환원할 수 있는 가장 어려운 문제 집합을 무엇이라 하는가?',
+      en: 'What is the class of problems that are in NP and to which every problem in NP can be reduced in polynomial time?',
+    },
+    acceptedAnswers: ['NP완전', 'NP-완전', 'NP 완전', 'NP-complete', 'npcomplete', 'np complete'],
+    explanation: {
+      ko: 'NP-완전(NP-Complete) 문제는 NP에 속하면서 NP 내 모든 문제를 다항 시간에 귀납할 수 있는 가장 어려운 문제로, SAT·3-SAT·배낭 문제(0/1)가 대표적입니다.',
+      en: 'NP-Complete problems are in NP and every NP problem reduces to them in polynomial time; canonical examples include SAT, 3-SAT, and 0/1 Knapsack.',
+    },
+    difficulty: 'MEDIUM',
+  },
+  {
+    id: 'algo-47',
+    category: QuizCategory.ALGORITHM,
+    prompt: {
+      ko: '수열에서 순서를 유지하며 단조 증가하는 부분 수열 중 가장 긴 것을 O(n log n)에 구할 때 사용하는 자료구조/기법은?',
+      en: 'Which data structure or technique achieves O(n log n) time for the Longest Increasing Subsequence problem?',
+    },
+    acceptedAnswers: ['이진탐색', '이진 탐색', 'binary search', 'patience sorting', '인내 정렬', 'LIS with binary search'],
+    explanation: {
+      ko: 'LIS를 O(n log n)에 구하려면 현재까지의 후보 테일 배열을 유지하며 각 원소마다 lower_bound(이진 탐색)로 삽입 위치를 찾습니다.',
+      en: 'O(n log n) LIS maintains a candidate tails array and uses binary search (lower_bound) to find the insertion position for each element.',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'algo-48',
+    category: QuizCategory.ALGORITHM,
+    prompt: {
+      ko: '알고리즘의 성장률을 위·아래 모두 상수 배 안에서 죄는 점근 표기법은? (정확한 성장 차수를 나타냄)',
+      en: 'Which asymptotic notation bounds a function both above and below by constant multiples, representing the exact growth order?',
+    },
+    acceptedAnswers: ['빅세타', '빅 세타', 'big theta', 'bigtheta', 'Θ', 'theta notation', '세타 표기법'],
+    explanation: {
+      ko: '빅-세타(Θ)는 f(n) = Θ(g(n))이면 c₁g(n) ≤ f(n) ≤ c₂g(n)이 성립해 최악·최선 모두 같은 성장률임을 의미하는 정확한 점근 표기입니다.',
+      en: 'Big-Theta (Θ) means f(n) is sandwiched between c₁g(n) and c₂g(n), representing the exact asymptotic growth rate in both worst and best cases.',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'algo-49',
+    category: QuizCategory.ALGORITHM,
+    prompt: {
+      ko: '다항 시간 검증은 가능하지만 다항 시간 풀이는 알려지지 않은 결정 문제 집합을 가리키는 복잡도 분류는?',
+      en: 'Which complexity class contains decision problems verifiable in polynomial time but not known to be solvable in polynomial time?',
+    },
+    acceptedAnswers: ['NP', 'nondeterministic polynomial', 'np class'],
+    explanation: {
+      ko: 'NP(Non-deterministic Polynomial)는 해를 다항 시간에 검증할 수 있는 결정 문제의 집합으로, P ⊆ NP이며 P = NP 여부는 미해결 난제입니다.',
+      en: 'NP (Nondeterministic Polynomial) is the class of decision problems whose solutions can be verified in polynomial time; whether P = NP remains unsolved.',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'algo-50',
+    category: QuizCategory.ALGORITHM,
+    prompt: {
+      ko: '가중치 없는 그래프에서 두 정점 간 최단 경로를 보장하는 탐색 알고리즘과, 그 시간 복잡도는? (형식: "알고리즘명, O(복잡도)"가 아닌 알고리즘 이름만 답하세요)',
+      en: 'Which spanning-tree property states that the minimum spanning tree is unique if all edge weights are distinct?',
+    },
+    acceptedAnswers: ['유일성', '유일한 MST', 'unique MST', 'MST 유일성', 'uniqueness', 'unique minimum spanning tree'],
+    explanation: {
+      ko: '모든 간선의 가중치가 서로 다르면 최소 신장 트리(MST)는 유일합니다. 이는 크루스칼/프림 두 알고리즘 모두 동일한 트리를 구성함을 의미합니다.',
+      en: 'If all edge weights are distinct, the minimum spanning tree is unique; both Kruskal and Prim will produce the same tree.',
     },
     difficulty: 'HARD',
   },

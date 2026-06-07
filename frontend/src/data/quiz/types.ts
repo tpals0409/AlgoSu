@@ -15,6 +15,11 @@ export enum QuizCategory {
   NETWORK = 'NETWORK',
   OS = 'OS',
   DATABASE = 'DATABASE',
+  COMPUTER_ARCHITECTURE = 'COMPUTER_ARCHITECTURE',
+  DESIGN_PATTERN = 'DESIGN_PATTERN',
+  WEB = 'WEB',
+  SECURITY = 'SECURITY',
+  AI = 'AI',
 }
 
 /** 문항 난이도 — EASY/MEDIUM/HARD 3단계. */

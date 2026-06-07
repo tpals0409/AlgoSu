@@ -1,5 +1,5 @@
 /**
- * @file 자료구조 분야 CS 퀴즈 문항 (30문항)
+ * @file 자료구조 분야 CS 퀴즈 문항 (50문항)
  * @domain quiz
  * @layer data
  * @related src/data/quiz/types.ts, src/data/quiz/index.ts
@@ -427,5 +427,285 @@ export const DATA_STRUCTURE_QUESTIONS: readonly QuizQuestion[] = [
       en: 'A complete binary tree can be stored in an array without pointers, where node i’s children sit at 2i+1 and 2i+2 (0-based).',
     },
     difficulty: 'EASY',
+  },
+  {
+    id: 'ds-31',
+    category: QuizCategory.DATA_STRUCTURE,
+    prompt: {
+      ko: '이진 트리에서 왼쪽→오른쪽→루트 순으로 방문하는 순회 방식은?',
+      en: 'Which binary tree traversal visits nodes in left, right, then root order?',
+    },
+    acceptedAnswers: ['후위순회', '후위 순회', 'postorder', 'post order', '포스트오더'],
+    explanation: {
+      ko: '후위 순회(postorder)는 왼쪽·오른쪽 서브트리를 먼저 방문한 뒤 루트를 방문하며, 트리 삭제·수식 계산에 쓰입니다.',
+      en: 'Postorder traversal visits left and right subtrees first then the root; it is used for tree deletion and expression evaluation.',
+    },
+    difficulty: 'EASY',
+  },
+  {
+    id: 'ds-32',
+    category: QuizCategory.DATA_STRUCTURE,
+    prompt: {
+      ko: '이진 트리를 레벨 순서(위→아래, 왼→오른)로 방문하는 순회 방식은? (큐 사용)',
+      en: 'Which tree traversal visits nodes level by level, top to bottom and left to right, using a queue?',
+    },
+    acceptedAnswers: ['레벨순회', '레벨 순회', 'levelorder', 'level order', 'bfs traversal', '너비우선순회', '너비 우선 순회'],
+    explanation: {
+      ko: '레벨 순회(BFS 순회)는 큐를 이용해 루트부터 각 레벨을 왼쪽에서 오른쪽으로 방문합니다.',
+      en: 'Level-order (BFS) traversal uses a queue to visit each level from left to right, starting at the root.',
+    },
+    difficulty: 'EASY',
+  },
+  {
+    id: 'ds-33',
+    category: QuizCategory.DATA_STRUCTURE,
+    prompt: {
+      ko: '모든 노드가 0 또는 2개의 자식을 가지는 이진 트리의 명칭은? (리프 아닌 노드는 반드시 자식 2개)',
+      en: 'What is the binary tree where every non-leaf node has exactly two children (no node has only one child)?',
+    },
+    acceptedAnswers: ['포화이진트리', '포화 이진 트리', 'full binary tree', 'fullbinarytree', '정이진트리', '정 이진 트리'],
+    explanation: {
+      ko: '포화 이진 트리(Full Binary Tree)는 모든 내부 노드가 자식을 정확히 2개 가지며 자식이 1개인 노드가 없는 트리입니다.',
+      en: 'A full binary tree requires every internal node to have exactly two children with no single-child nodes.',
+    },
+    difficulty: 'EASY',
+  },
+  {
+    id: 'ds-34',
+    category: QuizCategory.DATA_STRUCTURE,
+    prompt: {
+      ko: '마지막 레벨을 제외한 모든 레벨이 꽉 차고, 마지막 레벨은 왼쪽부터 채워지는 이진 트리는?',
+      en: 'Which binary tree has all levels completely filled except possibly the last, which is filled from the left?',
+    },
+    acceptedAnswers: ['완전이진트리', '완전 이진 트리', 'complete binary tree', 'completebinarytree'],
+    explanation: {
+      ko: '완전 이진 트리(Complete Binary Tree)는 마지막 레벨을 제외하고 모든 레벨이 가득 차며 마지막 레벨은 왼쪽부터 노드가 채워집니다.',
+      en: 'A complete binary tree fills all levels except the last, which is filled left to right; it enables efficient array storage.',
+    },
+    difficulty: 'EASY',
+  },
+  {
+    id: 'ds-35',
+    category: QuizCategory.DATA_STRUCTURE,
+    prompt: {
+      ko: 'B-트리에서 리프 노드만 실제 레코드를 저장하고 내부 노드는 키만 갖는 변형 트리는?',
+      en: 'Which variant of the B-tree stores actual records only in leaf nodes, while internal nodes hold only keys?',
+    },
+    acceptedAnswers: ['B+트리', 'B+ 트리', 'bplustree', 'b plus tree', 'b+tree'],
+    explanation: {
+      ko: 'B+트리는 내부 노드에 키만 두고 리프 노드에만 레코드를 저장하며, 리프끼리 연결해 순차 접근을 최적화합니다.',
+      en: 'A B+tree stores records only in leaf nodes (connected as a linked list) and keys only in internal nodes, optimizing range scans.',
+    },
+    difficulty: 'MEDIUM',
+  },
+  {
+    id: 'ds-36',
+    category: QuizCategory.DATA_STRUCTURE,
+    prompt: {
+      ko: 'AVL 트리에서 왼쪽 자식의 왼쪽 서브트리에 삽입되어 오른쪽 단순 회전 한 번으로 해결하는 불균형 케이스는?',
+      en: 'Which AVL imbalance case, caused by insertion in the left subtree of the left child, is fixed with a single right rotation?',
+    },
+    acceptedAnswers: ['LL회전', 'LL 회전', 'llrotation', 'll rotation', 'll case', 'llcase', '좌좌회전'],
+    explanation: {
+      ko: 'LL 케이스는 불균형 노드의 왼쪽 자식 왼쪽 서브트리 삽입으로 발생하며, 단일 오른쪽 회전(right rotation)으로 해소합니다.',
+      en: 'The LL case arises when a node is inserted in the left subtree of the left child; a single right rotation restores balance.',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'ds-37',
+    category: QuizCategory.DATA_STRUCTURE,
+    prompt: {
+      ko: 'AVL 트리에서 왼쪽 자식의 오른쪽 서브트리에 삽입되어 왼쪽-오른쪽 두 번 회전으로 해결하는 불균형 케이스는?',
+      en: 'Which AVL imbalance case requires a left rotation followed by a right rotation (left-right double rotation)?',
+    },
+    acceptedAnswers: ['LR회전', 'LR 회전', 'lrrotation', 'lr rotation', 'lr case', 'lrcase', '좌우회전'],
+    explanation: {
+      ko: 'LR 케이스는 왼쪽 자식의 오른쪽 서브트리 삽입으로 발생하며, 왼쪽 자식을 왼쪽 회전 후 루트를 오른쪽 회전하는 이중 회전으로 해소합니다.',
+      en: 'The LR case occurs when inserting in the right subtree of the left child; it requires a left rotation on the child then a right rotation on the root.',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'ds-38',
+    category: QuizCategory.DATA_STRUCTURE,
+    prompt: {
+      ko: '레드-블랙 트리의 불변식 중 루트 노드의 색깔 규칙은?',
+      en: 'What color must the root node always be in a red-black tree invariant?',
+    },
+    acceptedAnswers: ['검정', '검은색', '블랙', 'black', '검정색'],
+    explanation: {
+      ko: '레드-블랙 트리 불변식: 루트는 항상 검정(Black)이어야 합니다. 이 규칙이 삽입 후 루트가 빨강이 되면 재착색으로 검정으로 바꾸도록 강제합니다.',
+      en: 'A red-black tree invariant requires the root to always be black; if recoloring makes it red after insertion, it is re-colored black.',
+    },
+    difficulty: 'EASY',
+  },
+  {
+    id: 'ds-39',
+    category: QuizCategory.DATA_STRUCTURE,
+    prompt: {
+      ko: '레드-블랙 트리에서 루트부터 임의의 NIL 리프까지의 경로에 있는 블랙 노드 수가 모두 같다는 불변식을 무엇이라 하는가?',
+      en: 'What property of a red-black tree states that every path from root to a NIL leaf contains the same number of black nodes?',
+    },
+    acceptedAnswers: ['블랙높이', '블랙 높이', 'black height', 'blackheight', '흑색높이', '흑색 높이'],
+    explanation: {
+      ko: '블랙 높이(Black Height) 불변식은 루트→NIL 리프 모든 경로의 블랙 노드 수가 동일함을 보장해 트리 높이를 O(log n)으로 제한합니다.',
+      en: 'The black-height invariant guarantees equal black-node counts on all root-to-nil paths, bounding tree height to O(log n).',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'ds-40',
+    category: QuizCategory.DATA_STRUCTURE,
+    prompt: {
+      ko: '최근 탐색된 노드를 루트로 끌어올리는 스플레이 연산을 사용하는 자기 조정 이진 탐색 트리는?',
+      en: 'Which self-adjusting BST uses a splay operation to move the most recently accessed node to the root?',
+    },
+    acceptedAnswers: ['스플레이트리', '스플레이 트리', 'splaytree', 'splay tree'],
+    explanation: {
+      ko: '스플레이 트리는 접근한 노드를 Zig/Zig-Zig/Zig-Zag 회전으로 루트까지 올려 반복 접근 패턴에서 O(log n) 분할 상환 복잡도를 달성합니다.',
+      en: 'A splay tree rotates the accessed node to the root via Zig/Zig-Zig/Zig-Zag steps, achieving O(log n) amortized cost for repeated accesses.',
+    },
+    difficulty: 'MEDIUM',
+  },
+  {
+    id: 'ds-41',
+    category: QuizCategory.DATA_STRUCTURE,
+    prompt: {
+      ko: '해시 테이블에서 저장된 원소 수를 전체 버킷 수로 나눈 값으로, 재해싱(rehashing) 기준이 되는 지표는?',
+      en: 'What metric divides the number of stored elements by the total number of buckets and triggers rehashing when exceeded?',
+    },
+    acceptedAnswers: ['부하율', '로드팩터', 'load factor', 'loadfactor', '적재율'],
+    explanation: {
+      ko: '부하율(load factor)은 n/m(원소 수/버킷 수)으로 정의하며, 임계값(보통 0.7~0.75)을 넘으면 재해싱을 수행해 성능을 유지합니다.',
+      en: 'Load factor is n/m (elements/buckets); when it exceeds a threshold (typically 0.7–0.75), rehashing is triggered to maintain performance.',
+    },
+    difficulty: 'EASY',
+  },
+  {
+    id: 'ds-42',
+    category: QuizCategory.DATA_STRUCTURE,
+    prompt: {
+      ko: '개방 주소법에서 충돌 시 탐사 간격을 1씩 늘려 다음 빈 슬롯을 순차로 찾는 방식은?',
+      en: 'Which open-addressing probe sequence checks consecutive slots (step size 1) to resolve a collision?',
+    },
+    acceptedAnswers: ['선형탐사', '선형 탐사', 'linear probing', 'linearprobing'],
+    explanation: {
+      ko: '선형 탐사는 충돌 시 h(k)+1, h(k)+2 … 순으로 다음 빈 슬롯을 찾으며 클러스터링 문제가 발생할 수 있습니다.',
+      en: 'Linear probing checks h(k)+1, h(k)+2, … for an empty slot on collision; it is simple but can cause primary clustering.',
+    },
+    difficulty: 'MEDIUM',
+  },
+  {
+    id: 'ds-43',
+    category: QuizCategory.DATA_STRUCTURE,
+    prompt: {
+      ko: '충돌 시 두 번째 해시 함수를 탐사 간격으로 사용해 클러스터링을 최소화하는 개방 주소법 변형은?',
+      en: 'Which open-addressing variant uses a second hash function as the probe step size to minimize clustering?',
+    },
+    acceptedAnswers: ['이중해싱', '이중 해싱', 'double hashing', 'doublehashing'],
+    explanation: {
+      ko: '이중 해싱은 h(k, i) = (h1(k) + i·h2(k)) mod m 으로 탐사하여 클러스터링을 크게 줄이는 개방 주소법 기법입니다.',
+      en: 'Double hashing probes using h(k,i) = (h1(k) + i·h2(k)) mod m, significantly reducing clustering compared to linear or quadratic probing.',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'ds-44',
+    category: QuizCategory.DATA_STRUCTURE,
+    prompt: {
+      ko: '해시 테이블이 부하율 임계값을 초과할 때 더 큰 배열을 할당하고 모든 원소를 재삽입하는 과정은?',
+      en: 'What is the process of allocating a larger array and reinserting all elements when a hash table exceeds its load factor threshold?',
+    },
+    acceptedAnswers: ['재해싱', '리해싱', 'rehashing', '재해시'],
+    explanation: {
+      ko: '재해싱(rehashing)은 부하율 초과 시 보통 2배 크기 배열에 모든 원소를 새 해시 함수로 재삽입해 충돌을 줄이는 과정입니다.',
+      en: 'Rehashing allocates a larger array (usually 2× size) and reinserts all elements with the new hash function to reduce collisions.',
+    },
+    difficulty: 'MEDIUM',
+  },
+  {
+    id: 'ds-45',
+    category: QuizCategory.DATA_STRUCTURE,
+    prompt: {
+      ko: 'LRU 캐시를 O(1) get/put으로 구현할 때 일반적으로 결합하는 두 자료구조는? (두 자료구조 모두 답하세요)',
+      en: 'What two data structures are typically combined to implement an LRU cache with O(1) get and put?',
+    },
+    acceptedAnswers: ['해시맵이중연결리스트', '해시맵 이중 연결 리스트', 'hashmap doubly linked list', 'hash map doubly linked list', '해시테이블이중연결리스트', '딕셔너리이중연결리스트'],
+    explanation: {
+      ko: 'LRU 캐시는 해시맵(key→노드 O(1) 조회)과 이중 연결 리스트(접근 순서 O(1) 재정렬)를 결합해 get/put 모두 O(1)을 달성합니다.',
+      en: 'An LRU cache combines a hash map (O(1) key-to-node lookup) and a doubly linked list (O(1) order update) to achieve O(1) get and put.',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'ds-46',
+    category: QuizCategory.DATA_STRUCTURE,
+    prompt: {
+      ko: '유니온-파인드에서 find 연산 시 탐색 경로의 모든 노드를 루트에 직접 연결해 이후 탐색을 빠르게 하는 최적화 기법은?',
+      en: 'Which union-find optimization makes every node on the find path point directly to the root, speeding up future finds?',
+    },
+    acceptedAnswers: ['경로압축', '경로 압축', 'path compression', 'pathcompression'],
+    explanation: {
+      ko: '경로 압축(path compression)은 find 중 거친 모든 노드를 루트에 직접 연결해 트리를 평탄하게 만들고 이후 find를 거의 O(1)로 만듭니다.',
+      en: 'Path compression flattens the tree during find by pointing all traversed nodes directly to the root, making subsequent finds near O(1).',
+    },
+    difficulty: 'MEDIUM',
+  },
+  {
+    id: 'ds-47',
+    category: QuizCategory.DATA_STRUCTURE,
+    prompt: {
+      ko: '유니온-파인드에서 union 시 높이가 낮은 트리를 높은 트리에 붙여 깊이 증가를 억제하는 최적화 기법은?',
+      en: 'Which union-find optimization attaches the shorter tree under the taller one during union to prevent depth growth?',
+    },
+    acceptedAnswers: ['랭크기반합치기', '랭크 기반 합치기', 'union by rank', 'unionbyrank', '랭크결합', '랭크 결합'],
+    explanation: {
+      ko: '랭크 기반 합치기(union by rank)는 두 집합의 트리 높이(랭크)를 비교해 작은 쪽을 큰 쪽 아래에 붙여 트리 높이를 O(log n)으로 제한합니다.',
+      en: 'Union by rank compares tree heights (ranks) and attaches the shorter tree under the taller, keeping height O(log n).',
+    },
+    difficulty: 'MEDIUM',
+  },
+  {
+    id: 'ds-48',
+    category: QuizCategory.DATA_STRUCTURE,
+    prompt: {
+      ko: 'k차원 공간에서 점을 k-d 초평면으로 분할해 k-최근접 이웃 탐색을 효율화하는 트리 구조는?',
+      en: 'Which tree structure partitions k-dimensional points by hyperplanes to speed up k-nearest-neighbor searches?',
+    },
+    acceptedAnswers: ['KD트리', 'KD 트리', 'kdtree', 'kd tree', 'k-d tree', 'k-dtree'],
+    explanation: {
+      ko: 'KD 트리는 각 레벨에서 하나의 차원을 기준으로 공간을 분할하는 BST로, k-최근접 이웃 및 범위 탐색을 효율적으로 수행합니다.',
+      en: 'A KD-tree is a BST that splits space along one dimension per level, enabling efficient k-nearest-neighbor and range queries.',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'ds-49',
+    category: QuizCategory.DATA_STRUCTURE,
+    prompt: {
+      ko: '피보나치 힙에서 삽입·감소키 연산의 분할 상환 시간 복잡도는? (빅오 표기)',
+      en: 'What is the amortized time complexity of insert and decrease-key operations in a Fibonacci heap? (Big-O)',
+    },
+    acceptedAnswers: ['O(1)', '상수시간', '상수 시간', 'constant time'],
+    explanation: {
+      ko: '피보나치 힙은 삽입·감소키를 O(1) 분할 상환으로 지원해 다익스트라·프림 알고리즘을 이론적으로 최적화합니다(extract-min만 O(log n)).',
+      en: 'A Fibonacci heap supports insert and decrease-key in O(1) amortized, theoretically optimizing Dijkstra and Prim (extract-min is O(log n)).',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'ds-50',
+    category: QuizCategory.DATA_STRUCTURE,
+    prompt: {
+      ko: '위상 정렬(Kahn 알고리즘)에서 각 정점의 선행 간선 수를 추적하는 데 사용하는 배열의 이름은?',
+      en: 'What is the array used in Kahn\'s topological sort algorithm to track the number of incoming edges per vertex?',
+    },
+    acceptedAnswers: ['진입차수배열', '진입 차수 배열', 'indegree array', 'indegreearrary', 'in-degree array', '진입차수', '진입 차수'],
+    explanation: {
+      ko: '진입 차수(in-degree) 배열은 각 정점으로 들어오는 간선 수를 기록하며, Kahn 알고리즘은 진입 차수 0인 정점을 큐에 넣어 위상 순서를 구합니다.',
+      en: 'An in-degree array records incoming edge counts per vertex; Kahn\'s algorithm enqueues vertices with in-degree 0 to produce topological order.',
+    },
+    difficulty: 'HARD',
   },
 ];

@@ -49,7 +49,13 @@
     "ALGORITHM": "Algorithms",
     "NETWORK": "Networking",
     "OS": "Operating Systems",
-    "DATABASE": "Databases"
+    "DATABASE": "Databases",
+    "COMPUTER_ARCHITECTURE": "Computer Architecture",
+    "DESIGN_PATTERN": "Design Patterns",
+    "WEB": "Web / HTTP",
+    "SECURITY": "Security",
+    "AI": "AI",
+    "ALL": "All"
   },
   "difficulties": {
     "ALL": "All",
