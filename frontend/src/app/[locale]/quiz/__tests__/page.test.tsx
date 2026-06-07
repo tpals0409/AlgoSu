@@ -1,5 +1,5 @@
 /**
- * @file quiz/page.tsx 통합 테스트 — idle→playing→result 전체 플로우
+ * @file quiz/page.tsx 통합 테스트 — idle→loading→playing→result 전체 플로우
  * @domain quiz
  * @layer page
  * @related quiz/page.tsx
@@ -7,13 +7,17 @@
  * Sprint 217: useAuth 모킹 추가, async finish(waitFor), 게스트 분기 검증.
  * Sprint 218 Wave C: 인증 경로(apiStore), merge-up 멱등성, 네트워크 실패 폴백,
  *   재플레이 best 갱신 배지, 난이도별 기록 분리 시나리오 추가.
+ * Sprint 228 Wave C: getRandomQuestions → async mock(mockResolvedValue).
+ *   start() 내부가 async이므로 startGame()이 waitFor로 playing phase를 기다린다.
+ *   loading 경유 흐름(idle→loading→playing) 명시.
  */
-import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { renderWithI18n } from '@/test-utils/i18n';
 import { QuizCategory, type QuizQuestion } from '@/data/quiz';
 import QuizPage from '../page';
 import { fetchApi } from '@/lib/api/client';
 import { createLocalStorageQuizStore } from '@/lib/quiz/storage';
+import { getRandomQuestions } from '@/data/quiz';
 
 jest.mock('@/components/layout/AppLayout', () => ({
   AppLayout: ({ children }: { children: React.ReactNode }) => (
@@ -74,7 +78,9 @@ jest.mock('@/data/quiz', () => {
   return {
     ...actual,
     QUIZ_CATEGORIES: [actual.QuizCategory.DATA_STRUCTURE],
-    getRandomQuestions: jest.fn(() => MOCK_QUESTIONS),
+    // async mock — start()가 await getRandomQuestions()를 호출하므로 Promise 반환 필수.
+    // 기존 동기 반환 jest.fn(() => MOCK_QUESTIONS) → jest.fn(async () => MOCK_QUESTIONS)
+    getRandomQuestions: jest.fn(async () => MOCK_QUESTIONS),
   };
 });
 
@@ -96,9 +102,15 @@ beforeEach(() => {
 describe('QuizPage flow', () => {
   beforeEach(() => window.localStorage.clear());
 
-  function startGame(): void {
+  /**
+   * 퀴즈 시작 헬퍼 — start()가 async이므로 loading→playing 전환을 waitFor로 대기.
+   * fireEvent.click 후 getRandomQuestions(async mock) 해결까지 playing phase가 보장된다.
+   */
+  async function startGame(): Promise<void> {
     renderWithI18n(<QuizPage />);
     fireEvent.click(screen.getByRole('button', { name: '시작하기' }));
+    // loading → playing 전환 대기 (답안 입력 필드가 나타날 때 playing phase)
+    await waitFor(() => expect(screen.getByLabelText('답안')).toBeInTheDocument());
   }
 
   it('renders the start screen initially', () => {
@@ -107,27 +119,57 @@ describe('QuizPage flow', () => {
     expect(screen.getByRole('button', { name: '시작하기' })).toBeInTheDocument();
   });
 
-  it('shows the first question after starting', () => {
-    startGame();
+  /**
+   * loading 중 SkeletonCard 노출 확인 (idle→loading→playing).
+   * getRandomQuestions를 지연시켜 loading phase를 관찰한다.
+   */
+  it('shows SkeletonCard while loading questions (loading phase)', async () => {
+    // 수동 제어 Promise로 loading phase를 잡는다
+    let resolveQuestions!: (v: typeof MOCK_QUESTIONS) => void;
+    const deferred = new Promise<typeof MOCK_QUESTIONS>((resolve) => {
+      resolveQuestions = resolve;
+    });
+    jest.mocked(getRandomQuestions).mockImplementationOnce(async () => deferred);
+
+    renderWithI18n(<QuizPage />);
+    fireEvent.click(screen.getByRole('button', { name: '시작하기' }));
+
+    // loading phase: SkeletonCard 내부 Skeleton이 aria-busy="true" 렌더
+    await waitFor(() =>
+      expect(document.querySelector('[aria-busy="true"]')).not.toBeNull(),
+    );
+
+    // 이 시점에서 QuizPlay(답안 입력)는 아직 없어야 한다
+    expect(screen.queryByLabelText('답안')).not.toBeInTheDocument();
+
+    // Promise 해결 → playing phase로 전환
+    await act(async () => {
+      resolveQuestions(MOCK_QUESTIONS);
+    });
+    await waitFor(() => expect(screen.getByLabelText('답안')).toBeInTheDocument());
+  });
+
+  it('shows the first question after starting', async () => {
+    await startGame();
     expect(screen.getByText('LIFO 자료구조는?')).toBeInTheDocument();
     expect(screen.getByText('1 / 2')).toBeInTheDocument();
   });
 
-  it('grades a correct answer and shows the explanation', () => {
-    startGame();
+  it('grades a correct answer and shows the explanation', async () => {
+    await startGame();
     answerCurrent('스택');
     expect(screen.getByText('정답입니다!')).toBeInTheDocument();
     expect(screen.getByText('스택입니다.')).toBeInTheDocument();
   });
 
-  it('grades a wrong answer as incorrect', () => {
-    startGame();
+  it('grades a wrong answer as incorrect', async () => {
+    await startGame();
     answerCurrent('배열');
     expect(screen.getByText('오답입니다')).toBeInTheDocument();
   });
 
   it('completes the full flow and shows the result with a perfect score', async () => {
-    startGame();
+    await startGame();
     answerCurrent('스택');
     fireEvent.click(screen.getByRole('button', { name: '다음 문항' }));
     answerCurrent('큐');
@@ -139,8 +181,29 @@ describe('QuizPage flow', () => {
     expect(screen.getByText('최고 기록 갱신!')).toBeInTheDocument();
   });
 
+  /**
+   * Critic R1 P2 회귀 — 동적 import 실패 시 idle 복귀.
+   * getRandomQuestions가 reject되면 loading에서 idle로 복귀해
+   * SkeletonCard가 사라지고 시작 화면이 재노출되어 사용자가 재시도할 수 있다.
+   */
+  it('returns to idle when getRandomQuestions rejects (dynamic import failure)', async () => {
+    jest.mocked(getRandomQuestions).mockRejectedValueOnce(new Error('Chunk load failed'));
+
+    renderWithI18n(<QuizPage />);
+    fireEvent.click(screen.getByRole('button', { name: '시작하기' }));
+
+    // reject → idle 복귀: 시작 화면이 다시 나타난다
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '시작하기' })).toBeInTheDocument(),
+    );
+
+    // QuizStart 재노출, QuizPlay(답안 입력) 없음
+    expect(screen.getByText('CS 퀴즈 미니게임')).toBeInTheDocument();
+    expect(screen.queryByLabelText('답안')).not.toBeInTheDocument();
+  });
+
   it('returns to the start screen when retry is clicked', async () => {
-    startGame();
+    await startGame();
     answerCurrent('스택');
     fireEvent.click(screen.getByRole('button', { name: '다음 문항' }));
     answerCurrent('큐');
@@ -157,7 +220,7 @@ describe('QuizPage flow', () => {
    */
   it('does not show new-best badge on equal-score replay (higher-only storage)', async () => {
     // 첫 플레이: 만점(100%) — 이전 기록 없음 → isNewBest=true
-    startGame();
+    await startGame();
     answerCurrent('스택');
     fireEvent.click(screen.getByRole('button', { name: '다음 문항' }));
     answerCurrent('큐');
@@ -167,7 +230,9 @@ describe('QuizPage flow', () => {
 
     // 재플레이: 동점(100%) — higher-only(prev.scorePercent >= new) → isNewBest=false → 배지 없음
     fireEvent.click(screen.getByRole('button', { name: '다시하기' }));
+    // idle로 돌아간 후 다시 loading→playing 전환 대기
     fireEvent.click(screen.getByRole('button', { name: '시작하기' }));
+    await waitFor(() => expect(screen.getByLabelText('답안')).toBeInTheDocument());
     answerCurrent('스택');
     fireEvent.click(screen.getByRole('button', { name: '다음 문항' }));
     answerCurrent('큐');
@@ -188,9 +253,13 @@ describe('QuizPage — authenticated (apiStore) path', () => {
     mockIsAuthenticated = false;
   });
 
-  function startGame(): void {
+  /**
+   * 인증 경로 startGame — async로 loading→playing 전환을 waitFor로 대기.
+   */
+  async function startGame(): Promise<void> {
     renderWithI18n(<QuizPage />);
     fireEvent.click(screen.getByRole('button', { name: '시작하기' }));
+    await waitFor(() => expect(screen.getByLabelText('답안')).toBeInTheDocument());
   }
 
   /**
@@ -204,7 +273,7 @@ describe('QuizPage — authenticated (apiStore) path', () => {
       .mockResolvedValueOnce([]) // GET /api/quiz-records (fetchAllBest → 이전 기록 없음)
       .mockResolvedValueOnce({}); // POST /api/quiz-records (saveResult)
 
-    startGame();
+    await startGame();
     answerCurrent('스택');
     fireEvent.click(screen.getByRole('button', { name: '다음 문항' }));
     answerCurrent('큐');
@@ -271,7 +340,7 @@ describe('QuizPage — authenticated (apiStore) path', () => {
     // 모든 fetchApi 호출 실패 — GET(getBest)·POST(saveResult) 양쪽
     mockFetchApi.mockRejectedValue(new Error('Network error'));
 
-    startGame();
+    await startGame();
     answerCurrent('스택');
     fireEvent.click(screen.getByRole('button', { name: '다음 문항' }));
     answerCurrent('큐');
@@ -298,6 +367,8 @@ describe('QuizPage — difficulty-based record separation (guest)', () => {
   it('stores best record under composite ${category}::${difficulty} key (default ALL::ALL)', async () => {
     renderWithI18n(<QuizPage />);
     fireEvent.click(screen.getByRole('button', { name: '시작하기' }));
+    // loading → playing 전환 대기 (async start())
+    await waitFor(() => expect(screen.getByLabelText('답안')).toBeInTheDocument());
 
     answerCurrent('스택');
     fireEvent.click(screen.getByRole('button', { name: '다음 문항' }));

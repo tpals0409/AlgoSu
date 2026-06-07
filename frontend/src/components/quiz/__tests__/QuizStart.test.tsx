@@ -29,18 +29,18 @@ jest.mock('@/data/quiz', () => {
       actual.QuizCategory.ALGORITHM,
       actual.QuizCategory.NETWORK,
     ],
-    getQuestionsByFilter: (
+    /**
+     * getAvailableCount mock — QuizStart가 풀 크기를 동기로 조회하는 진입점.
+     * lazy-load 아키텍처 이후 getQuestionsByFilter 대신 getAvailableCount를 사용하므로
+     * 동일 MOCK_POOL 숫자를 직접 반환한다.
+     */
+    getAvailableCount: (
       category: string,
       difficulty: string,
-    ): { id: string; category: string; difficulty: string }[] => {
+    ): number => {
       const catKey = category === 'ALL' ? 'ALL' : category;
       const poolSizes = MOCK_POOL[catKey] ?? { ALL: 0, EASY: 0, MEDIUM: 0, HARD: 0 };
-      const size = poolSizes[difficulty] ?? 0;
-      return Array.from({ length: size }, (_, i) => ({
-        id: `${catKey}-${String(i + 1).padStart(2, '0')}`,
-        category,
-        difficulty: difficulty === 'ALL' ? 'EASY' : difficulty,
-      }));
+      return poolSizes[difficulty] ?? 0;
     },
   };
 });

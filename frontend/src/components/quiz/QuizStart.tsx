@@ -18,7 +18,7 @@ import { QuizStats } from '@/components/quiz/QuizStats';
 import { cn } from '@/lib/utils';
 import type { QuizCategoryStat } from '@/lib/quiz/stats';
 import {
-  getQuestionsByFilter,
+  getAvailableCount,
   getQuizCategoryMeta,
   QUIZ_CATEGORIES,
   QUIZ_DIFFICULTIES,
@@ -82,7 +82,7 @@ export function QuizStart({ onStart, stats = [] }: QuizStartProps): ReactElement
   const [difficulty, setDifficulty] = useState<QuizDifficulty | 'ALL'>('ALL');
 
   // 가용 풀에 따라 문항 수 옵션을 동적 산출하고, 선택값을 유효 범위로 클램프(파생값).
-  const available = getQuestionsByFilter(category, difficulty).length;
+  const available = getAvailableCount(category, difficulty);
   const effectiveCounts = resolveCountOptions(available);
   const selectedCount = effectiveCounts.includes(count)
     ? count

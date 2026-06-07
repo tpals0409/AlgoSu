@@ -425,6 +425,14 @@ jobs:
       # 순수 node ESM(빌트인만) — npm ci 불필요.
       - name: Check quiz content integrity (strict)
         run: node frontend/scripts/check-quiz-content.mjs --strict
+      # Sprint 228: question-counts.ts(codegen 산출물)가 데이터와 동기 상태인지 검증.
+      # 콘텐츠 변경 후 gen 스크립트 재실행 없이 커밋하면 stale → 차단.
+      - name: Check quiz counts freshness (codegen)
+        working-directory: frontend
+        run: |
+          node scripts/gen-quiz-counts.mjs
+          git diff --exit-code src/data/quiz/question-counts.ts \
+            || (echo "::error::question-counts.ts stale — run 'npm run gen:quiz-counts' and commit" && exit 1)
 
   # ============================================================
   # npm audit — 의존성 보안 취약점 스캔 (high/critical 차단)

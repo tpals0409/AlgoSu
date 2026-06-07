@@ -1,17 +1,24 @@
 /**
- * @file quiz/index.ts 단위 테스트 — 조회 헬퍼·문항 무결성·'ALL' 필터
+ * @file quiz 데이터 계층 단위 테스트 — 조회 헬퍼·문항 무결성·'ALL' 필터
  * @domain quiz
  * @layer data
- * @related src/data/quiz/index.ts
+ * @related src/data/quiz/index.ts, src/data/quiz/all.ts
+ *
+ * lazy-load 아키텍처 이후:
+ *   - 동기 헬퍼(ALL_QUESTIONS·getQuestionsByCategory·getQuestionsByFilter) → '../all'
+ *   - 비동기 헬퍼(getRandomQuestions)·상수(QUIZ_CATEGORIES·QuizCategory) → '../index'
+ *   - getRandomQuestions는 async: 모든 호출에 await 필수.
  */
 import {
-  ALL_QUESTIONS,
-  getQuestionsByCategory,
-  getQuestionsByFilter,
   getRandomQuestions,
   QuizCategory,
   QUIZ_CATEGORIES,
 } from '../index';
+import {
+  ALL_QUESTIONS,
+  getQuestionsByCategory,
+  getQuestionsByFilter,
+} from '../all';
 
 /** 기존 5분야 — 각 50문항. */
 const ORIGINAL_CATEGORIES = [
@@ -86,38 +93,38 @@ describe('getQuestionsByFilter', () => {
 });
 
 describe('getRandomQuestions', () => {
-  it('limits the result to count', () => {
-    const result = getRandomQuestions(QuizCategory.ALGORITHM, 5);
+  it('limits the result to count', async () => {
+    const result = await getRandomQuestions(QuizCategory.ALGORITHM, 5);
     expect(result).toHaveLength(5);
   });
 
-  it('returns the full pool when count exceeds available questions', () => {
+  it('returns the full pool when count exceeds available questions', async () => {
     const pool = getQuestionsByCategory(QuizCategory.ALGORITHM);
-    const result = getRandomQuestions(QuizCategory.ALGORITHM, pool.length + 100);
+    const result = await getRandomQuestions(QuizCategory.ALGORITHM, pool.length + 100);
     expect(result).toHaveLength(pool.length);
   });
 
-  it('returns an empty array for a non-positive count', () => {
-    expect(getRandomQuestions(QuizCategory.ALGORITHM, 0)).toEqual([]);
-    expect(getRandomQuestions(QuizCategory.ALGORITHM, -3)).toEqual([]);
+  it('returns an empty array for a non-positive count', async () => {
+    expect(await getRandomQuestions(QuizCategory.ALGORITHM, 0)).toEqual([]);
+    expect(await getRandomQuestions(QuizCategory.ALGORITHM, -3)).toEqual([]);
   });
 
-  it('is deterministic with an injected rng and does not mutate the pool', () => {
+  it('is deterministic with an injected rng and does not mutate the pool', async () => {
     const pool = getQuestionsByCategory(QuizCategory.ALGORITHM);
     const rng = () => 0;
-    const first = getRandomQuestions(QuizCategory.ALGORITHM, 3, 'ALL', rng);
-    const second = getRandomQuestions(QuizCategory.ALGORITHM, 3, 'ALL', rng);
+    const first = await getRandomQuestions(QuizCategory.ALGORITHM, 3, 'ALL', rng);
+    const second = await getRandomQuestions(QuizCategory.ALGORITHM, 3, 'ALL', rng);
     expect(first.map((q) => q.id)).toEqual(second.map((q) => q.id));
     expect(getQuestionsByCategory(QuizCategory.ALGORITHM)).toEqual(pool);
   });
 
-  it('selects only questions belonging to the category', () => {
-    const result = getRandomQuestions(QuizCategory.DATA_STRUCTURE, 4);
+  it('selects only questions belonging to the category', async () => {
+    const result = await getRandomQuestions(QuizCategory.DATA_STRUCTURE, 4);
     expect(result.every((q) => q.category === QuizCategory.DATA_STRUCTURE)).toBe(true);
   });
 
-  it('restricts the pool to the requested difficulty', () => {
-    const result = getRandomQuestions(QuizCategory.DATA_STRUCTURE, 4, 'HARD');
+  it('restricts the pool to the requested difficulty', async () => {
+    const result = await getRandomQuestions(QuizCategory.DATA_STRUCTURE, 4, 'HARD');
     expect(result.length).toBeGreaterThan(0);
     expect(
       result.every(
@@ -126,10 +133,10 @@ describe('getRandomQuestions', () => {
     ).toBe(true);
   });
 
-  it("getRandomQuestions('ALL', count, 'ALL', rng) returns count items from multiple categories", () => {
+  it("getRandomQuestions('ALL', count, 'ALL', rng) returns count items from multiple categories", async () => {
     // 결정적 rng: 항상 같은 결과
     const rng = () => 0.42;
-    const result = getRandomQuestions('ALL', 10, 'ALL', rng);
+    const result = await getRandomQuestions('ALL', 10, 'ALL', rng);
     expect(result).toHaveLength(10);
     // 2개 이상 분야가 섞여야 한다
     const categories = new Set(result.map((q) => q.category));
