@@ -11,7 +11,13 @@
     "countLabel": "문항 수",
     "startButton": "시작하기",
     "empty": "출제 가능한 문항이 없습니다",
-    "emptyDesc": "현재 등록된 퀴즈 문항이 없습니다. 잠시 후 다시 시도해주세요."
+    "emptyDesc": "현재 등록된 퀴즈 문항이 없습니다. 잠시 후 다시 시도해주세요.",
+    "loadError": "문항을 불러오지 못했어요. 잠시 후 다시 시도해주세요."
+  },
+  "loading": {
+    "title": "문항 불러오는 중...",
+    "progress": "{loaded} / {total} 분야 로드",
+    "progressAria": "문항 로딩 진행률"
   },
   "stats": {
     "title": "내 기록",

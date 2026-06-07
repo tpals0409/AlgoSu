@@ -11,7 +11,13 @@
     "countLabel": "Questions",
     "startButton": "Start",
     "empty": "No questions available",
-    "emptyDesc": "There are no quiz questions registered right now. Please try again later."
+    "emptyDesc": "There are no quiz questions registered right now. Please try again later.",
+    "loadError": "Failed to load questions. Please try again."
+  },
+  "loading": {
+    "title": "Loading questions...",
+    "progress": "{loaded} / {total} categories loaded",
+    "progressAria": "Question loading progress"
   },
   "stats": {
     "title": "Your Records",
