@@ -53,6 +53,17 @@ describe('aggregateCategoryBests', () => {
     expect(result).toEqual([{ category: QuizCategory.OS, bestPercent: 40 }]);
   });
 
+  it('ignores prototype-inherited category keys (toString, __proto__)', () => {
+    // `in` 연산자라면 통과했을 상속 프로퍼티 키를 own-key 검사로 무시해야 한다.
+    const result = aggregateCategoryBests({
+      'toString::ALL': rec(100),
+      '__proto__::ALL': rec(100),
+      'hasOwnProperty::ALL': rec(100),
+      'OS::ALL': rec(40),
+    });
+    expect(result).toEqual([{ category: QuizCategory.OS, bestPercent: 40 }]);
+  });
+
   it('ignores malformed keys without the separator', () => {
     const result = aggregateCategoryBests({
       DATABASE: rec(100),

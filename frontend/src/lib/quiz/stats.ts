@@ -41,7 +41,10 @@ export function aggregateCategoryBests(
     const sepIdx = key.indexOf(KEY_SEPARATOR);
     if (sepIdx === -1) continue;
     const categoryStr = key.slice(0, sepIdx);
-    if (!(categoryStr in QUIZ_CATEGORY_META)) continue;
+    // allBest는 미검증 localStorage에서 올 수 있다. `in`은 프로토타입 상속 키
+    // (toString·__proto__ 등)까지 매칭하므로, 손상 키가 유효 분야로 통과해
+    // 이후 getQuizCategoryMeta가 undefined를 역참조하는 것을 막기 위해 own-key만 인정한다.
+    if (!Object.prototype.hasOwnProperty.call(QUIZ_CATEGORY_META, categoryStr)) continue;
 
     const category = categoryStr as QuizCategory;
     const prev = maxByCategory.get(category) ?? -1;
