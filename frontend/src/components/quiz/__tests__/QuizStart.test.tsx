@@ -20,6 +20,8 @@ const MOCK_POOL: Record<string, Record<string, number>> = {
   NETWORK:     { ALL: 30, EASY: 14, MEDIUM: 12, HARD: 4  },
 };
 
+const mockPrefetchQuestions = jest.fn();
+
 jest.mock('@/data/quiz', () => {
   const actual = jest.requireActual('@/data/quiz');
   return {
@@ -29,6 +31,8 @@ jest.mock('@/data/quiz', () => {
       actual.QuizCategory.ALGORITHM,
       actual.QuizCategory.NETWORK,
     ],
+    /** prefetchQuestions mock — hover/focus 선제 워밍 호출 검증용 spy. */
+    prefetchQuestions: (...args: unknown[]) => mockPrefetchQuestions(...args),
     /**
      * getAvailableCount mock — QuizStart가 풀 크기를 동기로 조회하는 진입점.
      * lazy-load 아키텍처 이후 getQuestionsByFilter 대신 getAvailableCount를 사용하므로
@@ -46,6 +50,8 @@ jest.mock('@/data/quiz', () => {
 });
 
 describe('QuizStart', () => {
+  beforeEach(() => mockPrefetchQuestions.mockClear());
+
   it('renders category options and title', () => {
     renderWithI18n(<QuizStart onStart={jest.fn()} />);
     expect(screen.getByText('CS 퀴즈 미니게임')).toBeInTheDocument();
@@ -297,5 +303,28 @@ describe('QuizStart', () => {
     const allRadio = within(categoryGroup).getByRole('radio', { name: '전체' });
     // 기본 선택인 '전체'는 accent color style이 없어야 함
     expect(allRadio.getAttribute('style')).toBeNull();
+  });
+
+  // ─── Sprint 229: Start 버튼 hover/focus 시 프리페칭 ────────────────────────
+
+  it('prefetches the selected category chunks on start button hover', () => {
+    renderWithI18n(<QuizStart onStart={jest.fn()} />);
+    fireEvent.mouseEnter(screen.getByRole('button', { name: '시작하기' }));
+    // 기본 선택 분야는 'ALL'
+    expect(mockPrefetchQuestions).toHaveBeenCalledWith('ALL');
+  });
+
+  it('prefetches on start button focus', () => {
+    renderWithI18n(<QuizStart onStart={jest.fn()} />);
+    fireEvent.focus(screen.getByRole('button', { name: '시작하기' }));
+    expect(mockPrefetchQuestions).toHaveBeenCalledWith('ALL');
+  });
+
+  it('prefetches the specific category currently selected', () => {
+    renderWithI18n(<QuizStart onStart={jest.fn()} />);
+    fireEvent.click(screen.getByRole('radio', { name: '알고리즘' }));
+    mockPrefetchQuestions.mockClear();
+    fireEvent.mouseEnter(screen.getByRole('button', { name: '시작하기' }));
+    expect(mockPrefetchQuestions).toHaveBeenCalledWith(QuizCategory.ALGORITHM);
   });
 });
