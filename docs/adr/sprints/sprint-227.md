@@ -125,5 +125,11 @@ i18n `categories` 객체에 신규 5키(ko+en) + `categories.ALL` 키 추가.
 
 ## Critic 교차 리뷰
 
-- **도구**: Codex codex-cli, `codex review --base 66820e0 -c model=gpt-5.5`
-- **상태**: _머지 직전 실행 예정 (결과 반영 후 갱신)_
+- **도구**: Codex codex-cli 0.130.0, `codex review --base 66820e0 -c model=gpt-5.5`
+- **라운드**: 2
+
+**R1 — [P2] 1건**: 프론트 기본 분야 'ALL' + 신규 5분야가 백엔드 quiz-record DTO allowlist(기존 5분야)에서 거부 → 로그인 사용자 `finish()`의 `saveResult`(best-effort, 에러 swallow)가 조용히 실패해 best 기록 미저장·merge-up 누락. *"these sessions appear to complete normally but their best records are never saved or merged up."* → `fcb1800`에서 identity entity enum +5 / identity·gateway DTO allowlist = 10분야 + 'ALL' / 회귀 spec(gateway+12·identity+13)로 해소. DB 컬럼 varchar(30)이라 마이그레이션 불필요.
+
+**R2 — CLEAN** (P-finding 0): *"The changes type-check across the frontend, gateway, and identity service, and the updated category/ALL flow appears consistently propagated through data, UI, and persistence DTOs. I did not find a discrete introduced bug that would warrant an inline finding."* (Codex가 frontend·gateway·identity tsc를 직접 실행해 확인.)
+
+**종합 판정**: ✅ 머지 가능 — R1 P2(백엔드 allowlist 누락) 수정 후 R2 CLEAN. 전역 1555 PASS + 백엔드 회귀 spec, 커버리지·ADR 게이트 전 통과.

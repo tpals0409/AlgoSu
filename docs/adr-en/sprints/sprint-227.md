@@ -125,5 +125,11 @@ New patterns:
 
 ## Critic Cross-Review
 
-- **Tool**: Codex codex-cli, `codex review --base 66820e0 -c model=gpt-5.5`
-- **Status**: _to be run just before merge (updated with results)_
+- **Tool**: Codex codex-cli 0.130.0, `codex review --base 66820e0 -c model=gpt-5.5`
+- **Rounds**: 2
+
+**R1 — [P2] 1 finding**: The new default category 'ALL' and the 5 new categories were rejected by the backend quiz-record DTO allowlists (original 5 only), so authenticated `saveResult` (best-effort, swallowed error) silently fails — best records are never saved or merged up. Fixed in `fcb1800`: identity entity enum +5 / identity & gateway DTO allowlist = 10 categories + 'ALL' / regression specs (gateway +12, identity +13). DB column is varchar(30) so no migration is needed.
+
+**R2 — CLEAN** (0 P-findings): *"The changes type-check across the frontend, gateway, and identity service, and the updated category/ALL flow appears consistently propagated through data, UI, and persistence DTOs. I did not find a discrete introduced bug that would warrant an inline finding."* (Codex ran tsc across frontend/gateway/identity.)
+
+**Overall verdict**: ✅ Mergeable — R1 P2 (missing backend allowlist) fixed, then R2 CLEAN. Global 1555 PASS + backend regression specs; coverage and ADR gates all pass.
