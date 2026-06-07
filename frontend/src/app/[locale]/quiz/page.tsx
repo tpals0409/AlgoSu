@@ -15,6 +15,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { QuizStart } from '@/components/quiz/QuizStart';
 import { QuizPlay } from '@/components/quiz/QuizPlay';
 import { QuizResult } from '@/components/quiz/QuizResult';
+import { SkeletonCard } from '@/components/ui/Skeleton';
 import {
   getRandomQuestions,
   type QuizCategory,
@@ -30,8 +31,8 @@ import { createApiQuizStore } from '@/lib/quiz/api-store';
 import { aggregateCategoryBests, type QuizCategoryStat } from '@/lib/quiz/stats';
 import { useAuth } from '@/contexts/AuthContext';
 
-/** 게임 진행 단계. */
-type Phase = 'idle' | 'playing' | 'result';
+/** 게임 진행 단계. loading은 async getRandomQuestions 대기 중 스켈레톤 표시에 사용. */
+type Phase = 'idle' | 'loading' | 'playing' | 'result';
 
 /** 한 판의 진행 상태 스냅샷. */
 interface Session {
@@ -139,12 +140,17 @@ export default function QuizPage(): ReactNode {
     };
   }, [phase, store, isAuthenticated, mergeUpDone]);
 
-  const start = (
+  /**
+   * 퀴즈를 시작한다. getRandomQuestions가 async이므로 로딩 단계를 거쳐 playing으로 전환한다.
+   * phase==='loading' 동안 QuizStart가 언마운트되므로 중복 호출은 자동 차단된다.
+   */
+  const start = async (
     category: QuizCategory | 'ALL',
     count: number,
     difficulty: QuizDifficulty | 'ALL',
-  ): void => {
-    const questions = getRandomQuestions(category, count, difficulty);
+  ): Promise<void> => {
+    setPhase('loading');
+    const questions = await getRandomQuestions(category, count, difficulty);
     setSession({
       category,
       difficulty,
@@ -220,7 +226,11 @@ export default function QuizPage(): ReactNode {
   return (
     <AppLayout>
       <div className="mx-auto w-full max-w-xl">
-        {phase === 'idle' && <QuizStart onStart={start} stats={stats} />}
+        {phase === 'idle' && (
+          <QuizStart onStart={(c, n, d) => void start(c, n, d)} stats={stats} />
+        )}
+
+        {phase === 'loading' && <SkeletonCard />}
 
         {phase === 'playing' && session && (
           <QuizPlay
