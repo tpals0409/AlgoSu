@@ -142,6 +142,7 @@ export default function QuizPage(): ReactNode {
 
   /**
    * 퀴즈를 시작한다. getRandomQuestions가 async이므로 로딩 단계를 거쳐 playing으로 전환한다.
+   * 동적 import 실패(stale chunk / 오프라인 / CDN 오류) 시 idle로 복귀해 사용자가 재시도할 수 있다.
    * phase==='loading' 동안 QuizStart가 언마운트되므로 중복 호출은 자동 차단된다.
    */
   const start = async (
@@ -150,18 +151,23 @@ export default function QuizPage(): ReactNode {
     difficulty: QuizDifficulty | 'ALL',
   ): Promise<void> => {
     setPhase('loading');
-    const questions = await getRandomQuestions(category, count, difficulty);
-    setSession({
-      category,
-      difficulty,
-      questions,
-      index: 0,
-      correct: 0,
-      answered: false,
-      answer: '',
-      isCorrect: false,
-    });
-    setPhase('playing');
+    try {
+      const questions = await getRandomQuestions(category, count, difficulty);
+      setSession({
+        category,
+        difficulty,
+        questions,
+        index: 0,
+        correct: 0,
+        answered: false,
+        answer: '',
+        isCorrect: false,
+      });
+      setPhase('playing');
+    } catch {
+      // 동적 import 실패(stale chunk / 오프라인 / CDN) → 시작 화면 복귀로 사용자 복구 가능
+      setPhase('idle');
+    }
   };
 
   const submit = (raw: string): void => {

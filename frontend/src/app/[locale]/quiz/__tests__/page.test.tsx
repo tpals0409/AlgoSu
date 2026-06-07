@@ -181,6 +181,27 @@ describe('QuizPage flow', () => {
     expect(screen.getByText('최고 기록 갱신!')).toBeInTheDocument();
   });
 
+  /**
+   * Critic R1 P2 회귀 — 동적 import 실패 시 idle 복귀.
+   * getRandomQuestions가 reject되면 loading에서 idle로 복귀해
+   * SkeletonCard가 사라지고 시작 화면이 재노출되어 사용자가 재시도할 수 있다.
+   */
+  it('returns to idle when getRandomQuestions rejects (dynamic import failure)', async () => {
+    jest.mocked(getRandomQuestions).mockRejectedValueOnce(new Error('Chunk load failed'));
+
+    renderWithI18n(<QuizPage />);
+    fireEvent.click(screen.getByRole('button', { name: '시작하기' }));
+
+    // reject → idle 복귀: 시작 화면이 다시 나타난다
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '시작하기' })).toBeInTheDocument(),
+    );
+
+    // QuizStart 재노출, QuizPlay(답안 입력) 없음
+    expect(screen.getByText('CS 퀴즈 미니게임')).toBeInTheDocument();
+    expect(screen.queryByLabelText('답안')).not.toBeInTheDocument();
+  });
+
   it('returns to the start screen when retry is clicked', async () => {
     await startGame();
     answerCurrent('스택');
