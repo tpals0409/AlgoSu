@@ -64,28 +64,38 @@ function rawToRecord(raw: RawQuizRecord): QuizBestRecord {
 export function createApiQuizStore(): QuizRecordStore {
   /** GET 결과 메모리 캐시 — null이면 미취득 또는 실패(재시도 허용). */
   let cache: RecordMap | null = null;
+  /** 진행 중인 GET 프로미스 — 동시 호출을 1회 요청으로 합친다(in-flight 디듀프). */
+  let inflight: Promise<RecordMap> | null = null;
 
   /**
    * 서버에서 전체 best 기록을 취득해 캐시에 저장한다.
-   * 이미 캐시가 있으면 즉시 반환한다.
+   * 이미 캐시가 있으면 즉시 반환하고, 진행 중인 요청이 있으면 그 프로미스를 공유한다
+   * (시작 화면 통계 조회와 getBest가 동시에 호출돼도 GET은 1회 — Sprint 224).
    * 네트워크 실패 시 캐시를 기록하지 않고 빈 맵을 반환한다.
    * → 다음 호출 시 서버 재조회를 재시도한다 (best-effort, Sprint 217 P2).
    */
-  async function fetchAllBest(): Promise<RecordMap> {
-    if (cache !== null) return cache;
-    try {
-      const records = await fetchApi<RawQuizRecord[]>('/api/quiz-records');
-      const map: RecordMap = {};
-      for (const raw of records) {
-        map[toCompositeKey(raw.category, raw.difficulty)] = rawToRecord(raw);
+  function fetchAllBest(): Promise<RecordMap> {
+    if (cache !== null) return Promise.resolve(cache);
+    if (inflight !== null) return inflight;
+    inflight = (async () => {
+      try {
+        const records = await fetchApi<RawQuizRecord[]>('/api/quiz-records');
+        const map: RecordMap = {};
+        for (const raw of records) {
+          map[toCompositeKey(raw.category, raw.difficulty)] = rawToRecord(raw);
+        }
+        cache = map;
+        return cache;
+      } catch {
+        // 네트워크 실패 시 cache는 null 유지 — 다음 호출 시 재시도 가능
+        // best-effort: 결과 화면 차단 없이 빈 맵 반환
+        return {};
+      } finally {
+        // 성공/실패 무관하게 in-flight 슬롯 해제 (성공 시 cache, 실패 시 재시도 허용)
+        inflight = null;
       }
-      cache = map;
-      return cache;
-    } catch {
-      // 네트워크 실패 시 cache는 null 유지 — 다음 호출 시 재시도 가능
-      // best-effort: 결과 화면 차단 없이 빈 맵 반환
-      return {};
-    }
+    })();
+    return inflight;
   }
 
   return {

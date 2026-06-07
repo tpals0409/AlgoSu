@@ -62,6 +62,23 @@ describe('createApiQuizStore', () => {
     expect(mockFetchApi).toHaveBeenCalledTimes(1);
   });
 
+  it('dedupes concurrent getAllBest calls into a single fetch (in-flight sharing)', async () => {
+    // 첫 GET을 보류시켜 두 호출이 동시에 in-flight 상태가 되도록 한다.
+    let resolveFetch: (value: typeof MOCK_RECORDS) => void = () => {};
+    mockFetchApi.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+    const store = createApiQuizStore();
+    const p1 = store.getAllBest();
+    const p2 = store.getAllBest(); // 첫 호출이 resolve되기 전 동시 호출 → inflight 공유
+    resolveFetch(MOCK_RECORDS);
+    const [r1, r2] = await Promise.all([p1, p2]);
+    expect(r1).toEqual(r2);
+    expect(mockFetchApi).toHaveBeenCalledTimes(1);
+  });
+
   it('getBest returns the record for matching composite key', async () => {
     mockFetchApi.mockResolvedValueOnce(MOCK_RECORDS);
     const store = createApiQuizStore();

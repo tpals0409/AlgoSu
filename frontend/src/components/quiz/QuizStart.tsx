@@ -14,7 +14,9 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PillRadioGroup } from '@/components/quiz/PillRadioGroup';
+import { QuizStats } from '@/components/quiz/QuizStats';
 import { cn } from '@/lib/utils';
+import type { QuizCategoryStat } from '@/lib/quiz/stats';
 import {
   getQuestionsByFilter,
   getQuizCategoryMeta,
@@ -61,6 +63,8 @@ interface QuizStartProps {
     count: number,
     difficulty: QuizDifficulty | 'ALL',
   ) => void;
+  /** 분야별 최고 점수 요약 ("내 기록" 영역, 비어 있으면 미표시) */
+  readonly stats?: readonly QuizCategoryStat[];
 }
 
 /**
@@ -68,7 +72,7 @@ interface QuizStartProps {
  * 출제 가능한 카테고리가 없으면 EmptyState를, 있으면 선택 UI를 렌더한다.
  * 분야 pill은 전용 accent 색·아이콘으로, 난이도 pill은 semantic 톤으로 구분한다.
  */
-export function QuizStart({ onStart }: QuizStartProps): ReactElement {
+export function QuizStart({ onStart, stats = [] }: QuizStartProps): ReactElement {
   const t = useTranslations('quiz');
   const [category, setCategory] = useState<QuizCategory>(QUIZ_CATEGORIES[0]);
   const [count, setCount] = useState<number>(COUNT_OPTIONS[0]);
@@ -155,6 +159,8 @@ export function QuizStart({ onStart }: QuizStartProps): ReactElement {
       >
         {t('start.startButton')}
       </Button>
+
+      <QuizStats stats={stats} />
     </Card>
   );
 }

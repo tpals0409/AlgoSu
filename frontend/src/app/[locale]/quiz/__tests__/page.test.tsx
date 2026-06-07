@@ -227,9 +227,10 @@ describe('QuizPage — authenticated (apiStore) path', () => {
   });
 
   /**
-   * Wave C Scenario 3: merge-up 멱등성
-   * 게스트 기록이 있는 상태에서 로그인 전환 시 localStorage→서버 1회 업로드.
-   * 이후 상태 변경으로 재렌더가 일어나도 ref 플래그가 재업로드를 차단한다.
+   * Wave C Scenario 3: merge-up 멱등성 (Sprint 224: 통계 GET 추가 반영)
+   * 게스트 기록이 있는 상태에서 로그인 전환 시 localStorage→서버 1회 업로드(POST).
+   * 동시에 시작 화면 통계 조회(GET)가 1회 발생한다.
+   * 이후 상태 변경으로 재렌더가 일어나도 ref 플래그·idle 한정 effect가 재요청을 차단한다.
    */
   it('merge-up uploads guest records once; ref flag prevents repeat on re-render', async () => {
     // 게스트 기록 1건 사전 적재
@@ -243,18 +244,22 @@ describe('QuizPage — authenticated (apiStore) path', () => {
       playedAt: '2026-06-01T00:00:00.000Z',
     });
 
-    mockFetchApi.mockResolvedValue({}); // merge-up POST 성공
+    mockFetchApi.mockResolvedValue({}); // 통계 GET + merge-up POST 모두 성공
     renderWithI18n(<QuizPage />);
 
-    // merge-up effect → DATA_STRUCTURE::ALL 기록 1건 POST
-    await waitFor(() => expect(mockFetchApi).toHaveBeenCalledTimes(1));
+    // 인증 idle 진입 시 두 요청: 통계 GET(getAllBest) + merge-up POST(게스트 기록 1건)
+    await waitFor(() => expect(mockFetchApi).toHaveBeenCalledTimes(2));
+    expect(mockFetchApi).toHaveBeenCalledWith('/api/quiz-records');
+    expect(mockFetchApi).toHaveBeenCalledWith(
+      '/api/quiz-records',
+      expect.objectContaining({ method: 'POST' }),
+    );
 
-    // 시작하기 클릭 → 상태 변경으로 재렌더 — useEffect dep 미변경으로 재실행 없음
-    // + mergedUpRef.current=true 가드로 이중 실행도 차단
+    // 시작하기 클릭 → 상태 변경으로 재렌더 — merge-up ref 가드 + 통계 effect는 idle 한정
     fireEvent.click(screen.getByRole('button', { name: '시작하기' }));
 
-    // 재렌더 후에도 여전히 1회만 호출
-    expect(mockFetchApi).toHaveBeenCalledTimes(1);
+    // 재렌더(idle→playing) 후에도 추가 요청 없음 — 여전히 2회
+    expect(mockFetchApi).toHaveBeenCalledTimes(2);
   });
 
   /**

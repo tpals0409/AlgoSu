@@ -27,6 +27,7 @@ import {
   type QuizRecordStore,
 } from '@/lib/quiz/storage';
 import { createApiQuizStore } from '@/lib/quiz/api-store';
+import { aggregateCategoryBests, type QuizCategoryStat } from '@/lib/quiz/stats';
 import { useAuth } from '@/contexts/AuthContext';
 
 /** 게임 진행 단계. */
@@ -60,6 +61,7 @@ export default function QuizPage(): ReactNode {
   const [session, setSession] = useState<Session | null>(null);
   const [bestScore, setBestScore] = useState<number | null>(null);
   const [isNewBest, setIsNewBest] = useState(false);
+  const [stats, setStats] = useState<readonly QuizCategoryStat[]>([]);
 
   /** 로그인 전환 시 localStorage → 서버 1회 merge-up 완료 플래그 (세션 1회). */
   const mergedUpRef = useRef(false);
@@ -97,6 +99,27 @@ export default function QuizPage(): ReactNode {
       }
     })();
   }, [isAuthenticated, isLoading, localStore, apiStore]);
+
+  /**
+   * 시작 화면(idle) 진입 시 분야별 최고 점수를 조회해 "내 기록" 요약을 갱신한다.
+   * 저장소(로그인=API/게스트=local)·단계 변화에 반응하며, 비동기 결과는
+   * 언마운트/단계 전환 후 setState를 막도록 cancelled 가드로 보호한다.
+   */
+  useEffect(() => {
+    if (phase !== 'idle') return undefined;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const allBest = await store.getAllBest();
+        if (!cancelled) setStats(aggregateCategoryBests(allBest));
+      } catch {
+        // best-effort — 기록 요약 실패는 시작 화면을 막지 않는다
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [phase, store]);
 
   const start = (
     category: QuizCategory,
@@ -179,7 +202,7 @@ export default function QuizPage(): ReactNode {
   return (
     <AppLayout>
       <div className="mx-auto w-full max-w-xl">
-        {phase === 'idle' && <QuizStart onStart={start} />}
+        {phase === 'idle' && <QuizStart onStart={start} stats={stats} />}
 
         {phase === 'playing' && session && (
           <QuizPlay
