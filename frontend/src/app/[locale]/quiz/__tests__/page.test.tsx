@@ -291,11 +291,11 @@ describe('QuizPage — difficulty-based record separation (guest)', () => {
   beforeEach(() => window.localStorage.clear());
 
   /**
-   * 동일 분야(DATA_STRUCTURE)라도 difficulty가 다르면 composite 키가 분리된다.
-   * 기본 선택 난이도 'ALL' → localStorage 키 'DATA_STRUCTURE::ALL'.
+   * 기본 분야 'ALL' + 기본 난이도 'ALL' → localStorage 복합 키 'ALL::ALL'.
+   * Sprint 227: 기본 분야가 DATA_STRUCTURE → ALL로 변경됨.
    * storage.test.ts에 단위 커버가 있으므로 여기서는 page→store 연결을 검증.
    */
-  it('stores best record under composite ${category}::${difficulty} key (default ALL)', async () => {
+  it('stores best record under composite ${category}::${difficulty} key (default ALL::ALL)', async () => {
     renderWithI18n(<QuizPage />);
     fireEvent.click(screen.getByRole('button', { name: '시작하기' }));
 
@@ -306,10 +306,11 @@ describe('QuizPage — difficulty-based record separation (guest)', () => {
 
     await waitFor(() => expect(screen.getByText('퀴즈 완료')).toBeInTheDocument());
 
-    // 기본 난이도 'ALL' → localStorage 복합 키 'DATA_STRUCTURE::ALL'
+    // 기본 분야 'ALL' + 기본 난이도 'ALL' → localStorage 복합 키 'ALL::ALL' (Sprint 227)
     const stored = JSON.parse(window.localStorage.getItem('algosu.quiz.records.v2') ?? '{}');
-    expect(stored).toHaveProperty('DATA_STRUCTURE::ALL');
-    // 난이도별 분리 — EASY 키는 별개 기록이며 혼재하지 않음
+    expect(stored).toHaveProperty('ALL::ALL');
+    // 분야·난이도별 분리 — DATA_STRUCTURE::ALL 키는 별개 기록이며 혼재하지 않음
+    expect(stored).not.toHaveProperty('DATA_STRUCTURE::ALL');
     expect(stored).not.toHaveProperty('DATA_STRUCTURE::EASY');
   });
 });
