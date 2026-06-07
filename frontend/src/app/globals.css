@@ -105,12 +105,22 @@
   --quiz-cat-network-color:        #0E7490;
   --quiz-cat-os-color:             #A21CAF;
   --quiz-cat-database-color:       #047857;
+  --quiz-cat-computer-architecture-color: #B45309;
+  --quiz-cat-design-pattern-color:        #BE185D;
+  --quiz-cat-web-color:                   #4338CA;
+  --quiz-cat-security-color:              #B91C1C;
+  --quiz-cat-ai-color:                    #4D7C0F;
 
   --quiz-cat-data-structure-bg: rgba(37,  99,  235, 0.10);
   --quiz-cat-algorithm-bg:      rgba(124, 58,  237, 0.10);
   --quiz-cat-network-bg:        rgba(14,  116, 144, 0.10);
   --quiz-cat-os-bg:             rgba(162, 28,  175, 0.10);
   --quiz-cat-database-bg:       rgba(4,   120, 87,  0.10);
+  --quiz-cat-computer-architecture-bg: rgba(180, 83,  9,   0.10);
+  --quiz-cat-design-pattern-bg:        rgba(190, 24,  93,  0.10);
+  --quiz-cat-web-bg:                   rgba(67,  56,  202, 0.10);
+  --quiz-cat-security-bg:              rgba(185, 28,  28,  0.10);
+  --quiz-cat-ai-bg:                    rgba(77,  124, 15,  0.10);
 
   /* ── Code highlight colors ── */
   --hl-success-bg:     rgba(34,  197,  94, 0.12);
@@ -258,12 +268,22 @@
   --quiz-cat-network-color:        #22D3EE;
   --quiz-cat-os-color:             #E879F9;
   --quiz-cat-database-color:       #34D399;
+  --quiz-cat-computer-architecture-color: #FBBF24;
+  --quiz-cat-design-pattern-color:        #F472B6;
+  --quiz-cat-web-color:                   #818CF8;
+  --quiz-cat-security-color:              #F87171;
+  --quiz-cat-ai-color:                    #A3E635;
 
   --quiz-cat-data-structure-bg: rgba(96,  165, 250, 0.14);
   --quiz-cat-algorithm-bg:      rgba(167, 139, 250, 0.14);
   --quiz-cat-network-bg:        rgba(34,  211, 238, 0.14);
   --quiz-cat-os-bg:             rgba(232, 121, 249, 0.14);
   --quiz-cat-database-bg:       rgba(52,  211, 153, 0.14);
+  --quiz-cat-computer-architecture-bg: rgba(251, 191, 36,  0.14);
+  --quiz-cat-design-pattern-bg:        rgba(244, 114, 182, 0.14);
+  --quiz-cat-web-bg:                   rgba(129, 140, 248, 0.14);
+  --quiz-cat-security-bg:              rgba(248, 113, 113, 0.14);
+  --quiz-cat-ai-bg:                    rgba(163, 230, 53,  0.14);
 
   /* ── Code highlight colors (dark) ── */
   --hl-success-bg:     rgba(34,  197,  94, 0.15);
