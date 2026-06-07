@@ -9,13 +9,19 @@
 import { IsIn, IsInt, IsISO8601, Max, Min } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
-/** 허용 카테고리 5종 — frontend QuizCategory와 동일 값 */
+/** 허용 분야 — frontend QuizCategory 10종 + 'ALL'(전 분야 메타, Sprint 227) */
 const ALLOWED_CATEGORIES = [
   'DATA_STRUCTURE',
   'ALGORITHM',
   'NETWORK',
   'OS',
   'DATABASE',
+  'COMPUTER_ARCHITECTURE',
+  'DESIGN_PATTERN',
+  'WEB',
+  'SECURITY',
+  'AI',
+  'ALL',
 ] as const;
 
 /** 허용 난이도 4종 — 'ALL'(전체 난이도 플레이) 포함 */
