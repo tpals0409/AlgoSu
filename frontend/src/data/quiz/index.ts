@@ -1,107 +1,76 @@
 /**
- * @file CS 퀴즈 문항 집계 및 조회 헬퍼 (공개 진입점)
+ * @file CS 퀴즈 공개 배럴 — lazy-load 아키텍처 진입점
  * @domain quiz
  * @layer data
- * @related src/data/quiz/types.ts, src/data/quiz/data-structure.ts, src/data/quiz/algorithm.ts, src/data/quiz/network.ts, src/data/quiz/os.ts, src/data/quiz/database.ts, src/data/quiz/computer-architecture.ts, src/data/quiz/design-pattern.ts, src/data/quiz/web.ts, src/data/quiz/security.ts, src/data/quiz/ai.ts
+ * @related src/data/quiz/types.ts, src/data/quiz/category-meta.ts,
+ *          src/data/quiz/loaders.ts, src/data/quiz/counts.ts,
+ *          src/data/quiz/question-counts.ts, src/data/quiz/all.ts
+ *
+ * ⚠️ lazy-load 아키텍처:
+ *   - 문항 데이터(각 분야 .ts)는 이 파일에서 정적 import하지 않는다.
+ *   - getRandomQuestions()는 async로 CATEGORY_LOADERS를 통해 동적 import한다.
+ *   - 테스트·서버에서 동기 eager 합산이 필요하면 all.ts를 직접 import할 것.
+ *   - all.ts / 분야 데이터 파일을 여기서 정적 import하면 lazy-load 무력화됨.
  */
-import { AI_QUESTIONS } from './ai';
-import { ALGORITHM_QUESTIONS } from './algorithm';
-import { COMPUTER_ARCHITECTURE_QUESTIONS } from './computer-architecture';
-import { DATABASE_QUESTIONS } from './database';
-import { DATA_STRUCTURE_QUESTIONS } from './data-structure';
-import { DESIGN_PATTERN_QUESTIONS } from './design-pattern';
-import { NETWORK_QUESTIONS } from './network';
-import { OS_QUESTIONS } from './os';
-import { SECURITY_QUESTIONS } from './security';
-import { WEB_QUESTIONS } from './web';
-import { QuizCategory, type QuizDifficulty, type QuizQuestion } from './types';
 
+// ── 타입 및 enum 재 export ───────────────────────────────────────────
 export { QuizCategory } from './types';
 export type { QuizDifficulty, LocalizedText, QuizQuestion } from './types';
+
+// ── 분야 메타 재 export ─────────────────────────────────────────────
 export { QUIZ_CATEGORY_META, getQuizCategoryMeta } from './category-meta';
 export type { QuizCategoryMeta } from './category-meta';
+
+// ── 동적 로더 재 export ─────────────────────────────────────────────
+export { CATEGORY_LOADERS } from './loaders';
+
+// ── 동기 카운트 헬퍼 재 export ─────────────────────────────────────
+export { getAvailableCount } from './counts';
+
+// ── 로컬 의존성 (내부 사용 전용) ────────────────────────────────────
+import { QuizCategory } from './types';
+import type { QuizDifficulty, QuizQuestion } from './types';
+import { QUESTION_COUNTS } from './question-counts';
+import { CATEGORY_LOADERS } from './loaders';
+import { shuffle } from './shuffle';
+
+// ── 정적 상수 ───────────────────────────────────────────────────────
 
 /** 난이도 필터 옵션 — 'ALL'(전체) + 3단계 난이도. */
 export const QUIZ_DIFFICULTIES = ['ALL', 'EASY', 'MEDIUM', 'HARD'] as const;
 
-/** 전 분야 문항을 합산한 전체 목록. */
-export const ALL_QUESTIONS: readonly QuizQuestion[] = [
-  ...DATA_STRUCTURE_QUESTIONS,
-  ...ALGORITHM_QUESTIONS,
-  ...NETWORK_QUESTIONS,
-  ...OS_QUESTIONS,
-  ...DATABASE_QUESTIONS,
-  ...COMPUTER_ARCHITECTURE_QUESTIONS,
-  ...DESIGN_PATTERN_QUESTIONS,
-  ...WEB_QUESTIONS,
-  ...SECURITY_QUESTIONS,
-  ...AI_QUESTIONS,
-];
-
-/** 실제 문항이 존재하는 카테고리 목록 (중복 제거, 등장 순서 유지). */
-export const QUIZ_CATEGORIES: readonly QuizCategory[] = Array.from(
-  new Set(ALL_QUESTIONS.map((question) => question.category)),
-);
-
 /**
- * 주어진 카테고리에 속한 문항만 필터링해 반환한다.
- *
- * @param category 조회할 CS 분야
- * @returns 해당 카테고리 문항 배열 (없으면 빈 배열)
+ * 실제 문항이 존재하는 카테고리 목록 (canonical 순서).
+ * question-counts.ts에서 파생되므로 데이터 파일을 직접 import하지 않는다.
  */
-export function getQuestionsByCategory(category: QuizCategory): QuizQuestion[] {
-  return ALL_QUESTIONS.filter((question) => question.category === category);
-}
+export const QUIZ_CATEGORIES: readonly QuizCategory[] = Object.keys(
+  QUESTION_COUNTS,
+) as QuizCategory[];
+
+// ── async 문항 조회 ─────────────────────────────────────────────────
 
 /**
- * 카테고리로 거른 뒤, 난이도가 'ALL'이 아니면 난이도까지 필터링해 반환한다.
- * category가 'ALL'이면 전 분야 문항(ALL_QUESTIONS) 전체를 대상으로 한다.
- *
- * @param category 조회할 CS 분야 ('ALL'이면 전 분야)
- * @param difficulty 난이도 필터 ('ALL'이면 난이도 무관 전체)
- * @returns 조건을 만족하는 문항 배열 (없으면 빈 배열)
- */
-export function getQuestionsByFilter(
-  category: QuizCategory | 'ALL',
-  difficulty: QuizDifficulty | 'ALL',
-): QuizQuestion[] {
-  const byCategory = category === 'ALL' ? [...ALL_QUESTIONS] : getQuestionsByCategory(category);
-  if (difficulty === 'ALL') return byCategory;
-  return byCategory.filter((question) => question.difficulty === difficulty);
-}
-
-/**
- * 배열을 Fisher-Yates 알고리즘으로 셔플한 새 배열을 반환한다 (원본 불변).
- *
- * @param items 셔플 대상 배열
- * @param rng 0 이상 1 미만 난수 생성기 (기본 Math.random, 테스트 주입 가능)
- * @returns 셔플된 새 배열
- */
-function shuffle<T>(items: readonly T[], rng: () => number = Math.random): T[] {
-  const result = [...items];
-  for (let i = result.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(rng() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
-
-/**
- * 카테고리·난이도 조건에서 무작위로 최대 `count`개 문항을 뽑아 반환한다.
+ * 카테고리·난이도 조건에서 무작위로 최대 `count`개 문항을 동적 로드해 반환한다.
  * 가용 문항이 `count`보다 적으면 전체(셔플본)를 반환한다.
  *
- * @param category 조회할 CS 분야 ('ALL'이면 전 분야)
+ * @param category 조회할 CS 분야 ('ALL'이면 전 분야를 병렬 로드)
  * @param count 뽑을 문항 수
  * @param difficulty 난이도 필터 ('ALL'이면 난이도 무관, 기본 'ALL')
  * @param rng 난수 생성기 (기본 Math.random, 테스트 결정성용 주입 가능)
  * @returns 무작위 문항 배열 (최대 count개)
  */
-export function getRandomQuestions(
+export async function getRandomQuestions(
   category: QuizCategory | 'ALL',
   count: number,
   difficulty: QuizDifficulty | 'ALL' = 'ALL',
   rng: () => number = Math.random,
-): QuizQuestion[] {
-  const pool = getQuestionsByFilter(category, difficulty);
+): Promise<QuizQuestion[]> {
+  const categories =
+    category === 'ALL'
+      ? (Object.keys(QUESTION_COUNTS) as QuizCategory[])
+      : [category];
+  const chunks = await Promise.all(categories.map((c) => CATEGORY_LOADERS[c]()));
+  let pool = chunks.flat();
+  if (difficulty !== 'ALL') pool = pool.filter((q) => q.difficulty === difficulty);
   return shuffle(pool, rng).slice(0, Math.max(0, count));
 }
