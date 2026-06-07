@@ -30,7 +30,9 @@ RUN npm run build
 FROM node:22-alpine AS production
 
 ARG APK_CACHE_BUST
-RUN apk update && apk upgrade --no-cache libcrypto3 libssl3 && rm -rf /var/cache/apk/*
+# APK_CACHE_BUST를 RUN에서 참조해야 BuildKit이 값 변경 시 이 레이어를 무효화한다.
+# (미참조 ARG는 BuildKit 캐시를 깨지 못해 apk_bust=true가 무력화됨 — Sprint 225)
+RUN echo "apk cache bust: ${APK_CACHE_BUST}" && apk update && apk upgrade --no-cache libcrypto3 libssl3 && rm -rf /var/cache/apk/*
 
 # 보안: non-root 사용자 생성
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
