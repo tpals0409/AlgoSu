@@ -2,13 +2,18 @@
  * @file CS 퀴즈 문항 집계 및 조회 헬퍼 (공개 진입점)
  * @domain quiz
  * @layer data
- * @related src/data/quiz/types.ts, src/data/quiz/data-structure.ts, src/data/quiz/algorithm.ts, src/data/quiz/network.ts, src/data/quiz/os.ts, src/data/quiz/database.ts
+ * @related src/data/quiz/types.ts, src/data/quiz/data-structure.ts, src/data/quiz/algorithm.ts, src/data/quiz/network.ts, src/data/quiz/os.ts, src/data/quiz/database.ts, src/data/quiz/computer-architecture.ts, src/data/quiz/design-pattern.ts, src/data/quiz/web.ts, src/data/quiz/security.ts, src/data/quiz/ai.ts
  */
+import { AI_QUESTIONS } from './ai';
 import { ALGORITHM_QUESTIONS } from './algorithm';
+import { COMPUTER_ARCHITECTURE_QUESTIONS } from './computer-architecture';
 import { DATABASE_QUESTIONS } from './database';
 import { DATA_STRUCTURE_QUESTIONS } from './data-structure';
+import { DESIGN_PATTERN_QUESTIONS } from './design-pattern';
 import { NETWORK_QUESTIONS } from './network';
 import { OS_QUESTIONS } from './os';
+import { SECURITY_QUESTIONS } from './security';
+import { WEB_QUESTIONS } from './web';
 import { QuizCategory, type QuizDifficulty, type QuizQuestion } from './types';
 
 export { QuizCategory } from './types';
@@ -26,6 +31,11 @@ export const ALL_QUESTIONS: readonly QuizQuestion[] = [
   ...NETWORK_QUESTIONS,
   ...OS_QUESTIONS,
   ...DATABASE_QUESTIONS,
+  ...COMPUTER_ARCHITECTURE_QUESTIONS,
+  ...DESIGN_PATTERN_QUESTIONS,
+  ...WEB_QUESTIONS,
+  ...SECURITY_QUESTIONS,
+  ...AI_QUESTIONS,
 ];
 
 /** 실제 문항이 존재하는 카테고리 목록 (중복 제거, 등장 순서 유지). */

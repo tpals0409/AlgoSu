@@ -1,5 +1,5 @@
 /**
- * @file 데이터베이스 분야 CS 퀴즈 문항 (30문항)
+ * @file 데이터베이스 분야 CS 퀴즈 문항 (50문항)
  * @domain quiz
  * @layer data
  * @related src/data/quiz/types.ts, src/data/quiz/index.ts
@@ -427,5 +427,285 @@ export const DATABASE_QUESTIONS: readonly QuizQuestion[] = [
       en: 'A view is a virtual table defined by a query over one or more tables, holding no physical data and producing results on access.',
     },
     difficulty: 'EASY',
+  },
+  {
+    id: 'db-31',
+    category: QuizCategory.DATABASE,
+    prompt: {
+      ko: 'SQL에서 데이터를 집계할 때 특정 열 기준으로 행을 묶는 절은?',
+      en: 'Which SQL clause groups rows by a specific column for aggregation?',
+    },
+    acceptedAnswers: ['GROUP BY', 'groupby', '그룹바이', '그룹 바이'],
+    explanation: {
+      ko: 'GROUP BY 절은 지정한 열의 값이 같은 행들을 하나의 그룹으로 묶어 COUNT, SUM, AVG 등 집계 함수를 적용할 수 있게 합니다.',
+      en: 'The GROUP BY clause groups rows with the same value in a specified column so aggregate functions like COUNT, SUM, and AVG can be applied per group.',
+    },
+    difficulty: 'EASY',
+  },
+  {
+    id: 'db-32',
+    category: QuizCategory.DATABASE,
+    prompt: {
+      ko: 'SQL에서 GROUP BY 결과에 조건을 거는 절은? (WHERE는 그룹 전 행 필터링)',
+      en: 'Which SQL clause filters grouped results after GROUP BY? (WHERE filters rows before grouping)',
+    },
+    acceptedAnswers: ['HAVING', 'having', '해빙'],
+    explanation: {
+      ko: 'HAVING 절은 GROUP BY로 만들어진 그룹에 조건을 적용합니다. WHERE는 그룹화 전 개별 행 필터링에 사용됩니다.',
+      en: 'The HAVING clause applies a filter condition to groups produced by GROUP BY, whereas WHERE filters individual rows before grouping.',
+    },
+    difficulty: 'EASY',
+  },
+  {
+    id: 'db-33',
+    category: QuizCategory.DATABASE,
+    prompt: {
+      ko: '두 릴레이션의 공통 속성을 기준으로 일치하는 행을 결합하는 관계대수 연산은?',
+      en: 'Which relational algebra operation combines matching rows from two relations on a common attribute?',
+    },
+    acceptedAnswers: ['조인', 'join', 'natural join', '자연조인'],
+    explanation: {
+      ko: '조인(join)은 두 릴레이션에서 공통 속성 값이 같은 행을 결합하는 관계대수 연산으로, SQL에서 INNER JOIN 등으로 구현됩니다.',
+      en: 'A join combines rows from two relations that share matching values on a common attribute, implemented in SQL as INNER JOIN and others.',
+    },
+    difficulty: 'EASY',
+  },
+  {
+    id: 'db-34',
+    category: QuizCategory.DATABASE,
+    prompt: {
+      ko: '데이터베이스에서 테이블 간 참조 관계가 항상 유효하도록 보장하는 무결성 제약은?',
+      en: 'Which integrity constraint ensures that table references are always valid?',
+    },
+    acceptedAnswers: ['참조무결성', '참조 무결성', 'referential integrity', '외래키무결성'],
+    explanation: {
+      ko: '참조 무결성(referential integrity)은 외래키가 참조하는 기본키 값이 반드시 존재하거나 NULL임을 보장하는 제약입니다.',
+      en: 'Referential integrity constrains foreign keys to reference only existing primary key values or be NULL.',
+    },
+    difficulty: 'EASY',
+  },
+  {
+    id: 'db-35',
+    category: QuizCategory.DATABASE,
+    prompt: {
+      ko: '트랜잭션 시작 전 데이터베이스가 일관성 있는 상태였다면 트랜잭션 후에도 일관성을 유지해야 함을 보장하는 ACID 성질은?',
+      en: 'Which ACID property guarantees that a database moves from one consistent state to another after a transaction?',
+    },
+    acceptedAnswers: ['일관성', 'consistency', '컨시스턴시'],
+    explanation: {
+      ko: '일관성(Consistency)은 트랜잭션 전후로 데이터베이스가 정의된 규칙과 무결성 제약을 모두 만족하는 상태임을 보장합니다.',
+      en: 'Consistency guarantees that a transaction brings the database from one valid state to another, satisfying all defined rules and constraints.',
+    },
+    difficulty: 'EASY',
+  },
+  {
+    id: 'db-36',
+    category: QuizCategory.DATABASE,
+    prompt: {
+      ko: 'OLTP와 대비되는 개념으로, 대용량 이력 데이터를 분석·집계하는 데 특화된 데이터 처리 방식은?',
+      en: 'What is the data processing approach, contrasted with OLTP, specialized for analyzing and aggregating large historical datasets?',
+    },
+    acceptedAnswers: ['OLAP', '올랩', 'online analytical processing'],
+    explanation: {
+      ko: 'OLAP(Online Analytical Processing)는 대량의 이력 데이터를 복잡한 집계·분석 쿼리로 처리하며, 데이터웨어하우스 환경에서 주로 사용됩니다.',
+      en: 'OLAP (Online Analytical Processing) handles complex aggregation and analysis queries over large historical datasets, typically in a data warehouse.',
+    },
+    difficulty: 'EASY',
+  },
+  {
+    id: 'db-37',
+    category: QuizCategory.DATABASE,
+    prompt: {
+      ko: '실시간 소수 행의 삽입·수정·삭제를 빠르게 처리하는 운영 데이터베이스 처리 방식의 약어는?',
+      en: 'What is the acronym for the operational database processing style that handles fast single-row inserts, updates, and deletes?',
+    },
+    acceptedAnswers: ['OLTP', '올티피', 'online transaction processing'],
+    explanation: {
+      ko: 'OLTP(Online Transaction Processing)는 짧고 빈번한 트랜잭션(주문·결제 등)을 실시간으로 처리하는 방식으로, 정규화된 구조와 빠른 쓰기에 최적화됩니다.',
+      en: 'OLTP (Online Transaction Processing) handles frequent short transactions such as orders and payments in real time, optimized for normalized schema and fast writes.',
+    },
+    difficulty: 'EASY',
+  },
+  {
+    id: 'db-38',
+    category: QuizCategory.DATABASE,
+    prompt: {
+      ko: '4NF는 어떤 비정상적인 종속을 제거하는 정규형인가?',
+      en: 'What type of anomalous dependency does 4NF eliminate?',
+    },
+    acceptedAnswers: ['다치종속', '다치 종속', '다중값종속', 'multivalued dependency', 'MVD'],
+    explanation: {
+      ko: '제4정규형(4NF)은 BCNF를 만족하면서 비자명(non-trivial) 다치 종속(multivalued dependency)까지 제거한 정규형입니다.',
+      en: 'Fourth normal form (4NF) extends BCNF by also eliminating non-trivial multivalued dependencies (MVDs).',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'db-39',
+    category: QuizCategory.DATABASE,
+    prompt: {
+      ko: '속성 A가 속성 B를 함수적으로 결정할 때, A→B로 표기하는 이 관계를 무엇이라 하는가?',
+      en: 'When attribute A determines attribute B, written A→B, what is this relationship called?',
+    },
+    acceptedAnswers: ['함수종속', '함수 종속', 'functional dependency', 'FD'],
+    explanation: {
+      ko: '함수 종속(FD, Functional Dependency)은 한 속성(집합)의 값이 다른 속성의 값을 유일하게 결정하는 관계로, 정규화의 이론적 기반입니다.',
+      en: 'A functional dependency (FD) means one attribute (set) uniquely determines another; it is the theoretical basis for normalization.',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'db-40',
+    category: QuizCategory.DATABASE,
+    prompt: {
+      ko: '락을 획득하지 않고 버전 정보를 이용해 동시성을 제어하며, 읽기가 쓰기를 막지 않는 동시성 제어 기법은?',
+      en: 'Which concurrency control technique uses version snapshots instead of locks, allowing reads and writes not to block each other?',
+    },
+    acceptedAnswers: ['MVCC', '다중버전동시성제어', '다중 버전 동시성 제어', 'multiversion concurrency control'],
+    explanation: {
+      ko: 'MVCC(Multi-Version Concurrency Control)는 데이터의 여러 버전을 유지해 읽기와 쓰기가 서로 차단하지 않도록 하는 동시성 제어 기법으로 PostgreSQL, InnoDB 등에서 사용됩니다.',
+      en: 'MVCC (Multi-Version Concurrency Control) maintains multiple versions of data so reads and writes do not block each other, as used in PostgreSQL and InnoDB.',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'db-41',
+    category: QuizCategory.DATABASE,
+    prompt: {
+      ko: '커밋되지 않은 변경 사항을 다른 트랜잭션이 읽는 데이터 불일치 현상은?',
+      en: 'What is the anomaly where one transaction reads uncommitted changes made by another transaction?',
+    },
+    acceptedAnswers: ['더티리드', '더티 리드', 'dirty read', 'dirtyread'],
+    explanation: {
+      ko: '더티 리드(dirty read)는 트랜잭션 A가 커밋 전 변경한 데이터를 트랜잭션 B가 읽은 뒤, A가 롤백하면 B는 존재하지 않는 데이터를 읽은 것이 되는 이상현상입니다.',
+      en: 'A dirty read occurs when transaction B reads uncommitted changes from transaction A; if A rolls back, B has read data that never existed.',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'db-42',
+    category: QuizCategory.DATABASE,
+    prompt: {
+      ko: '한 트랜잭션 내에서 같은 행을 두 번 읽었을 때 다른 트랜잭션의 커밋으로 인해 값이 달라지는 이상현상은?',
+      en: 'Which anomaly causes a row to return different values on two reads within the same transaction due to another committed transaction?',
+    },
+    acceptedAnswers: ['반복불가능읽기', '반복 불가능 읽기', 'non-repeatable read', 'nonrepeatable read', '비반복읽기'],
+    explanation: {
+      ko: '반복 불가능 읽기(non-repeatable read)는 같은 트랜잭션 내에서 동일 행을 두 번 읽을 때 중간에 다른 트랜잭션의 커밋으로 값이 변경되어 다른 결과를 반환하는 이상현상입니다.',
+      en: 'A non-repeatable read happens when the same row returns different values on two reads in one transaction because another committed transaction updated it in between.',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'db-43',
+    category: QuizCategory.DATABASE,
+    prompt: {
+      ko: '범위 쿼리를 두 번 실행했을 때 다른 트랜잭션의 삽입으로 새 행이 나타나는 이상현상은?',
+      en: 'Which anomaly causes a range query to return new rows on a second execution because another transaction inserted rows?',
+    },
+    acceptedAnswers: ['팬텀리드', '팬텀 리드', 'phantom read', 'phantomread', '유령읽기'],
+    explanation: {
+      ko: '팬텀 리드(phantom read)는 동일 트랜잭션 내에서 범위 조건 쿼리를 두 번 수행할 때 중간에 다른 트랜잭션이 삽입한 행이 보이는 이상현상입니다.',
+      en: 'A phantom read occurs when a range query run twice in the same transaction returns additional rows inserted by another committed transaction.',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'db-44',
+    category: QuizCategory.DATABASE,
+    prompt: {
+      ko: '트랜잭션이 충돌을 가정하지 않고 작업 후 커밋 시점에 충돌 여부를 검사하는 동시성 제어 전략은?',
+      en: 'Which concurrency control strategy assumes no conflict and checks for conflicts only at commit time?',
+    },
+    acceptedAnswers: ['낙관적락', '낙관적 락', 'optimistic locking', 'optimistic lock', 'optimistic concurrency control', 'OCC'],
+    explanation: {
+      ko: '낙관적 락(Optimistic Locking)은 충돌이 드물다고 가정해 락 없이 작업하고 커밋 전에 버전·타임스탬프로 충돌을 감지합니다.',
+      en: 'Optimistic locking assumes conflicts are rare, skips locks during the operation, and detects conflicts via version or timestamp at commit time.',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'db-45',
+    category: QuizCategory.DATABASE,
+    prompt: {
+      ko: '쿼리 결과를 물리적으로 저장해 빠른 재조회를 지원하는, 실제 데이터를 보관하는 뷰는?',
+      en: 'Which type of view physically stores query results to support fast re-queries?',
+    },
+    acceptedAnswers: ['머티리얼라이즈드뷰', '머티리얼라이즈드 뷰', 'materialized view', '구체화된뷰', '구체화뷰'],
+    explanation: {
+      ko: '머티리얼라이즈드 뷰(Materialized View)는 쿼리 결과를 실제 데이터로 저장해 재조회 시 빠른 성능을 제공하며, 주기적으로 갱신(refresh)이 필요합니다.',
+      en: 'A materialized view physically stores query results for fast re-access and must be periodically refreshed to stay current.',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'db-46',
+    category: QuizCategory.DATABASE,
+    prompt: {
+      ko: '대규모 테이블을 범위·해시·리스트 등의 기준으로 여러 물리 파티션으로 나누는 기법은?',
+      en: 'Which technique splits a large table into multiple physical partitions by range, hash, or list?',
+    },
+    acceptedAnswers: ['파티셔닝', 'partitioning', '파티션'],
+    explanation: {
+      ko: '파티셔닝(partitioning)은 테이블을 논리적으로 하나로 유지하면서 물리적으로 여러 파티션으로 나눠 쿼리 성능과 관리 효율을 높이는 기법입니다.',
+      en: 'Partitioning splits a table into multiple physical segments while presenting a single logical table, improving query performance and manageability.',
+    },
+    difficulty: 'MEDIUM',
+  },
+  {
+    id: 'db-47',
+    category: QuizCategory.DATABASE,
+    prompt: {
+      ko: '데이터를 여러 노드에 수평 분산 저장하여 수평 확장(scale-out)을 가능하게 하는 기법은?',
+      en: 'Which technique horizontally distributes data across multiple nodes to enable scale-out?',
+    },
+    acceptedAnswers: ['샤딩', 'sharding', '수평분할'],
+    explanation: {
+      ko: '샤딩(sharding)은 데이터를 샤드 키 기준으로 여러 노드에 수평 분산해 단일 노드 한계를 초과하는 데이터 처리 및 쓰기 확장을 가능하게 합니다.',
+      en: 'Sharding distributes data across multiple nodes by a shard key, enabling write scale-out beyond the limits of a single node.',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'db-48',
+    category: QuizCategory.DATABASE,
+    prompt: {
+      ko: '분산 시스템에서 일관성(Consistency)·가용성(Availability)·분단 허용성(Partition tolerance) 중 셋 모두를 동시에 보장할 수 없다는 이론은?',
+      en: 'Which theorem states that a distributed system cannot simultaneously guarantee consistency, availability, and partition tolerance?',
+    },
+    acceptedAnswers: ['CAP정리', 'CAP 정리', 'CAP theorem', 'cap', '캡정리'],
+    explanation: {
+      ko: 'CAP 정리(Brewer 정리)는 네트워크 분단(partition) 상황에서 일관성(C)과 가용성(A) 중 하나를 포기해야 한다는 분산 시스템 이론입니다.',
+      en: "The CAP theorem (Brewer's theorem) states that during a network partition, a distributed system must sacrifice either consistency or availability.",
+    },
+    difficulty: 'MEDIUM',
+  },
+  {
+    id: 'db-49',
+    category: QuizCategory.DATABASE,
+    prompt: {
+      ko: '데이터베이스 변경 사항을 실제 데이터 파일에 반영하기 전에 먼저 순차 기록하는 로그 방식은?',
+      en: 'Which logging strategy writes changes to a sequential log before applying them to the actual data files?',
+    },
+    acceptedAnswers: ['WAL', 'write ahead log', 'write-ahead log', '선행기록로그', '선행 기록 로그', '사전기록로그'],
+    explanation: {
+      ko: 'WAL(Write-Ahead Logging)은 변경 사항을 순차 로그에 먼저 기록한 뒤 데이터 파일에 반영하여 장애 복구(redo/undo) 및 내구성을 보장합니다.',
+      en: 'Write-Ahead Logging (WAL) records changes to a sequential log before applying them to data files, enabling crash recovery via redo/undo.',
+    },
+    difficulty: 'MEDIUM',
+  },
+  {
+    id: 'db-50',
+    category: QuizCategory.DATABASE,
+    prompt: {
+      ko: '복합 인덱스에서 쿼리가 인덱스 열만으로 결과를 완성해 테이블 접근을 생략하는 인덱스는?',
+      en: 'Which index satisfies a query entirely from indexed columns without accessing the table?',
+    },
+    acceptedAnswers: ['커버링인덱스', '커버링 인덱스', 'covering index', 'index only scan', '인덱스온리스캔'],
+    explanation: {
+      ko: '커버링 인덱스(covering index)는 쿼리에 필요한 모든 열이 인덱스에 포함되어 테이블 접근(table lookup)을 생략해 성능을 크게 높입니다.',
+      en: 'A covering index includes all columns needed by a query, allowing it to be answered entirely from the index without a table lookup.',
+    },
+    difficulty: 'HARD',
   },
 ];

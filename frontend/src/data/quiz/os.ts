@@ -1,5 +1,5 @@
 /**
- * @file 운영체제 분야 CS 퀴즈 문항 (30문항)
+ * @file 운영체제 분야 CS 퀴즈 문항 (50문항)
  * @domain quiz
  * @layer data
  * @related src/data/quiz/types.ts, src/data/quiz/index.ts
@@ -427,5 +427,286 @@ export const OS_QUESTIONS: readonly QuizQuestion[] = [
       en: 'fork() duplicates the calling process to create a child, returning 0 to the child and the child’s PID to the parent.',
     },
     difficulty: 'EASY',
+  },
+  // ── 신규 20문항 (os-31 ~ os-50) ──────────────────────────────────────────
+  {
+    id: 'os-31',
+    category: QuizCategory.OS,
+    prompt: {
+      ko: '부모 프로세스가 먼저 종료되어 고아가 된 자식 프로세스를 입양하는 특수 프로세스는? (PID 1)',
+      en: 'Which special process (PID 1) adopts orphan processes whose parent has already terminated?',
+    },
+    acceptedAnswers: ['init', 'init 프로세스', 'systemd', 'PID 1'],
+    explanation: {
+      ko: '고아(orphan) 프로세스는 부모가 먼저 죽어 고아가 되면 init(PID 1) 프로세스가 입양하여 종료 상태를 수거합니다.',
+      en: 'When a parent dies before its child, the orphan is reparented to init (PID 1), which will reap its exit status.',
+    },
+    difficulty: 'EASY',
+  },
+  {
+    id: 'os-32',
+    category: QuizCategory.OS,
+    prompt: {
+      ko: 'fork() 이후 자식 프로세스에서 완전히 다른 프로그램을 메모리에 로드해 실행하는 시스템 콜은?',
+      en: 'Which system call, used after fork(), loads and runs a completely different program in the child process?',
+    },
+    acceptedAnswers: ['exec', 'exec()', 'execve', 'execve()', 'execvp', 'execvp()'],
+    explanation: {
+      ko: 'exec()는 현재 프로세스 이미지를 새 프로그램으로 교체합니다. fork+exec 조합으로 새 프로세스를 생성·실행합니다.',
+      en: 'exec() replaces the current process image with a new program; the fork+exec combo creates and runs new processes.',
+    },
+    difficulty: 'EASY',
+  },
+  {
+    id: 'os-33',
+    category: QuizCategory.OS,
+    prompt: {
+      ko: '파이프(pipe), 메시지 큐, 공유 메모리, 소켓 등을 통칭하는 프로세스 간 데이터 교환 메커니즘은? (약어)',
+      en: 'What is the acronym for mechanisms (pipe, message queue, shared memory, socket) that let processes exchange data?',
+    },
+    acceptedAnswers: ['IPC', '프로세스간통신', '프로세스 간 통신', 'inter process communication', 'interprocess communication'],
+    explanation: {
+      ko: 'IPC(Inter-Process Communication)는 프로세스 간 데이터 교환·동기화를 위한 메커니즘의 총칭으로 파이프·소켓·공유 메모리 등이 있습니다.',
+      en: 'IPC (Inter-Process Communication) encompasses mechanisms—pipes, sockets, shared memory—for data exchange between processes.',
+    },
+    difficulty: 'EASY',
+  },
+  {
+    id: 'os-34',
+    category: QuizCategory.OS,
+    prompt: {
+      ko: '페이징에서 논리 주소를 물리 주소로 변환할 때 참조하는, 논리 페이지 번호와 물리 프레임 번호의 대응 테이블은?',
+      en: 'Which table maps logical page numbers to physical frame numbers during address translation in paging?',
+    },
+    acceptedAnswers: ['페이지테이블', '페이지 테이블', 'page table'],
+    explanation: {
+      ko: '페이지 테이블은 각 논리 페이지 번호를 대응하는 물리 프레임 번호로 매핑하여 주소 변환을 수행합니다.',
+      en: 'The page table maps each logical page number to its corresponding physical frame number for address translation.',
+    },
+    difficulty: 'EASY',
+  },
+  {
+    id: 'os-35',
+    category: QuizCategory.OS,
+    prompt: {
+      ko: '운영체제의 핵심 기능만을 커널에 두고 나머지 서비스를 사용자 공간에서 실행하는 커널 구조는?',
+      en: 'Which kernel structure keeps only core functions in the kernel and runs other services in user space?',
+    },
+    acceptedAnswers: ['마이크로커널', '마이크로 커널', 'microkernel', 'micro kernel'],
+    explanation: {
+      ko: '마이크로커널은 IPC·기본 스케줄링만 커널에 두고 파일 시스템·드라이버 등을 사용자 공간에서 실행해 안정성을 높입니다.',
+      en: 'A microkernel keeps only IPC and basic scheduling in kernel space, running file systems and drivers in user space for stability.',
+    },
+    difficulty: 'EASY',
+  },
+  {
+    id: 'os-36',
+    category: QuizCategory.OS,
+    prompt: {
+      ko: '유닉스 파일시스템에서 파일의 크기·권한·소유자·데이터 블록 포인터 등 메타데이터를 저장하는 구조체는?',
+      en: 'Which Unix file system structure stores file metadata such as size, permissions, owner, and data block pointers?',
+    },
+    acceptedAnswers: ['inode', 'i-node', '아이노드'],
+    explanation: {
+      ko: 'inode는 파일 이름을 제외한 모든 메타데이터(권한·소유자·타임스탬프·데이터 블록 위치)를 저장하는 자료구조입니다.',
+      en: 'An inode stores all file metadata except the filename, including permissions, owner, timestamps, and data block locations.',
+    },
+    difficulty: 'EASY',
+  },
+  {
+    id: 'os-37',
+    category: QuizCategory.OS,
+    prompt: {
+      ko: '잠금 해제를 기다리는 동안 CPU를 양보하지 않고 루프를 반복하며 바쁜 대기를 수행하는 잠금은?',
+      en: 'Which lock performs busy-waiting in a loop without yielding the CPU while waiting for the lock to be released?',
+    },
+    acceptedAnswers: ['스핀락', '스핀 락', 'spinlock', 'spin lock', 'busy wait lock'],
+    explanation: {
+      ko: '스핀락은 잠금이 풀릴 때까지 CPU를 점유하며 반복 확인(busy-wait)합니다. 대기 시간이 짧은 멀티코어 환경에서 유리합니다.',
+      en: 'A spinlock busy-waits in a loop, consuming CPU. It is efficient for short waits on multicore systems where context switch cost is high.',
+    },
+    difficulty: 'MEDIUM',
+  },
+  {
+    id: 'os-38',
+    category: QuizCategory.OS,
+    prompt: {
+      ko: '공유 메모리 방식의 IPC에서 여러 프로세스가 같은 메모리 영역에 동시 접근할 때 반드시 필요한 것은?',
+      en: 'What is required when multiple processes access the same shared memory region concurrently in IPC?',
+    },
+    acceptedAnswers: ['동기화', '동기화 메커니즘', 'synchronization', '상호배제', 'mutex', '세마포어', 'semaphore'],
+    explanation: {
+      ko: '공유 메모리는 가장 빠른 IPC이지만 동시 접근으로 경쟁상태가 생기므로 뮤텍스·세마포어 등 동기화가 필수입니다.',
+      en: 'Shared memory is the fastest IPC, but concurrent access causes race conditions, so synchronization (mutex/semaphore) is mandatory.',
+    },
+    difficulty: 'MEDIUM',
+  },
+  {
+    id: 'os-39',
+    category: QuizCategory.OS,
+    prompt: {
+      ko: 'SJF의 선점형 버전으로, 새로운 프로세스 도착 시 남은 버스트 시간이 더 짧으면 CPU를 빼앗는 스케줄링은?',
+      en: 'Which preemptive variant of SJF preempts the running process if a newly arrived process has a shorter remaining burst?',
+    },
+    acceptedAnswers: ['SRTF', '최단잔여시간우선', 'shortest remaining time first', 'shortest-remaining-time-first', 'SRTN'],
+    explanation: {
+      ko: 'SRTF(Shortest Remaining Time First)는 선점형 SJF로, 잔여 버스트 시간이 가장 짧은 프로세스를 항상 실행합니다.',
+      en: 'SRTF (Shortest Remaining Time First) is preemptive SJF, always running the process with the shortest remaining burst time.',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'os-40',
+    category: QuizCategory.OS,
+    prompt: {
+      ko: '여러 단계의 준비 큐(레벨)를 두고, 타임 퀀텀을 다 쓰면 하위 큐로 내려보내는 스케줄링 알고리즘은? (약어)',
+      en: 'Which scheduling algorithm uses multiple ready-queue levels and demotes a process to a lower queue when it exhausts its quantum?',
+    },
+    acceptedAnswers: ['MLFQ', '다단계피드백큐', '다단계 피드백 큐', 'multilevel feedback queue', 'multi-level feedback queue'],
+    explanation: {
+      ko: 'MLFQ(Multi-Level Feedback Queue)는 CPU 집중 프로세스를 점차 낮은 우선순위 큐로 이동시켜 I/O 집중 프로세스 우선 처리를 실현합니다.',
+      en: 'MLFQ demotes CPU-bound processes to lower-priority queues over time, giving preference to I/O-bound processes.',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'os-41',
+    category: QuizCategory.OS,
+    prompt: {
+      ko: '우선순위 스케줄링에서 낮은 우선순위 프로세스가 CPU를 오래 얻지 못해 실행이 무한 지연되는 문제는?',
+      en: 'Which problem in priority scheduling indefinitely delays low-priority processes that never get the CPU?',
+    },
+    acceptedAnswers: ['기아', '기아현상', '기아 현상', 'starvation'],
+    explanation: {
+      ko: '기아(starvation)는 낮은 우선순위 프로세스가 높은 우선순위 프로세스에 계속 밀려 CPU를 할당받지 못하는 문제입니다. aging 기법으로 완화합니다.',
+      en: 'Starvation indefinitely delays low-priority processes. It is mitigated by aging—gradually increasing the priority of waiting processes.',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'os-42',
+    category: QuizCategory.OS,
+    prompt: {
+      ko: '기아를 해결하기 위해 프로세스의 대기 시간에 비례해 우선순위를 점진적으로 높이는 기법은?',
+      en: "Which technique resolves starvation by gradually raising a process's priority proportional to its waiting time?",
+    },
+    acceptedAnswers: ['에이징', 'aging'],
+    explanation: {
+      ko: '에이징(aging)은 오래 기다린 프로세스의 우선순위를 점차 높여 기아를 방지하는 기법입니다.',
+      en: 'Aging gradually increases the priority of long-waiting processes, preventing starvation.',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'os-43',
+    category: QuizCategory.OS,
+    prompt: {
+      ko: '교착상태 4필요조건 중, 자원이 한 번에 한 프로세스만 사용 가능한 조건은?',
+      en: 'Which of the four deadlock conditions states that a resource can be used by only one process at a time?',
+    },
+    acceptedAnswers: ['상호배제', '상호 배제', 'mutual exclusion'],
+    explanation: {
+      ko: '교착상태 4조건은 ①상호배제 ②점유와 대기 ③비선점 ④순환 대기이며, 상호배제는 자원이 한 번에 한 프로세스에만 할당됨을 의미합니다.',
+      en: 'The four deadlock conditions are mutual exclusion, hold-and-wait, no preemption, and circular wait. Mutual exclusion means each resource is non-shareable.',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'os-44',
+    category: QuizCategory.OS,
+    prompt: {
+      ko: '교착상태 4조건 중, 프로세스가 자원을 점유한 채 반납하지 않고 있는 조건은?',
+      en: 'Which deadlock condition states that a resource cannot be forcibly taken away from a process holding it?',
+    },
+    acceptedAnswers: ['비선점', '비선점 조건', 'no preemption', 'non preemption'],
+    explanation: {
+      ko: '비선점(no preemption) 조건은 프로세스가 자원을 자발적으로만 반납할 수 있고, 강제로 빼앗을 수 없음을 의미합니다.',
+      en: 'No preemption means resources can only be released voluntarily by the holding process, not forcibly taken.',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'os-45',
+    category: QuizCategory.OS,
+    prompt: {
+      ko: '프레임 수를 늘렸는데 오히려 페이지 폴트가 더 많이 발생하는 비직관적 현상은?',
+      en: 'Which counterintuitive anomaly causes more page faults when the number of frames is increased?',
+    },
+    acceptedAnswers: ['벨라디의모순', '벨라디 모순', 'beladys anomaly', "belady's anomaly", 'belady anomaly'],
+    explanation: {
+      ko: '벨라디의 모순(Belady\'s Anomaly)은 FIFO 교체 알고리즘에서 프레임 수를 늘려도 페이지 폴트가 오히려 증가하는 현상으로, LRU·Optimal에서는 발생하지 않습니다.',
+      en: "Belady's Anomaly occurs with FIFO replacement: adding more frames can increase page faults. LRU and Optimal are immune.",
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'os-46',
+    category: QuizCategory.OS,
+    prompt: {
+      ko: '스래싱을 막기 위해 각 프로세스가 일정 시간 동안 참조한 페이지 집합을 프레임 할당의 기준으로 삼는 모델은?',
+      en: 'Which model prevents thrashing by using the set of pages referenced in a recent time window as the basis for frame allocation?',
+    },
+    acceptedAnswers: ['워킹셋', '워킹 셋', '워킹셋 모델', 'working set', 'working-set model'],
+    explanation: {
+      ko: '워킹셋 모델은 프로세스가 최근 Δ 시간 내 참조한 페이지 집합(워킹셋)만큼 프레임을 보장하여 스래싱을 예방합니다.',
+      en: 'The working-set model allocates enough frames to cover the pages referenced in the last Δ time window, preventing thrashing.',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'os-47',
+    category: QuizCategory.OS,
+    prompt: {
+      ko: '디스크 헤드가 한 방향으로 이동하며 요청을 처리하고, 끝에 도달하면 반대 방향으로 서비스하는 디스크 스케줄링은?',
+      en: 'Which disk scheduling algorithm moves the head in one direction servicing requests, then reverses at the end?',
+    },
+    acceptedAnswers: ['SCAN', '스캔', 'scan algorithm', 'elevator algorithm', '엘리베이터'],
+    explanation: {
+      ko: 'SCAN(엘리베이터) 알고리즘은 헤드가 한쪽 끝까지 이동하며 요청을 처리하고, 끝에서 방향을 바꿔 반대로 서비스합니다.',
+      en: 'SCAN (elevator) moves the head to one end servicing requests, then reverses direction, like an elevator.',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'os-48',
+    category: QuizCategory.OS,
+    prompt: {
+      ko: '커널 코드 실행 중에도 더 높은 우선순위 프로세스로 선점이 가능한 커널 설계 방식은?',
+      en: 'Which kernel design allows preemption even while kernel code is executing, permitting higher-priority processes to run?',
+    },
+    acceptedAnswers: ['선점형커널', '선점형 커널', '선점 커널', 'preemptive kernel'],
+    explanation: {
+      ko: '선점형 커널은 커널 모드 실행 중에도 우선순위가 높은 프로세스로의 선점을 허용하여 실시간 응답성을 높입니다.',
+      en: 'A preemptive kernel allows context switches even during kernel execution, improving real-time responsiveness.',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'os-49',
+    category: QuizCategory.OS,
+    prompt: {
+      ko: '모니터(monitor) 동기화에서, 조건이 만족될 때까지 스레드를 대기시키고 신호로 깨우는 내부 동기화 객체는?',
+      en: 'Within a monitor, which internal synchronization object suspends a thread until a condition is met and wakes it with a signal?',
+    },
+    acceptedAnswers: ['조건변수', '조건 변수', 'condition variable'],
+    explanation: {
+      ko: '조건 변수(condition variable)는 모니터 내부에서 wait()로 스레드를 대기열에 넣고, signal()/broadcast()로 깨워 조건부 동기화를 구현합니다.',
+      en: 'A condition variable suspends threads via wait() and wakes them via signal()/broadcast() inside a monitor for conditional synchronization.',
+    },
+    difficulty: 'HARD',
+  },
+  {
+    id: 'os-50',
+    category: QuizCategory.OS,
+    prompt: {
+      ko: '운영체제 또는 프로그래밍 언어가 제공하는 동기화 추상화로, 공유 자원에 대한 상호배제와 조건 동기화를 캡슐화한 고수준 구조는?',
+      en: 'Which high-level synchronization construct, provided by an OS or language runtime, encapsulates mutual exclusion and condition synchronization for shared resources?',
+    },
+    acceptedAnswers: ['모니터', 'monitor'],
+    explanation: {
+      ko: '모니터(monitor)는 공유 자원과 관련 연산을 하나의 모듈로 캡슐화하고, 한 번에 하나의 스레드만 진입하도록 상호배제와 조건 변수를 제공하는 고수준 동기화 구조입니다.',
+      en: 'A monitor encapsulates shared resources and their operations, enforcing mutual exclusion and providing condition variables so only one thread executes inside at a time.',
+    },
+    difficulty: 'HARD',
   },
 ];
