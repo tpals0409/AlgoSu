@@ -13,6 +13,10 @@
     "empty": "No questions available",
     "emptyDesc": "There are no quiz questions registered right now. Please try again later."
   },
+  "stats": {
+    "title": "Your Records",
+    "scoreAria": "{category} best accuracy {score} percent"
+  },
   "play": {
     "progress": "{current} / {total}",
     "progressAria": "Quiz progress",

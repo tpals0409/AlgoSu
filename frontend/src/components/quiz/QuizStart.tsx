@@ -13,7 +13,10 @@ import { Brain } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { PillRadioGroup } from '@/components/quiz/PillRadioGroup';
+import { QuizStats } from '@/components/quiz/QuizStats';
 import { cn } from '@/lib/utils';
+import type { QuizCategoryStat } from '@/lib/quiz/stats';
 import {
   getQuestionsByFilter,
   getQuizCategoryMeta,
@@ -60,6 +63,8 @@ interface QuizStartProps {
     count: number,
     difficulty: QuizDifficulty | 'ALL',
   ) => void;
+  /** 분야별 최고 점수 요약 ("내 기록" 영역, 비어 있으면 미표시) */
+  readonly stats?: readonly QuizCategoryStat[];
 }
 
 /**
@@ -67,7 +72,7 @@ interface QuizStartProps {
  * 출제 가능한 카테고리가 없으면 EmptyState를, 있으면 선택 UI를 렌더한다.
  * 분야 pill은 전용 accent 색·아이콘으로, 난이도 pill은 semantic 톤으로 구분한다.
  */
-export function QuizStart({ onStart }: QuizStartProps): ReactElement {
+export function QuizStart({ onStart, stats = [] }: QuizStartProps): ReactElement {
   const t = useTranslations('quiz');
   const [category, setCategory] = useState<QuizCategory>(QUIZ_CATEGORIES[0]);
   const [count, setCount] = useState<number>(COUNT_OPTIONS[0]);
@@ -98,74 +103,52 @@ export function QuizStart({ onStart }: QuizStartProps): ReactElement {
         </div>
       </div>
 
-      <fieldset className="space-y-2">
-        <legend className="text-xs font-medium text-text-2">{t('start.categoryLabel')}</legend>
-        <div className="flex flex-wrap gap-2">
-          {QUIZ_CATEGORIES.map((option) => {
-            const meta = getQuizCategoryMeta(option);
-            const Icon = meta.icon;
-            const active = category === option;
-            const activeStyle: CSSProperties | undefined = active
-              ? { color: meta.colorVar, backgroundColor: meta.bgVar, borderColor: meta.colorVar }
-              : undefined;
-            return (
-              <button
-                key={option}
-                type="button"
-                aria-pressed={active}
-                onClick={() => setCategory(option)}
-                style={activeStyle}
-                className={cn(PILL_BASE, !active && INACTIVE_PILL)}
-              >
-                <Icon className="size-3.5" aria-hidden />
-                {t(`categories.${option}`)}
-              </button>
-            );
-          })}
-        </div>
-      </fieldset>
+      <PillRadioGroup
+        legend={t('start.categoryLabel')}
+        options={QUIZ_CATEGORIES}
+        value={category}
+        onChange={setCategory}
+        getOptionKey={(option) => option}
+        getOptionClassName={(_option, active) => cn(PILL_BASE, !active && INACTIVE_PILL)}
+        getOptionStyle={(option, active): CSSProperties | undefined => {
+          if (!active) return undefined;
+          const meta = getQuizCategoryMeta(option);
+          return { color: meta.colorVar, backgroundColor: meta.bgVar, borderColor: meta.colorVar };
+        }}
+        renderOption={(option) => {
+          const Icon = getQuizCategoryMeta(option).icon;
+          return (
+            <>
+              <Icon className="size-3.5" aria-hidden />
+              {t(`categories.${option}`)}
+            </>
+          );
+        }}
+      />
 
-      <fieldset className="space-y-2">
-        <legend className="text-xs font-medium text-text-2">{t('start.difficultyLabel')}</legend>
-        <div className="flex flex-wrap gap-2">
-          {QUIZ_DIFFICULTIES.map((option) => {
-            const active = difficulty === option;
-            return (
-              <button
-                key={option}
-                type="button"
-                aria-pressed={active}
-                onClick={() => setDifficulty(option)}
-                className={cn(PILL_BASE, active ? DIFFICULTY_TONE[option] : INACTIVE_PILL)}
-              >
-                {t(`difficulties.${option}`)}
-              </button>
-            );
-          })}
-        </div>
-      </fieldset>
+      <PillRadioGroup
+        legend={t('start.difficultyLabel')}
+        options={QUIZ_DIFFICULTIES}
+        value={difficulty}
+        onChange={setDifficulty}
+        getOptionKey={(option) => option}
+        getOptionClassName={(option, active) =>
+          cn(PILL_BASE, active ? DIFFICULTY_TONE[option] : INACTIVE_PILL)
+        }
+        renderOption={(option) => t(`difficulties.${option}`)}
+      />
 
-      <fieldset className="space-y-2">
-        <legend className="text-xs font-medium text-text-2">{t('start.countLabel')}</legend>
-        <div className="flex flex-wrap gap-2">
-          {effectiveCounts.map((option) => (
-            <button
-              key={option}
-              type="button"
-              aria-pressed={selectedCount === option}
-              onClick={() => setCount(option)}
-              className={cn(
-                PILL_BASE,
-                selectedCount === option
-                  ? 'border-primary bg-primary-soft text-primary'
-                  : INACTIVE_PILL,
-              )}
-            >
-              {option}
-            </button>
-          ))}
-        </div>
-      </fieldset>
+      <PillRadioGroup
+        legend={t('start.countLabel')}
+        options={effectiveCounts}
+        value={selectedCount}
+        onChange={setCount}
+        getOptionKey={(option) => String(option)}
+        getOptionClassName={(_option, active) =>
+          cn(PILL_BASE, active ? 'border-primary bg-primary-soft text-primary' : INACTIVE_PILL)
+        }
+        renderOption={(option) => option}
+      />
 
       <Button
         variant="primary"
@@ -176,6 +159,8 @@ export function QuizStart({ onStart }: QuizStartProps): ReactElement {
       >
         {t('start.startButton')}
       </Button>
+
+      <QuizStats stats={stats} />
     </Card>
   );
 }

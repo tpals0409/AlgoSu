@@ -27,6 +27,7 @@ import {
   type QuizRecordStore,
 } from '@/lib/quiz/storage';
 import { createApiQuizStore } from '@/lib/quiz/api-store';
+import { aggregateCategoryBests, type QuizCategoryStat } from '@/lib/quiz/stats';
 import { useAuth } from '@/contexts/AuthContext';
 
 /** 게임 진행 단계. */
@@ -60,17 +61,28 @@ export default function QuizPage(): ReactNode {
   const [session, setSession] = useState<Session | null>(null);
   const [bestScore, setBestScore] = useState<number | null>(null);
   const [isNewBest, setIsNewBest] = useState(false);
+  const [stats, setStats] = useState<readonly QuizCategoryStat[]>([]);
 
   /** 로그인 전환 시 localStorage → 서버 1회 merge-up 완료 플래그 (세션 1회). */
   const mergedUpRef = useRef(false);
+  /**
+   * 인증 사용자의 merge-up 완료 플래그 — 통계 조회 게이트.
+   * 인증 사용자의 통계 GET이 merge-up POST와 병렬 실행돼 stale 데이터를 표시·캐시하는
+   * 것을 막는다(Critic Sprint 224 P2/R2). **게스트는 이 값을 보지 않으므로**
+   * (통계 effect 가드가 `isAuthenticated &&`로만 적용) 게스트→로그인 전환 시에도
+   * 이 값은 계속 false라 전환 직후 조기 GET이 발생하지 않는다(스냅샷 안전).
+   */
+  const [mergeUpDone, setMergeUpDone] = useState(false);
 
   /**
-   * 로그인 상태 확정 후 1회 merge-up을 실행한다.
+   * 로그인 상태 확정 후 1회 merge-up을 실행하고 인증 통계 게이트를 연다.
    * localStorage v2 key의 게스트 best 전체를 API 저장소에 업로드한다.
    * 서버 upsert는 higher-only이므로 멱등, best-effort(실패 무시).
+   * 게스트(미인증)는 merge-up·게이트 모두 불필요하므로 즉시 종료한다.
    */
   useEffect(() => {
-    if (!isAuthenticated || isLoading || mergedUpRef.current) return;
+    if (isLoading || !isAuthenticated) return;
+    if (mergedUpRef.current) return;
     mergedUpRef.current = true;
 
     void (async () => {
@@ -94,9 +106,38 @@ export default function QuizPage(): ReactNode {
         );
       } catch {
         // best-effort — merge-up 실패 시 조용히 무시
+      } finally {
+        // 성공/실패 무관하게 게이트 release — 마지막 saveResult가 API 캐시를
+        // 무효화한 뒤이므로 이후 통계 GET은 병합된 최신 서버 상태를 읽는다.
+        setMergeUpDone(true);
       }
     })();
   }, [isAuthenticated, isLoading, localStore, apiStore]);
+
+  /**
+   * 시작 화면(idle) 진입 시 분야별 최고 점수를 조회해 "내 기록" 요약을 갱신한다.
+   * 인증 사용자는 merge-up 완료(mergeUpDone) 후에만 조회해 stale 표시를 피하고,
+   * 게스트는 게이트 없이 즉시 조회한다(`isAuthenticated &&`로만 게이트 적용 →
+   * 전환 시 mergeUpDone이 계속 false라 조기 GET 없음).
+   * 저장소(로그인=API/게스트=local)·단계 변화에 반응하며, 비동기 결과는
+   * 언마운트/단계 전환 후 setState를 막도록 cancelled 가드로 보호한다.
+   */
+  useEffect(() => {
+    if (phase !== 'idle') return undefined;
+    if (isAuthenticated && !mergeUpDone) return undefined;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const allBest = await store.getAllBest();
+        if (!cancelled) setStats(aggregateCategoryBests(allBest));
+      } catch {
+        // best-effort — 기록 요약 실패는 시작 화면을 막지 않는다
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [phase, store, isAuthenticated, mergeUpDone]);
 
   const start = (
     category: QuizCategory,
@@ -179,7 +220,7 @@ export default function QuizPage(): ReactNode {
   return (
     <AppLayout>
       <div className="mx-auto w-full max-w-xl">
-        {phase === 'idle' && <QuizStart onStart={start} />}
+        {phase === 'idle' && <QuizStart onStart={start} stats={stats} />}
 
         {phase === 'playing' && session && (
           <QuizPlay

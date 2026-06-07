@@ -13,6 +13,10 @@
     "empty": "출제 가능한 문항이 없습니다",
     "emptyDesc": "현재 등록된 퀴즈 문항이 없습니다. 잠시 후 다시 시도해주세요."
   },
+  "stats": {
+    "title": "내 기록",
+    "scoreAria": "{category} 최고 정답률 {score}퍼센트"
+  },
   "play": {
     "progress": "{current} / {total}",
     "progressAria": "퀴즈 진행률",
