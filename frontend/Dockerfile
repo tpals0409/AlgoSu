@@ -24,7 +24,9 @@ RUN npm run build
 
 FROM node:22-alpine AS runner
 ARG APK_CACHE_BUST
-RUN apk update && apk upgrade --no-cache libcrypto3 libssl3 musl musl-utils && rm -rf /var/cache/apk/*
+# APK_CACHE_BUST를 RUN에서 참조해야 BuildKit이 값 변경 시 이 레이어를 무효화한다.
+# (미참조 ARG는 BuildKit 캐시를 깨지 못해 apk_bust=true가 무력화됨 — Sprint 225)
+RUN echo "apk cache bust: ${APK_CACHE_BUST}" && apk update && apk upgrade --no-cache libcrypto3 libssl3 musl musl-utils && rm -rf /var/cache/apk/*
 RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001 \
     && npm uninstall -g npm \
     && rm -rf /usr/local/lib/node_modules/npm /opt/yarn-* /usr/local/lib/node_modules/corepack
