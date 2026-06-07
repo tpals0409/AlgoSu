@@ -62,6 +62,7 @@ export function PillRadioGroup<T extends string | number>({
     const count = options.length;
     const next = ((index % count) + count) % count;
     onChange(options[next]);
+    /* istanbul ignore next -- ref always attached after render (jsdom 분기 도달 불가) */
     optionRefs.current[next]?.focus();
   };
 
