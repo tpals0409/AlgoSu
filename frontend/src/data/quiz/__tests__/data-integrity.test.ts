@@ -2,14 +2,17 @@
  * @file ALL_QUESTIONS 데이터 무결성 테스트 — 총 350문항·id 유니크·bilingual·분야별 카운트·난이도 분포
  * @domain quiz
  * @layer data
- * @related src/data/quiz/index.ts, src/data/quiz/types.ts
+ * @related src/data/quiz/all.ts, src/data/quiz/types.ts
+ *
+ * lazy-load 아키텍처 이후: 동기 eager 합산(all.ts)에서 직접 import.
+ * index.ts에서 제거된 ALL_QUESTIONS·getQuestionsByCategory·getQuestionsByFilter는 '../all'에서 import.
  */
 import {
   ALL_QUESTIONS,
   getQuestionsByCategory,
   getQuestionsByFilter,
-  QuizCategory,
-} from '../index';
+} from '../all';
+import { QuizCategory } from '../index';
 import { type QuizDifficulty } from '../types';
 
 const VALID_DIFFICULTIES: readonly QuizDifficulty[] = ['EASY', 'MEDIUM', 'HARD'];
