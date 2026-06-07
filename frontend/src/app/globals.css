@@ -460,6 +460,11 @@ code, pre, .font-mono {
     animation: fade-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
+  /* Fade-in + 살짝 위로 슬라이드 (기존 fadeInUp keyframe 재사용 — quiz 문항/피드백 전환) */
+  .animate-fade-in-up {
+    animation: fadeInUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
   /* Ease-bounce for bar charts */
   .ease-bounce {
     transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);

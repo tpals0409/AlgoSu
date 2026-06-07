@@ -54,7 +54,7 @@ export function QuizFeedback({
   return (
     <div
       className={cn(
-        'animate-fade-in space-y-4 rounded-card border-l-4 p-4',
+        'animate-fade-in-up space-y-4 rounded-card border-l-4 p-4',
         isCorrect ? 'border-l-success bg-success-soft' : 'border-l-error bg-error-soft',
       )}
       role="status"
