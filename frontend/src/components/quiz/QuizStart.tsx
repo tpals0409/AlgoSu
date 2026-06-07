@@ -20,6 +20,7 @@ import type { QuizCategoryStat } from '@/lib/quiz/stats';
 import {
   getAvailableCount,
   getQuizCategoryMeta,
+  prefetchQuestions,
   QUIZ_CATEGORIES,
   QUIZ_DIFFICULTIES,
   type QuizCategory,
@@ -176,6 +177,8 @@ export function QuizStart({ onStart, stats = [] }: QuizStartProps): ReactElement
         className="w-full"
         disabled={selectedCount < 1}
         onClick={() => onStart(category, selectedCount, difficulty)}
+        onMouseEnter={() => prefetchQuestions(category)}
+        onFocus={() => prefetchQuestions(category)}
       >
         {t('start.startButton')}
       </Button>

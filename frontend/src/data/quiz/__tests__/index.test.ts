@@ -11,6 +11,7 @@
  */
 import {
   getRandomQuestions,
+  prefetchQuestions,
   QuizCategory,
   QUIZ_CATEGORIES,
 } from '../index';
@@ -19,6 +20,7 @@ import {
   getQuestionsByCategory,
   getQuestionsByFilter,
 } from '../all';
+import { CATEGORY_LOADERS } from '../loaders';
 
 /** 기존 5분야 — 각 50문항. */
 const ORIGINAL_CATEGORIES = [
@@ -141,6 +143,64 @@ describe('getRandomQuestions', () => {
     // 2개 이상 분야가 섞여야 한다
     const categories = new Set(result.map((q) => q.category));
     expect(categories.size).toBeGreaterThanOrEqual(2);
+  });
+
+  // ─── Sprint 229: onProgress 진행 콜백 ─────────────────────────────────────
+
+  it("reports progress 0..total for 'ALL' (one tick per category chunk)", async () => {
+    const onProgress = jest.fn();
+    await getRandomQuestions('ALL', 10, 'ALL', () => 0, onProgress);
+    const total = QUIZ_CATEGORIES.length; // 10
+    // 시작 시 (0, total) 1회 + 각 청크 해결마다 1회 → 총 total+1 호출
+    expect(onProgress).toHaveBeenCalledTimes(total + 1);
+    expect(onProgress).toHaveBeenNthCalledWith(1, 0, total);
+    // 마지막 호출은 (total, total) — 모든 청크 로드 완료
+    expect(onProgress).toHaveBeenLastCalledWith(total, total);
+    // loaded 값이 0→total로 단조 증가
+    const loadedSeq = onProgress.mock.calls.map((c) => c[0]);
+    expect(loadedSeq[0]).toBe(0);
+    expect(Math.max(...loadedSeq)).toBe(total);
+  });
+
+  it('reports progress (0,1)→(1,1) for a single category', async () => {
+    const onProgress = jest.fn();
+    await getRandomQuestions(QuizCategory.ALGORITHM, 3, 'ALL', () => 0, onProgress);
+    expect(onProgress).toHaveBeenCalledTimes(2);
+    expect(onProgress).toHaveBeenNthCalledWith(1, 0, 1);
+    expect(onProgress).toHaveBeenNthCalledWith(2, 1, 1);
+  });
+});
+
+describe('prefetchQuestions', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("invokes every category loader for 'ALL'", () => {
+    const spies = (Object.keys(CATEGORY_LOADERS) as QuizCategory[]).map((c) =>
+      jest.spyOn(CATEGORY_LOADERS, c),
+    );
+    prefetchQuestions('ALL');
+    for (const spy of spies) {
+      expect(spy).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it('invokes only the requested loader for a single category', () => {
+    const dsSpy = jest.spyOn(CATEGORY_LOADERS, QuizCategory.DATA_STRUCTURE);
+    const algoSpy = jest.spyOn(CATEGORY_LOADERS, QuizCategory.ALGORITHM);
+    prefetchQuestions(QuizCategory.DATA_STRUCTURE);
+    expect(dsSpy).toHaveBeenCalledTimes(1);
+    expect(algoSpy).not.toHaveBeenCalled();
+  });
+
+  it('does not throw when a loader rejects (error swallowed)', async () => {
+    jest
+      .spyOn(CATEGORY_LOADERS, QuizCategory.AI)
+      .mockRejectedValueOnce(new Error('Chunk load failed'));
+    expect(() => prefetchQuestions(QuizCategory.AI)).not.toThrow();
+    // 마이크로태스크 큐를 비워 swallow된 rejection이 unhandled로 새어나가지 않음을 확인
+    await Promise.resolve();
   });
 });
 

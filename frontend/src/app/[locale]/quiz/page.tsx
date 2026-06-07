@@ -11,13 +11,16 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { QuizStart } from '@/components/quiz/QuizStart';
 import { QuizPlay } from '@/components/quiz/QuizPlay';
 import { QuizResult } from '@/components/quiz/QuizResult';
-import { SkeletonCard } from '@/components/ui/Skeleton';
+import { QuizLoading } from '@/components/quiz/QuizLoading';
 import {
   getRandomQuestions,
+  QUIZ_CATEGORIES,
   type QuizCategory,
   type QuizDifficulty,
   type QuizQuestion,
@@ -52,6 +55,7 @@ interface Session {
  * 로그인 전환 시 1회 merge-up으로 localStorage 게스트 best를 서버에 동기화한다.
  */
 export default function QuizPage(): ReactNode {
+  const t = useTranslations('quiz');
   const { isAuthenticated, isLoading } = useAuth();
 
   const localStore: QuizRecordStore = useMemo(() => createLocalStorageQuizStore(), []);
@@ -63,6 +67,11 @@ export default function QuizPage(): ReactNode {
   const [bestScore, setBestScore] = useState<number | null>(null);
   const [isNewBest, setIsNewBest] = useState(false);
   const [stats, setStats] = useState<readonly QuizCategoryStat[]>([]);
+  /** 로딩 진행률 — getRandomQuestions의 onProgress가 갱신한다 (loaded/total 분야 청크). */
+  const [loadProgress, setLoadProgress] = useState<{ loaded: number; total: number }>({
+    loaded: 0,
+    total: 0,
+  });
 
   /** 로그인 전환 시 localStorage → 서버 1회 merge-up 완료 플래그 (세션 1회). */
   const mergedUpRef = useRef(false);
@@ -142,8 +151,10 @@ export default function QuizPage(): ReactNode {
 
   /**
    * 퀴즈를 시작한다. getRandomQuestions가 async이므로 로딩 단계를 거쳐 playing으로 전환한다.
-   * 동적 import 실패(stale chunk / 오프라인 / CDN 오류) 시 idle로 복귀해 사용자가 재시도할 수 있다.
-   * phase==='loading' 동안 QuizStart가 언마운트되므로 중복 호출은 자동 차단된다.
+   * 로딩 동안 분야 청크 진행률(onProgress)을 QuizLoading으로 표시한다.
+   * 동적 import 실패(stale chunk / 오프라인 / CDN 오류) 시 에러 토스트를 띄우고 idle로
+   * 복귀해 사용자가 재시도할 수 있다. phase==='loading' 동안 QuizStart가 언마운트되므로
+   * 중복 호출은 자동 차단된다.
    */
   const start = async (
     category: QuizCategory | 'ALL',
@@ -151,8 +162,16 @@ export default function QuizPage(): ReactNode {
     difficulty: QuizDifficulty | 'ALL',
   ): Promise<void> => {
     setPhase('loading');
+    const total = category === 'ALL' ? QUIZ_CATEGORIES.length : 1;
+    setLoadProgress({ loaded: 0, total });
     try {
-      const questions = await getRandomQuestions(category, count, difficulty);
+      const questions = await getRandomQuestions(
+        category,
+        count,
+        difficulty,
+        Math.random,
+        (loaded, loadTotal) => setLoadProgress({ loaded, total: loadTotal }),
+      );
       setSession({
         category,
         difficulty,
@@ -165,7 +184,8 @@ export default function QuizPage(): ReactNode {
       });
       setPhase('playing');
     } catch {
-      // 동적 import 실패(stale chunk / 오프라인 / CDN) → 시작 화면 복귀로 사용자 복구 가능
+      // 동적 import 실패(stale chunk / 오프라인 / CDN) → 토스트 피드백 + 시작 화면 복귀로 재시도 가능
+      toast.error(t('start.loadError'));
       setPhase('idle');
     }
   };
@@ -236,7 +256,9 @@ export default function QuizPage(): ReactNode {
           <QuizStart onStart={(c, n, d) => void start(c, n, d)} stats={stats} />
         )}
 
-        {phase === 'loading' && <SkeletonCard />}
+        {phase === 'loading' && (
+          <QuizLoading loaded={loadProgress.loaded} total={loadProgress.total} />
+        )}
 
         {phase === 'playing' && session && (
           <QuizPlay

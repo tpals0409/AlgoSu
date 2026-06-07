@@ -57,6 +57,8 @@ export const QUIZ_CATEGORIES: readonly QuizCategory[] = Object.keys(
  * @param count 뽑을 문항 수
  * @param difficulty 난이도 필터 ('ALL'이면 난이도 무관, 기본 'ALL')
  * @param rng 난수 생성기 (기본 Math.random, 테스트 결정성용 주입 가능)
+ * @param onProgress 청크 로드 진행 콜백 — 분야 청크가 하나씩 해결될 때마다
+ *   (loaded, total)로 호출된다. 시작 시 (0, total)을 1회 호출한다(선택).
  * @returns 무작위 문항 배열 (최대 count개)
  */
 export async function getRandomQuestions(
@@ -64,13 +66,42 @@ export async function getRandomQuestions(
   count: number,
   difficulty: QuizDifficulty | 'ALL' = 'ALL',
   rng: () => number = Math.random,
+  onProgress?: (loaded: number, total: number) => void,
 ): Promise<QuizQuestion[]> {
   const categories =
     category === 'ALL'
       ? (Object.keys(QUESTION_COUNTS) as QuizCategory[])
       : [category];
-  const chunks = await Promise.all(categories.map((c) => CATEGORY_LOADERS[c]()));
+  const total = categories.length;
+  let loaded = 0;
+  onProgress?.(0, total);
+  const chunks = await Promise.all(
+    categories.map((c) =>
+      CATEGORY_LOADERS[c]().then((chunk) => {
+        loaded += 1;
+        onProgress?.(loaded, total);
+        return chunk;
+      }),
+    ),
+  );
   let pool = chunks.flat();
   if (difficulty !== 'ALL') pool = pool.filter((q) => q.difficulty === difficulty);
   return shuffle(pool, rng).slice(0, Math.max(0, count));
+}
+
+/**
+ * 분야 청크를 fire-and-forget로 미리 동적 import해 번들러 캐시를 워밍한다.
+ * 결과는 버리고 에러는 swallow한다(실제 로드 실패는 start()의 getRandomQuestions에서 표면화).
+ * Start 버튼 hover/focus 등 선제 트리거에서 호출해 클릭 시 체감 로딩을 줄인다.
+ *
+ * @param category 워밍할 CS 분야 ('ALL'이면 전 분야 청크를 워밍)
+ */
+export function prefetchQuestions(category: QuizCategory | 'ALL'): void {
+  const categories =
+    category === 'ALL'
+      ? (Object.keys(QUESTION_COUNTS) as QuizCategory[])
+      : [category];
+  categories.forEach((c) => {
+    void CATEGORY_LOADERS[c]().catch(() => {});
+  });
 }

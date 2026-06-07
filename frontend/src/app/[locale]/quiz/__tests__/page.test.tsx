@@ -18,6 +18,7 @@ import QuizPage from '../page';
 import { fetchApi } from '@/lib/api/client';
 import { createLocalStorageQuizStore } from '@/lib/quiz/storage';
 import { getRandomQuestions } from '@/data/quiz';
+import { toast } from 'sonner';
 
 jest.mock('@/components/layout/AppLayout', () => ({
   AppLayout: ({ children }: { children: React.ReactNode }) => (
@@ -53,6 +54,13 @@ jest.mock('@/lib/api/client', () => ({
 }));
 
 const mockFetchApi = jest.mocked(fetchApi);
+
+/** sonner toast 모킹 — start() 실패 시 toast.error 피드백 검증용. */
+jest.mock('sonner', () => ({
+  toast: { error: jest.fn(), success: jest.fn() },
+}));
+
+const mockToastError = jest.mocked(toast.error);
 
 const MOCK_QUESTIONS: QuizQuestion[] = [
   {
@@ -95,6 +103,7 @@ function answerCurrent(text: string): void {
 beforeEach(() => {
   mockIsAuthenticated = false;
   mockFetchApi.mockReset();
+  mockToastError.mockClear();
 });
 
 // ─── 기존: 게스트(미인증) 경로 ────────────────────────────────────────────────
@@ -120,10 +129,10 @@ describe('QuizPage flow', () => {
   });
 
   /**
-   * loading 중 SkeletonCard 노출 확인 (idle→loading→playing).
-   * getRandomQuestions를 지연시켜 loading phase를 관찰한다.
+   * loading 중 QuizLoading(진행률 바 + 스켈레톤) 노출 확인 (idle→loading→playing).
+   * getRandomQuestions를 지연시켜 loading phase를 관찰한다. (Sprint 229: SkeletonCard → QuizLoading)
    */
-  it('shows SkeletonCard while loading questions (loading phase)', async () => {
+  it('shows QuizLoading (progressbar) while loading questions (loading phase)', async () => {
     // 수동 제어 Promise로 loading phase를 잡는다
     let resolveQuestions!: (v: typeof MOCK_QUESTIONS) => void;
     const deferred = new Promise<typeof MOCK_QUESTIONS>((resolve) => {
@@ -134,10 +143,12 @@ describe('QuizPage flow', () => {
     renderWithI18n(<QuizPage />);
     fireEvent.click(screen.getByRole('button', { name: '시작하기' }));
 
-    // loading phase: SkeletonCard 내부 Skeleton이 aria-busy="true" 렌더
+    // loading phase: QuizLoading 진행률 바 + 스켈레톤(aria-busy) 렌더
     await waitFor(() =>
-      expect(document.querySelector('[aria-busy="true"]')).not.toBeNull(),
+      expect(screen.getByRole('progressbar', { name: '문항 로딩 진행률' })).toBeInTheDocument(),
     );
+    expect(screen.getByText('문항 불러오는 중...')).toBeInTheDocument();
+    expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
 
     // 이 시점에서 QuizPlay(답안 입력)는 아직 없어야 한다
     expect(screen.queryByLabelText('답안')).not.toBeInTheDocument();
@@ -182,11 +193,11 @@ describe('QuizPage flow', () => {
   });
 
   /**
-   * Critic R1 P2 회귀 — 동적 import 실패 시 idle 복귀.
-   * getRandomQuestions가 reject되면 loading에서 idle로 복귀해
-   * SkeletonCard가 사라지고 시작 화면이 재노출되어 사용자가 재시도할 수 있다.
+   * Critic R1 P2 회귀 (Sprint 228) + Sprint 229 에러 토스트 — 동적 import 실패 시 idle 복귀.
+   * getRandomQuestions가 reject되면 loading에서 idle로 복귀해 시작 화면이 재노출되고
+   * (사용자 재시도 가능), 에러 토스트로 실패를 알린다.
    */
-  it('returns to idle when getRandomQuestions rejects (dynamic import failure)', async () => {
+  it('returns to idle and shows an error toast when getRandomQuestions rejects', async () => {
     jest.mocked(getRandomQuestions).mockRejectedValueOnce(new Error('Chunk load failed'));
 
     renderWithI18n(<QuizPage />);
@@ -200,6 +211,8 @@ describe('QuizPage flow', () => {
     // QuizStart 재노출, QuizPlay(답안 입력) 없음
     expect(screen.getByText('CS 퀴즈 미니게임')).toBeInTheDocument();
     expect(screen.queryByLabelText('답안')).not.toBeInTheDocument();
+    // 에러 토스트로 실패 피드백 (Sprint 229)
+    expect(mockToastError).toHaveBeenCalledTimes(1);
   });
 
   it('returns to the start screen when retry is clicked', async () => {
