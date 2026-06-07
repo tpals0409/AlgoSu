@@ -69,7 +69,7 @@ Sprint 221~224는 quiz `/quiz`를 다음과 같이 개선·머지했다:
 - **출처 정확성**: 런북 작성 전 핵심 출처 11종(globals.css quiz-cat 변수·keyframe, category-meta 아이콘, QuizStart DIFFICULTY_TONE, QuizPlay Progress aria, QuizFeedback/QuizResult 포커스·role·announce, PillRadioGroup 키보드/role, QuizStats progressbar, QuizQuestion 모션, middleware PUBLIC_PATHS, i18n 키)을 현재 코드와 직접 대조해 라인 번호 검증.
 - **ADR 게이트**: index count(sprint **164**, --strict) / adr-en coverage(KR/EN 1:1) / adr-links 0 broken / doc-refs no broken.
 - **CI**: PR 게이트 통과 후 Squash 머지. 문서 전용이라 코드 게이트 무영향.
-- **Critic**: 머지 직전 교차 리뷰(문서 정확성 — 출처가 실제와 일치하는지).
+- **Critic**: R1 CLEAN — codex(gpt-5.5)가 참조 소스 파일을 직접 읽고 ADR/런북 내용이 일치함을 확인, actionable issue 0.
 
 ## 교훈
 
@@ -88,7 +88,9 @@ Sprint 221~224는 quiz `/quiz`를 다음과 같이 개선·머지했다:
 
 ## Critic 교차 리뷰
 
-- **도구**: Codex codex-cli, `codex review --base 544ac8d`
-- **라운드**: (머지 직전 실행 — 결과 반영)
+- **도구**: Codex codex-cli 0.130.0, `codex review --base 544ac8d -c model=gpt-5.5`
+- **라운드**: 1
 
-**판정**: (Critic 결과 반영 예정 — 문서 출처 정확성 중심)
+**R1 — CLEAN** (P-finding 0): *"The changes are documentation-only and the added ADR/runbook content is consistent with the referenced source files and existing ADR checks. I did not find any actionable issue that would break existing code, tests, or documented workflows."* (codex가 `frontend/src/components/quiz/*` 등 참조 소스를 직접 읽고 런북 출처와 대조)
+
+**종합 판정**: ✅ 머지 가능 — 문서 전용, 런북/ADR 내용이 참조 소스 파일 및 기존 ADR 게이트와 일치, 회귀 0. 단일 라운드 CLEAN.
