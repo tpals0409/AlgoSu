@@ -57,6 +57,22 @@ gh workflow run ci.yml \
 - **PR 머지 직후** 실행 (main의 HEAD가 목표 커밋인지 확인 후 실행)
 - 연속 트리거 금지: 직전 `rebuild_all` 런이 완료되기 전 추가 실행 자제 (Runner 큐 과부하)
 
+### 3-4. apk_bust — 베이스 이미지 CVE 패치 유입 (Sprint 225)
+
+post-merge CI의 `Trivy Scan — {service}`가 **수정판이 존재하는** 베이스 이미지 CVE(예: `libxml2 CVE-2026-6732`, Fixed `2.13.9-r1`)로 실패할 때 사용한다. Dockerfile은 `apk upgrade`로 패치를 받지만, apk RUN 레이어가 BuildKit 캐시에 고정되면 베이스 이미지 digest가 바뀌기 전까지 재실행되지 않는다.
+
+`apk_bust=true`는 `APK_CACHE_BUST` build-arg를 `github.run_id`로 설정해 apk RUN 레이어를 무효화 → `apk upgrade` 재실행 → 최신 패치 유입.
+
+```bash
+gh workflow run ci.yml --ref main -f apk_bust=true
+# 전 서비스 강제 빌드까지 필요하면 rebuild_all과 병행
+gh workflow run ci.yml --ref main -f apk_bust=true -f rebuild_all=true
+```
+
+> **전제 (Sprint 225 수정)**: blog/frontend/gateway Dockerfile의 apk RUN이 `${APK_CACHE_BUST}`를 **참조**해야 BuildKit이 캐시를 무효화한다. ARG를 선언만 하고 미참조하면 `apk_bust`가 무력화된다(Sprint 225 이전 상태 — Trivy blog 실패 반복 원인). 신규 서비스 Dockerfile 추가 시 동일 패턴(RUN 내 `echo "apk cache bust: ${APK_CACHE_BUST}"`)을 반드시 포함할 것.
+>
+> **수정판이 없는(unfixed) CVE**는 `apk_bust`로 해소 불가 → `--ignore-unfixed`로 자동 제외되거나 `.trivyignore`에 "상위 패치 대기" 주석과 함께 등록한다.
+
 ---
 
 ## 4. 결과 검증
