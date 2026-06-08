@@ -96,5 +96,6 @@ Critic(Codex)이 **[P1] 차단 결함**을 지적: 이 서비스는 `tsconfig.bu
 
 ## Critic 교차 리뷰
 
-- **도구**: Codex codex-cli (`codex review --base f4493ac -c model=gpt-5.5`).
-- **종합 판정**: 머지 직전 Oracle이 실행, R1 CLEAN까지 반복 수정 후 머지(상세 결과는 sprint-window 기록).
+- **도구**: Codex codex-cli 0.130.0 (`codex review --base f4493ac -c model=gpt-5.5` — 기본 gpt-5.3-codex는 ChatGPT 계정 미지원이라 gpt-5.5 명시).
+- **R1 [P1]**: spec을 `migrations/` 디렉토리에 배치 → 빌드된 `*.spec.js`가 마이그레이션 glob에 매칭돼 `migration:run`이 require → init container 크래시 위험(롤아웃 경로 재파손). → D6대로 `src/database/__tests__/`로 이동 + 실증.
+- **R2 CLEAN**: 결함 0 — "drops defaults before changing varchar columns to jsonb and keeps the test outside the migrations glob, addressing the rollout failure without introducing an evident regression."

@@ -96,5 +96,6 @@ New pattern:
 
 ## Critic Cross-Review
 
-- **Tool**: Codex codex-cli (`codex review --base f4493ac -c model=gpt-5.5`).
-- **Verdict**: run by Oracle just before merge, iterating to R1 CLEAN before merging (details recorded in sprint-window).
+- **Tool**: Codex codex-cli 0.130.0 (`codex review --base f4493ac -c model=gpt-5.5` — the default gpt-5.3-codex is unsupported on ChatGPT accounts, so gpt-5.5 is specified).
+- **R1 [P1]**: the spec was placed inside the `migrations/` directory → the built `*.spec.js` matches the migration glob, so `migration:run` would require it → init container crash risk (re-breaking the rollout path). → moved to `src/database/__tests__/` per D6, with empirical verification.
+- **R2 CLEAN**: 0 findings — "drops defaults before changing varchar columns to jsonb and keeps the test outside the migrations glob, addressing the rollout failure without introducing an evident regression."
