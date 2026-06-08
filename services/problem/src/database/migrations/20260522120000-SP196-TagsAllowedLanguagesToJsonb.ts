@@ -9,6 +9,13 @@
  * - allowed_languages: 타입 전환만, 인덱스 불필요(필터 대상 아님)
  *
  * 주의사항:
+ * - ALTER COLUMN TYPE은 행 데이터(USING)뿐 아니라 컬럼의 기존 DEFAULT 식도 새 타입으로 자동 cast 시도함.
+ *   tags는 1700000100002-AddTagsColumn에서 `varchar(500) DEFAULT NULL`로 생성 → 카탈로그 DEFAULT 식
+ *   `NULL::character varying`을 jsonb로 변환할 할당 cast가 없어 PostgreSQL ERROR 42804
+ *   (default for column "tags" cannot be cast automatically to type jsonb) 발생.
+ *   → TYPE 변경 직전에 `ALTER COLUMN <col> DROP DEFAULT`로 DEFAULT를 먼저 제거(Sprint 230 운영 fix).
+ *   entity(problem.entity.ts)가 jsonb 컬럼에 default를 선언하지 않으므로 변환 후 SET DEFAULT 불필요
+ *   (컬럼 기본값은 암묵적 NULL = entity 정합).
  * - ALTER TYPE은 테이블 rewrite 유발 → 트랜잭션 내 SET LOCAL statement_timeout=0 설정 필수
  * - CREATE INDEX CONCURRENTLY는 트랜잭션 외부 실행(COMMIT/BEGIN 패턴, AddPublicIdToProblems 선례)
  *   SET LOCAL은 COMMIT 시 소멸 → CONCURRENTLY 인덱스 빌드 보호 위해 COMMIT 직후 세션 레벨 재설정 필수
@@ -27,6 +34,8 @@ export class TagsAllowedLanguagesToJsonb20260522120000 implements MigrationInter
     await queryRunner.query(`SET LOCAL statement_timeout = 0`);
 
     // tags: varchar(500) → jsonb (NULL 명시 보존)
+    // 기존 DEFAULT NULL(::varchar)이 jsonb로 자동 cast 불가(ERROR 42804) → TYPE 변경 전 DEFAULT 제거
+    await queryRunner.query(`ALTER TABLE problems ALTER COLUMN tags DROP DEFAULT`);
     await queryRunner.query(`
       ALTER TABLE problems
         ALTER COLUMN tags TYPE jsonb
@@ -34,6 +43,8 @@ export class TagsAllowedLanguagesToJsonb20260522120000 implements MigrationInter
     `);
 
     // allowed_languages: varchar(500) → jsonb (NULL 명시 보존)
+    // 본래 DEFAULT 없음이나 방어적으로 DROP DEFAULT(no-op) 후 전환 — 환경별 DEFAULT 잔존 대비
+    await queryRunner.query(`ALTER TABLE problems ALTER COLUMN allowed_languages DROP DEFAULT`);
     await queryRunner.query(`
       ALTER TABLE problems
         ALTER COLUMN allowed_languages TYPE jsonb
@@ -73,5 +84,8 @@ export class TagsAllowedLanguagesToJsonb20260522120000 implements MigrationInter
         ALTER COLUMN allowed_languages TYPE varchar(500)
         USING CASE WHEN allowed_languages IS NULL THEN NULL ELSE allowed_languages::text END
     `);
+
+    // up()에서 제거한 tags의 원래 DEFAULT NULL 복원 (1700000100002-AddTagsColumn 카탈로그 상태 = 완전 가역)
+    await queryRunner.query(`ALTER TABLE problems ALTER COLUMN tags SET DEFAULT NULL`);
   }
 }
