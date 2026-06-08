@@ -1,15 +1,15 @@
 ---
 sprint: 234
-title: "Grafana Service Debug no-data 수정 미러 정합 (cAdvisor scrape + Loki service 라벨)"
+title: "모니터링 드리프트 정리 (Grafana no-data + argocd metrics + promtail/loki SSOT 정합)"
 date: "2026-06-08"
 status: completed
 agents: [Oracle, Architect, Scribe, Critic]
 related_adrs: ["sprint-231", "sprint-232", "sprint-233"]
 related_memory: ["sprint-window"]
 topics: ["monitoring", "infra"]
-tldr: "Grafana 'AlgoSu Service Debug' 대시보드의 3개 패널(Container CPU/Memory, Loki 로그 2종)이 라이브에서 no-data. 라이브 진단으로 두 근본 원인 확정: (A) Prometheus에 kubelet/cAdvisor scrape_config 부재 → container_* 메트릭 전체 미수집(0 시리즈). (B) 라이브 promtail이 service 라벨을 부여하는데 대시보드가 없는 pod 라벨을 참조 → 로그 패널 항상 0. 배포 SSOT인 aether-gitops에서 PR #8(+0a7156d) 머지·ArgoCD Synced·라이브 3종 검증 통과(container_* 75 시리즈, 로그 패널 스트림 표출)로 라이브 해결. 본 스프린트는 비배포 참조 미러 infra/k3s/monitoring을 라이브 최종 형태에 정합: prometheus-config에 kubernetes-cadvisor/nodes job(apiserver proxy 경유)+SA/ClusterRole/CRB, 대시보드 $service 변수값 Loki service 라벨 기준 통일·Loki 패널 service= 셀렉터·job=~ 12곳, promtail은 service 라벨 정합(Critic R1 P2). 게이트 check-grafana-metrics 통과. Critic R1 [P2](미러 promtail service 라벨 부재)→R2 CLEAN."
+tldr: "Grafana 'AlgoSu Service Debug' 대시보드의 3개 패널(Container CPU/Memory, Loki 로그 2종)이 라이브에서 no-data. 라이브 진단으로 두 근본 원인 확정: (A) Prometheus에 kubelet/cAdvisor scrape_config 부재 → container_* 메트릭 전체 미수집(0 시리즈). (B) 라이브 promtail이 service 라벨을 부여하는데 대시보드가 없는 pod 라벨을 참조 → 로그 패널 항상 0. 배포 SSOT인 aether-gitops에서 PR #8(+0a7156d) 머지·ArgoCD Synced·라이브 3종 검증 통과(container_* 75 시리즈, 로그 패널 스트림 표출)로 라이브 해결. 본 스프린트는 비배포 참조 미러 infra/k3s/monitoring을 라이브 최종 형태에 정합: prometheus-config에 kubernetes-cadvisor/nodes job(apiserver proxy 경유)+SA/ClusterRole/CRB, 대시보드 $service 변수값 Loki service 라벨 기준 통일·Loki 패널 service= 셀렉터·job=~ 12곳, promtail은 service 라벨 정합(Critic R1 P2). 게이트 check-grafana-metrics 통과. Critic R1 [P2](미러 promtail service 라벨 부재)→R2 CLEAN. 스프린트 진행 중 동일 모니터링 드리프트 정리가 확장: AlgoSu #414(argocd-metrics/argocd-server-metrics scrape job + revisionHistoryLimit 10→5)·#415(promtail kubernetes_sd→static_configs SSOT 완전 교체 + loki allow_structured_metadata false→true 짝 정합), 서버 aether-gitops #8(no-data 라이브)·#9(CB 패널 stale 교정 + revisionHistoryLimit, ReplicaSet 126→73)·#10(cloudflared-monitoring GitOps 편입)·curl-test pod 정리 병렬 완료."
 ---
-# Sprint 234 — Grafana Service Debug no-data 수정 미러 정합
+# Sprint 234 — 모니터링 드리프트 정리 (Grafana no-data + argocd metrics + promtail/loki SSOT 정합)
 
 ## 목표
 
@@ -56,7 +56,22 @@ tldr: "Grafana 'AlgoSu Service Debug' 대시보드의 3개 패널(Container CPU/
 
 신규패턴: **라이브 선수정 → 미러 후정합 패턴**(배포 SSOT 라이브 검증 후 비배포 미러를 동일 형태로 정합, 게이트+Critic 내부 일관성 이중 확인).
 
+## 부록: 동일 스프린트 추가 작업 (모니터링 드리프트 정리 확장)
+
+#413(본 ADR 본문) 이후, 동일 모니터링 드리프트 정리가 AlgoSu 미러 2건 + 서버 aether-gitops 3건으로 확장됨:
+
+### AlgoSu 미러 (이 레포)
+- **#414 (`317de34`)**: 미러 잔여 드리프트 — `argocd-metrics`/`argocd-server-metrics` scrape job 추가(라이브엔 이미 존재, Sprint 130 B-1) + kustomize patch로 전 Deployment `revisionHistoryLimit` 10→5(미사용 ReplicaSet 누적 차단, aether-gitops #9 정합).
+- **#415 (`8ef4edf`)**: promtail SSOT 완전 정합 — `kubernetes_sd(role:pod)`→`static_configs`로 교체(DaemonSet HOSTNAME env·`-config.expand-env` 등 부속 제거, −60/+12) + `traceId`를 structured_metadata로 복원 + **loki-config `allow_structured_metadata` false→true**(promtail structured_metadata 동작에 필수인 짝 설정). 실측: 라이브 promtail-config 전문 == gitops. **#413 대시보드 `service=` 셀렉터는 SSOT promtail이 동일 `service` 라벨 생성하여 정합 유지(회귀 없음)**. → Sprint 234 이월 "promtail discovery 정합" **해소**.
+
+### 서버 aether-gitops (배포 SSOT, 라이브)
+- **#8**: Grafana no-data 라이브 수정(#413 대응) — container 메트릭 75 시리즈, 타겟 UP.
+- **#9**: Circuit Breaker 패널 stale 교정 + `revisionHistoryLimit:5` — CB 0/1/2 반영, ReplicaSet 126→73.
+- **#10**: cloudflared-monitoring GitOps 편입(adopt) — tunnel 정상.
+- (직접) curl-test pod 정리.
+
 ## 이월
 
-- **(서버) promtail discovery 정합**: 미러는 kubernetes_sd(role:pod), 라이브는 static_configs(파일경로 __path__) — 라벨 출력은 동일(namespace+service+level+tag)하나 discovery 메커니즘 상이. 라이브 promtail-config 전문 확보 시 discovery 형태까지 정합(현재 배너 명기).
-- (기존 이월) ADR-028 SA 적용·토큰 발급 · loki prod 하드닝 갭 · Sprint 230 롤아웃 확인 · 라이브 /quiz 검증 · SP217 컷오버 · GA4 · problem_db · 하네스 cron.
+- **(서버) loki Deployment 하드닝 역추가 — 갭 확정**: #415 실측 결과 loki `securityContext`(runAsNonRoot/readOnlyRootFS) + liveness/readiness probe가 **미러에만 존재, gitops/라이브엔 부재**. Sprint 231/232 D1(loki prod 하드닝 갭)이 사실로 확정 → aether-gitops에 미러의 loki 하드닝을 역추가(미러→SSOT 방향).
+- (기존 이월) ADR-028 SA 적용·토큰 발급 · Sprint 230 롤아웃 확인 · 라이브 /quiz 검증 · SP217 컷오버 · GA4 · problem_db · 하네스 cron.
+- ~~promtail discovery 정합~~ → **#415로 해소**.

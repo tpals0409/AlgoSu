@@ -1,15 +1,15 @@
 ---
 sprint: 234
-title: "Grafana Service Debug no-data Fix Mirror Alignment (cAdvisor scrape + Loki service label)"
+title: "Monitoring Drift Cleanup (Grafana no-data + argocd metrics + promtail/loki SSOT alignment)"
 date: "2026-06-08"
 status: completed
 agents: [Oracle, Architect, Scribe, Critic]
 related_adrs: ["sprint-231", "sprint-232", "sprint-233"]
 related_memory: ["sprint-window"]
 topics: ["monitoring", "infra"]
-tldr: "Three panels (Container CPU/Memory, two Loki log panels) of the live Grafana 'AlgoSu Service Debug' dashboard showed no-data. Live diagnosis confirmed two root causes: (A) Prometheus had no kubelet/cAdvisor scrape_config → container_* metrics entirely uncollected (0 series). (B) Live promtail emits a service label while the dashboard referenced a nonexistent pod label → log panels always 0. Fixed live first via aether-gitops PR #8 (+0a7156d): merged, ArgoCD Synced, live 3-way verification passed (container_* 75 series, log panels streaming). This sprint aligns the non-deployed reference mirror infra/k3s/monitoring to the final live form: prometheus-config gains kubernetes-cadvisor/nodes jobs (via apiserver proxy) + SA/ClusterRole/CRB, dashboard $service variable values unified to the Loki service label, Loki panels use service= selectors, job=~ at 12 sites, and promtail aligned to emit the service label (Critic R1 P2). Gate check-grafana-metrics passes. Critic R1 [P2] (mirror promtail missing service label) → R2 CLEAN."
+tldr: "Three panels (Container CPU/Memory, two Loki log panels) of the live Grafana 'AlgoSu Service Debug' dashboard showed no-data. Live diagnosis confirmed two root causes: (A) Prometheus had no kubelet/cAdvisor scrape_config → container_* metrics entirely uncollected (0 series). (B) Live promtail emits a service label while the dashboard referenced a nonexistent pod label → log panels always 0. Fixed live first via aether-gitops PR #8 (+0a7156d): merged, ArgoCD Synced, live 3-way verification passed (container_* 75 series, log panels streaming). This sprint aligns the non-deployed reference mirror infra/k3s/monitoring to the final live form: prometheus-config gains kubernetes-cadvisor/nodes jobs (via apiserver proxy) + SA/ClusterRole/CRB, dashboard $service variable values unified to the Loki service label, Loki panels use service= selectors, job=~ at 12 sites, and promtail aligned to emit the service label (Critic R1 P2). Gate check-grafana-metrics passes. Critic R1 [P2] (mirror promtail missing service label) → R2 CLEAN. During the sprint the same monitoring-drift cleanup expanded: AlgoSu #414 (argocd-metrics/argocd-server-metrics scrape jobs + revisionHistoryLimit 10→5) and #415 (promtail kubernetes_sd→static_configs full SSOT replacement + loki allow_structured_metadata false→true paired alignment), plus server aether-gitops #8 (live no-data), #9 (CB panel stale fix + revisionHistoryLimit, ReplicaSet 126→73), #10 (cloudflared-monitoring GitOps adoption), and curl-test pod cleanup, completed in parallel."
 ---
-# Sprint 234 — Grafana Service Debug no-data Fix Mirror Alignment
+# Sprint 234 — Monitoring Drift Cleanup (Grafana no-data + argocd metrics + promtail/loki SSOT alignment)
 
 ## Goal
 
@@ -56,7 +56,22 @@ tldr: "Three panels (Container CPU/Memory, two Loki log panels) of the live Graf
 
 New pattern: **fix-live-first → align-mirror-after** (verify the deployment SSOT live, then align the non-deployed mirror to the same form, double-checking via gate + Critic internal consistency).
 
+## Appendix: Additional same-sprint work (monitoring drift cleanup expansion)
+
+After #413 (main body), the same monitoring-drift cleanup expanded into 2 AlgoSu mirror PRs + 3 server aether-gitops PRs:
+
+### AlgoSu mirror (this repo)
+- **#414 (`317de34`)**: residual mirror drift — added `argocd-metrics`/`argocd-server-metrics` scrape jobs (already present live, Sprint 130 B-1) + kustomize patch setting all Deployments' `revisionHistoryLimit` 10→5 (blocks unused ReplicaSet accumulation, aligns aether-gitops #9).
+- **#415 (`8ef4edf`)**: full promtail SSOT alignment — replaced `kubernetes_sd(role:pod)` with `static_configs` (removed DaemonSet HOSTNAME env, `-config.expand-env`, etc., −60/+12) + restored `traceId` as structured_metadata + **loki-config `allow_structured_metadata` false→true** (the paired setting required for promtail structured_metadata to work). Measured: live promtail-config == gitops. **The #413 dashboard `service=` selector stays consistent since the SSOT promtail emits the same `service` label (no regression)**. → resolves the Sprint 234 carryover "promtail discovery alignment."
+
+### Server aether-gitops (deployment SSOT, live)
+- **#8**: live Grafana no-data fix (matches #413) — container metrics 75 series, targets UP.
+- **#9**: Circuit Breaker panel stale fix + `revisionHistoryLimit:5` — CB 0/1/2 reflected, ReplicaSet 126→73.
+- **#10**: cloudflared-monitoring GitOps adoption — tunnel healthy.
+- (direct) curl-test pod cleanup.
+
 ## Carryover
 
-- **(server) promtail discovery alignment**: the mirror uses kubernetes_sd (role:pod) while live uses static_configs (file-path __path__) — label output is identical (namespace+service+level+tag) but the discovery mechanism differs. Align discovery form once the full live promtail-config is available (currently noted in the banner).
-- (existing carryover) ADR-028 SA application/token issuance · loki prod hardening gap · Sprint 230 rollout check · live /quiz verification · SP217 cutover · GA4 · problem_db · harness cron.
+- **(server) back-port loki Deployment hardening — gap confirmed**: #415 measurement found loki `securityContext` (runAsNonRoot/readOnlyRootFS) + liveness/readiness probes exist **only in the mirror, absent in gitops/live**. The Sprint 231/232 D1 (loki prod hardening gap) is now confirmed → back-port the mirror's loki hardening into aether-gitops (mirror→SSOT direction).
+- (existing carryover) ADR-028 SA application/token issuance · Sprint 230 rollout check · live /quiz verification · SP217 cutover · GA4 · problem_db · harness cron.
+- ~~promtail discovery alignment~~ → **resolved by #415**.
