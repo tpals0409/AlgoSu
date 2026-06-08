@@ -11,6 +11,16 @@ tldr: "AlgoSu 관측성 스택(메트릭 8 scrape job·알림 17규칙+recording
 ---
 # Sprint 231 — 모니터링 시스템 전수 조사 + 로그 수집 진단 + Alertmanager Discord receiver 실배선
 
+## 정정 (ERRATA, Sprint 232)
+
+> 본 ADR의 **"알림 — 전송 경로 0 (진짜 결함)"** 결론과 이를 전제한 "Discord receiver 실배선" 작업은 **오류**다. 서버 라이브 진단으로 정정한다(본문은 역사 기록으로 보존, 아래 사실이 우선).
+>
+> - **근본 오해**: AlgoSu `infra/k3s/`는 **배포되지 않는 참조 미러**이고 실제 배포 SSOT는 **aether-gitops**(`algosu/base/monitoring/` + `overlays/prod`)다. AlgoSu CI는 aether-gitops에 이미지 태그만 bump하고 매니페스트는 전파하지 않는다. Sprint 231은 비배포 미러의 구버전(`receiver: 'null'`)을 배포본으로 오독했다.
+> - **알림은 라이브에서 정상**이었다 — Sprint 130 B-1로 alertmanager-native `discord-default`+`discord-critical`(severity 라우팅, `identity-discord-secret/webhook-url`, v0.28.1) 동작 중. "17규칙 전부 드롭/6일 무알림"은 사실이 아니다.
+> - Sprint 231이 미러에 넣은 `monitoring-secrets/discord_webhook` + v0.27.0 + `webhook_url_file`은 **v0.27.0이 file-webhook 미지원이라 작동불가** 설정이었다 → Sprint 232에서 미러를 라이브로 정합, `ALERTMANAGER_DISCORD_WEBHOOK` placeholder 제거.
+> - **실제 "로그 미수집" 원인은 Loki OOM**(512Mi 한도, 5일 주기 spike) — aether-gitops PR #7로 512Mi→1Gi 상향·검증 완료. 본 ADR의 "로깅 파이프라인 정적 정상" 진단 자체는 유효(파이프라인은 정상, 원인은 Loki 리소스).
+> - 교훈 갱신: **정적 매니페스트(특히 비배포 미러)로 런타임 결함을 단정하지 말 것** — [[feedback-source-vs-live-drift]]. 상세: `docs/runbook/monitoring-system-audit.md` §0/§4.
+
 ## 목표
 
 - AlgoSu 전체 모니터링 스택(메트릭·알림·대시보드·로깅·검증 CI·컨벤션)을 **전수 조사**하여 현황·커버리지·갭을 사실 기반(파일:라인)으로 영속 문서화한다.
