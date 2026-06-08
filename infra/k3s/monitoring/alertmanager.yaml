@@ -105,9 +105,13 @@ spec:
           configMap:
             name: alertmanager-config
         # Discord webhook URL을 파일로 마운트 (webhook_url_file 참조)
+        # optional: true — ALERTMANAGER_DISCORD_WEBHOOK 키가 아직 seal되지 않은
+        # 환경에서도 pod가 정상 기동(키 부재 시 파일 미생성). 전송은 seal 후 활성화
+        # (Critic R1 P2: 미배포 secret 키 강제 의존으로 인한 롤아웃 중단 방지).
         - name: alertmanager-secrets
           secret:
             secretName: monitoring-secrets
+            optional: true
             items:
               - key: ALERTMANAGER_DISCORD_WEBHOOK
                 path: discord_webhook

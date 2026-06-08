@@ -135,7 +135,7 @@
                       #    monitoring-secrets.encryptedData.ALERTMANAGER_DISCORD_WEBHOOK 에 반영
   # 3) 커밋 → ArgoCD sync → alertmanager pod 재기동 후 발화 시 Discord 전송 확인
   ```
-  ⚠️ seal 전 롤아웃 시 secret 키 부재로 alertmanager pod가 볼륨 마운트 실패할 수 있음 → **seal 완료 후 롤아웃**.
+  ℹ️ secret 볼륨은 `optional: true`라 키 미seal 상태에서 매니페스트가 sync돼도 alertmanager pod는 **정상 기동**(파일 미생성, 알림 **전송만 비활성**). seal 완료 후 alertmanager 재기동 시 전송 활성화 — 롤아웃 중단 위험 없음.
 
 ### C. 거짓 추정 디버그 (에이전트 조사 추정 → 코드/매니페스트로 반증)
 - **C1**: github-worker-metrics Service는 **실존**(`infra/k3s/github-worker.yaml:81`, port 9100) → prometheus scrape 타겟 유효. "메트릭 노출 불일치" 추정은 거짓.
