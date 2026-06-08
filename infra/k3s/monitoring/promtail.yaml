@@ -3,6 +3,14 @@
 # 모든 노드에 배포, /var/log/pods 로그 수집
 # JSON 구조화 로그 파싱 → Loki label 추출
 # ============================================================
+# 라벨 모델 (Sprint 234): namespace + service + level + tag (라이브 aether-gitops 정합).
+#    service/level/tag는 JSON 로그 필드에서 승격(service = SERVICE_NAME). Service Debug
+#    대시보드의 service="${service}" 셀렉터와 정합. traceId는 본문 JSON 유지.
+#    ⚠️ 잔여 드리프트: 라이브는 static_configs(파일경로 __path__) discovery이나 본 미러는
+#    kubernetes_sd(role:pod) discovery — 라벨 출력은 동일, discovery 메커니즘만 상이
+#    (라이브 promtail-config 전문 부재로 discovery 형태까지는 미정합 → ADR sprint-234 후속 시드).
+#    (infra/k3s는 비배포 참조 미러 — 배포 SSOT는 aether-gitops. Sprint 232 확정)
+# ============================================================
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -33,18 +41,11 @@ data:
           - source_labels: [__meta_kubernetes_namespace]
             action: keep
             regex: algosu
-          # namespace 레이블
+          # namespace 레이블 (라이브 정합 라벨셋: namespace + service + level + tag, ≤5)
+          # pod/app/container 라벨은 드롭 — Service Debug 대시보드 Loki 패널이 service 라벨로
+          # 전환되어(Sprint 234) 불필요, 라이브(service 라벨셋) 정합 + 카디널리티 절감.
           - source_labels: [__meta_kubernetes_namespace]
             target_label: namespace
-          # pod 이름 레이블 (대시보드 쿼리 pod=~"${service}.*"용)
-          - source_labels: [__meta_kubernetes_pod_name]
-            target_label: pod
-          # app 레이블 (Pod의 app 라벨을 그대로 노출)
-          - source_labels: [__meta_kubernetes_pod_label_app]
-            target_label: app
-          # container 이름
-          - source_labels: [__meta_kubernetes_pod_container_name]
-            target_label: container
           # 로그 경로: /var/log/pods/*<uid>/<container>/*.log
           # kubelet 로그 디렉토리 규칙: namespace_pod-name_uid/container-name/*.log
           # glob 패턴 * 로 namespace_pod-name_ prefix 매칭
@@ -63,11 +64,15 @@ data:
           - json:
               expressions:
                 level: level
+                service: service
                 traceId: traceId
                 tag: tag
-          # level, tag를 Loki 라벨로 승격 (service는 app 레이블로 대체됨)
+          # level, service, tag를 Loki 라벨로 승격 (service = JSON service 필드 =
+          # SERVICE_NAME: gateway|submission|problem|identity|ai-analysis|github-worker.
+          # 대시보드 service="${service}" 셀렉터와 정합 — 라이브 라벨 모델)
           - labels:
               level:
+              service:
               tag:
           # traceId는 로그 본문에 JSON으로 남아있음 (Loki structured_metadata 미사용 —
           # loki-config.yaml: allow_structured_metadata: false)
