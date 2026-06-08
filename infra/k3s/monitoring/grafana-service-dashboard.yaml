@@ -730,7 +730,7 @@ data:
           "type": "logs",
           "targets": [
             {
-              "expr": "{namespace=\"algosu\", pod=~\"${service}.*\"} |= \"error\" | json | level=~\"error|fatal|CRITICAL\"",
+              "expr": "{namespace=\"algosu\", pod=~\"${service}.*\", level=\"error\"}",
               "legendFormat": ""
             }
           ]

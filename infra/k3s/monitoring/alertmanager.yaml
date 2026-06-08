@@ -1,8 +1,15 @@
 # ============================================================
 # @file infra/k3s/monitoring/alertmanager.yaml
 # AlgoSu — Alertmanager
-# Discord 알림은 Identity 서비스에서 직접 webhook 호출 방식으로 전환됨
-# alertmanager는 알림 수집/라우팅만 담당, 외부 전송 receiver 미설정
+# @domain observability
+# @related infra/k3s/monitoring/prometheus-rules.yaml, infra/sealed-secrets/sealed-secrets-template.yaml, docs/runbook/monitoring-system-audit.md
+#
+# Prometheus 규칙(prometheus-rules.yaml)에서 발화한 알림을 Discord webhook으로 전송.
+# webhook URL은 monitoring-secrets(SealedSecret)의 ALERTMANAGER_DISCORD_WEBHOOK 키를
+# /etc/alertmanager/secrets/discord_webhook 파일로 마운트하여 webhook_url_file로 참조.
+# ⚠️ 실 배포 전 운영측에서 kubeseal로 ALERTMANAGER_DISCORD_WEBHOOK을 seal해야 함
+#    (절차: docs/runbook/monitoring-system-audit.md §3 / Sprint 231).
+# (Sprint 231 이전: receiver='null'로 모든 알림이 드롭되던 결함 — 본 스프린트에서 실배선)
 # ============================================================
 apiVersion: v1
 kind: ConfigMap
@@ -19,11 +26,15 @@ data:
       group_wait: 10s
       group_interval: 10s
       repeat_interval: 1h
-      receiver: 'null'
+      receiver: 'discord'
 
     receivers:
-      # Discord 알림은 Identity 서비스에서 직접 webhook 호출 방식으로 전환
-      # 추후 외부 receiver 필요 시 여기에 추가
+      # Discord 전송 — webhook URL은 secret 파일에서 로드 (평문 미포함)
+      - name: 'discord'
+        discord_configs:
+          - webhook_url_file: /etc/alertmanager/secrets/discord_webhook
+            send_resolved: true
+      # 'null' receiver는 향후 특정 알림 무음(silence)/inhibition 용도로 보존
       - name: 'null'
 ---
 apiVersion: apps/v1
@@ -84,12 +95,26 @@ spec:
           volumeMounts:
             - name: alertmanager-config
               mountPath: /etc/alertmanager
+            - name: alertmanager-secrets
+              mountPath: /etc/alertmanager/secrets
+              readOnly: true
             - name: alertmanager-storage
               mountPath: /alertmanager
       volumes:
         - name: alertmanager-config
           configMap:
             name: alertmanager-config
+        # Discord webhook URL을 파일로 마운트 (webhook_url_file 참조)
+        # optional: true — ALERTMANAGER_DISCORD_WEBHOOK 키가 아직 seal되지 않은
+        # 환경에서도 pod가 정상 기동(키 부재 시 파일 미생성). 전송은 seal 후 활성화
+        # (Critic R1 P2: 미배포 secret 키 강제 의존으로 인한 롤아웃 중단 방지).
+        - name: alertmanager-secrets
+          secret:
+            secretName: monitoring-secrets
+            optional: true
+            items:
+              - key: ALERTMANAGER_DISCORD_WEBHOOK
+                path: discord_webhook
         - name: alertmanager-storage
           emptyDir: {}
 ---
