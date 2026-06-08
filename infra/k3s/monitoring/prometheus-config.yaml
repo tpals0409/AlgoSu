@@ -62,6 +62,47 @@ data:
         static_configs:
           - targets: ['rabbitmq:15692']
         metrics_path: /metrics
+
+      # ============================================================
+      # Sprint 233: kubelet/cAdvisor — 컨테이너 CPU/메모리 메트릭 (container_*)
+      # k3s 표준: apiserver proxy 경유(role:node SD). ServiceAccount=prometheus +
+      # nodes/nodes/metrics/nodes/proxy ClusterRole 필요 (본 파일 하단 RBAC 참조).
+      # AlgoSu Service Debug 대시보드 CPU/Memory 패널의 데이터 소스.
+      # ============================================================
+      - job_name: 'kubernetes-cadvisor'
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        kubernetes_sd_configs:
+          - role: node
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+          - target_label: __address__
+            replacement: kubernetes.default.svc:443
+          - source_labels: [__meta_kubernetes_node_name]
+            regex: (.+)
+            target_label: __metrics_path__
+            replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
+
+      # kubelet 자체 메트릭(node/runtime) — apiserver proxy 경유
+      - job_name: 'kubernetes-nodes'
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        kubernetes_sd_configs:
+          - role: node
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+          - target_label: __address__
+            replacement: kubernetes.default.svc:443
+          - source_labels: [__meta_kubernetes_node_name]
+            regex: (.+)
+            target_label: __metrics_path__
+            replacement: /api/v1/nodes/${1}/proxy/metrics
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -85,6 +126,8 @@ spec:
         app: prometheus
         component: monitoring
     spec:
+      # Sprint 233: cAdvisor/kubelet scrape를 위한 SA (nodes/proxy 권한)
+      serviceAccountName: prometheus
       securityContext:
         runAsNonRoot: true
         runAsUser: 65534
@@ -167,3 +210,49 @@ spec:
   resources:
     requests:
       storage: 5Gi
+---
+# ============================================================
+# Sprint 233: Prometheus RBAC — kubelet/cAdvisor scrape (role:node SD)
+# apiserver proxy(/api/v1/nodes/<node>/proxy/...) 경유에 nodes/proxy get 필요.
+# ============================================================
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+  namespace: algosu
+  labels:
+    app: prometheus
+    component: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: algosu-prometheus
+  labels:
+    app: prometheus
+    component: monitoring
+rules:
+  - apiGroups: [""]
+    resources:
+      - nodes
+      - nodes/metrics
+      - nodes/proxy
+    verbs: ["get", "list", "watch"]
+  - nonResourceURLs: ["/metrics", "/metrics/cadvisor"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: algosu-prometheus
+  labels:
+    app: prometheus
+    component: monitoring
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: algosu-prometheus
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: algosu
