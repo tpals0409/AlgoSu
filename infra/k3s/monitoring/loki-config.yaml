@@ -61,6 +61,10 @@ metadata:
     component: monitoring
 spec:
   replicas: 1
+  # RWO PVC + single-instance compactor — RollingUpdate 시 신구 pod 동시 실행이
+  # 같은 인덱스/delete-store 경합(compactor init timeout) → Recreate 필수 (prometheus 동일 패턴)
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: loki
@@ -70,6 +74,8 @@ spec:
         app: loki
         component: monitoring
     spec:
+      # 하드닝: loki 이미지 기본 uid(10001)로 고정 + non-root + PVC fsGroup
+      # 라이브 검증: 프로세스 이미 uid=10001, 저장 경로 전부 /loki(PVC) 하위 → readOnlyRootFS 안전
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
@@ -86,13 +92,15 @@ spec:
             capabilities:
               drop:
                 - ALL
-            readOnlyRootFilesystem: true
+            # readOnlyRootFilesystem 제외: compactor가 filesystem delete_request_store
+            # (retention_enabled=true)를 root FS에 쓰려다 "init delete store: timeout" CrashLoop.
+            # 저장 경로는 /loki(PVC)이나 delete-store 경로는 root FS라 RO 불가.
           volumeMounts:
             - name: loki-config
               mountPath: /etc/loki
             - name: loki-storage
               mountPath: /loki
-          # M20: liveness/readiness probe 추가
+          # liveness/readiness probe
           livenessProbe:
             httpGet:
               path: /ready
