@@ -4,9 +4,9 @@ topics:
 ---
 # ADR-028: 개발 서버(k3d/별도 dev cluster) 분리 — 운영 직접 수정 차단 구조
 
-- **상태**: 부분 적용됨 (Accepted-Partial) — 옵션 A(로컬 k3d) Kustomize overlay 분리 완료, kubeconfig read-only 분리 + Claude Code 실행 환경 이전은 미확정
-- **날짜**: 2026-04-25 (제안), 2026-04-27 (옵션 A 적용 상태 확정)
-- **스프린트**: Sprint 130 (제안), Sprint 133 (사용자 확인으로 적용 상태 확정)
+- **상태**: 부분 적용됨 (Accepted-Partial) — 옵션 A(로컬 k3d) Kustomize overlay 분리 완료. **kubeconfig read-only 분리: 구현 착수**(Sprint 233 — `prod-diag-readonly` SA + 단기 토큰 kubeconfig 절차서 산출, `docs/runbook/prod-readonly-kubeconfig.md`; 실제 SA 적용·토큰 발급은 서버측 aether-gitops). Claude Code 실행 환경 이전은 미확정.
+- **날짜**: 2026-04-25 (제안), 2026-04-27 (옵션 A 적용 상태 확정), 2026-06-08 (Sprint 233 kubeconfig read-only 구현 착수)
+- **스프린트**: Sprint 130 (제안), Sprint 133 (사용자 확인으로 적용 상태 확정), Sprint 233 (read-only kubeconfig 절차서)
 - **의사결정자**: Oracle (심판관)
 - **사용자 요청**: 2026-04-25 "서버에서 직접 수정하는것이 좋은 방향은 아니기 때문에"
 - **사용자 확인**: 2026-04-27 "개발서버는 이미 분리되어있습니다"
