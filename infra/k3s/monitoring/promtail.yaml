@@ -3,6 +3,13 @@
 # 모든 노드에 배포, /var/log/pods 로그 수집
 # JSON 구조화 로그 파싱 → Loki label 추출
 # ============================================================
+# ⚠️ 드리프트 (Sprint 234): 본 미러는 kubernetes_sd + `pod` 라벨 방식이나,
+#    라이브(aether-gitops 배포본)는 static_configs + `service` 라벨 방식이다.
+#    Service Debug 대시보드(grafana-service-dashboard.yaml)는 라이브 정합으로
+#    `service` 라벨을 참조하므로, 본 미러 promtail(pod 라벨)과는 일시 불일치한다.
+#    라이브 promtail-config 전문 부재로 정확 정합 불가 → ADR sprint-234 후속 시드.
+#    (infra/k3s는 비배포 참조 미러 — 배포 SSOT는 aether-gitops. Sprint 232 확정)
+# ============================================================
 apiVersion: v1
 kind: ConfigMap
 metadata:

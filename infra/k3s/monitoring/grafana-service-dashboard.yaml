@@ -1,5 +1,11 @@
 # AlgoSu — Service Debug Dashboard ConfigMap
-# 서비스별 디버깅 대시보드 (단일 Template Variable — Prometheus job name 기반)
+# 서비스별 디버깅 대시보드 (단일 Template Variable $service)
+# ⚠️ 비배포 참조 미러 — 배포 SSOT는 aether-gitops(algosu/base/monitoring). Sprint 234에서 라이브 정합.
+# $service 변수값은 Loki `service` 라벨값(gateway/submission/problem/identity/ai-analysis/github-worker)
+# 기준으로 통일. 패널별 셀렉터 매핑:
+#   - Loki 로그:        service="${service}"          (정확 매칭)
+#   - Prometheus HTTP:  job=~"${service}.*"           (submission→submission-service 등 prefix 매칭)
+#   - cAdvisor/KSM:     pod=~"${service}.*"           (pod 이름 prefix 매칭)
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -64,7 +70,7 @@ data:
           "type": "timeseries",
           "targets": [
             {
-              "expr": "sum by (path) (rate({__name__=~\"algosu_.+_http_requests_total\", job=\"${service}\"}[5m]))",
+              "expr": "sum by (path) (rate({__name__=~\"algosu_.+_http_requests_total\", job=~\"${service}.*\"}[5m]))",
               "legendFormat": "{{path}}"
             }
           ]
@@ -95,7 +101,7 @@ data:
           "type": "timeseries",
           "targets": [
             {
-              "expr": "sum by (status_code) (rate({__name__=~\"algosu_.+_http_requests_total\", job=\"${service}\"}[5m]))",
+              "expr": "sum by (status_code) (rate({__name__=~\"algosu_.+_http_requests_total\", job=~\"${service}.*\"}[5m]))",
               "legendFormat": "{{status_code}}"
             }
           ]
@@ -142,15 +148,15 @@ data:
           "type": "timeseries",
           "targets": [
             {
-              "expr": "histogram_quantile(0.50, sum by (le) (rate({__name__=~\"algosu_.+_http_request_duration_seconds_bucket\", job=\"${service}\"}[5m])))",
+              "expr": "histogram_quantile(0.50, sum by (le) (rate({__name__=~\"algosu_.+_http_request_duration_seconds_bucket\", job=~\"${service}.*\"}[5m])))",
               "legendFormat": "P50"
             },
             {
-              "expr": "histogram_quantile(0.95, sum by (le) (rate({__name__=~\"algosu_.+_http_request_duration_seconds_bucket\", job=\"${service}\"}[5m])))",
+              "expr": "histogram_quantile(0.95, sum by (le) (rate({__name__=~\"algosu_.+_http_request_duration_seconds_bucket\", job=~\"${service}.*\"}[5m])))",
               "legendFormat": "P95"
             },
             {
-              "expr": "histogram_quantile(0.99, sum by (le) (rate({__name__=~\"algosu_.+_http_request_duration_seconds_bucket\", job=\"${service}\"}[5m])))",
+              "expr": "histogram_quantile(0.99, sum by (le) (rate({__name__=~\"algosu_.+_http_request_duration_seconds_bucket\", job=~\"${service}.*\"}[5m])))",
               "legendFormat": "P99"
             }
           ]
@@ -190,7 +196,7 @@ data:
           "type": "timeseries",
           "targets": [
             {
-              "expr": "histogram_quantile(0.95, sum by (le, path) (rate({__name__=~\"algosu_.+_http_request_duration_seconds_bucket\", job=\"${service}\"}[5m])))",
+              "expr": "histogram_quantile(0.95, sum by (le, path) (rate({__name__=~\"algosu_.+_http_request_duration_seconds_bucket\", job=~\"${service}.*\"}[5m])))",
               "legendFormat": "{{path}}"
             }
           ]
@@ -227,7 +233,7 @@ data:
           "type": "stat",
           "targets": [
             {
-              "expr": "sum(rate({__name__=~\"algosu_.+_http_requests_total\", job=\"${service}\", status_code=~\"5..\"}[5m])) / sum(rate({__name__=~\"algosu_.+_http_requests_total\", job=\"${service}\"}[5m])) * 100 or vector(0)",
+              "expr": "sum(rate({__name__=~\"algosu_.+_http_requests_total\", job=~\"${service}.*\", status_code=~\"5..\"}[5m])) / sum(rate({__name__=~\"algosu_.+_http_requests_total\", job=~\"${service}.*\"}[5m])) * 100 or vector(0)",
               "legendFormat": "Error %"
             }
           ]
@@ -262,7 +268,7 @@ data:
           "type": "stat",
           "targets": [
             {
-              "expr": "{__name__=~\"algosu_.+_http_active_requests\", job=\"${service}\"} or vector(0)",
+              "expr": "{__name__=~\"algosu_.+_http_active_requests\", job=~\"${service}.*\"} or vector(0)",
               "legendFormat": "Active"
             }
           ]
@@ -297,7 +303,7 @@ data:
           "type": "stat",
           "targets": [
             {
-              "expr": "histogram_quantile(0.95, sum by (le) (rate({__name__=~\"algosu_.+_http_request_duration_seconds_bucket\", job=\"${service}\"}[5m])))",
+              "expr": "histogram_quantile(0.95, sum by (le) (rate({__name__=~\"algosu_.+_http_request_duration_seconds_bucket\", job=~\"${service}.*\"}[5m])))",
               "legendFormat": "P95"
             }
           ]
@@ -371,11 +377,11 @@ data:
           "type": "timeseries",
           "targets": [
             {
-              "expr": "{__name__=~\"algosu_.+_nodejs_heap_size_used_bytes\", job=\"${service}\"}",
+              "expr": "{__name__=~\"algosu_.+_nodejs_heap_size_used_bytes\", job=~\"${service}.*\"}",
               "legendFormat": "Used"
             },
             {
-              "expr": "{__name__=~\"algosu_.+_nodejs_heap_size_total_bytes\", job=\"${service}\"}",
+              "expr": "{__name__=~\"algosu_.+_nodejs_heap_size_total_bytes\", job=~\"${service}.*\"}",
               "legendFormat": "Total"
             }
           ]
@@ -415,7 +421,7 @@ data:
           "type": "timeseries",
           "targets": [
             {
-              "expr": "{__name__=~\"algosu_.+_nodejs_eventloop_lag_seconds\", job=\"${service}\"}",
+              "expr": "{__name__=~\"algosu_.+_nodejs_eventloop_lag_seconds\", job=~\"${service}.*\"}",
               "legendFormat": "EL Lag"
             }
           ]
@@ -707,7 +713,7 @@ data:
           "type": "logs",
           "targets": [
             {
-              "expr": "{namespace=\"algosu\", pod=~\"${service}.*\"} | json | line_format \"{{.level}} {{.message}}\"",
+              "expr": "{namespace=\"algosu\", service=\"${service}\"} | json | line_format \"{{.level}} {{.message}}\"",
               "legendFormat": ""
             }
           ]
@@ -730,7 +736,7 @@ data:
           "type": "logs",
           "targets": [
             {
-              "expr": "{namespace=\"algosu\", pod=~\"${service}.*\", level=\"error\"}",
+              "expr": "{namespace=\"algosu\", service=\"${service}\", level=\"error\"}",
               "legendFormat": ""
             }
           ]
@@ -750,9 +756,9 @@ data:
             "name": "service",
             "options": [
               { "selected": true, "text": "Gateway", "value": "gateway" },
-              { "selected": false, "text": "Submission", "value": "submission-service" },
-              { "selected": false, "text": "Problem", "value": "problem-service" },
-              { "selected": false, "text": "Identity", "value": "identity-service" },
+              { "selected": false, "text": "Submission", "value": "submission" },
+              { "selected": false, "text": "Problem", "value": "problem" },
+              { "selected": false, "text": "Identity", "value": "identity" },
               { "selected": false, "text": "AI Analysis", "value": "ai-analysis" },
               { "selected": false, "text": "GitHub Worker", "value": "github-worker" }
             ],
