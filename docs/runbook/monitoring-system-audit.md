@@ -15,9 +15,11 @@
 
 ## §0 요약 (TL;DR)
 
-- **로깅 파이프라인은 정적 구성상 올바르게 배선돼 있다.** Promtail(CRI+JSON 파싱, `level`/`tag` 라벨 승격) → `loki:3100`(NetworkPolicy `loki-ingress` 허용, `default-deny`는 Ingress 전용이라 Promtail egress 무제한) → Grafana Loki 데이터소스(uid `loki` 정합). `level` 값은 전 서비스 **소문자 정합**. → **"로그 미수집"이 사실이라면 구성 버그가 아니라 런타임 원인**이며, 확인은 §3 라이브 진단(OCI 클러스터 접근, 운영측)이 필요하다.
-- **알림 전송 경로는 Sprint 231 이전까지 0이었다(결함).** `alertmanager.yaml` `route.receiver: 'null'` → 17개 규칙이 발화돼도 전송 안 됨. Sprint 231에서 **Discord receiver 실배선**으로 수정(§4-B).
-- **거짓 추정 디버그**: github-worker-metrics Service 실존(scrape 타겟 유효), Identity discord는 feedback 전용(알림과 무관) — §4-C.
+> **🔧 정정 (Sprint 232)**: 본 문서의 초판(Sprint 231)은 **`infra/k3s/`를 배포본으로 오독**했다. 실제 배포 SSOT는 **aether-gitops**(`algosu/base/monitoring/` + `overlays/prod`)이고 `infra/k3s/`는 **배포되지 않는 참조 미러**다(AlgoSu CI는 aether-gitops에 이미지 태그만 bump). 그 결과 ①"알림 전송 경로 0(receiver:null)" 결론은 **오류** — 라이브는 Sprint 130 B-1로 정상 동작 중이었다. ②실제 로그 미수집 원인은 **Loki OOM**(서버 진단으로 확인, aether-gitops PR #7로 512Mi→1Gi 해소)이었다. 아래 본문은 정정 반영본. 교훈: 정적 매니페스트로 런타임 결함을 단정하지 말 것.
+
+- **로깅 파이프라인은 정적 구성상 올바르게 배선돼 있다.** Promtail(CRI+JSON 파싱, `level`/`tag` 라벨 승격) → `loki:3100`(NetworkPolicy `loki-ingress` 허용, `default-deny`는 Ingress 전용이라 Promtail egress 무제한) → Grafana Loki 데이터소스(uid `loki` 정합). `level` 값은 전 서비스 **소문자 정합**. → 실제 "로그 미수집"의 원인은 파이프라인이 아니라 **Loki OOM**(512Mi 한도에서 5일 주기 spike 초과)이었고, **aether-gitops PR #7로 limit 512Mi→1Gi 상향**해 해소됨(서버 검증: loki Running·OOM 재발 없음). §4-C 참조.
+- **알림은 라이브에서 정상 동작 중이다.** 배포 SSOT(aether-gitops)의 alertmanager는 Sprint 130 B-1로 **alertmanager-native discord_configs**(`discord-default` + `discord-critical`, severity 라우팅, `identity-discord-secret/webhook-url`, v0.28.1)를 사용한다. Sprint 231이 본 `infra/k3s/`의 `receiver: 'null'`은 **비배포 미러의 구버전 스냅샷**이었다 — 실 결함 아님. (Sprint 232에서 미러를 라이브에 정합)
+- **거짓 추정 디버그**: github-worker-metrics Service 실존(scrape 타겟 유효), Identity discord는 feedback 알림 + alertmanager가 **동일 secret(identity-discord-secret) 공유** — §4-C.
 
 ---
 
@@ -44,7 +46,7 @@
 
 `infra/k3s/monitoring/prometheus-rules.yaml` — 알림 17개 + recording rule 2개(`algosu:http_error_rate:5m`, `algosu:memory_usage_pct`). 그룹: availability(ServiceDown), error_rate(High/Critical), latency(P95), security(AuthFailure/InternalKeyViolation), circuit_breaker(OPEN=2), resources(Memory), messaging(DLQ placeholder), rabbitmq(Unacked), kubernetes(PodRestart/CPU/OOMKilled).
 
-전송: `infra/k3s/monitoring/alertmanager.yaml` — Sprint 231부터 Discord receiver(`discord_configs.webhook_url_file`)로 라우팅(§4-B).
+전송(**배포 SSOT = aether-gitops**, `infra/k3s/monitoring/alertmanager.yaml`는 비배포 미러): Sprint 130 B-1로 alertmanager-native `discord_configs` — `discord-default`(기본) + `discord-critical`(severity=critical, repeat 30m), `webhook_url_file`로 `identity-discord-secret/webhook-url` 참조, image v0.28.1. §4-B 참조.
 
 ### 1.3 대시보드 (Grafana)
 
@@ -119,31 +121,27 @@
 
 ## §4 확정 갭 · 거짓 추정 디버그 · 후속 시드
 
-### A. 로깅 — 구성 정상, 쿼리 결함(Sprint 231 수정 완료)
-- **A5/A6 (수정됨)**: Error Logs Only 쿼리가 `level=~"error|fatal|CRITICAL"`(죽은 분기 — 어떤 서비스도 `fatal`/`CRITICAL` 미출력. Python `LEVEL_MAP`은 CRITICAL→`"error"` 통일, `ai-analysis/src/logger.py:97-103`) + 취약한 `|= "error"` 라인필터를 사용 → `level` 라벨 직접 필터로 단순화.
-- **A7 (관찰)**: Promtail positions emptyDir → 재시작 시 리셋(중복 로그 위험, 미수집 원인 아님). PVC로 영속화는 후속 검토.
+> **구조 (Sprint 232 핵심)**: AlgoSu `infra/k3s/`는 **배포되지 않는 참조 미러**다. 배포 SSOT는 **aether-gitops**(`algosu/base/monitoring/` + `overlays/prod`); ArgoCD(automated·selfHeal·Synced)가 이것만 본다. AlgoSu CI(`ci.yml:1073+`)는 aether-gitops에 **이미지 태그만** bump하고 매니페스트는 전파하지 않는다 → 두 소스는 드리프트한다. **런타임 결함은 반드시 라이브(aether-gitops/클러스터)로 검증할 것.** [[feedback-source-vs-live-drift]]
 
-### B. 알림 — 전송 경로 실배선(Sprint 231 수정 완료)
-- **B1/B2 (수정됨)**: `alertmanager.yaml` receiver=`null`(17규칙 전부 드롭) → Discord receiver 실배선. 거짓 주석("Identity webhook 전환" — 실제 Identity `DiscordWebhookService`는 `feedback.service.ts:58` `sendFeedbackNotification` 전용) 사실로 교정.
-- **B3 운영측 실행 필요 — Discord webhook seal 절차**:
-  ```bash
-  # 1) Discord 채널 → 연동 → 웹후크 → URL 복사
-  # 2) 클러스터 sealed-secrets 공개키로 seal (kubeseal)
-  echo -n '<DISCORD_WEBHOOK_URL>' | kubeseal --raw \
-    --namespace algosu --name monitoring-secrets \
-    --scope strict   # → 출력 문자열을 sealed-secrets-template.yaml의
-                      #    monitoring-secrets.encryptedData.ALERTMANAGER_DISCORD_WEBHOOK 에 반영
-  # 3) 커밋 → ArgoCD sync → alertmanager pod 재기동 후 발화 시 Discord 전송 확인
-  ```
-  ℹ️ secret 볼륨은 `optional: true`라 키 미seal 상태에서 매니페스트가 sync돼도 alertmanager pod는 **정상 기동**(파일 미생성, 알림 **전송만 비활성**). seal 완료 후 alertmanager 재기동 시 전송 활성화 — 롤아웃 중단 위험 없음.
+### A. 로깅 — 구성 정상, 실제 원인은 Loki OOM(해소됨)
+- **A-실제원인 (해소)**: 로그 미수집의 실제 원인은 **Loki OOM** — limit 512Mi에서 5일 주기 spike 초과(restartCount 17, 마지막 OOMKilled 2026-05-18). **aether-gitops PR #7(`5b07bf6`)로 limit 512Mi→1Gi / requests 128Mi→256Mi 상향**, 서버 검증(loki Running·1Gi 반영·OOM 재발 없음). 노드 여유 충분(23.4GiB, MemoryPressure False).
+- **A5/A6 (미러 쿼리)**: Error Logs Only 쿼리 `level=~"error|fatal|CRITICAL"`(죽은 분기 — 어떤 서비스도 `fatal`/`CRITICAL` 미출력. Python `LEVEL_MAP`은 CRITICAL→`"error"` 통일)+취약한 라인필터를 `level` 라벨 직접 필터로 단순화(Sprint 231). ⚠️ 단 이는 **비배포 미러**의 대시보드이므로 라이브 Grafana 반영 여부는 aether-gitops 대시보드 확인 필요(시드).
+- **A7 (관찰)**: Promtail positions emptyDir → 재시작 시 리셋(중복 로그 위험, 미수집 원인 아님).
+
+### B. 알림 — 라이브 정상 (Sprint 231 "결함" 결론은 오류, 정정됨)
+- **B-정정**: Sprint 231은 `infra/k3s/`(비배포 미러)의 구버전 `receiver: 'null'`을 보고 "17규칙 전부 드롭/무알림"을 단정했으나 **오류**. 배포 SSOT(aether-gitops)의 라이브 alertmanager는 **Sprint 130 B-1로 이미 정상** — alertmanager-native `discord-default` + `discord-critical`(severity 라우팅), `webhook_url_file`로 `identity-discord-secret/webhook-url` 참조(`optional: false`), image v0.28.1.
+- **B-미러정합 (Sprint 232)**: AlgoSu 미러 `alertmanager.yaml`을 라이브로 교체(v0.28.1 + discord-default/critical + identity-discord-secret/webhook-url). Sprint 231이 넣은 `monitoring-secrets/discord_webhook` + v0.27.0(file-webhook 미지원이라 **작동불가**) 설정과 `ALERTMANAGER_DISCORD_WEBHOOK` placeholder 제거. **배포 무영향**(미러).
+- **B-secret**: alertmanager와 identity-service(feedback)가 **`identity-discord-secret`(key `webhook-url`)을 공유** — 동일 Discord 채널. 별도 seal 불필요(기존 secret 재사용). Sprint 231의 "ALERTMANAGER_DISCORD_WEBHOOK seal 필요" 이월은 **무효**.
 
 ### C. 거짓 추정 디버그 (에이전트 조사 추정 → 코드/매니페스트로 반증)
 - **C1**: github-worker-metrics Service는 **실존**(`infra/k3s/github-worker.yaml:81`, port 9100) → prometheus scrape 타겟 유효. "메트릭 노출 불일치" 추정은 거짓.
 - **C2**: Identity discord-webhook = **feedback 전용**(`identity/src/feedback/feedback.service.ts:58`) — Prometheus alert 수신 컨트롤러 없음. 알림과 무관.
 - **C3**: `.bak` 2개(`grafana-cb-dashboard.yaml.bak`, `grafana-slo-dashboard.yaml.bak`)는 **git 미추적**(체크인 아님)이었음 — 로컬 정리만 수행, 커밋 영향 없음. "체크인된 백업" 추정 정정.
-- **C4**: 모니터링 SealedSecret = `GRAFANA_ADMIN_PASSWORD` 1개뿐(Sprint 231에서 `ALERTMANAGER_DISCORD_WEBHOOK` 추가).
+- **C4**: 모니터링 SealedSecret(`monitoring-secrets`) = `GRAFANA_ADMIN_PASSWORD` 1개. Discord webhook은 별도 `identity-discord-secret`(key `webhook-url`)을 alertmanager·identity-feedback이 공유. (Sprint 231이 추가했던 `ALERTMANAGER_DISCORD_WEBHOOK`은 Sprint 232에서 제거 — 불필요했음.)
 
 ### D. 후속 시드 (이번 스프린트 미포함)
+- **D1 (신규, 서버 검증 필요) loki prod 하드닝 갭**: AlgoSu 미러 `loki-config.yaml`엔 `livenessProbe`/`readinessProbe` + `securityContext`(runAsNonRoot:10001) + `allow_structured_metadata: false`가 있으나, 서버 라이브 덤프(aether-gitops base)엔 **probe·securityContext 부재 + `allow_structured_metadata: true`**. → 라이브 loki에 probe/securityContext 실재 여부 **서버 재확인** 필요. 없으면 **prod 하드닝 갭**(aether-gitops에 probe/securityContext 추가), 덤프 누락이면 무시. (미러 loki는 드리프트 방향 미확정이라 본 스프린트 미수정.)
 - **D2**: `check-prom-default-metrics.mjs` CI 미통합(로컬/port-forward 전용). 서비스 부트스트랩 필요로 의도적 분리 추정 — `quality-monitoring`에 선택적 통합 검토.
 - **D3**: DLQ alert placeholder(`prometheus-rules.yaml` messaging 그룹) / ai-analysis Python CB `requests_total`·`failures_total` 메트릭 부재(`grafana-cb-dashboard.yaml` description).
 - **D4**: 분산 트레이싱(OpenTelemetry) 미사용 — 서비스 간 traceId는 헤더 전파만. Sentry는 gateway+frontend만. 알림 대응/온콜 절차 런북 부재(본 런북이 1차 토대).
+- **D5**: AlgoSu `infra/k3s/`(비배포 미러) ↔ aether-gitops(배포 SSOT) 드리프트 — 완전 미러 동기화는 미채택(참조 격하). 향후 미러를 deprecate하거나 드리프트 체크 자동화 검토.

@@ -11,6 +11,16 @@ tldr: "Audited the full AlgoSu observability stack (8 metric scrape jobs, 17 ale
 ---
 # Sprint 231 — Full Monitoring System Audit + Log Collection Diagnosis + Alertmanager Discord Receiver Wiring
 
+## ERRATA (Sprint 232)
+
+> This ADR's **"Alerting — zero delivery path (real defect)"** conclusion, and the "Discord receiver wiring" work premised on it, are **wrong**. Corrected via server-side live diagnosis (the body is kept as a historical record; the facts below take precedence).
+>
+> - **Root misunderstanding**: AlgoSu `infra/k3s/` is a **non-deployed reference mirror**; the actual deployment SSOT is **aether-gitops** (`algosu/base/monitoring/` + `overlays/prod`). AlgoSu CI only bumps image tags in aether-gitops and does not propagate manifests. Sprint 231 misread the mirror's stale snapshot (`receiver: 'null'`) as the deployed config.
+> - **Alerting was healthy in production** — Sprint 130 B-1 already wired alertmanager-native `discord-default` + `discord-critical` (severity routing, `identity-discord-secret/webhook-url`, v0.28.1). "All 17 rules dropped / 6 days of no alerts" is false.
+> - The mirror "fix" Sprint 231 added (`monitoring-secrets/discord_webhook` + v0.27.0 + `webhook_url_file`) was a **non-functional** config (v0.27.0 does not support file-based discord webhook) → Sprint 232 aligns the mirror to live and removes the `ALERTMANAGER_DISCORD_WEBHOOK` placeholder.
+> - **The actual "log non-collection" cause was Loki OOM** (512Mi limit, ~5-day spike) — fixed and verified via aether-gitops PR #7 (512Mi→1Gi). This ADR's "logging pipeline statically sound" diagnosis itself remains valid (the pipeline was fine; the cause was Loki resources).
+> - Lesson updated: **do not assert runtime defects from static manifests (especially a non-deployed mirror)** — [[feedback-source-vs-live-drift]]. Details: `docs/runbook/monitoring-system-audit.md` §0/§4.
+
 ## Goal
 
 - Audit the entire AlgoSu monitoring stack (metrics, alerts, dashboards, logging, validation CI, conventions) and persist a fact-based (file:line) inventory of current state, coverage, and gaps.
