@@ -21,7 +21,9 @@ ADR-028 read-only 프로파일 정렬:
 
 ## §2 매니페스트 (aether-gitops에 적용)
 
-> aether-gitops의 base(예: `algosu/base/rbac/prod-diag-readonly.yaml`)에 추가하고 kustomization에 등록 → PR → ArgoCD sync. namespace는 운영 실제 네임스페이스(`algosu`)에 맞춘다.
+> aether-gitops의 base(예: `algosu/base/rbac/prod-diag-readonly.yaml`)에 추가하고 kustomization에 등록 → PR → ArgoCD sync.
+>
+> **권한 스코프 분리 (최소 권한, Critic R1 P1)**: 네임스페이스 한정 권한(pods/로그/**exec**/configmaps 등)은 **`algosu` Role + RoleBinding**으로 묶어 다른 네임스페이스(예: kube-system)에서 exec/logs가 불가하게 한다. 진짜 클러스터 스코프 읽기(nodes/namespaces/persistentvolumes)만 **ClusterRole + ClusterRoleBinding**(읽기 전용)으로 부여한다.
 
 ```yaml
 apiVersion: v1
@@ -33,32 +35,25 @@ metadata:
     app.kubernetes.io/part-of: algosu
     component: diagnostics
 ---
+# (1) 네임스페이스 한정 권한 — algosu 안에서만 (Role + RoleBinding)
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
+kind: Role
 metadata:
   name: prod-diag-readonly
+  namespace: algosu
   labels:
     app.kubernetes.io/part-of: algosu
     component: diagnostics
 rules:
-  # 코어 리소스 조회 (secrets 제외)
+  # 코어 네임스페이스 리소스 조회 (secrets 제외)
   - apiGroups: [""]
-    resources:
-      - pods
-      - services
-      - endpoints
-      - events
-      - nodes
-      - namespaces
-      - configmaps
-      - persistentvolumeclaims
-      - persistentvolumes
+    resources: ["pods", "services", "endpoints", "events", "configmaps", "persistentvolumeclaims"]
     verbs: ["get", "list", "watch"]
   - apiGroups: [""]
     resources: ["pods/log"]
     verbs: ["get"]
   # exec (ADR-028 'exec 허용' — Loki 내부 API 진단용. create 동사는 exec 서브리소스
-  # 호출 방식이며 워크로드 변경 권한이 아님)
+  # 호출 방식이며 워크로드 변경 권한이 아님). algosu 네임스페이스로 한정됨.
   - apiGroups: [""]
     resources: ["pods/exec"]
     verbs: ["create"]
@@ -75,20 +70,54 @@ rules:
     resources: ["horizontalpodautoscalers"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["metrics.k8s.io"]
-    resources: ["pods", "nodes"]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: prod-diag-readonly
+  namespace: algosu
+  labels:
+    app.kubernetes.io/part-of: algosu
+    component: diagnostics
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: prod-diag-readonly
+subjects:
+  - kind: ServiceAccount
+    name: prod-diag-readonly
+    namespace: algosu
+---
+# (2) 클러스터 스코프 읽기 전용 — nodes/namespaces/PV (ClusterRole + ClusterRoleBinding)
+#     네임스페이스 없는 리소스라 cluster 범위 불가피하나 read-only(get/list/watch)뿐.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prod-diag-readonly-cluster
+  labels:
+    app.kubernetes.io/part-of: algosu
+    component: diagnostics
+rules:
+  - apiGroups: [""]
+    resources: ["nodes", "namespaces", "persistentvolumes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["nodes"]
     verbs: ["get", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: prod-diag-readonly
+  name: prod-diag-readonly-cluster
   labels:
     app.kubernetes.io/part-of: algosu
     component: diagnostics
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: prod-diag-readonly
+  name: prod-diag-readonly-cluster
 subjects:
   - kind: ServiceAccount
     name: prod-diag-readonly
