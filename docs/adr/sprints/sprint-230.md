@@ -64,6 +64,11 @@ entity가 `string[] | null`을 JSON 직렬화하므로 물리값은 NULL 또는 
 |------|------|
 | `6a4cbf4` | `20260522120000-SP196-TagsAllowedLanguagesToJsonb.ts` — up() tags·allowed_languages TYPE 변경 직전 DROP DEFAULT 추가, down() tags SET DEFAULT NULL 복원, @file 헤더 42804 사유 명문화 / 신규 `*.spec.ts` — QueryRunner mock으로 DROP-DEFAULT-before-TYPE 순서·CONCURRENTLY 골격·down 대칭 단언(6 테스트) |
 | (ADR) | `sprint-230.md` KR+EN, README index 167→168 |
+| (Critic P1) | spec을 `migrations/` → `src/database/__tests__/`로 이동 — 아래 D6 참조 |
+
+### D6. spec을 migrations glob 밖으로 이동 (Critic R1 P1)
+
+Critic(Codex)이 **[P1] 차단 결함**을 지적: 이 서비스는 `tsconfig.build.json`이 없어 `nest build`가 `*.spec.ts`까지 dist에 컴파일하고(기존 dist에 `*.spec.js` 다수 존재 확인), `data-source.ts`의 마이그레이션 glob `migrations/*{.ts,.js}`이 `migrations/` 직속 `.spec.js`를 매칭한다. spec을 `migrations/`에 두면 `migration:run`이 컴파일된 spec을 require → Jest 글로벌 없이 top-level `describe()` 실행 → **db-migrate init container 크래시**(정확히 본 스프린트가 고치려는 롤아웃 경로 재파손). → spec을 `src/database/__tests__/`(glob 미매칭 형제 디렉토리)로 이동하고 import를 `../migrations/...`로 수정. 실증: 새 `nest build` 후 `dist/src/database/migrations/`에 spec.js 없음 확인.
 
 ## 검증
 

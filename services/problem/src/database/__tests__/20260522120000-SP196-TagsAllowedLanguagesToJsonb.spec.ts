@@ -1,16 +1,20 @@
 /**
  * @file 20260522120000-SP196-TagsAllowedLanguagesToJsonb.spec.ts — SP196 jsonb 전환 마이그레이션 회귀 가드
  * @domain problem
- * @layer database/migration
- * @related 20260522120000-SP196-TagsAllowedLanguagesToJsonb.ts, 1700000100002-AddTagsColumn.ts
+ * @layer database/migration (test)
+ * @related ../migrations/20260522120000-SP196-TagsAllowedLanguagesToJsonb.ts, ../migrations/1700000100002-AddTagsColumn.ts
  *
  * Sprint 230: 운영 롤아웃에서 `ALTER COLUMN tags TYPE jsonb`가 ERROR 42804(카탈로그 DEFAULT 식의
  * jsonb 자동 cast 불가)로 실패한 회귀를 차단한다. QueryRunner를 mock하여 발행 SQL 시퀀스를 검증:
  * up()은 각 컬럼 TYPE 변경 직전에 DROP DEFAULT를 발행하고, down()은 역변환 후 tags DEFAULT NULL을 복원한다.
  * (실 DB 동작이 아닌 SQL 순서/내용 단언 — DB 미가용 환경에서도 결정적으로 회귀를 잡는다.)
+ *
+ * 위치 주의: 이 spec은 반드시 migrations/ 디렉토리 밖에 둔다. data-source.ts의 마이그레이션 glob
+ * (`migrations/*{.ts,.js}`)이 컴파일된 `*.spec.js`를 require하면 migration:run이 Jest 글로벌 없이
+ * top-level describe()를 실행해 db-migrate init container를 크래시시킨다 (Sprint 230 Critic P1).
  */
 import { QueryRunner } from 'typeorm';
-import { TagsAllowedLanguagesToJsonb20260522120000 } from './20260522120000-SP196-TagsAllowedLanguagesToJsonb';
+import { TagsAllowedLanguagesToJsonb20260522120000 } from '../migrations/20260522120000-SP196-TagsAllowedLanguagesToJsonb';
 
 /** 발행된 SQL을 공백 정규화해 한 줄로 — 멀티라인 템플릿 단언을 단순화 */
 const normalize = (sql: string): string => sql.replace(/\s+/g, ' ').trim();

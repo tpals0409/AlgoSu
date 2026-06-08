@@ -64,6 +64,11 @@ The entity serializes `string[] | null` to JSON, so physical values are only NUL
 |--------|---------|
 | `6a4cbf4` | `20260522120000-SP196-TagsAllowedLanguagesToJsonb.ts` — up() adds DROP DEFAULT before the tags·allowed_languages TYPE changes, down() restores tags SET DEFAULT NULL, @file header documents the 42804 rationale / new `*.spec.ts` — QueryRunner mock asserting DROP-DEFAULT-before-TYPE order, CONCURRENTLY skeleton, and down symmetry (6 tests) |
 | (ADR) | `sprint-230.md` KR+EN, README index 167→168 |
+| (Critic P1) | move spec from `migrations/` → `src/database/__tests__/` — see D6 below |
+
+### D6. Move the spec outside the migrations glob (Critic R1 P1)
+
+Critic (Codex) flagged a **[P1] blocking issue**: this service has no `tsconfig.build.json`, so `nest build` compiles `*.spec.ts` into dist too (confirmed: dist already holds several `*.spec.js`), and `data-source.ts`'s migration glob `migrations/*{.ts,.js}` matches a `.spec.js` directly under `migrations/`. Placing the spec in `migrations/` means `migration:run` would require the compiled spec → top-level `describe()` runs without Jest globals → **db-migrate init container crash** (re-breaking exactly the rollout path this sprint fixes). → moved the spec to `src/database/__tests__/` (a sibling directory not matched by the glob) and fixed the import to `../migrations/...`. Empirically verified: after a fresh `nest build`, no spec.js exists under `dist/src/database/migrations/`.
 
 ## Verification
 
