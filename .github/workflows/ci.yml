@@ -59,13 +59,13 @@ jobs:
           # pipefail: curl 실패가 tar/sh에 가려지지 않도록(Critic R1 P2)
           set -o pipefail
           GITLEAKS_VERSION="8.21.2"
-          for i in 1 2 3; do
+          for i in 1 2 3 4 5; do
             if curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
                 | tar xz -C /usr/local/bin gitleaks; then
               break
             fi
             echo "gitleaks install attempt $i failed, retrying..." >&2
-            sleep $((i * 5))
+            sleep $((i * 10))
           done
           gitleaks version
 
@@ -346,13 +346,13 @@ jobs:
           # pipefail: curl 실패가 tar에 가려지지 않도록(Critic R1 P2)
           set -o pipefail
           PROM_VERSION=2.55.0
-          for i in 1 2 3; do
+          for i in 1 2 3 4 5; do
             if curl -sSfL "https://github.com/prometheus/prometheus/releases/download/v${PROM_VERSION}/prometheus-${PROM_VERSION}.linux-amd64.tar.gz" \
                 | tar xz; then
               break
             fi
             echo "promtool install attempt $i failed, retrying..." >&2
-            sleep $((i * 5))
+            sleep $((i * 10))
           done
           sudo mv "prometheus-${PROM_VERSION}.linux-amd64/promtool" /usr/local/bin/
           rm -rf "prometheus-${PROM_VERSION}.linux-amd64"
@@ -1028,22 +1028,20 @@ jobs:
           path: /tmp
       - name: Install Trivy
         if: steps.check.outputs.skip == 'false'
-        # Sprint 233: install.sh가 GitHub API로 태그를 조회 → 비인증 시 rate limit으로
-        # "unable to find <tag>" 실패(#401/#402 post-merge red 원인). GITHUB_TOKEN으로
-        # 인증 + 재시도로 해소.
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Sprint 233: install.sh의 GitHub release-page 태그 조회가 releases 간헐 장애(504)에
+        # 취약 → "unable to find 'v0.69.2'"로 반복 실패(#401~#403 post-merge red 원인).
+        # → 태그 조회 단계를 제거하고 고정 바이너리 에셋을 직접 다운로드(gitleaks/promtool과 동일).
+        # pipefail: curl 실패가 tar exit 0에 가려져 재시도 없이 break되는 것 방지(Critic R1 P2).
         run: |
-          # pipefail: curl(install.sh 다운로드) 실패가 sh의 exit 0에 가려져
-          # 재시도 없이 break되는 것 방지(Critic R1 P2)
           set -o pipefail
-          for i in 1 2 3; do
-            if curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
-                | sh -s -- -b /usr/local/bin v0.69.2; then
+          TRIVY_VERSION=0.69.2
+          for i in 1 2 3 4 5; do
+            if curl -sfL "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" \
+                | sudo tar xz -C /usr/local/bin trivy; then
               break
             fi
             echo "trivy install attempt $i failed, retrying..." >&2
-            sleep $((i * 5))
+            sleep $((i * 10))
           done
           trivy --version
       - name: Trivy scan (table)
