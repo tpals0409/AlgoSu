@@ -77,3 +77,12 @@ labels:
   - pairs:
       app.kubernetes.io/part-of: algosu
       app.kubernetes.io/managed-by: kustomize
+
+# 위생: 전 Deployment revisionHistoryLimit 10→5 (미사용 ReplicaSet 누적 차단, aether-gitops #9 정합)
+patches:
+  - target:
+      kind: Deployment
+    patch: |
+      - op: add
+        path: /spec/revisionHistoryLimit
+        value: 5

@@ -63,6 +63,19 @@ data:
           - targets: ['rabbitmq:15692']
         metrics_path: /metrics
 
+      # Sprint 130 B-1: ArgoCD Application Health/Sync 메트릭 수집
+      # argocd-metrics: Application 단위 (argocd_app_info, argocd_app_sync_total)
+      # argocd-server-metrics: API server 단위 (argocd_*_request_duration_seconds 등)
+      - job_name: 'argocd-metrics'
+        static_configs:
+          - targets: ['argocd-metrics.argocd.svc.cluster.local:8082']
+        metrics_path: /metrics
+
+      - job_name: 'argocd-server-metrics'
+        static_configs:
+          - targets: ['argocd-server-metrics.argocd.svc.cluster.local:8083']
+        metrics_path: /metrics
+
       # kubelet cAdvisor: container_cpu/memory 등 컨테이너 리소스 메트릭 (Service Debug 대시보드
       # Container CPU/Memory 패널 소스). apiserver proxy 경유 — k3s read-only port 미노출 대응.
       - job_name: 'kubernetes-cadvisor'
