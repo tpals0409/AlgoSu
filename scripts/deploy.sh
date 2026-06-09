@@ -1,17 +1,32 @@
 #!/bin/bash
 # ============================================================
-# AlgoSu — Layer 순차 배포 스크립트 (docs/conventions/ci-cd.md §7-2)
+# @file    scripts/deploy.sh
+# @domain  ci
+# @layer   shared/helper
+# @related infra/DEPLOYMENT.md, docs/conventions/ci-cd.md, docs/adr/ADR-029-infra-ssot-consolidation.md
 #
-# 사용법: DEPLOY_SHA=<sha> ./deploy.sh
-# 서버에서 실행 (appleboy/ssh-action 통해 호출)
+# AlgoSu — 긴급 복구 배포 스크립트 (ADR-029: 배포 SSOT = aether-gitops)
+#
+# 운영 정상 배포는 ArgoCD가 aether-gitops를 자동 sync한다. 본 스크립트는
+# ArgoCD 장애 등 긴급 상황에서 aether-gitops 매니페스트를 직접 적용하는
+# 안전망이다. AlgoSu 레포 내 평행 매니페스트 정의(구 infra/k3s)는 폐기되어,
+# 매니페스트 SSOT는 aether-gitops 하나로 일원화되었다.
+#
+# 사용법:
+#   GITOPS_TOKEN=<pat> ./scripts/deploy.sh               # private repo clone
+#   GITOPS_LOCAL=/path/to/aether-gitops ./scripts/deploy.sh   # 로컬 클론 재사용
+#
+# 환경변수:
+#   GITOPS_TOKEN    aether-gitops clone용 PAT (GITOPS_LOCAL 미사용 시 필수)
+#   GITOPS_LOCAL    로컬 aether-gitops 경로 (있으면 clone 생략)
+#   GITOPS_OVERLAY  적용할 overlay (기본: algosu/overlays/prod)
 # ============================================================
 set -euo pipefail
 
 NS="algosu"
-DEPLOY_DIR="${DEPLOY_DIR:-/tmp/algosu-deploy}"
-SHA="${DEPLOY_SHA:-unknown}"
-K3S_DIR="$DEPLOY_DIR/infra/k3s"
-MON_DIR="$K3S_DIR/monitoring"
+GITOPS_REPO="${GITOPS_REPO:-github.com/tpals0409/aether-gitops.git}"
+GITOPS_OVERLAY="${GITOPS_OVERLAY:-algosu/overlays/prod}"
+GITOPS_DIR="${GITOPS_DIR:-/tmp/algosu-gitops}"
 
 # 인프라 롤아웃 확인 (자동 롤백 불가 — 수동 개입 필요)
 infra_rollout_check() {
@@ -40,53 +55,62 @@ rollout_or_rollback() {
   echo "  ✓ $name"
 }
 
+# ── 매니페스트 소스 결정: 로컬 클론 우선, 없으면 토큰으로 clone ──
+if [ -n "${GITOPS_LOCAL:-}" ] && [ -d "$GITOPS_LOCAL" ]; then
+  SRC="$GITOPS_LOCAL"
+  echo "[Source] 로컬 aether-gitops: $SRC"
+else
+  : "${GITOPS_TOKEN:?GITOPS_TOKEN 또는 GITOPS_LOCAL 필요}"
+  rm -rf "$GITOPS_DIR"
+  git clone --depth 1 "https://x-access-token:${GITOPS_TOKEN}@${GITOPS_REPO}" "$GITOPS_DIR"
+  SRC="$GITOPS_DIR"
+  echo "[Source] aether-gitops clone: $SRC"
+fi
+
+OVERLAY_PATH="$SRC/$GITOPS_OVERLAY"
+[ -d "$OVERLAY_PATH" ] || { echo "::error::overlay 경로 없음: $OVERLAY_PATH"; exit 1; }
+REV="$(git -C "$SRC" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+
 echo "========================================="
-echo "[Deploy] SHA=${SHA:0:8} NS=$NS"
+echo "[Deploy] aether-gitops=${REV} overlay=${GITOPS_OVERLAY} NS=${NS}"
 echo "========================================="
 
+# 전체 매니페스트 일괄 적용 (kustomize 렌더 — 단일 SSOT)
+echo ""
+echo "[Apply] kubectl apply -k ${GITOPS_OVERLAY}"
+kubectl apply -k "$OVERLAY_PATH"
+
+# 일괄 apply는 순서를 보장하지 않으므로, layer 순으로 rollout 대기(schema mismatch 방지 안전망)
 echo ""
 echo "[Layer 0] 인프라 (PostgreSQL / Redis / RabbitMQ)"
-kubectl apply -f "$K3S_DIR/namespace.yaml"
-kubectl apply -f "$K3S_DIR/postgres.yaml" \
-              -f "$K3S_DIR/redis.yaml" \
-              -f "$K3S_DIR/rabbitmq.yaml"
 infra_rollout_check postgres 120s
 infra_rollout_check redis 60s
 infra_rollout_check rabbitmq 120s
 
 echo ""
 echo "[Layer 1] Identity (인증)"
-kubectl apply -f "$K3S_DIR/identity-service.yaml"
 rollout_or_rollback identity-service 90s
 
 echo ""
 echo "[Layer 2] Problem + Submission (비즈니스)"
-kubectl apply -f "$K3S_DIR/problem-service.yaml" \
-              -f "$K3S_DIR/submission-service.yaml"
 rollout_or_rollback problem-service 90s
 rollout_or_rollback submission-service 90s
 
 echo ""
 echo "[Layer 3] GitHub Worker + AI Analysis (비동기)"
-kubectl apply -f "$K3S_DIR/github-worker.yaml" \
-              -f "$K3S_DIR/ai-analysis-service.yaml"
 rollout_or_rollback github-worker 60s
 rollout_or_rollback ai-analysis-service 60s
 
 echo ""
 echo "[Layer 4] Gateway (라우팅)"
-kubectl apply -f "$K3S_DIR/gateway.yaml"
 rollout_or_rollback gateway 60s
 
 echo ""
-echo "[Layer 5] Frontend + Ingress"
-kubectl apply -f "$K3S_DIR/frontend.yaml" \
-              -f "$K3S_DIR/ingress.yaml"
+echo "[Layer 5] Frontend"
 rollout_or_rollback frontend 60s
 
 echo ""
 echo "[모니터링] Prometheus / Grafana / Loki / Promtail"
-kubectl apply -f "$MON_DIR/" 2>/dev/null || true
 kubectl -n "$NS" rollout status deployment/grafana --timeout=120s || true
 kubectl -n "$NS" rollout status deployment/loki --timeout=60s || true
 # Prometheus TSDB lock: Recreate 전략이므로 rollout 실패 가능
@@ -95,5 +119,5 @@ kubectl -n "$NS" rollout status deployment/prometheus --timeout=120s || \
 
 echo ""
 echo "========================================="
-echo "[완료] Deploy ${SHA:0:8} 성공"
+echo "[완료] Deploy aether-gitops=${REV} 성공"
 echo "========================================="
