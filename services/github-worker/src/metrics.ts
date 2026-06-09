@@ -29,7 +29,7 @@ collectDefaultMetrics({ register: registry, prefix: `${PREFIX}_` });
 
 /**
  * DLQ 전송 카운터 — nack(requeue=false) 시 증가
- * 라벨: reason (parse_error, process_failure, token_invalid)
+ * 라벨: reason (parse_error, process_failure)
  */
 export const dlqMessagesTotal = new Counter({
   name: `${PREFIX}_dlq_messages_total`,
@@ -37,6 +37,22 @@ export const dlqMessagesTotal = new Counter({
   labelNames: ['reason'] as const,
   registers: [registry],
 });
+
+/**
+ * 알려진 DLQ reason 라벨 — worker.ts의 실제 inc 호출과 일치 (zero-init 대상)
+ * @see worker.ts (parse_error, process_failure)
+ */
+export const DLQ_REASONS = ['parse_error', 'process_failure'] as const;
+
+/**
+ * DLQ 라벨 series를 0으로 사전 초기화(zero-init).
+ * counter series는 .inc() 첫 호출 시 지연 생성되어 Prometheus가 값 1로 처음 관측 → DLQReceived
+ * alert의 increase(...[5m])가 비교할 baseline(0) 부재로 첫 DLQ 이벤트를 놓친다(Critic R2 P2).
+ * 프로세스 시작 시 0으로 초기화하면 increase가 0→1 변화를 정확히 포착한다.
+ */
+for (const reason of DLQ_REASONS) {
+  dlqMessagesTotal.inc({ reason }, 0);
+}
 
 /**
  * MQ 메시지 처리 카운터

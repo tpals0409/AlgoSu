@@ -94,8 +94,22 @@ ai_quota_checks_total = Counter(
 dlq_messages_total = Counter(
     name="algosu_ai_analysis_dlq_messages_total",
     documentation="Total messages sent to DLQ",
-    labelnames=["reason"],  # parse_error, process_failure
+    labelnames=["reason"],  # circuit_breaker_exhausted, rate_limit_exhausted, process_failure
 )
+
+# 알려진 DLQ reason 라벨 — worker.py의 실제 inc 호출과 일치 (zero-init 대상)
+DLQ_REASONS: tuple[str, ...] = (
+    "circuit_breaker_exhausted",
+    "rate_limit_exhausted",
+    "process_failure",
+)
+
+# DLQ 라벨 series를 0으로 사전 초기화(zero-init).
+# counter series는 .labels().inc() 첫 호출 시 지연 생성되어 Prometheus가 값 1로 처음 관측 →
+# DLQReceived alert의 increase(...[5m])가 비교할 baseline(0) 부재로 첫 DLQ 이벤트를 놓친다(Critic R2 P2).
+# 시작 시 .labels()로 0 초기화하면 increase가 0→1 변화를 정확히 포착한다.
+for _reason in DLQ_REASONS:
+    dlq_messages_total.labels(reason=_reason)
 
 mq_messages_processed_total = Counter(
     name="algosu_ai_analysis_mq_messages_processed_total",
