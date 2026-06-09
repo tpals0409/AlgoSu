@@ -146,7 +146,7 @@ The root of this whole mess was a single assumption: "this file I'm reading is t
 
 ### (iii) The existence of a rule is not evidence of behavior
 
-A `null` receiver silently swallowed alerts (first incident). An alert pointing at an unemitted metric never fired (DLQ). Both look like "monitoring" on a dashboard. An alert isn't done when the rule exists — you have to follow it all the way through: fire → route → send → arrive.
+A `null` receiver silently swallows alerts — which is exactly why one line made me leap to a "blackout" conclusion (luckily, that one was a non-deployed mirror). And in the part that *was* deployed, a DLQ alert pointing at an unemitted metric would never fire. Both look like "monitoring" on a dashboard. An alert isn't done when the rule exists — you have to follow it all the way through: fire → route → send → arrive.
 
 ### (iv) Fix live first, reconcile the mirror after
 
