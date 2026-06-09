@@ -2,14 +2,14 @@
 @file docs/runbook/alert-channel-separation.md
 @domain observability
 @layer runbook
-@related infra/k3s/monitoring/alertmanager.yaml, infra/sealed-secrets/sealed-secrets-template.yaml, docs/runbook/oncall-alerts.md, docs/adr/sprints/sprint-235.md
+@related aether-gitops algosu/base/monitoring/alertmanager.yaml, infra/sealed-secrets/sealed-secrets-template.yaml, docs/runbook/oncall-alerts.md, docs/adr/sprints/sprint-235.md, docs/adr/ADR-029-infra-ssot-consolidation.md
 -->
 
 # 알림 채널 critical/일반 분리 적용 런북 (Sprint 235)
 
 > 운영 알림을 **critical 채널**과 **일반 채널**로 분리하여 라이브에 적용하는 서버측 절차.
-> Sprint 235에서 **미러(infra/k3s/monitoring)는 목표 상태로 선반영**했고, 실 Discord 채널 생성·webhook seal·aether-gitops 적용은 본 런북을 따른다.
-> ⚠️ AlgoSu `infra/k3s/`는 **비배포 참조 미러** — 배포 SSOT는 **aether-gitops**. 본 절차는 서버(aether-gitops) 작업이다.
+> 실 Discord 채널 생성·webhook seal·aether-gitops 적용은 본 런북을 따른다.
+> ⚠️ **ADR-029로 AlgoSu `infra/k3s/` 미러는 폐기됨** — 매니페스트 SSOT는 **aether-gitops**(`algosu/base/monitoring/`)가 유일하다. 본문에 남은 `infra/k3s/monitoring/...` 경로 참조는 Sprint 235 당시 기록으로, 현재는 aether-gitops 동일 경로로 대체해 읽을 것.
 
 ---
 
