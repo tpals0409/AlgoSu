@@ -158,18 +158,20 @@ data:
       #   발행하지 않는다. DLQ는 소비자 워커(github-worker, ai-analysis)에서 발생하며
       #   algosu_github_worker_dlq_messages_total / algosu_ai_analysis_dlq_messages_total로
       #   실 발행된다. 미발행 placeholder algosu_submission_dlq_messages_total를 실 메트릭 2종으로 교체.
+      # ⚠️ DLQ 메트릭은 counter(단조 증가)라 raw value `> 0`은 첫 이벤트 후 프로세스 재시작 전까지
+      #   영구 발화한다(Critic R1 P2). increase(...[5m]) > 0으로 '최근 5분 내 신규 DLQ' 만 발화.
       # ================================================================
       - name: algosu.messaging
         rules:
           - alert: DLQReceived
             expr: |
-              {__name__=~"algosu_(github_worker|ai_analysis)_dlq_messages_total"} > 0
+              increase({__name__=~"algosu_(github_worker|ai_analysis)_dlq_messages_total"}[5m]) > 0
             for: 0m
             labels:
               severity: critical
             annotations:
-              summary: "DLQ 메시지 감지 — {{ $labels.job }} ({{ $value }}건)"
-              description: "{{ $labels.job }} 워커의 Dead Letter Queue에 메시지가 도달했습니다. 처리 실패 건(parse_error / process_failure 등 reason 라벨) 확인 후 Saga 보상/재처리 필요."
+              summary: "DLQ 메시지 감지 — {{ $labels.job }} (최근 5분 {{ $value | printf \"%.0f\" }}건)"
+              description: "{{ $labels.job }} 워커의 Dead Letter Queue에 최근 5분 내 메시지가 도달했습니다. 처리 실패 건(parse_error / process_failure 등 reason 라벨) 확인 후 Saga 보상/재처리 필요."
 
       # ================================================================
       # 8. 인프라 — RabbitMQ

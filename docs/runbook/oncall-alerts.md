@@ -101,10 +101,10 @@
 - **대응**: 다운스트림(Claude API / GitHub API) 상태 확인. 외부 장애면 자동 HALF_OPEN 복구 대기. 지속되면 의존성 quota/rate-limit·토큰 확인(`github-token-relink.md`).
 
 #### DLQReceived — `prometheus-rules.yaml:157` *(Sprint 235: 2워커 실 메트릭)*
-- **의미**: github-worker 또는 ai-analysis 워커의 Dead Letter Queue에 메시지 도달(> 0). 메시지 처리 실패 → Saga 보상/재처리 필요.
+- **의미**: github-worker 또는 ai-analysis 워커의 Dead Letter Queue에 최근 5분 내 메시지 도달. 메시지 처리 실패 → Saga 보상/재처리 필요. (DLQ 메트릭은 counter라 `increase(...[5m])`로 '신규 이벤트'만 감지 — raw value `>0`은 첫 이벤트 후 영구 발화.)
 - **진단**:
   ```promql
-  {__name__=~"algosu_(github_worker|ai_analysis)_dlq_messages_total"} > 0
+  increase({__name__=~"algosu_(github_worker|ai_analysis)_dlq_messages_total"}[5m]) > 0
   ```
   - 실패 사유: `sum by (reason) (algosu_<worker>_dlq_messages_total)` — `parse_error`(메시지 포맷) / `process_failure`(처리 로직) / `token_invalid`(github-worker).
   - 로그: `{namespace="algosu", service="<worker>", tag="DLQ_RECEIVED"}`
