@@ -167,7 +167,7 @@ node scripts/check-prom-default-metrics.mjs --base-url http://staging.internal
 
 ### §11-2 Alert Rule 컨벤션
 
-`infra/k3s/monitoring/prometheus-rules.yaml` 정의. 각 rule는:
+`aether-gitops algosu/base/monitoring/prometheus-rules.yaml` 정의 (배포 SSOT, ADR-029). 각 rule는:
 
 - `alert:` PascalCase 이름
 - `expr:` PromQL (recording rule 또는 raw)
@@ -181,5 +181,5 @@ CI: `scripts/check-grafana-metrics.mjs` recording rule 라벨 정합 + dashboard
 
 - [annotation-dictionary](./annotation-dictionary.md) — 코드 어노테이션(`@guard` / `@event` / `@domain`) 사전
 - [../runbook/regex-robustness](../runbook/regex-robustness.md) — monitoring 검증 스크립트 정규식 강건성
-- [`promtail.yaml`](../../infra/k3s/monitoring/promtail.yaml) — Loki 수집 파이프라인
-- [`prometheus-rules.yaml`](../../infra/k3s/monitoring/prometheus-rules.yaml) — Alert rule
+- `aether-gitops algosu/base/monitoring/promtail.yaml` — Loki 수집 파이프라인 (배포 SSOT, ADR-029)
+- `aether-gitops algosu/base/monitoring/prometheus-rules.yaml` — Alert rule (배포 SSOT, ADR-029)

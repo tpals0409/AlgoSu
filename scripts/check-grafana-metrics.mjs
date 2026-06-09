@@ -3,7 +3,7 @@
  * @file Grafana dashboard expr ↔ service metric 정의 cross-check 스크립트
  * @domain ci
  * @layer script
- * @related infra/k3s/monitoring/grafana-{cb,service,slo}-dashboard.yaml,
+ * @related aether-gitops algosu/base/monitoring/grafana-{cb,service,slo}-dashboard.yaml (MONITORING_SRC),
  *          services/{gateway,identity,submission,problem,github-worker}/.../metrics.{ts,service.ts},
  *          services/ai-analysis/src/metrics.py
  *

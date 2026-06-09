@@ -16,7 +16,7 @@
  * 이 미들웨어는 Traefik을 경유하지 않는 내부 직접 호출(k8s ClusterIP)에 대한
  * 방어 계층으로 유지합니다. Traefik 헤더와 중복 시 Traefik 값이 우선합니다.
  *
- * @see infra/k3s/ingress.yaml — Traefik security-headers Middleware
+ * @see aether-gitops algosu/base/ingress.yaml — Traefik security-headers Middleware
  */
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';

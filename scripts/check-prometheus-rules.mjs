@@ -3,10 +3,11 @@
  * @file Prometheus alert/recording rules syntax 검증 스크립트
  * @domain ci
  * @layer script
- * @related infra/k3s/monitoring/prometheus-rules.yaml
+ * @related aether-gitops algosu/base/monitoring/prometheus-rules.yaml (MONITORING_SRC)
  *
- * `infra/k3s/monitoring/prometheus-rules.yaml`(ConfigMap inline yaml)에서
+ * 운영 SSOT(aether-gitops)의 `prometheus-rules.yaml`(ConfigMap inline yaml)에서
  * `data['algosu-alerts.yml']` 본문을 추출하여 `promtool check rules`로 검증한다.
+ * 검증 경로는 MONITORING_SRC env로 주입(ADR-029).
  *
  * 배경: rules.yaml 자체 syntax/구조 결함이 운영 stack 적용 시점까지 발견되지 않는 부채.
  * Sprint 143 회고에서 식별된 monitoring stack 정합성 부채 — 본 검증으로 회귀 차단.

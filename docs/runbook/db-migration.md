@@ -7,8 +7,8 @@ AlgoSu PostgreSQL 인스턴스들은 `statement_timeout=200`(200ms)으로 설정
 200ms를 초과할 수 있어 timeout 오류가 발생한다.
 
 **대상 인스턴스:**
-- `postgres` (identity_db, submission_db) — `infra/k3s/postgres.yaml`
-- `postgres-problem` (problem_db) — `infra/k3s/postgres-problem.yaml`
+- `postgres` (identity_db, submission_db) — `aether-gitops algosu/base/postgres.yaml` (배포 SSOT, ADR-029)
+- `postgres-problem` (problem_db) — `aether-gitops algosu/base/postgres-problem.yaml` (배포 SSOT, ADR-029)
 
 ## 사전 준비
 
