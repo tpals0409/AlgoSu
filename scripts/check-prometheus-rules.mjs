@@ -20,7 +20,10 @@ import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 
 const ROOT = resolve(import.meta.dirname, '..');
-const RULES_PATH = resolve(ROOT, 'infra/k3s/monitoring/prometheus-rules.yaml');
+// 검증 대상은 운영 SSOT(aether-gitops). CI는 MONITORING_SRC로 aether monitoring 경로 주입.
+// 미설정 시 로컬 폴백(레포 내 미러). ADR-029: 미러 폐기 후엔 MONITORING_SRC 필수.
+const MONITORING_SRC = process.env.MONITORING_SRC ?? resolve(ROOT, 'infra/k3s/monitoring');
+const RULES_PATH = resolve(MONITORING_SRC, 'prometheus-rules.yaml');
 const RULES_KEY = 'algosu-alerts.yml';
 
 let exitCode = 0;
