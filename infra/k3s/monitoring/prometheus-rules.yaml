@@ -125,14 +125,18 @@ data:
         rules:
           - alert: CircuitBreakerOpen
             # Sprint 141 — TS와 schema 통일: OPEN=2 (이전 OPEN=1 → HALF_OPEN과 충돌 위험으로 변경됨)
+            # Sprint 235 — ai-analysis 단독 → ai-analysis/submission/github-worker 3서비스 통합.
+            #   메트릭 실존: algosu_ai_analysis_circuit_breaker_state(Claude API),
+            #   algosu_submission_circuit_breaker_state, algosu_github_worker_circuit_breaker_state.
             # {name=~".+"} matcher로 legacy unlabeled series 차단 (rollout 직후 5분 transitional 윈도우 보호)
-            expr: algosu_ai_analysis_circuit_breaker_state{name=~".+"} == 2
+            expr: |
+              {__name__=~"algosu_(ai_analysis|submission|github_worker)_circuit_breaker_state", name=~".+"} == 2
             for: 0m
             labels:
               severity: critical
             annotations:
-              summary: "AI Analysis Circuit Breaker OPEN"
-              description: "Claude API Circuit Breaker가 열림 상태입니다. AI 분석 기능이 차단되어 있습니다."
+              summary: "Circuit Breaker OPEN — {{ $labels.job }} ({{ $labels.name }})"
+              description: "{{ $labels.job }} 서비스의 Circuit Breaker '{{ $labels.name }}'가 OPEN 상태입니다. 다운스트림 의존성이 차단되어 해당 기능이 작동하지 않습니다."
 
       # ================================================================
       # 6. 리소스 사용량
@@ -149,19 +153,23 @@ data:
               description: "{{ $labels.job }} RSS 메모리가 container limits 대비 5분간 80%를 초과했습니다."
 
       # ================================================================
-      # 7. 메시징 — DLQ (Placeholder)
-      # 향후 DLQ 카운터 메트릭 추가 시 활성화
+      # 7. 메시징 — DLQ
+      # Sprint 235 — placeholder 교체: submission은 saga orchestrator라 DLQ 카운터를
+      #   발행하지 않는다. DLQ는 소비자 워커(github-worker, ai-analysis)에서 발생하며
+      #   algosu_github_worker_dlq_messages_total / algosu_ai_analysis_dlq_messages_total로
+      #   실 발행된다. 미발행 placeholder algosu_submission_dlq_messages_total를 실 메트릭 2종으로 교체.
       # ================================================================
       - name: algosu.messaging
         rules:
           - alert: DLQReceived
-            expr: algosu_submission_dlq_messages_total > 0
+            expr: |
+              {__name__=~"algosu_(github_worker|ai_analysis)_dlq_messages_total"} > 0
             for: 0m
             labels:
               severity: critical
             annotations:
-              summary: "DLQ 메시지 감지 ({{ $value }}건)"
-              description: "Dead Letter Queue에 메시지가 도달했습니다. Saga 실패 건 확인 필요."
+              summary: "DLQ 메시지 감지 — {{ $labels.job }} ({{ $value }}건)"
+              description: "{{ $labels.job }} 워커의 Dead Letter Queue에 메시지가 도달했습니다. 처리 실패 건(parse_error / process_failure 등 reason 라벨) 확인 후 Saga 보상/재처리 필요."
 
       # ================================================================
       # 8. 인프라 — RabbitMQ
