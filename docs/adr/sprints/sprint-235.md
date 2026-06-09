@@ -32,16 +32,18 @@ tldr: "모니터링 시스템 전수 조사 + 알림 시스템 점검 결과 발
 ## 핵심 결정
 
 1. **CB alert 3서비스 통합**: 메트릭 3종 모두 실존 확인 → expr을 `{__name__=~"algosu_(ai_analysis|submission|github_worker)_circuit_breaker_state", name=~".+"} == 2`로 확장. summary/description에 `{{ $labels.job }}`·`{{ $labels.name }}`로 서비스/브레이커 식별. Sprint 141 schema(OPEN=2)·`{name=~".+"}` legacy 차단 보존.
-2. **DLQ alert placeholder 교체(확장 아님)**: 사용자 요청은 "submission + 2워커 통합"이었으나 submission DLQ 메트릭이 미발행임을 사실검증으로 확정 → 정직한 수정은 미발행 placeholder를 실 발행 2워커 메트릭으로 교체. expr `{__name__=~"algosu_(github_worker|ai_analysis)_dlq_messages_total"} > 0`. submission 미포함이 아키텍처상 정확(orchestrator는 DLQ 미발행).
+2. **DLQ alert placeholder 교체(확장 아님)**: 사용자 요청은 "submission + 2워커 통합"이었으나 submission DLQ 메트릭이 미발행임을 사실검증으로 확정 → 정직한 수정은 미발행 placeholder를 실 발행 2워커 메트릭으로 교체. submission 미포함이 아키텍처상 정확(orchestrator는 DLQ 미발행). 최종 expr은 Critic 2라운드 반영: `increase({__name__=~"algosu_(github_worker|ai_analysis)_dlq_messages_total"}[5m]) > 0`(counter raw value `>0`은 영구 발화, R1 P2) + 워커에서 reason 라벨 zero-init(increase가 지연 생성 series의 첫 DLQ를 놓치는 갭, R2 P2).
 3. **알림 채널 critical/일반 2채널 분리**: `alertmanager-discord-secret`(2키: `webhook-url`=일반, `webhook-url-critical`=critical) 신규. discord-default→webhook-url, discord-critical→webhook-url-critical. **미러는 라이브보다 앞선 "목표 상태"로 선반영**(secret 볼륨 secretName 교체 + 배너 명시) — 실 Discord 채널 생성·webhook seal·aether-gitops 적용은 `alert-channel-separation.md` 따라 서버측. Sprint 232 ERRATA로 제거됐던 alertmanager webhook 키를 **'채널 분리'라는 정당한 목적으로 재도입**(ADR에 사유 명기해 재오판 차단).
 4. **온콜 런북 2종 신규**: `oncall-alerts.md`(13 alert별 의미·PromQL/LogQL 진단·1차 대응 + 전송 경로 점검 §3) + `alert-channel-separation.md`(채널 분리 라이브 적용 + 발화→Discord 도달 end-to-end 검증). 라이브 전송 검증 절차를 후자에 흡수.
 
-## 작업 요약 (start `ca2b0bd`, 4 commit)
+## 작업 요약 (start `ca2b0bd`, 6 commit)
 
 - `04e504a`: `feat(infra)` prometheus-rules.yaml — CircuitBreakerOpen 3서비스 통합 + DLQReceived placeholder→2워커 실 메트릭 교체.
 - `1f160c3`: `feat(infra)` alertmanager.yaml(discord-critical webhook-url-critical·secret 볼륨 alertmanager-discord-secret 2키·목표 상태 배너) + sealed-secrets-template.yaml(alertmanager-discord-secret 2키 추가).
 - `a700cbb`: `docs(runbook)` oncall-alerts.md + alert-channel-separation.md 신규 + README 2종 '관측성/모니터링' 카테고리(19→21).
-- ADR commit(본 문서) + README 172→173.
+- (ADR commit: 본 문서 + README 172→173).
+- `0d6b771`: `fix(infra)` DLQReceived counter raw value `>0` → `increase(...[5m]) > 0`(영구 발화 차단, Critic R1 P2) + oncall 런북 쿼리 정합.
+- `43578a0`: `fix(github-worker,ai-analysis)` DLQ counter reason 라벨 zero-init(increase가 지연 생성 series 첫 DLQ 누락 차단, Critic R2 P2). github-worker [parse_error, process_failure] / ai-analysis [circuit_breaker_exhausted, rate_limit_exhausted, process_failure] — 실사용 정합·stale 주석 교정.
 
 ## 검증
 
@@ -49,7 +51,7 @@ tldr: "모니터링 시스템 전수 조사 + 알림 시스템 점검 결과 발
 - YAML 유효: prometheus-rules.yaml inner(10 groups·15 rules 파싱), alertmanager.yaml 3-doc(receiver webhook_url_file ↔ secret 볼륨 items ↔ sealed key 정합), sealed-secrets-template.yaml.
 - `check-doc-refs.mjs`: 437 files no broken refs(regression fixtures 8/8).
 - `check-prometheus-rules.mjs`(promtool)는 로컬 미설치 — CI install step에서 실행. 로컬은 YAML+PromQL-shape 파싱으로 보강.
-- **Critic**(Codex gpt-5.5, `--base ca2b0bd`): <!-- CRITIC_RESULT -->
+- **Critic**(Codex gpt-5.5, `--base ca2b0bd`): **R1 [P2]** DLQReceived가 counter raw value `> 0` → 첫 DLQ 이벤트 후 프로세스 재시작 전까지 영구 발화 → `increase(...[5m]) > 0` 교정. **R2 [P2]** `increase()`가 지연 생성 counter series의 첫 DLQ를 누락(비교할 baseline 0 부재) → 워커에서 알려진 reason 라벨 zero-init. **R3 CLEAN**("No discrete correctness issues were found in the changed monitoring rules, alertmanager mirror updates, sealed-secret template, or DLQ metric initialization changes").
 
 ## 교훈
 
@@ -58,6 +60,7 @@ tldr: "모니터링 시스템 전수 조사 + 알림 시스템 점검 결과 발
 3. **사용자 요청도 코드 사실로 교정한다** — "submission + 2워커 통합" 요청을 submission DLQ 미발행이라는 사실로 "2워커 교체"로 정직하게 좁혔다. 아키텍처(orchestrator는 DLQ 미발행)에 맞는 형태가 옳다.
 4. **알림 채널 분리는 webhook 격리 = 시그널/노이즈 분리** — critical을 feedback·warning과 같은 채널에 두면 놓친다. severity별 채널(webhook) 분리로 critical 가시성 확보.
 5. **미러 선반영(목표 상태)은 드리프트를 만든다 — 배너+ADR 사유로 재오판 차단** — 라이브 선수정이 불가한 서버 작업일 때, 미러를 목표 상태로 선반영하면 라이브보다 앞선 드리프트가 생긴다. Sprint 231 오판(미러를 배포본으로 오독)의 역방향 리스크 → "목표 상태" 배너 + ADR에 의도 명기 + 적용 런북으로 관리.
+6. **counter alert는 raw value가 아니라 `increase(...[window])` + 라벨 zero-init** (Critic R1/R2) — ①counter는 단조 증가라 `metric > 0`은 첫 이벤트 후 영구 발화 → `increase(...[5m]) > 0`으로 '최근 이벤트'만. ②prom-client/prometheus_client는 라벨 series를 첫 `.inc()` 시 지연 생성해 값 1로 처음 등장 → `increase`가 비교할 baseline(0)이 없어 첫 이벤트를 놓침 → 알려진 라벨 값을 프로세스 시작 시 0으로 초기화. 드문 critical 이벤트(DLQ)일수록 둘 다 필수.
 
 신규패턴: **점검 기반 alert 정합 패턴**(alert가 참조하는 메트릭의 실 발행 여부를 코드로 검증 → 미발행 placeholder 교체/제거, 커버리지 갭은 실존 메트릭으로 통합) + **미러 선반영(목표 상태) + 적용 런북 패턴**(라이브 선수정 불가 서버 작업 시 미러를 목표 상태로 두고 배너+런북으로 적용 경로 고정).
 
