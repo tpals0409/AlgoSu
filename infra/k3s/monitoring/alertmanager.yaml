@@ -10,6 +10,12 @@
 #    → 운영 변경은 반드시 aether-gitops PR로. 이 미러는 라이브와 드리프트될 수 있다.
 #    (Sprint 231이 이 미러의 구버전 스냅샷을 배포본으로 오독해 오판 → 본 파일을 라이브에 정합)
 #
+# ⚠️ Sprint 235 채널 분리 — 이 파일은 라이브보다 앞선 "목표 상태"다.
+#    운영 알림이 identity-discord-secret(feedback 전용 webhook)을 재사용해 같은 채널에 혼재하던 것을
+#    alertmanager-discord-secret(2키: webhook-url=일반, webhook-url-critical=critical)으로 분리.
+#    실 봉인(kubeseal)과 라이브 적용은 서버측 aether-gitops에서 수행 → 적용 전까지 라이브와 드리프트.
+#    적용 절차: docs/runbook/alert-channel-separation.md
+#
 # Sprint 130 B-1: Identity 서비스 직접 webhook 방식은 Identity 자체 장애 시
 # 알림 자체가 불가능한 SPoF 구조. AlertManager native discord_configs로 전환.
 # severity별 라우팅 + 그룹화로 알림 폭주 방지.
@@ -40,8 +46,10 @@ data:
           continue: false
 
     receivers:
-      # Sprint 130 B-1: webhook URL은 identity-discord-secret(key: webhook-url)을 파일로 mount.
-      # alertmanager v0.28+의 webhook_url_file 사용 → ConfigMap에 평문 미포함.
+      # Sprint 130 B-1: webhook URL을 파일로 mount (alertmanager v0.28+ webhook_url_file → ConfigMap 평문 미포함).
+      # Sprint 235: 운영 알림 채널 분리 — alertmanager-discord-secret 사용.
+      #   discord-default  → webhook-url          (운영 알림 '일반' 채널)
+      #   discord-critical → webhook-url-critical (운영 알림 'critical' 채널, @here)
       - name: 'discord-default'
         discord_configs:
           - webhook_url_file: /etc/alertmanager/secrets/webhook-url
@@ -56,7 +64,7 @@ data:
 
       - name: 'discord-critical'
         discord_configs:
-          - webhook_url_file: /etc/alertmanager/secrets/webhook-url
+          - webhook_url_file: /etc/alertmanager/secrets/webhook-url-critical
             send_resolved: true
             title: '[CRITICAL][{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
             message: |
@@ -136,17 +144,19 @@ spec:
         - name: alertmanager-config
           configMap:
             name: alertmanager-config
-        # Sprint 130 B-1: Discord webhook URL을 파일로 mount.
-        # 기존 identity-discord-secret(key: webhook-url)을 재사용하여 SealedSecret 신규 봉인 부담 제거.
-        # 동일 채널 사용 → 기존 Identity 발사 메시지와 alertmanager 발사 메시지가 같은 채널에 도착.
-        # 향후 채널 분리 필요 시 alertmanager-discord-secret을 별도 SealedSecret으로 신규 봉인 후 secretName 교체.
+        # Sprint 235: 운영 알림 채널 분리 — alertmanager-discord-secret(2키)을 파일로 mount.
+        #   기존엔 identity-discord-secret(feedback 전용)을 재사용해 운영 알림과 피드백이 같은 채널에 혼재.
+        #   webhook-url(일반) + webhook-url-critical(critical)로 분리하여 critical을 noise와 격리.
+        # ⚠️ 목표 상태 — 실 봉인/적용은 서버 aether-gitops. 절차: docs/runbook/alert-channel-separation.md
         - name: alertmanager-secrets
           secret:
-            secretName: identity-discord-secret
+            secretName: alertmanager-discord-secret
             optional: false
             items:
               - key: webhook-url
                 path: webhook-url
+              - key: webhook-url-critical
+                path: webhook-url-critical
         - name: alertmanager-storage
           emptyDir: {}
 ---

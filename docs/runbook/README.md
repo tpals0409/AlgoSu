@@ -39,6 +39,11 @@ domain: docs/runbook
 
 - [programmers-pipeline](./programmers-pipeline.md) — 프로그래머스 파이프라인 운영 절차
 
+### 관측성 / 모니터링 (2)
+
+- [oncall-alerts](./oncall-alerts.md) — 온콜 알림 대응 런북 (alert별 의미·진단 쿼리·1차 대응)
+- [alert-channel-separation](./alert-channel-separation.md) — 알림 critical/일반 채널 분리 적용 절차 (Discord webhook seal + aether-gitops)
+
 ### 품질 자동화 (3)
 
 - [regex-robustness](./regex-robustness.md) — 정규식 강건성 검증 체크리스트
