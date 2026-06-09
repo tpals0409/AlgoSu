@@ -17,7 +17,7 @@ domain: docs
 | 감사 산출물 | [`docs/audits/`](./audits/README.md) | 전수 감사 자동화 sprint별 산출물 |
 | 자산 | `docs/assets/` | 로고 등 정적 자원 |
 
-## 운영 런북 (19개)
+## 운영 런북 (21개)
 
 운영 단계별 표준 절차 — 사고/롤백 시 즉시 참조.
 
@@ -28,6 +28,7 @@ domain: docs
 | **GitHub / 인증** | [github-token-relink](./runbook/github-token-relink.md) · [pat-rotation](./runbook/pat-rotation.md) · [key-rotation](./runbook/key-rotation.md) · [admin-emails](./runbook/admin-emails.md) |
 | **로컬 개발 환경** | [git-hooks](./runbook/git-hooks.md) · [git-staging-checklist](./runbook/git-staging-checklist.md) · [pre-push-check](./runbook/pre-push-check.md) · [claude-commands](./runbook/claude-commands.md) · [claude-tools](./runbook/claude-tools.md) · [oracle-tmux-path](./runbook/oracle-tmux-path.md) |
 | **도메인 파이프라인** | [programmers-pipeline](./runbook/programmers-pipeline.md) |
+| **관측성 / 모니터링** | [oncall-alerts](./runbook/oncall-alerts.md) · [alert-channel-separation](./runbook/alert-channel-separation.md) |
 | **품질 자동화** | [regex-robustness](./runbook/regex-robustness.md) · [doc-ref-lint](./runbook/doc-ref-lint.md) · [ci-full-validation](./runbook/ci-full-validation.md) |
 
 ## 컨벤션 (6개)
