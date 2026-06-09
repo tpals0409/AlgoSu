@@ -1,0 +1,165 @@
+---
+title: "I Fixed an Outage That Never Happened — When a Static Manifest Judges Runtime"
+date: "2026-06-09"
+excerpt: "I was certain alerts had been silently dropping for six days. I diagnosed it, fixed it, even merged it. But the file I'd been reading wasn't even deployed — it was a mirror. A six-sprint record of letting a static manifest pass judgment on runtime, and being wrong."
+tags: ["monitoring", "observability", "gitops", "incident", "debugging"]
+category: platform
+tldr: "I read a static manifest, declared a 'six-day alert blackout' a defect, and fixed it — but that file was a non-deployed reference mirror. Only after diagnosing the real deployment source (aether-gitops) live did I find the actual causes. A correct static config is not the same as a correct runtime."
+relatedAdrs: ["sprint-231", "sprint-232", "sprint-234", "sprint-235", "sprint-236", "ADR-029"]
+---
+
+It was the day I'd set aside to review monitoring. An ordinary sprint that began with "audit our observability stack." Metric scrape jobs, alert rules, Grafana dashboards, Loki logging — I read the manifests line by line.
+
+Then I stopped at one line.
+
+```yaml
+# infra/k3s/monitoring/alertmanager.yaml
+route:
+  receiver: 'null'   # every alert lands here
+```
+
+`receiver: 'null'`. In Alertmanager this means "take any alert that fires and throw it away, sending it nowhere." ServiceDown, OOMKilled, CircuitBreakerOpen — seventeen rules, all alive, and the delivery path was capped off at `null`. A comment said "Discord alerts were migrated to the Identity service webhook," but following the call graph showed that Identity webhook was for user feedback only. Nothing to do with alerts.
+
+The conclusion looked obvious. **Our system hasn't been able to send a single alert for days.**
+
+<Problem label="Problem">
+All seventeen alert rules were falling into a `null` receiver. If something broke, no alert would reach anyone — or so I was certain.
+</Problem>
+
+So I diagnosed it, and I fixed it. I wired a real Discord receiver into Alertmanager, changed `route.receiver` from `null` to `discord`, mounted a secret volume. I corrected the false comment too. CI was green, and it cleared the monitoring gate (BLOCKING). The PR merged.
+
+I felt rather pleased with myself. I'd written in the ADR that I had "found a six-day alert blackout that had been silently swallowing notifications."
+
+It took less than a day to learn that all of it was wrong.
+
+## The File I Was Reading Wasn't Deployed
+
+The next day, the operator (still me, but this time the one actually attached to the server) diagnosed the live cluster. And one sentence brought the whole thing down.
+
+> The live Alertmanager is sending alerts to Discord just fine, though?
+
+How could that be? The manifest I read clearly said `receiver: 'null'`.
+
+The answer was in the deployment topology. The `infra/k3s/` directory in the AlgoSu repo was a **non-deployed reference mirror.** The actual SSOT applied to the cluster lived in a separate repo, `aether-gitops`, and ArgoCD watched only that repo. On merge, AlgoSu's CI only bumped **image tags** into aether-gitops — it never propagated the manifests themselves.
+
+<Callout type="warn" title="The one question I skipped">
+"Is this file actually deployed to the cluster?" — the question I should have asked before reading the code. If you don't know which manifest is the real deployment, every analysis built on top of it can be wrong.
+</Callout>
+
+The `receiver: 'null'` I read was **a stale snapshot of a mirror that isn't even deployed.** The live Alertmanager had been wired correctly months earlier (Sprint 130), running two receivers — `discord-default` and `discord-critical` — routing by severity, on v0.28.1.
+
+What made it worse was my "fix." I had left v0.27.0 in the mirror and added a `webhook_url_file` approach — but **v0.27.0 doesn't support file-based webhooks.** In other words, had that mirror actually been the deployment, my fix would have been a broken config. I had diagnosed a "failure" in a healthy system and painted an unworkable setting on top of it.
+
+<MetricGrid cols={3}>
+  <MetricCard label="Outage diagnosed" value="None" hint="Live alerts healthy since Sprint 130" accent={4} />
+  <MetricCard label="Manifest I read" value="Non-deployed mirror" hint="Real SSOT is aether-gitops" accent={4} />
+  <MetricCard label="Fix I added" value="Non-functional" hint="v0.27.0 has no file-webhook support" accent={4} />
+</MetricGrid>
+
+## What to Do With a Merged Misjudgment
+
+A merged ADR was now recording a "nonexistent outage" as fact. My first impulse was to delete it.
+
+I didn't. An ADR is the history of a decision, and a wrong decision is still history. Deleting the body would erase the context of "why did I judge it that way at the time." Instead I laid an **ERRATA block** at the top, leaving the body intact and overwriting only the facts. The next person (or agent) to read this ADR would see both the wrong conclusion and its correction at once.
+
+I touched the mirror itself too. Rather than fully syncing it — keeping a mirror 100% aligned with live is more maintenance burden than value for a solo developer — I attached a **"this is a non-deployed reference" banner** and aligned only the broken parts with live. I demoted the mirror from "truth" to "reference."
+
+<Decision label="Decision">
+Don't delete the wrong ADR — correct it with an ERRATA. Demote the mirror to a "reference" with a non-deployed banner, and align only the parts that diverge from live.
+</Decision>
+
+Oh, and the symptom that started this whole investigation — "logs don't seem to be getting collected." That one was real. Except the cause wasn't pipeline wiring; it was **Loki running out of memory.** A 512Mi limit couldn't survive a five-day log spike cycle and was being OOM-killed periodically. Raising the limit to 1Gi fixed it. The static config had been right all along. The problem was a runtime resource.
+
+## This Time I Looked at Live First
+
+Lesson learned, I approached the next symptom differently. On Grafana's "Service Debug" dashboard, three panels (container CPU/memory, two Loki log panels) sat empty with no-data.
+
+This time, instead of glaring at manifests, I **queried the live cluster first.** Two real causes surfaced.
+
+**(A) cAdvisor metrics weren't being scraped at all.** `container_cpu_usage_seconds_total` was zero series across all namespaces. The Prometheus config had no scrape job for kubelet/cAdvisor. kube-state-metrics was running, but that only gives `kube_*` object state (how many pods are up) — not the containers' actual resource usage. They are different data.
+
+**(B) The Loki label model didn't match the dashboard.** Logs were being collected fine (6 streams under `{namespace="algosu"}`). But the live promtail attaches a `service` label, while the dashboard was querying a `pod` label that didn't exist. On top of that, the variable value was `submission-service` while the actual label value was `submission` — not even a prefix match.
+
+<Callout type="info" title="kube-state-metrics doesn't give you container_* metrics">
+If CPU/memory panels are no-data, a missing kubelet/cAdvisor scrape job (usually via the apiserver proxy) is a common culprit. KSM gives the "state" of objects; cAdvisor gives the "usage" of containers. Confuse the two and you get stuck on "the metric exists, so why is it no-data?"
+</Callout>
+
+The order was reversed this time. I **fixed live first in the deployment SSOT (aether-gitops)**, verified that container metrics came back from zero to 75 series, and **only then aligned the non-deployed mirror to the same shape.** Fix live first, reconcile the mirror after. That was the right direction for handling drift.
+
+## Having a Rule Is Not the Same as Delivering an Alert
+
+With the dashboard fixed, I turned to the alert rules themselves. And the lesson from the first incident — "a rule existing doesn't mean an alert gets sent" — repeated once more, in a subtler form.
+
+The `CircuitBreakerOpen` alert was only watching the circuit breaker of the `ai-analysis` service. submission and github-worker emit the same circuit breaker metric, but there was no alert. A blocked Saga or a severed GitHub sync would have gone unannounced. I consolidated all three services into one rule.
+
+More interesting was the `DLQReceived` alert. It was watching a metric called `algosu_submission_dlq_messages_total` —
+
+```bash
+# searching the entire submission source for code emitting this metric
+$ grep -r "submission_dlq_messages_total" services/submission/src
+# (no results)
+```
+
+**This metric was emitted nowhere.** submission is a Saga orchestrator and doesn't emit a DLQ counter. DLQs happen in the consumer workers (github-worker, ai-analysis), and their metrics did exist. The rule was alive but the metric it pointed to was dead — an alert that gave a **false sense of safety.** On the dashboard it looked like "DLQ is being monitored," but it would never fire.
+
+<Callout type="warn" title="A placeholder alert is worse than nothing">
+A rule existing ≠ delivery (first incident), and a rule referencing a metric ≠ that metric being emitted (this one). If you don't verify in code that the metric an alert points to is actually emitted, all you're left with is the illusion of "we're monitoring it."
+</Callout>
+
+I replaced the unemitted placeholder with the real, emitted worker metric. In the process, Critic (the cross-review AI) caught two more things: comparing a counter as a raw `> 0` value fires forever after the first event (→ use `increase(...[5m]) > 0` for "recent events only"), and because prom-client lazily creates a label series on the first `.inc()`, `increase` has no baseline to compare against and misses the first DLQ (→ initialize the labels to 0 at process start). For rare critical events like DLQs, this detail is the difference between catching it and not.
+
+## Finally, I Sent Alerts to Their Own Channel
+
+The review had one last gap. Operational alerts were **reusing the user-feedback Discord webhook.** Critical outage alerts, operational warnings, and user feedback were all pouring into the same "feedback bot" channel. The surest way to bury a critical in noise.
+
+So I separated the channels: `#algosu-alerts` (default) and `#algosu-alerts-critical` (urgent), each with its own webhook. This was live cluster work, so this time the order of application mattered.
+
+<Callout type="info" title="For an optional:false secret, the SealedSecret goes first">
+Alertmanager's secret volume is `optional: false` — if the secret is missing, the pod fails to mount and goes down. So bundling the secret and the manifest that references it in one commit opens a downtime window depending on sync timing. I added the SealedSecret first → confirmed it actually existed in the cluster (a gate) → and only then swapped the manifest. "Add → verify → switch," enforced at commit boundaries.
+</Callout>
+
+And I verified to the end. `alertmanager_notifications_total{integration="discord"}` rose from 0 to 2, and to 4 with the resolve, while `failed_total` stayed at 0. The metrics proved delivery succeeded — but **metrics can't distinguish which channel it arrived in.** So finally, I looked at the two Discord channels with my own eyes. Critical in the critical channel, warning in the default channel, no crossover. That's where verification ended.
+
+<Result label="Result">
+From fixing an outage that didn't exist, to finding the real cause live, to sending alerts to their own channel. The cluster was the truth — not the manifest.
+</Result>
+
+## What Six Sprints Taught Me
+
+<PhaseTimeline>
+  <PhaseMilestone phase="S231" title="The Audit — and the Misjudgment" period="Misread a non-deployed mirror as the deployment, diagnosed a nonexistent outage" status="done" icon="Search" accent={4} />
+  <PhaseMilestone phase="S232" title="The Correction — ERRATA" period="Confirmed infra/k3s ≠ deployment SSOT, demoted the mirror + Loki OOM as the real cause" status="done" icon="Compass" accent={5} />
+  <PhaseMilestone phase="S234" title="The Real Diagnosis — Live First" period="Missing cAdvisor scrape + promtail label mismatch, fix-live-then-reconcile-mirror" status="done" icon="Cpu" accent={1} />
+  <PhaseMilestone phase="S235" title="Closing Alert Gaps" period="CB unified across 3 services + DLQ placeholder replaced + channel-split design" status="done" icon="Bell" accent={2} />
+  <PhaseMilestone phase="S236" title="Channel Split, Live" period="critical/default two channels + eyeball verification of both arrivals" status="done" icon="Megaphone" accent={3} />
+</PhaseTimeline>
+
+Four principles kept recurring across this journey.
+
+### (i) A correct static config is not the same as a correct runtime
+
+The first incident's alerting, and the missing logs, both turned out to have correct static manifests. Alert routing was healthy live; the logging pipeline was wired correctly. The real problems lived in runtime — I'd read a mirror that wasn't deployed (a nonexistent defect), or Loki was dying of OOM (a resource issue). These are the kinds of problems no amount of staring at manifests will reveal.
+
+### (ii) Confirm which manifest is deployed, first
+
+The root of this whole mess was a single assumption: "this file I'm reading is the file that runs." The `infra/k3s/` inside the monorepo looked so plausible that I never suspected it had been superseded by a separate GitOps repo. Draw the deployment topology first. What is the SSOT, what does CI propagate, what does ArgoCD watch.
+
+### (iii) The existence of a rule is not evidence of behavior
+
+A `null` receiver silently swallows alerts — which is exactly why one line made me leap to a "blackout" conclusion (luckily, that one was a non-deployed mirror). And in the part that *was* deployed, a DLQ alert pointing at an unemitted metric would never fire. Both look like "monitoring" on a dashboard. An alert isn't done when the rule exists — you have to follow it all the way through: fire → route → send → arrive.
+
+### (iv) Fix live first, reconcile the mirror after
+
+There was a right direction for handling drift. Fixing a non-deployed mirror first leaves the distance to live unchanged. You fix the deployment SSOT while verifying it live, then let the mirror follow into that confirmed shape. The mirror isn't the truth — it's the shadow of the truth.
+
+<Callout type="success" title="Observing the observability">
+Monitoring is the tool you look through to see your system. It took six sprints to realize the tool itself had been lying. The static file was honest — it told me exactly what it contained. It just wasn't the same as what was running.
+</Callout>
+
+---
+
+The `receiver: 'null'` I read that day wasn't a lie. The file really did say that. What was wrong wasn't the file — it was me, for believing the file *was* live.
+
+A manifest is a written intention. A cluster is the result of that intention being executed. Nothing guarantees the two are the same — especially when a whole GitOps repo sits between them.
+
+Now, before I pass judgment on runtime, I ask first: **"Is this actually the thing that's running?"**
