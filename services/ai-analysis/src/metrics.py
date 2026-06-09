@@ -94,7 +94,9 @@ ai_quota_checks_total = Counter(
 dlq_messages_total = Counter(
     name="algosu_ai_analysis_dlq_messages_total",
     documentation="Total messages sent to DLQ",
-    labelnames=["reason"],  # circuit_breaker_exhausted, rate_limit_exhausted, process_failure
+    labelnames=[
+        "reason"
+    ],  # circuit_breaker_exhausted, rate_limit_exhausted, process_failure
 )
 
 # 알려진 DLQ reason 라벨 — worker.py의 실제 inc 호출과 일치 (zero-init 대상)
