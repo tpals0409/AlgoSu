@@ -24,7 +24,7 @@ Sprint 235 — **critical/일반 2채널 분리**:
 | `discord-default` | warning 이하 | 운영 알림 '일반' | `webhook-url` |
 | `discord-critical` | critical (`@here`) | 운영 알림 'critical' | `webhook-url-critical` |
 
-새 secret: `alertmanager-discord-secret`(2키). 미러는 이미 이 secret을 참조하도록 변경됨(`alertmanager.yaml`). **라이브 적용 전까지 미러는 라이브와 드리프트** 상태다.
+새 secret: `alertmanager-discord-secret`(2키). 미러는 이미 이 secret을 참조하도록 변경됨(`alertmanager.yaml`). ✅ **Sprint 236에서 aether-gitops에 라이브 적용 완료 — 드리프트 해소**(상세: `docs/adr/sprints/sprint-236.md`).
 
 ---
 
@@ -115,10 +115,10 @@ kubectl create secret generic alertmanager-discord-secret \
 
 ---
 
-## §6 적용 후 정합 (드리프트 해소)
+## §6 적용 후 정합 (드리프트 해소) — ✅ Sprint 236 완료
 
-- aether-gitops 라이브 적용 완료 후, AlgoSu 미러(`infra/k3s/monitoring/alertmanager.yaml`)의 "목표 상태" 배너에서 **드리프트 해소** 표기 갱신(다음 스프린트 ADR에 기록).
-- `identity-discord-secret`은 Identity feedback 용도로 계속 사용 — 삭제 금지.
+- ✅ **Sprint 236 라이브 적용 완료** (aether-gitops `9f7680b` SealedSecret 추가 → secret 실재 게이트 → `842b93d` alertmanager 매니페스트 교체, ArgoCD Synced/Healthy). 미러 배너 드리프트 해소 표기 갱신(`sealed-secrets-template.yaml`) + 본 ADR(`docs/adr/sprints/sprint-236.md`) 기록 완료. (alertmanager.yaml 미러는 ADR-029로 폐기 → SSOT는 aether-gitops 단일.)
+- `identity-discord-secret`은 Identity feedback 용도로 계속 사용 — 삭제 금지(Sprint 236 검증에서 격리 확인).
 - 롤백 필요 시: alertmanager 매니페스트 secretName을 이전 상태로 되돌리고 ArgoCD sync.
 
 ---
