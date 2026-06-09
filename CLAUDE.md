@@ -12,7 +12,7 @@ services/
   problem/         NestJS 문제 관리
   github-worker/   NestJS GitHub 동기화
   ai-analysis/     FastAPI AI 분석
-infra/             k3d/k3s 매니페스트, ArgoCD
+infra/             SealedSecret 템플릿 (k8s 매니페스트 SSOT는 aether-gitops — ADR-029)
 docs/              ADR, 런북, 규칙 문서
 blog/              기술 블로그
 ```

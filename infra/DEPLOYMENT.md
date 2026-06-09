@@ -3,7 +3,12 @@
 ## 확정 배포 방식: ArgoCD GitOps
 
 AlgoSu는 **ArgoCD 기반 GitOps**를 유일한 운영 배포 방식으로 사용한다.
-SSH 직접 배포는 폐지되었으며, `scripts/deploy.sh`는 로컬 개발/긴급 복구 전용이다.
+SSH 직접 배포는 폐지되었으며, `scripts/deploy.sh`는 긴급 복구 전용이다.
+
+> **ADR-029 (SSOT 일원화)**: k8s 매니페스트의 단일 진실원천(SSOT)은
+> **aether-gitops**(`algosu/base/` + `algosu/overlays/prod/`)다. AlgoSu 레포 내
+> 평행 매니페스트 정의(구 `infra/k3s/` + `infra/overlays/`)는 폐기되었다.
+> AlgoSu CI는 aether-gitops의 **이미지 태그만** bump하며 매니페스트를 전파하지 않는다.
 
 ## 배포 파이프라인 전체 흐름
 
@@ -26,33 +31,32 @@ aether-gitops 레포 태그 업데이트
 ArgoCD 감지 → k3s 클러스터 자동 Sync
 ```
 
-## 디렉토리 구조
+## 디렉토리 구조 (SSOT: aether-gitops)
+
+매니페스트 SSOT는 별도 레포 **aether-gitops**에 있다 (ADR-029).
 
 ```
+aether-gitops/
+└── algosu/
+    ├── base/                       # Kustomize base 매니페스트
+    │   ├── kustomization.yaml       # 전체 리소스 목록 + revisionHistoryLimit patch
+    │   ├── namespace.yaml
+    │   ├── postgres.yaml            # Layer 0: 인프라
+    │   ├── redis.yaml / rabbitmq.yaml / minio.yaml
+    │   ├── identity-service.yaml    # Layer 1: 인증
+    │   ├── problem-service.yaml     # Layer 2: 비즈니스
+    │   ├── submission-service.yaml
+    │   ├── github-worker.yaml       # Layer 3: 비동기
+    │   ├── ai-analysis-service.yaml
+    │   ├── gateway.yaml             # Layer 4: 라우팅
+    │   ├── frontend.yaml / ingress.yaml  # Layer 5
+    │   ├── monitoring/              # Prometheus, Grafana, Loki, Promtail, Alertmanager
+    │   └── sealed-secrets/          # SealedSecret
+    └── overlays/prod/              # replicas, 리소스 강화, image 태그
+
+AlgoSu 레포:
 infra/
-├── k3s/                        # Kustomize base 매니페스트
-│   ├── kustomization.yaml      # 전체 리소스 목록
-│   ├── namespace.yaml
-│   ├── postgres.yaml           # Layer 0: 인프라
-│   ├── postgres-problem.yaml
-│   ├── redis.yaml
-│   ├── rabbitmq.yaml
-│   ├── minio.yaml
-│   ├── identity-service.yaml   # Layer 1: 인증
-│   ├── problem-service.yaml    # Layer 2: 비즈니스
-│   ├── submission-service.yaml
-│   ├── github-worker.yaml      # Layer 3: 비동기
-│   ├── ai-analysis-service.yaml
-│   ├── gateway.yaml            # Layer 4: 라우팅
-│   ├── frontend.yaml           # Layer 5: UI + Ingress
-│   ├── ingress.yaml
-│   ├── metrics-network-policy.yaml
-│   └── monitoring/             # Prometheus, Grafana, Loki, Promtail
-├── overlays/
-│   ├── dev/kustomization.yaml
-│   ├── staging/kustomization.yaml
-│   └── prod/kustomization.yaml # replicas, 리소스 강화, PVC 확장
-└── sealed-secrets/             # SealedSecret 템플릿 + generated/
+└── sealed-secrets/             # SealedSecret 템플릿/문서 (참고용)
 ```
 
 ## Layer 순서 (배포 의존성)
@@ -89,23 +93,26 @@ ArgoCD Sync Wave 또는 deploy.sh의 순차 적용으로 순서를 보장한다.
 - **staging**: 중간 리소스, 통합 테스트용
 - **prod**: replicas 2 (gateway, identity, submission), 리소스 강화, PVC 확장, Grafana 익명 접근 차단
 
-적용 방법:
+적용 방법 (aether-gitops overlay):
 ```bash
-kubectl apply -k infra/overlays/prod/
+kubectl apply -k <aether-gitops>/algosu/overlays/prod/
 ```
 
 ## scripts/deploy.sh 역할
 
-`deploy.sh`는 **로컬 개발 환경** 및 **긴급 복구** 전용 스크립트이다.
+`deploy.sh`는 **긴급 복구** 전용 스크립트이다 (ADR-029: SSOT = aether-gitops).
 
-- Layer 순서대로 `kubectl apply` 수행
-- 각 Layer마다 rollout 상태 확인
+- aether-gitops를 clone(또는 로컬 경로 재사용)하여 `kubectl apply -k overlays/prod` 일괄 적용
+- 일괄 적용 후 Layer 순서대로 rollout 상태 확인 (schema mismatch 방지 안전망)
 - 서비스 Layer 실패 시 자동 `rollout undo` (인프라 Layer는 수동 개입)
 - 운영 환경에서는 ArgoCD가 이 역할을 대체
 
 사용법 (긴급 상황만):
 ```bash
-DEPLOY_SHA=$(git rev-parse HEAD) ./scripts/deploy.sh
+# private repo clone (PAT 필요)
+GITOPS_TOKEN=<pat> ./scripts/deploy.sh
+# 또는 로컬 aether-gitops 클론 재사용
+GITOPS_LOCAL=/path/to/aether-gitops ./scripts/deploy.sh
 ```
 
 ## OCI Free Tier 제약
@@ -119,7 +126,7 @@ DEPLOY_SHA=$(git rev-parse HEAD) ./scripts/deploy.sh
 
 1. **ArgoCD UI/CLI**: History에서 이전 리비전으로 Sync
 2. **긴급 수동**: `kubectl -n algosu rollout undo deployment/{서비스명}`
-3. deploy.sh: 이전 SHA로 재실행
+3. deploy.sh: aether-gitops 이전 리비전 checkout 후 재실행 (긴급)
 
 ## CI 품질 게이트
 
