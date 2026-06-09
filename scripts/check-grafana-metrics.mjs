@@ -52,13 +52,17 @@ const ADDITIONAL_TS_FILES = [
 
 const AI_ANALYSIS_FILE = 'services/ai-analysis/src/metrics.py';
 
+// 검증 대상은 운영 SSOT(aether-gitops). CI는 MONITORING_SRC로 aether monitoring 경로 주입.
+// 미설정 시 로컬 폴백(레포 내 미러). ADR-029: 미러 폐기 후엔 MONITORING_SRC 필수.
+const MONITORING_SRC = process.env.MONITORING_SRC ?? 'infra/k3s/monitoring';
+
 const DASHBOARDS = [
-  { file: 'infra/k3s/monitoring/grafana-cb-dashboard.yaml',      key: 'algosu-cb' },
-  { file: 'infra/k3s/monitoring/grafana-service-dashboard.yaml', key: 'algosu-service-debug' },
-  { file: 'infra/k3s/monitoring/grafana-slo-dashboard.yaml',     key: 'algosu-slo' },
+  { file: `${MONITORING_SRC}/grafana-cb-dashboard.yaml`,      key: 'algosu-cb' },
+  { file: `${MONITORING_SRC}/grafana-service-dashboard.yaml`, key: 'algosu-service-debug' },
+  { file: `${MONITORING_SRC}/grafana-slo-dashboard.yaml`,     key: 'algosu-slo' },
 ];
 
-const PROMETHEUS_RULES_FILE = 'infra/k3s/monitoring/prometheus-rules.yaml';
+const PROMETHEUS_RULES_FILE = `${MONITORING_SRC}/prometheus-rules.yaml`;
 
 /**
  * `__name__=~"<pattern>"` regex 매칭에서 service prefix를 union으로 enumerate할 때 사용.

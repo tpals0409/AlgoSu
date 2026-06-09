@@ -166,7 +166,8 @@ jobs:
               - 'docs/adr-en/topics/**'
               - 'scripts/ci/report-build-metrics.sh'
             monitoring:
-              - 'infra/k3s/monitoring/**'
+              # ADR-029: 매니페스트 SSOT는 aether-gitops로 이전됨. AlgoSu는 코드↔대시보드
+              # cross-check만 담당 — 검증 스크립트/서비스 메트릭 코드 변경 시 트리거.
               - 'scripts/check-prometheus-rules.mjs'
               - 'scripts/check-grafana-metrics.mjs'
               - 'scripts/check-regex-robustness.mjs'
@@ -340,6 +341,13 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v6
+      # ADR-029: 매니페스트 SSOT는 aether-gitops. 검증 대상을 운영 SSOT에서 직접 가져옴.
+      - name: Checkout aether-gitops monitoring (운영 SSOT)
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --filter=blob:none --sparse \
+            "https://x-access-token:${{ secrets.GITOPS_TOKEN }}@github.com/tpals0409/aether-gitops.git" /tmp/aether
+          git -C /tmp/aether sparse-checkout set algosu/base/monitoring
       - name: Install promtool
         run: |
           # Sprint 233: GitHub releases CDN transient 실패 대비 재시도 래퍼
@@ -359,8 +367,12 @@ jobs:
           promtool --version
       - name: Check prometheus rules syntax
         run: node scripts/check-prometheus-rules.mjs
+        env:
+          MONITORING_SRC: /tmp/aether/algosu/base/monitoring
       - name: Check grafana dashboard metrics ↔ service code
         run: node scripts/check-grafana-metrics.mjs
+        env:
+          MONITORING_SRC: /tmp/aether/algosu/base/monitoring
       - name: Check regex robustness in scripts
         run: node scripts/check-regex-robustness.mjs
 
