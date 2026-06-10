@@ -11,7 +11,7 @@ AlgoSu의 아키텍처/도메인 결정과 sprint 회고를 보관한다.
 ```
 docs/adr/
 ├─ README.md                              ← 본 문서
-├─ ADR-{NNN}-{slug}.md                    ← 영구 ADR (9개)
+├─ ADR-{NNN}-{slug}.md                    ← 영구 ADR (10개)
 ├─ topics/
 │  └─ {topic-slug}.md                     ← 토픽 ADR (1개)
 └─ sprints/
@@ -30,7 +30,7 @@ docs/adr/
 
 > **단발 sprint 노트의 통합 (Sprint 153)**: 과거 `docs/sprint-{40,48,51}-*.md`로 떠 있던 단발 노트는 `docs/adr/sprints/sprint-{40,48,51}.md`로 이전됨. Sprint 62부터는 매 sprint 회고형 ADR을 동일 컨벤션(`sprint`/`title`/`date`/`status` frontmatter)으로 작성.
 
-## 영구 ADR (9개)
+## 영구 ADR (10개)
 
 | ADR | 제목 | 상태 | 도입 sprint |
 |-----|------|------|-------------|
@@ -43,8 +43,9 @@ docs/adr/
 | [ADR-027](./ADR-027-aether-gitops-branch-discipline.md) | Aether GitOps 브랜치 규율 | 수락 | Sprint 130+ |
 | [ADR-028](./ADR-028-dev-cluster-separation.md) | Dev 클러스터 분리 | 수락 | Sprint 130+ |
 | [ADR-029](./ADR-029-infra-ssot-consolidation.md) | 인프라 배포 정의 SSOT 일원화 (평행 매니페스트 폐기) | 수락 | Sprint 234 |
+| [ADR-030](./ADR-030-security-improvement-backlog.md) | 전 코드베이스 보안·개선 백로그 및 처리 로드맵 | 수락 | Sprint 238 |
 
-> ADR-004 ~ 023은 미작성 (sprint별 회고형 ADR로 통합되었거나 본 형식으로 승격 예정). 새로 영구 ADR을 작성할 때는 **다음 빈 번호(ADR-030)** 부터 사용.
+> ADR-004 ~ 023은 미작성 (sprint별 회고형 ADR로 통합되었거나 본 형식으로 승격 예정). 새로 영구 ADR을 작성할 때는 **다음 빈 번호(ADR-031)** 부터 사용.
 
 ## 토픽 ADR (1개)
 
