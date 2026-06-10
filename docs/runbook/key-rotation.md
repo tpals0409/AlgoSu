@@ -40,7 +40,6 @@ kubectl create secret generic github-worker-secrets \
   --from-literal=GITHUB_APP_PRIVATE_KEY_BASE64="$(cat key-base64.txt)" \
   --from-literal=GITHUB_APP_INSTALLATION_ID=<현재 Installation ID> \
   --from-literal=GITHUB_TOKEN_ENCRYPTION_KEY=<현재 암호화 키> \
-  # ↑ 이 키만 별도 로테이션이 필요한 경우 → docs/runbook/encryption-key-rotation.md 참조
   --from-literal=RABBITMQ_URL=<현재 값> \
   --from-literal=REDIS_URL=<현재 값> \
   --from-literal=INTERNAL_KEY_GATEWAY=<현재 값> \
@@ -53,6 +52,9 @@ kubectl create secret generic github-worker-secrets \
 ```
 
 > 전체 Secret 키를 모두 포함해야 한다. 누락 시 기존 키가 사라진다.
+>
+> `GITHUB_TOKEN_ENCRYPTION_KEY`만 별도 로테이션이 필요한 경우 → [encryption-key-rotation.md](./encryption-key-rotation.md) 참조 (3-Secret 동시 교체).
+> ⚠️ bash 다중 행 명령(`\` 연속) 내부에는 주석을 넣지 말 것 — 주석 줄에서 연속이 끊겨 이후 인수가 전부 누락된다.
 
 ## 4. GitOps 배포
 

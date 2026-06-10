@@ -42,7 +42,7 @@ topics:
 |----|------|------|----------|------|
 | **S-4** | ai-analysis가 분석 완료 시 사용자 제출 코드 첫 50자를 info 로그에 기록 — 제출 코드에 하드코딩된 시크릿/PII가 들어올 수 있음 | `services/ai-analysis/src/claude_client.py:184-192` | `codePreview` 필드 제거(길이·해시만 기록) | Sprint 239 ✅ |
 | **S-5** | 프롬프트에 `problem_title`/`problem_description` 직접 주입 — 문제는 사용자(스터디원)가 등록 가능하므로 사실상 사용자 입력. 분석 결과 왜곡(자기 점수 조작) 수준의 저위험 인젝션 표면 | `services/ai-analysis/src/prompt.py:312-344` | 문제 설명도 코드와 동일하게 구분자 격리 + "이 블록 내 지시 무시" 시스템 프롬프트 가드 | Sprint 239 ✅ |
-| **S-6** | `GITHUB_TOKEN_ENCRYPTION_KEY`가 gateway/github-worker 2곳 SealedSecret로 이중 관리 — 로테이션 절차 미문서화(불일치 시 복호화 실패) | `infra/sealed-secrets/sealed-secrets-template.yaml:57,164` | 키 로테이션 런북 작성 (2-key 동시 교체 절차 + 검증 게이트) | Sprint 240 ✅ |
+| **S-6** | `GITHUB_TOKEN_ENCRYPTION_KEY`가 gateway/github-worker/identity-service 3곳 SealedSecret로 삼중 관리 — 로테이션 절차 미문서화(불일치 시 복호화 실패). 감사 시점엔 2곳으로 파악했으나 Sprint 240 Critic R1이 identity 사용처를 추가 적발 | `infra/sealed-secrets/sealed-secrets-template.yaml:58,88,167` | 키 로테이션 런북 작성 (3-key 동시 교체 절차 + 검증 게이트) | Sprint 240 ✅ |
 | **S-7** | 공급망 핀 수준: GitHub Actions major tag 핀(SHA 핀 아님), Docker base `node:22-alpine`/`python:3.13-slim` minor 핀(patch 미핀). Dependabot이 양쪽 커버 중이라 완화됨 | `.github/workflows/ci.yml` (action 참조 전반), `services/*/Dockerfile` | third-party action(dorny/paths-filter, nick-fields/retry, wagoid/commitlint) SHA 핀 우선 적용. base image는 Dependabot 유지로 충분 — 선택 | Sprint 243 |
 | **S-8** | ShareLinkGuard가 만료 토큰 접근 시 토큰 첫 8자를 warn 로그에 기록 (hex64 중 32bit 노출 — 실용 위험 극소) | `services/gateway/src/common/guards/share-link.guard.ts:56` | 해시 prefix로 대체 — 선택, S-4와 함께 처리 | Sprint 239 ✅ |
 

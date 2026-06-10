@@ -30,7 +30,7 @@
 | SealedSecret 이름 | 키 이름 | 역할 |
 |-------------------|---------|------|
 | `gateway-secrets` | `GITHUB_TOKEN_ENCRYPTION_KEY` | 암호화 (`infra/sealed-secrets/sealed-secrets-template.yaml:58`) |
-| `github-worker-secrets` | `GITHUB_TOKEN_ENCRYPTION_KEY` | 복호화 (`infra/sealed-secrets/sealed-secrets-template.yaml:164`) |
+| `github-worker-secrets` | `GITHUB_TOKEN_ENCRYPTION_KEY` | 복호화 (`infra/sealed-secrets/sealed-secrets-template.yaml:167`) |
 | `identity-service-secrets` | `GITHUB_TOKEN_ENCRYPTION_KEY` | 암호화 — `token-encryption.service.ts:28-34` 부팅 시 키 필수 검증, `user.service.ts:136` GitHub 토큰 암호화 |
 
 > ⚠️ 세 Secret의 키 값이 불일치하면 암·복호화 실패가 발생한다. 반드시 **단일 aether-gitops 커밋**으로 동시 교체해야 한다.
@@ -66,12 +66,13 @@
 - [ ] `kubeseal` CLI 설치 (`brew install kubeseal` / `apt install kubeseal`)
 - [ ] k3s 클러스터 접근 가능 (`kubectl get pods -n algosu`)
 - [ ] aether-gitops 레포 clone 및 최신 상태 (`git pull`)
-- [ ] 현재 양 Secret의 전체 키-값 파악 (누락 방지 — `sealed-secrets-template.yaml` 전체 키 목록 참조)
+- [ ] 현재 3개 Secret의 전체 키-값 파악 (누락 방지 — `sealed-secrets-template.yaml` 전체 키 목록 참조)
 
 ```bash
-# 현재 양 Secret 존재 확인
+# 현재 3개 Secret 존재 확인
 kubectl get secret gateway-secrets -n algosu
 kubectl get secret github-worker-secrets -n algosu
+kubectl get secret identity-service-secrets -n algosu
 ```
 
 ---
@@ -308,7 +309,7 @@ kubectl rollout status deployment/identity-service -n algosu
 
 ```bash
 # 평문 키 파일 삭제 (로컬)
-rm -f sealed-gateway-secrets-new.yaml sealed-github-worker-secrets-new.yaml
+rm -f sealed-gateway-secrets-new.yaml sealed-github-worker-secrets-new.yaml sealed-identity-service-secrets-new.yaml
 
 # 터미널 히스토리 확인 및 정리 (NEW_KEY 변수 잔류 방지)
 unset NEW_KEY
