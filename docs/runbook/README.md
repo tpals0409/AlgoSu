@@ -24,7 +24,7 @@ domain: docs/runbook
 - [github-token-relink](./github-token-relink.md) — GitHub Token 재연동 절차
 - [pat-rotation](./pat-rotation.md) — GitHub PAT 로테이션 절차
 - [key-rotation](./key-rotation.md) — GitHub App Private Key 로테이션 절차
-- [encryption-key-rotation](./encryption-key-rotation.md) — GITHUB_TOKEN_ENCRYPTION_KEY (AES-256-GCM) 로테이션 절차 (2-Secret 동시 교체)
+- [encryption-key-rotation](./encryption-key-rotation.md) — GITHUB_TOKEN_ENCRYPTION_KEY (AES-256-GCM) 로테이션 절차 (3-Secret 동시 교체)
 - [admin-emails](./admin-emails.md) — ADMIN_EMAILS 갱신 절차
 
 ### 로컬 개발 환경 (6)
