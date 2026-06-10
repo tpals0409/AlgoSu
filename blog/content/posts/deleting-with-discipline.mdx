@@ -1,0 +1,105 @@
+---
+title: "삭제의 기술"
+date: "2026-06-10"
+excerpt: "기능을 지우는 건 추가하는 것보다 무섭습니다. 무엇이 따라올지 모르니까요. AlgoSu에서 ADR 그래프와 검색을 지우며 배운 것은 — 안전하게 지우는 데도 방법이 있다는 것이었습니다."
+tags: ["retrospective", "deletion", "yagni", "dead-code", "refactoring"]
+category: retrospective
+order: 12
+tldr: "그래프(Sprint 193)·검색(Sprint 201) 삭제를 통해 배운 삭제의 3원칙: 착수 전 grep으로 전용·공유 자산 분리 → 죽은 필드는 기능과 함께 제거 → grep 범위는 저장소 전체로 열어라."
+relatedAdrs: ["sprint-157", "sprint-189", "sprint-193", "sprint-201"]
+---
+
+코드를 추가할 때는 결과가 눈에 보입니다. 컴포넌트가 화면에 나타나고, 테스트가 통과하고, 빌드가 성공하면 됐다는 걸 압니다.
+
+삭제는 다릅니다. 파일을 지우고 `tsc --noEmit`을 실행해 타입 에러를 고칩니다. 빌드가 됩니다. 배포됩니다. 그리고 사흘 뒤에 CI가 터집니다. 지운 파일을 참조하는 스크립트가 루트 디렉토리에 있었는데, grep을 하위 디렉토리 안에서만 돌렸기 때문에 보지 못한 거죠.
+
+AlgoSu에서 저는 두 번 기능을 지웠습니다. Sprint 189에서 만든 ADR 관계 그래프를 Sprint 193에서 지웠고, Sprint 157에서 만든 ADR 검색을 Sprint 201에서 지웠습니다. 두 번 모두 "YAGNI"나 "기능 설계 실수"보다 더 실용적인 것을 배웠어요. **안전하게 지우는 방법**이었습니다.
+
+---
+
+<Problem label="문제">
+삭제할 때마다 무엇이 따라올지 모른다. 기능 삭제에도 방법론이 있는가?
+</Problem>
+
+## 원칙 1: 지우기 전에 grep으로 나눈다 — 전용 vs 공유
+
+기능을 삭제하기 전에 해야 할 첫 번째 일은, **그 기능만 쓰는 자산과 다른 곳에서도 쓰는 자산을 grep으로 구분하는 것**입니다. 이 분류를 잘못하면 삭제가 인접 기능을 조용히 깨뜨립니다.
+
+Sprint 201(검색 삭제)에서 착수 전에 i18n 키를 grep으로 나눴습니다.
+
+- **검색 전용 (삭제 안전)**: `searchPlaceholder` · `searchAriaLabel` · `searchEmpty` — `SearchBox` 컴포넌트에서만 참조
+- **공유 (유지 필수)**: `kindPermanent` · `kindTopic` · `kindSprint` · `metaSprint` — `adr-card` · `adr-category-tabs` · `sprint-timeline` · `adr-meta-sidebar`에서도 사용
+
+lib 함수도 같았습니다. `toSearchDoc` · `toPlainText` · `SearchDoc` 타입은 검색 전용이라 제거. 반면 `buildUrl` · `groupByKind` · `mapBySprint` · `filterAdrsByTopic`은 ADR 렌더링 전반에서 계속 쓰여 보존했습니다.
+
+Sprint 193(그래프 삭제)에서도 같은 분류를 먼저 했습니다. `buildGraph` · `getSubgraph` · `filterAdjacency` · `mergeTargets`는 그래프 전용 → 제거. 하지만 `--diagram-bg` · `--grid` CSS 토큰은 블로그 본문 mermaid와 공유될 수 있어 보존했고, 사이드바의 "관련 ADR" 텍스트 링크(`RelatedLinks`)는 mermaid 그래프와 완전히 독립적인 컴포넌트였기 때문에 그대로 남겼습니다.
+
+이 분류를 코드를 지우기 **전에** 한다는 게 핵심입니다. 삭제를 시작하면 관성이 생기고 "이것도 아마 그래프 전용이겠지"라는 추측이 끼어들어요. 착수 전에 grep을 돌리면 추측이 아닌 사실로 경계를 그을 수 있습니다.
+
+---
+
+## 원칙 2: 죽은 필드는 기능과 함께 죽인다
+
+기능을 지울 때 종종 발견되는 게 있습니다. 기능이 살아 있는 동안 만들어졌지만, 아무도 읽지 않던 필드들이에요.
+
+Sprint 201에서 `AdrIndex.searchDocs` 필드가 그랬습니다. `buildAdrIndex`가 매 빌드마다 생성했지만, 그 필드를 실제로 읽는 곳은 한 군데도 없었어요. `adr/page.tsx` · `archive/page.tsx` · `post-page.tsx`는 모두 `.all` · `.byKind` · `.bySprint`만 읽었습니다. 사실상 죽은 필드였죠. 검색 기능을 지울 때 이 필드도 함께 정리했습니다.
+
+Sprint 193의 `AdrDoc.outgoingLinks`도 같은 경우였습니다. `buildGraph` · `mergeTargets`에서만 소비되던 그래프 전용 데이터였어요. 그래프가 사라지면 이 필드도 의미를 잃습니다. 추출 로직(`extractOutgoingLinks`)과 그 전용 정규식(`ADR_LINK_RE`)까지 함께 제거했습니다.
+
+<Callout type="info" title="죽은 필드를 찾는 방법">
+해당 필드 · 함수명으로 grep을 돌리고, 소비처가 지울 기능 안에만 있다면 함께 제거합니다. Sprint 193에서 `normalizeAdrId`는 그래프에서도 쓰였지만 `related_adrs` 추출에서도 쓰였기 때문에 살렸습니다. 소비처가 기능 전용이면 같이 지운다, 두 곳 이상이면 살린다.
+</Callout>
+
+죽은 필드를 남겨두면 당장은 아무 일도 없습니다. 하지만 몇 달 후에 코드를 다시 읽을 때 "이 필드는 왜 여기 있지?"라는 의문이 생겨요. 죽은 코드는 문맥을 오염시킵니다. 기능을 지울 때가 가장 자연스럽게 함께 정리할 수 있는 타이밍입니다.
+
+---
+
+<Decision label="결정">
+삭제는 착수 전 grep 분류, 죽은 필드 동반 제거, 그리고 저장소 전역 결합 탐색, 이 세 단계로 완결된다.
+</Decision>
+
+## 원칙 3: 삭제 대상 밖에서 깨진다
+
+이게 가장 중요한 원칙이고, 직접 겪기 전에는 잘 믿어지지 않는 원칙입니다.
+
+Sprint 201에서 검색 기능을 지운 1차 PR은 `blog/` 안에서 완결된 작업처럼 보였습니다. `SearchBox` 컴포넌트 · `generate-search-index.mjs` 스크립트 · `SearchDoc` 타입 · `AdrIndex.searchDocs` 필드 · `minisearch` 의존성 — 전부 `blog/` 아래에 있었으니까요. grep도 `blog/` 범위에서 돌렸습니다. tsc 0, `next build` 성공, CI 대기.
+
+PR이 머지됐습니다.
+
+`main`이 깨진 채였습니다.
+
+루트 `scripts/check-adr-links.mjs`가 빌드 산출물의 `search-index.json` 존재를 검증하는 로직을 갖고 있었습니다. `search-index.json`이 더 이상 생성되지 않으니 이 게이트는 exit 2로 끝났어요. CI Build Blog (SSG) 잡이 실제로 실패했습니다.
+
+그런데 머지가 됐습니다. 이 잡이 branch protection의 required check로 지정되지 않았기 때문에, 잡이 실패해도 squash merge를 차단하지 않았던 거죠.
+
+이걸 포착한 건 `/stop` 게이트였습니다. 스프린트 종료 시 로컬에서 `check-adr-links.mjs`를 직접 실행하는 흐름이 문제를 잡아냈어요. 결국 후속 PR을 따로 올려서 `check-adr-links.mjs`의 search-index 검증 블록을 제거하고 내부 링크 무결성 검사만 남겼습니다.
+
+교훈은 이겁니다. **지운 파일을 참조하는 코드는 그 파일이 있던 디렉토리 밖에 있을 수 있습니다.** `blog/public/adr/search-index.json`을 생성하는 스크립트는 `blog/scripts/` 아래에 있었지만, 그 산출물의 존재를 검증하는 게이트는 루트 `scripts/`에 있었어요. grep 범위를 `blog/`로 한정하면 이 연결이 보이지 않습니다.
+
+기능을 삭제할 때 grep 범위는 저장소 전체여야 합니다. 심볼 이름 하나로 `git grep`을 돌리면 레포 어디서든 참조를 찾을 수 있어요. "아마 이 디렉토리 안에만 있겠지"는 검증이 아니라 가정입니다.
+
+---
+
+<Result label="결과">
+그래프를 지울 때는 세 원칙을 모두 지켰다. 검색을 지울 때는 세 번째 원칙을 어겼다. 두 사례의 차이가 원칙의 가치를 보여준다.
+</Result>
+
+## 삭제도 설계다
+
+그래프를 지울 때(Sprint 193)는 결과가 깔끔했습니다. i18n 키 44개(KR · EN 각 22개)를 전용/공유로 분류하고, `outgoingLinks` 죽은 필드를 `extractOutgoingLinks` · `ADR_LINK_RE`와 함께 제거하고, 잔존 참조를 저장소 전체 grep으로 확인했습니다. tsc 0, 빌드 성공, Critic 이슈 0건, CI 37 pass / 0 fail.
+
+검색을 지울 때(Sprint 201)는 두 번째 원칙은 지켰지만(`searchDocs` 제거), 세 번째 원칙을 어겼습니다. grep을 `blog/`로 한정했고, 루트 게이트 스크립트의 의존이 보이지 않았어요. main이 깨진 채 머지됐고, `/stop` 게이트가 포착했고, 후속 PR로 봉합했습니다.
+
+두 사례의 차이가 원칙의 가치를 보여줍니다.
+
+코드를 추가할 때 "이게 필요한가"를 물어야 한다면, 코드를 삭제할 때는 "이게 어디서 쓰이는가"를 물어야 합니다. 기능을 지운다는 건 그 기능이 혼자서 완결되지 않았다는 걸 확인하는 과정입니다. grep 결과가 그려주는 의존의 지도를 따라가다 보면, 소유권이 명확한 코드와 다른 곳에 발이 걸린 코드의 경계가 드러납니다.
+
+그 경계를 정확히 지운다. 그게 삭제의 기술이에요.
+
+---
+
+## 세 원칙
+
+1. **지우기 전에 grep으로 나눈다** — 전용 자산과 공유 자산을 구분하고, 공유 자산은 건드리지 않는다.
+2. **죽은 필드는 기능과 함께 죽인다** — 소비처가 기능 전용인 필드 · 타입 · 파서를 함께 정리해 데드코드를 남기지 않는다.
+3. **grep 범위는 저장소 전체다** — 지운 파일의 참조자는 하위 디렉토리 밖에 있을 수 있다. `git grep`으로 레포 전체를 열어라.
