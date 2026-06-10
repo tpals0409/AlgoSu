@@ -106,7 +106,7 @@ Codex gpt-5.5 교차 리뷰(`--base 3dc4b13`): **✅ CLEAN**.
   - coverage: Statements **98.69** / Branches **94.13** / Functions **98.93** / Lines **99.04** (threshold 97/92/96/97 충족)
   - saga-quota.service.ts: **100/100/100/100** · saga-timeout.service.ts: **100/90/100/100** · saga-orchestrator.service.ts: **97.5/89.47/100/100**
 - Critic auto-critic: gatekeeper 산출물 R1(발견 M-1/L-1) → 수정 → conductor 산출물 R1(발견 주석/timer) → 수정 → **R2 CLEAN** (base `3dc4b13`)
-- 변경 파일(총 4 commit, 21 files):
+- 변경 파일(총 4 commit, 22 files):
   - Q-1 BE: `study.types.ts`(신규), `membership-cache.service.ts`(신규), `study-access.service.ts`(신규), `study-stats.service.ts`(신규), `study-member.service.ts`(신규), `study.service.ts`(수정), `study.controller.ts`(수정), `study.module.ts`(수정), 관련 spec 6종(신규/수정)
   - Q-2: `saga-quota.service.ts`(신규), `saga-quota.service.spec.ts`(신규), `saga-timeout.service.ts`(신규), `saga-timeout.service.spec.ts`(신규), `saga-orchestrator.service.ts`(수정), `saga-orchestrator.service.spec.ts`(수정), `submission.module.ts`(수정)
   - Critic 수정: `membership-cache.service.ts`(수정), `membership-cache.service.spec.ts`(수정), `study.service.spec.ts`(수정), `app.module.init.spec.ts`(수정), `saga-timeout.service.spec.ts`(수정)

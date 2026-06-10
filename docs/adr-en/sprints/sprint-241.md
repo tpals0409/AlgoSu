@@ -106,7 +106,7 @@ Codex gpt-5.5 cross-review (`--base 3dc4b13`): **✅ CLEAN**.
   - coverage: Statements **98.69** / Branches **94.13** / Functions **98.93** / Lines **99.04** (threshold 97/92/96/97 held)
   - saga-quota.service.ts: **100/100/100/100** · saga-timeout.service.ts: **100/90/100/100** · saga-orchestrator.service.ts: **97.5/89.47/100/100**
 - Critic auto-critic: gatekeeper R1 (M-1/L-1 found) → fixed → conductor R1 (comment drift/timer isolation found) → fixed → **R2 CLEAN** (base `3dc4b13`)
-- Changed files (4 commits, 21 files total):
+- Changed files (4 commits, 22 files total):
   - Q-1 BE: `study.types.ts` (new), `membership-cache.service.ts` (new), `study-access.service.ts` (new), `study-stats.service.ts` (new), `study-member.service.ts` (new), `study.service.ts` (modified), `study.controller.ts` (modified), `study.module.ts` (modified), 6 spec files (new/modified)
   - Q-2: `saga-quota.service.ts` (new), `saga-quota.service.spec.ts` (new), `saga-timeout.service.ts` (new), `saga-timeout.service.spec.ts` (new), `saga-orchestrator.service.ts` (modified), `saga-orchestrator.service.spec.ts` (modified), `submission.module.ts` (modified)
   - Critic fixes: `membership-cache.service.ts` (modified), `membership-cache.service.spec.ts` (modified), `study.service.spec.ts` (modified), `app.module.init.spec.ts` (modified), `saga-timeout.service.spec.ts` (modified)
