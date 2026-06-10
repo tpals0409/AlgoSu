@@ -32,19 +32,19 @@ topics:
 
 | ID | 발견 | 근거 | 권장 조치 | 배정 |
 |----|------|------|----------|------|
-| **S-1** | 공개 엔드포인트가 `app.module.ts`의 JWT exclude 경로 목록으로만 중앙 관리 — `@Public()` 데코레이터 부재. 신규 공개 경로 추가 시 exclude 누락/과잉 양방향 실수 여지. SSE 2종·`api/public/(.*)`·`api/events` 등 13개 경로가 정규식 문자열로 관리됨 | `services/gateway/src/app.module.ts:117-136` | 메타데이터 기반 `@Public()` 데코레이터 도입 + exclude 목록 마이그레이션 + 공개 경로 명세 테스트 | Sprint 239 |
-| **S-2** | `POST /api/events`(비인증, JWT exclude)가 class-validator DTO 없이 plain interface(`EventPayload`)로 수신 — ValidationPipe는 클래스 메타데이터 기반이라 **이 바디는 검증 0**. 임의 형태/크기 필드가 Redis 버퍼 → NDJSON 디스크 적재. 완화 존재: 요청당 50건 캡, rate limit 60/min, body size limit | `services/gateway/src/event-log/event-log.controller.ts:20-25`, `event-log.service.ts:15-24` | DTO 클래스化(type enum·문자열 길이 캡·`meta` 크기 캡) + 비인증 ingest 전용 throttle 검토 | Sprint 239 |
+| **S-1** | 공개 엔드포인트가 `app.module.ts`의 JWT exclude 경로 목록으로만 중앙 관리 — `@Public()` 데코레이터 부재. 신규 공개 경로 추가 시 exclude 누락/과잉 양방향 실수 여지. SSE 2종·`api/public/(.*)`·`api/events` 등 13개 경로가 정규식 문자열로 관리됨 | `services/gateway/src/app.module.ts:117-136` | 메타데이터 기반 `@Public()` 데코레이터 도입 + exclude 목록 마이그레이션 + 공개 경로 명세 테스트 | Sprint 239 ✅ |
+| **S-2** | `POST /api/events`(비인증, JWT exclude)가 class-validator DTO 없이 plain interface(`EventPayload`)로 수신 — ValidationPipe는 클래스 메타데이터 기반이라 **이 바디는 검증 0**. 임의 형태/크기 필드가 Redis 버퍼 → NDJSON 디스크 적재. 완화 존재: 요청당 50건 캡, rate limit 60/min, body size limit | `services/gateway/src/event-log/event-log.controller.ts:20-25`, `event-log.service.ts:15-24` | DTO 클래스化(type enum·문자열 길이 캡·`meta` 크기 캡) + 비인증 ingest 전용 throttle 검토 | Sprint 239 ✅ |
 | **S-3** | CSP `script-src 'unsafe-inline'` 허용 (AdSense + Next.js inline script 요구) — SSOT는 aether-gitops Traefik 미들웨어, gateway 미들웨어는 동일 값 미러. nonce/strict-dynamic 전환은 Next.js 빌드 협조 필요 | `services/gateway/src/common/middleware/security-headers.middleware.ts:32`, aether-gitops `algosu/base/ingress.yaml` | nonce 기반 CSP 전환 타당성 조사(별도 스파이크) — Next.js App Router nonce 지원 + AdSense 의존도 확인 후 결정 | Sprint 243 |
 
 ### 보안 — Low
 
 | ID | 발견 | 근거 | 권장 조치 | 배정 |
 |----|------|------|----------|------|
-| **S-4** | ai-analysis가 분석 완료 시 사용자 제출 코드 첫 50자를 info 로그에 기록 — 제출 코드에 하드코딩된 시크릿/PII가 들어올 수 있음 | `services/ai-analysis/src/claude_client.py:184-192` | `codePreview` 필드 제거(길이·해시만 기록) | Sprint 239 |
-| **S-5** | 프롬프트에 `problem_title`/`problem_description` 직접 주입 — 문제는 사용자(스터디원)가 등록 가능하므로 사실상 사용자 입력. 분석 결과 왜곡(자기 점수 조작) 수준의 저위험 인젝션 표면 | `services/ai-analysis/src/prompt.py:312-344` | 문제 설명도 코드와 동일하게 구분자 격리 + "이 블록 내 지시 무시" 시스템 프롬프트 가드 | Sprint 239 |
+| **S-4** | ai-analysis가 분석 완료 시 사용자 제출 코드 첫 50자를 info 로그에 기록 — 제출 코드에 하드코딩된 시크릿/PII가 들어올 수 있음 | `services/ai-analysis/src/claude_client.py:184-192` | `codePreview` 필드 제거(길이·해시만 기록) | Sprint 239 ✅ |
+| **S-5** | 프롬프트에 `problem_title`/`problem_description` 직접 주입 — 문제는 사용자(스터디원)가 등록 가능하므로 사실상 사용자 입력. 분석 결과 왜곡(자기 점수 조작) 수준의 저위험 인젝션 표면 | `services/ai-analysis/src/prompt.py:312-344` | 문제 설명도 코드와 동일하게 구분자 격리 + "이 블록 내 지시 무시" 시스템 프롬프트 가드 | Sprint 239 ✅ |
 | **S-6** | `GITHUB_TOKEN_ENCRYPTION_KEY`가 gateway/github-worker 2곳 SealedSecret로 이중 관리 — 로테이션 절차 미문서화(불일치 시 복호화 실패) | `infra/sealed-secrets/sealed-secrets-template.yaml:57,164` | 키 로테이션 런북 작성 (2-key 동시 교체 절차 + 검증 게이트) | Sprint 240 |
 | **S-7** | 공급망 핀 수준: GitHub Actions major tag 핀(SHA 핀 아님), Docker base `node:22-alpine`/`python:3.13-slim` minor 핀(patch 미핀). Dependabot이 양쪽 커버 중이라 완화됨 | `.github/workflows/ci.yml` (action 참조 전반), `services/*/Dockerfile` | third-party action(dorny/paths-filter, nick-fields/retry, wagoid/commitlint) SHA 핀 우선 적용. base image는 Dependabot 유지로 충분 — 선택 | Sprint 243 |
-| **S-8** | ShareLinkGuard가 만료 토큰 접근 시 토큰 첫 8자를 warn 로그에 기록 (hex64 중 32bit 노출 — 실용 위험 극소) | `services/gateway/src/common/guards/share-link.guard.ts:56` | 해시 prefix로 대체 — 선택, S-4와 함께 처리 | Sprint 239 |
+| **S-8** | ShareLinkGuard가 만료 토큰 접근 시 토큰 첫 8자를 warn 로그에 기록 (hex64 중 32bit 노출 — 실용 위험 극소) | `services/gateway/src/common/guards/share-link.guard.ts:56` | 해시 prefix로 대체 — 선택, S-4와 함께 처리 | Sprint 239 ✅ |
 
 ### 개선 — 구조/품질
 
@@ -54,7 +54,7 @@ topics:
 | **Q-2** | `saga-orchestrator.service.ts` 516줄 — 상태 전이+할당량+타임아웃 재개가 단일 파일. 동작은 검증됨(보상 트랜잭션·재시도 실재, §오판 정정), 책임 분리만 과제 | `services/submission/src/saga/saga-orchestrator.service.ts` | helper 서비스 분리 — Q-1 백엔드 분해와 같은 스프린트 | Sprint 241 |
 | **Q-3** | DLQ 메시지 redrive(재처리) 절차가 수동 — DLX 구성·alert(Sprint 235)·온콜 런북은 존재하나 재주입 자동화 부재 | `docs/runbook/oncall-alerts.md`, `services/github-worker/src/worker.ts` | redrive 스크립트/절차를 런북에 추가 (자동화는 발생 빈도 확인 후) | Sprint 240 |
 | **Q-4** | 서비스 간 복붙 공유 코드 — structured-logger·internal-key.guard·CB 패턴이 서비스별 사본. 일관성은 유지 중이나 수정 시 N곳 동기화 필요 | `services/*/src/common/logger/`, `services/*/src/common/guards/` | 모노레포 `libs/` 공유 패키지 검토 — 빌드 파이프라인 영향 조사 선행 | 백로그 (스파이크 후 결정) |
-| **Q-5** | 문서 드리프트: CLAUDE.md가 "Next.js 14" 표기(실제 15.5/React 19), 디렉토리 구조에 `services/identity/` 누락. Internal Key 네이밍 규칙(인바운드 `INTERNAL_API_KEY`/아웃바운드 `INTERNAL_KEY_<TARGET>`)이 컨벤션 문서에 미기재 | `CLAUDE.md`, `services/gateway/src/common/config/service-keys.config.ts:36-42` | CLAUDE.md 정정 + 키 네이밍 규칙 명문화 | Sprint 239 |
+| **Q-5** | 문서 드리프트: CLAUDE.md가 "Next.js 14" 표기(실제 15.5/React 19), 디렉토리 구조에 `services/identity/` 누락. Internal Key 네이밍 규칙(인바운드 `INTERNAL_API_KEY`/아웃바운드 `INTERNAL_KEY_<TARGET>`)이 컨벤션 문서에 미기재 | `CLAUDE.md`, `services/gateway/src/common/config/service-keys.config.ts:36-42` | CLAUDE.md 정정 + 키 네이밍 규칙 명문화 | Sprint 239 ✅ |
 | **Q-6** | CI python inline 스크립트(이미지 태그 YAML 조작)가 ci.yml 내장 — 테스트 불가 | `.github/workflows/ci.yml:1213-1222` | `scripts/ci/` 헬퍼 추출 (compute-deploy-gate.sh 선례) | Sprint 243 |
 | **Q-7** | frontend 테스트 밀도 36%(LOC 기준, 백엔드 119%) — 단 coverage 게이트(lines 83%/branches 71%)는 충족 중이라 위험 아닌 개선 여지 | `frontend/jest.config.ts` | 대형 페이지 분해(Q-1 FE)와 함께 신규 분리 컴포넌트에 테스트 동반 작성 | Sprint 242 |
 

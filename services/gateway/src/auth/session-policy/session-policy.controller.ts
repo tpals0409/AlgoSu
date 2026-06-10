@@ -14,11 +14,13 @@ import {
   SessionPolicyService,
   ClientSessionPolicyDto,
 } from './session-policy.service';
+import { Public } from '../../common/decorators/public.decorator';
 
 @Controller('auth')
 export class SessionPolicyController {
   constructor(private readonly sessionPolicyService: SessionPolicyService) {}
 
+  @Public()
   @Get('session-policy')
   getPolicy(): ClientSessionPolicyDto {
     return this.sessionPolicyService.getClientPolicy();

@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { ExecutionContext, NotFoundException } from '@nestjs/common';
 import { ShareLinkGuard } from './share-link.guard';
 import { IdentityClientService } from '../../identity-client/identity-client.service';
@@ -105,7 +106,7 @@ describe('ShareLinkGuard', () => {
       expect(identityClient.verifyShareLinkToken).toHaveBeenCalledWith(VALID_TOKEN);
     });
 
-    it('만료된 토큰 — NotFoundException + 경고 로그', async () => {
+    it('만료된 토큰 — NotFoundException + 경고 로그(해시화된 prefix만 노출)', async () => {
       identityClient.verifyShareLinkToken.mockResolvedValue({
         token: VALID_TOKEN,
         study_id: STUDY_ID,
@@ -119,6 +120,13 @@ describe('ShareLinkGuard', () => {
       expect(mockLogger.warn).toHaveBeenCalledWith(
         expect.stringContaining('만료된 공유 링크'),
       );
+
+      // S-8: 토큰 원문(또는 prefix)이 로그에 노출되면 안 된다 — sha256 12자 prefix만 허용
+      const expectedHash = createHash('sha256').update(VALID_TOKEN).digest('hex').slice(0, 12);
+      const loggedMessage = mockLogger.warn.mock.calls[0][0] as string;
+      expect(loggedMessage).toContain(`tokenHash=${expectedHash}`);
+      expect(loggedMessage).not.toContain(VALID_TOKEN.slice(0, 8));
+      expect(loggedMessage).not.toContain(VALID_TOKEN);
     });
 
     it('정보 누출 방지 — 존재하지 않는/비활성/만료 토큰 모두 동일한 404 메시지', async () => {

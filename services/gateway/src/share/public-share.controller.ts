@@ -22,7 +22,9 @@ import { Request } from 'express';
 import { ShareLinkGuard } from '../common/guards/share-link.guard';
 import { IdentityClientService } from '../identity-client/identity-client.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
+import { Public } from '../common/decorators/public.decorator';
 
+@Public()
 @ApiTags('Public Share')
 @Controller('api/public/shared')
 export class PublicShareController {

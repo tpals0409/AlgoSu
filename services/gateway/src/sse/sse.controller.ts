@@ -33,6 +33,7 @@ import Redis from 'ioredis';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationType } from '../common/types/identity.types';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
+import { Public } from '../common/decorators/public.decorator';
 
 @ApiTags('SSE')
 @Controller('sse')
@@ -87,7 +88,11 @@ export class SseController implements OnModuleDestroy {
    * SSE 제출 상태 스트리밍
    * @api GET /sse/submissions/:id
    * @guard cookie-auth, submission-owner
+   *
+   * @Public(): JwtMiddleware 우회 — SSE는 EventSource 한계로 Authorization 헤더 사용 불가,
+   * 본 핸들러가 직접 cookie token을 verifyToken으로 검증한다(보호 유지).
    */
+  @Public()
   @ApiOperation({ summary: '제출 상태 실시간 스트리밍 (SSE)' })
   @ApiResponse({ status: 200, description: 'SSE text/event-stream' })
   @Get('submissions/:id')
@@ -266,7 +271,11 @@ export class SseController implements OnModuleDestroy {
    * SSE 알림 실시간 스트리밍
    * @api GET /sse/notifications
    * @guard cookie-auth
+   *
+   * @Public(): JwtMiddleware 우회 — SSE는 EventSource 한계로 Authorization 헤더 사용 불가,
+   * 본 핸들러가 직접 cookie token을 verifyToken으로 검증한다(보호 유지).
    */
+  @Public()
   @ApiOperation({ summary: '알림 실시간 스트리밍 (SSE)' })
   @ApiResponse({ status: 200, description: 'SSE text/event-stream' })
   @Get('notifications')

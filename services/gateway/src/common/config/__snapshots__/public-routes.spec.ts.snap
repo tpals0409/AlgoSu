@@ -1,0 +1,28 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`PUBLIC_ROUTES — 공개 경로 명세 ③ 공개 표면 스냅샷 (드리프트 차단) 1`] = `
+[
+  "GET api/public/profile/:slug",
+  "GET api/public/shared/:token",
+  "GET api/public/shared/:token/analysis/:submissionId",
+  "GET api/public/shared/:token/problems",
+  "GET api/public/shared/:token/submissions",
+  "GET auth/github/link/callback",
+  "GET auth/oauth/:provider",
+  "GET auth/oauth/:provider/callback",
+  "GET auth/session-policy",
+  "GET health",
+  "GET health/ready",
+  "GET internal/studies/:studyId",
+  "GET internal/studies/:study_id/members/:user_id",
+  "GET internal/users/:user_id/github-encrypted-token",
+  "GET internal/users/:user_id/github-status",
+  "GET metrics",
+  "GET sse/notifications",
+  "GET sse/submissions/:id",
+  "POST api/events",
+  "POST auth/demo",
+  "POST auth/logout",
+  "POST auth/refresh",
+]
+`;

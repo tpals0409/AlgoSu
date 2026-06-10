@@ -9,6 +9,7 @@
  * - 만료/비활성/미존재 토큰 모두 404 반환 (열거 공격 방어)
  * - 유효 토큰 시 x-share-study-id, x-share-created-by 헤더 주입
  */
+import { createHash } from 'crypto';
 import {
   Injectable,
   CanActivate,
@@ -19,6 +20,14 @@ import { Request } from 'express';
 import { SHARE_LINK_TOKEN_REGEX } from '../../share/share-link.constants';
 import { StructuredLoggerService } from '../logger/structured-logger.service';
 import { IdentityClientService } from '../../identity-client/identity-client.service';
+
+/**
+ * 토큰 원문이 로그에 흘러가지 않도록 sha256 해시 prefix 12자만 남긴다.
+ * Sprint 239 S-8: prior `token.slice(0, 8)` 은 raw token prefix 노출 → 해시화로 대체.
+ */
+function hashTokenForLog(token: string): string {
+  return createHash('sha256').update(token).digest('hex').slice(0, 12);
+}
 
 @Injectable()
 export class ShareLinkGuard implements CanActivate {
@@ -53,7 +62,7 @@ export class ShareLinkGuard implements CanActivate {
 
     const expiresAt = link['expires_at'] ? new Date(String(link['expires_at'])) : null;
     if (expiresAt && expiresAt < new Date()) {
-      this.logger.warn(`만료된 공유 링크 접근 시도: token=${token.slice(0, 8)}...`);
+      this.logger.warn(`만료된 공유 링크 접근 시도: tokenHash=${hashTokenForLog(token)}`);
       throw new NotFoundException('공유 링크를 찾을 수 없습니다.');
     }
 

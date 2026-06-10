@@ -18,7 +18,9 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { IdentityClientService } from '../identity-client/identity-client.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
+import { Public } from '../common/decorators/public.decorator';
 
+@Public()
 @ApiTags('Public Profile')
 @Controller('api/public/profile')
 export class PublicProfileController {

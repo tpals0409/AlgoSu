@@ -105,7 +105,9 @@ class ClaudeClient:
 
     보안:
     - API Key 로그 노출 금지
-    - 사용자 코드는 로그에 일부만 기록 (최대 50자)
+    - 사용자 코드 본문은 로그에 일절 기록하지 않음 (ADR-030 S-4).
+      제출 코드에는 하드코딩된 시크릿/PII가 포함될 수 있으므로
+      길이(codeLength) 등 메타데이터만 기록한다.
 
     @domain ai
     """
@@ -181,13 +183,14 @@ class ClaudeClient:
                 )
                 result["optimized_code"] = None
 
-            code_preview = code[:50] + "..." if len(code) > 50 else code
+            # ADR-030 S-4: 사용자 코드 본문은 시크릿/PII가 포함될 수 있으므로
+            # 로그에 일절 노출하지 않는다. 길이(int) 메타데이터만 기록.
             logger.info(
                 "Claude 분석 완료",
                 extra={
                     "language": language,
                     "score": result.get("score", 0),
-                    "codePreview": code_preview,
+                    "codeLength": len(code),
                 },
             )
 

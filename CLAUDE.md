@@ -5,9 +5,10 @@
 ## 디렉토리 구조
 
 ```
-frontend/          Next.js 14 App Router (UI)
+frontend/          Next.js 15 App Router + React 19 (UI)
 services/
   gateway/         NestJS API Gateway (인증/라우팅)
+  identity/        NestJS Identity (OAuth 사용자/스터디/공유/피드백/퀴즈기록)
   submission/      NestJS 제출 관리 + Saga
   problem/         NestJS 문제 관리
   github-worker/   NestJS GitHub 동기화
@@ -97,6 +98,10 @@ blog/              기술 블로그
 - 민감 정보 로그 절대 금지 (JWT, 토큰, 키, PII, DB 연결문자열)
 - Secrets: SealedSecret 사용 (평문 Secret 금지)
 - X-Internal-Key: `timingSafeEqual` 비교
+- **Internal Key 네이밍 컨벤션** (Sprint 239 Q-5 SSOT):
+  - **인바운드**(자기 서비스 키 검증, 모든 서비스 공통) = `INTERNAL_API_KEY` — 단일 환경변수
+  - **아웃바운드**(대상 서비스 호출 시 보낼 키) = `INTERNAL_KEY_<TARGET>` — 예: `INTERNAL_KEY_PROBLEM`, `INTERNAL_KEY_SUBMISSION`, `INTERNAL_KEY_AI_ANALYSIS`
+  - 근거: `services/gateway/src/common/config/service-keys.config.ts` (SERVICE_ROUTING_TABLE + INTERNAL_SERVICE_ROUTES)
 - CI: `permissions:{}`, gitleaks, Trivy, `.env` 커밋 방지
 - JWT: `none` 알고리즘 금지, 만료 검증 필수
 - 입력값: SQL 바인딩 (raw query 금지)

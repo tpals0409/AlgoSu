@@ -15,7 +15,13 @@ import {
 import { ApiExcludeController } from '@nestjs/swagger';
 import { InternalKeyGuard } from '../common/guards/internal-key.guard';
 import { IdentityClientService } from '../identity-client/identity-client.service';
+import { Public } from '../common/decorators/public.decorator';
 
+/**
+ * @Public(): JwtMiddleware는 우회하지만 보호는 InternalKeyGuard(X-Internal-Key timingSafeEqual)가
+ * 실제로 담당한다. 외부 JWT가 없는 서비스-서비스 호출 전용이므로 JWT 검증 자체가 부적합.
+ */
+@Public()
 @ApiExcludeController()
 @Controller('internal')
 @UseGuards(InternalKeyGuard)

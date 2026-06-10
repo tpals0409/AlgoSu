@@ -35,6 +35,10 @@ export class RateLimitMiddleware implements NestMiddleware {
     }
 
     // 인증 사용자는 userId 기반, 비인증은 IP 기반
+    // Sprint 239 S-1 메모: HeaderSanitizerMiddleware가 외부 x-user-id를 가장 먼저 제거하므로
+    // 여기서 보이는 x-user-id는 ProxyDispatchMiddleware 경유 시 게이트웨이 산물(JwtMiddleware 주입)뿐.
+    // 단 RateLimit은 JwtMiddleware보다 먼저 실행되므로 이 미들웨어 시점에서 userId는 항상 비어 있고,
+    // 결과적으로 identity는 항상 IP 기반으로 결정된다 (userId 분기는 미들웨어 체인 재배치 대비 보존).
     const userId = req.headers['x-user-id'] as string | undefined;
     const ip = req.ip ?? req.socket.remoteAddress ?? 'unknown';
     const identity = userId ? `user:${userId}` : `ip:${ip}`;
