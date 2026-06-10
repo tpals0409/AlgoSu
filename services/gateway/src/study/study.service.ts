@@ -1,92 +1,44 @@
 /**
- * @file 스터디 서비스 — CRUD, 멤버 관리, 초대, 통계, 정책
+ * @file 스터디 서비스 — CRUD, 종료, 그라운드 룰, 초대, 문제 생성 알림
  * @domain study
  * @layer service
- * @related StudyController, IdentityClientService, InviteThrottleService
+ * @related StudyController, StudyAccessService, MembershipCacheService, InviteThrottleService
  *
- * Gateway 오케스트레이션 레이어:
+ * Gateway 오케스트레이션 레이어 (CRUD 코어):
  * - DB 접근은 IdentityClientService를 통해 Identity 서비스에 위임
- * - 알림, Redis 캐시, brute-force 방어 등 Gateway 고유 로직만 유지
+ * - 권한 검증은 StudyAccessService, 멤버십 캐시는 MembershipCacheService에 위임
+ * - 멤버 관리는 StudyMemberService, 통계는 StudyStatsService로 분리됨
  */
 import {
   Injectable,
   NotFoundException,
-  ForbiddenException,
   ConflictException,
   BadRequestException,
-  OnModuleDestroy,
 } from '@nestjs/common';
-import Redis from 'ioredis';
-import { ConfigService } from '@nestjs/config';
 import { IdentityClientService } from '../identity-client/identity-client.service';
-import type { IdentityStudy as Study, IdentityStudyMember as StudyMember } from '../common/types/identity.types';
+import type { IdentityStudy as Study } from '../common/types/identity.types';
 import { StudyMemberRole, NotificationType } from '../common/types/identity.types';
 import { NotificationService } from '../notification/notification.service';
 import { InviteThrottleService } from './invite-throttle.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
+import { StudyAccessService } from './study-access.service';
+import { MembershipCacheService } from './membership-cache.service';
+import type { StudyData, MemberData, InviteData } from './study.types';
 
 // ─── CONSTANTS ────────────────────────────
 const MAX_MEMBERS = 50;
 
-// ─── 내부 인터페이스 (Identity API 응답 매핑) ─────────────────
-interface StudyData {
-  id: string;
-  name: string;
-  description: string | null;
-  github_repo: string | null;
-  groundRules: string | null;
-  avatar_url: string;
-  status: string;
-  created_by: string;
-  [key: string]: unknown;
-}
-
-interface MemberData {
-  id: string;
-  study_id: string;
-  user_id: string;
-  role: string;
-  nickname: string;
-  username?: string;
-  email?: string;
-  avatar_url?: string | null;
-  [key: string]: unknown;
-}
-
-interface InviteData {
-  id: string;
-  study_id: string;
-  code: string;
-  created_by: string;
-  expires_at: string;
-  max_uses: number | null;
-  used_count: number;
-  study?: StudyData;
-  [key: string]: unknown;
-}
-
 @Injectable()
-export class StudyService implements OnModuleDestroy {
-  private readonly redis: Redis;
-
+export class StudyService {
   constructor(
-    private readonly configService: ConfigService,
     private readonly logger: StructuredLoggerService,
     private readonly identityClient: IdentityClientService,
     private readonly notificationService: NotificationService,
     private readonly inviteThrottle: InviteThrottleService,
+    private readonly access: StudyAccessService,
+    private readonly cache: MembershipCacheService,
   ) {
     this.logger.setContext(StudyService.name);
-    const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
-    this.redis = new Redis(redisUrl);
-    this.redis.on('error', (err: Error) => {
-      // M11: Redis 연결 에러 핸들링 — 프로세스 크래시 방지
-      this.logger.error(`Redis 연결 오류: ${err.message}`);
-    });
-  }
-
-  async onModuleDestroy(): Promise<void> {
-    await this.redis.quit();
   }
 
   // ─── CRUD ──────────────────────────────────
@@ -111,7 +63,7 @@ export class StudyService implements OnModuleDestroy {
     }) as StudyData;
 
     // 캐시 무효화는 커밋 후 실행
-    await this.invalidateMembershipCache(savedStudy.id, userId);
+    await this.cache.invalidate(savedStudy.id, userId);
 
     this.logger.log(`스터디 생성: studyId=${savedStudy.id}, creator=${userId}`);
     return savedStudy as unknown as Study;
@@ -148,7 +100,7 @@ export class StudyService implements OnModuleDestroy {
     userId: string,
     data: { name?: string; description?: string; avatarUrl?: string },
   ): Promise<Study> {
-    await this.verifyAdmin(studyId, userId);
+    await this.access.verifyAdmin(studyId, userId);
 
     const updateData: { name?: string; description?: string; avatar_url?: string } = {};
     if (data.name !== undefined) updateData.name = data.name;
@@ -166,7 +118,7 @@ export class StudyService implements OnModuleDestroy {
    * @policy 관리자가 2명 이상이면 삭제 불가 — 단독 관리자만 삭제 가능
    */
   async deleteStudy(studyId: string, userId: string): Promise<void> {
-    await this.verifyAdmin(studyId, userId);
+    await this.access.verifyAdmin(studyId, userId);
 
     // ADMIN 수 검증
     const members = await this.identityClient.getMembers(studyId) as MemberData[];
@@ -180,10 +132,7 @@ export class StudyService implements OnModuleDestroy {
     await this.identityClient.deleteStudy(studyId);
 
     // Redis 캐시 패턴 삭제 (통일 키 규격)
-    const keys = await this.redis.keys(`membership:${studyId}:*`);
-    if (keys.length > 0) {
-      await this.redis.del(...keys);
-    }
+    await this.cache.invalidateAll(studyId);
 
     this.logger.log(`스터디 삭제: studyId=${studyId}, by=${userId}`);
   }
@@ -197,7 +146,7 @@ export class StudyService implements OnModuleDestroy {
    * @event STUDY_CLOSED (publish)
    */
   async closeStudy(studyId: string, adminUserId: string): Promise<void> {
-    await this.verifyAdmin(studyId, adminUserId);
+    await this.access.verifyAdmin(studyId, adminUserId);
 
     const study = await this.identityClient.findStudyById(studyId) as StudyData;
 
@@ -237,7 +186,7 @@ export class StudyService implements OnModuleDestroy {
    * @guard study-admin
    */
   async updateGroundRules(studyId: string, userId: string, groundRules: string): Promise<Study> {
-    await this.verifyAdmin(studyId, userId);
+    await this.access.verifyAdmin(studyId, userId);
 
     const saved = await this.identityClient.updateStudy(studyId, { groundRules }) as StudyData;
 
@@ -254,7 +203,7 @@ export class StudyService implements OnModuleDestroy {
    * @guard study-admin
    */
   async createInvite(studyId: string, userId: string): Promise<{ code: string; expires_at: Date }> {
-    await this.verifyAdmin(studyId, userId);
+    await this.access.verifyAdmin(studyId, userId);
 
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + 5); // 5분 유효
@@ -279,15 +228,7 @@ export class StudyService implements OnModuleDestroy {
   ): Promise<{ valid: boolean; studyName: string }> {
     await this.inviteThrottle.checkLock(ip, code);
 
-    let invite: InviteData;
-    try {
-      invite = await this.identityClient.findInviteByCode(code) as InviteData;
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        await this.inviteThrottle.recordFailure(ip, code);
-      }
-      throw error;
-    }
+    const invite = await this.findInviteOrRecordFailure(code, ip);
 
     if (new Date(invite.expires_at) < new Date()) {
       throw new BadRequestException('만료된 초대 코드입니다.');
@@ -298,6 +239,22 @@ export class StudyService implements OnModuleDestroy {
     }
 
     return { valid: true, studyName: invite.study?.name ?? '' };
+  }
+
+  /**
+   * 초대 코드 조회 — NotFound 시 brute force 실패 카운트 기록
+   * @param code - 초대 코드
+   * @param ip - 요청 IP
+   */
+  private async findInviteOrRecordFailure(code: string, ip: string): Promise<InviteData> {
+    try {
+      return await this.identityClient.findInviteByCode(code) as InviteData;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        await this.inviteThrottle.recordFailure(ip, code);
+      }
+      throw error;
+    }
   }
 
   /**
@@ -317,18 +274,41 @@ export class StudyService implements OnModuleDestroy {
     await this.inviteThrottle.checkLock(ip, code);
 
     // 초대 코드 조회
-    let invite: InviteData;
-    try {
-      invite = await this.identityClient.findInviteByCode(code) as InviteData;
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        await this.inviteThrottle.recordFailure(ip, code);
-      }
-      throw error;
-    }
-
+    const invite = await this.findInviteOrRecordFailure(code, ip);
     const studyId = invite.study_id;
 
+    this.assertInviteUsable(invite);
+    await this.assertJoinable(studyId, userId);
+
+    // 멤버 추가
+    await this.identityClient.addMember(studyId, {
+      userId,
+      nickname,
+      role: 'MEMBER',
+    });
+
+    // S7: 사용 횟수 증가
+    await this.identityClient.consumeInvite(invite.id);
+
+    // 캐시 무효화 + brute force 카운터 초기화
+    await this.cache.invalidate(studyId, userId);
+    await this.inviteThrottle.clearFailures(ip, code);
+
+    const study = invite.study ?? await this.identityClient.findStudyById(studyId) as StudyData;
+    await this.notifyAdminsOnJoin(studyId, userId, study);
+
+    this.logger.log(`스터디 가입: studyId=${studyId}, userId=${userId}`);
+    return {
+      ...(study as StudyData),
+      role: StudyMemberRole.MEMBER,
+    } as unknown as Study & { role: StudyMemberRole };
+  }
+
+  /**
+   * 초대 코드 사용 가능 여부 검증 (만료 + 사용 한도)
+   * @param invite - 초대 코드 엔티티
+   */
+  private assertInviteUsable(invite: InviteData): void {
     // 만료 체크
     if (new Date(invite.expires_at) < new Date()) {
       throw new BadRequestException('만료된 초대 코드입니다.');
@@ -338,7 +318,14 @@ export class StudyService implements OnModuleDestroy {
     if (invite.max_uses !== null && invite.used_count >= invite.max_uses) {
       throw new BadRequestException('초대코드 사용 한도 초과');
     }
+  }
 
+  /**
+   * 가입 가능 여부 검증 (기존 멤버 아님 + 50명 미만)
+   * @param studyId - 스터디 ID
+   * @param userId - 가입 사용자 ID
+   */
+  private async assertJoinable(studyId: string, userId: string): Promise<void> {
     // 이미 가입된 멤버 체크
     try {
       await this.identityClient.getMember(studyId, userId);
@@ -355,26 +342,17 @@ export class StudyService implements OnModuleDestroy {
     if (currentMembers.length >= MAX_MEMBERS) {
       throw new BadRequestException('스터디 멤버 수가 최대 인원(50명)에 도달했습니다.');
     }
+  }
 
-    // 멤버 추가
-    await this.identityClient.addMember(studyId, {
-      userId,
-      nickname,
-      role: 'MEMBER',
-    });
-
-    // S7: 사용 횟수 증가
-    await this.identityClient.consumeInvite(invite.id);
-
-    // 캐시 무효화 + brute force 카운터 초기화
-    await this.invalidateMembershipCache(studyId, userId);
-    await this.inviteThrottle.clearFailures(ip, code);
-
-    // 가입 알림 발행 — ADMIN에게 MEMBER_JOINED 알림
+  /**
+   * 가입 시 ADMIN에게 MEMBER_JOINED 알림 발행 (가입자 제외)
+   * @param studyId - 스터디 ID
+   * @param userId - 가입 사용자 ID
+   * @param study - 스터디 엔티티
+   */
+  private async notifyAdminsOnJoin(studyId: string, userId: string, study: StudyData): Promise<void> {
     const allMembers = await this.identityClient.getMembers(studyId) as MemberData[];
     const admins = allMembers.filter((a) => a.role === 'ADMIN');
-
-    const study = invite.study ?? await this.identityClient.findStudyById(studyId) as StudyData;
 
     await Promise.all(
       admins
@@ -390,352 +368,6 @@ export class StudyService implements OnModuleDestroy {
           }),
         ),
     );
-
-    this.logger.log(`스터디 가입: studyId=${studyId}, userId=${userId}`);
-    return {
-      ...(study as StudyData),
-      role: StudyMemberRole.MEMBER,
-    } as unknown as Study & { role: StudyMemberRole };
-  }
-
-  // ─── 통계 ─────────────────────────────────
-
-  /**
-   * 스터디 통계 조회 (Submission Service 내부 API 호출)
-   * @domain study
-   * @api GET /studies/:id/stats
-   * @guard study-member
-   */
-  async getStudyStats(studyId: string, userId: string, weekNumber?: string) {
-    // 통계 대상 문제 ID 조회 — DELETED 문제만 집계에서 제외
-    const activeProblemIds = await this.fetchActiveProblemIds(studyId);
-
-    const submissionServiceUrl = this.configService.getOrThrow<string>('SUBMISSION_SERVICE_URL');
-    const internalKey = this.configService.getOrThrow<string>('INTERNAL_KEY_SUBMISSION');
-
-    const params = new URLSearchParams();
-    if (weekNumber) params.set('weekNumber', weekNumber);
-    params.set('userId', userId);
-    if (activeProblemIds) {
-      params.set('activeProblemIds', activeProblemIds.join(','));
-    }
-    const qs = `?${params.toString()}`;
-    const response = await fetch(
-      `${submissionServiceUrl}/internal/stats/${studyId}${qs}`,
-      {
-        method: 'GET',
-        headers: {
-          'x-internal-key': internalKey,
-          'Content-Type': 'application/json',
-        },
-      },
-    );
-
-    if (!response.ok) {
-      this.logger.error(`통계 조회 실패: studyId=${studyId}, status=${response.status}`);
-      throw new NotFoundException('통계 데이터를 조회할 수 없습니다.');
-    }
-
-    const result = (await response.json()) as { data: unknown };
-
-    // 멤버 이름 매핑: byMember의 userId를 멤버 목록과 매칭
-    const members = await this.identityClient.getMembers(studyId) as MemberData[];
-    const memberMap = new Map(members.map((m) => [m.user_id, m]));
-
-    const data = result.data as {
-      totalSubmissions: number;
-      uniqueSubmissions: number;
-      uniqueAnalyzed: number;
-      byWeek: { week: string; count: number }[];
-      byWeekPerUser: { userId: string; week: string; count: number }[];
-      byMember: { userId: string; count: number; doneCount: number; uniqueProblemCount: number; uniqueDoneCount: number }[];
-      byMemberWeek: { userId: string; count: number }[] | null;
-      recentSubmissions: unknown[];
-      solvedProblemIds: string[] | null;
-      userSubmissions: { problemId: string; aiScore: number | null; createdAt: string }[] | null;
-      submitterCountByProblem: { problemId: string; count: number; analyzedCount: number }[];
-    };
-
-    const mapMemberInfo = (m: { userId: string; count: number; doneCount: number; uniqueProblemCount: number; uniqueDoneCount: number }) => ({
-      userId: m.userId,
-      isMember: memberMap.has(m.userId),
-      nickname: memberMap.get(m.userId)?.nickname ?? null,
-      count: m.count,
-      doneCount: m.doneCount,
-      uniqueProblemCount: m.uniqueProblemCount,
-      uniqueDoneCount: m.uniqueDoneCount,
-    });
-
-    return {
-      totalSubmissions: data.totalSubmissions,
-      uniqueSubmissions: data.uniqueSubmissions ?? 0,
-      uniqueAnalyzed: data.uniqueAnalyzed ?? 0,
-      byWeek: data.byWeek,
-      byWeekPerUser: data.byWeekPerUser,
-      byMember: data.byMember.map(mapMemberInfo),
-      byMemberWeek: data.byMemberWeek?.map((m) => ({
-        userId: m.userId,
-        isMember: memberMap.has(m.userId),
-        nickname: memberMap.get(m.userId)?.nickname ?? null,
-        count: m.count,
-      })) ?? null,
-      recentSubmissions: (data.recentSubmissions as { userId: string; [key: string]: unknown }[]).map((s) => ({
-        ...s,
-        nickname: memberMap.get(s.userId)?.nickname ?? null,
-      })),
-      solvedProblemIds: data.solvedProblemIds ?? [],
-      userSubmissions: data.userSubmissions ?? [],
-      submitterCountByProblem: data.submitterCountByProblem ?? [],
-    };
-  }
-
-  /**
-   * Problem Service에서 통계 대상 문제 ID 목록 조회 (ACTIVE + CLOSED, DELETED 제외)
-   * 실패 시 undefined 반환 (기존 동작 유지 — 전체 집계)
-   */
-  private async fetchActiveProblemIds(studyId: string): Promise<string[] | undefined> {
-    try {
-      const problemServiceUrl = this.configService.getOrThrow<string>('PROBLEM_SERVICE_URL');
-      const internalKey = this.configService.getOrThrow<string>('INTERNAL_KEY_PROBLEM');
-
-      const response = await fetch(
-        `${problemServiceUrl}/internal/active-ids/${studyId}`,
-        {
-          method: 'GET',
-          headers: {
-            'x-internal-key': internalKey,
-            'Content-Type': 'application/json',
-          },
-        },
-      );
-
-      if (!response.ok) {
-        this.logger.warn(`통계 대상 문제 ID 조회 실패: studyId=${studyId}, status=${response.status}`);
-        return undefined;
-      }
-
-      const result = (await response.json()) as { data: string[] };
-      return result.data;
-    } catch (error: unknown) {
-      this.logger.warn(`통계 대상 문제 ID 조회 오류: studyId=${studyId}, ${(error as Error).message}`);
-      return undefined;
-    }
-  }
-
-  // ─── 멤버 관리 ────────────────────────────────
-
-  /**
-   * 멤버 목록 조회 (유저 정보 포함)
-   * @domain study
-   * @api GET /studies/:id/members
-   * @guard study-member
-   */
-  async getMembers(
-    studyId: string,
-    _userId: string,
-  ): Promise<(StudyMember & { username?: string; email?: string; avatar_url?: string | null })[]> {
-    const members = await this.identityClient.getMembers(studyId) as MemberData[];
-
-    // 각 멤버의 User 정보를 병렬 조회하여 email, avatar_url 등 보강
-    const enriched = await Promise.all(
-      members.map(async (m) => {
-        try {
-          const user = await this.identityClient.findUserById(m.user_id) as Record<string, unknown> | null;
-          return {
-            ...m,
-            username: (user?.name as string) ?? null,
-            email: (user?.email as string) ?? null,
-            avatar_url: (user?.avatar_url as string | null) ?? null,
-          };
-        } catch {
-          return { ...m, username: null, email: null, avatar_url: null };
-        }
-      }),
-    );
-
-    return enriched as unknown as (StudyMember & { username?: string; email?: string; avatar_url?: string | null })[];
-  }
-
-  /**
-   * 닉네임 변경 (본인만)
-   * @domain study
-   * @api PATCH /studies/:id/nickname
-   * @guard study-member
-   */
-  async updateNickname(
-    studyId: string,
-    userId: string,
-    nickname: string,
-  ): Promise<{ nickname: string }> {
-    // getMember가 404를 throw하면 ForbiddenException으로 변환
-    try {
-      await this.identityClient.getMember(studyId, userId);
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw new ForbiddenException('스터디 멤버가 아닙니다.');
-      }
-      throw error;
-    }
-
-    await this.identityClient.updateNickname(studyId, userId, { nickname });
-    return { nickname };
-  }
-
-  /**
-   * 멤버 역할 변경 (ADMIN만, 자기 자신 변경 불가)
-   * @domain study
-   * @api PATCH /studies/:id/members/:userId/role
-   * @guard study-admin
-   * @event ROLE_CHANGED (publish)
-   */
-  async changeMemberRole(
-    studyId: string,
-    targetUserId: string,
-    adminUserId: string,
-    newRole: StudyMemberRole,
-  ): Promise<void> {
-    await this.verifyAdmin(studyId, adminUserId);
-
-    // 자기 자신 변경 불가
-    if (targetUserId === adminUserId) {
-      throw new BadRequestException('자기 자신의 역할을 변경할 수 없습니다.');
-    }
-
-    // 대상 멤버 조회
-    let targetMember: MemberData;
-    try {
-      targetMember = await this.identityClient.getMember(studyId, targetUserId) as MemberData;
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw new NotFoundException('해당 멤버를 찾을 수 없습니다.');
-      }
-      throw error;
-    }
-
-    // ADMIN -> MEMBER 강등 시 최소 1 ADMIN 보장
-    if (targetMember.role === 'ADMIN' && newRole === 'MEMBER') {
-      const allMembers = await this.identityClient.getMembers(studyId) as MemberData[];
-      const adminCount = allMembers.filter((m) => m.role === 'ADMIN').length;
-      if (adminCount <= 1) {
-        throw new BadRequestException('최소 1명의 ADMIN이 필요합니다.');
-      }
-    }
-
-    await this.identityClient.changeRole(studyId, targetUserId, { role: newRole });
-
-    // 캐시 무효화 + 알림
-    await this.invalidateMembershipCache(studyId, targetUserId);
-
-    const study = await this.identityClient.findStudyById(studyId) as StudyData;
-    const roleLabel = newRole === 'ADMIN' ? '관리자' : '멤버';
-    await this.notificationService.createNotification({
-      userId: targetUserId,
-      studyId,
-      type: NotificationType.ROLE_CHANGED,
-      title: '역할 변경',
-      message: `"${study?.name ?? '스터디'}"에서 역할이 ${roleLabel}(으)로 변경되었습니다.`,
-      link: `/studies/${studyId}`,
-    });
-
-    this.logger.log(
-      `역할 변경: studyId=${studyId}, target=${targetUserId}, newRole=${newRole}, by=${adminUserId}`,
-    );
-  }
-
-  /**
-   * 스터디 탈퇴 (A2: ADMIN 위임 필수)
-   * ADMIN이면서 다른 ADMIN이 없으면 탈퇴 차단
-   * @domain study
-   * @api POST /studies/:id/leave
-   * @guard study-member
-   * @event STUDY_MEMBER_LEFT (publish)
-   */
-  async leaveStudy(studyId: string, userId: string): Promise<void> {
-    // 본인 멤버 조회
-    let member: MemberData;
-    try {
-      member = await this.identityClient.getMember(studyId, userId) as MemberData;
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw new ForbiddenException('해당 스터디의 멤버가 아닙니다.');
-      }
-      throw error;
-    }
-
-    // A2: ADMIN 위임 필수 — ADMIN이면서 다른 ADMIN이 없으면 탈퇴 차단
-    if (member.role === 'ADMIN') {
-      const allMembers = await this.identityClient.getMembers(studyId) as MemberData[];
-      const adminCount = allMembers.filter((m) => m.role === 'ADMIN').length;
-      if (adminCount <= 1) {
-        throw new BadRequestException('탈퇴 전 ADMIN 권한을 다른 멤버에게 위임하세요.');
-      }
-    }
-
-    await this.identityClient.removeMember(studyId, userId);
-
-    // 캐시 무효화 + 알림
-    await this.invalidateMembershipCache(studyId, userId);
-
-    const [study, allMembers] = await Promise.all([
-      this.identityClient.findStudyById(studyId) as Promise<StudyData>,
-      this.identityClient.getMembers(studyId) as Promise<MemberData[]>,
-    ]);
-    const remainingAdmins = allMembers.filter((m) => m.role === 'ADMIN');
-
-    await Promise.all(
-      remainingAdmins.map((a) =>
-        this.notificationService.createNotification({
-          userId: a.user_id,
-          studyId,
-          type: NotificationType.MEMBER_LEFT,
-          title: '멤버 탈퇴',
-          message: `"${study?.name ?? '스터디'}"에서 멤버가 탈퇴했습니다.`,
-          link: `/studies/${studyId}`,
-        }),
-      ),
-    );
-
-    this.logger.log(`스터디 탈퇴: studyId=${studyId}, userId=${userId}`);
-  }
-
-  /**
-   * 멤버 추방 (ADMIN만, 자기 자신 추방 불가)
-   * @domain study
-   * @guard study-admin
-   */
-  async removeMember(studyId: string, targetUserId: string, adminUserId: string): Promise<void> {
-    if (targetUserId === adminUserId) {
-      throw new BadRequestException('자기 자신을 추방할 수 없습니다.');
-    }
-
-    await this.verifyAdmin(studyId, adminUserId);
-
-    // 대상 멤버 조회
-    let targetMember: MemberData;
-    try {
-      targetMember = await this.identityClient.getMember(studyId, targetUserId) as MemberData;
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw new NotFoundException('해당 멤버를 찾을 수 없습니다.');
-      }
-      throw error;
-    }
-
-    // ADMIN 추방 시 최소 1 ADMIN 보장
-    if (targetMember.role === 'ADMIN') {
-      const allMembers = await this.identityClient.getMembers(studyId) as MemberData[];
-      const adminCount = allMembers.filter((m) => m.role === 'ADMIN').length;
-      if (adminCount <= 1) {
-        throw new BadRequestException('최소 1명의 ADMIN이 필요합니다.');
-      }
-    }
-
-    await this.identityClient.removeMember(studyId, targetUserId);
-
-    // 캐시 무효화
-    await this.invalidateMembershipCache(studyId, targetUserId);
-
-    this.logger.log(`멤버 추방: studyId=${studyId}, target=${targetUserId}, by=${adminUserId}`);
   }
 
   // ─── 문제 생성 알림 ───────────────────────────
@@ -752,7 +384,7 @@ export class StudyService implements OnModuleDestroy {
     weekNumber: string,
     problemId: string,
   ): Promise<void> {
-    await this.verifyAdmin(studyId, userId);
+    await this.access.verifyAdmin(studyId, userId);
 
     const [members, study] = await Promise.all([
       this.identityClient.getMembers(studyId) as Promise<MemberData[]>,
@@ -778,46 +410,5 @@ export class StudyService implements OnModuleDestroy {
     this.logger.log(
       `문제 생성 알림: studyId=${studyId}, problemId=${problemId}, 대상=${targets.length}명`,
     );
-  }
-
-  // ─── 권한 검증 헬퍼 ───────────────────────────
-
-  /**
-   * 스터디 멤버 여부 검증
-   * @guard study-member
-   */
-  private async verifyMembership(studyId: string, userId: string): Promise<MemberData> {
-    try {
-      const member = await this.identityClient.getMember(studyId, userId) as MemberData;
-      return member;
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw new ForbiddenException('해당 스터디의 멤버가 아닙니다.');
-      }
-      throw error;
-    }
-  }
-
-  /**
-   * ADMIN 권한 검증
-   * @guard study-admin
-   */
-  private async verifyAdmin(studyId: string, userId: string): Promise<MemberData> {
-    const member = await this.verifyMembership(studyId, userId);
-    if (member.role !== 'ADMIN') {
-      throw new ForbiddenException('ADMIN 권한이 필요합니다.');
-    }
-    return member;
-  }
-
-  /**
-   * Redis 멤버십 캐시 무효화 — 통일 키 규격
-   * @domain study
-   */
-  private async invalidateMembershipCache(studyId: string, userId: string): Promise<void> {
-    await Promise.all([
-      this.redis.del(`membership:${studyId}:${userId}`),
-      this.redis.del(`membership:${studyId}:${userId}:denied`),
-    ]);
   }
 }

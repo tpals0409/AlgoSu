@@ -2,7 +2,7 @@
  * @file submission.module.ts — Submission 도메인 모듈 (Controller·Service·Saga 등록)
  * @domain submission
  * @layer module
- * @related submission.service.ts, submission.controller.ts, saga-orchestrator.service.ts
+ * @related submission.service.ts, submission.controller.ts, saga-orchestrator.service.ts, saga-quota.service.ts, saga-timeout.service.ts
  */
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -14,6 +14,8 @@ import { SubmissionInternalController } from './submission-internal.controller';
 import { SubmissionService } from './submission.service';
 import { DraftService } from '../draft/draft.service';
 import { SagaOrchestratorService } from '../saga/saga-orchestrator.service';
+import { SagaQuotaService } from '../saga/saga-quota.service';
+import { SagaTimeoutService } from '../saga/saga-timeout.service';
 import { MqPublisherService } from '../saga/mq-publisher.service';
 import { CircuitBreakerModule } from '../common/circuit-breaker';
 import { ProblemServiceClientModule } from '../common/problem-service-client';
@@ -28,7 +30,9 @@ import { ProblemServiceClientModule } from '../common/problem-service-client';
   providers: [
     SubmissionService,
     DraftService,
+    SagaQuotaService,
     SagaOrchestratorService,
+    SagaTimeoutService,
     MqPublisherService,
   ],
   exports: [SubmissionService, DraftService, SagaOrchestratorService],
