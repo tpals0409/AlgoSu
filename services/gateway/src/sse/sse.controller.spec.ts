@@ -710,6 +710,7 @@ describe('SseController', () => {
       expect(loggerService.error).toHaveBeenCalledWith(
         'SSE 공유 Redis subscriber 오류',
         expect.any(Error),
+        SseController.name,
       );
     });
 

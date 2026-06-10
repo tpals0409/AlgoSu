@@ -67,7 +67,9 @@ export class SseController implements OnModuleDestroy {
     this.subscriber = new Redis(redisUrl);
 
     this.subscriber.on('error', (err: Error) => {
-      this.logger.error('SSE 공유 Redis subscriber 오류', err);
+      // Sprint 242 L-1: StructuredLoggerService는 @Global 싱글톤이라 this.context가 마지막 setContext 호출자(부트스트랩 시점)로 고정된다.
+      //   비동기 on('error') 핸들러는 런타임에 임의 시점 실행되므로 context를 명시 인자로 전달해 경합을 차단한다.
+      this.logger.error('SSE 공유 Redis subscriber 오류', err, SseController.name);
     });
 
     this.subscriber.on('message', (channel: string, message: string) => {

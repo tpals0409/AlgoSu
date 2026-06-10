@@ -45,7 +45,10 @@ export class EventLogService implements OnModuleDestroy {
       },
     });
     this.redis.on('error', (err: Error) => {
-      this.logger.error(`이벤트 로그 Redis 오류: ${err.message}`);
+      // Sprint 242 L-1: StructuredLoggerService는 @Global 싱글톤이라 this.context가 마지막 setContext 호출자(부트스트랩 시점)로 고정된다.
+      //   비동기 on('error') 핸들러는 런타임에 임의 시점 실행되므로 context를 명시 인자로 전달해 경합을 차단한다.
+      //   err는 2번째 Error 인자로 넘겨 구조화 직렬화(name/message/stack)하고 메시지는 고정 문자열로 유지한다.
+      this.logger.error('이벤트 로그 Redis 오류', err, EventLogService.name);
     });
   }
 
