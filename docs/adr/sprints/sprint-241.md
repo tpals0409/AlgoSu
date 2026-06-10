@@ -89,6 +89,17 @@ Codex gpt-5.5 교차 리뷰(`--base 3dc4b13`): **✅ CLEAN**.
 - DEL 스프레드: COUNT 100 hint 기준 배치 한계 내, argument 오버플로우 없음.
 - 인접 파일 Low 발견(범위 외): `invite-throttle.service.ts`·`deadline-reminder.service.ts`·`notification.service.ts`에 동일 Redis on-error 문자열 보간 패턴 잔존 → 후속 Gatekeeper/Herald 흡수 권장.
 
+### Critic 머지 게이트 R1~R2 — 전체-base `241af57` (ADR 작성 이후 보강 기록)
+
+- **R1**: Codex gpt-5.5 `--base 241af57` 전체 diff(코드 22 + docs 5 files) — 기능 회귀 0건. **Low 1건**: ADR(KR/EN) "변경 파일 21 files" 오기(실측 22, `app.module.init.spec.ts` 합산 누락) → Oracle 직접 정정 `efd31b4`. ADR 본문-사실 정합 표(커밋 해시·coverage·Critic 라운드) 전 항목 ✅.
+- **R2**: 6커밋 재리뷰 — R1 정정 반영 확인 + 신규 발견 0건 → **✅ CLEAN**. 머지 게이트 종결.
+
+### 머지 + CI 인시던트 — auto-merge 경합 (PR #430 → 핫픽스 #431)
+
+- PR #430 첫 CI에서 `Quality — docs` FAIL: `check-adr-index-count --strict` — `docs/adr/README.md` 회고형 sprint ADR 카운트 선언 178 ≠ 실제 179(sprint-241.md 추가분 미반영). Scribe가 "ADR 게이트 5종 PASS"로 보고했으나 이 게이트는 실제 실패 상태 — **보고-실측 불일치**(Oracle 로컬 재현으로 원인 확정).
+- Oracle이 README 카운트 보정(`462d0e1`)을 push했으나, `Quality — docs`가 **required check가 아니어서** 다른 체크 green 시점에 auto-merge가 발동 → 보정 커밋이 squash(`71bbb5a`)에서 **누락**(PR 커밋 목록 마지막 `efd31b4`) → main post-merge run 동일 게이트 FAIL.
+- 복구: 핫픽스 브랜치에 보정 cherry-pick → PR #431 squash merge `ac8400a` → main post-merge run **green** 확인으로 종결.
+
 ## 핵심 결정
 
 1. **StudyController 직접 주입 vs facade**: facade 계층을 두면 StudyService → StudyFacade → N개 서비스로 간접화가 생기고 보일러플레이트가 증가한다. Controller가 업무 로직 없이 라우팅만 담당하므로 직접 3서비스 주입이 notification/ 선례와 일치하고 더 명확하다.
@@ -106,6 +117,8 @@ Codex gpt-5.5 교차 리뷰(`--base 3dc4b13`): **✅ CLEAN**.
   - coverage: Statements **98.69** / Branches **94.13** / Functions **98.93** / Lines **99.04** (threshold 97/92/96/97 충족)
   - saga-quota.service.ts: **100/100/100/100** · saga-timeout.service.ts: **100/90/100/100** · saga-orchestrator.service.ts: **97.5/89.47/100/100**
 - Critic auto-critic: gatekeeper 산출물 R1(발견 M-1/L-1) → 수정 → conductor 산출물 R1(발견 주석/timer) → 수정 → **R2 CLEAN** (base `3dc4b13`)
+- Critic 머지 게이트: R1(전체-base `241af57`, Low 1 — ADR 파일 수 21→22 정정 `efd31b4`) → **R2 CLEAN**
+- 머지: PR #430 squash `71bbb5a`(auto-merge) + 핫픽스 PR #431 `ac8400a`(README index 카운트 178→179, auto-merge 경합 복구) → main post-merge run **green** · post-merge 산출물 8종(신규 서비스 6 + ADR KR/EN) 실재 확인
 - 변경 파일(총 4 commit, 22 files):
   - Q-1 BE: `study.types.ts`(신규), `membership-cache.service.ts`(신규), `study-access.service.ts`(신규), `study-stats.service.ts`(신규), `study-member.service.ts`(신규), `study.service.ts`(수정), `study.controller.ts`(수정), `study.module.ts`(수정), 관련 spec 6종(신규/수정)
   - Q-2: `saga-quota.service.ts`(신규), `saga-quota.service.spec.ts`(신규), `saga-timeout.service.ts`(신규), `saga-timeout.service.spec.ts`(신규), `saga-orchestrator.service.ts`(수정), `saga-orchestrator.service.spec.ts`(수정), `submission.module.ts`(수정)
@@ -117,6 +130,8 @@ Codex gpt-5.5 교차 리뷰(`--base 3dc4b13`): **✅ CLEAN**.
 2. **fake timer 격리는 afterEach에서 보장해야 한다**: 개별 테스트 본문 끝의 `useRealTimers()` 패턴은 assertion throw 시 복원을 건너뛴다. 이는 다음 테스트에 fake timer가 누수되는 간헐적 실패의 원인이 된다. lifecycle hook(afterEach/afterAll)으로 복원 책임을 단일화하는 것이 정석.
 3. **분리 직후 주석 드리프트는 예측 가능하다**: 서비스를 분리할 때 라이프사이클 훅(onModuleInit/Destroy)이 이동하면 spec의 @related, 주석에서 이동 대상을 참조하는 모든 곳을 함께 갱신해야 한다. 기능 테스트는 통과해도 주석이 구설계를 기술하면 후속 개발자에게 오도가 된다.
 4. **StudyController 직접 주입이 facade보다 명확하다**: 중간 계층이 업무 로직 없이 위임만 한다면 제거가 맞다. notification/ 선례를 찾아 검증하는 것이 아키텍처 결정의 재발명을 막는다.
+5. **auto-merge 활성 PR에 추가 push할 때는 PR 커밋 목록 반영을 확인해야 한다**: non-required 게이트는 FAIL이어도 auto-merge를 막지 않으므로, 보정 push와 머지 발동 사이에 경합 윈도우가 존재한다. push 직후 `gh pr view --json commits`로 포함 여부를 확인하거나, 보정이 필수인 경우 auto-merge를 일시 해제 후 push하는 것이 안전하다.
+6. **에이전트 "게이트 N종 PASS" 보고도 실측 검증 대상이다**: Scribe가 index-count 게이트 통과를 보고했으나 실제는 실패 상태였다 — Sprint 236 "서버 보고도 검증" 교훈의 에이전트판 재확인. 게이트 주장에는 실행 로그/exit code 증적을 요구하는 것이 정합.
 
 신규패턴: **리팩토링 연동 Critic 발견 흡수 패턴**(분리 직후 Critic R1 → 동일 브랜치 수정 → R2 CLEAN으로 수렴) + **fake timer afterEach 단일화 패턴**(lifecycle hook 복원 책임 단일화).
 
@@ -124,4 +139,5 @@ Codex gpt-5.5 교차 리뷰(`--base 3dc4b13`): **✅ CLEAN**.
 
 - Sprint 242 확정: Q-1(FE) + Q-7 — `AddProblemModal.tsx`(805줄)·`studies/[id]/settings/page.tsx`(844줄)·`problems/[id]/edit/page.tsx`(748줄) 분해 + 신규 컴포넌트 테스트 동반 작성.
 - 인접 Redis on-error 로깅 패턴 정합 (`invite-throttle.service.ts`·`deadline-reminder.service.ts`·`notification.service.ts`): Critic R2 Low — Gatekeeper/Herald 후속 스프린트 흡수.
+- `Quality — docs` required check 승격 검토: non-required 상태가 auto-merge 경합(본 스프린트 #430/#431 인시던트)의 구조적 원인 — branch protection 설정 변경(사용자 콘솔 또는 gh api).
 - 기존 이월: 하네스 점검 별도 슬롯(oracle-spawn 가드 항구화+윈도우 이름 장식 근본 해소+harness-checkup `--full`+Codex 모델 핀) · GA4 콘솔 3건 · 라이브 SEO · 하네스 cron · webhook regenerate · 누적 UAT · 블로그 후속 소재(CS 퀴즈/지운 것들/zstd).
