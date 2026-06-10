@@ -1,0 +1,105 @@
+---
+title: "The Art of Deletion"
+date: "2026-06-10"
+excerpt: "Deleting a feature is scarier than adding one. You never know what might follow. Building and removing the ADR graph and search in AlgoSu taught me that safe deletion is a craft with its own method."
+tags: ["retrospective", "deletion", "yagni", "dead-code", "refactoring"]
+category: retrospective
+order: 12
+tldr: "Three principles learned from deleting the ADR graph (Sprint 193) and search (Sprint 201): separate owned vs. shared assets with grep before starting → remove dead fields together with the feature → your grep scope must be the entire repository."
+relatedAdrs: ["sprint-189", "sprint-193", "sprint-201"]
+---
+
+When you add code, the result is visible. A component appears on screen, tests pass, the build succeeds — you know it worked.
+
+Deletion is different. You remove a file, fix the type errors `tsc --noEmit` surfaces, the build succeeds, you deploy. Then CI breaks three days later. A script in the root directory was referencing the file you deleted, and you only ran grep inside a subdirectory, so you never saw it.
+
+I deleted features twice in AlgoSu. The ADR relationship graph, built in Sprint 189, was removed in Sprint 193. The ADR search, built in Sprint 157, was removed in Sprint 201. Both times, what I learned wasn't about YAGNI or design failures — it was something more practical: **how to delete safely**.
+
+---
+
+<Problem label="Problem">
+Every deletion carries unknown consequences. Is there a methodology for removing features safely?
+</Problem>
+
+## Principle 1: Grep Before You Delete — Owned vs. Shared
+
+The first thing to do before deleting a feature is to **use grep to distinguish assets the feature owns from assets shared with other parts of the codebase**. Get that classification wrong, and a deletion silently breaks something adjacent.
+
+Before starting on Sprint 201 (removing search), I split the i18n keys with grep:
+
+- **Search-only (safe to delete)**: `searchPlaceholder` · `searchAriaLabel` · `searchEmpty` — referenced only inside `SearchBox`
+- **Shared (must preserve)**: `kindPermanent` · `kindTopic` · `kindSprint` · `metaSprint` — also used in `adr-card` · `adr-category-tabs` · `sprint-timeline` · `adr-meta-sidebar`
+
+The same logic applied to lib functions. `toSearchDoc` · `toPlainText` · the `SearchDoc` type were search-only → removed. But `buildUrl` · `groupByKind` · `mapBySprint` · `filterAdrsByTopic` were still needed across ADR rendering → preserved.
+
+Sprint 193 (removing the graph) followed the same pattern. `buildGraph` · `getSubgraph` · `filterAdjacency` · `mergeTargets` were graph-only → removed. But the `--diagram-bg` and `--grid` CSS tokens could still be used by in-post mermaid diagrams, so they stayed. The "Related ADR" text link list in the sidebar (`RelatedLinks`) was an entirely independent component from the mermaid graph, so it was untouched.
+
+The key is doing this classification **before** any deletion begins. Once you start deleting, momentum sets in and "this is probably graph-only too" starts feeling like enough. Running grep first turns that guess into a fact.
+
+---
+
+## Principle 2: Dead Fields Die with the Feature
+
+When you remove a feature, you often discover something alongside it — fields that were created while the feature was alive, but that nobody ever actually reads.
+
+In Sprint 201, `AdrIndex.searchDocs` was exactly that. `buildAdrIndex` populated it on every build, but nowhere in the codebase was it ever read. `adr/page.tsx` · `archive/page.tsx` · `post-page.tsx` all accessed only `.all` · `.byKind` · `.bySprint`. The field was effectively dead. When the search feature was removed, this field was cleaned up alongside it.
+
+`AdrDoc.outgoingLinks` in Sprint 193 was the same story. It was data generated exclusively for `buildGraph` and `mergeTargets`. Once the graph was gone, the field lost its purpose entirely. The extraction logic (`extractOutgoingLinks`) and its dedicated regex (`ADR_LINK_RE`) were removed together.
+
+<Callout type="info" title="Finding dead fields">
+Grep for the field or function name. If the only consumers are inside the feature being removed, delete it together. In Sprint 193, `normalizeAdrId` was used by the graph but also by `related_adrs` extraction — so it stayed. The rule: feature-exclusive consumers → delete with it; multiple consumers → keep it.
+</Callout>
+
+Leaving a dead field in place causes no immediate harm. But months later, reading that code again, you'll wonder "why is this field here?" Dead code pollutes context. The moment you're already removing a feature is the most natural time to clean up its leftovers.
+
+---
+
+<Decision label="Decision">
+Safe deletion is three steps: grep-classify before starting, remove dead fields alongside the feature, and probe for hidden coupling across the entire repository.
+</Decision>
+
+## Principle 3: What Breaks Lives Outside What You Deleted
+
+This is the most important principle, and the hardest to believe before you experience it firsthand.
+
+The first PR removing search in Sprint 201 looked like a self-contained change inside `blog/`. `SearchBox` component · `generate-search-index.mjs` script · `SearchDoc` type · `AdrIndex.searchDocs` field · the `minisearch` dependency — all of it was under `blog/`. I ran grep within `blog/`. tsc passed. `next build` succeeded. CI was pending.
+
+The PR merged.
+
+`main` was broken.
+
+The root `scripts/check-adr-links.mjs` had logic to verify the presence of the build artifact `search-index.json`, exiting with code 2 if it was missing. Since `search-index.json` was no longer being generated, this gate now failed on every run. The CI Build Blog (SSG) job actually failed.
+
+And yet the merge went through. This job wasn't listed as a required check in branch protection — so even though it failed, it couldn't block a squash merge.
+
+What caught it was the `/stop` gate. The sprint-close workflow runs `check-adr-links.mjs` locally, and that run surfaced the failure. A follow-up PR was needed to remove the search-index validation block from `check-adr-links.mjs`, leaving only the internal link integrity check.
+
+The lesson is straightforward. **Code referencing the file you deleted may live outside the directory where that file lived.** The script that generated `blog/public/adr/search-index.json` was under `blog/scripts/`, but the gate that verified its existence was in the root `scripts/`. Scoping grep to `blog/` makes this connection invisible.
+
+When you delete a feature, grep scope must be the entire repository. A `git grep` on the symbol name will find every reference, no matter where it lives. "It's probably only in this directory" is an assumption, not a verification.
+
+---
+
+<Result label="Result">
+Deleting the graph followed all three principles — clean result. Deleting search violated the third — main broke. The difference between the two cases is the value of the principles.
+</Result>
+
+## Deletion Is Design
+
+When I deleted the graph (Sprint 193), the result was clean. I classified 44 i18n keys (22 KR · 22 EN) as owned or shared, removed the dead `outgoingLinks` field together with `extractOutgoingLinks` and `ADR_LINK_RE`, and verified with a full-repo grep. tsc 0, build passed, Critic 0 issues, CI 37 pass / 0 fail.
+
+When I deleted search (Sprint 201), I followed the second principle (`searchDocs` removed) but violated the third — grep was scoped to `blog/`, and the root gate's dependency was invisible. main merged broken. The `/stop` gate caught it. A follow-up PR fixed it.
+
+The contrast between the two cases shows what the principles are for.
+
+If adding code asks "is this needed?", deleting code asks "where is this used?" Removing a feature is a process of proving it was never fully self-contained. Following grep results as they map out dependencies reveals the boundary between code you own outright and code with ties to something else.
+
+Cutting along that boundary precisely — that's the art of deletion.
+
+---
+
+## Three Principles
+
+1. **Grep before you delete** — Classify owned vs. shared assets and leave shared ones untouched.
+2. **Dead fields die with the feature** — Remove fields, types, and parsers whose only consumers are inside the feature being deleted. Leave no dead code behind.
+3. **Grep scope is the entire repository** — References to the file you deleted may live outside its parent directory. Use `git grep` and open the whole repo.
