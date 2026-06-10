@@ -248,6 +248,8 @@ kubectl exec -n algosu deploy/rabbitmq -- \
 ### 방법 B: rabbitmqadmin 수동 루프 (소량, Shovel 사용 불가 시)
 
 > ⚠️ 소량(수십 건 이하)일 때만 사용. 대량 메시지에는 방법 A 권장.
+>
+> ⚠️ **메시지 유실 위험**: `ackmode=ack_requeue_false`를 소비 전에 실행하면 payload 추출·재발행 실패 시 **원본 메시지가 영구 유실**된다. 반드시 **peek → 검증 → 재발행 → 소비** 순서를 지킨다.
 
 ```bash
 # 메시지 수 확인
@@ -257,22 +259,47 @@ COUNT=$(kubectl exec -n algosu deploy/rabbitmq -- \
 
 echo "재처리 대상: ${COUNT}건"
 
-# 수동 get → publish 루프 (github_push.dlq 예시)
+# peek → 검증 → 재발행 → 소비 루프 (github_push.dlq 예시)
 for i in $(seq 1 $COUNT); do
-  MSG=$(kubectl exec -n algosu deploy/rabbitmq -- \
-    rabbitmqadmin get queue=submission.github_push.dlq ackmode=ack_requeue_false)
-  PAYLOAD=$(echo "$MSG" | grep -oP '(?<="payload": ")[^"]+')
-  kubectl exec -n algosu deploy/rabbitmq -- \
+  # Step 1: ack_requeue_true로 안전 peek — 원본 메시지를 DLQ에 보존한 채 추출
+  RAW=$(kubectl exec -n algosu deploy/rabbitmq -- \
+    rabbitmqadmin get queue=submission.github_push.dlq \
+      count=1 ackmode=ack_requeue_true --format=json)
+
+  # Step 2: jq로 payload 안전 추출 (이스케이프 따옴표 포함 JSON에서도 잘림 없음)
+  PAYLOAD=$(echo "$RAW" | jq -r '.[0].payload')
+
+  # Step 3: submissionId 존재 확인 (파싱 실패·잘못된 스키마 조기 차단)
+  if ! echo "$PAYLOAD" | jq -e '.submissionId' > /dev/null 2>&1; then
+    echo "[$i/$COUNT] ❌ 유효성 실패 — skip (parse_error 의심, §1 근본원인 조사 선행)"
+    continue
+  fi
+
+  # Step 4: 재발행 성공 여부 확인
+  PUB_RESULT=$(kubectl exec -n algosu deploy/rabbitmq -- \
     rabbitmqadmin publish \
       exchange=submission.events \
       routing_key=github.push \
       payload="$PAYLOAD" \
-      properties='{"delivery_mode":2}'
-  echo "[$i/$COUNT] 재발행 완료"
+      properties='{"delivery_mode":2}' 2>&1)
+
+  if echo "$PUB_RESULT" | grep -q "Message published"; then
+    # Step 5: 재발행 성공 후에만 원본 소비 (DLQ에서 제거)
+    kubectl exec -n algosu deploy/rabbitmq -- \
+      rabbitmqadmin get queue=submission.github_push.dlq \
+        count=1 ackmode=ack_requeue_false > /dev/null
+    echo "[$i/$COUNT] ✅ 재발행 성공 → 원본 제거"
+  else
+    echo "[$i/$COUNT] ❌ 재발행 실패 → 원본 유지 (유실 없음). 결과: $PUB_RESULT"
+    echo "  중단합니다. 방법 A(shovel)로 전환하거나 원인 조사 후 재시도하세요."
+    break
+  fi
 done
 ```
 
 > 동일 명령을 `ai_analysis.dlq` / routing_key `ai.analysis`로 변경하면 AI DLQ에도 적용 가능.
+>
+> **jq 미설치 시**: `kubectl exec -n algosu deploy/rabbitmq -- bash -c 'apt-get install -y jq -q'` 또는 방법 A로 전환.
 
 ---
 

@@ -2,12 +2,12 @@
 @file docs/runbook/encryption-key-rotation.md
 @domain security
 @layer runbook
-@related services/gateway/src/auth/oauth/token-crypto.util.ts, services/github-worker/src/worker.ts, infra/sealed-secrets/sealed-secrets-template.yaml, docs/runbook/key-rotation.md, docs/adr/ADR-030-security-improvement-backlog.md
+@related services/gateway/src/auth/oauth/token-crypto.util.ts, services/github-worker/src/worker.ts, services/identity/src/user/token-encryption.service.ts, services/identity/src/user/user.service.ts, infra/sealed-secrets/sealed-secrets-template.yaml, docs/runbook/key-rotation.md, docs/adr/ADR-030-security-improvement-backlog.md
 -->
 
 # GITHUB_TOKEN_ENCRYPTION_KEY 로테이션 런북
 
-> 대상: `gateway-secrets` + `github-worker-secrets` — `GITHUB_TOKEN_ENCRYPTION_KEY` (32바이트 hex, AES-256-GCM)
+> 대상: `gateway-secrets` + `github-worker-secrets` + `identity-service-secrets` — `GITHUB_TOKEN_ENCRYPTION_KEY` (32바이트 hex, AES-256-GCM)
 > 권장 주기: **연 1회 이상**, 유출 의심 시 즉시 수행
 
 ---
@@ -23,16 +23,17 @@
 - 암호문 형식: `iv(hex):ciphertext(hex):tag(hex)`
 - 키 형식: 32바이트 hex (64자), 예: `a1b2c3d4...` (64자 hex 문자열)
 
-### SealedSecret 2곳 동시 관리
+### SealedSecret 3곳 동시 관리
 
-이 키는 **두 서비스 Secret에 동일한 값**으로 존재한다:
+이 키는 **세 서비스 Secret에 동일한 값**으로 존재한다:
 
 | SealedSecret 이름 | 키 이름 | 역할 |
 |-------------------|---------|------|
 | `gateway-secrets` | `GITHUB_TOKEN_ENCRYPTION_KEY` | 암호화 (`infra/sealed-secrets/sealed-secrets-template.yaml:58`) |
 | `github-worker-secrets` | `GITHUB_TOKEN_ENCRYPTION_KEY` | 복호화 (`infra/sealed-secrets/sealed-secrets-template.yaml:164`) |
+| `identity-service-secrets` | `GITHUB_TOKEN_ENCRYPTION_KEY` | 암호화 — `token-encryption.service.ts:28-34` 부팅 시 키 필수 검증, `user.service.ts:136` GitHub 토큰 암호화 |
 
-> ⚠️ 두 Secret의 키 값이 불일치하면 복호화 실패가 발생한다. 반드시 **단일 aether-gitops 커밋**으로 동시 교체해야 한다.
+> ⚠️ 세 Secret의 키 값이 불일치하면 암·복호화 실패가 발생한다. 반드시 **단일 aether-gitops 커밋**으로 동시 교체해야 한다.
 
 ### ⚠️ 듀얼 키 미지원 — 로테이션 영향
 
@@ -90,9 +91,9 @@ echo "$NEW_KEY" | grep -Eq '^[0-9a-f]{64}$' && echo "OK" || echo "FAIL"
 
 ---
 
-## §3 2-Secret 동시 교체 (단일 aether-gitops 커밋)
+## §3 3-Secret 동시 교체 (단일 aether-gitops 커밋)
 
-> 기존 secret을 **교체**하는 작업이므로, Sprint 236의 신규 secret 2-commit ordering(추가→검증→전환)과는 다른 케이스다. 교체는 양 Secret을 단일 커밋으로 동시 반영하여 **불일치 윈도우를 없애는 것**이 원칙이다.
+> 기존 secret을 **교체**하는 작업이므로, Sprint 236의 신규 secret 2-commit ordering(추가→검증→전환)과는 다른 케이스다. 교체는 세 Secret을 단일 커밋으로 동시 반영하여 **불일치 윈도우를 없애는 것**이 원칙이다.
 
 ### 3-1. gateway-secrets SealedSecret 재생성
 
@@ -157,47 +158,85 @@ kubectl create secret generic github-worker-secrets \
   > sealed-github-worker-secrets-new.yaml
 ```
 
-### 3-3. 단일 aether-gitops 커밋으로 동시 배포
+### 3-3. identity-service-secrets SealedSecret 재생성
+
+> ⚠️ 전체 키를 모두 포함해야 한다. **누락 시 기존 키가 사라진다** (`key-rotation.md §3` 동일 경고).
+>
+> **코드 근거**: `services/identity/src/user/token-encryption.service.ts:28-34` — `GITHUB_TOKEN_ENCRYPTION_KEY` 미설정 시 부팅 throw. identity 서비스가 GitHub OAuth 토큰 암호화를 직접 담당한다(`user.service.ts:136`).
+
+```bash
+kubectl create secret generic identity-service-secrets \
+  --namespace=algosu \
+  --from-literal=DATABASE_HOST=<현재 값> \
+  --from-literal=DATABASE_PORT=<현재 값> \
+  --from-literal=DATABASE_NAME=<현재 값> \
+  --from-literal=DATABASE_USER=<현재 값> \
+  --from-literal=DATABASE_PASSWORD=<현재 값> \
+  --from-literal=INTERNAL_API_KEY=<현재 값> \
+  --from-literal=JWT_SECRET=<현재 값> \
+  --from-literal=JWT_EXPIRES_IN=<현재 값> \
+  --from-literal=GITHUB_TOKEN_ENCRYPTION_KEY="$NEW_KEY" \
+  --dry-run=client -o yaml \
+  | kubeseal --controller-namespace kube-system -o yaml \
+  > sealed-identity-service-secrets-new.yaml
+```
+
+### 3-4. 단일 aether-gitops 커밋으로 동시 배포
 
 ```bash
 cd aether-gitops
 cp sealed-gateway-secrets-new.yaml algosu/base/sealed-gateway-secrets.yaml
 cp sealed-github-worker-secrets-new.yaml algosu/base/sealed-github-worker-secrets.yaml
-git add algosu/base/sealed-gateway-secrets.yaml algosu/base/sealed-github-worker-secrets.yaml
+cp sealed-identity-service-secrets-new.yaml algosu/base/sealed-identity-service-secrets.yaml
+git add algosu/base/sealed-gateway-secrets.yaml \
+        algosu/base/sealed-github-worker-secrets.yaml \
+        algosu/base/sealed-identity-service-secrets.yaml
 git commit -m "chore(security): rotate GITHUB_TOKEN_ENCRYPTION_KEY $(date +%Y-%m-%d)"
 git push origin main
 ```
 
-> 두 파일을 **같은 커밋**에 포함시켜 불일치 윈도우를 없앤다.
+> 세 파일을 **같은 커밋**에 포함시켜 불일치 윈도우를 없앤다.
 
-### 3-4. ArgoCD sync 및 pod 재시작 확인
+### 3-5. ArgoCD sync 및 pod 재시작
+
+> ⚠️ **SealedSecret 갱신은 pod 자동 재시작을 보장하지 않는다.** ArgoCD sync 완료 후 반드시 명시적 rollout restart를 수행해야 신 키가 적용된 pod로 교체된다.
 
 ```bash
 # ArgoCD 자동 sync (또는 수동)
 argocd app sync algosu --force   # 수동 sync 필요 시
 
-# 양 서비스 pod 재시작 대기
+# 3서비스 명시적 재시작 (신 키 환경변수 적용)
+kubectl rollout restart deployment/gateway -n algosu
+kubectl rollout restart deployment/github-worker -n algosu
+kubectl rollout restart deployment/identity-service -n algosu
+
+# 3서비스 재시작 완료 대기
 kubectl rollout status deployment/gateway -n algosu
 kubectl rollout status deployment/github-worker -n algosu
+kubectl rollout status deployment/identity-service -n algosu
 ```
 
 ---
 
 ## §4 검증 게이트 (4종)
 
-### 게이트 1: 양 Secret sha256 일치 확인 (평문 노출 없이)
+### 게이트 1: 3-Secret sha256 일치 확인 (평문 노출 없이)
 
 ```bash
-# 양 Secret에서 GITHUB_TOKEN_ENCRYPTION_KEY를 추출하여 sha256 비교
+# 세 Secret에서 GITHUB_TOKEN_ENCRYPTION_KEY를 추출하여 sha256 비교
 GW_HASH=$(kubectl get secret gateway-secrets -n algosu \
   -o jsonpath='{.data.GITHUB_TOKEN_ENCRYPTION_KEY}' | base64 -d | sha256sum | awk '{print $1}')
 WK_HASH=$(kubectl get secret github-worker-secrets -n algosu \
   -o jsonpath='{.data.GITHUB_TOKEN_ENCRYPTION_KEY}' | base64 -d | sha256sum | awk '{print $1}')
+ID_HASH=$(kubectl get secret identity-service-secrets -n algosu \
+  -o jsonpath='{.data.GITHUB_TOKEN_ENCRYPTION_KEY}' | base64 -d | sha256sum | awk '{print $1}')
 
-echo "gateway-secrets hash:      $GW_HASH"
-echo "github-worker-secrets hash: $WK_HASH"
+echo "gateway-secrets hash:           $GW_HASH"
+echo "github-worker-secrets hash:     $WK_HASH"
+echo "identity-service-secrets hash:  $ID_HASH"
 
-[ "$GW_HASH" = "$WK_HASH" ] && echo "✅ 일치" || echo "❌ 불일치 — 즉시 §5 롤백"
+[ "$GW_HASH" = "$WK_HASH" ] && [ "$GW_HASH" = "$ID_HASH" ] \
+  && echo "✅ 3-Secret 일치" || echo "❌ 불일치 — 즉시 §5 롤백"
 ```
 
 ### 게이트 2: 신규 GitHub 연동 positive 검증
@@ -252,12 +291,16 @@ git push origin main
 # ArgoCD sync
 argocd app sync algosu --force
 
-# 재시작 확인
+# 3서비스 동시 복원 재시작
+kubectl rollout restart deployment/gateway -n algosu
+kubectl rollout restart deployment/github-worker -n algosu
+kubectl rollout restart deployment/identity-service -n algosu
 kubectl rollout status deployment/gateway -n algosu
 kubectl rollout status deployment/github-worker -n algosu
+kubectl rollout status deployment/identity-service -n algosu
 ```
 
-> 롤백 후 상태: 신 키로 암호화된 토큰(키 교체 후 재연동한 소수의 사용자)은 다시 복호화 실패 → fallback 전환. 롤백 사유와 함께 §6 로테이션 기록에 남긴다.
+> 롤백 후 상태: 신 키로 암호화된 토큰(키 교체 후 재연동한 소수의 사용자)은 다시 복호화 실패 → fallback 전환. gateway/github-worker/identity-service 세 서비스가 모두 구 키로 복원됐음을 sha256 비교(§4 게이트 1)로 재확인한다. 롤백 사유와 함께 §6 로테이션 기록에 남긴다.
 
 ---
 

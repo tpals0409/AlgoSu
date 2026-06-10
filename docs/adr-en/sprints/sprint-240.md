@@ -23,27 +23,29 @@ tldr: "Sprint 2 of the ADR-030 remediation roadmap. Two undocumented operational
 - **S-6**: `GITHUB_TOKEN_ENCRYPTION_KEY` is dual-managed across two SealedSecrets (gateway-secrets, github-worker-secrets) with no documented rotation procedure. A mismatch causes decryption failure.
 - **Q-3**: DLQ message redrive is manual but undocumented. `oncall-alerts.md:111` ended with "DLQ messages are processed manually/in batch" — one line, no procedure.
 
-## Work summary (Architect + Postman + Scribe, 3 commits total)
+## Work summary (Architect + Postman + Scribe, 3 commits total + Critic R1 corrections)
 
-### S-6 — New runbook `encryption-key-rotation.md` (Architect)
+### S-6 — New runbook `encryption-key-rotation.md` (Architect) + Critic R1 corrections
 
-- **Source files read directly**: `services/gateway/src/auth/oauth/token-crypto.util.ts` (encryption), `services/github-worker/src/worker.ts:384-398` (fallback path), `infra/sealed-secrets/sealed-secrets-template.yaml:58,164` (two SealedSecret locations), `docs/runbook/key-rotation.md` (kubeseal conventions).
+- **Source files read directly**: `services/gateway/src/auth/oauth/token-crypto.util.ts` (encryption), `services/github-worker/src/worker.ts:384-398` (fallback path), `infra/sealed-secrets/sealed-secrets-template.yaml:58,164` (two SealedSecret locations — initial read), `docs/runbook/key-rotation.md` (kubeseal conventions).
 - **§0 Background & impact**: AES-256-GCM symmetric key; ciphertext format `iv:ciphertext:tag`. **Dual-key unsupported** — rotating the key immediately invalidates all existing encrypted tokens. However, the `worker.ts:384-398` fallback (GitHub App Installation Token) absorbs decryption failures and keeps the service live. Users re-encrypt on their next GitHub re-link. Bulk migration is not needed under the current design. Rotation triggers (scheduled / suspected leak) distinguished.
 - **§1 Pre-flight checklist**: kubeseal · kubectl · aether-gitops clone up to date (reuses `key-rotation.md` pattern).
 - **§2 New key generation**: `openssl rand -hex 32` + 64-char hex format validation.
-- **§3 Simultaneous 2-Secret replacement**: gateway-secrets + github-worker-secrets in a **single aether-gitops commit** to eliminate the mismatch window. Noted explicitly that this is a replacement of an existing secret — unlike Sprint 236's new-secret 2-commit ordering (add → verify → switch) — so a single commit is the correct strategy here. Full key-list inclusion warning (same as `key-rotation.md §3`).
-- **§4 Verification gate (4 points)**: ① sha256 match on both Secrets (without exposing plaintext) ② New GitHub OAuth link positive test ③ Existing-token `GITHUB_APP_FALLBACK` log = expected signal ④ Error rate and DLQ unchanged (closed-circuit proof).
-- **§5 Rollback**: single-commit revert of both Secrets to old key + ArgoCD sync.
+- **§3 Initial 2-Secret → Critic R1 corrected to 3-Secret simultaneous replacement**: Critic flagged missing identity service (P1). Oracle confirmed via code: `services/identity/src/user/token-encryption.service.ts:28-34` — throws on boot if `GITHUB_TOKEN_ENCRYPTION_KEY` is unset (live identity running = key exists in live secret); `user.service.ts:136` uses encryption. **Updated from 2-secret to 3-secret (gateway-secrets + github-worker-secrets + identity-service-secrets)**: §0 management table gained identity row, §3 gained identity-service-secrets regeneration step (9 keys), §4 sha256 comparison expanded to 3-secret, §5 rollback updated to 3-secret simultaneous restore. `infra/sealed-secrets/sealed-secrets-template.yaml` identity-service-secrets section gained `GITHUB_TOKEN_ENCRYPTION_KEY` entry (template drift closed). Full key-list inclusion warning (same as `key-rotation.md §3`).
+- **§4 Verification gate (4 points)**: ① 3-Secret sha256 match (without exposing plaintext) ② New GitHub OAuth link positive test ③ Existing-token `GITHUB_APP_FALLBACK` log = expected signal ④ Error rate and DLQ unchanged (closed-circuit proof).
+- **§5 Rollback**: single-commit revert of all 3 Secrets to old key + ArgoCD sync + 3-service rollout restart.
 - **§6 Post-rotation cleanup**: delete plaintext key files, record rotation in log table.
 - **§7 Related docs**: key-rotation.md, github-token-relink.md, sealed-secrets-template.yaml, ADR-030.
+- **Critic R1 P2**: Added explicit `kubectl rollout restart deployment/{gateway,github-worker,identity-service} -n algosu` + rollout status for 3 services after §3 ArgoCD sync — SealedSecret updates do not guarantee automatic pod restarts; this is now stated explicitly in the runbook.
 
-### Q-3 — New runbook `dlq-redrive.md` (Postman)
+### Q-3 — New runbook `dlq-redrive.md` (Postman) + Critic R1 correction
 
 - **Source files read directly**: `services/submission/src/saga/mq-publisher.service.ts:72-105` (DLQ topology declaration), `services/github-worker/src/worker.ts:174-180,200,269` (DLQ NACK + reason labels), `services/ai-analysis/src/worker.py:149-156,316,370,384` (DLQ NACK + reason), `docs/runbook/oncall-alerts.md:103-111` (DLQReceived alert).
 - **§0 Background & topology**: `submission.events` (topic) → `submission.github_push` / `submission.ai_analysis`; NACK(requeue=false) → `submission.events.dlx` → `submission.github_push.dlq` (routing `github.push.dead`) / `submission.ai_analysis.dlq` (routing `ai.analysis.dead`). 5-reason table: `parse_error` / `process_failure` (both workers), `circuit_breaker_exhausted` / `rate_limit_exhausted` (ai-analysis only), `token_invalid` (github-worker only).
 - **§1 Pre-redrive mandatory gate**: **root cause must be resolved first** — reason-based branches: `parse_error` is a publisher schema defect, so redriving immediately re-fails (meaningless); `process_failure` — confirm downstream recovery; `circuit_breaker_exhausted` / `rate_limit_exhausted` — confirm CB CLOSED and rate normalized.
 - **§2 DLQ inspection**: kubectl exec + rabbitmqctl for queue depth/message peek; management plugin availability verified as a pre-check step.
-- **§3 Redrive procedure**: recommended = **dynamic shovel** (DLQ → original exchange + routing key, no message loss, delete shovel when done); alternative = rabbitmqadmin get→publish manual loop (for small counts). Exact exchange and routing key per worker documented.
+- **§3 Redrive procedure**: recommended = **dynamic shovel** (DLQ → original exchange + routing key, no message loss, delete shovel when done); alternative = rabbitmqadmin manual loop (for small counts).
+- **§3 Method B Critic R1 P2 fix**: The initial Method B used `ackmode=ack_requeue_false` to consume the message while extracting payload via `grep -oP` — ① `--format=json` was absent making parsing unreliable ② escaped quotes in JSON payload caused truncation → truncated payload published + original permanently lost. **Reconstructed as peek → validate → publish → consume**: `ack_requeue_true --format=json | jq -r '.[0].payload'` for safe extraction → `jq -e '.submissionId'` for JSON validity gate → only after confirmed publish success does `ack_requeue_false` remove the original. Method B data-loss warning strengthened.
 - **§4 Idempotency & duplicate risk**: github-worker redis key `ghw:processed:{submissionId}` TTL 1 hour — redrive within 1 hour is auto-skipped (safe), after 1 hour a duplicate GitHub push occurs (assess impact). ai-analysis has no idempotency guard; result overwrite is accepted.
 - **§5 Verification**: DLQ depth 0 + worker processing logs + `dlq_messages_total` no new increment + submission status transition confirmed.
 - **§6 Automation decision criteria**: if monthly occurrence exceeds N times, evaluate automation — makes the ADR-030 "confirm frequency first" decision operationally visible.
@@ -71,7 +73,11 @@ tldr: "Sprint 2 of the ADR-030 remediation roadmap. Two undocumented operational
 - 5 ADR gates (`node scripts/check-adr-index.mjs` etc.) PASS: index 178 / EN 188/188 / links 0 / doc-refs / conversion.
 - `node scripts/check-doc-refs.mjs` (doc-ref-lint): all cross-ref links in the two new runbooks valid, 0 errors.
 - Manual command consistency check: exchange/queue/routing key names verified against `mq-publisher.service.ts:72-105` declaration; SealedSecret key names verified against `sealed-secrets-template.yaml:58,164` — match confirmed.
-- Critic cross-review (Codex, `--base 924c650`) — result annotated just before merge.
+- Critic cross-review (Codex, `--base 924c650`): **R1 findings → corrections applied**
+  - **[P1] S-6 identity service missing from secret rotation scope**: Oracle confirmed via code (`token-encryption.service.ts:28-34` boot throw, `user.service.ts:136` encryption) → 2-secret expanded to 3-secret throughout runbook + `sealed-secrets-template.yaml` identity-service-secrets section gained `GITHUB_TOKEN_ENCRYPTION_KEY` (template drift closed).
+  - **[P2] S-6 no rollout restart after SealedSecret update**: added `kubectl rollout restart deployment/{gateway,github-worker,identity-service}` + rollout status for 3 services; explicit note that SealedSecret updates do not guarantee automatic pod restarts.
+  - **[P2] Q-3 Method B message-loss risk**: reconstructed as peek → validate → publish → consume; `ack_requeue_true --format=json | jq` for safe extraction; `ack_requeue_false` only after confirmed publish success. Data-loss warning strengthened.
+- Changed files: `docs/runbook/encryption-key-rotation.md`, `docs/runbook/dlq-redrive.md`, `infra/sealed-secrets/sealed-secrets-template.yaml`, `docs/adr/sprints/sprint-240.md`, `docs/adr-en/sprints/sprint-240.md`.
 
 ## Lessons
 
@@ -80,7 +86,9 @@ tldr: "Sprint 2 of the ADR-030 remediation roadmap. Two undocumented operational
 3. **Root-cause removal belongs in §1, before How**: "when NOT to redrive" must come before "how to redrive" to prevent operational errors. A runbook's When is more important than its How.
 4. **Docs-only sprints get the same Critic gate as code sprints**: incorrect exchange names or routing keys cause production failures just as surely as code bugs.
 
-New patterns: **expected-behavior-explicit runbook pattern** (fallback path and decryption failure labeled as "normal signal"), **root-cause-first gate pattern** (§1 branches by reason — conditions under which redriving is valid before the How).
+5. **Runbook review for key scope must be closed by code grep, not diagram assumption**: even though the planning doc listed identity as a key user, the initial runbook assumed "encryption = gateway, decryption = github-worker" as a two-node diagram. One `grep -r GITHUB_TOKEN_ENCRYPTION_KEY services/` command would have surfaced all three locations. **Whenever a runbook asks "how many places use this Secret?", the answer must come from code grep, not architectural intuition.**
+
+New patterns: **expected-behavior-explicit runbook pattern** (fallback path and decryption failure labeled as "normal signal"), **root-cause-first gate pattern** (§1 branches by reason — conditions under which redriving is valid before the How), **key-scope code-grep verification pattern** (grep first, document second — scope by evidence not assumption).
 
 ## Carry-overs
 
