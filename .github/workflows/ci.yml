@@ -100,6 +100,11 @@ jobs:
 
           echo "env-check: PASS"
 
+      # Sprint 243 S-7: 서드파티 GitHub Actions가 SHA 핀되어 있는지 드리프트 가드
+      # 태그 핀은 가변(force-push)이므로 공급망 공격에 노출 — SHA 핀 누락 시 CI 실패
+      - name: Verify third-party action SHA pins
+        run: node scripts/check-action-pins.mjs
+
   detect-changes:
     name: Detect Changed Services
     runs-on: ubuntu-latest
