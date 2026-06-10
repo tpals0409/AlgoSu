@@ -19,6 +19,8 @@ import { studyApi } from '@/lib/api';
 export interface InviteCodeSectionProps {
   readonly studyId: string;
   readonly onError: (msg: string) => void;
+  /** 재생성 성공 시 부모 에러 상태 초기화용 (msg = '' → setError(null) 효과, 성공 Alert 미표시) */
+  readonly onSuccess?: (msg: string) => void;
 }
 
 // ─── COMPONENT ───────────────────────────
@@ -30,6 +32,7 @@ export interface InviteCodeSectionProps {
 export function InviteCodeSection({
   studyId,
   onError,
+  onSuccess,
 }: InviteCodeSectionProps) {
   const t = useTranslations('studies');
 
@@ -75,6 +78,8 @@ export function InviteCodeSection({
       const remainingSec = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
       setCodeExpiry(remainingSec);
       setCodeActive(remainingSec > 0);
+      // 성공 시 부모 에러 상태 초기화 (msg = '' → setError(null) 효과, 성공 Alert 미표시)
+      onSuccess?.('');
     } catch (err: unknown) {
       onError((err as Error).message ?? t('settings.error.inviteCodeFailed'));
     } finally {

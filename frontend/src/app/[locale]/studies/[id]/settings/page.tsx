@@ -233,6 +233,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
           <InviteCodeSection
             studyId={studyId}
             onError={setError}
+            onSuccess={handleSuccess}
           />
         </div>
 
