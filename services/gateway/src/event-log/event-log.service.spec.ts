@@ -173,6 +173,11 @@ describe('EventLogService', () => {
       expect(errorCall).toBeDefined();
       const handler = errorCall![1] as (err: Error) => void;
       expect(() => handler(new Error('Redis connection refused'))).not.toThrow();
+      expect(logger.error).toHaveBeenCalledWith(
+        '이벤트 로그 Redis 오류',
+        expect.any(Error),
+        EventLogService.name,
+      );
     });
   });
 });

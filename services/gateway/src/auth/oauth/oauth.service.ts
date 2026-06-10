@@ -20,6 +20,7 @@ import { OAuthProvider, IdentityUser } from '../../common/types/identity.types';
 import { encryptToken } from './token-crypto.util';
 import { IdentityClientService } from '../../identity-client/identity-client.service';
 import { SessionPolicyService } from '../session-policy/session-policy.service';
+import { StructuredLoggerService } from '../../common/logger/structured-logger.service';
 import {
   OAuthInvalidStateException,
   OAuthTokenExchangeException,
@@ -59,12 +60,17 @@ export class OAuthService {
     private readonly identityClient: IdentityClientService,
     // Sprint 71-1R: JWT TTL 하드코딩 제거 — SessionPolicyService SSoT 경유
     private readonly sessionPolicy: SessionPolicyService,
+    private readonly logger: StructuredLoggerService,
   ) {
+    this.logger.setContext(OAuthService.name);
     const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
     this.redis = new Redis(redisUrl);
     this.redis.on('error', (err: Error) => {
       // M11: Redis 연결 에러 핸들링 — 프로세스 크래시 방지, fail-closed 보장
-      process.stdout.write(JSON.stringify({ level: 'error', context: 'OAuthService', message: `Redis 연결 오류: ${err.message}` }) + '\n');
+      // StructuredLoggerService는 2번째 인자 Error를 구조화 직렬화한다 (name/message/stack)
+      // Sprint 242 L-1: StructuredLoggerService는 @Global 싱글톤이라 this.context가 마지막 setContext 호출자(부트스트랩 시점)로 고정된다.
+      //   비동기 on('error') 핸들러는 런타임에 임의 시점 실행되므로 context를 명시 인자로 전달해 경합을 차단한다.
+      this.logger.error('Redis 연결 오류', err, OAuthService.name);
     });
     this.jwtSecret = this.configService.getOrThrow<string>('JWT_SECRET');
     this.callbackBaseUrl = this.configService.getOrThrow<string>('OAUTH_CALLBACK_URL');

@@ -18,6 +18,7 @@ jest.mock('ioredis', () => {
 describe('MembershipCacheService', () => {
   let service: MembershipCacheService;
   let configService: Record<string, jest.Mock>;
+  let mockLogger: Record<string, jest.Mock>;
 
   const STUDY_ID = 'study-id-1';
   const USER_ID = 'user-id-1';
@@ -29,7 +30,7 @@ describe('MembershipCacheService', () => {
       get: jest.fn().mockReturnValue('redis://localhost:6379'),
     };
 
-    const mockLogger = {
+    mockLogger = {
       setContext: jest.fn(),
       log: jest.fn(),
       warn: jest.fn(),
@@ -125,6 +126,11 @@ describe('MembershipCacheService', () => {
       expect(errorCall).toBeDefined();
       const handler = errorCall![1] as (err: Error) => void;
       expect(() => handler(new Error('connection refused'))).not.toThrow();
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Redis 연결 오류',
+        expect.any(Error),
+        MembershipCacheService.name,
+      );
     });
   });
 

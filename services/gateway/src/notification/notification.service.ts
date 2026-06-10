@@ -27,7 +27,9 @@ export class NotificationService {
     const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
     this.redisPublisher = new Redis(redisUrl);
     this.redisPublisher.on('error', (err: Error) => {
-      this.logger.error(`알림 Redis publisher 오류: ${err.message}`);
+      // StructuredLoggerService는 2번째 인자 Error를 구조화 직렬화한다 (name/message/stack)
+      // Sprint 242 L-1: @Global 싱글톤 logger의 this.context 경합 차단 — 비동기 핸들러에 context 명시 전달
+      this.logger.error('알림 Redis publisher 오류', err, NotificationService.name);
     });
   }
 
@@ -72,7 +74,7 @@ export class NotificationService {
       createdAt: saved.createdAt,
     });
     this.redisPublisher.publish(channel, payload).catch((err: Error) => {
-      this.logger.error(`알림 Redis publish 실패: ${err.message}`);
+      this.logger.error('알림 Redis publish 실패', err);
     });
 
     return saved;

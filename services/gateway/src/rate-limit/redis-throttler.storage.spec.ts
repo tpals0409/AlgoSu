@@ -23,6 +23,7 @@ jest.mock('ioredis', () => {
 describe('RedisThrottlerStorage', () => {
   let storage: RedisThrottlerStorage;
   let configService: Record<string, jest.Mock>;
+  let mockLogger: Record<string, jest.Mock>;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -31,7 +32,7 @@ describe('RedisThrottlerStorage', () => {
       get: jest.fn().mockReturnValue('redis://localhost:6379'),
     };
 
-    const mockLogger = {
+    mockLogger = {
       setContext: jest.fn(),
       log: jest.fn(),
       warn: jest.fn(),
@@ -99,7 +100,8 @@ describe('RedisThrottlerStorage', () => {
     });
 
     it('Redis 장애 시 — 인메모리 fallback 카운팅', async () => {
-      mockPipeline.exec.mockRejectedValue(new Error('Redis connection refused'));
+      const err = new Error('Redis connection refused');
+      mockPipeline.exec.mockRejectedValue(err);
 
       const result1 = await storage.increment('test-key', 60000);
       expect(result1.totalHits).toBe(1);
@@ -107,6 +109,12 @@ describe('RedisThrottlerStorage', () => {
 
       const result2 = await storage.increment('test-key', 60000);
       expect(result2.totalHits).toBe(2);
+
+      // 표준 패턴: logger.warn('메시지', err) — Error 객체를 2번째 인자로 전달
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'Rate Limit Redis 오류 — 인메모리 fallback 적용',
+        err,
+      );
     });
 
     it('Redis 장애 시 — 서로 다른 키는 독립 카운팅', async () => {
@@ -176,13 +184,16 @@ describe('RedisThrottlerStorage', () => {
   // 4. Redis 생성자 옵션 분기 (retryStrategy, error callback)
   // ============================
   describe('Redis 연결 옵션 분기', () => {
-    it('Redis on error 이벤트 핸들러가 등록되고 에러를 로깅', () => {
+    it('Redis on error 이벤트 핸들러가 Error 객체를 구조화 로깅', () => {
       const errorCall = (mockRedis.on as jest.Mock).mock.calls.find(
         (call: [string, ...unknown[]]) => call[0] === 'error',
       );
       expect(errorCall).toBeDefined();
       const handler = errorCall![1] as (err: Error) => void;
-      expect(() => handler(new Error('test redis error'))).not.toThrow();
+      const err = new Error('test redis error');
+      expect(() => handler(err)).not.toThrow();
+      // 표준 패턴: logger.error('메시지', err, context) — Sprint 242 L-1 context 명시 경합 차단
+      expect(mockLogger.error).toHaveBeenCalledWith('Redis 연결 오류', err, 'RedisThrottlerStorage');
     });
 
     it('retryStrategy: times <= 3이면 지수 백오프 반환', () => {

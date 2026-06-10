@@ -37,7 +37,8 @@ import { REDIS_CLIENT } from './cache.constants';
         });
 
         redis.on('error', (err: Error) => {
-          logger.error(`Redis 연결 오류: ${err.message}`);
+          // StructuredLoggerService는 2번째 인자 Error를 구조화 직렬화한다 (name/message/stack)
+          logger.error('Redis 연결 오류', err);
         });
 
         redis.on('connect', () => {

@@ -23,6 +23,7 @@ describe('DeadlineReminderService', () => {
   let notificationService: Record<string, jest.Mock>;
   let identityClient: Record<string, jest.Mock>;
   let configService: Record<string, jest.Mock>;
+  let mockLogger: Record<string, jest.Mock>;
 
   const STUDY_ID = 'study-id-1';
   const PROBLEM_ID = 'problem-id-1';
@@ -53,7 +54,7 @@ describe('DeadlineReminderService', () => {
       findStudyById: jest.fn().mockResolvedValue(null),
     };
 
-    const mockLogger = {
+    mockLogger = {
       setContext: jest.fn(),
       log: jest.fn(),
       warn: jest.fn(),
@@ -397,13 +398,16 @@ describe('DeadlineReminderService', () => {
 
   // ─── Redis error callback ─────────────────────
   describe('Redis 연결 오류 콜백', () => {
-    it('Redis on error 핸들러 등록 및 에러 로깅', () => {
+    it('Redis on error 핸들러가 Error 객체를 구조화 로깅한다', () => {
       const errorCall = (mockRedis.on as jest.Mock).mock.calls.find(
         (call: [string, ...unknown[]]) => call[0] === 'error',
       );
       expect(errorCall).toBeDefined();
       const handler = errorCall![1] as (err: Error) => void;
-      expect(() => handler(new Error('connection reset'))).not.toThrow();
+      const err = new Error('connection reset');
+      expect(() => handler(err)).not.toThrow();
+      // 표준 패턴: logger.error('메시지', err, context) — Sprint 242 L-1 context 명시 경합 차단
+      expect(mockLogger.error).toHaveBeenCalledWith('Redis 연결 오류', err, 'DeadlineReminderService');
     });
   });
 

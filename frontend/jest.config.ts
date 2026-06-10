@@ -81,7 +81,9 @@ const config: Config = {
     '!src/components/ui/tooltip.tsx',
     '!src/components/ui/use-mobile.ts',
     '!src/components/ui/AlgosuUI.tsx',
-    '!src/components/ui/AddProblemModal.tsx',
+    // Sprint 242 Q-1 FE: AddProblemModal decomposed into add-problem/* —
+    // the shim is a single re-export line and the sub-modules carry their
+    // own tests, so we drop the exclusion.
     '!src/components/ui/MarkdownViewer.tsx',
     '!src/components/ui/NotificationBell.tsx',
     '!src/components/ui/ImageWithFallback.tsx',
