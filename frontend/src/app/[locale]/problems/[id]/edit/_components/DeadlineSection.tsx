@@ -53,6 +53,7 @@ export function DeadlineSection({
   onDateSelect,
 }: DeadlineSectionProps) {
   const t = useTranslations('problems');
+  const tErrors = useTranslations('errors');
 
   const deadlineDate = form.deadline ? new Date(form.deadline) : null;
   const selectedDateText = deadlineDate
@@ -109,7 +110,7 @@ export function DeadlineSection({
       )}
       {fieldErrors.deadline && (
         <p className="mt-1 text-[11px] text-error">
-          {fieldErrors.deadline}
+          {tErrors(fieldErrors.deadline)}
         </p>
       )}
     </div>

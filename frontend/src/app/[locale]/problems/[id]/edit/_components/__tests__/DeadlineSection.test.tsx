@@ -97,4 +97,21 @@ describe('DeadlineSection', () => {
     );
     expect(screen.getByTestId('edit-selected-date')).toBeInTheDocument();
   });
+
+  it('fieldErrors.deadline 원시 번역 키가 번역된 메시지로 렌더링된다', () => {
+    renderWithI18n(
+      <DeadlineSection
+        {...defaultProps}
+        fieldErrors={{ deadline: 'validation.problem.deadlineRequired' }}
+      />,
+    );
+    // 번역된 메시지가 표시되어야 한다
+    expect(
+      screen.getByText('마감일을 선택해주세요.'),
+    ).toBeInTheDocument();
+    // 원시 번역 키가 그대로 노출되면 UX regression — 반드시 FAIL
+    expect(
+      screen.queryByText('validation.problem.deadlineRequired'),
+    ).not.toBeInTheDocument();
+  });
 });
