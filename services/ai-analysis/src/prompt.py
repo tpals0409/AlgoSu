@@ -7,6 +7,8 @@ AI 코드 분석 프롬프트 정의
 @related ClaudeClient, AIAnalysisWorker
 """
 
+import re
+
 # ─── WEIGHTS (SSOT — 프롬프트 본문 가중치 표기와 totalScore 재계산이 모두 이 dict를 참조) ──
 
 ALGORITHM_WEIGHTS: dict[str, float] = {
@@ -325,6 +327,38 @@ def _build_platform_context(
     return ""
 
 
+# ADR-030 S-5 v2 (Critic R1 P2): <problem_context> 닫는 구분자 우회 방지.
+# 사용자 제어 필드(problem_title/problem_description)가 신뢰 경계 태그를 그대로
+# 포함하면 블록을 조기 종결시켜 그 뒤 텍스트가 가드 영역 밖으로 흘러나간다.
+# 태그명(problem_context) 단위로 case-insensitive + 내부 공백 변형까지 매칭하여
+# 무해화 플레이스홀더로 치환한다.
+# 매칭 예: <problem_context>, </problem_context>, </ problem_context >,
+#         < Problem_Context >, <\tproblem_context\t>.
+# 비매칭: 일반 HTML 태그(<div>, <p>), 다른 이름의 컨테이너(<context>).
+_PROBLEM_CONTEXT_DELIMITER_RE = re.compile(
+    r"<\s*/?\s*problem_context\s*>",
+    flags=re.IGNORECASE,
+)
+_DELIMITER_PLACEHOLDER = "[removed-delimiter]"
+
+
+def _sanitize_problem_field(value: str) -> str:
+    """problem_title/problem_description 에서 <problem_context> 구분자 무해화
+
+    Critic R1 P2 — 사용자 제어 필드에 닫는 태그가 그대로 포함되면 신뢰 경계
+    블록이 조기 종결되어 S-5 격리가 부분 우회된다. 태그명 단위로 case-insensitive
+    + 내부 공백 변형(`</ problem_context >` 등)까지 매칭하여 플레이스홀더로
+    치환한다. 단일 책임: 구분자 패턴 sanitize 외 다른 정규화는 수행하지 않음.
+
+    @domain ai
+    @param value: 사용자 제어 필드 원문 (problem_title 또는 problem_description)
+    @returns: 구분자 패턴이 [removed-delimiter] 로 치환된 안전한 문자열
+    """
+    if not value:
+        return value
+    return _PROBLEM_CONTEXT_DELIMITER_RE.sub(_DELIMITER_PLACEHOLDER, value)
+
+
 def build_user_prompt(
     code: str,
     language: str,
@@ -340,6 +374,9 @@ def build_user_prompt(
     <problem_context> 블록으로 격리한다. 시스템 프롬프트의 인젝션 가드 문구와
     함께 동작하여, 블록 내부 지시는 분석 대상 데이터로만 취급된다.
 
+    Critic R1 P2 — 사용자 필드 내부 <problem_context>/</problem_context>
+    구분자는 _sanitize_problem_field 로 사전 무해화하여 조기 종결 우회 차단.
+
     @domain ai
     @param code: 분석 대상 코드
     @param language: 프로그래밍 언어
@@ -352,11 +389,13 @@ def build_user_prompt(
 
     problem_section = ""
     if problem_title or problem_description:
+        safe_title = _sanitize_problem_field(problem_title)
+        safe_description = _sanitize_problem_field(problem_description)
         problem_section = (
             "\n<problem_context>\n"
             "문제 정보:\n"
-            f"- 제목: {problem_title}\n"
-            f"- 설명: {problem_description}\n"
+            f"- 제목: {safe_title}\n"
+            f"- 설명: {safe_description}\n"
             "</problem_context>\n"
         )
 
