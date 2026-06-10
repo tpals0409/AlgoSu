@@ -250,6 +250,8 @@ kubectl exec -n algosu deploy/rabbitmq -- \
 > ⚠️ 소량(수십 건 이하)일 때만 사용. 대량 메시지에는 방법 A 권장.
 >
 > ⚠️ **메시지 유실 위험**: `ackmode=ack_requeue_false`를 소비 전에 실행하면 payload 추출·재발행 실패 시 **원본 메시지가 영구 유실**된다. 반드시 **peek → 검증 → 재발행 → 소비** 순서를 지킨다.
+>
+> ⚠️ **invalid 메시지는 루프 중단 → 수동 제거 후 재시작**: `ack_requeue_true` peek은 메시지를 큐 헤드에 되돌리므로 유효성 실패 시 `continue`하면 동일 메시지를 무한 반복한다. 유효성 실패 감지 시 루프를 `break`하고, 해당 메시지를 `ack_requeue_false` 1건으로 수동 제거한 뒤 루프를 재시작한다.
 
 ```bash
 # 메시지 수 확인
@@ -271,8 +273,10 @@ for i in $(seq 1 $COUNT); do
 
   # Step 3: submissionId 존재 확인 (파싱 실패·잘못된 스키마 조기 차단)
   if ! echo "$PAYLOAD" | jq -e '.submissionId' > /dev/null 2>&1; then
-    echo "[$i/$COUNT] ❌ 유효성 실패 — skip (parse_error 의심, §1 근본원인 조사 선행)"
-    continue
+    echo "[$i/$COUNT] ❌ 유효성 실패 — 루프 중단"
+    echo "  invalid 메시지 큐 헤드 고착 — §1 근본원인(parse_error) 조사 후"
+    echo "  해당 메시지를 ack_requeue_false 1건으로 수동 제거하고 루프 재시작"
+    break
   fi
 
   # Step 4: 재발행 성공 여부 확인
