@@ -17,6 +17,7 @@ describe('NotificationService', () => {
   let service: NotificationService;
   let identityClient: Record<string, jest.Mock>;
   let configService: Record<string, jest.Mock>;
+  let mockLogger: Record<string, jest.Mock>;
 
   const USER_ID = 'user-id-1';
   const NOTIFICATION_ID = 'notif-id-1';
@@ -49,7 +50,7 @@ describe('NotificationService', () => {
       deleteOldNotifications: jest.fn(),
     };
 
-    const mockLogger = {
+    mockLogger = {
       setContext: jest.fn(),
       log: jest.fn(),
       warn: jest.fn(),
@@ -114,8 +115,9 @@ describe('NotificationService', () => {
       });
     });
 
-    it('Redis publish 실패 — 에러 무시, 알림은 정상 반환', async () => {
-      mockRedis.publish.mockRejectedValue(new Error('Redis connection refused'));
+    it('Redis publish 실패 — 에러 무시, 알림은 정상 반환 + Error 구조화 로깅', async () => {
+      const err = new Error('Redis connection refused');
+      mockRedis.publish.mockRejectedValue(err);
 
       const result = await service.createNotification({
         userId: USER_ID,
@@ -125,6 +127,11 @@ describe('NotificationService', () => {
       });
 
       expect(result.id).toBe(NOTIFICATION_ID);
+
+      // fire-and-forget .catch 핸들러의 마이크로태스크 flush 후 로깅 검증
+      await Promise.resolve();
+      // 표준 패턴: logger.error('메시지', err) — Error 객체를 2번째 인자로 전달
+      expect(mockLogger.error).toHaveBeenCalledWith('알림 Redis publish 실패', err);
     });
   });
 
@@ -230,13 +237,16 @@ describe('NotificationService', () => {
   // 7. Redis error callback
   // ============================
   describe('Redis error callback', () => {
-    it('Redis on error 핸들러가 등록되어 에러를 로깅한다', () => {
+    it('Redis on error 핸들러가 Error 객체를 구조화 로깅한다', () => {
       const errorCall = (mockRedis.on as jest.Mock).mock.calls.find(
         (call: [string, ...unknown[]]) => call[0] === 'error',
       );
       expect(errorCall).toBeDefined();
       const handler = errorCall![1] as (err: Error) => void;
-      expect(() => handler(new Error('Redis connection refused'))).not.toThrow();
+      const err = new Error('Redis connection refused');
+      expect(() => handler(err)).not.toThrow();
+      // 표준 패턴: logger.error('메시지', err) — Error 객체를 2번째 인자로 전달
+      expect(mockLogger.error).toHaveBeenCalledWith('알림 Redis publisher 오류', err);
     });
   });
 });

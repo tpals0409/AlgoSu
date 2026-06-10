@@ -42,7 +42,8 @@ export class DeadlineReminderService implements OnModuleDestroy {
     const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
     this.redis = new Redis(redisUrl);
     this.redis.on('error', (err: Error) => {
-      this.logger.error(`Redis 연결 오류: ${err.message}`);
+      // StructuredLoggerService는 2번째 인자 Error를 구조화 직렬화한다 (name/message/stack)
+      this.logger.error('Redis 연결 오류', err);
     });
   }
 
@@ -85,7 +86,7 @@ export class DeadlineReminderService implements OnModuleDestroy {
         `마감 알림 처리 완료: 24h=${problems24h.length}건, 1h=${problems1h.length}건`,
       );
     } catch (error: unknown) {
-      this.logger.error(`마감 알림 스케줄러 오류: ${(error as Error).message}`);
+      this.logger.error('마감 알림 스케줄러 오류', error as Error);
     }
   }
 
@@ -129,7 +130,7 @@ export class DeadlineReminderService implements OnModuleDestroy {
       const result = (await response.json()) as { data: ProblemDeadlineInfo[] };
       return result.data ?? [];
     } catch (error: unknown) {
-      this.logger.error(`마감 문제 조회 오류: ${(error as Error).message}`);
+      this.logger.error('마감 문제 조회 오류', error as Error);
       return [];
     }
   }
@@ -233,7 +234,7 @@ export class DeadlineReminderService implements OnModuleDestroy {
       const result = (await response.json()) as SubmissionCheckResult;
       return result.submittedUserIds ?? [];
     } catch (error: unknown) {
-      this.logger.error(`제출자 조회 오류: ${(error as Error).message}`);
+      this.logger.error('제출자 조회 오류', error as Error);
       return [];
     }
   }

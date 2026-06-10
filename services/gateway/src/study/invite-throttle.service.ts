@@ -26,7 +26,8 @@ export class InviteThrottleService implements OnModuleDestroy {
     const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
     this.redis = new Redis(redisUrl);
     this.redis.on('error', (err: Error) => {
-      this.logger.error(`Redis 연결 오류: ${err.message}`);
+      // StructuredLoggerService는 2번째 인자 Error를 구조화 직렬화한다 (name/message/stack)
+      this.logger.error('Redis 연결 오류', err);
     });
   }
 
@@ -59,9 +60,7 @@ export class InviteThrottleService implements OnModuleDestroy {
       }
     } catch (error: unknown) {
       if (error instanceof BadRequestException) throw error;
-      this.logger.warn(
-        `Redis 장애 — recordFailure fail-open 적용: ${(error as Error).message}`,
-      );
+      this.logger.warn('Redis 장애 — recordFailure fail-open 적용', error as Error);
     }
   }
 
@@ -85,9 +84,7 @@ export class InviteThrottleService implements OnModuleDestroy {
       }
     } catch (error: unknown) {
       if (error instanceof BadRequestException) throw error;
-      this.logger.warn(
-        `Redis 장애 — checkLock fail-open 적용: ${(error as Error).message}`,
-      );
+      this.logger.warn('Redis 장애 — checkLock fail-open 적용', error as Error);
     }
   }
 
@@ -104,9 +101,7 @@ export class InviteThrottleService implements OnModuleDestroy {
     try {
       await this.redis.del(key);
     } catch (error: unknown) {
-      this.logger.warn(
-        `Redis 장애 — clearFailures fail-open 적용: ${(error as Error).message}`,
-      );
+      this.logger.warn('Redis 장애 — clearFailures fail-open 적용', error as Error);
     }
   }
 }

@@ -9,6 +9,7 @@ import { OAuthService } from './oauth.service';
 import { OAuthProvider, IdentityUser } from '../../common/types/identity.types';
 import { IdentityClientService } from '../../identity-client/identity-client.service';
 import { SessionPolicyService } from '../session-policy/session-policy.service';
+import { StructuredLoggerService } from '../../common/logger/structured-logger.service';
 import {
   OAuthInvalidStateException,
   OAuthTokenExchangeException,
@@ -44,11 +45,23 @@ jest.mock('crypto', () => ({
   randomUUID: jest.fn().mockReturnValue('mock-uuid-state-1234'),
 }));
 
+/** StructuredLoggerService 경량 목 — Redis on-error 등 로깅 인자 검증용 */
+function createMockLogger(): Record<string, jest.Mock> {
+  return {
+    setContext: jest.fn(),
+    log: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  };
+}
+
 describe('OAuthService', () => {
   let service: OAuthService;
   let configService: Record<string, jest.Mock>;
   let identityClient: Record<string, jest.Mock>;
   let sessionPolicy: Record<string, jest.Mock>;
+  let mockLogger: Record<string, jest.Mock>;
 
   const JWT_SECRET = 'test-jwt-secret-hs256';
   const CALLBACK_URL = 'https://algosu.test';
@@ -98,10 +111,13 @@ describe('OAuthService', () => {
       getDemoTokenTtlMs: jest.fn().mockReturnValue(2 * 60 * 60 * 1000),
     };
 
+    mockLogger = createMockLogger();
+
     service = new OAuthService(
       configService as unknown as ConfigService,
       identityClient as unknown as IdentityClientService,
       sessionPolicy as unknown as SessionPolicyService,
+      mockLogger as unknown as StructuredLoggerService,
     );
   });
 
@@ -302,6 +318,7 @@ describe('OAuthService', () => {
         } as unknown as ConfigService,
         identityClient as unknown as IdentityClientService,
         sessionPolicy as unknown as SessionPolicyService,
+        createMockLogger() as unknown as StructuredLoggerService,
       );
 
       mockAxios.post.mockResolvedValueOnce({
@@ -776,6 +793,7 @@ describe('OAuthService', () => {
         } as unknown as ConfigService,
         identityClient as unknown as IdentityClientService,
         sessionPolicy as unknown as SessionPolicyService,
+        createMockLogger() as unknown as StructuredLoggerService,
       );
 
       mockAxios.post.mockResolvedValueOnce({
@@ -817,6 +835,7 @@ describe('OAuthService', () => {
         } as unknown as ConfigService,
         identityClient as unknown as IdentityClientService,
         sessionPolicy as unknown as SessionPolicyService,
+        createMockLogger() as unknown as StructuredLoggerService,
       );
 
       mockAxios.post.mockResolvedValueOnce({
@@ -993,17 +1012,18 @@ describe('OAuthService', () => {
   // 33. Redis error 콜백 (line 60)
   // ============================
   describe('Redis error 콜백', () => {
-    it('Redis on("error") 핸들러 등록 — 예외 없이 로깅 (line 60)', () => {
+    it('Redis on("error") 핸들러가 Error 객체를 구조화 로깅한다', () => {
       const errorCall = (mockRedis.on as jest.Mock).mock.calls.find(
         (call: [string, ...unknown[]]) => call[0] === 'error',
       );
       expect(errorCall).toBeDefined();
       const handler = errorCall![1] as (err: Error) => void;
 
-      // 핸들러 호출 시 process.stdout.write 를 통해 로깅 (예외 없음)
-      const stdoutSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
-      expect(() => handler(new Error('Redis down'))).not.toThrow();
-      stdoutSpy.mockRestore();
+      // 표준 패턴: logger.error('메시지', err) — Error 객체를 2번째 인자로 전달
+      // (Sprint 242: process.stdout.write 직접 호출 → StructuredLoggerService 주입 정합)
+      const err = new Error('Redis down');
+      expect(() => handler(err)).not.toThrow();
+      expect(mockLogger.error).toHaveBeenCalledWith('Redis 연결 오류', err);
     });
   });
 

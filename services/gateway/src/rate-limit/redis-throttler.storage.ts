@@ -57,7 +57,8 @@ export class RedisThrottlerStorage implements ThrottlerStorage, OnModuleDestroy 
 
     this.redis.on('error', (err: Error) => {
       // 로그에 Redis 비밀번호/URL 원문 노출 금지
-      this.logger.error(`Redis 연결 오류: ${err.message}`);
+      // StructuredLoggerService는 2번째 인자 Error를 구조화 직렬화한다 (name/message/stack)
+      this.logger.error('Redis 연결 오류', err);
     });
 
     this.startCleanupTimer();
@@ -93,9 +94,7 @@ export class RedisThrottlerStorage implements ThrottlerStorage, OnModuleDestroy 
       };
     } catch (error: unknown) {
       // Redis 장애 시 인메모리 fallback
-      this.logger.warn(
-        `Rate Limit Redis 오류 — 인메모리 fallback 적용: ${(error as Error).message}`,
-      );
+      this.logger.warn('Rate Limit Redis 오류 — 인메모리 fallback 적용', error as Error);
       return this.incrementMemory(redisKey, ttl);
     }
   }
