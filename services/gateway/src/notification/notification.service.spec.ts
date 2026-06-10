@@ -245,8 +245,8 @@ describe('NotificationService', () => {
       const handler = errorCall![1] as (err: Error) => void;
       const err = new Error('Redis connection refused');
       expect(() => handler(err)).not.toThrow();
-      // 표준 패턴: logger.error('메시지', err) — Error 객체를 2번째 인자로 전달
-      expect(mockLogger.error).toHaveBeenCalledWith('알림 Redis publisher 오류', err);
+      // 표준 패턴: logger.error('메시지', err, context) — Sprint 242 L-1 context 명시 경합 차단
+      expect(mockLogger.error).toHaveBeenCalledWith('알림 Redis publisher 오류', err, 'NotificationService');
     });
   });
 });

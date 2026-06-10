@@ -58,7 +58,8 @@ export class RedisThrottlerStorage implements ThrottlerStorage, OnModuleDestroy 
     this.redis.on('error', (err: Error) => {
       // 로그에 Redis 비밀번호/URL 원문 노출 금지
       // StructuredLoggerService는 2번째 인자 Error를 구조화 직렬화한다 (name/message/stack)
-      this.logger.error('Redis 연결 오류', err);
+      // Sprint 242 L-1: @Global 싱글톤 logger의 this.context 경합 차단 — 비동기 핸들러에 context 명시 전달
+      this.logger.error('Redis 연결 오류', err, RedisThrottlerStorage.name);
     });
 
     this.startCleanupTimer();

@@ -1019,11 +1019,11 @@ describe('OAuthService', () => {
       expect(errorCall).toBeDefined();
       const handler = errorCall![1] as (err: Error) => void;
 
-      // 표준 패턴: logger.error('메시지', err) — Error 객체를 2번째 인자로 전달
-      // (Sprint 242: process.stdout.write 직접 호출 → StructuredLoggerService 주입 정합)
+      // 표준 패턴: logger.error('메시지', err, context) — Error 2번째, context 3번째 인자로 전달
+      // (Sprint 242 L-1: @Global 싱글톤 logger의 this.context 경합 차단 — 비동기 핸들러 context 명시)
       const err = new Error('Redis down');
       expect(() => handler(err)).not.toThrow();
-      expect(mockLogger.error).toHaveBeenCalledWith('Redis 연결 오류', err);
+      expect(mockLogger.error).toHaveBeenCalledWith('Redis 연결 오류', err, 'OAuthService');
     });
   });
 

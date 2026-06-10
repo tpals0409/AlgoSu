@@ -28,7 +28,8 @@ export class NotificationService {
     this.redisPublisher = new Redis(redisUrl);
     this.redisPublisher.on('error', (err: Error) => {
       // StructuredLoggerService는 2번째 인자 Error를 구조화 직렬화한다 (name/message/stack)
-      this.logger.error('알림 Redis publisher 오류', err);
+      // Sprint 242 L-1: @Global 싱글톤 logger의 this.context 경합 차단 — 비동기 핸들러에 context 명시 전달
+      this.logger.error('알림 Redis publisher 오류', err, NotificationService.name);
     });
   }
 

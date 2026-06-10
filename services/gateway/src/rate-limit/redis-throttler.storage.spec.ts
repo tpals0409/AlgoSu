@@ -192,8 +192,8 @@ describe('RedisThrottlerStorage', () => {
       const handler = errorCall![1] as (err: Error) => void;
       const err = new Error('test redis error');
       expect(() => handler(err)).not.toThrow();
-      // 표준 패턴: logger.error('메시지', err) — Error 객체를 2번째 인자로 전달
-      expect(mockLogger.error).toHaveBeenCalledWith('Redis 연결 오류', err);
+      // 표준 패턴: logger.error('메시지', err, context) — Sprint 242 L-1 context 명시 경합 차단
+      expect(mockLogger.error).toHaveBeenCalledWith('Redis 연결 오류', err, 'RedisThrottlerStorage');
     });
 
     it('retryStrategy: times <= 3이면 지수 백오프 반환', () => {
