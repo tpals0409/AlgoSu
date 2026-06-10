@@ -801,12 +801,24 @@ class TestValidateCategories:
         assert _validate_categories(["a", "b", 1, None]) == []
 
 
-class TestSecurityCodeLogLimit:
-    """5. 보안: 코드 로그 50자 제한"""
+class TestSecurityCodeBodyNotLogged:
+    """5. 보안 (ADR-030 S-4): 제출 코드 본문은 로그에 일절 노출되지 않음.
 
-    def test_long_code_logged_with_50_char_limit(
+    이전 구현은 첫 50자 `codePreview`를 logger.info 의 extra 에 실었으나,
+    제출 코드에는 하드코딩된 API key/PII 가 들어올 수 있어 50자 미만 시크릿이
+    그대로 로그에 흘러갈 위험이 있었다. 본 테스트는 codePreview 가 제거되고
+    codeLength(int) 메타데이터만 남았음을 회귀 보호한다.
+    """
+
+    def test_analyze_code_logs_only_length_metadata(
         self, client, mock_anthropic, mock_circuit_breaker
     ):
+        """analyze_code 의 어떤 로그 호출도 코드 원문/프리뷰를 노출하지 않음.
+
+        - 분석 완료 로그 extra 에 codePreview 부재
+        - 분석 완료 로그 extra 에 codeLength == len(code)
+        - 모든 logger 호출(args/extra)에 코드 원문 부재 (시크릿 포함 코드도 안전)
+        """
         _, mock_client = mock_anthropic
 
         mock_content = MagicMock()
@@ -822,33 +834,50 @@ class TestSecurityCodeLogLimit:
         mock_message.content = [mock_content]
         mock_client.messages.create.return_value = mock_message
 
-        long_code = "x" * 100  # 100자 코드
+        # 시크릿 포함 코드 — 50자 미만 토큰도 절대 로그에 노출되면 안 됨
+        secret_code = (
+            "API_KEY = 'sk-leaked-secret-xyz'\ndef solve():\n    return API_KEY\n"
+        ) + ("x" * 100)
 
         with patch("src.claude_client.logger") as mock_logger:
             result = client.analyze_code(
-                code=long_code,
+                code=secret_code,
                 language="python",
             )
 
             assert result["status"] == "completed"
 
-            # logger.info 호출에서 코드가 50자 + "..."로 제한되었는지 확인
             info_calls = mock_logger.info.call_args_list
-            assert len(info_calls) > 0
-
-            # info_calls[0] = 토큰 사용량 로그, info_calls[1] = 분석 완료 로그
             assert len(info_calls) >= 2
+
             token_log = info_calls[0][0][0]
             assert "토큰 사용량" in token_log
 
-            # 구조화 로깅: extra dict의 codePreview에서 확인
+            # 분석 완료 로그: codePreview 부재 + codeLength 일치
             complete_call = info_calls[1]
+            assert "분석 완료" in complete_call[0][0]
             extra = complete_call[1].get("extra", {})
-            code_preview = extra.get("codePreview", "")
-            # 원본 100자 코드가 그대로 노출되면 안 됨
-            assert long_code != code_preview
-            # 50자 프리뷰 + "..."로 제한되어야 함
-            assert code_preview == "x" * 50 + "..."
+            assert "codePreview" not in extra, (
+                "codePreview 가 logger extra 에 포함됨 (ADR-030 S-4 위반)"
+            )
+            assert extra.get("codeLength") == len(secret_code)
+
+            # 모든 logger 호출(info/warning/error)의 args + extra 어디에도
+            # 시크릿 토큰/코드 원문 일부가 새지 않아야 함
+            all_calls = (
+                mock_logger.info.call_args_list
+                + mock_logger.warning.call_args_list
+                + mock_logger.error.call_args_list
+            )
+            for call in all_calls:
+                args_text = " ".join(str(a) for a in call[0])
+                extra_text = " ".join(
+                    f"{k}={v}" for k, v in (call[1].get("extra") or {}).items()
+                )
+                combined = f"{args_text} {extra_text}"
+                assert "sk-leaked-secret-xyz" not in combined
+                assert "API_KEY" not in combined
+                assert "def solve" not in combined
 
 
 # ─── GROUP ANALYSIS RESPONSE PARSING ────────────
