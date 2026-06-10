@@ -22,6 +22,8 @@ import { RedisThrottlerStorage } from './rate-limit/redis-throttler.storage';
 import { RateLimitMiddleware } from './rate-limit/rate-limit.middleware';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { SecurityHeadersMiddleware } from './common/middleware/security-headers.middleware';
+import { HeaderSanitizerMiddleware } from './common/middleware/header-sanitizer.middleware';
+import { PUBLIC_ROUTES } from './common/config/public-routes';
 import { LoggerModule } from './common/logger/logger.module';
 import { StructuredLoggerService } from './common/logger/structured-logger.service';
 import { MetricsModule } from './common/metrics/metrics.module';
@@ -93,7 +95,13 @@ import { HealthController } from './health.controller';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    // Request ID — 모든 요청에 X-Request-Id, X-Trace-Id 부여 (가장 먼저 실행)
+    // Sprint 239 S-1: 인바운드 신원 헤더 sanitize — 가장 먼저 실행
+    // (외부에서 들어온 x-user-id / x-demo-user 헤더 무조건 제거 → 신원 위조 차단)
+    consumer
+      .apply(HeaderSanitizerMiddleware)
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
+
+    // Request ID — 모든 요청에 X-Request-Id, X-Trace-Id 부여
     consumer
       .apply(RequestIdMiddleware)
       .forRoutes({ path: '*', method: RequestMethod.ALL });
@@ -112,27 +120,11 @@ export class AppModule implements NestModule {
       )
       .forRoutes({ path: '*', method: RequestMethod.ALL });
 
-    // JWT 검증
-    // OAuth 콜백, 로그인 시작, JWT 갱신, Internal API, SSE, 세션 정책 공개 조회는 제외
+    // JWT 검증 — 공개 경로 목록은 PUBLIC_ROUTES SSOT(`common/config/public-routes.ts`)
+    // 와일드카드(`(.*)`) 사용 금지: 컨트롤러의 @Public() 부착과 1:1 정합 (public-routes.spec.ts)
     consumer
       .apply(JwtMiddleware)
-      .exclude(
-        { path: 'health', method: RequestMethod.GET },
-        { path: 'health/ready', method: RequestMethod.GET },
-        { path: 'metrics', method: RequestMethod.GET },
-        { path: 'auth/oauth/(.*)', method: RequestMethod.GET },
-        { path: 'auth/github/link/callback', method: RequestMethod.GET },
-        { path: 'auth/demo', method: RequestMethod.POST },
-        { path: 'auth/refresh', method: RequestMethod.POST },
-        { path: 'auth/logout', method: RequestMethod.POST },
-        // Sprint 71-1R: SessionPolicy 공개 엔드포인트 — FE 로그인 전/후 무관 조회
-        { path: 'auth/session-policy', method: RequestMethod.GET },
-        { path: 'internal/(.*)', method: RequestMethod.ALL },
-        { path: 'sse/submissions/:id', method: RequestMethod.GET },
-        { path: 'sse/notifications', method: RequestMethod.GET },
-        { path: 'api/public/(.*)', method: RequestMethod.GET },
-        { path: 'api/events', method: RequestMethod.POST },
-      )
+      .exclude(...PUBLIC_ROUTES)
       .forRoutes({ path: '*', method: RequestMethod.ALL });
   }
 }

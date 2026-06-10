@@ -28,6 +28,7 @@ import { OAuthService } from './oauth.service';
 import { setTokenCookie } from '../cookie.util';
 import { StructuredLoggerService } from '../../common/logger/structured-logger.service';
 import { OAuthCallbackException } from './exceptions';
+import { Public } from '../../common/decorators/public.decorator';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -50,6 +51,7 @@ export class OAuthController {
   @ApiOperation({ summary: '데모 로그인 — 데모 유저 JWT 발급' })
   @ApiResponse({ status: 200, description: '데모 로그인 성공' })
   @ApiResponse({ status: 404, description: '데모 모드 비활성화' })
+  @Public()
   @Post('demo')
   async demoLogin(
     @Res({ passthrough: true }) res: Response,
@@ -81,6 +83,7 @@ export class OAuthController {
    */
   @ApiOperation({ summary: 'OAuth 인증 시작 — 프로바이더 인증 URL 반환' })
   @ApiResponse({ status: 200, description: '인증 URL 반환' })
+  @Public()
   @Get('oauth/:provider')
   async startOAuth(
     @Param('provider') provider: string,
@@ -96,6 +99,7 @@ export class OAuthController {
    */
   @ApiOperation({ summary: 'OAuth 콜백 — JWT 발급 후 프론트엔드 리다이렉트' })
   @ApiResponse({ status: 302, description: '프론트엔드 리다이렉트' })
+  @Public()
   @Get('oauth/:provider/callback')
   async handleOAuthCallback(
     @Param('provider') provider: string,
@@ -159,7 +163,10 @@ export class OAuthController {
   /**
    * GET /auth/github/link/callback — GitHub OAuth 연동 콜백
    * GitHub에서 code+state를 받아 토큰 교환 후 프론트엔드로 리다이렉트
+   *
+   * @Public(): state 토큰으로 사용자 식별(`validateAndConsumeGitHubLinkState`) — JWT 미들웨어 불필요
    */
+  @Public()
   @Get('github/link/callback')
   async handleGitHubLinkCallback(
     @Query('code') code: string,
@@ -317,6 +324,7 @@ export class OAuthController {
    */
   @ApiOperation({ summary: 'JWT 갱신 — Cookie 기반' })
   @ApiResponse({ status: 200, description: '토큰 갱신 성공' })
+  @Public()
   @Post('refresh')
   async refreshToken(
     @Req() req: Request,
@@ -359,6 +367,7 @@ export class OAuthController {
    */
   @ApiOperation({ summary: '로그아웃 — Cookie 삭제' })
   @ApiResponse({ status: 200, description: '로그아웃 성공' })
+  @Public()
   @Post('logout')
   async logout(
     @Req() req: Request,

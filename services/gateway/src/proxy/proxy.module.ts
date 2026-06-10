@@ -25,7 +25,9 @@ import type { IncomingMessage, ServerResponse, ClientRequest } from 'http';
 import { SERVICE_ROUTING_TABLE } from '../common/config/service-keys.config';
 import Redis from 'ioredis';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
+import { Public } from '../common/decorators/public.decorator';
 
+@Public()
 @Controller()
 class HealthController {
   private readonly redis: Redis;

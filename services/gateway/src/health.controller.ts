@@ -2,10 +2,12 @@
  * @file health.controller.ts — 헬스체크 엔드포인트 (/health, /health/ready)
  * @domain gateway
  * @layer controller
- * @related app.module.ts
+ * @related app.module.ts, public-routes.ts
  */
 import { Controller, Get } from '@nestjs/common';
+import { Public } from './common/decorators/public.decorator';
 
+@Public()
 @Controller()
 export class HealthController {
   @Get('health')
