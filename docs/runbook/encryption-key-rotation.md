@@ -252,15 +252,15 @@ echo "identity-service-secrets hash:  $ID_HASH"
 SUBMISSION_ID="<테스트 제출 submissionId>"
 
 kubectl logs -n algosu -l app=github-worker --since=10m > /tmp/ghw-gate2.log
-# 선행 게이트 1: 로그 수집 자체가 실패/비어있으면 판정 불가 — 성공으로 오인 금지
-[ -s /tmp/ghw-gate2.log ] || echo "❌ 로그 수집 실패 또는 빈 로그 — kubectl 대상/권한/네임스페이스 확인 후 재시도"
-
 grep "$SUBMISSION_ID" /tmp/ghw-gate2.log > /tmp/ghw-gate2-trace.log
-# 선행 게이트 2: 테스트 제출의 처리 증적이 있어야만 판정 — 증적 없음 = 미처리(성공 아님)
-[ -s /tmp/ghw-gate2-trace.log ] || echo "❌ 테스트 제출 처리 로그 없음 — 처리 대기 후 재시도 또는 MQ 라우팅 확인"
 
-# 본 판정: 해당 traceId 스코프에 fallback 태그가 없어야 신 키 복호화 성공
-if grep -q "GITHUB_APP_FALLBACK" /tmp/ghw-gate2-trace.log; then
+# 배타 분기 단일 판정 — 정확히 한 줄만 출력된다. ❌ 어느 분기든 본 판정(✅)에 도달하지 않는다.
+# (대화형 셸 안전을 위해 exit 대신 if/elif 배타 분기로 흐름 차단)
+if [ ! -s /tmp/ghw-gate2.log ]; then
+  echo "❌ 로그 수집 실패 또는 빈 로그 — kubectl 대상/권한/네임스페이스 확인 후 재시도"
+elif [ ! -s /tmp/ghw-gate2-trace.log ]; then
+  echo "❌ 테스트 제출 처리 로그 없음 — 처리 대기 후 재시도 또는 MQ 라우팅 확인"
+elif grep -q "GITHUB_APP_FALLBACK" /tmp/ghw-gate2-trace.log; then
   echo "❌ 테스트 제출이 fallback 경로로 처리됨 — 신 키 미적용 의심, §5 롤백 검토"
 else
   echo "✅ 신 키 복호화 성공 (처리 증적 있음 + fallback 없음)"
@@ -268,7 +268,7 @@ fi
 rm -f /tmp/ghw-gate2.log /tmp/ghw-gate2-trace.log
 ```
 
-> 두 선행 게이트(`❌`) 중 하나라도 출력되면 본 판정은 무효다. 거짓 성공 방지를 위해 반드시 ✅ 한 줄(처리 증적 + fallback 없음)을 확인한 경우에만 게이트 2 통과로 간주한다.
+> 출력이 ✅ 한 줄인 경우에만 게이트 2 통과다. ❌는 모두 판정 불가/실패이며 본 판정으로 진행되지 않는다(배타 분기).
 
 ### 게이트 3: 기존 토큰 fallback 동작 확인
 
