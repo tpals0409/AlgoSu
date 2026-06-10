@@ -9,9 +9,9 @@ tldr: "Keep daily sprints on Opus/Sonnet. For periodic large-scale refactoring, 
 relatedAdrs: ["sprint-238","sprint-241","sprint-242"]
 ---
 
-The notification that I was out of tokens hit mid-Sprint 241.
+The session limit notification hit in Sprint 243.
 
-I was in the middle of splitting `study.service.ts` — an 823-line file — into five services. Gatekeeper had landed the first commit. Critic had caught the `redis.keys O(N)` issue. A fix commit followed. A re-review ran. Through the entire chain, tokens quietly accumulated. When the notification appeared, my reaction was less surprise than "Oh, right. This model."
+Gatekeeper was mid-run on SHA-pinning eight third-party Actions across sixteen call sites. What was left in the `.out` file was two lines: "session limit · resets 7:10pm." The agent had stopped mid-work. The pin diff was still sitting in the working tree. My reaction was less surprise than "Oh, right. This model."
 
 Fable 5 launched on June 10, 2026. I switched that same day. And the very first sprint directive I gave was: "Analyze every security issue and improvement point in the codebase, then build a sprint plan."
 
@@ -36,7 +36,7 @@ The final verdict was **zero high-risk findings**. It was also confirmation that
 ## Five Sprints Ran
 
 <PhaseTimeline>
-  <PhaseMilestone phase="S239" title="Security Quick Wins" period="@Public() SSOT · DLQ DTO validation · Prompt trust-boundary isolation · HeaderSanitizer" status="done" icon="Shield" accent={1} />
+  <PhaseMilestone phase="S239" title="Security Quick Wins" period="@Public() SSOT · Events API DTO validation · Prompt trust-boundary isolation · HeaderSanitizer" status="done" icon="Shield" accent={1} />
   <PhaseMilestone phase="S240" title="Operations Runbooks" period="Encryption key rotation runbook · DLQ redrive runbook (docs only)" status="done" icon="BookOpen" accent={2} />
   <PhaseMilestone phase="S241" title="BE Decomposition" period="study.service 823 lines → 5 services · saga-orchestrator 516 lines → 3 modules" status="done" icon="Layers" accent={3} />
   <PhaseMilestone phase="S242" title="FE Decomposition" period="AddProblemModal 805 lines → 4 files · settings 844→252 · Redis logging alignment" status="done" icon="Code2" accent={4} />
@@ -45,7 +45,7 @@ The final verdict was **zero high-risk findings**. It was also confirmation that
 
 The roadmap was consumed as planned. But what stood out more than performance was **cost**.
 
-Token consumption was noticeably different. Deeper reasoning means a wider context window per Critic call — and that means higher token consumption. Hitting the session limit in a single sprint — while running Gatekeeper, Conductor, Critic, and Scribe in a chain through Sprint 241 — was a first. The first token exhaustion since switching to Fable 5.
+Token consumption was noticeably different. Deeper reasoning means a wider context window per Critic call — and that means higher token consumption. Hitting the session limit in Sprint 243 — with Gatekeeper stopped mid-chain on the SHA-pinning work — was a first. The first session interruption since switching to Fable 5.
 
 <Callout type="warn" title="The Other Side of Performance">
 Reasoning depth ↔ token consumption is a trade-off. A more powerful model is not always a cheaper solution. Fable 5 being able to see more at once also means it consumes more at once.
@@ -63,16 +63,16 @@ Running Sprints 241 and 242 surfaced a repeating pattern.
 
 Regression in decomposition refactoring **concentrates at extraction boundaries**.
 
-When `study.service.ts` was split into five files, what was wrong wasn't the logic inside any individual file. It was the boundaries between files. The `redis.keys O(N)` issue had existed in the code before the split — the split was what brought it into Critic's view. The same held in the FE decomposition. The `setError(null)` initialization fell out when crossing component boundaries. Translation key wrapping was missing. Derived state handling was absent. Three rounds of per-commit review missed all of it. The full-base merge gate at R3 caught it.
+When `study.service.ts` was split into five files, what was wrong wasn't the logic inside any individual file. It was the boundaries between files. The `redis.keys O(N)` issue had existed in the code before the split — the split was what brought it into Critic's view. The same held in the FE decomposition. Translation key wrapping was caught by auto-critic; `setError(null)` initialization dropping across component boundaries was caught by the full-base merge gate at R1; derived state handling was caught at R2. All five rounds of per-commit review had missed every one of them. R3 was the clean pass.
 
-A more capable model has the potential to catch this in a single pass. If a finding that needed R3 can be resolved at R1, the round savings translate directly to cost savings. Taking the ADR-030 five-sprint roadmap as an example:
+A more capable model has the potential to catch this in a single pass. If a finding that surfaces at auto-critic or merge gate R1/R2 can be resolved at the initial commit review, those round savings translate directly to cost savings. Taking the ADR-030 five-sprint roadmap as an example:
 
 <MetricGrid cols={2}>
   <MetricCard label="Critic Cumulative Rounds (S241~242)" value="15 rounds" hint="BE 7 + FE 8 (including merge gates)" accent={3} />
-  <MetricCard label="Boundary Regression Findings" value="6 findings" hint="All caught by full-base merge gate" accent={4} />
+  <MetricCard label="Boundary Regression Findings" value="6 findings" hint="Auto-critic + merge gate R1/R2 — all past per-commit review" accent={4} />
 </MetricGrid>
 
-Five of the six boundary regressions emerged at merge gate R2 or R3. If a premium model's deeper reasoning catches them at R1 — that's saving the cost of per-commit auto-critic rounds plus iterating the merge gate to R3.
+Every boundary regression was caught by auto-critic or the full-base merge gate — none by per-commit review. If a premium model's deeper reasoning catches them at the initial review stage, that eliminates the cost of cycling through multiple auto-critic rounds and merge gate iterations.
 
 I'll acknowledge this is a hypothesis, not a measured outcome. But what I felt running through the ADR-030 roadmap was that a model already aware of the pattern "regression concentrates at boundaries" tends to scrutinize boundaries more carefully from the start.
 
@@ -108,7 +108,7 @@ There are a few preconditions.
 
 **Second, bigger doesn't unconditionally mean more accurate.** The ADR-030 decomposition was ultimately executed by normal-model agents (the Opus/Sonnet-based agent chain). Fable 5 designed and audited; regular agents handled execution. Separating review from execution is itself a strategy.
 
-**Third, cost is real.** Hitting the session limit in Sprint 241 was a warning. Running every sprint on a premium model raises token consumption, session interruption risk, and cost together. Selective deployment is why the strategy has to remain selective.
+**Third, cost is real.** Hitting the session limit in Sprint 243 was a warning. Running every sprint on a premium model raises token consumption, session interruption risk, and cost together. Selective deployment is why the strategy has to remain selective.
 
 ---
 
