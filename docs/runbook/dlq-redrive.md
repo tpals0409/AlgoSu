@@ -303,7 +303,7 @@ done
 
 > 동일 명령을 `ai_analysis.dlq` / routing_key `ai.analysis`로 변경하면 AI DLQ에도 적용 가능.
 >
-> **jq 미설치 시**: `kubectl exec -n algosu deploy/rabbitmq -- bash -c 'apt-get install -y jq -q'` 또는 방법 A로 전환.
+> **jq 미설치 시**: `jq`는 운영자 **로컬 셸**에서 실행되므로 로컬에 설치한다 — `brew install jq`(macOS) / `apt install jq`(Linux). 설치가 어려우면 방법 A(shovel)로 전환을 권장한다.
 
 ---
 

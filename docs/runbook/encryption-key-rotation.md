@@ -246,9 +246,12 @@ echo "identity-service-secrets hash:  $ID_HASH"
 # 프론트엔드에서 GitHub OAuth 재연동 수행
 # → 새 토큰이 신 키로 암호화되어 저장됨
 
-# 코드 제출 → github-worker 로그에서 복호화 성공 확인
-kubectl logs -n algosu -l app=github-worker --tail=50 \
-  | grep -v "GITHUB_APP_FALLBACK"   # fallback 없이 처리되면 성공
+# 코드 제출 직후 실행 — 최근 2분 로그에 fallback 태그 유무로 직접 판정
+# (grep -v는 fallback이 없는 '줄'만 걸러내므로 판정 기준이 될 수 없음 — 항상 통과해 버린다)
+kubectl logs -n algosu -l app=github-worker --since=2m \
+  | grep "GITHUB_APP_FALLBACK" \
+  && echo "❌ fallback 발생 — 신 키 미적용 의심, §5 롤백 검토" \
+  || echo "✅ fallback 없음 — 신 키 복호화 성공"
 ```
 
 ### 게이트 3: 기존 토큰 fallback 동작 확인
