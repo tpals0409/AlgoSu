@@ -53,7 +53,7 @@ docs/adr/
 |------|------------|
 | [topics/sprint-95-programmers-dataset](./topics/sprint-95-programmers-dataset.md) | 프로그래머스 데이터셋 번들링 + Gateway 외부 연동 (Sprint 95 심화 — `sprints/sprint-95.md`와 별개) |
 
-## 회고형 sprint ADR (178개)
+## 회고형 sprint ADR (179개)
 
 `sprints/sprint-{NN}.md` — Sprint 62 ~ 241 매 sprint 회고. 신규 sprint 종료 시 `/stop` 워크플로우가 자동 생성/갱신 (KR + EN 동시 작성).
 
