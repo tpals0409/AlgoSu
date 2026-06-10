@@ -1,12 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { StudyController } from './study.controller';
 import { StudyService } from './study.service';
+import { StudyMemberService } from './study-member.service';
+import { StudyStatsService } from './study-stats.service';
 import { StudyActiveGuard } from '../common/guards/study-active.guard';
 import { StudyMemberGuard } from '../common/guards/study-member.guard';
 
 describe('StudyController', () => {
   let controller: StudyController;
   let studyService: Record<string, jest.Mock>;
+  let studyMemberService: Record<string, jest.Mock>;
+  let studyStatsService: Record<string, jest.Mock>;
 
   const USER_ID = 'user-id-1';
   const STUDY_ID = '550e8400-e29b-41d4-a716-446655440000';
@@ -32,19 +36,29 @@ describe('StudyController', () => {
       createInvite: jest.fn(),
       verifyInviteCode: jest.fn(),
       joinByInviteCode: jest.fn(),
-      leaveStudy: jest.fn(),
       closeStudy: jest.fn(),
-      getStudyStats: jest.fn(),
+      notifyProblemCreated: jest.fn(),
+    };
+
+    studyMemberService = {
       getMembers: jest.fn(),
       updateNickname: jest.fn(),
       changeMemberRole: jest.fn(),
-      notifyProblemCreated: jest.fn(),
+      leaveStudy: jest.fn(),
       removeMember: jest.fn(),
+    };
+
+    studyStatsService = {
+      getStudyStats: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [StudyController],
-      providers: [{ provide: StudyService, useValue: studyService }],
+      providers: [
+        { provide: StudyService, useValue: studyService },
+        { provide: StudyMemberService, useValue: studyMemberService },
+        { provide: StudyStatsService, useValue: studyStatsService },
+      ],
     })
       .overrideGuard(StudyActiveGuard)
       .useValue({ canActivate: () => true })
@@ -214,11 +228,11 @@ describe('StudyController', () => {
 
   describe('leaveStudy', () => {
     it('스터디 탈퇴', async () => {
-      studyService.leaveStudy.mockResolvedValue(undefined);
+      studyMemberService.leaveStudy.mockResolvedValue(undefined);
 
       const result = await controller.leaveStudy(STUDY_ID, createMockReq());
 
-      expect(studyService.leaveStudy).toHaveBeenCalledWith(STUDY_ID, USER_ID);
+      expect(studyMemberService.leaveStudy).toHaveBeenCalledWith(STUDY_ID, USER_ID);
       expect(result).toEqual({ message: '스터디에서 탈퇴했습니다.' });
     });
   });
@@ -237,11 +251,11 @@ describe('StudyController', () => {
   describe('getStudyStats', () => {
     it('스터디 통계 조회', async () => {
       const expected = { totalProblems: 10 };
-      studyService.getStudyStats.mockResolvedValue(expected);
+      studyStatsService.getStudyStats.mockResolvedValue(expected);
 
       const result = await controller.getStudyStats(STUDY_ID, '3', createMockReq());
 
-      expect(studyService.getStudyStats).toHaveBeenCalledWith(STUDY_ID, USER_ID, '3');
+      expect(studyStatsService.getStudyStats).toHaveBeenCalledWith(STUDY_ID, USER_ID, '3');
       expect(result).toEqual(expected);
     });
   });
@@ -249,11 +263,11 @@ describe('StudyController', () => {
   describe('getMembers', () => {
     it('멤버 목록 조회', async () => {
       const expected = [{ user_id: USER_ID, role: 'ADMIN' }];
-      studyService.getMembers.mockResolvedValue(expected);
+      studyMemberService.getMembers.mockResolvedValue(expected);
 
       const result = await controller.getMembers(STUDY_ID, createMockReq());
 
-      expect(studyService.getMembers).toHaveBeenCalledWith(STUDY_ID, USER_ID);
+      expect(studyMemberService.getMembers).toHaveBeenCalledWith(STUDY_ID, USER_ID);
       expect(result).toEqual(expected);
     });
   });
@@ -262,11 +276,11 @@ describe('StudyController', () => {
     it('닉네임 변경', async () => {
       const dto = { nickname: '새닉' };
       const expected = { nickname: '새닉' };
-      studyService.updateNickname.mockResolvedValue(expected);
+      studyMemberService.updateNickname.mockResolvedValue(expected);
 
       const result = await controller.updateNickname(STUDY_ID, createMockReq(), dto as any);
 
-      expect(studyService.updateNickname).toHaveBeenCalledWith(STUDY_ID, USER_ID, '새닉');
+      expect(studyMemberService.updateNickname).toHaveBeenCalledWith(STUDY_ID, USER_ID, '새닉');
       expect(result).toEqual(expected);
     });
   });
@@ -274,11 +288,11 @@ describe('StudyController', () => {
   describe('changeMemberRole', () => {
     it('멤버 역할 변경', async () => {
       const dto = { role: 'ADMIN' };
-      studyService.changeMemberRole.mockResolvedValue(undefined);
+      studyMemberService.changeMemberRole.mockResolvedValue(undefined);
 
       const result = await controller.changeMemberRole(STUDY_ID, TARGET_USER_ID, createMockReq(), dto as any);
 
-      expect(studyService.changeMemberRole).toHaveBeenCalledWith(STUDY_ID, TARGET_USER_ID, USER_ID, 'ADMIN');
+      expect(studyMemberService.changeMemberRole).toHaveBeenCalledWith(STUDY_ID, TARGET_USER_ID, USER_ID, 'ADMIN');
       expect(result).toEqual({ message: '역할이 변경되었습니다.' });
     });
   });
@@ -297,11 +311,11 @@ describe('StudyController', () => {
 
   describe('removeMember', () => {
     it('멤버 추방', async () => {
-      studyService.removeMember.mockResolvedValue(undefined);
+      studyMemberService.removeMember.mockResolvedValue(undefined);
 
       const result = await controller.removeMember(STUDY_ID, TARGET_USER_ID, createMockReq());
 
-      expect(studyService.removeMember).toHaveBeenCalledWith(STUDY_ID, TARGET_USER_ID, USER_ID);
+      expect(studyMemberService.removeMember).toHaveBeenCalledWith(STUDY_ID, TARGET_USER_ID, USER_ID);
       expect(result).toEqual({ message: '멤버가 추방되었습니다.' });
     });
   });

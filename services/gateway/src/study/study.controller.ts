@@ -2,7 +2,7 @@
  * @file 스터디 컨트롤러 — REST API 엔드포인트
  * @domain study
  * @layer controller
- * @related StudyService, StudyActiveGuard, CreateStudyDto, JoinStudyDto
+ * @related StudyService, StudyMemberService, StudyStatsService, StudyActiveGuard
  */
 import {
   Controller,
@@ -21,6 +21,8 @@ import {
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Request } from 'express';
 import { StudyService } from './study.service';
+import { StudyMemberService } from './study-member.service';
+import { StudyStatsService } from './study-stats.service';
 import type { IdentityStudy as Study, IdentityStudyMember as StudyMember } from '../common/types/identity.types';
 import { ChangeRoleDto } from './dto/change-role.dto';
 import { CreateStudyDto } from './dto/create-study.dto';
@@ -36,7 +38,11 @@ import { StudyMemberGuard } from '../common/guards/study-member.guard';
 @ApiTags('Study')
 @Controller('api/studies')
 export class StudyController {
-  constructor(private readonly studyService: StudyService) {}
+  constructor(
+    private readonly studyService: StudyService,
+    private readonly studyMemberService: StudyMemberService,
+    private readonly studyStatsService: StudyStatsService,
+  ) {}
 
   /**
    * POST /api/studies — 스터디 생성 (생성자 ADMIN 자동, 닉네임 필수)
@@ -202,7 +208,7 @@ export class StudyController {
     @Req() req: Request,
   ): Promise<{ message: string }> {
     const userId = req.headers['x-user-id'] as string;
-    await this.studyService.leaveStudy(studyId, userId);
+    await this.studyMemberService.leaveStudy(studyId, userId);
     return { message: '스터디에서 탈퇴했습니다.' };
   }
 
@@ -240,7 +246,7 @@ export class StudyController {
     @Req() req: Request,
   ) {
     const userId = req.headers['x-user-id'] as string;
-    return this.studyService.getStudyStats(studyId, userId, weekNumber);
+    return this.studyStatsService.getStudyStats(studyId, userId, weekNumber);
   }
 
   /**
@@ -257,7 +263,7 @@ export class StudyController {
     @Req() req: Request,
   ): Promise<StudyMember[]> {
     const userId = req.headers['x-user-id'] as string;
-    return this.studyService.getMembers(studyId, userId);
+    return this.studyMemberService.getMembers(studyId, userId);
   }
 
   /**
@@ -275,7 +281,7 @@ export class StudyController {
     @Body() dto: UpdateNicknameDto,
   ): Promise<{ nickname: string }> {
     const userId = req.headers['x-user-id'] as string;
-    return this.studyService.updateNickname(studyId, userId, dto.nickname);
+    return this.studyMemberService.updateNickname(studyId, userId, dto.nickname);
   }
 
   /**
@@ -294,7 +300,7 @@ export class StudyController {
     @Body() dto: ChangeRoleDto,
   ): Promise<{ message: string }> {
     const userId = req.headers['x-user-id'] as string;
-    await this.studyService.changeMemberRole(studyId, targetUserId, userId, dto.role);
+    await this.studyMemberService.changeMemberRole(studyId, targetUserId, userId, dto.role);
     return { message: '역할이 변경되었습니다.' };
   }
 
@@ -338,7 +344,7 @@ export class StudyController {
     @Req() req: Request,
   ): Promise<{ message: string }> {
     const userId = req.headers['x-user-id'] as string;
-    await this.studyService.removeMember(studyId, targetUserId, userId);
+    await this.studyMemberService.removeMember(studyId, targetUserId, userId);
     return { message: '멤버가 추방되었습니다.' };
   }
 }

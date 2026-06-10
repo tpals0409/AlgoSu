@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { StudyService } from './study.service';
+import { StudyAccessService } from './study-access.service';
+import { MembershipCacheService } from './membership-cache.service';
 import { StudyMemberRole } from '../common/types/identity.types';
 import { IdentityClientService } from '../identity-client/identity-client.service';
 
@@ -108,12 +110,19 @@ describe('StudyService', () => {
       debug: jest.fn(),
     };
 
-    service = new StudyService(
+    const access = new StudyAccessService(identityClient as unknown as IdentityClientService);
+    const cache = new MembershipCacheService(
       configService as unknown as ConfigService,
+      mockLogger as any,
+    );
+
+    service = new StudyService(
       mockLogger as any,
       identityClient as unknown as IdentityClientService,
       notificationService as any,
       inviteThrottle as any,
+      access,
+      cache,
     );
   });
 
@@ -194,6 +203,21 @@ describe('StudyService', () => {
       await expect(
         service.updateStudy(STUDY_ID, OTHER_USER_ID, { name: 'Hacked' }),
       ).rejects.toThrow('ADMIN 권한이 필요합니다.');
+    });
+
+    it('description/avatarUrl 포함 시 snake_case로 매핑하여 위임', async () => {
+      identityClient.getMember.mockResolvedValue(mockAdminMemberData);
+      identityClient.updateStudy.mockResolvedValue(mockStudyData);
+
+      await service.updateStudy(STUDY_ID, USER_ID, {
+        description: '새 설명',
+        avatarUrl: 'https://cdn/study.png',
+      });
+
+      expect(identityClient.updateStudy).toHaveBeenCalledWith(STUDY_ID, {
+        description: '새 설명',
+        avatar_url: 'https://cdn/study.png',
+      });
     });
   });
 
@@ -362,94 +386,7 @@ describe('StudyService', () => {
   });
 
   // ============================
-  // 8. removeMember
-  // ============================
-  describe('removeMember', () => {
-    it('ADMIN이 멤버 추방 — Identity 서비스 위임 + 캐시 무효화', async () => {
-      identityClient.getMember
-        .mockResolvedValueOnce(mockAdminMemberData) // admin 권한 검증
-        .mockResolvedValueOnce(mockRegularMemberData); // target member
-      identityClient.removeMember.mockResolvedValue({});
-
-      await service.removeMember(STUDY_ID, OTHER_USER_ID, USER_ID);
-
-      expect(identityClient.removeMember).toHaveBeenCalledWith(STUDY_ID, OTHER_USER_ID);
-      expect(mockRedis.del).toHaveBeenCalledWith(
-        `membership:${STUDY_ID}:${OTHER_USER_ID}`,
-      );
-    });
-
-    it('자기 자신 추방 시도 → BadRequestException', async () => {
-      await expect(
-        service.removeMember(STUDY_ID, USER_ID, USER_ID),
-      ).rejects.toThrow(BadRequestException);
-      await expect(
-        service.removeMember(STUDY_ID, USER_ID, USER_ID),
-      ).rejects.toThrow('자기 자신을 추방할 수 없습니다.');
-    });
-
-    it('존재하지 않는 멤버 추방 → NotFoundException', async () => {
-      identityClient.getMember
-        .mockResolvedValueOnce(mockAdminMemberData) // admin 권한 검증
-        .mockRejectedValueOnce(new NotFoundException('멤버 없음')); // target not found
-
-      await expect(
-        service.removeMember(STUDY_ID, OTHER_USER_ID, USER_ID),
-      ).rejects.toThrow(NotFoundException);
-    });
-  });
-
-  // ============================
-  // 9. leaveStudy
-  // ============================
-  describe('leaveStudy', () => {
-    it('일반 멤버 탈퇴 — 정상 처리', async () => {
-      identityClient.getMember.mockResolvedValue(mockRegularMemberData);
-      identityClient.removeMember.mockResolvedValue({});
-      identityClient.findStudyById.mockResolvedValue(mockStudyData);
-      identityClient.getMembers.mockResolvedValue([mockAdminMemberData]);
-
-      await service.leaveStudy(STUDY_ID, OTHER_USER_ID);
-
-      expect(identityClient.removeMember).toHaveBeenCalledWith(STUDY_ID, OTHER_USER_ID);
-      expect(mockRedis.del).toHaveBeenCalledWith(
-        `membership:${STUDY_ID}:${OTHER_USER_ID}`,
-      );
-    });
-
-    it('ADMIN 탈퇴 — 다른 ADMIN 있으면 가능', async () => {
-      identityClient.getMember.mockResolvedValue(mockAdminMemberData);
-      identityClient.getMembers
-        .mockResolvedValueOnce([mockAdminMemberData, { ...mockRegularMemberData, role: 'ADMIN' }]) // ADMIN 2명
-        .mockResolvedValueOnce([]); // 탈퇴 후 알림 대상
-      identityClient.removeMember.mockResolvedValue({});
-      identityClient.findStudyById.mockResolvedValue(mockStudyData);
-
-      await service.leaveStudy(STUDY_ID, USER_ID);
-
-      expect(identityClient.removeMember).toHaveBeenCalled();
-    });
-
-    it('유일 ADMIN 탈퇴 → BadRequestException', async () => {
-      identityClient.getMember.mockResolvedValue(mockAdminMemberData);
-      identityClient.getMembers.mockResolvedValue([mockAdminMemberData]); // ADMIN 1명
-
-      await expect(service.leaveStudy(STUDY_ID, USER_ID)).rejects.toThrow(
-        '탈퇴 전 ADMIN 권한을 다른 멤버에게 위임하세요.',
-      );
-    });
-
-    it('비멤버 탈퇴 시도 → ForbiddenException', async () => {
-      identityClient.getMember.mockRejectedValue(new NotFoundException('멤버 없음'));
-
-      await expect(service.leaveStudy(STUDY_ID, 'stranger')).rejects.toThrow(
-        ForbiddenException,
-      );
-    });
-  });
-
-  // ============================
-  // 10. closeStudy
+  // 8. closeStudy
   // ============================
   describe('closeStudy', () => {
     it('ADMIN — 정상 종료 + CLOSED 상태 전환 + 알림', async () => {
@@ -482,118 +419,7 @@ describe('StudyService', () => {
   });
 
   // ============================
-  // 11. getMembers
-  // ============================
-  describe('getMembers', () => {
-    it('멤버 목록 반환', async () => {
-      identityClient.getMembers.mockResolvedValue([mockAdminMemberData, mockRegularMemberData]);
-
-      const result = await service.getMembers(STUDY_ID, USER_ID);
-
-      expect(result).toHaveLength(2);
-      expect(identityClient.getMembers).toHaveBeenCalledWith(STUDY_ID);
-    });
-
-    it('멤버가 없으면 빈 배열 반환', async () => {
-      identityClient.getMembers.mockResolvedValue([]);
-
-      const result = await service.getMembers(STUDY_ID, USER_ID);
-
-      expect(result).toEqual([]);
-    });
-  });
-
-  // ============================
-  // 12. updateNickname
-  // ============================
-  describe('updateNickname', () => {
-    it('본인 닉네임 정상 변경', async () => {
-      identityClient.getMember.mockResolvedValue(mockAdminMemberData);
-      identityClient.updateNickname.mockResolvedValue({});
-
-      const result = await service.updateNickname(STUDY_ID, USER_ID, '새닉네임');
-
-      expect(result.nickname).toBe('새닉네임');
-    });
-
-    it('비멤버 닉네임 변경 → ForbiddenException', async () => {
-      identityClient.getMember.mockRejectedValue(new NotFoundException('멤버 없음'));
-
-      await expect(
-        service.updateNickname(STUDY_ID, 'stranger', '닉네임'),
-      ).rejects.toThrow(ForbiddenException);
-      await expect(
-        service.updateNickname(STUDY_ID, 'stranger', '닉네임'),
-      ).rejects.toThrow('스터디 멤버가 아닙니다.');
-    });
-  });
-
-  // ============================
-  // 13. changeMemberRole
-  // ============================
-  describe('changeMemberRole', () => {
-    it('ADMIN이 멤버를 ADMIN으로 승격', async () => {
-      identityClient.getMember
-        .mockResolvedValueOnce(mockAdminMemberData) // verifyAdmin
-        .mockResolvedValueOnce(mockRegularMemberData); // target
-      identityClient.changeRole.mockResolvedValue({});
-      identityClient.findStudyById.mockResolvedValue(mockStudyData);
-
-      await service.changeMemberRole(STUDY_ID, OTHER_USER_ID, USER_ID, StudyMemberRole.ADMIN);
-
-      expect(identityClient.changeRole).toHaveBeenCalledWith(STUDY_ID, OTHER_USER_ID, { role: StudyMemberRole.ADMIN });
-    });
-
-    it('자기 자신 역할 변경 → BadRequestException', async () => {
-      identityClient.getMember.mockResolvedValue(mockAdminMemberData);
-
-      await expect(
-        service.changeMemberRole(STUDY_ID, USER_ID, USER_ID, StudyMemberRole.MEMBER),
-      ).rejects.toThrow('자기 자신의 역할을 변경할 수 없습니다.');
-    });
-
-    it('대상 멤버 없음 → NotFoundException', async () => {
-      identityClient.getMember
-        .mockResolvedValueOnce(mockAdminMemberData) // verifyAdmin
-        .mockRejectedValueOnce(new NotFoundException('멤버 없음'));
-
-      await expect(
-        service.changeMemberRole(STUDY_ID, OTHER_USER_ID, USER_ID, StudyMemberRole.ADMIN),
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('유일 ADMIN 강등 → BadRequestException', async () => {
-      identityClient.getMember
-        .mockResolvedValueOnce(mockAdminMemberData) // verifyAdmin
-        .mockResolvedValueOnce({ ...mockRegularMemberData, role: 'ADMIN' }); // target is ADMIN
-      identityClient.getMembers.mockResolvedValue([mockAdminMemberData]); // only 1 ADMIN
-
-      await expect(
-        service.changeMemberRole(STUDY_ID, OTHER_USER_ID, USER_ID, StudyMemberRole.MEMBER),
-      ).rejects.toThrow('최소 1명의 ADMIN이 필요합니다.');
-    });
-
-    it('ADMIN→MEMBER 강등 시 adminCount가 2 이상이면 성공', async () => {
-      identityClient.getMember
-        .mockResolvedValueOnce(mockAdminMemberData) // verifyAdmin
-        .mockResolvedValueOnce({ ...mockRegularMemberData, role: 'ADMIN' }); // target is ADMIN
-      identityClient.getMembers.mockResolvedValue([
-        mockAdminMemberData,
-        { ...mockRegularMemberData, role: 'ADMIN' },
-      ]); // 2 ADMINs
-      identityClient.changeRole.mockResolvedValue({});
-      identityClient.findStudyById.mockResolvedValue(mockStudyData);
-
-      await service.changeMemberRole(STUDY_ID, OTHER_USER_ID, USER_ID, StudyMemberRole.MEMBER);
-
-      expect(identityClient.changeRole).toHaveBeenCalledWith(
-        STUDY_ID, OTHER_USER_ID, { role: StudyMemberRole.MEMBER },
-      );
-    });
-  });
-
-  // ============================
-  // 14. updateGroundRules
+  // 9. updateGroundRules
   // ============================
   describe('updateGroundRules', () => {
     it('ADMIN — 그라운드 룰 정상 수정', async () => {
@@ -607,7 +433,7 @@ describe('StudyService', () => {
   });
 
   // ============================
-  // 15. verifyInviteCode
+  // 10. verifyInviteCode
   // ============================
   describe('verifyInviteCode', () => {
     const futureDate = new Date();
@@ -682,125 +508,7 @@ describe('StudyService', () => {
   });
 
   // ============================
-  // 16. getStudyStats
-  // ============================
-  describe('getStudyStats', () => {
-    const mockActiveProblemIdsResponse = {
-      ok: true,
-      json: () => Promise.resolve({ data: ['p1', 'p2'] }),
-    };
-
-    it('통계 API 정상 응답 처리', async () => {
-      configService.getOrThrow = jest.fn()
-        .mockReturnValueOnce('http://problem:3000')
-        .mockReturnValueOnce('internal-key-problem')
-        .mockReturnValueOnce('http://submission:3000')
-        .mockReturnValueOnce('internal-key-123');
-
-      const mockStatsData = {
-        data: {
-          totalSubmissions: 10,
-          uniqueSubmissions: 8,
-          uniqueAnalyzed: 6,
-          byWeek: [{ week: 'W1', count: 5 }],
-          byWeekPerUser: [],
-          byMember: [{ userId: USER_ID, count: 5, doneCount: 3, uniqueProblemCount: 2, uniqueDoneCount: 1 }],
-          byMemberWeek: null,
-          recentSubmissions: [],
-          solvedProblemIds: ['p1'],
-          submitterCountByProblem: [{ problemId: 'p1', count: 2, analyzedCount: 1 }],
-        },
-      };
-
-      const originalFetch = global.fetch;
-      global.fetch = jest.fn()
-        .mockResolvedValueOnce(mockActiveProblemIdsResponse)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(mockStatsData),
-        }) as any;
-
-      identityClient.getMembers.mockResolvedValue([mockAdminMemberData]);
-
-      const result = await service.getStudyStats(STUDY_ID, USER_ID);
-
-      expect(result.totalSubmissions).toBe(10);
-      expect(result.uniqueSubmissions).toBe(8);
-      expect(result.uniqueAnalyzed).toBe(6);
-      expect(result.byMember).toHaveLength(1);
-      expect(result.byMember[0].isMember).toBe(true);
-
-      global.fetch = originalFetch;
-    });
-
-    it('통계 API 실패 → NotFoundException', async () => {
-      configService.getOrThrow = jest.fn()
-        .mockReturnValueOnce('http://problem:3000')
-        .mockReturnValueOnce('internal-key-problem')
-        .mockReturnValueOnce('http://submission:3000')
-        .mockReturnValueOnce('internal-key-123');
-
-      const originalFetch = global.fetch;
-      global.fetch = jest.fn()
-        .mockResolvedValueOnce(mockActiveProblemIdsResponse)
-        .mockResolvedValueOnce({
-          ok: false,
-          status: 500,
-        }) as any;
-
-      await expect(service.getStudyStats(STUDY_ID, USER_ID)).rejects.toThrow(
-        NotFoundException,
-      );
-
-      global.fetch = originalFetch;
-    });
-
-    it('byMemberWeek가 배열이면 isMember 매핑 포함', async () => {
-      configService.getOrThrow = jest.fn()
-        .mockReturnValueOnce('http://problem:3000')
-        .mockReturnValueOnce('internal-key-problem')
-        .mockReturnValueOnce('http://submission:3000')
-        .mockReturnValueOnce('internal-key-123');
-
-      const mockStatsData = {
-        data: {
-          totalSubmissions: 5,
-          byWeek: [],
-          byWeekPerUser: [],
-          byMember: [{ userId: USER_ID, count: 3, doneCount: 2, uniqueProblemCount: 1, uniqueDoneCount: 1 }],
-          byMemberWeek: [{ userId: USER_ID, count: 3 }, { userId: 'unknown-user', count: 1 }],
-          recentSubmissions: [],
-          solvedProblemIds: null,
-          submitterCountByProblem: [],
-        },
-      };
-
-      const originalFetch = global.fetch;
-      global.fetch = jest.fn()
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ data: ['p1'] }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(mockStatsData),
-        }) as any;
-
-      identityClient.getMembers.mockResolvedValue([mockAdminMemberData]);
-
-      const result = await service.getStudyStats(STUDY_ID, USER_ID);
-
-      expect(result.byMemberWeek).not.toBeNull();
-      expect(result.byMemberWeek).toHaveLength(2);
-      expect(result.byMemberWeek![0].isMember).toBe(true);
-      expect(result.byMemberWeek![1].isMember).toBe(false);
-
-      global.fetch = originalFetch;
-    });
-  });
-
-  // ============================
-  // 17. notifyProblemCreated
+  // 11. notifyProblemCreated
   // ============================
   describe('notifyProblemCreated', () => {
     it('ADMIN — 문제 생성 알림 발행 (실행자 제외)', async () => {
@@ -837,7 +545,7 @@ describe('StudyService', () => {
   });
 
   // ============================
-  // 18. 추가 분기 커버리지 — verifyInviteCode edge cases
+  // 12. 추가 분기 커버리지 — verifyInviteCode edge cases
   // ============================
   describe('verifyInviteCode — 추가 분기', () => {
     const futureDate = new Date();
@@ -873,7 +581,7 @@ describe('StudyService', () => {
   });
 
   // ============================
-  // 19. 추가 분기 커버리지 — joinByInviteCode edge cases
+  // 13. 추가 분기 커버리지 — joinByInviteCode edge cases
   // ============================
   describe('joinByInviteCode — 추가 분기', () => {
     const futureDate = new Date();
@@ -932,337 +640,7 @@ describe('StudyService', () => {
   });
 
   // ============================
-  // 20. 추가 분기 커버리지 — getStudyStats edge cases
-  // ============================
-  describe('getStudyStats — 추가 분기', () => {
-    it('weekNumber 없이 호출 시 weekNumber 파라미터 미포함', async () => {
-      configService.getOrThrow = jest.fn()
-        .mockReturnValueOnce('http://problem:3000')
-        .mockReturnValueOnce('internal-key-problem')
-        .mockReturnValueOnce('http://submission:3000')
-        .mockReturnValueOnce('internal-key-123');
-
-      const mockStatsData = {
-        data: {
-          totalSubmissions: 0,
-          uniqueSubmissions: undefined,
-          uniqueAnalyzed: undefined,
-          byWeek: [],
-          byWeekPerUser: [],
-          byMember: [],
-          byMemberWeek: null,
-          recentSubmissions: [],
-          solvedProblemIds: null,
-          submitterCountByProblem: undefined,
-        },
-      };
-
-      const originalFetch = global.fetch;
-      global.fetch = jest.fn()
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ data: ['p1'] }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(mockStatsData),
-        }) as any;
-
-      identityClient.getMembers.mockResolvedValue([]);
-
-      const result = await service.getStudyStats(STUDY_ID, USER_ID);
-
-      expect(result.uniqueSubmissions).toBe(0);
-      expect(result.uniqueAnalyzed).toBe(0);
-      expect(result.solvedProblemIds).toEqual([]);
-      expect(result.submitterCountByProblem).toEqual([]);
-
-      global.fetch = originalFetch;
-    });
-
-    it('fetchActiveProblemIds 실패 시 activeProblemIds 없이 요청', async () => {
-      configService.getOrThrow = jest.fn()
-        .mockReturnValueOnce('http://problem:3000')
-        .mockReturnValueOnce('internal-key-problem')
-        .mockReturnValueOnce('http://submission:3000')
-        .mockReturnValueOnce('internal-key-123');
-
-      const mockStatsData = {
-        data: {
-          totalSubmissions: 0,
-          byWeek: [],
-          byWeekPerUser: [],
-          byMember: [],
-          byMemberWeek: null,
-          recentSubmissions: [],
-          solvedProblemIds: null,
-          submitterCountByProblem: [],
-        },
-      };
-
-      const originalFetch = global.fetch;
-      global.fetch = jest.fn()
-        .mockResolvedValueOnce({ ok: false, status: 500 }) // fetchActiveProblemIds 실패
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(mockStatsData),
-        }) as any;
-
-      identityClient.getMembers.mockResolvedValue([]);
-
-      const result = await service.getStudyStats(STUDY_ID, USER_ID);
-
-      expect(result.totalSubmissions).toBe(0);
-
-      global.fetch = originalFetch;
-    });
-
-    it('fetchActiveProblemIds에서 fetch 자체가 throw 시 undefined 반환', async () => {
-      configService.getOrThrow = jest.fn()
-        .mockReturnValueOnce('http://problem:3000')
-        .mockReturnValueOnce('internal-key-problem')
-        .mockReturnValueOnce('http://submission:3000')
-        .mockReturnValueOnce('internal-key-123');
-
-      const mockStatsData = {
-        data: {
-          totalSubmissions: 0,
-          byWeek: [],
-          byWeekPerUser: [],
-          byMember: [],
-          byMemberWeek: null,
-          recentSubmissions: [],
-          solvedProblemIds: null,
-          submitterCountByProblem: [],
-        },
-      };
-
-      const originalFetch = global.fetch;
-      global.fetch = jest.fn()
-        .mockRejectedValueOnce(new Error('network error')) // fetchActiveProblemIds throw
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(mockStatsData),
-        }) as any;
-
-      identityClient.getMembers.mockResolvedValue([]);
-
-      const result = await service.getStudyStats(STUDY_ID, USER_ID);
-
-      expect(result.totalSubmissions).toBe(0);
-
-      global.fetch = originalFetch;
-    });
-
-    it('byMember에 memberMap에 없는 userId 포함 시 nickname null 반환', async () => {
-      configService.getOrThrow = jest.fn()
-        .mockReturnValueOnce('http://problem:3000')
-        .mockReturnValueOnce('internal-key-problem')
-        .mockReturnValueOnce('http://submission:3000')
-        .mockReturnValueOnce('internal-key-123');
-
-      const mockStatsData = {
-        data: {
-          totalSubmissions: 2,
-          uniqueSubmissions: 1,
-          uniqueAnalyzed: 1,
-          byWeek: [],
-          byWeekPerUser: [],
-          byMember: [
-            { userId: 'unknown-user', count: 1, doneCount: 0, uniqueProblemCount: 1, uniqueDoneCount: 0 },
-          ],
-          byMemberWeek: null,
-          recentSubmissions: [
-            { userId: 'unknown-user', title: 'test' },
-          ],
-          solvedProblemIds: [],
-          submitterCountByProblem: [],
-        },
-      };
-
-      const originalFetch = global.fetch;
-      global.fetch = jest.fn()
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ data: ['p1'] }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(mockStatsData),
-        }) as any;
-
-      identityClient.getMembers.mockResolvedValue([mockAdminMemberData]);
-
-      const result = await service.getStudyStats(STUDY_ID, USER_ID);
-
-      expect(result.byMember[0].nickname).toBeNull();
-      expect(result.byMember[0].isMember).toBe(false);
-      expect(result.recentSubmissions[0]).toHaveProperty('nickname', null);
-
-      global.fetch = originalFetch;
-    });
-
-    it('weekNumber 포함 호출 시 쿼리스트링에 포함', async () => {
-      configService.getOrThrow = jest.fn()
-        .mockReturnValueOnce('http://problem:3000')
-        .mockReturnValueOnce('internal-key-problem')
-        .mockReturnValueOnce('http://submission:3000')
-        .mockReturnValueOnce('internal-key-123');
-
-      const mockStatsData = {
-        data: {
-          totalSubmissions: 5,
-          uniqueSubmissions: 3,
-          uniqueAnalyzed: 2,
-          byWeek: [],
-          byWeekPerUser: [],
-          byMember: [],
-          byMemberWeek: [{ userId: USER_ID, count: 2 }],
-          recentSubmissions: [{ userId: USER_ID, title: 'test' }],
-          solvedProblemIds: ['p1'],
-          submitterCountByProblem: [{ problemId: 'p1', count: 1, analyzedCount: 0 }],
-        },
-      };
-
-      const originalFetch = global.fetch;
-      global.fetch = jest.fn()
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ data: ['p1'] }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(mockStatsData),
-        }) as any;
-
-      identityClient.getMembers.mockResolvedValue([mockAdminMemberData]);
-
-      const result = await service.getStudyStats(STUDY_ID, USER_ID, 'W3');
-
-      // weekNumber가 qs에 포함되었는지 확인
-      const fetchCalls = (global.fetch as jest.Mock).mock.calls;
-      expect(fetchCalls[1][0]).toContain('weekNumber=W3');
-      expect(result.recentSubmissions[0]).toHaveProperty('nickname');
-
-      global.fetch = originalFetch;
-    });
-  });
-
-  // ============================
-  // 21. 추가 분기 커버리지 — removeMember edge cases
-  // ============================
-  describe('removeMember — 추가 분기', () => {
-    it('ADMIN 대상 추방 시 다른 ADMIN 있으면 성공', async () => {
-      identityClient.getMember
-        .mockResolvedValueOnce(mockAdminMemberData) // admin 권한 검증
-        .mockResolvedValueOnce({ ...mockRegularMemberData, user_id: OTHER_USER_ID, role: 'ADMIN' }); // target is ADMIN
-      identityClient.getMembers.mockResolvedValue([
-        mockAdminMemberData,
-        { ...mockRegularMemberData, user_id: OTHER_USER_ID, role: 'ADMIN' },
-      ]); // 2 ADMINs
-      identityClient.removeMember.mockResolvedValue({});
-
-      await service.removeMember(STUDY_ID, OTHER_USER_ID, USER_ID);
-
-      expect(identityClient.removeMember).toHaveBeenCalledWith(STUDY_ID, OTHER_USER_ID);
-    });
-
-    it('유일 ADMIN 대상 추방 → BadRequestException', async () => {
-      identityClient.getMember
-        .mockResolvedValueOnce(mockAdminMemberData) // admin 권한 검증
-        .mockResolvedValueOnce({ ...mockRegularMemberData, user_id: OTHER_USER_ID, role: 'ADMIN' }); // target is ADMIN
-      identityClient.getMembers.mockResolvedValue([
-        { ...mockRegularMemberData, user_id: OTHER_USER_ID, role: 'ADMIN' },
-      ]); // 1 ADMIN only
-
-      await expect(
-        service.removeMember(STUDY_ID, OTHER_USER_ID, USER_ID),
-      ).rejects.toThrow('최소 1명의 ADMIN이 필요합니다.');
-    });
-
-    it('getMember에서 비-NotFoundException 에러 시 그대로 throw', async () => {
-      identityClient.getMember
-        .mockResolvedValueOnce(mockAdminMemberData) // admin 권한 검증
-        .mockRejectedValueOnce(new Error('DB error')); // unexpected error
-
-      await expect(
-        service.removeMember(STUDY_ID, OTHER_USER_ID, USER_ID),
-      ).rejects.toThrow('DB error');
-    });
-  });
-
-  // ============================
-  // 22. 추가 분기 커버리지 — leaveStudy edge cases
-  // ============================
-  describe('leaveStudy — 추가 분기', () => {
-    it('getMember에서 비-NotFoundException 에러 시 그대로 throw', async () => {
-      identityClient.getMember.mockRejectedValue(new Error('connection error'));
-
-      await expect(service.leaveStudy(STUDY_ID, USER_ID)).rejects.toThrow('connection error');
-    });
-
-    it('study.name이 null일 때 기본값 "스터디" 사용', async () => {
-      identityClient.getMember.mockResolvedValue(mockRegularMemberData);
-      identityClient.removeMember.mockResolvedValue({});
-      identityClient.findStudyById.mockResolvedValue({ ...mockStudyData, name: null });
-      identityClient.getMembers.mockResolvedValue([mockAdminMemberData]);
-
-      await service.leaveStudy(STUDY_ID, OTHER_USER_ID);
-
-      expect(notificationService.createNotification).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: expect.stringContaining('스터디'),
-        }),
-      );
-    });
-  });
-
-  // ============================
-  // 23. 추가 분기 커버리지 — updateNickname edge cases
-  // ============================
-  describe('updateNickname — 추가 분기', () => {
-    it('getMember에서 비-NotFoundException 에러 시 그대로 throw', async () => {
-      identityClient.getMember.mockRejectedValue(new Error('timeout'));
-
-      await expect(
-        service.updateNickname(STUDY_ID, USER_ID, '닉네임'),
-      ).rejects.toThrow('timeout');
-    });
-  });
-
-  // ============================
-  // 24. 추가 분기 커버리지 — changeMemberRole edge cases
-  // ============================
-  describe('changeMemberRole — 추가 분기', () => {
-    it('getMember (대상)에서 비-NotFoundException 에러 시 그대로 throw', async () => {
-      identityClient.getMember
-        .mockResolvedValueOnce(mockAdminMemberData) // verifyAdmin
-        .mockRejectedValueOnce(new Error('unexpected'));
-
-      await expect(
-        service.changeMemberRole(STUDY_ID, OTHER_USER_ID, USER_ID, StudyMemberRole.ADMIN),
-      ).rejects.toThrow('unexpected');
-    });
-
-    it('study.name이 null일 때 기본값 "스터디" 사용', async () => {
-      identityClient.getMember
-        .mockResolvedValueOnce(mockAdminMemberData) // verifyAdmin
-        .mockResolvedValueOnce(mockRegularMemberData); // target
-      identityClient.changeRole.mockResolvedValue({});
-      identityClient.findStudyById.mockResolvedValue({ ...mockStudyData, name: null });
-
-      await service.changeMemberRole(STUDY_ID, OTHER_USER_ID, USER_ID, StudyMemberRole.ADMIN);
-
-      expect(notificationService.createNotification).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: expect.stringContaining('스터디'),
-        }),
-      );
-    });
-  });
-
-  // ============================
-  // 25. 추가 분기 커버리지 — verifyMembership edge cases
+  // 14. 추가 분기 커버리지 — verifyMembership/verifyAdmin (via updateStudy)
   // ============================
   describe('verifyMembership — 추가 분기 (via verifyAdmin)', () => {
     it('getMember에서 비-NotFoundException 에러 시 그대로 throw', async () => {
@@ -1279,31 +657,6 @@ describe('StudyService', () => {
       await expect(
         service.updateStudy(STUDY_ID, USER_ID, { name: 'test' }),
       ).rejects.toThrow(ForbiddenException);
-    });
-  });
-
-  // ============================
-  // Redis error 콜백 분기
-  // ============================
-  describe('Redis 연결 오류 콜백', () => {
-    it('Redis on error 이벤트 발생 시 에러 로깅', () => {
-      const errorCall = (mockRedis.on as jest.Mock).mock.calls.find(
-        (call: [string, ...unknown[]]) => call[0] === 'error',
-      );
-      expect(errorCall).toBeDefined();
-      const handler = errorCall![1] as (err: Error) => void;
-      expect(() => handler(new Error('connection refused'))).not.toThrow();
-    });
-  });
-
-  // ============================
-  // onModuleDestroy
-  // ============================
-  describe('onModuleDestroy', () => {
-    it('Redis 연결을 정상 종료한다', async () => {
-      await service.onModuleDestroy();
-
-      expect(mockRedis.quit).toHaveBeenCalled();
     });
   });
 });
