@@ -1213,20 +1213,15 @@ jobs:
           UPDATED=$(printf '%s\n' "$GATE" | sed -n 's/^updated=//p')
           SKIPPED_TRIVY=$(printf '%s\n' "$GATE" | sed -n 's/^skipped_trivy=//p')
 
-          # 통과한 service 만 이미지 태그 업데이트 (python3 + PyYAML)
-          for SVC in $UPDATED; do
-            python3 -c "
-          import yaml
-          with open('kustomization.yaml', 'r') as f:
-              data = yaml.safe_load(f)
-          for img in data.get('images', []):
-              if 'algosu-${SVC}' in img.get('name', ''):
-                  img['newTag'] = 'main-${SHA}'
-          with open('kustomization.yaml', 'w') as f:
-              yaml.dump(data, f, default_flow_style=False, sort_keys=False)
-          "
-            echo "  ✓ algosu-${SVC} → main-${SHA}"
-          done
+          # 통과한 service 의 이미지 태그를 일괄 갱신 (Sprint 243 Q-6: inline python3 -c →
+          # scripts/ci/update-image-tags.py 추출. compute-deploy-gate.sh 호출 패턴과 동일 —
+          # 순수 변환 로직만 헬퍼로, cwd 는 위 cd 로 설정된 overlays/prod, 헬퍼는 절대경로 호출).
+          if [ -n "$UPDATED" ]; then
+            python3 "$GITHUB_WORKSPACE/scripts/ci/update-image-tags.py" --sha "$SHA" $UPDATED
+            for SVC in $UPDATED; do
+              echo "  ✓ algosu-${SVC} → main-${SHA}"
+            done
+          fi
 
           echo "Updated services:${UPDATED}"
           echo "Skipped (Trivy fail):${SKIPPED_TRIVY}"
