@@ -81,6 +81,14 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
 
   // ─── EFFECTS ───────────────────────────
 
+  /**
+   * 섹션 성공 핸들러 — 성공 시 잔존 에러를 먼저 지워 Alert 중복 노출 방지 (M-1)
+   */
+  const handleSuccess = useCallback((msg: string): void => {
+    setError(null);
+    setSuccessMsg(msg);
+  }, []);
+
   const loadStudyData = useCallback(async (): Promise<void> => {
     setIsLoading(true);
     setError(null);
@@ -181,7 +189,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
               studyId={studyId}
               study={study}
               onStudyUpdate={setStudy}
-              onSuccess={setSuccessMsg}
+              onSuccess={handleSuccess}
               onError={setError}
             />
           </div>
@@ -193,7 +201,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
               studyId={studyId}
               study={study}
               onStudyUpdate={setStudy}
-              onSuccess={setSuccessMsg}
+              onSuccess={handleSuccess}
               onError={setError}
             />
           </div>
@@ -204,7 +212,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
             <RulesSection
               studyId={studyId}
               initialRulesText={study.groundRules ?? ''}
-              onSuccess={setSuccessMsg}
+              onSuccess={handleSuccess}
               onError={setError}
             />
           </div>
@@ -216,7 +224,7 @@ export default function StudySettingsPage({ params }: PageProps): ReactNode {
             members={members}
             currentUserId={user?.id}
             onMembersUpdate={setMembers}
-            onSuccess={setSuccessMsg}
+            onSuccess={handleSuccess}
             onError={setError}
           />
         </div>
