@@ -19,11 +19,12 @@ domain: docs/runbook
 
 - [db-migration](./db-migration.md) — TypeORM 마이그레이션 작성/롤백 절차
 
-### GitHub / 인증 (4)
+### GitHub / 인증 (5)
 
 - [github-token-relink](./github-token-relink.md) — GitHub Token 재연동 절차
 - [pat-rotation](./pat-rotation.md) — GitHub PAT 로테이션 절차
 - [key-rotation](./key-rotation.md) — GitHub App Private Key 로테이션 절차
+- [encryption-key-rotation](./encryption-key-rotation.md) — GITHUB_TOKEN_ENCRYPTION_KEY (AES-256-GCM) 로테이션 절차 (3-Secret 동시 교체)
 - [admin-emails](./admin-emails.md) — ADMIN_EMAILS 갱신 절차
 
 ### 로컬 개발 환경 (6)
@@ -39,10 +40,11 @@ domain: docs/runbook
 
 - [programmers-pipeline](./programmers-pipeline.md) — 프로그래머스 파이프라인 운영 절차
 
-### 관측성 / 모니터링 (2)
+### 관측성 / 모니터링 (3)
 
 - [oncall-alerts](./oncall-alerts.md) — 온콜 알림 대응 런북 (alert별 의미·진단 쿼리·1차 대응)
 - [alert-channel-separation](./alert-channel-separation.md) — 알림 critical/일반 채널 분리 적용 절차 (Discord webhook seal + aether-gitops)
+- [dlq-redrive](./dlq-redrive.md) — DLQ 메시지 수동 redrive 절차 (github-worker / ai-analysis)
 
 ### 품질 자동화 (3)
 
