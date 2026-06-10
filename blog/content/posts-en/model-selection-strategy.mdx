@@ -1,0 +1,129 @@
+---
+title: "Which Model, When, Where — A Strategy for Targeted Premium Deployment"
+date: "2026-06-10"
+excerpt: "I switched to Fable 5 the day it launched. Six sprints later, what I'd gained wasn't performance — it was strategy. A record of when to reach for a premium model, and why that judgment is the same thing as paying down technical debt."
+tags: ["retrospective","multi-model","model-selection","refactoring","cost"]
+category: ai-agent
+order: 11
+tldr: "Keep daily sprints on Opus/Sonnet. For periodic large-scale refactoring, inject a premium model as a targeted deployment. On clean abstraction boundaries, the quality of cheaper models rises as well."
+relatedAdrs: ["sprint-238","sprint-241","sprint-242"]
+---
+
+The session limit notification hit in Sprint 243.
+
+Gatekeeper was mid-run on SHA-pinning eight third-party Actions across sixteen call sites. What was left in the `.out` file was two lines: "session limit · resets 7:10pm." The agent had stopped mid-work. The pin diff was still sitting in the working tree. My reaction was less surprise than "Oh, right. This model."
+
+Fable 5 launched on June 10, 2026. I switched that same day. And the very first sprint directive I gave was: "Analyze every security issue and improvement point in the codebase, then build a sprint plan."
+
+---
+
+<Problem label="Problem">
+A more capable model was available. But whether it was always the right choice was a different question.
+</Problem>
+
+## On Launch Day, I Had It Audit the Entire Codebase
+
+Using Fable 5's first assignment as a full codebase audit was, in retrospect, the right kind of test. It wasn't "let's see if it's better" — it was closer to "let's give it the hardest thing possible."
+
+The result was ADR-030. The tenth permanent ADR for AlgoSu.
+
+A three-axis parallel scan — security surface, code quality, CI and infrastructure — ran first, and every suspicious conclusion was verified by directly reading the code. Five false positives were filtered out in that process. The Saga compensation transaction was flagged as absent, but it was there: `compensateGitHubFailed`/`compensateAiFailed`. Monaco lazy-load was flagged as unapplied, but `next/dynamic` had already handled it. Separating exploration (coverage) from verification (accuracy) is what let the false positives get caught.
+
+The final verdict was **zero high-risk findings**. It was also confirmation that the baseline posture was solid. Three medium, five low, seven improvements. And from that, a five-sprint roadmap — S239 through S243 — was set.
+
+---
+
+## Five Sprints Ran
+
+<PhaseTimeline>
+  <PhaseMilestone phase="S239" title="Security Quick Wins" period="@Public() SSOT · Events API DTO validation · Prompt trust-boundary isolation · HeaderSanitizer" status="done" icon="Shield" accent={1} />
+  <PhaseMilestone phase="S240" title="Operations Runbooks" period="Encryption key rotation runbook · DLQ redrive runbook (docs only)" status="done" icon="BookOpen" accent={2} />
+  <PhaseMilestone phase="S241" title="BE Decomposition" period="study.service 823 lines → 5 services · saga-orchestrator 516 lines → 3 modules" status="done" icon="Layers" accent={3} />
+  <PhaseMilestone phase="S242" title="FE Decomposition" period="AddProblemModal 805 lines → 4 files · settings 844→252 · Redis logging alignment" status="done" icon="Code2" accent={4} />
+  <PhaseMilestone phase="S243" title="Supply Chain · CSP · CI" period="Action SHA pinning for 8 actions · CI inline script extraction · CSP spike (deferred)" status="done" icon="GitBranch" accent={5} />
+</PhaseTimeline>
+
+The roadmap was consumed as planned. But what stood out more than performance was **cost**.
+
+Token consumption was noticeably different. Deeper reasoning means a wider context window per Critic call — and that means higher token consumption. Hitting the session limit in Sprint 243 — with Gatekeeper stopped mid-chain on the SHA-pinning work — was a first. The first session interruption since switching to Fable 5.
+
+<Callout type="warn" title="The Other Side of Performance">
+Reasoning depth ↔ token consumption is a trade-off. A more powerful model is not always a cheaper solution. Fable 5 being able to see more at once also means it consumes more at once.
+</Callout>
+
+---
+
+<Decision label="Decision">
+Keep daily sprints on Opus/Sonnet. For large-scale refactoring cycles, inject the premium model as a targeted deployment.
+</Decision>
+
+## Regression Lives at Extraction Boundaries
+
+Running Sprints 241 and 242 surfaced a repeating pattern.
+
+Regression in decomposition refactoring **concentrates at extraction boundaries**.
+
+When `study.service.ts` was split into five files, what was wrong wasn't the logic inside any individual file. It was the boundaries between files. The `redis.keys O(N)` issue had existed in the code before the split — the split was what brought it into Critic's view. The same held in the FE decomposition. Translation key wrapping was caught by auto-critic; `setError(null)` initialization dropping across component boundaries was caught by the full-base merge gate at R1; derived state handling was caught at R2. All five rounds of per-commit review had missed every one of them. R3 was the clean pass.
+
+A more capable model has the potential to catch this in a single pass. If a finding that surfaces at auto-critic or merge gate R1/R2 can be resolved at the initial commit review, those round savings translate directly to cost savings. Taking the ADR-030 five-sprint roadmap as an example:
+
+<MetricGrid cols={2}>
+  <MetricCard label="Critic Cumulative Rounds (S241~242)" value="15 rounds" hint="BE 7 + FE 8 (including merge gates)" accent={3} />
+  <MetricCard label="Boundary Regression Findings" value="6 findings" hint="Auto-critic + merge gate R1/R2 — all past per-commit review" accent={4} />
+</MetricGrid>
+
+Every boundary regression was caught by auto-critic or the full-base merge gate — none by per-commit review. If a premium model's deeper reasoning catches them at the initial review stage, that eliminates the cost of cycling through multiple auto-critic rounds and merge gate iterations.
+
+I'll acknowledge this is a hypothesis, not a measured outcome. But what I felt running through the ADR-030 roadmap was that a model already aware of the pattern "regression concentrates at boundaries" tends to scrutinize boundaries more carefully from the start.
+
+---
+
+## The Conditions Under Which Premium Models Have ROI
+
+The core of the strategy is **selective deployment**.
+
+Daily sprints — feature additions, bug fixes, documentation updates — are well-served by Opus/Sonnet. Adding code on top of established patterns is where the difference in reasoning depth is least visible. Cost efficiency dominates.
+
+Premium models earn their ROI in different circumstances:
+
+1. **"Work where normal models cycle through multiple merge-gate rounds"** — Large decompositions with many extraction boundaries, security audits, cross-cutting refactoring. Round savings map directly to cost savings.
+2. **"Sprints that repay technical debt principal"** — Like ADR-030: a concentrated effort to address accumulated issues. One-time cost here raises the baseline quality of subsequent normal-model sprints.
+3. **"Starting from scratch"** — Full codebase audits, new domain design. Work that begins with no context is where reasoning depth differential shows most clearly.
+
+<Callout type="info" title="The Compounding Effect of Clean Boundaries">
+After finishing the ADR-030 decomposition, the perceived quality of subsequent Conductor and Gatekeeper work improved. With the 823-line service split into ~200-line units, each carrying a single responsibility — the context each agent needed to hold shrank, and the probability of boundary misjudgment dropped. On clean abstraction boundaries, the quality of cheaper models rises as well.
+</Callout>
+
+That's the core insight from these six sprints. Investing in a premium model isn't just for that sprint — it's to **raise the baseline for the next n sprints**. Like paying down debt: reducing the interest (round costs) by retiring the principal.
+
+---
+
+## Caveats — Where This Strategy Breaks Down
+
+Interpreting this as "always use the premium model" is wrong.
+
+There are a few preconditions.
+
+**First, wholesale refactoring has rapidly diminishing returns.** The ADR-030 decompositions were effective because there was clear "principal" to pay — 823 lines, 516 lines. Further decomposition of an already well-structured codebase carries regression risk with minimal gain. Deploy where the pain is explicit, not everywhere.
+
+**Second, bigger doesn't unconditionally mean more accurate.** The ADR-030 decomposition was ultimately executed by normal-model agents (the Opus/Sonnet-based agent chain). Fable 5 designed and audited; regular agents handled execution. Separating review from execution is itself a strategy.
+
+**Third, cost is real.** Hitting the session limit in Sprint 243 was a warning. Running every sprint on a premium model raises token consumption, session interruption risk, and cost together. Selective deployment is why the strategy has to remain selective.
+
+---
+
+<Result label="Result">
+What six sprints taught me wasn't a model's limits — it was the importance of timing the deployment.
+</Result>
+
+## The Previous Post and This One
+
+In [Toward a Model-Agnostic Harness](/en/posts/toward-model-agnostic-harness), I wrote about building a system not bound to any particular model — bringing in Critic as an addition rather than a replacement, and moving toward a harness where any model can occupy any seat.
+
+This post is its sequel. **The question after achieving that freedom — "so which model, when, where?"** is what this one answers.
+
+That freedom has to come first. While you're locked to one model, there's no choice to make. Only after the harness supports model swapping, only after any model can occupy the Critic seat — does strategy become possible. Timing becomes a thing you can choose.
+
+The day Fable 5 launched, I deployed it immediately against the full codebase audit. The results were good. But more important than the results was what came after: knowing when to reach for it again. And that judgment settling into a frame not of performance comparison, but of **technical debt repayment timing**.
+
+When the next large-scale refactoring becomes necessary, I'll reach for the premium model again then. Not now. The boundaries are already clean, and daily sprints are running well on top of them.
