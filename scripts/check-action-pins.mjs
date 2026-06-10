@@ -30,6 +30,25 @@ const FIRST_PARTY_OWNERS = ['actions', 'github'];
 const SHA_PIN = /^[0-9a-f]{40}$/;
 
 /**
+ * 디렉토리를 재귀 순회하며 `action.yml`/`action.yaml`을 전수 수집한다.
+ * 중첩 composite action(`.github/actions/a/b/action.yml`)까지 커버한다.
+ * @param {string} dir 탐색 시작 디렉토리(절대 경로)
+ * @param {string[]} acc 누적 배열
+ * @returns {string[]} 발견된 action 매니페스트 절대 경로 배열
+ */
+function collectActionManifests(dir, acc) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      collectActionManifests(path, acc);
+    } else if (entry.name === 'action.yml' || entry.name === 'action.yaml') {
+      acc.push(path);
+    }
+  }
+  return acc;
+}
+
+/**
  * 스캔 대상 파일 목록을 수집한다.
  * @returns {string[]} 절대 경로 배열
  */
@@ -45,13 +64,7 @@ function collectFiles() {
   }
 
   if (existsSync(ACTIONS_DIR)) {
-    for (const dir of readdirSync(ACTIONS_DIR, { withFileTypes: true })) {
-      if (!dir.isDirectory()) continue;
-      for (const name of ['action.yml', 'action.yaml']) {
-        const path = join(ACTIONS_DIR, dir.name, name);
-        if (existsSync(path)) files.push(path);
-      }
-    }
+    collectActionManifests(ACTIONS_DIR, files);
   }
 
   return files;
