@@ -16,7 +16,7 @@ const mockRedis = {
   set: jest.fn().mockResolvedValue('OK'),
   get: jest.fn().mockResolvedValue(null),
   del: jest.fn().mockResolvedValue(1),
-  keys: jest.fn().mockResolvedValue([]),
+  scan: jest.fn().mockResolvedValue(['0', []]),
   quit: jest.fn().mockResolvedValue('OK'),
   on: jest.fn().mockReturnThis(),
 };
@@ -229,15 +229,21 @@ describe('StudyService', () => {
       identityClient.getMember.mockResolvedValue(mockAdminMemberData);
       identityClient.getMembers.mockResolvedValue([mockAdminMemberData]);
       identityClient.deleteStudy.mockResolvedValue({});
-      mockRedis.keys.mockResolvedValue([
-        `membership:${STUDY_ID}:user1`,
-        `membership:${STUDY_ID}:user2`,
+      mockRedis.scan.mockResolvedValue([
+        '0',
+        [`membership:${STUDY_ID}:user1`, `membership:${STUDY_ID}:user2`],
       ]);
 
       await service.deleteStudy(STUDY_ID, USER_ID);
 
       expect(identityClient.deleteStudy).toHaveBeenCalledWith(STUDY_ID);
-      expect(mockRedis.keys).toHaveBeenCalledWith(`membership:${STUDY_ID}:*`);
+      expect(mockRedis.scan).toHaveBeenCalledWith(
+        '0',
+        'MATCH',
+        `membership:${STUDY_ID}:*`,
+        'COUNT',
+        100,
+      );
       expect(mockRedis.del).toHaveBeenCalledWith(
         `membership:${STUDY_ID}:user1`,
         `membership:${STUDY_ID}:user2`,
@@ -268,12 +274,12 @@ describe('StudyService', () => {
       identityClient.getMember.mockResolvedValue(mockAdminMemberData);
       identityClient.getMembers.mockResolvedValue([mockAdminMemberData]);
       identityClient.deleteStudy.mockResolvedValue({});
-      mockRedis.keys.mockResolvedValue([]);
+      mockRedis.scan.mockResolvedValue(['0', []]);
       mockRedis.del.mockClear();
 
       await service.deleteStudy(STUDY_ID, USER_ID);
 
-      expect(mockRedis.keys).toHaveBeenCalled();
+      expect(mockRedis.scan).toHaveBeenCalled();
     });
   });
 

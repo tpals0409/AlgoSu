@@ -6,7 +6,7 @@ const mockRedis = {
   set: jest.fn().mockResolvedValue('OK'),
   get: jest.fn().mockResolvedValue(null),
   del: jest.fn().mockResolvedValue(1),
-  keys: jest.fn().mockResolvedValue([]),
+  scan: jest.fn().mockResolvedValue(['0', []]),
   quit: jest.fn().mockResolvedValue('OK'),
   on: jest.fn().mockReturnThis(),
 };
@@ -53,28 +53,67 @@ describe('MembershipCacheService', () => {
   });
 
   describe('invalidateAll', () => {
-    it('패턴 매칭 키가 있으면 일괄 삭제', async () => {
-      mockRedis.keys.mockResolvedValue([
-        `membership:${STUDY_ID}:user1`,
-        `membership:${STUDY_ID}:user2`,
+    it('SCAN으로 패턴 매칭 키가 있으면 일괄 삭제', async () => {
+      mockRedis.scan.mockResolvedValue([
+        '0',
+        [`membership:${STUDY_ID}:user1`, `membership:${STUDY_ID}:user2`],
       ]);
 
       await service.invalidateAll(STUDY_ID);
 
-      expect(mockRedis.keys).toHaveBeenCalledWith(`membership:${STUDY_ID}:*`);
+      expect(mockRedis.scan).toHaveBeenCalledWith(
+        '0',
+        'MATCH',
+        `membership:${STUDY_ID}:*`,
+        'COUNT',
+        100,
+      );
       expect(mockRedis.del).toHaveBeenCalledWith(
         `membership:${STUDY_ID}:user1`,
         `membership:${STUDY_ID}:user2`,
       );
     });
 
-    it('패턴 매칭 키가 없으면 del 호출 안 함', async () => {
-      mockRedis.keys.mockResolvedValue([]);
+    it('SCAN 결과가 비면 del 호출 안 함', async () => {
+      mockRedis.scan.mockResolvedValue(['0', []]);
 
       await service.invalidateAll(STUDY_ID);
 
-      expect(mockRedis.keys).toHaveBeenCalledWith(`membership:${STUDY_ID}:*`);
+      expect(mockRedis.scan).toHaveBeenCalledWith(
+        '0',
+        'MATCH',
+        `membership:${STUDY_ID}:*`,
+        'COUNT',
+        100,
+      );
       expect(mockRedis.del).not.toHaveBeenCalled();
+    });
+
+    it('커서가 0이 아니면 모든 페이지를 순회하며 삭제', async () => {
+      mockRedis.scan
+        .mockResolvedValueOnce(['42', [`membership:${STUDY_ID}:user1`]])
+        .mockResolvedValueOnce(['0', [`membership:${STUDY_ID}:user2`]]);
+
+      await service.invalidateAll(STUDY_ID);
+
+      expect(mockRedis.scan).toHaveBeenNthCalledWith(
+        1,
+        '0',
+        'MATCH',
+        `membership:${STUDY_ID}:*`,
+        'COUNT',
+        100,
+      );
+      expect(mockRedis.scan).toHaveBeenNthCalledWith(
+        2,
+        '42',
+        'MATCH',
+        `membership:${STUDY_ID}:*`,
+        'COUNT',
+        100,
+      );
+      expect(mockRedis.del).toHaveBeenCalledWith(`membership:${STUDY_ID}:user1`);
+      expect(mockRedis.del).toHaveBeenCalledWith(`membership:${STUDY_ID}:user2`);
     });
   });
 

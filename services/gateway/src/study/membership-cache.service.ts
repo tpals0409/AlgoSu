@@ -25,7 +25,8 @@ export class MembershipCacheService implements OnModuleDestroy {
     this.redis = new Redis(redisUrl);
     this.redis.on('error', (err: Error) => {
       // M11: Redis 연결 에러 핸들링 — 프로세스 크래시 방지
-      this.logger.error(`Redis 연결 오류: ${err.message}`);
+      // StructuredLoggerService는 2번째 인자 Error를 구조화 직렬화한다 (name/message/stack)
+      this.logger.error('Redis 연결 오류', err);
     });
   }
 
@@ -52,13 +53,27 @@ export class MembershipCacheService implements OnModuleDestroy {
 
   /**
    * 스터디 전체 멤버십 캐시 무효화 — 패턴 삭제 (스터디 삭제 시)
+   *
+   * KEYS는 O(N) 단일 블로킹 명령이라 운영 Redis에서 이벤트 루프를 막는다.
+   * 커서 기반 SCAN으로 논블로킹 순회하며 배치 삭제한다 (동작 동일: 패턴 키 전부 삭제).
    * @domain study
    * @param studyId - 스터디 ID
    */
   async invalidateAll(studyId: string): Promise<void> {
-    const keys = await this.redis.keys(`membership:${studyId}:*`);
-    if (keys.length > 0) {
-      await this.redis.del(...keys);
-    }
+    const pattern = `membership:${studyId}:*`;
+    let cursor = '0';
+    do {
+      const [nextCursor, keys] = await this.redis.scan(
+        cursor,
+        'MATCH',
+        pattern,
+        'COUNT',
+        100,
+      );
+      cursor = nextCursor;
+      if (keys.length > 0) {
+        await this.redis.del(...keys);
+      }
+    } while (cursor !== '0');
   }
 }
