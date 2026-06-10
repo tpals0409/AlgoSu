@@ -117,6 +117,9 @@ describe('SagaTimeoutService', () => {
   afterEach(async () => {
     await service.onModuleDestroy();
     jest.restoreAllMocks();
+    // fake timer를 쓰는 테스트가 본문 중간에 throw해도 다음 테스트로 누수되지 않도록
+    // 타이머 복원을 afterEach에서 일괄 보장한다(개별 테스트의 useRealTimers 의존 제거).
+    jest.useRealTimers();
   });
 
   // ─── 1. onModuleInit() — 미완료 Saga 있음: 재개 호출 ─────────
@@ -181,9 +184,8 @@ describe('SagaTimeoutService', () => {
       await service.onModuleInit();
 
       // 타이머가 설정되었으므로 onModuleDestroy에서 정리됨 (에러 없이 완료)
+      // 타이머 복원은 afterEach가 일괄 처리한다.
       await service.onModuleDestroy();
-
-      jest.useRealTimers();
     });
 
     it('2분 주기 타이머가 발화하면 checkSagaTimeouts를 호출한다', async () => {
@@ -200,8 +202,8 @@ describe('SagaTimeoutService', () => {
 
       expect(repo.find.mock.calls.length).toBeGreaterThan(findCallsAfterInit);
 
+      // 타이머 복원은 afterEach가 일괄 처리한다.
       await service.onModuleDestroy();
-      jest.useRealTimers();
     });
   });
 
@@ -367,9 +369,8 @@ describe('SagaTimeoutService', () => {
       await service.onModuleInit();
 
       // 타이머가 설정되었으므로 onModuleDestroy에서 정리됨
+      // 타이머 복원은 afterEach가 일괄 처리한다.
       await service.onModuleDestroy();
-
-      jest.useRealTimers();
 
       // 에러 없이 완료되면 성공
       expect(true).toBe(true);
@@ -412,8 +413,7 @@ describe('SagaTimeoutService', () => {
       expect(mqPublisher.publishGitHubPush).toHaveBeenCalledWith(
         expect.objectContaining({ submissionId: 'sub-timeout-db' }),
       );
-
-      jest.useRealTimers();
+      // 타이머 복원은 afterEach가 일괄 처리한다.
     });
 
     it('타임아웃 재개 실패 시 에러 로그 후 계속 진행한다', async () => {

@@ -2,7 +2,7 @@
  * @file app.module.init.spec.ts — Submission AppModule 라이프사이클 부트스트랩 스모크 테스트
  * @domain submission
  * @layer test
- * @related app.module.ts, app.module.spec.ts, saga/mq-publisher.service.ts, saga/saga-orchestrator.service.ts
+ * @related app.module.ts, app.module.spec.ts, saga/mq-publisher.service.ts, saga/saga-timeout.service.ts, saga/saga-orchestrator.service.ts
  *
  * app.module.spec.ts(.compile())가 DI 그래프 빌드만 검증하는 데 비해, 본 스펙은
  * moduleRef.init()으로 onModuleInit + onApplicationBootstrap 라이프사이클 훅까지
@@ -11,8 +11,9 @@
  *
  * .compile()이 못 잡는 라이프사이클 단계 회귀를 차단한다:
  * - MqPublisherService.onModuleInit: amqplib.connect (→ amqplib mock으로 차단)
- * - SagaOrchestratorService.onModuleInit: submissionRepo.find().length (→ find가 [] 반환)
- * - SagaOrchestrator/ProblemServiceClient: CircuitBreaker 등록, setInterval 타이머
+ * - SagaTimeoutService.onModuleInit: submissionRepo.find().length (→ find가 [] 반환)
+ * - SagaTimeoutService: setInterval 타임아웃 체크 타이머(timeoutTimer)
+ * - SagaOrchestrator/ProblemServiceClient: CircuitBreaker 등록
  *
  * 실 인프라(Postgres/Redis)는 DataSource·REDIS_CLIENT override로, RabbitMQ는
  * amqplib 모듈 mock으로 차단한다. .init()이 등록한 타이머(saga timeoutTimer,
@@ -41,7 +42,7 @@ import { getDataSourceToken, getEntityManagerToken } from '@nestjs/typeorm';
 import { AppModule } from './app.module';
 import { REDIS_CLIENT } from './cache/cache.constants';
 
-// SagaOrchestratorService.onModuleInit이 find() 결과의 .length를 읽으므로
+// SagaTimeoutService.onModuleInit이 find() 결과의 .length를 읽으므로
 // find는 반드시 배열을 resolve해야 한다(undefined면 TypeError).
 const mockRepository = {
   find: jest.fn().mockResolvedValue([]),
