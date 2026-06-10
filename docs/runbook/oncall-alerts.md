@@ -108,7 +108,7 @@
   ```
   - 실패 사유: `sum by (reason) (algosu_<worker>_dlq_messages_total)` — `parse_error`(메시지 포맷) / `process_failure`(처리 로직) / `token_invalid`(github-worker).
   - 로그: `{namespace="algosu", service="<worker>", tag="DLQ_RECEIVED"}`
-- **대응**: `parse_error`면 publisher(submission) 메시지 스키마 확인. `process_failure`면 워커 로직/다운스트림 확인. `token_invalid`면 GitHub 토큰 재연결. DLQ 메시지는 수동/배치 재처리.
+- **대응**: `parse_error`면 publisher(submission) 메시지 스키마 확인. `process_failure`면 워커 로직/다운스트림 확인. `token_invalid`면 GitHub 토큰 재연결. DLQ 메시지 수동 재주입은 **[`docs/runbook/dlq-redrive.md`](./dlq-redrive.md)** 참조 (근본 원인 제거 선행 필수).
 
 #### OOMKilled — `prometheus-rules.yaml:207`
 - **의미**: algosu namespace Pod가 메모리 부족으로 강제 종료. (Loki OOM 이력 있음 — Sprint 232 512Mi→1Gi 해소).
