@@ -89,6 +89,17 @@ Codex gpt-5.5 cross-review (`--base 3dc4b13`): **✅ CLEAN**.
 - DEL spread: COUNT 100 hint keeps batches within argument limits; no overflow risk.
 - Out-of-scope Low finding: `invite-throttle.service.ts`, `deadline-reminder.service.ts`, `notification.service.ts` still use string-interpolation on Redis on-error logs → recommended for a follow-up Gatekeeper/Herald pass.
 
+### Critic merge gate R1–R2 — full base `241af57` (recorded after initial ADR authoring)
+
+- **R1**: Codex gpt-5.5 `--base 241af57` full diff (22 code + 5 docs files) — zero functional regressions. **1 Low**: ADR (KR/EN) stated "21 changed files" vs. measured 22 (`app.module.init.spec.ts` missing from the tally) → corrected directly by Oracle in `efd31b4`. ADR fact-consistency table (commit hashes, coverage, Critic rounds) all ✅.
+- **R2**: re-review of all 6 commits — R1 correction confirmed, zero new findings → **✅ CLEAN**. Merge gate closed.
+
+### Merge + CI incident — auto-merge race (PR #430 → hotfix #431)
+
+- First CI on PR #430 failed `Quality — docs`: `check-adr-index-count --strict` — `docs/adr/README.md` declared 178 retrospective sprint ADRs vs. 179 actual (sprint-241.md addition not reflected). Scribe had reported "all 5 ADR gates PASS" while this gate was in fact failing — a **report-vs-measurement mismatch** (root cause confirmed by Oracle via local reproduction).
+- Oracle pushed the README count correction (`462d0e1`), but `Quality — docs` is **not a required check**, so auto-merge fired as soon as the other checks turned green → the correction commit was **left out** of the squash (`71bbb5a`; last commit in the PR was `efd31b4`) → the post-merge run on main failed the same gate.
+- Recovery: cherry-picked the correction onto a hotfix branch → PR #431 squash-merged as `ac8400a` → post-merge run on main confirmed **green**, closing the incident.
+
 ## Key decisions
 
 1. **Direct controller injection over a facade**: a facade with no business logic only adds delegation boilerplate. With the controller acting purely as a router, injecting the 3 services directly is both cleaner and consistent with the notification/ precedent.
@@ -106,6 +117,8 @@ Codex gpt-5.5 cross-review (`--base 3dc4b13`): **✅ CLEAN**.
   - coverage: Statements **98.69** / Branches **94.13** / Functions **98.93** / Lines **99.04** (threshold 97/92/96/97 held)
   - saga-quota.service.ts: **100/100/100/100** · saga-timeout.service.ts: **100/90/100/100** · saga-orchestrator.service.ts: **97.5/89.47/100/100**
 - Critic auto-critic: gatekeeper R1 (M-1/L-1 found) → fixed → conductor R1 (comment drift/timer isolation found) → fixed → **R2 CLEAN** (base `3dc4b13`)
+- Critic merge gate: R1 (full base `241af57`, 1 Low — ADR file count 21→22 fixed in `efd31b4`) → **R2 CLEAN**
+- Merge: PR #430 squash `71bbb5a` (auto-merge) + hotfix PR #431 `ac8400a` (README index count 178→179, auto-merge race recovery) → main post-merge run **green** · post-merge artifacts verified (6 new services + ADR KR/EN)
 - Changed files (4 commits, 22 files total):
   - Q-1 BE: `study.types.ts` (new), `membership-cache.service.ts` (new), `study-access.service.ts` (new), `study-stats.service.ts` (new), `study-member.service.ts` (new), `study.service.ts` (modified), `study.controller.ts` (modified), `study.module.ts` (modified), 6 spec files (new/modified)
   - Q-2: `saga-quota.service.ts` (new), `saga-quota.service.spec.ts` (new), `saga-timeout.service.ts` (new), `saga-timeout.service.spec.ts` (new), `saga-orchestrator.service.ts` (modified), `saga-orchestrator.service.spec.ts` (modified), `submission.module.ts` (modified)
@@ -117,6 +130,8 @@ Codex gpt-5.5 cross-review (`--base 3dc4b13`): **✅ CLEAN**.
 2. **Fake-timer restoration belongs in afterEach**: a `useRealTimers()` call at the end of a test body is skipped when an assertion throws. This can cause intermittent failures in subsequent tests when fake timers leak. Lifecycle hooks (afterEach/afterAll) provide unconditional cleanup.
 3. **Comment drift after service extraction is predictable**: when lifecycle hooks (onModuleInit/Destroy) move to a new service, every @related tag and comment referencing the original owner must be updated. Functional tests can still pass while the comments mislead future developers.
 4. **Direct controller injection is clearer than a no-logic facade**: if a middle layer only delegates with no business logic of its own, it should be eliminated. Looking for existing precedents in the codebase avoids reinventing architectural decisions.
+5. **When pushing to a PR with auto-merge armed, verify the push lands in the PR commit list**: non-required gates do not block auto-merge even while failing, so there is a race window between a correction push and merge firing. Check `gh pr view --json commits` right after pushing, or temporarily disarm auto-merge when the correction is mandatory.
+6. **Agent "all N gates PASS" reports are themselves subject to verification**: Scribe reported the index-count gate as passing while it was actually failing — the agent-side recurrence of the Sprint 236 "verify server reports too" lesson. Gate claims should come with execution logs / exit-code evidence.
 
 New patterns: **refactor-linked Critic absorption pattern** (split → Critic R1 findings fixed in same branch → R2 CLEAN) + **fake-timer afterEach consolidation pattern** (lifecycle hook owns restoration responsibility).
 
@@ -124,4 +139,5 @@ New patterns: **refactor-linked Critic absorption pattern** (split → Critic R1
 
 - Sprint 242 confirmed: Q-1 (FE) + Q-7 — `AddProblemModal.tsx` (805 lines) / `studies/[id]/settings/page.tsx` (844 lines) / `problems/[id]/edit/page.tsx` (748 lines) decomposition + tests alongside new components.
 - Adjacent Redis on-error logging pattern alignment (`invite-throttle.service.ts`, `deadline-reminder.service.ts`, `notification.service.ts`): Critic R2 Low — defer to a follow-up Gatekeeper/Herald sprint.
+- Consider promoting `Quality — docs` to a required check: its non-required status is the structural cause of the auto-merge race (#430/#431 incident this sprint) — branch protection change (user console or gh api).
 - Existing carry-overs: harness checkup slot (oracle-spawn pane guard hardening + window-name decoration root fix + harness-checkup `--full` + Codex model pin) · GA4 console 3 items · live SEO · harness cron · webhook regenerate · cumulative UAT · blog backlog (CS quiz / deleted features / zstd).
