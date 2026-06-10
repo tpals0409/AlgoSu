@@ -7,7 +7,7 @@ agents: [Oracle, Architect, Postman, Scribe]
 related_adrs: ["ADR-030", "sprint-239", "sprint-236", "sprint-235"]
 related_memory: ["sprint-window"]
 topics: ["security", "ops-runbook", "dlq"]
-tldr: "ADR-030 처리 로드맵 2순위 스프린트. 코드 변경 없이 운영 절차서 2종 신규 작성으로 보안·운영 갭 해소. S-6: GITHUB_TOKEN_ENCRYPTION_KEY 로테이션 런북(encryption-key-rotation.md) — 듀얼 키 미지원으로 로테이션 = 기존 암호화 토큰 전부 무효화, 단 worker.ts fallback 경로로 서비스 무중단. 2-Secret(gateway-secrets+github-worker-secrets) 단일 aether-gitops 커밋 동시 교체 + 검증 게이트 4종(sha256 일치/positive/fallback/닫힘). Q-3: DLQ redrive 런북(dlq-redrive.md) — 토폴로지 표(submission.events→2큐→DLQ 2종), reason 5종 표, 근본원인 제거 선행 게이트(reason별 분기), dynamic shovel 권장 + rabbitmqadmin 대안, 멱등성 주의(github-worker redis TTL 1h). cross-ref 4종 갱신 + ADR-030 S-6/Q-3 Sprint 240 ✅. 검증: ADR 게이트 5종 + doc-ref-lint PASS."
+tldr: "ADR-030 처리 로드맵 2순위 스프린트. 코드 변경 없이 운영 절차서 2종 신규 작성으로 보안·운영 갭 해소. S-6: GITHUB_TOKEN_ENCRYPTION_KEY 로테이션 런북(encryption-key-rotation.md) — 듀얼 키 미지원으로 로테이션 = 기존 암호화 토큰 전부 무효화, 단 worker.ts fallback 경로로 서비스 무중단. 3-Secret(gateway-secrets+github-worker-secrets+identity-service-secrets — 초안 2-Secret을 Critic R1 P1이 identity 누락 적발, 코드 실측으로 확장) 단일 aether-gitops 커밋 동시 교체 + 검증 게이트 4종(sha256 일치/positive/fallback/닫힘). Q-3: DLQ redrive 런북(dlq-redrive.md) — 토폴로지 표(submission.events→2큐→DLQ 2종), reason 5종 표, 근본원인 제거 선행 게이트(reason별 분기), dynamic shovel 권장 + rabbitmqadmin 대안, 멱등성 주의(github-worker redis TTL 1h). cross-ref 4종 갱신 + ADR-030 S-6/Q-3 Sprint 240 ✅. 검증: ADR 게이트 5종 + doc-ref-lint PASS."
 ---
 # Sprint 240 — 운영 절차 보강 (ADR-030 S-6/Q-3, docs only)
 
