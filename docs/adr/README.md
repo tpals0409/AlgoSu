@@ -15,7 +15,7 @@ docs/adr/
 ├─ topics/
 │  └─ {topic-slug}.md                     ← 토픽 ADR (1개)
 └─ sprints/
-   └─ sprint-{NN}.md                      ← 회고형 sprint ADR (178개, Sprint 62~240 일부 결번 + 통합 40·48·51)
+   └─ sprint-{NN}.md                      ← 회고형 sprint ADR (179개, Sprint 62~241 일부 결번 + 통합 40·48·51)
 ```
 
 > **카운트 정합 (Sprint 176)**: 위 "(N개)" 표기는 실제 파일 수와 일치해야 한다. CI(`scripts/check-adr-index-count.mjs --strict`, quality-docs 잡)가 rebase/머지 중 발생하는 누적 카운트 드리프트를 차단하므로, ADR 추가/삭제 시 본 인덱스의 모든 "(N개)" 표기를 함께 갱신할 것.
@@ -55,7 +55,7 @@ docs/adr/
 
 ## 회고형 sprint ADR (178개)
 
-`sprints/sprint-{NN}.md` — Sprint 62 ~ 240 매 sprint 회고. 신규 sprint 종료 시 `/stop` 워크플로우가 자동 생성/갱신 (KR + EN 동시 작성).
+`sprints/sprint-{NN}.md` — Sprint 62 ~ 241 매 sprint 회고. 신규 sprint 종료 시 `/stop` 워크플로우가 자동 생성/갱신 (KR + EN 동시 작성).
 
 각 sprint ADR의 표준 구조:
 - frontmatter: `sprint`, `title`, `date`, `status` (+ 선택: `agents`, `related_adrs`, `related_memory`)
