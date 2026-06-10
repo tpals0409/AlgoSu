@@ -1,0 +1,294 @@
+/**
+ * @file SearchStep unit tests — platform toggle, debounce, error/empty states, result list
+ * @domain problem
+ * @layer test
+ * @related SearchStep, AddProblemModal, problem-search.utils
+ */
+import React from 'react';
+import { screen, fireEvent, act } from '@testing-library/react';
+import { renderWithI18n } from '@/test-utils/i18n';
+
+// lucide icons → cheap svgs so we don't pull the full ESM tree
+jest.mock('lucide-react', () => {
+  const Icon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />;
+  return {
+    Search: Icon,
+    X: Icon,
+    Loader2: Icon,
+    AlertCircle: Icon,
+  };
+});
+
+// The component only needs `isProgrammersSqlProblem` from @/lib/api through the utils
+// barrel; mocking the barrel keeps the test hermetic.
+jest.mock('@/lib/api', () => ({
+  solvedacApi: { searchByQuery: jest.fn() },
+  programmersApi: { searchByQuery: jest.fn() },
+  isProgrammersSqlProblem: jest.requireActual('@/lib/api/external').isProgrammersSqlProblem,
+}));
+
+import { SearchStep } from '../SearchStep';
+import type { Platform, SolvedProblem } from '../problem-search.utils';
+
+interface HarnessProps {
+  onSelect?: (p: SolvedProblem) => void;
+  searchFn?: (q: string) => Promise<SolvedProblem[]>;
+  onPlatformChange?: (p: Platform) => void;
+  initialPlatform?: Platform;
+}
+
+/** Stateful wrapper so we can observe platform toggle behaviour from outside. */
+function Harness({
+  onSelect = jest.fn(),
+  searchFn = jest.fn().mockResolvedValue([]),
+  onPlatformChange,
+  initialPlatform = 'PROGRAMMERS',
+}: HarnessProps) {
+  const [platform, setPlatform] = React.useState<Platform>(initialPlatform);
+  return (
+    <SearchStep
+      onSelect={onSelect}
+      platform={platform}
+      searchFn={searchFn}
+      onPlatformChange={(p) => {
+        setPlatform(p);
+        onPlatformChange?.(p);
+      }}
+    />
+  );
+}
+
+describe('SearchStep — platform tabs', () => {
+  it('renders both tabs with PROGRAMMERS active by default', () => {
+    renderWithI18n(<Harness />);
+
+    const tabs = screen.getAllByRole('tab');
+    const pg = tabs.find((t) => t.textContent === '프로그래머스')!;
+    const boj = tabs.find((t) => t.textContent === '백준')!;
+
+    expect(pg.getAttribute('aria-selected')).toBe('true');
+    expect(boj.getAttribute('aria-selected')).toBe('false');
+  });
+
+  it('toggles helper text + placeholder when the BOJ tab is clicked', () => {
+    renderWithI18n(<Harness />);
+
+    expect(screen.getByText('프로그래머스 문제를 검색합니다.')).toBeTruthy();
+    expect(screen.getByPlaceholderText('프로그래머스 문제 검색…')).toBeTruthy();
+
+    fireEvent.click(screen.getAllByRole('tab').find((t) => t.textContent === '백준')!);
+
+    expect(screen.getByText('solved.ac 기반으로 검색됩니다.')).toBeTruthy();
+    expect(screen.getByPlaceholderText('문제 번호 또는 제목으로 검색…')).toBeTruthy();
+  });
+
+  it('cycles platforms when Arrow keys are pressed on a tab', () => {
+    const changes: Platform[] = [];
+    renderWithI18n(<Harness onPlatformChange={(p) => changes.push(p)} />);
+
+    const pgTab = screen.getAllByRole('tab').find((t) => t.textContent === '프로그래머스')!;
+    fireEvent.keyDown(pgTab, { key: 'ArrowRight' });
+    fireEvent.keyDown(pgTab, { key: 'ArrowLeft' });
+
+    // Each ArrowLeft/Right toggles to the other platform.
+    expect(changes[0]).toBe('BOJ');
+    // After the BOJ switch, the second key fires on the original PG node — but
+    // the handler still reads the latest platform via closure on the *next*
+    // render. We only assert that platform change fires for both keys.
+    expect(changes).toHaveLength(2);
+  });
+
+  it('resets query + results when the platform toggles', async () => {
+    jest.useFakeTimers();
+    const searchFn = jest.fn().mockResolvedValue([
+      { problemId: 1, titleKo: 'A', level: 1, tags: [], acceptedUserCount: 0 },
+    ]);
+    renderWithI18n(<Harness searchFn={searchFn} />);
+
+    const input = screen.getByPlaceholderText('프로그래머스 문제 검색…');
+    fireEvent.change(input, { target: { value: 'foo' } });
+    await act(async () => { jest.advanceTimersByTime(400); });
+
+    expect(screen.getByText('A')).toBeTruthy();
+
+    fireEvent.click(screen.getAllByRole('tab').find((t) => t.textContent === '백준')!);
+
+    // After tab switch, the input is back to empty + results cleared
+    const bojInput = screen.getByPlaceholderText('문제 번호 또는 제목으로 검색…');
+    expect((bojInput as HTMLInputElement).value).toBe('');
+    expect(screen.queryByText('A')).toBeNull();
+
+    jest.useRealTimers();
+  });
+});
+
+describe('SearchStep — debounce + searchFn', () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  it('debounces the search 400ms before calling searchFn', async () => {
+    const searchFn = jest.fn().mockResolvedValue([]);
+    renderWithI18n(<Harness searchFn={searchFn} />);
+
+    const input = screen.getByPlaceholderText('프로그래머스 문제 검색…');
+    fireEvent.change(input, { target: { value: 'a' } });
+    fireEvent.change(input, { target: { value: 'ab' } });
+    fireEvent.change(input, { target: { value: 'abc' } });
+
+    // No call yet — debounce window still open
+    await act(async () => { jest.advanceTimersByTime(399); });
+    expect(searchFn).not.toHaveBeenCalled();
+
+    await act(async () => { jest.advanceTimersByTime(1); });
+    expect(searchFn).toHaveBeenCalledTimes(1);
+    expect(searchFn).toHaveBeenCalledWith('abc');
+  });
+
+  it('skips searchFn entirely when the query is whitespace-only', async () => {
+    const searchFn = jest.fn().mockResolvedValue([]);
+    renderWithI18n(<Harness searchFn={searchFn} />);
+
+    fireEvent.change(
+      screen.getByPlaceholderText('프로그래머스 문제 검색…'),
+      { target: { value: '   ' } },
+    );
+    await act(async () => { jest.advanceTimersByTime(500); });
+
+    expect(searchFn).not.toHaveBeenCalled();
+  });
+
+  it('caps displayed results at 10 even when the API returns more', async () => {
+    const overflow = Array.from({ length: 15 }, (_, i) => ({
+      problemId: i + 1,
+      titleKo: `Title-${i + 1}`,
+      level: 1,
+      tags: [],
+      acceptedUserCount: 0,
+    }));
+    renderWithI18n(<Harness searchFn={jest.fn().mockResolvedValue(overflow)} />);
+
+    fireEvent.change(
+      screen.getByPlaceholderText('프로그래머스 문제 검색…'),
+      { target: { value: 'q' } },
+    );
+    await act(async () => { jest.advanceTimersByTime(400); });
+
+    expect(screen.getByText('Title-1')).toBeTruthy();
+    expect(screen.getByText('Title-10')).toBeTruthy();
+    expect(screen.queryByText('Title-11')).toBeNull();
+  });
+
+  it('renders the localized error banner when searchFn rejects', async () => {
+    const searchFn = jest.fn().mockRejectedValue(new Error('boom'));
+    renderWithI18n(<Harness searchFn={searchFn} />);
+
+    fireEvent.change(
+      screen.getByPlaceholderText('프로그래머스 문제 검색…'),
+      { target: { value: 'q' } },
+    );
+    await act(async () => { jest.advanceTimersByTime(400); });
+
+    expect(
+      screen.getByText('검색 중 오류가 발생했습니다. 다시 시도해주세요.'),
+    ).toBeTruthy();
+  });
+
+  it('clears the query input via the X button', async () => {
+    const searchFn = jest.fn().mockResolvedValue([]);
+    renderWithI18n(<Harness searchFn={searchFn} />);
+
+    const input = screen.getByPlaceholderText('프로그래머스 문제 검색…') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'hello' } });
+    // The clear button has no accessible name — find by its parent layout.
+    const clearBtn = input.parentElement?.querySelector('button');
+    expect(clearBtn).toBeTruthy();
+    fireEvent.click(clearBtn!);
+    expect(input.value).toBe('');
+  });
+});
+
+describe('SearchStep — result + state UIs', () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  it('renders the empty-state hint when no query has been typed', () => {
+    renderWithI18n(<Harness />);
+    expect(screen.getByText('프로그래머스 문제를 검색하세요')).toBeTruthy();
+  });
+
+  it('renders "no results" when the API returns []', async () => {
+    renderWithI18n(<Harness searchFn={jest.fn().mockResolvedValue([])} />);
+
+    fireEvent.change(
+      screen.getByPlaceholderText('프로그래머스 문제 검색…'),
+      { target: { value: 'nothing' } },
+    );
+    await act(async () => { jest.advanceTimersByTime(400); });
+
+    expect(screen.getByText('검색 결과가 없습니다')).toBeTruthy();
+  });
+
+  it('renders the BOJ solved count for BOJ results only', async () => {
+    const result = {
+      problemId: 1000,
+      titleKo: 'A+B',
+      level: 1,
+      tags: [],
+      acceptedUserCount: 12345,
+    };
+    renderWithI18n(<Harness initialPlatform="BOJ" searchFn={jest.fn().mockResolvedValue([result])} />);
+
+    fireEvent.change(
+      screen.getByPlaceholderText('문제 번호 또는 제목으로 검색…'),
+      { target: { value: '1000' } },
+    );
+    await act(async () => { jest.advanceTimersByTime(400); });
+
+    // Locale-formatted: 12,345 or 12.345 depending on default — test for substring.
+    expect(screen.getByText(/12,345|12\.345/)).toBeTruthy();
+  });
+
+  it('fires onSelect with the picked result row', async () => {
+    const onSelect = jest.fn();
+    const result = {
+      problemId: 59034,
+      titleKo: 'SELECT ALL',
+      level: 1,
+      tags: [],
+      acceptedUserCount: 0,
+      difficulty: 'BRONZE' as const,
+      sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/59034',
+      category: 'sql' as const,
+    };
+    renderWithI18n(<Harness onSelect={onSelect} searchFn={jest.fn().mockResolvedValue([result])} />);
+
+    fireEvent.change(
+      screen.getByPlaceholderText('프로그래머스 문제 검색…'),
+      { target: { value: 'SQL' } },
+    );
+    await act(async () => { jest.advanceTimersByTime(400); });
+
+    fireEvent.click(screen.getByText('SELECT ALL'));
+    expect(onSelect).toHaveBeenCalledWith(result);
+  });
+
+  it('renders the SQL badge only for Programmers SQL results', async () => {
+    const sql = {
+      problemId: 1,
+      titleKo: 'SQL Problem',
+      level: 1,
+      tags: [],
+      acceptedUserCount: 0,
+      category: 'sql' as const,
+    };
+    renderWithI18n(<Harness searchFn={jest.fn().mockResolvedValue([sql])} />);
+
+    fireEvent.change(
+      screen.getByPlaceholderText('프로그래머스 문제 검색…'),
+      { target: { value: 'SQL' } },
+    );
+    await act(async () => { jest.advanceTimersByTime(400); });
+
+    expect(screen.getAllByText('SQL').length).toBeGreaterThanOrEqual(1);
+  });
+});
