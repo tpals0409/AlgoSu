@@ -1156,7 +1156,12 @@ jobs:
       - name: Checkout deploy-gate helper
         uses: actions/checkout@v6
         with:
-          sparse-checkout: scripts/ci/compute-deploy-gate.sh
+          # Sprint 243 Q-6: deploy 게이트 판정(compute-deploy-gate.sh) + 이미지 태그
+          # 갱신(update-image-tags.py) 두 헬퍼를 함께 sparse-checkout. update-image-tags.py
+          # 누락 시 아래 update_tags step 의 python3 호출이 can't open file 로 전면 실패.
+          sparse-checkout: |
+            scripts/ci/compute-deploy-gate.sh
+            scripts/ci/update-image-tags.py
           sparse-checkout-cone-mode: false
 
       - name: Clone aether-gitops
