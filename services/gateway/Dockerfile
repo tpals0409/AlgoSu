@@ -9,13 +9,19 @@ COPY package*.json ./
 RUN npm ci --omit=dev && mv node_modules /tmp/prod_node_modules
 # ARM64용 sharp 바이너리를 네이티브(x86)에서 미리 다운로드 — Stage 2 QEMU 실행 제거
 # npm install은 항상 node_modules/ 하위에 설치하므로, 직접 @img 바이너리 패키지만 교체
-RUN rm -rf /tmp/prod_node_modules/@img/sharp-linux-x64 \
+#
+# ⚠️ 버전 핀 필수 (인시던트 2026-06-14): sharp 버전을 lockfile에서 추출해 고정한다.
+#    무지정 `npm install sharp`는 npm 최신 publish 바이너리(예: 0.35.x)를 받아
+#    lockfile 핀(0.34.5) JS wrapper와 ABI 불일치 → `format.jp2k undefined` CrashLoop 유발.
+RUN SHARP_VER="$(node -p "require('/app/package-lock.json').packages['node_modules/sharp'].version")" && \
+    echo "Pinning sharp ARM64 binary to lockfile version: ${SHARP_VER}" && \
+    rm -rf /tmp/prod_node_modules/@img/sharp-linux-x64 \
            /tmp/prod_node_modules/@img/sharp-linuxmusl-x64 \
            /tmp/prod_node_modules/@img/sharp-libvips-linux-x64 \
            /tmp/prod_node_modules/@img/sharp-libvips-linuxmusl-x64 && \
     cd /tmp && mkdir -p _sharp && cd _sharp && \
     npm init -y > /dev/null 2>&1 && \
-    npm install --no-save --os=linux --libc=musl --cpu=arm64 sharp && \
+    npm install --no-save --os=linux --libc=musl --cpu=arm64 "sharp@${SHARP_VER}" && \
     cp -r node_modules/@img/sharp-linuxmusl-arm64 /tmp/prod_node_modules/@img/ && \
     cp -r node_modules/@img/sharp-libvips-linuxmusl-arm64 /tmp/prod_node_modules/@img/ && \
     cd /tmp && rm -rf _sharp
