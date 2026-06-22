@@ -71,7 +71,7 @@ export class JwtMiddleware implements NestMiddleware {
         throw new UnauthorizedException('토큰이 만료되었습니다.');
       }
       if (error instanceof jwt.JsonWebTokenError) {
-        this.logger.warn(`JWT 검증 실패: ${error.message}`);
+        this.logger.warn('JWT 검증 실패', error);
         throw new UnauthorizedException('유효하지 않은 토큰입니다.');
       }
       if (error instanceof UnauthorizedException) {
@@ -125,7 +125,7 @@ export class JwtMiddleware implements NestMiddleware {
     // 원본 Authorization 헤더 제거 (내부 서비스로 JWT 전달 차단)
     delete req.headers['authorization'];
 
-    this.logger.log(`JWT 검증 성공: userId=${userId}`);
+    this.logger.log('JWT 검증 성공', { userId });
     next();
   }
 
