@@ -83,6 +83,15 @@ tldr: "Phase 1 of migrating AlgoSu orchestration (Oracle + 12 agents) from Claud
 4. **Spiking first cheaply closed the unverified areas of a first native transition.** Before porting all 12, the 2 cycles (Sensei flow, Gatekeeper full cycle + critic gate) confirmed decisions 1-6 hold in reality -> proceed with the formal migration on top of that confidence.
 5. **Operational blockers surface only at real call time.** The need for a Codex model pin was measured not by static analysis but by the 400 error of a real `codex review` call — resolving a carried-over memory item via evidence.
 
+## Phase 1 Follow-up (2026-06-24)
+
+Right after the formal transition, a **transplant-fidelity inspection** found and closed one dispatch-criteria gap. All changes are `~/.hermes/` profile assets (SOUL.md, skills); the only repo source-of-truth change is this ADR supplement.
+
+- **Full transplant-fidelity inspection**: compared the `.claude/commands` originals against the Hermes profile skills. Confirmed the `_base` Oracle protocol is **embedded in the body** of the 12 agent skills rather than a separate skill (the correct pattern). Remaining `.claude/commands` mentions are all frontmatter `source:` attributions — **zero runtime glue leakage**. Lifecycle complies with decision 5 (hybrid).
+- **Ported 2 auxiliary skills**: formally ported the previously-unmigrated `algosu-adr-blog` (ADR→blog conversion) and `algosu-review` (code-review checklist) → the `algosu/` category goes 14→**16** skills (measured). `algosu-review` adopts **complementary separation** instead of absorption into critic (this skill = shared self-check for domain agents/Gatekeeper; `algosu-agent-critic` = Codex external cross-review).
+- **Dispatch-matrix reinforcement (gap closure)**: the **Hermes-native dispatch decision criteria** missing from the 12-persona port were added as 6 rules under `## Orchestration & Dispatch` in the always-injected persona `SOUL.md` (49 lines). The original `algosu-oracle.md` dispatch section was entirely tmux-based (retired by decision 1), so a replacement matrix was a **migration gap** → now closed. Covers the direct-handle vs `delegate_task` boundary, 12-agent Tier domain routing, the Critic gate (`codex review -c model="gpt-5.5"`), lifecycle, and decision priority (stability > speed > completeness). Re-verified zero glue leakage.
+- Lesson: **even after a first-pass verdict of "the body is absorbed by the system prompt," the dispatch criteria alone were a measured gap** — always-applied behavioral rules must live in always-injected context (SOUL.md), not a load-on-demand skill, to fire every turn.
+
 ## Carry-over
 
 - **Phase 2** — production validation of the full dispatch migration (concurrent multi-agent delegation, real-world Oracle-sequential auto-critic), live runs of the remaining lifecycle.
