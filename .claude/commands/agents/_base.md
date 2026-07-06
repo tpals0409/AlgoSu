@@ -33,34 +33,19 @@
 5. 자체 검증 (빌드, 회귀, 어노테이션)
 6. Oracle에 보고 (변경 파일 + 요약)
 
-### 자동 Critic 리뷰 (Sprint 117~)
+### 자동 Critic 리뷰 (Sprint 117~ / Sprint 246 Hermes 이전)
 
-code-changing 에이전트(conductor, gatekeeper, librarian, architect, postman, curator, herald, palette, sensei)가 커밋을 남기면, 완료 후 **Critic(Codex 교차 리뷰)이 자동으로 큐잉**됩니다.
-- 트리거: 에이전트 실행 전후 `git rev-parse HEAD` 비교 → 차이가 있으면 `oracle-auto-critic.sh` 호출
-- Critic은 `codex review --base <에이전트_시작_HEAD>` 로 변경분만 리뷰
+code-changing 에이전트(conductor, gatekeeper, librarian, architect, postman, curator, herald, palette, sensei)가 커밋을 남기면, Oracle이 **직접** Critic 리뷰를 실행합니다.
+- 방식: `codex review --base <에이전트_시작_HEAD> -c model="gpt-5.5"` (Oracle 직접 호출, 서브에이전트 경유 X)
 - 제외 대상: Scribe(기록), Critic(자기참조 방지), Scout(검증)
-- P0/P1 발견 시 Oracle이 해당 도메인 에이전트에 수정 재위임
+- P0/P1 발견 시 Oracle이 해당 도메인 에이전트에 수정 재위임 (`delegate_task`)
 
-### 독립 실행 모드 (tmux dispatch)
+### Hermes 실행 모드 (delegate_task — Sprint 246~)
 
-이 에이전트가 `claude -p`로 독립 프로세스로 실행된 경우:
+이 에이전트는 Oracle이 `delegate_task`로 위임할 때 서브에이전트로 실행됩니다.
+`claude -p` 독립 프로세스 + tmux 디스패치는 Sprint 246 Decision 1에서 폐기되었습니다.
 
-- **작업 수신**: 프롬프트에 `작업 ID`와 `작업 설명`이 포함됨
-- **결과 보고**: 지정된 `결과 파일 경로`에 Markdown 파일을 Write
-- **결과 형식**: `~/.claude/oracle/_result-protocol.md` 규약 준수
-- **금지**: `discord-send.sh` 직접 호출(Sprint 206 Phase 4 완전 종결로 Discord 통합 폐기 + BOT_TOKEN Delete App + 다른 머신 없음 확정. placeholder는 회귀 차단 + 우발 commit 차단 목적으로 보존 — 사용자 명시 요청 시 제거. ADR sprint-206 §D2 참조), `memory/` 수정, 다른 에이전트 inbox 접근
-- **Git**: 작업 단위별 atomic commit, 커밋 본문에 `task_id` 포함
-
-#### inbox Write 실패 시 fallback chain (Sprint 126 A2)
-
-`~/.claude/oracle/inbox/`는 비결정적으로 Write 권한 차단이 발생할 수 있다 (Sprint 125 D2 H1 가설 — `~/.claude/` sensitive path 보호 추정). 결과 파일 작성이 실패해도 작업 결과를 잃지 않도록 아래 순서로 fallback 시도:
-
-1. **Write 도구** (1순위) — 표준 경로
-2. **Bash heredoc** (2순위) — `cat > "$결과파일경로" <<'EOF' ... EOF`
-3. **python3 file write** (3순위) — `python3 -c "open('경로','w').write(open('/dev/stdin').read())" <<'EOF' ... EOF`
-4. **stdout 마커 폴백** (4순위, 최후) — Bash로 `printf '__RESULT_START__\n%s\n__RESULT_END__\n' "$결과내용"` 실행. `oracle-reap.sh`가 log에서 추출.
-
-**보안 가드** (필수 준수):
-- 결과 본문에 시크릿/JWT/API 키/PII가 포함될 가능성이 있으면 fallback 2~4 사용 금지 (Write 실패 시 작업 실패 처리)
-- 일반 코드리뷰/조사 보고서는 시크릿 미포함 → fallback 사용 가능
-- Bash heredoc/printf는 ps 출력 + shell history에 일시 노출되므로 민감 정보 회피
+- **작업 수신**: context 필드에 스킬명(`algosu-agent-{name}`)과 작업 상세가 주입됨
+- **결과 보고**: `delegate_task` 반환값으로 Oracle에게 직접 전달 (inbox 파일 불필요)
+- **금지**: `discord-send.sh` 직접 호출(Sprint 206 §D2 참조), `memory/` 수정, 다른 에이전트 inbox 접근
+- **Git**: 작업 단위별 atomic commit
