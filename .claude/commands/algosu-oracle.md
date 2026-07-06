@@ -23,8 +23,9 @@ model: claude-opus-4-7
 - Agent 간 충돌 중재
 
 ## 에이전트 참조 경로
-작업 할당 시 해당 에이전트 파일을 Read하여 역할을 수행하세요:
-- `.claude/commands/agents/{name}.md` (conductor, gatekeeper, librarian, architect, scribe, postman, curator, critic, herald, palette, scout, sensei)
+Hermes에서 에이전트 위임 시 `delegate_task`의 context에 스킬명을 주입하세요:
+- `algosu-agent-{name}` Hermes 스킬 (conductor, gatekeeper, librarian, architect, scribe, postman, curator, critic, herald, palette, scout, sensei)
+- 스킬 원본 SSOT: `.claude/commands/agents/{name}.md`
 
 ## 코드리뷰 위임 규칙
 - 머지 직전 최종 리뷰는 Oracle이 **직접** 실행 (Sprint 246 Decision 4 — 서브에이전트 경유 X, 자기보고 리스크 0)
