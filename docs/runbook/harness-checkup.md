@@ -46,12 +46,12 @@ bash tests/ci/harness-checkup-test.sh
 ## 3. 권장 주기
 
 ### 기본 실행 (`harness-checkup.sh` — API 호출 없음)
-- **Sprint 단위 1회** — 새 sprint 시작 시 `/start` 흐름에 통합 가능
+- **Sprint 단위 1회** — 새 sprint 시작 시 `/sprint-open` 흐름에 통합 가능
 - **월 1회 정기점검 sprint** — Sprint 202 같은 정기점검 sprint에서 본 스크립트 실행 + 결과를 ADR에 영속화
 - **모델/하네스 큰 변경 직후** — Cmux.app 업데이트, claude/codex CLI 메이저 업데이트, `.claude-team.json` 변경 시 즉시 1회
 
 ### `--full` 실행 (실제 LLM ping — API 비용 발생, Sprint 209 결정)
-- **sprint마감 시점 1회 권장** — `/stop` 흐름에 비블로킹 리마인더 명시 (`stop.md` 1단계). unique 모델 ID retirement를 sprint마감마다 사전 감지.
+- **sprint마감 시점 1회 권장** — `/sprint-close` 흐름에 비블로킹 리마인더 명시 (`sprint-close.md` 1단계). unique 모델 ID retirement를 sprint마감마다 사전 감지.
 - **Cmux.app 업데이트 직후 1회** — 모델 ID retirement 발생 가능성이 가장 높은 시점.
 - **로컬 전용** — `--full`은 `~/.claude/oracle/` 인프라 + claude CLI + API 키에 의존하므로 **GitHub CI 게이트로 통합하지 않는다**. CI는 GitHub-hosted `ubuntu-latest` fresh clone이라 해당 인프라/키가 부재 → Item 1 FAIL·2/4/5 degrade로 노이즈가 된다. CI에서는 `tests/ci/harness-checkup-test.sh`가 스크립트 **로직 회귀**만 portable하게 검증한다(소스 가드·dry-run·Item 5/6 degrade). ADR sprint-209 §Phase A 참조.
 

@@ -23,8 +23,8 @@ Sprint 147 회고에서 `.claude/commands/agents/critic.md` + `architect.md`에 
 ## 2. tracked 파일 목록 (Sprint 150 초기 18개)
 
 ### 2.1 Root commands (5)
-- `start.md` — 새 대화 시작 / 스프린트 활성화
-- `stop.md` — 스프린트 종료 / 기억 문서 갱신
+- `sprint-open.md` — 새 대화 시작 / 스프린트 활성화
+- `sprint-close.md` — 스프린트 종료 / 기억 문서 갱신
 - `algosu-oracle.md` — Oracle 심판관 (작업 위임)
 - `algosu-review.md` — 코드 리뷰 체크리스트
 - `algosu-adr-blog.md` — ADR → 기술 블로그 변환
