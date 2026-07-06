@@ -2,8 +2,7 @@
 CVE-2026-2359
 CVE-2026-3304
 
-# multer CVE-2026-3520: npm override로 2.1.1 설치됨 (gateway)
-# @nestjs/platform-express/package.json 선언(2.0.2)이 Trivy에 오탐으로 감지
+# multer CVE-2026-3520: npm override로 2.2.0 적용 완료 (gateway) — @nestjs/platform-express 선언 오탐
 CVE-2026-3520
 
 # zlib CVE-2026-22184: Alpine base image 취약점 — 상위 패치 대기 (2026-03-07)
@@ -20,3 +19,8 @@ CVE-2026-33671
 # nghttp2-libs CVE-2026-27135: Alpine 3.21.5 base image 취약점 — 상위 패치 대기 (2026-05-08)
 # HTTP/2 DoS via malformed frames after session termination, fixed version 1.68.1
 CVE-2026-27135
+
+# libexpat CVE-2026-45186: Alpine 3.21 base image 취약점 — 상위 패치 대기 (2026-07-06)
+# blog Dockerfile에서 apk upgrade libexpat 실행 중이나 Alpine 3.21 repo에 2.8.1-r0 미반영
+# fixed version: 2.8.1-r0 (Alpine 3.22+ 또는 3.21 backport 시 제거)
+CVE-2026-45186
