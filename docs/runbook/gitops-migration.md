@@ -172,7 +172,7 @@ ls -la /root/aether-gitops/<대상경로>/
 ## 5. 사후 조치
 
 - [ ] Sprint ADR에 이관 결과 기록 (대상 리소스, 변경 커밋, 검증 결과)
-- [ ] `/stop` 체크리스트에서 aether-gitops 미푸시 커밋 검사 통과 확인
+- [ ] `/sprint-close` 체크리스트에서 aether-gitops 미푸시 커밋 검사 통과 확인
 - [ ] 소스 레포 `infra/k3s/` 잔여 파일 정리 — 이관 완료된 디렉토리가 빈 상태인지 확인
 - [ ] `grep -rn '<이관대상>' /root/AlgoSu/` 전수 검색으로 다른 참조(문서, 스크립트 등) 갱신
 
