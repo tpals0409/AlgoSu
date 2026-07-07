@@ -967,8 +967,10 @@ class TestStartMethod:
         """start() 호출 시 _connect_with_retry 실행"""
         # _connect_with_retry를 모킹하여 무한루프 방지
         worker._connect_and_consume = MagicMock(
-            side_effect=lambda: setattr(worker, "_stopping", True)
-            or (_ for _ in ()).throw(Exception("done"))
+            side_effect=lambda: (
+                setattr(worker, "_stopping", True)
+                or (_ for _ in ()).throw(Exception("done"))
+            )
         )
 
         with patch("src.worker.time.sleep"):

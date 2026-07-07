@@ -287,16 +287,32 @@ class TestGroupAnalysis:
         """Internal Key 없으면 401"""
         resp = client.post(
             "/group-analysis",
-            json={"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
+            json={
+                "problem_id": _TEST_PROBLEM_ID,
+                "study_id": _TEST_STUDY_ID,
+                "user_id": _TEST_USER_ID,
+            },
         )
         assert resp.status_code == 401
 
     @pytest.mark.parametrize(
         "bad_payload",
         [
-            {"problem_id": "../../admin", "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
-            {"problem_id": _TEST_PROBLEM_ID, "study_id": "not-a-uuid", "user_id": _TEST_USER_ID},
-            {"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": "abc"},
+            {
+                "problem_id": "../../admin",
+                "study_id": _TEST_STUDY_ID,
+                "user_id": _TEST_USER_ID,
+            },
+            {
+                "problem_id": _TEST_PROBLEM_ID,
+                "study_id": "not-a-uuid",
+                "user_id": _TEST_USER_ID,
+            },
+            {
+                "problem_id": _TEST_PROBLEM_ID,
+                "study_id": _TEST_STUDY_ID,
+                "user_id": "abc",
+            },
         ],
         ids=["path-traversal-problem_id", "invalid-study_id", "invalid-user_id"],
     )
@@ -317,7 +333,11 @@ class TestGroupAnalysis:
 
         resp = client.post(
             "/group-analysis",
-            json={"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
+            json={
+                "problem_id": _TEST_PROBLEM_ID,
+                "study_id": _TEST_STUDY_ID,
+                "user_id": _TEST_USER_ID,
+            },
             headers={"X-Internal-Key": "test-key"},
         )
         assert resp.status_code == 503
@@ -330,7 +350,11 @@ class TestGroupAnalysis:
 
         resp = client.post(
             "/group-analysis",
-            json={"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
+            json={
+                "problem_id": _TEST_PROBLEM_ID,
+                "study_id": _TEST_STUDY_ID,
+                "user_id": _TEST_USER_ID,
+            },
             headers={"X-Internal-Key": "test-key"},
         )
         assert resp.status_code == 503
@@ -345,7 +369,11 @@ class TestGroupAnalysis:
 
         resp = client.post(
             "/group-analysis",
-            json={"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
+            json={
+                "problem_id": _TEST_PROBLEM_ID,
+                "study_id": _TEST_STUDY_ID,
+                "user_id": _TEST_USER_ID,
+            },
             headers={"X-Internal-Key": "test-key"},
         )
         assert resp.status_code == 429
@@ -371,7 +399,11 @@ class TestGroupAnalysis:
 
         resp = client.post(
             "/group-analysis",
-            json={"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
+            json={
+                "problem_id": _TEST_PROBLEM_ID,
+                "study_id": _TEST_STUDY_ID,
+                "user_id": _TEST_USER_ID,
+            },
             headers={"X-Internal-Key": "test-key"},
         )
         assert resp.status_code == 502
@@ -401,7 +433,11 @@ class TestGroupAnalysis:
 
         resp = client.post(
             "/group-analysis",
-            json={"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
+            json={
+                "problem_id": _TEST_PROBLEM_ID,
+                "study_id": _TEST_STUDY_ID,
+                "user_id": _TEST_USER_ID,
+            },
             headers={"X-Internal-Key": "test-key"},
         )
         assert resp.status_code == 404
@@ -450,7 +486,11 @@ class TestGroupAnalysis:
 
         resp = client.post(
             "/group-analysis",
-            json={"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
+            json={
+                "problem_id": _TEST_PROBLEM_ID,
+                "study_id": _TEST_STUDY_ID,
+                "user_id": _TEST_USER_ID,
+            },
             headers={"X-Internal-Key": "test-key"},
         )
         assert resp.status_code == 200
@@ -492,7 +532,11 @@ class TestGroupAnalysis:
 
         resp = client.post(
             "/group-analysis",
-            json={"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
+            json={
+                "problem_id": _TEST_PROBLEM_ID,
+                "study_id": _TEST_STUDY_ID,
+                "user_id": _TEST_USER_ID,
+            },
             headers={"X-Internal-Key": "test-key"},
         )
         assert resp.status_code == 502
@@ -515,7 +559,11 @@ class TestGroupAnalysis:
 
             client.post(
                 "/group-analysis",
-                json={"problem_id": _TEST_PROBLEM_ID, "study_id": _TEST_STUDY_ID, "user_id": _TEST_USER_ID},
+                json={
+                    "problem_id": _TEST_PROBLEM_ID,
+                    "study_id": _TEST_STUDY_ID,
+                    "user_id": _TEST_USER_ID,
+                },
                 headers={"X-Internal-Key": "test-key"},
             )
             # eval이 호출되었고 TTL=86400이 인수로 포함됨
@@ -702,7 +750,7 @@ class TestLifespanNegative:
 
         try:
             with pytest.raises(RuntimeError, match="SP203_NEGATIVE_CHECK"):
-                with TestClient(app) as c:
+                with TestClient(app):
                     pass
         finally:
             # 전역 상태 초기화 — 이후 테스트 fixture 오염 방지

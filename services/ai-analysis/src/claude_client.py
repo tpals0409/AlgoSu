@@ -28,7 +28,8 @@ logger = logging.getLogger(__name__)
 
 # ─── CONSTANTS ────────────────────────────────
 
-MODEL_ID = "claude-haiku-4-5-20251001"
+# 모델 ID는 settings.claude_model_id (CLAUDE_MODEL_ID 환경변수)로 재정의 가능
+MODEL_ID = settings.claude_model_id
 MAX_TOKENS = 8192
 CODE_LENGTH_THRESHOLD = 50000
 
@@ -206,8 +207,10 @@ class ClaudeClient:
         except Exception as e:
             circuit_breaker.record_failure()
             claude_requests_total.labels(status="error").inc()
-            safe_error = str(e)[:100]
-            logger.error("Claude API 오류", extra={"error": safe_error})
+            logger.error(
+                "Claude API 오류",
+                extra={"errorType": type(e).__name__, "error": str(e)[:200]},
+            )
             return {
                 "feedback": "AI 분석 중 오류가 발생했습니다.",
                 "optimized_code": None,
@@ -427,8 +430,10 @@ class ClaudeClient:
         except Exception as e:
             circuit_breaker.record_failure()
             claude_requests_total.labels(status="error").inc()
-            safe_error = str(e)[:100]
-            logger.error("그룹 분석 Claude API 오류", extra={"error": safe_error})
+            logger.error(
+                "그룹 분석 Claude API 오류",
+                extra={"errorType": type(e).__name__, "error": str(e)[:200]},
+            )
             return {
                 "comparison": "AI 분석 중 오류가 발생했습니다.",
                 "bestApproach": None,

@@ -1,6 +1,6 @@
 """config 모듈 단위 테스트
 
-@file Settings 기본값 검증 + internal_api_key 필수 필드 보안 검증
+@file Settings 기본값 검증 + 필수 필드 보안 검증
 @domain ai
 @layer test
 @related src/config.py
@@ -18,15 +18,62 @@ class TestSettingsDefaults:
     def test_default_values(self, monkeypatch):
         """환경변수가 제공된 경우 기본값이 올바르게 설정된다."""
         monkeypatch.setenv("INTERNAL_API_KEY", "test-key-abc123")
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "test-anthropic-key-abc123")
         s = Settings()
         assert s.rabbitmq_url == "amqp://guest:guest@localhost:5672"
         assert s.redis_url == "redis://localhost:6379"
-        assert s.anthropic_api_key == ""
+        assert s.anthropic_api_key == "test-anthropic-key-abc123"
+        assert s.claude_model_id == "claude-haiku-4-5-20251001"
         assert s.ai_daily_limit == 5
         assert s.cb_failure_threshold == 5
         assert s.cb_recovery_timeout == 30
         assert s.cb_half_open_requests == 2
         assert s.internal_api_key == "test-key-abc123"
+
+    def test_claude_model_id_overridable(self, monkeypatch):
+        """CLAUDE_MODEL_ID 환경변수로 모델 ID를 재정의할 수 있다."""
+        monkeypatch.setenv("INTERNAL_API_KEY", "test-key")
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "test-anthropic-key")
+        monkeypatch.setenv("CLAUDE_MODEL_ID", "claude-sonnet-4-6")
+        s = Settings()
+        assert s.claude_model_id == "claude-sonnet-4-6"
+
+
+class TestAnthropicApiKeyValidation:
+    """anthropic_api_key 필수 필드 보안 검증
+
+    빈 API 키를 허용하면 모든 Claude 호출이 AuthenticationError로 실패하고
+    Circuit Breaker가 OPEN 상태로 고착되어 무음 장애가 발생한다.
+    """
+
+    def test_missing_env_var_raises_validation_error(self, monkeypatch):
+        """ANTHROPIC_API_KEY 환경변수 미설정 시 ValidationError 발생 (필수 필드)."""
+        monkeypatch.setenv("INTERNAL_API_KEY", "test-key")
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        with pytest.raises(ValidationError):
+            Settings()
+
+    def test_empty_string_raises_validation_error(self, monkeypatch):
+        """ANTHROPIC_API_KEY="" 빈 문자열이면 시작 즉시 ValidationError 발생."""
+        monkeypatch.setenv("INTERNAL_API_KEY", "test-key")
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "")
+        with pytest.raises(ValidationError) as exc_info:
+            Settings()
+        assert "ANTHROPIC_API_KEY" in str(exc_info.value)
+
+    def test_whitespace_only_raises_validation_error(self, monkeypatch):
+        """공백 문자만 포함된 키도 거부된다."""
+        monkeypatch.setenv("INTERNAL_API_KEY", "test-key")
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "   ")
+        with pytest.raises(ValidationError):
+            Settings()
+
+    def test_valid_key_accepted(self, monkeypatch):
+        """유효한 키(non-empty)는 정상 수용된다."""
+        monkeypatch.setenv("INTERNAL_API_KEY", "test-key")
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test-key-xyz")
+        s = Settings()
+        assert s.anthropic_api_key == "sk-ant-test-key-xyz"
 
 
 class TestInternalApiKeyValidation:

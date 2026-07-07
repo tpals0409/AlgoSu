@@ -17,13 +17,19 @@ class Settings(BaseSettings):
     보안:
     - API 키는 환경변수에서만 주입, 로그 노출 금지
     - internal_api_key는 기본값이 없는 필수 설정 — 미설정·빈 값 시 서비스 시작 즉시 실패
+    - anthropic_api_key는 기본값 없음 — 미설정·빈 값 시 서비스 시작 즉시 실패
     """
 
     model_config = SettingsConfigDict(env_file=".env")
 
     rabbitmq_url: str = "amqp://guest:guest@localhost:5672"
     redis_url: str = "redis://localhost:6379"
-    anthropic_api_key: str = ""
+    # 필수 필드 — ANTHROPIC_API_KEY 환경변수 미설정 시 즉시 실패.
+    # 빈 문자열을 허용하면 모든 Claude API 호출이 AuthenticationError로 실패하고
+    # Circuit Breaker가 OPEN 상태로 고착되어 무음 장애가 발생한다.
+    anthropic_api_key: str
+    # Claude 모델 ID — CLAUDE_MODEL_ID 환경변수로 재정의 가능 (코드 재배포 없이 모델 변경)
+    claude_model_id: str = "claude-haiku-4-5-20251001"
     submission_service_url: str = "http://submission-service:3003"
     submission_service_key: str = ""
     # 필수 필드 — 기본값 없음. INTERNAL_API_KEY 환경변수 미설정 시 즉시 실패.
@@ -37,6 +43,21 @@ class Settings(BaseSettings):
     cb_failure_threshold: int = 5
     cb_recovery_timeout: int = 30
     cb_half_open_requests: int = 2
+
+    @field_validator("anthropic_api_key")
+    @classmethod
+    def anthropic_api_key_must_not_be_empty(cls, v: str) -> str:
+        """ANTHROPIC_API_KEY가 빈 문자열이면 서비스 시작을 즉시 중단한다.
+
+        빈 키를 허용하면 모든 Claude API 호출이 AuthenticationError로 실패하고
+        Circuit Breaker가 열려 무음 장애로 이어진다.
+        """
+        if not v.strip():
+            raise ValueError(
+                "ANTHROPIC_API_KEY 환경변수가 비어 있거나 공백만 포함되어 있습니다. "
+                "서비스 시작을 중단합니다."
+            )
+        return v
 
     @field_validator("internal_api_key")
     @classmethod
