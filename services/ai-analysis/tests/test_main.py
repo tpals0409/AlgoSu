@@ -30,6 +30,8 @@ def mock_app_deps():
         mock_settings.ai_daily_limit = 5
         mock_settings.submission_service_url = "http://submission:3003"
         mock_settings.submission_service_key = "sub-key"
+        mock_settings.problem_service_url = "http://problem:3004"
+        mock_settings.problem_service_key = ""  # 기본값 빈 문자열 → Problem Service 조회 스킵
 
         mock_cb.state.value = "CLOSED"
         mock_cb.failure_count = 0
@@ -572,6 +574,125 @@ class TestGroupAnalysis:
             assert 86400 in call_args.args
             # expire는 Lua 내부에서 처리되므로 별도 호출 없음
             deps["redis_client"].expire.assert_not_called()
+
+    @patch("src.main.ClaudeClient")
+    @patch("src.main.httpx")
+    def test_group_analysis_problem_context_injected_when_key_set(
+        self, mock_httpx, mock_claude_cls, client, mock_app_deps
+    ):
+        """problem_service_key 설정 시 Problem Service 조회 후 프롬프트에 문제 정보 주입"""
+        import src.main as main_mod
+
+        deps = mock_app_deps
+        deps["redis_client"].eval.return_value = 1
+        main_mod.redis_client = deps["redis_client"]
+        deps["settings"].problem_service_key = "prob-key"
+
+        # 제출 목록 응답
+        sub_resp = MagicMock()
+        sub_resp.json.return_value = {
+            "data": [{"language": "python", "userId": "u1", "code": "def sol(): pass"}]
+        }
+        sub_resp.raise_for_status = MagicMock()
+
+        # Problem Service 응답
+        prob_resp = MagicMock()
+        prob_resp.json.return_value = {
+            "title": "두 수의 합",
+            "description": "두 정수를 더하라.",
+        }
+        prob_resp.raise_for_status = MagicMock()
+
+        mock_async_client = MagicMock()
+        # Submission(1번째), Problem(2번째) 순서로 응답
+        mock_async_client.get = AsyncMock(side_effect=[sub_resp, prob_resp])
+        mock_async_client.__aenter__ = AsyncMock(return_value=mock_async_client)
+        mock_async_client.__aexit__ = AsyncMock(return_value=False)
+        mock_httpx.AsyncClient.return_value = mock_async_client
+
+        # Claude 모킹 — 프롬프트 캡처용
+        captured_prompts = []
+        mock_claude = MagicMock()
+        mock_message = MagicMock()
+        mock_message.content = [
+            MagicMock(text='{"comparison":"ok","bestApproach":"ok","optimizedCode":"pass","learningPoints":[]}')
+        ]
+
+        def capture_create(**kwargs):
+            captured_prompts.append(kwargs.get("messages", []))
+            return mock_message
+
+        mock_claude.client.messages.create.side_effect = capture_create
+        mock_claude._parse_group_response.return_value = {"comparison": "ok"}
+        mock_claude_cls.return_value = mock_claude
+
+        resp = client.post(
+            "/group-analysis",
+            json={
+                "problem_id": _TEST_PROBLEM_ID,
+                "study_id": _TEST_STUDY_ID,
+                "user_id": _TEST_USER_ID,
+            },
+            headers={"X-Internal-Key": "test-key"},
+        )
+        assert resp.status_code == 200
+        # 프롬프트에 문제 정보가 포함되어 있는지 확인
+        assert len(captured_prompts) == 1
+        user_content = captured_prompts[0][0]["content"]
+        assert "두 수의 합" in user_content
+        assert "두 정수를 더하라." in user_content
+        assert "<problem_context>" in user_content
+
+    @patch("src.main.ClaudeClient")
+    @patch("src.main.httpx")
+    def test_group_analysis_problem_service_failure_falls_back(
+        self, mock_httpx, mock_claude_cls, client, mock_app_deps
+    ):
+        """Problem Service 조회 실패 시 fallback — 문제 정보 없이 분석 계속 진행"""
+        import src.main as main_mod
+
+        deps = mock_app_deps
+        deps["redis_client"].eval.return_value = 1
+        main_mod.redis_client = deps["redis_client"]
+        deps["settings"].problem_service_key = "prob-key"
+
+        # 제출 목록 응답
+        sub_resp = MagicMock()
+        sub_resp.json.return_value = {
+            "data": [{"language": "python", "userId": "u1", "code": "def sol(): pass"}]
+        }
+        sub_resp.raise_for_status = MagicMock()
+
+        mock_async_client = MagicMock()
+        # Submission 성공, Problem Service 실패(Exception)
+        mock_async_client.get = AsyncMock(
+            side_effect=[sub_resp, Exception("Problem Service 연결 실패")]
+        )
+        mock_async_client.__aenter__ = AsyncMock(return_value=mock_async_client)
+        mock_async_client.__aexit__ = AsyncMock(return_value=False)
+        mock_httpx.AsyncClient.return_value = mock_async_client
+
+        # Claude 모킹
+        mock_claude = MagicMock()
+        mock_message = MagicMock()
+        mock_message.content = [
+            MagicMock(text='{"comparison":"ok","bestApproach":"ok","optimizedCode":"pass","learningPoints":[]}')
+        ]
+        mock_claude.client.messages.create.return_value = mock_message
+        mock_claude._parse_group_response.return_value = {"comparison": "ok"}
+        mock_claude_cls.return_value = mock_claude
+
+        # 서비스 중단 없이 200 응답해야 함
+        resp = client.post(
+            "/group-analysis",
+            json={
+                "problem_id": _TEST_PROBLEM_ID,
+                "study_id": _TEST_STUDY_ID,
+                "user_id": _TEST_USER_ID,
+            },
+            headers={"X-Internal-Key": "test-key"},
+        )
+        assert resp.status_code == 200
 
 
 class TestStartupShutdownEvents:

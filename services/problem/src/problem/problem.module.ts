@@ -13,9 +13,10 @@ import { DeadlineCacheService } from '../cache/deadline-cache.service';
 import { StudyMemberGuard } from '../common/guards/study-member.guard';
 import { DualWriteModule } from '../database/dual-write.module';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
+import { CrawlerModule } from '../crawler/crawler.module';
 
 @Module({
-  imports: [DualWriteModule],
+  imports: [DualWriteModule, CrawlerModule],
   controllers: [ProblemController, InternalProblemController],
   providers: [ProblemService, DeadlineSchedulerService, DeadlineCacheService, StudyMemberGuard, StructuredLoggerService],
   exports: [ProblemService, DeadlineCacheService],

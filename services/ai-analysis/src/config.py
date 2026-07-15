@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     claude_model_id: str = "claude-haiku-4-5-20251001"
     submission_service_url: str = "http://submission-service:3003"
     submission_service_key: str = ""
+    problem_service_url: str = "http://problem-service:3004"
+    problem_service_key: str = ""
     # 필수 필드 — 기본값 없음. INTERNAL_API_KEY 환경변수 미설정 시 즉시 실패.
     # 빈 문자열로 설정하면 X-Internal-Key 인증이 무력화되므로 허용하지 않는다.
     internal_api_key: str

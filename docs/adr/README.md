@@ -15,7 +15,7 @@ docs/adr/
 ├─ topics/
 │  └─ {topic-slug}.md                     ← 토픽 ADR (1개)
 └─ sprints/
-   └─ sprint-{NN}.md                      ← 회고형 sprint ADR (185개, Sprint 62~247 일부 결번 + 통합 40·48·51)
+   └─ sprint-{NN}.md                      ← 회고형 sprint ADR (186개, Sprint 62~248 일부 결번 + 통합 40·48·51)
 ```
 
 > **카운트 정합 (Sprint 176)**: 위 "(N개)" 표기는 실제 파일 수와 일치해야 한다. CI(`scripts/check-adr-index-count.mjs --strict`, quality-docs 잡)가 rebase/머지 중 발생하는 누적 카운트 드리프트를 차단하므로, ADR 추가/삭제 시 본 인덱스의 모든 "(N개)" 표기를 함께 갱신할 것.
@@ -53,7 +53,7 @@ docs/adr/
 |------|------------|
 | [topics/sprint-95-programmers-dataset](./topics/sprint-95-programmers-dataset.md) | 프로그래머스 데이터셋 번들링 + Gateway 외부 연동 (Sprint 95 심화 — `sprints/sprint-95.md`와 별개) |
 
-## 회고형 sprint ADR (185개)
+## 회고형 sprint ADR (186개)
 
 `sprints/sprint-{NN}.md` — Sprint 62 ~ 247 매 sprint 회고. 신규 sprint 종료 시 `/stop` 워크플로우가 자동 생성/갱신 (KR + EN 동시 작성).
 
@@ -94,4 +94,4 @@ grep -l "{keyword}" docs/adr/sprints/*.md     # 키워드 검색
 - 영문판 SSOT: [`../adr-en/`](../adr-en/) — Sprint 157 P10에서 도입. blog `content/posts-en/` 패턴 계승.
 - 자동 번역기: `node scripts/translate-adr.mjs --target <kr-path>` (ANTHROPIC_API_KEY 필요)
 - 누락 점검: `node scripts/check-adr-en-coverage.mjs --lint`
-- 신규 ADR 작성 시 KR + EN 동시 작성 의무 — `.claude/commands/stop.md` 3단계 + `.claude/commands/agents/scribe.md` 참조
+- 신규 ADR 작성 시 KR + EN 동시 작성 의무 — `.claude/commands/sprint-close.md` 3단계 + `.claude/commands/agents/scribe.md` 참조

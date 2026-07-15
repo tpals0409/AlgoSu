@@ -11,6 +11,7 @@ import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
 import { DeadlineCacheService } from '../cache/deadline-cache.service';
 import { DualWriteService } from '../database/dual-write.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
+import { CrawlerService } from '../crawler/crawler.service';
 
 /**
  * 허용된 상태 전이 맵 — 현재 상태 → 전이 가능한 상태 목록
@@ -33,6 +34,7 @@ export class ProblemService {
     private readonly deadlineCache: DeadlineCacheService,
     private readonly logger: StructuredLoggerService,
     private readonly dataSource: DataSource,
+    private readonly crawler: CrawlerService,
   ) {
     this.logger.setContext(ProblemService.name);
   }
@@ -74,7 +76,31 @@ export class ProblemService {
     await this.deadlineCache.setDeadline(studyId, saved.id, saved.deadline);
     await this.deadlineCache.invalidateWeekProblems(studyId, saved.weekNumber);
 
+    // description 미입력 + sourceUrl 있으면 비동기 크롤링으로 자동 보완 (응답 블로킹 없음)
+    if (!saved.description && saved.sourceUrl && saved.sourcePlatform) {
+      this.backfillDescriptionFromCrawl(saved.id, saved.sourceUrl, saved.sourcePlatform).catch((e: unknown) => {
+        const msg = e instanceof Error ? e.message : String(e);
+        this.logger.warn('backfill 크롤링 비동기 실패 — 문제 생성에는 영향 없음', { problemId: saved.id, error: msg });
+      });
+    }
+
     return saved;
+  }
+
+  /**
+   * 문제 등록 후 비동기 크롤링으로 description 자동 보완
+   * 실패해도 문제 생성 결과에 영향 없음 (fire-and-forget)
+   */
+  private async backfillDescriptionFromCrawl(problemId: string, sourceUrl: string, sourcePlatform: string): Promise<void> {
+    const info = await this.crawler.crawl(sourceUrl, sourcePlatform);
+    if (!info?.description) return;
+
+    const problem = await this.dualWrite.findOne({ where: { id: problemId } });
+    if (!problem) return;
+
+    problem.description = info.description;
+    await this.dualWrite.saveExisting(problem);
+    this.logger.log(`크롤링 description 보완 완료: id=${problemId}, platform=${sourcePlatform}`);
   }
 
   /**

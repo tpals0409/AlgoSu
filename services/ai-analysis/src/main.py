@@ -390,6 +390,31 @@ async def group_analysis(
         _rollback_quota(req.user_id)
         raise HTTPException(status_code=404, detail="해당 문제에 대한 제출이 없습니다.")
 
+    # Problem Service에서 문제 정보 조회 (실패 시 fallback — 서비스 중단 방지)
+    problem_title = ""
+    problem_description = ""
+    if settings.problem_service_url and settings.problem_service_key:
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                prob_resp = await client.get(
+                    f"{settings.problem_service_url}/internal/{req.problem_id}",
+                    headers={
+                        "X-Internal-Key": settings.problem_service_key,
+                        "X-Study-Id": req.study_id,
+                    },
+                )
+                prob_resp.raise_for_status()
+                prob_data = prob_resp.json()
+                # Problem Service는 { data: problem } envelope로 응답
+                prob_obj = prob_data.get("data", prob_data)
+                problem_title = prob_obj.get("title", "")
+                problem_description = prob_obj.get("description", "")
+        except Exception as e:
+            logger.warning(
+                "그룹 분석 문제 정보 조회 실패 — 문제 컨텍스트 없이 분석 진행",
+                extra={"problemId": req.problem_id, "error": str(e)[:200]},
+            )
+
     # Claude API로 그룹 분석
     claude = ClaudeClient()
     code_snippets = [
@@ -402,7 +427,10 @@ async def group_analysis(
     ]
 
     user_prompt = build_group_user_prompt(
-        code_snippets, source_platform=req.source_platform
+        code_snippets,
+        source_platform=req.source_platform,
+        problem_title=problem_title,
+        problem_description=problem_description,
     )
 
     # code_snippets에서 언어 추출 (그룹 분석은 동일 문제 → 첫 번째 스니펫 기준)

@@ -7,6 +7,7 @@ import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
 import { DeadlineCacheService } from '../cache/deadline-cache.service';
 import { DualWriteService } from '../database/dual-write.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
+import { CrawlerService } from '../crawler/crawler.service';
 
 // ─── Mock QueryRunner 팩토리 ──────────────────────────────────────
 const createMockQueryRunner = () => ({
@@ -27,6 +28,7 @@ describe('ProblemService', () => {
   let dualWrite: any;
   let deadlineCache: Record<string, jest.Mock>;
   let dataSource: Record<string, jest.Mock>;
+  let crawler: Record<string, jest.Mock>;
 
   const STUDY_ID = 'study-uuid-001';
   const OTHER_STUDY_ID = 'study-uuid-999';
@@ -79,6 +81,10 @@ describe('ProblemService', () => {
       createQueryRunner: jest.fn(),
     };
 
+    crawler = {
+      crawl: jest.fn().mockResolvedValue(null),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProblemService,
@@ -97,6 +103,10 @@ describe('ProblemService', () => {
         {
           provide: DataSource,
           useValue: dataSource,
+        },
+        {
+          provide: CrawlerService,
+          useValue: crawler,
         },
       ],
     }).compile();
@@ -232,6 +242,115 @@ describe('ProblemService', () => {
       expect(dualWrite.save).toHaveBeenCalledWith(
         expect.objectContaining({ category: ProblemCategory.SQL }),
       );
+    });
+
+    it('description 없고 sourceUrl+sourcePlatform 있으면 비동기 크롤링 트리거', async () => {
+      const dto: CreateProblemDto = {
+        title: '크롤링 테스트 문제',
+        weekNumber: '4월2주차',
+        sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/99999',
+        sourcePlatform: 'PROGRAMMERS',
+      };
+      const savedProblem = { ...mockProblem, description: null, sourceUrl: dto.sourceUrl, sourcePlatform: dto.sourcePlatform };
+      dualWrite.findOne
+        .mockResolvedValueOnce(null) // 중복 체크용
+        .mockResolvedValue(savedProblem); // backfill용
+      dualWrite.save.mockResolvedValue(savedProblem);
+      dualWrite.saveExisting = jest.fn().mockResolvedValue({ ...savedProblem, description: '문제 설명 텍스트' });
+      deadlineCache.setDeadline.mockResolvedValue(undefined);
+      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
+      crawler.crawl.mockResolvedValue({ title: '크롤링 테스트 문제', description: '문제 설명 텍스트' });
+
+      await service.create(dto, STUDY_ID, USER_ID);
+
+      // 비동기 트리거가 실행되도록 대기
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(crawler.crawl).toHaveBeenCalledWith(dto.sourceUrl, dto.sourcePlatform);
+      expect(dualWrite.saveExisting).toHaveBeenCalledWith(
+        expect.objectContaining({ description: '문제 설명 텍스트' }),
+      );
+    });
+
+    it('description 있으면 크롤링 트리거 안 함', async () => {
+      const dto: CreateProblemDto = {
+        title: '수동 입력 문제',
+        weekNumber: '4월2주차',
+        description: '이미 입력된 설명',
+        sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/88888',
+        sourcePlatform: 'PROGRAMMERS',
+      };
+      dualWrite.findOne.mockResolvedValue(null);
+      dualWrite.save.mockResolvedValue({ ...mockProblem, description: '이미 입력된 설명' });
+      deadlineCache.setDeadline.mockResolvedValue(undefined);
+      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
+
+      await service.create(dto, STUDY_ID, USER_ID);
+
+      expect(crawler.crawl).not.toHaveBeenCalled();
+    });
+
+    it('크롤링 결과 description 없으면 backfill 조기 반환 (null 케이스)', async () => {
+      const dto: CreateProblemDto = {
+        title: '크롤링 실패 문제',
+        weekNumber: '4월3주차',
+        sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/77777',
+        sourcePlatform: 'PROGRAMMERS',
+      };
+      const savedProblem = { ...mockProblem, description: null, sourceUrl: dto.sourceUrl, sourcePlatform: dto.sourcePlatform };
+      dualWrite.findOne.mockResolvedValueOnce(null);
+      dualWrite.save.mockResolvedValue(savedProblem);
+      deadlineCache.setDeadline.mockResolvedValue(undefined);
+      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
+      crawler.crawl.mockResolvedValue(null); // 크롤링 실패 → info=null → 조기 반환
+
+      await service.create(dto, STUDY_ID, USER_ID);
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(crawler.crawl).toHaveBeenCalled();
+      expect(dualWrite.saveExisting).not.toHaveBeenCalled(); // description 없으므로 저장 안 함
+    });
+
+    it('backfill 비동기 실패(Error 인스턴스) — catch 콜백 실행, 문제 생성에는 영향 없음', async () => {
+      const dto: CreateProblemDto = {
+        title: '크롤링 예외 문제',
+        weekNumber: '4월4주차',
+        sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/66666',
+        sourcePlatform: 'PROGRAMMERS',
+      };
+      const savedProblem = { ...mockProblem, description: null, sourceUrl: dto.sourceUrl, sourcePlatform: dto.sourcePlatform };
+      dualWrite.findOne.mockResolvedValueOnce(null);
+      dualWrite.save.mockResolvedValue(savedProblem);
+      deadlineCache.setDeadline.mockResolvedValue(undefined);
+      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
+      crawler.crawl.mockRejectedValue(new Error('SSRF 차단'));
+
+      // 문제 생성 자체는 성공
+      const result = await service.create(dto, STUDY_ID, USER_ID);
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(result).toBeDefined();
+      expect(dualWrite.saveExisting).not.toHaveBeenCalled();
+    });
+
+    it('backfill 비동기 실패(비-Error 예외) — catch 콜백 String() 분기 실행', async () => {
+      const dto: CreateProblemDto = {
+        title: '크롤링 비-Error 예외 문제',
+        weekNumber: '4월5주차',
+        sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/55555',
+        sourcePlatform: 'PROGRAMMERS',
+      };
+      const savedProblem = { ...mockProblem, description: null, sourceUrl: dto.sourceUrl, sourcePlatform: dto.sourcePlatform };
+      dualWrite.findOne.mockResolvedValueOnce(null);
+      dualWrite.save.mockResolvedValue(savedProblem);
+      deadlineCache.setDeadline.mockResolvedValue(undefined);
+      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
+      crawler.crawl.mockRejectedValue('문자열 예외');
+
+      const result = await service.create(dto, STUDY_ID, USER_ID);
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(result).toBeDefined();
     });
   });
 
