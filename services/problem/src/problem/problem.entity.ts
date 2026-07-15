@@ -79,6 +79,12 @@ export class Problem {
   @Column({ type: 'jsonb', nullable: true, name: 'allowed_languages' })
   allowedLanguages!: string[] | null;
 
+  @Column({ type: 'text', nullable: true })
+  constraints!: string | null;
+
+  @Column({ type: 'jsonb', nullable: true })
+  examples!: Record<string, string>[] | null;
+
   @Column({ type: 'jsonb', nullable: true })
   tags!: string[] | null;
 
