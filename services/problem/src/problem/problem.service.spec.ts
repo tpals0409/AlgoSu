@@ -310,6 +310,48 @@ describe('ProblemService', () => {
       expect(crawler.crawl).toHaveBeenCalled();
       expect(dualWrite.saveExisting).not.toHaveBeenCalled(); // description 없으므로 저장 안 함
     });
+
+    it('backfill 비동기 실패(Error 인스턴스) — catch 콜백 실행, 문제 생성에는 영향 없음', async () => {
+      const dto: CreateProblemDto = {
+        title: '크롤링 예외 문제',
+        weekNumber: '4월4주차',
+        sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/66666',
+        sourcePlatform: 'PROGRAMMERS',
+      };
+      const savedProblem = { ...mockProblem, description: null, sourceUrl: dto.sourceUrl, sourcePlatform: dto.sourcePlatform };
+      dualWrite.findOne.mockResolvedValueOnce(null);
+      dualWrite.save.mockResolvedValue(savedProblem);
+      deadlineCache.setDeadline.mockResolvedValue(undefined);
+      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
+      crawler.crawl.mockRejectedValue(new Error('SSRF 차단'));
+
+      // 문제 생성 자체는 성공
+      const result = await service.create(dto, STUDY_ID, USER_ID);
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(result).toBeDefined();
+      expect(dualWrite.saveExisting).not.toHaveBeenCalled();
+    });
+
+    it('backfill 비동기 실패(비-Error 예외) — catch 콜백 String() 분기 실행', async () => {
+      const dto: CreateProblemDto = {
+        title: '크롤링 비-Error 예외 문제',
+        weekNumber: '4월5주차',
+        sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/55555',
+        sourcePlatform: 'PROGRAMMERS',
+      };
+      const savedProblem = { ...mockProblem, description: null, sourceUrl: dto.sourceUrl, sourcePlatform: dto.sourcePlatform };
+      dualWrite.findOne.mockResolvedValueOnce(null);
+      dualWrite.save.mockResolvedValue(savedProblem);
+      deadlineCache.setDeadline.mockResolvedValue(undefined);
+      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
+      crawler.crawl.mockRejectedValue('문자열 예외');
+
+      const result = await service.create(dto, STUDY_ID, USER_ID);
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(result).toBeDefined();
+    });
   });
 
   // ──────────────────────────────────────────────

@@ -405,8 +405,10 @@ async def group_analysis(
                 )
                 prob_resp.raise_for_status()
                 prob_data = prob_resp.json()
-                problem_title = prob_data.get("title", "")
-                problem_description = prob_data.get("description", "")
+                # Problem Service는 { data: problem } envelope로 응답
+                prob_obj = prob_data.get("data", prob_data)
+                problem_title = prob_obj.get("title", "")
+                problem_description = prob_obj.get("description", "")
         except Exception as e:
             logger.warning(
                 "그룹 분석 문제 정보 조회 실패 — 문제 컨텍스트 없이 분석 진행",

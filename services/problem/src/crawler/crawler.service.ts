@@ -42,11 +42,25 @@ export class CrawlerService {
     }
   }
 
+  /** Programmers 허용 호스트 — SSRF 방어 화이트리스트 */
+  private static readonly ALLOWED_HOSTS = ['school.programmers.co.kr', 'programmers.co.kr'];
+
   /**
    * Programmers 문제 페이지 크롤링 (SSR 확인됨, Playwright 불필요)
    * 파싱 대상: 문제 제목, 문제 설명 전체 텍스트
    */
   private async crawlProgrammers(sourceUrl: string): Promise<CrawledProblemInfo> {
+    // SSRF 방어: Programmers 도메인만 허용
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(sourceUrl);
+    } catch {
+      throw new Error(`유효하지 않은 URL: ${sourceUrl}`);
+    }
+    if (parsedUrl.protocol !== 'https:' || !CrawlerService.ALLOWED_HOSTS.includes(parsedUrl.hostname)) {
+      throw new Error(`허용되지 않은 크롤링 대상: ${parsedUrl.hostname}`);
+    }
+
     const response = await axios.get<string>(sourceUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; AlgoSu-Crawler/1.0)',

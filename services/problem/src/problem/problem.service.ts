@@ -78,7 +78,10 @@ export class ProblemService {
 
     // description 미입력 + sourceUrl 있으면 비동기 크롤링으로 자동 보완 (응답 블로킹 없음)
     if (!saved.description && saved.sourceUrl && saved.sourcePlatform) {
-      void this.backfillDescriptionFromCrawl(saved.id, saved.sourceUrl, saved.sourcePlatform);
+      this.backfillDescriptionFromCrawl(saved.id, saved.sourceUrl, saved.sourcePlatform).catch((e: unknown) => {
+        const msg = e instanceof Error ? e.message : String(e);
+        this.logger.warn('backfill 크롤링 비동기 실패 — 문제 생성에는 영향 없음', { problemId: saved.id, error: msg });
+      });
     }
 
     return saved;

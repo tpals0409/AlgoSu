@@ -76,6 +76,23 @@ describe('CrawlerService', () => {
       expect(result).toBeNull();
     });
 
+    it('SSRF — 비허용 호스트(internal IP)면 null 반환', async () => {
+      const result = await service.crawl('https://169.254.169.254/latest/meta-data', 'PROGRAMMERS');
+      expect(result).toBeNull();
+      expect(mockedAxios.get).not.toHaveBeenCalled();
+    });
+
+    it('SSRF — http:// 비허용 (https만 허용)', async () => {
+      const result = await service.crawl('http://school.programmers.co.kr/learn/courses/30/lessons/1', 'PROGRAMMERS');
+      expect(result).toBeNull();
+      expect(mockedAxios.get).not.toHaveBeenCalled();
+    });
+
+    it('SSRF — 유효하지 않은 URL이면 null 반환', async () => {
+      const result = await service.crawl('not-a-url', 'PROGRAMMERS');
+      expect(result).toBeNull();
+    });
+
     it('빈 title·description — null로 정규화', async () => {
       const html = `<html><body><h1 class="challenge-title">  </h1></body></html>`;
       mockedAxios.get = jest.fn().mockResolvedValue({ data: html });
