@@ -326,8 +326,8 @@ class TestHalfOpenInflightTracking:
         cb.state = CircuitState.HALF_OPEN
         cb._half_open_in_flight = 0
 
-        assert cb.can_execute() is True   # in-flight=1
-        assert cb.can_execute() is True   # in-flight=2 (한도)
+        assert cb.can_execute() is True  # in-flight=1
+        assert cb.can_execute() is True  # in-flight=2 (한도)
         assert cb.can_execute() is False  # 한도 초과 → 차단
         assert cb._half_open_in_flight == 2
 
@@ -358,18 +358,20 @@ class TestHalfOpenInflightTracking:
         cb.state = CircuitState.HALF_OPEN
         cb._half_open_in_flight = 0
 
-        assert cb.can_execute() is True   # in-flight=1
-        assert cb.can_execute() is True   # in-flight=2 (한도)
+        assert cb.can_execute() is True  # in-flight=1
+        assert cb.can_execute() is True  # in-flight=2 (한도)
         assert cb.can_execute() is False  # 차단
 
         # 슬롯 1개 해제
-        cb.record_success()               # in-flight=1, successes=1
+        cb.record_success()  # in-flight=1, successes=1
         assert cb._half_open_in_flight == 1
 
-        assert cb.can_execute() is True   # in-flight=2 (한도 재도달)
+        assert cb.can_execute() is True  # in-flight=2 (한도 재도달)
         assert cb.can_execute() is False  # 차단
 
-    def test_can_execute_transitions_open_to_half_open_after_timeout(self, cb: CircuitBreaker):
+    def test_can_execute_transitions_open_to_half_open_after_timeout(
+        self, cb: CircuitBreaker
+    ):
         """can_execute(): OPEN + timeout 경과 → HALF_OPEN 전환 + True 반환 + in-flight=1"""
         for _ in range(5):
             cb.record_failure()
