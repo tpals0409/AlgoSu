@@ -289,6 +289,27 @@ describe('ProblemService', () => {
 
       expect(crawler.crawl).not.toHaveBeenCalled();
     });
+
+    it('크롤링 결과 description 없으면 backfill 조기 반환 (null 케이스)', async () => {
+      const dto: CreateProblemDto = {
+        title: '크롤링 실패 문제',
+        weekNumber: '4월3주차',
+        sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/77777',
+        sourcePlatform: 'PROGRAMMERS',
+      };
+      const savedProblem = { ...mockProblem, description: null, sourceUrl: dto.sourceUrl, sourcePlatform: dto.sourcePlatform };
+      dualWrite.findOne.mockResolvedValueOnce(null);
+      dualWrite.save.mockResolvedValue(savedProblem);
+      deadlineCache.setDeadline.mockResolvedValue(undefined);
+      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
+      crawler.crawl.mockResolvedValue(null); // 크롤링 실패 → info=null → 조기 반환
+
+      await service.create(dto, STUDY_ID, USER_ID);
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(crawler.crawl).toHaveBeenCalled();
+      expect(dualWrite.saveExisting).not.toHaveBeenCalled(); // description 없으므로 저장 안 함
+    });
   });
 
   // ──────────────────────────────────────────────

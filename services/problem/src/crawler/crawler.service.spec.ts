@@ -68,6 +68,14 @@ describe('CrawlerService', () => {
       expect(result).toBeNull();
     });
 
+    it('Error 인스턴스 아닌 예외(문자열) 발생 시 null 반환 — String() 변환 분기', async () => {
+      mockedAxios.get = jest.fn().mockRejectedValue('non-error-string');
+
+      const result = await service.crawl('https://school.programmers.co.kr/learn/courses/30/lessons/3', 'PROGRAMMERS');
+
+      expect(result).toBeNull();
+    });
+
     it('빈 title·description — null로 정규화', async () => {
       const html = `<html><body><h1 class="challenge-title">  </h1></body></html>`;
       mockedAxios.get = jest.fn().mockResolvedValue({ data: html });
