@@ -16,3 +16,4 @@ import os
 
 # 테스트 전용 더미 키 — 실제 키 절대 사용 금지
 os.environ.setdefault("INTERNAL_API_KEY", "test-internal-key-for-pytest-only")
+os.environ.setdefault("ANTHROPIC_API_KEY", "test-anthropic-key-for-pytest-only")

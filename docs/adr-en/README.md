@@ -64,7 +64,7 @@ Per the Sprint 157 decision, every new sprint ADR must be authored in **both** K
 2. Run `node scripts/translate-adr.mjs --target docs/adr/sprints/sprint-{N}.md` to generate `docs/adr-en/sprints/sprint-{N}.md`
 3. Skim the English output for technical accuracy and commit both files together
 
-The `/stop` workflow (`.claude/commands/stop.md`) enforces this in step 3 (Sprint ADR creation).
+The `/sprint-close` workflow (`.claude/commands/sprint-close.md`) enforces this in step 3 (Sprint ADR creation).
 
 ## Coverage tracking
 

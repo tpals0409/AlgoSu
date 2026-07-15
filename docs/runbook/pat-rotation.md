@@ -425,7 +425,7 @@ gh secret list --repo tpals0409/AlgoSu | grep GITOPS_TOKEN
 - [ ] Claude Code 세션 로그(`/root/.claude/projects/**/*.jsonl`) 내 구 토큰 prefix 잔존 여부 확인. 로그는 append-only이므로 rotation 후 prune 시 해당 파일만 **전체 삭제**하거나 jq로 해당 entry 제거. **단 Claude 세션 로그 prune 전 Oracle 승인 필수** — 대화 이력 손실 위험
 - [ ] 다음 rotation 예정일 캘린더 등록 (권장 주기: **6개월** — GitHub 권장 + OCI ARM 운영 부담 고려)
 - [ ] 신규 사용처가 추가되면 본 런북 "1. 사용처 전수 체크리스트"에 **즉시 추가**. 본 런북은 SSoT이며 체크리스트가 현실과 어긋나는 순간 재발 위험이 생긴다.
-- [ ] Gatekeeper는 Sprint 종료 `/stop` 체크리스트에 "PAT 사용처 grep" 단계를 포함하여 신규 사용처 혼입을 감지할 것
+- [ ] Gatekeeper는 Sprint 종료 `/sprint-close` 체크리스트에 "PAT 사용처 grep" 단계를 포함하여 신규 사용처 혼입을 감지할 것
 
 ---
 

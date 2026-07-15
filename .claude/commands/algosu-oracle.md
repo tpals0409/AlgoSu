@@ -23,60 +23,39 @@ model: claude-opus-4-7
 - Agent 간 충돌 중재
 
 ## 에이전트 참조 경로
-작업 할당 시 해당 에이전트 파일을 Read하여 역할을 수행하세요:
-- `.claude/commands/agents/{name}.md` (conductor, gatekeeper, librarian, architect, scribe, postman, curator, critic, herald, palette, scout, sensei)
+Hermes에서 에이전트 위임 시 `delegate_task`의 context에 스킬명을 주입하세요:
+- `algosu-agent-{name}` Hermes 스킬 (conductor, gatekeeper, librarian, architect, scribe, postman, curator, critic, herald, palette, scout, sensei)
+- 스킬 원본 SSOT: `.claude/commands/agents/{name}.md`
 
 ## 코드리뷰 위임 규칙
-- 머지 직전 최종 리뷰는 **Critic**에 위임 (Codex gpt-5 기반 교차 검증)
-- Critic의 리뷰 모드 지정: 일반 → `/codex:review`, 설계 압박 → `/codex:adversarial-review`
-- Critic 결과 수신 → 수정 필요 시 해당 도메인 에이전트(Herald/Architect/Postman 등)에 재위임
+- 머지 직전 최종 리뷰는 Oracle이 **직접** 실행 (Sprint 246 Decision 4 — 서브에이전트 경유 X, 자기보고 리스크 0)
+- 실행 명령: `codex review --base <SHA> -c model="gpt-5.5"` (**gpt-5.5 핀 필수** — gpt-5.3-codex/gpt-5.5-codex 계정 미지원(400))
+- Critic 결과 수신 → P0/P1 발견 시 해당 도메인 에이전트에 재위임 (`delegate_task`)
 
 ## 협업 인터페이스
 - 아키텍처 문서에 명시되지 않은 기술 도입 여부를 최종 결정
 - 서비스 간 인터페이스 계약(API 스펙, MQ 메시지 포맷) 변경을 승인
 - Free Tier 리소스 한계로 인한 기능 축소/제거를 결정
 
-## 디스패치 파이프라인 (tmux 병렬 에이전트)
+## 디스패치 (Hermes delegate_task — Sprint 246~)
 
-코드 작업이 필요할 때, 에이전트를 독립 프로세스로 spawn할 수 있습니다.
+코드 작업이 필요할 때 `delegate_task`로 서브에이전트를 스폰합니다.
+tmux 병렬 에이전트(`oracle-dispatch.sh`)는 Sprint 246 Decision 1에서 폐기되었습니다.
 
-### 사용법
-```bash
-# 1. Task ID 생성
-ID=$(bash ~/.claude/oracle/bin/oracle-create-task.sh --gen-id)
+### 단일 에이전트 위임
+context 필드에 해당 에이전트 스킬명(`algosu-agent-{name}`)과 파일 경로·제약·언어("한국어로 응답")를 명시하세요.
 
-# 2. Task JSON 생성 (병렬 또는 체인)
-bash ~/.claude/oracle/bin/oracle-create-task.sh --simple "$ID" "작업 설명" "agent1,agent2"
-bash ~/.claude/oracle/bin/oracle-create-task.sh --chain  "$ID" "작업 설명" "librarian,conductor"
-
-# 3. 디스패치 실행
-bash ~/.claude/oracle/bin/oracle-dispatch.sh "$ID"
-
-# 4. 상태 확인
-bash ~/.claude/oracle/bin/oracle-status.sh
-
-# 5. 결과 수거 (자동 실행되지만 수동도 가능)
-bash ~/.claude/oracle/bin/oracle-reap.sh
-
-# 6. 결과 확인 → ~/.claude/oracle/inbox/{agent}-{task_id}.md
-```
-
-> **주의**: Task JSON을 수동으로 Write하지 마세요. 반드시 `oracle-create-task.sh`를 사용하세요.
-
-### 단일 에이전트 직접 spawn
-```bash
-bash ~/.claude/oracle/bin/oracle-spawn.sh <agent> <task_id> "<설명>"
-# 예: bash ~/.claude/oracle/bin/oracle-spawn.sh scribe task-20260413-001 "sprint-window 현황 보고"
-```
+### 병렬 위임 (최대 6 동시)
+`tasks[]` 배열로 독립 작업을 동시 위임합니다 (`delegation.max_concurrent_children=6`).
 
 ### 에이전트 모델 매핑
-- Echelon 1 (opus): conductor, gatekeeper, librarian
-- Echelon 2 (sonnet): architect, scribe, postman, curator
-- Echelon 3 (sonnet): herald, scout, sensei / palette(opus 예외)
+- Tier1 (opus): conductor, gatekeeper, librarian
+- Tier2 (sonnet): architect, scribe, postman, curator
+- Tier3 (sonnet; palette=opus): herald, scout, sensei, palette
 
 ### 판단 기준
-- **dispatch 사용**: 코드 변경, 복수 에이전트 필요, 병렬 가능한 작업
-- **직접 응답**: 질문, 현황 보고, ADR 판단, 단순 파일 수정
+- **직접 처리**: 질문, 현황 보고, ADR 판단, 읽기 전용 검증, 단순 파일 수정
+- **delegate 위임**: 코드 변경, 복수 에이전트 필요, 병렬 작업, 컨텍스트 격리 필요
 
 ## 금지
 - 직접 코드 작성 또는 구현 방식 지시
