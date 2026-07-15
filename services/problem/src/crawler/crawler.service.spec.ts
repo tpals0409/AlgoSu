@@ -102,5 +102,99 @@ describe('CrawlerService', () => {
       expect(result!.title).toBeNull();
       expect(result!.description).toBeNull();
     });
+
+    it('Wave D — constraints: h5[제한사항] + ul/li 파싱', async () => {
+      const html = `
+        <html><body>
+          <h1 class="challenge-title">테스트 문제</h1>
+          <div class="markdown">
+            <p>문제 설명</p>
+            <h5>제한사항</h5>
+            <ul><li>1 &lt;= n &lt;= 100</li><li>n은 자연수</li></ul>
+          </div>
+        </body></html>`;
+      mockedAxios.get = jest.fn().mockResolvedValue({ data: html });
+
+      const result = await service.crawl('https://school.programmers.co.kr/learn/courses/30/lessons/10001', 'PROGRAMMERS');
+
+      expect(result).not.toBeNull();
+      expect(result!.constraints).toContain('1 <= n <= 100');
+      expect(result!.constraints).toContain('n은 자연수');
+    });
+
+    it('Wave D — constraints: h5[constraint] 영문 헤더도 파싱', async () => {
+      const html = `
+        <html><body>
+          <div class="markdown">
+            <h5>constraint</h5>
+            <ul><li>0 &lt;= k &lt;= 50</li></ul>
+          </div>
+        </body></html>`;
+      mockedAxios.get = jest.fn().mockResolvedValue({ data: html });
+
+      const result = await service.crawl('https://school.programmers.co.kr/learn/courses/30/lessons/10002', 'PROGRAMMERS');
+
+      expect(result!.constraints).toBe('0 <= k <= 50');
+    });
+
+    it('Wave D — constraints: h5 없으면 null', async () => {
+      const html = `<html><body><div class="markdown"><p>설명만 있음</p></div></body></html>`;
+      mockedAxios.get = jest.fn().mockResolvedValue({ data: html });
+
+      const result = await service.crawl('https://school.programmers.co.kr/learn/courses/30/lessons/10003', 'PROGRAMMERS');
+
+      expect(result!.constraints).toBeNull();
+    });
+
+    it('Wave D — examples: h5[입출력 예] + table 파싱', async () => {
+      const html = `
+        <html><body>
+          <div class="markdown">
+            <h5>입출력 예</h5>
+            <table>
+              <thead><tr><th>numbers</th><th>result</th></tr></thead>
+              <tbody>
+                <tr><td>[2, 1, 3, 4, 1]</td><td>12</td></tr>
+                <tr><td>[5, 0, 2, 7]</td><td>35</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </body></html>`;
+      mockedAxios.get = jest.fn().mockResolvedValue({ data: html });
+
+      const result = await service.crawl('https://school.programmers.co.kr/learn/courses/30/lessons/10004', 'PROGRAMMERS');
+
+      expect(result).not.toBeNull();
+      expect(result!.examples).toHaveLength(2);
+      expect(result!.examples![0]).toEqual({ numbers: '[2, 1, 3, 4, 1]', result: '12' });
+      expect(result!.examples![1]).toEqual({ numbers: '[5, 0, 2, 7]', result: '35' });
+    });
+
+    it('Wave D — examples: h5[입출력 예 설명] 제목은 무시', async () => {
+      const html = `
+        <html><body>
+          <div class="markdown">
+            <h5>입출력 예 설명</h5>
+            <table>
+              <thead><tr><th>설명</th></tr></thead>
+              <tbody><tr><td>예시 1 설명</td></tr></tbody>
+            </table>
+          </div>
+        </body></html>`;
+      mockedAxios.get = jest.fn().mockResolvedValue({ data: html });
+
+      const result = await service.crawl('https://school.programmers.co.kr/learn/courses/30/lessons/10005', 'PROGRAMMERS');
+
+      expect(result!.examples).toBeNull();
+    });
+
+    it('Wave D — examples: table 없으면 null', async () => {
+      const html = `<html><body><div class="markdown"><h5>입출력 예</h5><p>표 없음</p></div></body></html>`;
+      mockedAxios.get = jest.fn().mockResolvedValue({ data: html });
+
+      const result = await service.crawl('https://school.programmers.co.kr/learn/courses/30/lessons/10006', 'PROGRAMMERS');
+
+      expect(result!.examples).toBeNull();
+    });
   });
 });

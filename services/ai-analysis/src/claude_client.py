@@ -125,6 +125,8 @@ class ClaudeClient:
         source_platform: str | None = None,
         difficulty: str | None = None,
         level: int | None = None,
+        constraints: str | None = None,
+        examples: list[dict] | None = None,
     ) -> dict:
         """
         코드 분석 요청 -- 5개 카테고리 구조화 결과 반환
@@ -137,6 +139,8 @@ class ClaudeClient:
         @param source_platform: 문제 플랫폼 (예: 'BOJ', 'PROGRAMMERS') — 프롬프트 맥락 주입
         @param difficulty: 문제 난이도 (예: 'BRONZE', 'PLATINUM') — 루브릭 보정용
         @param level: 프로그래머스 레벨 (1~5) — 루브릭 보정용
+        @param constraints: 제한 사항 텍스트 (선택 — 크롤링 구조화 데이터)
+        @param examples: 입출력 예 행 리스트 (선택 — 크롤링 구조화 데이터)
         @returns: 구조화된 분석 결과 dict
         """
         if not circuit_breaker.can_execute():
@@ -152,6 +156,8 @@ class ClaudeClient:
                 source_platform=source_platform,
                 difficulty=difficulty,
                 level=level,
+                constraints=constraints,
+                examples=examples,
             )
 
             # 동기 호출 (worker 스레드에서 실행되므로 sync 사용)

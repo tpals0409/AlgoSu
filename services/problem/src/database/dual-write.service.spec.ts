@@ -39,6 +39,8 @@ describe('DualWriteService', () => {
     category: ProblemCategory.ALGORITHM,
     deadline: null,
     allowedLanguages: null,
+    constraints: null,
+    examples: null,
     tags: null,
     studyId: 'study-001',
     createdBy: 'user-001',

@@ -395,6 +395,22 @@ def _build_difficulty_context(difficulty: str | None, level: int | None) -> str:
     )
 
 
+def _format_examples(examples: list[dict]) -> str:
+    """
+    입출력 예 리스트를 프롬프트 인라인 텍스트로 변환
+
+    @domain ai
+    @param examples: [{"col": "val", ...}] 형태의 입출력 예 행 리스트
+    @returns: 헤더 + 행 형태의 텍스트 표현
+    """
+    if not examples:
+        return ""
+    headers = list(examples[0].keys())
+    header_row = " | ".join(headers)
+    rows = [" | ".join(row.get(h, "") for h in headers) for row in examples]
+    return header_row + "\n" + "\n".join(rows)
+
+
 def build_user_prompt(
     code: str,
     language: str,
@@ -403,6 +419,8 @@ def build_user_prompt(
     source_platform: str | None = None,
     difficulty: str | None = None,
     level: int | None = None,
+    constraints: str | None = None,
+    examples: list[dict] | None = None,
 ) -> str:
     """
     유저 프롬프트 생성
@@ -416,6 +434,7 @@ def build_user_prompt(
     구분자는 _sanitize_problem_field 로 사전 무해화하여 조기 종결 우회 차단.
 
     Sprint 249 Wave C — difficulty/level 기반 채점 루브릭 보정 컨텍스트 추가.
+    Sprint 249 Wave D — constraints/examples 구조화 필드 추가 주입.
 
     @domain ai
     @param code: 분석 대상 코드
@@ -425,21 +444,33 @@ def build_user_prompt(
     @param source_platform: 문제 플랫폼 (예: 'BOJ', 'PROGRAMMERS') — 맥락 주입용
     @param difficulty: 문제 난이도 (예: 'BRONZE', 'PLATINUM') — 루브릭 보정용
     @param level: 프로그래머스 레벨 (1~5) — 루브릭 보정용
+    @param constraints: 제한 사항 텍스트 (선택 — 크롤링으로 추출된 구조화 데이터)
+    @param examples: 입출력 예 행 리스트 (선택 — 크롤링으로 추출된 구조화 데이터)
     @returns: 포맷팅된 유저 프롬프트
     """
     platform_context = _build_platform_context(source_platform, language)
     difficulty_context = _build_difficulty_context(difficulty, level)
 
     problem_section = ""
-    if problem_title or problem_description:
+    if problem_title or problem_description or constraints or examples:
         safe_title = _sanitize_problem_field(problem_title)
         safe_description = _sanitize_problem_field(problem_description)
+        lines = ["문제 정보:"]
+        if safe_title:
+            lines.append(f"- 제목: {safe_title}")
+        if safe_description:
+            lines.append(f"- 설명: {safe_description}")
+        if constraints:
+            safe_constraints = _sanitize_problem_field(constraints)
+            lines.append(f"- 제한 사항:\n{safe_constraints}")
+        if examples:
+            formatted = _format_examples(examples)
+            if formatted:
+                lines.append(f"- 입출력 예:\n{formatted}")
         problem_section = (
             "\n<problem_context>\n"
-            "문제 정보:\n"
-            f"- 제목: {safe_title}\n"
-            f"- 설명: {safe_description}\n"
-            "</problem_context>\n"
+            + "\n".join(lines)
+            + "\n</problem_context>\n"
         )
 
     return f"""{platform_context}{difficulty_context}다음 {language} 코드를 분석해주세요.
@@ -508,6 +539,8 @@ def build_group_user_prompt(
     source_platform: str | None = None,
     problem_title: str = "",
     problem_description: str = "",
+    constraints: str | None = None,
+    examples: list[dict] | None = None,
 ) -> str:
     """
     그룹 분석 유저 프롬프트 생성
@@ -515,11 +548,15 @@ def build_group_user_prompt(
     ADR-030 S-5: problem_title/problem_description 은 <problem_context> 블록으로
     격리하여 프롬프트 인젝션을 방어한다 (개별 분석 build_user_prompt 패턴 동일 적용).
 
+    Sprint 249 Wave D — constraints/examples 구조화 필드 추가 주입.
+
     @domain ai
     @param code_snippets: [{language, userId, code}] 형태 리스트
     @param source_platform: 문제 플랫폼 (예: 'BOJ', 'PROGRAMMERS') — 맥락 주입용
     @param problem_title: 문제 제목 (선택 — Problem Service 조회 실패 시 빈 문자열)
     @param problem_description: 문제 설명 (선택 — Problem Service 조회 실패 시 빈 문자열)
+    @param constraints: 제한 사항 텍스트 (선택 — 크롤링으로 추출된 구조화 데이터)
+    @param examples: 입출력 예 행 리스트 (선택 — 크롤링으로 추출된 구조화 데이터)
     @returns: 포맷팅된 그룹 분석 프롬프트
     """
     # 그룹 분석은 동일 문제이므로 첫 스니펫의 language 사용 (PROGRAMMERS+SQL 분기용)
@@ -527,15 +564,25 @@ def build_group_user_prompt(
     platform_context = _build_platform_context(source_platform, group_language)
 
     problem_section = ""
-    if problem_title or problem_description:
+    if problem_title or problem_description or constraints or examples:
         safe_title = _sanitize_problem_field(problem_title)
         safe_description = _sanitize_problem_field(problem_description)
+        lines = ["문제 정보:"]
+        if safe_title:
+            lines.append(f"- 제목: {safe_title}")
+        if safe_description:
+            lines.append(f"- 설명: {safe_description}")
+        if constraints:
+            safe_constraints = _sanitize_problem_field(constraints)
+            lines.append(f"- 제한 사항:\n{safe_constraints}")
+        if examples:
+            formatted = _format_examples(examples)
+            if formatted:
+                lines.append(f"- 입출력 예:\n{formatted}")
         problem_section = (
             "\n<problem_context>\n"
-            "문제 정보:\n"
-            f"- 제목: {safe_title}\n"
-            f"- 설명: {safe_description}\n"
-            "</problem_context>\n"
+            + "\n".join(lines)
+            + "\n</problem_context>\n"
         )
 
     parts = []

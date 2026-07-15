@@ -211,9 +211,19 @@ class AIAnalysisWorker:
             # 제출 데이터 조회
             submission = self._get_submission(submission_id)
 
+            # Problem Service에서 구조화 데이터 조회 (실패 시 None — 서비스 중단 방지)
+            problem_id = submission.get("problemId", "")
+            study_id = submission.get("studyId", "")
+            problem_data = self._get_problem(problem_id, study_id) if problem_id and study_id else None
+            constraints: str | None = problem_data.get("constraints") if problem_data else None
+            examples: list[dict] | None = problem_data.get("examples") if problem_data else None
+
             # Claude 분석 -- 재시도 3회
             result = self._analyze_with_retry(
-                submission, source_platform=source_platform
+                submission,
+                source_platform=source_platform,
+                constraints=constraints,
+                examples=examples,
             )
 
             # 문제 컨텍스트 부재 시 optimizedCode 생성 보류
@@ -388,6 +398,8 @@ class AIAnalysisWorker:
         self,
         submission: dict,
         source_platform: str | None = None,
+        constraints: str | None = None,
+        examples: list[dict] | None = None,
     ) -> dict:
         """
         Claude AI 분석 -- 최대 3회 재시도 (exponential backoff)
@@ -397,6 +409,8 @@ class AIAnalysisWorker:
         @domain ai
         @param submission: 제출 데이터 dict
         @param source_platform: 문제 플랫폼 (예: 'BOJ', 'PROGRAMMERS') — 프롬프트 맥락 주입
+        @param constraints: 제한 사항 텍스트 (선택 — Problem Service 구조화 데이터)
+        @param examples: 입출력 예 행 리스트 (선택 — Problem Service 구조화 데이터)
         @returns: 분석 결과 dict
         @raises CircuitBreakerOpenError: Circuit Breaker OPEN 시
         @raises RateLimitRetryableError: Claude API Rate Limit 초과 시 (NACK+requeue 위임)
@@ -412,6 +426,8 @@ class AIAnalysisWorker:
                 source_platform=source_platform,
                 difficulty=submission.get("difficulty"),
                 level=submission.get("level"),
+                constraints=constraints,
+                examples=examples,
             )
 
             if result["status"] == "completed":
@@ -456,6 +472,37 @@ class AIAnalysisWorker:
         )
         resp.raise_for_status()
         return resp.json()["data"]
+
+    def _get_problem(self, problem_id: str, study_id: str) -> dict | None:
+        """
+        Problem Service에서 문제 구조화 데이터 조회 (실패 시 None 반환 — 서비스 중단 방지)
+
+        Sprint 249 Wave D: 개별 분석 시 constraints/examples 구조화 데이터 주입용.
+
+        @domain ai
+        @param problem_id: 문제 UUID
+        @param study_id: 스터디 UUID (X-Study-Id 헤더용)
+        @returns: 문제 데이터 dict, 조회 실패 시 None
+        """
+        if not settings.problem_service_url or not settings.problem_service_key:
+            return None
+        try:
+            resp = self.http_client.get(
+                f"{settings.problem_service_url}/internal/{problem_id}",
+                headers={
+                    "X-Internal-Key": settings.problem_service_key,
+                    "X-Study-Id": study_id,
+                },
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            return data.get("data", data)
+        except Exception as e:
+            logger.warning(
+                "개별 분석 문제 구조화 데이터 조회 실패 — 컨텍스트 없이 분석 진행",
+                extra={"problemId": problem_id, "error": str(e)[:200]},
+            )
+            return None
 
     def _report_result(self, submission_id: str, result: dict):
         """

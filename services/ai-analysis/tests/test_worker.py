@@ -1388,3 +1388,84 @@ class TestWorkerInitValidation:
 
             with pytest.raises(RuntimeError, match="RABBITMQ_URL"):
                 AIAnalysisWorker()
+
+
+class TestGetProblem:
+    """_get_problem() — Sprint 249 Wave D 구조화 데이터 조회"""
+
+    def test_returns_none_when_no_config(self, worker, mock_dependencies):
+        """problem_service_url/key 설정 없으면 None 반환 (HTTP 호출 없음)."""
+        deps = mock_dependencies
+        deps["settings"].problem_service_url = ""
+        deps["settings"].problem_service_key = ""
+
+        result = worker._get_problem("prob-uuid", "study-uuid")
+        assert result is None
+        deps["http_client"].get.assert_not_called()
+
+    def test_success_returns_data_envelope_unwrapped(self, worker, mock_dependencies):
+        """정상 응답 — data 필드 언래핑하여 반환."""
+        deps = mock_dependencies
+        deps["settings"].problem_service_url = "http://problem-service:3002"
+        deps["settings"].problem_service_key = "test-key"
+
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {
+            "data": {
+                "title": "두 수의 합",
+                "constraints": "1 <= n <= 100",
+                "examples": [{"a": "1", "result": "2"}],
+            }
+        }
+        mock_resp.raise_for_status = MagicMock()
+        deps["http_client"].get.return_value = mock_resp
+
+        result = worker._get_problem("prob-uuid", "study-uuid")
+
+        assert result is not None
+        assert result["title"] == "두 수의 합"
+        assert result["constraints"] == "1 <= n <= 100"
+        assert result["examples"] == [{"a": "1", "result": "2"}]
+
+    def test_http_error_returns_none(self, worker, mock_dependencies):
+        """HTTP 오류 시 None 반환 (서비스 중단 방지)."""
+        deps = mock_dependencies
+        deps["settings"].problem_service_url = "http://problem-service:3002"
+        deps["settings"].problem_service_key = "test-key"
+
+        deps["http_client"].get.side_effect = Exception("Connection refused")
+
+        result = worker._get_problem("prob-uuid", "study-uuid")
+        assert result is None
+
+    def test_no_data_envelope_returns_raw_json(self, worker, mock_dependencies):
+        """data 필드 없는 응답이면 전체 JSON 그대로 반환."""
+        deps = mock_dependencies
+        deps["settings"].problem_service_url = "http://problem-service:3002"
+        deps["settings"].problem_service_key = "test-key"
+
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"title": "직접 반환"}
+        mock_resp.raise_for_status = MagicMock()
+        deps["http_client"].get.return_value = mock_resp
+
+        result = worker._get_problem("prob-uuid", "study-uuid")
+        assert result is not None
+        assert result["title"] == "직접 반환"
+
+    def test_x_study_id_header_sent(self, worker, mock_dependencies):
+        """X-Study-Id 헤더가 study_id 값으로 전달되어야 한다."""
+        deps = mock_dependencies
+        deps["settings"].problem_service_url = "http://problem-service:3002"
+        deps["settings"].problem_service_key = "test-key"
+
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"data": {}}
+        mock_resp.raise_for_status = MagicMock()
+        deps["http_client"].get.return_value = mock_resp
+
+        worker._get_problem("prob-abc", "study-xyz")
+
+        call_kwargs = deps["http_client"].get.call_args[1]
+        assert call_kwargs["headers"]["X-Study-Id"] == "study-xyz"
+        assert "prob-abc" in deps["http_client"].get.call_args[0][0]

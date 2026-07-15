@@ -99,8 +99,10 @@ export class ProblemService {
     if (!problem) return;
 
     problem.description = info.description;
+    if (info.constraints) problem.constraints = info.constraints;
+    if (info.examples) problem.examples = info.examples;
     await this.dualWrite.saveExisting(problem);
-    this.logger.log(`크롤링 description 보완 완료: id=${problemId}, platform=${sourcePlatform}`);
+    this.logger.log(`크롤링 구조화 데이터 보완 완료: id=${problemId}, platform=${sourcePlatform}`);
   }
 
   /**

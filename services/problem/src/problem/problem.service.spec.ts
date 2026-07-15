@@ -48,6 +48,8 @@ describe('ProblemService', () => {
     category: ProblemCategory.ALGORITHM,
     deadline: new Date('2026-03-07T23:59:59.000Z'),
     allowedLanguages: ['python', 'javascript'],
+    constraints: null,
+    examples: null,
     tags: null,
     studyId: STUDY_ID,
     createdBy: USER_ID,
@@ -270,6 +272,73 @@ describe('ProblemService', () => {
       expect(dualWrite.saveExisting).toHaveBeenCalledWith(
         expect.objectContaining({ description: '문제 설명 텍스트' }),
       );
+    });
+
+    it('Wave D — backfill 시 constraints/examples 있으면 saveExisting에 포함', async () => {
+      const dto: CreateProblemDto = {
+        title: '구조화 데이터 테스트',
+        weekNumber: '5월1주차',
+        sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/44444',
+        sourcePlatform: 'PROGRAMMERS',
+      };
+      const savedProblem = { ...mockProblem, description: null, constraints: null, examples: null, sourceUrl: dto.sourceUrl, sourcePlatform: dto.sourcePlatform };
+      dualWrite.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValue(savedProblem);
+      dualWrite.save.mockResolvedValue(savedProblem);
+      dualWrite.saveExisting = jest.fn().mockResolvedValue({ ...savedProblem, description: '설명', constraints: '1 <= n <= 100', examples: [{ a: '1', result: '2' }] });
+      deadlineCache.setDeadline.mockResolvedValue(undefined);
+      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
+      crawler.crawl.mockResolvedValue({
+        title: '구조화 데이터 테스트',
+        description: '설명',
+        constraints: '1 <= n <= 100',
+        examples: [{ a: '1', result: '2' }],
+      });
+
+      await service.create(dto, STUDY_ID, USER_ID);
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(dualWrite.saveExisting).toHaveBeenCalledWith(
+        expect.objectContaining({
+          description: '설명',
+          constraints: '1 <= n <= 100',
+          examples: [{ a: '1', result: '2' }],
+        }),
+      );
+    });
+
+    it('Wave D — backfill 시 constraints/examples 없으면 저장 안 함', async () => {
+      const dto: CreateProblemDto = {
+        title: '제한사항 없는 문제',
+        weekNumber: '5월2주차',
+        sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/33333',
+        sourcePlatform: 'PROGRAMMERS',
+      };
+      const savedProblem = { ...mockProblem, description: null, constraints: null, examples: null, sourceUrl: dto.sourceUrl, sourcePlatform: dto.sourcePlatform };
+      dualWrite.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValue(savedProblem);
+      dualWrite.save.mockResolvedValue(savedProblem);
+      dualWrite.saveExisting = jest.fn().mockResolvedValue({ ...savedProblem, description: '설명만' });
+      deadlineCache.setDeadline.mockResolvedValue(undefined);
+      deadlineCache.invalidateWeekProblems.mockResolvedValue(undefined);
+      crawler.crawl.mockResolvedValue({
+        title: '제한사항 없는 문제',
+        description: '설명만',
+        constraints: null,
+        examples: null,
+      });
+
+      await service.create(dto, STUDY_ID, USER_ID);
+      await new Promise((r) => setTimeout(r, 10));
+
+      // constraints/examples는 null이므로 객체에 할당 안 됨 — description만 포함
+      expect(dualWrite.saveExisting).toHaveBeenCalledWith(
+        expect.objectContaining({ description: '설명만' }),
+      );
+      const calledWith = (dualWrite.saveExisting as jest.Mock).mock.calls[0][0];
+      expect(calledWith.constraints).toBeNull(); // 크롤링 결과 null → 덮어쓰지 않음
     });
 
     it('description 있으면 크롤링 트리거 안 함', async () => {

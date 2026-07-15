@@ -393,6 +393,8 @@ async def group_analysis(
     # Problem Service에서 문제 정보 조회 (실패 시 fallback — 서비스 중단 방지)
     problem_title = ""
     problem_description = ""
+    problem_constraints: str | None = None
+    problem_examples: list[dict] | None = None
     if settings.problem_service_url and settings.problem_service_key:
         try:
             async with httpx.AsyncClient(timeout=10) as client:
@@ -409,6 +411,8 @@ async def group_analysis(
                 prob_obj = prob_data.get("data", prob_data)
                 problem_title = prob_obj.get("title", "")
                 problem_description = prob_obj.get("description", "")
+                problem_constraints = prob_obj.get("constraints")
+                problem_examples = prob_obj.get("examples")
         except Exception as e:
             logger.warning(
                 "그룹 분석 문제 정보 조회 실패 — 문제 컨텍스트 없이 분석 진행",
@@ -431,6 +435,8 @@ async def group_analysis(
         source_platform=req.source_platform,
         problem_title=problem_title,
         problem_description=problem_description,
+        constraints=problem_constraints,
+        examples=problem_examples,
     )
 
     # code_snippets에서 언어 추출 (그룹 분석은 동일 문제 → 첫 번째 스니펫 기준)
