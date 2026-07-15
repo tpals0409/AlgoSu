@@ -359,12 +359,50 @@ def _sanitize_problem_field(value: str) -> str:
     return _PROBLEM_CONTEXT_DELIMITER_RE.sub(_DELIMITER_PLACEHOLDER, value)
 
 
+def _build_difficulty_context(difficulty: str | None, level: int | None) -> str:
+    """
+    difficulty/level 기반 채점 루브릭 보정 컨텍스트 반환
+
+    @domain ai
+    @param difficulty: 문제 난이도 Enum 문자열 (예: 'BRONZE', 'PLATINUM')
+    @param level: 프로그래머스 레벨 숫자 (1~5)
+    @returns: 채점 루브릭 보정 힌트 문자열 (프롬프트 선두 prepend용)
+    """
+    if not difficulty and level is None:
+        return ""
+
+    parts: list[str] = []
+    if difficulty:
+        label_map = {
+            "BRONZE": "브론즈 (초급)",
+            "SILVER": "실버 (중초급)",
+            "GOLD": "골드 (중급)",
+            "PLATINUM": "플래티넘 (중고급)",
+            "DIAMOND": "다이아 (고급)",
+            "RUBY": "루비 (최고급)",
+        }
+        label = label_map.get(difficulty.upper(), difficulty)
+        parts.append(f"난이도: {label}")
+    if level is not None:
+        parts.append(f"레벨: {level}")
+
+    hint = " / ".join(parts)
+    return (
+        f"[문제 {hint}] "
+        "이 난이도에 맞는 기대 수준으로 채점 루브릭을 보정하세요. "
+        "초급 문제는 알고리즘 정확성과 가독성을 우선하고, "
+        "고급 문제는 시간/공간 복잡도 최적화와 고급 자료구조 활용도 평가하세요.\n"
+    )
+
+
 def build_user_prompt(
     code: str,
     language: str,
     problem_title: str = "",
     problem_description: str = "",
     source_platform: str | None = None,
+    difficulty: str | None = None,
+    level: int | None = None,
 ) -> str:
     """
     유저 프롬프트 생성
@@ -377,15 +415,20 @@ def build_user_prompt(
     Critic R1 P2 — 사용자 필드 내부 <problem_context>/</problem_context>
     구분자는 _sanitize_problem_field 로 사전 무해화하여 조기 종결 우회 차단.
 
+    Sprint 249 Wave C — difficulty/level 기반 채점 루브릭 보정 컨텍스트 추가.
+
     @domain ai
     @param code: 분석 대상 코드
     @param language: 프로그래밍 언어
     @param problem_title: 문제 제목 (선택)
     @param problem_description: 문제 설명 (선택)
     @param source_platform: 문제 플랫폼 (예: 'BOJ', 'PROGRAMMERS') — 맥락 주입용
+    @param difficulty: 문제 난이도 (예: 'BRONZE', 'PLATINUM') — 루브릭 보정용
+    @param level: 프로그래머스 레벨 (1~5) — 루브릭 보정용
     @returns: 포맷팅된 유저 프롬프트
     """
     platform_context = _build_platform_context(source_platform, language)
+    difficulty_context = _build_difficulty_context(difficulty, level)
 
     problem_section = ""
     if problem_title or problem_description:
@@ -399,7 +442,7 @@ def build_user_prompt(
             "</problem_context>\n"
         )
 
-    return f"""{platform_context}다음 {language} 코드를 분석해주세요.
+    return f"""{platform_context}{difficulty_context}다음 {language} 코드를 분석해주세요.
 {problem_section}
 ```{language}
 {code}

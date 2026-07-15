@@ -734,3 +734,44 @@ class TestProblemContextDelimiterSanitization:
 
         text = "my_problem_context_var 는 변수명일 뿐 태그가 아님."
         assert _sanitize_problem_field(text) == text
+
+
+class TestBuildDifficultyContext:
+    """_build_difficulty_context() 및 build_user_prompt difficulty/level 주입 테스트 (Sprint 249 Wave C)"""
+
+    def test_difficulty_only_injects_label(self):
+        """difficulty만 있을 때 레이블 포함 컨텍스트 주입."""
+        result = build_user_prompt(code="x=1", language="python", difficulty="GOLD")
+        assert "골드" in result
+        assert "[문제 난이도:" in result
+
+    def test_level_only_injects_level(self):
+        """level만 있을 때 레벨 컨텍스트 주입."""
+        result = build_user_prompt(code="x=1", language="python", level=3)
+        assert "레벨: 3" in result
+
+    def test_difficulty_and_level_both_injected(self):
+        """difficulty와 level 모두 있을 때 둘 다 주입."""
+        result = build_user_prompt(
+            code="x=1", language="python", difficulty="PLATINUM", level=4
+        )
+        assert "플래티넘" in result
+        assert "레벨: 4" in result
+
+    def test_no_difficulty_no_level_no_context(self):
+        """difficulty/level 모두 없으면 루브릭 보정 힌트 미주입."""
+        result = build_user_prompt(code="x=1", language="python")
+        assert "[문제 난이도:" not in result
+        assert "루브릭" not in result
+
+    def test_unknown_difficulty_uses_raw_value(self):
+        """알 수 없는 difficulty는 label_map 미매칭 → 원본값 그대로 사용."""
+        result = build_user_prompt(code="x=1", language="python", difficulty="MYSTERY")
+        assert "MYSTERY" in result
+
+    def test_difficulty_context_appears_before_code_block(self):
+        """루브릭 보정 힌트는 코드 블록보다 앞에 위치해야 한다."""
+        result = build_user_prompt(code="x=1", language="python", difficulty="BRONZE")
+        hint_pos = result.index("[문제 난이도:")
+        code_pos = result.index("```python")
+        assert hint_pos < code_pos

@@ -43,6 +43,8 @@ export interface DeadlineResult {
 export interface ProblemInfoResult {
   title: string;
   description: string;
+  difficulty: string | null;
+  level: number | null;
 }
 
 /** fetch timeout (ms) — Problem Service 응답 SLA 5초 */
@@ -208,7 +210,7 @@ export class ProblemServiceClient implements OnModuleInit {
       this.logger.warn(
         'PROBLEM_SERVICE_URL 또는 PROBLEM_SERVICE_KEY 미설정 — getProblemInfo 즉시 fallback',
       );
-      return { title: '', description: '' };
+      return { title: '', description: '', difficulty: null, level: null };
     }
     try {
       const result = await this.hostBreaker.fire({
@@ -218,14 +220,14 @@ export class ProblemServiceClient implements OnModuleInit {
         userId,
       });
       if (result instanceof Error) {
-        return { title: '', description: '' };
+        return { title: '', description: '', difficulty: null, level: null };
       }
       return result as ProblemInfoResult;
     } catch (error: unknown) {
       this.logger.warn(
         `getProblemInfo 예외: problemId=${problemId}, error=${(error as Error).message}`,
       );
-      return { title: '', description: '' };
+      return { title: '', description: '', difficulty: null, level: null };
     }
   }
 
@@ -303,7 +305,7 @@ export class ProblemServiceClient implements OnModuleInit {
   }
 
   /**
-   * 문제 정보 fetch 본체 — getSourcePlatform과 동일 endpoint, title/description 추출.
+   * 문제 정보 fetch 본체 — getSourcePlatform과 동일 endpoint, title/description/difficulty/level 추출.
    */
   private async _doGetProblemInfo(req: ProblemRequest): Promise<ProblemInfoResult> {
     const { problemId, studyId, userId } = req;
@@ -321,10 +323,14 @@ export class ProblemServiceClient implements OnModuleInit {
       );
     }
 
-    const body = (await resp.json()) as { data: { title?: string; description?: string } };
+    const body = (await resp.json()) as {
+      data: { title?: string; description?: string; difficulty?: string | null; level?: number | null };
+    };
     return {
       title: body.data.title ?? '',
       description: body.data.description ?? '',
+      difficulty: body.data.difficulty ?? null,
+      level: body.data.level ?? null,
     };
   }
 
@@ -347,7 +353,7 @@ export class ProblemServiceClient implements OnModuleInit {
   private _fallback(req: ProblemRequest): unknown {
     if (req.op === 'getSourcePlatform') return undefined;
     if (req.op === 'getDeadline') return { isLate: false, weekNumber: null };
-    if (req.op === 'getProblemInfo') return { title: '', description: '' };
+    if (req.op === 'getProblemInfo') return { title: '', description: '', difficulty: null, level: null };
     return null;
   }
 }

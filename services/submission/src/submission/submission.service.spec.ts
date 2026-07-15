@@ -56,7 +56,7 @@ const mockSagaOrchestrator = () => ({
 const mockProblemServiceClient = () => ({
   getSourcePlatform: jest.fn().mockResolvedValue(undefined),
   getDeadline: jest.fn().mockResolvedValue({ isLate: false, weekNumber: null }),
-  getProblemInfo: jest.fn().mockResolvedValue({ title: '', description: '' }),
+  getProblemInfo: jest.fn().mockResolvedValue({ title: '', description: '', difficulty: null, level: null }),
 });
 
 /** Sprint 194 — StatsCacheService mock (Fail-Open 캐시) */
@@ -90,6 +90,8 @@ const createMockSubmission = (overrides: Partial<Submission> = {}): Submission =
   problemId: 'problem-uuid-1',
   problemTitle: null,
   problemDescription: null,
+  difficulty: null,
+  level: null,
   language: 'python',
   code: 'print("hello world")',
   sagaStep: SagaStep.DB_SAVED,
@@ -109,7 +111,7 @@ const createMockSubmission = (overrides: Partial<Submission> = {}): Submission =
   updatedAt: new Date('2026-02-28T00:00:00Z'),
   generatePublicId: jest.fn(),
   ...overrides,
-});
+}) as Submission;
 
 describe('SubmissionService', () => {
   let service: SubmissionService;
@@ -206,6 +208,8 @@ describe('SubmissionService', () => {
       problemClient.getProblemInfo.mockResolvedValue({
         title: null,
         description: null,
+        difficulty: null,
+        level: null,
       });
 
       await service.create(baseDto, 'user-1', 'study-uuid-1');
@@ -223,6 +227,8 @@ describe('SubmissionService', () => {
       problemClient.getProblemInfo.mockResolvedValue({
         title: undefined,
         description: undefined,
+        difficulty: null,
+        level: null,
       });
 
       await service.create(baseDto, 'user-1', 'study-uuid-1');
@@ -240,6 +246,8 @@ describe('SubmissionService', () => {
       problemClient.getProblemInfo.mockResolvedValue({
         title: 'Two Sum',
         description: '주어진 정수 배열에서 두 수의 합이 target이 되는 인덱스를 반환',
+        difficulty: 'GOLD',
+        level: 3,
       });
 
       await service.create(baseDto, 'user-1', 'study-uuid-1');
@@ -248,6 +256,8 @@ describe('SubmissionService', () => {
         expect.objectContaining({
           problemTitle: 'Two Sum',
           problemDescription: '주어진 정수 배열에서 두 수의 합이 target이 되는 인덱스를 반환',
+          difficulty: 'GOLD',
+          level: 3,
         }),
       );
     });
