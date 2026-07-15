@@ -80,6 +80,8 @@ const createMockSubmission = (overrides: Partial<Submission> = {}): Submission =
   problemId: 'problem-uuid-1',
   problemTitle: null,
   problemDescription: null,
+  difficulty: null,
+  level: null,
   language: 'python',
   code: 'print("hello world")',
   sagaStep: SagaStep.DB_SAVED,
@@ -99,7 +101,7 @@ const createMockSubmission = (overrides: Partial<Submission> = {}): Submission =
   updatedAt: new Date('2026-02-28T00:00:00Z'),
   generatePublicId: jest.fn(),
   ...overrides,
-});
+}) as Submission;
 
 const createMockSatisfaction = (overrides: Partial<AiSatisfaction> = {}): AiSatisfaction => ({
   id: 1,

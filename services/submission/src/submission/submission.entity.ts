@@ -61,6 +61,12 @@ export class Submission {
   @Column({ type: 'text', nullable: true, name: 'problem_description' })
   problemDescription!: string | null;
 
+  @Column({ type: 'varchar', length: 20, nullable: true, name: 'difficulty' })
+  difficulty!: string | null;
+
+  @Column({ type: 'smallint', nullable: true, name: 'level' })
+  level!: number | null;
+
   @Column({ type: 'varchar', length: 50 })
   language!: string;
 

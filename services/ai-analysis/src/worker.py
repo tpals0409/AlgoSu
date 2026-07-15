@@ -410,6 +410,8 @@ class AIAnalysisWorker:
                 problem_title=submission.get("problemTitle", ""),
                 problem_description=submission.get("problemDescription", ""),
                 source_platform=source_platform,
+                difficulty=submission.get("difficulty"),
+                level=submission.get("level"),
             )
 
             if result["status"] == "completed":

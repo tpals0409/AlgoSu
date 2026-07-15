@@ -198,7 +198,7 @@ describe('ProblemServiceClient', () => {
 
       const result = await service.getProblemInfo('p1', 's1', 'u1');
 
-      expect(result).toEqual({ title: '', description: '' });
+      expect(result).toEqual({ title: '', description: '', difficulty: null, level: null });
     });
 
     it('CB fire가 Error 객체를 resolve해도 fallback 반환 (errorFilter 통과 방어)', async () => {
@@ -210,7 +210,7 @@ describe('ProblemServiceClient', () => {
 
       const result = await service.getProblemInfo('p1', 's1', 'u1');
 
-      expect(result).toEqual({ title: '', description: '' });
+      expect(result).toEqual({ title: '', description: '', difficulty: null, level: null });
     });
 
     it('PROBLEM_SERVICE_URL 미설정 시 즉시 fallback (CB fire 호출 안 함)', async () => {
@@ -225,7 +225,7 @@ describe('ProblemServiceClient', () => {
 
       const result = await service.getProblemInfo('p1', 's1', 'u1');
 
-      expect(result).toEqual({ title: '', description: '' });
+      expect(result).toEqual({ title: '', description: '', difficulty: null, level: null });
       expect(cbService._mockBreaker.fire).not.toHaveBeenCalled();
     });
   });
@@ -642,7 +642,7 @@ describe('ProblemServiceClient', () => {
       const fn = (service as unknown as {
         _doGetProblemInfo: (
           req: ProblemRequest,
-        ) => Promise<{ title: string; description: string }>;
+        ) => Promise<{ title: string; description: string; difficulty: string | null; level: number | null }>;
       })._doGetProblemInfo.bind(service);
 
       const result = await fn({
@@ -655,6 +655,8 @@ describe('ProblemServiceClient', () => {
       expect(result).toEqual({
         title: 'Two Sum',
         description: '두 수의 합이 target이 되는 인덱스를 반환',
+        difficulty: null,
+        level: null,
       });
       fetchSpy.mockRestore();
     });
@@ -669,7 +671,7 @@ describe('ProblemServiceClient', () => {
       const fn = (service as unknown as {
         _doGetProblemInfo: (
           req: ProblemRequest,
-        ) => Promise<{ title: string; description: string }>;
+        ) => Promise<{ title: string; description: string; difficulty: string | null; level: number | null }>;
       })._doGetProblemInfo.bind(service);
 
       const result = await fn({
@@ -679,7 +681,7 @@ describe('ProblemServiceClient', () => {
         userId: 'u1',
       });
 
-      expect(result).toEqual({ title: '', description: '' });
+      expect(result).toEqual({ title: '', description: '', difficulty: null, level: null });
       fetchSpy.mockRestore();
     });
 
@@ -692,7 +694,7 @@ describe('ProblemServiceClient', () => {
       const fn = (service as unknown as {
         _doGetProblemInfo: (
           req: ProblemRequest,
-        ) => Promise<{ title: string; description: string }>;
+        ) => Promise<{ title: string; description: string; difficulty: string | null; level: number | null }>;
       })._doGetProblemInfo.bind(service);
 
       await expect(

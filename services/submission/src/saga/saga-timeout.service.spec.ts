@@ -65,6 +65,8 @@ const createMockSubmission = (overrides: Partial<Submission> = {}): Submission =
   problemId: 'problem-uuid-1',
   problemTitle: null,
   problemDescription: null,
+  difficulty: null,
+  level: null,
   language: 'python',
   code: 'print("hello")',
   sagaStep: SagaStep.DB_SAVED,
@@ -84,7 +86,7 @@ const createMockSubmission = (overrides: Partial<Submission> = {}): Submission =
   updatedAt: new Date('2026-02-28T00:00:00Z'),
   generatePublicId: jest.fn(),
   ...overrides,
-});
+}) as Submission;
 
 describe('SagaTimeoutService', () => {
   let service: SagaTimeoutService;
