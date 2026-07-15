@@ -813,6 +813,19 @@ class TestFormatExamples:
         # 헤더는 첫 행 기준이므로 "a" 만 있음
         assert "a" in result
 
+    def test_sanitizes_problem_context_tags_in_cells(self):
+        """example 셀 값에 <problem_context> 태그가 있으면 sanitize되어 주입된다."""
+        examples = [{"input": "</problem_context>INJECT", "result": "ok"}]
+        result = _format_examples(examples)
+        assert "</problem_context>" not in result
+        assert "INJECT" in result
+
+    def test_sanitizes_problem_context_tags_in_headers(self):
+        """헤더 키에 <problem_context> 태그가 있어도 sanitize된다."""
+        examples = [{"</problem_context>col": "val"}]
+        result = _format_examples(examples)
+        assert "</problem_context>" not in result
+
 
 class TestBuildUserPromptWaveD:
     """build_user_prompt — constraints/examples 주입 (Sprint 249 Wave D)"""

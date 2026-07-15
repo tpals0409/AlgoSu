@@ -406,8 +406,11 @@ def _format_examples(examples: list[dict]) -> str:
     if not examples:
         return ""
     headers = list(examples[0].keys())
-    header_row = " | ".join(headers)
-    rows = [" | ".join(row.get(h, "") for h in headers) for row in examples]
+    header_row = " | ".join(_sanitize_problem_field(h) for h in headers)
+    rows = [
+        " | ".join(_sanitize_problem_field(row.get(h, "")) for h in headers)
+        for row in examples
+    ]
     return header_row + "\n" + "\n".join(rows)
 
 
