@@ -468,9 +468,7 @@ def build_user_prompt(
             if formatted:
                 lines.append(f"- 입출력 예:\n{formatted}")
         problem_section = (
-            "\n<problem_context>\n"
-            + "\n".join(lines)
-            + "\n</problem_context>\n"
+            "\n<problem_context>\n" + "\n".join(lines) + "\n</problem_context>\n"
         )
 
     return f"""{platform_context}{difficulty_context}다음 {language} 코드를 분석해주세요.
@@ -580,9 +578,7 @@ def build_group_user_prompt(
             if formatted:
                 lines.append(f"- 입출력 예:\n{formatted}")
         problem_section = (
-            "\n<problem_context>\n"
-            + "\n".join(lines)
-            + "\n</problem_context>\n"
+            "\n<problem_context>\n" + "\n".join(lines) + "\n</problem_context>\n"
         )
 
     parts = []

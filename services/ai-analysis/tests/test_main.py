@@ -31,7 +31,9 @@ def mock_app_deps():
         mock_settings.submission_service_url = "http://submission:3003"
         mock_settings.submission_service_key = "sub-key"
         mock_settings.problem_service_url = "http://problem:3004"
-        mock_settings.problem_service_key = ""  # 기본값 빈 문자열 → Problem Service 조회 스킵
+        mock_settings.problem_service_key = (
+            ""  # 기본값 빈 문자열 → Problem Service 조회 스킵
+        )
 
         mock_cb.state.value = "CLOSED"
         mock_cb.failure_count = 0
@@ -615,7 +617,9 @@ class TestGroupAnalysis:
         mock_claude = MagicMock()
         mock_message = MagicMock()
         mock_message.content = [
-            MagicMock(text='{"comparison":"ok","bestApproach":"ok","optimizedCode":"pass","learningPoints":[]}')
+            MagicMock(
+                text='{"comparison":"ok","bestApproach":"ok","optimizedCode":"pass","learningPoints":[]}'
+            )
         ]
 
         def capture_create(**kwargs):
@@ -676,7 +680,9 @@ class TestGroupAnalysis:
         mock_claude = MagicMock()
         mock_message = MagicMock()
         mock_message.content = [
-            MagicMock(text='{"comparison":"ok","bestApproach":"ok","optimizedCode":"pass","learningPoints":[]}')
+            MagicMock(
+                text='{"comparison":"ok","bestApproach":"ok","optimizedCode":"pass","learningPoints":[]}'
+            )
         ]
         mock_claude.client.messages.create.return_value = mock_message
         mock_claude._parse_group_response.return_value = {"comparison": "ok"}

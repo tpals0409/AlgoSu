@@ -214,9 +214,17 @@ class AIAnalysisWorker:
             # Problem Service에서 구조화 데이터 조회 (실패 시 None — 서비스 중단 방지)
             problem_id = submission.get("problemId", "")
             study_id = submission.get("studyId", "")
-            problem_data = self._get_problem(problem_id, study_id) if problem_id and study_id else None
-            constraints: str | None = problem_data.get("constraints") if problem_data else None
-            examples: list[dict] | None = problem_data.get("examples") if problem_data else None
+            problem_data = (
+                self._get_problem(problem_id, study_id)
+                if problem_id and study_id
+                else None
+            )
+            constraints: str | None = (
+                problem_data.get("constraints") if problem_data else None
+            )
+            examples: list[dict] | None = (
+                problem_data.get("examples") if problem_data else None
+            )
 
             # Claude 분석 -- 재시도 3회
             result = self._analyze_with_retry(
