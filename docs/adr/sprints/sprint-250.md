@@ -1,3 +1,14 @@
+---
+sprint: 250
+title: "Oracle 프로토콜 통신 안정화 — Wave 완료 즉시 보고·세션 단절 복구·delegate_task 내구성·페르소나 표준화"
+date: "2026-07-16"
+status: completed
+agents: [Oracle, Scribe]
+related_adrs: ["sprint-249", "sprint-246", "sprint-247"]
+related_memory: ["sprint-window", "sprint-249-ssot-drift"]
+topics: ["oracle", "hermes", "session-recovery", "wave-reporting", "delegate-task", "soul"]
+tldr: "Hermes 이전(Sprint 246) 후 발견된 Oracle 운영 프로토콜 4건 수정. D1: Wave 완료 즉시 Telegram 보고 원칙(선언 형식 의무화, SOUL.md 알림 테이블 추가). D2: 세션 단절 복구 패턴(progress.json 경로 /tmp/→~/.hermes/ 영구 이전, SOUL.md 복구 절차 신설). D3: delegate_task 비내구성 명문화(장기 >10분 작업은 background terminal/cronjob 래핑 필수). D4: 하위 에이전트 12개 보고 표준화(3.5 추론 검증 5개 추가·SHA+exit 8개·progress.json 착/완 전원 공통화). 레포 커밋 없음 — Hermes 인프라 변경."
+---
 # Sprint 250 — Oracle 프로토콜 통신 안정화
 
 _날짜: 2026-07-16_
