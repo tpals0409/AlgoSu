@@ -98,10 +98,13 @@ blog/              기술 블로그
 - 민감 정보 로그 절대 금지 (JWT, 토큰, 키, PII, DB 연결문자열)
 - Secrets: SealedSecret 사용 (평문 Secret 금지)
 - X-Internal-Key: `timingSafeEqual` 비교
-- **Internal Key 네이밍 컨벤션** (Sprint 239 Q-5 SSOT):
+- **Internal Key 네이밍 컨벤션** (Sprint 239 Q-5 SSOT, Sprint 249 개정):
   - **인바운드**(자기 서비스 키 검증, 모든 서비스 공통) = `INTERNAL_API_KEY` — 단일 환경변수
-  - **아웃바운드**(대상 서비스 호출 시 보낼 키) = `INTERNAL_KEY_<TARGET>` — 예: `INTERNAL_KEY_PROBLEM`, `INTERNAL_KEY_SUBMISSION`, `INTERNAL_KEY_AI_ANALYSIS`
-  - 근거: `services/gateway/src/common/config/service-keys.config.ts` (SERVICE_ROUTING_TABLE + INTERNAL_SERVICE_ROUTES)
+  - **아웃바운드 — Gateway → MSA 서비스**: `INTERNAL_KEY_<TARGET>` — 예: `INTERNAL_KEY_PROBLEM`, `INTERNAL_KEY_SUBMISSION`, `INTERNAL_KEY_AI_ANALYSIS`
+    - 근거: `services/gateway/src/common/config/service-keys.config.ts` (SERVICE_ROUTING_TABLE)
+  - **아웃바운드 — 서비스 간 직접 호출**: `<TARGET>_SERVICE_KEY` — 예: `PROBLEM_SERVICE_KEY`, `SUBMISSION_SERVICE_KEY`
+    - 근거: `services/submission/src/common/problem-service-client/problem-service-client.ts`, `services/github-worker/src/config.ts`
+  - ⚠️ SealedSecret 봉인 시 코드 config 필드명을 SSOT로 사용할 것 — 본 문서 예시가 아닌 실제 코드를 확인 (Sprint 248 교훈)
 - CI: `permissions:{}`, gitleaks, Trivy, `.env` 커밋 방지
 - JWT: `none` 알고리즘 금지, 만료 검증 필수
 - 입력값: SQL 바인딩 (raw query 금지)
