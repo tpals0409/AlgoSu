@@ -1,3 +1,14 @@
+---
+sprint: 250
+title: "Oracle Protocol Communication Stabilization — Wave Immediate Reporting, Session Recovery, delegate_task Durability, Persona Standardization"
+date: "2026-07-16"
+status: completed
+agents: [Oracle, Scribe]
+related_adrs: ["sprint-249", "sprint-246", "sprint-247"]
+related_memory: ["sprint-window", "sprint-249-ssot-drift"]
+topics: ["oracle", "hermes", "session-recovery", "wave-reporting", "delegate-task", "soul"]
+tldr: "Fixed 4 Oracle operational protocol issues discovered after Hermes migration (Sprint 246). D1: Wave completion immediate Telegram reporting rule (declarative format mandated, SOUL.md notification table updated). D2: Session disconnect recovery pattern (progress.json path migrated /tmp/→~/.hermes/ permanent, SOUL.md recovery procedure added). D3: Formalized delegate_task non-durability (tasks >10 min must use background terminal/cronjob). D4: Standardized 12 subagent persona reporting (3.5 reasoning verification added to 5, SHA+exit to 8, progress.json start/done to all). No repo commits — Hermes infrastructure changes only."
+---
 # Sprint 250 — Oracle Protocol Communication Stabilization
 
 _Date: 2026-07-16_
