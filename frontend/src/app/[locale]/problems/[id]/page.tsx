@@ -348,14 +348,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
                 </span>
               </div>
 
-              {/* 설명 */}
-              {problem.description && (
-                <p className="text-[13px] leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--text-2)' }}>
-                  {problem.description}
-                </p>
-              )}
-
-              {/* 출처 링크 */}
+              {/* 출처 링크 (문제 본문은 노출하지 않음 — Sprint 252: 프로그래머스/BOJ 링크로 접근) */}
               {problem.sourceUrl && (
                 <a
                   href={problem.sourceUrl}
