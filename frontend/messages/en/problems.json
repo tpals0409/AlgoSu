@@ -205,6 +205,13 @@
       "noResultsHint": "Try a different keyword.",
       "solvedCount": "{count} solved"
     },
+    "recommend": {
+      "sectionTitle": "Recommended",
+      "refresh": "Refresh",
+      "loading": "Loading a recommendation…",
+      "empty": "No recommendations available right now.",
+      "error": "Failed to load recommendations."
+    },
     "header": {
       "searchTitleBoj": "Search BOJ Problems",
       "searchTitleProgrammers": "Search Programmers Problems",

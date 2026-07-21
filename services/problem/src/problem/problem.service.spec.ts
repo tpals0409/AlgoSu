@@ -1112,6 +1112,253 @@ describe('ProblemService', () => {
   });
 
   // ──────────────────────────────────────────────
+  // 13c. recommendForStudy()
+  // ──────────────────────────────────────────────
+  describe('recommendForStudy()', () => {
+    beforeEach(() => {
+      dualWrite.findRecommendationCandidates = jest.fn();
+    });
+
+    const owned = (over: Partial<Problem>): Problem =>
+      ({ ...mockProblem, ...over } as Problem);
+
+    const candidate = (over: Partial<Problem>): Problem =>
+      ({
+        ...mockProblem,
+        id: undefined,
+        studyId: OTHER_STUDY_ID,
+        ...over,
+      } as unknown as Problem);
+
+    it('studyId 누락 (undefined): BadRequestException — cross-study 방어', async () => {
+      await expect(
+        service.recommendForStudy(undefined as unknown as string, [], 8),
+      ).rejects.toThrow(BadRequestException);
+      expect(dualWrite.find).not.toHaveBeenCalled();
+      expect(dualWrite.findRecommendationCandidates).not.toHaveBeenCalled();
+    });
+
+    it('studyId 빈 문자열: BadRequestException', async () => {
+      await expect(service.recommendForStudy('', [], 8)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(dualWrite.findRecommendationCandidates).not.toHaveBeenCalled();
+    });
+
+    it('현재 스터디 문제 조회: ACTIVE+CLOSED 스코핑', async () => {
+      dualWrite.find.mockResolvedValue([]);
+      dualWrite.findRecommendationCandidates.mockResolvedValue([]);
+
+      await service.recommendForStudy(STUDY_ID, [], 8);
+
+      expect(dualWrite.find).toHaveBeenCalledWith({
+        where: { studyId: STUDY_ID, status: In([ProblemStatus.ACTIVE, ProblemStatus.CLOSED]) },
+      });
+    });
+
+    it('Tier 1: 난이도 일치 AND 태그 겹침 후보 반환', async () => {
+      // 스터디: SILVER 난이도, 해시 태그 보유
+      dualWrite.find.mockResolvedValue([
+        owned({ sourceUrl: 'https://owned.com/1', difficulty: Difficulty.SILVER, tags: ['해시'] }),
+      ]);
+      // cross-study 후보 2개: 하나는 태그 겹침(Tier1), 하나는 태그 안 겹침
+      dualWrite.findRecommendationCandidates.mockResolvedValue([
+        candidate({ title: 'Tier1 후보', sourceUrl: 'https://x.com/t1', difficulty: Difficulty.SILVER, tags: ['해시', '정렬'] }),
+        candidate({ title: '태그 불일치', sourceUrl: 'https://x.com/no', difficulty: Difficulty.SILVER, tags: ['DP'] }),
+      ]);
+
+      const result = await service.recommendForStudy(STUDY_ID, [], 8);
+
+      // 난이도 SILVER로 DB 필터 호출
+      expect(dualWrite.findRecommendationCandidates).toHaveBeenCalledWith(
+        [Difficulty.SILVER],
+        STUDY_ID,
+      );
+      const urls = result.map((r) => r.sourceUrl);
+      expect(urls).toContain('https://x.com/t1');
+    });
+
+    it('Tier 2 폴백: Tier1 부족 시 난이도만 일치 후보 append', async () => {
+      dualWrite.find.mockResolvedValue([
+        owned({ sourceUrl: 'https://owned.com/1', difficulty: Difficulty.SILVER, tags: ['해시'] }),
+      ]);
+      // 태그 겹치는 후보 없음 → Tier1 0개, Tier2에서 난이도만 일치 채움
+      dualWrite.findRecommendationCandidates.mockResolvedValue([
+        candidate({ title: 'Tier2 후보', sourceUrl: 'https://x.com/t2', difficulty: Difficulty.SILVER, tags: ['DP'] }),
+      ]);
+
+      const result = await service.recommendForStudy(STUDY_ID, [], 8);
+
+      const urls = result.map((r) => r.sourceUrl);
+      expect(urls).toContain('https://x.com/t2');
+    });
+
+    it('Tier 3 seed: 신규 스터디(난이도 없음)면 seed로 채움', async () => {
+      // 등록 문제 0개 → studyDifficulties 비어있음 → 후보 조회는 빈 배열 반환
+      dualWrite.find.mockResolvedValue([]);
+      dualWrite.findRecommendationCandidates.mockResolvedValue([]);
+
+      const result = await service.recommendForStudy(STUDY_ID, [], 8);
+
+      // 난이도 목록 비어있으므로 [] 로 호출
+      expect(dualWrite.findRecommendationCandidates).toHaveBeenCalledWith([], STUDY_ID);
+      // seed로 8개 채워짐
+      expect(result).toHaveLength(8);
+      // seed는 프로그래머스 lesson URL
+      result.forEach((r) => {
+        expect(r.sourceUrl).toContain('school.programmers.co.kr/learn/courses/30/lessons/');
+        expect(r.sourcePlatform).toBe('PROGRAMMERS');
+      });
+    });
+
+    it('Tier 3 seed: cross-study 부족분을 seed로 보충', async () => {
+      dualWrite.find.mockResolvedValue([
+        owned({ sourceUrl: 'https://owned.com/1', difficulty: Difficulty.SILVER, tags: ['해시'] }),
+      ]);
+      // cross-study 후보 1개만 → 나머지는 seed로 채움
+      dualWrite.findRecommendationCandidates.mockResolvedValue([
+        candidate({ title: '유일 후보', sourceUrl: 'https://x.com/only', difficulty: Difficulty.SILVER, tags: ['해시'] }),
+      ]);
+
+      const result = await service.recommendForStudy(STUDY_ID, [], 5);
+
+      expect(result).toHaveLength(5);
+      expect(result.map((r) => r.sourceUrl)).toContain('https://x.com/only');
+      // 나머지 4개는 seed
+      const seedCount = result.filter((r) =>
+        r.sourceUrl.includes('school.programmers.co.kr'),
+      ).length;
+      expect(seedCount).toBe(4);
+    });
+
+    it('ownedUrls dedup: 스터디가 이미 가진 sourceUrl은 후보에서 제외', async () => {
+      dualWrite.find.mockResolvedValue([
+        owned({ sourceUrl: 'https://dup.com/1', difficulty: Difficulty.SILVER, tags: ['해시'] }),
+      ]);
+      // 후보 중 하나가 owned와 동일 url → 제외되어야 함
+      dualWrite.findRecommendationCandidates.mockResolvedValue([
+        candidate({ title: '중복', sourceUrl: 'https://dup.com/1', difficulty: Difficulty.SILVER, tags: ['해시'] }),
+        candidate({ title: '신규', sourceUrl: 'https://new.com/2', difficulty: Difficulty.SILVER, tags: ['해시'] }),
+      ]);
+
+      const result = await service.recommendForStudy(STUDY_ID, [], 8);
+
+      const urls = result.map((r) => r.sourceUrl);
+      expect(urls).not.toContain('https://dup.com/1');
+      expect(urls).toContain('https://new.com/2');
+    });
+
+    it('exclude 파라미터 dedup: 전달된 exclude url은 후보/seed에서 제외', async () => {
+      dualWrite.find.mockResolvedValue([
+        owned({ sourceUrl: 'https://owned.com/1', difficulty: Difficulty.SILVER, tags: ['해시'] }),
+      ]);
+      dualWrite.findRecommendationCandidates.mockResolvedValue([
+        candidate({ title: '제외대상', sourceUrl: 'https://ex.com/1', difficulty: Difficulty.SILVER, tags: ['해시'] }),
+        candidate({ title: '포함', sourceUrl: 'https://in.com/2', difficulty: Difficulty.SILVER, tags: ['해시'] }),
+      ]);
+
+      const result = await service.recommendForStudy(STUDY_ID, ['https://ex.com/1'], 8);
+
+      const urls = result.map((r) => r.sourceUrl);
+      expect(urls).not.toContain('https://ex.com/1');
+      expect(urls).toContain('https://in.com/2');
+    });
+
+    it('cross-study 투영: description/studyId/createdBy/id 미포함 (누출 방지)', async () => {
+      dualWrite.find.mockResolvedValue([
+        owned({ sourceUrl: 'https://owned.com/1', difficulty: Difficulty.SILVER, tags: ['해시'] }),
+      ]);
+      dualWrite.findRecommendationCandidates.mockResolvedValue([
+        candidate({
+          title: '민감정보 포함 후보',
+          sourceUrl: 'https://x.com/secret',
+          difficulty: Difficulty.SILVER,
+          tags: ['해시'],
+          description: '누출되면 안되는 설명',
+          studyId: OTHER_STUDY_ID,
+          createdBy: 'other-user',
+        }),
+      ]);
+
+      const result = await service.recommendForStudy(STUDY_ID, [], 8);
+
+      const item = result.find((r) => r.sourceUrl === 'https://x.com/secret')!;
+      expect(item).toBeDefined();
+      // 안전 필드만 존재
+      expect(Object.keys(item).sort()).toEqual(
+        ['category', 'difficulty', 'level', 'sourcePlatform', 'sourceUrl', 'tags', 'title'].sort(),
+      );
+      expect(item).not.toHaveProperty('description');
+      expect(item).not.toHaveProperty('studyId');
+      expect(item).not.toHaveProperty('createdBy');
+      expect(item).not.toHaveProperty('id');
+    });
+
+    it('limit slice: limit 개수만큼만 반환', async () => {
+      dualWrite.find.mockResolvedValue([]);
+      dualWrite.findRecommendationCandidates.mockResolvedValue([]);
+
+      const result = await service.recommendForStudy(STUDY_ID, [], 3);
+
+      expect(result).toHaveLength(3);
+    });
+
+    it('sourceUrl null 후보: 후처리에서 걸러짐', async () => {
+      dualWrite.find.mockResolvedValue([
+        owned({ sourceUrl: 'https://owned.com/1', difficulty: Difficulty.SILVER, tags: ['해시'] }),
+      ]);
+      dualWrite.findRecommendationCandidates.mockResolvedValue([
+        candidate({ title: 'url 없음', sourceUrl: null, difficulty: Difficulty.SILVER, tags: ['해시'] }),
+        candidate({ title: '정상', sourceUrl: 'https://ok.com/1', difficulty: Difficulty.SILVER, tags: ['해시'] }),
+      ]);
+
+      const result = await service.recommendForStudy(STUDY_ID, [], 8);
+
+      const urls = result.map((r) => r.sourceUrl);
+      expect(urls).toContain('https://ok.com/1');
+      expect(urls).not.toContain(null);
+    });
+
+    it('null 메타 후보(sourcePlatform/difficulty/level null): 투영 시 안전 폴백', async () => {
+      dualWrite.find.mockResolvedValue([
+        owned({ sourceUrl: 'https://owned.com/1', difficulty: Difficulty.SILVER, tags: ['해시'] }),
+      ]);
+      dualWrite.findRecommendationCandidates.mockResolvedValue([
+        candidate({
+          title: 'null 메타',
+          sourceUrl: 'https://nullmeta.com/1',
+          difficulty: null,
+          level: null,
+          sourcePlatform: null,
+          tags: ['해시'],
+        }),
+      ]);
+
+      const result = await service.recommendForStudy(STUDY_ID, [], 8);
+
+      const item = result.find((r) => r.sourceUrl === 'https://nullmeta.com/1')!;
+      expect(item).toBeDefined();
+      expect(item.difficulty).toBeNull();
+      expect(item.level).toBeNull();
+      expect(item.sourcePlatform).toBe('');
+    });
+
+    it('태그 없는 후보(tags=null): Tier1 겹침 실패 → Tier2로 편입', async () => {
+      dualWrite.find.mockResolvedValue([
+        owned({ sourceUrl: 'https://owned.com/1', difficulty: Difficulty.SILVER, tags: ['해시'] }),
+      ]);
+      dualWrite.findRecommendationCandidates.mockResolvedValue([
+        candidate({ title: '태그없음', sourceUrl: 'https://notag.com/1', difficulty: Difficulty.SILVER, tags: null }),
+      ]);
+
+      const result = await service.recommendForStudy(STUDY_ID, [], 8);
+
+      expect(result.map((r) => r.sourceUrl)).toContain('https://notag.com/1');
+      expect(result.find((r) => r.sourceUrl === 'https://notag.com/1')!.tags).toBeNull();
+    });
+  });
+
+  // ──────────────────────────────────────────────
   // 14. closeExpiredProblems()
   // ──────────────────────────────────────────────
   describe('closeExpiredProblems()', () => {

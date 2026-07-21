@@ -9,13 +9,16 @@
  * is lifted to the parent so it survives step transitions.
  */
 import { useState, useEffect, useRef } from 'react';
-import { Search, X, Loader2, AlertCircle } from 'lucide-react';
+import { Search, X, Loader2, AlertCircle, RefreshCw, Sparkles } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { DIFFICULTY_CONFIG } from '../AlgosuUI';
 import { PROGRAMMERS_LEVEL_LABELS } from '@/lib/constants';
+import { useProblemRecommendation } from '@/hooks/use-problem-recommendation';
+import type { RecommendationItem } from '@/lib/api';
 import {
   toOurDiff,
   resolveTierLabel,
+  recommendationToSolvedProblem,
   type Platform,
   type SolvedProblem,
 } from './problem-search.utils';
@@ -53,6 +56,9 @@ export function SearchStep({
   const [error, setError] = useState('');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Recommendation section — hybrid prefetch + client rotation (Sprint 254).
+  const rec = useProblemRecommendation();
 
   // Autofocus the search input on first mount.
   useEffect(() => {
@@ -137,6 +143,15 @@ export function SearchStep({
           ))}
         </div>
       </div>
+
+      {/* Recommendation section — hybrid prefetch + client rotation */}
+      <RecommendationSection
+        current={rec.current}
+        loading={rec.loading}
+        error={rec.error}
+        onRefresh={rec.refresh}
+        onSelect={onSelect}
+      />
 
       {/* Search input */}
       <div className="px-5 pt-3 pb-3">
@@ -314,6 +329,135 @@ export function SearchStep({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** {@link RecommendationSection} props */
+interface RecommendationSectionProps {
+  current: RecommendationItem | null;
+  loading: boolean;
+  error: boolean;
+  onRefresh: () => void;
+  onSelect: (p: SolvedProblem) => void;
+}
+
+/**
+ * "추천 문제" 섹션 — 기본 후보 1개 + [새로고침] 버튼.
+ *
+ * 카드 본문 클릭 시 추천 항목을 {@link SolvedProblem}으로 매핑해 상위
+ * `onSelect`로 전달하므로 기존 검색 → confirm 파이프라인을 그대로 재사용한다.
+ * 추천이 아예 없을 때(에러/소진 + current 없음)는 섹션을 렌더하지 않아
+ * 검색 UX를 방해하지 않는다.
+ */
+function RecommendationSection({
+  current,
+  loading,
+  error,
+  onRefresh,
+  onSelect,
+}: RecommendationSectionProps) {
+  const t = useTranslations('problems');
+
+  const resolvedDiff = current?.difficulty ?? undefined;
+  const cfg = resolvedDiff ? DIFFICULTY_CONFIG[resolvedDiff] : null;
+  const tags = (current?.tags ?? []).slice(0, 3);
+
+  return (
+    <div className="px-5 pt-3">
+      <div className="mb-1.5 flex items-center justify-between">
+        <span
+          className="inline-flex items-center gap-1 text-[11px] font-semibold"
+          style={{ color: 'var(--text-2)' }}
+        >
+          <Sparkles className="h-3 w-3" style={{ color: 'var(--primary)' }} />
+          {t('addModal.recommend.sectionTitle')}
+        </span>
+        <button
+          type="button"
+          onClick={onRefresh}
+          disabled={loading}
+          className="inline-flex items-center gap-1 rounded-btn px-2 py-1 text-[11px] font-medium transition-opacity hover:opacity-70 disabled:opacity-50"
+          style={{ background: 'var(--bg-alt)', color: 'var(--text-3)' }}
+        >
+          <RefreshCw className={`h-3 w-3${loading ? ' animate-spin' : ''}`} />
+          {t('addModal.recommend.refresh')}
+        </button>
+      </div>
+
+      {current ? (
+        <button
+          type="button"
+          onClick={() => onSelect(recommendationToSolvedProblem(current))}
+          className="group flex w-full items-start gap-3 rounded-card border px-4 py-3 text-left transition-all hover:-translate-y-0.5"
+          style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = 'var(--primary)';
+            e.currentTarget.style.boxShadow = '0 0 0 1px var(--primary), var(--shadow-hover)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = 'var(--border)';
+            e.currentTarget.style.boxShadow = 'none';
+          }}
+        >
+          <div className="min-w-0 flex-1">
+            <p
+              className="truncate text-[13px] font-semibold"
+              style={{ color: 'var(--text)' }}
+            >
+              {current.title}
+            </p>
+            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+              {cfg && (
+                <span
+                  className="inline-flex items-center gap-1 rounded-badge px-1.5 py-0.5 text-[10px] font-semibold"
+                  style={{ background: cfg.bg, color: cfg.color }}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: cfg.color }} />
+                  {cfg.label}
+                </span>
+              )}
+              {current.category === 'SQL' && (
+                <span
+                  className="rounded-badge px-1.5 py-0.5 text-[10px] font-semibold"
+                  style={{ background: 'var(--primary-soft)', color: 'var(--primary)' }}
+                >
+                  SQL
+                </span>
+              )}
+              {tags.map((tg) => (
+                <span
+                  key={tg}
+                  className="rounded-badge px-1.5 py-0.5 text-[10px] font-medium"
+                  style={{ background: 'var(--bg-alt)', color: 'var(--text-3)' }}
+                >
+                  {tg}
+                </span>
+              ))}
+            </div>
+          </div>
+          <span className="shrink-0 text-[10px]" style={{ color: 'var(--text-3)' }}>
+            {current.sourcePlatform}
+          </span>
+        </button>
+      ) : loading ? (
+        <div
+          className="flex items-center gap-2 rounded-card border px-4 py-3 text-[12px]"
+          style={{ background: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-3)' }}
+        >
+          <Loader2 className="h-3.5 w-3.5 animate-spin" style={{ color: 'var(--primary)' }} />
+          {t('addModal.recommend.loading')}
+        </div>
+      ) : (
+        <div
+          className="rounded-card border px-4 py-3 text-[12px]"
+          style={{ background: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-3)' }}
+        >
+          {error
+            ? t('addModal.recommend.error')
+            : t('addModal.recommend.empty')}
+        </div>
+      )}
     </div>
   );
 }

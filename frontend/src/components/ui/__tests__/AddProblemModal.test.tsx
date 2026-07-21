@@ -19,6 +19,8 @@ jest.mock('lucide-react', () => {
     Loader2: Icon,
     ExternalLink: Icon,
     AlertCircle: Icon,
+    RefreshCw: Icon,
+    Sparkles: Icon,
   };
 });
 
@@ -28,7 +30,8 @@ const mockSearchByQueryProgrammers = jest.fn();
 jest.mock('@/lib/api', () => ({
   solvedacApi: { searchByQuery: (...args: unknown[]) => mockSearchByQuerySolvedac(...args) },
   programmersApi: { searchByQuery: (...args: unknown[]) => mockSearchByQueryProgrammers(...args) },
-  problemApi: { create: jest.fn() },
+  // getRecommendations resolves [] so the recommendation section is inert here.
+  problemApi: { create: jest.fn(), getRecommendations: jest.fn().mockResolvedValue([]) },
   studyApi: { notifyProblemCreated: jest.fn() },
   // SSOT 헬퍼는 실제 구현을 사용 (dual-check 로직 drift 방지)
   isProgrammersSqlProblem: jest.requireActual('@/lib/api/external').isProgrammersSqlProblem,

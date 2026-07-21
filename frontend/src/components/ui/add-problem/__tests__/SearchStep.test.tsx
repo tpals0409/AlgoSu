@@ -16,19 +16,27 @@ jest.mock('lucide-react', () => {
     X: Icon,
     Loader2: Icon,
     AlertCircle: Icon,
+    RefreshCw: Icon,
+    Sparkles: Icon,
   };
 });
 
 // The component only needs `isProgrammersSqlProblem` from @/lib/api through the utils
-// barrel; mocking the barrel keeps the test hermetic.
+// barrel; mocking the barrel keeps the test hermetic. `getRecommendations`
+// resolves [] so the recommendation section settles into its empty state and
+// never interferes with the search assertions below.
 jest.mock('@/lib/api', () => ({
   solvedacApi: { searchByQuery: jest.fn() },
   programmersApi: { searchByQuery: jest.fn() },
+  problemApi: { getRecommendations: jest.fn().mockResolvedValue([]) },
   isProgrammersSqlProblem: jest.requireActual('@/lib/api/external').isProgrammersSqlProblem,
 }));
 
 import { SearchStep } from '../SearchStep';
+import { problemApi, type RecommendationItem } from '@/lib/api';
 import type { Platform, SolvedProblem } from '../problem-search.utils';
+
+const mockGetRecommendations = problemApi.getRecommendations as jest.Mock;
 
 interface HarnessProps {
   onSelect?: (p: SolvedProblem) => void;
@@ -290,5 +298,70 @@ describe('SearchStep — result + state UIs', () => {
     await act(async () => { jest.advanceTimersByTime(400); });
 
     expect(screen.getAllByText('SQL').length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe('SearchStep — recommendation section', () => {
+  function makeRec(n: number): RecommendationItem {
+    return {
+      title: `Recommended ${n}`,
+      sourceUrl: `https://www.acmicpc.net/problem/${n}`,
+      sourcePlatform: 'BOJ',
+      difficulty: 'GOLD',
+      level: 13,
+      tags: [`rtag${n}`],
+      category: 'ALGORITHM',
+    };
+  }
+
+  afterEach(() => {
+    mockGetRecommendations.mockReset();
+    mockGetRecommendations.mockResolvedValue([]);
+  });
+
+  it('renders the recommendation section title + the first candidate', async () => {
+    mockGetRecommendations.mockResolvedValue([makeRec(1), makeRec(2)]);
+    renderWithI18n(<Harness />);
+
+    expect(await screen.findByText('추천 문제')).toBeTruthy();
+    expect(await screen.findByText('Recommended 1')).toBeTruthy();
+  });
+
+  it('rotates to the next candidate when Refresh is clicked (no re-fetch)', async () => {
+    mockGetRecommendations.mockResolvedValue([makeRec(1), makeRec(2)]);
+    renderWithI18n(<Harness />);
+
+    await screen.findByText('Recommended 1');
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /새로고침/ }));
+    });
+
+    expect(await screen.findByText('Recommended 2')).toBeTruthy();
+    // prefetch only — rotation is client-side.
+    expect(mockGetRecommendations).toHaveBeenCalledTimes(1);
+  });
+
+  it('maps the recommendation to a SolvedProblem and fires onSelect on card click', async () => {
+    mockGetRecommendations.mockResolvedValue([makeRec(1234)]);
+    const onSelect = jest.fn();
+    renderWithI18n(<Harness onSelect={onSelect} />);
+
+    const card = await screen.findByText('Recommended 1234');
+    await act(async () => { fireEvent.click(card); });
+
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect.mock.calls[0][0]).toMatchObject({
+      problemId: 1234,
+      titleKo: 'Recommended 1234',
+      sourceUrl: 'https://www.acmicpc.net/problem/1234',
+      category: 'algorithm',
+    });
+  });
+
+  it('shows the error notice when the recommendation fetch rejects', async () => {
+    mockGetRecommendations.mockRejectedValue(new Error('rec boom'));
+    renderWithI18n(<Harness />);
+
+    expect(await screen.findByText('추천 문제를 불러오지 못했습니다.')).toBeTruthy();
   });
 });

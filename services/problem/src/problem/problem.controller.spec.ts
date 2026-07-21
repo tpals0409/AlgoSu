@@ -44,6 +44,7 @@ describe('ProblemController', () => {
       findActiveByStudy: jest.fn(),
       findById: jest.fn(),
       findByTags: jest.fn(),
+      recommendForStudy: jest.fn(),
       delete: jest.fn(),
       update: jest.fn(),
     };
@@ -171,6 +172,46 @@ describe('ProblemController', () => {
 
       const result = await controller.searchByTags(query, STUDY_ID);
 
+      expect(result).toEqual({ data: [] });
+    });
+  });
+
+  // ──────────────────────────────────────────────
+  // GET /recommendations
+  // ──────────────────────────────────────────────
+  describe('recommend()', () => {
+    const recItem = {
+      title: '완주하지 못한 선수',
+      sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/42576',
+      sourcePlatform: 'PROGRAMMERS',
+      difficulty: null,
+      level: 1,
+      tags: ['해시'],
+      category: 'ALGORITHM',
+    };
+
+    it('기본값: limit=8, exclude=[] 로 service 위임 + {data} 래핑', async () => {
+      service.recommendForStudy.mockResolvedValue([recItem]);
+
+      const result = await controller.recommend({}, STUDY_ID);
+
+      expect(service.recommendForStudy).toHaveBeenCalledWith(STUDY_ID, [], 8);
+      expect(result).toEqual({ data: [recItem] });
+    });
+
+    it('limit/exclude 전달: 그대로 service에 위임', async () => {
+      service.recommendForStudy.mockResolvedValue([]);
+
+      const result = await controller.recommend(
+        { limit: 5, exclude: ['https://a.com/1'] },
+        STUDY_ID,
+      );
+
+      expect(service.recommendForStudy).toHaveBeenCalledWith(
+        STUDY_ID,
+        ['https://a.com/1'],
+        5,
+      );
       expect(result).toEqual({ data: [] });
     });
   });

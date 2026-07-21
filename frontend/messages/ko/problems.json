@@ -205,6 +205,13 @@
       "noResultsHint": "다른 키워드로 검색해보세요.",
       "solvedCount": "{count}명 해결"
     },
+    "recommend": {
+      "sectionTitle": "추천 문제",
+      "refresh": "새로고침",
+      "loading": "추천 문제를 불러오는 중…",
+      "empty": "지금은 추천할 문제가 없습니다.",
+      "error": "추천 문제를 불러오지 못했습니다."
+    },
     "header": {
       "searchTitleBoj": "백준 문제 검색",
       "searchTitleProgrammers": "프로그래머스 문제 검색",

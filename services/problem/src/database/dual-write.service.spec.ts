@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In, Not, IsNull } from 'typeorm';
 import { DualWriteService } from './dual-write.service';
 import { ReconciliationService } from './reconciliation.service';
 import { Problem, ProblemStatus, Difficulty, ProblemCategory } from '../problem/problem.entity';
@@ -335,6 +335,67 @@ describe('DualWriteService', () => {
       await service.findByTagsContaining('study-001', ['BFS'], 'or', [ProblemStatus.ACTIVE]);
 
       expect(oldRepo.createQueryBuilder).toHaveBeenCalledWith('problem');
+    });
+  });
+
+  // ──────────────────────────────────────────────
+  // findRecommendationCandidates
+  // ──────────────────────────────────────────────
+  describe('findRecommendationCandidates()', () => {
+    it('난이도 목록 비어있음: DB 조회 없이 빈 배열 반환', async () => {
+      const result = await service.findRecommendationCandidates([], 'study-001');
+
+      expect(result).toEqual([]);
+      expect(oldRepo.find).not.toHaveBeenCalled();
+    });
+
+    it('안전 컬럼 select 투영 + where 조건(status/difficulty/studyId/sourceUrl)', async () => {
+      oldRepo.find!.mockResolvedValue([mockProblem]);
+
+      const result = await service.findRecommendationCandidates(
+        [Difficulty.SILVER, Difficulty.GOLD],
+        'study-001',
+      );
+
+      expect(oldRepo.find).toHaveBeenCalledTimes(1);
+      const arg = oldRepo.find!.mock.calls[0][0];
+
+      // select 투영 — 외부 식별 메타만 (description/studyId/createdBy/id 미포함)
+      expect(arg.select).toEqual({
+        title: true,
+        sourceUrl: true,
+        sourcePlatform: true,
+        difficulty: true,
+        level: true,
+        tags: true,
+        category: true,
+      });
+      expect(arg.select).not.toHaveProperty('description');
+      expect(arg.select).not.toHaveProperty('studyId');
+      expect(arg.select).not.toHaveProperty('createdBy');
+
+      // where 조건
+      expect(arg.where.status).toBe(ProblemStatus.ACTIVE);
+      expect(arg.where.difficulty).toEqual(In([Difficulty.SILVER, Difficulty.GOLD]));
+      expect(arg.where.studyId).toEqual(Not('study-001'));
+      expect(arg.where.sourceUrl).toEqual(Not(IsNull()));
+
+      // 상한 take
+      expect(arg.take).toBe(200);
+
+      expect(result).toEqual([mockProblem]);
+    });
+
+    it('SWITCH_READ 모드: readRepo(신 DB) 경유', async () => {
+      mockGetDualWriteMode.mockReturnValue(DualWriteMode.SWITCH_READ);
+      service.onModuleInit();
+      reconciliation.hasMismatch = false;
+      (newRepo as Record<string, jest.Mock>).find = jest.fn().mockResolvedValue([mockProblem]);
+
+      const result = await service.findRecommendationCandidates([Difficulty.SILVER], 'study-001');
+
+      expect((newRepo as Record<string, jest.Mock>).find).toHaveBeenCalled();
+      expect(result).toEqual([mockProblem]);
     });
   });
 

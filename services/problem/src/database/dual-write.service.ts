@@ -6,8 +6,8 @@
  */
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOneOptions, FindManyOptions, DeepPartial, Brackets } from 'typeorm';
-import { Problem, ProblemStatus } from '../problem/problem.entity';
+import { Repository, FindOneOptions, FindManyOptions, DeepPartial, Brackets, In, Not, IsNull } from 'typeorm';
+import { Problem, ProblemStatus, Difficulty } from '../problem/problem.entity';
 import { DualWriteMode, getDualWriteMode, NEW_DB_CONNECTION } from './dual-write.config';
 import { ReconciliationService } from './reconciliation.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
@@ -175,6 +175,52 @@ export class DualWriteService implements OnModuleInit {
       .orderBy('problem.weekNumber', 'ASC')
       .addOrderBy('problem.createdAt', 'ASC')
       .getMany();
+  }
+
+  /**
+   * 추천 후보 조회 (cross-study 읽기) — 보안 핵심
+   *
+   * 다른 스터디에 등록된 문제 중 난이도가 일치하는 ACTIVE 후보를 조회한다.
+   * readRepo getter 경유 → switch-read 모드 전환 자동 적용(직접 dataSource 우회 금지).
+   *
+   * 보안: select로 외부 식별 메타만 투영 —
+   *   title/sourceUrl/sourcePlatform/difficulty/level/tags/category만 로드.
+   *   description/studyId/createdBy/id/publicId/deadline 등은 절대 로드 안 함(누출 방지).
+   *
+   * where 조건:
+   *   status=ACTIVE, difficulty In(difficulties), studyId Not(excludeStudyId), sourceUrl IS NOT NULL
+   * 상한: take ~200 — 전체 테이블 로드 방지. 태그 겹침 필터는 서비스 레이어(JS)에서 후처리.
+   *
+   * @param difficulties  대상 난이도 목록 (비어있으면 빈 배열 반환 — In([]) 전체매치 방지)
+   * @param excludeStudyId 현재 스터디 ID (제외 대상 — cross-study 스코핑)
+   * @returns 안전 컬럼만 채워진 Problem 부분 엔티티 배열
+   */
+  async findRecommendationCandidates(
+    difficulties: Difficulty[],
+    excludeStudyId: string,
+  ): Promise<Problem[]> {
+    // In([]) 은 TypeORM에서 항상-false가 아니라 문법 오류/전체 스캔 위험 → 빈 목록 방어
+    if (difficulties.length === 0) {
+      return [];
+    }
+    return this.readRepo.find({
+      select: {
+        title: true,
+        sourceUrl: true,
+        sourcePlatform: true,
+        difficulty: true,
+        level: true,
+        tags: true,
+        category: true,
+      },
+      where: {
+        status: ProblemStatus.ACTIVE,
+        difficulty: In(difficulties),
+        studyId: Not(excludeStudyId),
+        sourceUrl: Not(IsNull()),
+      },
+      take: 200,
+    });
   }
 
   /** 신 DB에 fire-and-forget 쓰기 — H8: 메트릭 계측 */
