@@ -63,9 +63,16 @@ export function ConfirmStep({
   const [deadline, setDeadline] = useState('');
   const [errors, setErrors] = useState<{ deadline?: string }>({});
 
+  // Display SSOT: the row's own `sourcePlatform` (set by recommendations)
+  // decides the source icon/tier/label/URL, mirroring buildCreatePayload's
+  // save logic. Plain search rows leave it undefined → fall back to the active
+  // tab, so a BOJ recommendation picked on the Programmers tab still renders as
+  // BOJ instead of inheriting the tab.
+  const effectivePlatform = problem.sourcePlatform ?? platform;
+
   const resolvedDiff = problem.difficulty ?? toOurDiff(problem.level).difficulty;
   const cfg = DIFFICULTY_CONFIG[resolvedDiff];
-  const tierLabel = resolveTierLabel(platform, problem.level, PROGRAMMERS_LEVEL_LABELS);
+  const tierLabel = resolveTierLabel(effectivePlatform, problem.level, PROGRAMMERS_LEVEL_LABELS);
   const tags = problem.tags.slice(0, 5);
 
   /** Derived `N월M주차` label for the dashboard regex */
@@ -129,7 +136,7 @@ export function ConfirmStep({
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-[11px] font-bold"
               style={{ background: cfg.bg, color: cfg.color }}
             >
-              {platform === 'PROGRAMMERS' ? 'PG' : 'BOJ'}
+              {effectivePlatform === 'PROGRAMMERS' ? 'PG' : 'BOJ'}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-[14px] font-semibold" style={{ color: 'var(--text)' }}>
@@ -144,7 +151,7 @@ export function ConfirmStep({
                   {tierLabel}
                 </span>
                 {/* SQL badge — confirm step */}
-                {platform === 'PROGRAMMERS' && isSqlProblem(problem) && (
+                {effectivePlatform === 'PROGRAMMERS' && isSqlProblem(problem) && (
                   <span
                     className="rounded-badge px-1.5 py-0.5 text-[10px] font-semibold"
                     style={{ background: 'var(--primary-soft)', color: 'var(--primary)' }}
@@ -168,7 +175,7 @@ export function ConfirmStep({
             </div>
             {/* External link */}
             <a
-              href={resolveSourceUrl(platform, problem)}
+              href={resolveSourceUrl(effectivePlatform, problem)}
               target="_blank"
               rel="noreferrer"
               onClick={(e) => e.stopPropagation()}
