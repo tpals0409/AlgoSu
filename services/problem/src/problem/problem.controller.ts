@@ -25,6 +25,7 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ProblemService } from './problem.service';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
 import { FindByTagsQueryDto } from './dto/query-problem.dto';
+import { RecommendQueryDto } from './dto/recommend-query.dto';
 import { InternalKeyGuard } from '../common/guards/internal-key.guard';
 import { StudyMemberGuard } from '../common/guards/study-member.guard';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
@@ -124,6 +125,28 @@ export class ProblemController {
   ) {
     const problems = await this.problemService.findByTags(studyId, query.tags, query.mode);
     return { data: problems };
+  }
+
+  /**
+   * GET /recommendations — 추천 문제 조회 (P2 하이브리드, 읽기 전용)
+   *
+   * 선언 위치: @Get(':id') 앞 필수 — NestJS 선언순 매칭으로 'recommendations' 리터럴이
+   *   UUID 파싱 400을 방지('search/tags' 선례 준수).
+   * 가드: InternalKeyGuard + StudyMemberGuard — 멤버면 누구나 조회 가능(ADMIN 불필요).
+   * 응답: cross-study 읽기 → 외부 식별 메타만 투영(description 등 누출 금지).
+   */
+  @ApiOperation({ summary: '추천 문제 조회 (cross-study 하이브리드)' })
+  @ApiResponse({ status: 200, description: '추천 문제 목록' })
+  @ApiResponse({ status: 400, description: 'studyId 누락' })
+  @Get('recommendations')
+  async recommend(
+    @Query() query: RecommendQueryDto,
+    @Headers('x-study-id') studyId: string,
+  ) {
+    const limit = query.limit ?? 8;
+    const exclude = query.exclude ?? [];
+    const data = await this.problemService.recommendForStudy(studyId, exclude, limit);
+    return { data };
   }
 
   /**

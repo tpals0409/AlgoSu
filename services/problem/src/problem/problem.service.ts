@@ -6,8 +6,9 @@
  */
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { DataSource, In, LessThanOrEqual, Not } from 'typeorm';
-import { Problem, ProblemCategory, ProblemStatus } from './problem.entity';
+import { Problem, ProblemCategory, ProblemStatus, Difficulty } from './problem.entity';
 import { CreateProblemDto, UpdateProblemDto } from './dto/create-problem.dto';
+import { RECOMMENDATION_SEEDS, RecommendationItem } from './recommendation-seeds';
 import { DeadlineCacheService } from '../cache/deadline-cache.service';
 import { DualWriteService } from '../database/dual-write.service';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
@@ -366,6 +367,147 @@ export class ProblemService {
       ProblemStatus.ACTIVE,
       ProblemStatus.CLOSED,
     ]);
+  }
+
+  /**
+   * 추천 문제 조회 (P2 하이브리드) — cross-study 읽기 기반 tiered 폴백
+   *
+   * 추천 풀 = 플랫폼 전체에 이미 등록된 문제(현재 스터디 제외). 현재 스터디에 없고
+   * 난이도/태그가 맞는 문제를 제안한다. 콜드스타트 대비 3단 폴백 + 정적 seed.
+   *
+   * Tier 1: cross-study 후보 중 난이도 일치 AND 태그가 스터디 태그와 1개 이상 겹침
+   * Tier 2: 난이도만 일치 (태그 조건 제거) — Tier1 부족 시 append
+   * Tier 3: 정적 seed — 여전히 부족하거나 신규 스터디(난이도 없음)일 때 append
+   *
+   * 보안: RecommendationItem으로 외부 식별 메타만 투영(description 등 누출 금지).
+   *
+   * @throws BadRequestException studyId가 falsy인 경우 (cross-study 접근 차단)
+   */
+  async recommendForStudy(
+    studyId: string,
+    exclude: string[],
+    limit: number,
+  ): Promise<RecommendationItem[]> {
+    if (!studyId) {
+      throw new BadRequestException('studyId가 필요합니다 — cross-study 접근 차단');
+    }
+
+    // 1. 현재 스터디 문제(ACTIVE+CLOSED) 조회 → 소유 URL/난이도/태그 수집
+    const ownedProblems = await this.dualWrite.find({
+      where: { studyId, status: In([ProblemStatus.ACTIVE, ProblemStatus.CLOSED]) },
+    });
+
+    const ownedUrls = new Set<string>();
+    const studyDifficulties = new Set<Difficulty>();
+    const studyTags = new Set<string>();
+    for (const p of ownedProblems) {
+      if (p.sourceUrl) ownedUrls.add(p.sourceUrl);
+      if (p.difficulty) studyDifficulties.add(p.difficulty);
+      if (p.tags) {
+        for (const tag of p.tags) studyTags.add(tag);
+      }
+    }
+
+    // 3. 제외 집합 = 소유 URL ∪ exclude 파라미터
+    const excludeSet = new Set<string>(ownedUrls);
+    for (const url of exclude) excludeSet.add(url);
+
+    // cross-study 후보 조회 — 난이도만 DB 필터, 태그 겹침은 JS 후처리
+    const candidates = await this.dualWrite.findRecommendationCandidates(
+      Array.from(studyDifficulties),
+      studyId,
+    );
+
+    const picked = new Map<string, RecommendationItem>();
+
+    // Problem 후보 → RecommendationItem 사전 투영 (sourceUrl 존재 보장)
+    const candidateItems: RecommendationItem[] = candidates
+      .filter((c): c is Problem & { sourceUrl: string } => c.sourceUrl != null)
+      .map((c) => this.toRecommendationItem(c));
+
+    // 4. Tier 1: 난이도 일치 AND 태그 1개 이상 겹침
+    const tier1 = candidateItems.filter(
+      (c) => !excludeSet.has(c.sourceUrl) && this.hasTagOverlap(c.tags, studyTags),
+    );
+    this.appendCandidates(this.shuffle(tier1), picked, limit);
+
+    // 5. Tier 2: 난이도만 일치 (태그 조건 제거)
+    if (picked.size < limit) {
+      const tier2 = candidateItems.filter((c) => !excludeSet.has(c.sourceUrl));
+      this.appendCandidates(this.shuffle(tier2), picked, limit);
+    }
+
+    // 6. Tier 3: 정적 seed — 부족하거나 신규 스터디(난이도 없음)
+    if (picked.size < limit) {
+      const tier3 = RECOMMENDATION_SEEDS.filter(
+        (s) => !excludeSet.has(s.sourceUrl),
+      );
+      this.appendCandidates(this.shuffle([...tier3]), picked, limit);
+    }
+
+    // 7. limit 개로 slice
+    const result = Array.from(picked.values()).slice(0, limit);
+    this.logger.log('추천 문제 조회 완료', {
+      studyId,
+      returned: result.length,
+      limit,
+      ownedCount: ownedProblems.length,
+    });
+    return result;
+  }
+
+  /** 후보 태그가 스터디 태그와 1개 이상 겹치는지 검사 */
+  private hasTagOverlap(tags: string[] | null, studyTags: Set<string>): boolean {
+    if (!tags || tags.length === 0) return false;
+    return tags.some((tag) => studyTags.has(tag));
+  }
+
+  /**
+   * 후보를 sourceUrl 기준 dedup하여 picked 맵에 append (limit 도달 시 중단)
+   * 이미 담긴 url은 건너뜀 — tier 간 중복 제거.
+   */
+  private appendCandidates(
+    items: RecommendationItem[],
+    picked: Map<string, RecommendationItem>,
+    limit: number,
+  ): void {
+    for (const item of items) {
+      if (picked.size >= limit) return;
+      if (!picked.has(item.sourceUrl)) {
+        picked.set(item.sourceUrl, item);
+      }
+    }
+  }
+
+  /** 외부 식별 메타만 투영 — 누출 방지(description/studyId 등 제외) */
+  private toRecommendationItem(source: {
+    title: string;
+    sourceUrl: string;
+    sourcePlatform: string | null;
+    difficulty: Difficulty | null;
+    level: number | null;
+    tags: string[] | null;
+    category: ProblemCategory;
+  }): RecommendationItem {
+    return {
+      title: source.title,
+      sourceUrl: source.sourceUrl,
+      sourcePlatform: source.sourcePlatform ?? '',
+      difficulty: source.difficulty ?? null,
+      level: source.level ?? null,
+      tags: source.tags ?? null,
+      category: source.category,
+    };
+  }
+
+  /** 다양성 확보용 간단 셔플 (Fisher-Yates, Math.random 허용) */
+  private shuffle<T>(items: T[]): T[] {
+    const arr = [...items];
+    for (let i = arr.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
   }
 
   /**
