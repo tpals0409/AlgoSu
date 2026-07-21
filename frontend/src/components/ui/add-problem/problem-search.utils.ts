@@ -14,6 +14,7 @@ import {
   programmersApi,
   isProgrammersSqlProblem,
   type CreateProblemData,
+  type RecommendationItem,
 } from '@/lib/api';
 import type { Difficulty } from '../AlgosuUI';
 
@@ -221,6 +222,61 @@ export async function searchProgrammers(query: string): Promise<SolvedProblem[]>
     sourceUrl: item.sourceUrl,
     category: item.category,
   }));
+}
+
+/**
+ * Parse the trailing numeric problem id from a source URL.
+ *
+ * BOJ (`.../problem/1000`) and Programmers (`.../lessons/59034`) both encode
+ * the id as the final path segment. Returns `0` when no trailing number is
+ * present so callers get a stable non-null id.
+ */
+export function parseProblemIdFromUrl(sourceUrl: string): number {
+  const match = /(\d+)(?:\/)?$/.exec(sourceUrl);
+  return match ? Number(match[1]) : 0;
+}
+
+/**
+ * Map a {@link RecommendationItem} (recommendations API shape) onto the
+ * {@link SolvedProblem} shape consumed by the modal's `onSelect` → confirm
+ * flow, so recommendations reuse the exact same create pipeline as search.
+ *
+ * Defaults applied when the server leaves a field `null`:
+ *  - `level`  → derived from `difficulty` via {@link toOurDiff}'s inverse-ish
+ *               band midpoint, falling back to `1` when difficulty is absent.
+ *  - `tags`   → `[]`
+ *  - `difficulty` → `undefined` (buildCreatePayload will re-derive from level)
+ *
+ * `category` is normalised from the API's uppercase enum (`'SQL'`) to the
+ * modal's lowercase union (`'sql'`).
+ */
+export function recommendationToSolvedProblem(item: RecommendationItem): SolvedProblem {
+  const difficulty = item.difficulty ?? undefined;
+  const level = item.level ?? defaultLevelForDifficulty(difficulty);
+  return {
+    problemId: parseProblemIdFromUrl(item.sourceUrl),
+    titleKo: item.title,
+    level,
+    tags: item.tags ?? [],
+    acceptedUserCount: 0,
+    difficulty,
+    sourceUrl: item.sourceUrl,
+    category: item.category === 'SQL' ? 'sql' : 'algorithm',
+  };
+}
+
+/** Representative solved.ac level for a difficulty band (band midpoint). */
+function defaultLevelForDifficulty(difficulty: Difficulty | undefined): number {
+  if (!difficulty) return 1;
+  const midpoints: Record<Difficulty, number> = {
+    BRONZE: 3,
+    SILVER: 8,
+    GOLD: 13,
+    PLATINUM: 18,
+    DIAMOND: 23,
+    RUBY: 28,
+  };
+  return midpoints[difficulty];
 }
 
 /** Lookup the display label for a tier on a given platform */

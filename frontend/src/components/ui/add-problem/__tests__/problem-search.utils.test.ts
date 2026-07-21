@@ -14,8 +14,11 @@ import {
   buildCreatePayload,
   searchSolvedAC,
   searchProgrammers,
+  parseProblemIdFromUrl,
+  recommendationToSolvedProblem,
   type SolvedProblem,
 } from '../problem-search.utils';
+import type { RecommendationItem } from '@/lib/api';
 
 // API mock — exercised by the search adapters
 const mockSolvedacSearch = jest.fn();
@@ -283,6 +286,93 @@ describe('searchSolvedAC — Gateway proxy adapter', () => {
     });
     const [first] = await searchSolvedAC('x');
     expect(first.titleKo).toBe('Only title');
+  });
+});
+
+describe('parseProblemIdFromUrl', () => {
+  it('parses the trailing BOJ problem number', () => {
+    expect(parseProblemIdFromUrl('https://www.acmicpc.net/problem/1000')).toBe(1000);
+  });
+
+  it('parses the trailing Programmers lesson number', () => {
+    expect(
+      parseProblemIdFromUrl('https://school.programmers.co.kr/learn/courses/30/lessons/59034'),
+    ).toBe(59034);
+  });
+
+  it('tolerates a trailing slash', () => {
+    expect(parseProblemIdFromUrl('https://www.acmicpc.net/problem/2000/')).toBe(2000);
+  });
+
+  it('returns 0 when no trailing number is present', () => {
+    expect(parseProblemIdFromUrl('https://example.com/problems/abc')).toBe(0);
+    expect(parseProblemIdFromUrl('')).toBe(0);
+  });
+});
+
+describe('recommendationToSolvedProblem', () => {
+  const baseRec: RecommendationItem = {
+    title: 'Two Sum',
+    sourceUrl: 'https://www.acmicpc.net/problem/1234',
+    sourcePlatform: 'BOJ',
+    difficulty: 'GOLD',
+    level: 13,
+    tags: ['dp', 'greedy'],
+    category: 'ALGORITHM',
+  };
+
+  it('maps a fully-populated item onto the SolvedProblem shape', () => {
+    expect(recommendationToSolvedProblem(baseRec)).toEqual({
+      problemId: 1234,
+      titleKo: 'Two Sum',
+      level: 13,
+      tags: ['dp', 'greedy'],
+      acceptedUserCount: 0,
+      difficulty: 'GOLD',
+      sourceUrl: 'https://www.acmicpc.net/problem/1234',
+      category: 'algorithm',
+    });
+  });
+
+  it('converts the SQL category to lowercase', () => {
+    const out = recommendationToSolvedProblem({ ...baseRec, category: 'SQL' });
+    expect(out.category).toBe('sql');
+  });
+
+  it('defaults tags to [] when null', () => {
+    const out = recommendationToSolvedProblem({ ...baseRec, tags: null });
+    expect(out.tags).toEqual([]);
+  });
+
+  it('leaves difficulty undefined when the API sends null', () => {
+    const out = recommendationToSolvedProblem({ ...baseRec, difficulty: null, level: null });
+    expect(out.difficulty).toBeUndefined();
+    // No difficulty + no level → default level 1.
+    expect(out.level).toBe(1);
+  });
+
+  it('derives a band-midpoint level from difficulty when level is null', () => {
+    expect(recommendationToSolvedProblem({ ...baseRec, level: null, difficulty: 'BRONZE' }).level).toBe(3);
+    expect(recommendationToSolvedProblem({ ...baseRec, level: null, difficulty: 'GOLD' }).level).toBe(13);
+    expect(recommendationToSolvedProblem({ ...baseRec, level: null, difficulty: 'RUBY' }).level).toBe(28);
+  });
+
+  it('falls back to problemId 0 when the URL has no trailing number', () => {
+    const out = recommendationToSolvedProblem({ ...baseRec, sourceUrl: 'https://example.com/x' });
+    expect(out.problemId).toBe(0);
+  });
+
+  it('produces an object that buildCreatePayload accepts end-to-end', () => {
+    const solved = recommendationToSolvedProblem({ ...baseRec, category: 'SQL', tags: ['join'] });
+    const payload = buildCreatePayload({
+      problem: solved,
+      platform: 'PROGRAMMERS',
+      weekNumber: 'W1',
+      deadline: '2026-06-15T14:59:59.000Z',
+    });
+    expect(payload.category).toBe('SQL');
+    expect(payload.tags).toContain('SQL');
+    expect(payload.sourceUrl).toBe(baseRec.sourceUrl);
   });
 });
 

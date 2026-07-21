@@ -10,6 +10,7 @@ export { fetchApi, fetchPublicApi, ApiError, StudyRequiredError, setCurrentStudy
 // ── 공유 타입 ──
 export type {
   Problem,
+  RecommendationItem,
   CreateProblemData,
   UpdateProblemData,
   Submission,

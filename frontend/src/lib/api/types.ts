@@ -22,6 +22,22 @@ export interface Problem {
   category?: 'ALGORITHM' | 'SQL';
 }
 
+/**
+ * 추천 문제 항목 — `GET /api/problems/recommendations` 응답 요소.
+ *
+ * BE와 합의된 고정 계약. `difficulty`/`level`/`tags`는 서버가 값을 확정하지
+ * 못하면 `null`로 내려오며, 클라이언트가 매핑 단계에서 기본값을 채운다.
+ */
+export interface RecommendationItem {
+  title: string;
+  sourceUrl: string;
+  sourcePlatform: string;
+  difficulty: Problem['difficulty'] | null;
+  level: number | null;
+  tags: string[] | null;
+  category: 'ALGORITHM' | 'SQL';
+}
+
 export interface CreateProblemData {
   title: string;
   description?: string;

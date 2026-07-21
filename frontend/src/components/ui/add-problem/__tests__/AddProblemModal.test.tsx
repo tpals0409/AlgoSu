@@ -18,7 +18,7 @@ jest.mock('lucide-react', () => {
   const Icon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />;
   return {
     Search: Icon, X: Icon, ArrowLeft: Icon, Plus: Icon, Loader2: Icon,
-    ExternalLink: Icon, AlertCircle: Icon,
+    ExternalLink: Icon, AlertCircle: Icon, RefreshCw: Icon, Sparkles: Icon,
   };
 });
 
@@ -28,7 +28,11 @@ const mockNotify = jest.fn();
 jest.mock('@/lib/api', () => ({
   solvedacApi: { searchByQuery: jest.fn() },
   programmersApi: { searchByQuery: (...args: unknown[]) => mockSearchByQueryProgrammers(...args) },
-  problemApi: { create: (...args: unknown[]) => mockCreate(...args) },
+  problemApi: {
+    create: (...args: unknown[]) => mockCreate(...args),
+    // Recommendation prefetch resolves [] so the section stays inert here.
+    getRecommendations: jest.fn().mockResolvedValue([]),
+  },
   studyApi: { notifyProblemCreated: (...args: unknown[]) => mockNotify(...args) },
   isProgrammersSqlProblem: jest.requireActual('@/lib/api/external').isProgrammersSqlProblem,
 }));
