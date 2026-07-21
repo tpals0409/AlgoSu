@@ -331,6 +331,7 @@ describe('recommendationToSolvedProblem', () => {
       difficulty: 'GOLD',
       sourceUrl: 'https://www.acmicpc.net/problem/1234',
       category: 'algorithm',
+      sourcePlatform: 'BOJ',
     });
   });
 
@@ -373,6 +374,65 @@ describe('recommendationToSolvedProblem', () => {
     expect(payload.category).toBe('SQL');
     expect(payload.tags).toContain('SQL');
     expect(payload.sourceUrl).toBe(baseRec.sourceUrl);
+  });
+
+  it('carries the recommendation source platform (BOJ / PROGRAMMERS)', () => {
+    expect(recommendationToSolvedProblem(baseRec).sourcePlatform).toBe('BOJ');
+    expect(
+      recommendationToSolvedProblem({
+        ...baseRec,
+        sourcePlatform: 'PROGRAMMERS',
+        sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/42576',
+      }).sourcePlatform,
+    ).toBe('PROGRAMMERS');
+  });
+
+  it('normalises casing and falls back to the URL host when platform is unknown', () => {
+    expect(recommendationToSolvedProblem({ ...baseRec, sourcePlatform: 'boj' }).sourcePlatform).toBe('BOJ');
+    // Unknown platform string → derive from the sourceUrl host.
+    expect(
+      recommendationToSolvedProblem({
+        ...baseRec,
+        sourcePlatform: '',
+        sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/42576',
+      }).sourcePlatform,
+    ).toBe('PROGRAMMERS');
+  });
+
+  it('Critic P2: recommendation platform overrides the active tab in the payload', () => {
+    // A Programmers-sourced recommendation picked while the BOJ tab is active
+    // must still be created with sourcePlatform PROGRAMMERS, not BOJ.
+    const solved = recommendationToSolvedProblem({
+      ...baseRec,
+      sourcePlatform: 'PROGRAMMERS',
+      sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/42576',
+    });
+    const payload = buildCreatePayload({
+      problem: solved,
+      platform: 'BOJ', // active tab is BOJ
+      weekNumber: 'W1',
+      deadline: '2026-06-15T14:59:59.000Z',
+    });
+    expect(payload.sourcePlatform).toBe('PROGRAMMERS');
+    expect(payload.sourceUrl).toBe('https://school.programmers.co.kr/learn/courses/30/lessons/42576');
+  });
+
+  it('plain search rows still inherit the active tab platform', () => {
+    // A row without its own sourcePlatform (i.e. a search result) keeps the
+    // pre-fix behaviour of using whichever tab is active.
+    const payload = buildCreatePayload({
+      problem: {
+        problemId: 1000,
+        titleKo: 'A+B',
+        level: 1,
+        tags: [],
+        acceptedUserCount: 0,
+      },
+      platform: 'BOJ',
+      weekNumber: 'W1',
+      deadline: '2026-06-15T14:59:59.000Z',
+    });
+    expect(payload.sourcePlatform).toBe('BOJ');
   });
 });
 

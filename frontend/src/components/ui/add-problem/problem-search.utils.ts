@@ -42,6 +42,15 @@ export interface SolvedProblem {
   sourceUrl?: string;
   /** Programmers: problem category (algorithm | sql) */
   category?: 'algorithm' | 'sql';
+  /**
+   * Actual source platform carried by the row itself (SSOT).
+   *
+   * Search rows leave this `undefined` — they inherit the active platform tab.
+   * Recommendation rows set it explicitly from the recommendation payload so
+   * the created problem's `sourcePlatform` reflects the recommendation's real
+   * origin instead of whichever tab happened to be active.
+   */
+  sourcePlatform?: Platform;
 }
 
 /** Payload emitted to the parent after a successful create */
@@ -162,6 +171,11 @@ export function buildCreatePayload(args: {
     ? mergeSqlTag(problem.tags.slice(0, 5))
     : problem.tags.slice(0, 5);
 
+  // The row's own `sourcePlatform` (set by recommendations) is the SSOT for the
+  // created problem's platform; only fall back to the active tab when the row
+  // doesn't carry one (i.e. plain search results).
+  const effectivePlatform = problem.sourcePlatform ?? platform;
+
   const base: AddProblemCreatePayload = {
     title: problem.titleKo,
     weekNumber,
@@ -169,8 +183,8 @@ export function buildCreatePayload(args: {
     level: diffLevel,
     deadline: new Date(deadline).toISOString(),
     tags: tagNames,
-    sourceUrl: resolveSourceUrl(platform, problem),
-    sourcePlatform: platform,
+    sourceUrl: resolveSourceUrl(effectivePlatform, problem),
+    sourcePlatform: effectivePlatform,
   };
   return sql
     ? { ...base, allowedLanguages: ['sql'], category: 'SQL' as const }
@@ -262,7 +276,29 @@ export function recommendationToSolvedProblem(item: RecommendationItem): SolvedP
     difficulty,
     sourceUrl: item.sourceUrl,
     category: item.category === 'SQL' ? 'sql' : 'algorithm',
+    // SSOT: carry the recommendation's real source platform so the created
+    // problem is stored with the correct `sourcePlatform` regardless of which
+    // platform tab was active when the user picked the recommendation.
+    sourcePlatform: resolveRecommendationPlatform(item),
   };
+}
+
+/**
+ * Derive the {@link Platform} for a recommendation from its own payload.
+ *
+ * Prefers the explicit `sourcePlatform` string (BE contract, case-insensitive),
+ * then falls back to a `sourceUrl` host heuristic, and finally defaults to
+ * `PROGRAMMERS` (the seed-pool platform) so the result is always a valid
+ * `Platform` even if the server sends an unexpected value.
+ */
+function resolveRecommendationPlatform(item: RecommendationItem): Platform {
+  const raw = item.sourcePlatform?.trim().toUpperCase();
+  if (raw === 'BOJ') return 'BOJ';
+  if (raw === 'PROGRAMMERS') return 'PROGRAMMERS';
+  // Fall back to the URL host when the platform string is missing/unknown.
+  if (/acmicpc\.net/i.test(item.sourceUrl)) return 'BOJ';
+  if (/programmers\.co\.kr/i.test(item.sourceUrl)) return 'PROGRAMMERS';
+  return 'PROGRAMMERS';
 }
 
 /** Representative solved.ac level for a difficulty band (band midpoint). */
