@@ -20,6 +20,20 @@ import { problemApi, type RecommendationItem } from '@/lib/api';
 /** 기본 prefetch 묶음 크기 */
 const DEFAULT_LIMIT = 8;
 
+/**
+ * exclude 파라미터 최대 길이.
+ *
+ * 백엔드 계약: `services/problem/src/problem/dto/recommend-query.dto.ts`의
+ * `RecommendQueryDto.exclude`에 `@ArrayMaxSize(100)` 제약이 있어, 이를 초과하면
+ * 추천 조회가 400(ValidationError)으로 실패한다. 새로고침(rotation)을 반복하면
+ * `shownUrls`가 무한정 커지므로, FE에서 전송 직전 최근 항목만 캡핑해
+ * 상한을 넘지 않도록 보장한다.
+ *
+ * 상한 도달 시 삽입 순서가 가장 오래된(먼저 노출한) URL부터 버린다.
+ * Set은 삽입 순서를 보존하므로 `slice(-MAX_EXCLUDE)`가 곧 "최근 N개 유지" 전략이다.
+ */
+const MAX_EXCLUDE = 100;
+
 /** 추천 조회 함수 시그니처 — 테스트에서 주입 가능하도록 분리 */
 export type FetchRecommendations = (params: {
   limit: number;
@@ -84,10 +98,30 @@ export function useProblemRecommendation(
   bundleRef.current = bundle;
   indexRef.current = index;
 
-  /** 후보 하나가 노출됐음을 shownUrls에 기록 */
-  const markShown = useCallback((item: RecommendationItem | undefined) => {
-    if (item) shownUrls.current.add(item.sourceUrl);
+  /**
+   * shownUrls에 URL을 기록하되 상한(MAX_EXCLUDE)을 넘으면
+   * 가장 오래 전에 노출한 URL부터 제거해 Set이 무한정 커지지 않게 한다.
+   * (Set은 삽입 순서를 보존하므로 첫 항목이 가장 오래된 것)
+   */
+  const rememberUrl = useCallback((url: string) => {
+    const set = shownUrls.current;
+    // 이미 존재하면 재삽입해 "최근" 위치로 갱신 (여전히 제외 대상으로 유지).
+    set.delete(url);
+    set.add(url);
+    while (set.size > MAX_EXCLUDE) {
+      const oldest = set.values().next().value;
+      if (oldest === undefined) break;
+      set.delete(oldest);
+    }
   }, []);
+
+  /** 후보 하나가 노출됐음을 shownUrls에 기록 */
+  const markShown = useCallback(
+    (item: RecommendationItem | undefined) => {
+      if (item) rememberUrl(item.sourceUrl);
+    },
+    [rememberUrl],
+  );
 
   /** 다음 묶음을 조회하고 상태를 갱신 */
   const fetchNextBundle = useCallback(async () => {
@@ -98,7 +132,9 @@ export function useProblemRecommendation(
     try {
       const items = await fetcher({
         limit,
-        exclude: [...shownUrls.current],
+        // 백엔드 @ArrayMaxSize(100) 상한 준수: 최근 MAX_EXCLUDE개만 전송.
+        // Set 삽입 순서상 뒤쪽이 최근이므로 slice(-MAX_EXCLUDE)로 캡핑.
+        exclude: [...shownUrls.current].slice(-MAX_EXCLUDE),
       });
       if (items.length === 0) {
         // 새 후보 없음 — 현재 묶음이 있으면 순환, 없으면 소진.
@@ -113,14 +149,14 @@ export function useProblemRecommendation(
       setBundle(items);
       setIndex(0);
       setExhausted(false);
-      items.forEach((it) => shownUrls.current.add(it.sourceUrl));
+      items.forEach((it) => rememberUrl(it.sourceUrl));
     } catch {
       setError(true);
     } finally {
       loadingRef.current = false;
       setLoading(false);
     }
-  }, [fetcher, limit, markShown]);
+  }, [fetcher, limit, markShown, rememberUrl]);
 
   // 최초 마운트 시 1회 prefetch.
   useEffect(() => {

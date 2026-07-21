@@ -5,7 +5,10 @@
  * @related use-problem-recommendation, problemApi.getRecommendations
  */
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { useProblemRecommendation } from '../use-problem-recommendation';
+import {
+  useProblemRecommendation,
+  type FetchRecommendations,
+} from '../use-problem-recommendation';
 import type { RecommendationItem } from '@/lib/api';
 
 /** 최소 유효 추천 항목 팩토리 */
@@ -122,6 +125,63 @@ describe('useProblemRecommendation — 빈 결과 순환/소진', () => {
 
     await waitFor(() => expect(result.current.exhausted).toBe(true));
     expect(result.current.current).toBeNull();
+  });
+});
+
+describe('useProblemRecommendation — exclude 상한 캡핑 (백엔드 @ArrayMaxSize(100))', () => {
+  it('새로고침을 반복해도 fetcher로 보내는 exclude 길이가 100을 초과하지 않는다', async () => {
+    // 매 재조회마다 새 후보 1개를 반환 → exclude가 계속 누적되는 시나리오.
+    let n = 0;
+    const fetcher = jest.fn<
+      ReturnType<FetchRecommendations>,
+      Parameters<FetchRecommendations>
+    >(async () => {
+      n += 1;
+      return [makeItem(n)];
+    });
+
+    const { result } = renderHook(() => useProblemRecommendation({ fetcher }));
+    await waitFor(() => expect(result.current.current).not.toBeNull());
+
+    // 120회 새로고침 → 각 refresh가 묶음(1개) 소진 후 재조회를 유발.
+    for (let i = 0; i < 120; i += 1) {
+      await act(async () => {
+        result.current.refresh();
+      });
+    }
+
+    // 모든 fetcher 호출의 exclude 길이가 상한(100) 이하여야 400을 피한다.
+    for (const call of fetcher.mock.calls) {
+      expect(call[0].exclude.length).toBeLessThanOrEqual(100);
+    }
+  });
+
+  it('상한 도달 시 가장 오래된 URL부터 버리고 최근 URL은 exclude에 유지된다', async () => {
+    let n = 0;
+    const fetcher = jest.fn<
+      ReturnType<FetchRecommendations>,
+      Parameters<FetchRecommendations>
+    >(async () => {
+      n += 1;
+      return [makeItem(n)];
+    });
+
+    const { result } = renderHook(() => useProblemRecommendation({ fetcher }));
+    await waitFor(() => expect(result.current.current).not.toBeNull());
+
+    for (let i = 0; i < 150; i += 1) {
+      await act(async () => {
+        result.current.refresh();
+      });
+    }
+
+    const calls = fetcher.mock.calls;
+    const lastExclude = calls[calls.length - 1][0].exclude;
+    // 가장 오래된 후보(1번)는 밀려나 제외 목록에 없어야 한다.
+    expect(lastExclude).not.toContain(makeItem(1).sourceUrl);
+    // 최근에 노출된 후보는 여전히 제외 목록에 포함돼야 한다 (기능 의미 보존).
+    expect(lastExclude).toContain(makeItem(n - 1).sourceUrl);
+    expect(lastExclude.length).toBeLessThanOrEqual(100);
   });
 });
 
