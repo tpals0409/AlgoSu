@@ -366,33 +366,40 @@ describe('SearchStep — recommendation section', () => {
   });
 
   // ── 난이도 선택 (Sprint 256) — 플랫폼별 라벨 (Sprint 257) ───────
-  it('renders the difficulty chips with Programmers levels (자동 + Lv.1/Lv.2/Lv.3)', async () => {
+  it('renders the difficulty chips with Programmers levels (자동 + Lv.1~Lv.5)', async () => {
     mockGetRecommendations.mockResolvedValue([makeRec(1)]);
     renderWithI18n(<Harness initialPlatform="PROGRAMMERS" />);
 
     await screen.findByText('Recommended 1');
     expect(screen.getByRole('button', { name: '자동' })).toBeTruthy();
-    // 프로그래머스는 네이티브 레벨 체계로 표기 (백준 티어명 아님)
+    // 프로그래머스는 네이티브 레벨 체계(Lv.1~5)로 표기 (백준 티어명 아님)
     expect(screen.getByRole('button', { name: 'Lv.1' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Lv.2' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Lv.3' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Lv.4' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Lv.5' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Bronze' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Platinum' })).toBeNull();
     // 초기 상태: 자동 칩이 눌림
     expect(
       screen.getByRole('button', { name: '자동' }).getAttribute('aria-pressed'),
     ).toBe('true');
   });
 
-  it('renders the difficulty chips with BOJ tiers (자동 + Bronze/Silver/Gold)', async () => {
+  it('renders the difficulty chips with BOJ tiers (자동 + Bronze~Diamond)', async () => {
     mockGetRecommendations.mockResolvedValue([makeRec(1)]);
     renderWithI18n(<Harness initialPlatform="BOJ" />);
 
     await screen.findByText('Recommended 1');
-    // 백준은 solved.ac 티어명으로 표기
+    // 백준은 solved.ac 티어명(Bronze~Diamond)으로 표기
     expect(screen.getByRole('button', { name: 'Bronze' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Silver' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Gold' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Platinum' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Diamond' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Lv.1' })).toBeNull();
+    // RUBY는 프로그래머스 대응 레벨이 없어 제외 — BOJ에서도 칩 없음
+    expect(screen.queryByRole('button', { name: 'Ruby' })).toBeNull();
   });
 
   it('re-fetches with the selected difficulty when a chip is clicked', async () => {
