@@ -24,24 +24,37 @@ import {
 } from './problem-search.utils';
 
 /**
- * 추천에서 선택 가능한 난이도 — 정적 seed가 커버하는 3티어(Bronze/Silver/Gold).
- * seed 폴백이 항상 결과를 보장하므로 빈 추천이 나오지 않는다(Sprint 256).
+ * 추천에서 선택 가능한 난이도 — 플랫폼 네이티브 전체 범위(5티어, Sprint 258).
+ * BOJ: Bronze~Diamond(solved.ac 티어) · 프로그래머스: Lv.1~Lv.5.
+ * enum(Difficulty) RUBY는 프로그래머스에 대응 레벨(Lv.6)이 없어 제외한다.
+ *
+ * 추천 소스: cross-study 실데이터(Tier1/2)가 주 메커니즘이다. 정적 seed(Sprint 256)는
+ * Bronze/Silver/Gold 콜드스타트 폴백이며, 상위 티어(Platinum/Diamond, Lv.4/Lv.5)는
+ * cross-study로 서빙된다. 아직 해당 난이도 후보가 없으면 "빈 추천" 안내를 표시한다
+ * (RecommendationSection의 empty 브랜치 — 빈 화면이 아니라 안내 메시지).
  */
 const RECOMMENDABLE_DIFFICULTIES: readonly RecommendationDifficulty[] = [
   'BRONZE',
   'SILVER',
   'GOLD',
+  'PLATINUM',
+  'DIAMOND',
 ];
 
 /**
  * 프로그래머스 네이티브 레벨 ↔ 내부 Difficulty 밴드 매핑.
- * recommendation-seeds 계약(Lv.1→BRONZE, Lv.2→SILVER, Lv.3→GOLD)과 1:1 대응.
+ * Gateway `levelToDifficulty`(Lv.1→BRONZE … Lv.4→PLATINUM, Lv.5→DIAMOND)와 1:1 대응 —
+ * 문제 저장/검색 경로와 동일 매핑이라 칩 선택값(enum)이 저장된 실데이터를 정확히 필터한다.
  * 전송 값은 enum(Difficulty) 그대로 — 라벨만 플랫폼 체계에 맞춰 바꾼다.
  */
-const PROGRAMMERS_LEVEL_BY_DIFFICULTY: Record<'BRONZE' | 'SILVER' | 'GOLD', number> = {
+const PROGRAMMERS_LEVEL_BY_DIFFICULTY: Partial<
+  Record<RecommendationDifficulty, number>
+> = {
   BRONZE: 1,
   SILVER: 2,
   GOLD: 3,
+  PLATINUM: 4,
+  DIAMOND: 5,
 };
 
 /**
@@ -55,8 +68,9 @@ function difficultyChipLabel(
   d: RecommendationDifficulty,
 ): string {
   if (platform === 'PROGRAMMERS') {
-    const lv = PROGRAMMERS_LEVEL_BY_DIFFICULTY[d as 'BRONZE' | 'SILVER' | 'GOLD'];
-    return PROGRAMMERS_LEVEL_LABELS[lv] ?? DIFFICULTY_CONFIG[d].label;
+    const lv = PROGRAMMERS_LEVEL_BY_DIFFICULTY[d];
+    const lvLabel = lv !== undefined ? PROGRAMMERS_LEVEL_LABELS[lv] : undefined;
+    return lvLabel ?? DIFFICULTY_CONFIG[d].label;
   }
   return DIFFICULTY_CONFIG[d].label;
 }
@@ -442,8 +456,8 @@ function RecommendationSection({
         </button>
       </div>
 
-      {/* Difficulty selector — 자동 + seed-backed 3티어 (Sprint 256)
-          라벨은 플랫폼 체계에 종속: BOJ=티어, 프로그래머스=Lv (Sprint 257) */}
+      {/* Difficulty selector — 자동 + 플랫폼 네이티브 5티어 (Sprint 258)
+          라벨은 플랫폼 체계에 종속: BOJ=Bronze~Diamond, 프로그래머스=Lv.1~5 (Sprint 257) */}
       <div
         className="mb-1.5 flex flex-wrap gap-1"
         role="group"
