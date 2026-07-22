@@ -5,7 +5,7 @@
  * @related SearchStep, AddProblemModal, problem-search.utils
  */
 import React from 'react';
-import { screen, fireEvent, act, waitFor } from '@testing-library/react';
+import { screen, fireEvent, act, waitFor, within } from '@testing-library/react';
 import { renderWithI18n } from '@/test-utils/i18n';
 
 // lucide icons → cheap svgs so we don't pull the full ESM tree
@@ -325,6 +325,36 @@ describe('SearchStep — recommendation section', () => {
 
     expect(await screen.findByText('추천 문제')).toBeTruthy();
     expect(await screen.findByText('Recommended 1')).toBeTruthy();
+  });
+
+  it('shows a platform-native tier label on the card — BOJ item → solved.ac tier (item platform is SSOT)', async () => {
+    // makeRec: BOJ, GOLD, level 13 → solved.ac 세부 티어 "Gold III"(대분류 "Gold" 아님).
+    // 활성 탭이 PROGRAMMERS여도 항목 자체 플랫폼(BOJ) 체계로 표기해야 한다.
+    mockGetRecommendations.mockResolvedValue([makeRec(1)]);
+    renderWithI18n(<Harness initialPlatform="PROGRAMMERS" />);
+
+    const card = (await screen.findByText('Recommended 1')).closest('button')!;
+    expect(within(card).getByText('Gold III')).toBeTruthy();
+  });
+
+  it('shows a Programmers level label (Lv.N) on the card, not a BOJ tier name', async () => {
+    const progRec: RecommendationItem = {
+      title: 'Prog Rec',
+      sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/42576',
+      sourcePlatform: 'PROGRAMMERS',
+      difficulty: 'SILVER',
+      level: 2,
+      tags: ['해시'],
+      category: 'ALGORITHM',
+    };
+    mockGetRecommendations.mockResolvedValue([progRec]);
+    // 활성 탭 BOJ여도 프로그래머스 항목은 Lv.N 으로 표기 (항목 플랫폼 SSOT).
+    renderWithI18n(<Harness initialPlatform="BOJ" />);
+
+    const card = (await screen.findByText('Prog Rec')).closest('button')!;
+    expect(within(card).getByText('Lv.2')).toBeTruthy();
+    // 기존 버그: 티어명 "Silver"로 표기되던 것 — 카드 내에는 없어야 한다.
+    expect(within(card).queryByText('Silver')).toBeNull();
   });
 
   it('rotates to the next candidate when Refresh is clicked (no re-fetch)', async () => {
