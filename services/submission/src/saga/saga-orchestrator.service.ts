@@ -205,6 +205,10 @@ export class SagaOrchestratorService {
         );
         return;
       }
+
+      // 통계 캐시 무효화 — DONE 전환으로 분석 완료 수 변경 (리컨실러 경로)
+      const doneSub = await this.submissionRepo.findOne({ where: { id: submissionId }, select: ['studyId'] });
+      if (doneSub) await this.statsCache.invalidate(doneSub.studyId);
     }
 
     this.logger.log(`Saga 완료: submissionId=${submissionId}, step=DONE`);

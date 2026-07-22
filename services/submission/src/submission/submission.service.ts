@@ -274,13 +274,18 @@ export class SubmissionService {
       dto.analysisStatus === 'completed' || dto.analysisStatus === 'failed';
 
     if (needsDoneTransition) {
-      // 트랜잭션으로 save + sagaStep DONE 전환을 원자적으로 처리
+      // 불변식: 완료/실패한 AI 분석 결과는 종단 상태이므로 sagaStep은 반드시 DONE이어야 한다.
+      // aiAnalysisStatus와 sagaStep을 동일 엔티티에 실어 단일 row-write로 원자 저장한다.
+      // (기존: advanceToDone의 낙관적 락 affected=0 시 조용히 return → completed만 커밋되고
+      //  sagaStep이 AI_QUEUED에 잔류하여 스터디룸이 영영 "분석중"으로 표시되는 불일치 발생)
+      submission.sagaStep = SagaStep.DONE;
+
+      // 트랜잭션으로 save를 원자적으로 처리
       const qr = this.dataSource.createQueryRunner();
       await qr.connect();
       await qr.startTransaction();
       try {
         const updated = await qr.manager.save(Submission, submission);
-        await this.sagaOrchestrator.advanceToDone(id, qr);
         await qr.commitTransaction();
 
         // 통계 캐시 무효화 — AI 분석 완료로 통계 변경

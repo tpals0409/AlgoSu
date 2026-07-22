@@ -497,8 +497,11 @@ describe('SubmissionService', () => {
 
       expect(mockQr.connect).toHaveBeenCalled();
       expect(mockQr.startTransaction).toHaveBeenCalled();
-      expect(mockQr.manager.save).toHaveBeenCalled();
-      expect(sagaOrchestrator.advanceToDone).toHaveBeenCalledWith('sub-uuid-1', mockQr);
+      // 불변식: completed 시 저장 엔티티에 sagaStep=DONE을 실어 원자 저장 (aiAnalysisStatus와 불일치 차단)
+      expect(mockQr.manager.save).toHaveBeenCalledWith(
+        Submission,
+        expect.objectContaining({ sagaStep: SagaStep.DONE }),
+      );
       expect(mockQr.commitTransaction).toHaveBeenCalled();
       expect(mockQr.release).toHaveBeenCalled();
       expect(result.aiScore).toBe(85);
@@ -522,7 +525,11 @@ describe('SubmissionService', () => {
 
       await service.updateAiResult('sub-uuid-1', dto);
 
-      expect(sagaOrchestrator.advanceToDone).toHaveBeenCalledWith('sub-uuid-1', mockQr);
+      // 불변식: failed 시에도 저장 엔티티에 sagaStep=DONE을 실어 원자 저장
+      expect(mockQr.manager.save).toHaveBeenCalledWith(
+        Submission,
+        expect.objectContaining({ sagaStep: SagaStep.DONE }),
+      );
       expect(mockQr.commitTransaction).toHaveBeenCalled();
     });
 
