@@ -19,6 +19,7 @@ import {
   toOurDiff,
   resolveTierLabel,
   recommendationToSolvedProblem,
+  resolveRecommendationPlatform,
   type Platform,
   type SolvedProblem,
 } from './problem-search.utils';
@@ -73,6 +74,25 @@ function difficultyChipLabel(
     return lvLabel ?? DIFFICULTY_CONFIG[d].label;
   }
   return DIFFICULTY_CONFIG[d].label;
+}
+
+/**
+ * 추천 카드에 표시할 난이도 라벨 — 문제의 실제 플랫폼 체계에 종속.
+ * - PROGRAMMERS: 네이티브 레벨(Lv.N)
+ * - BOJ: solved.ac 티어명 — 세부 level 있으면 "Gold III", 없으면 대분류 "Gold"
+ * 검색 결과 행(resolveTierLabel)·선택 칩(difficultyChipLabel)과 동일 규칙이라
+ * 카드/행/칩 표기가 일관된다. 플랫폼은 섹션 탭이 아니라 추천 항목 자체의
+ * sourcePlatform을 SSOT로 사용한다(탭 무관하게 항목의 실제 출처로 표기).
+ */
+function recommendationTierLabel(item: RecommendationItem): string {
+  const platform = resolveRecommendationPlatform(item);
+  if (item.level != null && item.level > 0) {
+    return resolveTierLabel(platform, item.level, PROGRAMMERS_LEVEL_LABELS);
+  }
+  // level 누락(BOJ seed 등) → difficulty 대분류를 플랫폼 라벨로 폴백.
+  return item.difficulty
+    ? difficultyChipLabel(platform, item.difficulty as RecommendationDifficulty)
+    : '';
 }
 
 /** SearchStep props — search function and UI text vary by platform */
@@ -432,6 +452,7 @@ function RecommendationSection({
 
   const resolvedDiff = current?.difficulty ?? undefined;
   const cfg = resolvedDiff ? DIFFICULTY_CONFIG[resolvedDiff] : null;
+  const tierLabel = current ? recommendationTierLabel(current) : '';
   const tags = (current?.tags ?? []).slice(0, 3);
 
   return (
@@ -511,7 +532,7 @@ function RecommendationSection({
                   style={{ background: cfg.bg, color: cfg.color }}
                 >
                   <span className="h-1.5 w-1.5 rounded-full" style={{ background: cfg.color }} />
-                  {cfg.label}
+                  {tierLabel}
                 </span>
               )}
               {current.category === 'SQL' && (

@@ -291,7 +291,7 @@ export function recommendationToSolvedProblem(item: RecommendationItem): SolvedP
  * `PROGRAMMERS` (the seed-pool platform) so the result is always a valid
  * `Platform` even if the server sends an unexpected value.
  */
-function resolveRecommendationPlatform(item: RecommendationItem): Platform {
+export function resolveRecommendationPlatform(item: RecommendationItem): Platform {
   const raw = item.sourcePlatform?.trim().toUpperCase();
   if (raw === 'BOJ') return 'BOJ';
   if (raw === 'PROGRAMMERS') return 'PROGRAMMERS';
