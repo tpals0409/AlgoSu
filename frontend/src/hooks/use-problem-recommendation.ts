@@ -101,6 +101,10 @@ export function useProblemRecommendation(
   const bundleRef = useRef<RecommendationItem[]>([]);
   const indexRef = useRef(0);
   const loadingRef = useRef(false);
+  // 조회 세대(epoch) 카운터 — in-flight 요청 무효화용.
+  // 플랫폼 전환 등으로 새 조회가 시작되면 epoch가 올라가고,
+  // 뒤늦게 도착한 이전 세대의 응답은 폐기해 stale 추천 노출을 막는다.
+  const epochRef = useRef(0);
   // StrictMode 이중 마운트 가드 겸 "마지막으로 조회한 플랫폼" 마커.
   // false = 아직 미조회, 그 외 = 마지막 조회 플랫폼(undefined 포함).
   const didInit = useRef<RecommendationPlatform | undefined | false>(false);
@@ -135,7 +139,9 @@ export function useProblemRecommendation(
 
   /** 다음 묶음을 조회하고 상태를 갱신 */
   const fetchNextBundle = useCallback(async () => {
-    if (loadingRef.current) return;
+    // 이 호출의 세대 번호를 선점 — 이후 시작되는 조회는 epoch를 올려
+    // 아래 in-flight 요청을 자동으로 무효화한다(플랫폼 전환 race 방지).
+    const myEpoch = (epochRef.current += 1);
     loadingRef.current = true;
     setLoading(true);
     setError(false);
@@ -148,6 +154,9 @@ export function useProblemRecommendation(
         // 값이 있을 때만 포함 — 미지정 시 기존 계약(전체 플랫폼) 유지.
         ...(platform ? { platform } : {}),
       });
+      // 응답 도착 전에 더 새로운 조회(플랫폼 전환 등)가 시작됐다면 폐기.
+      // 이전 플랫폼의 뒤늦은 응답이 현재 화면을 덮어쓰지 않게 한다.
+      if (myEpoch !== epochRef.current) return;
       if (items.length === 0) {
         // 새 후보 없음 — 현재 묶음이 있으면 순환, 없으면 소진.
         if (bundleRef.current.length > 0) {
@@ -163,10 +172,14 @@ export function useProblemRecommendation(
       setExhausted(false);
       items.forEach((it) => rememberUrl(it.sourceUrl));
     } catch {
-      setError(true);
+      // 폐기된(구세대) 요청의 에러는 현재 상태에 반영하지 않는다.
+      if (myEpoch === epochRef.current) setError(true);
     } finally {
-      loadingRef.current = false;
-      setLoading(false);
+      // 최신 세대만 로딩 상태를 해제 — 폐기된 요청이 진행 중 로딩을 끄지 않게.
+      if (myEpoch === epochRef.current) {
+        loadingRef.current = false;
+        setLoading(false);
+      }
     }
   }, [fetcher, limit, platform, markShown, rememberUrl]);
 
