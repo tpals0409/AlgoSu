@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     internal_api_key: str
 
     # AI 일일 한도
-    ai_daily_limit: int = 5
+    ai_daily_limit: int = 10
 
     # Circuit Breaker
     cb_failure_threshold: int = 10
