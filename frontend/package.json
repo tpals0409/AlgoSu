@@ -96,5 +96,9 @@
     "ts-jest": "^29.4.11",
     "ts-node": "^10.9.2",
     "typescript": "^5"
+  },
+  "overrides": {
+    "sharp": "^0.35.3",
+    "fast-uri": "^3.1.4"
   }
 }
