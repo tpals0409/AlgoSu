@@ -365,31 +365,46 @@ describe('SearchStep — recommendation section', () => {
     expect(await screen.findByText('추천 문제를 불러오지 못했습니다.')).toBeTruthy();
   });
 
-  // ── 난이도 선택 (Sprint 256) ────────────────────────────────
-  it('renders the difficulty chips (자동 + Bronze/Silver/Gold)', async () => {
+  // ── 난이도 선택 (Sprint 256) — 플랫폼별 라벨 (Sprint 257) ───────
+  it('renders the difficulty chips with Programmers levels (자동 + Lv.1/Lv.2/Lv.3)', async () => {
     mockGetRecommendations.mockResolvedValue([makeRec(1)]);
-    renderWithI18n(<Harness />);
+    renderWithI18n(<Harness initialPlatform="PROGRAMMERS" />);
 
     await screen.findByText('Recommended 1');
     expect(screen.getByRole('button', { name: '자동' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Bronze' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Silver' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Gold' })).toBeTruthy();
+    // 프로그래머스는 네이티브 레벨 체계로 표기 (백준 티어명 아님)
+    expect(screen.getByRole('button', { name: 'Lv.1' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Lv.2' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Lv.3' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Bronze' })).toBeNull();
     // 초기 상태: 자동 칩이 눌림
     expect(
       screen.getByRole('button', { name: '자동' }).getAttribute('aria-pressed'),
     ).toBe('true');
   });
 
+  it('renders the difficulty chips with BOJ tiers (자동 + Bronze/Silver/Gold)', async () => {
+    mockGetRecommendations.mockResolvedValue([makeRec(1)]);
+    renderWithI18n(<Harness initialPlatform="BOJ" />);
+
+    await screen.findByText('Recommended 1');
+    // 백준은 solved.ac 티어명으로 표기
+    expect(screen.getByRole('button', { name: 'Bronze' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Silver' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Gold' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Lv.1' })).toBeNull();
+  });
+
   it('re-fetches with the selected difficulty when a chip is clicked', async () => {
     mockGetRecommendations.mockResolvedValue([makeRec(1)]);
-    renderWithI18n(<Harness />);
+    renderWithI18n(<Harness initialPlatform="PROGRAMMERS" />);
 
     await screen.findByText('Recommended 1');
     mockGetRecommendations.mockClear();
 
+    // 프로그래머스 Lv.3 칩 → 내부적으로 difficulty=GOLD 전송 (밴드 매핑)
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Gold' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Lv.3' }));
     });
 
     await waitFor(() =>
@@ -398,25 +413,25 @@ describe('SearchStep — recommendation section', () => {
       ),
     );
     expect(
-      screen.getByRole('button', { name: 'Gold' }).getAttribute('aria-pressed'),
+      screen.getByRole('button', { name: 'Lv.3' }).getAttribute('aria-pressed'),
     ).toBe('true');
   });
 
   it('toggles back to auto (no difficulty) when the active chip is re-clicked', async () => {
     mockGetRecommendations.mockResolvedValue([makeRec(1)]);
-    renderWithI18n(<Harness />);
+    renderWithI18n(<Harness initialPlatform="PROGRAMMERS" />);
 
     await screen.findByText('Recommended 1');
 
-    // Gold 선택
+    // Lv.3 선택
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Gold' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Lv.3' }));
     });
     mockGetRecommendations.mockClear();
 
-    // Gold 재클릭 → 자동으로 토글 → difficulty 없이 재조회
+    // Lv.3 재클릭 → 자동으로 토글 → difficulty 없이 재조회
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Gold' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Lv.3' }));
     });
 
     // 쿼리 빌더가 falsy difficulty를 직렬화하지 않으므로, 값이 undefined면 자동(전체) 추천.
