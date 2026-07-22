@@ -103,7 +103,13 @@ export interface AnalysisResult {
   feedback: string | null;
   score: number | null;
   optimizedCode: string | null;
-  analysisStatus: 'pending' | 'completed' | 'delayed' | 'failed';
+  analysisStatus: 'pending' | 'completed' | 'delayed' | 'failed' | 'skipped';
+}
+
+/** 재분석 요청 결과 — aiSkipped=false면 분석 큐잉 성공, true면 한도 여전히 초과 */
+export interface ReanalyzeResult {
+  analysisStatus: string;
+  aiSkipped: boolean;
 }
 
 export interface Draft {

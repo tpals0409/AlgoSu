@@ -6,7 +6,7 @@
  */
 
 import { ApiError, fetchApi } from './client';
-import type { Submission, PaginatedResponse, SubmissionListParams, AnalysisResult, Draft } from './types';
+import type { Submission, PaginatedResponse, SubmissionListParams, AnalysisResult, ReanalyzeResult, Draft } from './types';
 
 export const submissionApi = {
   create: (data: { problemId: string; language: string; code: string }): Promise<Submission> =>
@@ -32,6 +32,10 @@ export const submissionApi = {
 
   getAnalysis: (submissionId: string): Promise<AnalysisResult> =>
     fetchApi(`/api/submissions/${submissionId}/analysis`),
+
+  /** AI 한도 초과로 건너뛴 제출 재분석 요청 (한도 초기화 후 호출) */
+  reanalyze: (submissionId: string): Promise<ReanalyzeResult> =>
+    fetchApi(`/api/submissions/${submissionId}/reanalyze`, { method: 'POST' }),
 
   getSatisfaction: (submissionId: string): Promise<{ rating: 1 | -1 } | null> =>
     fetchApi(`/api/submissions/satisfaction/${submissionId}`),

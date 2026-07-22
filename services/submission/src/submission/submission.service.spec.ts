@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { Repository, DataSource } from 'typeorm';
 import { SubmissionService } from './submission.service';
 import { Submission, SagaStep, GitHubSyncStatus } from './submission.entity';
@@ -50,6 +50,7 @@ const mockSatisfactionRepo = () => ({
 const mockSagaOrchestrator = () => ({
   advanceToGitHubQueued: jest.fn(),
   advanceToDone: jest.fn(),
+  advanceToAiQueued: jest.fn(),
 });
 
 /** Sprint 135 D9 — ProblemServiceClient mock (CB는 client 내부에서 처리) */
@@ -1336,6 +1337,107 @@ describe('SubmissionService', () => {
 
         expect(statsCache.invalidate).not.toHaveBeenCalled();
       });
+    });
+  });
+
+  // ─── requestReanalysis() — AI 한도 초과 제출 재분석 ─────────────
+  describe('requestReanalysis()', () => {
+    it('aiSkipped 제출을 GITHUB_QUEUED로 되돌리고 advanceToAiQueued를 재실행한다', async () => {
+      const skipped = createMockSubmission({
+        sagaStep: SagaStep.DONE,
+        aiSkipped: true,
+        aiAnalysisStatus: 'skipped',
+      });
+      const requeued = createMockSubmission({
+        sagaStep: SagaStep.AI_QUEUED,
+        aiSkipped: false,
+        aiAnalysisStatus: 'pending',
+      });
+      repo.findOne
+        .mockResolvedValueOnce(skipped) // 사전 조회
+        .mockResolvedValueOnce(requeued); // advanceToAiQueued 이후 재조회
+      repo.update.mockResolvedValue({ affected: 1 } as never);
+      sagaOrchestrator.advanceToAiQueued.mockResolvedValue(undefined);
+
+      const result = await service.requestReanalysis('sub-uuid-1', 'user-1');
+
+      expect(repo.update).toHaveBeenCalledWith(
+        { id: 'sub-uuid-1', sagaStep: SagaStep.DONE, aiSkipped: true },
+        expect.objectContaining({
+          sagaStep: SagaStep.GITHUB_QUEUED,
+          aiSkipped: false,
+          aiAnalysisStatus: 'pending',
+        }),
+      );
+      expect(sagaOrchestrator.advanceToAiQueued).toHaveBeenCalledWith('sub-uuid-1', true);
+      expect(result).toEqual({ analysisStatus: 'pending', aiSkipped: false });
+    });
+
+    it('한도가 여전히 초과면 advanceToAiQueued가 다시 skip → aiSkipped=true 반환', async () => {
+      const skipped = createMockSubmission({
+        sagaStep: SagaStep.DONE,
+        aiSkipped: true,
+        aiAnalysisStatus: 'skipped',
+      });
+      const reskipped = createMockSubmission({
+        sagaStep: SagaStep.DONE,
+        aiSkipped: true,
+        aiAnalysisStatus: 'skipped',
+      });
+      repo.findOne.mockResolvedValueOnce(skipped).mockResolvedValueOnce(reskipped);
+      repo.update.mockResolvedValue({ affected: 1 } as never);
+      sagaOrchestrator.advanceToAiQueued.mockResolvedValue(undefined);
+
+      const result = await service.requestReanalysis('sub-uuid-1', 'user-1');
+
+      expect(result).toEqual({ analysisStatus: 'skipped', aiSkipped: true });
+    });
+
+    it('낙관적 락 경쟁(affected=0) 시 advanceToAiQueued를 호출하지 않고 현재 상태를 반환한다', async () => {
+      const skipped = createMockSubmission({
+        sagaStep: SagaStep.DONE,
+        aiSkipped: true,
+        aiAnalysisStatus: 'skipped',
+      });
+      const fresh = createMockSubmission({
+        sagaStep: SagaStep.AI_QUEUED,
+        aiSkipped: false,
+        aiAnalysisStatus: 'pending',
+      });
+      repo.findOne.mockResolvedValueOnce(skipped).mockResolvedValueOnce(fresh);
+      repo.update.mockResolvedValue({ affected: 0 } as never);
+
+      const result = await service.requestReanalysis('sub-uuid-1', 'user-1');
+
+      expect(sagaOrchestrator.advanceToAiQueued).not.toHaveBeenCalled();
+      expect(result).toEqual({ analysisStatus: 'pending', aiSkipped: false });
+    });
+
+    it('제출이 없으면 NotFoundException', async () => {
+      repo.findOne.mockResolvedValue(null);
+      await expect(service.requestReanalysis('sub-uuid-1', 'user-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('본인 제출이 아니면 ForbiddenException', async () => {
+      const other = createMockSubmission({
+        userId: 'user-2',
+        aiSkipped: true,
+        sagaStep: SagaStep.DONE,
+      });
+      repo.findOne.mockResolvedValue(other);
+      await expect(service.requestReanalysis('sub-uuid-1', 'user-1')).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('aiSkipped=false 제출은 재분석 대상이 아니므로 BadRequestException', async () => {
+      const notSkipped = createMockSubmission({ aiSkipped: false });
+      repo.findOne.mockResolvedValue(notSkipped);
+      await expect(service.requestReanalysis('sub-uuid-1', 'user-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 });

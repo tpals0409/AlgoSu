@@ -143,7 +143,17 @@
       "title": "Analysis Failed",
       "description": "An error occurred during AI analysis. Please resubmit or contact support."
     },
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "skipped": {
+      "title": "AI analysis was skipped",
+      "description": "The daily AI analysis limit was exceeded when this code was submitted, so no analysis was run. You can request re-analysis once your daily limit resets.",
+      "stillLimited": "Your daily AI analysis limit hasn't reset yet. Please try again after it resets."
+    },
+    "reanalyze": {
+      "button": "Request re-analysis",
+      "loading": "Requesting...",
+      "error": "Failed to request re-analysis. Please try again later."
+    }
   },
   "aiSatisfaction": {
     "question": "Was the AI analysis helpful?",
