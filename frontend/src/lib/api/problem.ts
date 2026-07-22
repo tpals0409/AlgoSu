@@ -29,10 +29,12 @@ function buildTagsQuery(tags: string[]): URLSearchParams {
 function buildRecommendationQuery(params?: {
   limit?: number;
   exclude?: string[];
+  platform?: 'BOJ' | 'PROGRAMMERS';
 }): URLSearchParams {
   const query = new URLSearchParams();
   if (params?.limit != null) query.set('limit', String(params.limit));
   params?.exclude?.forEach((url) => query.append('exclude', url));
+  if (params?.platform) query.set('platform', params.platform);
   return query;
 }
 
@@ -53,10 +55,12 @@ export const problemApi = {
    * 추천 문제 묶음 조회.
    * @param params.limit 요청할 후보 개수 (기본: 서버 결정)
    * @param params.exclude 이미 노출한 sourceUrl 목록 — 중복 추천 방지
+   * @param params.platform 플랫폼 토글(PROGRAMMERS/BOJ) — 지정 시 해당 플랫폼만 추천
    */
   getRecommendations: (params?: {
     limit?: number;
     exclude?: string[];
+    platform?: 'BOJ' | 'PROGRAMMERS';
   }): Promise<RecommendationItem[]> => {
     const query = buildRecommendationQuery(params).toString();
     return fetchApi(`/api/problems/recommendations${query ? `?${query}` : ''}`);

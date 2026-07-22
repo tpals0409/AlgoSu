@@ -198,6 +198,7 @@ export class DualWriteService implements OnModuleInit {
   async findRecommendationCandidates(
     difficulties: Difficulty[],
     excludeStudyId: string,
+    platform?: string,
   ): Promise<Problem[]> {
     // In([]) 은 TypeORM에서 항상-false가 아니라 문법 오류/전체 스캔 위험 → 빈 목록 방어
     if (difficulties.length === 0) {
@@ -218,6 +219,8 @@ export class DualWriteService implements OnModuleInit {
         difficulty: In(difficulties),
         studyId: Not(excludeStudyId),
         sourceUrl: Not(IsNull()),
+        // 플랫폼 지정 시 해당 플랫폼(sourcePlatform) 후보만 — 토글 종속 추천.
+        ...(platform ? { sourcePlatform: platform } : {}),
       },
       take: 200,
     });

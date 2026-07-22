@@ -383,7 +383,23 @@ describe('DualWriteService', () => {
       // 상한 take
       expect(arg.take).toBe(200);
 
+      // platform 미지정 → sourcePlatform where 조건 없음 (전체 플랫폼)
+      expect(arg.where).not.toHaveProperty('sourcePlatform');
+
       expect(result).toEqual([mockProblem]);
+    });
+
+    it('platform 지정: where에 sourcePlatform 필터 추가 (토글 종속 추천)', async () => {
+      oldRepo.find!.mockResolvedValue([mockProblem]);
+
+      await service.findRecommendationCandidates(
+        [Difficulty.SILVER],
+        'study-001',
+        'BOJ',
+      );
+
+      const arg = oldRepo.find!.mock.calls[0][0];
+      expect(arg.where.sourcePlatform).toBe('BOJ');
     });
 
     it('SWITCH_READ 모드: readRepo(신 DB) 경유', async () => {

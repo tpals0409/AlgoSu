@@ -58,7 +58,8 @@ export function SearchStep({
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Recommendation section — hybrid prefetch + client rotation (Sprint 254).
-  const rec = useProblemRecommendation();
+  // 추천도 플랫폼 토글에 종속 — 탭 전환 시 해당 플랫폼 추천으로 재조회 (Sprint 255).
+  const rec = useProblemRecommendation({ platform });
 
   // Autofocus the search input on first mount.
   useEffect(() => {
