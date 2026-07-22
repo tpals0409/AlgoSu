@@ -1375,6 +1375,98 @@ describe('ProblemService', () => {
       expect(result.map((r) => r.sourceUrl)).toContain('https://notag.com/1');
       expect(result.find((r) => r.sourceUrl === 'https://notag.com/1')!.tags).toBeNull();
     });
+
+    // ── 난이도 선택 (Sprint 256) ──────────────────────────────
+    it('난이도 선택: 스터디 추론 무시하고 선택 난이도로만 후보 조회', async () => {
+      // 스터디는 SILVER 문제를 가졌지만, 사용자는 GOLD를 명시 선택.
+      dualWrite.find.mockResolvedValue([
+        owned({ sourceUrl: 'https://owned.com/1', difficulty: Difficulty.SILVER, tags: ['해시'] }),
+      ]);
+      dualWrite.findRecommendationCandidates.mockResolvedValue([
+        candidate({ title: 'GOLD 후보', sourceUrl: 'https://x.com/g1', difficulty: Difficulty.GOLD, tags: ['DP'] }),
+      ]);
+
+      const result = await service.recommendForStudy(
+        STUDY_ID,
+        [],
+        8,
+        undefined,
+        Difficulty.GOLD,
+      );
+
+      // 스터디 SILVER가 아니라 선택한 GOLD로 조회 (platform 미지정 → undefined)
+      expect(dualWrite.findRecommendationCandidates).toHaveBeenCalledWith(
+        [Difficulty.GOLD],
+        STUDY_ID,
+        undefined,
+      );
+      expect(result.map((r) => r.sourceUrl)).toContain('https://x.com/g1');
+    });
+
+    it('난이도 선택 + 신규 스터디(등록 0): 선택 난이도로 후보 조회 (빈 배열 아님)', async () => {
+      dualWrite.find.mockResolvedValue([]); // 등록 문제 0개
+      dualWrite.findRecommendationCandidates.mockResolvedValue([]);
+
+      await service.recommendForStudy(STUDY_ID, [], 8, 'PROGRAMMERS', Difficulty.BRONZE);
+
+      // 추론이면 [] 였겠지만 명시 선택으로 [BRONZE] 전달
+      expect(dualWrite.findRecommendationCandidates).toHaveBeenCalledWith(
+        [Difficulty.BRONZE],
+        STUDY_ID,
+        'PROGRAMMERS',
+      );
+    });
+
+    it('난이도 선택 Tier3 seed: 선택 난이도 seed만 사용 (BRONZE)', async () => {
+      dualWrite.find.mockResolvedValue([]);
+      dualWrite.findRecommendationCandidates.mockResolvedValue([]);
+
+      const result = await service.recommendForStudy(
+        STUDY_ID,
+        [],
+        8,
+        'PROGRAMMERS',
+        Difficulty.BRONZE,
+      );
+
+      // 프로그래머스 BRONZE seed는 5개 → 모두 BRONZE
+      expect(result.length).toBeGreaterThan(0);
+      result.forEach((r) => {
+        expect(r.difficulty).toBe(Difficulty.BRONZE);
+        expect(r.sourcePlatform).toBe('PROGRAMMERS');
+      });
+    });
+
+    it('난이도 선택 Tier3 seed: GOLD 선택 시 GOLD seed만', async () => {
+      dualWrite.find.mockResolvedValue([]);
+      dualWrite.findRecommendationCandidates.mockResolvedValue([]);
+
+      const result = await service.recommendForStudy(
+        STUDY_ID,
+        [],
+        8,
+        'PROGRAMMERS',
+        Difficulty.GOLD,
+      );
+
+      expect(result.length).toBeGreaterThan(0);
+      result.forEach((r) => expect(r.difficulty).toBe(Difficulty.GOLD));
+    });
+
+    it('난이도 미지정: 기존 계약 유지 — 스터디 추론 난이도로 조회', async () => {
+      dualWrite.find.mockResolvedValue([
+        owned({ sourceUrl: 'https://owned.com/1', difficulty: Difficulty.SILVER, tags: ['해시'] }),
+      ]);
+      dualWrite.findRecommendationCandidates.mockResolvedValue([]);
+
+      await service.recommendForStudy(STUDY_ID, [], 8);
+
+      expect(dualWrite.findRecommendationCandidates).toHaveBeenCalledWith(
+        [Difficulty.SILVER],
+        STUDY_ID,
+        undefined,
+      );
+    });
   });
 
   // ──────────────────────────────────────────────

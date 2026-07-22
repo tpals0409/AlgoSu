@@ -126,4 +126,28 @@ describe('RecommendQueryDto', () => {
       expect(errors[0].constraints).toHaveProperty('isIn');
     });
   });
+
+  describe('difficulty', () => {
+    it('미지정: 유효 (난이도 추론 폴백)', async () => {
+      const dto = build({});
+      expect(await validate(dto)).toHaveLength(0);
+      expect(dto.difficulty).toBeUndefined();
+    });
+
+    it.each(['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND', 'RUBY'])(
+      '%s: 유효',
+      async (difficulty) => {
+        const dto = build({ difficulty });
+        expect(await validate(dto)).toHaveLength(0);
+        expect(dto.difficulty).toBe(difficulty);
+      },
+    );
+
+    it('허용되지 않은 값: IsIn 위반', async () => {
+      const dto = build({ difficulty: 'MASTER' });
+      const errors = await validate(dto);
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors[0].constraints).toHaveProperty('isIn');
+    });
+  });
 });

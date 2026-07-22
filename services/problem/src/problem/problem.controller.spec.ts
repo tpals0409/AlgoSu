@@ -200,6 +200,7 @@ describe('ProblemController', () => {
         [],
         8,
         undefined,
+        undefined,
       );
       expect(result).toEqual({ data: [recItem] });
     });
@@ -217,6 +218,7 @@ describe('ProblemController', () => {
         ['https://a.com/1'],
         5,
         undefined,
+        undefined,
       );
       expect(result).toEqual({ data: [] });
     });
@@ -231,6 +233,24 @@ describe('ProblemController', () => {
         [],
         8,
         'BOJ',
+        undefined,
+      );
+    });
+
+    it('difficulty 전달: 난이도 선택 추천으로 service에 위임 (Sprint 256)', async () => {
+      service.recommendForStudy.mockResolvedValue([]);
+
+      await controller.recommend(
+        { platform: 'PROGRAMMERS', difficulty: Difficulty.GOLD },
+        STUDY_ID,
+      );
+
+      expect(service.recommendForStudy).toHaveBeenCalledWith(
+        STUDY_ID,
+        [],
+        8,
+        'PROGRAMMERS',
+        Difficulty.GOLD,
       );
     });
   });

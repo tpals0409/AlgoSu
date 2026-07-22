@@ -535,6 +535,37 @@ describe('problemApi 추가 분기', () => {
     expect(url).toContain('/api/problems/p1');
     expect(opts.method).toBe('PATCH');
   });
+
+  it('getRecommendations는 파라미터 없으면 쿼리스트링 없이 요청한다', async () => {
+    mockFetch.mockReturnValue(jsonResponse([]));
+    await problemApi.getRecommendations();
+    expect(mockFetch.mock.calls[0][0]).toContain('/api/problems/recommendations');
+    expect(mockFetch.mock.calls[0][0]).not.toContain('?');
+  });
+
+  it('getRecommendations는 limit/exclude/platform/difficulty를 쿼리스트링에 직렬화한다', async () => {
+    mockFetch.mockReturnValue(jsonResponse([]));
+    await problemApi.getRecommendations({
+      limit: 5,
+      exclude: ['https://a.com/1', 'https://b.com/2'],
+      platform: 'BOJ',
+      difficulty: 'GOLD',
+    });
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain('limit=5');
+    expect(url).toContain('platform=BOJ');
+    expect(url).toContain('difficulty=GOLD');
+    // exclude는 반복 파라미터로 직렬화 (NestJS 배열 파싱 관례)
+    expect((url.match(/exclude=/g) ?? []).length).toBe(2);
+  });
+
+  it('getRecommendations는 difficulty 미지정 시 difficulty 파라미터를 넣지 않는다 (자동)', async () => {
+    mockFetch.mockReturnValue(jsonResponse([]));
+    await problemApi.getRecommendations({ limit: 8, platform: 'PROGRAMMERS' });
+    const url = mockFetch.mock.calls[0][0] as string;
+    expect(url).toContain('platform=PROGRAMMERS');
+    expect(url).not.toContain('difficulty=');
+  });
 });
 
 // ── submissionApi 추가 분기 ──

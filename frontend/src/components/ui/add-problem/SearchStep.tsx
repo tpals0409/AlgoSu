@@ -14,7 +14,7 @@ import { useTranslations } from 'next-intl';
 import { DIFFICULTY_CONFIG } from '../AlgosuUI';
 import { PROGRAMMERS_LEVEL_LABELS } from '@/lib/constants';
 import { useProblemRecommendation } from '@/hooks/use-problem-recommendation';
-import type { RecommendationItem } from '@/lib/api';
+import type { RecommendationItem, RecommendationDifficulty } from '@/lib/api';
 import {
   toOurDiff,
   resolveTierLabel,
@@ -22,6 +22,16 @@ import {
   type Platform,
   type SolvedProblem,
 } from './problem-search.utils';
+
+/**
+ * 추천에서 선택 가능한 난이도 — 정적 seed가 커버하는 3티어(Bronze/Silver/Gold).
+ * seed 폴백이 항상 결과를 보장하므로 빈 추천이 나오지 않는다(Sprint 256).
+ */
+const RECOMMENDABLE_DIFFICULTIES: readonly RecommendationDifficulty[] = [
+  'BRONZE',
+  'SILVER',
+  'GOLD',
+];
 
 /** SearchStep props — search function and UI text vary by platform */
 export interface SearchStepProps {
@@ -57,9 +67,15 @@ export function SearchStep({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // 추천 난이도 선택 — undefined면 스터디 추론(자동), 값 지정 시 해당 난이도 (Sprint 256).
+  const [recDifficulty, setRecDifficulty] = useState<
+    RecommendationDifficulty | undefined
+  >(undefined);
+
   // Recommendation section — hybrid prefetch + client rotation (Sprint 254).
   // 추천도 플랫폼 토글에 종속 — 탭 전환 시 해당 플랫폼 추천으로 재조회 (Sprint 255).
-  const rec = useProblemRecommendation({ platform });
+  // 난이도 선택 시 해당 난이도로 재조회 (Sprint 256).
+  const rec = useProblemRecommendation({ platform, difficulty: recDifficulty });
 
   // Autofocus the search input on first mount.
   useEffect(() => {
@@ -152,6 +168,8 @@ export function SearchStep({
         error={rec.error}
         onRefresh={rec.refresh}
         onSelect={onSelect}
+        difficulty={recDifficulty}
+        onDifficultyChange={setRecDifficulty}
       />
 
       {/* Search input */}
@@ -341,6 +359,10 @@ interface RecommendationSectionProps {
   error: boolean;
   onRefresh: () => void;
   onSelect: (p: SolvedProblem) => void;
+  /** 선택된 추천 난이도 — undefined면 "자동"(스터디 추론) */
+  difficulty: RecommendationDifficulty | undefined;
+  /** 난이도 칩 선택 콜백 — 같은 칩 재클릭 시 undefined(자동)로 토글 */
+  onDifficultyChange: (d: RecommendationDifficulty | undefined) => void;
 }
 
 /**
@@ -357,6 +379,8 @@ function RecommendationSection({
   error,
   onRefresh,
   onSelect,
+  difficulty,
+  onDifficultyChange,
 }: RecommendationSectionProps) {
   const t = useTranslations('problems');
 
@@ -384,6 +408,31 @@ function RecommendationSection({
           <RefreshCw className={`h-3 w-3${loading ? ' animate-spin' : ''}`} />
           {t('addModal.recommend.refresh')}
         </button>
+      </div>
+
+      {/* Difficulty selector — 자동 + seed-backed 3티어 (Sprint 256) */}
+      <div
+        className="mb-1.5 flex flex-wrap gap-1"
+        role="group"
+        aria-label={t('addModal.recommend.difficultyAria')}
+      >
+        {/* 자동(전체) 칩 */}
+        <DifficultyChip
+          label={t('addModal.recommend.difficultyAuto')}
+          selected={difficulty === undefined}
+          onClick={() => onDifficultyChange(undefined)}
+        />
+        {RECOMMENDABLE_DIFFICULTIES.map((d) => (
+          <DifficultyChip
+            key={d}
+            label={DIFFICULTY_CONFIG[d].label}
+            color={DIFFICULTY_CONFIG[d].color}
+            bg={DIFFICULTY_CONFIG[d].bg}
+            selected={difficulty === d}
+            // 같은 칩 재클릭 시 자동(undefined)으로 토글.
+            onClick={() => onDifficultyChange(difficulty === d ? undefined : d)}
+          />
+        ))}
       </div>
 
       {current ? (
@@ -460,5 +509,39 @@ function RecommendationSection({
         </div>
       )}
     </div>
+  );
+}
+
+/** {@link DifficultyChip} props */
+interface DifficultyChipProps {
+  label: string;
+  selected: boolean;
+  onClick: () => void;
+  /** 난이도 컬러(선택 시 강조) — "자동" 칩은 미지정 → primary 사용 */
+  color?: string;
+  bg?: string;
+}
+
+/**
+ * 추천 난이도 선택 칩 — 선택 시 해당 난이도 컬러로 채우고, 미선택 시 중립 배경.
+ * "자동" 칩은 난이도 컬러가 없어 primary 토큰으로 강조한다.
+ */
+function DifficultyChip({ label, selected, onClick, color, bg }: DifficultyChipProps) {
+  const selectedBg = bg ?? 'var(--primary-soft)';
+  const selectedColor = color ?? 'var(--primary)';
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onClick}
+      className="rounded-badge px-2 py-0.5 text-[10px] font-semibold transition-all"
+      style={
+        selected
+          ? { background: selectedBg, color: selectedColor, boxShadow: `inset 0 0 0 1px ${selectedColor}` }
+          : { background: 'var(--bg-alt)', color: 'var(--text-3)' }
+      }
+    >
+      {label}
+    </button>
   );
 }

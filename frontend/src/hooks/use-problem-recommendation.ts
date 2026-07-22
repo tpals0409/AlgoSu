@@ -15,7 +15,11 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { problemApi, type RecommendationItem } from '@/lib/api';
+import {
+  problemApi,
+  type RecommendationItem,
+  type RecommendationDifficulty,
+} from '@/lib/api';
 
 /** 기본 prefetch 묶음 크기 */
 const DEFAULT_LIMIT = 8;
@@ -42,6 +46,7 @@ export type FetchRecommendations = (params: {
   limit: number;
   exclude: string[];
   platform?: RecommendationPlatform;
+  difficulty?: RecommendationDifficulty;
 }) => Promise<RecommendationItem[]>;
 
 /** {@link useProblemRecommendation} 옵션 */
@@ -53,6 +58,11 @@ export interface UseProblemRecommendationOptions {
    * 값이 바뀌면(토글 전환) 묶음을 리셋하고 재조회한다.
    */
   platform?: RecommendationPlatform;
+  /**
+   * 추천 난이도 선택. 지정 시 해당 난이도 문제만 추천하며,
+   * 값이 바뀌면(칩 전환) 묶음을 리셋하고 재조회한다(Sprint 256).
+   */
+  difficulty?: RecommendationDifficulty;
   /**
    * 조회 함수 주입 지점. 미지정 시 {@link problemApi.getRecommendations} 사용.
    * 테스트에서 mock을 주입해 순수 로직을 검증한다.
@@ -75,8 +85,12 @@ export interface UseProblemRecommendationReturn {
 }
 
 /** 기본 fetcher — 배럴 API를 옵션 형태로 감싼다 */
-const defaultFetcher: FetchRecommendations = ({ limit, exclude, platform }) =>
-  problemApi.getRecommendations({ limit, exclude, platform });
+const defaultFetcher: FetchRecommendations = ({
+  limit,
+  exclude,
+  platform,
+  difficulty,
+}) => problemApi.getRecommendations({ limit, exclude, platform, difficulty });
 
 /**
  * 추천 문제 하이브리드 조회 훅.
@@ -87,7 +101,15 @@ const defaultFetcher: FetchRecommendations = ({ limit, exclude, platform }) =>
 export function useProblemRecommendation(
   options: UseProblemRecommendationOptions = {},
 ): UseProblemRecommendationReturn {
-  const { limit = DEFAULT_LIMIT, platform, fetcher = defaultFetcher } = options;
+  const {
+    limit = DEFAULT_LIMIT,
+    platform,
+    difficulty,
+    fetcher = defaultFetcher,
+  } = options;
+
+  // 플랫폼+난이도 조합을 하나의 리셋 키로 — 둘 중 하나라도 바뀌면 재조회.
+  const resetKey = `${platform ?? ''}|${difficulty ?? ''}`;
 
   const [bundle, setBundle] = useState<RecommendationItem[]>([]);
   const [index, setIndex] = useState(0);
@@ -105,9 +127,9 @@ export function useProblemRecommendation(
   // 플랫폼 전환 등으로 새 조회가 시작되면 epoch가 올라가고,
   // 뒤늦게 도착한 이전 세대의 응답은 폐기해 stale 추천 노출을 막는다.
   const epochRef = useRef(0);
-  // StrictMode 이중 마운트 가드 겸 "마지막으로 조회한 플랫폼" 마커.
-  // false = 아직 미조회, 그 외 = 마지막 조회 플랫폼(undefined 포함).
-  const didInit = useRef<RecommendationPlatform | undefined | false>(false);
+  // StrictMode 이중 마운트 가드 겸 "마지막으로 조회한 플랫폼+난이도" 마커.
+  // null = 아직 미조회, 그 외 = 마지막 조회 조합 키(resetKey).
+  const didInit = useRef<string | null>(null);
 
   bundleRef.current = bundle;
   indexRef.current = index;
@@ -151,8 +173,9 @@ export function useProblemRecommendation(
         // 백엔드 @ArrayMaxSize(100) 상한 준수: 최근 MAX_EXCLUDE개만 전송.
         // Set 삽입 순서상 뒤쪽이 최근이므로 slice(-MAX_EXCLUDE)로 캡핑.
         exclude: [...shownUrls.current].slice(-MAX_EXCLUDE),
-        // 값이 있을 때만 포함 — 미지정 시 기존 계약(전체 플랫폼) 유지.
+        // 값이 있을 때만 포함 — 미지정 시 기존 계약(전체 플랫폼/난이도) 유지.
         ...(platform ? { platform } : {}),
+        ...(difficulty ? { difficulty } : {}),
       });
       // 응답 도착 전에 더 새로운 조회(플랫폼 전환 등)가 시작됐다면 폐기.
       // 이전 플랫폼의 뒤늦은 응답이 현재 화면을 덮어쓰지 않게 한다.
@@ -181,15 +204,15 @@ export function useProblemRecommendation(
         setLoading(false);
       }
     }
-  }, [fetcher, limit, platform, markShown, rememberUrl]);
+  }, [fetcher, limit, platform, difficulty, markShown, rememberUrl]);
 
-  // 최초 마운트 + 플랫폼 전환 시 묶음을 리셋하고 재조회.
-  // (토글 종속 추천: 플랫폼이 바뀌면 이전 플랫폼의 노출 이력/묶음을 버린다.)
+  // 최초 마운트 + 플랫폼/난이도 전환 시 묶음을 리셋하고 재조회.
+  // (토글/난이도 종속 추천: 조합이 바뀌면 이전 노출 이력/묶음을 버린다.)
   useEffect(() => {
     // StrictMode 이중 마운트에서 최초 prefetch가 두 번 발사되지 않도록 가드하되,
-    // 플랫폼이 실제로 바뀌면 항상 재조회한다.
-    if (didInit.current === platform) return;
-    didInit.current = platform;
+    // 플랫폼/난이도 조합이 실제로 바뀌면 항상 재조회한다.
+    if (didInit.current === resetKey) return;
+    didInit.current = resetKey;
 
     shownUrls.current = new Set();
     bundleRef.current = [];
@@ -198,7 +221,7 @@ export function useProblemRecommendation(
     setIndex(0);
     setExhausted(false);
     void fetchNextBundle();
-  }, [platform, fetchNextBundle]);
+  }, [resetKey, fetchNextBundle]);
 
   /**
    * 다음 후보로 회전.

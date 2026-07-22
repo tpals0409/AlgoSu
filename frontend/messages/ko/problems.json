@@ -210,7 +210,9 @@
       "refresh": "새로고침",
       "loading": "추천 문제를 불러오는 중…",
       "empty": "지금은 추천할 문제가 없습니다.",
-      "error": "추천 문제를 불러오지 못했습니다."
+      "error": "추천 문제를 불러오지 못했습니다.",
+      "difficultyAria": "추천 난이도 선택",
+      "difficultyAuto": "자동"
     },
     "header": {
       "searchTitleBoj": "백준 문제 검색",

@@ -379,6 +379,10 @@ export class ProblemService {
    * Tier 2: 난이도만 일치 (태그 조건 제거) — Tier1 부족 시 append
    * Tier 3: 정적 seed — 여전히 부족하거나 신규 스터디(난이도 없음)일 때 append
    *
+   * 난이도 선택(Sprint 256): `difficulty` 지정 시 스터디 추론을 무시하고 해당
+   *   난이도만으로 후보/seed를 필터한다. 신규 스터디도 원하는 난이도 추천을 받는다.
+   *   미지정 시 기존 계약(스터디 자체 문제에서 난이도 추론) 유지.
+   *
    * 보안: RecommendationItem으로 외부 식별 메타만 투영(description 등 누출 금지).
    *
    * @throws BadRequestException studyId가 falsy인 경우 (cross-study 접근 차단)
@@ -388,6 +392,7 @@ export class ProblemService {
     exclude: string[],
     limit: number,
     platform?: 'BOJ' | 'PROGRAMMERS',
+    difficulty?: Difficulty,
   ): Promise<RecommendationItem[]> {
     if (!studyId) {
       throw new BadRequestException('studyId가 필요합니다 — cross-study 접근 차단');
@@ -409,13 +414,18 @@ export class ProblemService {
       }
     }
 
+    // 2. 대상 난이도 결정 — 명시 선택 우선, 없으면 스터디 추론(하위 호환)
+    const targetDifficulties = difficulty
+      ? [difficulty]
+      : Array.from(studyDifficulties);
+
     // 3. 제외 집합 = 소유 URL ∪ exclude 파라미터
     const excludeSet = new Set<string>(ownedUrls);
     for (const url of exclude) excludeSet.add(url);
 
     // cross-study 후보 조회 — 난이도+플랫폼 DB 필터, 태그 겹침은 JS 후처리
     const candidates = await this.dualWrite.findRecommendationCandidates(
-      Array.from(studyDifficulties),
+      targetDifficulties,
       studyId,
       platform,
     );
@@ -441,10 +451,13 @@ export class ProblemService {
 
     // 6. Tier 3: 정적 seed — 부족하거나 신규 스터디(난이도 없음)
     //    플랫폼 지정 시 해당 플랫폼 seed만 사용(토글 종속). 미지정 시 전체.
+    //    난이도 선택 시 해당 난이도 seed만 사용(Sprint 256).
     if (picked.size < limit) {
-      const seedPool = platform
-        ? RECOMMENDATION_SEEDS.filter((s) => s.sourcePlatform === platform)
-        : RECOMMENDATION_SEEDS;
+      const seedPool = RECOMMENDATION_SEEDS.filter(
+        (s) =>
+          (!platform || s.sourcePlatform === platform) &&
+          (!difficulty || s.difficulty === difficulty),
+      );
       const tier3 = seedPool.filter((s) => !excludeSet.has(s.sourceUrl));
       this.appendCandidates(this.shuffle([...tier3]), picked, limit);
     }
@@ -456,6 +469,7 @@ export class ProblemService {
       returned: result.length,
       limit,
       ownedCount: ownedProblems.length,
+      difficulty: difficulty ?? null,
     });
     return result;
   }
