@@ -33,6 +33,34 @@ const RECOMMENDABLE_DIFFICULTIES: readonly RecommendationDifficulty[] = [
   'GOLD',
 ];
 
+/**
+ * 프로그래머스 네이티브 레벨 ↔ 내부 Difficulty 밴드 매핑.
+ * recommendation-seeds 계약(Lv.1→BRONZE, Lv.2→SILVER, Lv.3→GOLD)과 1:1 대응.
+ * 전송 값은 enum(Difficulty) 그대로 — 라벨만 플랫폼 체계에 맞춰 바꾼다.
+ */
+const PROGRAMMERS_LEVEL_BY_DIFFICULTY: Record<'BRONZE' | 'SILVER' | 'GOLD', number> = {
+  BRONZE: 1,
+  SILVER: 2,
+  GOLD: 3,
+};
+
+/**
+ * 플랫폼별 난이도 칩 라벨.
+ * - BOJ: solved.ac 티어명(Bronze/Silver/Gold)
+ * - PROGRAMMERS: 네이티브 레벨(Lv.1/Lv.2/Lv.3)
+ * 백준과 프로그래머스는 난이도 체계가 다르므로 사용자가 보는 라벨을 분리한다.
+ */
+function difficultyChipLabel(
+  platform: Platform,
+  d: RecommendationDifficulty,
+): string {
+  if (platform === 'PROGRAMMERS') {
+    const lv = PROGRAMMERS_LEVEL_BY_DIFFICULTY[d as 'BRONZE' | 'SILVER' | 'GOLD'];
+    return PROGRAMMERS_LEVEL_LABELS[lv] ?? DIFFICULTY_CONFIG[d].label;
+  }
+  return DIFFICULTY_CONFIG[d].label;
+}
+
 /** SearchStep props — search function and UI text vary by platform */
 export interface SearchStepProps {
   onSelect: (p: SolvedProblem) => void;
@@ -163,6 +191,7 @@ export function SearchStep({
 
       {/* Recommendation section — hybrid prefetch + client rotation */}
       <RecommendationSection
+        platform={platform}
         current={rec.current}
         loading={rec.loading}
         error={rec.error}
@@ -354,6 +383,8 @@ export function SearchStep({
 
 /** {@link RecommendationSection} props */
 interface RecommendationSectionProps {
+  /** 현재 플랫폼 — 난이도 칩 라벨 체계(BOJ 티어 vs 프로그래머스 레벨)를 결정 */
+  platform: Platform;
   current: RecommendationItem | null;
   loading: boolean;
   error: boolean;
@@ -374,6 +405,7 @@ interface RecommendationSectionProps {
  * 검색 UX를 방해하지 않는다.
  */
 function RecommendationSection({
+  platform,
   current,
   loading,
   error,
@@ -410,7 +442,8 @@ function RecommendationSection({
         </button>
       </div>
 
-      {/* Difficulty selector — 자동 + seed-backed 3티어 (Sprint 256) */}
+      {/* Difficulty selector — 자동 + seed-backed 3티어 (Sprint 256)
+          라벨은 플랫폼 체계에 종속: BOJ=티어, 프로그래머스=Lv (Sprint 257) */}
       <div
         className="mb-1.5 flex flex-wrap gap-1"
         role="group"
@@ -425,7 +458,7 @@ function RecommendationSection({
         {RECOMMENDABLE_DIFFICULTIES.map((d) => (
           <DifficultyChip
             key={d}
-            label={DIFFICULTY_CONFIG[d].label}
+            label={difficultyChipLabel(platform, d)}
             color={DIFFICULTY_CONFIG[d].color}
             bg={DIFFICULTY_CONFIG[d].bg}
             selected={difficulty === d}
