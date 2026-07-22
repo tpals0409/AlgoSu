@@ -387,6 +387,7 @@ describe('SagaTimeoutService', () => {
       // 첫 번째 find는 onModuleInit에서 호출 (미완료 없음)
       repo.find
         .mockResolvedValueOnce([]) // onModuleInit - 미완료 없음
+        .mockResolvedValueOnce([]) // checkSagaTimeouts - reconcile (정합성 복구 대상 없음)
         .mockResolvedValueOnce([  // checkSagaTimeouts - DB_SAVED 타임아웃
           createMockSubmission({
             id: 'sub-timeout-db',
@@ -405,7 +406,7 @@ describe('SagaTimeoutService', () => {
       // checkSagaTimeouts를 직접 호출하기 위해 private 메서드 접근
       await (service as any).checkSagaTimeouts();
 
-      expect(repo.find).toHaveBeenCalledTimes(4); // onModuleInit 1 + checkSagaTimeouts 3 steps
+      expect(repo.find).toHaveBeenCalledTimes(5); // onModuleInit 1 + checkSagaTimeouts (reconcile 1 + 3 steps)
       // retryCount 갱신 (updatedAt 자동 갱신)
       expect(repo.update).toHaveBeenCalledWith('sub-timeout-db', { sagaRetryCount: 1 });
       expect(repo.update).toHaveBeenCalledWith(
@@ -433,6 +434,44 @@ describe('SagaTimeoutService', () => {
       repo.update.mockRejectedValue(new Error('timeout resume error'));
 
       // checkSagaTimeouts 직접 호출 — 에러가 throw되지 않아야 함
+      await expect((service as any).checkSagaTimeouts()).resolves.not.toThrow();
+    });
+  });
+
+  // ─── 8b. reconcileTerminalAnalysis — 분석 종단인데 AI_QUEUED 잔류 복구 ─
+  describe('reconcileTerminalAnalysis() — 정합성 복구', () => {
+    it('aiAnalysisStatus=completed인데 sagaStep=AI_QUEUED인 제출을 DONE으로 복구한다', async () => {
+      const stuck = createMockSubmission({
+        id: 'sub-stuck',
+        sagaStep: SagaStep.AI_QUEUED,
+        aiAnalysisStatus: 'completed',
+      });
+      repo.find
+        .mockResolvedValueOnce([stuck]) // reconcile - stuck 1건
+        .mockResolvedValue([]);         // 이후 step find들 - 없음
+      repo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+      repo.findOne.mockResolvedValue(createMockSubmission({ studyId: 'study-uuid-1' }));
+
+      await (service as any).checkSagaTimeouts();
+
+      // advanceToDone(비-QR) 경로로 AI_QUEUED -> DONE 전이
+      expect(repo.update).toHaveBeenCalledWith(
+        { id: 'sub-stuck', sagaStep: expect.anything() },
+        { sagaStep: SagaStep.DONE },
+      );
+    });
+
+    it('복구 대상이 advanceToDone에서 실패해도 다음 step 체크로 계속 진행한다', async () => {
+      const stuck = createMockSubmission({
+        id: 'sub-stuck-fail',
+        sagaStep: SagaStep.AI_QUEUED,
+        aiAnalysisStatus: 'failed',
+      });
+      repo.find
+        .mockResolvedValueOnce([stuck]) // reconcile - stuck 1건
+        .mockResolvedValue([]);
+      repo.update.mockRejectedValue(new Error('reconcile update error'));
+
       await expect((service as any).checkSagaTimeouts()).resolves.not.toThrow();
     });
   });

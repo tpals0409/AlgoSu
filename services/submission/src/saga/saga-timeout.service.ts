@@ -107,6 +107,11 @@ export class SagaTimeoutService implements OnModuleInit, OnModuleDestroy {
    * DB_SAVED 5분, GITHUB_QUEUED 15분, AI_QUEUED 30분 초과 시 재개 또는 FAILED 처리
    */
   private async checkSagaTimeouts(): Promise<void> {
+    // 데이터 정합성 리컨실: AI 분석은 종단(completed/failed)인데 sagaStep이 AI_QUEUED에
+    // 잔류한 제출을 DONE으로 복구한다. 스터디룸이 sagaStep으로 "분석중"을 표시하는 반면
+    // 분석 상세는 aiAnalysisStatus를 쓰므로, 두 필드가 갈라지면 룸이 영영 "분석중"에 멈춘다.
+    await this.reconcileTerminalAnalysis();
+
     const stepsToCheck = [SagaStep.DB_SAVED, SagaStep.GITHUB_QUEUED, SagaStep.AI_QUEUED];
 
     for (const step of stepsToCheck) {
@@ -132,6 +137,36 @@ export class SagaTimeoutService implements OnModuleInit, OnModuleDestroy {
             `타임아웃 재개 실패: submissionId=${submission.id}, error=${(error as Error).message}`,
           );
         }
+      }
+    }
+  }
+
+  /**
+   * 데이터 정합성 리컨실 -- aiAnalysisStatus는 종단(completed/failed)인데
+   * sagaStep이 AI_QUEUED에 잔류한 제출을 DONE으로 복구한다.
+   *
+   * 불변식: 완료/실패한 AI 분석 결과는 종단 상태이므로 sagaStep은 반드시 DONE이어야 한다.
+   * 과거 코드/경합으로 두 필드가 갈라진 stuck 행을 2분 주기로 자가치유한다.
+   */
+  private async reconcileTerminalAnalysis(): Promise<void> {
+    const stuck = await this.submissionRepo.find({
+      where: {
+        sagaStep: SagaStep.AI_QUEUED,
+        aiAnalysisStatus: In(['completed', 'failed']),
+      },
+      take: 50, // 배치 제한
+    });
+
+    for (const submission of stuck) {
+      try {
+        this.logger.warn(
+          `분석 정합성 복구: submissionId=${submission.id}, aiAnalysisStatus=${submission.aiAnalysisStatus}, sagaStep=AI_QUEUED -> DONE`,
+        );
+        await this.orchestrator.advanceToDone(submission.id);
+      } catch (error: unknown) {
+        this.logger.error(
+          `분석 정합성 복구 실패: submissionId=${submission.id}, error=${(error as Error).message}`,
+        );
       }
     }
   }
