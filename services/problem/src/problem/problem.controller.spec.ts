@@ -195,7 +195,12 @@ describe('ProblemController', () => {
 
       const result = await controller.recommend({}, STUDY_ID);
 
-      expect(service.recommendForStudy).toHaveBeenCalledWith(STUDY_ID, [], 8);
+      expect(service.recommendForStudy).toHaveBeenCalledWith(
+        STUDY_ID,
+        [],
+        8,
+        undefined,
+      );
       expect(result).toEqual({ data: [recItem] });
     });
 
@@ -211,8 +216,22 @@ describe('ProblemController', () => {
         STUDY_ID,
         ['https://a.com/1'],
         5,
+        undefined,
       );
       expect(result).toEqual({ data: [] });
+    });
+
+    it('platform 전달: 토글 종속 추천으로 service에 위임', async () => {
+      service.recommendForStudy.mockResolvedValue([]);
+
+      await controller.recommend({ platform: 'BOJ' }, STUDY_ID);
+
+      expect(service.recommendForStudy).toHaveBeenCalledWith(
+        STUDY_ID,
+        [],
+        8,
+        'BOJ',
+      );
     });
   });
 

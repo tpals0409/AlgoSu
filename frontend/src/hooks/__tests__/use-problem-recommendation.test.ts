@@ -46,6 +46,98 @@ describe('useProblemRecommendation — prefetch', () => {
     await waitFor(() => expect(fetcher).toHaveBeenCalled());
     expect(fetcher).toHaveBeenCalledWith({ limit: 3, exclude: [] });
   });
+
+  it('platform 미지정 시 fetcher params에 platform 키가 없다 (하위 호환)', async () => {
+    const fetcher = jest.fn().mockResolvedValue([makeItem(1)]);
+    renderHook(() => useProblemRecommendation({ fetcher }));
+    await waitFor(() => expect(fetcher).toHaveBeenCalled());
+    expect(fetcher.mock.calls[0][0]).not.toHaveProperty('platform');
+  });
+
+  it('platform 지정 시 fetcher로 platform을 전달한다 (토글 종속)', async () => {
+    const fetcher = jest.fn().mockResolvedValue([makeItem(1)]);
+    renderHook(() => useProblemRecommendation({ platform: 'BOJ', fetcher }));
+    await waitFor(() => expect(fetcher).toHaveBeenCalled());
+    expect(fetcher).toHaveBeenCalledWith({ limit: 8, exclude: [], platform: 'BOJ' });
+  });
+});
+
+describe('useProblemRecommendation — 플랫폼 전환 재조회', () => {
+  it('platform이 바뀌면 묶음을 리셋하고 새 플랫폼으로 재조회한다', async () => {
+    const boj = [makeItem(1), makeItem(2)];
+    const prog: RecommendationItem = {
+      title: 'Prog 1',
+      sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/100',
+      sourcePlatform: 'PROGRAMMERS',
+      difficulty: 'BRONZE',
+      level: 1,
+      tags: ['해시'],
+      category: 'ALGORITHM',
+    };
+    const fetcher = jest
+      .fn()
+      .mockResolvedValueOnce(boj)
+      .mockResolvedValueOnce([prog]);
+
+    const { result, rerender } = renderHook(
+      ({ platform }) => useProblemRecommendation({ platform, fetcher }),
+      { initialProps: { platform: 'BOJ' as 'BOJ' | 'PROGRAMMERS' } },
+    );
+    await waitFor(() => expect(result.current.current).toEqual(boj[0]));
+
+    // 플랫폼 전환 → 재조회 발사
+    rerender({ platform: 'PROGRAMMERS' });
+    await waitFor(() => expect(result.current.current).toEqual(prog));
+
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(fetcher).toHaveBeenLastCalledWith({
+      limit: 8,
+      // 전환 시 이전 플랫폼 노출 이력(exclude)은 리셋됨
+      exclude: [],
+      platform: 'PROGRAMMERS',
+    });
+  });
+
+  it('이전 플랫폼 응답이 늦게 도착해도 현재 플랫폼 추천을 덮어쓰지 않는다 (in-flight 폐기)', async () => {
+    const boj = [makeItem(1)];
+    const prog: RecommendationItem = {
+      title: 'Prog 1',
+      sourceUrl: 'https://school.programmers.co.kr/learn/courses/30/lessons/100',
+      sourcePlatform: 'PROGRAMMERS',
+      difficulty: 'BRONZE',
+      level: 1,
+      tags: ['해시'],
+      category: 'ALGORITHM',
+    };
+
+    // BOJ 조회는 수동 resolve로 지연시키고, PROGRAMMERS는 즉시 응답.
+    let resolveBoj!: (v: RecommendationItem[]) => void;
+    const bojPromise = new Promise<RecommendationItem[]>((r) => {
+      resolveBoj = r;
+    });
+    const fetcher = jest
+      .fn<ReturnType<FetchRecommendations>, Parameters<FetchRecommendations>>()
+      .mockReturnValueOnce(bojPromise) // BOJ — 응답 지연 (in-flight)
+      .mockResolvedValueOnce([prog]); // PROGRAMMERS — 즉시
+
+    const { result, rerender } = renderHook(
+      ({ platform }) => useProblemRecommendation({ platform, fetcher }),
+      { initialProps: { platform: 'BOJ' as 'BOJ' | 'PROGRAMMERS' } },
+    );
+
+    // BOJ 조회가 아직 pending인 상태에서 플랫폼 전환 발사.
+    rerender({ platform: 'PROGRAMMERS' });
+    await waitFor(() => expect(result.current.current).toEqual(prog));
+
+    // 이제 이전(BOJ) 응답이 뒤늦게 도착해도 폐기돼야 한다.
+    await act(async () => {
+      resolveBoj(boj);
+      await bojPromise;
+    });
+
+    expect(result.current.current).toEqual(prog);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe('useProblemRecommendation — rotation (index++)', () => {

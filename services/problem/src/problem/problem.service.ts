@@ -387,6 +387,7 @@ export class ProblemService {
     studyId: string,
     exclude: string[],
     limit: number,
+    platform?: 'BOJ' | 'PROGRAMMERS',
   ): Promise<RecommendationItem[]> {
     if (!studyId) {
       throw new BadRequestException('studyId가 필요합니다 — cross-study 접근 차단');
@@ -412,10 +413,11 @@ export class ProblemService {
     const excludeSet = new Set<string>(ownedUrls);
     for (const url of exclude) excludeSet.add(url);
 
-    // cross-study 후보 조회 — 난이도만 DB 필터, 태그 겹침은 JS 후처리
+    // cross-study 후보 조회 — 난이도+플랫폼 DB 필터, 태그 겹침은 JS 후처리
     const candidates = await this.dualWrite.findRecommendationCandidates(
       Array.from(studyDifficulties),
       studyId,
+      platform,
     );
 
     const picked = new Map<string, RecommendationItem>();
@@ -438,10 +440,12 @@ export class ProblemService {
     }
 
     // 6. Tier 3: 정적 seed — 부족하거나 신규 스터디(난이도 없음)
+    //    플랫폼 지정 시 해당 플랫폼 seed만 사용(토글 종속). 미지정 시 전체.
     if (picked.size < limit) {
-      const tier3 = RECOMMENDATION_SEEDS.filter(
-        (s) => !excludeSet.has(s.sourceUrl),
-      );
+      const seedPool = platform
+        ? RECOMMENDATION_SEEDS.filter((s) => s.sourcePlatform === platform)
+        : RECOMMENDATION_SEEDS;
+      const tier3 = seedPool.filter((s) => !excludeSet.has(s.sourceUrl));
       this.appendCandidates(this.shuffle([...tier3]), picked, limit);
     }
 

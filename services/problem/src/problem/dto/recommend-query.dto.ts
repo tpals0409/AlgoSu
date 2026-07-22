@@ -9,11 +9,16 @@ import {
   IsString,
   IsInt,
   IsOptional,
+  IsIn,
   Min,
   Max,
   ArrayMaxSize,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
+
+/** 추천 대상 플랫폼 — 문제 추가 모달의 플랫폼 토글과 1:1 대응 */
+export const RECOMMEND_PLATFORMS = ['BOJ', 'PROGRAMMERS'] as const;
+export type RecommendPlatform = (typeof RECOMMEND_PLATFORMS)[number];
 
 /**
  * GET /recommendations 쿼리 파라미터 DTO
@@ -46,4 +51,13 @@ export class RecommendQueryDto {
     Array.isArray(value) ? value : [value],
   )
   exclude?: string[];
+
+  /**
+   * 추천 대상 플랫폼 — 지정 시 해당 플랫폼 문제만 추천한다.
+   * 문제 추가 모달의 플랫폼 토글(PROGRAMMERS/BOJ)에 종속.
+   * 미지정 시 전체 플랫폼(하위 호환).
+   */
+  @IsOptional()
+  @IsIn(RECOMMEND_PLATFORMS)
+  platform?: RecommendPlatform;
 }

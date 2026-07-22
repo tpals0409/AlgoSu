@@ -1169,10 +1169,11 @@ describe('ProblemService', () => {
 
       const result = await service.recommendForStudy(STUDY_ID, [], 8);
 
-      // 난이도 SILVER로 DB 필터 호출
+      // 난이도 SILVER로 DB 필터 호출 (platform 미지정 → undefined)
       expect(dualWrite.findRecommendationCandidates).toHaveBeenCalledWith(
         [Difficulty.SILVER],
         STUDY_ID,
+        undefined,
       );
       const urls = result.map((r) => r.sourceUrl);
       expect(urls).toContain('https://x.com/t1');
@@ -1193,21 +1194,39 @@ describe('ProblemService', () => {
       expect(urls).toContain('https://x.com/t2');
     });
 
-    it('Tier 3 seed: 신규 스터디(난이도 없음)면 seed로 채움', async () => {
+    it('Tier 3 seed: 신규 스터디(난이도 없음) + PROGRAMMERS 토글이면 프로그래머스 seed로 채움', async () => {
       // 등록 문제 0개 → studyDifficulties 비어있음 → 후보 조회는 빈 배열 반환
       dualWrite.find.mockResolvedValue([]);
       dualWrite.findRecommendationCandidates.mockResolvedValue([]);
 
-      const result = await service.recommendForStudy(STUDY_ID, [], 8);
+      const result = await service.recommendForStudy(STUDY_ID, [], 8, 'PROGRAMMERS');
 
-      // 난이도 목록 비어있으므로 [] 로 호출
-      expect(dualWrite.findRecommendationCandidates).toHaveBeenCalledWith([], STUDY_ID);
+      // 난이도 목록 비어있으므로 [] + platform 전달
+      expect(dualWrite.findRecommendationCandidates).toHaveBeenCalledWith(
+        [],
+        STUDY_ID,
+        'PROGRAMMERS',
+      );
       // seed로 8개 채워짐
       expect(result).toHaveLength(8);
-      // seed는 프로그래머스 lesson URL
+      // PROGRAMMERS seed만 (lesson URL)
       result.forEach((r) => {
         expect(r.sourceUrl).toContain('school.programmers.co.kr/learn/courses/30/lessons/');
         expect(r.sourcePlatform).toBe('PROGRAMMERS');
+      });
+    });
+
+    it('Tier 3 seed: 신규 스터디 + BOJ 토글이면 백준 seed로만 채움 (토글 종속)', async () => {
+      dualWrite.find.mockResolvedValue([]);
+      dualWrite.findRecommendationCandidates.mockResolvedValue([]);
+
+      const result = await service.recommendForStudy(STUDY_ID, [], 8, 'BOJ');
+
+      expect(result).toHaveLength(8);
+      // BOJ seed만 (acmicpc URL), 프로그래머스 seed 미포함
+      result.forEach((r) => {
+        expect(r.sourceUrl).toContain('acmicpc.net/problem/');
+        expect(r.sourcePlatform).toBe('BOJ');
       });
     });
 
@@ -1220,11 +1239,11 @@ describe('ProblemService', () => {
         candidate({ title: '유일 후보', sourceUrl: 'https://x.com/only', difficulty: Difficulty.SILVER, tags: ['해시'] }),
       ]);
 
-      const result = await service.recommendForStudy(STUDY_ID, [], 5);
+      const result = await service.recommendForStudy(STUDY_ID, [], 5, 'PROGRAMMERS');
 
       expect(result).toHaveLength(5);
       expect(result.map((r) => r.sourceUrl)).toContain('https://x.com/only');
-      // 나머지 4개는 seed
+      // 나머지 4개는 프로그래머스 seed
       const seedCount = result.filter((r) =>
         r.sourceUrl.includes('school.programmers.co.kr'),
       ).length;

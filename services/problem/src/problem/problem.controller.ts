@@ -145,7 +145,12 @@ export class ProblemController {
   ) {
     const limit = query.limit ?? 8;
     const exclude = query.exclude ?? [];
-    const data = await this.problemService.recommendForStudy(studyId, exclude, limit);
+    const data = await this.problemService.recommendForStudy(
+      studyId,
+      exclude,
+      limit,
+      query.platform,
+    );
     return { data };
   }
 

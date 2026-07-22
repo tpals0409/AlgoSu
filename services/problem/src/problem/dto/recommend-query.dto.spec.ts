@@ -99,4 +99,31 @@ describe('RecommendQueryDto', () => {
       expect(errors[0].constraints).toHaveProperty('isString');
     });
   });
+
+  describe('platform', () => {
+    it('미지정: 유효', async () => {
+      const dto = build({});
+      expect(await validate(dto)).toHaveLength(0);
+      expect(dto.platform).toBeUndefined();
+    });
+
+    it('PROGRAMMERS: 유효', async () => {
+      const dto = build({ platform: 'PROGRAMMERS' });
+      expect(await validate(dto)).toHaveLength(0);
+      expect(dto.platform).toBe('PROGRAMMERS');
+    });
+
+    it('BOJ: 유효', async () => {
+      const dto = build({ platform: 'BOJ' });
+      expect(await validate(dto)).toHaveLength(0);
+      expect(dto.platform).toBe('BOJ');
+    });
+
+    it('허용되지 않은 값: IsIn 위반', async () => {
+      const dto = build({ platform: 'LEETCODE' });
+      const errors = await validate(dto);
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors[0].constraints).toHaveProperty('isIn');
+    });
+  });
 });

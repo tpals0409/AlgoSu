@@ -28,11 +28,14 @@ export interface RecommendationItem {
 const lessonUrl = (id: number): string =>
   `https://school.programmers.co.kr/learn/courses/30/lessons/${id}`;
 
+/** 백준(BOJ) 문제 URL 조립 */
+const bojUrl = (id: number): string => `https://www.acmicpc.net/problem/${id}`;
+
 /**
- * 정적 seed 목록 — 프로그래머스 대표 lesson 12선
- * 각 항목은 RecommendationItem 형태로 그대로 반환 가능하도록 사전 투영됨.
+ * 프로그래머스 대표 lesson 12선.
+ * level=프로그래머스 Lv 숫자(1~3), 난이도 매핑 Lv.1→BRONZE, Lv.2→SILVER, Lv.3→GOLD.
  */
-export const RECOMMENDATION_SEEDS: readonly RecommendationItem[] = [
+const PROGRAMMERS_SEEDS: readonly RecommendationItem[] = [
   { title: '완주하지 못한 선수', sourceUrl: lessonUrl(42576), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.BRONZE, level: 1, tags: ['해시'], category: ProblemCategory.ALGORITHM },
   { title: '모의고사', sourceUrl: lessonUrl(42840), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.BRONZE, level: 1, tags: ['완전탐색'], category: ProblemCategory.ALGORITHM },
   { title: 'K번째수', sourceUrl: lessonUrl(42748), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.BRONZE, level: 1, tags: ['정렬'], category: ProblemCategory.ALGORITHM },
@@ -45,4 +48,34 @@ export const RECOMMENDATION_SEEDS: readonly RecommendationItem[] = [
   { title: '정수 삼각형', sourceUrl: lessonUrl(43105), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.GOLD, level: 3, tags: ['DP'], category: ProblemCategory.ALGORITHM },
   { title: '네트워크', sourceUrl: lessonUrl(43162), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.GOLD, level: 3, tags: ['DFS/BFS'], category: ProblemCategory.ALGORITHM },
   { title: '단어 변환', sourceUrl: lessonUrl(43163), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.GOLD, level: 3, tags: ['BFS'], category: ProblemCategory.ALGORITHM },
+];
+
+/**
+ * 백준(BOJ) 대표 문제 12선 — 플랫폼 토글이 BOJ일 때 콜드스타트 폴백.
+ * 난이도는 solved.ac 티어 대분류(BRONZE/SILVER/GOLD)만 신뢰 가능 값으로 기입하고,
+ * solved.ac 세부 숫자 티어는 단정하지 않으므로 level=null (FE가 difficulty로 대체 표시).
+ */
+const BOJ_SEEDS: readonly RecommendationItem[] = [
+  { title: 'A+B', sourceUrl: bojUrl(1000), sourcePlatform: 'BOJ', difficulty: Difficulty.BRONZE, level: null, tags: ['사칙연산'], category: ProblemCategory.ALGORITHM },
+  { title: '구구단', sourceUrl: bojUrl(2739), sourcePlatform: 'BOJ', difficulty: Difficulty.BRONZE, level: null, tags: ['반복문'], category: ProblemCategory.ALGORITHM },
+  { title: '별 찍기 - 1', sourceUrl: bojUrl(2438), sourcePlatform: 'BOJ', difficulty: Difficulty.BRONZE, level: null, tags: ['구현'], category: ProblemCategory.ALGORITHM },
+  { title: '최댓값', sourceUrl: bojUrl(2562), sourcePlatform: 'BOJ', difficulty: Difficulty.BRONZE, level: null, tags: ['구현'], category: ProblemCategory.ALGORITHM },
+  { title: '바이러스', sourceUrl: bojUrl(2606), sourcePlatform: 'BOJ', difficulty: Difficulty.SILVER, level: null, tags: ['DFS/BFS'], category: ProblemCategory.ALGORITHM },
+  { title: 'DFS와 BFS', sourceUrl: bojUrl(1260), sourcePlatform: 'BOJ', difficulty: Difficulty.SILVER, level: null, tags: ['DFS/BFS'], category: ProblemCategory.ALGORITHM },
+  { title: '미로 탐색', sourceUrl: bojUrl(2178), sourcePlatform: 'BOJ', difficulty: Difficulty.SILVER, level: null, tags: ['BFS'], category: ProblemCategory.ALGORITHM },
+  { title: '유기농 배추', sourceUrl: bojUrl(1012), sourcePlatform: 'BOJ', difficulty: Difficulty.SILVER, level: null, tags: ['DFS/BFS'], category: ProblemCategory.ALGORITHM },
+  { title: '1로 만들기', sourceUrl: bojUrl(1463), sourcePlatform: 'BOJ', difficulty: Difficulty.SILVER, level: null, tags: ['DP'], category: ProblemCategory.ALGORITHM },
+  { title: '2×n 타일링', sourceUrl: bojUrl(11726), sourcePlatform: 'BOJ', difficulty: Difficulty.SILVER, level: null, tags: ['DP'], category: ProblemCategory.ALGORITHM },
+  { title: '1, 2, 3 더하기', sourceUrl: bojUrl(9095), sourcePlatform: 'BOJ', difficulty: Difficulty.SILVER, level: null, tags: ['DP'], category: ProblemCategory.ALGORITHM },
+  { title: '동전 0', sourceUrl: bojUrl(11047), sourcePlatform: 'BOJ', difficulty: Difficulty.SILVER, level: null, tags: ['그리디'], category: ProblemCategory.ALGORITHM },
+];
+
+/**
+ * 정적 seed 목록 — 프로그래머스 12선 + 백준 12선.
+ * 플랫폼 토글 종속 추천: 서비스 레이어에서 sourcePlatform으로 필터한다.
+ * 각 항목은 RecommendationItem 형태로 그대로 반환 가능하도록 사전 투영됨.
+ */
+export const RECOMMENDATION_SEEDS: readonly RecommendationItem[] = [
+  ...PROGRAMMERS_SEEDS,
+  ...BOJ_SEEDS,
 ];
