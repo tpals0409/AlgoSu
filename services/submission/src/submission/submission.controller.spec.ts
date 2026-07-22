@@ -27,6 +27,7 @@ describe('SubmissionController', () => {
             findByProblemForStudy: jest.fn(),
             rateSatisfaction: jest.fn(),
             getSatisfaction: jest.fn(),
+            requestReanalysis: jest.fn(),
           },
         },
         {
@@ -133,6 +134,20 @@ describe('SubmissionController', () => {
       submissionService.findById.mockResolvedValue(mockSubmission as any);
 
       await expect(controller.getAnalysis('sub-1', 'user-1', 'study-1')).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('reanalyze()', () => {
+    it('서비스에 재분석을 위임하고 결과를 data로 감싼다', async () => {
+      submissionService.requestReanalysis.mockResolvedValue({
+        analysisStatus: 'pending',
+        aiSkipped: false,
+      } as any);
+
+      const result = await controller.reanalyze('sub-1', 'user-1');
+
+      expect(submissionService.requestReanalysis).toHaveBeenCalledWith('sub-1', 'user-1');
+      expect(result).toEqual({ data: { analysisStatus: 'pending', aiSkipped: false } });
     });
   });
 

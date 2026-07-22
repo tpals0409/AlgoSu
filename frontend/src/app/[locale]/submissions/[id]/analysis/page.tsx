@@ -74,6 +74,8 @@ export default function AnalysisPage(): ReactNode {
   const pollStartRef = useRef<number | null>(null);
   const [pollTimedOut, setPollTimedOut] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [reanalyzing, setReanalyzing] = useState(false);
+  const [stillLimited, setStillLimited] = useState(false);
   const MAX_POLL_COUNT = 60; // 최대 60회 (10분)
 
   const [problemMeta, setProblemMeta] = useState<{ title?: string; difficulty?: string; level?: number; tags?: string[]; sourcePlatform?: 'BOJ' | 'PROGRAMMERS' | null } | null>(null);
@@ -207,6 +209,34 @@ export default function AnalysisPage(): ReactNode {
     pollCountRef.current = 0;
     void loadData();
   }, [loadData]);
+
+  /**
+   * AI 한도 초과로 건너뛴 제출 재분석 요청.
+   * 큐잉 성공 시 pending 으로 전환해 폴링을 재개하고, 한도가 여전히 초과면 안내를 표시한다.
+   */
+  const handleReanalyze = useCallback(async () => {
+    setReanalyzing(true);
+    setStillLimited(false);
+    setError(null);
+    try {
+      const result = await submissionApi.reanalyze(submissionId);
+      if (result.aiSkipped) {
+        // 한도가 아직 초기화되지 않음 — 재차 스킵됨
+        setStillLimited(true);
+        return;
+      }
+      // 큐잉 성공 → pending 전환 + 폴링 재개
+      pollCountRef.current = 0;
+      pollStartRef.current = Date.now();
+      setElapsedSeconds(0);
+      setPollTimedOut(false);
+      setAnalysis((prev) => (prev ? { ...prev, analysisStatus: 'pending' } : prev));
+    } catch (err: unknown) {
+      setError((err as Error).message ?? t('analysis.reanalyze.error'));
+    } finally {
+      setReanalyzing(false);
+    }
+  }, [submissionId, t]);
 
   // ─── LOADING ────────────────────────────
 
@@ -392,6 +422,27 @@ export default function AnalysisPage(): ReactNode {
           <Alert variant="error" title={t('analysis.failed.title')}>
             {t('analysis.failed.description')}
           </Alert>
+        )}
+
+        {/* ─── SKIPPED (AI 한도 초과 → 재분석 요청) ── */}
+        {!isLoading && analysis && analysis.analysisStatus === 'skipped' && (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-16 gap-4">
+              <div className="flex items-center justify-center rounded-full bg-warning-soft p-4">
+                <Zap className="h-8 w-8 text-warning" aria-hidden />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium text-text">{t('analysis.skipped.title')}</p>
+                <p className="mt-1 text-[11px] text-text-3">{t('analysis.skipped.description')}</p>
+                {stillLimited && (
+                  <p className="mt-2 text-[11px] text-warning">{t('analysis.skipped.stillLimited')}</p>
+                )}
+              </div>
+              <Button size="sm" onClick={() => void handleReanalyze()} disabled={reanalyzing}>
+                {reanalyzing ? t('analysis.reanalyze.loading') : t('analysis.reanalyze.button')}
+              </Button>
+            </CardContent>
+          </Card>
         )}
 
         {/* ─── COMPLETED: 2-Column Layout ────── */}

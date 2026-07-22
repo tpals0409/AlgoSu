@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { renderWithI18n } from '@/test-utils/i18n';
 import AnalysisPage from '../page';
 
@@ -155,12 +155,14 @@ jest.mock('@/lib/avatars', () => ({
 
 const mockFindById = jest.fn();
 const mockGetAnalysis = jest.fn();
+const mockReanalyze = jest.fn();
 const mockProblemFindById = jest.fn();
 
 jest.mock('@/lib/api', () => ({
   submissionApi: {
     findById: (...args: unknown[]) => mockFindById(...args),
     getAnalysis: (...args: unknown[]) => mockGetAnalysis(...args),
+    reanalyze: (...args: unknown[]) => mockReanalyze(...args),
   },
   problemApi: {
     findById: (...args: unknown[]) => mockProblemFindById(...args),
@@ -286,5 +288,69 @@ describe('AnalysisPage', () => {
     renderWithI18n(<AnalysisPage />);
     expect(await screen.findByText('잘 작성된 코드입니다.')).toBeInTheDocument();
     expect(screen.getByTestId('score-gauge')).toBeInTheDocument();
+  });
+
+  // ─── SKIPPED (AI 한도 초과 → 재분석 요청) ──────────
+  const skippedSubmission = {
+    id: 'sub-123',
+    problemId: 'prob-1',
+    problemTitle: 'Test Problem',
+    language: 'python',
+    createdAt: '2025-01-01T00:00:00Z',
+    sagaStep: 'DONE',
+  };
+
+  it('skipped 상태에서 재분석 요청 버튼과 안내가 표시된다', async () => {
+    mockFindById.mockResolvedValue(skippedSubmission);
+    mockProblemFindById.mockRejectedValue(new Error('not found'));
+    mockGetAnalysis.mockResolvedValue({
+      analysisStatus: 'skipped',
+      feedback: null,
+      score: null,
+      optimizedCode: null,
+    });
+
+    renderWithI18n(<AnalysisPage />);
+    expect(await screen.findByText('AI 분석이 건너뛰어졌습니다')).toBeInTheDocument();
+    expect(screen.getByText('재분석 요청')).toBeInTheDocument();
+  });
+
+  it('재분석 요청 성공(aiSkipped=false) 시 pending 상태로 전환된다', async () => {
+    mockFindById.mockResolvedValue(skippedSubmission);
+    mockProblemFindById.mockRejectedValue(new Error('not found'));
+    mockGetAnalysis.mockResolvedValue({
+      analysisStatus: 'skipped',
+      feedback: null,
+      score: null,
+      optimizedCode: null,
+    });
+    mockReanalyze.mockResolvedValue({ analysisStatus: 'pending', aiSkipped: false });
+
+    renderWithI18n(<AnalysisPage />);
+    const btn = await screen.findByText('재분석 요청');
+    fireEvent.click(btn);
+
+    await waitFor(() => expect(mockReanalyze).toHaveBeenCalledWith('sub-123'));
+    expect(await screen.findByText('AI 분석 중...')).toBeInTheDocument();
+  });
+
+  it('한도가 여전히 초과(aiSkipped=true)면 안내 문구가 표시된다', async () => {
+    mockFindById.mockResolvedValue(skippedSubmission);
+    mockProblemFindById.mockRejectedValue(new Error('not found'));
+    mockGetAnalysis.mockResolvedValue({
+      analysisStatus: 'skipped',
+      feedback: null,
+      score: null,
+      optimizedCode: null,
+    });
+    mockReanalyze.mockResolvedValue({ analysisStatus: 'skipped', aiSkipped: true });
+
+    renderWithI18n(<AnalysisPage />);
+    const btn = await screen.findByText('재분석 요청');
+    fireEvent.click(btn);
+
+    expect(
+      await screen.findByText(/아직 오늘의 AI 분석 한도가 남아있지 않습니다/),
+    ).toBeInTheDocument();
   });
 });

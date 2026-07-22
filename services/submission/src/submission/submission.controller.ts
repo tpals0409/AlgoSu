@@ -196,6 +196,25 @@ export class SubmissionController {
   }
 
   /**
+   * POST /:id/reanalyze — AI 한도 초과로 건너뛴 제출 재분석 요청
+   *
+   * 한도가 초기화된 뒤 본인이 호출. 응답의 aiSkipped=false면 분석 큐잉 성공,
+   * true면 한도가 아직 초기화되지 않아 재차 스킵됨.
+   */
+  @ApiOperation({ summary: 'AI 한도 초과 제출 재분석 요청' })
+  @ApiResponse({ status: 200, description: '재분석 큐잉 결과' })
+  @ApiResponse({ status: 400, description: '재분석 대상 아님' })
+  @ApiResponse({ status: 403, description: '본인 제출 아님' })
+  @Post(':id/reanalyze')
+  async reanalyze(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Headers('x-user-id') userId: string,
+  ) {
+    const result = await this.submissionService.requestReanalysis(id, userId);
+    return { data: result };
+  }
+
+  /**
    * GET /problem/:problemId — 문제별 제출 목록 (스터디+본인)
    */
   @ApiOperation({ summary: '문제별 본인 제출 목록 조회' })

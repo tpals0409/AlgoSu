@@ -8,6 +8,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, In } from 'typeorm';
@@ -146,6 +147,69 @@ export class SubmissionService {
       throw new NotFoundException(`제출을 찾을 수 없습니다: id=${id}`);
     }
     return submission;
+  }
+
+  /**
+   * 재분석 요청 — AI 일일 한도 초과로 건너뛴(aiSkipped) 제출을 다시 AI 분석 큐에 진입시킨다.
+   *
+   * 한도가 초기화된 뒤 본인이 호출한다. saga 상태를 GITHUB_QUEUED로 되돌린 뒤
+   * 기존 advanceToAiQueued(한도 재확인 + 큐 발행)를 재실행한다. 한도가 여전히
+   * 초과 상태면 advanceToAiQueued가 다시 aiSkipped=true로 되돌린다.
+   *
+   * @param id 제출 ID
+   * @param userId 요청자 ID (본인만 허용)
+   * @returns 재진입 후 상태 — aiSkipped=false면 분석 큐잉 성공, true면 한도 여전히 초과
+   * @throws NotFoundException 제출 없음
+   * @throws ForbiddenException 본인 제출 아님
+   * @throws BadRequestException 재분석 대상 아님 (한도 초과로 스킵된 제출이 아님)
+   */
+  async requestReanalysis(
+    id: string,
+    userId: string,
+  ): Promise<{ analysisStatus: string; aiSkipped: boolean }> {
+    const submission = await this.submissionRepo.findOne({ where: { id } });
+    if (!submission) {
+      throw new NotFoundException(`제출을 찾을 수 없습니다: id=${id}`);
+    }
+    if (submission.userId !== userId) {
+      throw new ForbiddenException('본인 제출만 재분석을 요청할 수 있습니다.');
+    }
+    if (!submission.aiSkipped) {
+      throw new BadRequestException(
+        'AI 한도 초과로 건너뛴 제출만 재분석을 요청할 수 있습니다.',
+      );
+    }
+
+    // 재진입 준비: DONE(aiSkipped) → GITHUB_QUEUED 로 원자적 되돌림 (중복 트리거 방지)
+    const reset = await this.submissionRepo.update(
+      { id, sagaStep: SagaStep.DONE, aiSkipped: true },
+      {
+        sagaStep: SagaStep.GITHUB_QUEUED,
+        aiSkipped: false,
+        aiAnalysisStatus: 'pending',
+      },
+    );
+
+    // 경쟁: 이미 다른 요청이 재진입시켰거나 상태가 바뀜 — 현재 상태 그대로 반환
+    if (reset.affected === 0) {
+      const fresh = await this.submissionRepo.findOne({ where: { id } });
+      return {
+        analysisStatus: fresh?.aiAnalysisStatus ?? 'pending',
+        aiSkipped: fresh?.aiSkipped ?? false,
+      };
+    }
+
+    // 한도 재확인 + 큐 발행 (한도 여전히 초과면 내부에서 다시 skipped 처리)
+    await this.sagaOrchestrator.advanceToAiQueued(id, true);
+
+    const updated = await this.submissionRepo.findOne({ where: { id } });
+    this.logger.log(
+      `재분석 요청 처리: submissionId=${id}, aiSkipped=${updated?.aiSkipped}, status=${updated?.aiAnalysisStatus}`,
+    );
+    return {
+      analysisStatus: updated?.aiAnalysisStatus ?? 'pending',
+      aiSkipped: updated?.aiSkipped ?? false,
+    };
   }
 
   /**
