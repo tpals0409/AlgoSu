@@ -25,7 +25,7 @@ class TestSettingsDefaults:
         assert s.anthropic_api_key == "test-anthropic-key-abc123"
         assert s.claude_model_id == "claude-haiku-4-5-20251001"
         assert s.ai_daily_limit == 5
-        assert s.cb_failure_threshold == 5
+        assert s.cb_failure_threshold == 10
         assert s.cb_recovery_timeout == 30
         assert s.cb_half_open_requests == 2
         assert s.internal_api_key == "test-key-abc123"

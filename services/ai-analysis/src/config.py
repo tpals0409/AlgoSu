@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     ai_daily_limit: int = 5
 
     # Circuit Breaker
-    cb_failure_threshold: int = 5
+    cb_failure_threshold: int = 10
     cb_recovery_timeout: int = 30
     cb_half_open_requests: int = 2
 
