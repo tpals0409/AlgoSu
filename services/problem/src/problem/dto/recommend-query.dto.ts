@@ -15,10 +15,14 @@ import {
   ArrayMaxSize,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
+import { Difficulty } from '../problem.entity';
 
 /** 추천 대상 플랫폼 — 문제 추가 모달의 플랫폼 토글과 1:1 대응 */
 export const RECOMMEND_PLATFORMS = ['BOJ', 'PROGRAMMERS'] as const;
 export type RecommendPlatform = (typeof RECOMMEND_PLATFORMS)[number];
+
+/** 추천 난이도 선택 허용값 — Difficulty enum 전체(6티어) */
+export const RECOMMEND_DIFFICULTIES = Object.values(Difficulty);
 
 /**
  * GET /recommendations 쿼리 파라미터 DTO
@@ -60,4 +64,13 @@ export class RecommendQueryDto {
   @IsOptional()
   @IsIn(RECOMMEND_PLATFORMS)
   platform?: RecommendPlatform;
+
+  /**
+   * 추천 난이도 — 지정 시 해당 난이도 문제만 추천한다.
+   * 미지정 시 스터디 자체 문제에서 난이도를 추론(기존 계약, 하위 호환).
+   * 문제 추가 모달의 난이도 선택 칩에 대응(Sprint 256).
+   */
+  @IsOptional()
+  @IsIn(RECOMMEND_DIFFICULTIES)
+  difficulty?: Difficulty;
 }

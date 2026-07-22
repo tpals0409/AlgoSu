@@ -210,7 +210,9 @@
       "refresh": "Refresh",
       "loading": "Loading a recommendation…",
       "empty": "No recommendations available right now.",
-      "error": "Failed to load recommendations."
+      "error": "Failed to load recommendations.",
+      "difficultyAria": "Select recommendation difficulty",
+      "difficultyAuto": "Auto"
     },
     "header": {
       "searchTitleBoj": "Search BOJ Problems",

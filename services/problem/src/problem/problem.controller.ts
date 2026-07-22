@@ -150,6 +150,7 @@ export class ProblemController {
       exclude,
       limit,
       query.platform,
+      query.difficulty,
     );
     return { data };
   }

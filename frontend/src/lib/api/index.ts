@@ -33,6 +33,7 @@ export { studyApi, shareLinkApi } from './study';
 export type { MemberStat, MemberWeekStat, StudyStats, ShareLinkData } from './study';
 
 export { problemApi } from './problem';
+export type { RecommendationDifficulty } from './problem';
 
 export { submissionApi, draftApi, aiQuotaApi } from './submission';
 export type { AiQuota } from './submission';

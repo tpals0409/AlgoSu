@@ -140,6 +140,83 @@ describe('useProblemRecommendation — 플랫폼 전환 재조회', () => {
   });
 });
 
+describe('useProblemRecommendation — 난이도 선택 (Sprint 256)', () => {
+  it('difficulty 미지정 시 fetcher params에 difficulty 키가 없다 (하위 호환)', async () => {
+    const fetcher = jest.fn().mockResolvedValue([makeItem(1)]);
+    renderHook(() => useProblemRecommendation({ fetcher }));
+    await waitFor(() => expect(fetcher).toHaveBeenCalled());
+    expect(fetcher.mock.calls[0][0]).not.toHaveProperty('difficulty');
+  });
+
+  it('difficulty 지정 시 fetcher로 difficulty를 전달한다', async () => {
+    const fetcher = jest.fn().mockResolvedValue([makeItem(1)]);
+    renderHook(() =>
+      useProblemRecommendation({ difficulty: 'GOLD', fetcher }),
+    );
+    await waitFor(() => expect(fetcher).toHaveBeenCalled());
+    expect(fetcher).toHaveBeenCalledWith({
+      limit: 8,
+      exclude: [],
+      difficulty: 'GOLD',
+    });
+  });
+
+  it('difficulty가 바뀌면 묶음을 리셋하고 새 난이도로 재조회한다', async () => {
+    const gold = [makeItem(1)];
+    const bronze: RecommendationItem = {
+      title: 'Bronze 1',
+      sourceUrl: 'https://www.acmicpc.net/problem/1000',
+      sourcePlatform: 'BOJ',
+      difficulty: 'BRONZE',
+      level: null,
+      tags: ['구현'],
+      category: 'ALGORITHM',
+    };
+    const fetcher = jest
+      .fn()
+      .mockResolvedValueOnce(gold)
+      .mockResolvedValueOnce([bronze]);
+
+    const { result, rerender } = renderHook(
+      ({ difficulty }) => useProblemRecommendation({ difficulty, fetcher }),
+      { initialProps: { difficulty: 'GOLD' as 'GOLD' | 'BRONZE' } },
+    );
+    await waitFor(() => expect(result.current.current).toEqual(gold[0]));
+
+    rerender({ difficulty: 'BRONZE' });
+    await waitFor(() => expect(result.current.current).toEqual(bronze));
+
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(fetcher).toHaveBeenLastCalledWith({
+      limit: 8,
+      exclude: [],
+      difficulty: 'BRONZE',
+    });
+  });
+
+  it('difficulty를 지웠다가(auto) 다시 지정하면 재조회한다 (undefined 전환)', async () => {
+    const fetcher = jest.fn().mockResolvedValue([makeItem(1)]);
+    const { result, rerender } = renderHook(
+      ({ difficulty }) =>
+        useProblemRecommendation({
+          difficulty,
+          fetcher,
+        }),
+      {
+        initialProps: {
+          difficulty: 'GOLD' as 'GOLD' | undefined,
+        },
+      },
+    );
+    await waitFor(() => expect(result.current.current).not.toBeNull());
+
+    // GOLD → 자동(undefined) 전환 → 재조회
+    rerender({ difficulty: undefined });
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
+    expect(fetcher.mock.calls[1][0]).not.toHaveProperty('difficulty');
+  });
+});
+
 describe('useProblemRecommendation — rotation (index++)', () => {
   it('refresh는 묶음 내 다음 후보로 즉시 이동하고 재조회하지 않는다', async () => {
     const bundle = [makeItem(1), makeItem(2), makeItem(3)];

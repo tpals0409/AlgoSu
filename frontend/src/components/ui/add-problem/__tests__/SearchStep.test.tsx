@@ -5,7 +5,7 @@
  * @related SearchStep, AddProblemModal, problem-search.utils
  */
 import React from 'react';
-import { screen, fireEvent, act } from '@testing-library/react';
+import { screen, fireEvent, act, waitFor } from '@testing-library/react';
 import { renderWithI18n } from '@/test-utils/i18n';
 
 // lucide icons → cheap svgs so we don't pull the full ESM tree
@@ -363,5 +363,69 @@ describe('SearchStep — recommendation section', () => {
     renderWithI18n(<Harness />);
 
     expect(await screen.findByText('추천 문제를 불러오지 못했습니다.')).toBeTruthy();
+  });
+
+  // ── 난이도 선택 (Sprint 256) ────────────────────────────────
+  it('renders the difficulty chips (자동 + Bronze/Silver/Gold)', async () => {
+    mockGetRecommendations.mockResolvedValue([makeRec(1)]);
+    renderWithI18n(<Harness />);
+
+    await screen.findByText('Recommended 1');
+    expect(screen.getByRole('button', { name: '자동' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Bronze' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Silver' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Gold' })).toBeTruthy();
+    // 초기 상태: 자동 칩이 눌림
+    expect(
+      screen.getByRole('button', { name: '자동' }).getAttribute('aria-pressed'),
+    ).toBe('true');
+  });
+
+  it('re-fetches with the selected difficulty when a chip is clicked', async () => {
+    mockGetRecommendations.mockResolvedValue([makeRec(1)]);
+    renderWithI18n(<Harness />);
+
+    await screen.findByText('Recommended 1');
+    mockGetRecommendations.mockClear();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Gold' }));
+    });
+
+    await waitFor(() =>
+      expect(mockGetRecommendations).toHaveBeenCalledWith(
+        expect.objectContaining({ difficulty: 'GOLD' }),
+      ),
+    );
+    expect(
+      screen.getByRole('button', { name: 'Gold' }).getAttribute('aria-pressed'),
+    ).toBe('true');
+  });
+
+  it('toggles back to auto (no difficulty) when the active chip is re-clicked', async () => {
+    mockGetRecommendations.mockResolvedValue([makeRec(1)]);
+    renderWithI18n(<Harness />);
+
+    await screen.findByText('Recommended 1');
+
+    // Gold 선택
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Gold' }));
+    });
+    mockGetRecommendations.mockClear();
+
+    // Gold 재클릭 → 자동으로 토글 → difficulty 없이 재조회
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Gold' }));
+    });
+
+    // 쿼리 빌더가 falsy difficulty를 직렬화하지 않으므로, 값이 undefined면 자동(전체) 추천.
+    await waitFor(() => {
+      expect(mockGetRecommendations).toHaveBeenCalled();
+      expect(mockGetRecommendations.mock.calls.at(-1)![0].difficulty).toBeUndefined();
+    });
+    expect(
+      screen.getByRole('button', { name: '자동' }).getAttribute('aria-pressed'),
+    ).toBe('true');
   });
 });
