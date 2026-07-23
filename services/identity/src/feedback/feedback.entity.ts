@@ -71,6 +71,12 @@ export class Feedback {
   @Column({ type: 'varchar', length: 20, default: 'OPEN' })
   status!: FeedbackStatus;
 
+  @Column({ type: 'int', nullable: true, name: 'github_issue_number' })
+  githubIssueNumber!: number | null;
+
+  @Column({ type: 'varchar', length: 500, nullable: true, name: 'github_issue_url' })
+  githubIssueUrl!: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 

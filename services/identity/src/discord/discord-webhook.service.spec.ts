@@ -206,16 +206,23 @@ describe('DiscordWebhookService', () => {
       expect(body.embeds[0].color).toBe(0x888888);
     });
 
-    it('내용이 200자 초과 시 truncation한다', async () => {
-      const longContent = '가'.repeat(250);
+    it('issueUrl 전달 시 description에 이슈 링크를 포함한다', async () => {
       await service.sendFeedbackNotification(
-        mockFeedback({ content: longContent }),
+        mockFeedback(),
+        'https://github.com/tpals0409/AlgoSu/issues/42',
       );
 
       const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
-      const desc: string = body.embeds[0].description;
-      // 코드블록 내 truncated 내용 확인
-      expect(desc).toContain('가'.repeat(200) + '...');
+      expect(body.embeds[0].description).toContain(
+        'https://github.com/tpals0409/AlgoSu/issues/42',
+      );
+    });
+
+    it('issueUrl이 null이면 description에 대시보드 안내 문구를 표시한다', async () => {
+      await service.sendFeedbackNotification(mockFeedback(), null);
+
+      const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+      expect(body.embeds[0].description).toContain('관리자 대시보드에서 확인');
     });
 
     it('pageUrl이 있으면 description에 페이지 경로를 포함한다', async () => {

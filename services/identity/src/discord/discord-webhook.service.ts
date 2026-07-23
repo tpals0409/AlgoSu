@@ -30,11 +30,16 @@ export class DiscordWebhookService {
   }
 
   /**
-   * 피드백 생성 시 Discord 채널로 알림 전송
+   * 피드백 생성 시 Discord 채널로 단순 알림 전송
+   * 본문·재현 맥락의 SSOT는 GitHub 이슈로 이관됨 — Discord는 도착 알림 + 이슈 링크만 싣는다.
    * fire-and-forget: 에러 시 로그만 남기고 예외를 던지지 않음
    * @param feedback - 저장된 피드백 엔티티
+   * @param issueUrl - 연동된 GitHub 이슈 URL (미생성/실패 시 null)
    */
-  async sendFeedbackNotification(feedback: Feedback): Promise<void> {
+  async sendFeedbackNotification(
+    feedback: Feedback,
+    issueUrl: string | null = null,
+  ): Promise<void> {
     if (!this.webhookUrl) {
       if (!this.warnedMissingUrl) {
         this.logger.warn(
@@ -45,25 +50,22 @@ export class DiscordWebhookService {
       return;
     }
 
-    // 내용 200자 truncation
-    const contentPreview =
-      feedback.content.length > 200
-        ? feedback.content.slice(0, 200) + '...'
-        : feedback.content;
-
     // KST 시간 변환
     const kstTime = new Date(feedback.createdAt).toLocaleString('ko-KR', {
       timeZone: 'Asia/Seoul',
     });
 
-    // 메타정보 한 줄 구성
-    const metaLine1 = `**카테고리** · \`${feedback.category}\`  |  **페이지** · \`${feedback.pageUrl ?? '-'}\``;
-    const metaLine2 = `**작성자** · \`${feedback.userId}\`  |  **시간** · \`${kstTime}\``;
+    // 메타정보 + 이슈 링크 (본문 전문은 이슈에서 확인)
+    const metaLine = `**카테고리** · \`${feedback.category}\`  |  **페이지** · \`${feedback.pageUrl ?? '-'}\``;
+    const issueLine = issueUrl
+      ? `**이슈** · ${issueUrl}`
+      : '**이슈** · 생성 대기/실패 — 관리자 대시보드에서 확인';
+    const timeLine = `**시간** · \`${kstTime}\``;
 
     const embed = {
       title: '새 피드백 접수',
       color: CATEGORY_COLORS[feedback.category] ?? 0x888888,
-      description: `\`\`\`\n${contentPreview}\n\`\`\`\n\n${metaLine1}\n${metaLine2}`,
+      description: `${metaLine}\n${issueLine}\n${timeLine}`,
       footer: { text: 'AlgoSu Feedback' },
     };
 
