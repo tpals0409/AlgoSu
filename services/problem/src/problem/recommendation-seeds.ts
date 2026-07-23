@@ -6,7 +6,9 @@
  *
  * 목적: 신규 스터디(등록 문제 0개) 또는 cross-study 풀이 부족할 때 Tier 3 폴백으로 사용.
  * 출처: 실제 프로그래머스 lesson (URL: https://school.programmers.co.kr/learn/courses/30/lessons/<ID>)
- * 난이도 매핑: Lv.1→BRONZE, Lv.2→SILVER, Lv.3→GOLD (level=프로그래머스 Lv 숫자)
+ * 프로그래머스 난이도 = Lv.N(사용자 노출 라벨). difficulty 필드는 gateway
+ *   levelToDifficulty(programmers.service.ts) 정본 매핑(Lv.1~5→BRONZE~DIAMOND)의
+ *   내부 정규화값일 뿐 — 추천 필터 키/뱃지 색상용이며 화면 라벨은 FE가 Lv.N으로 표기.
  */
 import { Difficulty, ProblemCategory } from './problem.entity';
 
@@ -32,8 +34,9 @@ const lessonUrl = (id: number): string =>
 const bojUrl = (id: number): string => `https://www.acmicpc.net/problem/${id}`;
 
 /**
- * 프로그래머스 대표 lesson 24선 — 난이도별 8선 균형 배치(BRONZE/SILVER/GOLD 각 8).
- * level=프로그래머스 Lv 숫자(1~3), 난이도 매핑 Lv.1→BRONZE, Lv.2→SILVER, Lv.3→GOLD.
+ * 프로그래머스 대표 lesson 24선 — Lv.1/Lv.2/Lv.3 각 8선 균형 배치.
+ * level=프로그래머스 Lv 숫자(1~3, 사용자 노출 라벨). difficulty는 정본 매핑
+ *   levelToDifficulty(Lv.1→BRONZE, Lv.2→SILVER, Lv.3→GOLD) 내부 정규화값(필터/색상용).
  * 모든 lesson ID·제목은 school.programmers.co.kr 실재 검증 완료(HTTP 200 + title 정합).
  */
 const PROGRAMMERS_SEEDS: readonly RecommendationItem[] = [
