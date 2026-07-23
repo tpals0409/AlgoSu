@@ -34,10 +34,12 @@ const lessonUrl = (id: number): string =>
 const bojUrl = (id: number): string => `https://www.acmicpc.net/problem/${id}`;
 
 /**
- * 프로그래머스 대표 lesson 24선 — Lv.1/Lv.2/Lv.3 각 8선 균형 배치.
- * level=프로그래머스 Lv 숫자(1~3, 사용자 노출 라벨). difficulty는 정본 매핑
- *   levelToDifficulty(Lv.1→BRONZE, Lv.2→SILVER, Lv.3→GOLD) 내부 정규화값(필터/색상용).
- * 모든 lesson ID·제목은 school.programmers.co.kr 실재 검증 완료(HTTP 200 + title 정합).
+ * 프로그래머스 대표 lesson 34선 — Lv.1~5 전 구간 커버(Lv.1/2/3 각 8, Lv.4 6, Lv.5 4).
+ * level=프로그래머스 Lv 숫자(1~5, 사용자 노출 라벨). difficulty는 정본 매핑
+ *   levelToDifficulty(Lv.1→BRONZE, Lv.2→SILVER, Lv.3→GOLD, Lv.4→PLATINUM, Lv.5→DIAMOND)
+ *   내부 정규화값(필터/색상용).
+ * lesson ID·제목·level은 gateway data/programmers-problems.json(크롤러 SSOT)로 검증.
+ *   Lv.4/Lv.5 항목은 SPA HTML 미노출이라 해당 데이터셋 level 필드를 정본으로 사용.
  */
 const PROGRAMMERS_SEEDS: readonly RecommendationItem[] = [
   // Lv.1 → BRONZE (8)
@@ -67,6 +69,18 @@ const PROGRAMMERS_SEEDS: readonly RecommendationItem[] = [
   { title: '이중우선순위큐', sourceUrl: lessonUrl(42628), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.GOLD, level: 3, tags: ['힙'], category: ProblemCategory.ALGORITHM },
   { title: '섬 연결하기', sourceUrl: lessonUrl(42861), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.GOLD, level: 3, tags: ['탐욕법'], category: ProblemCategory.ALGORITHM },
   { title: '여행경로', sourceUrl: lessonUrl(43164), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.GOLD, level: 3, tags: ['DFS/BFS'], category: ProblemCategory.ALGORITHM },
+  // Lv.4 → PLATINUM (6)
+  { title: '무지의 먹방 라이브', sourceUrl: lessonUrl(42891), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.PLATINUM, level: 4, tags: ['힙'], category: ProblemCategory.ALGORITHM },
+  { title: '징검다리', sourceUrl: lessonUrl(43236), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.PLATINUM, level: 4, tags: ['이분탐색'], category: ProblemCategory.ALGORITHM },
+  { title: '도둑질', sourceUrl: lessonUrl(42897), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.PLATINUM, level: 4, tags: ['DP'], category: ProblemCategory.ALGORITHM },
+  { title: '[3차] 자동완성', sourceUrl: lessonUrl(17685), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.PLATINUM, level: 4, tags: ['트라이'], category: ProblemCategory.ALGORITHM },
+  { title: '가사 검색', sourceUrl: lessonUrl(60060), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.PLATINUM, level: 4, tags: ['트라이'], category: ProblemCategory.ALGORITHM },
+  { title: '매출 하락 최소화', sourceUrl: lessonUrl(72416), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.PLATINUM, level: 4, tags: ['DP'], category: ProblemCategory.ALGORITHM },
+  // Lv.5 → DIAMOND (4)
+  { title: '방의 개수', sourceUrl: lessonUrl(49190), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.DIAMOND, level: 5, tags: ['DFS/BFS'], category: ProblemCategory.ALGORITHM },
+  { title: '시험장 나누기', sourceUrl: lessonUrl(81305), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.DIAMOND, level: 5, tags: ['이분탐색'], category: ProblemCategory.ALGORITHM },
+  { title: 'RPG와 쿼리', sourceUrl: lessonUrl(76504), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.DIAMOND, level: 5, tags: ['세그먼트트리'], category: ProblemCategory.ALGORITHM },
+  { title: '문자열의 아름다움', sourceUrl: lessonUrl(68938), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.DIAMOND, level: 5, tags: ['문자열'], category: ProblemCategory.ALGORITHM },
 ];
 
 /**
@@ -90,7 +104,7 @@ const BOJ_SEEDS: readonly RecommendationItem[] = [
 ];
 
 /**
- * 정적 seed 목록 — 프로그래머스 24선 + 백준 12선.
+ * 정적 seed 목록 — 프로그래머스 34선 + 백준 12선.
  * 플랫폼 토글 종속 추천: 서비스 레이어에서 sourcePlatform으로 필터한다.
  * 각 항목은 RecommendationItem 형태로 그대로 반환 가능하도록 사전 투영됨.
  */
