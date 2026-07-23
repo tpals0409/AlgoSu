@@ -123,6 +123,7 @@ jobs:
       monitoring:    ${{ steps.result.outputs.monitoring }}
       docs:          ${{ steps.result.outputs.docs }}
       ci-scripts:    ${{ steps.result.outputs.ci-scripts }}
+      migrations:    ${{ steps.result.outputs.migrations }}
     steps:
       - uses: actions/checkout@v6
       - name: Detect path changes
@@ -196,6 +197,10 @@ jobs:
               - 'scripts/ci/**'
               - 'tests/ci/**'
               - 'scripts/harness-checkup.sh'
+            migrations:
+              # TypeORM 마이그레이션 파일명 타임스탬프 정렬 게이트 (13자리 강제).
+              - 'services/**/src/database/migrations/**'
+              - 'scripts/check-migration-timestamps.mjs'
       - name: Apply rebuild_all override
         id: result
         run: |
@@ -211,6 +216,7 @@ jobs:
             echo "monitoring=true" >> $GITHUB_OUTPUT
             echo "docs=true" >> $GITHUB_OUTPUT
             echo "ci-scripts=true" >> $GITHUB_OUTPUT
+            echo "migrations=true" >> $GITHUB_OUTPUT
           else
             echo "gateway=${{ steps.filter.outputs.gateway }}" >> $GITHUB_OUTPUT
             echo "identity=${{ steps.filter.outputs.identity }}" >> $GITHUB_OUTPUT
@@ -223,6 +229,7 @@ jobs:
             echo "monitoring=${{ steps.filter.outputs.monitoring }}" >> $GITHUB_OUTPUT
             echo "docs=${{ steps.filter.outputs.docs }}" >> $GITHUB_OUTPUT
             echo "ci-scripts=${{ steps.filter.outputs.ci-scripts }}" >> $GITHUB_OUTPUT
+            echo "migrations=${{ steps.filter.outputs.migrations }}" >> $GITHUB_OUTPUT
           fi
 
   # ============================================================
@@ -404,6 +411,25 @@ jobs:
       # Sprint 177 #18: 블로그 글 KR↔EN 정합·frontmatter 스키마·내부 링크 무결성 게이트.
       - name: Check blog cross-refs (strict)
         run: node scripts/check-blog-crosscheck.mjs --strict
+
+  # ============================================================
+  # Quality — DB 마이그레이션 타임스탬프 게이트
+  # TypeORM 은 실행순서를 클래스명 substr(-13) 으로 정하므로 14자리 타임스탬프는
+  # 정렬역전을 일으킨다. 신규 마이그레이션이 정확히 13자리(epoch-ms)인지 강제.
+  # 기존 prod 적용 파일 7건은 rename 불가로 grandfather 처리(스크립트 내 명시).
+  # ============================================================
+
+  quality-migrations:
+    name: Quality — migrations
+    needs: detect-changes
+    if: needs.detect-changes.outputs.migrations == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check migration timestamps (strict)
+        run: node scripts/check-migration-timestamps.mjs --strict
 
   # ============================================================
   # Quality — CI shell helper 단위 테스트 (Sprint 169 시드 #168-4)
