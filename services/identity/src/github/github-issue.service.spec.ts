@@ -276,8 +276,35 @@ describe('GithubIssueService', () => {
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
-  // ─── 실패 처리 ─────────────────────────────────────
-  it('비정상 HTTP 응답 시 경고 로그를 남기고 null을 반환한다', async () => {
+  // ─── 라벨 미존재(422) 재시도 ───────────────────────
+  it('422(라벨 미존재 가능성) 응답 시 라벨 없이 1회 재시도하여 이슈를 생성한다', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 422 } as Response)
+      .mockResolvedValueOnce(OK_RESPONSE);
+    global.fetch = fetchMock;
+    const service = await buildService(mockLogger);
+
+    const result = await service.createFeedbackIssue(
+      mockFeedback({ category: FeedbackCategory.BUG }),
+    );
+
+    expect(result).toEqual({
+      number: 42,
+      url: 'https://github.com/tpals0409/AlgoSu/issues/42',
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    // 1차 요청은 라벨 포함, 재시도(2차)는 라벨 제외
+    const firstBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const retryBody = JSON.parse(fetchMock.mock.calls[1][1].body);
+    expect(firstBody.labels).toEqual(['feedback', 'bug']);
+    expect(retryBody.labels).toBeUndefined();
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('라벨 미존재 가능성'),
+    );
+  });
+
+  it('라벨 없이 재시도해도 실패(422)하면 null을 반환한다', async () => {
     global.fetch = jest
       .fn()
       .mockResolvedValue({ ok: false, status: 422 } as Response);
@@ -286,8 +313,25 @@ describe('GithubIssueService', () => {
     const result = await service.createFeedbackIssue(mockFeedback());
 
     expect(result).toBeNull();
+    expect(global.fetch).toHaveBeenCalledTimes(2);
     expect(mockLogger.warn).toHaveBeenCalledWith(
       expect.stringContaining('GitHub 이슈 생성 응답 오류: status=422'),
+    );
+  });
+
+  // ─── 실패 처리 ─────────────────────────────────────
+  it('비정상 HTTP 응답(5xx) 시 경고 로그를 남기고 null을 반환한다', async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue({ ok: false, status: 500 } as Response);
+    const service = await buildService(mockLogger);
+
+    const result = await service.createFeedbackIssue(mockFeedback());
+
+    expect(result).toBeNull();
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('GitHub 이슈 생성 응답 오류: status=500'),
     );
   });
 

@@ -66,33 +66,25 @@ export class GithubIssueService {
       return null;
     }
 
-    const body = JSON.stringify({
+    const basePayload = {
       title: this.buildTitle(feedback),
       body: this.buildBody(feedback),
-      labels: this.buildLabels(feedback),
-    });
-
-    const controller = new AbortController();
-    const timeout = setTimeout(
-      () => controller.abort(),
-      GITHUB_ISSUE_TIMEOUT_MS,
-    );
+    };
 
     try {
-      const response = await fetch(
-        `https://api.github.com/repos/${this.repo}/issues`,
-        {
-          method: 'POST',
-          headers: {
-            Accept: 'application/vnd.github+json',
-            Authorization: `Bearer ${this.token}`,
-            'X-GitHub-Api-Version': '2022-11-28',
-            'Content-Type': 'application/json',
-          },
-          body,
-          signal: controller.signal,
-        },
-      );
+      let response = await this.postIssue({
+        ...basePayload,
+        labels: this.buildLabels(feedback),
+      });
+
+      // 대상 레포에 라벨이 미리 없으면 GitHub가 422를 반환할 수 있으므로,
+      // 라벨을 빼고 1회 재시도한다(이슈 생성 자체는 성공시키는 graceful degradation).
+      if (response.status === 422) {
+        this.logger.warn(
+          'GitHub 이슈 생성 422 — 라벨 미존재 가능성, 라벨 없이 재시도합니다.',
+        );
+        response = await this.postIssue(basePayload);
+      }
 
       if (!response.ok) {
         this.logger.warn(`GitHub 이슈 생성 응답 오류: status=${response.status}`);
@@ -111,6 +103,35 @@ export class GithubIssueService {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.warn(`GitHub 이슈 생성 실패: ${message}`);
       return null;
+    }
+  }
+
+  /**
+   * 이슈 생성 POST 1회 — 타임아웃(AbortController) 적용.
+   * GitHub API 행(hang) 시 후속 Discord 도착 알림이 무한 지연되지 않도록 상한을 둔다.
+   * @param payload - 이슈 생성 요청 바디 객체
+   */
+  private async postIssue(payload: Record<string, unknown>): Promise<Response> {
+    const controller = new AbortController();
+    const timeout = setTimeout(
+      () => controller.abort(),
+      GITHUB_ISSUE_TIMEOUT_MS,
+    );
+    try {
+      return await fetch(
+        `https://api.github.com/repos/${this.repo}/issues`,
+        {
+          method: 'POST',
+          headers: {
+            Accept: 'application/vnd.github+json',
+            Authorization: `Bearer ${this.token}`,
+            'X-GitHub-Api-Version': '2022-11-28',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        },
+      );
     } finally {
       clearTimeout(timeout);
     }
