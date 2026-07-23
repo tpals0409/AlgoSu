@@ -32,22 +32,38 @@ const lessonUrl = (id: number): string =>
 const bojUrl = (id: number): string => `https://www.acmicpc.net/problem/${id}`;
 
 /**
- * 프로그래머스 대표 lesson 12선.
+ * 프로그래머스 대표 lesson 24선 — 난이도별 8선 균형 배치(BRONZE/SILVER/GOLD 각 8).
  * level=프로그래머스 Lv 숫자(1~3), 난이도 매핑 Lv.1→BRONZE, Lv.2→SILVER, Lv.3→GOLD.
+ * 모든 lesson ID·제목은 school.programmers.co.kr 실재 검증 완료(HTTP 200 + title 정합).
  */
 const PROGRAMMERS_SEEDS: readonly RecommendationItem[] = [
+  // Lv.1 → BRONZE (8)
   { title: '완주하지 못한 선수', sourceUrl: lessonUrl(42576), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.BRONZE, level: 1, tags: ['해시'], category: ProblemCategory.ALGORITHM },
   { title: '모의고사', sourceUrl: lessonUrl(42840), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.BRONZE, level: 1, tags: ['완전탐색'], category: ProblemCategory.ALGORITHM },
   { title: 'K번째수', sourceUrl: lessonUrl(42748), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.BRONZE, level: 1, tags: ['정렬'], category: ProblemCategory.ALGORITHM },
   { title: '두 개 뽑아서 더하기', sourceUrl: lessonUrl(68644), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.BRONZE, level: 1, tags: ['완전탐색'], category: ProblemCategory.ALGORITHM },
   { title: '체육복', sourceUrl: lessonUrl(42862), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.BRONZE, level: 1, tags: ['탐욕법'], category: ProblemCategory.ALGORITHM },
+  { title: '실패율', sourceUrl: lessonUrl(42889), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.BRONZE, level: 1, tags: ['정렬'], category: ProblemCategory.ALGORITHM },
+  { title: '[1차] 비밀지도', sourceUrl: lessonUrl(17681), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.BRONZE, level: 1, tags: ['구현'], category: ProblemCategory.ALGORITHM },
+  { title: '[1차] 다트 게임', sourceUrl: lessonUrl(17682), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.BRONZE, level: 1, tags: ['구현'], category: ProblemCategory.ALGORITHM },
+  // Lv.2 → SILVER (8)
   { title: '폰켓몬', sourceUrl: lessonUrl(1845), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.SILVER, level: 2, tags: ['해시'], category: ProblemCategory.ALGORITHM },
   { title: '큰 수 만들기', sourceUrl: lessonUrl(42883), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.SILVER, level: 2, tags: ['탐욕법'], category: ProblemCategory.ALGORITHM },
   { title: '타겟 넘버', sourceUrl: lessonUrl(43165), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.SILVER, level: 2, tags: ['DFS/BFS'], category: ProblemCategory.ALGORITHM },
   { title: '게임 맵 최단거리', sourceUrl: lessonUrl(1844), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.SILVER, level: 2, tags: ['BFS'], category: ProblemCategory.ALGORITHM },
+  { title: '기능개발', sourceUrl: lessonUrl(42586), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.SILVER, level: 2, tags: ['스택/큐'], category: ProblemCategory.ALGORITHM },
+  { title: '프로세스', sourceUrl: lessonUrl(42587), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.SILVER, level: 2, tags: ['스택/큐'], category: ProblemCategory.ALGORITHM },
+  { title: 'H-Index', sourceUrl: lessonUrl(42747), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.SILVER, level: 2, tags: ['정렬'], category: ProblemCategory.ALGORITHM },
+  { title: '더 맵게', sourceUrl: lessonUrl(42626), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.SILVER, level: 2, tags: ['힙'], category: ProblemCategory.ALGORITHM },
+  // Lv.3 → GOLD (8)
   { title: '정수 삼각형', sourceUrl: lessonUrl(43105), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.GOLD, level: 3, tags: ['DP'], category: ProblemCategory.ALGORITHM },
   { title: '네트워크', sourceUrl: lessonUrl(43162), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.GOLD, level: 3, tags: ['DFS/BFS'], category: ProblemCategory.ALGORITHM },
   { title: '단어 변환', sourceUrl: lessonUrl(43163), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.GOLD, level: 3, tags: ['BFS'], category: ProblemCategory.ALGORITHM },
+  { title: '베스트앨범', sourceUrl: lessonUrl(42579), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.GOLD, level: 3, tags: ['해시'], category: ProblemCategory.ALGORITHM },
+  { title: '디스크 컨트롤러', sourceUrl: lessonUrl(42627), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.GOLD, level: 3, tags: ['힙'], category: ProblemCategory.ALGORITHM },
+  { title: '이중우선순위큐', sourceUrl: lessonUrl(42628), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.GOLD, level: 3, tags: ['힙'], category: ProblemCategory.ALGORITHM },
+  { title: '섬 연결하기', sourceUrl: lessonUrl(42861), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.GOLD, level: 3, tags: ['탐욕법'], category: ProblemCategory.ALGORITHM },
+  { title: '여행경로', sourceUrl: lessonUrl(43164), sourcePlatform: 'PROGRAMMERS', difficulty: Difficulty.GOLD, level: 3, tags: ['DFS/BFS'], category: ProblemCategory.ALGORITHM },
 ];
 
 /**
@@ -71,7 +87,7 @@ const BOJ_SEEDS: readonly RecommendationItem[] = [
 ];
 
 /**
- * 정적 seed 목록 — 프로그래머스 12선 + 백준 12선.
+ * 정적 seed 목록 — 프로그래머스 24선 + 백준 12선.
  * 플랫폼 토글 종속 추천: 서비스 레이어에서 sourcePlatform으로 필터한다.
  * 각 항목은 RecommendationItem 형태로 그대로 반환 가능하도록 사전 투영됨.
  */
