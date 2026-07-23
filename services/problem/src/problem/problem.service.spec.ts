@@ -1429,7 +1429,7 @@ describe('ProblemService', () => {
         Difficulty.BRONZE,
       );
 
-      // 프로그래머스 BRONZE seed는 5개 → 모두 BRONZE
+      // 프로그래머스 BRONZE seed는 8개 → 모두 BRONZE
       expect(result.length).toBeGreaterThan(0);
       result.forEach((r) => {
         expect(r.difficulty).toBe(Difficulty.BRONZE);
