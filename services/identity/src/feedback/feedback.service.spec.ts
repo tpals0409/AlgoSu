@@ -243,6 +243,30 @@ describe('FeedbackService', () => {
       expect(discordWebhook.sendFeedbackNotification).toHaveBeenCalledWith(fb, null);
     });
 
+    it('이슈 생성 성공 후 DB 링크 저장이 실패해도 Discord에 이슈 링크를 전달한다', async () => {
+      const fb = mockFeedback();
+      feedbackRepo.create.mockReturnValue(fb);
+      feedbackRepo.save.mockResolvedValue(fb);
+      githubIssue.createFeedbackIssue.mockResolvedValue({
+        number: 42,
+        url: 'https://github.com/tpals0409/AlgoSu/issues/42',
+      });
+      feedbackRepo.update.mockRejectedValue(new Error('DB update 실패'));
+
+      await service.create({
+        userId: 'user-1',
+        category: FeedbackCategory.GENERAL,
+        content: '테스트 피드백입니다.',
+      });
+      await flush();
+
+      // DB 저장은 실패했지만 이슈 링크는 Discord로 보존 전달되어야 한다(P3)
+      expect(discordWebhook.sendFeedbackNotification).toHaveBeenCalledWith(
+        fb,
+        'https://github.com/tpals0409/AlgoSu/issues/42',
+      );
+    });
+
     it('Discord 알림 실패 시에도 피드백은 정상 반환된다', async () => {
       const fb = mockFeedback();
       feedbackRepo.create.mockReturnValue(fb);

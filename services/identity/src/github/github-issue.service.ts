@@ -16,6 +16,13 @@ import { Injectable } from '@nestjs/common';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 import { Feedback, FeedbackCategory } from '../feedback/feedback.entity';
 
+/**
+ * GitHub 이슈 생성 요청 타임아웃(ms).
+ * 이슈 생성은 fire-and-forget 후속 단계인 Discord 도착 알림을 지연시키므로,
+ * GitHub API 행(hang) 시 유일한 도착 신호(Discord)가 무한 지연되지 않도록 상한을 둔다.
+ */
+const GITHUB_ISSUE_TIMEOUT_MS = 10_000;
+
 /** 카테고리 → GitHub 이슈 라벨 매핑 */
 const CATEGORY_LABELS: Record<FeedbackCategory, string> = {
   [FeedbackCategory.BUG]: 'bug',
@@ -65,6 +72,12 @@ export class GithubIssueService {
       labels: this.buildLabels(feedback),
     });
 
+    const controller = new AbortController();
+    const timeout = setTimeout(
+      () => controller.abort(),
+      GITHUB_ISSUE_TIMEOUT_MS,
+    );
+
     try {
       const response = await fetch(
         `https://api.github.com/repos/${this.repo}/issues`,
@@ -77,6 +90,7 @@ export class GithubIssueService {
             'Content-Type': 'application/json',
           },
           body,
+          signal: controller.signal,
         },
       );
 
@@ -97,6 +111,8 @@ export class GithubIssueService {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.warn(`GitHub 이슈 생성 실패: ${message}`);
       return null;
+    } finally {
+      clearTimeout(timeout);
     }
   }
 

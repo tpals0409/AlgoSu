@@ -102,6 +102,55 @@ describe('GithubIssueService', () => {
     );
   });
 
+  it('요청에 AbortSignal을 전달해 타임아웃(hang) 시 Discord 도착 알림 지연을 방지한다', async () => {
+    global.fetch = jest.fn().mockResolvedValue(OK_RESPONSE);
+    const service = await buildService(mockLogger);
+
+    await service.createFeedbackIssue(mockFeedback());
+
+    const opts = (global.fetch as jest.Mock).mock.calls[0][1];
+    expect(opts.signal).toBeInstanceOf(AbortSignal);
+    expect(opts.signal.aborted).toBe(false);
+  });
+
+  it('제한 시간 경과 시 AbortController.abort를 호출해 요청을 취소한다', async () => {
+    jest.useFakeTimers();
+    let capturedSignal: AbortSignal | undefined;
+    // fetch가 응답하지 않는 상황(hang)을 시뮬레이션 — signal.abort 이벤트로만 종결
+    global.fetch = jest.fn().mockImplementation(
+      (_url: string, opts: { signal: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          capturedSignal = opts.signal;
+          opts.signal.addEventListener('abort', () =>
+            reject(Object.assign(new Error('aborted'), { name: 'AbortError' })),
+          );
+        }),
+    );
+    const service = await buildService(mockLogger);
+
+    const pending = service.createFeedbackIssue(mockFeedback());
+    jest.advanceTimersByTime(10_000);
+    const result = await pending;
+
+    expect(capturedSignal?.aborted).toBe(true);
+    expect(result).toBeNull();
+    jest.useRealTimers();
+  });
+
+  it('타임아웃 abort로 fetch가 거부되면 예외 없이 null을 반환한다', async () => {
+    const abortErr = new Error('The operation was aborted');
+    abortErr.name = 'AbortError';
+    global.fetch = jest.fn().mockRejectedValue(abortErr);
+    const service = await buildService(mockLogger);
+
+    const result = await service.createFeedbackIssue(mockFeedback());
+
+    expect(result).toBeNull();
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('GitHub 이슈 생성 실패: The operation was aborted'),
+    );
+  });
+
   it('본문에 재현 맥락(userId·pageUrl·browserInfo·studyId·publicId)과 스크린샷 링크를 담는다', async () => {
     global.fetch = jest.fn().mockResolvedValue(OK_RESPONSE);
     const service = await buildService(mockLogger);

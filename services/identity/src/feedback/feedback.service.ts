@@ -74,11 +74,12 @@ export class FeedbackService {
     try {
       const issue = await this.githubIssue.createFeedbackIssue(feedback);
       if (issue) {
+        // 링크를 먼저 확정 — 이후 DB 링크 저장이 실패해도 Discord가 이슈 링크를 잃지 않는다.
+        issueUrl = issue.url;
         await this.feedbackRepo.update(
           { id: feedback.id },
           { githubIssueNumber: issue.number, githubIssueUrl: issue.url },
         );
-        issueUrl = issue.url;
       }
     } catch (err) {
       this.logger.warn(`GitHub 이슈 연동 실패: ${(err as Error).message}`);
