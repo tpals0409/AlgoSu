@@ -12,6 +12,7 @@ import { Feedback, FeedbackStatus } from './feedback.entity';
 import { CreateFeedbackDto } from './dto/create-feedback.dto';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 import { DiscordWebhookService } from '../discord/discord-webhook.service';
+import { GithubIssueService } from '../github/github-issue.service';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationType } from '../notification/notification.entity';
 
@@ -29,6 +30,7 @@ export class FeedbackService {
     private readonly feedbackRepo: Repository<Feedback>,
     private readonly logger: StructuredLoggerService,
     private readonly discordWebhook: DiscordWebhookService,
+    private readonly githubIssue: GithubIssueService,
     private readonly notificationService: NotificationService,
   ) {
     this.logger.setContext(FeedbackService.name);
@@ -54,12 +56,39 @@ export class FeedbackService {
       `피드백 생성: userId=${dto.userId}, category=${dto.category}, publicId=${saved.publicId}`,
     );
 
-    // fire-and-forget: Discord 알림 실패가 피드백 저장에 영향 없음
-    this.discordWebhook.sendFeedbackNotification(saved).catch((err: Error) => {
-      this.logger.warn(`Discord 알림 전송 실패: ${err.message}`);
-    });
+    // fire-and-forget: GitHub 이슈 생성 → Discord 단순 알림. 실패해도 피드백 저장에 영향 없음.
+    void this.syncFeedbackToExternal(saved);
 
     return saved;
+  }
+
+  /**
+   * 피드백 외부 연동 — GitHub 이슈 생성 후 Discord 알림.
+   * 이슈를 먼저 만들어 Discord 알림에 이슈 링크를 실어 보낸다.
+   * 각 단계는 독립적으로 격리되어 실패해도 예외를 던지지 않는다(fire-and-forget).
+   * @param feedback - 저장된 피드백 엔티티
+   */
+  private async syncFeedbackToExternal(feedback: Feedback): Promise<void> {
+    let issueUrl: string | null = null;
+
+    try {
+      const issue = await this.githubIssue.createFeedbackIssue(feedback);
+      if (issue) {
+        await this.feedbackRepo.update(
+          { id: feedback.id },
+          { githubIssueNumber: issue.number, githubIssueUrl: issue.url },
+        );
+        issueUrl = issue.url;
+      }
+    } catch (err) {
+      this.logger.warn(`GitHub 이슈 연동 실패: ${(err as Error).message}`);
+    }
+
+    try {
+      await this.discordWebhook.sendFeedbackNotification(feedback, issueUrl);
+    } catch (err) {
+      this.logger.warn(`Discord 알림 전송 실패: ${(err as Error).message}`);
+    }
   }
 
   /**

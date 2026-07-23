@@ -11,10 +11,16 @@ import { FeedbackService } from './feedback.service';
 import { FeedbackController } from './feedback.controller';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 import { DiscordModule } from '../discord/discord.module';
+import { GithubIssueModule } from '../github/github-issue.module';
 import { NotificationModule } from '../notification/notification.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Feedback]), DiscordModule, NotificationModule],
+  imports: [
+    TypeOrmModule.forFeature([Feedback]),
+    DiscordModule,
+    GithubIssueModule,
+    NotificationModule,
+  ],
   controllers: [FeedbackController],
   providers: [FeedbackService, StructuredLoggerService],
   exports: [FeedbackService],

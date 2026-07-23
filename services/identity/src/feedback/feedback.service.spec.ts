@@ -12,8 +12,13 @@ import { FeedbackService } from './feedback.service';
 import { Feedback, FeedbackCategory, FeedbackStatus } from './feedback.entity';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
 import { DiscordWebhookService } from '../discord/discord-webhook.service';
+import { GithubIssueService } from '../github/github-issue.service';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationType } from '../notification/notification.entity';
+
+/** fire-and-forget 외부 연동(create 이후 비동기) 완료까지 대기 */
+const flush = (): Promise<void> =>
+  new Promise((resolve) => setImmediate(resolve));
 
 // ─── Mock 헬퍼 ───────────────────────────────────────
 const mockFeedback = (overrides: Partial<Feedback> = {}): Feedback => {
@@ -44,6 +49,7 @@ describe('FeedbackService', () => {
   let service: FeedbackService;
   let feedbackRepo: jest.Mocked<Repository<Feedback>>;
   let discordWebhook: jest.Mocked<DiscordWebhookService>;
+  let githubIssue: jest.Mocked<GithubIssueService>;
   let notificationService: jest.Mocked<NotificationService>;
 
   const mockQueryBuilder = {
@@ -93,6 +99,12 @@ describe('FeedbackService', () => {
           },
         },
         {
+          provide: GithubIssueService,
+          useValue: {
+            createFeedbackIssue: jest.fn().mockResolvedValue(null),
+          },
+        },
+        {
           provide: NotificationService,
           useValue: {
             create: jest.fn().mockResolvedValue(undefined),
@@ -104,6 +116,7 @@ describe('FeedbackService', () => {
     service = module.get(FeedbackService);
     feedbackRepo = module.get(getRepositoryToken(Feedback));
     discordWebhook = module.get(DiscordWebhookService);
+    githubIssue = module.get(GithubIssueService);
     notificationService = module.get(NotificationService);
   });
 
@@ -166,18 +179,68 @@ describe('FeedbackService', () => {
       });
     });
 
-    it('생성 후 Discord 알림을 전송한다', async () => {
+    it('GitHub 이슈 생성 성공 시 이슈 번호/URL을 저장하고 Discord에 이슈 링크를 전달한다', async () => {
       const fb = mockFeedback();
       feedbackRepo.create.mockReturnValue(fb);
       feedbackRepo.save.mockResolvedValue(fb);
+      githubIssue.createFeedbackIssue.mockResolvedValue({
+        number: 42,
+        url: 'https://github.com/tpals0409/AlgoSu/issues/42',
+      });
 
       await service.create({
         userId: 'user-1',
         category: FeedbackCategory.GENERAL,
         content: '테스트 피드백입니다.',
       });
+      await flush();
 
-      expect(discordWebhook.sendFeedbackNotification).toHaveBeenCalledWith(fb);
+      expect(githubIssue.createFeedbackIssue).toHaveBeenCalledWith(fb);
+      expect(feedbackRepo.update).toHaveBeenCalledWith(
+        { id: fb.id },
+        {
+          githubIssueNumber: 42,
+          githubIssueUrl: 'https://github.com/tpals0409/AlgoSu/issues/42',
+        },
+      );
+      expect(discordWebhook.sendFeedbackNotification).toHaveBeenCalledWith(
+        fb,
+        'https://github.com/tpals0409/AlgoSu/issues/42',
+      );
+    });
+
+    it('GitHub 이슈 생성 실패(null) 시 update 없이 Discord에 null 링크를 전달한다', async () => {
+      const fb = mockFeedback();
+      feedbackRepo.create.mockReturnValue(fb);
+      feedbackRepo.save.mockResolvedValue(fb);
+      githubIssue.createFeedbackIssue.mockResolvedValue(null);
+
+      await service.create({
+        userId: 'user-1',
+        category: FeedbackCategory.GENERAL,
+        content: '테스트 피드백입니다.',
+      });
+      await flush();
+
+      expect(feedbackRepo.update).not.toHaveBeenCalled();
+      expect(discordWebhook.sendFeedbackNotification).toHaveBeenCalledWith(fb, null);
+    });
+
+    it('GitHub 이슈 연동이 throw해도 Discord 알림은 정상 전송된다', async () => {
+      const fb = mockFeedback();
+      feedbackRepo.create.mockReturnValue(fb);
+      feedbackRepo.save.mockResolvedValue(fb);
+      githubIssue.createFeedbackIssue.mockRejectedValue(new Error('GitHub 500'));
+
+      const result = await service.create({
+        userId: 'user-1',
+        category: FeedbackCategory.GENERAL,
+        content: '테스트 피드백입니다.',
+      });
+      await flush();
+
+      expect(result).toBe(fb);
+      expect(discordWebhook.sendFeedbackNotification).toHaveBeenCalledWith(fb, null);
     });
 
     it('Discord 알림 실패 시에도 피드백은 정상 반환된다', async () => {
@@ -193,6 +256,7 @@ describe('FeedbackService', () => {
         category: FeedbackCategory.GENERAL,
         content: '테스트 피드백입니다.',
       });
+      await flush();
 
       expect(result).toBe(fb);
     });
