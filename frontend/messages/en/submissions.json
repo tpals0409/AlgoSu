@@ -40,6 +40,8 @@
   },
   "status": {
     "heading": "Submission Status",
+    "pageTitle": "Submission Status",
+    "pageTitleWithProblem": "Submission Status | {title}",
     "backToProblem": "Back to problem",
     "loadingInfo": "Loading submission info...",
     "loadError": "Failed to load submission info.",

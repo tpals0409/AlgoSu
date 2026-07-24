@@ -196,6 +196,15 @@ export default function SubmissionStatusPage({ params }: PageProps): ReactNode {
     void load();
   }, [submissionId, isAuthenticated, currentStudyId, t]);
 
+  // 탭 타이틀: UUID 노출 방지 — 문제명이 있으면 문제명, 없으면 기본 문구
+  useEffect(() => {
+    const title = submission?.problemTitle;
+    document.title = title
+      ? t('status.pageTitleWithProblem', { title })
+      : t('status.pageTitle');
+    return () => { document.title = 'AlgoSu'; };
+  }, [submission?.problemTitle, t]);
+
   return (
     <AppLayout>
       <div className="mx-auto max-w-xl space-y-4">

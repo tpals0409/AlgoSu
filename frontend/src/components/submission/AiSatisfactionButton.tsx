@@ -62,7 +62,7 @@ export function AiSatisfactionButton({ submissionId }: AiSatisfactionButtonProps
 
   return (
     <div
-      className="flex items-center gap-3 mt-4 pt-4"
+      className="flex items-center gap-3 mt-4 pt-4 px-3 sm:px-5"
       style={{ borderTop: '1px solid var(--border)' }}
     >
       <span className="text-[13px] text-text-3">{t('aiSatisfaction.question')}</span>
