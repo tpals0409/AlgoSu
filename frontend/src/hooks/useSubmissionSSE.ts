@@ -262,7 +262,10 @@ export function useSubmissionSSE(submissionId: string | null) {
  * @param status - 현재 SSE 상태
  * @returns 3단계 스텝 배열
  */
-export function mapSSEToSteps(status: SSEStatus) {
+export function mapSSEToSteps(
+  status: SSEStatus,
+  githubSyncStatus?: 'PENDING' | 'SYNCED' | 'FAILED' | 'SKIPPED' | 'TOKEN_INVALID',
+) {
   const steps = [
     {
       label: '제출 완료',
@@ -299,6 +302,15 @@ export function mapSSEToSteps(status: SSEStatus) {
       detail: status === 'ai_delayed' ? 'AI 분석이 지연되고 있습니다 (잠시 후 재확인)' : undefined,
     },
   ];
+
+  // Issue #13: SSE 종료 후 재방문 시 메인 status가 done이어도(saga_step=DONE)
+  // 실제 githubSyncStatus가 FAILED/TOKEN_INVALID면 GitHub 스텝을 실패로 반영.
+  // (실시간 경로는 status로 처리되지만, 터미널 재방문은 sagaStep만 보므로 감춰짐)
+  if (githubSyncStatus === 'FAILED') {
+    steps[1] = { ...steps[1], status: 'failed', detail: 'GitHub 동기화 실패 (재시도 필요)' };
+  } else if (githubSyncStatus === 'TOKEN_INVALID') {
+    steps[1] = { ...steps[1], status: 'failed', detail: 'GitHub 재연동이 필요합니다' };
+  }
 
   return steps;
 }

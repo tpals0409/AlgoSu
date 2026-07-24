@@ -56,6 +56,10 @@
         "title": "Submission Complete",
         "description": "AI analysis has been completed."
       },
+      "githubFailed": {
+        "title": "GitHub Sync Failed",
+        "description": "Your submission and AI analysis completed, but GitHub sync failed. Resubmit to sync again."
+      },
       "githubTokenInvalid": {
         "title": "GitHub Sync Failed",
         "description": "Please re-link your GitHub account."

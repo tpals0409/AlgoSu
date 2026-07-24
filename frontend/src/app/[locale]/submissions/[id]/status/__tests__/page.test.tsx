@@ -200,4 +200,21 @@ describe('SubmissionStatusPage', () => {
     });
     expect(screen.getByText('AI 1/10회')).toBeInTheDocument();
   });
+
+  // Issue #13: 터미널(sagaStep=DONE) 재방문 시 GitHub 동기화 실패를 완료로 감추지 않는다
+  it('DONE + githubSyncStatus=FAILED면 완료가 아닌 경고 배너를 표시한다', async () => {
+    mockFindById.mockResolvedValue({
+      id: 'sub-123',
+      problemId: 'prob-1',
+      problemTitle: 'Test Problem',
+      language: 'python',
+      sagaStep: 'DONE',
+      githubSyncStatus: 'FAILED',
+      createdAt: '2025-01-01T00:00:00Z',
+    });
+    await act(async () => {
+      renderStatusPage(<SubmissionStatusPage params={Promise.resolve({ id: 'sub-123' })} />);
+    });
+    expect(await screen.findByText(/GitHub 동기화에 실패했습니다/)).toBeInTheDocument();
+  });
 });

@@ -56,6 +56,10 @@
         "title": "제출 완료",
         "description": "AI 분석이 완료되었습니다."
       },
+      "githubFailed": {
+        "title": "GitHub 동기화 실패",
+        "description": "제출·AI 분석은 완료됐지만 GitHub 동기화에 실패했습니다. 다시 제출하면 재동기화됩니다."
+      },
       "githubTokenInvalid": {
         "title": "GitHub 동기화 실패",
         "description": "GitHub 계정 연동을 다시 확인해주세요."
