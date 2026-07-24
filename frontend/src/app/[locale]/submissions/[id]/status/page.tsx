@@ -43,6 +43,7 @@ interface Step {
 /** SSE status → i18n 키 매핑 */
 const OVERALL_STATUS_MAP: Record<string, { titleKey: string; descKey: string; variant: 'success' | 'error' | 'warning' | 'info' }> = {
   done: { titleKey: 'status.overall.done.title', descKey: 'status.overall.done.description', variant: 'success' },
+  github_failed: { titleKey: 'status.overall.githubFailed.title', descKey: 'status.overall.githubFailed.description', variant: 'warning' },
   github_token_invalid: { titleKey: 'status.overall.githubTokenInvalid.title', descKey: 'status.overall.githubTokenInvalid.description', variant: 'error' },
   ai_failed: { titleKey: 'status.overall.aiFailed.title', descKey: 'status.overall.aiFailed.description', variant: 'error' },
   ai_delayed: { titleKey: 'status.overall.aiDelayed.title', descKey: 'status.overall.aiDelayed.description', variant: 'warning' },
@@ -157,14 +158,24 @@ export default function SubmissionStatusPage({ params }: PageProps): ReactNode {
   // SSE
   const { status: sseStatus, disconnect } = useSubmissionSSE(sseSubmissionId);
 
-  // 이미 최종 상태인 제출은 sagaStep 기반으로 상태 표시
+  // 이미 최종 상태인 제출은 sagaStep + githubSyncStatus 기반으로 표시 (Issue #13)
+  // TOKEN_INVALID는 재연동 안내가 필요하므로 전용 상태로 승격
   const status: SSEStatus = isAlreadyTerminal
-    ? (submission?.sagaStep === 'DONE' ? 'done' : 'ai_failed')
+    ? (submission?.githubSyncStatus === 'TOKEN_INVALID'
+        ? 'github_token_invalid'
+        : submission?.sagaStep === 'DONE'
+          ? 'done'
+          : 'ai_failed')
     : sseStatus;
 
-  const steps = mapSSEToSteps(status);
+  const steps = mapSSEToSteps(status, submission?.githubSyncStatus);
   const isTerminal = TERMINAL_STATUSES.includes(status);
-  const overallMap = OVERALL_STATUS_MAP[status] ?? DEFAULT_OVERALL;
+  // Issue #13: saga가 DONE이어도 GitHub 동기화가 FAILED면 완료(success) 배너 대신 경고 배너
+  const isGithubFailedTerminal =
+    isAlreadyTerminal && submission?.githubSyncStatus === 'FAILED';
+  const overallMap = isGithubFailedTerminal
+    ? OVERALL_STATUS_MAP.github_failed
+    : OVERALL_STATUS_MAP[status] ?? DEFAULT_OVERALL;
 
   // ─── EFFECTS ────────────────────────────
 

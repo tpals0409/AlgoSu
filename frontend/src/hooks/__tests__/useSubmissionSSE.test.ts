@@ -249,4 +249,26 @@ describe('mapSSEToSteps', () => {
     const steps = mapSSEToSteps('github_synced');
     expect(steps[1].detail).toBeUndefined();
   });
+
+  // Issue #13: 터미널 재방문 시 githubSyncStatus override
+  it('done + githubSyncStatus=FAILED -> Step2 failed(detail), Step3는 done 유지', () => {
+    const steps = mapSSEToSteps('done', 'FAILED');
+    expect(steps[1].status).toBe('failed');
+    expect(steps[1].detail).toBe('GitHub 동기화 실패 (재시도 필요)');
+    // AI 스텝은 실제 완료 상태를 유지 (github_failed 재사용 시의 in_progress 오표기 방지)
+    expect(steps[2].status).toBe('done');
+  });
+
+  it('done + githubSyncStatus=TOKEN_INVALID -> Step2 failed(재연동 detail)', () => {
+    const steps = mapSSEToSteps('done', 'TOKEN_INVALID');
+    expect(steps[1].status).toBe('failed');
+    expect(steps[1].detail).toBe('GitHub 재연동이 필요합니다');
+  });
+
+  it('githubSyncStatus=SYNCED/SKIPPED/PENDING은 override하지 않는다', () => {
+    for (const g of ['SYNCED', 'SKIPPED', 'PENDING'] as const) {
+      const steps = mapSSEToSteps('done', g);
+      expect(steps[1].status).toBe('done');
+    }
+  });
 });
