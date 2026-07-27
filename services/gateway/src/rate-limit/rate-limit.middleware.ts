@@ -1,5 +1,5 @@
 /**
- * @file Rate Limit 미들웨어 — 기본 600req/min + 제출 10req/min
+ * @file Rate Limit 미들웨어 — 기본 600req/min + 제출 30req/min
  * @domain common
  * @layer middleware
  * @related redis-throttler.storage.ts
@@ -13,12 +13,12 @@ import { StructuredLoggerService } from '../common/logger/structured-logger.serv
  * Rate Limit 미들웨어 — 프록시 라우트에도 적용
  *
  * - default: 분당 600건 (인증 사용자: userId 기반, 비인증: IP 기반)
- * - submission: 분당 10건 (/api/submissions POST 전용)
+ * - submission: 분당 30건 (/api/submissions POST 전용, RATE_LIMIT_SUBMISSION 로 조정)
  */
 @Injectable()
 export class RateLimitMiddleware implements NestMiddleware {
   private static readonly DEFAULT_LIMIT = Number(process.env['RATE_LIMIT_DEFAULT']) || 600;
-  private static readonly SUBMISSION_LIMIT = 10;
+  private static readonly SUBMISSION_LIMIT = Number(process.env['RATE_LIMIT_SUBMISSION']) || 30;
   private static readonly TTL_MS = 60_000;
 
   constructor(
