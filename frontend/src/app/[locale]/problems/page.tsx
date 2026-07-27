@@ -23,6 +23,7 @@ import { DIFFICULTIES, DIFFICULTY_LABELS, DIFF_DOT_STYLE, DIFF_BADGE_STYLE, PLAT
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useRequireStudy } from '@/hooks/useRequireStudy';
 import { AddProblemModal, type NewProblemData } from '@/components/ui/AddProblemModal';
+import { calcDDay } from '@/lib/utils';
 
 // ─── TYPES ────────────────────────────────
 
@@ -50,9 +51,9 @@ function getDdayDisplay(
 ): { label: string; color: string } {
   if (status !== 'ACTIVE') return { label: deadlineLabel, color: 'var(--text-3)' };
   if (!deadline) return { label: '', color: '' };
-  const remaining = new Date(deadline).getTime() - Date.now();
-  if (remaining <= 0) return { label: deadlineLabel, color: 'var(--text-3)' };
-  const days = Math.ceil(remaining / 86400000);
+  const { days, expired } = calcDDay(deadline);
+  if (expired) return { label: deadlineLabel, color: 'var(--text-3)' };
+  if (days === 0) return { label: 'D-Day', color: 'var(--error)' };
   return { label: `D-${days}`, color: 'var(--error)' };
 }
 

@@ -31,3 +31,30 @@ export function getCurrentWeekLabel(date: Date = new Date()): string {
   const week = Math.ceil((date.getDate() + firstDayOfWeek) / 7);
   return `${month}월${week}주차`;
 }
+
+/** D-day 계산 결과 */
+export interface DDayResult {
+  /** 마감일까지 남은 캘린더 일수. 마감 당일=0, 지난 경우 음수. */
+  readonly days: number;
+  /** 마감일이 이미 지났는지 여부 (days < 0). */
+  readonly expired: boolean;
+}
+
+/**
+ * 문제 풀이 마감일까지 남은 D-day를 캘린더 일수 기준으로 계산.
+ *
+ * 마감일은 해당 일자의 23:59:59로 저장되므로, 시각(시/분/초)을 무시하고
+ * 날짜만 비교한다. 따라서 마감 당일이면 days=0(D-Day), 하루 전이면 days=1(D-1)이며,
+ * 남은 밀리초를 올림하던 기존 방식의 +1일 오차(마감 당일에 D-1 표시)를 제거한다.
+ *
+ * @param deadline 마감일 (ISO 문자열 또는 Date)
+ * @param now 기준 시각 (미지정 시 현재 시간)
+ * @returns 남은 일수와 만료 여부
+ */
+export function calcDDay(deadline: string | Date, now: Date = new Date()): DDayResult {
+  const dl = new Date(deadline);
+  const dlMidnight = new Date(dl.getFullYear(), dl.getMonth(), dl.getDate());
+  const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const days = Math.round((dlMidnight.getTime() - nowMidnight.getTime()) / 86400000);
+  return { days, expired: days < 0 };
+}
