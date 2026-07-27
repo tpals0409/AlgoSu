@@ -108,6 +108,12 @@ export default function StudyRoomPage(): ReactElement {
     return map;
   }, [studyStats]);
 
+  /** 내가 푼 문제 ID 집합 — studyStats 재사용 (#10) */
+  const solvedProblemIds = useMemo(
+    () => new Set(studyStats?.solvedProblemIds ?? []),
+    [studyStats?.solvedProblemIds],
+  );
+
   const totalMembers = members.length;
 
   // 스터디 ID 동기화
@@ -400,6 +406,7 @@ export default function StudyRoomPage(): ReactElement {
                   barsAnimated={barsAnimated}
                   submissionCountByProblem={submissionCountByProblem}
                   totalMembers={totalMembers}
+                  solvedProblemIds={solvedProblemIds}
                   onSelect={handleSelectProblem}
                 />
               ))}

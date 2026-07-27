@@ -16,6 +16,8 @@ export interface WeekGroup {
   label: string;
   active: boolean;
   problems: Problem[];
+  /** 주차 최신순 정렬 키 — 주차 내 최신 마감 타임스탬프 */
+  recency: number;
 }
 
 // ─── HELPERS ──────────────────────────────
@@ -46,7 +48,24 @@ export function getSagaStatus(
   }
 }
 
-/** Problem[] → WeekGroup[] 변환 (최신 주차 먼저) */
+/** 문제가 진행 중인지 (상태 ACTIVE + 마감 미도래) */
+export function isProblemActive(p: Problem): boolean {
+  return p.status === 'ACTIVE' && new Date(p.deadline) >= new Date();
+}
+
+/** 문제 마감 타임스탬프 (없거나 파싱 불가면 0) */
+function deadlineTs(p: Problem): number {
+  const ts = p.deadline ? new Date(p.deadline).getTime() : 0;
+  return Number.isNaN(ts) ? 0 : ts;
+}
+
+/**
+ * Problem[] → WeekGroup[] 변환.
+ * - 주차 정렬: 활성 주차 우선 → 이후 최신순(주차 내 최신 마감 타임스탬프 내림차순).
+ *   status가 ACTIVE 아님(CLOSED 등)이지만 마감일이 미래인 문제로 인해
+ *   비활성 주차가 활성 주차 위로 오르는 것을 방지(#8: 종료 주차는 아래). 연도 경계 무관.
+ * - 주차 내 정렬: 진행 중 문제 우선 → 이후 최신 마감순 (종료된 문제는 아래로).
+ */
 export function groupProblemsByWeek(problems: Problem[]): WeekGroup[] {
   const groupMap = new Map<string, Problem[]>();
   for (const problem of problems) {
@@ -58,20 +77,23 @@ export function groupProblemsByWeek(problems: Problem[]): WeekGroup[] {
 
   const groups: WeekGroup[] = [];
   for (const [label, probs] of groupMap) {
+    const sorted = [...probs].sort((a, b) => {
+      const aActive = isProblemActive(a);
+      const bActive = isProblemActive(b);
+      if (aActive !== bActive) return aActive ? -1 : 1;
+      return deadlineTs(b) - deadlineTs(a);
+    });
     groups.push({
       label,
-      active: probs.some((p) => p.status === 'ACTIVE' && new Date(p.deadline) >= new Date()),
-      problems: probs,
+      active: sorted.some(isProblemActive),
+      problems: sorted,
+      recency: Math.max(0, ...sorted.map(deadlineTs)),
     });
   }
 
   groups.sort((a, b) => {
-    const parseWeek = (s: string): number => {
-      const match = s.match(/(\d+)월(\d+)주차/);
-      if (!match) return 0;
-      return Number(match[1]) * 10 + Number(match[2]);
-    };
-    return parseWeek(b.label) - parseWeek(a.label);
+    if (a.active !== b.active) return a.active ? -1 : 1;
+    return b.recency - a.recency;
   });
 
   return groups;
