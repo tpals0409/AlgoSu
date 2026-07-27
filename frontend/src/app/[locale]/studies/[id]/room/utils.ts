@@ -61,8 +61,9 @@ function deadlineTs(p: Problem): number {
 
 /**
  * Problem[] → WeekGroup[] 변환.
- * - 주차 정렬: 최신순 — 주차 내 최신 마감 타임스탬프 내림차순.
- *   미래 마감(진행 중) 주차가 자연히 상단, 지난 주차는 최근순. 연도 경계 무관.
+ * - 주차 정렬: 활성 주차 우선 → 이후 최신순(주차 내 최신 마감 타임스탬프 내림차순).
+ *   status가 ACTIVE 아님(CLOSED 등)이지만 마감일이 미래인 문제로 인해
+ *   비활성 주차가 활성 주차 위로 오르는 것을 방지(#8: 종료 주차는 아래). 연도 경계 무관.
  * - 주차 내 정렬: 진행 중 문제 우선 → 이후 최신 마감순 (종료된 문제는 아래로).
  */
 export function groupProblemsByWeek(problems: Problem[]): WeekGroup[] {
@@ -90,7 +91,10 @@ export function groupProblemsByWeek(problems: Problem[]): WeekGroup[] {
     });
   }
 
-  groups.sort((a, b) => b.recency - a.recency);
+  groups.sort((a, b) => {
+    if (a.active !== b.active) return a.active ? -1 : 1;
+    return b.recency - a.recency;
+  });
 
   return groups;
 }

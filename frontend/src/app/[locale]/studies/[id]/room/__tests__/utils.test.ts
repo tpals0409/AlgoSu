@@ -8,7 +8,8 @@
 import type { Problem } from '@/lib/api';
 import { getSagaStatus, groupProblemsByWeek, isProblemActive } from '../utils';
 
-const FUTURE = '2999-01-01T00:00:00.000Z';
+const FAR_FUTURE = '2999-01-01T00:00:00.000Z';
+const FUTURE = '2100-01-01T00:00:00.000Z';
 const PAST = '2000-01-01T00:00:00.000Z';
 const RECENT_PAST = '2020-06-01T00:00:00.000Z';
 const OLD_PAST = '2019-01-01T00:00:00.000Z';
@@ -65,6 +66,19 @@ describe('groupProblemsByWeek', () => {
       mk({ id: 'recent', weekNumber: '1월1주차', status: 'CLOSED', deadline: RECENT_PAST }),
     ]);
     expect(groups.map((w) => w.label)).toEqual(['1월1주차', '12월5주차']);
+  });
+
+  it('CLOSED인데 마감일이 더 미래인 주차가 활성 주차 위로 오지 않는다 (Critic P2 회귀)', () => {
+    const groups = groupProblemsByWeek([
+      // 종료(CLOSED)됐지만 마감일이 더 먼 미래 → recency 최대이지만 비활성
+      mk({ id: 'closedFuture', weekNumber: '1월2주차', status: 'CLOSED', deadline: FAR_FUTURE }),
+      // 실제 진행 중이지만 마감일이 더 가까움 → recency 낮음
+      mk({ id: 'activeNear', weekNumber: '1월1주차', status: 'ACTIVE', deadline: FUTURE }),
+    ]);
+    // recency만으로 정렬하면 closedFuture 주차가 위로 오는 버그 → active 우선 정렬로 방지
+    expect(groups.map((w) => w.label)).toEqual(['1월1주차', '1월2주차']);
+    expect(groups[0].active).toBe(true);
+    expect(groups[1].active).toBe(false);
   });
 
   it('weekNumber 없으면 미분류로 그룹핑된다', () => {
