@@ -16,7 +16,7 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
 import type { Problem } from '@/lib/api';
 import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
-import { cn } from '@/lib/utils';
+import { cn, calcDDay } from '@/lib/utils';
 
 // ─── HELPERS ────────────────────────────
 
@@ -25,14 +25,14 @@ type TranslateFn = (key: string, values?: Record<string, number | string>) => st
 
 
 function getDDay(deadline: string): { label: string; style: React.CSSProperties } {
-  const diff = Math.ceil((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  const { days } = calcDDay(deadline);
   let label: string;
-  if (diff < 0) label = `D+${Math.abs(diff)}`;
-  else if (diff === 0) label = 'D-Day';
-  else label = `D-${diff}`;
+  if (days < 0) label = `D+${Math.abs(days)}`;
+  else if (days === 0) label = 'D-Day';
+  else label = `D-${days}`;
 
-  if (diff <= 1) return { label, style: { backgroundColor: 'var(--error-soft)', color: 'var(--error)' } };
-  if (diff <= 3) return { label, style: { backgroundColor: 'var(--primary-soft)', color: 'var(--primary)' } };
+  if (days <= 1) return { label, style: { backgroundColor: 'var(--error-soft)', color: 'var(--error)' } };
+  if (days <= 3) return { label, style: { backgroundColor: 'var(--primary-soft)', color: 'var(--primary)' } };
   return { label, style: { backgroundColor: 'var(--bg-alt)', color: 'var(--text-2)' } };
 }
 

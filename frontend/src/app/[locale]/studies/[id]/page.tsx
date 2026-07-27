@@ -45,7 +45,7 @@ import {
   type StudyStats,
 } from '@/lib/api';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
-import { cn } from '@/lib/utils';
+import { cn, calcDDay as calcDDayCount } from '@/lib/utils';
 import { getAvatarPresetKey, getAvatarSrc } from '@/lib/avatars';
 import Image from 'next/image';
 
@@ -346,15 +346,13 @@ function difficultyToTier(difficulty: string): string {
 }
 
 /**
- * D-day 계산 — deadline까지 남은 일수
+ * D-day 계산 — 문제 풀이 마감일까지 남은 캘린더 일수 (마감 당일=D-Day)
  */
 function calcDDay(deadline: string, t: (key: string) => string): string {
-  const now = new Date();
-  const dl = new Date(deadline);
-  const diff = Math.ceil((dl.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  if (diff < 0) return t('detail.problems.expired');
-  if (diff === 0) return 'D-Day';
-  return `D-${diff}`;
+  const { days, expired } = calcDDayCount(deadline);
+  if (expired) return t('detail.problems.expired');
+  if (days === 0) return 'D-Day';
+  return `D-${days}`;
 }
 
 /**

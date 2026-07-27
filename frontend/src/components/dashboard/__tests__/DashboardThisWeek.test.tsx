@@ -42,6 +42,14 @@ jest.mock('@/contexts/StudyContext', () => ({
 jest.mock('@/lib/utils', () => ({
   cn: (...args: string[]) => args.filter(Boolean).join(' '),
   getCurrentWeekLabel: () => '1월3주차',
+  calcDDay: (deadline: string) => {
+    const dl = new Date(deadline);
+    const dlMidnight = new Date(dl.getFullYear(), dl.getMonth(), dl.getDate());
+    const now = new Date();
+    const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const days = Math.round((dlMidnight.getTime() - nowMidnight.getTime()) / 86400000);
+    return { days, expired: days < 0 };
+  },
 }));
 
 jest.mock('@/lib/constants', () => ({
