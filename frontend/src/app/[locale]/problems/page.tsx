@@ -137,8 +137,11 @@ export default function ProblemsPage(): ReactNode {
   /**
    * 난이도 가리기 (feedback #2) — 난이도 스포일러 없이 문제를 풀고 싶은 사용자를 위한 토글.
    * SSR/CSR hydration mismatch 방지를 위해 초기값은 false, 마운트 후 localStorage 반영.
+   * prefLoaded: localStorage 선호도가 읽히기 전까지는 스포일러-safe하게 난이도 값을 숨긴다
+   * (초기 렌더에 난이도가 잠깐 노출되는 flash 차단 — Critic #512 P2).
    */
   const [hideDifficulty, setHideDifficulty] = useState(false);
+  const [prefLoaded, setPrefLoaded] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setMounted(true), 50);
@@ -150,7 +153,14 @@ export default function ProblemsPage(): ReactNode {
     if (window.localStorage.getItem(HIDE_DIFFICULTY_KEY) === '1') {
       setHideDifficulty(true);
     }
+    setPrefLoaded(true);
   }, []);
+
+  /**
+   * 난이도 값(필터 pills·배지) 표시 여부 — 선호도 로드 완료 && 가리기 꺼짐일 때만.
+   * 로드 전에는 숨겨(스포일러 방지) 초기 렌더 flash를 차단한다.
+   */
+  const showDifficulty = prefLoaded && !hideDifficulty;
 
   /**
    * 난이도 가리기 토글 — 켜면 난이도 필터·배지를 숨기고,
@@ -291,8 +301,8 @@ export default function ProblemsPage(): ReactNode {
           </button>
         </div>
 
-        {/* 난이도 필터 pills — 난이도 가리기(#2) 켜짐 시 숨김 */}
-        {!hideDifficulty && (
+        {/* 난이도 필터 pills — 난이도 가리기(#2) 켜짐/선호도 미로드 시 숨김 */}
+        {showDifficulty && (
         <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide" style={fade(0.1)}>
           <button
             type="button"
@@ -452,7 +462,7 @@ export default function ProblemsPage(): ReactNode {
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-1">
-                      {!hideDifficulty && (
+                      {showDifficulty && (
                         <DifficultyBadge
                           difficulty={problem.difficulty ?? null}
                           level={problem.level}

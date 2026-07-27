@@ -199,6 +199,14 @@ describe('ProblemsPage', () => {
       'aria-pressed',
       'true',
     );
+    // 복원 시 난이도 필터 pills(스포일러)가 노출되지 않아야 한다
+    expect(screen.queryByRole('button', { name: 'Bronze' })).not.toBeInTheDocument();
+  });
+
+  it('선호도 로드 후에만 난이도 필터를 노출한다 — 초기 flash 방지 (Critic #512 P2)', async () => {
+    // 가리기 미설정(기본): 선호도 로드(prefLoaded) 완료 후 난이도 필터가 표시된다.
+    render(<ProblemsPage />);
+    expect(await screen.findByRole('button', { name: 'Bronze' })).toBeInTheDocument();
   });
 
   it('AppLayout 안에 렌더링된다', () => {
