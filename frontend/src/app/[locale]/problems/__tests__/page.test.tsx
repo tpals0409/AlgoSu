@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import ProblemsPage from '../page';
 
 jest.mock('@/i18n/navigation', () => ({
@@ -23,6 +23,8 @@ jest.mock('next-intl', () => ({
       'list.filter.inProgress': '진행 중',
       'list.filter.finished': '종료',
       'list.difficultyAll': '전체',
+      'list.hideDifficulty': '난이도 가리기',
+      'list.showDifficulty': '난이도 표시',
       'list.empty.title': '등록된 문제가 없습니다',
       'list.empty.description': '곧 새로운 문제가 추가될 예정입니다.',
       'list.noResults.title': '검색 결과가 없습니다',
@@ -163,13 +165,40 @@ jest.mock('lucide-react', () => {
     Check: Icon,
     ChevronLeft: Icon,
     ChevronRight: Icon,
+    Eye: Icon,
+    EyeOff: Icon,
   };
 });
 
 describe('ProblemsPage', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
   it('문제 목록 페이지가 렌더링된다', async () => {
     render(<ProblemsPage />);
     expect(await screen.findByText('문제 목록')).toBeInTheDocument();
+  });
+
+  it('난이도 가리기 토글이 상태·localStorage를 전환한다 (feedback #2)', () => {
+    render(<ProblemsPage />);
+    const toggle = screen.getByRole('button', { name: '난이도 가리기' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.click(toggle);
+
+    const pressed = screen.getByRole('button', { name: '난이도 표시' });
+    expect(pressed).toHaveAttribute('aria-pressed', 'true');
+    expect(window.localStorage.getItem('problems:hideDifficulty')).toBe('1');
+  });
+
+  it('난이도 가리기 상태를 localStorage에서 복원한다 (feedback #2)', async () => {
+    window.localStorage.setItem('problems:hideDifficulty', '1');
+    render(<ProblemsPage />);
+    expect(await screen.findByRole('button', { name: '난이도 표시' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
   });
 
   it('AppLayout 안에 렌더링된다', () => {

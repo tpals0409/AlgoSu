@@ -334,15 +334,6 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
                   {isOngoing && <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--success)' }} aria-hidden />}
                   {isOngoing ? t('detail.status.inProgress') : isLateWindow ? t('detail.status.lateSubmission') : t('detail.status.finished')}
                 </span>
-                {problem.tags?.map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-full px-2 py-0.5 text-[11px] font-medium"
-                    style={{ backgroundColor: 'var(--bg-alt)', color: 'var(--text-2)' }}
-                  >
-                    {tag}
-                  </span>
-                ))}
                 <span className="text-[11px] font-medium" style={{ color: 'var(--text-3)' }}>
                   {problem.weekNumber}
                 </span>
