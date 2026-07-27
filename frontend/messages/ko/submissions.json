@@ -29,6 +29,7 @@
     },
     "statusDisplay": {
       "done": "분석 완료",
+      "githubFailed": "GitHub 동기화 실패",
       "aiQueued": "AI 분석 대기",
       "githubQueued": "GitHub 동기화 중",
       "dbSaved": "저장됨",
