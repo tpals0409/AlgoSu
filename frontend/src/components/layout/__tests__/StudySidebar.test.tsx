@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithI18n } from '@/test-utils/i18n';
 import { StudySidebar } from '../StudySidebar';
@@ -48,6 +48,12 @@ beforeEach(() => {
     ],
     setCurrentStudy: mockSetCurrentStudy,
   });
+  window.localStorage.clear();
+  // jsdom은 PointerEvent 미구현 → MouseEvent 기반 최소 폴리필(clientX 전달용)
+  if (typeof window.PointerEvent === 'undefined') {
+    // @ts-expect-error jsdom 테스트 전용 최소 폴리필
+    window.PointerEvent = class PointerEvent extends MouseEvent {};
+  }
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
     value: jest.fn().mockImplementation((query: string) => ({
@@ -137,6 +143,38 @@ describe('StudySidebar', () => {
     });
     const { container } = renderWithI18n(<StudySidebar />);
     expect(container.innerHTML).toBe('');
+  });
+
+  it('리사이즈 핸들이 렌더되고 기본 폭은 220px (#12)', () => {
+    renderWithI18n(<StudySidebar />);
+    const handle = screen.getByRole('separator', { name: /크기 조절/ });
+    const aside = handle.closest('aside');
+    expect(aside).not.toBeNull();
+    expect(aside).toHaveStyle({ width: '220px' });
+  });
+
+  it('저장된 폭을 localStorage에서 복원한다 (#12)', () => {
+    window.localStorage.setItem('algosu:studySidebarWidth', '300');
+    renderWithI18n(<StudySidebar />);
+    const aside = screen.getByRole('separator', { name: /크기 조절/ }).closest('aside');
+    expect(aside).toHaveStyle({ width: '300px' });
+  });
+
+  it('드래그로 폭을 조절하고 저장한다 — 범위 초과 시 클램프 (#12)', () => {
+    renderWithI18n(<StudySidebar />);
+    const handle = screen.getByRole('separator', { name: /크기 조절/ });
+
+    fireEvent.pointerDown(handle);
+    fireEvent.pointerMove(window, { clientX: 300 });
+    const aside = handle.closest('aside');
+    expect(aside).toHaveStyle({ width: '300px' });
+
+    // 최대치(400) 초과 → 클램프
+    fireEvent.pointerMove(window, { clientX: 1000 });
+    expect(aside).toHaveStyle({ width: '400px' });
+
+    fireEvent.pointerUp(window);
+    expect(window.localStorage.getItem('algosu:studySidebarWidth')).toBe('400');
   });
 
   it('shows fallback text when currentStudyName is null', () => {

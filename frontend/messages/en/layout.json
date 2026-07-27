@@ -63,7 +63,8 @@
     "collapseSidebar": "Collapse Sidebar",
     "closeSidebar": "Close Sidebar",
     "studyNav": "Study Navigation",
-    "openStudyMenu": "Open Study Menu"
+    "openStudyMenu": "Open Study Menu",
+    "resizeSidebar": "Resize Sidebar"
   },
   "notificationBell": {
     "justNow": "Just now",

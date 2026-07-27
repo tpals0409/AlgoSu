@@ -5,12 +5,13 @@
  * @related page.tsx, utils.ts
  */
 
-import type { ReactNode } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { ChevronRight, ChevronDown, Check } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Card } from '@/components/ui/Card';
 import { DifficultyBadge } from '@/components/ui/DifficultyBadge';
 import type { Problem } from '@/lib/api';
-import { toTier, type WeekGroup } from './utils';
+import { toTier, isProblemActive, type WeekGroup } from './utils';
 
 // ─── WEEK SECTION ────────────────────────
 
@@ -19,38 +20,72 @@ export interface WeekSectionProps {
   readonly barsAnimated: boolean;
   readonly submissionCountByProblem: Map<string, { count: number; analyzedCount: number }>;
   readonly totalMembers: number;
+  readonly solvedProblemIds: ReadonlySet<string>;
   readonly onSelect: (p: Problem) => void;
 }
 
-export function WeekSection({ week, barsAnimated, submissionCountByProblem, totalMembers, onSelect }: WeekSectionProps): ReactNode {
+export function WeekSection({ week, barsAnimated, submissionCountByProblem, totalMembers, solvedProblemIds, onSelect }: WeekSectionProps): ReactNode {
+  const t = useTranslations('studies');
+  // 진행 중 주차는 항상 펼침. 지난 주차만 접기/펼치기 (기본 접힘).
+  const collapsible = !week.active;
+  const [open, setOpen] = useState(!collapsible);
+
+  const header = (
+    <div className="flex items-center gap-3">
+      <span
+        className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-semibold"
+        style={{
+          backgroundColor: week.active ? 'var(--primary-soft)' : 'var(--bg-alt)',
+          color: week.active ? 'var(--primary)' : 'var(--text-3)',
+        }}
+      >
+        {week.label}
+        {week.active && <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--success)' }} />}
+      </span>
+      <div className="h-px flex-1" style={{ backgroundColor: 'var(--border)' }} />
+      <span className="text-[11px] text-text-3">{t('room.problemCount', { count: week.problems.length })}</span>
+      {collapsible && (
+        <ChevronDown
+          className="h-4 w-4 shrink-0 text-text-3 transition-transform duration-200"
+          style={{ transform: open ? 'rotate(0deg)' : 'rotate(-90deg)' }}
+          aria-hidden
+        />
+      )}
+    </div>
+  );
+
   return (
     <div>
-      <div className="mb-3 flex items-center gap-3">
-        <span
-          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-semibold"
-          style={{
-            backgroundColor: week.active ? 'var(--primary-soft)' : 'var(--bg-alt)',
-            color: week.active ? 'var(--primary)' : 'var(--text-3)',
-          }}
-        >
-          {week.label}
-          {week.active && <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--success)' }} />}
-        </span>
-        <div className="h-px flex-1" style={{ backgroundColor: 'var(--border)' }} />
-        <span className="text-[11px] text-text-3">{week.problems.length}문제</span>
+      <div className="mb-3">
+        {collapsible ? (
+          <button
+            type="button"
+            onClick={() => setOpen((prev) => !prev)}
+            aria-expanded={open}
+            aria-label={open ? t('room.collapseWeek') : t('room.expandWeek')}
+            className="w-full rounded-badge text-left transition-colors hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            {header}
+          </button>
+        ) : (
+          header
+        )}
       </div>
-      <div className="space-y-3">
-        {week.problems.map((p) => (
-          <ProblemTimelineCard
-            key={p.id}
-            problem={p}
-            barsAnimated={barsAnimated}
-            submittedCount={submissionCountByProblem.get(p.id)?.count ?? 0}
-            totalMembers={totalMembers}
-            onSelect={onSelect}
-          />
-        ))}
-      </div>
+      {open && (
+        <div className="space-y-3">
+          {week.problems.map((p) => (
+            <ProblemTimelineCard
+              key={p.id}
+              problem={p}
+              barsAnimated={barsAnimated}
+              submittedCount={submissionCountByProblem.get(p.id)?.count ?? 0}
+              totalMembers={totalMembers}
+              solved={solvedProblemIds.has(p.id)}
+              onSelect={onSelect}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -62,17 +97,23 @@ interface ProblemTimelineCardProps {
   readonly barsAnimated: boolean;
   readonly submittedCount: number;
   readonly totalMembers: number;
+  readonly solved: boolean;
   readonly onSelect: (p: Problem) => void;
 }
 
-function ProblemTimelineCard({ problem, barsAnimated, submittedCount, totalMembers, onSelect }: ProblemTimelineCardProps): ReactNode {
+function ProblemTimelineCard({ problem, barsAnimated, submittedCount, totalMembers, solved, onSelect }: ProblemTimelineCardProps): ReactNode {
+  const t = useTranslations('studies');
   const tier = toTier(problem.difficulty);
-  const isActive = problem.status === 'ACTIVE' && new Date(problem.deadline) >= new Date();
+  const isActive = isProblemActive(problem);
   const tags = problem.tags ?? [];
   const pct = totalMembers > 0 ? (submittedCount / totalMembers) * 100 : 0;
 
   return (
-    <Card className="overflow-hidden p-0 cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-hover" onClick={() => onSelect(problem)}>
+    <Card
+      className="overflow-hidden p-0 cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-hover"
+      onClick={() => onSelect(problem)}
+      style={solved ? { borderColor: 'var(--success)', backgroundColor: 'var(--success-soft)' } : undefined}
+    >
       <div className="flex">
         <div className="w-1 shrink-0" style={{ backgroundColor: `var(--diff-${tier}-color)` }} />
         <div className="flex-1 px-3 py-3 sm:px-5 sm:py-4">
@@ -88,6 +129,11 @@ function ProblemTimelineCard({ problem, barsAnimated, submittedCount, totalMembe
               </span>
             ) : (
               <span className="inline-flex items-center rounded-badge px-2 py-0.5 text-[11px] font-medium" style={{ color: 'var(--text-3)', backgroundColor: 'var(--bg-alt)' }}>종료</span>
+            )}
+            {solved && (
+              <span className="inline-flex items-center gap-1 rounded-badge px-2 py-0.5 text-[11px] font-semibold" style={{ color: 'var(--success)', backgroundColor: 'var(--bg-card)' }}>
+                <Check className="h-3 w-3" aria-hidden />{t('room.solved')}
+              </span>
             )}
           </div>
           <h3 className="text-[15px] font-bold text-text mb-1.5">{problem.title}</h3>

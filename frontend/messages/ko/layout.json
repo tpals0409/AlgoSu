@@ -63,7 +63,8 @@
     "collapseSidebar": "사이드바 접기",
     "closeSidebar": "사이드바 닫기",
     "studyNav": "스터디 내비게이션",
-    "openStudyMenu": "스터디 메뉴 열기"
+    "openStudyMenu": "스터디 메뉴 열기",
+    "resizeSidebar": "사이드바 크기 조절"
   },
   "notificationBell": {
     "justNow": "방금 전",

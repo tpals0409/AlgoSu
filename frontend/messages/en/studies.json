@@ -104,6 +104,10 @@
     },
     "retry": "Retry",
     "emptyProblems": "No problems registered",
+    "solved": "Solved",
+    "collapseWeek": "Collapse week",
+    "expandWeek": "Expand week",
+    "problemCount": "{count} problems",
     "analysis": {
       "analyzing": "AI analysis in progress...",
       "failed": "Analysis failed",

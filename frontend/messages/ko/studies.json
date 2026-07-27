@@ -104,6 +104,10 @@
     },
     "retry": "다시 시도",
     "emptyProblems": "등록된 문제가 없습니다",
+    "solved": "완료",
+    "collapseWeek": "주차 접기",
+    "expandWeek": "주차 펼치기",
+    "problemCount": "{count}문제",
     "analysis": {
       "analyzing": "AI 분석 중...",
       "failed": "분석 실패",

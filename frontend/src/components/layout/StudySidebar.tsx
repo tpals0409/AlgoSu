@@ -11,7 +11,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, type ReactNode, type PointerEvent as ReactPointerEvent } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from '@/i18n/navigation';
 import {
@@ -49,6 +49,16 @@ const SIDEBAR_LINKS: SidebarLink[] = [
   { href: (id) => `/studies/${id}/settings`, labelKey: 'settings', icon: Settings, adminOnly: true },
 ];
 
+// ─── RESIZE CONSTANTS ───────────────────────
+
+const SIDEBAR_MIN_WIDTH = 180;
+const SIDEBAR_MAX_WIDTH = 400;
+const SIDEBAR_DEFAULT_WIDTH = 220;
+const SIDEBAR_WIDTH_STORAGE_KEY = 'algosu:studySidebarWidth';
+
+const clampWidth = (w: number): number =>
+  Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, w));
+
 // ─── STUDY SIDEBAR ──────────────────────────
 
 export function StudySidebar(): ReactNode {
@@ -71,7 +81,40 @@ export function StudySidebar(): ReactNode {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [studyDropdownOpen, setStudyDropdownOpen] = useState(false);
 
+  // 데스크톱 사이드바 폭 (드래그 크기조절 + localStorage 저장)
+  const [width, setWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
+  const [dragging, setDragging] = useState(false);
+
   const closeMobile = useCallback(() => setMobileOpen(false), []);
+
+  // 저장된 폭 복원 (SSR 하이드레이션 불일치 방지 위해 mount 후 로드)
+  useEffect(() => {
+    const saved = window.localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY);
+    if (saved !== null) {
+      const parsed = Number(saved);
+      if (!Number.isNaN(parsed)) setWidth(clampWidth(parsed));
+    }
+  }, []);
+
+  // 오른쪽 가장자리 핸들 드래그 → 폭 조절. 사이드바 좌측이 뷰포트 x=0 → clientX ≈ 폭.
+  const handleResizeStart = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragging(true);
+    const onMove = (ev: PointerEvent): void => {
+      setWidth(clampWidth(ev.clientX));
+    };
+    const onUp = (): void => {
+      setDragging(false);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      setWidth((w) => {
+        window.localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(w));
+        return w;
+      });
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }, []);
 
   // Lock body scroll when mobile sidebar is open
   useEffect(() => {
@@ -294,14 +337,28 @@ export function StudySidebar(): ReactNode {
         {navContent}
       </aside>
 
-      {/* Desktop: static sidebar */}
+      {/* Desktop: static sidebar (드래그 크기조절 가능) */}
       <aside
         className={cn(
-          'hidden shrink-0 flex-col border-r border-border bg-bg transition-all duration-200 md:flex',
-          collapsed ? 'w-[52px]' : 'w-[220px]',
+          'relative hidden shrink-0 flex-col border-r border-border bg-bg md:flex',
+          collapsed && 'w-[52px]',
+          !dragging && 'transition-[width] duration-200',
         )}
+        style={collapsed ? undefined : { width }}
       >
         {navContent}
+
+        {/* 오른쪽 가장자리 리사이즈 핸들 (펼침 상태에서만) */}
+        {!collapsed && (
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label={t('studySidebar.resizeSidebar')}
+            onPointerDown={handleResizeStart}
+            className="absolute right-0 top-0 z-10 h-full w-1 cursor-col-resize transition-colors hover:bg-primary/40"
+            style={{ touchAction: 'none', backgroundColor: dragging ? 'var(--primary)' : undefined }}
+          />
+        )}
       </aside>
     </>
   );

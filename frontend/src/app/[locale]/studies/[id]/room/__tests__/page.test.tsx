@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/react';
 import { renderWithI18n } from '@/test-utils/i18n';
 import StudyRoomPage from '../page';
 
@@ -159,7 +159,7 @@ describe('StudyRoomPage', () => {
 });
 
 describe('StudyRoomPage - with problems', () => {
-  it('문제 목록이 주차별로 표시된다', async () => {
+  it('지난 주차는 헤더만 표시되고 기본 접힘 → 펼치면 문제가 보인다 (#9)', async () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { problemApi } = require('@/lib/api');
     problemApi.findAll.mockResolvedValue([
@@ -175,7 +175,12 @@ describe('StudyRoomPage - with problems', () => {
     ]);
 
     renderWithI18n(<StudyRoomPage />);
+    // 주차 헤더는 표시되지만 지난 주차라 기본 접힘 → 문제 카드는 숨김
+    expect(await screen.findByText('1월1주차')).toBeInTheDocument();
+    expect(screen.queryByText('Two Sum')).not.toBeInTheDocument();
+
+    // 펼치기 버튼 클릭 → 문제 표시
+    fireEvent.click(screen.getByRole('button', { name: '주차 펼치기' }));
     expect(await screen.findByText('Two Sum')).toBeInTheDocument();
-    expect(screen.getByText('1월1주차')).toBeInTheDocument();
   });
 });
