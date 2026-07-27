@@ -8,7 +8,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
-import { BookOpen, Plus, Search, Check } from 'lucide-react';
+import { BookOpen, Plus, Search, Check, Eye, EyeOff } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -40,6 +40,9 @@ const INITIAL_FILTERS: Filters = {
   difficulty: '',
   status: '',
 };
+
+/** 난이도 가리기 토글 로컬 저장 키 (feedback #2) */
+const HIDE_DIFFICULTY_KEY = 'problems:hideDifficulty';
 
 // ─── HELPERS ─────────────────────────────
 
@@ -131,9 +134,47 @@ export default function ProblemsPage(): ReactNode {
   const [showAddModal, setShowAddModal] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  /**
+   * 난이도 가리기 (feedback #2) — 난이도 스포일러 없이 문제를 풀고 싶은 사용자를 위한 토글.
+   * SSR/CSR hydration mismatch 방지를 위해 초기값은 false, 마운트 후 localStorage 반영.
+   * prefLoaded: localStorage 선호도가 읽히기 전까지는 스포일러-safe하게 난이도 값을 숨긴다
+   * (초기 렌더에 난이도가 잠깐 노출되는 flash 차단 — Critic #512 P2).
+   */
+  const [hideDifficulty, setHideDifficulty] = useState(false);
+  const [prefLoaded, setPrefLoaded] = useState(false);
+
   useEffect(() => {
     const timer = setTimeout(() => setMounted(true), 50);
     return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.localStorage.getItem(HIDE_DIFFICULTY_KEY) === '1') {
+      setHideDifficulty(true);
+    }
+    setPrefLoaded(true);
+  }, []);
+
+  /**
+   * 난이도 값(필터 pills·배지) 표시 여부 — 선호도 로드 완료 && 가리기 꺼짐일 때만.
+   * 로드 전에는 숨겨(스포일러 방지) 초기 렌더 flash를 차단한다.
+   */
+  const showDifficulty = prefLoaded && !hideDifficulty;
+
+  /**
+   * 난이도 가리기 토글 — 켜면 난이도 필터·배지를 숨기고,
+   * 숨겨진 난이도 필터가 조용히 적용되지 않도록 난이도 필터값을 초기화한다.
+   */
+  const toggleHideDifficulty = useCallback(() => {
+    setHideDifficulty((prev) => {
+      const next = !prev;
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(HIDE_DIFFICULTY_KEY, next ? '1' : '0');
+      }
+      if (next) setFilters((f) => ({ ...f, difficulty: '' }));
+      return next;
+    });
   }, []);
 
   const fade = (delay = 0): React.CSSProperties => ({
@@ -244,9 +285,24 @@ export default function ProblemsPage(): ReactNode {
               ))}
             </SelectContent>
           </Select>
+          <button
+            type="button"
+            onClick={toggleHideDifficulty}
+            aria-pressed={hideDifficulty}
+            className="h-[44px] shrink-0 self-end sm:self-auto inline-flex items-center gap-1.5 rounded-xl px-3 text-[13px] font-medium transition-all hover:brightness-95"
+            style={
+              hideDifficulty
+                ? { backgroundColor: 'var(--primary)', color: '#fff' }
+                : { backgroundColor: 'var(--bg-card)', color: 'var(--text-2)', border: '1px solid var(--border)' }
+            }
+          >
+            {hideDifficulty ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
+            {hideDifficulty ? t('list.showDifficulty') : t('list.hideDifficulty')}
+          </button>
         </div>
 
-        {/* 난이도 필터 pills */}
+        {/* 난이도 필터 pills — 난이도 가리기(#2) 켜짐/선호도 미로드 시 숨김 */}
+        {showDifficulty && (
         <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide" style={fade(0.1)}>
           <button
             type="button"
@@ -281,6 +337,7 @@ export default function ProblemsPage(): ReactNode {
             );
           })}
         </div>
+        )}
 
         {/* 태그 필터 칩 — availableTags가 있을 때만 표시 */}
         {availableTags.length > 0 && (
@@ -405,11 +462,13 @@ export default function ProblemsPage(): ReactNode {
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-1">
-                      <DifficultyBadge
-                        difficulty={problem.difficulty ?? null}
-                        level={problem.level}
-                        sourcePlatform={problem.sourcePlatform}
-                      />
+                      {showDifficulty && (
+                        <DifficultyBadge
+                          difficulty={problem.difficulty ?? null}
+                          level={problem.level}
+                          sourcePlatform={problem.sourcePlatform}
+                        />
+                      )}
                       {(() => {
                         const isActive = problem.status === 'ACTIVE' && (!problem.deadline || new Date(problem.deadline) > new Date());
                         return (

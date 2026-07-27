@@ -227,4 +227,22 @@ describe('ProblemDetailPage', () => {
     await screen.findByText('Two Sum');
     expect(screen.getByLabelText('문제 삭제')).toBeInTheDocument();
   });
+
+  it('난이도 가리기 선호가 없으면 난이도 배지를 표시한다 (feedback #2)', async () => {
+    window.localStorage.removeItem('problems:hideDifficulty');
+    await renderPage();
+    await screen.findByText('Two Sum');
+    expect(screen.getByTestId('difficulty-badge')).toBeInTheDocument();
+  });
+
+  it('난이도 가리기 선호(localStorage)가 켜지면 상세 페이지에서 난이도 배지를 숨긴다 (Critic #512 P2)', async () => {
+    window.localStorage.setItem('problems:hideDifficulty', '1');
+    try {
+      await renderPage();
+      await screen.findByText('Two Sum');
+      expect(screen.queryByTestId('difficulty-badge')).not.toBeInTheDocument();
+    } finally {
+      window.localStorage.removeItem('problems:hideDifficulty');
+    }
+  });
 });
