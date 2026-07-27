@@ -154,7 +154,7 @@ export function SubmissionView({ problem, submissions, loading, notSubmitted, ac
           <p className="text-sm font-medium text-text-2" style={vfade(0.1)}>제출 완료 · {submissions.length}명</p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2" style={vfade(0.14)}>
             {submissions.map((sub) => {
-              const saga = getSagaStatus(sub.sagaStep);
+              const saga = getSagaStatus(sub.sagaStep, sub.githubSyncStatus);
               const name = (sub.userId && nicknameMap[sub.userId]) ? nicknameMap[sub.userId] : '익명';
               const avatarUrl = sub.userId ? avatarMap[sub.userId] : null;
 
@@ -185,8 +185,8 @@ export function SubmissionView({ problem, submissions, loading, notSubmitted, ac
                     <ChevronRight className="h-4 w-4 shrink-0 text-text-3" />
                   </div>
                   <div className="mt-3">
-                    <span className="flex items-center gap-1 text-[12px] font-medium" style={{ color: saga.variant === 'success' ? 'var(--success)' : saga.variant === 'warning' ? 'var(--warning)' : 'var(--text-3)' }}>
-                      <Sparkles className="h-3.5 w-3.5" />{saga.label}
+                    <span className="flex items-center gap-1 text-[12px] font-medium" style={{ color: saga.variant === 'success' ? 'var(--success)' : saga.variant === 'warning' ? 'var(--warning)' : saga.variant === 'error' ? 'var(--error)' : 'var(--text-3)' }}>
+                      {saga.variant === 'error' ? <AlertCircle className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}{saga.label}
                       {sub.aiScore != null && <span className="ml-1 font-bold">{sub.aiScore}점</span>}
                     </span>
                   </div>

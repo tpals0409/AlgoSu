@@ -48,6 +48,13 @@ const STATUS_DISPLAY_MAP: Record<string, { key: string; bg: string; color: strin
   FAILED: { key: 'list.statusDisplay.failed', bg: 'var(--error-soft)', color: 'var(--error)', dot: false },
 };
 
+/**
+ * Issue #13: sagaStep=DONE이어도 GitHub 동기화가 실패한 제출.
+ * 완료(녹색)로 오표기하지 않도록 경고 배지로 오버라이드한다.
+ */
+const GITHUB_SYNC_FAILED_STATES = new Set(['FAILED', 'TOKEN_INVALID']);
+const GITHUB_FAILED_DISPLAY = { key: 'list.statusDisplay.githubFailed', bg: 'var(--warning-soft)', color: 'var(--warning)', dot: false };
+
 // 언어 아바타 색상 — 동적 언어별 색상, Tailwind 토큰 등록 시 전환 예정
 const LANG_AVATAR: Record<string, { label: string; bg: string; color: string }> = {
   python:     { label: 'PY', bg: '#3572A520', color: '#3572A5' },
@@ -266,7 +273,11 @@ export default function SubmissionsPage(): ReactNode {
               const pInfo = problemMap.get(s.problemId);
               const title = s.problemTitle ?? pInfo?.title ?? t('list.problemFallback', { id: s.problemId });
               const diffKey = pInfo?.difficulty ? (pInfo.difficulty as string).toLowerCase() : '';
-              const displayMap = STATUS_DISPLAY_MAP[s.sagaStep] ?? { key: '', bg: 'var(--bg-alt)', color: 'var(--text-3)', dot: false };
+              // Issue #13: DONE이어도 GitHub 동기화 실패면 완료로 표기하지 않는다
+              const githubFailed = s.sagaStep === 'DONE' && !!s.githubSyncStatus && GITHUB_SYNC_FAILED_STATES.has(s.githubSyncStatus);
+              const displayMap = githubFailed
+                ? GITHUB_FAILED_DISPLAY
+                : STATUS_DISPLAY_MAP[s.sagaStep] ?? { key: '', bg: 'var(--bg-alt)', color: 'var(--text-3)', dot: false };
               const statusLabel = displayMap.key ? t(displayMap.key) : s.sagaStep;
               const lang = LANG_AVATAR[s.language] ?? { label: s.language.slice(0, 2).toUpperCase(), bg: 'var(--bg-alt)', color: 'var(--text-3)' };
               const isDone = s.sagaStep === 'DONE';
@@ -275,7 +286,7 @@ export default function SubmissionsPage(): ReactNode {
                 <button
                   key={s.id}
                   type="button"
-                  onClick={() => router.push(isDone ? `/submissions/${s.id}/analysis` : `/submissions/${s.id}/status`)}
+                  onClick={() => router.push(isDone && !githubFailed ? `/submissions/${s.id}/analysis` : `/submissions/${s.id}/status`)}
                   aria-label={t('list.ariaViewSubmission', { title })}
                   className="group flex items-center gap-3 sm:gap-4 w-full px-3 sm:px-5 py-3 sm:py-4 rounded-xl border border-border transition-all text-left bg-bg-card hover:-translate-y-0.5 hover:shadow-hover"
                 >

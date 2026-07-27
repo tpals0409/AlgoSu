@@ -28,7 +28,12 @@ export function toTier(diff: Problem['difficulty']): DiffTier {
 
 export function getSagaStatus(
   step: Submission['sagaStep'],
+  githubSyncStatus?: Submission['githubSyncStatus'],
 ): { label: string; variant: 'success' | 'warning' | 'error' | 'muted' } {
+  // Issue #13: sagaStep=DONE이어도 GitHub 동기화가 실패하면 완료로 표기하지 않는다
+  if (step === 'DONE' && (githubSyncStatus === 'FAILED' || githubSyncStatus === 'TOKEN_INVALID')) {
+    return { label: 'GitHub 동기화 실패', variant: 'error' };
+  }
   switch (step) {
     case 'DONE':
       return { label: '분석 완료', variant: 'success' };

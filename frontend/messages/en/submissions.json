@@ -29,6 +29,7 @@
     },
     "statusDisplay": {
       "done": "Analyzed",
+      "githubFailed": "GitHub Sync Failed",
       "aiQueued": "AI Pending",
       "githubQueued": "Syncing to GitHub",
       "dbSaved": "Saved",

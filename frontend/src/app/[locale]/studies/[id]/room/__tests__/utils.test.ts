@@ -1,12 +1,12 @@
 /**
- * @file 스터디룸 utils 테스트 — 주차 정렬(#8) + 진행중 판별
+ * @file 스터디룸 utils 테스트 — 주차 정렬(#8) + 진행중 판별 + getSagaStatus(#13)
  * @domain study
  * @layer test
  * @related ../utils.ts
  */
 
 import type { Problem } from '@/lib/api';
-import { groupProblemsByWeek, isProblemActive } from '../utils';
+import { getSagaStatus, groupProblemsByWeek, isProblemActive } from '../utils';
 
 const FUTURE = '2999-01-01T00:00:00.000Z';
 const PAST = '2000-01-01T00:00:00.000Z';
@@ -70,5 +70,31 @@ describe('groupProblemsByWeek', () => {
   it('weekNumber 없으면 미분류로 그룹핑된다', () => {
     const groups = groupProblemsByWeek([mk({ id: 'n', weekNumber: undefined as unknown as string })]);
     expect(groups[0].label).toBe('미분류');
+  });
+});
+
+describe('getSagaStatus (Issue #13: GitHub 동기화 실패 오표기 방지)', () => {
+  it('DONE + githubSyncStatus=FAILED → 완료가 아닌 "GitHub 동기화 실패"(error)로 표기한다', () => {
+    expect(getSagaStatus('DONE', 'FAILED')).toEqual({ label: 'GitHub 동기화 실패', variant: 'error' });
+  });
+
+  it('DONE + githubSyncStatus=TOKEN_INVALID → "GitHub 동기화 실패"(error)로 표기한다', () => {
+    expect(getSagaStatus('DONE', 'TOKEN_INVALID')).toEqual({ label: 'GitHub 동기화 실패', variant: 'error' });
+  });
+
+  it('DONE + githubSyncStatus=SYNCED → "분석 완료"(success) 유지', () => {
+    expect(getSagaStatus('DONE', 'SYNCED')).toEqual({ label: '분석 완료', variant: 'success' });
+  });
+
+  it('DONE + githubSyncStatus 미지정 → "분석 완료"(success) 회귀 보장', () => {
+    expect(getSagaStatus('DONE')).toEqual({ label: '분석 완료', variant: 'success' });
+  });
+
+  it('FAILED → "실패"(error) 회귀 보장', () => {
+    expect(getSagaStatus('FAILED')).toEqual({ label: '실패', variant: 'error' });
+  });
+
+  it('AI_QUEUED → "분석 중"(warning) 회귀 보장', () => {
+    expect(getSagaStatus('AI_QUEUED')).toEqual({ label: '분석 중', variant: 'warning' });
   });
 });
