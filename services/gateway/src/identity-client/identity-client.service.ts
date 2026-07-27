@@ -119,6 +119,7 @@ export interface CreateFeedbackData {
   pageUrl?: string;
   browserInfo?: string;
   screenshot?: string;
+  screenshots?: string[];
 }
 
 export interface UpdateFeedbackStatusData {

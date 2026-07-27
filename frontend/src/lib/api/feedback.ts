@@ -15,6 +15,7 @@ export const feedbackApi = {
     pageUrl?: string;
     browserInfo?: string;
     screenshot?: string;
+    screenshots?: string[];
   }): Promise<{ publicId: string }> =>
     fetchApi('/api/feedbacks', { method: 'POST', body: JSON.stringify(data) }),
 
@@ -43,6 +44,8 @@ export interface AdminFeedback {
   pageUrl: string | null;
   browserInfo: string | null;
   screenshot: string | null;
+  /** 다중 스크린샷 (feedback #14) — 상세 응답에만 포함, 목록 응답에선 제외됨 */
+  screenshots?: string[] | null;
   status: string;
   createdAt: string;
   resolvedAt: string | null;

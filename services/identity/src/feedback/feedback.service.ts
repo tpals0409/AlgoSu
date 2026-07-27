@@ -49,7 +49,9 @@ export class FeedbackService {
       content: dto.content,
       pageUrl: dto.pageUrl ?? null,
       browserInfo: dto.browserInfo ?? null,
-      screenshot: dto.screenshot ?? null,
+      // 하위호환: 단일 screenshot은 screenshots[0]로도 채워 기존 소비자(Discord/관리자 목록)를 보존한다.
+      screenshot: dto.screenshot ?? dto.screenshots?.[0] ?? null,
+      screenshots: dto.screenshots ?? null,
     });
     const saved = await this.feedbackRepo.save(feedback);
     this.logger.log(
@@ -293,8 +295,8 @@ export class FeedbackService {
     const result = await this.feedbackRepo
       .createQueryBuilder()
       .update(Feedback)
-      .set({ screenshot: null })
-      .where('screenshot IS NOT NULL')
+      .set({ screenshot: null, screenshots: null })
+      .where('(screenshot IS NOT NULL OR screenshots IS NOT NULL)')
       .andWhere('created_at < :cutoff', { cutoff })
       .execute();
 
