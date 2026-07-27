@@ -71,7 +71,8 @@ export function WeekSection({ week, barsAnimated, submissionCountByProblem, tota
           header
         )}
       </div>
-      {open && (
+      {/* 활성 주차(collapsible=false)는 open 초기화 stale 여부와 무관하게 항상 렌더 — 인스턴스 재사용 시 영구 숨김 방지 (Critic P2). 지난 주차만 open 토글에 종속. */}
+      {(!collapsible || open) && (
         <div className="space-y-3">
           {week.problems.map((p) => (
             <ProblemTimelineCard
