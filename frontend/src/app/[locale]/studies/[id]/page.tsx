@@ -276,7 +276,7 @@ export default function StudyDetailPage({ params }: PageProps): ReactNode {
           )}
 
           {tab === 'problems' && (
-            <ProblemsTab problems={problems} />
+            <ProblemsTab problems={problems} studyId={studyId} />
           )}
 
           {tab === 'members' && (
@@ -363,8 +363,10 @@ function calcDDay(deadline: string, t: (key: string) => string): string {
  */
 function ProblemsTab({
   problems,
+  studyId,
 }: {
   readonly problems: Problem[];
+  readonly studyId: string;
 }): ReactNode {
   const t = useTranslations('studies');
 
@@ -408,7 +410,7 @@ function ProblemsTab({
         {activeProblems.length > 0 ? (
           <div className="space-y-2">
             {activeProblems.map((p) => (
-              <ProblemCard key={p.id} problem={p} />
+              <ProblemCard key={p.id} problem={p} studyId={studyId} />
             ))}
           </div>
         ) : (
@@ -426,7 +428,7 @@ function ProblemsTab({
         {endedProblems.length > 0 ? (
           <div className="space-y-2">
             {endedProblems.map((p) => (
-              <ProblemCard key={p.id} problem={p} />
+              <ProblemCard key={p.id} problem={p} studyId={studyId} />
             ))}
           </div>
         ) : (
@@ -445,11 +447,28 @@ function ProblemsTab({
  * 문제 카드
  * @domain study
  */
-function ProblemCard({ problem }: { readonly problem: { id: string; number: number; title: string; difficulty: import('@/lib/constants').Difficulty | null; level?: number | null; sourcePlatform?: 'BOJ' | 'PROGRAMMERS' | null; tier: string; tags: string[]; dDay?: string; ended?: boolean } }): ReactNode {
+function ProblemCard({ problem, studyId }: { readonly problem: { id: string; number: number; title: string; difficulty: import('@/lib/constants').Difficulty | null; level?: number | null; sourcePlatform?: 'BOJ' | 'PROGRAMMERS' | null; tier: string; tags: string[]; dDay?: string; ended?: boolean }; readonly studyId: string }): ReactNode {
   const t = useTranslations('studies');
+  const router = useRouter();
+
+  const openInRoom = (): void => {
+    router.push(`/studies/${studyId}/room?problemId=${problem.id}`);
+  };
 
   return (
-    <Card className="p-0 overflow-hidden">
+    <Card
+      className="p-0 overflow-hidden cursor-pointer transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-hover"
+      role="button"
+      tabIndex={0}
+      aria-label={t('detail.problems.openInRoom', { title: problem.title })}
+      onClick={openInRoom}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openInRoom();
+        }
+      }}
+    >
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-3 min-w-0">
           {/* 원형 번호 */}
