@@ -41,6 +41,13 @@ interface PageProps {
 /** 요일 키 배열 (getDay() 인덱스 → 번역 키 매핑) */
 const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
 
+/**
+ * 난이도 가리기 선호 로컬 저장 키 (feedback #2).
+ * 목록 페이지(problems/page.tsx)의 토글이 저장한 값을 상세 페이지에서도 읽어
+ * 난이도 스포일러를 일관되게 차단한다 (Critic #512 P2).
+ */
+const HIDE_DIFFICULTY_KEY = 'problems:hideDifficulty';
+
 
 // ─── RENDER ───────────────────────────────
 
@@ -73,6 +80,25 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  /**
+   * 난이도 가리기 선호 (feedback #2 / Critic #512 P2).
+   * 목록 페이지 토글이 저장한 선호를 읽어 상세 페이지 난이도 배지도 숨긴다.
+   * prefLoaded 이전에는 스포일러-safe하게 숨겨 초기 렌더 flash를 차단한다.
+   */
+  const [hideDifficulty, setHideDifficulty] = useState(false);
+  const [prefLoaded, setPrefLoaded] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.localStorage.getItem(HIDE_DIFFICULTY_KEY) === '1') {
+      setHideDifficulty(true);
+    }
+    setPrefLoaded(true);
+  }, []);
+
+  /** 난이도 배지 표시 여부 — 선호 로드 완료 && 가리기 꺼짐일 때만. */
+  const showDifficulty = prefLoaded && !hideDifficulty;
 
   /**
    * Sprint 151: SQL 카테고리 자동 언어 선택 ref guard.
@@ -316,11 +342,13 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
             <div className="rounded-xl border border-border p-3 sm:p-5 space-y-3 sm:space-y-4 bg-bg-card">
               {/* 뱃지 줄 */}
               <div className="flex flex-wrap items-center gap-2">
-                <DifficultyBadge
-                  difficulty={problem.difficulty ?? null}
-                  level={problem.level}
-                  sourcePlatform={problem.sourcePlatform}
-                />
+                {showDifficulty && (
+                  <DifficultyBadge
+                    difficulty={problem.difficulty ?? null}
+                    level={problem.level}
+                    sourcePlatform={problem.sourcePlatform}
+                  />
+                )}
                 <span
                   className="inline-flex items-center gap-1 rounded-badge px-2 py-0.5 text-[11px] font-medium"
                   style={
@@ -334,15 +362,6 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
                   {isOngoing && <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--success)' }} aria-hidden />}
                   {isOngoing ? t('detail.status.inProgress') : isLateWindow ? t('detail.status.lateSubmission') : t('detail.status.finished')}
                 </span>
-                {problem.tags?.map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-full px-2 py-0.5 text-[11px] font-medium"
-                    style={{ backgroundColor: 'var(--bg-alt)', color: 'var(--text-2)' }}
-                  >
-                    {tag}
-                  </span>
-                ))}
                 <span className="text-[11px] font-medium" style={{ color: 'var(--text-3)' }}>
                   {problem.weekNumber}
                 </span>

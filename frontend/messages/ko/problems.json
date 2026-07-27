@@ -14,6 +14,8 @@
       "finished": "종료"
     },
     "difficultyAll": "전체",
+    "hideDifficulty": "난이도 가리기",
+    "showDifficulty": "난이도 표시",
     "tagFilterAll": "전체",
     "tagFilterLabel": "태그",
     "empty": {
