@@ -68,6 +68,13 @@ export class Feedback {
   @Column({ type: 'text', nullable: true })
   screenshot!: string | null;
 
+  /**
+   * 다중 스크린샷 (feedback #14) — 최대 4장 dataURL 배열.
+   * 단일 `screenshot`(legacy)은 하위호환용으로 유지되며 screenshots[0]과 동일하게 채워진다.
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  screenshots!: string[] | null;
+
   @Column({ type: 'varchar', length: 20, default: 'OPEN' })
   status!: FeedbackStatus;
 
@@ -89,10 +96,11 @@ export class Feedback {
   }
 
   /**
-   * JSON 직렬화 — id 숨기고, screenshot은 목록에서 제외 (상세에서만 포함)
+   * JSON 직렬화 — id 숨기고, screenshot/screenshots는 목록에서 제외 (상세에서만 포함)
    */
   toJSON() {
-    const { id, screenshot, ...rest } = this as unknown as Record<string, unknown>;
+    const { id, screenshot, screenshots, ...rest } =
+      this as unknown as Record<string, unknown>;
     return rest;
   }
 }

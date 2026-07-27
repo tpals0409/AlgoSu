@@ -5,6 +5,8 @@
  * @related feedback.service.ts
  */
 import {
+  ArrayMaxSize,
+  IsArray,
   IsEnum,
   IsOptional,
   IsString,
@@ -42,4 +44,11 @@ export class CreateFeedbackDto {
   @IsString()
   @MaxLength(700000)
   screenshot?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(4, { message: '스크린샷은 최대 4장까지 첨부할 수 있습니다.' })
+  @IsString({ each: true })
+  @MaxLength(700000, { each: true })
+  screenshots?: string[];
 }

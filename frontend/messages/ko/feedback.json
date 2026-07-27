@@ -2,12 +2,14 @@
   "bugReport": {
     "descriptionLabel": "버그 설명",
     "descriptionPlaceholder": "어떤 문제가 발생했는지 설명해주세요...",
-    "screenshotLabel": "스크린샷 (선택)",
+    "screenshotLabel": "스크린샷 (선택, 최대 4장)",
     "screenshotPreviewAlt": "스크린샷 미리보기",
     "screenshotFullAlt": "스크린샷 전체보기",
     "screenshotClickToView": "클릭하여 전체 보기",
     "removeScreenshot": "스크린샷 제거",
     "attachImage": "이미지 첨부 또는 클립보드 붙여넣기 (Ctrl+V)",
+    "attachMore": "이미지 추가",
+    "screenshotCountLabel": "{count}/{max}장",
     "selectFile": "스크린샷 파일 선택",
     "close": "닫기",
     "submitting": "전송 중...",
@@ -19,7 +21,8 @@
       "canvasContext": "Canvas context를 생성할 수 없습니다.",
       "imageTooLarge": "이미지가 너무 큽니다. 더 작은 이미지를 사용해주세요.",
       "imageUnreadable": "이미지를 읽을 수 없습니다.",
-      "imageProcessFailed": "이미지 처리에 실패했습니다."
+      "imageProcessFailed": "이미지 처리에 실패했습니다.",
+      "tooManyImages": "스크린샷은 최대 4장까지 첨부할 수 있습니다."
     }
   },
   "feedbackForm": {
