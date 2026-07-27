@@ -78,7 +78,8 @@
       "emptyActive": "No problems in progress.",
       "emptyEnded": "No ended problems.",
       "expired": "Closed",
-      "statusEnded": "Ended"
+      "statusEnded": "Ended",
+      "openInRoom": "Open problem {title} in study room"
     },
     "members": {
       "save": "Save",

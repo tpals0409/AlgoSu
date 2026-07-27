@@ -78,7 +78,8 @@
       "emptyActive": "진행 중인 문제가 없습니다.",
       "emptyEnded": "종료된 문제가 없습니다.",
       "expired": "마감",
-      "statusEnded": "종료"
+      "statusEnded": "종료",
+      "openInRoom": "{title} 문제 스터디룸에서 열기"
     },
     "members": {
       "save": "저장",

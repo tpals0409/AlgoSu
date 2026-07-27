@@ -12,7 +12,7 @@ import { useRouter } from '@/i18n/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslations } from 'next-intl';
-import { Users, Plus, ArrowRight, Crown, Settings } from 'lucide-react';
+import { Users, Plus, Crown } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -294,8 +294,8 @@ export default function StudiesPage(): ReactNode {
                     className="flex cursor-pointer flex-col overflow-hidden p-0 transition-all hover:border-primary/50 hover:shadow-hover"
                     onClick={() => handleStudyClick(study)}
                   >
-                    <CardContent className="flex flex-1 flex-col gap-3 p-5 pb-0">
-                      {/* 상단: 아바타 + 이름/뱃지/멤버수 + 설정 */}
+                    <CardContent className="flex flex-1 flex-col gap-3 p-5">
+                      {/* 상단: 아바타 + 이름/뱃지/멤버수 + 자세히 보기 */}
                       <div className="flex items-start gap-3">
                         {study.avatar_url ? (
                           <Image
@@ -335,19 +335,18 @@ export default function StudiesPage(): ReactNode {
                             </p>
                           )}
                         </div>
-                        {study.role === 'ADMIN' && (
-                          <button
-                            type="button"
-                            className="shrink-0 rounded-lg p-1.5 text-text-3 transition-colors hover:bg-bg-alt hover:text-text"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              router.push(`/studies/${study.id}/settings`);
-                            }}
-                            aria-label={t('list.card.settings')}
-                          >
-                            <Settings className="h-4 w-4" aria-hidden />
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          className="shrink-0 rounded-lg px-2 py-1 text-xs font-medium text-text-2 transition-colors hover:bg-bg-alt hover:text-text"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCurrentStudy(study.id);
+                            router.push(`/studies/${study.id}`);
+                          }}
+                          aria-label={t('list.card.viewDetail')}
+                        >
+                          {t('list.card.viewDetail')}
+                        </button>
                       </div>
 
                       {/* 설명 */}
@@ -357,21 +356,6 @@ export default function StudiesPage(): ReactNode {
                         </p>
                       )}
                     </CardContent>
-
-                    {/* 자세히 보기 버튼 */}
-                    <button
-                      type="button"
-                      className="mt-3 flex w-full items-center justify-center gap-1 py-3 text-sm font-medium text-white transition-colors hover:opacity-90"
-                      style={{ backgroundColor: 'var(--primary)' }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setCurrentStudy(study.id);
-                        router.push(`/studies/${study.id}`);
-                      }}
-                    >
-                      {t('list.card.viewDetail')}
-                      <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-                    </button>
                   </Card>
                 ))}
 
