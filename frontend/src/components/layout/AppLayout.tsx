@@ -321,12 +321,18 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
             >
               {/* Logo area */}
               <div
-                className="flex h-14 items-center justify-between px-4"
+                className={cn(
+                  'flex h-14 items-center justify-between px-4',
+                  collapsed && 'md:justify-center',
+                )}
                 style={{ borderBottom: '1px solid var(--border)' }}
               >
                 <Link
                   href="/dashboard"
-                  className="flex items-center gap-2"
+                  className={cn(
+                    'flex items-center gap-2',
+                    collapsed && 'md:hidden',
+                  )}
                   onClick={closeSidebar}
                 >
                   <Logo size={28} />
@@ -353,7 +359,6 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
                   className={cn(
                     'hidden rounded-btn p-1 text-text-3 transition-colors hover:bg-bg-alt hover:text-text md:block',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-                    collapsed && 'md:absolute md:right-2',
                   )}
                 >
                   {collapsed ? (
