@@ -17,6 +17,11 @@ describe('RateLimitMiddleware', () => {
     debug: jest.fn(),
   };
 
+  // 기본값(600/30) 폴백을 위해 get 은 undefined 반환. 개별 테스트에서 override 가능.
+  const mockConfigService = {
+    get: jest.fn().mockReturnValue(undefined),
+  };
+
   function createReq(overrides: Partial<Request> = {}): Request {
     return {
       path: '/api/studies',
@@ -44,6 +49,7 @@ describe('RateLimitMiddleware', () => {
     middleware = new RateLimitMiddleware(
       storage as unknown as RedisThrottlerStorage,
       mockLogger as any,
+      mockConfigService as any,
     );
   });
 
@@ -140,6 +146,32 @@ describe('RateLimitMiddleware', () => {
 
       expect(storage.increment).toHaveBeenCalledTimes(1); // default만
       expect(next).toHaveBeenCalled();
+    });
+  });
+
+  // ──────────────────────────────────────────────
+  // env 오버라이드 (Critic PR#513 P2 회귀)
+  // ──────────────────────────────────────────────
+  describe('ConfigService 기반 한도 오버라이드', () => {
+    it('RATE_LIMIT_SUBMISSION override 가 실제 한도에 반영된다', async () => {
+      const overrideConfig = {
+        get: jest.fn((key: string) =>
+          key === 'RATE_LIMIT_SUBMISSION' ? '5' : undefined,
+        ),
+      };
+      const overridden = new RateLimitMiddleware(
+        storage as unknown as RedisThrottlerStorage,
+        mockLogger as any,
+        overrideConfig as any,
+      );
+
+      storage.increment
+        .mockResolvedValueOnce({ totalHits: 1, timeToExpire: 55000 })  // default
+        .mockResolvedValueOnce({ totalHits: 6, timeToExpire: 45000 }); // submission > 5 → 429
+      const req = createReq({ path: '/api/submissions', method: 'POST' });
+
+      await expect(overridden.use(req, mockRes as Response, next)).rejects.toThrow(HttpException);
+      expect(mockRes.setHeader).toHaveBeenCalledWith('X-RateLimit-Limit-submission', 5);
     });
   });
 
