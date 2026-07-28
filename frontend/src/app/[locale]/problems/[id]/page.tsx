@@ -22,7 +22,7 @@ import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { CodeEditor } from '@/components/submission/CodeEditor';
-import { problemApi, submissionApi, type Problem, type Submission } from '@/lib/api';
+import { problemApi, submissionApi, ApiError, type Problem, type Submission } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudy } from '@/contexts/StudyContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
@@ -76,6 +76,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
   const [language, setLanguage] = useState<string>('python');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitErrorVariant, setSubmitErrorVariant] = useState<'error' | 'warning'>('error');
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -184,11 +185,13 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
   const handleSubmit = useCallback(async (): Promise<void> => {
     if (!problem) return;
     if (!code.trim()) {
+      setSubmitErrorVariant('error');
       setSubmitError(t('submit.enterCode'));
       return;
     }
     setIsSubmitting(true);
     setSubmitError(null);
+    setSubmitErrorVariant('error');
 
     try {
       const submission = await submissionApi.create({
@@ -203,7 +206,15 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
       });
       router.push(`/submissions/${submission.id}/status`);
     } catch (err: unknown) {
-      setSubmitError((err as Error).message ?? t('submit.submitError'));
+      // 제출 rate limit(429)은 오류가 아닌 정상 스로틀링 — 경고 톤 + 친절 안내로 구분
+      if (err instanceof ApiError && err.status === 429) {
+        setSubmitErrorVariant('warning');
+        setSubmitError(t('submit.rateLimited'));
+        toast.warning(t('submit.rateLimitedToast'), { duration: 4000 });
+      } else {
+        setSubmitErrorVariant('error');
+        setSubmitError((err as Error).message ?? t('submit.submitError'));
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -392,9 +403,13 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
                   </Alert>
                 )}
 
-                {/* 제출 에러 */}
+                {/* 제출 에러 / rate limit 안내 */}
                 {submitError && (
-                  <Alert variant="error" onClose={() => setSubmitError(null)}>
+                  <Alert
+                    variant={submitErrorVariant}
+                    title={submitErrorVariant === 'warning' ? t('submit.rateLimitedTitle') : undefined}
+                    onClose={() => setSubmitError(null)}
+                  >
                     {submitError}
                   </Alert>
                 )}

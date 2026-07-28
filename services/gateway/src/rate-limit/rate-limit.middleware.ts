@@ -1,10 +1,11 @@
 /**
- * @file Rate Limit 미들웨어 — 기본 600req/min + 제출 10req/min
+ * @file Rate Limit 미들웨어 — 기본 600req/min + 제출 30req/min
  * @domain common
  * @layer middleware
  * @related redis-throttler.storage.ts
  */
 import { Injectable, NestMiddleware, HttpException, HttpStatus } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Request, Response, NextFunction } from 'express';
 import { RedisThrottlerStorage } from './redis-throttler.storage';
 import { StructuredLoggerService } from '../common/logger/structured-logger.service';
@@ -13,19 +14,27 @@ import { StructuredLoggerService } from '../common/logger/structured-logger.serv
  * Rate Limit 미들웨어 — 프록시 라우트에도 적용
  *
  * - default: 분당 600건 (인증 사용자: userId 기반, 비인증: IP 기반)
- * - submission: 분당 10건 (/api/submissions POST 전용)
+ * - submission: 분당 30건 (/api/submissions POST 전용, RATE_LIMIT_SUBMISSION 로 조정)
+ *
+ * @remarks
+ * 한도값은 `ConfigService`(생성자 주입)로 읽는다. static 필드로 `process.env` 를 직접 읽으면
+ * 클래스 로드 시점이 `ConfigModule` 의 `.env` 로딩보다 앞서 `.env` 오버라이드가 무시된다 (Critic PR#513 P2).
  */
 @Injectable()
 export class RateLimitMiddleware implements NestMiddleware {
-  private static readonly DEFAULT_LIMIT = Number(process.env['RATE_LIMIT_DEFAULT']) || 600;
-  private static readonly SUBMISSION_LIMIT = 10;
   private static readonly TTL_MS = 60_000;
+
+  private readonly defaultLimit: number;
+  private readonly submissionLimit: number;
 
   constructor(
     private readonly storage: RedisThrottlerStorage,
     private readonly logger: StructuredLoggerService,
+    private readonly configService: ConfigService,
   ) {
     this.logger.setContext(RateLimitMiddleware.name);
+    this.defaultLimit = Number(this.configService.get<string>('RATE_LIMIT_DEFAULT')) || 600;
+    this.submissionLimit = Number(this.configService.get<string>('RATE_LIMIT_SUBMISSION')) || 30;
   }
 
   async use(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -47,9 +56,9 @@ export class RateLimitMiddleware implements NestMiddleware {
     const defaultKey = `rl:default:${identity}`;
     const defaultRecord = await this.storage.increment(defaultKey, RateLimitMiddleware.TTL_MS);
 
-    if (defaultRecord.totalHits > RateLimitMiddleware.DEFAULT_LIMIT) {
+    if (defaultRecord.totalHits > this.defaultLimit) {
       this.logger.warn(`Rate limit 초과 (default): ${identity}`);
-      this.setHeaders(res, defaultRecord.totalHits, RateLimitMiddleware.DEFAULT_LIMIT, defaultRecord.timeToExpire);
+      this.setHeaders(res, defaultRecord.totalHits, this.defaultLimit, defaultRecord.timeToExpire);
       throw new HttpException('Too Many Requests', HttpStatus.TOO_MANY_REQUESTS);
     }
 
@@ -58,21 +67,21 @@ export class RateLimitMiddleware implements NestMiddleware {
       const subKey = `rl:submission:${identity}`;
       const subRecord = await this.storage.increment(subKey, RateLimitMiddleware.TTL_MS);
 
-      if (subRecord.totalHits > RateLimitMiddleware.SUBMISSION_LIMIT) {
+      if (subRecord.totalHits > this.submissionLimit) {
         this.logger.warn(`Rate limit 초과 (submission): ${identity}`);
-        res.setHeader('X-RateLimit-Limit-submission', RateLimitMiddleware.SUBMISSION_LIMIT);
+        res.setHeader('X-RateLimit-Limit-submission', this.submissionLimit);
         res.setHeader('X-RateLimit-Remaining-submission', 0);
         res.setHeader('Retry-After', Math.ceil(subRecord.timeToExpire / 1000));
         throw new HttpException('Too Many Requests', HttpStatus.TOO_MANY_REQUESTS);
       }
 
-      res.setHeader('X-RateLimit-Limit-submission', RateLimitMiddleware.SUBMISSION_LIMIT);
+      res.setHeader('X-RateLimit-Limit-submission', this.submissionLimit);
       res.setHeader('X-RateLimit-Remaining-submission',
-        Math.max(0, RateLimitMiddleware.SUBMISSION_LIMIT - subRecord.totalHits));
+        Math.max(0, this.submissionLimit - subRecord.totalHits));
       res.setHeader('X-RateLimit-Reset-submission', subRecord.timeToExpire);
     }
 
-    this.setHeaders(res, defaultRecord.totalHits, RateLimitMiddleware.DEFAULT_LIMIT, defaultRecord.timeToExpire);
+    this.setHeaders(res, defaultRecord.totalHits, this.defaultLimit, defaultRecord.timeToExpire);
     next();
   }
 

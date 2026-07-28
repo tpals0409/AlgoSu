@@ -1,5 +1,7 @@
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, fireEvent } from '@testing-library/react';
 import { Suspense } from 'react';
+import { toast } from 'sonner';
+import { submissionApi, ApiError } from '@/lib/api';
 import ProblemDetailPage from '../page';
 
 jest.mock('@/i18n/navigation', () => ({
@@ -36,6 +38,10 @@ jest.mock('next-intl', () => ({
       'detail.submissions.late': '지각',
       'submit.enterCode': '코드를 입력해주세요.',
       'submit.success': '제출되었습니다',
+      'submit.submitError': '제출 중 오류가 발생했습니다.',
+      'submit.rateLimitedTitle': '잠시만요',
+      'submit.rateLimited': '짧은 시간에 제출이 많았어요. 1분 정도 후 다시 제출해주세요.',
+      'submit.rateLimitedToast': '제출이 너무 잦아요. 잠시 후 다시 시도해주세요.',
       'submit.lateWarning.title': '지각 제출',
       'submit.closed.title': '제출 마감',
       'submit.github.title': 'GitHub 미연동',
@@ -54,6 +60,10 @@ jest.mock('next-intl', () => ({
 
 jest.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'light', setTheme: jest.fn() }),
+}));
+
+jest.mock('sonner', () => ({
+  toast: { success: jest.fn(), warning: jest.fn(), error: jest.fn() },
 }));
 
 jest.mock('@/contexts/AuthContext', () => ({
@@ -115,8 +125,11 @@ jest.mock('@/components/ui/LangBadge', () => ({
 }));
 
 jest.mock('@/components/ui/Alert', () => ({
-  Alert: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="alert">{children}</div>
+  Alert: ({ children, title }: { children: React.ReactNode; title?: string }) => (
+    <div data-testid="alert">
+      {title ? <span data-testid="alert-title">{title}</span> : null}
+      {children}
+    </div>
   ),
 }));
 
@@ -131,10 +144,36 @@ jest.mock('@/components/ui/Skeleton', () => ({
 }));
 
 jest.mock('@/components/submission/CodeEditor', () => ({
-  CodeEditor: () => <div data-testid="code-editor" />,
+  CodeEditor: ({
+    onSubmit,
+    onCodeChange,
+  }: {
+    onSubmit: () => void;
+    onCodeChange: (c: string) => void;
+  }) => (
+    <div data-testid="code-editor">
+      <button data-testid="fill-code" onClick={() => onCodeChange('print(1)')}>
+        fill
+      </button>
+      <button data-testid="clear-code" onClick={() => onCodeChange('')}>
+        clear
+      </button>
+      <button data-testid="do-submit" onClick={() => onSubmit()}>
+        submit
+      </button>
+    </div>
+  ),
 }));
 
 jest.mock('@/lib/api', () => ({
+  ApiError: class ApiError extends Error {
+    status: number;
+    constructor(message: string, status: number) {
+      super(message);
+      this.name = 'ApiError';
+      this.status = status;
+    }
+  },
   problemApi: {
     findById: jest.fn().mockResolvedValue({
       id: 'test-id',
@@ -226,6 +265,68 @@ describe('ProblemDetailPage', () => {
     await renderPage();
     await screen.findByText('Two Sum');
     expect(screen.getByLabelText('문제 삭제')).toBeInTheDocument();
+  });
+
+  it('제출 rate limit(429) 시 오류가 아닌 친절 안내를 표시한다 (feedback #4)', async () => {
+    (submissionApi.create as jest.Mock).mockRejectedValueOnce(
+      new ApiError('Too Many Requests', 429),
+    );
+    await renderPage();
+    await screen.findByText('Two Sum');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('fill-code'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('do-submit'));
+    });
+
+    expect(await screen.findByText(/짧은 시간에 제출이 많았어요/)).toBeInTheDocument();
+    expect(toast.warning).toHaveBeenCalled();
+  });
+
+  it('429 경고 후 빈 코드 재제출 시 경고 타이틀이 남지 않고 에러로 표시된다 (Critic #513 P3)', async () => {
+    (submissionApi.create as jest.Mock).mockRejectedValueOnce(
+      new ApiError('Too Many Requests', 429),
+    );
+    await renderPage();
+    await screen.findByText('Two Sum');
+
+    // 1) 429 → 경고 톤(rateLimitedTitle) 노출
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('fill-code'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('do-submit'));
+    });
+    expect(await screen.findByText('잠시만요')).toBeInTheDocument();
+
+    // 2) 코드를 비우고 재제출 → 검증 에러. 경고 타이틀이 남으면 안 된다.
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('clear-code'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('do-submit'));
+    });
+    expect(await screen.findByText('코드를 입력해주세요.')).toBeInTheDocument();
+    expect(screen.queryByText('잠시만요')).not.toBeInTheDocument();
+  });
+
+  it('일반 제출 오류 시 에러 메시지를 표시한다', async () => {
+    (submissionApi.create as jest.Mock).mockRejectedValueOnce(
+      new ApiError('서버 오류', 500),
+    );
+    await renderPage();
+    await screen.findByText('Two Sum');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('fill-code'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('do-submit'));
+    });
+
+    expect(await screen.findByText('서버 오류')).toBeInTheDocument();
   });
 
   it('난이도 가리기 선호가 없으면 난이도 배지를 표시한다 (feedback #2)', async () => {
