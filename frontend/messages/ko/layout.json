@@ -22,7 +22,10 @@
     "logout": "로그아웃",
     "demoBanner": "데모 모드 · 읽기 전용",
     "avatarAlt": "{email} 아바타",
-    "openMenu": "메뉴 열기"
+    "openMenu": "메뉴 열기",
+    "resizeSidebar": "사이드바 크기 조절",
+    "collapseSidebar": "사이드바 접기",
+    "expandSidebar": "사이드바 펼치기"
   },
   "topNav": {
     "nav": {

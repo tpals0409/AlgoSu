@@ -4,7 +4,8 @@
  * @layer component
  * @related NotificationBell, AuthContext, StudyContext, LanguageSwitcher
  *
- * Desktop(>= md/768px): Left 220px fixed sidebar
+ * Desktop(>= md/768px): Left resizable sidebar (drag handle, collapse toggle,
+ *   width/collapsed state persisted to localStorage via useSidebarResize).
  * Mobile(< md/768px): Right slide overlay sidebar + top mobile header
  * Includes session expired overlay.
  */
@@ -34,6 +35,8 @@ import {
   Plus,
   LogOut,
   Shield,
+  PanelLeftClose,
+  PanelLeft,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useTranslations } from 'next-intl';
@@ -46,6 +49,7 @@ import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 import { Logo } from '@/components/ui/Logo';
 import { getAvatarSrc, getAvatarPresetKey } from '@/lib/avatars';
+import { useSidebarResize } from '@/components/layout/useSidebarResize';
 
 // ─── CONSTANTS ───────────────────────────────
 
@@ -254,9 +258,17 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
   const { theme, setTheme } = useTheme();
   const t = useTranslations('layout');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { collapsed, dragging, effectiveWidth, toggleCollapsed, onResizeStart } =
+    useSidebarResize();
 
   const isDark = theme === 'dark';
   const hasStudy = isAuthenticated && currentStudyId !== null;
+
+  // 데스크톱 사이드바 폭을 CSS 변수로 노출 → 사이드바·오프셋 동적 연동.
+  // 모바일(< md)은 오버레이라 오프셋 영향 없음.
+  const sidebarWidthVar = {
+    '--app-sidebar-width': `${effectiveWidth}px`,
+  } as React.CSSProperties;
 
   // Lock body scroll when mobile sidebar is open
   useEffect(() => {
@@ -277,7 +289,10 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
 
   return (
     <>
-      <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+      <div
+        className="min-h-screen"
+        style={{ background: 'var(--bg)', ...sidebarWidthVar }}
+      >
         {/* ── Sidebar ────────────────────────────────────── */}
         {hasStudy && (
           <>
@@ -293,7 +308,8 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
             <aside
               className={cn(
                 'fixed right-0 top-0 z-50 flex h-screen w-[220px] flex-col border-l transition-transform duration-300',
-                'md:left-0 md:right-auto md:border-l-0 md:border-r md:translate-x-0',
+                'md:left-0 md:right-auto md:w-[var(--app-sidebar-width)] md:border-l-0 md:border-r md:translate-x-0',
+                !dragging && 'md:transition-[width,transform]',
                 sidebarOpen
                   ? 'translate-x-0'
                   : 'translate-x-full md:translate-x-0',
@@ -305,22 +321,53 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
             >
               {/* Logo area */}
               <div
-                className="flex h-14 items-center justify-between px-4"
+                className={cn(
+                  'flex h-14 items-center justify-between px-4',
+                  collapsed && 'md:justify-center',
+                )}
                 style={{ borderBottom: '1px solid var(--border)' }}
               >
                 <Link
                   href="/dashboard"
-                  className="flex items-center gap-2"
+                  className={cn(
+                    'flex items-center gap-2',
+                    collapsed && 'md:hidden',
+                  )}
                   onClick={closeSidebar}
                 >
                   <Logo size={28} />
                   <span
-                    className="text-[15px] font-bold tracking-tight"
+                    className={cn(
+                      'text-[15px] font-bold tracking-tight',
+                      collapsed && 'md:hidden',
+                    )}
                     style={{ color: 'var(--text)' }}
                   >
                     AlgoSu
                   </span>
                 </Link>
+                {/* Desktop: collapse/expand toggle */}
+                <button
+                  type="button"
+                  aria-label={
+                    collapsed
+                      ? t('appLayout.expandSidebar')
+                      : t('appLayout.collapseSidebar')
+                  }
+                  aria-pressed={collapsed}
+                  onClick={toggleCollapsed}
+                  className={cn(
+                    'hidden rounded-btn p-1 text-text-3 transition-colors hover:bg-bg-alt hover:text-text md:block',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                  )}
+                >
+                  {collapsed ? (
+                    <PanelLeft className="h-4 w-4" aria-hidden />
+                  ) : (
+                    <PanelLeftClose className="h-4 w-4" aria-hidden />
+                  )}
+                </button>
+                {/* Mobile: close button */}
                 <button
                   type="button"
                   aria-label={t('appLayout.closeSidebar')}
@@ -332,8 +379,10 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
                 </button>
               </div>
 
-              {/* Study selector */}
-              <SidebarStudySelector onNavigate={closeSidebar} />
+              {/* Study selector (접힘 시 데스크톱 숨김) */}
+              <div className={cn(collapsed && 'md:hidden')}>
+                <SidebarStudySelector onNavigate={closeSidebar} />
+              </div>
 
               {/* Nav items */}
               <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
@@ -345,15 +394,19 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
                       key={item.href}
                       href={item.href}
                       onClick={closeSidebar}
+                      title={collapsed ? t(`appLayout.nav.${item.labelKey}`) : undefined}
                       className={cn(
                         'flex items-center gap-2.5 rounded-btn px-3 py-2 text-[13px] font-medium transition-all duration-150',
+                        collapsed && 'md:justify-center md:px-0',
                         active
                           ? 'bg-primary-soft text-primary'
                           : 'text-text-3 hover:bg-bg-alt hover:text-text-2',
                       )}
                     >
                       <Icon className="h-4 w-4 shrink-0" aria-hidden />
-                      {t(`appLayout.nav.${item.labelKey}`)}
+                      <span className={cn(collapsed && 'md:hidden')}>
+                        {t(`appLayout.nav.${item.labelKey}`)}
+                      </span>
                     </Link>
                   );
                 })}
@@ -364,25 +417,33 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
                 className="space-y-0.5 px-3 py-3"
                 style={{ borderTop: '1px solid var(--border)' }}
               >
-                <NotificationBell placement="sidebar" />
+                <div className={cn(collapsed && 'md:hidden')}>
+                  <NotificationBell placement="sidebar" />
+                </div>
 
                 {/* Theme toggle */}
                 <button
                   type="button"
                   aria-label={t('appLayout.toggleTheme')}
                   onClick={() => setTheme(isDark ? 'light' : 'dark')}
-                  className="flex w-full items-center gap-2.5 rounded-btn px-3 py-2 text-[13px] font-medium text-text-3 transition-all duration-150 hover:bg-bg-alt hover:text-text-2"
+                  title={collapsed ? t('appLayout.toggleTheme') : undefined}
+                  className={cn(
+                    'flex w-full items-center gap-2.5 rounded-btn px-3 py-2 text-[13px] font-medium text-text-3 transition-all duration-150 hover:bg-bg-alt hover:text-text-2',
+                    collapsed && 'md:justify-center md:px-0',
+                  )}
                 >
                   {isDark ? (
                     <Moon className="h-4 w-4 shrink-0" aria-hidden />
                   ) : (
                     <Sun className="h-4 w-4 shrink-0" aria-hidden />
                   )}
-                  {isDark ? t('appLayout.darkMode') : t('appLayout.lightMode')}
+                  <span className={cn(collapsed && 'md:hidden')}>
+                    {isDark ? t('appLayout.darkMode') : t('appLayout.lightMode')}
+                  </span>
                 </button>
 
-                {/* Language switcher */}
-                <div className="px-3 py-1.5">
+                {/* Language switcher (접힘 시 데스크톱 숨김) */}
+                <div className={cn('px-3 py-1.5', collapsed && 'md:hidden')}>
                   <Suspense fallback={null}>
                     <LanguageSwitcher />
                   </Suspense>
@@ -392,8 +453,10 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
                 <Link
                   href="/profile"
                   onClick={closeSidebar}
+                  title={collapsed ? t('appLayout.profile') : undefined}
                   className={cn(
                     'flex items-center gap-2.5 rounded-btn px-3 py-2 text-[13px] font-medium transition-all duration-150',
+                    collapsed && 'md:justify-center md:px-0',
                     pathname === '/profile'
                       ? 'bg-primary-soft text-primary'
                       : 'text-text-3 hover:bg-bg-alt hover:text-text-2',
@@ -410,22 +473,28 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
                   ) : (
                     <User className="h-4 w-4 shrink-0" aria-hidden />
                   )}
-                  {t('appLayout.profile')}
+                  <span className={cn(collapsed && 'md:hidden')}>
+                    {t('appLayout.profile')}
+                  </span>
                 </Link>
 
                 {/* Settings */}
                 <Link
                   href="/settings"
                   onClick={closeSidebar}
+                  title={collapsed ? t('appLayout.settings') : undefined}
                   className={cn(
                     'flex items-center gap-2.5 rounded-btn px-3 py-2 text-[13px] font-medium transition-all duration-150',
+                    collapsed && 'md:justify-center md:px-0',
                     pathname === '/settings'
                       ? 'bg-primary-soft text-primary'
                       : 'text-text-3 hover:bg-bg-alt hover:text-text-2',
                   )}
                 >
                   <Settings className="h-4 w-4 shrink-0" aria-hidden />
-                  {t('appLayout.settings')}
+                  <span className={cn(collapsed && 'md:hidden')}>
+                    {t('appLayout.settings')}
+                  </span>
                 </Link>
 
                 {/* Admin */}
@@ -433,19 +502,38 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
                   <Link
                     href="/admin"
                     onClick={closeSidebar}
+                    title={collapsed ? t('appLayout.admin') : undefined}
                     className={cn(
                       'flex items-center gap-2.5 rounded-btn px-3 py-2 text-[13px] font-medium transition-all duration-150',
+                      collapsed && 'md:justify-center md:px-0',
                       pathname.startsWith('/admin')
                         ? 'bg-primary-soft text-primary'
                         : 'text-text-3 hover:bg-bg-alt hover:text-text-2',
                     )}
                   >
                     <Shield className="h-4 w-4 shrink-0" aria-hidden />
-                    {t('appLayout.admin')}
+                    <span className={cn(collapsed && 'md:hidden')}>
+                      {t('appLayout.admin')}
+                    </span>
                   </Link>
                 )}
 
               </div>
+
+              {/* Desktop: 오른쪽 가장자리 리사이즈 핸들 (펼침 상태에서만) */}
+              {!collapsed && (
+                <div
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label={t('appLayout.resizeSidebar')}
+                  onPointerDown={onResizeStart}
+                  className="absolute right-0 top-0 z-10 hidden h-full w-1 cursor-col-resize transition-colors hover:bg-primary/40 md:block"
+                  style={{
+                    touchAction: 'none',
+                    backgroundColor: dragging ? 'var(--primary)' : undefined,
+                  }}
+                />
+              )}
             </aside>
           </>
         )}
@@ -514,8 +602,8 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
         {user?.email === 'demo@algosu.kr' && (
           <div
             className={cn(
-              'fixed left-0 right-0 z-20 flex items-center justify-center gap-2 border-b py-1.5 text-[12px] font-medium',
-              hasStudy ? 'md:ml-[220px]' : '',
+              'fixed left-0 right-0 z-20 flex items-center justify-center gap-2 border-b py-1.5 text-[12px] font-medium transition-[margin] duration-200',
+              hasStudy ? 'md:ml-[var(--app-sidebar-width)]' : '',
             )}
             style={{
               top: hasStudy ? '0' : '56px',
@@ -533,7 +621,13 @@ export function AppLayout({ children, className }: AppLayoutProps): ReactNode {
         )}
 
         {/* ── Main content ───────────────────────────────── */}
-        <main id="main-content" className={hasStudy ? 'md:ml-[220px]' : ''}>
+        <main
+          id="main-content"
+          className={cn(
+            'transition-[margin] duration-200',
+            hasStudy ? 'md:ml-[var(--app-sidebar-width)]' : '',
+          )}
+        >
           <div
             className={cn(
               hasStudy
