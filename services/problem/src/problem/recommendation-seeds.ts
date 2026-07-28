@@ -84,15 +84,28 @@ const PROGRAMMERS_SEEDS: readonly RecommendationItem[] = [
 ];
 
 /**
- * 백준(BOJ) 대표 문제 12선 — 플랫폼 토글이 BOJ일 때 콜드스타트 폴백.
- * 난이도는 solved.ac 티어 대분류(BRONZE/SILVER/GOLD)만 신뢰 가능 값으로 기입하고,
+ * 백준(BOJ) 대표 문제 20선 — 플랫폼 토글이 BOJ일 때 콜드스타트 폴백.
+ * 난이도는 solved.ac 티어 대분류(BRONZE/SILVER/GOLD/PLATINUM)만 신뢰 가능 값으로 기입하고,
  * solved.ac 세부 숫자 티어는 단정하지 않으므로 level=null (FE가 difficulty로 대체 표시).
+ *
+ * 대표성 보강(Sprint 264): 기존 12선은 BRONZE/SILVER에만 편중(GOLD 이상 0)되어
+ *   BOJ 토글 + GOLD 이상 선택 시 Tier 3 폴백이 전무했다. GOLD 6 · PLATINUM 2를 추가해
+ *   플랫폼 토글 상급 난이도 콜드스타트를 복구하고, 최단경로(Dijkstra)/MST/위상정렬/
+ *   knapsack/backtracking 등 미커버 알고리즘 카테고리를 확충한다.
+ *
+ * 의도적 비목표(non-goal):
+ *   - BOJ DIAMOND/RUBY seed는 미추가 — solved.ac 세부 티어를 단정하지 않는 본 파일
+ *     원칙(header)상 특정 문제를 DIAMOND/RUBY로 확정 라벨링하는 것은 근거 없는 과단정.
+ *     검증 가능한 SSOT 확보 전까지 대분류가 명확한 GOLD/PLATINUM까지만 보강한다.
+ *   - ProblemCategory.SQL seed는 미추가 — SQL 콜드스타트는 별도 스프린트 범위(별도 SSOT 필요).
  */
 const BOJ_SEEDS: readonly RecommendationItem[] = [
+  // BRONZE (4)
   { title: 'A+B', sourceUrl: bojUrl(1000), sourcePlatform: 'BOJ', difficulty: Difficulty.BRONZE, level: null, tags: ['사칙연산'], category: ProblemCategory.ALGORITHM },
   { title: '구구단', sourceUrl: bojUrl(2739), sourcePlatform: 'BOJ', difficulty: Difficulty.BRONZE, level: null, tags: ['반복문'], category: ProblemCategory.ALGORITHM },
   { title: '별 찍기 - 1', sourceUrl: bojUrl(2438), sourcePlatform: 'BOJ', difficulty: Difficulty.BRONZE, level: null, tags: ['구현'], category: ProblemCategory.ALGORITHM },
   { title: '최댓값', sourceUrl: bojUrl(2562), sourcePlatform: 'BOJ', difficulty: Difficulty.BRONZE, level: null, tags: ['구현'], category: ProblemCategory.ALGORITHM },
+  // SILVER (8)
   { title: '바이러스', sourceUrl: bojUrl(2606), sourcePlatform: 'BOJ', difficulty: Difficulty.SILVER, level: null, tags: ['DFS/BFS'], category: ProblemCategory.ALGORITHM },
   { title: 'DFS와 BFS', sourceUrl: bojUrl(1260), sourcePlatform: 'BOJ', difficulty: Difficulty.SILVER, level: null, tags: ['DFS/BFS'], category: ProblemCategory.ALGORITHM },
   { title: '미로 탐색', sourceUrl: bojUrl(2178), sourcePlatform: 'BOJ', difficulty: Difficulty.SILVER, level: null, tags: ['BFS'], category: ProblemCategory.ALGORITHM },
@@ -101,6 +114,16 @@ const BOJ_SEEDS: readonly RecommendationItem[] = [
   { title: '2×n 타일링', sourceUrl: bojUrl(11726), sourcePlatform: 'BOJ', difficulty: Difficulty.SILVER, level: null, tags: ['DP'], category: ProblemCategory.ALGORITHM },
   { title: '1, 2, 3 더하기', sourceUrl: bojUrl(9095), sourcePlatform: 'BOJ', difficulty: Difficulty.SILVER, level: null, tags: ['DP'], category: ProblemCategory.ALGORITHM },
   { title: '동전 0', sourceUrl: bojUrl(11047), sourcePlatform: 'BOJ', difficulty: Difficulty.SILVER, level: null, tags: ['그리디'], category: ProblemCategory.ALGORITHM },
+  // GOLD (6) — 상급 난이도 폴백 복구 + 미커버 카테고리(최단경로/MST/knapsack/backtracking) 확충
+  { title: '최단경로', sourceUrl: bojUrl(1753), sourcePlatform: 'BOJ', difficulty: Difficulty.GOLD, level: null, tags: ['다익스트라'], category: ProblemCategory.ALGORITHM },
+  { title: '최소비용 구하기', sourceUrl: bojUrl(1916), sourcePlatform: 'BOJ', difficulty: Difficulty.GOLD, level: null, tags: ['다익스트라'], category: ProblemCategory.ALGORITHM },
+  { title: '최소 스패닝 트리', sourceUrl: bojUrl(1197), sourcePlatform: 'BOJ', difficulty: Difficulty.GOLD, level: null, tags: ['최소스패닝트리'], category: ProblemCategory.ALGORITHM },
+  { title: '평범한 배낭', sourceUrl: bojUrl(12865), sourcePlatform: 'BOJ', difficulty: Difficulty.GOLD, level: null, tags: ['DP'], category: ProblemCategory.ALGORITHM },
+  { title: 'N과 M (1)', sourceUrl: bojUrl(15649), sourcePlatform: 'BOJ', difficulty: Difficulty.GOLD, level: null, tags: ['백트래킹'], category: ProblemCategory.ALGORITHM },
+  { title: '두 용액', sourceUrl: bojUrl(2470), sourcePlatform: 'BOJ', difficulty: Difficulty.GOLD, level: null, tags: ['투포인터'], category: ProblemCategory.ALGORITHM },
+  // PLATINUM (2) — 위상정렬+DP / 비트마스크 DP 등 상위 알고리즘 대표
+  { title: 'ACM Craft', sourceUrl: bojUrl(1005), sourcePlatform: 'BOJ', difficulty: Difficulty.PLATINUM, level: null, tags: ['위상정렬'], category: ProblemCategory.ALGORITHM },
+  { title: '외판원 순회', sourceUrl: bojUrl(2098), sourcePlatform: 'BOJ', difficulty: Difficulty.PLATINUM, level: null, tags: ['비트마스크'], category: ProblemCategory.ALGORITHM },
 ];
 
 /**
