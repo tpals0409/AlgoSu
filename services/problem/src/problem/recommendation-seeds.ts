@@ -84,15 +84,31 @@ const PROGRAMMERS_SEEDS: readonly RecommendationItem[] = [
 ];
 
 /**
- * 백준(BOJ) 대표 문제 12선 — 플랫폼 토글이 BOJ일 때 콜드스타트 폴백.
- * 난이도는 solved.ac 티어 대분류(BRONZE/SILVER/GOLD)만 신뢰 가능 값으로 기입하고,
+ * 백준(BOJ) 대표 문제 23선 — 플랫폼 토글이 BOJ일 때 콜드스타트 폴백.
+ * 난이도는 solved.ac 티어 대분류(BRONZE/SILVER/GOLD/PLATINUM)만 신뢰 가능 값으로 기입하고,
  * solved.ac 세부 숫자 티어는 단정하지 않으므로 level=null (FE가 difficulty로 대체 표시).
+ *
+ * 대표성 보강(Sprint 264): 기존 12선은 BRONZE/SILVER에만 편중(GOLD 이상 0)되어
+ *   BOJ 토글 + GOLD 이상 선택 시 Tier 3 폴백이 전무했다. GOLD 7 · PLATINUM 3(+ SILVER 1)을 추가해
+ *   플랫폼 토글 상급 난이도 콜드스타트를 복구하고, 최단경로(Dijkstra)/MST/위상정렬/knapsack/
+ *   투포인터/세그먼트트리/이분매칭/LCA 등 미커버 알고리즘 카테고리를 확충한다.
+ *
+ * 티어 정합(Sprint 264 Critic 후속): 전 GOLD/PLATINUM seed의 대분류를 solved.ac API
+ *   (problem/show level 필드)로 실측 교차검증했다 (level 6-10=SILVER, 11-15=GOLD, 16-20=PLATINUM).
+ *   초안 오라벨 3건(15649 GOLD→SILVER·level 8 / 1005·2098 PLATINUM→GOLD·level 13·15)을
+ *   실측값으로 교정하고, 진짜 PLATINUM(3653·11375·1761, level 16-17)으로 상급 폴백을 확보했다.
+ *
+ * 의도적 비목표(non-goal):
+ *   - BOJ DIAMOND/RUBY seed는 미추가 — 검증 가능한 SSOT로 대분류가 명확한 GOLD/PLATINUM까지만 보강.
+ *   - ProblemCategory.SQL seed는 미추가 — SQL 콜드스타트는 별도 스프린트 범위(별도 SSOT 필요).
  */
 const BOJ_SEEDS: readonly RecommendationItem[] = [
+  // BRONZE (4)
   { title: 'A+B', sourceUrl: bojUrl(1000), sourcePlatform: 'BOJ', difficulty: Difficulty.BRONZE, level: null, tags: ['사칙연산'], category: ProblemCategory.ALGORITHM },
   { title: '구구단', sourceUrl: bojUrl(2739), sourcePlatform: 'BOJ', difficulty: Difficulty.BRONZE, level: null, tags: ['반복문'], category: ProblemCategory.ALGORITHM },
   { title: '별 찍기 - 1', sourceUrl: bojUrl(2438), sourcePlatform: 'BOJ', difficulty: Difficulty.BRONZE, level: null, tags: ['구현'], category: ProblemCategory.ALGORITHM },
   { title: '최댓값', sourceUrl: bojUrl(2562), sourcePlatform: 'BOJ', difficulty: Difficulty.BRONZE, level: null, tags: ['구현'], category: ProblemCategory.ALGORITHM },
+  // SILVER (9) — solved.ac Silver 실측
   { title: '바이러스', sourceUrl: bojUrl(2606), sourcePlatform: 'BOJ', difficulty: Difficulty.SILVER, level: null, tags: ['DFS/BFS'], category: ProblemCategory.ALGORITHM },
   { title: 'DFS와 BFS', sourceUrl: bojUrl(1260), sourcePlatform: 'BOJ', difficulty: Difficulty.SILVER, level: null, tags: ['DFS/BFS'], category: ProblemCategory.ALGORITHM },
   { title: '미로 탐색', sourceUrl: bojUrl(2178), sourcePlatform: 'BOJ', difficulty: Difficulty.SILVER, level: null, tags: ['BFS'], category: ProblemCategory.ALGORITHM },
@@ -101,6 +117,19 @@ const BOJ_SEEDS: readonly RecommendationItem[] = [
   { title: '2×n 타일링', sourceUrl: bojUrl(11726), sourcePlatform: 'BOJ', difficulty: Difficulty.SILVER, level: null, tags: ['DP'], category: ProblemCategory.ALGORITHM },
   { title: '1, 2, 3 더하기', sourceUrl: bojUrl(9095), sourcePlatform: 'BOJ', difficulty: Difficulty.SILVER, level: null, tags: ['DP'], category: ProblemCategory.ALGORITHM },
   { title: '동전 0', sourceUrl: bojUrl(11047), sourcePlatform: 'BOJ', difficulty: Difficulty.SILVER, level: null, tags: ['그리디'], category: ProblemCategory.ALGORITHM },
+  { title: 'N과 M (1)', sourceUrl: bojUrl(15649), sourcePlatform: 'BOJ', difficulty: Difficulty.SILVER, level: null, tags: ['백트래킹'], category: ProblemCategory.ALGORITHM },
+  // GOLD (7) — 상급 폴백 복구 + 미커버 카테고리(최단경로/MST/위상정렬/knapsack/투포인터) 확충 (solved.ac Gold 실측)
+  { title: '최단경로', sourceUrl: bojUrl(1753), sourcePlatform: 'BOJ', difficulty: Difficulty.GOLD, level: null, tags: ['다익스트라'], category: ProblemCategory.ALGORITHM },
+  { title: '최소비용 구하기', sourceUrl: bojUrl(1916), sourcePlatform: 'BOJ', difficulty: Difficulty.GOLD, level: null, tags: ['다익스트라'], category: ProblemCategory.ALGORITHM },
+  { title: '최소 스패닝 트리', sourceUrl: bojUrl(1197), sourcePlatform: 'BOJ', difficulty: Difficulty.GOLD, level: null, tags: ['최소스패닝트리'], category: ProblemCategory.ALGORITHM },
+  { title: '평범한 배낭', sourceUrl: bojUrl(12865), sourcePlatform: 'BOJ', difficulty: Difficulty.GOLD, level: null, tags: ['DP'], category: ProblemCategory.ALGORITHM },
+  { title: '두 용액', sourceUrl: bojUrl(2470), sourcePlatform: 'BOJ', difficulty: Difficulty.GOLD, level: null, tags: ['투포인터'], category: ProblemCategory.ALGORITHM },
+  { title: 'ACM Craft', sourceUrl: bojUrl(1005), sourcePlatform: 'BOJ', difficulty: Difficulty.GOLD, level: null, tags: ['위상정렬'], category: ProblemCategory.ALGORITHM },
+  { title: '외판원 순회', sourceUrl: bojUrl(2098), sourcePlatform: 'BOJ', difficulty: Difficulty.GOLD, level: null, tags: ['비트마스크'], category: ProblemCategory.ALGORITHM },
+  // PLATINUM (3) — 세그먼트트리 / 이분매칭 / LCA 상위 알고리즘 대표 (solved.ac Platinum 실측 level 16-17)
+  { title: '영화 수집', sourceUrl: bojUrl(3653), sourcePlatform: 'BOJ', difficulty: Difficulty.PLATINUM, level: null, tags: ['세그먼트트리'], category: ProblemCategory.ALGORITHM },
+  { title: '열혈강호', sourceUrl: bojUrl(11375), sourcePlatform: 'BOJ', difficulty: Difficulty.PLATINUM, level: null, tags: ['이분매칭'], category: ProblemCategory.ALGORITHM },
+  { title: '정점들의 거리', sourceUrl: bojUrl(1761), sourcePlatform: 'BOJ', difficulty: Difficulty.PLATINUM, level: null, tags: ['LCA'], category: ProblemCategory.ALGORITHM },
 ];
 
 /**
