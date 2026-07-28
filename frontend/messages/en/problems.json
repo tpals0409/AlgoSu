@@ -85,7 +85,7 @@
     "successDescription": "AI analysis has started. Please wait a moment.",
     "submitError": "An error occurred during submission.",
     "rateLimitedTitle": "Just a moment",
-    "rateLimited": "You've submitted several times in a short window. Please try again in about a minute. (Your submissions are still processed normally.)",
+    "rateLimited": "You've submitted several times in a short window. Please try again in about a minute.",
     "rateLimitedToast": "Submitting too frequently. Please try again shortly.",
     "deleteError": "An error occurred while deleting.",
     "lateWarning": {

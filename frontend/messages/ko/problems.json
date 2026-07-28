@@ -85,7 +85,7 @@
     "successDescription": "AI 분석이 시작됩니다. 잠시만 기다려주세요.",
     "submitError": "제출 중 오류가 발생했습니다.",
     "rateLimitedTitle": "잠시만요",
-    "rateLimited": "짧은 시간에 제출이 많았어요. 1분 정도 후 다시 제출해주세요. (제출 자체는 정상 처리됩니다)",
+    "rateLimited": "짧은 시간에 제출이 많았어요. 1분 정도 후 다시 제출해주세요.",
     "rateLimitedToast": "제출이 너무 잦아요. 잠시 후 다시 시도해주세요.",
     "deleteError": "삭제 중 오류가 발생했습니다.",
     "lateWarning": {

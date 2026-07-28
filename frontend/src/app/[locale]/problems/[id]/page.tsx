@@ -185,6 +185,7 @@ export default function ProblemDetailPage({ params }: PageProps): ReactNode {
   const handleSubmit = useCallback(async (): Promise<void> => {
     if (!problem) return;
     if (!code.trim()) {
+      setSubmitErrorVariant('error');
       setSubmitError(t('submit.enterCode'));
       return;
     }

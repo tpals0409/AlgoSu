@@ -125,8 +125,11 @@ jest.mock('@/components/ui/LangBadge', () => ({
 }));
 
 jest.mock('@/components/ui/Alert', () => ({
-  Alert: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="alert">{children}</div>
+  Alert: ({ children, title }: { children: React.ReactNode; title?: string }) => (
+    <div data-testid="alert">
+      {title ? <span data-testid="alert-title">{title}</span> : null}
+      {children}
+    </div>
   ),
 }));
 
@@ -151,6 +154,9 @@ jest.mock('@/components/submission/CodeEditor', () => ({
     <div data-testid="code-editor">
       <button data-testid="fill-code" onClick={() => onCodeChange('print(1)')}>
         fill
+      </button>
+      <button data-testid="clear-code" onClick={() => onCodeChange('')}>
+        clear
       </button>
       <button data-testid="do-submit" onClick={() => onSubmit()}>
         submit
@@ -277,6 +283,33 @@ describe('ProblemDetailPage', () => {
 
     expect(await screen.findByText(/짧은 시간에 제출이 많았어요/)).toBeInTheDocument();
     expect(toast.warning).toHaveBeenCalled();
+  });
+
+  it('429 경고 후 빈 코드 재제출 시 경고 타이틀이 남지 않고 에러로 표시된다 (Critic #513 P3)', async () => {
+    (submissionApi.create as jest.Mock).mockRejectedValueOnce(
+      new ApiError('Too Many Requests', 429),
+    );
+    await renderPage();
+    await screen.findByText('Two Sum');
+
+    // 1) 429 → 경고 톤(rateLimitedTitle) 노출
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('fill-code'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('do-submit'));
+    });
+    expect(await screen.findByText('잠시만요')).toBeInTheDocument();
+
+    // 2) 코드를 비우고 재제출 → 검증 에러. 경고 타이틀이 남으면 안 된다.
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('clear-code'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('do-submit'));
+    });
+    expect(await screen.findByText('코드를 입력해주세요.')).toBeInTheDocument();
+    expect(screen.queryByText('잠시만요')).not.toBeInTheDocument();
   });
 
   it('일반 제출 오류 시 에러 메시지를 표시한다', async () => {
