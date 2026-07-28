@@ -2,12 +2,14 @@
   "bugReport": {
     "descriptionLabel": "Bug Description",
     "descriptionPlaceholder": "Describe what went wrong...",
-    "screenshotLabel": "Screenshot (optional)",
+    "screenshotLabel": "Screenshots (optional, up to 4)",
     "screenshotPreviewAlt": "Screenshot preview",
     "screenshotFullAlt": "Full screenshot view",
     "screenshotClickToView": "Click to view full size",
     "removeScreenshot": "Remove screenshot",
     "attachImage": "Attach image or paste from clipboard (Ctrl+V)",
+    "attachMore": "Add image",
+    "screenshotCountLabel": "{count}/{max}",
     "selectFile": "Select screenshot file",
     "close": "Close",
     "submitting": "Sending...",
@@ -19,7 +21,8 @@
       "canvasContext": "Could not create canvas context.",
       "imageTooLarge": "Image is too large. Please use a smaller image.",
       "imageUnreadable": "Could not read the image.",
-      "imageProcessFailed": "Image processing failed."
+      "imageProcessFailed": "Image processing failed.",
+      "tooManyImages": "You can attach up to 4 screenshots."
     }
   },
   "feedbackForm": {

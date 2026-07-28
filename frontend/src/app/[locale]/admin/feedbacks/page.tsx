@@ -572,18 +572,29 @@ function FeedbackDetailModal({
             </div>
           )}
 
-          {feedback.screenshot && (
-            <div>
-              <p className="text-[11px] font-medium text-[var(--text-3)]">
-                {t('feedbacks.modal.screenshotLabel')}
-              </p>
-              <img
-                src={feedback.screenshot}
-                alt={t('feedbacks.modal.screenshotAlt')}
-                className="mt-1 max-h-[300px] rounded-card border border-[var(--border)] object-contain"
-              />
-            </div>
-          )}
+          {(() => {
+            const shots =
+              feedback.screenshots ??
+              (feedback.screenshot ? [feedback.screenshot] : []);
+            if (shots.length === 0) return null;
+            return (
+              <div>
+                <p className="text-[11px] font-medium text-[var(--text-3)]">
+                  {t('feedbacks.modal.screenshotLabel')}
+                </p>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {shots.map((shot, index) => (
+                    <img
+                      key={index}
+                      src={shot}
+                      alt={t('feedbacks.modal.screenshotAlt')}
+                      className="max-h-[300px] rounded-card border border-[var(--border)] object-contain"
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           <div className="flex items-center gap-4 text-[12px] text-[var(--text-3)]">
             <span>

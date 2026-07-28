@@ -27,6 +27,9 @@ const IMAGE_ERROR = {
   UNREADABLE: 'IMAGE_UNREADABLE',
 } as const;
 
+/** 버그 리포트 최대 첨부 이미지 수 (feedback #14) */
+const MAX_SCREENSHOTS = 4;
+
 /**
  * 이미지를 최대 너비로 리사이즈하여 data URL을 반환한다.
  * 에러 발생 시 에러 코드 문자열을 throw한다.
@@ -70,8 +73,8 @@ export function BugReportForm({ onSuccess }: BugReportFormProps) {
   const tErrors = useTranslations('errors');
   const { currentStudyId } = useStudy();
   const [submitting, setSubmitting] = useState(false);
-  const [screenshot, setScreenshot] = useState<string | null>(null);
-  const [previewOpen, setPreviewOpen] = useState(false);
+  const [screenshots, setScreenshots] = useState<string[]>([]);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -112,7 +115,13 @@ export function BugReportForm({ onSuccess }: BugReportFormProps) {
       }
       try {
         const dataUrl = await resizeImage(file);
-        setScreenshot(dataUrl);
+        setScreenshots((prev) => {
+          if (prev.length >= MAX_SCREENSHOTS) {
+            toast.error(t('bugReport.errors.tooManyImages'));
+            return prev;
+          }
+          return [...prev, dataUrl];
+        });
       } catch (err) {
         const code = err instanceof Error ? err.message : '';
         toast.error(getImageErrorMessage(code));
@@ -141,16 +150,16 @@ export function BugReportForm({ onSuccess }: BugReportFormProps) {
 
   const handleFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) handleImageFile(file);
+      const files = e.target.files ? Array.from(e.target.files) : [];
+      for (const file of files) handleImageFile(file);
       // Reset input so same file can be re-selected
       e.target.value = '';
     },
     [handleImageFile],
   );
 
-  const removeScreenshot = useCallback(() => {
-    setScreenshot(null);
+  const removeScreenshot = useCallback((index: number) => {
+    setScreenshots((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
   const onSubmit = async (data: FeedbackFormData) => {
@@ -162,14 +171,14 @@ export function BugReportForm({ onSuccess }: BugReportFormProps) {
         studyId: currentStudyId ?? undefined,
         pageUrl: typeof window !== 'undefined' ? window.location.href : undefined,
         browserInfo: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
-        screenshot: screenshot ?? undefined,
+        screenshots: screenshots.length > 0 ? screenshots : undefined,
       });
       eventTracker?.track('bug_report:submit', {
-        meta: { hasScreenshot: !!screenshot },
+        meta: { hasScreenshot: screenshots.length > 0, screenshotCount: screenshots.length },
       });
       toast.success(t('bugReport.submitSuccess'));
       reset();
-      setScreenshot(null);
+      setScreenshots([]);
       onSuccess?.();
     } catch {
       toast.error(t('bugReport.submitError'));
@@ -222,46 +231,62 @@ export function BugReportForm({ onSuccess }: BugReportFormProps) {
           {t('bugReport.screenshotLabel')}
         </label>
 
-        {screenshot ? (
-          <div className="relative inline-block">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={screenshot}
-              alt={t('bugReport.screenshotPreviewAlt')}
-              className="max-h-[200px] cursor-pointer rounded-card border object-contain transition-opacity hover:opacity-80"
-              style={{ borderColor: 'var(--border)' }}
-              onClick={() => setPreviewOpen(true)}
-              title={t('bugReport.screenshotClickToView')}
-            />
+        <div className="flex flex-wrap items-center gap-2">
+          {screenshots.map((shot, index) => (
+            <div key={index} className="relative inline-block">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={shot}
+                alt={t('bugReport.screenshotPreviewAlt')}
+                className="max-h-[120px] cursor-pointer rounded-card border object-contain transition-opacity hover:opacity-80"
+                style={{ borderColor: 'var(--border)' }}
+                onClick={() => setPreviewIndex(index)}
+                title={t('bugReport.screenshotClickToView')}
+              />
+              <button
+                type="button"
+                onClick={() => removeScreenshot(index)}
+                className="absolute -right-2 -top-2 rounded-full p-0.5"
+                style={{ background: 'var(--error)', color: 'white' }}
+                aria-label={t('bugReport.removeScreenshot')}
+              >
+                <X className="h-3 w-3" aria-hidden />
+              </button>
+            </div>
+          ))}
+
+          {screenshots.length < MAX_SCREENSHOTS && (
             <button
               type="button"
-              onClick={removeScreenshot}
-              className="absolute -right-2 -top-2 rounded-full p-0.5"
-              style={{ background: 'var(--error)', color: 'white' }}
-              aria-label={t('bugReport.removeScreenshot')}
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 rounded-card border border-dashed px-4 py-3 text-[12px] transition-colors hover:bg-bg-alt"
+              style={{
+                borderColor: 'var(--border)',
+                color: 'var(--text-3)',
+              }}
             >
-              <X className="h-3 w-3" aria-hidden />
+              <ImagePlus className="h-4 w-4" aria-hidden />
+              {screenshots.length === 0
+                ? t('bugReport.attachImage')
+                : t('bugReport.attachMore')}
             </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2 rounded-card border border-dashed px-4 py-3 text-[12px] transition-colors hover:bg-bg-alt"
-            style={{
-              borderColor: 'var(--border)',
-              color: 'var(--text-3)',
-            }}
-          >
-            <ImagePlus className="h-4 w-4" aria-hidden />
-            {t('bugReport.attachImage')}
-          </button>
+          )}
+        </div>
+
+        {screenshots.length > 0 && (
+          <p className="mt-1 text-[11px]" style={{ color: 'var(--text-3)' }}>
+            {t('bugReport.screenshotCountLabel', {
+              count: screenshots.length,
+              max: MAX_SCREENSHOTS,
+            })}
+          </p>
         )}
 
         <input
           ref={fileInputRef}
           type="file"
           accept="image/*"
+          multiple
           className="hidden"
           onChange={handleFileChange}
           aria-label={t('bugReport.selectFile')}
@@ -280,21 +305,21 @@ export function BugReportForm({ onSuccess }: BugReportFormProps) {
       </button>
 
       {/* Screenshot fullscreen modal */}
-      {previewOpen && screenshot && (
+      {previewIndex !== null && screenshots[previewIndex] && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-          onClick={() => setPreviewOpen(false)}
+          onClick={() => setPreviewIndex(null)}
         >
           <div className="relative mx-4 max-h-[80vh] max-w-[90vw]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={screenshot}
+              src={screenshots[previewIndex]}
               alt={t('bugReport.screenshotFullAlt')}
               className="max-h-[80vh] rounded-card object-contain"
             />
             <button
               type="button"
-              onClick={() => setPreviewOpen(false)}
+              onClick={() => setPreviewIndex(null)}
               className="absolute -right-2 -top-2 rounded-full p-1"
               style={{ background: 'var(--error)', color: 'white' }}
               aria-label={t('bugReport.close')}

@@ -144,6 +144,7 @@ describe('FeedbackService', () => {
         pageUrl: null,
         browserInfo: null,
         screenshot: null,
+        screenshots: null,
       });
       expect(feedbackRepo.save).toHaveBeenCalledWith(fb);
     });
@@ -176,6 +177,31 @@ describe('FeedbackService', () => {
         pageUrl: '/problems',
         browserInfo: 'Chrome 130',
         screenshot: 'data:image/png;base64,abc',
+        screenshots: null,
+      });
+    });
+
+    it('screenshots 배열을 저장하고 legacy screenshot을 첫 장으로 채운다 (feedback #14)', async () => {
+      const fb = mockFeedback({ category: FeedbackCategory.BUG });
+      feedbackRepo.create.mockReturnValue(fb);
+      feedbackRepo.save.mockResolvedValue(fb);
+
+      await service.create({
+        userId: 'user-1',
+        category: FeedbackCategory.BUG,
+        content: '다중 스크린샷 피드백',
+        screenshots: ['data:image/webp;base64,one', 'data:image/webp;base64,two'],
+      });
+
+      expect(feedbackRepo.create).toHaveBeenCalledWith({
+        userId: 'user-1',
+        studyId: null,
+        category: FeedbackCategory.BUG,
+        content: '다중 스크린샷 피드백',
+        pageUrl: null,
+        browserInfo: null,
+        screenshot: 'data:image/webp;base64,one',
+        screenshots: ['data:image/webp;base64,one', 'data:image/webp;base64,two'],
       });
     });
 
@@ -651,8 +677,13 @@ describe('FeedbackService', () => {
       expect(result).toBe(5);
       expect(feedbackRepo.createQueryBuilder).toHaveBeenCalled();
       expect(mockQueryBuilder.update).toHaveBeenCalledWith(Feedback);
-      expect(mockQueryBuilder.set).toHaveBeenCalledWith({ screenshot: null });
-      expect(mockQueryBuilder.where).toHaveBeenCalledWith('screenshot IS NOT NULL');
+      expect(mockQueryBuilder.set).toHaveBeenCalledWith({
+        screenshot: null,
+        screenshots: null,
+      });
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith(
+        '(screenshot IS NOT NULL OR screenshots IS NOT NULL)',
+      );
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         'created_at < :cutoff',
         expect.objectContaining({ cutoff: expect.any(Date) }),

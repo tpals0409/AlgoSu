@@ -18,7 +18,14 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { IsEnum, IsString, IsOptional, MaxLength } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsEnum,
+  IsString,
+  IsOptional,
+  MaxLength,
+} from 'class-validator';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 import { IdentityClientService } from '../identity-client/identity-client.service';
@@ -49,6 +56,13 @@ class CreateFeedbackBodyDto {
   @IsString()
   @MaxLength(700000)
   screenshot?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(4)
+  @IsString({ each: true })
+  @MaxLength(700000, { each: true })
+  screenshots?: string[];
 }
 
 @ApiTags('Feedback')
