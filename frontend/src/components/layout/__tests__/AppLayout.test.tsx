@@ -5,7 +5,7 @@
  * @related AppLayout, @/i18n/navigation (H3 fix: locale-stripped usePathname)
  */
 
-import { screen } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/react';
 import { renderWithI18n } from '@/test-utils/i18n';
 import { AppLayout } from '../AppLayout';
 
@@ -37,6 +37,8 @@ jest.mock('lucide-react', () => {
     LogOut: Icon,
     Settings: Icon,
     Shield: Icon,
+    PanelLeftClose: Icon,
+    PanelLeft: Icon,
   };
 });
 
@@ -208,5 +210,48 @@ describe('AppLayout isActive — locale-aware pathname (H3)', () => {
     renderWithI18n(<AppLayout>content</AppLayout>);
     // mockUsePathname이 호출됐다면 AppLayout이 @/i18n/navigation을 사용 중
     expect(mockUsePathname).toHaveBeenCalled();
+  });
+});
+
+/**
+ * Sprint 265 #12 — 데스크톱 사이드바 접기 토글 통합 테스트.
+ * 리사이즈 폭 로직은 useSidebarResize.test.tsx에서 단위 검증하고,
+ * 여기서는 실제 AppLayout에 접기 버튼·리사이즈 핸들이 배선됐는지 확인한다.
+ */
+describe('AppLayout 사이드바 접기·리사이즈 (#12)', () => {
+  beforeEach(() => {
+    mockUseStudy.mockReturnValue({
+      currentStudyId: 'study-1',
+      currentStudyName: '테스트 스터디',
+      studies: [{ id: 'study-1', name: '테스트 스터디', avatar_url: null }],
+      setCurrentStudy: jest.fn(),
+    });
+    window.localStorage.clear();
+  });
+
+  it('리사이즈 핸들(separator)이 렌더된다', () => {
+    renderWithI18n(<AppLayout>content</AppLayout>);
+    expect(
+      screen.getByRole('separator', { name: /크기 조절/ }),
+    ).toBeInTheDocument();
+  });
+
+  it('접기 버튼 클릭 시 펼치기 버튼으로 전환되고 localStorage에 저장된다', () => {
+    renderWithI18n(<AppLayout>content</AppLayout>);
+    const collapseBtn = screen.getByRole('button', { name: /사이드바 접기/ });
+    fireEvent.click(collapseBtn);
+
+    expect(
+      screen.getByRole('button', { name: /사이드바 펼치기/ }),
+    ).toBeInTheDocument();
+    expect(window.localStorage.getItem('algosu:appSidebarCollapsed')).toBe('true');
+  });
+
+  it('접힘 상태에서는 리사이즈 핸들이 숨겨진다', () => {
+    renderWithI18n(<AppLayout>content</AppLayout>);
+    fireEvent.click(screen.getByRole('button', { name: /사이드바 접기/ }));
+    expect(
+      screen.queryByRole('separator', { name: /크기 조절/ }),
+    ).not.toBeInTheDocument();
   });
 });

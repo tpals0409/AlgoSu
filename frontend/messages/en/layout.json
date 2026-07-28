@@ -22,7 +22,10 @@
     "logout": "Log Out",
     "demoBanner": "Demo Mode · Read-only",
     "avatarAlt": "{email} avatar",
-    "openMenu": "Open Menu"
+    "openMenu": "Open Menu",
+    "resizeSidebar": "Resize Sidebar",
+    "collapseSidebar": "Collapse Sidebar",
+    "expandSidebar": "Expand Sidebar"
   },
   "topNav": {
     "nav": {
