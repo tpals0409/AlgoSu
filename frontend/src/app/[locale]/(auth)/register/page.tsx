@@ -12,8 +12,6 @@ import { useSearchParams } from 'next/navigation';
 import { useRouter } from '@/i18n/navigation';
 import { Link } from '@/i18n/navigation';
 import { Suspense } from 'react';
-import { useTheme } from 'next-themes';
-import { Sun, Moon } from 'lucide-react';
 import { Logo } from '@/components/ui/Logo';
 import { Alert } from '@/components/ui/Alert';
 import { InlineSpinner } from '@/components/ui/LoadingSpinner';
@@ -64,7 +62,6 @@ function RegisterContent(): ReactNode {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, isLoading: authLoading, loginFromCookie } = useAuth();
-  const { theme, setTheme } = useTheme();
   const [error, setError] = useState<string | null>(null);
   const [loadingProvider, setLoadingProvider] = useState<OAuthProvider | null>(null);
   const [demoLoading, setDemoLoading] = useState(false);
@@ -137,28 +134,8 @@ function RegisterContent(): ReactNode {
 
   return (
     <div className="flex min-h-screen flex-col bg-bg text-text">
-      {/* NAV */}
-      <nav className="fixed inset-x-0 top-0 z-50 border-b border-border glass-nav">
-        <div className="mx-auto flex h-14 max-w-container items-center justify-between px-6">
-          <Link
-            href="/"
-            className="flex items-center gap-2 text-base font-bold tracking-tight"
-          >
-            <Logo size={28} />
-            AlgoSu
-          </Link>
-          <button
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="flex h-9 w-9 items-center justify-center rounded-btn text-text-3 hover:text-text hover:bg-bg-alt transition-colors"
-            aria-label="테마 전환"
-          >
-            {theme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-          </button>
-        </div>
-      </nav>
-
       {/* MAIN */}
-      <main className="relative flex flex-1 items-center justify-center overflow-hidden px-6 pt-14">
+      <main className="relative flex flex-1 items-center justify-center overflow-hidden px-6">
         {/* 배경 glow */}
         <div
           className="pointer-events-none absolute inset-0"

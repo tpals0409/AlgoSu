@@ -5,7 +5,7 @@
  * @related AuthShell, LanguageSwitcher, layout.tsx
  */
 
-import { screen } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/react';
 import { renderWithI18n } from '@/test-utils/i18n';
 import AuthLayout from '../layout';
 
@@ -58,10 +58,30 @@ describe('AuthLayout', () => {
         <div>Test</div>
       </AuthLayout>,
     );
-    // AuthShell: header(fixed) + main(pt-12) 구조
+    // AuthShell: header(fixed) + main(pt-14) 구조
     expect(container.querySelector('header')).toBeInTheDocument();
     expect(container.querySelector('main')).toBeInTheDocument();
     expect(screen.getByText('Test')).toBeInTheDocument();
+  });
+
+  it('AlgoSu 브랜드 링크를 공용 헤더에 렌더링한다', () => {
+    renderWithI18n(
+      <AuthLayout params={mockParams}>
+        <div>Test</div>
+      </AuthLayout>,
+    );
+    expect(screen.getByText('AlgoSu')).toBeInTheDocument();
+  });
+
+  it('테마 전환 버튼을 공용 헤더에 렌더링하고 클릭할 수 있다', () => {
+    renderWithI18n(
+      <AuthLayout params={mockParams}>
+        <div>Test</div>
+      </AuthLayout>,
+    );
+    const toggle = screen.getByRole('button', { name: '테마 전환' });
+    expect(toggle).toBeInTheDocument();
+    fireEvent.click(toggle);
   });
 
   it('여러 children을 렌더링한다', () => {

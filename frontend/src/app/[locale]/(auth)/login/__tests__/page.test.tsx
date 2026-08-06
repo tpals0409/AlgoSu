@@ -75,15 +75,8 @@ describe('LoginPage', () => {
     expect(screen.getByText('카카오로 계속하기')).toBeInTheDocument();
   });
 
-  it('테마 전환 버튼이 존재한다', () => {
-    renderWithI18n(<LoginPage />);
-    expect(screen.getByRole('button', { name: '테마 전환' })).toBeInTheDocument();
-  });
-
-  it('AlgoSu 로고 링크가 표시된다', () => {
-    renderWithI18n(<LoginPage />);
-    expect(screen.getByText('AlgoSu')).toBeInTheDocument();
-  });
+  // 테마 전환 버튼·AlgoSu 로고 링크는 공용 AuthShell(레이아웃)로 이동 →
+  // (auth)/__tests__/layout.test.tsx 에서 검증한다 (Sprint 266 네비 중복 통합).
 
   it('약관 안내 텍스트가 표시된다', () => {
     renderWithI18n(<LoginPage />);
