@@ -99,7 +99,7 @@
   },
   "overrides": {
     "sharp": "^0.35.3",
-    "fast-uri": "^3.1.4",
+    "fast-uri": "^3.1.5",
     "next": {
       "postcss": "^8.5.12"
     }
