@@ -36,7 +36,7 @@ interface AuthShellProps {
  * - Content area: pt-14 offset for header height
  */
 export function AuthShell({ children }: AuthShellProps): ReactNode {
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const t = useTranslations('common');
 
   return (
@@ -52,11 +52,11 @@ export function AuthShell({ children }: AuthShellProps): ReactNode {
         <div className="flex items-center gap-1">
           <button
             type="button"
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
             className="flex h-9 w-9 items-center justify-center rounded-btn text-text-3 hover:text-text hover:bg-bg-alt transition-colors"
             aria-label={t('themeToggle')}
           >
-            {theme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+            {resolvedTheme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
           </button>
           <Suspense fallback={null}>
             <LanguageSwitcher />
