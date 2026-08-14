@@ -33,14 +33,15 @@ export function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="border-t border-border">
-      <div className="mx-auto flex max-w-4xl flex-col gap-4 px-6 py-8 sm:flex-row sm:items-center sm:justify-between">
+    <footer className="mt-16 border-t border-border bg-surface-elevated">
+      <div className="mx-auto flex max-w-4xl flex-col gap-4 px-6 py-10 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-2">
           <a
             href={basePath || '/'}
-            className="font-heading text-base font-bold tracking-tight text-brand"
+            className="inline-flex items-center gap-2 font-heading text-base font-bold tracking-tight text-text transition-colors hover:text-brand"
           >
-            AlgoSu Tech
+            <span className="h-3.5 w-1 rounded-full bg-brand" aria-hidden />
+            AlgoSu&nbsp;<span className="text-brand">Tech</span>
           </a>
           <p className="text-xs text-text-subtle">{tf(locale, 'footerCopyright', { year })}</p>
         </div>

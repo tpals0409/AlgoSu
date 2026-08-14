@@ -41,16 +41,16 @@ const config: Config = {
         'text-muted': 'var(--text-muted)',
         'text-subtle': 'var(--text-subtle)',
 
-        // 브랜드 — Cobalt (기존 brand-50/500/700/900 스케일 cobalt 정렬)
+        // 브랜드 — Electric Indigo/Violet (brand-50/500/700/900 스케일 indigo 정렬, Sprint 266)
         brand: {
           DEFAULT: 'var(--brand)',
           strong: 'var(--brand-strong)',
           soft: 'var(--brand-soft)',
-          50: '#eef1fe',
-          500: '#2347e6',
-          600: '#1d3ccc',
-          700: '#1b37b8',
-          900: '#152a8a',
+          50: '#efecfb',
+          500: '#5b45c9',
+          600: '#4f3bb5',
+          700: '#4632a3',
+          900: '#301f75',
         },
 
         // Callout 4종
