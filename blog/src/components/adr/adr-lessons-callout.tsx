@@ -38,7 +38,7 @@ export function AdrLessonsCallout({
         <span aria-hidden="true">💡</span>
         <span>{t(locale, 'lessonsTitle')}</span>
       </div>
-      <div className="prose max-w-none prose-headings:text-callout-warn-fg prose-p:text-callout-warn-fg/90 prose-li:text-callout-warn-fg/90 prose-strong:text-callout-warn-fg">
+      <div className="prose max-w-none prose-headings:text-callout-warn-fg prose-p:text-[color-mix(in_srgb,var(--callout-warn-fg)_90%,transparent)] prose-li:text-[color-mix(in_srgb,var(--callout-warn-fg)_90%,transparent)] prose-strong:text-callout-warn-fg">
         {children}
       </div>
     </aside>

@@ -32,7 +32,7 @@ export function Header({ locale }: HeaderProps) {
   const aboutHref = `${getBasePath(locale)}/about/`;
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-surface/80 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-border bg-[color-mix(in_srgb,var(--surface)_80%,transparent)] backdrop-blur-md">
       <nav className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
         <a
           href={brandHref}
