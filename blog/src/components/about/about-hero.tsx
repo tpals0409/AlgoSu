@@ -22,9 +22,23 @@ const FOCUS_RING =
 /** About 페이지 Hero 영역을 렌더링한다. */
 export function AboutHero({ locale }: AboutHeroProps) {
   return (
-    <section className="pt-4 sm:pt-8">
-      <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-elevated px-3.5 py-1.5 text-xs font-medium text-text-muted">
-        <span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden />
+    <section className="relative pt-4 sm:pt-8">
+      {/* 아키텍처 그리드 배경 — Signal Grid 시각 언어 (장식, 접근성 무해) */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 -top-8 -z-10 h-56 opacity-[0.5] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_0%,#000,transparent)]"
+        style={{
+          backgroundImage:
+            'linear-gradient(to right, var(--diagram-grid) 1px, transparent 1px), linear-gradient(to bottom, var(--diagram-grid) 1px, transparent 1px)',
+          backgroundSize: '40px 40px',
+        }}
+      />
+
+      <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-elevated px-3.5 py-1.5 text-xs font-medium text-text-muted shadow-soft">
+        <span className="relative flex h-1.5 w-1.5" aria-hidden>
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-60" />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand" />
+        </span>
         {t(locale, 'aboutRole')}
       </span>
 

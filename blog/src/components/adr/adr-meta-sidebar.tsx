@@ -86,7 +86,7 @@ function RelatedLinks({
 
   return (
     <div className="mt-3">
-      <h5 className="mb-1 text-xs font-semibold text-text-subtle">{label}</h5>
+      <h5 className="mb-1 font-heading text-xs font-semibold uppercase tracking-wide text-text-subtle">{label}</h5>
       <ul className="space-y-0.5">
         {ids.map((id) => {
           const url = resolveAdrUrl(id, locale);
@@ -161,7 +161,7 @@ export function AdrMetaSidebar({
 
   return (
     <aside className="sticky top-24 hidden w-70 shrink-0 xl:block">
-      <div className="rounded-lg border border-border bg-surface-elevated p-4">
+      <div className="rounded-card border border-border bg-surface-elevated p-4 shadow-soft">
         {/* 메타 항목 */}
         <div className="divide-y divide-border">
           {meta.sprint != null && (
@@ -190,7 +190,7 @@ export function AdrMetaSidebar({
         {/* 에이전트 */}
         {meta.agents && meta.agents.length > 0 && (
           <div className="mt-4">
-            <h5 className="mb-1.5 text-xs font-semibold text-text-subtle">
+            <h5 className="mb-1.5 font-heading text-xs font-semibold uppercase tracking-wide text-text-subtle">
               {t(locale, 'metaAgents')}
             </h5>
             <AgentList agents={meta.agents} />

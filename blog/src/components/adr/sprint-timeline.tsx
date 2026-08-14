@@ -56,7 +56,7 @@ export function SprintTimeline({
   const sprintLabel = t(locale, 'metaSprint');
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-border bg-surface-muted p-2">
+    <div className="overflow-x-auto rounded-card border border-border bg-surface-muted p-2">
       <svg
         width={totalWidth}
         height={SVG_HEIGHT}

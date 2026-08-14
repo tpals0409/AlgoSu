@@ -34,7 +34,7 @@ export function EchelonStack({ children }: EchelonStackProps) {
 
 export function EchelonRow({ echelon, label, members, accent = 1 }: EchelonRowProps) {
   return (
-    <div className="flex items-stretch overflow-hidden rounded-lg border border-border bg-surface-elevated shadow-sm">
+    <div className="flex items-stretch overflow-hidden rounded-card border border-border bg-surface-elevated shadow-soft">
       <div
         className={`flex w-20 shrink-0 items-center justify-center text-sm font-bold text-white ${ACCENT_BG[accent]}`}
       >

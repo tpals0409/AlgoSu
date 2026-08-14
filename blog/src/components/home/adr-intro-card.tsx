@@ -41,8 +41,9 @@ export function AdrIntroCard({ locale, basePath, adrCount }: AdrIntroCardProps) 
           </p>
           <p className="mt-2 text-xs text-text-subtle">{t(locale, 'homeAdrCtaWhy')}</p>
         </div>
-        <span className="shrink-0 self-center text-sm font-medium text-brand transition-transform group-hover:translate-x-0.5">
+        <span className="inline-flex shrink-0 items-center gap-1 self-center text-sm font-medium text-brand transition-transform group-hover:translate-x-0.5">
           {t(locale, 'homeAdrCtaButton')}
+          <span aria-hidden>→</span>
         </span>
       </div>
     </a>

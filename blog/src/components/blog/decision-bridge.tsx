@@ -51,7 +51,7 @@ export function DecisionBridge({
 
   return (
     <div className="my-6 not-prose">
-      <div className="rounded-xl border border-border bg-diagram-bg p-4 shadow-sm sm:p-6">
+      <div className="rounded-card border border-border bg-diagram-bg p-4 shadow-soft sm:p-6">
         {/* 가로 레이아웃 (sm+) */}
         <div className="hidden sm:block">
           <div className="flex items-center gap-0">

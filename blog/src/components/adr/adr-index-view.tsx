@@ -87,7 +87,7 @@ function StatsHeader({
 /** 개별 통계 카드를 렌더링한다. */
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-lg border border-border bg-surface-elevated p-3">
+    <div className="rounded-card border border-border bg-surface-elevated p-3 shadow-soft">
       <p className="text-xs text-text-subtle">{label}</p>
       <p className="mt-1 text-lg font-bold text-text">{value}</p>
     </div>
@@ -117,7 +117,7 @@ export function AdrIndexView({ index, locale = 'ko' }: AdrIndexViewProps) {
 
       {/* Sprint 타임라인 */}
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-text">
+        <h2 className="mb-3 font-heading text-lg font-semibold tracking-tight text-text">
           {t(locale, 'sectionTimeline')}
         </h2>
         <SprintTimeline items={index.all} locale={locale} />
@@ -125,7 +125,7 @@ export function AdrIndexView({ index, locale = 'ko' }: AdrIndexViewProps) {
 
       {/* 영구 ADR */}
       <section id="permanent">
-        <h2 className="mb-4 text-lg font-semibold text-text">
+        <h2 className="mb-4 font-heading text-lg font-semibold tracking-tight text-text">
           {t(locale, 'sectionPermanent')}
           <span className="ml-1 text-sm font-normal text-text-muted">
             {tf(locale, 'countOfTotal', { n: index.byKind.permanent.length })}
@@ -140,7 +140,7 @@ export function AdrIndexView({ index, locale = 'ko' }: AdrIndexViewProps) {
 
       {/* 토픽 ADR */}
       <section id="topics">
-        <h2 className="mb-4 text-lg font-semibold text-text">
+        <h2 className="mb-4 font-heading text-lg font-semibold tracking-tight text-text">
           {t(locale, 'sectionTopic')}
           <span className="ml-1 text-sm font-normal text-text-muted">
             {tf(locale, 'countOfTotal', { n: index.byKind.topic.length })}
@@ -155,7 +155,7 @@ export function AdrIndexView({ index, locale = 'ko' }: AdrIndexViewProps) {
 
       {/* Sprint ADR — 최근 12개 */}
       <section id="sprints">
-        <h2 className="mb-4 text-lg font-semibold text-text">
+        <h2 className="mb-4 font-heading text-lg font-semibold tracking-tight text-text">
           {t(locale, 'sectionSprint')}
           <span className="ml-1 text-sm font-normal text-text-muted">
             {tf(locale, 'recentNofTotal', {
@@ -184,7 +184,7 @@ export function AdrIndexView({ index, locale = 'ko' }: AdrIndexViewProps) {
       {/* 에이전트 분포 */}
       {agents.size > 0 && (
         <section>
-          <h2 className="mb-3 text-lg font-semibold text-text">
+          <h2 className="mb-3 font-heading text-lg font-semibold tracking-tight text-text">
             {t(locale, 'sectionAgentDist')}
           </h2>
           <AgentChips agents={agents} />

@@ -17,8 +17,8 @@ interface AdrDecisionsGridProps {
 /** 개별 결정 카드를 렌더링한다. */
 function DecisionCard({ decision }: { decision: AdrDecision }) {
   return (
-    <div className="rounded-lg border border-border bg-surface-elevated p-4">
-      <h4 className="text-sm font-semibold text-text">
+    <div className="rounded-card border border-border bg-surface-elevated p-4 shadow-soft">
+      <h4 className="font-heading text-sm font-semibold text-text">
         {decision.title}
       </h4>
       <p className="mt-1 line-clamp-3 text-xs text-text-muted">
@@ -37,7 +37,7 @@ export function AdrDecisionsGrid({
 
   return (
     <section className="mb-6">
-      <h3 className="mb-3 text-sm font-semibold text-text-subtle">
+      <h3 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wide text-text-subtle">
         {t(locale, 'decisionsTitle')}
       </h3>
       <div className="grid gap-3 sm:grid-cols-2">
