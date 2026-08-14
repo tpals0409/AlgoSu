@@ -55,7 +55,7 @@ const LEVEL_INDENT: Record<number, string> = {
 
 export function HierarchyTree({ children }: HierarchyTreeProps) {
   return (
-    <div className="my-6 rounded-xl border border-border bg-diagram-bg p-4 sm:p-6 not-prose">
+    <div className="my-6 rounded-card border border-border bg-diagram-bg p-4 sm:p-6 not-prose">
       <div className="flex flex-col gap-2">{children}</div>
     </div>
   );
@@ -103,10 +103,10 @@ export function HierarchyNode({
           </>
         )}
         <div
-          className={`inline-flex items-center gap-2 border border-border bg-surface-elevated shadow-sm ${
+          className={`inline-flex items-center gap-2 border border-border bg-surface-elevated shadow-soft ${
             isPill
               ? 'rounded-full px-3 py-1.5'
-              : `rounded-lg border-l-4 px-3 py-2 ${ACCENT_BORDER_L[accent]}`
+              : `rounded-card border-l-4 px-3 py-2 ${ACCENT_BORDER_L[accent]}`
           }`}
         >
           {Icon && (

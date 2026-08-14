@@ -66,7 +66,7 @@ export function PhaseMilestone({
       {/* 좌측 axis dot */}
       <span
         aria-hidden
-        className={`absolute left-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-white shadow-md sm:left-4 ${ACCENT_BG[accent]}`}
+        className={`absolute left-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-white shadow-soft sm:left-4 ${ACCENT_BG[accent]}`}
       >
         {Icon ? (
           <Icon size={14} strokeWidth={2.5} />
@@ -80,7 +80,7 @@ export function PhaseMilestone({
         className="pointer-events-none absolute left-[1.625rem] top-10 h-[calc(100%-0.5rem)] w-px bg-border-strong group-last/phase:hidden sm:left-[1.875rem]"
       />
       {/* 카드 */}
-      <div className="rounded-xl border border-border bg-surface-elevated p-4 shadow-sm">
+      <div className="rounded-card border border-border bg-surface-elevated p-4 shadow-soft">
         <div className="mb-1 flex items-center justify-between gap-2">
           <div className="flex items-baseline gap-2">
             <span className="text-[10px] font-bold uppercase tracking-wider text-text-subtle">

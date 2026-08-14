@@ -69,7 +69,7 @@ export function Pipeline({ children, arrows }: PipelineProps) {
 export function PipelineStage({ label, detail, accent = 1, icon }: PipelineStageProps) {
   const Icon = getIcon(icon);
   return (
-    <div className="h-full rounded-lg border border-border bg-surface-elevated p-3 shadow-sm">
+    <div className="h-full rounded-card border border-border bg-surface-elevated p-3 shadow-soft">
       <div className="flex items-center gap-2">
         {Icon ? (
           <span

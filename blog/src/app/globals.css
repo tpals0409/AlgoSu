@@ -15,30 +15,32 @@
 @layer base {
   :root {
     /*
-     * AlgoSu Tech Blog — "Engineering Editorial" 프리미엄 토큰 (Sprint 185)
-     * 따뜻한 페이퍼 중립색 + Cobalt 강조색. 라이트 우선(다크 확장 가능 구조).
+     * AlgoSu Tech Blog — "Signal Grid" 리디자인 토큰 (Sprint 266)
+     * 쿨 뉴트럴 캔버스 + 일렉트릭 인디고/바이올렛 브랜드(AlgoSu 브랜드 SSOT #715DA8 계열).
+     * 정밀 엔지니어링 감성: 차분한 배경, 또렷한 보더, 절제된 컬러 시그널.
+     * 라이트 우선(다크 확장 가능 구조). 토큰 키는 유지하고 값만 재정의.
      */
 
-    /* 표면(surface) 계층 — 배경/카드/다이어그램 (warm neutral) */
-    --surface: #fbfaf9;              /* paper — 따뜻한 오프화이트 페이지 배경 */
-    --surface-muted: #f4f2ef;        /* 코드/통계 박스 */
-    --surface-elevated: #ffffff;     /* 카드 — 페이퍼 위에서 떠 보이게 순백 */
-    --diagram-bg: #f4f2ef;           /* 다이어그램 캔버스 */
-    --diagram-grid: #e7e3dd;         /* 다이어그램 그리드 */
+    /* 표면(surface) 계층 — 배경/카드/다이어그램 (cool neutral) */
+    --surface: #f7f7fa;              /* 캔버스 — 미세한 쿨 뉴트럴 페이지 배경 */
+    --surface-muted: #eeeef3;        /* 코드/통계 박스 */
+    --surface-elevated: #ffffff;     /* 카드 — 캔버스 위에서 떠 보이게 순백 */
+    --diagram-bg: #eeeef3;           /* 다이어그램 캔버스 */
+    --diagram-grid: #e0e0e8;         /* 다이어그램 그리드 */
 
-    /* 보더 (warm) */
-    --border: #e7e3dd;
-    --border-strong: #d6d1c8;
+    /* 보더 (cool) */
+    --border: #e3e3ea;
+    --border-strong: #cfcfda;
 
-    /* 텍스트 (warm ink) */
-    --text: #17161a;                 /* 본문 — 웜 니어블랙 */
-    --text-muted: #57545e;           /* 보조 */
-    --text-subtle: #8a8693;          /* 메타/날짜 */
+    /* 텍스트 (cool ink) */
+    --text: #16151d;                 /* 본문 — 쿨 니어블랙 (on #fff 대비 ~17.4:1) */
+    --text-muted: #56545f;           /* 보조 (on #fff 대비 ~7.3:1) */
+    --text-subtle: #726f7a;          /* 메타/날짜 (on #fff 대비 4.8:1, AA pass) */
 
-    /* 브랜드 — Cobalt */
-    --brand: #2347e6;                /* cobalt */
-    --brand-strong: #1b37b8;         /* 텍스트/hover — AA 6.5:1 on white */
-    --brand-soft: #eef1fe;           /* 배지/pill 배경 */
+    /* 브랜드 — Electric Indigo/Violet (AlgoSu SSOT #715DA8 계열 정렬) */
+    --brand: #5b45c9;                /* electric indigo — 액션/포커스 */
+    --brand-strong: #4632a3;         /* 텍스트/hover — AA 7.0:1 on white */
+    --brand-soft: #efecfb;           /* 배지/pill 배경 */
 
     /* Callout — info */
     --callout-info-bg: #eff6ff;      /* blue-50 */
@@ -60,18 +62,53 @@
     --callout-danger-border: #fca5a5;/* red-300 */
     --callout-danger-fg: #991b1b;    /* red-800 */
 
-    /* 서비스 카드 액센트 (Pipeline/ServiceGrid 등) — accent-1은 brand(cobalt)와 정렬 */
-    --accent-1: #2347e6;             /* cobalt (brand 정렬) */
-    --accent-2: #06b6d4;             /* cyan */
-    --accent-3: #10b981;             /* emerald */
-    --accent-4: #f59e0b;             /* amber */
-    --accent-5: #ec4899;             /* pink */
-    --accent-6: #8b5cf6;             /* violet */
+    /* 서비스 카드 액센트 (Pipeline/ServiceGrid 등) — accent-1은 brand(indigo)와 정렬 */
+    --accent-1: #5b45c9;             /* electric indigo (brand 정렬) */
+    --accent-2: #0891b2;             /* cyan */
+    --accent-3: #0d9488;             /* teal */
+    --accent-4: #d97706;             /* amber */
+    --accent-5: #db2777;             /* magenta */
+    --accent-6: #7c3aed;             /* violet */
 
-    /* 형태 스케일 — 프리미엄 라운드/섀도 (warm tint) */
-    --radius-card: 1rem;             /* 16px — 카드 라운드 */
-    --shadow-soft: 0 1px 3px rgba(23, 22, 26, 0.06), 0 1px 2px rgba(23, 22, 26, 0.04);
-    --shadow-lift: 0 8px 24px rgba(23, 22, 26, 0.10), 0 2px 6px rgba(23, 22, 26, 0.06);
+    /*
+     * 데이터-비주얼 토큰 (Signal Grid 데이터 레이어, Sprint 266 Wave3)
+     * 차트/다이어그램 색상 SSOT. 무지개 나열이 아니라 브랜드 인디고→바이올렛 축을
+     * 중심으로 채도를 절제한 6-시리즈. --accent-1~6 및 callout 계열과 명도/채도 정렬.
+     * from(코어)→to(하이라이트)는 동일 계열 명도 상승쌍(그라디언트용).
+     */
+    --chart-series-1-from: #5b45c9;  /* electric indigo — brand/accent-1 정렬 */
+    --chart-series-1-to:   #8b78e6;  /* indigo 하이라이트 */
+    --chart-series-2-from: #0891b2;  /* cyan — accent-2 정렬 */
+    --chart-series-2-to:   #22b8d6;  /* cyan 하이라이트 */
+    --chart-series-3-from: #0d9488;  /* teal — accent-3 정렬 */
+    --chart-series-3-to:   #2bb3a3;  /* teal 하이라이트 */
+    --chart-series-4-from: #d97706;  /* amber — accent-4 정렬 */
+    --chart-series-4-to:   #f0983a;  /* amber 하이라이트 */
+    --chart-series-5-from: #db2777;  /* magenta — accent-5 정렬 */
+    --chart-series-5-to:   #ec5c9c;  /* magenta 하이라이트 */
+    --chart-series-6-from: #7c3aed;  /* violet — accent-6 정렬 */
+    --chart-series-6-to:   #9d6bf5;  /* violet 하이라이트 */
+
+    /*
+     * mermaid 상태 토큰 (classDef ok/done/warn 동기화 SSOT).
+     * fill=배경(라이트 틴트), stroke=보더(코어 채도), text=본문(어두운 잉크, AA 4.5:1+).
+     * ok=brand indigo, done=success emerald(callout-success 정렬), warn=amber(callout-warn 정렬).
+     * mermaid 렌더 제약으로 chart-registry.ts는 이 값들과 동일 리터럴을 사용(주석 참조).
+     */
+    --chart-state-ok-fill:     #eeecfb;  /* indigo 틴트 배경(brand-soft 계열) */
+    --chart-state-ok-stroke:   #5b45c9;  /* brand indigo */
+    --chart-state-ok-text:     #322476;  /* indigo-900 (on #eeecfb 대비 ~9.6:1) */
+    --chart-state-done-fill:   #ecfdf5;  /* emerald-50 (callout-success-bg 정렬) */
+    --chart-state-done-stroke: #0d9488;  /* teal/emerald 코어 */
+    --chart-state-done-text:   #065f46;  /* emerald-800 (callout-success-fg 정렬, on #ecfdf5 ~7.6:1) */
+    --chart-state-warn-fill:   #fffbeb;  /* amber-50 (callout-warn-bg 정렬) */
+    --chart-state-warn-stroke: #d97706;  /* amber 코어 */
+    --chart-state-warn-text:   #92400e;  /* amber-800 (callout-warn-fg 정렬, on #fffbeb ~7.1:1) */
+
+    /* 형태 스케일 — 절제된 라운드/쿨 틴트 섀도 (Signal Grid) */
+    --radius-card: 0.75rem;          /* 12px — 카드 라운드(더 또렷하게) */
+    --shadow-soft: 0 1px 2px rgba(22, 21, 29, 0.05), 0 1px 3px rgba(22, 21, 29, 0.05);
+    --shadow-lift: 0 6px 20px rgba(22, 21, 29, 0.10), 0 2px 6px rgba(22, 21, 29, 0.06);
 
     /* 폰트 폴백 체인 — Latin(Inter/Space Grotesk) + 한글(Noto Sans KR) */
     --font-body: var(--font-sans), var(--font-sans-kr), ui-sans-serif, system-ui, sans-serif;

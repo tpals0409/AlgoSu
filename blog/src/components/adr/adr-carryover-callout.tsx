@@ -32,13 +32,13 @@ export function AdrCarryoverCallout({
       id={anchorId}
       role="note"
       aria-label={t(locale, 'carryoverTitle')}
-      className="mb-6 rounded-lg border border-callout-info-border bg-callout-info-bg/50 p-4 scroll-mt-24"
+      className="mb-6 rounded-card border border-callout-info-border bg-[color-mix(in_srgb,var(--callout-info-bg)_50%,transparent)] p-4 scroll-mt-24"
     >
       <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-callout-info-fg">
         <span aria-hidden="true">📋</span>
         <span>{t(locale, 'carryoverTitle')}</span>
       </div>
-      <div className="prose max-w-none prose-headings:text-callout-info-fg prose-p:text-callout-info-fg/90 prose-li:text-callout-info-fg/90 prose-strong:text-callout-info-fg">
+      <div className="prose max-w-none prose-headings:text-callout-info-fg prose-p:text-[color-mix(in_srgb,var(--callout-info-fg)_90%,transparent)] prose-li:text-[color-mix(in_srgb,var(--callout-info-fg)_90%,transparent)] prose-strong:text-callout-info-fg">
         {children}
       </div>
     </aside>

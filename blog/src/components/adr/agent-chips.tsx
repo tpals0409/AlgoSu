@@ -17,7 +17,7 @@ function AgentChip({ name, count }: { name: string; count: number }) {
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-medium text-brand-strong">
       {name}
-      <span className="rounded-full bg-brand px-1.5 text-[10px] text-white">
+      <span className="rounded-full bg-brand px-1.5 text-[10px] text-brand-soft">
         {count}
       </span>
     </span>

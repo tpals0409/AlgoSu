@@ -17,7 +17,7 @@ interface AdrPhaseStripProps {
 /** 개별 Phase 카드를 렌더링한다. */
 function PhaseCard({ entry }: { entry: AdrPhaseEntry }) {
   return (
-    <div className="min-w-[200px] rounded-lg border border-border bg-surface-elevated p-3">
+    <div className="min-w-[200px] rounded-card border border-border bg-surface-elevated p-3 shadow-soft">
       <div className="text-xs font-semibold text-brand">
         {entry.phase}
       </div>
@@ -72,7 +72,7 @@ export function AdrPhaseStrip({
 
   return (
     <section className="mb-6">
-      <h3 className="mb-3 text-sm font-semibold text-text-subtle">
+      <h3 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wide text-text-subtle">
         {t(locale, 'phaseStripTitle')}
       </h3>
       <div className="flex gap-3 overflow-x-auto pb-2">

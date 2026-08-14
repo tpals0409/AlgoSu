@@ -32,13 +32,13 @@ export function AdrLessonsCallout({
       id={anchorId}
       role="note"
       aria-label={t(locale, 'lessonsTitle')}
-      className="mb-6 rounded-lg border border-callout-warn-border bg-callout-warn-bg p-4 scroll-mt-24"
+      className="mb-6 rounded-card border border-callout-warn-border bg-callout-warn-bg p-4 scroll-mt-24"
     >
       <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-callout-warn-fg">
         <span aria-hidden="true">💡</span>
         <span>{t(locale, 'lessonsTitle')}</span>
       </div>
-      <div className="prose max-w-none prose-headings:text-callout-warn-fg prose-p:text-callout-warn-fg/90 prose-li:text-callout-warn-fg/90 prose-strong:text-callout-warn-fg">
+      <div className="prose max-w-none prose-headings:text-callout-warn-fg prose-p:text-[color-mix(in_srgb,var(--callout-warn-fg)_90%,transparent)] prose-li:text-[color-mix(in_srgb,var(--callout-warn-fg)_90%,transparent)] prose-strong:text-callout-warn-fg">
         {children}
       </div>
     </aside>

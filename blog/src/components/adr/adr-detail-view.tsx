@@ -47,7 +47,7 @@ function KoreanOnlyBanner({ meta }: { meta: AdrMeta }) {
   return (
     <aside
       role="note"
-      className="mb-6 rounded-lg border border-callout-info-border bg-callout-info-bg p-4 text-sm text-callout-info-fg"
+      className="mb-6 rounded-card border border-callout-info-border bg-callout-info-bg p-4 text-sm text-callout-info-fg"
     >
       <p className="mb-2">{t('en', 'contentKoreanOnly')}</p>
       <a href={koHref} className="font-medium text-brand hover:underline">
@@ -253,7 +253,7 @@ export async function AdrDetailView({
 
       {/* 중앙 본문 */}
       <article className="min-w-0 max-w-3xl flex-1">
-        <h1 className="mb-6 text-3xl font-bold text-text">{doc.meta.title}</h1>
+        <h1 className="mb-6 font-heading text-3xl font-bold leading-[1.15] tracking-tight text-text">{doc.meta.title}</h1>
         {locale === 'en' && !doc.meta.hasEnTranslation && (
           <KoreanOnlyBanner meta={doc.meta} />
         )}

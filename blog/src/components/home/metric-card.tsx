@@ -20,8 +20,10 @@ interface MetricCardProps {
 /** 단일 성과 지표 카드. */
 export function MetricCard({ value, label, desc }: MetricCardProps) {
   return (
-    <div className="rounded-card border border-border bg-surface-elevated p-5 shadow-soft">
-      <p className="font-heading text-3xl font-bold tracking-tight text-brand">{value}</p>
+    <div className="rounded-card border border-border border-l-2 border-l-brand bg-surface-elevated p-5 shadow-soft">
+      <p className="font-heading text-3xl font-bold tracking-tight tabular-nums text-brand">
+        {value}
+      </p>
       <p className="mt-2 text-sm font-semibold text-text">{label}</p>
       <p className="mt-1 text-xs leading-relaxed text-text-muted">{desc}</p>
     </div>

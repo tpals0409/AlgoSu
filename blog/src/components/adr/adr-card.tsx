@@ -64,7 +64,7 @@ export function AdrCard({ meta, locale = 'ko' }: AdrCardProps) {
   return (
     <a
       href={href}
-      className="block rounded-lg border border-border bg-surface-elevated p-4 transition-shadow hover:shadow-md"
+      className="block rounded-card border border-border bg-surface-elevated p-4 shadow-soft transition-shadow hover:shadow-lift"
     >
       {/* Kind 뱃지 */}
       <span
@@ -74,7 +74,7 @@ export function AdrCard({ meta, locale = 'ko' }: AdrCardProps) {
       </span>
 
       {/* 제목 */}
-      <h3 className="mb-2 line-clamp-2 text-sm font-bold text-text">
+      <h3 className="mb-2 line-clamp-2 font-heading text-sm font-bold text-text">
         {meta.title}
       </h3>
 

@@ -61,7 +61,7 @@ export function AdrHero({ doc, locale = 'ko' }: AdrHeroProps) {
   const totalLines = sumLines(doc);
 
   return (
-    <section className="mb-6 rounded-xl bg-surface-muted p-6">
+    <section className="mb-6 rounded-card border border-border bg-surface-muted p-6">
       {/* TL;DR */}
       {meta.tldr && (
         <p className="mb-4 text-lg leading-relaxed text-text-muted">

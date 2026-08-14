@@ -71,7 +71,7 @@ export function EchelonMatrixRow({
 }: EchelonMatrixRowProps) {
   return (
     <div
-      className={`overflow-hidden rounded-xl border border-border border-l-4 bg-surface-elevated shadow-sm ${ACCENT_BORDER_L[accent]}`}
+      className={`overflow-hidden rounded-card border border-border border-l-4 bg-surface-elevated shadow-soft ${ACCENT_BORDER_L[accent]}`}
     >
       <div className="flex items-stretch">
         {/* Echelon 라벨 컬럼 */}
@@ -103,7 +103,7 @@ export function EchelonMatrixRow({
 export function EchelonMatrixCell({ name, role, icon, hint }: EchelonMatrixCellProps) {
   const Icon = getIcon(icon);
   return (
-    <div className="flex items-start gap-2 rounded-lg border border-border bg-surface p-2.5">
+    <div className="flex items-start gap-2 rounded-card border border-border bg-surface p-2.5">
       <span
         aria-hidden
         className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface-muted text-text-muted"

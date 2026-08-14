@@ -20,7 +20,7 @@ interface SprintsListProps {
 export function SprintsList({ items, locale = 'ko' }: SprintsListProps) {
   return (
     <section>
-      <h1 className="mb-6 text-2xl font-bold text-text">
+      <h1 className="mb-6 font-heading text-2xl font-bold tracking-tight text-text">
         {t(locale, 'sprintsListTitle')}
         <span className="ml-2 text-base font-normal text-text-muted">
           ({items.length})

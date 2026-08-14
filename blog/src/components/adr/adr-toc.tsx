@@ -43,7 +43,7 @@ export function AdrToc({ sections, locale = 'ko' }: AdrTocProps) {
       aria-label={label}
       className="sticky top-24 hidden max-h-[calc(100vh-8rem)] w-60 overflow-y-auto lg:block"
     >
-      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-subtle">
+      <h4 className="mb-2 font-heading text-xs font-semibold uppercase tracking-wider text-text-subtle">
         {label}
       </h4>
       <ul className="space-y-0.5 border-l border-border pl-3">

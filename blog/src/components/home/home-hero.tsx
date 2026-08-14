@@ -27,13 +27,27 @@ export function HomeHero({ locale, basePath }: HomeHeroProps) {
   const adrHref = `${basePath}/adr/`;
 
   return (
-    <section className="pt-4 sm:pt-8">
-      <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-elevated px-3.5 py-1.5 text-xs font-medium text-text-muted">
-        <span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden />
+    <section className="relative pt-6 sm:pt-12">
+      {/* 아키텍처 그리드 배경 — Signal Grid 시각 언어 (장식, 접근성 무해) */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 -top-10 -z-10 h-64 opacity-[0.5] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_0%,#000,transparent)]"
+        style={{
+          backgroundImage:
+            'linear-gradient(to right, var(--diagram-grid) 1px, transparent 1px), linear-gradient(to bottom, var(--diagram-grid) 1px, transparent 1px)',
+          backgroundSize: '40px 40px',
+        }}
+      />
+
+      <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-elevated px-3.5 py-1.5 text-xs font-medium text-text-muted shadow-soft">
+        <span className="relative flex h-1.5 w-1.5" aria-hidden>
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-60" />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand" />
+        </span>
         {t(locale, 'heroBadge')}
       </span>
 
-      <h1 className="mt-5 font-heading text-4xl font-bold leading-[1.1] tracking-tight text-text sm:text-5xl">
+      <h1 className="mt-6 font-heading text-4xl font-bold leading-[1.08] tracking-tight text-text sm:text-[3.25rem]">
         {t(locale, 'heroTitle')}
       </h1>
 

@@ -99,7 +99,7 @@ export function CodeBlock({ children, ...rest }: CodeBlockProps) {
     <div className="code-block-wrapper group relative">
       {/* 상단 바: 언어 라벨 + 복사 버튼 */}
       {(label || true) && (
-        <div className="flex items-center justify-between rounded-t-lg border border-b-0 border-border bg-surface-muted px-4 py-1.5">
+        <div className="flex items-center justify-between rounded-t-card border border-b-0 border-border bg-surface-muted px-4 py-1.5">
           <span className="text-xs font-semibold text-text-subtle">
             {label ?? ''}
           </span>
