@@ -59,7 +59,7 @@ export function PostListWithFilter({ posts, basePath, locale }: PostListWithFilt
       {filteredPosts.length === 0 ? (
         <p className="text-text-subtle">{t(locale, 'noPosts')}</p>
       ) : (
-        <ul className="space-y-6">
+        <ul className="divide-y divide-border border-y border-border">
           {filteredPosts.map((post) => (
             <li key={post.slug}>
               <PostCard {...post} basePath={basePath} locale={locale} />

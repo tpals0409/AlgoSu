@@ -65,6 +65,9 @@ const DICTIONARY = {
     metricIterationLabel: 'Zero-downtime',
     metricIterationDesc: '운영 중 빠른 반복 개선',
 
+    /* ─── 홈 인라인 지표 (Sprint 266) ────────────── */
+    homeStatsInline: '{adr}개 ADR · {posts}개 글',
+
     /* ─── 홈 최근 글 (Sprint 185) ─────── */
     recentPostsTitle: '최근 글',
 
@@ -275,6 +278,9 @@ const DICTIONARY = {
     metricAdrsDesc: 'The SSOT of decisions & ops records',
     metricIterationLabel: 'Zero-downtime',
     metricIterationDesc: 'Fast iteration without downtime',
+
+    /* ─── Home inline stats (Sprint 266) ───────────── */
+    homeStatsInline: '{adr} ADRs · {posts} posts',
 
     /* ─── Home recent posts (Sprint 185) ─ */
     recentPostsTitle: 'Recent Posts',
