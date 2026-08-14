@@ -29,7 +29,7 @@ export default function EnLayout({ children }: { children: React.ReactNode }) {
       />
       <Sidebar />
       <div className="lg:pl-[var(--sidebar-width)]">
-        <main className="mx-auto max-w-3xl px-6 py-10">{children}</main>
+        <main className="mx-auto max-w-6xl px-6 py-10">{children}</main>
         <Footer />
       </div>
     </>

@@ -30,7 +30,7 @@ export function HomePage({ locale }: HomePageProps) {
   const adrCount = getAllAdrs().length;
 
   return (
-    <div className="space-y-10 sm:space-y-12">
+    <div className="mx-auto max-w-3xl space-y-10 sm:space-y-12">
       <HomeHero
         locale={locale}
         basePath={basePath}
