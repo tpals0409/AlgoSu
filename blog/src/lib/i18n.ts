@@ -44,11 +44,12 @@ const DICTIONARY = {
 
     /* ─── 홈 랜딩 Hero (Sprint 185) ────────────────── */
     heroBadge: '실제 운영 중인 AI Agent 서비스',
-    heroTitle: 'AlgoSu Tech Blog',
+    heroTitle: '실전 MSA를 운영하며 남긴 아키텍처 결정 기록',
     heroSubcopy:
       '1인 개발자가 만든 AI Agent 기반 알고리즘 스터디 플랫폼의 개발·운영 기록. 12-agent 오케스트레이션, k3s 운영, CI/CD, ADR, production debugging까지 — 실제 사용자가 있는 서비스를 만들며 겪은 문제와 의사결정을 기록합니다.',
+    heroMetaLine: '최근 업데이트 {date} · {adr}개 ADR',
     heroCtaAdr: 'ADR 보기',
-    heroCtaService: 'AlgoSu 서비스 보기',
+    heroCtaService: 'AlgoSu 서비스',
 
     /* ─── 홈 성과 지표 카드 (Sprint 185) ──────────── */
     metricsTitle: '한눈에 보는 AlgoSu',
@@ -64,9 +65,6 @@ const DICTIONARY = {
     metricAdrsDesc: '의사결정·운영 기록의 SSOT',
     metricIterationLabel: 'Zero-downtime',
     metricIterationDesc: '운영 중 빠른 반복 개선',
-
-    /* ─── 홈 인라인 지표 (Sprint 266) ────────────── */
-    homeStatsInline: '{adr}개 ADR · {posts}개 글',
 
     /* ─── 홈 최근 글 (Sprint 185) ─────── */
     recentPostsTitle: '최근 글',
@@ -258,9 +256,10 @@ const DICTIONARY = {
 
     /* ─── Home landing hero (Sprint 185) ───────────── */
     heroBadge: 'A live AI-agent service',
-    heroTitle: 'AlgoSu Tech Blog',
+    heroTitle: 'Architecture decisions from running a real MSA in production',
     heroSubcopy:
       'The build & ops log of an AI-agent algorithm-study platform built by a solo developer. From 12-agent orchestration, k3s ops, CI/CD, and ADRs to production debugging — the problems and decisions behind a service with real users.',
+    heroMetaLine: 'Updated {date} · {adr} ADRs',
     heroCtaAdr: 'Browse ADRs',
     heroCtaService: 'Visit AlgoSu',
 
@@ -278,9 +277,6 @@ const DICTIONARY = {
     metricAdrsDesc: 'The SSOT of decisions & ops records',
     metricIterationLabel: 'Zero-downtime',
     metricIterationDesc: 'Fast iteration without downtime',
-
-    /* ─── Home inline stats (Sprint 266) ───────────── */
-    homeStatsInline: '{adr} ADRs · {posts} posts',
 
     /* ─── Home recent posts (Sprint 185) ─ */
     recentPostsTitle: 'Recent Posts',

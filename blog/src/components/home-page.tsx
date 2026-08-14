@@ -35,7 +35,7 @@ export function HomePage({ locale }: HomePageProps) {
         locale={locale}
         basePath={basePath}
         adrCount={adrCount}
-        postCount={posts.length}
+        lastUpdated={posts[0]?.date ?? ''}
       />
 
       <AdrIntroCard locale={locale} basePath={basePath} adrCount={adrCount} />
