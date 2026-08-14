@@ -33,10 +33,10 @@ export function Header({ locale }: HeaderProps) {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-[color-mix(in_srgb,var(--surface)_80%,transparent)] backdrop-blur-md">
-      <nav className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
+      <nav className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4 sm:px-6">
         <a
           href={brandHref}
-          className="group inline-flex items-center gap-2 font-heading text-lg font-bold tracking-tight text-text transition-colors hover:text-brand"
+          className="group inline-flex items-center gap-2 font-heading text-base font-bold tracking-tight text-text transition-colors hover:text-brand sm:text-lg"
         >
           <span
             className="h-4 w-1 rounded-full bg-brand transition-all group-hover:h-5"
@@ -47,13 +47,13 @@ export function Header({ locale }: HeaderProps) {
         <div className="flex items-center gap-1 sm:gap-2">
           <a
             href={adrHref}
-            className="rounded-full px-3 py-1.5 text-sm font-medium text-text-muted transition-colors hover:bg-brand-soft hover:text-brand"
+            className="rounded-full px-2.5 py-1.5 text-sm font-medium text-text-muted transition-colors hover:bg-brand-soft hover:text-brand sm:px-3"
           >
             {t(locale, 'navAdr')}
           </a>
           <a
             href={aboutHref}
-            className="rounded-full px-3 py-1.5 text-sm font-medium text-text-muted transition-colors hover:bg-brand-soft hover:text-brand"
+            className="rounded-full px-2.5 py-1.5 text-sm font-medium text-text-muted transition-colors hover:bg-brand-soft hover:text-brand sm:px-3"
           >
             {t(locale, 'navAbout')}
           </a>
