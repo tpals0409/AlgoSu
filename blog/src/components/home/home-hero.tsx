@@ -57,14 +57,8 @@ export function HomeHero({ locale, basePath }: HomeHeroProps) {
 
       <div className="mt-8 flex flex-wrap gap-3">
         <a
-          href="#start-here"
-          className={`inline-flex items-center justify-center rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow-soft transition-colors hover:bg-brand-strong ${FOCUS_RING}`}
-        >
-          {t(locale, 'heroCtaStartHere')}
-        </a>
-        <a
           href={adrHref}
-          className={`inline-flex items-center justify-center rounded-full border border-border-strong bg-surface-elevated px-5 py-2.5 text-sm font-semibold text-text transition-colors hover:border-brand hover:text-brand ${FOCUS_RING}`}
+          className={`inline-flex items-center justify-center rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow-soft transition-colors hover:bg-brand-strong ${FOCUS_RING}`}
         >
           {t(locale, 'heroCtaAdr')}
         </a>
