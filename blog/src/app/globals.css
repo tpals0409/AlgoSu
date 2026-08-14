@@ -70,6 +70,41 @@
     --accent-5: #db2777;             /* magenta */
     --accent-6: #7c3aed;             /* violet */
 
+    /*
+     * 데이터-비주얼 토큰 (Signal Grid 데이터 레이어, Sprint 266 Wave3)
+     * 차트/다이어그램 색상 SSOT. 무지개 나열이 아니라 브랜드 인디고→바이올렛 축을
+     * 중심으로 채도를 절제한 6-시리즈. --accent-1~6 및 callout 계열과 명도/채도 정렬.
+     * from(코어)→to(하이라이트)는 동일 계열 명도 상승쌍(그라디언트용).
+     */
+    --chart-series-1-from: #5b45c9;  /* electric indigo — brand/accent-1 정렬 */
+    --chart-series-1-to:   #8b78e6;  /* indigo 하이라이트 */
+    --chart-series-2-from: #0891b2;  /* cyan — accent-2 정렬 */
+    --chart-series-2-to:   #22b8d6;  /* cyan 하이라이트 */
+    --chart-series-3-from: #0d9488;  /* teal — accent-3 정렬 */
+    --chart-series-3-to:   #2bb3a3;  /* teal 하이라이트 */
+    --chart-series-4-from: #d97706;  /* amber — accent-4 정렬 */
+    --chart-series-4-to:   #f0983a;  /* amber 하이라이트 */
+    --chart-series-5-from: #db2777;  /* magenta — accent-5 정렬 */
+    --chart-series-5-to:   #ec5c9c;  /* magenta 하이라이트 */
+    --chart-series-6-from: #7c3aed;  /* violet — accent-6 정렬 */
+    --chart-series-6-to:   #9d6bf5;  /* violet 하이라이트 */
+
+    /*
+     * mermaid 상태 토큰 (classDef ok/done/warn 동기화 SSOT).
+     * fill=배경(라이트 틴트), stroke=보더(코어 채도), text=본문(어두운 잉크, AA 4.5:1+).
+     * ok=brand indigo, done=success emerald(callout-success 정렬), warn=amber(callout-warn 정렬).
+     * mermaid 렌더 제약으로 chart-registry.ts는 이 값들과 동일 리터럴을 사용(주석 참조).
+     */
+    --chart-state-ok-fill:     #eeecfb;  /* indigo 틴트 배경(brand-soft 계열) */
+    --chart-state-ok-stroke:   #5b45c9;  /* brand indigo */
+    --chart-state-ok-text:     #322476;  /* indigo-900 (on #eeecfb 대비 ~9.6:1) */
+    --chart-state-done-fill:   #ecfdf5;  /* emerald-50 (callout-success-bg 정렬) */
+    --chart-state-done-stroke: #0d9488;  /* teal/emerald 코어 */
+    --chart-state-done-text:   #065f46;  /* emerald-800 (callout-success-fg 정렬, on #ecfdf5 ~7.6:1) */
+    --chart-state-warn-fill:   #fffbeb;  /* amber-50 (callout-warn-bg 정렬) */
+    --chart-state-warn-stroke: #d97706;  /* amber 코어 */
+    --chart-state-warn-text:   #92400e;  /* amber-800 (callout-warn-fg 정렬, on #fffbeb ~7.1:1) */
+
     /* 형태 스케일 — 절제된 라운드/쿨 틴트 섀도 (Signal Grid) */
     --radius-card: 0.75rem;          /* 12px — 카드 라운드(더 또렷하게) */
     --shadow-soft: 0 1px 2px rgba(22, 21, 29, 0.05), 0 1px 3px rgba(22, 21, 29, 0.05);

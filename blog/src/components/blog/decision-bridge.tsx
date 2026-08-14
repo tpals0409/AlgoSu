@@ -20,13 +20,18 @@ interface DecisionBridgeProps {
   accent?: 1 | 2 | 3 | 4 | 5 | 6;
 }
 
+/**
+ * 시리즈 그라디언트 색상은 globals.css 의 `--chart-series-*` 토큰(SSOT)을 참조합니다.
+ * SVG <stop>/<polygon> 은 문서 내에서 렌더되므로 인라인 style 로 var() 를 넘기면
+ * :root CSS 변수를 정상 해석합니다(하드코딩 리터럴 금지 — Signal Grid 데이터 레이어).
+ */
 const ACCENT_GRADIENT: Record<number, { from: string; to: string }> = {
-  1: { from: '#6366f1', to: '#818cf8' },
-  2: { from: '#06b6d4', to: '#22d3ee' },
-  3: { from: '#10b981', to: '#34d399' },
-  4: { from: '#f59e0b', to: '#fbbf24' },
-  5: { from: '#ec4899', to: '#f472b6' },
-  6: { from: '#8b5cf6', to: '#a78bfa' },
+  1: { from: 'var(--chart-series-1-from)', to: 'var(--chart-series-1-to)' },
+  2: { from: 'var(--chart-series-2-from)', to: 'var(--chart-series-2-to)' },
+  3: { from: 'var(--chart-series-3-from)', to: 'var(--chart-series-3-to)' },
+  4: { from: 'var(--chart-series-4-from)', to: 'var(--chart-series-4-to)' },
+  5: { from: 'var(--chart-series-5-from)', to: 'var(--chart-series-5-to)' },
+  6: { from: 'var(--chart-series-6-from)', to: 'var(--chart-series-6-to)' },
 };
 
 const ACCENT_TEXT: Record<number, string> = {
@@ -75,8 +80,8 @@ export function DecisionBridge({
               >
                 <defs>
                   <linearGradient id={gradientId}>
-                    <stop offset="0%" stopColor={colors.from} />
-                    <stop offset="100%" stopColor={colors.to} />
+                    <stop offset="0%" style={{ stopColor: colors.from }} />
+                    <stop offset="100%" style={{ stopColor: colors.to }} />
                   </linearGradient>
                 </defs>
                 <path
@@ -92,7 +97,7 @@ export function DecisionBridge({
                 {/* 화살촉 */}
                 <polygon
                   points="194,16 200,20 194,24"
-                  fill={colors.to}
+                  style={{ fill: colors.to }}
                   className="animate-draw-bridge"
                 />
               </svg>
@@ -143,8 +148,8 @@ export function DecisionBridge({
                   x2="0"
                   y2="1"
                 >
-                  <stop offset="0%" stopColor={colors.from} />
-                  <stop offset="100%" stopColor={colors.to} />
+                  <stop offset="0%" style={{ stopColor: colors.from }} />
+                  <stop offset="100%" style={{ stopColor: colors.to }} />
                 </linearGradient>
               </defs>
               <path
@@ -159,7 +164,7 @@ export function DecisionBridge({
               />
               <polygon
                 points="16,54 20,60 24,54"
-                fill={colors.to}
+                style={{ fill: colors.to }}
                 className="animate-draw-bridge"
               />
             </svg>
