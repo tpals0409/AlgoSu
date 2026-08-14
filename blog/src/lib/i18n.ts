@@ -44,12 +44,12 @@ const DICTIONARY = {
 
     /* ─── 홈 랜딩 Hero (Sprint 185) ────────────────── */
     heroBadge: '실제 운영 중인 AI Agent 서비스',
-    heroTitle: 'AlgoSu Tech Blog',
+    heroTitle: '실전 MSA를 운영하며 남긴 아키텍처 결정 기록',
     heroSubcopy:
       '1인 개발자가 만든 AI Agent 기반 알고리즘 스터디 플랫폼의 개발·운영 기록. 12-agent 오케스트레이션, k3s 운영, CI/CD, ADR, production debugging까지 — 실제 사용자가 있는 서비스를 만들며 겪은 문제와 의사결정을 기록합니다.',
-    heroCtaStartHere: '처음 읽기 좋은 글',
+    heroMetaLine: '최근 업데이트 {date} · {adr}개 ADR',
     heroCtaAdr: 'ADR 보기',
-    heroCtaService: 'AlgoSu 서비스 보기',
+    heroCtaService: 'AlgoSu 서비스',
 
     /* ─── 홈 성과 지표 카드 (Sprint 185) ──────────── */
     metricsTitle: '한눈에 보는 AlgoSu',
@@ -66,13 +66,7 @@ const DICTIONARY = {
     metricIterationLabel: 'Zero-downtime',
     metricIterationDesc: '운영 중 빠른 반복 개선',
 
-    /* ─── 홈 StartHere / 최근 글 (Sprint 185) ─────── */
-    startHereTitle: '처음 오셨다면, 이 글부터',
-    startHereSubtitle: '대표 글로 AlgoSu의 핵심을 빠르게 파악하세요.',
-    startHereWhy1: '12개 에이전트 오케스트레이션 구조를 보여주는 글',
-    startHereWhy2: 'AI 생성 코드를 프로덕션에 올리는 검증 전략',
-    startHereWhy3: 'Agent 컨텍스트 비대화를 sliding window로 해결한 기록',
-    startHereWhy4: '교차 AI 검증(Critic)으로 모델 종속을 끊어낸 과정',
+    /* ─── 홈 최근 글 (Sprint 185) ─────── */
     recentPostsTitle: '최근 글',
 
     /* ─── ADR 랜딩 큐레이션 (Sprint 186) ──────────── */
@@ -262,10 +256,10 @@ const DICTIONARY = {
 
     /* ─── Home landing hero (Sprint 185) ───────────── */
     heroBadge: 'A live AI-agent service',
-    heroTitle: 'AlgoSu Tech Blog',
+    heroTitle: 'Architecture decisions from running a real MSA in production',
     heroSubcopy:
       'The build & ops log of an AI-agent algorithm-study platform built by a solo developer. From 12-agent orchestration, k3s ops, CI/CD, and ADRs to production debugging — the problems and decisions behind a service with real users.',
-    heroCtaStartHere: 'Start Here',
+    heroMetaLine: 'Updated {date} · {adr} ADRs',
     heroCtaAdr: 'Browse ADRs',
     heroCtaService: 'Visit AlgoSu',
 
@@ -284,13 +278,7 @@ const DICTIONARY = {
     metricIterationLabel: 'Zero-downtime',
     metricIterationDesc: 'Fast iteration without downtime',
 
-    /* ─── Home StartHere / recent posts (Sprint 185) ─ */
-    startHereTitle: 'New here? Start with these',
-    startHereSubtitle: 'Grasp the core of AlgoSu through a few signature posts.',
-    startHereWhy1: 'How a 12-agent orchestration is structured',
-    startHereWhy2: 'The strategy for shipping AI-generated code to production',
-    startHereWhy3: 'Taming agent-context growth with a sliding window',
-    startHereWhy4: 'Breaking model lock-in with cross-AI review (Critic)',
+    /* ─── Home recent posts (Sprint 185) ─ */
     recentPostsTitle: 'Recent Posts',
 
     /* ─── ADR landing curation (Sprint 186) ────────── */

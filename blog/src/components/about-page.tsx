@@ -19,7 +19,7 @@ interface AboutPageProps {
 /** locale별 About 페이지를 렌더링한다. */
 export function AboutPage({ locale }: AboutPageProps) {
   return (
-    <div className="space-y-14 sm:space-y-16">
+    <div className="mx-auto max-w-3xl space-y-14 sm:space-y-16">
       <AboutHero locale={locale} />
       <SkillGroups locale={locale} />
     </div>

@@ -18,6 +18,7 @@ import { getAllAdrs } from '@/lib/adr/loader';
 import { buildAdrIndex } from '@/lib/adr/index-builder';
 import { RelatedAdrs } from '@/components/post/related-adrs';
 import { RelatedPosts } from '@/components/post/related-posts';
+import { Toc } from '@/components/post/toc';
 
 interface PostPageProps {
   locale: Locale;
@@ -59,7 +60,8 @@ export async function PostPage({ locale, slug }: PostPageProps) {
       : new Map();
 
   return (
-    <article>
+    <article className="lg:grid lg:grid-cols-[minmax(0,1fr)_16rem] lg:gap-12">
+      <div className="min-w-0">
       <header className="mb-10 border-b border-border pb-8">
         <h1 className="mb-4 text-4xl font-bold leading-tight tracking-tight">
           {post.meta.title}
@@ -91,7 +93,7 @@ export async function PostPage({ locale, slug }: PostPageProps) {
         </aside>
       )}
 
-      <div className="prose prose-gray max-w-none">
+      <div className="prose prose-gray max-w-prose">
         {content}
       </div>
 
@@ -190,6 +192,11 @@ export async function PostPage({ locale, slug }: PostPageProps) {
           )}
         </div>
       </nav>
+      </div>
+
+      <aside className="hidden lg:block">
+        <Toc content={post.content} label={t(locale, 'tocLabel')} />
+      </aside>
     </article>
   );
 }

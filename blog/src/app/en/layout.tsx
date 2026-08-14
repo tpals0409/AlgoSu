@@ -4,11 +4,11 @@
  * @layer      app
  * @related    src/components/header.tsx
  *
- * 영어(en) route 레이아웃 — Header + main + footer.
+ * 영어(en) route 레이아웃 — 좌측 persistent 사이드바 3존 셸.
  * document.documentElement.lang을 'en'으로 동적 전환한다.
  */
 import type { Metadata } from 'next';
-import { Header } from '@/components/header';
+import { Sidebar } from '@/components/sidebar';
 import { Footer } from '@/components/footer';
 
 export const metadata: Metadata = {
@@ -27,9 +27,11 @@ export default function EnLayout({ children }: { children: React.ReactNode }) {
           __html: `document.documentElement.lang='en'`,
         }}
       />
-      <Header locale="en" />
-      <main className="mx-auto max-w-4xl px-6 py-10">{children}</main>
-      <Footer />
+      <Sidebar />
+      <div className="lg:pl-[var(--sidebar-width)]">
+        <main className="mx-auto max-w-6xl px-6 py-10">{children}</main>
+        <Footer />
+      </div>
     </>
   );
 }

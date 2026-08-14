@@ -3,11 +3,11 @@
  * @domain     blog
  * @layer      lib
  * @related    src/lib/i18n.ts, src/components/home/metric-card.tsx,
- *             src/components/home/start-here-section.tsx, src/components/home/home-hero.tsx,
+ *             src/components/home/home-hero.tsx,
  *             src/components/adr/adr-landing-view.tsx
  *
  * 홈 랜딩 + ADR 랜딩 큐레이션 SSOT (Sprint 185 Phase 1 / Sprint 186 Phase 2).
- * 성과 지표·StartHere 추천 글·외부 링크·대표 ADR·주제 컬렉션을 한곳에서 관리한다.
+ * 성과 지표·외부 링크·대표 ADR·주제 컬렉션을 한곳에서 관리한다.
  * 표시 텍스트(라벨/설명/why-read)는 i18n DICTIONARY 키로만 참조해
  * ko/en 동시 현지화를 보장한다. 수치 값은 실데이터 확인분만 사용한다(과장 금지).
  * ADR 참조는 AdrMeta.id로 한다(permanent: 'ADR-001', sprint: 'sprint-130', topic: slug).
@@ -90,25 +90,6 @@ export const HOME_METRICS: readonly HomeMetric[] = [
   { id: 'ci', value: '23', labelKey: 'metricCiLabel', descKey: 'metricCiDesc' },
   { id: 'adrs', value: null, labelKey: 'metricAdrsLabel', descKey: 'metricAdrsDesc' },
   { id: 'iteration', value: '∞', labelKey: 'metricIterationLabel', descKey: 'metricIterationDesc' },
-] as const;
-
-/** StartHere 추천 글 1종 — 글 메타는 slug로 조회, why-read만 i18n. */
-export interface StartHerePost {
-  /** content/posts(-en) 의 .mdx slug. */
-  slug: string;
-  /** i18n "왜 읽어야 하나" 한 줄 키. */
-  whyKey: DictKey;
-}
-
-/**
- * StartHere 추천 4글 (Sprint 185 사용자 확정).
- * 첫 방문자가 전체 목록 없이 대표 글로 진입하도록 큐레이션.
- */
-export const START_HERE_POSTS: readonly StartHerePost[] = [
-  { slug: 'orchestration-structure', whyKey: 'startHereWhy1' },
-  { slug: 'cicd-ai-guardrails', whyKey: 'startHereWhy2' },
-  { slug: 'sliding-window-agent-context', whyKey: 'startHereWhy3' },
-  { slug: 'toward-model-agnostic-harness', whyKey: 'startHereWhy4' },
 ] as const;
 
 /* ─── ADR 랜딩 큐레이션 (Sprint 186 Phase 2) ──────────────── */

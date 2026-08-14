@@ -4,8 +4,9 @@
  * @layer      ui
  * @related    src/components/home-page.tsx, src/components/post-list-with-filter.tsx
  *
- * 포스트 목록에서 단일 포스트를 카드 형태로 표시하는 컴포넌트.
- * 날짜 옆 카테고리 뱃지(7분류 주제형)를 렌더링한다.
+ * 포스트 목록에서 단일 포스트를 텍스트 인덱스 행으로 표시하는 컴포넌트
+ * (Sprint 266 — Overreacted/docs 인덱스 스타일).
+ * 날짜 · 카테고리 뱃지(작게) · 제목(hover 시 brand) 한 줄 행을 렌더링한다.
  */
 import type { Category } from '@/lib/posts';
 import type { Locale } from '@/lib/i18n';
@@ -52,7 +53,9 @@ interface PostCardProps {
   slug: string;
   title: string;
   date: string;
+  /** 인덱스 행에서는 미표시 — 목록 spread 호환용으로 시그니처만 유지 */
   excerpt: string;
+  /** 인덱스 행에서는 미표시 — 목록 spread 호환용으로 시그니처만 유지 */
   tags: string[];
   /** 포스트 카테고리 — 뱃지 색상/레이블에 사용 */
   category: Category;
@@ -61,57 +64,39 @@ interface PostCardProps {
   basePath?: string;
 }
 
-/** 포스트 카드 링크를 렌더링한다. */
+/** 포스트 인덱스 행(한 줄 텍스트)을 렌더링한다. */
 export function PostCard({
   slug,
   title,
   date,
-  excerpt,
-  tags,
   category,
   locale,
   basePath = '',
-}: PostCardProps) {
+}: Omit<PostCardProps, 'excerpt' | 'tags'>) {
   const badgeClass = CATEGORY_BADGE_CLASS[category];
   const badgeLabel = t(locale, CATEGORY_LABEL_KEY[category]);
 
   return (
     <a
       href={`${basePath}/posts/${slug}`}
-      className="group block rounded-card border border-border bg-surface-elevated p-6 shadow-soft transition-all duration-200 hover:-translate-y-0.5 hover:border-brand hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+      className="group flex flex-col gap-1 py-4 transition-colors sm:flex-row sm:items-baseline sm:gap-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
     >
-      {/* 날짜 + 카테고리 뱃지 행 */}
-      <div className="mb-2 flex items-center gap-2">
-        <time dateTime={date} className="block text-xs font-medium uppercase tracking-wide text-text-subtle">
+      {/* 날짜 + 카테고리 뱃지 (메타 열) */}
+      <div className="flex shrink-0 items-center gap-2 sm:w-44">
+        <time
+          dateTime={date}
+          className="text-xs font-medium uppercase tracking-wide tabular-nums text-text-subtle"
+        >
           {date}
         </time>
-        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${badgeClass}`}>
+        <span className={`rounded px-1.5 py-0.5 text-[0.65rem] font-medium ${badgeClass}`}>
           {badgeLabel}
         </span>
       </div>
 
-      <h2 className="mb-3 font-heading text-xl font-bold leading-snug transition-colors group-hover:text-brand">
+      <h2 className="font-heading text-base font-semibold leading-snug text-text transition-colors group-hover:text-brand group-hover:underline group-hover:decoration-brand/40 group-hover:underline-offset-4">
         {title}
       </h2>
-
-      {excerpt && (
-        <p className="line-clamp-2 text-sm leading-relaxed text-text-muted">
-          {excerpt}
-        </p>
-      )}
-
-      {tags.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {tags.map((tag) => (
-            <span
-              key={tag}
-              className="rounded-full bg-brand-soft px-3 py-1 text-xs font-medium text-brand"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
     </a>
   );
 }

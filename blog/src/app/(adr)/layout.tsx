@@ -2,13 +2,14 @@
  * @file       layout.tsx
  * @domain     blog / adr
  * @layer      app
- * @related    src/app/(ko)/layout.tsx, src/components/adr/search-box.tsx, src/components/adr/adr-header.tsx
+ * @related    src/app/(ko)/layout.tsx, src/components/sidebar.tsx
  *
- * ADR 전용 레이아웃 — 네비게이션 헤더(검색/로케일 토글 포함) + 넓은 max-w-7xl 본문.
- * KR(/adr/...) + EN(/en/adr/...) 두 라우팅 공통 적용.
+ * ADR 레이아웃 — 글로벌 좌측 사이드바 3존 셸 + 넓은 max-w-6xl 본문.
+ * ADR 상세의 우측 TOC/meta-sidebar는 페이지 내부 요소이므로 이 셸이 건드리지 않는다.
+ * KR(/adr/...) + EN(/en/adr/...) 두 라우팅 공통 적용 (Sidebar가 pathname으로 locale 판별).
  */
 import type { Metadata } from 'next';
-import { AdrHeader } from '@/components/adr/adr-header';
+import { Sidebar } from '@/components/sidebar';
 import { Footer } from '@/components/footer';
 
 export const metadata: Metadata = {
@@ -24,9 +25,11 @@ export const metadata: Metadata = {
 export default function AdrLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <AdrHeader />
-      <main className="mx-auto max-w-7xl px-6 py-10">{children}</main>
-      <Footer />
+      <Sidebar />
+      <div className="lg:pl-[var(--sidebar-width)]">
+        <main className="mx-auto max-w-6xl px-6 py-10">{children}</main>
+        <Footer />
+      </div>
     </>
   );
 }
