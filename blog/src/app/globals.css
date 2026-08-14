@@ -105,6 +105,12 @@
     --chart-state-warn-stroke: #d97706;  /* amber 코어 */
     --chart-state-warn-text:   #92400e;  /* amber-800 (callout-warn-fg 정렬, on #fffbeb ~7.1:1) */
 
+    /*
+     * 레이아웃 골격 토큰 (Wave L1 — 좌측 persistent 사이드바 3존 셸).
+     * #532 컬러/타이포/스페이싱 토큰 값은 불변; 아래는 신규 추가만.
+     */
+    --sidebar-width: 15rem;          /* 240px — 데스크톱 좌측 고정 사이드바 폭 */
+
     /* 형태 스케일 — 절제된 라운드/쿨 틴트 섀도 (Signal Grid) */
     --radius-card: 0.75rem;          /* 12px — 카드 라운드(더 또렷하게) */
     --shadow-soft: 0 1px 2px rgba(22, 21, 29, 0.05), 0 1px 3px rgba(22, 21, 29, 0.05);
