@@ -1,185 +1,184 @@
 <div align="center">
-  <img src="docs/assets/logo.png" alt="AlgoSu Logo" width="120" />
+  <img src="docs/assets/logo.png" alt="AlgoSu 로고" width="120" />
   <h1>AlgoSu</h1>
-  <p><strong>알고리즘 스터디 관리 플랫폼</strong> — 코드 제출부터 AI 분석까지 자동화된 워크플로우</p>
+  <p><strong>코드 제출부터 GitHub 저장, AI 코드 분석까지 이어지는<br />알고리즘 스터디 관리 서비스</strong></p>
   <p>
-    <a href="https://github.com/tpals0409/AlgoSu/actions/workflows/ci.yml">
-      <img src="https://github.com/tpals0409/AlgoSu/actions/workflows/ci.yml/badge.svg" alt="CI" />
-    </a>
-    <img src="https://img.shields.io/badge/tests-2%2C352%20passed-brightgreen" alt="Tests" />
-    <img src="https://img.shields.io/badge/TypeScript-strict-blue" alt="TypeScript" />
-    <img src="https://img.shields.io/badge/Gateway%20branches-97.79%25-brightgreen" alt="Coverage" />
+    <a href="https://algo-su.com">서비스 바로가기</a> ·
+    <a href="https://algo-su.com/login">데모 체험</a> ·
+    <a href="blog/content/posts">개발 기록</a>
   </p>
-  <p>🔗 <a href="https://algo-su.com"><strong>algo-su.com</strong></a></p>
 </div>
 
----
+<!-- 대표 화면 캡처: 스터디 현황과 주요 기능이 드러나는 실제 화면을 추가합니다. -->
 
-## 주요 기능
+## 1. 프로젝트 소개
 
-- **OAuth 소셜 로그인** — Google · Naver · Kakao 3사 OAuth + httpOnly Cookie JWT 인증
-- **코드 제출 → GitHub 자동 Push** — 제출 즉시 GitHub 레포지토리에 자동 커밋 (GitHub App 연동)
-- **AI 코드 분석** — Claude API 기반 코드 리뷰 · 점수 산정 · 피드백 자동 생성 (Circuit Breaker 적용)
-- **스터디 관리** — 문제 출제 · 마감 자동 종료 · 난이도 티어 시스템 · 스터디룸 대시보드
-- **실시간 알림** — SSE(Server-Sent Events) 기반 제출 상태 · 분석 완료 실시간 푸시
+AlgoSu는 알고리즘 스터디의 문제 관리, 코드 제출, GitHub 저장, AI 피드백을 한곳에서 연결하는 서비스입니다. 스터디 진행 상황을 확인하고, 제출한 코드를 기록하며, 분석 결과를 바탕으로 풀이를 돌아볼 수 있습니다.
 
----
-
-## 체험하기 (Demo)
-
-별도 가입 없이 AlgoSu의 전체 워크플로우를 바로 체험할 수 있습니다.
-
-### 데모 접속 방법
-
-1. [algo-su.com/login](https://algo-su.com/login) 접속
-2. **"데모로 체험하기"** 버튼 클릭 (OAuth 로그인 불필요)
-3. 자동 발급된 데모 JWT로 즉시 대시보드 진입
-
-### 데모 워크플로우
-
-```mermaid
-flowchart LR
-    A["로그인 페이지\n데모로 체험하기\n버튼 클릭"] --> B["스터디룸\n대시보드"]
-    B --> C["문제 목록\n6개 알고리즘 문제\n난이도 티어 확인"]
-    B --> D["제출 내역\n15건 코드 제출\n상태 확인"]
-    D --> E["AI 분석 결과\nClaude 코드 리뷰\n점수 + 피드백"]
-```
-
-### 체험 가능 기능
-
-| 기능 | 설명 |
-|------|------|
-| 스터디룸 대시보드 | 스터디 현황, 멤버 목록, 진행률 한눈에 확인 |
-| 문제 목록 조회 | 난이도 티어(브론즈~다이아), 마감 상태, 문제 상세 |
-| 제출 내역 열람 | 코드 제출 이력, 제출 상태(대기/완료), GitHub Push 결과 |
-| AI 코드 분석 결과 | Claude 기반 코드 리뷰 점수, 카테고리별 피드백, 하이라이트 |
-| 퍼블릭 프로필 | 사용자 프로필 및 제출 통계 |
-
-### 데모 제한사항
+AI Native Builder를 지향하며, **기획부터 개발, 배포, 운영과 유지보수까지 혼자 맡고 있습니다.** 서비스의 코드 분석 기능뿐 아니라 제품을 설계하고 구현하며 개선하는 과정에도 AI를 적극적으로 활용하고 있습니다.
 
 | 항목 | 내용 |
-|------|------|
-| 권한 | 읽기 전용 -- 생성/수정/삭제(CUD) 작업은 DemoWriteGuard에 의해 차단 |
-| 데이터 리셋 | 6시간 주기 자동 초기화 (K8s CronJob) |
-| 세션 | 데모 전용 JWT 발급 (isDemo 클레임 포함) |
+| --- | --- |
+| 개발 형태 | 1인 개발 |
+| 담당 범위 | 기획 · 설계 · 프론트엔드 · 백엔드 · 인프라 · 운영 및 유지보수 |
+| 서비스 상태 | 운영 및 유지보수 중 |
+| AI 활용 | 서비스 내 코드 분석, 개발 과정의 역할별 작업 분담과 구현·검증 |
 
-> 데모 환경에는 사용자 3명, 스터디 1개, 알고리즘 문제 6개, 제출 15건, AI 분석 결과가 미리 세팅되어 있습니다.
+<!-- 보완: 개발 기간과 서비스를 처음 만들게 된 개인적인 계기를 작성합니다. -->
 
----
+## 2. 주요 기능과 화면
 
-## 기술 스택
+### 스터디 관리
 
-| 서비스 | 역할 | 기술 |
-|--------|------|------|
-| **Gateway** | API Gateway · OAuth · JWT · SSE | NestJS 10 · Passport · ioRedis · Throttler · Swagger |
-| **Submission** | 제출 관리 · Saga Orchestrator | NestJS 10 · TypeORM · RabbitMQ (amqplib) |
-| **Problem** | 문제 CRUD · 마감 스케줄러 | NestJS 10 · TypeORM · @nestjs/schedule |
-| **Identity** | 사용자 · 스터디 DB | NestJS 10 · TypeORM · PostgreSQL |
-| **GitHub Worker** | RabbitMQ Consumer · GitHub Push | Node.js · Octokit (GitHub App) · amqplib |
-| **AI Analysis** | Claude API · Circuit Breaker | FastAPI · Anthropic SDK · pika · httpx |
-| **Frontend** | SPA · 대시보드 · 코드 에디터 | Next.js 15 (App Router) · React 19 · Tailwind 4 · shadcn/ui · Monaco Editor |
+스터디에서 풀 문제와 마감을 정하고, 멤버와 진행 상황을 대시보드에서 확인합니다. 문제별 난이도와 제출 내역을 함께 살펴볼 수 있습니다.
 
-| 인프라 | 기술 |
-|--------|------|
-| 오케스트레이션 | k3s (프로덕션) · k3d (개발) |
-| CI/CD | GitHub Actions (15 jobs) → GHCR → ArgoCD GitOps |
-| DB | PostgreSQL 16 (Database per Service) |
-| 메시지 큐 | RabbitMQ 3.13 |
-| 캐싱 | Redis 7.2 |
-| 객체 저장소 | MinIO |
-| 모니터링 | Prometheus · Grafana · AlertManager |
-| 보안 | SealedSecret · NetworkPolicy · Gitleaks |
+<!-- 화면 캡처: 스터디룸 대시보드와 문제 목록 -->
 
----
+### 코드 제출과 GitHub 자동 저장
 
-## 아키텍처
+제출한 코드를 연결된 GitHub 저장소에 자동으로 커밋합니다. 풀이 이력을 남기고, 제출 화면에서 저장 작업의 진행 상태를 확인할 수 있습니다.
+
+<!-- 화면 캡처 또는 GIF: 코드 제출 → 처리 상태 → GitHub 저장 결과 -->
+
+### AI 코드 분석과 피드백
+
+Claude API로 제출 코드를 분석하고 리뷰와 피드백을 제공합니다. 분석 결과 화면에서 점수와 항목별 피드백을 확인하며 자신의 풀이를 돌아볼 수 있습니다.
+
+<!-- 화면 캡처: AI 분석 결과와 항목별 피드백 -->
+
+## 3. AI를 활용한 개발 과정
+
+### 역할과 책임을 나누는 방식
+
+서비스의 경계, 통신 방식, 인증과 배포 방향을 정하고, AI 에이전트에 역할별 구현 작업을 맡겼습니다. Gateway의 인증과 보안, Submission의 제출 흐름, 데이터베이스 스키마처럼 담당 영역을 나누어 각 작업에 필요한 맥락을 좁혔습니다.
+
+AI가 구현하는 세부 로직과 직접 내린 설계 판단을 구분해 기록했습니다. 예를 들어 외부 API 작업을 비동기로 처리한다는 방향을 정한 뒤, 상태 전이와 재시도 같은 구현을 AI와 구체화했습니다.
+
+### 구현과 검증을 연결하는 방식
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {
-  'primaryColor': '#7C6AAE',
-  'primaryTextColor': '#FAFAF8',
-  'primaryBorderColor': '#C4A6FF',
-  'lineColor': '#A08CD6',
-  'secondaryColor': '#1C1C22',
-  'tertiaryColor': '#0F0F12',
-  'mainBkg': '#1C1C22',
-  'nodeBorder': '#C4A6FF',
-  'clusterBkg': '#16161C',
-  'clusterBorder': '#7C6AAE',
-  'titleColor': '#FAFAF8',
-  'edgeLabelBackground': '#0F0F12',
-  'textColor': '#FAFAF8',
-  'fontSize': '13px',
-  'fontFamily': 'Sora, sans-serif'
-}}}%%
 flowchart LR
-    subgraph CLIENT["🖥️ Client"]
-        Next["Next.js 15\nApp Router\nTailwind · shadcn/ui"]
-    end
-
-    subgraph GATEWAY["🔐 API Gateway"]
-        GW["Gateway\nOAuth · JWT · SSE\nRate Limit · Proxy"]
-    end
-
-    subgraph SERVICES["⚙️ Microservices"]
-        direction TB
-        ID["Identity\n사용자 · 스터디"]
-        SUB["Submission\nSaga Orchestrator"]
-        PROB["Problem\n문제 · 마감"]
-    end
-
-    subgraph ASYNC["📨 Async Workers"]
-        direction TB
-        GH["GitHub Worker\nOctokit · Push"]
-        AI["AI Analysis\nFastAPI · Claude"]
-    end
-
-    subgraph INFRA["🗄️ Infrastructure"]
-        direction TB
-        PG[("PostgreSQL 16")]
-        RMQ[["RabbitMQ"]]
-        RD[("Redis")]
-        MIO[("MinIO")]
-    end
-
-    Next -->|HTTP| GW
-    GW --> ID & SUB & PROB
-    SUB -->|publish| RMQ
-    RMQ -->|consume| GH & AI
-    ID & SUB & PROB --> PG
-    GW & SUB --> RD
-    GH --> MIO
-
-    GH -..->|push| EXT_GH(("GitHub"))
-    AI -..->|analyze| EXT_CL(("Claude API"))
+    A[문제 정의와 기획] --> B[설계와 작업 분해]
+    B --> C[역할별 AI 구현]
+    C --> D[리뷰와 자동 검증]
+    D --> E[배포와 운영 확인]
+    E --> F[문제 기록과 개선]
+    F --> B
 ```
+
+구현 결과는 리뷰와 CI를 거쳐 확인합니다. 린트, 타입 검사, 테스트, 보안 검사를 개발 흐름에 포함하고, 주요 결정과 시행착오는 ADR과 개발 기록으로 남깁니다.
+
+- [AI와 함께한 아키텍처 설계](blog/content/posts/system-architecture-overview.mdx)
+- [AI 생성 코드를 검증하는 CI/CD 구축 과정](blog/content/posts/cicd-ai-guardrails.mdx)
+- [실제 CI 구성](.github/workflows/ci.yml)
+
+## 4. 시스템 아키텍처
+
+아래 구성도는 주요 서비스의 책임과 통신 관계를 요약한 그림입니다.
+
+```mermaid
+flowchart TB
+    FE[Frontend · Next.js] --> GW[Gateway · 인증과 API 진입점]
+    GW --> ID[Identity · 사용자와 스터디]
+    GW --> PROB[Problem · 문제와 마감]
+    GW --> SUB[Submission · 제출과 Saga]
+    ID --> IDDB[(Identity DB)]
+    PROB --> PDB[(Problem DB)]
+    SUB --> SDB[(Submission DB)]
+    SUB --> MQ[RabbitMQ]
+    MQ --> GH[GitHub Worker]
+    MQ --> AI[AI Analysis · FastAPI]
+    GH --> EXTGH[GitHub]
+    AI --> CLAUDE[Claude API]
+    SUB --> REDIS[Redis · 상태 이벤트]
+    REDIS --> GW
+    GW -->|SSE 상태 알림| FE
+```
+
+Gateway는 인증과 요청 전달을 맡고, Identity·Problem·Submission은 각 도메인의 데이터와 기능을 관리합니다. GitHub 저장과 AI 분석은 별도 워커에서 처리하며, 제출 상태 변화는 Redis와 SSE를 통해 사용자에게 전달합니다.
+
+### 코드 제출 한 건의 흐름
+
+```mermaid
+flowchart LR
+    A[코드 제출] --> B[제출 데이터 저장]
+    B --> C[GitHub 저장 작업]
+    C --> D[AI 분석 작업]
+    D --> E[분석 결과 확인]
+```
+
+위 그림은 정상 처리 경로를 요약합니다. Submission의 Saga가 단계별 상태를 관리하며, 외부 작업의 지연이나 실패에 대응하는 재시도·복구 로직을 둡니다.
+
+### 주요 기술
+
+| 영역 | 기술 |
+| --- | --- |
+| 프론트엔드 | Next.js · React · TypeScript · Tailwind CSS · Monaco Editor |
+| 백엔드 | NestJS · TypeORM · FastAPI |
+| 데이터와 비동기 처리 | PostgreSQL · Redis · RabbitMQ |
+| 외부 연동 | GitHub App · Claude API |
+| 배포와 운영 | GitHub Actions · GHCR · ArgoCD · k3s · Prometheus · Grafana |
+
+## 5. 개발 철학과 설계 결정
+
+### 책임을 나누고, 경계를 실제 구현에 반영합니다
+
+서비스를 나눌 때 데이터 소유권과 AI 에이전트의 작업 범위를 함께 고려했습니다. 담당 영역이 명확해지는 대신, 서비스 간 통신과 분산 상태 관리의 복잡성을 감수했습니다.
+
+초기에는 Gateway가 Identity 데이터베이스에 직접 접근하는 부분이 남아 있었습니다. 이를 Identity API 호출로 옮겨 서비스 경계를 구현에 반영했습니다. 이 과정에서 내부 HTTP 호출과 장애 의존성이 추가되는 비용도 검토했습니다.
+
+[Gateway와 Identity의 데이터 접근 분리 — ADR-001](docs/adr/ADR-001-gateway-identity-db-separation.md)
+
+### 오래 걸리는 작업은 분리하고, 실패 이후의 흐름도 설계합니다
+
+GitHub 저장과 AI 분석을 요청 안에서 모두 기다리게 하면 외부 API의 응답 시간이 사용자 경험에 그대로 영향을 줍니다. 두 작업을 비동기로 분리하고, 사용자는 제출 후 진행 상태를 확인하도록 구성했습니다.
+
+비동기 처리에는 중복 실행과 미완료 작업을 다루는 책임이 따릅니다. 상태 전이, 타임아웃, 재시도와 복구를 제출 흐름의 일부로 다룹니다.
+
+[제출 상태 관리와 복구 구현](services/submission/src/saga)
+
+### AI의 결과를 검증할 수 있는 개발 환경을 만듭니다
+
+AI가 작성한 코드를 지속적으로 반영하려면 결과를 확인하는 절차도 반복할 수 있어야 합니다. 코드 품질과 테스트, 보안 검사를 CI에 포함하고, 배포 과정에서 발견한 문제를 개발 규칙과 검증 절차에 반영해왔습니다.
+
+[CI/CD 구축 과정과 시행착오](blog/content/posts/cicd-ai-guardrails.mdx)
+
+## 6. 운영과 유지보수
+
+### 배포와 관측
+
+GitHub Actions에서 이미지를 빌드하고 GHCR에 저장한 뒤, GitOps 저장소와 ArgoCD를 통해 k3s 환경에 배포하는 흐름을 사용합니다. Prometheus와 Grafana를 운영 상태를 관측하는 도구로 활용합니다.
+
+### 배포 완료를 실제 동작으로 확인하기
+
+운영 중 헬스 체크 회귀와 환경변수 누락으로 새 버전의 롤아웃이 진행되지 않는 문제가 있었습니다. 기존 Pod가 요청을 처리하고 있어 서비스 접속만으로는 새 버전의 배포 실패를 알아차리기 어려웠습니다.
+
+헬스 체크 경로 처리와 누락된 설정을 수정하고, SealedSecret을 다시 봉인해 복구했습니다. 이 과정에서 드러난 알림과 배포 절차의 공백은 후속 과제로 기록했습니다. **서비스에 접속할 수 있는지와 의도한 버전이 정상 동작하는지는 별도로 확인해야 한다**는 운영상의 교훈을 얻었습니다.
+
+[롤아웃 실패의 원인과 복구 기록 — ADR-026](docs/adr/ADR-026-sprint-130-incident-stuck-rollouts-and-sealed-secrets-debt.md)
+
+<!-- 보완: 사용자 피드백을 반영한 사례와 운영·유지보수에서 AI를 활용한 구체적인 사례 -->
+
+## 7. 회고와 개선 방향
+
+AlgoSu를 만들며 AI에 일을 맡기는 범위와 서비스의 책임 경계를 함께 설계했습니다. 역할을 나눈 만큼 서비스 간 통신과 배포를 관리하는 부담도 생겼고, 운영 과정에서는 코드 검증 외에 설정과 배포 상태를 확인하는 절차가 필요했습니다.
+
+이 경험을 바탕으로 제품의 기능뿐 아니라 AI와 함께 일하는 방식, 검증 절차, 운영 기록도 함께 개선하고 있습니다.
+
+<!-- 보완: 확인 가능한 사용·운영 지표와 다음에 개선할 과제의 우선순위 -->
 
 ---
 
-## 디렉토리 구조
+<details>
+<summary>데모 체험 방법</summary>
 
-```
-AlgoSu/
-├── frontend/                  # Next.js 15 (App Router, Tailwind, shadcn/ui)
-├── services/
-│   ├── gateway/               # API Gateway · OAuth · JWT · SSE
-│   ├── submission/            # 제출 관리 · Saga Orchestrator
-│   ├── problem/               # 문제 CRUD · 마감 스케줄러
-│   ├── identity/              # 사용자 · 스터디 DB
-│   ├── github-worker/         # RabbitMQ Consumer · GitHub Push
-│   └── ai-analysis/          # Claude API · Circuit Breaker
-├── infra/
-│   ├── k3s/                   # K8s 매니페스트 (HPA, PDB, NetworkPolicy)
-│   ├── overlays/              # Kustomize (dev / staging / prod)
-│   └── sealed-secrets/        # SealedSecret 암호화
-├── scripts/                   # 배포 · 검증 스크립트
-├── .github/workflows/         # CI 파이프라인 (15 jobs)
-└── docs/                      # ADR · 런북 · 규칙 문서
-```
+[로그인 페이지](https://algo-su.com/login)에서 **데모로 체험하기**를 선택하면 별도 가입 없이 스터디 현황, 제출 내역, AI 분석 결과를 살펴볼 수 있습니다. 데모는 읽기 전용으로 제공됩니다.
 
----
+</details>
 
-## 시작하기
+
+<details>
+<summary>로컬 개발 환경 실행 방법</summary>
 
 ### 사전 요구사항
 
@@ -226,3 +225,5 @@ pnpm install
 pnpm dev
 # http://localhost:3000 접속
 ```
+
+</details>
