@@ -523,6 +523,7 @@ class AIAnalysisWorker:
         payload = {
             "feedback": result.get("feedback", ""),
             "score": result.get("score", 0),
+            "starRating": result.get("star_rating"),
             "optimizedCode": result.get("optimized_code"),
             "analysisStatus": result.get("status", "failed"),
         }

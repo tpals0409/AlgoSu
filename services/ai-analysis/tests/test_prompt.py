@@ -414,6 +414,63 @@ class TestComputeTotalScore:
         assert compute_total_score(scores, "python") == expected
 
 
+class TestScoreToStars:
+    """score_to_stars() 별점 매핑 검증 (Sprint 267 Wave 2a)"""
+
+    def test_boundary_values_map_to_expected_stars(self):
+        """각 임계값 경계에서 정확한 별점 부여 (10구간 SSOT)"""
+        from src.prompt import score_to_stars
+
+        cases = {
+            0: 0.5,
+            30: 1.0,
+            45: 1.5,
+            55: 2.0,
+            63: 2.5,
+            71: 3.0,
+            77: 3.5,
+            83: 4.0,
+            89: 4.5,
+            95: 5.0,
+            100: 5.0,
+        }
+        for total, expected in cases.items():
+            assert score_to_stars(total) == expected, f"total={total}"
+
+    def test_dense_band_70_to_89_spreads_across_five_buckets(self):
+        """관대성 쏠림 밴드(70~89)가 5개 별점 구간으로 분산돼야 분포 다양화 달성"""
+        from src.prompt import score_to_stars
+
+        buckets = {score_to_stars(s) for s in range(70, 90)}
+        assert buckets == {2.5, 3.0, 3.5, 4.0, 4.5}
+
+    def test_output_always_half_step_in_range(self):
+        """모든 0~100 입력에 대해 0.5 스텝·[0.5,5.0] 범위 보장"""
+        from src.prompt import score_to_stars
+
+        for total in range(0, 101):
+            stars = score_to_stars(total)
+            assert 0.5 <= stars <= 5.0
+            assert (stars * 2) == int(stars * 2)  # 0.5 스텝
+
+    def test_monotonic_non_decreasing(self):
+        """점수가 오르면 별점은 감소하지 않는다(단조 비감소)"""
+        from src.prompt import score_to_stars
+
+        prev = 0.0
+        for total in range(0, 101):
+            stars = score_to_stars(total)
+            assert stars >= prev
+            prev = stars
+
+    def test_out_of_range_is_clamped(self):
+        """범위 밖 입력은 [0,100]으로 클램프"""
+        from src.prompt import score_to_stars
+
+        assert score_to_stars(-10) == 0.5
+        assert score_to_stars(150) == 5.0
+
+
 class TestBehaviorEquivalenceRules:
     """행동 동등성 규칙 검증 (Sprint 142)"""
 
