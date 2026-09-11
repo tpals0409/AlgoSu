@@ -1,0 +1,10 @@
+# ai-analysis 서비스 전용 Trivy 억제 (CI 가 전역 .trivyignore 에 병합해 ai-analysis 이미지에만 적용).
+# Sprint 267 Critic P2: 전역 .trivyignore 에 두면 타 서비스 이미지의 진짜 msgpack/setuptools HIGH 까지
+# 억제되므로, 서비스 스코프로 분리한다.
+#
+# msgpack GHSA-6v7p-g79w-8964, setuptools CVE-2025-47273: ai-analysis 오탐 (Sprint 267)
+# Dockerfile runner 스테이지에서 in-place 상향(msgpack 1.2.2·setuptools 84.0.0) 완료 — 이미지 물리 파일엔 패치 버전만 존재.
+# Trivy가 COPY 후 rm된 구버전(1.1.2·70.3.0) dist-info의 whiteout 미적용분(docker-save tarball --input 스캔의 알려진 케이스)을 집계 타깃 "Python"에서 오탐.
+# 실제 런타임 취약 표면 없음 (msgpack은 requirements 직접 선언도 아님, 상향 과정에서 처음 유입).
+GHSA-6v7p-g79w-8964
+CVE-2025-47273

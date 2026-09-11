@@ -1060,8 +1060,24 @@ jobs:
         if: steps.check.outputs.skip == 'false'
         uses: actions/checkout@v6
         with:
-          sparse-checkout: .trivyignore
+          sparse-checkout: |
+            .trivyignore
+            .trivyignore.${{ matrix.service }}
           sparse-checkout-cone-mode: false
+      # Sprint 267 Critic P2: 전역 .trivyignore(모든 서비스 공통) + 서비스별 .trivyignore.<service>(있으면)를
+      # 병합해 해당 서비스 이미지에만 서비스 스코프 억제를 적용. 특정 서비스 오탐이 타 서비스로 새지 않도록.
+      - name: Resolve Trivy ignorefile
+        id: ignore
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          MERGED=/tmp/trivyignore.merged
+          : > "$MERGED"
+          [ -f .trivyignore ] && cat .trivyignore >> "$MERGED"
+          if [ -f ".trivyignore.${{ matrix.service }}" ]; then
+            echo "" >> "$MERGED"
+            cat ".trivyignore.${{ matrix.service }}" >> "$MERGED"
+          fi
+          echo "file=$MERGED" >> "$GITHUB_OUTPUT"
       # Sprint 165 옵션 C: build job 이 업로드한 docker tarball 을 받아서 local scan
       - name: Download image tarball
         if: steps.check.outputs.skip == 'false'
@@ -1095,7 +1111,7 @@ jobs:
             --severity CRITICAL,HIGH \
             --exit-code 1 \
             --ignore-unfixed \
-            --ignorefile .trivyignore \
+            --ignorefile ${{ steps.ignore.outputs.file }} \
             --format table \
             --input /tmp/image-${{ matrix.service }}.tar
       - name: Trivy scan (SARIF)
@@ -1104,7 +1120,7 @@ jobs:
           trivy image \
             --severity CRITICAL,HIGH \
             --ignore-unfixed \
-            --ignorefile .trivyignore \
+            --ignorefile ${{ steps.ignore.outputs.file }} \
             --format sarif \
             --output trivy-results.sarif \
             --input /tmp/image-${{ matrix.service }}.tar
