@@ -933,3 +933,48 @@ class TestBuildGroupUserPromptWaveD:
         assert "테스트 문제" in result
         assert "제한 사항" not in result
         assert "입출력 예" not in result
+
+
+class TestEfficiencyRelativeRubric:
+    """Sprint 267 — efficiency 절대 평가 → 제약 기반 상대 평가 버그 수정 회귀 보호.
+
+    n≤1,000 문제에서 O(n^2)가 정답인데도 "복잡도가 낮을수록 좋다"는 절대 기준으로
+    감점되던 버그(사용자 보고)를 차단한다. 루브릭이 제약(n 범위)으로부터 허용
+    복잡도를 먼저 산출하도록 지시하는지 검증.
+    """
+
+    def test_algorithm_efficiency_uses_constraint_relative_grading(self):
+        assert "상대 평가" in SYSTEM_PROMPT
+        assert "허용 복잡도" in SYSTEM_PROMPT
+        # 절대 기준 금지 명령이 명시되어야 함
+        assert "무조건 좋다" in SYSTEM_PROMPT
+
+    def test_algorithm_efficiency_allows_high_complexity_within_constraint(self):
+        """제약이 허용하면 높은 복잡도(O(n^2) 등)도 감점 금지 예시가 포함된다."""
+        assert "O(n^2)" in SYSTEM_PROMPT
+        assert "감점하지 말고" in SYSTEM_PROMPT
+
+    def test_sql_efficiency_uses_scale_relative_grading(self):
+        """SQL efficiency도 데이터 규모 기준 상대 평가 원칙을 포함한다."""
+        assert "데이터 규모 제약" in SQL_SYSTEM_PROMPT
+        assert "이론적 최적이 아니라는 이유만으로 감점하지 마세요" in SQL_SYSTEM_PROMPT
+
+
+class TestCorrectnessExamplesTrace:
+    """Sprint 267 — correctness 강화: 보유한 입출력 예에 코드를 트레이스 대조.
+
+    실행 샌드박스 없이(옵션 2), 프롬프트에 주입된 examples 입출력 예에 대해
+    제출 코드를 논리적으로 트레이스하여 기대 출력과 대조하도록 지시하는지 검증.
+    기존 "제출된 코드만 평가" 분리 원칙은 유지되어야 한다(회귀 보호).
+    """
+
+    def test_algorithm_correctness_requires_examples_trace(self):
+        assert "트레이스" in SYSTEM_PROMPT
+        assert "입출력 예가 주어지면" in SYSTEM_PROMPT
+        # 기존 분리 원칙 보존
+        assert "제출된 코드만 평가" in SYSTEM_PROMPT
+
+    def test_sql_correctness_requires_resultset_compare(self):
+        assert "기대 결과 집합" in SQL_SYSTEM_PROMPT
+        # 기존 분리 원칙 보존
+        assert "제출된 쿼리만 평가" in SQL_SYSTEM_PROMPT

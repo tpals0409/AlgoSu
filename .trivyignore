@@ -24,3 +24,7 @@ CVE-2026-27135
 # blog Dockerfile에서 apk upgrade libexpat 실행 중이나 Alpine 3.21 repo에 2.8.1-r0 미반영
 # fixed version: 2.8.1-r0 (Alpine 3.22+ 또는 3.21 backport 시 제거)
 CVE-2026-45186
+
+# ⚠️ 서비스별 오탐/억제는 이 전역 파일이 아니라 .trivyignore.<service> 에 기록할 것 (Sprint 267 Critic P2).
+#    CI Trivy 매트릭스가 전역 파일을 모든 서비스 이미지에 동일 적용하므로, 특정 서비스 오탐을
+#    전역에 넣으면 타 서비스의 진짜 취약점까지 억제됨. 예: ai-analysis Python 오탐 → .trivyignore.ai-analysis
