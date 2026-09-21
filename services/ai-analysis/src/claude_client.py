@@ -22,6 +22,7 @@ from .prompt import (
     compute_total_score,
     get_group_system_prompt,
     get_system_prompt,
+    score_to_stars,
 )
 
 logger = logging.getLogger(__name__)
@@ -318,10 +319,15 @@ class ClaudeClient:
                 if recomputed > 0:
                     score = recomputed
 
+            # 별점(SSOT) — totalScore 로부터 결정론적 매핑 (Sprint 267 Wave 2a)
+            star_rating = score_to_stars(score)
+            parsed["starRating"] = star_rating
+
             return {
                 "feedback": json.dumps(parsed, ensure_ascii=False),
                 "optimized_code": optimized_code,
                 "score": score,
+                "star_rating": star_rating,
                 "status": "completed",
                 "categories": categories,
             }
@@ -356,9 +362,13 @@ class ClaudeClient:
                     extra={"score": score},
                 )
 
+            # 별점 — score 추출 성공 시에만 매핑, 실패(score 0)면 별점 없음 (Sprint 267 Wave 2a)
+            star_rating = score_to_stars(score) if score > 0 else None
+
             # 유효 JSON envelope — 프론트에서 즉시 구조화 렌더링 가능
             envelope = {
                 "totalScore": score,
+                "starRating": star_rating,
                 "summary": (
                     "AI 분석 결과 파싱에 일시적 오류가 발생했습니다. "
                     "점수만 확인하실 수 있습니다."
@@ -372,6 +382,7 @@ class ClaudeClient:
                 "feedback": json.dumps(envelope, ensure_ascii=False),
                 "optimized_code": None,
                 "score": score,
+                "star_rating": star_rating,
                 "status": status,
                 "categories": [],
             }
