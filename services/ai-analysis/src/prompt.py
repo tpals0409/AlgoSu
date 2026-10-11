@@ -70,6 +70,46 @@ def compute_total_score(category_scores: dict[str, int], language: str) -> int:
     return round(weighted_sum)
 
 
+# ─── STAR RATING (SSOT — 점수 표현 별점 매핑, Sprint 267 Wave 2a) ──
+
+# totalScore(0~100) -> 별점(0.5~5.0, 0.5 스텝, 10구간) 매핑 임계값.
+# (하한 점수, 별점) 내림차순. total >= 하한이면 해당 별점 부여.
+#
+# 설계 근거(분포 다양화):
+#   기존 채점은 관대성 편향으로 totalScore 가 70~95 구간에 쏠린다.
+#   단순 선형(score/20)은 이 쏠림을 별점 3.5~5.0 소수 구간에 그대로 재현한다.
+#   따라서 히스토그램 이퀄라이제이션 관점으로 별점 해상도를 실제 밀집 구간(63~95)에
+#   집중 배분(간격 6점)하고, 희소한 저점 구간은 넓게(간격 10~15점) 잡는다.
+#   결과: 밀집 밴드 70~89 가 {2.5,3.0,3.5,4.0,4.5} 5개 별점 구간으로 퍼져 분포가 다양화된다.
+STAR_THRESHOLDS: list[tuple[int, float]] = [
+    (95, 5.0),
+    (89, 4.5),
+    (83, 4.0),
+    (77, 3.5),
+    (71, 3.0),
+    (63, 2.5),
+    (55, 2.0),
+    (45, 1.5),
+    (30, 1.0),
+    (0, 0.5),
+]
+
+
+def score_to_stars(total: float) -> float:
+    """
+    totalScore(0~100)를 별점(0.5~5.0, 0.5 스텝)으로 결정론적 매핑
+
+    @domain ai
+    @param total: 가중 평균 총점(0~100). 범위 밖 값은 [0,100]으로 클램프.
+    @returns: 0.5~5.0 범위의 0.5 스텝 별점 (10구간)
+    """
+    clamped = max(0, min(100, round(total)))
+    for lower, stars in STAR_THRESHOLDS:
+        if clamped >= lower:
+            return stars
+    return 0.5  # pragma: no cover — STAR_THRESHOLDS 하한 0 이 항상 매칭(방어적 폴백)
+
+
 # ─── SYSTEM PROMPTS ──
 
 _SYSTEM_PROMPT_TEMPLATE = """당신은 알고리즘 스터디 3년차 멘토입니다.
