@@ -399,6 +399,69 @@ class TestParseResponseMarkdown:
         assert result["score"] == compute_total_score(scores, "python")
 
 
+class TestStarRatingEmission:
+    """_parse_response() 별점(starRating) 산출·방출 검증 (Sprint 267 Wave 2a)"""
+
+    def _client(self):
+        from src.claude_client import ClaudeClient
+
+        with (
+            patch("src.claude_client.anthropic"),
+            patch("src.claude_client.circuit_breaker"),
+            patch("src.claude_client.settings") as mock_settings,
+        ):
+            mock_settings.anthropic_api_key = "test-key"
+            return ClaudeClient()
+
+    def test_success_emits_star_rating_from_total_score(self):
+        """성공 파싱 시 totalScore→별점 결정론 매핑을 반환·feedback에 주입"""
+        import json
+
+        from src.prompt import score_to_stars
+
+        c = self._client()
+        payload = json.dumps(
+            {
+                "totalScore": 75,
+                "summary": "별점 방출 테스트",
+                "categories": [{"name": "style", "score": 75, "comment": "ok"}],
+                "optimizedCode": None,
+            }
+        )
+        result = c._parse_response(f"```json\n{payload}\n```")
+
+        assert result["score"] == 75
+        assert result["star_rating"] == score_to_stars(75) == 3.0
+        # feedback JSON 본문에도 starRating 주입 (프론트 parseFeedback 용)
+        assert json.loads(result["feedback"])["starRating"] == 3.0
+
+    def test_failed_parse_emits_no_star_rating(self):
+        """파싱 실패(score 0)면 별점 없음(None)"""
+        import json
+
+        c = self._client()
+        result = c._parse_response("not valid json {{{")
+
+        assert result["status"] == "failed"
+        assert result["star_rating"] is None
+        assert json.loads(result["feedback"])["starRating"] is None
+
+    def test_regex_fallback_extracts_star_rating(self):
+        """JSON 파싱 실패라도 regex로 totalScore 추출 시 별점도 산출"""
+        import json
+
+        from src.prompt import score_to_stars
+
+        c = self._client()
+        # 유효 JSON은 아니지만 totalScore 는 regex로 추출 가능한 형태
+        raw = 'garbage "totalScore": 88, broken {{{'
+        result = c._parse_response(raw)
+
+        assert result["score"] == 88
+        assert result["star_rating"] == score_to_stars(88) == 4.0
+        assert json.loads(result["feedback"])["starRating"] == 4.0
+
+
 class TestParseResponseFallback:
     """_parse_response() fallback 3단계 + regex fallback 검증"""
 
